@@ -1,6 +1,6 @@
 import { gtkDocToMarkdown } from "./gtk-doc.js";
 
-const escapeCommentTerminators = (doc: string): string => doc.replaceAll("*/", "*\\/");
+const escapeCommentTerminators = (doc: string): string => doc.replaceAll("*/", String.raw`*\/`);
 
 export const renderJsDoc = (doc: string | undefined): string => {
     if (doc === undefined || doc.length === 0) return "";

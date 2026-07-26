@@ -12,12 +12,11 @@ import {
     GtkSearchEntry,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-
 import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-settings2.tsx?raw";
 
-interface KeyItem {
+type KeyItem = {
     id: string;
     name: string;
     value: string;
@@ -26,12 +25,12 @@ interface KeyItem {
     schemaId: string;
     summary: string;
     valueType: string;
-}
+};
 
-interface SchemaKeys {
+type SchemaKeys = {
     schemaId: string;
     keys: KeyItem[];
-}
+};
 
 const loadKeyItem = (schemaId: string, schema: Gio.SettingsSchema, settings: Gio.Settings, name: string): KeyItem => {
     try {
@@ -48,8 +47,8 @@ const loadKeyItem = (schemaId: string, schema: Gio.SettingsSchema, settings: Gio
             summary: schemaKey.getSummary() ?? "",
             valueType: schemaKey.getValueType().dupString(),
         };
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
         return {
             id: `${schemaId}/${name}`,
             name,
@@ -72,8 +71,8 @@ const loadSchemaKeysFor = (source: Gio.SettingsSchemaSource, schemaId: string): 
         const keys = schema.listKeys().map((name) => loadKeyItem(schemaId, schema, settings, name));
         keys.sort((a, b) => a.name.localeCompare(b.name));
         return keys;
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
         return null;
     }
 };
@@ -83,7 +82,7 @@ function loadAllSchemaKeys(): SchemaKeys[] {
     if (!source) return [];
 
     const [nonRelocatable] = source.listSchemas(true);
-    const schemaIds = nonRelocatable.slice().sort();
+    const schemaIds = [...nonRelocatable].sort();
     const result: SchemaKeys[] = [];
 
     for (const schemaId of schemaIds) {
@@ -154,17 +153,17 @@ const commitSettingValue = (key: KeyItem, entry: Gtk.Entry, keysState: React.Ref
         const settings = Gio.Settings.new(key.schemaId);
         settings.setValue(key.name, variant);
         keysState.current.set(key.id, variant.print(false));
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
         revertEntry(entry, key, keysState);
     }
 };
 
-interface SchemaKeysListViewProps {
+type SchemaKeysListViewProps = {
     filteredSchemaKeys: SchemaKeys[];
     keysState: React.RefObject<Map<string, string>>;
     onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
-}
+};
 
 const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: SchemaKeysListViewProps) => (
     <GtkScrolledWindow name="scrolled">
@@ -198,7 +197,7 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
     </GtkScrolledWindow>
 );
 
-interface Settings2ContextValue {
+type Settings2ContextValue = {
     searchMode: boolean;
     setSearchMode: (value: boolean) => void;
     setSearchText: (value: string) => void;
@@ -207,7 +206,7 @@ interface Settings2ContextValue {
     handleSearchChanged: (entry: Gtk.SearchEntry) => void;
     handleStopSearch: () => void;
     handleValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
-}
+};
 
 const Settings2Context = createContext<Settings2ContextValue | null>(null);
 
@@ -248,7 +247,7 @@ const ListViewSettings2Titlebar = () => {
     const { searchMode, setSearchMode, setSearchText } = useSettings2Context();
     return (
         <GtkHeaderBar
-            end={
+            end={(
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"
@@ -258,7 +257,7 @@ const ListViewSettings2Titlebar = () => {
                         setSearchText("");
                     }}
                 />
-            }
+            )}
         />
     );
 };

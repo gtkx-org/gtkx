@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createXmlParser } from "../xml.js";
 
-export type RawNode = {
-    [attributeOrChild: string]: unknown;
-};
+export type RawNode = Record<string, unknown>;
 
 const MULTI_TAGS: Set<string> = new Set([
     "include",
@@ -43,7 +41,7 @@ const PARSER = createXmlParser({
 });
 
 export const parseGirFile = (path: string): RawNode => {
-    const xml = readFileSync(path, "utf-8");
+    const xml = readFileSync(path, "utf8");
     return PARSER.parse(xml) as RawNode;
 };
 

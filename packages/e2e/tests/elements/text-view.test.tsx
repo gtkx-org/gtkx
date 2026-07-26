@@ -17,10 +17,10 @@ const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number)
     return iter.hasTag(tag);
 };
 
-interface RenderedTextBuffer<P> {
+type RenderedTextBuffer<P> = {
     buffer: Gtk.TextBuffer;
     rerender: (props: P) => Promise<void>;
-}
+};
 
 const renderTextBuffer = async <P,>(
     initialProps: NoInfer<P>,
@@ -51,7 +51,7 @@ const buildNestedTagContent = (outerText: string, innerText: string): ReactNode 
 const buildTaggedTextView = (ref: RefObject<Gtk.TextView | null>) => (items: string[]) => (
     <GtkTextView
         ref={ref}
-        buffer={
+        buffer={(
             <GtkTextBuffer>
                 {items.map((item) => (
                     <GtkTextTag key={item} name={item} foreground="blue">
@@ -59,23 +59,23 @@ const buildTaggedTextView = (ref: RefObject<Gtk.TextView | null>) => (items: str
                     </GtkTextTag>
                 ))}
             </GtkTextBuffer>
-        }
+        )}
     />
 );
 
 const buildToggleContent =
     (name: string, tagText: string) =>
-    (showTag: boolean): ReactNode => (
-        <>
-            Start
-            {showTag && (
-                <GtkTextTag name={name} foreground="green">
-                    {tagText}
-                </GtkTextTag>
-            )}
-            End
-        </>
-    );
+        (showTag: boolean): ReactNode => (
+            <>
+                Start
+                {showTag && (
+                    <GtkTextTag name={name} foreground="green">
+                        {tagText}
+                    </GtkTextTag>
+                )}
+                End
+            </>
+        );
 
 describe("render - TextView (1)", () => {
     describe("basic text content", () => {
@@ -88,7 +88,9 @@ describe("render - TextView (1)", () => {
         it("renders multiple text segments", async () => {
             await renderTextBuffer(undefined, () => (
                 <>
-                    {"Hello"} {"World"}
+                    Hello
+                    {" "}
+                    World
                 </>
             ));
 
@@ -120,7 +122,9 @@ describe("render - TextView (2)", () => {
         it("applies TextTag to wrapped text", async () => {
             const { buffer } = await renderTextBuffer(undefined, () => (
                 <>
-                    Hello <GtkTextTag name="bold">World</GtkTextTag>
+                    Hello
+                    {" "}
+                    <GtkTextTag name="bold">World</GtkTextTag>
                 </>
             ));
 
@@ -218,9 +222,9 @@ describe("render - TextView (4)", () => {
         it("handles multiple sequential tags", async () => {
             const { buffer } = await renderTextBuffer(undefined, () => (
                 <>
-                    <GtkTextTag name="a">{"A"}</GtkTextTag>
-                    <GtkTextTag name="b">{"B"}</GtkTextTag>
-                    <GtkTextTag name="c">{"C"}</GtkTextTag>
+                    <GtkTextTag name="a">A</GtkTextTag>
+                    <GtkTextTag name="b">B</GtkTextTag>
+                    <GtkTextTag name="c">C</GtkTextTag>
                 </>
             ));
 
@@ -238,10 +242,12 @@ describe("render - TextView (5)", () => {
         it("embeds widget at anchor position", async () => {
             const { buffer } = await renderTextBuffer(undefined, () => (
                 <>
-                    Click here:{" "}
+                    Click here:
+                    {" "}
                     <GtkTextChildAnchor>
                         <GtkButton label="Button" />
-                    </GtkTextChildAnchor>{" "}
+                    </GtkTextChildAnchor>
+                    {" "}
                     to continue.
                 </>
             ));
@@ -270,7 +276,8 @@ describe("render - TextView (6)", () => {
         it("creates tagged text correctly", async () => {
             const { buffer } = await renderTextBuffer("World", (boldText: string) => (
                 <>
-                    Hello{" "}
+                    Hello
+                    {" "}
                     <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>
                         {boldText}
                     </GtkTextTag>
@@ -286,20 +293,29 @@ describe("render - TextView (6)", () => {
 describe("render - TextView (7)", () => {
     describe("dynamic updates (2)", () => {
         it("renders conditional text segments", async () => {
-            await renderTextBuffer(true, (showMiddle: boolean) => <>Start{showMiddle && " Middle"} End</>);
+            await renderTextBuffer(true, (showMiddle: boolean) => (
+                <>
+                    Start
+                    {showMiddle && " Middle"}
+                    {" "}
+                    End
+                </>
+            ));
 
             expect(screen.getByDisplayValue("Start Middle End")).toBeDefined();
         });
 
         it("renders with conditional TextTag", async () => {
             const { buffer } = await renderTextBuffer(true, (isBold: boolean) =>
-                isBold ? (
-                    <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>
-                        Bold
-                    </GtkTextTag>
-                ) : (
-                    "Normal"
-                ),
+                isBold
+                    ? (
+                            <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>
+                                Bold
+                            </GtkTextTag>
+                        )
+                    : (
+                            "Normal"
+                        ),
             );
 
             expect(getBufferText(buffer)).toBe("Bold");
@@ -339,14 +355,18 @@ describe("render - TextView (9)", () => {
         it("maintains correct text order with mixed content", async () => {
             const { buffer } = await renderTextBuffer(undefined, () => (
                 <>
-                    Start{" "}
+                    Start
+                    {" "}
                     <GtkTextTag name="tag1" foreground="red">
                         Red
-                    </GtkTextTag>{" "}
-                    Middle{" "}
+                    </GtkTextTag>
+                    {" "}
+                    Middle
+                    {" "}
                     <GtkTextTag name="tag2" foreground="blue">
                         Blue
-                    </GtkTextTag>{" "}
+                    </GtkTextTag>
+                    {" "}
                     End
                 </>
             ));
@@ -445,6 +465,22 @@ describe("render - TextView (12)", () => {
     });
 });
 
+const buildView = (showAnchor: boolean) => (
+    <GtkTextView
+        buffer={(
+            <GtkTextBuffer>
+                Start
+                {showAnchor && (
+                    <GtkTextChildAnchor>
+                        <GtkButton label="Embedded" />
+                    </GtkTextChildAnchor>
+                )}
+                End
+            </GtkTextBuffer>
+        )}
+    />
+);
+
 describe("render - TextView (13)", () => {
     describe("content model", () => {
         it("throws when a buffer mixes a text prop with content children", async () => {
@@ -460,13 +496,13 @@ describe("render - TextView (13)", () => {
             await render(
                 <GtkTextView
                     ref={viewRef}
-                    buffer={
+                    buffer={(
                         <GtkTextBuffer>
-                            {"AB"}
+                            AB
                             <GtkTextMark ref={markRef} />
-                            {"CD"}
+                            CD
                         </GtkTextBuffer>
-                    }
+                    )}
                 />,
             );
 
@@ -485,19 +521,21 @@ describe("render - TextView (13)", () => {
             const buildView = (order: string[]) => (
                 <GtkTextView
                     ref={viewRef}
-                    buffer={
+                    buffer={(
                         <GtkTextBuffer>
                             {order.map((item) =>
-                                item === "M" ? (
-                                    <GtkTextMark key="M" ref={markRef} />
-                                ) : (
-                                    <GtkTextTag key={item} name={item}>
-                                        {item.repeat(3)}
-                                    </GtkTextTag>
-                                ),
+                                item === "M"
+                                    ? (
+                                            <GtkTextMark key="M" ref={markRef} />
+                                        )
+                                    : (
+                                            <GtkTextTag key={item} name={item}>
+                                                {item.repeat(3)}
+                                            </GtkTextTag>
+                                        ),
                             )}
                         </GtkTextBuffer>
-                    }
+                    )}
                 />
             );
 
@@ -514,22 +552,6 @@ describe("render - TextView (13)", () => {
         });
 
         it("removes the embedded widget when its anchor unmounts", async () => {
-            const buildView = (showAnchor: boolean) => (
-                <GtkTextView
-                    buffer={
-                        <GtkTextBuffer>
-                            Start
-                            {showAnchor && (
-                                <GtkTextChildAnchor>
-                                    <GtkButton label="Embedded" />
-                                </GtkTextChildAnchor>
-                            )}
-                            End
-                        </GtkTextBuffer>
-                    }
-                />
-            );
-
             const { rerender } = await render(buildView(true));
             expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON)).toBeDefined();
 
@@ -544,7 +566,11 @@ describe("render - TextView (14)", () => {
     describe("dynamic updates - comprehensive (4)", () => {
         it("handles text change inside nested tag", async () => {
             const { buffer, rerender } = await renderTextBuffer("Inner", (innerText: string) => (
-                <>{buildNestedTagContent("Outer ", innerText)} After</>
+                <>
+                    {buildNestedTagContent("Outer ", innerText)}
+                    {" "}
+                    After
+                </>
             ));
 
             expect(getBufferText(buffer)).toBe("Outer Inner After");

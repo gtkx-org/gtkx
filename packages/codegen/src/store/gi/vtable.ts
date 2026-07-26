@@ -1,15 +1,15 @@
 import { pascalCase, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import type { GirCallback } from "../../gir/callback.js";
+import type { GirClass } from "../../gir/class.js";
+import type { GirField } from "../../gir/field.js";
+import type { GirParameter } from "../../gir/parameter.js";
+import type { ModuleContext } from "../../writer/context.js";
 import {
     isInlineCallbackRef,
     isScalarRef,
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
-import type { GirCallback } from "../../gir/callback.js";
-import type { GirClass } from "../../gir/class.js";
-import type { GirField } from "../../gir/field.js";
-import type { GirParameter } from "../../gir/parameter.js";
-import type { ModuleContext } from "../../writer/context.js";
 import { renderBraced } from "../../writer/emit.js";
 import { computeRecordFieldSlots } from "./record-layout.js";
 
@@ -49,7 +49,7 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
     if (resolved === undefined || resolved.kind !== "record") return [];
     const { slots } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const entries: string[] = [];
-    const claimedNames = new Set<string>();
+    const claimedNames: Set<string> = new Set();
     for (const { field, slot } of slots) {
         const entry = vtableSlotEntry(context, field, claimedNames);
         if (entry === undefined) continue;

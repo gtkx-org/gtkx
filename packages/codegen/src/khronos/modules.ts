@@ -1,10 +1,10 @@
 import { sortStrings, sortStringsBy } from "@gtkx/utils";
-import { ModuleBuilder } from "../writer/module.js";
 import type { GlEnum } from "./model.js";
-import { GL_SCALARS } from "./plan.js";
 import type { RenderedCommand } from "./render.js";
+import { ModuleBuilder } from "../writer/module.js";
+import { GL_SCALARS } from "./plan.js";
 
-const LIB_CONSTANT = `export const LIB = "libGL.so.1";`;
+const LIB_CONSTANT = "export const LIB = \"libGL.so.1\";";
 
 const GENERATED_HEADER = `/**
  * GENERATED FILE: do not edit.
@@ -28,12 +28,12 @@ export const renderTypesModule = (groupAliases: Map<string, string>): string => 
     builder.imports.addNamed("@gtkx/native", "ExternalObject", true);
     builder.imports.addNamed("@gtkx/native", "Handle", true);
     builder.appendDeclaration(
-        `/** An opaque \`GLsync\` fence handle. */\nexport type GLsync = ExternalObject<Handle>;`,
+        "/** An opaque `GLsync` fence handle. */\nexport type GLsync = ExternalObject<Handle>;",
     );
     builder.appendDeclaration(
-        `/** An opaque native pointer handle (e.g. a \`glMapBufferRange\` mapping). */\nexport type GLpointer = ExternalObject<Handle>;`,
+        "/** An opaque native pointer handle (e.g. a `glMapBufferRange` mapping). */\nexport type GLpointer = ExternalObject<Handle>;",
     );
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     for (const scalar of GL_SCALARS.values()) {
         if (seen.has(scalar.tsAlias)) continue;
         seen.add(scalar.tsAlias);

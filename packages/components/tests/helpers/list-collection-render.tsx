@@ -1,7 +1,7 @@
 import type { RenderItemArgs } from "@gtkx/components";
+import type { ReactNode } from "react";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { screen } from "@gtkx/testing";
-import type { ReactNode } from "react";
 import { expect, vi } from "vitest";
 import { filterableIds } from "./filterable-items.js";
 import { type FixtureInput, type NamedValue, renderListView } from "./list-fixtures.js";
@@ -33,10 +33,10 @@ export const expectRenderItemFunctionUpdate = async (): Promise<void> => {
     expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
 };
 
-export interface CollectionView {
+export type CollectionView = {
     texts: () => string[];
     rerender: (items: FixtureInput<NamedValue>) => Promise<void>;
-}
+};
 
 export type RenderCollectionView = (items: FixtureInput<NamedValue>) => Promise<CollectionView>;
 
@@ -102,7 +102,7 @@ export const expectRapidReorder = async (renderView: RenderCollectionView, order
     for (const order of rest) {
         await view.rerender(order);
     }
-    expect(view.texts()).toEqual(orders[orders.length - 1]);
+    expect(view.texts()).toEqual(orders.at(-1));
 };
 
 export const expectLargeDatasetReorder = async (renderView: RenderCollectionView): Promise<void> => {

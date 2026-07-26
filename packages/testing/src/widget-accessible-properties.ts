@@ -47,7 +47,7 @@ export const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
-const stripMnemonic = (text: string): string => text.replace(/_(.)/g, "$1");
+const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
 
 const namingLabelText = (widget: Gtk.Widget): string | null => {
     const text = getLabelText(widget);

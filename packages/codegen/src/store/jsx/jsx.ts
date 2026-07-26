@@ -2,14 +2,14 @@ import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
+import type { ImportsBuilder } from "../../writer/imports.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
-import type { ImportsBuilder } from "../../writer/imports.js";
 import { elementPropTypeFor } from "./element-prop-imports.js";
 import {
     collectInterfacePropsClasses,
-    type GlibNamedClass,
     giNamespaceAlias,
+    type GlibNamedClass,
     glibNameOf,
     type HasContainerProps,
     interfaceHasPropsBody,
@@ -51,7 +51,7 @@ const acceptPropLine = (line: string, seen: Set<string>, result: string[]): void
 };
 
 const dedupePropLines = (lines: string[]): string[] => {
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     const result: string[] = [];
     for (const line of lines) acceptPropLine(line, seen, result);
     return result;
@@ -111,14 +111,15 @@ type InterfaceBlockContext = {
     hasContainerProps: HasContainerProps;
 };
 
+const hasContainerProps: HasContainerProps = (glibName) =>
+    glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
+
 const renderInterfacePropBlocks = (
     library: Library,
     targetNamespaceName: string,
     options: GenerateJsxOptions,
 ): { blocks: string[]; needsReactElement: boolean; hasContainerProps: HasContainerProps } => {
     const { imports, intrinsicElements } = options;
-    const hasContainerProps: HasContainerProps = (glibName) =>
-        glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
     const context: InterfaceBlockContext = { library, targetNamespaceName, imports, hasContainerProps };
     const blocks: string[] = [];
     let needsReactElement = false;
@@ -276,8 +277,8 @@ const resolveElementExtends = (library: Library, entry: GlibNamedClass, context:
 
 const resolveParentClassLike = (library: Library, namespaceName: string, parent: string) => {
     const resolved = library.resolveType(namespaceName, parent);
-    if (resolved === undefined) return undefined;
-    if (resolved.kind !== "class" && resolved.kind !== "interface") return undefined;
+    if (resolved === undefined) return;
+    if (resolved.kind !== "class" && resolved.kind !== "interface") return;
     return resolved;
 };
 

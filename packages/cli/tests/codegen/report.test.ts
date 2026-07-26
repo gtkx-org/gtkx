@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatCodegenResult } from "../../src/codegen/report.js";
 import type { RunCodegenResult } from "../../src/codegen/run-codegen.js";
+import { formatCodegenResult } from "../../src/codegen/report.js";
 
 const result = (overrides: Partial<RunCodegenResult> = {}): RunCodegenResult => ({
     regenerated: true,

@@ -7,7 +7,7 @@ import { readBufferText, renderDemo } from "../../test-utils.js";
 
 const spawnMock = vi.hoisted(() => vi.fn((_command: string, _args: string[]) => ({ on() {} })));
 vi.mock("node:child_process", async (importOriginal) => {
-    const actual = (await importOriginal()) as Record<string, unknown>;
+    const actual = (await importOriginal()) as typeof import("node:child_process");
     return { ...actual, spawn: spawnMock };
 });
 

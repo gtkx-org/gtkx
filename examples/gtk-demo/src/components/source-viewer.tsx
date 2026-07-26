@@ -8,43 +8,47 @@ export const SourceViewer = () => {
     const { currentDemo } = useDemo();
 
     const handleRef = (view: GtkSource.View | null) => {
-        if (view && currentDemo?.sourceCode) {
-            const buffer = view.getBuffer();
-            buffer.setText(currentDemo.sourceCode, -1);
+        if (!(view && currentDemo?.sourceCode)) {
+            return;
         }
+
+        const buffer = view.getBuffer();
+        buffer.setText(currentDemo.sourceCode, -1);
     };
 
     return (
         <GtkScrolledWindow vexpand hexpand>
-            {currentDemo?.sourceCode ? (
-                <GtkSourceView
-                    name="source-view"
-                    ref={handleRef}
-                    editable={false}
-                    showLineNumbers
-                    tabWidth={4}
-                    leftMargin={20}
-                    rightMargin={20}
-                    topMargin={20}
-                    bottomMargin={20}
-                    monospace
-                    buffer={
-                        <GtkSourceBuffer
-                            language={GtkSource.LanguageManager.getDefault().getLanguage("typescript-jsx")}
-                            styleScheme={GtkSource.StyleSchemeManager.getDefault().getScheme("Adwaita-dark")}
+            {currentDemo?.sourceCode
+                ? (
+                        <GtkSourceView
+                            name="source-view"
+                            ref={handleRef}
+                            editable={false}
+                            showLineNumbers
+                            tabWidth={4}
+                            leftMargin={20}
+                            rightMargin={20}
+                            topMargin={20}
+                            bottomMargin={20}
+                            monospace
+                            buffer={(
+                                <GtkSourceBuffer
+                                    language={GtkSource.LanguageManager.getDefault().getLanguage("typescript-jsx")}
+                                    styleScheme={GtkSource.StyleSchemeManager.getDefault().getScheme("Adwaita-dark")}
+                                />
+                            )}
                         />
-                    }
-                />
-            ) : (
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    valign={Gtk.Align.CENTER}
-                    halign={Gtk.Align.CENTER}
-                    vexpand
-                >
-                    <GtkLabel cssClasses={["dim-label"]}>No source</GtkLabel>
-                </GtkBox>
-            )}
+                    )
+                : (
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            valign={Gtk.Align.CENTER}
+                            halign={Gtk.Align.CENTER}
+                            vexpand
+                        >
+                            <GtkLabel cssClasses={["dim-label"]}>No source</GtkLabel>
+                        </GtkBox>
+                    )}
         </GtkScrolledWindow>
     );
 };

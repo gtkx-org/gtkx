@@ -60,23 +60,23 @@ describe("emitSchemaEnv", () => {
 
         expect(result.path).toBe(schemaEnvPath(root));
         expect(result.written).toBe(true);
-        const content = readFileSync(result.path, "utf-8");
-        expect(content).toContain(`declare module "#data/com.example.app.gschema.xml" {`);
-        expect(content).toContain(`"enabled": "b";`);
+        const content = readFileSync(result.path, "utf8");
+        expect(content).toContain("declare module \"#data/com.example.app.gschema.xml\" {");
+        expect(content).toContain("\"enabled\": \"b\";");
     });
 
     it("types a nested schema under its #data/<rel> specifier", () => {
         writeDataSchema(join("schemas", "com.example.app.gschema.xml"));
 
-        const content = readFileSync(emitSchemaEnv(root, DATA_DIR).path, "utf-8");
+        const content = readFileSync(emitSchemaEnv(root, DATA_DIR).path, "utf8");
 
-        expect(content).toContain(`declare module "#data/schemas/com.example.app.gschema.xml" {`);
+        expect(content).toContain("declare module \"#data/schemas/com.example.app.gschema.xml\" {");
     });
 
     it("emits an empty declaration file when no data directory is configured", () => {
         writeDataSchema("com.example.app.gschema.xml");
 
-        const content = readFileSync(emitSchemaEnv(root, null).path, "utf-8");
+        const content = readFileSync(emitSchemaEnv(root, null).path, "utf8");
 
         expect(content).not.toContain("declare module");
     });
@@ -86,14 +86,14 @@ describe("emitSchemaEnv", () => {
 
         const result = emitSchemaEnv(root, DATA_DIR);
 
-        expect(readFileSync(result.path, "utf-8")).not.toContain("declare module");
+        expect(readFileSync(result.path, "utf8")).not.toContain("declare module");
     });
 
     it("writes an empty declaration file for a project without schemas", () => {
         const result = emitSchemaEnv(root, DATA_DIR);
 
         expect(existsSync(result.path)).toBe(true);
-        expect(readFileSync(result.path, "utf-8")).not.toContain("declare module");
+        expect(readFileSync(result.path, "utf8")).not.toContain("declare module");
     });
 
     it("leaves the file untouched when nothing changed", () => {
@@ -112,10 +112,10 @@ describe("emitSchemaEnv", () => {
         writeDataSchema(join("a", "settings.gschema.xml"), schemaXmlWithId("com.example.a"));
         writeDataSchema(join("b", "settings.gschema.xml"), schemaXmlWithId("com.example.b"));
 
-        const content = readFileSync(emitSchemaEnv(root, DATA_DIR).path, "utf-8");
+        const content = readFileSync(emitSchemaEnv(root, DATA_DIR).path, "utf8");
 
-        expect(content).toContain(`declare module "#data/a/settings.gschema.xml" {`);
-        expect(content).toContain(`declare module "#data/b/settings.gschema.xml" {`);
+        expect(content).toContain("declare module \"#data/a/settings.gschema.xml\" {");
+        expect(content).toContain("declare module \"#data/b/settings.gschema.xml\" {");
     });
 
     it("skips unparseable files with a warning and still writes the file", () => {
@@ -128,7 +128,7 @@ describe("emitSchemaEnv", () => {
 
             const warnings = stderr.mock.calls.map((call) => String(call[0])).filter((line) => line.includes("broken"));
             expect(warnings).toHaveLength(1);
-            const content = readFileSync(result.path, "utf-8");
+            const content = readFileSync(result.path, "utf8");
             expect(content).toContain("com.example.app.gschema.xml");
             expect(content).not.toContain("broken");
         } finally {

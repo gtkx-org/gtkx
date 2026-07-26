@@ -5,8 +5,8 @@ import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcut, GtkShortcutController, 
 import { useSignal } from "@gtkx/react";
 import { createContext, useContext, useState } from "react";
 import { path as bbbPngPath } from "#data/demos/media/bbb.png";
-import { path as gtkLogoCursorPath } from "#data/demos/media/gtk_logo_cursor.png";
 import gtkLogoUri from "#data/demos/media/gtk-logo.webm";
+import { path as gtkLogoCursorPath } from "#data/demos/media/gtk_logo_cursor.png";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./video-player.tsx?raw";
 
@@ -37,12 +37,12 @@ const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.
     try {
         const file = await dialog.open(window, null);
         setVideoFile(file);
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
     }
 };
 
-interface VideoPlayerContextValue {
+type VideoPlayerContextValue = {
     videoFile: Gio.File | null;
     fullscreened: boolean;
     logoPaintable: Gdk.Texture;
@@ -52,7 +52,7 @@ interface VideoPlayerContextValue {
     handleBBB: () => void;
     handleFullscreen: () => void;
     handleToggleFullscreen: () => void;
-}
+};
 
 const VideoPlayerContext = createContext<VideoPlayerContextValue | null>(null);
 
@@ -106,7 +106,7 @@ const VideoPlayerTitlebar = () => {
         useVideoPlayerContext();
     return (
         <GtkHeaderBar
-            start={
+            start={(
                 <>
                     <GtkButton name="open-button" label="_Open" useUnderline onClicked={handleOpen} />
                     <GtkButton name="logo-button" accessibleLabel="GTK Logo" onClicked={handleLogo}>
@@ -116,15 +116,15 @@ const VideoPlayerTitlebar = () => {
                         <GtkImage name="bbb-image" paintable={bbbPaintable} pixelSize={24} />
                     </GtkButton>
                 </>
-            }
-            end={
+            )}
+            end={(
                 <GtkButton
                     name="fullscreen-button"
                     iconName={fullscreened ? "view-restore-symbolic" : "view-fullscreen-symbolic"}
                     accessibleLabel="Fullscreen"
                     onClicked={handleFullscreen}
                 />
-            }
+            )}
         />
     );
 };
@@ -137,10 +137,10 @@ const VideoPlayerDemo = () => {
             file={videoFile}
             autoplay
             graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED}
-            controllers={
+            controllers={(
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.GLOBAL}
-                    shortcuts={
+                    shortcuts={(
                         <GtkShortcut
                             trigger={Gtk.ShortcutTrigger.parseString("F11")}
                             action={Gtk.CallbackAction.new(() => {
@@ -148,9 +148,9 @@ const VideoPlayerDemo = () => {
                                 return true;
                             })}
                         />
-                    }
+                    )}
                 />
-            }
+            )}
         />
     );
 };

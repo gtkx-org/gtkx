@@ -1,12 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { GiStoreOptions } from "./store/gi-store.js";
+import type { JsxStoreOptions } from "./store/jsx-store.js";
 import { checkModules } from "./compile.js";
 import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
-import { type GlGenerationReport, generateGlModules } from "./khronos/pipeline.js";
-import type { GiStoreOptions } from "./store/gi-store.js";
-import type { JsxStoreOptions } from "./store/jsx-store.js";
+import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
 
 type ModuleExport = { module: string; export: string };
 

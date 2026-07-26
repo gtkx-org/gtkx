@@ -1,5 +1,5 @@
-import * as Gtk from "@gtkx/gi/gtk";
 import type { RootElement } from "@gtkx/react";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     createReconcilerRoot,
     isRootElement,
@@ -7,8 +7,9 @@ import {
     setReconcilerErrorHandler,
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
-import { runInAct } from "./act.js";
 import type { RenderResult } from "./bound-queries.js";
+import type { QueryMap, RenderOptions, ScreenshotOptions, WindowSelector } from "./types.js";
+import { runInAct } from "./act.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
 import { scheduleAfterLayout } from "./frame-sync.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
@@ -16,7 +17,6 @@ import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
 import { captureAndSaveScreenshot } from "./screenshot.js";
 import { type Container, TOPLEVELS, traverse } from "./traversal.js";
-import type { QueryMap, RenderOptions, ScreenshotOptions, WindowSelector } from "./types.js";
 import { resetClipboard } from "./user-event/index.js";
 import { within } from "./within.js";
 
@@ -28,7 +28,7 @@ type ActiveRender = {
     window: Gtk.Window | null;
 };
 
-const activeRenders = new Set<ActiveRender>();
+const activeRenders: Set<ActiveRender> = new Set();
 
 const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
@@ -59,7 +59,7 @@ const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
 };
 
 const disposeAllActiveRenders = async (): Promise<void> => {
-    for (const active of [...activeRenders]) {
+    for (const active of activeRenders) {
         await disposeActiveRender(active);
     }
 };

@@ -1,8 +1,8 @@
-import * as net from "node:net";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { DEFAULT_SOCKET_PATH, ErrorCode, ProtocolConnection, ProtocolError, type Request } from "@gtkx/mcp/internal";
 import { error, errorMessage, info, normalizeError, warn } from "@gtkx/utils";
+import * as net from "node:net";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
 
@@ -12,7 +12,7 @@ export type McpClientOptions = {
 };
 
 const RECONNECT_DELAY_MS = 2000;
-const REGISTER_TIMEOUT_MS = 30000;
+const REGISTER_TIMEOUT_MS = 30_000;
 
 const toResponseError = (error: unknown): { code: number; message: string; data?: unknown } =>
     error instanceof ProtocolError
@@ -88,9 +88,9 @@ export class McpClient {
                     info("Registered with MCP server");
                     settle(onSuccess);
                 })
-                .catch((cause) => {
-                    error("Failed to register with MCP server:", cause.message);
-                    settle(onError, normalizeError(cause));
+                .catch((error_) => {
+                    error("Failed to register with MCP server:", error_.message);
+                    settle(onError, normalizeError(error_));
                 });
         });
 
@@ -117,8 +117,8 @@ export class McpClient {
             },
         });
         connection.on("request", (request) => {
-            this.handleRequest(request).catch((cause) => {
-                error("Error handling request:", cause);
+            this.handleRequest(request).catch((error_) => {
+                error("Error handling request:", error_);
             });
         });
         connection.on("invalid", ({ error: parseError }) => {

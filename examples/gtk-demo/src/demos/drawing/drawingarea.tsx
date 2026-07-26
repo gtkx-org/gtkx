@@ -158,10 +158,12 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
     };
 
     const drawScribble = (_self: Gtk.DrawingArea, cr: Context) => {
-        if (surfaceRef.current) {
-            cr.setSourceSurface(surfaceRef.current, 0, 0);
-            cr.paint();
+        if (!surfaceRef.current) {
+            return;
         }
+
+        cr.setSourceSurface(surfaceRef.current, 0, 0);
+        cr.paint();
     };
 
     const { handleDragBegin, handleDragUpdate, handleDragEnd } = useScribbleHandlers(ref, surfaceRef, startPointRef);
@@ -176,14 +178,14 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
             onResize={handleResize}
             accessibleRole={Gtk.AccessibleRole.IMG}
             accessibleLabelledBy={accessibleLabelledBy}
-            controllers={
+            controllers={(
                 <GtkGestureDrag
                     button={0}
                     onDragBegin={handleDragBegin}
                     onDragUpdate={handleDragUpdate}
                     onDragEnd={handleDragEnd}
                 />
-            }
+            )}
         />
     );
 };

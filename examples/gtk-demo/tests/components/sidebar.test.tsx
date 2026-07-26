@@ -1,10 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { render, renderHook, screen } from "@gtkx/testing";
 import type { ReactNode } from "react";
+import { render, renderHook, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
+import type { Demo } from "../../src/demos/types.js";
 import { Sidebar } from "../../src/components/sidebar.js";
 import { DemoProvider, useDemo } from "../../src/context/demo-context.js";
-import type { Demo } from "../../src/demos/types.js";
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
 const buttonDemo: Demo = {

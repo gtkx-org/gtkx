@@ -23,7 +23,7 @@ const GTK_INPUT_ERROR = -1;
 
 const handleHexInput = (spin: Gtk.SpinButton): [number, number] => {
     const text = spin.getText();
-    const match = text.match(/^\s*([+-]?)(?:0[xX])?([0-9a-fA-F]+)$/);
+    const match = /^\s*([+-]?)(?:0[xX])?([0-9a-fA-F]+)$/.exec(text);
     if (!match) return [GTK_INPUT_ERROR, 0];
     const sign = match[1] === "-" ? -1 : 1;
     const parsed = sign * Number.parseInt(match[2] ?? "", 16);
@@ -60,8 +60,8 @@ const handleTimeOutput = (spin: Gtk.SpinButton) => {
 function useMonthSpinHandlers() {
     const handleMonthInput = (spin: Gtk.SpinButton): [number, number] => {
         const text = spin.getText().toLowerCase();
-        for (let i = 0; i < MONTHS.length; i++) {
-            if (MONTHS[i]?.toLowerCase().startsWith(text)) {
+        for (const [i, MONTH] of MONTHS.entries()) {
+            if (MONTH?.toLowerCase().startsWith(text)) {
                 return [1, i + 1];
             }
         }
@@ -78,18 +78,18 @@ function useMonthSpinHandlers() {
     return { handleMonthInput, handleMonthOutput };
 }
 
-interface SpinRowProps {
+type SpinRowProps = {
     value: number;
     setValue: (v: number) => void;
-}
+};
 
-interface SpinRowConfig extends SpinRowProps {
+type SpinRowConfig = {
     row: number;
     label: string;
     spinName: string;
     adjustment: Omit<React.ComponentProps<typeof GtkAdjustment>, "value">;
     spin: React.ComponentProps<typeof GtkSpinButton>;
-}
+} & SpinRowProps;
 
 const SpinRow = ({ row, label, spinName, value, setValue, adjustment, spin }: SpinRowConfig) => {
     const [spinWidget, setSpinWidget] = useState<Gtk.SpinButton | null>(null);
@@ -128,7 +128,7 @@ const NumericSpinRow = (props: SpinRowProps) => (
         row={0}
         label="_Numeric"
         spinName="basic_spin"
-        adjustment={{ lower: -10000, upper: 10000, stepIncrement: 0.5, pageIncrement: 100 }}
+        adjustment={{ lower: -10_000, upper: 10_000, stepIncrement: 0.5, pageIncrement: 100 }}
         spin={{
             widthChars: 5,
             digits: 2,
@@ -170,10 +170,10 @@ const TimeSpinRow = (props: SpinRowProps) => (
     />
 );
 
-interface MonthSpinRowProps extends SpinRowProps {
+type MonthSpinRowProps = {
     onInput: (spin: Gtk.SpinButton) => [number, number];
     onOutput: (spin: Gtk.SpinButton) => boolean;
-}
+} & SpinRowProps;
 
 const MonthSpinRow = ({ value, setValue, onInput, onOutput }: MonthSpinRowProps) => (
     <SpinRow

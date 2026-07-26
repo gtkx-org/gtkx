@@ -34,9 +34,9 @@ describe("tabsDemo", () => {
         const tabArray = tabs as Pango.TabArray;
         expect(tabArray.getSize()).toBe(3);
 
-        const [align0] = tabArray.getTab(0) as [Pango.TabAlign, number];
-        const [align1] = tabArray.getTab(1) as [Pango.TabAlign, number];
-        const [align2] = tabArray.getTab(2) as [Pango.TabAlign, number];
+        const [align0] = tabArray.getTab(0);
+        const [align1] = tabArray.getTab(1);
+        const [align2] = tabArray.getTab(2);
         expect(align0).toBe(Pango.TabAlign.LEFT);
         expect(align1).toBe(Pango.TabAlign.DECIMAL);
         expect(align2).toBe(Pango.TabAlign.RIGHT);
@@ -47,9 +47,9 @@ describe("tabsDemo", () => {
         const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
         const tabs = textView.getTabs() as Pango.TabArray;
 
-        const [, pos0] = tabs.getTab(0) as [Pango.TabAlign, number];
-        const [, pos1] = tabs.getTab(1) as [Pango.TabAlign, number];
-        const [, pos2] = tabs.getTab(2) as [Pango.TabAlign, number];
+        const [, pos0] = tabs.getTab(0);
+        const [, pos1] = tabs.getTab(1);
+        const [, pos2] = tabs.getTab(2);
         expect(pos0).toBe(0);
         expect(pos1).toBe(150);
         expect(pos2).toBe(290);

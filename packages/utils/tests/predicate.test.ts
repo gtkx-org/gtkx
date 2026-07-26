@@ -21,6 +21,10 @@ describe("isSameArray", () => {
     });
 });
 
+const eq = (): boolean => {
+    throw new Error("should not be called");
+};
+
 describe("isSameArrayBy", () => {
     it("compares elements with the given comparator", () => {
         expect(isSameArrayBy([{ id: 1 }], [{ id: 1 }], (x, y) => x.id === y.id)).toBe(true);
@@ -28,9 +32,6 @@ describe("isSameArrayBy", () => {
     });
 
     it("short-circuits on length mismatch without calling the comparator", () => {
-        const eq = (): boolean => {
-            throw new Error("should not be called");
-        };
         expect(isSameArrayBy([1], [1, 2], eq)).toBe(false);
     });
 });

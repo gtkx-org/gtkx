@@ -1,8 +1,8 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
-import { type GirParameter, type GirSignal, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import type { TypeId } from "../gir/type-id.js";
+import { type GirParameter, type GirSignal, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import { isCellInout, omitsPrimaryReturn } from "./descriptor-render.js";
 
 type InputParameter = {
@@ -28,16 +28,16 @@ export const inputParameters = (library: Library, fn: GirFunction): InputParamet
     const lengthIndices = arrayLengthIndices(library, fn);
     const closureIndices = closureAndDestroyIndices(fn);
     const result: InputParameter[] = [];
-    fn.parameters.forEach((parameter, index) => {
+    for (const [index, parameter] of fn.parameters.entries()) {
         if (isInputParameter({ parameter, index, lengthIndices, closureIndices })) {
             result.push({ parameter, index });
         }
-    });
+    }
     return result;
 };
 
 export const closureAndDestroyIndices = (fn: GirFunction): Set<number> => {
-    const indices = new Set<number>();
+    const indices: Set<number> = new Set();
     for (const parameter of fn.parameters) {
         if (parameter.closureIndex !== undefined) indices.add(parameter.closureIndex);
         if (parameter.destroyIndex !== undefined) indices.add(parameter.destroyIndex);
@@ -57,11 +57,11 @@ const carrayLengthIndex = (library: Library, ref: TypeId | undefined): number | 
 };
 
 export const arrayLengthSources = (library: Library, fn: GirFunction): Map<number, number> => {
-    const map = new Map<number, number>();
-    fn.parameters.forEach((parameter, index) => {
+    const map: Map<number, number> = new Map();
+    for (const [index, parameter] of fn.parameters.entries()) {
         const lengthIndex = carrayLengthIndex(library, parameter.type);
         if (lengthIndex !== undefined) map.set(lengthIndex, index);
-    });
+    }
     return map;
 };
 
@@ -82,7 +82,7 @@ const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number
 };
 
 export const foldedLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
-    const indices = new Set<number>(arrayLengthSources(library, fn).keys());
+    const indices: Set<number> = new Set(arrayLengthSources(library, fn).keys());
     for (const index of returnArrayLengthIndices(library, fn)) indices.add(index);
     return indices;
 };

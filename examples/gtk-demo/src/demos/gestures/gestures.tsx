@@ -6,11 +6,11 @@ import { useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gestures.tsx?raw";
 
-interface GestureState {
+type GestureState = {
     swipeX: number;
     swipeY: number;
     longPressed: boolean;
-}
+};
 
 function useGesturesHandlers(gestureStateRef: React.RefObject<GestureState>, queueDraw: () => void) {
     const handleSwipe = (velocityX: number, velocityY: number) => {
@@ -32,13 +32,13 @@ function useGesturesHandlers(gestureStateRef: React.RefObject<GestureState>, que
     return { handleSwipe, handleLongPressPressed, handleLongPressEnd };
 }
 
-interface DrawGesturesArgs {
+type DrawGesturesArgs = {
     width: number;
     height: number;
     state: GestureState;
     rotate: Gtk.GestureRotate | null;
     zoom: Gtk.GestureZoom | null;
-}
+};
 
 const drawGestures = (cr: Context, args: DrawGesturesArgs) => {
     const { width, height, state, rotate, zoom } = args;
@@ -132,7 +132,7 @@ const GesturesDemo = () => {
             contentWidth={400}
             contentHeight={400}
             drawFunc={drawFunc}
-            controllers={
+            controllers={(
                 <>
                     <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handlers.handleSwipe} />
                     <GtkGestureSwipe
@@ -163,7 +163,7 @@ const GesturesDemo = () => {
                         onScaleChanged={queueDraw}
                     />
                 </>
-            }
+            )}
         />
     );
 };

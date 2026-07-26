@@ -1,11 +1,11 @@
 import { camelCase, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import type { GirFunction } from "../../gir/function.js";
+import type { TypeId } from "../../gir/type-id.js";
+import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import type { GirFunction } from "../../gir/function.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
-import type { TypeId } from "../../gir/type-id.js";
-import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import { isEmittableCallable } from "./callables.js";
@@ -117,8 +117,8 @@ export const resolveOwnerAccessor = (
     property: GirProperty,
     methods: GirFunction[],
 ): ResolvedAccessor | undefined => {
-    const methodByName = new Map<string, GirFunction>();
-    const claimedNames = new Set<string>();
+    const methodByName: Map<string, GirFunction> = new Map();
+    const claimedNames: Set<string> = new Set();
     for (const method of methods) {
         if (!isEmittableCallable(context, method)) continue;
         methodByName.set(method.name, method);
@@ -157,7 +157,7 @@ export const renderResolvedPropertyAccessor = (
 
     if (writable) {
         const setBody =
-            setterMember !== undefined ? `this.${setterMember}(value);` : renderGenericSetBody(context, property);
+            setterMember === undefined ? renderGenericSetBody(context, property) : `this.${setterMember}(value);`;
         blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setBody));
     }
     return `${renderJsDoc(property.doc)}${blocks.join("\n\n")}`;

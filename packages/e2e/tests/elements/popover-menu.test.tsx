@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gio from "@gtkx/gi/gio";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkMenuButton, GtkPopoverMenu } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
@@ -12,7 +12,7 @@ const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
 let nextAppId = 0;
 const uniqueAppId = (): string => `org.gtkx.popovermenutest${nextAppId++}`;
 
-const buildMenu = (items: Array<{ label: string; action: string }>): Gio.Menu => {
+const buildMenu = (items: { label: string; action: string }[]): Gio.Menu => {
     const menu = Gio.Menu.new();
     for (const item of items) menu.append(item.label, item.action);
     return menu;

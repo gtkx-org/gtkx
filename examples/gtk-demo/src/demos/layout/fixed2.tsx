@@ -3,9 +3,9 @@ import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkFixed, GtkFixedLayoutChild, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useRef } from "react";
+import type { Demo } from "../types.js";
 import { at } from "../../transform.js";
 import { useTickCallback } from "../../use-tick-callback.js";
-import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
 
 const computeFixedTransform = (

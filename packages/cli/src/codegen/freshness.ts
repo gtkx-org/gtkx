@@ -1,7 +1,7 @@
+import type { Config } from "@gtkx/config";
+import { resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { resolveGirPath, resolveLibraries } from "@gtkx/codegen";
-import type { Config } from "@gtkx/config";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
 
 export type CodegenInputs = {

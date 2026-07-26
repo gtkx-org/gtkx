@@ -1,8 +1,8 @@
 import type * as GObject from "@gtkx/gi/gobject";
+import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal } from "@gtkx/react";
-import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import type { HeaderRenderer, ItemRenderer, RenderItemArgs } from "../types.js";
 import type { CollectionModel } from "./collection-model.js";
@@ -131,7 +131,7 @@ const headerHandlers = (state: CellsState): FactoryHandlers => ({
 });
 
 const createCells = (state: CellsState): Cells => {
-    const slots = new Map<string, FactoryHandlers>();
+    const slots: Map<string, FactoryHandlers> = new Map();
     return {
         item: itemHandlers(state, null),
         header: headerHandlers(state),
@@ -182,7 +182,7 @@ const applyRowArgs = (
 ): void => {
     args.depth = row.getDepth();
     if (!row.isExpandable()) return;
-    args.isExpanded = expandedIds != null ? expandedIds.includes(id) : row.getExpanded();
+    args.isExpanded = expandedIds == null ? row.getExpanded() : expandedIds.includes(id);
 };
 
 export const renderItemArgs = (record: CellRecord, options: ItemArgsOptions): RenderItemArgs<unknown> | null => {

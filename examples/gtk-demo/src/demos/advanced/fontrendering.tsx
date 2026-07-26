@@ -33,8 +33,8 @@ import {
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo, DemoProviderProps } from "../types.js";
+import { useTickCallback } from "../../use-tick-callback.js";
 import sourceCode from "./fontrendering.tsx?raw";
 
 const PANGO_SCALE = 1024;
@@ -68,12 +68,12 @@ const applyGlyphOffsets = (glyphString: Pango.GlyphString, row: number): void =>
 
 type Mode = "text" | "grid";
 
-interface OverlayState {
+type OverlayState = {
     showPixels: boolean;
     showOutlines: boolean;
     showExtents: boolean;
     showGrid: boolean;
-}
+};
 
 const hintStyleOptions = [
     { id: "none", label: "None", value: HintStyle.NONE },
@@ -117,14 +117,14 @@ const setupGridLayout = (
     return { logicalRect, ch, iter };
 };
 
-interface MeasurementInputs {
+type MeasurementInputs = {
     text: string;
     fontDesc: Pango.FontDescription;
     hintStyle: HintStyle;
     antialias: boolean;
     hintMetrics: boolean;
     scale: number;
-}
+};
 
 const withMeasurementContext = <T,>(inputs: MeasurementInputs, body: (pangoContext: Pango.Context) => T): T => {
     const fontOptions = createGridFontOptions(inputs.hintStyle, inputs.antialias, inputs.hintMetrics);
@@ -298,13 +298,13 @@ const easeOutCubic = (t: number) => {
 
 const ANIMATION_DURATION_US = 500_000;
 
-interface OverlayAnimation {
+type OverlayAnimation = {
     startPixelAlpha: number;
     startOutlineAlpha: number;
     targetPixelAlpha: number;
     targetOutlineAlpha: number;
     startFrameTime: number | null;
-}
+};
 
 function useOverlayAnimation(state: FontRenderingState) {
     const { overlays, pixelAlphaRef, outlineAlphaRef, drawingAreaRef } = state;
@@ -362,7 +362,7 @@ function useOverlayAnimation(state: FontRenderingState) {
     });
 }
 
-interface DrawTextModeContext {
+type DrawTextModeContext = {
     cr: Context;
     width: number;
     height: number;
@@ -374,7 +374,7 @@ interface DrawTextModeContext {
     baseline: number;
     surfaceWidth: number;
     surfaceHeight: number;
-}
+};
 
 const drawSmallSurface = (ctx: DrawTextModeContext) => {
     const { target, surfaceWidth, surfaceHeight, fontOptions, state, cr } = ctx;
@@ -514,7 +514,7 @@ const drawOutlineLayer = (ctx: DrawTextModeContext) => {
     outlineSurface.finish();
 };
 
-interface ComputeTextLayoutArgs {
+type ComputeTextLayoutArgs = {
     cr: Context;
     width: number;
     height: number;
@@ -522,7 +522,7 @@ interface ComputeTextLayoutArgs {
     fontDesc: Pango.FontDescription;
     text: string;
     hintMetrics: boolean;
-}
+};
 
 const computeTextLayout = ({ cr, width, height, fontOptions, fontDesc, text, hintMetrics }: ComputeTextLayoutArgs) => {
     const target = cr.getTarget();
@@ -635,7 +635,7 @@ const FontRenderingTitlebar = () => {
     return (
         <GtkHeaderBar
             name="fontrendering-header"
-            titleWidget={
+            titleWidget={(
                 <GtkBox cssClasses={["linked"]}>
                     <GtkToggleButton
                         ref={setTextToggle}
@@ -654,16 +654,16 @@ const FontRenderingTitlebar = () => {
                         }}
                     />
                 </GtkBox>
-            }
+            )}
         />
     );
 };
 
-interface FontRenderingControlsProps {
+type FontRenderingControlsProps = {
     state: FontRenderingState;
     onZoomIn: () => void;
     onZoomOut: () => void;
-}
+};
 
 const FontRenderingControls = ({ state, onZoomIn, onZoomOut }: FontRenderingControlsProps) => (
     <GtkGrid halign={Gtk.Align.CENTER} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
@@ -673,7 +673,7 @@ const FontRenderingControls = ({ state, onZoomIn, onZoomOut }: FontRenderingCont
         <FontRenderingExtraOverlays state={state} />
         <FontRenderingZoomButtons state={state} onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
         <GtkGridLayoutChild column={8} row={0}>
-            <GtkLabel hexpand>{""}</GtkLabel>
+            <GtkLabel hexpand></GtkLabel>
         </GtkGridLayoutChild>
     </GtkGrid>
 );
@@ -707,13 +707,13 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
     );
 };
 
-interface CheckCellProps {
+type CheckCellProps = {
     column: number;
     row: number;
     label: string;
     active: boolean;
     onToggled: (button: Gtk.CheckButton) => void;
-}
+};
 
 const CheckCell = ({ column, row, label, active, onToggled }: CheckCellProps) => (
     <GtkGridLayoutChild column={column} row={row}>
@@ -721,13 +721,13 @@ const CheckCell = ({ column, row, label, active, onToggled }: CheckCellProps) =>
     </GtkGridLayoutChild>
 );
 
-interface OverlayCheckProps {
+type OverlayCheckProps = {
     state: FontRenderingState;
     column: number;
     row: number;
     label: string;
     field: keyof OverlayState;
-}
+};
 
 const OverlayCheck = ({ state, column, row, label, field }: OverlayCheckProps) => (
     <CheckCell
@@ -832,13 +832,13 @@ const FontRenderingZoomButtons = ({
     );
 };
 
-interface FontRenderingContextValue {
+type FontRenderingContextValue = {
     state: FontRenderingState;
     drawFunc: (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => void;
     zoomIn: () => void;
     zoomOut: () => void;
     naturalSize: { width: number; height: number };
-}
+};
 
 const FontRenderingContext = createContext<FontRenderingContextValue | null>(null);
 
@@ -880,10 +880,10 @@ const FontRenderingDemo = () => {
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             vexpand
-            controllers={
+            controllers={(
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.MANAGED}
-                    shortcuts={
+                    shortcuts={(
                         <>
                             <GtkShortcut
                                 trigger={Gtk.ShortcutTrigger.parseString("<Control>plus")}
@@ -900,9 +900,9 @@ const FontRenderingDemo = () => {
                                 })}
                             />
                         </>
-                    }
+                    )}
                 />
-            }
+            )}
         >
             <FontRenderingControls state={state} onZoomIn={zoomIn} onZoomOut={zoomOut} />
             <GtkSeparator />

@@ -1,4 +1,4 @@
-import { type ChildProcess, type StdioOptions, spawn, spawnSync } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync, type StdioOptions } from "node:child_process";
 import { chmodSync, createWriteStream, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
@@ -29,9 +29,9 @@ export const resolveHeadlessOptions = (provided: Partial<HeadlessOptions>): Head
     compositor: provided.compositor ?? DEFAULT_HEADLESS_COMPOSITOR,
 });
 
-type EnvSnapshot = { [name: string]: string | undefined };
+type EnvSnapshot = Record<string, string | undefined>;
 
-const applyEnv = (snapshot: EnvSnapshot, values: { [name: string]: string }): void => {
+const applyEnv = (snapshot: EnvSnapshot, values: Record<string, string>): void => {
     for (const [name, value] of Object.entries(values)) {
         if (!(name in snapshot)) snapshot[name] = process.env[name];
         process.env[name] = value;
@@ -63,11 +63,11 @@ const westonSupportsFakeSeat = (): boolean => {
 
 type CompositorDescriptor = {
     socket: string;
-    env: { [name: string]: string };
+    env: Record<string, string>;
     start: (runtimeDir: string, width: string, height: string) => ChildProcess;
 };
 
-const compositorRegistry: { [K in CompositorId]: CompositorDescriptor } = {
+const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
     sway: {
         socket: "wayland-1",
         env: {
@@ -133,7 +133,7 @@ type SpawnedCompositor = {
 const startCompositor = (runtimeDir: string, options: HeadlessOptions, env: EnvSnapshot): SpawnedCompositor => {
     const descriptor = compositorRegistry[options.compositor];
 
-    const [width = "", height = ""] = options.size.split("x");
+    const [width = "", height = ""] = options.size.split("x", 2);
     applyEnv(env, descriptor.env);
 
     return { child: descriptor.start(runtimeDir, width, height), socket: descriptor.socket };
@@ -163,7 +163,7 @@ type WaitForSocketOptions = {
     signal?: AbortSignal;
 };
 
-const waitForSocket = (path: string, { label, timeout = 15000, child, signal }: WaitForSocketOptions): Promise<void> =>
+const waitForSocket = (path: string, { label, timeout = 15_000, child, signal }: WaitForSocketOptions): Promise<void> =>
     new Promise((resolve, reject) => {
         let log = "";
         const stderr = child?.stderr ?? null;
@@ -200,10 +200,12 @@ const waitForSocket = (path: string, { label, timeout = 15000, child, signal }: 
             reject(new Error(`${label} startup aborted before ${path} appeared`));
         };
         poll = setInterval(() => {
-            if (existsSync(path)) {
-                stopListening();
-                resolve();
+            if (!existsSync(path)) {
+                return;
             }
+
+            stopListening();
+            resolve();
         }, 50);
         timer = setTimeout(() => {
             stopListening();
@@ -251,7 +253,7 @@ const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: str
     if (child.exitCode === null && child.signalCode === null) return;
     process.stderr.write(
         `[gtkx] headless compositor died before teardown (code ${child.exitCode ?? "null"}, ` +
-            `signal ${child.signalCode ?? "null"}); the worker's Wayland client was severed.\n${capturedStderr.join("")}`,
+        `signal ${child.signalCode ?? "null"}); the worker's Wayland client was severed.\n${capturedStderr.join("")}`,
     );
 };
 
@@ -320,9 +322,9 @@ export const startHeadlessDisplay = async (options: HeadlessOptions): Promise<()
 
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "weston.stderr.log"));
         return makeTeardown(compositor.child, capturedStderr, stopNotifications, removeRuntime);
-    } catch (cause) {
+    } catch (error) {
         for (const child of spawned) child.kill("SIGKILL");
         removeRuntime();
-        throw cause;
+        throw error;
     }
 };

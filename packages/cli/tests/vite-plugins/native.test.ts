@@ -16,14 +16,14 @@ const mockOs = (platform: string, arch: string): void => {
     }));
 };
 
+const fakeRequire = Object.assign((id: string) => id, {
+    resolve: (id: string) =>
+        id === "@gtkx/native/package.json" ? "/fake/path/@gtkx/native/package.json" : `/fake/path/${id}.node`,
+});
+
 const mockModuleResolution = (): void => {
     vi.doMock("node:module", () => ({
-        createRequire: () => {
-            const fn = (id: string) => id;
-            fn.resolve = (id: string) =>
-                id === "@gtkx/native/package.json" ? "/fake/path/@gtkx/native/package.json" : `/fake/path/${id}.node`;
-            return fn;
-        },
+        createRequire: () => fakeRequire,
     }));
 };
 
@@ -83,21 +83,21 @@ describe("gtkxNative (transform)", () => {
     });
 });
 
+const expectBuildStartThrows = async (platform: string, arch: string, message: RegExp): Promise<void> => {
+    mockOs(platform, arch);
+    const { gtkxNative } = await import("../../src/vite-plugins/native.js");
+    const plugin = gtkxNative("/tmp");
+
+    expect(() =>
+        (plugin.buildStart as BuildStartHook).call({
+            emitFile: () => {},
+        }),
+    ).toThrow(message);
+
+    unmockOs();
+};
+
 describe("gtkxNative (buildStart platform guards)", () => {
-    const expectBuildStartThrows = async (platform: string, arch: string, message: RegExp): Promise<void> => {
-        mockOs(platform, arch);
-        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
-        const plugin = gtkxNative("/tmp");
-
-        expect(() =>
-            (plugin.buildStart as BuildStartHook).call({
-                emitFile: () => undefined,
-            }),
-        ).toThrow(message);
-
-        unmockOs();
-    };
-
     it("buildStart throws on unsupported platform", async () => {
         await expectBuildStartThrows("darwin", "x64", /Unsupported build platform/);
     });

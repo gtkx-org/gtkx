@@ -1,8 +1,8 @@
+import type { ReactElement, ReactNode } from "react";
 import { SizeGroup } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, within } from "@gtkx/testing";
-import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
 const NARROW_WIDTH = 24;
@@ -114,6 +114,8 @@ describe("SizeGroup across subtrees", () => {
     });
 });
 
+const Orphan = () => <SizeGroup.Child component={GtkLabel}>orphan</SizeGroup.Child>;
+
 describe("SizeGroup.Child", () => {
     it("forwards the caller's ref while registering the widget", async () => {
         const externalRef: { current: Gtk.Label | null } = { current: null };
@@ -136,8 +138,6 @@ describe("SizeGroup.Child", () => {
     });
 
     it("throws when used outside a <SizeGroup>", async () => {
-        const Orphan = () => <SizeGroup.Child component={GtkLabel}>orphan</SizeGroup.Child>;
-
         await expect(render(<Orphan />)).rejects.toThrow("<SizeGroup.Child> must be a child of <SizeGroup>");
     });
 });

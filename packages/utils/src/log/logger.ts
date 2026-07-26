@@ -43,9 +43,9 @@ function resolveDebugEnabled(namespace: string | undefined, argv: string[], env:
     if (argv.includes("--debug")) return true;
     const spec = env.GTKX_DEBUG;
     if (!spec) return false;
-    const names = spec.split(/[\s,]+/).filter((name) => name.length > 0);
-    if (names.includes("1") || names.includes("*")) return true;
-    return namespace !== undefined && names.includes(namespace);
+    const names = new Set(spec.split(/[\s,]+/).filter((name) => name.length > 0));
+    if (names.has("1") || names.has("*")) return true;
+    return namespace !== undefined && names.has(namespace);
 }
 
 function prefixFor(namespace: string | undefined): string {

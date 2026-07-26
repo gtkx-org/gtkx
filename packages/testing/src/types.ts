@@ -134,11 +134,11 @@ export type RenderHookOptions<Props> = {
     wrapper?: WrapperComponent;
 } & (undefined extends Props
     ? {
-          initialProps?: Props;
-      }
+            initialProps?: Props;
+        }
     : {
-          initialProps: Props;
-      });
+            initialProps: Props;
+        });
 
 /** The result of {@link renderHook}: the latest hook return value plus functions to rerender with new props and to unmount. */
 export type RenderHookResult<Result, Props> = {

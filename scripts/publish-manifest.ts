@@ -7,16 +7,16 @@ export type PackageManifest = {
     version?: string;
     private?: boolean;
     files?: string[];
-    bin?: string | { [command: string]: string };
+    bin?: string | Record<string, string>;
     exports?: ExportsField;
     [field: string]: unknown;
 };
 
 export const distTagForVersion = (version: string): string => {
-    const core = version.split("+")[0] ?? "";
+    const core = version.split("+", 1)[0] ?? "";
     const dashIndex = core.indexOf("-");
     if (dashIndex === -1) return "latest";
-    const identifier = core.slice(dashIndex + 1).split(".")[0] ?? "";
+    const identifier = core.slice(dashIndex + 1).split(".", 1)[0] ?? "";
     return identifier === "" || /^\d+$/.test(identifier) ? "next" : identifier;
 };
 
@@ -24,7 +24,7 @@ const isDevSource = (entry: string): boolean => entry === "src" || entry.startsW
 
 const stripExportsSource = (entry: ExportsField): ExportsField => {
     if (typeof entry === "string") return entry;
-    const result: { [key: string]: ExportsField } = {};
+    const result: Record<string, ExportsField> = {};
     for (const [key, value] of Object.entries(entry)) {
         if (key === "source") continue;
         result[key] = stripExportsSource(value);
@@ -62,7 +62,7 @@ export type PublishedPackage = {
     name: string;
     entries: string[];
     manifest: PackageManifest;
-    maps?: { [path: string]: string };
+    maps?: Record<string, string>;
 };
 
 const requiredFileViolations = (files: Set<string>): string[] => {
@@ -135,7 +135,7 @@ const mapSourceViolations = (mapPath: string, content: string, files: Set<string
         .filter((violation): violation is string => violation !== undefined);
 };
 
-const mapViolations = (files: Set<string>, maps: { [path: string]: string }): string[] =>
+const mapViolations = (files: Set<string>, maps: Record<string, string>): string[] =>
     Object.entries(maps).flatMap(([path, content]) => mapSourceViolations(normalizePath(path), content, files));
 
 export const assertPublishedShape = ({ name, entries, manifest, maps }: PublishedPackage): void => {

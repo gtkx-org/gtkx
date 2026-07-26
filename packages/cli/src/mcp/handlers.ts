@@ -1,5 +1,3 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     invalidRequestError,
@@ -10,9 +8,11 @@ import {
     ServerRequestParamsSchemas,
     widgetNotFoundError,
 } from "@gtkx/mcp/internal";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import type { WidgetRegistry } from "./widget-registry.js";
 import { serializeWidget } from "./serialize-widget.js";
 import { loadTestingModule, type TestingModule } from "./testing-loader.js";
-import type { WidgetRegistry } from "./widget-registry.js";
 
 export type HandlerContext = {
     app: Gtk.Application;
@@ -91,15 +91,18 @@ const handleQuery = async (
             widgets = await matchesOrEmpty(() => testing.findAllByRole(app, roleValue, params.options));
             break;
         }
-        case "text":
+        case "text": {
             widgets = await matchesOrEmpty(() => testing.findAllByText(app, String(params.value), params.options));
             break;
-        case "name":
+        }
+        case "name": {
             widgets = await matchesOrEmpty(() => testing.findAllByName(app, String(params.value), params.options));
             break;
-        case "labelText":
+        }
+        case "labelText": {
             widgets = await matchesOrEmpty(() => testing.findAllByLabelText(app, String(params.value), params.options));
             break;
+        }
     }
 
     // Query results are match summaries, not trees: serialize each match shallowly (no
@@ -132,20 +135,21 @@ const handleScreenshot = async (
 };
 
 const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
-    "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], async ({ registry }) => ({
-        windows: registry.toplevels().map((window) => ({
-            id: registry.idFor(window),
-            title: window.getTitle(),
+    "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], ({ registry }) =>
+        Promise.resolve({
+            windows: registry.toplevels().map((window) => ({
+                id: registry.idFor(window),
+                title: window.getTitle(),
+            })),
         })),
-    })),
     "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ app, registry }, params) => {
         const testing = await loadTestingModule();
-        const container = params.rootId !== undefined ? requireWidget(registry, params.rootId) : app;
+        const container = params.rootId === undefined ? app : requireWidget(registry, params.rootId);
         return {
             tree: testing.prettyWidget(container, {
                 getId: (w) => registry.idFor(w),
                 highlight: false,
-                ...(params.maxDepth !== undefined ? { maxDepth: params.maxDepth } : {}),
+                ...((params.maxDepth !== undefined) && { maxDepth: params.maxDepth }),
             }),
         };
     }),

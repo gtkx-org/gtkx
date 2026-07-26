@@ -1,10 +1,10 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ConnectionRegistry } from "../src/connection-registry.js";
 import type { Request, Response } from "../src/protocol/schemas.js";
-import { SocketServer } from "../src/socket-server.js";
 import type { ProtocolConnection } from "../src/transport.js";
+import { ConnectionRegistry } from "../src/connection-registry.js";
+import { SocketServer } from "../src/socket-server.js";
 import {
     collectFirstFrame,
     connectClient,
@@ -73,7 +73,7 @@ describe("SocketServer connections", () => {
         const connection = await connectionPromise;
         expect(connection.id).toBeTruthy();
 
-        const disconnectionPromise = new Promise<ProtocolConnection>((resolve) => {
+        const disconnectionPromise: Promise<ProtocolConnection> = new Promise((resolve) => {
             registry.once("disconnection", (conn) => resolve(conn));
         });
         client.end();
@@ -166,7 +166,7 @@ describe("SocketServer errors", () => {
     it("rejects start and routes error to the registry when binding to an unreachable path", async () => {
         const badRegistry = new ConnectionRegistry();
         const bad = new SocketServer(badRegistry, join(socketCtx.tmpDir, "no-such-dir", "test.sock"));
-        const errorReceived = new Promise<Error>((resolve) => {
+        const errorReceived: Promise<Error> = new Promise((resolve) => {
             badRegistry.once("error", (err) => resolve(err));
         });
 

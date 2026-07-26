@@ -5,10 +5,15 @@ vi.mock("../src/scaffolder.js", () => ({
     scaffold: vi.fn(async () => undefined),
 }));
 
-import { type CreateCommandArgs, createCommand, runCreate } from "../src/command.js";
+import { createCommand, type CreateCommandArgs, runCreate } from "../src/command.js";
 import { scaffold } from "../src/scaffolder.js";
 
 const scaffoldMock = vi.mocked(scaffold);
+
+const expectRejection = async (overrides: CreateCommandArgs, message: RegExp): Promise<void> => {
+    await expect(runCreate(overrides)).rejects.toThrow(message);
+    expect(scaffoldMock).not.toHaveBeenCalled();
+};
 
 describe("runCreate", () => {
     beforeEach(() => {
@@ -71,14 +76,7 @@ describe("runCreate", () => {
     it("forwards the overwrite flag", async () => {
         await runCreate({ name: "my-app", "no-interactive": true, overwrite: true });
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ overwrite: true }));
-    });
-
-    const expectRejection = async (overrides: CreateCommandArgs, message: RegExp): Promise<void> => {
-        await expect(runCreate(overrides)).rejects.toThrow(message);
-        expect(scaffoldMock).not.toHaveBeenCalled();
-    };
-
-    it("rejects an unknown package manager before scaffolding", async () => {
+    }); it("rejects an unknown package manager before scaffolding", async () => {
         await expectRejection({ "package-manager": "bun" }, /Unknown package manager "bun"/);
     });
 });

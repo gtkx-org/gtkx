@@ -11,9 +11,9 @@ type NamedImport = {
 };
 
 export class ImportsBuilder {
-    private named = new Map<string, Map<string, NamedImport>>();
-    private namespaces = new Map<string, NamespaceImport>();
-    private sideEffects = new Set<string>();
+    private named: Map<string, Map<string, NamedImport>> = new Map();
+    private namespaces: Map<string, NamespaceImport> = new Map();
+    private sideEffects: Set<string> = new Set();
 
     addNamed(specifier: string, name: string, isType = false, alias?: string): void {
         const local = alias ?? name;
@@ -37,11 +37,8 @@ export class ImportsBuilder {
     }
 
     toSource(): string {
-        const lines: string[] = [];
-        for (const specifier of this.sideEffects) {
-            lines.push(`import ${sourceStringLiteral(specifier)};`);
-        }
-        const specifiers = new Set<string>([...this.named.keys(), ...this.namespaces.keys()]);
+        const lines: string[] = Array.from(this.sideEffects, (specifier) => `import ${sourceStringLiteral(specifier)};`);
+        const specifiers: Set<string> = new Set([...this.named.keys(), ...this.namespaces.keys()]);
         for (const specifier of sortStrings(specifiers)) {
             const line = this.specifierLine(specifier);
             if (line !== undefined) lines.push(line);

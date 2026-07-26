@@ -1,8 +1,8 @@
+import { sortStrings } from "@gtkx/utils";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { sortStrings } from "@gtkx/utils";
 
 const require = createRequire(import.meta.url);
 

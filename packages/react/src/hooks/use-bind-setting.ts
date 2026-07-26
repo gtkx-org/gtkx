@@ -1,9 +1,9 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
+import * as Gio from "@gtkx/gi/gio";
 import { kebabCase } from "@gtkx/utils";
 import { useLayoutEffect } from "react";
-import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import type { SettingsSchema, SettingsSchemaKeys } from "../utils/settings.js";
+import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useSettings } from "./use-setting.js";
 
 /**

@@ -1,7 +1,7 @@
+import type { ReactNode } from "react";
 import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, type GtkBoxProps } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
 import { ConstraintChildButtons } from "./child-buttons.js";
 
 const A = Gtk.ConstraintAttribute;

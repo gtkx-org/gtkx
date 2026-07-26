@@ -122,7 +122,7 @@ describe("useSignal (options and lifecycle)", () => {
 
         const { rerender } = await renderHook(
             ({ signal }: { signal: "clicked" | "activate" }) => useSignal(button, signal, handler),
-            { initialProps: { signal: "clicked" as "clicked" | "activate" } },
+            { initialProps: { signal: "clicked" } },
         );
 
         await rerender({ signal: "activate" });

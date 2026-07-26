@@ -63,7 +63,7 @@ describe("spinnerDemo Stop / Play toggling", () => {
         await userEvent.click(stop);
         await waitFor(() => {
             const spinners = screen.queryAllByRole(Gtk.AccessibleRole.PROGRESS_BAR) as Gtk.Spinner[];
-            expect(spinners.every((s) => s.getSpinning() === false)).toBe(true);
+            expect(spinners.every((s) => !s.getSpinning())).toBe(true);
         });
     });
 

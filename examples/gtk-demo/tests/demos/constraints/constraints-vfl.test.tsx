@@ -10,9 +10,9 @@ import {
     findChildButtons,
 } from "./constraint-helpers.js";
 
-interface VflContext extends ChildButtons {
+type VflContext = {
     constraints: Gtk.Constraint[];
-}
+} & ChildButtons;
 
 const renderVflDemo = async (): Promise<VflContext> => {
     await renderDemo(constraintsVflDemo);

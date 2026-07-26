@@ -1,8 +1,8 @@
 import { lowerFirst, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import type { CommandPlan, GlScalar, ReturnPlan } from "./plan.js";
 import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../analysis/descriptor.js";
 import { type OutArg, planArgs, scalarAliasOrGroup, scalarPrefixArgs, trackInto } from "./args.js";
 import { commandJsDoc, inParamDocLine, singularJsDoc } from "./jsdoc.js";
-import type { CommandPlan, GlScalar, ReturnPlan } from "./plan.js";
 
 const GL_LIB_EXPRESSION = "LIB";
 
@@ -42,24 +42,29 @@ const buildEmittedReturn = (
 ): EmittedReturn => {
     const track = trackInto(usedTypes);
     switch (plan.kind) {
-        case "void":
+        case "void": {
             return { tsType: "void", descriptor: tVoid };
+        }
         case "scalar": {
             const alias = track(scalarAliasOrGroup(plan.scalar, returnGroup));
             return { tsType: alias, descriptor: plan.scalar.descriptor, expr: (call) => `${call} as ${alias}` };
         }
-        case "boolean":
+        case "boolean": {
             return { tsType: "boolean", descriptor: tUint8, expr: (call) => `(${call} as number) !== 0` };
-        case "string":
+        }
+        case "string": {
             return { tsType: "string", descriptor: tString("borrowed"), expr: (call) => `${call} as string` };
-        case "sync":
+        }
+        case "sync": {
             return { tsType: track("GLsync"), descriptor: tInlineStruct(), expr: (call) => `${call} as GLsync` };
-        case "opaque-pointer":
+        }
+        case "opaque-pointer": {
             return {
                 tsType: track("GLpointer"),
                 descriptor: tInlineStruct(),
                 expr: (call) => `${call} as GLpointer`,
             };
+        }
     }
 };
 
@@ -112,7 +117,7 @@ export const renderCommand = (
         .join("\n");
     return {
         exportName,
-        ...(inline ? {} : { binding: `const ${bindingName} = ${bindExpression};` }),
+        ...(!inline && { binding: `const ${bindingName} = ${bindExpression};` }),
         declaration: `${jsDoc}\nexport function ${exportName}(${signature}): ${tsReturn} {\n${body}\n}`,
     };
 };
@@ -136,8 +141,8 @@ type GenSingularShape = {
 const genSingularScalars = (
     plan: CommandPlan & { ok: true },
 ): { countScalar: GlScalar; outScalar: GlScalar; lenParamName: string } | undefined => {
-    const countPlan = plan.params[plan.params.length - 2];
-    const outPlan = plan.params[plan.params.length - 1];
+    const countPlan = plan.params.at(-2);
+    const outPlan = plan.params.at(-1);
     if (countPlan?.kind !== "scalar") return undefined;
     if (outPlan?.kind !== "ref-array-out") return undefined;
     return { countScalar: countPlan.scalar, outScalar: outPlan.scalar, lenParamName: outPlan.lenParamName };
@@ -182,7 +187,7 @@ export const deriveGenSingular = (
         `Returns one ${objectClass} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
         [...prefix.map((arg) => inParamDocLine(plan.command, arg)), ` * @returns The new ${objectClass} object name`],
     );
-    const body = [`    const out = { value: 0 };`, `    ${bindingName}(${callArgs});`, "    return out.value;"].join(
+    const body = ["    const out = { value: 0 };", `    ${bindingName}(${callArgs});`, "    return out.value;"].join(
         "\n",
     );
     const binding = glBind(plan.command.name, renderDescriptorList(descriptors), tVoid);

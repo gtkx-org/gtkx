@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createModuleRegistration, isRefreshBoundary, performRefresh } from "../src/refresh-runtime.js";
 
+const NullComponent = () => null;
+
+const lowercaseHelper = function lowercaseHelper() {
+    return 1;
+};
+
 describe("createModuleRegistration", () => {
     it("returns registration helpers for a module id", () => {
         const reg = createModuleRegistration("mod-1");
@@ -10,8 +16,7 @@ describe("createModuleRegistration", () => {
 
     it("registers components without throwing", () => {
         const reg = createModuleRegistration("mod-2");
-        const Component = () => null;
-        expect(() => reg.$RefreshReg$(Component, "Component")).not.toThrow();
+        expect(() => reg.$RefreshReg$(NullComponent, "Component")).not.toThrow();
     });
 
     it("exposes a $RefreshSig$ signature factory function", () => {
@@ -44,14 +49,13 @@ describe("isRefreshBoundary", () => {
     });
 
     it("returns true when all named exports are PascalCase functions", () => {
-        const ComponentA = () => null;
-        const ComponentB = () => null;
-        expect(isRefreshBoundary({ __esModule: true, ComponentA, ComponentB })).toBe(true);
+        expect(isRefreshBoundary({ __esModule: true, ComponentA: NullComponent, ComponentB: NullComponent })).toBe(
+            true,
+        );
     });
 
     it("returns false when any non-component export is present", () => {
-        const Component = () => null;
-        expect(isRefreshBoundary({ Component, helper: () => 1 })).toBe(false);
+        expect(isRefreshBoundary({ Component: NullComponent, helper: () => 1 })).toBe(false);
     });
 
     it("recognizes React.memo-wrapped components", () => {
@@ -65,10 +69,7 @@ describe("isRefreshBoundary", () => {
     });
 
     it("returns false when a non-PascalCase named function is exported", () => {
-        const helper = function lowercaseHelper() {
-            return 1;
-        };
-        expect(isRefreshBoundary({ helper })).toBe(false);
+        expect(isRefreshBoundary({ helper: lowercaseHelper })).toBe(false);
     });
 });
 

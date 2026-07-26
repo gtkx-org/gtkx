@@ -59,36 +59,50 @@ describe("host-config - children (1)", () => {
     });
 });
 
+function RemovableChildBox({ showChild }: { showChild: boolean }) {
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>{showChild && <GtkLabel>Removable</GtkLabel>}</GtkBox>
+    );
+}
+
+function RemovableChildFrame({ showChild }: { showChild: boolean }) {
+    return <GtkFrame>{showChild && <GtkLabel>Child</GtkLabel>}</GtkFrame>;
+}
+
+function TextBox({ text }: { text: string }) {
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkLabel>{text}</GtkLabel>
+        </GtkBox>
+    );
+}
+
+function OptionalTextBox({ showText }: { showText: boolean }) {
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkLabel>{showText && "Removable Text"}</GtkLabel>
+        </GtkBox>
+    );
+}
+
 describe("host-config - children (2)", () => {
     describe("removing children", () => {
         it("removes child from parent", async () => {
-            function App({ showChild }: { showChild: boolean }) {
-                return (
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                        {showChild && <GtkLabel>Removable</GtkLabel>}
-                    </GtkBox>
-                );
-            }
-
-            const { rerender } = await render(<App showChild={true} />);
+            const { rerender } = await render(<RemovableChildBox showChild={true} />);
 
             await screen.findByText("Removable");
 
-            await rerender(<App showChild={false} />);
+            await rerender(<RemovableChildBox showChild={false} />);
 
             expect(screen.queryByText("Removable")).toBeNull();
         });
 
         it("clears child on single-child widget", async () => {
-            function App({ showChild }: { showChild: boolean }) {
-                return <GtkFrame>{showChild && <GtkLabel>Child</GtkLabel>}</GtkFrame>;
-            }
-
-            const { rerender } = await render(<App showChild={true} />);
+            const { rerender } = await render(<RemovableChildFrame showChild={true} />);
 
             await screen.findByText("Child");
 
-            await rerender(<App showChild={false} />);
+            await rerender(<RemovableChildFrame showChild={false} />);
 
             expect(screen.queryByText("Child")).toBeNull();
         });
@@ -272,19 +286,11 @@ describe("host-config - text instances (1)", () => {
     });
 
     it("updates label text when string changes", async () => {
-        function App({ text }: { text: string }) {
-            return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel>{text}</GtkLabel>
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App text="Initial" />);
+        const { rerender } = await render(<TextBox text="Initial" />);
 
         expect(await screen.findByText("Initial")).toBeDefined();
 
-        await rerender(<App text="Updated" />);
+        await rerender(<TextBox text="Updated" />);
 
         expect(await screen.findByText("Updated")).toBeDefined();
     });
@@ -315,19 +321,11 @@ describe("host-config - text instances (1)", () => {
 
 describe("host-config - text instances (2)", () => {
     it("clears label text when text child removed", async () => {
-        function App({ showText }: { showText: boolean }) {
-            return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel>{showText && "Removable Text"}</GtkLabel>
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App showText={true} />);
+        const { rerender } = await render(<OptionalTextBox showText={true} />);
 
         await screen.findByText("Removable Text");
 
-        await rerender(<App showText={false} />);
+        await rerender(<OptionalTextBox showText={false} />);
 
         expect(screen.queryByText("Removable Text")).toBeNull();
     });
@@ -348,13 +346,13 @@ describe("host-config - text instances (2)", () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkBox>
-                    <GtkLabel>{"Error: File not found"}</GtkLabel>
+                    <GtkLabel>Error: File not found</GtkLabel>
                 </GtkBox>
                 <GtkBox>
-                    <GtkLabel>{"Warning: Low memory"}</GtkLabel>
+                    <GtkLabel>Warning: Low memory</GtkLabel>
                 </GtkBox>
                 <GtkBox>
-                    <GtkLabel>{"Info: Process complete"}</GtkLabel>
+                    <GtkLabel>Info: Process complete</GtkLabel>
                 </GtkBox>
             </GtkBox>,
         );

@@ -201,19 +201,19 @@ describe("uniform operations — vectors and matrices", () => {
 
     it("sets a vec2 uniform", () => {
         const loc = gl.getUniformLocation(program, "uVec2");
-        gl.uniform2f(loc, 1.0, 2.0);
+        gl.uniform2f(loc, 1, 2);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
     it("sets a vec3 uniform", () => {
         const loc = gl.getUniformLocation(program, "uVec3");
-        gl.uniform3f(loc, 1.0, 2.0, 3.0);
+        gl.uniform3f(loc, 1, 2, 3);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
     it("sets a vec4 uniform", () => {
         const loc = gl.getUniformLocation(program, "uVec4");
-        gl.uniform4f(loc, 1.0, 2.0, 3.0, 4.0);
+        gl.uniform4f(loc, 1, 2, 3, 4);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
@@ -477,38 +477,38 @@ describe("state queries", () => {
 
 describe("constants", () => {
     it("exports buffer bit constants", () => {
-        expect(gl.COLOR_BUFFER_BIT).toBe(0x00004000);
-        expect(gl.DEPTH_BUFFER_BIT).toBe(0x00000100);
-        expect(gl.STENCIL_BUFFER_BIT).toBe(0x00000400);
+        expect(gl.COLOR_BUFFER_BIT).toBe(0x00_00_40_00);
+        expect(gl.DEPTH_BUFFER_BIT).toBe(0x00_00_01_00);
+        expect(gl.STENCIL_BUFFER_BIT).toBe(0x00_00_04_00);
     });
 
     it("exports primitive type constants", () => {
-        expect(gl.TRIANGLES).toBe(0x0004);
-        expect(gl.TRIANGLE_STRIP).toBe(0x0005);
-        expect(gl.TRIANGLE_FAN).toBe(0x0006);
-        expect(gl.LINES).toBe(0x0001);
-        expect(gl.POINTS).toBe(0x0000);
+        expect(gl.TRIANGLES).toBe(0x00_04);
+        expect(gl.TRIANGLE_STRIP).toBe(0x00_05);
+        expect(gl.TRIANGLE_FAN).toBe(0x00_06);
+        expect(gl.LINES).toBe(0x00_01);
+        expect(gl.POINTS).toBe(0x00_00);
     });
 
     it("exports shader type constants", () => {
-        expect(gl.VERTEX_SHADER).toBe(0x8b31);
-        expect(gl.FRAGMENT_SHADER).toBe(0x8b30);
+        expect(gl.VERTEX_SHADER).toBe(0x8B_31);
+        expect(gl.FRAGMENT_SHADER).toBe(0x8B_30);
     });
 
     it("exports data type constants", () => {
-        expect(gl.FLOAT).toBe(0x1406);
-        expect(gl.UNSIGNED_SHORT).toBe(0x1403);
-        expect(gl.UNSIGNED_INT).toBe(0x1405);
+        expect(gl.FLOAT).toBe(0x14_06);
+        expect(gl.UNSIGNED_SHORT).toBe(0x14_03);
+        expect(gl.UNSIGNED_INT).toBe(0x14_05);
     });
 
     it("exports buffer target constants", () => {
-        expect(gl.ARRAY_BUFFER).toBe(0x8892);
-        expect(gl.ELEMENT_ARRAY_BUFFER).toBe(0x8893);
+        expect(gl.ARRAY_BUFFER).toBe(0x88_92);
+        expect(gl.ELEMENT_ARRAY_BUFFER).toBe(0x88_93);
     });
 
     it("exports usage constants", () => {
-        expect(gl.STATIC_DRAW).toBe(0x88e4);
-        expect(gl.DYNAMIC_DRAW).toBe(0x88e8);
-        expect(gl.STREAM_DRAW).toBe(0x88e0);
+        expect(gl.STATIC_DRAW).toBe(0x88_E4);
+        expect(gl.DYNAMIC_DRAW).toBe(0x88_E8);
+        expect(gl.STREAM_DRAW).toBe(0x88_E0);
     });
 });

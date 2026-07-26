@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { shadertoyDemo } from "../../../src/demos/opengl/shadertoy.js";
 import { renderDemo } from "../../test-utils.js";
 
-vi.setConfig({ testTimeout: 30000 });
+vi.setConfig({ testTimeout: 30_000 });
 
 describe("shadertoyDemo", () => {
     it("exposes the expected metadata", () => {

@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { Container } from "./traversal.js";
+import type { MatcherOptions, WaitForOptions } from "./types.js";
 import { getConfig } from "./config.js";
 import { runWithExpensiveErrorDiagnosticsDisabled, suggestionError } from "./errors.js";
 import { getSuggestedQuery, type Method, type Variant } from "./suggestions.js";
-import type { Container } from "./traversal.js";
-import type { MatcherOptions, WaitForOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
 export type QueryAllBy<Args extends unknown[]> = (container: Container, ...args: Args) => Gtk.Widget[];
@@ -24,7 +24,7 @@ export type BuiltQueries<Args extends unknown[]> = {
 };
 
 const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
-    const last = args[args.length - 1];
+    const last = args.at(-1);
     if (last && typeof last === "object" && !(last instanceof RegExp)) {
         const { timeout, interval, onTimeout } = last as WaitForOptions;
         return { timeout, interval, onTimeout };
@@ -33,7 +33,7 @@ const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
 };
 
 const extractSuggestOption = (args: unknown[]): boolean | undefined => {
-    const last = args[args.length - 1];
+    const last = args.at(-1);
     if (last && typeof last === "object" && !(last instanceof RegExp)) {
         return (last as MatcherOptions).suggest;
     }
@@ -96,51 +96,51 @@ const singleFrom =
         allQuery: QueryAllBy<Args>,
         getMultipleError: MultipleErrorBuilder<Args>,
     ): SingleQuery<Args> =>
-    (container, ...args) => {
-        const matches = allQuery(container, ...args);
-        if (matches.length > 1) throw getMultipleError(container, matches, ...args);
-        return matches[0] ?? null;
-    };
+        (container, ...args) => {
+            const matches = allQuery(container, ...args);
+            if (matches.length > 1) throw getMultipleError(container, matches, ...args);
+            return matches[0] ?? null;
+        };
 
 const allOrThrow =
     <Args extends unknown[]>(
         allQuery: QueryAllBy<Args>,
         getMissingError: MissingErrorBuilder<Args>,
     ): QueryAllBy<Args> =>
-    (container, ...args) => {
-        const matches = allQuery(container, ...args);
-        if (matches.length === 0) throw getMissingError(container, ...args);
-        return matches;
-    };
+        (container, ...args) => {
+            const matches = allQuery(container, ...args);
+            if (matches.length === 0) throw getMissingError(container, ...args);
+            return matches;
+        };
 
 const wrapSingleWithSuggestion =
     <Args extends unknown[]>(query: SingleQuery<Args>, queryName: Method, variant: Variant): SingleQuery<Args> =>
-    (container, ...args) => {
-        const match = query(container, ...args);
-        if (match) {
-            maybeThrowSuggestion({ container, match, queryName, variant, suggest: extractSuggestOption(args) });
-        }
-        return match;
-    };
+        (container, ...args) => {
+            const match = query(container, ...args);
+            if (match) {
+                maybeThrowSuggestion({ container, match, queryName, variant, suggest: extractSuggestOption(args) });
+            }
+            return match;
+        };
 
 const wrapAllWithSuggestion =
     <Args extends unknown[]>(query: QueryAllBy<Args>, queryName: Method, variant: Variant): QueryAllBy<Args> =>
-    (container, ...args) => {
-        const matches = query(container, ...args);
-        const [first] = matches;
-        if (first !== undefined) {
-            maybeThrowSuggestion({ container, match: first, queryName, variant, suggest: extractSuggestOption(args) });
-        }
-        return matches;
-    };
+        (container, ...args) => {
+            const matches = query(container, ...args);
+            const [first] = matches;
+            if (first !== undefined) {
+                maybeThrowSuggestion({ container, match: first, queryName, variant, suggest: extractSuggestOption(args) });
+            }
+            return matches;
+        };
 
 const requireSingle =
     <Args extends unknown[]>(query: SingleQuery<Args>, getMissingError: MissingErrorBuilder<Args>) =>
-    (container: Container, ...args: Args): Gtk.Widget => {
-        const match = query(container, ...args);
-        if (match === null) throw getMissingError(container, ...args);
-        return match;
-    };
+        (container: Container, ...args: Args): Gtk.Widget => {
+            const match = query(container, ...args);
+            if (match === null) throw getMissingError(container, ...args);
+            return match;
+        };
 
 export const buildQueries = <Args extends unknown[]>(
     queryName: Method,

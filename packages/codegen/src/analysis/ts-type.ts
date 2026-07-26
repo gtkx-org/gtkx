@@ -1,10 +1,10 @@
 import type { Library } from "../gir/library.js";
-import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
-import type { EntityType, GirType } from "../gir/type.js";
 import type { CArrayType, HashTableType, ListType, TypeId } from "../gir/type-id.js";
+import type { EntityType, GirType } from "../gir/type.js";
+import type { ModuleContext } from "../writer/context.js";
+import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { gtypeTsType } from "../store/gi/gtype-binding.js";
-import type { ModuleContext } from "../writer/context.js";
 
 type ReferenceName = {
     namespaceName: string;
@@ -21,17 +21,20 @@ export type TsTypeTarget = {
 
 const willEmitEntity = (library: Library, type: EntityType): boolean => {
     switch (type.kind) {
-        case "callback":
+        case "callback": {
             return type.value.introspectable && type.value.name.length > 0;
-        case "record":
+        }
+        case "record": {
             return (
                 type.value.introspectable &&
                 !type.value.isVtable &&
                 type.value.name.length > 0 &&
                 !isClassStructRecord(library, type.namespace.name, type.value)
             );
-        default:
+        }
+        default: {
             return true;
+        }
     }
 };
 
@@ -51,21 +54,25 @@ export const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: T
     const name = library.nameOf(ref);
     if (type === undefined) return renderNamedType(target, undefined, name);
     switch (type.kind) {
-        case "primitive":
+        case "primitive": {
             return renderPrimitiveType(target, type);
-        case "varargs":
+        }
+        case "varargs": {
             return "unknown[]";
+        }
         case "callback":
         case "class":
         case "interface":
         case "record":
         case "enum":
-        case "alias":
+        case "alias": {
             return renderEntityType(library, target, type, name);
+        }
         case "carray":
         case "list":
-        case "hashtable":
+        case "hashtable": {
             return renderContainerType(library, target, type);
+        }
     }
 };
 

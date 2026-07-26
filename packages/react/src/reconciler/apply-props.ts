@@ -1,11 +1,11 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
+import * as Gtk from "@gtkx/gi/gtk";
 import { drain, kebabCase } from "@gtkx/utils";
+import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import { contextFor, type ElementNode, type SignalTarget } from "./node.js";
-import type { ElementBehavior, Props } from "./registry.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
 
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
@@ -72,7 +72,7 @@ const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior):
 };
 
 const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, prev: Props, next: Props): Set<string> => {
-    const consumed = new Set<string>();
+    const consumed: Set<string> = new Set();
     const ctx: BehaviorUpdateContext = { node, prev, next, consumed };
     for (const behavior of info.behaviors) collectConsumed(ctx, behavior);
     return consumed;
@@ -103,7 +103,7 @@ const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: 
     });
 };
 
-const flushDirty = new Set<ElementNode>();
+const flushDirty: Set<ElementNode> = new Set();
 
 export const markFlush = (node: ElementNode): void => {
     if (typeInfoOf(node.typeName).hasFlush) flushDirty.add(node);

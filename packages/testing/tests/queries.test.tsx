@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAdjustment,
@@ -14,7 +15,6 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import {
     findAllByDisplayValue,
@@ -181,7 +181,7 @@ describe("findAllByRole", () => {
         );
 
         const buttons = await findAllByRole(container, Gtk.AccessibleRole.BUTTON, { name: /First|Second/ });
-        expect(buttons.length).toBe(2);
+        expect(buttons).toHaveLength(2);
     });
 
     describe("error handling", () => {
@@ -242,7 +242,7 @@ describe("findAllByText", () => {
         );
 
         const buttons = await findAllByText(container, "Same");
-        expect(buttons.length).toBe(2);
+        expect(buttons).toHaveLength(2);
     });
 });
 
@@ -301,7 +301,7 @@ describe("findAllByLabelText", () => {
         await rerender(<Form />);
 
         const entries = await findAllByLabelText(container, "Field");
-        expect(entries.length).toBe(2);
+        expect(entries).toHaveLength(2);
     });
 });
 
@@ -329,7 +329,7 @@ describe("findAllByName", () => {
         );
 
         const entries = await findAllByName(container, "field");
-        expect(entries.length).toBe(2);
+        expect(entries).toHaveLength(2);
     });
 
     it("throws a name-formatted error when no widget matches", async () => {
@@ -461,7 +461,7 @@ describe("queryAllByRole", () => {
     it("returns all matching elements", async () => {
         const { container } = await renderTwoButtons();
         const buttons = queryAllByRole(container, Gtk.AccessibleRole.BUTTON);
-        expect(buttons.length).toBe(2);
+        expect(buttons).toHaveLength(2);
     });
 
     it("returns empty array when none found", async () => {
@@ -494,7 +494,7 @@ describe("queryAllByText", () => {
             </GtkBox>,
         );
         const buttons = queryAllByText(container, "Same");
-        expect(buttons.length).toBe(2);
+        expect(buttons).toHaveLength(2);
     });
 
     it("returns empty array when none found", async () => {
@@ -527,7 +527,7 @@ describe("queryAllByName", () => {
             </GtkBox>,
         );
         const entries = queryAllByName(container, "field");
-        expect(entries.length).toBe(2);
+        expect(entries).toHaveLength(2);
     });
 
     it("returns empty array when none found", async () => {
@@ -714,18 +714,18 @@ describe("getByRole value", () => {
     });
 });
 
-describe("getByRole hidden", () => {
-    const expectHiddenButtonExcludedByDefault = async (hiddenButton: ReactNode) => {
-        const { container } = await render(
-            <VBox>
-                <GtkButton label="Shown" />
-                {hiddenButton}
-            </VBox>,
-        );
-        expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON)).toHaveLength(1);
-        expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON, { hidden: true })).toHaveLength(2);
-    };
+const expectHiddenButtonExcludedByDefault = async (hiddenButton: ReactNode) => {
+    const { container } = await render(
+        <VBox>
+            <GtkButton label="Shown" />
+            {hiddenButton}
+        </VBox>,
+    );
+    expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON)).toHaveLength(1);
+    expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON, { hidden: true })).toHaveLength(2);
+};
 
+describe("getByRole hidden", () => {
     it("excludes accessibility-hidden widgets by default", async () => {
         await expectHiddenButtonExcludedByDefault(<GtkButton label="Hidden" accessibleHidden />);
     });
@@ -763,6 +763,8 @@ describe("getByLabelText accessible-label and accessible-labelledby", () => {
     });
 });
 
+const normalizer = (text: string) => getDefaultNormalizer()(text).toLowerCase();
+
 describe("getDefaultNormalizer", () => {
     it("trims and collapses whitespace by default", () => {
         const normalize = getDefaultNormalizer();
@@ -780,9 +782,7 @@ describe("getDefaultNormalizer", () => {
     });
 
     it("composes inside a custom normalizer", async () => {
-        const { container } = await render(<GtkLabel>HELLO WORLD</GtkLabel>);
-        const normalizer = (text: string) => getDefaultNormalizer()(text).toLowerCase();
-        expect(getByText(container, "hello world", { normalizer })).toBeDefined();
+        const { container } = await render(<GtkLabel>HELLO WORLD</GtkLabel>); expect(getByText(container, "hello world", { normalizer })).toBeDefined();
     });
 
     it("rejects combining a custom normalizer with trim", async () => {

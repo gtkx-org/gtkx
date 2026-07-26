@@ -9,12 +9,12 @@ const COLOR_OPTIONS = ["Red", "Green", "Blue"];
 const DASH_OPTIONS = ["Solid", "Dashed", "Dotted"];
 const END_OPTIONS = ["Square", "Round", "Double Arrow"];
 
-interface DropdownRowProps {
+type DropdownRowProps = {
     labelText: string;
     selectedId: string;
     options: string[];
     onSelectionChanged: (id: string) => void;
-}
+};
 
 const DropdownRow = ({ labelText, selectedId, options, onSelectionChanged }: DropdownRowProps) => {
     const [dropdown, setDropdown] = useState<Gtk.DropDown | null>(null);
@@ -36,12 +36,12 @@ const DropdownRow = ({ labelText, selectedId, options, onSelectionChanged }: Dro
     );
 };
 
-interface ColorFrameProps {
+type ColorFrameProps = {
     foreground: string;
     background: string;
     onForeground: (id: string) => void;
     onBackground: (id: string) => void;
-}
+};
 
 const renderColorFrame = ({ foreground, background, onForeground, onBackground }: ColorFrameProps) => (
     <GtkFrame name="color-options-frame" label="Color Options">
@@ -69,12 +69,12 @@ const renderColorFrame = ({ foreground, background, onForeground, onBackground }
     </GtkFrame>
 );
 
-interface LineFrameProps {
+type LineFrameProps = {
     dashing: string;
     lineEnd: string;
     onDashing: (id: string) => void;
     onLineEnd: (id: string) => void;
-}
+};
 
 const renderLineFrame = ({ dashing, lineEnd, onDashing, onLineEnd }: LineFrameProps) => (
     <GtkFrame name="line-options-frame" label="Line Options">

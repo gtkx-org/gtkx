@@ -5,9 +5,9 @@ import { act, getWidgetNodeText, render, screen, within } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
+    type CollectionView,
     COUNTER_BASELINE_TEXTS,
     COUNTER_SINGLE_UPDATE_TEXTS,
-    type CollectionView,
     counterBaselineRows,
     counterSingleUpdateRows,
     expectFilteredViewReorder,
@@ -63,10 +63,10 @@ const titleColumns = (titles: string[]): Column<{ name: string }>[] =>
 
 const singleNamedRow = [{ id: "1", value: { name: "First" } }];
 
-interface TitledColumnViewFixture {
+type TitledColumnViewFixture = {
     ref: React.RefObject<Gtk.ColumnView>;
     rerenderTitles: (titles: string[]) => Promise<void>;
-}
+};
 
 const renderTitledColumnView = async (titles: string[]): Promise<TitledColumnViewFixture> => {
     const { ref, rerender } = await renderColumnView(singleNamedRow, { columns: titleColumns(titles) });
@@ -89,11 +89,11 @@ const orderedColumns = (ids: string[]): Column<{ name: string }>[] =>
         renderCell: ({ item }: RenderItemArgs<{ name: string }>) => <GtkLabel>{`${id}:${item.name}`}</GtkLabel>,
     }));
 
-interface Employee {
+type Employee = {
     id: string;
     name: string;
     salary: number;
-}
+};
 
 const generateEmployees = (count: number): Employee[] => {
     const employees: Employee[] = [];
@@ -101,7 +101,7 @@ const generateEmployees = (count: number): Employee[] => {
         employees.push({
             id: String(i + 1),
             name: `Employee ${String(i + 1).padStart(3, "0")}`,
-            salary: 50000 + ((i * 7919) % 80000),
+            salary: 50_000 + ((i * 7919) % 80_000),
         });
     }
     return employees;
@@ -200,12 +200,12 @@ function SortableColumnView({
     );
 }
 
-interface SortableColumnViewFixture {
+type SortableColumnViewFixture = {
     ref: React.RefObject<Gtk.ColumnView | null>;
     employees: Employee[];
     renderOrders: string[][];
     latestOrder: () => string[] | undefined;
-}
+};
 
 const renderSortableColumnView = async (count: number): Promise<SortableColumnViewFixture> => {
     const employees = generateEmployees(count);
@@ -220,7 +220,7 @@ const renderSortableColumnView = async (count: number): Promise<SortableColumnVi
         />,
     );
 
-    return { ref, employees, renderOrders, latestOrder: () => renderOrders[renderOrders.length - 1] };
+    return { ref, employees, renderOrders, latestOrder: () => renderOrders.at(-1) };
 };
 
 const getColumnTitles = (columnView: Gtk.ColumnView): string[] =>
@@ -584,16 +584,16 @@ describe("render - ColumnView (12)", () => {
 describe("render - ColumnView (13)", () => {
     describe("item reordering (4)", () => {
         it("preserves React declaration order after sorting resets", async () => {
-            interface Item {
+            type Item = {
                 id: string;
                 name: string;
                 salary: number;
-            }
+            };
 
             const items: Item[] = [
-                { id: "3", name: "Charlie", salary: 60000 },
-                { id: "1", name: "Alice", salary: 50000 },
-                { id: "2", name: "Bob", salary: 55000 },
+                { id: "3", name: "Charlie", salary: 60_000 },
+                { id: "1", name: "Alice", salary: 50_000 },
+                { id: "2", name: "Bob", salary: 55_000 },
             ];
             const columns: Column<Item>[] = [
                 {
@@ -674,15 +674,15 @@ describe("render - ColumnView (14)", () => {
     });
 });
 
+const itemsFor = (offset: number) => [
+    { id: "1", value: { name: "A", count: offset } },
+    { id: "2", value: { name: "B", count: offset } },
+    { id: "3", value: { name: "C", count: offset } },
+];
+
 describe("render - ColumnView (15)", () => {
     describe("item reordering (6)", () => {
         it("preserves order with frequent value updates", async () => {
-            const itemsFor = (offset: number) => [
-                { id: "1", value: { name: "A", count: offset } },
-                { id: "2", value: { name: "B", count: offset } },
-                { id: "3", value: { name: "C", count: offset } },
-            ];
-
             const { ref, rerender } = await renderColumnView(itemsFor(0));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C"]);
 
@@ -729,11 +729,11 @@ describe("render - ColumnView (16)", () => {
 });
 
 describe("render - ColumnView (columns with inferred item type)", () => {
-    interface Person {
+    type Person = {
         id: string;
         name: string;
         role: string;
-    }
+    };
 
     it("renders columns from the columns prop with an inferred item type", async () => {
         const people: Person[] = [

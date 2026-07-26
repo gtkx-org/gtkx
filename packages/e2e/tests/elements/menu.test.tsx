@@ -1,8 +1,8 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { MenuItem } from "@gtkx/react";
+import * as Gio from "@gtkx/gi/gio";
 import { GMenu } from "@gtkx/jsx/gio";
 import { GtkPopoverMenu, GtkPopoverMenuBar } from "@gtkx/jsx/gtk";
-import type { MenuItem } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -49,7 +49,7 @@ type MenuRef = RefObject<Gtk.PopoverMenu | null>;
 const ItemListApp = ({ menuRef, items }: { menuRef: MenuRef; items: string[] }) => (
     <GtkPopoverMenu
         ref={menuRef}
-        menuModel={<GMenu items={items.map((label) => ({ label, action: `win.${label.replace(/\s+/g, "")}` }))} />}
+        menuModel={<GMenu items={items.map((label) => ({ label, action: `win.${label.replaceAll(/\s+/g, "")}` }))} />}
     />
 );
 

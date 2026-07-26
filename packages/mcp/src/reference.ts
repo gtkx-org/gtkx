@@ -1,11 +1,11 @@
-import { statSync } from "node:fs";
-import { resolve } from "node:path";
 import { type ApiReference, type ApiSymbol, loadApiReference, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ErrorCode, McpError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
+import { statSync } from "node:fs";
+import { resolve } from "node:path";
 import { z } from "zod";
-import { defineTool, type Tool, type ToolArgs, textContent, textError } from "./tool.js";
+import { defineTool, textContent, textError, type Tool, type ToolArgs } from "./tool.js";
 
 export type ReferenceApi = Pick<
     ApiReference,
@@ -74,7 +74,7 @@ type CacheEntry = {
 };
 
 export const createReferenceProvider = (resolveRoot: () => string): ReferenceProvider => {
-    const cache = new Map<string, CacheEntry>();
+    const cache: Map<string, CacheEntry> = new Map();
     const startLoad = (root: string): CacheEntry => {
         const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
         entry.pending.catch(() => {
@@ -236,21 +236,21 @@ type ResourceServer = Pick<McpServer, "registerResource">;
 
 const swallowLoadFailure =
     <T>(fallback: T) =>
-    (): T =>
-        fallback;
+        (): T =>
+            fallback;
 
 const namespaceCompleter =
     (provider: ReferenceProvider) =>
-    (value: string): Promise<string[]> =>
-        provider
-            .get()
-            .then((reference) =>
-                reference
-                    .namespaces()
-                    .map((summary) => summary.name)
-                    .filter((name) => name.toLowerCase().startsWith(value.toLowerCase())),
-            )
-            .catch(swallowLoadFailure<string[]>([]));
+        (value: string): Promise<string[]> =>
+            provider
+                .get()
+                .then((reference) =>
+                    reference
+                        .namespaces()
+                        .map((summary) => summary.name)
+                        .filter((name) => name.toLowerCase().startsWith(value.toLowerCase())),
+                )
+                .catch(swallowLoadFailure<string[]>([]));
 
 const resourceNotFound = (message: string): McpError => new McpError(ErrorCode.InvalidParams, message);
 

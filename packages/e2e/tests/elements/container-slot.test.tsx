@@ -125,7 +125,9 @@ describe("render - ContainerProp (2)", () => {
                             title="Test Row"
                             suffix={Array.from({ length: count }, (_, i) => (
                                 <GtkLabel key={`suffix-label-${i}`} ref={labelRefs[i]}>
-                                    Label {i}
+                                    Label
+                                    {" "}
+                                    {i}
                                 </GtkLabel>
                             ))}
                         />
@@ -233,12 +235,12 @@ describe("render - ContainerProp (6)", () => {
                         <AdwActionRow
                             ref={rowRef}
                             title="Test Row"
-                            prefix={
+                            prefix={(
                                 <>
                                     <GtkLabel ref={firstRef}>First</GtkLabel>
                                     {showSecond && <GtkLabel ref={secondRef}>Second</GtkLabel>}
                                 </>
-                            }
+                            )}
                         />
                     </GtkListBox>
                 ),
@@ -304,12 +306,12 @@ describe("render - ContainerProp (8)", () => {
             await render(
                 <AdwExpanderRow
                     title="Settings"
-                    rows={
+                    rows={(
                         <>
                             <AdwActionRow title="Option 1" />
                             <AdwActionRow title="Option 2" />
                         </>
-                    }
+                    )}
                 />,
             );
 
@@ -329,12 +331,12 @@ describe("render - ContainerProp (9)", () => {
                     <AdwExpanderRow
                         ref={expanderRef}
                         title="Settings"
-                        rows={
+                        rows={(
                             <>
                                 <AdwActionRow title="Always" />
                                 {showRow && <AdwActionRow title="Conditional" />}
                             </>
-                        }
+                        )}
                     />
                 );
             }
@@ -360,12 +362,12 @@ describe("render - ContainerProp (10)", () => {
             await render(
                 <AdwExpanderRow
                     title="Group"
-                    actions={
+                    actions={(
                         <>
                             <GtkButton label="Action 1" />
                             <GtkButton label="Action 2" />
                         </>
-                    }
+                    )}
                 />,
             );
 
@@ -380,19 +382,19 @@ describe("render - ContainerProp (10)", () => {
                 <AdwExpanderRow
                     ref={ref}
                     title="Complex"
-                    actions={
+                    actions={(
                         <>
                             <GtkButton label="Action 1" />
                             <GtkButton label="Action 2" />
                         </>
-                    }
-                    rows={
+                    )}
+                    rows={(
                         <>
                             <AdwActionRow title="Row 1" />
                             <AdwActionRow title="Row 2" />
                             <AdwActionRow title="Row 3" />
                         </>
-                    }
+                    )}
                 />,
             );
 
@@ -494,16 +496,18 @@ describe("render - ContainerProp (14)", () => {
                 return (
                     <GtkHeaderBar
                         ref={headerBarRef}
-                        start={
+                        start={(
                             <>
-                                {showBack ? (
-                                    <GtkButton key="back" label="Back" />
-                                ) : (
-                                    <GtkButton key="search" label="Search" />
-                                )}
+                                {showBack
+                                    ? (
+                                            <GtkButton key="back" label="Back" />
+                                        )
+                                    : (
+                                            <GtkButton key="search" label="Search" />
+                                        )}
                                 <GtkButton label="Delete" />
                             </>
-                        }
+                        )}
                     />
                 );
             }
@@ -527,29 +531,31 @@ describe("render - ContainerProp (14)", () => {
     });
 });
 
+function App({ order }: { order: "ab" | "ba" }) {
+    return (
+        <GtkHeaderBar
+            start={
+                order === "ab"
+                    ? (
+                            <>
+                                <GtkButton key="a" label="A" />
+                                <GtkButton key="b" label="B" />
+                            </>
+                        )
+                    : (
+                            <>
+                                <GtkButton key="b" label="B" />
+                                <GtkButton key="a" label="A" />
+                            </>
+                        )
+            }
+        />
+    );
+}
+
 describe("render - ContainerProp (15)", () => {
     describe("GtkHeaderBar (start/end) (5)", () => {
         it("reorders children in start via insertBefore", async () => {
-            function App({ order }: { order: "ab" | "ba" }) {
-                return (
-                    <GtkHeaderBar
-                        start={
-                            order === "ab" ? (
-                                <>
-                                    <GtkButton key="a" label="A" />
-                                    <GtkButton key="b" label="B" />
-                                </>
-                            ) : (
-                                <>
-                                    <GtkButton key="b" label="B" />
-                                    <GtkButton key="a" label="A" />
-                                </>
-                            )
-                        }
-                    />
-                );
-            }
-
             const { rerender } = await render(<App order="ab" />);
 
             expect(screen.getByText("A")).toBeDefined();
@@ -574,12 +580,12 @@ describe("render - ContainerProp (16)", () => {
                 (showSecond) => (
                     <GtkHeaderBar
                         ref={headerBarRef}
-                        start={
+                        start={(
                             <>
                                 <GtkLabel ref={firstRef}>First</GtkLabel>
                                 {showSecond && <GtkLabel ref={secondRef}>Second</GtkLabel>}
                             </>
-                        }
+                        )}
                     />
                 ),
                 firstRef,
@@ -617,12 +623,12 @@ describe("render - ContainerProp (18)", () => {
             await render(
                 <AdwToolbarView
                     ref={toolbarRef}
-                    topBar={
+                    topBar={(
                         <>
                             <AdwHeaderBar />
                             <GtkLabel ref={secondTopRef}>Second Top Bar</GtkLabel>
                         </>
-                    }
+                    )}
                 >
                     <GtkLabel ref={contentRef}>Content</GtkLabel>
                 </AdwToolbarView>,

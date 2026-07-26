@@ -1,4 +1,4 @@
-import { type Css, createCss } from "./create-css.js";
+import { createCss, type Css } from "./create-css.js";
 
 const instance = createCss();
 

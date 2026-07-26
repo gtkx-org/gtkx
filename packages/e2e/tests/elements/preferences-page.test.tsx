@@ -2,6 +2,21 @@ import { AdwActionRow, AdwPreferencesGroup, AdwPreferencesPage } from "@gtkx/jsx
 import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
+function App({ showBehavior }: { showBehavior: boolean }) {
+    return (
+        <AdwPreferencesPage>
+            <AdwPreferencesGroup title="Appearance">
+                <AdwActionRow title="Dark Mode" />
+            </AdwPreferencesGroup>
+            {showBehavior && (
+                <AdwPreferencesGroup title="Behavior">
+                    <AdwActionRow title="Autosave" />
+                </AdwPreferencesGroup>
+            )}
+        </AdwPreferencesPage>
+    );
+}
+
 describe("render - PreferencesPage", () => {
     it("adds preference groups", async () => {
         await render(
@@ -21,21 +36,6 @@ describe("render - PreferencesPage", () => {
     });
 
     it("removes a preference group when unmounted", async () => {
-        function App({ showBehavior }: { showBehavior: boolean }) {
-            return (
-                <AdwPreferencesPage>
-                    <AdwPreferencesGroup title="Appearance">
-                        <AdwActionRow title="Dark Mode" />
-                    </AdwPreferencesGroup>
-                    {showBehavior && (
-                        <AdwPreferencesGroup title="Behavior">
-                            <AdwActionRow title="Autosave" />
-                        </AdwPreferencesGroup>
-                    )}
-                </AdwPreferencesPage>
-            );
-        }
-
         const { rerender } = await render(<App showBehavior={true} />);
         expect(await screen.findByText("Autosave")).toBeDefined();
 

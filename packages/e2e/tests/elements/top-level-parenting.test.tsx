@@ -44,8 +44,7 @@ describe("explicit top-level parenting", () => {
                     createPortal(
                         <GtkWindow ref={childRef} transientFor={parent} defaultWidth={50} defaultHeight={50} />,
                         rootElement,
-                    )
-                }
+                    )}
             </ParentedTree>,
             { container: rootElement },
         );
@@ -70,8 +69,7 @@ describe("explicit top-level parenting", () => {
                             defaultHeight={50}
                         />,
                         rootElement,
-                    )
-                }
+                    )}
             </ParentedTree>
         );
 

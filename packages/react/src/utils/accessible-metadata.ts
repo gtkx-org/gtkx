@@ -1,4 +1,4 @@
-const metadataStore = new WeakMap<object, Map<string, unknown>>();
+const metadataStore: WeakMap<object, Map<string, unknown>> = new WeakMap();
 
 export const setAccessibleMetadata = (widget: object, name: string, value: unknown): void => {
     let entries = metadataStore.get(widget);

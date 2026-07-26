@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { listboxDemo } from "../../../src/demos/lists/listbox.js";
 import { renderDemo } from "../../test-utils.js";
 
-vi.setConfig({ testTimeout: 60000 });
+vi.setConfig({ testTimeout: 60_000 });
 
 const findListBox = async (): Promise<Gtk.ListBox> => (await screen.findByName("list-box")) as Gtk.ListBox;
 

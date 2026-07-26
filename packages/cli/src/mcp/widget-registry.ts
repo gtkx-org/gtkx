@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
 
 export class WidgetRegistry {
-    private idByWidget = new WeakMap<Gtk.Widget, string>();
+    private idByWidget: WeakMap<Gtk.Widget, string> = new WeakMap();
     private nextId = 0;
-    private widgetById = new Map<string, Gtk.Widget>();
+    private widgetById: Map<string, Gtk.Widget> = new Map();
     private toplevelWindows: Gtk.Window[] = [];
 
     refresh(): void {

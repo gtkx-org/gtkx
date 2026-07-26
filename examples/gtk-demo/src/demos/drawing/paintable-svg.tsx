@@ -10,8 +10,8 @@ const loadSvgFromFile = (file: Gio.File): Gtk.Svg | null => {
     try {
         const [bytes] = file.loadBytes(null);
         return Gtk.Svg.newFromBytes(bytes);
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
         return null;
     }
 };
@@ -31,16 +31,16 @@ const pickSvgFile = async (window: Gtk.Window | null): Promise<Gio.File | null> 
 
     try {
         return await dialog.open(window, null);
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
         return null;
     }
 };
 
-interface PaintableSvgContextValue {
+type PaintableSvgContextValue = {
     svg: Gtk.Svg | null;
     handleOpen: () => void;
-}
+};
 
 const PaintableSvgContext = createContext<PaintableSvgContextValue | null>(null);
 

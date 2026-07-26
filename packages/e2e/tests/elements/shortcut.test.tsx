@@ -12,17 +12,17 @@ describe("render - Shortcut (1)", () => {
 
         await render(
             <GtkBox
-                controllers={
+                controllers={(
                     <GtkShortcutController
                         ref={controllerRef}
-                        shortcuts={
+                        shortcuts={(
                             <GtkShortcut
                                 trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
                                 action={callbackAction()}
                             />
-                        }
+                        )}
                     />
-                }
+                )}
             />,
         );
 
@@ -45,12 +45,12 @@ describe("render - Shortcut (1)", () => {
 
         await render(
             <GtkBox
-                controllers={
+                controllers={(
                     <GtkShortcutController
                         ref={controllerRef}
                         shortcuts={<GtkShortcut trigger={trigger} action={callbackAction()} />}
                     />
-                }
+                )}
             />,
         );
 
@@ -66,7 +66,7 @@ describe("render - Shortcut (2)", () => {
             const [show, setShow] = useState(true);
             return (
                 <GtkBox
-                    controllers={
+                    controllers={(
                         <GtkShortcutController
                             ref={controllerRef}
                             shortcuts={
@@ -81,7 +81,7 @@ describe("render - Shortcut (2)", () => {
                                 )
                             }
                         />
-                    }
+                    )}
                 />
             );
         };
@@ -96,20 +96,19 @@ describe("render - Shortcut (2)", () => {
     });
 });
 
+let updateDisabled: (next: boolean) => void = () => {};
+
 describe("render - Shortcut (3)", () => {
     it("re-applies the trigger when it changes", async () => {
-        const controllerRef = createRef<Gtk.ShortcutController>();
-        let updateDisabled: (next: boolean) => void = () => {};
-
-        const Harness = () => {
+        const controllerRef = createRef<Gtk.ShortcutController>(); const Harness = () => {
             const [disabled, setDisabled] = useState(false);
             updateDisabled = setDisabled;
             return (
                 <GtkBox
-                    controllers={
+                    controllers={(
                         <GtkShortcutController
                             ref={controllerRef}
-                            shortcuts={
+                            shortcuts={(
                                 <GtkShortcut
                                     trigger={
                                         disabled
@@ -118,9 +117,9 @@ describe("render - Shortcut (3)", () => {
                                     }
                                     action={callbackAction()}
                                 />
-                            }
+                            )}
                         />
-                    }
+                    )}
                 />
             );
         };

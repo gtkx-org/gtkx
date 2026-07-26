@@ -1,8 +1,8 @@
-import { renderDescriptor } from "../../analysis/descriptor-render.js";
-import { renderTsType } from "../../analysis/ts-type.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderDescriptor } from "../../analysis/descriptor-render.js";
+import { renderTsType } from "../../analysis/ts-type.js";
 
 type WrapReturnOptions = {
     ref: TypeId | undefined;
@@ -16,18 +16,24 @@ export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptio
     const type = context.library.typeOf(ref);
     if (type === undefined) return wrapValue(context, ref, valueExpression);
     switch (type.kind) {
-        case "primitive":
+        case "primitive": {
             return wrapPrimitive(type.category, nullable, valueExpression);
-        case "varargs":
+        }
+        case "varargs": {
             return `(${valueExpression} as unknown[])`;
-        case "callback":
+        }
+        case "callback": {
             return wrapCallback(context, ref, valueExpression);
-        case "enum":
+        }
+        case "enum": {
             return `(${valueExpression} as number)`;
-        case "alias":
+        }
+        case "alias": {
             return wrapAlias(context, type.value.target, nullable, valueExpression);
-        default:
+        }
+        default: {
             return wrapValue(context, ref, valueExpression);
+        }
     }
 };
 
@@ -50,7 +56,7 @@ const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string)
     return `(fromNative(${descriptor}, ${valueExpression}) as ${renderTsType(context, ref, false)})`;
 };
 
-const BIGINT_CATEGORIES = new Set<PrimitiveCategory>(["gtype", "bigint64", "biguint64"]);
+const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["gtype", "bigint64", "biguint64"]);
 
 const wrapStringPrimitive = (nullable: boolean, valueExpression: string): string =>
     `(${valueExpression} as ${nullable ? "string | null" : "string"})`;

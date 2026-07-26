@@ -8,7 +8,7 @@ import { deleteAccessibleMetadata, setAccessibleMetadata } from "./accessible-me
  * (a `Gtk.AccessibleProperty`, `Gtk.AccessibleState`, or `Gtk.AccessibleRelation`) and is applied
  * to the widget's accessible interface; setting a member to `undefined` resets that attribute to its default.
  */
-export interface AccessibleProps {
+export type AccessibleProps = {
     accessibleAutocomplete?: Gtk.AccessibleAutocomplete | null | undefined;
     accessibleDescription?: string | null | undefined;
     accessibleHasPopup?: boolean | null | undefined;
@@ -56,7 +56,7 @@ export interface AccessibleProps {
     accessibleRowIndexText?: string | null | undefined;
     accessibleRowSpan?: number | null | undefined;
     accessibleSetSize?: number | null | undefined;
-}
+};
 
 type AccessibleValueType = "string" | "boolean" | "int" | "double" | "object" | "list";
 
@@ -150,16 +150,21 @@ const ACCESSIBLE_PROP_MAP: Record<keyof AccessibleProps, AccessibleDescriptor> =
 
 const buildValue = (descriptor: AccessibleDescriptor, jsValue: unknown): GObject.Value => {
     switch (descriptor.type) {
-        case "string":
+        case "string": {
             return GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(jsValue as string));
-        case "boolean":
+        }
+        case "boolean": {
             return GObject.buildValue(GObject.TYPE_BOOLEAN, (v) => v.setBoolean(jsValue as boolean));
-        case "int":
+        }
+        case "int": {
             return GObject.buildValue(GObject.TYPE_INT, (v) => v.setInt(jsValue as number));
-        case "double":
+        }
+        case "double": {
             return GObject.buildValue(GObject.TYPE_DOUBLE, (v) => v.setDouble(jsValue as number));
-        case "object":
+        }
+        case "object": {
             return GObject.buildValue(GObject.TYPE_OBJECT, (v) => v.setObject(jsValue as GObject.Object | null));
+        }
         case "list": {
             const list = Gtk.AccessibleList.newFromList(jsValue as Gtk.Widget[]);
             return GObject.buildValue(Gtk.AccessibleList.prototype.__type__, (v) => v.setBoxed(list));
@@ -174,29 +179,35 @@ function applyDescriptor(widget: Gtk.Accessible, descriptor: AccessibleDescripto
     const value = buildValue(descriptor, newValue);
 
     switch (descriptor.kind) {
-        case "property":
+        case "property": {
             widget.updateProperty([descriptor.property], [value]);
             break;
-        case "state":
+        }
+        case "state": {
             widget.updateState([descriptor.state], [value]);
             break;
-        case "relation":
+        }
+        case "relation": {
             widget.updateRelation([descriptor.relation], [value]);
             break;
+        }
     }
 }
 
 function resetDescriptor(widget: Gtk.Accessible, descriptor: AccessibleDescriptor): void {
     switch (descriptor.kind) {
-        case "property":
+        case "property": {
             widget.resetProperty(descriptor.property);
             break;
-        case "state":
+        }
+        case "state": {
             widget.resetState(descriptor.state);
             break;
-        case "relation":
+        }
+        case "relation": {
             widget.resetRelation(descriptor.relation);
             break;
+        }
     }
 }
 
@@ -223,10 +234,12 @@ const isRemovedAccessibleProp = (name: string, oldProps: Props, newProps: Props)
 
 const resetRemovedProps = (widget: Gtk.Accessible, oldProps: Props, newProps: Props): void => {
     for (const name in oldProps) {
-        if (isRemovedAccessibleProp(name, oldProps, newProps)) {
-            resetDescriptor(widget, ACCESSIBLE_PROP_MAP[name]);
-            deleteAccessibleMetadata(widget, name);
+        if (!isRemovedAccessibleProp(name, oldProps, newProps)) {
+            continue;
         }
+
+        resetDescriptor(widget, ACCESSIBLE_PROP_MAP[name]);
+        deleteAccessibleMetadata(widget, name);
     }
 };
 

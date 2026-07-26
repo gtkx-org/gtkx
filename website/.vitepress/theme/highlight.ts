@@ -111,10 +111,12 @@ const tokenizeLine = (line: string): Token[] => {
     let i = 0;
     let plain = "";
     const flush = (): void => {
-        if (plain) {
-            toks.push({ t: plain });
-            plain = "";
+        if (!plain) {
+            return;
         }
+
+        toks.push({ t: plain });
+        plain = "";
     };
 
     while (i < n) {
@@ -132,4 +134,4 @@ const tokenizeLine = (line: string): Token[] => {
     return toks;
 };
 
-export const tokenizeCode = (code: string): Token[][] => String(code).replace(/\n$/, "").split("\n").map(tokenizeLine);
+export const tokenizeCode = (code: string): Token[][] => code.replace(/\n$/, "").split("\n").map(tokenizeLine);

@@ -7,7 +7,8 @@ type RefCleanup<T> = ReturnType<RefCallback<T>>;
 export function assignRef<T>(ref: PossibleRef<T>, value: T): RefCleanup<T> {
     if (typeof ref === "function") {
         return ref(value);
-    } else if (isRecord(ref) && "current" in ref) {
+    }
+    if (isRecord(ref) && "current" in ref) {
         ref.current = value;
     }
 }
@@ -29,14 +30,14 @@ export function mergeRefs<T>(...refs: PossibleRef<T>[]): RefCallback<T> {
     const cleanupMap: CleanupMap<T> = new Map();
 
     return (node: T | null): RefCleanup<T> => {
-        refs.forEach((ref) => {
+        for (const ref of refs) {
             collectCleanup(cleanupMap, ref, node);
-        });
+        }
         if (cleanupMap.size === 0) return;
         return () => {
-            refs.forEach((ref) => {
+            for (const ref of refs) {
                 cleanupRef(cleanupMap, ref);
-            });
+            }
             cleanupMap.clear();
         };
     };

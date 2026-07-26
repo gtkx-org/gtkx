@@ -54,7 +54,7 @@ const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
 
 const resolveCallerAllocated = (inputs: unknown[], inputIndex: number): unknown => {
     const wrapper = inputs[inputIndex];
-    return wrapper == null ? wrapper : getHandle(wrapper as object);
+    return wrapper == null ? wrapper : getHandle(wrapper);
 };
 
 const buildRefValue = (consumesInput: boolean, inputs: unknown[], inputIndex: number): Ref => ({
@@ -74,12 +74,12 @@ const buildNativeValues = (plans: ArgSpec[], inputs: unknown[]): unknown[] =>
 
 const readOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
     const outParams: unknown[] = [];
-    plans.forEach(({ arg, isCallerAllocated, inputIndex, isOutParam }, index) => {
-        if (!isOutParam) return;
+    for (const [index, { arg, isCallerAllocated, inputIndex, isOutParam }] of plans.entries()) {
+        if (!isOutParam) continue;
         outParams.push(
             isCallerAllocated ? inputs[inputIndex] : fromNative(arg.type, (nativeValues[index] as Ref).value),
         );
-    });
+    }
     return outParams;
 };
 

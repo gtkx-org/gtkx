@@ -4,16 +4,16 @@ import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runt
 import { getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, ElementConfig, ModuleExport, PlaceInfo, Props } from "./registry.js";
 
-const childTypeCache = new Map<string, bigint>();
+const childTypeCache: Map<string, bigint> = new Map();
 
 const childTypeOf = (name: string): bigint => getOrInsert(childTypeCache, name, typeFromName);
 
 const childMatcher =
     (name: string): ((child: GObject.Object) => boolean) =>
-    (child) => {
-        const type = childTypeOf(name);
-        return type === TYPE_INVALID || typeIsA(getInstanceType(child), type);
-    };
+        (child) => {
+            const type = childTypeOf(name);
+            return type === TYPE_INVALID || typeIsA(getInstanceType(child), type);
+        };
 
 type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
     attach: (parent: P, child: C, info: PlaceInfo) => unknown;

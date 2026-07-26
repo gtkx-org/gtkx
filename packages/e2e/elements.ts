@@ -17,7 +17,7 @@ export default defineElements({
         behaviors: [
             {
                 attach: (frame: Gtk.Frame, child, info) => {
-                    if (info.slot !== "labelSlot") return undefined;
+                    if (info.slot !== "labelSlot") return;
                     frame.setLabelWidget(child as Gtk.Widget);
                     return true;
                 },
@@ -31,7 +31,7 @@ export default defineElements({
         behaviors: [
             {
                 attach: (frame: Gtk.AspectFrame, child, info) => {
-                    if (info.slot !== "children") return undefined;
+                    if (info.slot !== "children") return;
                     frame.addCssClass("app-claimed-children");
                     frame.setChild(child as Gtk.Widget);
                     return true;

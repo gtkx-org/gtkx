@@ -18,8 +18,8 @@ import {
 } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
-import { lookupIconPaintable } from "../icon-paintable.js";
 import type { Demo } from "../types.js";
+import { lookupIconPaintable } from "../icon-paintable.js";
 import sourceCode from "./textview.tsx?raw";
 
 const SCALE_XX_SMALL = 0.5787037037037;
@@ -179,7 +179,7 @@ const TextViewFontStylesSection = () => (
         </GtkTextTag>
         {", or "}
         <GtkTextTag name="monospace" family="monospace">
-            {"monospace (typewriter)"}
+            monospace (typewriter)
         </GtkTextTag>
         {", or "}
         <GtkTextTag name="big" size={20 * Pango.SCALE}>
@@ -204,16 +204,16 @@ const TextViewColorsSection = () => (
         </GtkTextTag>
         {"Colors such as "}
         <GtkTextTag name="blue_foreground" foreground="blue">
-            {"a blue foreground"}
+            a blue foreground
         </GtkTextTag>
         {" or "}
         <GtkTextTag name="red_background" background="red">
-            {"a red background"}
+            a red background
         </GtkTextTag>
         {" or even "}
         <GtkTextTag name="blue_fg" foreground="blue">
             <GtkTextTag name="red_bg" background="red">
-                {"a blue foreground on red background"}
+                a blue foreground on red background
             </GtkTextTag>
         </GtkTextTag>
         {" (select that to read it) can be used.\n\n"}
@@ -234,7 +234,7 @@ const TextViewUnderlineRiseSection = () => (
         </GtkTextTag>
         {", "}
         <GtkTextTag name="double_underline" underline={Pango.Underline.DOUBLE}>
-            {"double underline"}
+            double underline
         </GtkTextTag>
         {", "}
         <GtkTextTag name="superscript" rise={10 * Pango.SCALE} size={8 * Pango.SCALE}>
@@ -248,10 +248,10 @@ const TextViewUnderlineRiseSection = () => (
     </>
 );
 
-interface ImagesSectionProps {
+type ImagesSectionProps = {
     iconPaintable: Gtk.IconPaintable | null;
     nuclearPaintable: Gdk.Texture;
-}
+};
 
 const TextViewImagesSection = ({ iconPaintable, nuclearPaintable }: ImagesSectionProps) => (
     <>
@@ -273,23 +273,19 @@ const TextViewSpacingSection = () => (
         {"You can adjust the amount of space before each line.\n"}
         <GtkTextTag name="wide_margins_1" leftMargin={50} rightMargin={50}>
             <GtkTextTag name="big_gap_before" pixelsAboveLines={30}>
-                {"This line has a whole lot of space before it."}
+                This line has a whole lot of space before it.
             </GtkTextTag>
         </GtkTextTag>
         {"\n"}
         <GtkTextTag name="wide_margins_2" leftMargin={50} rightMargin={50}>
             <GtkTextTag name="big_gap_after" pixelsBelowLines={30}>
-                {
-                    "You can also adjust the amount of space after each line; this line has a whole lot of space after it."
-                }
+                You can also adjust the amount of space after each line; this line has a whole lot of space after it.
             </GtkTextTag>
         </GtkTextTag>
         {"\n"}
         <GtkTextTag name="wide_margins_3" leftMargin={50} rightMargin={50}>
             <GtkTextTag name="double_spaced" pixelsInsideWrap={10}>
-                {
-                    "You can also adjust the amount of space between wrapped lines; this line has extra space between each wrapped line in the same paragraph. To show off wrapping, some filler text: the quick brown fox jumped over the lazy dog. Blah blah blah blah blah blah blah blah blah."
-                }
+                You can also adjust the amount of space between wrapped lines; this line has extra space between each wrapped line in the same paragraph. To show off wrapping, some filler text: the quick brown fox jumped over the lazy dog. Blah blah blah blah blah blah blah blah blah.
             </GtkTextTag>
         </GtkTextTag>
         {"\nAlso note that those lines have extra-wide margins.\n\n"}
@@ -302,7 +298,7 @@ const TextViewEditabilitySection = () => (
             {"Editability. "}
         </GtkTextTag>
         <GtkTextTag name="not_editable" editable={false}>
-            {"This line is 'locked down' and can't be edited by the user - just try it! You can't delete this line."}
+            This line is 'locked down' and can't be edited by the user - just try it! You can't delete this line.
         </GtkTextTag>
         {"\n\n"}
     </>
@@ -314,21 +310,17 @@ const TextViewWrappingSection = () => (
             {"Wrapping. "}
         </GtkTextTag>
         <GtkTextTag name="word_wrap" wrapMode={Gtk.WrapMode.WORD}>
-            {
-                "This line (and most of the others in this buffer) is word-wrapped, using the proper Unicode algorithm. Word wrap should work in all scripts and languages that GTK supports. Let's make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah"
-            }
+            This line (and most of the others in this buffer) is word-wrapped, using the proper Unicode algorithm. Word wrap should work in all scripts and languages that GTK supports. Let's make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah
         </GtkTextTag>
         {"\n\n"}
         <GtkTextTag name="char_wrap" wrapMode={Gtk.WrapMode.CHAR}>
-            {
-                "This line has character-based wrapping, and can wrap between any two character glyphs. Let's make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah"
-            }
+            This line has character-based wrapping, and can wrap between any two character glyphs. Let's make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah
         </GtkTextTag>
         {"\n\n"}
         <GtkTextTag name="no_wrap" wrapMode={Gtk.WrapMode.NONE}>
-            {"This line has all wrapping turned off, so it makes the horizontal scrollbar appear."}
+            This line has all wrapping turned off, so it makes the horizontal scrollbar appear.
         </GtkTextTag>
-        {"\n\n\n"}
+        {"\n".repeat(3)}
     </>
 );
 
@@ -339,17 +331,15 @@ const TextViewJustificationSection = () => (
         </GtkTextTag>
         {"\n"}
         <GtkTextTag name="center" justification={Gtk.Justification.CENTER}>
-            {"This line has center justification."}
+            This line has center justification.
         </GtkTextTag>
         {"\n"}
         <GtkTextTag name="right_justify" justification={Gtk.Justification.RIGHT}>
-            {"This line has right justification."}
+            This line has right justification.
         </GtkTextTag>
         {"\n\n"}
         <GtkTextTag name="wide_margins" leftMargin={50} rightMargin={50}>
-            {
-                "This line has big wide margins. Text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text."
-            }
+            This line has big wide margins. Text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text.
         </GtkTextTag>
         {"\n\n"}
     </>
@@ -372,9 +362,7 @@ const TextViewInternationalSection = () => (
             leftMargin={20}
             rightMargin={20}
         >
-            {
-                "وقد بدأ ثلاث من أكثر المؤسسات تقدما في شبكة اكسيون برامجها كمنظمات لا تسعى للربح، ثم تحولت في السنوات الخمس الماضية إلى مؤسسات مالية منظمة، وباتت جزءا من النظام المالي في بلدانها، ولكنها تتخصص في خدمة قطاع المشروعات الصغيرة. وأحد أكثر هذه المؤسسات نجاحا هو «بانكوسول» في بوليفيا."
-            }
+            وقد بدأ ثلاث من أكثر المؤسسات تقدما في شبكة اكسيون برامجها كمنظمات لا تسعى للربح، ثم تحولت في السنوات الخمس الماضية إلى مؤسسات مالية منظمة، وباتت جزءا من النظام المالي في بلدانها، ولكنها تتخصص في خدمة قطاع المشروعات الصغيرة. وأحد أكثر هذه المؤسسات نجاحا هو «بانكوسول» في بوليفيا.
         </GtkTextTag>
     </>
 );
@@ -415,13 +403,13 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
     );
 };
 
-interface PrimaryTextViewProps {
+type PrimaryTextViewProps = {
     textView1Ref: RefObject<Gtk.TextView | null>;
     setSharedBuffer: (buffer: Gtk.TextBuffer | null) => void;
     iconPaintable: Gtk.IconPaintable | null;
     nuclearPaintable: Gdk.Texture;
     onClickMe: () => void;
-}
+};
 
 const renderPrimaryTextView = ({
     textView1Ref,
@@ -435,7 +423,7 @@ const renderPrimaryTextView = ({
             ref={textView1Ref}
             name="text-view-1"
             wrapMode={Gtk.WrapMode.WORD}
-            buffer={
+            buffer={(
                 <GtkTextBuffer ref={setSharedBuffer}>
                     <TextViewIntroSection />
                     <TextViewFontStylesSection />
@@ -449,7 +437,7 @@ const renderPrimaryTextView = ({
                     <TextViewInternationalSection />
                     <TextViewWidgetsSection onClickMe={onClickMe} />
                 </GtkTextBuffer>
-            }
+            )}
         />
     </GtkScrolledWindow>
 );
@@ -486,10 +474,12 @@ const TextViewDemo = () => {
         });
 
         return () => {
-            if (easterEggWindowRef.current) {
-                easterEggWindowRef.current.destroy();
-                easterEggWindowRef.current = null;
+            if (!easterEggWindowRef.current) {
+                return;
             }
+
+            easterEggWindowRef.current.destroy();
+            easterEggWindowRef.current = null;
         };
     }, [sharedBuffer, parentWindow]);
 

@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadGlRegistry } from "../../../src/khronos/model.js";
-import { type GlGenerationResult, generateGlModules } from "../../../src/khronos/pipeline.js";
+import { generateGlModules, type GlGenerationResult } from "../../../src/khronos/pipeline.js";
 import { selectSubset } from "../../../src/khronos/select.js";
 
 const REGISTRY_PATH = fileURLToPath(new URL("../../../src/khronos/registry/gl.xml", import.meta.url));
@@ -26,7 +26,7 @@ describe("khronos selection over the vendored registry", () => {
     it("declares the gl feature range from 1.0 to 4.6", () => {
         const registry = loadGlRegistry(REGISTRY_PATH);
         const numbers = registry.features.filter((feature) => feature.api === "gl").map((feature) => feature.number);
-        expect(Math.min(...numbers)).toBe(1.0);
+        expect(Math.min(...numbers)).toBe(1);
         expect(Math.max(...numbers)).toBe(4.6);
     });
 });

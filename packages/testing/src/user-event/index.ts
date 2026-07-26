@@ -3,7 +3,7 @@ import { scroll, slide } from "./adjustment.js";
 import { click, dblClick, tripleClick } from "./click.js";
 import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
 import { keyboard, tab } from "./keyboard.js";
-import { type PointerInput, pointer } from "./pointer.js";
+import { pointer, type PointerInput } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
 import { createInitialState } from "./state.js";
 import { clear, copy, cut, paste, type } from "./text.js";

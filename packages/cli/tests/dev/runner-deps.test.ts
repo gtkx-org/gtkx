@@ -14,7 +14,7 @@ const hoisted = vi.hoisted(() => ({
     setTestingModuleLoader: vi.fn(),
     performRefresh: vi.fn(),
     isRefreshBoundary: vi.fn(() => false),
-    createServer: vi.fn(async () => ({}) as unknown),
+    createServer: vi.fn(async () => ({})),
 }));
 
 vi.mock("@gtkx/gi/gio", () => ({

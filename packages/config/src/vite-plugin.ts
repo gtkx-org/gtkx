@@ -1,6 +1,6 @@
 import type { Plugin, UserConfig } from "vite";
 import { type ConfigLoader, createConfigLoader } from "./loader.js";
-import { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID, renderConfigModule } from "./virtual.js";
+import { GTKX_CONFIG_VIRTUAL_ID, renderConfigModule, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "./virtual.js";
 
 /**
  * Creates the Vite plugin that resolves and serves the `virtual:gtkx-config`
@@ -25,10 +25,10 @@ const createConfigPlugin = (options: {
         },
         resolveId(id: string) {
             if (id === GTKX_CONFIG_VIRTUAL_ID) return RESOLVED_GTKX_CONFIG_VIRTUAL_ID;
-            return undefined;
+            return;
         },
         async load(id: string) {
-            if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) return undefined;
+            if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) return;
             return renderConfigModule(await loadConfig(root ?? process.cwd()));
         },
     };

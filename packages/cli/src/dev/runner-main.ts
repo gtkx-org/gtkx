@@ -1,5 +1,5 @@
-import { resolve } from "node:path";
 import { error } from "@gtkx/utils";
+import { resolve } from "node:path";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { prepareDevIconDir } from "./icon-dir.js";
 import { createDevRunner } from "./runner.js";

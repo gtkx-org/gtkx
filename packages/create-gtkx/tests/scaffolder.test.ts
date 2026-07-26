@@ -1,6 +1,6 @@
+import { vol } from "memfs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { vol } from "memfs";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const clack = vi.hoisted(() => ({
@@ -48,7 +48,7 @@ const pin = (name: string): string => (name.startsWith("@gtkx/") ? `${name}@^${S
 vi.spyOn(process, "cwd").mockReturnValue(TEST_DIR);
 const exitSpy = vi
     .spyOn(process, "exit")
-    .mockImplementation(((_code?: string | number | null) => undefined) as (code?: string | number | null) => never);
+    .mockImplementation(((_code?: string | number | null) => {}) as (code?: string | number | null) => never);
 
 const templateFiles: Record<string, string> = {};
 
@@ -57,7 +57,7 @@ beforeAll(async () => {
     for (const entry of realFs.readdirSync(TEMPLATES_DIR, { recursive: true, withFileTypes: true })) {
         if (!entry.isFile()) continue;
         const absolute = join(entry.parentPath, entry.name);
-        templateFiles[absolute] = realFs.readFileSync(absolute, "utf-8");
+        templateFiles[absolute] = realFs.readFileSync(absolute, "utf8");
     }
 });
 
@@ -86,7 +86,7 @@ const defaultOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions =
 
 const run = (overrides: Partial<CreateOptions> = {}): Promise<void> => scaffold(defaultOptions(overrides));
 
-const read = (path: string): string => vol.readFileSync(path, "utf-8") as string;
+const read = (path: string): string => vol.readFileSync(path, "utf8") as string;
 
 const lastNote = (): string => String(clack.note.mock.calls.at(-1)?.[0] ?? "");
 
@@ -326,14 +326,26 @@ describe("scaffold (next steps)", () => {
     });
 });
 
-describe("scaffold (prompting)", () => {
-    const partialOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions => ({
-        applicationId: "org.test.app",
-        includeTesting: false,
-        interactive: true,
-        ...overrides,
+const partialOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions => ({
+    applicationId: "org.test.app",
+    includeTesting: false,
+    interactive: true,
+    ...overrides,
+});
+
+const captureInitialValue = async (detectedName: string | undefined): Promise<unknown> => {
+    detectMock.mockResolvedValueOnce(detectedName === undefined ? undefined : ({ name: detectedName } as never));
+    let initialValue: unknown;
+    clack.select.mockImplementationOnce(async (opts) => {
+        initialValue = opts.initialValue;
+        return opts.initialValue;
     });
 
+    await scaffold(partialOptions({ name: "test-app" }));
+    return initialValue;
+};
+
+describe("scaffold (prompting)", () => {
     it("cancels the operation and exits when the user cancels a prompt", async () => {
         clack.text.mockResolvedValueOnce("__CANCEL__");
         clack.isCancel.mockImplementationOnce((value) => value === "__CANCEL__");
@@ -343,20 +355,6 @@ describe("scaffold (prompting)", () => {
         expect(clack.cancel).toHaveBeenCalledWith("Operation canceled");
         expect(exitSpy).toHaveBeenCalledWith(0);
     });
-
-    const captureInitialValue = async (detectedName: string | undefined): Promise<unknown> => {
-        detectMock.mockResolvedValueOnce(
-            detectedName === undefined ? (undefined as never) : ({ name: detectedName } as never),
-        );
-        let initialValue: unknown;
-        clack.select.mockImplementationOnce(async (opts) => {
-            initialValue = opts.initialValue;
-            return opts.initialValue;
-        });
-
-        await scaffold(partialOptions({ name: "test-app" }));
-        return initialValue;
-    };
 
     it("uses a detected supported package manager as the prompt initial value", async () => {
         expect(await captureInitialValue("yarn")).toBe("yarn");
@@ -371,9 +369,9 @@ describe("scaffold (prompting)", () => {
     });
 });
 
-describe("scaffold (non-interactive and overwrite)", () => {
-    const lastError = (): string => String(clack.log.error.mock.calls.at(-1)?.[0] ?? "");
+const lastError = (): string => String(clack.log.error.mock.calls.at(-1)?.[0] ?? "");
 
+describe("scaffold (non-interactive and overwrite)", () => {
     it("rejects a flag-supplied name with an invalid format", async () => {
         await scaffold({
             name: "Invalid_Name",

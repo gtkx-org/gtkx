@@ -1,7 +1,7 @@
-import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
 import { TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
 import { getOrInsert } from "@gtkx/utils";
-import { deferredProps, ELEMENTS, type ElementBehavior } from "./registry.js";
+import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
+import { deferredProps, type ElementBehavior, ELEMENTS } from "./registry.js";
 
 export type TypeInfo = {
     typeName: string;
@@ -17,19 +17,21 @@ export type TypeInfo = {
     defaults: Record<string, unknown>;
 };
 
-const ancestryCache = new Map<string, string[]>();
-const typeInfoCache = new Map<string, TypeInfo>();
+const ancestryCache: Map<string, string[]> = new Map();
+const typeInfoCache: Map<string, TypeInfo> = new Map();
 
 const addAncestor = (names: string[], seen: Set<string>, name: string | null): void => {
-    if (name !== null && !seen.has(name)) {
-        seen.add(name);
-        names.push(name);
+    if (name === null || seen.has(name)) {
+        return;
     }
+
+    seen.add(name);
+    names.push(name);
 };
 
 const buildAncestry = (name: string): string[] => {
     const names: string[] = [];
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     let type = typeFromName(name);
     while (type !== TYPE_INVALID) {
         addAncestor(names, seen, typeName(type));

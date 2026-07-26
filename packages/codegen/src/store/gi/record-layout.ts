@@ -1,4 +1,7 @@
 import type { GirField } from "../../gir/field.js";
+import type { TypeId } from "../../gir/type-id.js";
+import type { EntityType, GirType } from "../../gir/type.js";
+import type { ModuleContext } from "../../writer/context.js";
 import {
     computeFieldSlots,
     type FieldLayout,
@@ -6,9 +9,6 @@ import {
     type FieldSlot,
     layoutOfPrimitive,
 } from "../../gir/size.js";
-import type { EntityType, GirType } from "../../gir/type.js";
-import type { TypeId } from "../../gir/type-id.js";
-import type { ModuleContext } from "../../writer/context.js";
 
 const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
 
@@ -22,10 +22,7 @@ export const computeRecordFieldSlots = (
     fields: GirField[],
     isUnion = false,
 ): { slots: RecordFieldSlot[]; size: number } => {
-    const inputs: FieldLayoutInput[] = [];
-    for (const field of fields) {
-        inputs.push(fieldLayoutInput(context, field, new Set()));
-    }
+    const inputs: FieldLayoutInput[] = Array.from(fields, (field) => fieldLayoutInput(context, field, new Set()));
     const result = computeFieldSlots(inputs, isUnion);
     const slots = result.slots.map((slot, index) => {
         const field = fields[index];
@@ -38,7 +35,7 @@ export const computeRecordFieldSlots = (
 };
 
 export const bitMask = (width: number): number => {
-    if (width >= 32) return 0xffffffff;
+    if (width >= 32) return 0xFF_FF_FF_FF;
     return (1 << width) - 1;
 };
 
@@ -64,23 +61,29 @@ const layoutOfType = (
     const type = context.library.typeOf(ref);
     if (type === undefined) return POINTER_LAYOUT;
     switch (type.kind) {
-        case "primitive":
+        case "primitive": {
             return layoutOfPrimitive(type.category);
-        case "carray":
+        }
+        case "carray": {
             return arrayLayout(context, type, visited);
+        }
         case "list":
         case "hashtable":
         case "callback":
         case "varargs":
         case "class":
-        case "interface":
+        case "interface": {
             return POINTER_LAYOUT;
-        case "enum":
+        }
+        case "enum": {
             return pointerOr(occurrenceCType, () => layoutOfPrimitive("int32"));
-        case "record":
+        }
+        case "record": {
             return pointerOr(occurrenceCType, () => layoutOfRecord(context, type, visited));
-        case "alias":
+        }
+        case "alias": {
             return pointerOr(occurrenceCType, () => resolveAliasLayout(context, type, visited));
+        }
     }
 };
 
@@ -106,10 +109,7 @@ const layoutOfRecord = (
     if (cached !== undefined) return cached;
     const nextVisited = new Set(visited);
     nextVisited.add(key);
-    const inputs: FieldLayoutInput[] = [];
-    for (const field of resolved.value.fields) {
-        inputs.push(fieldLayoutInput(context, field, nextVisited));
-    }
+    const inputs: FieldLayoutInput[] = Array.from(resolved.value.fields, (field) => fieldLayoutInput(context, field, nextVisited));
     if (inputs.length === 0) return POINTER_LAYOUT;
     const { size } = computeFieldSlots(inputs, resolved.value.isUnion);
     const align = Math.max(1, ...inputs.map((input) => input.layout.align));
@@ -118,7 +118,7 @@ const layoutOfRecord = (
     return layout;
 };
 
-const recordLayoutCache = new Map<string, FieldLayout>();
+const recordLayoutCache: Map<string, FieldLayout> = new Map();
 
 const resolveAliasLayout = (
     context: ModuleContext,

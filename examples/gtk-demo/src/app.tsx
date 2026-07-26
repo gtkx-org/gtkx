@@ -1,4 +1,3 @@
-import * as path from "node:path/posix";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -21,13 +20,13 @@ import {
     GtkWindow,
 } from "@gtkx/jsx/gtk";
 import { createPortal, quit, rootElement, useParentWindow } from "@gtkx/react";
-import { useEffect, useRef, useState } from "react";
+import * as path from "node:path/posix";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
-import { useLatest } from "./use-latest.js";
 
 const applicationIconName = path.basename(logoResourcePath, path.extname(logoResourcePath));
 const iconResourceDir = path.dirname(logoResourcePath);
@@ -73,15 +72,15 @@ const InfoTab = () => {
     );
 };
 
-interface DemoWindowProps {
+type DemoWindowProps = {
     onClose: () => void;
-}
+};
 
 const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const { currentDemo, windowTitle, defaultWidget } = useDemo();
     const hostWindow = useParentWindow();
     const windowRef = useRef<Gtk.Window>(null);
-    const hostWindowRef = useLatest<Gtk.Window | null>(hostWindow);
+    const hostWindowRef = useMemo<RefObject<Gtk.Window | null>>(() => ({ current: hostWindow }), [hostWindow]);
 
     if (!currentDemo?.component || !hostWindow) return null;
 
@@ -128,9 +127,9 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     );
 };
 
-interface ShortcutsDialogProps {
+type ShortcutsDialogProps = {
     onClose: () => void;
-}
+};
 
 const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
     <AdwShortcutsDialog onClosed={onClose}>
@@ -146,16 +145,16 @@ const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
     </AdwShortcutsDialog>
 );
 
-interface AppHeaderBarProps {
+type AppHeaderBarProps = {
     hasDemo: boolean;
     searchMode: boolean;
     onRun: () => void;
     onSearchToggle: (value: boolean) => void;
-}
+};
 
 const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderBarProps) => (
     <GtkHeaderBar
-        start={
+        start={(
             <>
                 <GtkButton
                     label="Run"
@@ -174,14 +173,14 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                     focusOnClick={false}
                 />
             </>
-        }
-        end={
+        )}
+        end={(
             <GtkMenuButton
                 name="menu-button"
                 iconName="open-menu-symbolic"
                 valign={Gtk.Align.CENTER}
                 focusOnClick={false}
-                menuModel={
+                menuModel={(
                     <GMenu
                         items={[
                             {
@@ -193,18 +192,18 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                             },
                         ]}
                     />
-                }
+                )}
             />
-        }
+        )}
     />
 );
 
-interface AppShortcutsProps {
+type AppShortcutsProps = {
     onSearchToggle: () => void;
     onKeyboardShortcuts: () => void;
     onNotebookNext: () => void;
     onNotebookPrev: () => void;
-}
+};
 
 const shortcut = (accelerator: string, run: () => void) => (
     <GtkShortcut
@@ -219,7 +218,7 @@ const shortcut = (accelerator: string, run: () => void) => (
 const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onNotebookPrev }: AppShortcutsProps) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
-        shortcuts={
+        shortcuts={(
             <>
                 {shortcut("<Control>f", onSearchToggle)}
                 {shortcut("<Control><Shift>i", () => Gtk.Window.setInteractiveDebugging(true))}
@@ -227,14 +226,14 @@ const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onN
                 {shortcut("<Control>Page_Down", onNotebookNext)}
                 {shortcut("<Control>Page_Up", onNotebookPrev)}
             </>
-        }
+        )}
     />
 );
 
-interface AppNotebookProps {
+type AppNotebookProps = {
     page: number;
     onSwitchPage: (page: number) => void;
-}
+};
 
 const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
     <GtkNotebook
@@ -258,9 +257,9 @@ const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
     </GtkNotebook>
 );
 
-interface AboutDialogProps {
+type AboutDialogProps = {
     onClose: () => void;
-}
+};
 
 const AboutDialog = ({ onClose }: AboutDialogProps) => (
     <AdwAboutDialog
@@ -293,14 +292,14 @@ const useDemoWindows = () => {
     return { demoWindows, openWindow, closeWindow };
 };
 
-interface MainWindowBodyProps {
+type MainWindowBodyProps = {
     searchMode: boolean;
     notebookPage: number;
     onSearchToggle: () => void;
     onKeyboardShortcuts: () => void;
     onNotebookPageChange: (page: number) => void;
     onSearchChanged: (query: string) => void;
-}
+};
 
 const MainWindowBody = ({
     searchMode,
@@ -314,24 +313,24 @@ const MainWindowBody = ({
         name="main-window-body"
         vexpand
         hexpand
-        controllers={
+        controllers={(
             <AppShortcuts
                 onSearchToggle={onSearchToggle}
                 onKeyboardShortcuts={onKeyboardShortcuts}
                 onNotebookNext={() => onNotebookPageChange(Math.min(notebookPage + 1, 1))}
                 onNotebookPrev={() => onNotebookPageChange(Math.max(notebookPage - 1, 0))}
             />
-        }
+        )}
     >
         <Sidebar searchMode={searchMode} onSearchChanged={onSearchChanged} />
         <AppNotebook page={notebookPage} onSwitchPage={onNotebookPageChange} />
     </GtkBox>
 );
 
-interface MainWindowActionsProps {
+type MainWindowActionsProps = {
     onKeyboardShortcuts: () => void;
     onShowAbout: () => void;
-}
+};
 
 const renderMainWindowActions = ({ onKeyboardShortcuts, onShowAbout }: MainWindowActionsProps) => (
     <>
@@ -366,14 +365,14 @@ const MainWindow = () => {
             title={windowTitle}
             defaultWidth={800}
             defaultHeight={600}
-            titlebar={
+            titlebar={(
                 <AppHeaderBar
                     hasDemo={!!currentDemo?.component}
                     searchMode={searchMode}
                     onRun={handleRun}
                     onSearchToggle={setSearchMode}
                 />
-            }
+            )}
             onCloseRequest={quit}
             actions={renderMainWindowActions({
                 onKeyboardShortcuts: handleKeyboardShortcuts,

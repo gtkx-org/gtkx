@@ -35,9 +35,9 @@ function useGifPaintable() {
             mediaFile.setLoop(true);
             mediaFile.play();
             setGifPaintable(mediaFile);
-        } catch (e) {
+        } catch (error) {
             const dialog = new Gtk.AlertDialog();
-            dialog.setMessage(`Failure loading GIF '${floppybuddyGifPath}': ${e}`);
+            dialog.setMessage(`Failure loading GIF '${floppybuddyGifPath}': ${error}`);
             dialog.show(null);
         }
     }, []);
@@ -93,10 +93,12 @@ const ImagesDemo = () => {
     const videoFile = Gio.fileNewForUri(gtkLogoWebmUri);
 
     useEffect(() => {
-        if (parentWindow) {
-            const paintable = Gtk.WidgetPaintable.new(parentWindow);
-            setWidgetPaintable(paintable);
+        if (!parentWindow) {
+            return;
         }
+
+        const paintable = Gtk.WidgetPaintable.new(parentWindow);
+        setWidgetPaintable(paintable);
     }, [parentWindow]);
 
     return (

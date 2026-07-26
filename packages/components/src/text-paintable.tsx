@@ -1,8 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkTextMark } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
-import { useLayoutEffect, useState } from "react";
-import { useLatest } from "./internal/use-latest.js";
+import { GtkTextMark } from "@gtkx/jsx/gtk";
+import { useEffectEvent, useLayoutEffect, useState } from "react";
 import type { TextPaintableProps } from "./types.js";
 
 const deleteEmbeddedPaintable = (buffer: Gtk.TextBuffer, position: Gtk.TextIter): void => {
@@ -20,17 +19,19 @@ const deleteEmbeddedPaintable = (buffer: Gtk.TextBuffer, position: Gtk.TextIter)
 export function TextPaintable(props: TextPaintableProps): ReactNode {
     const { paintable, onInserted } = props;
     const [mark, setMark] = useState<Gtk.TextMark | null>(null);
-    const handlers = useLatest({ onInserted });
+    const notifyInserted = useEffectEvent((buffer: Gtk.TextBuffer, inserted: Gtk.TextMark): void => {
+        onInserted?.(buffer, inserted);
+    });
     useLayoutEffect(() => {
         if (mark === null) return;
         const buffer = mark.getBuffer();
         if (buffer === null) return;
         buffer.insertPaintable(buffer.getIterAtMark(mark), paintable);
-        handlers.current.onInserted?.(buffer, mark);
+        notifyInserted(buffer, mark);
         return () => {
             const owner = mark.getBuffer();
             if (owner !== null) deleteEmbeddedPaintable(owner, owner.getIterAtMark(mark));
         };
-    }, [mark, paintable, handlers]);
+    }, [mark, paintable]);
     return <GtkTextMark leftGravity ref={setMark} />;
 }

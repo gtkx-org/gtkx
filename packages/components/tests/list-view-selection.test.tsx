@@ -1,5 +1,5 @@
-import { ListView } from "@gtkx/components";
 import type * as Gio from "@gtkx/gi/gio";
+import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
@@ -170,11 +170,11 @@ describe("render - ListView - selection (5)", () => {
     });
 });
 
-interface SidebarItem {
+type SidebarItem = {
     id: string;
     name: string;
     children?: SidebarItem[];
-}
+};
 
 const sidebarData: SidebarItem[] = [
     { id: "intro", name: "Introduction" },

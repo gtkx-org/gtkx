@@ -1,4 +1,8 @@
 import { camelCase, sourceStringLiteral } from "@gtkx/utils";
+import type { GirFunction } from "../../gir/function.js";
+import type { TypeId } from "../../gir/type-id.js";
+import type { GirType } from "../../gir/type.js";
+import type { ModuleContext } from "../../writer/context.js";
 import {
     omitsPrimaryReturn,
     renderCallbackType,
@@ -14,11 +18,7 @@ import {
     parameterIdentifier,
 } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import type { GirFunction } from "../../gir/function.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
-import type { GirType } from "../../gir/type.js";
-import type { TypeId } from "../../gir/type-id.js";
-import type { ModuleContext } from "../../writer/context.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
 import { isCollectibleCallerOut, isHandlePassing, passesHandleInPlace } from "./param-marshal.js";
 
@@ -70,7 +70,7 @@ export const renderMethodReturnType = (context: ModuleContext, fn: GirFunction):
             (isOutParameter(p) ||
                 (isCallerAllocatedOut(p) && isCollectibleCallerOut(context, p)) ||
                 isInoutParameter(p)) &&
-            !folded.has(index),
+                !folded.has(index),
     );
     const primaryReturnsValue = !omitsPrimaryReturn(context.library, fn.returnValue);
     if (outs.length === 0) {
@@ -103,11 +103,11 @@ const classifyPromisifiedParameter = (
 const collectPromisifiedArguments = (promisify: PromisifyContext, cancellableIndex: number): string[] => {
     const expressions: string[] = [];
     let sawOptional = false;
-    promisify.asyncFn.parameters.forEach((parameter, index) => {
+    for (const [index, parameter] of promisify.asyncFn.parameters.entries()) {
         const step = classifyPromisifiedParameter(promisify, parameter, index, { cancellableIndex, sawOptional });
         sawOptional = step.sawOptional;
         if (step.expression !== undefined) expressions.push(step.expression);
-    });
+    }
     return expressions;
 };
 
@@ -173,8 +173,7 @@ const promisifiedArgument = (
 };
 
 const findCancellableIndex = (context: ModuleContext, parameters: GirParameter[]): number => {
-    for (let index = 0; index < parameters.length; index += 1) {
-        const parameter = parameters[index];
+    for (const [index, parameter] of parameters.entries()) {
         if (parameter === undefined) continue;
         if (isCancellable(context, parameter)) return index;
     }
@@ -394,9 +393,9 @@ const planInoutParam = (
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", consumed }),
         inputExpr:
-            lengthSource !== undefined
-                ? arrayLengthArgument(lengthSource.source, lengthSource.index)
-                : parameterCallExpression(context, parameter, index),
+            lengthSource === undefined
+                ? parameterCallExpression(context, parameter, index)
+                : arrayLengthArgument(lengthSource.source, lengthSource.index),
     };
 };
 

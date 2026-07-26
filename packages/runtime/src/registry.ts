@@ -1,3 +1,4 @@
+import type { AnyClass } from "@gtkx/utils";
 import {
     type ExternalObject,
     getType,
@@ -6,7 +7,6 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
     setWrapper,
 } from "@gtkx/native";
-import type { AnyClass } from "@gtkx/utils";
 import type { Mixin, MixinReceiver } from "./mixin.js";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
 
@@ -28,12 +28,12 @@ export type VfuncDescriptor<K extends "class" | "interface"> = {
 
 export type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
 
-const classRegistry = new Map<bigint, AnyClass>();
-const interfaceMixinRegistry = new Map<bigint, Mixin>();
-const composedClassRegistry = new Map<bigint, AnyClass>();
-const handleMap = new WeakMap<object, ExternalObject<Handle>>();
-const vfuncRegistry = new WeakMap<object, VfuncRegistry>();
-const interfaceVfuncRegistry = new Map<bigint, VfuncRegistry>();
+const classRegistry: Map<bigint, AnyClass> = new Map();
+const interfaceMixinRegistry: Map<bigint, Mixin> = new Map();
+const composedClassRegistry: Map<bigint, AnyClass> = new Map();
+const handleMap: WeakMap<object, ExternalObject<Handle>> = new WeakMap();
+const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
+const interfaceVfuncRegistry: Map<bigint, VfuncRegistry> = new Map();
 
 function setClassType(cls: AnyClass, type: bigint): void {
     (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
@@ -50,10 +50,12 @@ export function getInstanceType(instance: object): bigint {
 }
 
 export function registerClassType(cls: AnyClass, type: bigint): void {
-    if (type !== TYPE_INVALID) {
-        classRegistry.set(type, cls);
-        setClassType(cls, type);
+    if (type === TYPE_INVALID) {
+        return;
     }
+
+    classRegistry.set(type, cls);
+    setClassType(cls, type);
 }
 
 /**
@@ -144,7 +146,7 @@ function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, appl
 
 function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
     const baseType = getClassType(base);
-    const applied = new Set<bigint>();
+    const applied: Set<bigint> = new Set();
     let cls: AnyClass = base;
     for (const type of typeInterfaces(runtimeType)) {
         cls = applyInterfaceMixin(cls, type, baseType, applied);

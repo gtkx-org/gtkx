@@ -11,7 +11,7 @@ export function bind(
 }
 
 export function createBindCache(): (key: string, ...args: Parameters<typeof bind>) => ReturnType<typeof bind> {
-    const cache = new Map<string, ReturnType<typeof bind>>();
+    const cache: Map<string, ReturnType<typeof bind>> = new Map();
     return (key, ...args) => {
         const existing = cache.get(key);
         if (existing !== undefined) return existing;

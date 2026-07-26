@@ -1,5 +1,5 @@
 import "@gtkx/jsx/adw";
-import { ELEMENTS, type ElementBehavior } from "@gtkx/react/config";
+import { type ElementBehavior, ELEMENTS } from "@gtkx/react/config";
 import { describe, expect, it } from "vitest";
 
 const behaviorsFor = (type: string): ElementBehavior[] => ELEMENTS[type]?.behaviors ?? [];
@@ -17,9 +17,9 @@ describe("adwaita behavior registration", () => {
     it("gives every registered behavior at least one property", () => {
         const empty: string[] = [];
         for (const [type, config] of Object.entries(ELEMENTS)) {
-            (config.behaviors ?? []).forEach((behavior, index) => {
+            for (const [index, behavior] of (config.behaviors ?? []).entries()) {
                 if (Object.keys(behavior).length === 0) empty.push(`${type}[${index}]`);
-            });
+            }
         }
         expect(empty.sort()).toEqual([]);
     });

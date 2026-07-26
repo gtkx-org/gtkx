@@ -61,7 +61,7 @@ const parseNicks = (definition: RawNode): string[] =>
         .filter((nick): nick is string => nick !== null);
 
 const parseDefinitions = (schemalist: RawNode, tag: string): Map<string, string[]> => {
-    const definitions = new Map<string, string[]>();
+    const definitions: Map<string, string[]> = new Map();
     for (const definition of children(schemalist, tag)) {
         const id = attr(definition, "id");
         if (id !== null) definitions.set(id, parseNicks(definition));

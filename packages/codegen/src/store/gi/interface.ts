@@ -1,8 +1,8 @@
 import { pascalCase } from "@gtkx/utils";
-import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import {
@@ -135,7 +135,7 @@ const renderInterfaceMembers = (
 ): string[] => {
     const className = pascalCase(iface.name);
     const scope = instanceScope(className, callables);
-    const claimedNames = new Set<string>();
+    const claimedNames: Set<string> = new Set();
     const methodMembers = collectMethodMembers({ context, className, scope, callables, renderers, claimedNames });
     const propertyMembers = collectPropertyMembers({ context, iface, scope, renderers, claimedNames });
     return [...methodMembers, ...propertyMembers];

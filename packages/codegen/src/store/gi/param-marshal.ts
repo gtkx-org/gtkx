@@ -1,7 +1,7 @@
-import { type GirParameter, isInoutParameter } from "../../gir/parameter.js";
-import type { GirType } from "../../gir/type.js";
 import type { TypeId } from "../../gir/type-id.js";
+import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { type GirParameter, isInoutParameter } from "../../gir/parameter.js";
 
 export const passesHandleInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.direction !== "out" && parameter.direction !== "inout") return false;
@@ -38,11 +38,14 @@ export const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean =>
     switch (type.kind) {
         case "class":
         case "interface":
-        case "record":
+        case "record": {
             return true;
-        case "alias":
+        }
+        case "alias": {
             return type.value.target !== undefined && isHandlePassing(context, type.value.target);
-        default:
+        }
+        default: {
             return false;
+        }
     }
 };

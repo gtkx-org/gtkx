@@ -41,7 +41,7 @@ describe("parseSchemaXml (schemas and keys)", () => {
 
     it("marks schemas without a path attribute as relocatable", () => {
         const parsed = parseSchemaXml(
-            `<schemalist><schema id="com.example.profile"><key name="x" type="i"><default>0</default></key></schema></schemalist>`,
+            "<schemalist><schema id=\"com.example.profile\"><key name=\"x\" type=\"i\"><default>0</default></key></schema></schemalist>",
             FILE,
         );
 
@@ -152,7 +152,7 @@ describe("parseSchemaXml (errors)", () => {
     });
 
     it("throws when a schema has no id", () => {
-        expect(() => parseSchemaXml(`<schemalist><schema path="/x/"/></schemalist>`, FILE)).toThrow(
+        expect(() => parseSchemaXml("<schemalist><schema path=\"/x/\"/></schemalist>", FILE)).toThrow(
             "A <schema> in test.gschema.xml has no id attribute",
         );
     });
@@ -160,7 +160,7 @@ describe("parseSchemaXml (errors)", () => {
     it("throws when a key has no name", () => {
         expect(() =>
             parseSchemaXml(
-                `<schemalist><schema id="com.example.app"><key type="b"><default>false</default></key></schema></schemalist>`,
+                "<schemalist><schema id=\"com.example.app\"><key type=\"b\"><default>false</default></key></schema></schemalist>",
                 FILE,
             ),
         ).toThrow("A <key> in test.gschema.xml has no name attribute");

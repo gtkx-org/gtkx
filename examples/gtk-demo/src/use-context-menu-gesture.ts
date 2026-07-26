@@ -1,5 +1,5 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gdk from "@gtkx/gi/gdk";
 import { type RefObject, useRef } from "react";
 
 export type ContextMenuGesture = {

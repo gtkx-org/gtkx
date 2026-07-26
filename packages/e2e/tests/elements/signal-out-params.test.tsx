@@ -1,5 +1,5 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkLabel, GtkOverlay, GtkSpinButton, GtkText } from "@gtkx/jsx/gtk";
@@ -51,12 +51,12 @@ const renderOverlayWithChild = async (mainLabel: string): Promise<Gtk.Overlay> =
     return overlay;
 };
 
-interface SnippetView {
+type SnippetView = {
     view: GtkSource.View;
     buffer: GtkSource.Buffer;
     snippet: GtkSource.Snippet;
     location: Gtk.TextIter;
-}
+};
 
 const renderSnippetView = async (spec: string, initialText?: string): Promise<SnippetView> => {
     const viewRef = createRef<GtkSource.View>();
@@ -81,7 +81,7 @@ const renderSnippetView = async (spec: string, initialText?: string): Promise<Sn
 describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
     it("writes the handler's tuple out-value back through the new_value pointer", async () => {
         const spin = await renderSpinButton((spinButton) => {
-            const parsed = Number.parseInt(spinButton.getText().replace(/[^0-9]/g, ""), 10);
+            const parsed = Number.parseInt(spinButton.getText().replaceAll(/[^0-9]/g, ""), 10);
             return Number.isNaN(parsed) ? [GTK_INPUT_ERROR, 0] : [1, parsed];
         });
 

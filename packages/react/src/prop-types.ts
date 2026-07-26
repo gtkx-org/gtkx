@@ -35,78 +35,78 @@ export type ActionAccel = { detailedActionName: string; accels: string[] };
 export type DragSourceIcon = { paintable?: Gdk.Paintable | null; hotX?: number; hotY?: number };
 
 /** Props of an element that accepts children. */
-export interface ChildrenProps {
+export type ChildrenProps = {
     children?: ReactNode;
-}
+};
 
-export interface GtkWidgetProps extends ChildrenProps {
+export type GtkWidgetProps = {
     controllers?: ReactNode | null | undefined;
     actionGroups?: ReactNode | null | undefined;
-}
+} & ChildrenProps;
 
-export interface GActionGroupProps {
+export type GActionGroupProps = {
     prefix?: string | null | undefined;
-}
+};
 
-export interface GActionMapProps {
+export type GActionMapProps = {
     actions?: ReactNode | null | undefined;
-}
+};
 
-export interface GMenuProps {
+export type GMenuProps = {
     items?: MenuItem[] | null | undefined;
-}
+};
 
-export interface GtkShortcutControllerProps {
+export type GtkShortcutControllerProps = {
     shortcuts?: ReactNode | null | undefined;
-}
+};
 
-export interface GtkOverlayProps extends ChildrenProps {
+export type GtkOverlayProps = {
     overlays?: ReactNode | null | undefined;
-}
+} & ChildrenProps;
 
-export interface GtkConstraintLayoutProps {
+export type GtkConstraintLayoutProps = {
     constraints?: ReactNode | null | undefined;
     guides?: ReactNode | null | undefined;
     vfl?: VflConstraints[] | null | undefined;
-}
+};
 
-export interface GtkHeaderBarProps {
+export type GtkHeaderBarProps = {
     start?: ReactNode | null | undefined;
     end?: ReactNode | null | undefined;
-}
+};
 
-export interface GtkScaleProps {
+export type GtkScaleProps = {
     marks?: ScaleMark[] | null | undefined;
-}
+};
 
-export interface GtkCalendarProps {
+export type GtkCalendarProps = {
     markedDays?: number[] | null | undefined;
-}
+};
 
-export interface GtkLevelBarProps {
+export type GtkLevelBarProps = {
     offsets?: LevelBarOffset[] | null | undefined;
-}
+};
 
-export interface GtkSizeGroupProps {
+export type GtkSizeGroupProps = {
     widgets?: Gtk.Widget[] | null | undefined;
-}
+};
 
-export interface GtkAboutDialogProps {
+export type GtkAboutDialogProps = {
     creditSections?: CreditSection[] | null | undefined;
-}
+};
 
-export interface GtkApplicationProps extends ChildrenProps {
+export type GtkApplicationProps = {
     actionAccels?: ActionAccel[] | null | undefined;
-}
+} & ChildrenProps;
 
-export interface GtkDropTargetProps {
+export type GtkDropTargetProps = {
     types?: GObject.Type[] | null | undefined;
-}
+};
 
-export interface GtkDrawingAreaProps {
+export type GtkDrawingAreaProps = {
     drawFunc?: Gtk.DrawingAreaDrawFunc | null | undefined;
-}
+};
 
-export interface GtkDragSourceProps {
+export type GtkDragSourceProps = {
     icon?: DragSourceIcon | null | undefined;
-}
+};

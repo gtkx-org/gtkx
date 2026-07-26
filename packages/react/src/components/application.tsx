@@ -1,8 +1,8 @@
-import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { quitApplication, runApplication } from "@gtkx/runtime";
 import { pickBy } from "@gtkx/utils";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
+import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 
@@ -38,9 +38,11 @@ export const createApplicationComponent = (
 
         return (
             <Component ref={mergedRef} applicationId={applicationId} {...appliedProps}>
-                {activated && application ? (
-                    <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>
-                ) : null}
+                {activated && application
+                    ? (
+                            <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>
+                        )
+                    : null}
             </Component>
         );
     };

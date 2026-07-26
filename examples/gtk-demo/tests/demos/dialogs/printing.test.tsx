@@ -1,9 +1,9 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { waitFor } from "@gtkx/testing";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { configurePrintOperation } from "../../../src/demos/dialogs/print-operation.js";
 import { printingDemo } from "../../../src/demos/dialogs/printing.js";
@@ -105,7 +105,7 @@ describe("configurePrintOperation export", () => {
     });
 
     it("renders a very long single-page body as one page via draw-page", async () => {
-        const longLine = "x".repeat(20000);
+        const longLine = "x".repeat(20_000);
         const printOp = configurePrintOperation(`${longLine}\n${longLine}`);
         const drawPage = vi.fn();
         const done = vi.fn();

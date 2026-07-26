@@ -1,6 +1,6 @@
 import type { CSSInterpolation, RegisteredCache, SerializedStyles } from "@emotion/serialize";
-import { serializeStyles } from "@emotion/serialize";
 import type { Element } from "stylis";
+import { serializeStyles } from "@emotion/serialize";
 import { compile, middleware, rulesheet, stringify, serialize as stylisSerialize } from "stylis";
 import { escapeNamedColors, restoreNamedColors } from "./named-colors.js";
 import { StyleSheet } from "./stylesheet.js";
@@ -19,14 +19,14 @@ export type Css = {
 };
 
 export const removeLabel = (element: Element): void => {
-    if (
-        element.type === "decl" &&
+    if (!(element.type === "decl" &&
         element.value.codePointAt(0) === LABEL_DECL_FIRST_CHAR &&
-        element.value.codePointAt(2) === LABEL_DECL_THIRD_CHAR
-    ) {
-        element.return = "";
-        element.value = "";
+        element.value.codePointAt(2) === LABEL_DECL_THIRD_CHAR)) {
+        return;
     }
+
+    element.return = "";
+    element.value = "";
 };
 
 const classNameFor = (serialized: SerializedStyles): string => `${KEY}-${serialized.name}`;
@@ -61,7 +61,7 @@ const runStylis = (sheet: StyleSheet, input: string): void => {
 
 export const createCss = (): Css => {
     const sheet = new StyleSheet();
-    const inserted = new Set<string>();
+    const inserted: Set<string> = new Set();
     const registered: RegisteredCache = {};
 
     const serialize = (args: CSSInterpolation[]): SerializedStyles => serializeStyles(args, registered);

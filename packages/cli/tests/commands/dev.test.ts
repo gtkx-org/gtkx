@@ -42,8 +42,7 @@ describe("dev command", () => {
         await runDev("src/main.tsx");
 
         expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true, mode: "development" });
-        expect(resolveConfigWatchMock).toHaveBeenCalledOnce();
-        expect(resolveConfigWatchMock).toHaveBeenCalledWith(expect.any(String), "development");
+        expect(resolveConfigWatchMock).toHaveBeenCalledExactlyOnceWith(expect.any(String), "development");
         expect(runDevSupervisorMock).toHaveBeenCalledOnce();
         const [entryPath, cwd, watch] = runDevSupervisorMock.mock.calls[0] ?? [];
         expect(entryPath).toMatch(/src\/main\.tsx$/);

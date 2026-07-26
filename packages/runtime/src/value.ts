@@ -106,14 +106,18 @@ const enumOrFlagsValueType = (type: bigint): ValueType =>
 
 const fundamentalValueType = (type: bigint): ValueType => {
     switch (typeFundamental(type)) {
-        case TYPE_PARAM:
+        case TYPE_PARAM: {
             return paramValueType;
-        case TYPE_VARIANT:
+        }
+        case TYPE_VARIANT: {
             return variantValueType;
-        case TYPE_BOXED:
+        }
+        case TYPE_BOXED: {
             return boxedValueType(type);
-        default:
+        }
+        default: {
             throw new Error(`Unsupported fundamental type '${typeName(type) ?? String(type)}' for value`);
+        }
     }
 };
 
@@ -175,94 +179,125 @@ const resolveValueType = (descriptor: Descriptor): ValueType => {
         return typeValueType;
     }
     switch (descriptor.kind) {
-        case "boolean":
+        case "boolean": {
             return booleanValueType;
-        case "string":
+        }
+        case "string": {
             return stringValueType;
+        }
         case "int8":
         case "int16":
-        case "int32":
+        case "int32": {
             return intValueType;
+        }
         case "uint8":
         case "uint16":
-        case "uint32":
+        case "uint32": {
             return uintValueType;
+        }
         case "int64":
-        case "bigint64":
+        case "bigint64": {
             return int64ValueType;
+        }
         case "uint64":
-        case "biguint64":
+        case "biguint64": {
             return uint64ValueType;
-        case "float32":
+        }
+        case "float32": {
             return floatValueType;
-        case "float64":
+        }
+        case "float64": {
             return doubleValueType;
-        case "object":
+        }
+        case "object": {
             return objectValueType;
+        }
         case "enum":
-        case "flags":
+        case "flags": {
             return enumOrFlagsValueType(resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName));
-        case "boxed":
+        }
+        case "boxed": {
             return boxedValueType(resolveBoxedType(descriptor));
-        case "fundamental":
+        }
+        case "fundamental": {
             return fundamentalValueType(resolveFundamentalType(descriptor));
-        case "array":
+        }
+        case "array": {
             return arrayValueType(descriptor);
-        default:
+        }
+        default: {
             throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
+        }
     }
 };
 
 const resolveValueGetter = (fundamental: bigint): ((value: ExternalObject<Handle>) => unknown) | undefined => {
     switch (fundamental) {
-        case TYPE_BOOLEAN:
+        case TYPE_BOOLEAN: {
             return booleanValueType.get;
-        case TYPE_GTYPE:
+        }
+        case TYPE_GTYPE: {
             return typeValueType.get;
-        case TYPE_INT:
+        }
+        case TYPE_INT: {
             return intValueType.get;
-        case TYPE_UINT:
+        }
+        case TYPE_UINT: {
             return uintValueType.get;
-        case TYPE_INT64:
+        }
+        case TYPE_INT64: {
             return int64ValueType.get;
-        case TYPE_UINT64:
+        }
+        case TYPE_UINT64: {
             return uint64ValueType.get;
-        case TYPE_FLOAT:
+        }
+        case TYPE_FLOAT: {
             return floatValueType.get;
-        case TYPE_DOUBLE:
+        }
+        case TYPE_DOUBLE: {
             return doubleValueType.get;
-        case TYPE_ENUM:
+        }
+        case TYPE_ENUM: {
             return enumValueType.get;
-        case TYPE_FLAGS:
+        }
+        case TYPE_FLAGS: {
             return flagsValueType.get;
-        case TYPE_STRING:
+        }
+        case TYPE_STRING: {
             return (value) => stringValueType.get(value) ?? null;
-        case TYPE_OBJECT:
+        }
+        case TYPE_OBJECT: {
             return (value) => wrapHandle(objectValueType.get(value) as ExternalObject<Handle> | null);
-        case TYPE_PARAM:
+        }
+        case TYPE_PARAM: {
             return (value) =>
                 wrapHandle(paramValueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(TYPE_PARAM));
-        case TYPE_VARIANT:
+        }
+        case TYPE_VARIANT: {
             return (value) =>
                 wrapHandle(variantValueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(TYPE_VARIANT));
-        case TYPE_BOXED:
+        }
+        case TYPE_BOXED: {
             return getBoxedValue;
-        case TYPE_POINTER:
+        }
+        case TYPE_POINTER: {
             return (value) => {
                 if (pointerValueType.get(value)) {
                     throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
                 }
                 return null;
             };
-        default:
+        }
+        default: {
             return undefined;
+        }
     }
 };
 
 const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
     const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
     if (!isHandleKind) return toNative(descriptor, value);
-    return value == null ? null : getHandle(value as object);
+    return value == null ? null : getHandle(value);
 };
 
 const resolveValueGType = (descriptor: Descriptor, nativeValue: unknown): bigint => {

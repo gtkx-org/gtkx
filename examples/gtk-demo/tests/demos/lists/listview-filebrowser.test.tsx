@@ -1,7 +1,7 @@
-import { basename, dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { basename, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
 import { renderDemo } from "../../test-utils.js";

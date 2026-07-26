@@ -1,6 +1,6 @@
 export const indent = (block: string, level: number): string => {
     if (level <= 0) return block;
-    const prefix = "    ".repeat(level);
+    const prefix = " ".repeat(4).repeat(level);
     return block
         .split("\n")
         .map((line) => (line.length === 0 ? line : `${prefix}${line}`))
@@ -16,7 +16,7 @@ export const renderBracedOrEmpty = (head: string, body: string): string =>
 
 export const indentMembers = (members: string[]): string => members.map((member) => indent(member, 1)).join("\n\n");
 
-export const joinArgs = (parts: Array<string | undefined>): string =>
+export const joinArgs = (parts: (string | undefined)[]): string =>
     parts.filter((part): part is string => part !== undefined).join(", ");
 
 export const arrayLiteral = (elements: string[]): string => {

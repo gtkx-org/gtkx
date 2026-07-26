@@ -5,6 +5,7 @@ import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
 declare module "@gtkx/jsx/gtk" {
+    /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
     interface GtkWidgetProps {
         cursorName?: string | null | undefined;
     }
@@ -12,6 +13,7 @@ declare module "@gtkx/jsx/gtk" {
     interface GtkFrameProps {
         labelSlot?: ReactNode;
     }
+    /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }
 
 describe("custom element rules from gtkx.config.ts", () => {

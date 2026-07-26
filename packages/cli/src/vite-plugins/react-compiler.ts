@@ -1,10 +1,11 @@
 /// <reference path="../babel-modules.d.ts" />
+
+import type { ResolvedReactCompilerOptions } from "@gtkx/config";
+import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 import { transformAsync } from "@babel/core";
 import babelPresetTypescriptNs from "@babel/preset-typescript";
-import type { ResolvedReactCompilerOptions } from "@gtkx/config";
 import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
 import babelPluginReactCompilerNs from "babel-plugin-react-compiler";
-import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 
 const babelPresetTypescript = babelPresetTypescriptNs.default ?? babelPresetTypescriptNs;
 const babelPluginReactCompiler = babelPluginReactCompilerNs.default ?? babelPluginReactCompilerNs;
@@ -32,7 +33,7 @@ const compileSource = async (code: string, id: string, options: ResolvedReactCom
         babelrc: false,
         configFile: false,
         sourceMaps: true,
-        parserOpts: { plugins: TYPE_ONLY_EXTENSION.test(id) ? [] : ["jsx"] },
+        parserOpts: { plugins: id.endsWith(".ts") ? [] : ["jsx"] },
         presets: TYPESCRIPT_EXTENSION.test(id) ? [babelPresetTypescript] : [],
         plugins: [[babelPluginReactCompiler, options]],
     });

@@ -1,7 +1,7 @@
-import { createRequire } from "node:module";
 import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createRequire } from "node:module";
 import { z } from "zod";
 import { AppRouter } from "./app-router.js";
 import { ConnectionRegistry } from "./connection-registry.js";
@@ -16,7 +16,7 @@ import {
 } from "./protocol/schemas.js";
 import { buildReferenceTools, createReferenceProvider, registerReferenceResources } from "./reference.js";
 import { SocketServer } from "./socket-server.js";
-import { defineTool, imageContent, registerTool, type Tool, textContent } from "./tool.js";
+import { defineTool, imageContent, registerTool, textContent, type Tool } from "./tool.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -99,7 +99,7 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
                 apps.map(async (app) => {
                     try {
                         const result = await appRouter.sendToApp<{
-                            windows: Array<{ id: string; title: string | null }>;
+                            windows: { id: string; title: string | null }[];
                         }>(app.applicationId, "app.getWindows", {});
                         return { ...app, windows: result.windows };
                     } catch {

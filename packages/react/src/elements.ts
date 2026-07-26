@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import type {
     ActionAccel,

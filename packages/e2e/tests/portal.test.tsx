@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gio from "@gtkx/gi/gio";
 import * as GtkEnums from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, GtkStack } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement, useApplication } from "@gtkx/react";
@@ -110,18 +110,23 @@ describe("createPortal (1)", () => {
     });
 });
 
+function OptionalPortal({ showPortal }: { showPortal: boolean }) {
+    const app = useApplication();
+    return <>{showPortal && createPortal(<GtkApplicationWindow title="Portal" />, app)}</>;
+}
+
+function TitledPortal({ title }: { title: string }) {
+    const app = useApplication();
+    return <>{createPortal(<GtkApplicationWindow title={title} />, app)}</>;
+}
+
 describe("createPortal (2)", () => {
     it("unmounts portal children when portal is removed", async () => {
         const appId = uniqueAppId();
 
-        function App({ showPortal }: { showPortal: boolean }) {
-            const app = useApplication();
-            return <>{showPortal && createPortal(<GtkApplicationWindow title="Portal" />, app)}</>;
-        }
-
         const { rerender } = await render(
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
-                <App showPortal={true} />
+                <OptionalPortal showPortal={true} />
             </GtkApplication>,
             { container: rootElement },
         );
@@ -130,7 +135,7 @@ describe("createPortal (2)", () => {
 
         await rerender(
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
-                <App showPortal={false} />
+                <OptionalPortal showPortal={false} />
             </GtkApplication>,
         );
     });
@@ -138,14 +143,9 @@ describe("createPortal (2)", () => {
     it("updates portal children when props change", async () => {
         const appId = uniqueAppId();
 
-        function App({ title }: { title: string }) {
-            const app = useApplication();
-            return <>{createPortal(<GtkApplicationWindow title={title} />, app)}</>;
-        }
-
         const { rerender } = await render(
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
-                <App title="First" />
+                <TitledPortal title="First" />
             </GtkApplication>,
             { container: rootElement },
         );
@@ -153,7 +153,7 @@ describe("createPortal (2)", () => {
 
         await rerender(
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
-                <App title="Second" />
+                <TitledPortal title="Second" />
             </GtkApplication>,
         );
         await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "Second", hidden: true });

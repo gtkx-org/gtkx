@@ -1,5 +1,5 @@
-import { error } from "@gtkx/utils";
 import type { InlineConfig, Plugin } from "vite";
+import { error } from "@gtkx/utils";
 import { createRefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
 import { createDevServerConfig, type DevServer } from "./vite-dev-server.js";
@@ -72,21 +72,21 @@ const onApplicationShutdown =
         shutdown: (quitApplication: () => void) => Promise<void>,
         isShuttingDown: () => boolean,
     ): (() => void) =>
-    () => {
-        if (isShuttingDown()) return;
-        if (refreshTracker.isRefreshing()) {
-            deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
-            return deps.exit(RESTART_EXIT_CODE);
-        }
-        deps.log("Application quit - stopping dev runner...");
-        shutdown(() => {}).then(
-            () => deps.exit(0),
-            (cause: unknown) => {
-                error("Error closing server:", cause);
-                return deps.exit(1);
-            },
-        );
-    };
+        () => {
+            if (isShuttingDown()) return;
+            if (refreshTracker.isRefreshing()) {
+                deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
+                return deps.exit(RESTART_EXIT_CODE);
+            }
+            deps.log("Application quit - stopping dev runner...");
+            shutdown(() => {}).then(
+                () => deps.exit(0),
+                (error_: unknown) => {
+                    error("Error closing server:", error_);
+                    return deps.exit(1);
+                },
+            );
+        };
 
 export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
     async run(entryPath: string): Promise<void> {
@@ -113,8 +113,8 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
 
         server.watcher.on("change", (changedPath) => {
             if (isShuttingDown) return;
-            handleFileChange(server, refreshTrackingDeps, changedPath).catch((cause) => {
-                error("Hot reload failed:", cause);
+            handleFileChange(server, refreshTrackingDeps, changedPath).catch((error_) => {
+                error("Hot reload failed:", error_);
             });
         });
 

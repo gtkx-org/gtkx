@@ -59,8 +59,8 @@ const clickWindowClose = async (window: Gtk.Window): Promise<void> => {
         return;
     }
     const bound = within(window);
-    await userEvent.type((await bound.findByName("password-entry")) as Gtk.Editable, "hunter2");
-    await userEvent.type((await bound.findByName("confirm-entry")) as Gtk.Editable, "hunter2");
+    await userEvent.type((await bound.findByName("password-entry")), "hunter2");
+    await userEvent.type((await bound.findByName("confirm-entry")), "hunter2");
     const done = await bound.findByRole(Gtk.AccessibleRole.BUTTON, { name: /Done/ });
     await userEvent.click(done);
 };
@@ -87,10 +87,10 @@ const exerciseWindowDemo = async (title: string, run: Gtk.Button, mainWindow: Gt
     expect(mainWindow.getVisible(), `closing demo "${title}" tore down the main window`).toBe(true);
 };
 
-interface DialogHooks {
+type DialogHooks = {
     printRun: ReturnType<typeof vi.fn>;
     pageSetup: ReturnType<typeof vi.fn>;
-}
+};
 
 const exerciseDialogDemo = async (title: string, run: Gtk.Button, hooks: DialogHooks): Promise<void> => {
     const baseline = (await toplevelWindows()).length;
@@ -118,7 +118,7 @@ const openMenuItem = async (menuButton: Gtk.MenuButton, name: string): Promise<v
 
 describe("gtk-demo end-to-end", () => {
     beforeAll(() => {
-        configure({ asyncUtilTimeout: 20000 });
+        configure({ asyncUtilTimeout: 20_000 });
     });
 
     afterEach(() => {
@@ -203,5 +203,5 @@ describe("gtk-demo end-to-end", () => {
         const inspector = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
         await openMenuItem(menuButton, "Inspector");
         await waitFor(() => expect(inspector).toHaveBeenCalledWith(true));
-    }, 180000);
+    }, 180_000);
 });

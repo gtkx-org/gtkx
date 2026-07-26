@@ -26,10 +26,10 @@ type ParseMaybe<S extends string> = Parse<S> extends [infer V, infer R extends s
 type ParseTuple<S extends string, Acc extends unknown[]> = S extends `)${infer Rest}`
     ? [Acc, Rest]
     : [Parse<S>] extends [never]
-      ? never
-      : Parse<S> extends [infer V, infer R extends string]
-        ? ParseTuple<R, [...Acc, V]>
-        : never;
+            ? never
+            : Parse<S> extends [infer V, infer R extends string]
+                ? ParseTuple<R, [...Acc, V]>
+                : never;
 
 type DictKey = string | number | bigint | boolean;
 
@@ -38,8 +38,8 @@ type ParsePair<S extends string> =
         ? Parse<R1> extends [infer V, infer R2 extends string]
             ? R2 extends `}${infer R3}`
                 ? [K] extends [DictKey]
-                    ? [K, V, R3]
-                    : never
+                        ? [K, V, R3]
+                        : never
                 : never
             : never
         : never;
@@ -57,30 +57,30 @@ type ParseArrayOrDict<S extends string> = S extends `{${infer Rest}` ? ParseDict
 type Parse<S extends string> = S extends `a${infer Rest}`
     ? ParseArrayOrDict<Rest>
     : S extends `m${infer Rest}`
-      ? ParseMaybe<Rest>
-      : S extends `(${infer Rest}`
-        ? ParseTuple<Rest, []>
-        : S extends `{${infer Rest}`
-          ? ParseEntry<Rest>
-          : S extends `${infer C}${infer Rest}`
-            ? C extends BasicCode
-                ? [BasicValueMap[C], Rest]
-                : never
-            : never;
+        ? ParseMaybe<Rest>
+        : S extends `(${infer Rest}`
+            ? ParseTuple<Rest, []>
+            : S extends `{${infer Rest}`
+                ? ParseEntry<Rest>
+                : S extends `${infer C}${infer Rest}`
+                    ? C extends BasicCode
+                        ? [BasicValueMap[C], Rest]
+                        : never
+                    : never;
 
 export type VariantValue<S extends string> = [Parse<S>] extends [never]
     ? unknown
     : Parse<S> extends [infer V, ""]
-      ? V
-      : unknown;
+        ? V
+        : unknown;
 
 export type VariantTypeNode =
-    | { kind: "basic"; code: BasicCode }
-    | { kind: "array"; elementTypeString: string; element: VariantTypeNode }
-    | { kind: "dict"; entryTypeString: string; key: VariantTypeNode; value: VariantTypeNode }
-    | { kind: "entry"; key: VariantTypeNode; value: VariantTypeNode }
-    | { kind: "tuple"; items: VariantTypeNode[] }
-    | { kind: "maybe"; elementTypeString: string; element: VariantTypeNode };
+    | { kind: "basic"; code: BasicCode } |
+    { kind: "array"; elementTypeString: string; element: VariantTypeNode } |
+    { kind: "dict"; entryTypeString: string; key: VariantTypeNode; value: VariantTypeNode } |
+    { kind: "entry"; key: VariantTypeNode; value: VariantTypeNode } |
+    { kind: "tuple"; items: VariantTypeNode[] } |
+    { kind: "maybe"; elementTypeString: string; element: VariantTypeNode };
 
 const BASIC_CODES = "bynqiuxthdsogv";
 
@@ -146,7 +146,7 @@ const parseNode = (source: string, start: number): [VariantTypeNode, number] => 
     throw invalidType(source);
 };
 
-const parsedTypes = new Map<string, VariantTypeNode>();
+const parsedTypes: Map<string, VariantTypeNode> = new Map();
 
 export const parseVariantType = (typeString: string): VariantTypeNode => {
     const cached = parsedTypes.get(typeString);
@@ -204,18 +204,24 @@ const unpackMaybe = (element: VariantTypeNode, variant: GLib.Variant): unknown =
 
 export const unpackVariant = (node: VariantTypeNode, variant: GLib.Variant): unknown => {
     switch (node.kind) {
-        case "basic":
+        case "basic": {
             return unpackBasic[node.code](variant);
-        case "array":
+        }
+        case "array": {
             return unpackChildren(variant, (child) => unpackVariant(node.element, child));
-        case "dict":
+        }
+        case "dict": {
             return unpackDict(node, variant);
-        case "entry":
+        }
+        case "entry": {
             return unpackPair(node.key, node.value, variant);
-        case "tuple":
+        }
+        case "tuple": {
             return node.items.map((item, index) => unpackVariant(item, variant.getChildValue(index)));
-        case "maybe":
+        }
+        case "maybe": {
             return unpackMaybe(node.element, variant);
+        }
     }
 };
 
@@ -268,7 +274,7 @@ const packEntry = (key: VariantTypeNode, value: VariantTypeNode, pair: [unknown,
     GLib.Variant.newDictEntry(packVariant(key, pair[0]), packVariant(value, pair[1]));
 
 const dictEntries = (value: unknown): [unknown, unknown][] =>
-    value instanceof Map ? [...value.entries()] : Object.entries(value as Record<string, unknown>);
+    value instanceof Map ? [...value] : Object.entries(value as Record<string, unknown>);
 
 const packDict = (
     node: { entryTypeString: string; key: VariantTypeNode; value: VariantTypeNode },
@@ -287,22 +293,28 @@ const packMaybe = (node: { elementTypeString: string; element: VariantTypeNode }
 
 export const packVariant = (node: VariantTypeNode, value: unknown): GLib.Variant => {
     switch (node.kind) {
-        case "basic":
+        case "basic": {
             return packBasic[node.code](value);
-        case "array":
+        }
+        case "array": {
             return GLib.Variant.newArray(
                 GLib.VariantType.new(node.elementTypeString),
                 (value as unknown[]).map((item) => packVariant(node.element, item)),
             );
-        case "dict":
+        }
+        case "dict": {
             return packDict(node, value);
-        case "entry":
+        }
+        case "entry": {
             return packEntry(node.key, node.value, value as [unknown, unknown]);
-        case "tuple":
+        }
+        case "tuple": {
             return GLib.Variant.newTuple(
                 node.items.map((item, index) => packVariant(item, (value as unknown[])[index])),
             );
-        case "maybe":
+        }
+        case "maybe": {
             return packMaybe(node, value);
+        }
     }
 };

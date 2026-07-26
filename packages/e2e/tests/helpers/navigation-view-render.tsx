@@ -1,6 +1,6 @@
+import type { ReactNode } from "react";
 import { AdwNavigationPage } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
 
 export const TwoNavigationPages = ({ contentPrefix }: { contentPrefix: string }): ReactNode => (
     <>

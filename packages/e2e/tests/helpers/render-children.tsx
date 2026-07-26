@@ -1,11 +1,11 @@
-import { type RenderOptions, render } from "@gtkx/testing";
 import type { ReactNode } from "react";
+import { render, type RenderOptions } from "@gtkx/testing";
 
 export type ChildrenBuilder<T> = (items: T[]) => ReactNode;
 
-export interface RenderChildrenResult<T> {
+export type RenderChildrenResult<T> = {
     rerender: (items: T[]) => Promise<void>;
-}
+};
 
 export const renderChildren = async <T,>(
     initial: T[],

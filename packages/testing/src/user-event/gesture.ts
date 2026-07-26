@@ -55,7 +55,7 @@ export const zoom = (widget: Gtk.Widget, scale: number): Promise<void> =>
 export const swipe = (widget: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> =>
     dispatchOnControllers(widget, Gtk.GestureSwipe, (controller) => controller.emit("swipe", velocityX, velocityY));
 
-export const longPress = (widget: Gtk.Widget, x: number = 0, y: number = 0): Promise<void> =>
+export const longPress = (widget: Gtk.Widget, x = 0, y = 0): Promise<void> =>
     dispatchOnControllers(widget, Gtk.GestureLongPress, (controller) => controller.emit("pressed", x, y));
 
 type DragInstancePatch = {
@@ -115,9 +115,9 @@ const resolveDragUpdates = (dx: number, dy: number, options: DragOptions): DragO
 
 export const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
     if (widget instanceof Gtk.Range) {
-        throw new Error(
+        throw new TypeError(
             "userEvent.drag cannot drive a Gtk.Range's built-in slider (its drag reads pointer coordinates from the display); " +
-                "use userEvent.slide(range, value) or userEvent.keyboard for sliders",
+            "use userEvent.slide(range, value) or userEvent.keyboard for sliders",
         );
     }
     const start = { x: options.startX ?? 0, y: options.startY ?? 0 };

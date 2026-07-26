@@ -1,8 +1,8 @@
-import { GtkListView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
+import { GtkListView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import type { ListViewProps } from "./types.js";
 import { collectionRenderers } from "./internal/use-cells.js";
 import { useCollection } from "./internal/use-collection.js";
-import type { ListViewProps } from "./types.js";
 
 /**
  * Renders a Gtk.ListView from declarative items or sections, with per-row rendering,

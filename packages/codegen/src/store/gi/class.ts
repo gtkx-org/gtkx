@@ -1,4 +1,7 @@
 import { pascalCase, toCamelIdentifier } from "@gtkx/utils";
+import type { GirClass } from "../../gir/class.js";
+import type { GirFunction } from "../../gir/function.js";
+import type { ModuleContext } from "../../writer/context.js";
 import {
     collectInheritedMethods,
     collectInheritedPropertyTypes,
@@ -7,10 +10,7 @@ import {
     type InheritedMethods,
 } from "../../analysis/inheritance.js";
 import { ancestorChain, type ResolvedAncestor } from "../../gir/ancestry.js";
-import type { GirClass } from "../../gir/class.js";
-import type { GirFunction } from "../../gir/function.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
-import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
@@ -27,7 +27,7 @@ import { renderClassConstructor, renderConstructorPropsInterface } from "./const
 import { gtypeExprFor, gtypeMemberDeclaration } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyDeclarations } from "./properties.js";
-import { type ResolvedAccessor, renderResolvedPropertyAccessor, resolveAccessor } from "./property-accessor.js";
+import { renderResolvedPropertyAccessor, resolveAccessor, type ResolvedAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 import { renderVfuncMetadata } from "./vtable.js";
@@ -109,7 +109,7 @@ const renderClassMembers = (
     const members: string[] = [gtypeMemberDeclaration(context)];
     const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
     if (constructorBlock !== undefined) members.push(constructorBlock);
-    const claimedNames = new Set<string>();
+    const claimedNames: Set<string> = new Set();
     members.push(...renderStaticHead(context, callables, className));
     const inherited = collectInheritedMethods(context, klass);
     const scope = instanceScope(className, callables);
@@ -186,7 +186,7 @@ const addAncestorInterfaceKeys = (context: ModuleContext, ancestor: ResolvedAnce
 };
 
 const inheritedInterfaceKeys = (context: ModuleContext, klass: GirClass): Set<string> => {
-    const keys = new Set<string>();
+    const keys: Set<string> = new Set();
     if (klass.parent === undefined) return keys;
     const parent = context.library.resolveType(context.namespace.name, klass.parent);
     if (parent === undefined || parent.kind !== "class") return keys;

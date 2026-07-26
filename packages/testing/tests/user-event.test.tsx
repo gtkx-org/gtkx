@@ -1,3 +1,4 @@
+import type { ComponentProps, ReactNode } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -24,7 +25,6 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
 import { renderClickButton, renderDragAndDropPair } from "./event-render-setup.js";
@@ -33,7 +33,7 @@ const widgetHasFocus = (w: Gtk.Widget): boolean => w.isFocus();
 
 const expectEditableText = (entry: Gtk.Widget, expected: string): void => {
     if (!(entry instanceof Gtk.Editable)) {
-        throw new Error("Element is not editable");
+        throw new TypeError("Element is not editable");
     }
     expect(entry.getText()).toBe(expected);
 };
@@ -261,11 +261,11 @@ const renderTwoItemListBox = async (selectionMode?: Gtk.SelectionMode): Promise<
     return screen.findByRole(Gtk.AccessibleRole.LIST);
 };
 
-describe("userEvent clipboard", () => {
-    const selectAll = (widget: Gtk.Widget): void => {
-        if (widget instanceof Gtk.Editable) widget.selectRegion(0, -1);
-    };
+const selectAll = (widget: Gtk.Widget): void => {
+    if (widget instanceof Gtk.Editable) widget.selectRegion(0, -1);
+};
 
+describe("userEvent clipboard", () => {
     it("copies a selection and pastes it into another editable", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -401,10 +401,10 @@ describe("userEvent.rotate", () => {
             "Rotate me",
             <GtkGestureRotate onAngleChanged={handleAngleChanged} />,
         );
-        await userEvent.rotate(label, 2.0, 0.5);
+        await userEvent.rotate(label, 2, 0.5);
 
         const [angle, delta] = handleAngleChanged.mock.calls[0] ?? [];
-        expect(angle).toBe(2.0);
+        expect(angle).toBe(2);
         expect(delta).toBe(0.5);
     });
 
@@ -565,7 +565,7 @@ describe("userEvent.drag", () => {
             "Drag me",
             <GtkGestureDrag
                 onDragUpdate={(_offsetX, _offsetY, self) => {
-                    startPoints.push(self.getStartPoint() as [boolean, number, number]);
+                    startPoints.push(self.getStartPoint());
                 }}
             />,
         );
@@ -581,7 +581,7 @@ describe("userEvent.drag", () => {
             "Drag me",
             <GtkGestureDrag
                 onDragUpdate={(_offsetX, _offsetY, self) => {
-                    offsets.push(self.getOffset() as [boolean, number, number]);
+                    offsets.push(self.getOffset());
                 }}
             />,
         );
@@ -592,6 +592,18 @@ describe("userEvent.drag", () => {
             [true, 40, -20],
         ]);
     });
+});
+
+const record = (events: string[]) => ({
+    onDragBegin: () => {
+        events.push("begin");
+    },
+    onDragUpdate: () => {
+        events.push("update");
+    },
+    onDragEnd: () => {
+        events.push("end");
+    },
 });
 
 describe("controller fan-out", () => {
@@ -651,19 +663,7 @@ describe("controller fan-out", () => {
 
     it("delivers a drag sequence to every drag gesture controller", async () => {
         const firstEvents: string[] = [];
-        const secondEvents: string[] = [];
-        const record = (events: string[]) => ({
-            onDragBegin: () => {
-                events.push("begin");
-            },
-            onDragUpdate: () => {
-                events.push("update");
-            },
-            onDragEnd: () => {
-                events.push("end");
-            },
-        });
-        const label = await renderGesturedLabel(
+        const secondEvents: string[] = []; const label = await renderGesturedLabel(
             "multi-dragged",
             "Drag me",
             <>
@@ -683,12 +683,12 @@ describe("controller fan-out", () => {
         await render(
             <GtkEntry
                 name="multi-key"
-                controllers={
+                controllers={(
                     <>
                         <GtkEventControllerKey onKeyPressed={firstPressed} />
                         <GtkEventControllerKey onKeyPressed={secondPressed} />
                     </>
-                }
+                )}
             />,
         );
         const entry = await screen.findByName("multi-key");
@@ -789,12 +789,12 @@ const renderShortcutHost = async (trigger: Gtk.ShortcutTrigger, onActivate: () =
     await render(
         <GtkBox
             name="host"
-            controllers={
+            controllers={(
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.GLOBAL}
                     shortcuts={<GtkShortcut trigger={trigger} action={Gtk.CallbackAction.new(onActivate)} />}
                 />
-            }
+            )}
         >
             <GtkLabel>anchor</GtkLabel>
         </GtkBox>,

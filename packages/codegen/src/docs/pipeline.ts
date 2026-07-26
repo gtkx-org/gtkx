@@ -1,6 +1,6 @@
+import { sortStringsBy } from "@gtkx/utils";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { sortStringsBy } from "@gtkx/utils";
 import { computeGiFingerprint, FINGERPRINT_FILENAME, isGiStoreFresh } from "../fingerprint.js";
 import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
@@ -39,7 +39,7 @@ const MANIFEST_FILENAME = "manifest.json";
 const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]): string => {
     const rows = elements.map((entry, index) => {
         const link = namespace.elements[index]?.link ?? "";
-        const description = firstSentence(entry.klass.doc).replaceAll("|", "\\|");
+        const description = firstSentence(entry.klass.doc).replaceAll("|", String.raw`\|`);
         return `| [${entry.glibName}](${link}) | ${description} |`;
     });
     return [
@@ -65,7 +65,7 @@ const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string
     const librariesList = libraries.map((library) => `\`${library}\``).join(", ");
     return [
         "---",
-        `description: "Generated reference documentation for every JSX element in this project's GIR libraries."`,
+        "description: \"Generated reference documentation for every JSX element in this project's GIR libraries.\"",
         "---",
         "",
         "# Element Reference",
@@ -93,7 +93,7 @@ type GeneratedDocs = {
 };
 
 const groupElementsByNamespace = (elements: GlibNamedClass[]): Map<string, GlibNamedClass[]> => {
-    const byNamespace = new Map<string, GlibNamedClass[]>();
+    const byNamespace: Map<string, GlibNamedClass[]> = new Map();
     for (const entry of elements) {
         const list = byNamespace.get(entry.namespace.name) ?? [];
         list.push(entry);
@@ -103,7 +103,7 @@ const groupElementsByNamespace = (elements: GlibNamedClass[]): Map<string, GlibN
 };
 
 const buildElementLinks = (elements: GlibNamedClass[], basePath: string): Map<string, string> => {
-    const linkByGlibName = new Map<string, string>();
+    const linkByGlibName: Map<string, string> = new Map();
     for (const entry of elements) {
         const directory = namespaceDirectory(entry.namespace);
         const link = `${basePath}/${directory}/${elementSlug(entry.klass.name)}`;

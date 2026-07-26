@@ -43,14 +43,14 @@ describe("loadConfig", () => {
     });
 
     it("accepts a config that omits libraries", async () => {
-        writeConfig(`export default { applicationId: "org.gtk.Demo4" };\n`);
+        writeConfig("export default { applicationId: \"org.gtk.Demo4\" };\n");
         const result = await loadConfig(cwd);
         expect(result.config.libraries).toBeUndefined();
         expect(result.configFile?.endsWith("gtkx.config.ts")).toBe(true);
     });
 
     it('accepts the "*" wildcard for libraries', async () => {
-        writeConfig(`export default { applicationId: "org.gtk.Demo4", libraries: "*" };\n`);
+        writeConfig("export default { applicationId: \"org.gtk.Demo4\", libraries: \"*\" };\n");
         const result = await loadConfig(cwd);
         expect(result.config.libraries).toBe("*");
     });
@@ -73,7 +73,7 @@ describe("loadConfig", () => {
 
     it("applies a c12 $production layer when the mode is production", async () => {
         writeConfig(
-            `export default { applicationId: "org.gtk.Base", $production: { applicationId: "org.gtk.Prod" } };\n`,
+            "export default { applicationId: \"org.gtk.Base\", $production: { applicationId: \"org.gtk.Prod\" } };\n",
         );
         const result = await loadConfig(cwd, { mode: "production" });
         expect(result.config.applicationId).toBe("org.gtk.Prod");
@@ -81,7 +81,7 @@ describe("loadConfig", () => {
 
     it("passes the mode to a function-form config through the c12 context", async () => {
         writeConfig(
-            `export default (env) => ({ applicationId: env.mode === "production" ? "org.gtk.Prod" : "org.gtk.Dev" });\n`,
+            "export default (env) => ({ applicationId: env.mode === \"production\" ? \"org.gtk.Prod\" : \"org.gtk.Dev\" });\n",
         );
         const result = await loadConfig(cwd, { mode: "production" });
         expect(result.config.applicationId).toBe("org.gtk.Prod");
@@ -98,7 +98,7 @@ describe("createConfigLoader", () => {
     });
 
     it("resolves a declared config", async () => {
-        writeConfig(`export default { libraries: ["Gtk-4.0"], applicationId: "org.gtk.Demo4" };\n`);
+        writeConfig("export default { libraries: [\"Gtk-4.0\"], applicationId: \"org.gtk.Demo4\" };\n");
         const resolved = await createConfigLoader()(cwd);
         expect(resolved.applicationId).toBe("org.gtk.Demo4");
         expect(resolved.reactCompiler).toEqual({ target: "19" });
@@ -109,24 +109,24 @@ describe("createConfigLoader", () => {
     });
 
     it("propagates validation errors from the loader", async () => {
-        writeConfig(`export default { applicationId: "not valid" };\n`);
+        writeConfig("export default { applicationId: \"not valid\" };\n");
         await expect(createConfigLoader()(cwd)).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("loads the config once per root", async () => {
-        writeConfig(`export default { applicationId: "org.gtk.Demo4" };\n`);
+        writeConfig("export default { applicationId: \"org.gtk.Demo4\" };\n");
         const load = createConfigLoader();
         const first = await load(cwd);
-        writeConfig(`export default { applicationId: "org.gtk.Changed" };\n`);
+        writeConfig("export default { applicationId: \"org.gtk.Changed\" };\n");
         const second = await load(cwd);
         expect(second).toBe(first);
         expect(second.applicationId).toBe("org.gtk.Demo4");
     });
 
     it("loads distinct roots independently", async () => {
-        writeConfig(`export default { applicationId: "org.gtk.Demo4" };\n`);
+        writeConfig("export default { applicationId: \"org.gtk.Demo4\" };\n");
         const other = mkdtempSync(join(tmpdir(), "gtkx-config-loader-"));
-        writeFileSync(join(other, "gtkx.config.ts"), `export default { applicationId: "org.gtk.Other" };\n`);
+        writeFileSync(join(other, "gtkx.config.ts"), "export default { applicationId: \"org.gtk.Other\" };\n");
         try {
             const load = createConfigLoader();
             expect((await load(cwd)).applicationId).toBe("org.gtk.Demo4");

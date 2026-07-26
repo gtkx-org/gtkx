@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { drain, indexBeforeOrEnd } from "@gtkx/utils";
 import type { ContentChild, ElementNode, ParentNode, TextNode } from "./node.js";
-import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
 import type { Props } from "./registry.js";
+import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
 
 const charLength = (text: string): number => [...text].length;
 
@@ -43,8 +43,8 @@ const enclosingTagNodes = (node: TextNode): ElementNode[] => {
     return nodes;
 };
 
-const dirtyHosts = new Set<ElementNode>();
-const tagTables = new WeakMap<object, Gtk.TextTagTable>();
+const dirtyHosts: Set<ElementNode> = new Set();
+const tagTables: WeakMap<object, Gtk.TextTagTable> = new WeakMap();
 
 export const textRestrictionError = (text: string): Error =>
     new Error(
@@ -80,7 +80,7 @@ export const enclosingHost = (node: TextNode): ElementNode | null => mapElementP
 export const addContent = (host: ElementNode, child: ContentChild, before: ContentChild | null): void => {
     const content = host.content;
     const existing = content.indexOf(child);
-    if (existing >= 0) content.splice(existing, 1);
+    if (existing !== -1) content.splice(existing, 1);
     content.splice(
         indexBeforeOrEnd(content, before, (item, target) => item === target),
         0,
@@ -92,7 +92,7 @@ export const addContent = (host: ElementNode, child: ContentChild, before: Conte
 
 export const removeContent = (host: ElementNode, child: ContentChild): void => {
     const index = host.content.indexOf(child);
-    if (index >= 0) host.content.splice(index, 1);
+    if (index !== -1) host.content.splice(index, 1);
     markTextDirty(host);
 };
 

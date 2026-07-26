@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { listviewWeatherDemo } from "../../../src/demos/lists/listview-weather.js";
 import { renderDemo } from "../../test-utils.js";
 
-const EXPECTED_ITEM_COUNT = 70128;
+const EXPECTED_ITEM_COUNT = 70_128;
 
 const WEATHER_ICON_NAMES = new Set([
     "weather-clear-symbolic",

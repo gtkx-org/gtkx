@@ -114,7 +114,7 @@ export const compileProject = (params: CompileProjectParams): void => {
                 compilerOptions: {
                     ...BASE_COMPILER_OPTIONS,
                     ...params.compilerOptions,
-                    ...(params.paths === undefined ? {} : { paths: params.paths }),
+                    ...(params.paths !== undefined && { paths: params.paths }),
                 },
                 files: params.fileNames.map((name) => `./${name}`),
             }),

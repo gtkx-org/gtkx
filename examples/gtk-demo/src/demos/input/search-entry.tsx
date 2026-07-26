@@ -5,13 +5,13 @@ import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./search-entry.tsx?raw";
 
-interface SearchEntryContextValue {
+type SearchEntryContextValue = {
     searchText: string;
     setSearchText: (value: string) => void;
     searchMode: boolean;
     setSearchMode: (value: boolean) => void;
     handleToggleButtonClicked: (btn: Gtk.ToggleButton) => void;
-}
+};
 
 const SearchEntryContext = createContext<SearchEntryContextValue | null>(null);
 
@@ -44,13 +44,13 @@ const SearchEntryTitlebar = () => {
     const { searchMode, handleToggleButtonClicked } = useSearchEntryContext();
     return (
         <GtkHeaderBar
-            end={
+            end={(
                 <GtkToggleButton
                     iconName="system-search-symbolic"
                     active={searchMode}
                     onToggled={handleToggleButtonClicked}
                 />
-            }
+            )}
         />
     );
 };

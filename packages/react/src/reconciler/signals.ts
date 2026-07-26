@@ -1,7 +1,7 @@
 import { getSignalBaseName, type SignalHandler } from "@gtkx/runtime";
 import { camelCase } from "@gtkx/utils";
-import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import type { SignalTarget } from "./node.js";
+import { type TypeInfo, typeInfoOf } from "./metadata.js";
 
 const NOTIFY_DETAIL_PREFIX = "notify::";
 
@@ -38,9 +38,9 @@ export const connectHandler = (target: SignalTarget, prop: string, signal: strin
     record.wrapped = (...args: unknown[]): unknown => {
         if (record.blockable && isSuppressed()) return undefined;
         return target.dispatch(() =>
-            notifyProperty !== null
-                ? record.handler(Reflect.get(target.object, notifyProperty), target.object)
-                : record.handler(...args, target.object),
+            notifyProperty === null
+                ? record.handler(...args, target.object)
+                : record.handler(Reflect.get(target.object, notifyProperty), target.object),
         );
     };
     target.object.on(signal, record.wrapped);

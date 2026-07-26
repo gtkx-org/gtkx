@@ -1,11 +1,10 @@
+import type { MenuItem } from "@gtkx/react";
+import type { ReactElement, ReactNode, RefObject } from "react";
 import { type Column, ColumnView, type RenderItemArgs } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import type { MenuItem } from "@gtkx/react";
-
 import { render } from "@gtkx/testing";
-import type { ReactElement, ReactNode, RefObject } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderChildren } from "./helpers/render-children.js";
@@ -16,7 +15,7 @@ const cellRenderer = () => <GtkLabel>Cell</GtkLabel>;
 
 type ColumnExtra = Omit<Column, "id" | "title" | "renderCell">;
 
-const defaultColumn = (id: string, title: string, extra?: ColumnExtra): Column<unknown> => ({
+const defaultColumn = (id: string, title: string, extra?: ColumnExtra): Column => ({
     id,
     title,
     expand: true,
@@ -24,11 +23,11 @@ const defaultColumn = (id: string, title: string, extra?: ColumnExtra): Column<u
     ...extra,
 });
 
-interface ActionSpec {
+type ActionSpec = {
     id: string;
     label: string;
     onActivate?: () => void;
-}
+};
 
 const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
     <GSimpleActionGroup
@@ -50,7 +49,7 @@ const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactElement =
 
 const renderColumns = async (
     columnViewRef: RefObject<Gtk.ColumnView | null>,
-    columns: Column<unknown>[],
+    columns: Column[],
     actionGroups?: ReactNode,
 ): Promise<void> => {
     await render(
@@ -69,14 +68,14 @@ const expectHeaderMenuItemCounts = (
     expectedCounts: (number | null)[],
 ): void => {
     const columnView = columnViewRef.current as Gtk.ColumnView;
-    expectedCounts.forEach((expectedCount, index) => {
+    for (const [index, expectedCount] of expectedCounts.entries()) {
         const headerMenu = getColumn(columnView, index).getHeaderMenu();
         if (expectedCount === null) {
             expect(headerMenu).toBeNull();
         } else {
             expect(headerMenu?.getNItems()).toBe(expectedCount);
         }
-    });
+    }
 };
 
 const ROLE_SORT_HIDE_MENU = sectionedMenu("role", [
@@ -261,24 +260,24 @@ describe("render - ColumnViewColumn (5)", () => {
     });
 });
 
+const buildColumnMenu = (columnViewRef: RefObject<Gtk.ColumnView | null>) => (items: string[]) => (
+    <ScrollWrapper>
+        <ColumnView
+            ref={columnViewRef}
+            columns={[
+                defaultColumn("name", "Name", {
+                    headerMenu: flatMenu(
+                        "name",
+                        items.map((label) => ({ id: label, label })),
+                    ),
+                }),
+            ]}
+        />
+    </ScrollWrapper>
+);
+
 describe("render - ColumnViewColumn (6)", () => {
     describe("header menu updates", () => {
-        const buildColumnMenu = (columnViewRef: RefObject<Gtk.ColumnView | null>) => (items: string[]) => (
-            <ScrollWrapper>
-                <ColumnView
-                    ref={columnViewRef}
-                    columns={[
-                        defaultColumn("name", "Name", {
-                            headerMenu: flatMenu(
-                                "name",
-                                items.map((label) => ({ id: label, label })),
-                            ),
-                        }),
-                    ]}
-                />
-            </ScrollWrapper>
-        );
-
         it("dynamically adds menu items", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -384,10 +383,10 @@ describe("render - ColumnViewColumn (9)", () => {
                             columns={[
                                 ...(showColumn
                                     ? [
-                                          defaultColumn("name", "Name", {
-                                              headerMenu: flatMenu("name", [{ id: "action", label: "Action" }]),
-                                          }),
-                                      ]
+                                            defaultColumn("name", "Name", {
+                                                headerMenu: flatMenu("name", [{ id: "action", label: "Action" }]),
+                                            }),
+                                        ]
                                     : []),
                                 defaultColumn("other", "Other"),
                             ]}
@@ -423,9 +422,9 @@ type ShowcasePerson = { name: string; role: string; salary: number };
 type ShowcaseSortColumn = "name" | "role" | "salary" | null;
 
 const showcasePeople: ShowcasePerson[] = [
-    { name: "Alice", role: "Dev", salary: 95000 },
-    { name: "Bob", role: "Designer", salary: 85000 },
-    { name: "Charlie", role: "Manager", salary: 120000 },
+    { name: "Alice", role: "Dev", salary: 95_000 },
+    { name: "Bob", role: "Designer", salary: 85_000 },
+    { name: "Charlie", role: "Manager", salary: 120_000 },
 ];
 
 const sortShowcasePeople = (sortColumn: ShowcaseSortColumn, sortOrder: Gtk.SortType): ShowcasePerson[] => {
@@ -433,7 +432,7 @@ const sortShowcasePeople = (sortColumn: ShowcaseSortColumn, sortOrder: Gtk.SortT
     return [...showcasePeople].sort((a, b) => {
         const av = a[sortColumn];
         const bv = b[sortColumn];
-        const cmp = typeof av === "number" ? av - (bv as number) : String(av).localeCompare(String(bv));
+        const cmp = typeof av === "number" ? av - (bv as number) : av.localeCompare(String(bv));
         return sortOrder === Gtk.SortType.ASCENDING ? cmp : -cmp;
     });
 };

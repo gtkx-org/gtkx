@@ -13,15 +13,20 @@ export const { isVirtual, toVirtualId, fromVirtualId } = createVirtualNamespace(
 export const escapeXml = (value: string): string =>
     value.replaceAll(/[<>&"']/g, (char) => {
         switch (char) {
-            case "<":
+            case "<": {
                 return "&lt;";
-            case ">":
+            }
+            case ">": {
                 return "&gt;";
-            case "&":
+            }
+            case "&": {
                 return "&amp;";
-            case '"':
+            }
+            case "\"": {
                 return "&quot;";
-            default:
+            }
+            default: {
                 return "&apos;";
+            }
         }
     });

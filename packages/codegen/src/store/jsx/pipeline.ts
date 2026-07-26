@@ -60,7 +60,7 @@ type NamespaceFilesOptions = {
 };
 
 const orderedIntrinsicNamespaces = (intrinsicElements: GlibNamedClass[]): GirNamespace[] => {
-    const namespacesWithIntrinsicElements = new Map<string, GirNamespace>();
+    const namespacesWithIntrinsicElements: Map<string, GirNamespace> = new Map();
     for (const entry of intrinsicElements) {
         namespacesWithIntrinsicElements.set(entry.namespace.name, entry.namespace);
     }
@@ -113,7 +113,7 @@ const generateJsxNamespace = (
         intrinsicElements,
         components,
     });
-    const excludeNames = new Set<string>(elementComponents.exportedNames);
+    const excludeNames: Set<string> = new Set(elementComponents.exportedNames);
     const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, library, {
         excludeNames,
         imports,
@@ -121,8 +121,7 @@ const generateJsxNamespace = (
         intrinsicElementByGlibName,
     });
 
-    const body = [imports.toSource().trimEnd()];
-    body.push("", jsxSection);
+    const body = [imports.toSource().trimEnd(), "", jsxSection];
     if (elementComponents.source.length > 0) body.push("", elementComponents.source);
 
     const count = elementComponents.exportedNames.size + intrinsicCount;

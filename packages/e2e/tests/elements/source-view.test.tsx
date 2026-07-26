@@ -178,11 +178,11 @@ describe("render - SourceView (5)", () => {
             await render(
                 <GtkSourceView
                     ref={ref}
-                    buffer={
+                    buffer={(
                         <GtkSourceBuffer language={getLanguage("js")} highlightSyntax={false}>
                             const x = 1;
                         </GtkSourceBuffer>
-                    }
+                    )}
                 />,
             );
 
@@ -300,11 +300,11 @@ describe("render - SourceView (9)", () => {
             await render(
                 <GtkSourceView
                     ref={ref}
-                    buffer={
+                    buffer={(
                         <GtkSourceBuffer language={getLanguage("js")} onHighlightUpdated={onHighlightUpdated}>
                             const x = 1;
                         </GtkSourceBuffer>
-                    }
+                    )}
                 />,
             );
 
@@ -349,7 +349,7 @@ describe("render - SourceView (10)", () => {
             buffer.setText("Change 2", -1);
 
             await new Promise((resolve) => setTimeout(resolve, 50));
-            expect(onChanged.mock.calls.length).toBe(callCountBeforeRemoval);
+            expect(onChanged.mock.calls).toHaveLength(callCountBeforeRemoval);
         });
     });
 });

@@ -1,8 +1,8 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
 import * as p from "@clack/prompts";
 import { isValidApplicationId } from "@gtkx/config/internal";
 import { errorMessage, packageVersion, upperFirst } from "@gtkx/utils";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import { isKnownPackageManager, PACKAGE_MANAGERS, type PackageManager } from "./package-managers.js";
@@ -64,8 +64,8 @@ const suggestApplicationId = (name: string): string => `com.${name.replaceAll("-
 const formatTargetDir = (target: string): string =>
     target
         .trim()
-        .replace(/[<>:"\\|?*]/g, "")
-        .replace(/\/+$/g, "");
+        .replaceAll(/[<>:"\\|?*]/g, "")
+        .replaceAll(/\/+$/g, "");
 
 const deriveProjectName = (target: string): string => basename(resolve(process.cwd(), target));
 
@@ -93,7 +93,7 @@ const guardCancellation = <T>(value: T | symbol): T => {
         p.cancel("Operation canceled");
         process.exit(0);
     }
-    return value as T;
+    return value;
 };
 
 const validateProjectName = (value: string | undefined): string | undefined => {
@@ -160,7 +160,7 @@ const packageManagerHint = (
 
 const packageManagerOption = (manager: (typeof PACKAGE_MANAGERS)[number], detected: PackageManager | undefined) => {
     const hint = packageManagerHint(manager, detected);
-    return { value: manager.value, label: manager.label, ...(hint === undefined ? {} : { hint }) };
+    return { value: manager.value, label: manager.label, ...(hint !== undefined && { hint }) };
 };
 
 const promptPackageManager = async (): Promise<PackageManager> => {
@@ -279,7 +279,7 @@ const toDestinationPath = (templateRelativePath: string, typescript: boolean): s
 
 const addTestScript = (root: string): void => {
     const packageJsonPath = join(root, PACKAGE_JSON_TEMPLATE);
-    const manifest = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as {
+    const manifest = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
         scripts: Record<string, string>;
     };
     manifest.scripts.test = "vitest";
@@ -331,12 +331,12 @@ type InstallAllOptions = {
     devDependencies: string[];
 };
 
+const pin = (names: string[]): string[] => names.map((dependency) => pinGtkxDependency(dependency, selfVersion));
+
 const installAllDependencies = async (options: InstallAllOptions): Promise<void> => {
     const { root, target, packageManager, devDependencies } = options;
     const spinner = p.spinner();
     spinner.start("Installing dependencies...");
-
-    const pin = (names: string[]): string[] => names.map((dependency) => pinGtkxDependency(dependency, selfVersion));
 
     try {
         await installDependencies({ cwd: root, packageManager, dependencies: pin(DEPENDENCIES), dev: false });

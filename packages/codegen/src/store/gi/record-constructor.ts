@@ -1,10 +1,10 @@
 import { sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
-import { renderDescriptor } from "../../analysis/descriptor-render.js";
-import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirField } from "../../gir/field.js";
 import type { GirRecord } from "../../gir/record.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { renderDescriptor } from "../../analysis/descriptor-render.js";
+import { renderTsType } from "../../analysis/ts-type.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { gtypeExprFor } from "./gtype-binding.js";
 import { emitFieldWrite, isEmittableField } from "./record-field-accessor.js";
@@ -33,7 +33,7 @@ export const renderRecordConstructorPropsInterface = (
 
 const renderOpaqueConstructor = (className: string, superCall: string[]): string =>
     renderBlock(
-        `constructor()`,
+        "constructor()",
         [
             ...superCall,
             `throw new globalThis.Error(${sourceStringLiteral(`Cannot construct ${className}: opaque boxed type with no known layout`)});`,

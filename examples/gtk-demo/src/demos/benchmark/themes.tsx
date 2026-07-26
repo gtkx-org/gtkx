@@ -1,18 +1,18 @@
-import * as Adw from "@gtkx/gi/adw";
 import type * as Gdk from "@gtkx/gi/gdk";
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo, DemoProviderProps } from "../types.js";
+import { useTickCallback } from "../../use-tick-callback.js";
 import sourceCode from "./themes.tsx?raw";
 
-interface Theme {
+type Theme = {
     name: string;
     dark: boolean;
-}
+};
 
 const THEMES: Theme[] = [
     { name: "Adwaita", dark: false },
@@ -188,18 +188,18 @@ const ThemesTitlebar = () => {
     return (
         <GtkHeaderBar
             name="themes-header"
-            start={
+            start={(
                 <GtkToggleButton
                     label="Cycle"
                     active={cycling.isRunning}
                     onToggled={(btn) => cycling.handleToggle(btn.getActive())}
                 />
-            }
-            end={
+            )}
+            end={(
                 <GtkLabel widthChars={12} attributes={cycling.fpsAttrs}>
                     {cycling.fps}
                 </GtkLabel>
-            }
+            )}
         />
     );
 };

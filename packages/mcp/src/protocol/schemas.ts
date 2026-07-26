@@ -7,8 +7,7 @@ export const RequestSchema: z.ZodObject<
         id: z.ZodString;
         method: z.ZodString;
         params: z.ZodOptional<z.ZodUnknown>;
-    },
-    z.core.$strip
+    }
 > = z.object({
     id: z.string(),
     method: z.string(),
@@ -18,8 +17,7 @@ export const RequestSchema: z.ZodObject<
 export type Request = z.infer<typeof RequestSchema>;
 
 const ErrorSchema: z.ZodObject<
-    { code: z.ZodNumber; message: z.ZodString; data: z.ZodOptional<z.ZodUnknown> },
-    z.core.$strip
+    { code: z.ZodNumber; message: z.ZodString; data: z.ZodOptional<z.ZodUnknown> }
 > = z.object({
     code: z.number(),
     message: z.string(),
@@ -31,8 +29,7 @@ export const ResponseSchema: z.ZodObject<
         id: z.ZodString;
         result: z.ZodOptional<z.ZodUnknown>;
         error: z.ZodOptional<typeof ErrorSchema>;
-    },
-    z.core.$strip
+    }
 > = z.object({
     id: z.string(),
     result: z.unknown().optional(),
@@ -64,28 +61,25 @@ export const RegisterParamsSchema: z.ZodObject<
         applicationId: z.ZodString;
         pid: z.ZodNumber;
         projectRoot: z.ZodOptional<z.ZodString>;
-    },
-    z.core.$strip
+    }
 > = z.object({
     applicationId: z.string(),
     pid: z.number(),
     projectRoot: z.string().optional(),
 });
 
-const emptyParams: z.ZodObject<Record<string, never>, z.core.$strip> = z.object({});
-export const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }, z.core.$strip> = z.object({
+const emptyParams: z.ZodObject<Record<string, never>> = z.object({});
+export const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }> = z.object({
     widgetId: z.string(),
 });
 export const getTreeParams: z.ZodObject<
-    { rootId: z.ZodOptional<z.ZodString>; maxDepth: z.ZodOptional<z.ZodNumber> },
-    z.core.$strip
+    { rootId: z.ZodOptional<z.ZodString>; maxDepth: z.ZodOptional<z.ZodNumber> }
 > = z.object({
     rootId: z.string().optional(),
     maxDepth: z.number().int().positive().optional(),
 });
 export const queryOptionsSchema: z.ZodObject<
-    { name: z.ZodOptional<z.ZodString>; exact: z.ZodOptional<z.ZodBoolean>; timeout: z.ZodOptional<z.ZodNumber> },
-    z.core.$strip
+    { name: z.ZodOptional<z.ZodString>; exact: z.ZodOptional<z.ZodBoolean>; timeout: z.ZodOptional<z.ZodNumber> }
 > = z.object({
     name: z.string().optional(),
     exact: z.boolean().optional(),
@@ -97,24 +91,20 @@ export const queryParams: z.ZodObject<
         by: z.ZodEnum<{ role: "role"; text: "text"; name: "name"; labelText: "labelText" }>;
         value: z.ZodUnion<[z.ZodString, z.ZodNumber]>;
         options: z.ZodOptional<typeof queryOptionsSchema>;
-    },
-    z.core.$strip
+    }
 > = z.object({
     by: z.enum(["role", "text", "name", "labelText"]),
     value: z.union([z.string(), z.number()]),
     options: queryOptionsSchema.optional(),
 });
 export const typeParams: z.ZodObject<
-    { widgetId: z.ZodString; text: z.ZodString; clear: z.ZodOptional<z.ZodBoolean> },
-    z.core.$strip
+    { widgetId: z.ZodString; text: z.ZodString; clear: z.ZodOptional<z.ZodBoolean> }
 > = z.object({ widgetId: z.string(), text: z.string(), clear: z.boolean().optional() });
 export const fireEventParams: z.ZodObject<
-    { widgetId: z.ZodString; signal: z.ZodString; args: z.ZodOptional<z.ZodArray<z.ZodUnknown>> },
-    z.core.$strip
+    { widgetId: z.ZodString; signal: z.ZodString; args: z.ZodOptional<z.ZodArray<z.ZodUnknown>> }
 > = z.object({ widgetId: z.string(), signal: z.string(), args: z.array(z.unknown()).optional() });
 export const screenshotParams: z.ZodObject<
-    { windowId: z.ZodOptional<z.ZodString>; path: z.ZodOptional<z.ZodString> },
-    z.core.$strip
+    { windowId: z.ZodOptional<z.ZodString>; path: z.ZodOptional<z.ZodString> }
 > = z.object({
     windowId: z.string().optional(),
     path: z.string().optional(),

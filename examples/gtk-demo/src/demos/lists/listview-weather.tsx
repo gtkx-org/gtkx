@@ -2,17 +2,17 @@ import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
-import rawWeatherData from "./listview_weather.txt?raw";
 import sourceCode from "./listview-weather.tsx?raw";
+import rawWeatherData from "./listview_weather.txt?raw";
 
 type WeatherType = "clear" | "few-clouds" | "fog" | "overcast" | "showers-scattered" | "showers" | "snow" | "storm";
 
-interface WeatherInfo {
+type WeatherInfo = {
     id: string;
     hour: string;
     temperature: number;
     weatherType: WeatherType;
-}
+};
 
 const WEATHER_ICONS: Record<WeatherType, string> = {
     clear: "weather-clear-symbolic",

@@ -186,17 +186,17 @@ describe("userEvent actionability - insensitive keyboard targets", () => {
             <GtkBox
                 name="host"
                 sensitive={false}
-                controllers={
+                controllers={(
                     <GtkShortcutController
                         scope={Gtk.ShortcutScope.GLOBAL}
-                        shortcuts={
+                        shortcuts={(
                             <GtkShortcut
                                 trigger={Gtk.ShortcutTrigger.parseString("F5")}
                                 action={Gtk.CallbackAction.new(onActivate)}
                             />
-                        }
+                        )}
                     />
-                }
+                )}
             >
                 <GtkLabel>anchor</GtkLabel>
             </GtkBox>,
@@ -297,7 +297,7 @@ describe("userEvent actionability - timeout error", () => {
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" });
         await expect(userEvent.click(button)).rejects.toThrow(
             'Cannot dispatch user event: <Button name="save-button" role="button"> did not become actionable ' +
-                "within 60ms because it is not sensitive (the widget or one of its ancestors is disabled)",
+            "within 60ms because it is not sensitive (the widget or one of its ancestors is disabled)",
         );
     });
 

@@ -1,8 +1,8 @@
+import type { ParseContext } from "./type-id.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { type GirSignal, parseCallable } from "./parameter.js";
 import { attr, attrBool, childrenOf, docOf, GIR_CONSTRUCTOR_TAG, nameAttr, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
-import type { ParseContext } from "./type-id.js";
 
 export type GirClass = {
     name: string;

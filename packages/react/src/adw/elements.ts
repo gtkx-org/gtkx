@@ -1,5 +1,6 @@
-import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Adw from "@gtkx/gi/adw";
+import type { AlertDialogResponse } from "./prop-types.js";
 import {
     addRemoveSlot,
     adoptedChildrenSlot,
@@ -11,20 +12,19 @@ import {
     slot,
 } from "../reconciler/behaviors.js";
 import { type ElementConfig, type ModuleExport, registerElements } from "../reconciler/registry.js";
-import type { AlertDialogResponse } from "./prop-types.js";
 
 type AdwChildSetter =
-    | Adw.Bin
-    | Adw.BreakpointBin
-    | Adw.Clamp
-    | Adw.ClampScrollable
-    | Adw.Dialog
-    | Adw.NavigationPage
-    | Adw.SplitButton
-    | Adw.StatusPage
-    | Adw.TabOverview
-    | Adw.ToastOverlay
-    | Adw.Toggle;
+    | Adw.Bin |
+    Adw.BreakpointBin |
+    Adw.Clamp |
+    Adw.ClampScrollable |
+    Adw.Dialog |
+    Adw.NavigationPage |
+    Adw.SplitButton |
+    Adw.StatusPage |
+    Adw.TabOverview |
+    Adw.ToastOverlay |
+    Adw.Toggle;
 
 type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.Flap | Adw.OverlaySplitView | Adw.Window;
 type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;

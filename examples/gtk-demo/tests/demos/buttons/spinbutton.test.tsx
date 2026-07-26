@@ -85,7 +85,7 @@ describe("spinbuttonDemo custom input parsing", () => {
         await userEvent.clear(hexButton);
         await userEvent.type(hexButton, "0xff");
         await userEvent.keyboard(hexButton, "{Enter}");
-        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 0xff } })).toBeTruthy();
+        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 0xFF } })).toBeTruthy();
     });
 
     it("clamps a signed hexadecimal value to the adjustment lower bound via the '-' sign branch", async () => {

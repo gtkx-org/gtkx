@@ -1,5 +1,5 @@
-import { callbackAsFunction, type GirCallback } from "../../gir/callback.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { callbackAsFunction, type GirCallback } from "../../gir/callback.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderMethodReturnType, renderMethodSignature } from "./method.js";
 

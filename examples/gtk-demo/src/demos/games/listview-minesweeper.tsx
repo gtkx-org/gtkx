@@ -1,7 +1,7 @@
-import { existsSync } from "node:fs";
 import { GridView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/jsx/gtk";
+import { existsSync } from "node:fs";
 import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
@@ -9,14 +9,14 @@ import sourceCode from "./listview-minesweeper.tsx?raw";
 const GRID_SIZE = 8;
 const MINE_COUNT = 10;
 
-interface Cell {
+type Cell = {
     id: string;
     row: number;
     col: number;
     isMine: boolean;
     isRevealed: boolean;
     adjacentMines: number;
-}
+};
 
 type GameState = "playing" | "won" | "lost";
 
@@ -108,12 +108,12 @@ const getCellDisplay = (cell: Cell): string => {
     return String(cell.adjacentMines);
 };
 
-interface MinesweeperContextValue {
+type MinesweeperContextValue = {
     board: Cell[];
     gameState: GameState;
     handleCellClick: (index: number) => void;
     resetGame: () => void;
-}
+};
 
 const MinesweeperContext = createContext<MinesweeperContextValue | null>(null);
 

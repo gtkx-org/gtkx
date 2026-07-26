@@ -1,5 +1,5 @@
-import { render } from "@gtkx/testing";
 import type { ReactNode } from "react";
+import { render } from "@gtkx/testing";
 import { expect, vi } from "vitest";
 
 export type BufferChangedViewBuilder = (onChanged: () => void, text: string) => ReactNode;

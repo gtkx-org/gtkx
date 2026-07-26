@@ -1,5 +1,5 @@
-import { GtkButton } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
+import { GtkButton } from "@gtkx/jsx/gtk";
 
 export const ConstraintChildButtons = (): ReactNode => (
     <>

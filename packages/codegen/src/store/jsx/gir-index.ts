@@ -1,7 +1,7 @@
-import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
+import { ancestorChain } from "../../gir/ancestry.js";
 import { glibNameOf, implementedInterfaces } from "./intrinsic-elements.js";
 
 export type GirTypeEntry = {
@@ -30,7 +30,7 @@ const indexClasses = (
 };
 
 export const buildGirIndex = (library: Library): GirIndex => {
-    const index = new Map<string, GirTypeEntry>();
+    const index: Map<string, GirTypeEntry> = new Map();
     for (const namespace of library.namespaces.values()) {
         indexClasses(index, namespace.classes, namespace, false);
         indexClasses(index, namespace.interfaces, namespace, true);

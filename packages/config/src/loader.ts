@@ -1,7 +1,7 @@
+import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { loadConfig as loadConfigFile } from "c12";
-import { type Config, type ResolvedConfig, resolveConfig, validateConfig } from "./config.js";
+import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from "./config.js";
 
 /**
  * Result of loading a `gtkx.config.ts` file: the parsed configuration, the
@@ -32,7 +32,7 @@ export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): 
         globalRc: false,
         packageJson: false,
         context: { mode: options.mode },
-        ...(options.mode !== undefined ? { envName: options.mode } : {}),
+        ...((options.mode !== undefined) && { envName: options.mode }),
     });
 
     const config = result.config;
@@ -50,7 +50,7 @@ export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): 
 export type ConfigLoader = (cwd: string) => Promise<ResolvedConfig>;
 
 export const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
-    const cache = new Map<string, Promise<ResolvedConfig>>();
+    const cache: Map<string, Promise<ResolvedConfig>> = new Map();
     const loadResolved = async (root: string): Promise<ResolvedConfig> => {
         const { config } = await loadConfig(root, options);
         validateConfig(config);

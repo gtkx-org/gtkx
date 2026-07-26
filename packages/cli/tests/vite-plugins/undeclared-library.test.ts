@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { gtkxUndeclaredLibrary } from "../../src/vite-plugins/undeclared-library.js";
-
 import type { ResolveIdHook } from "./plugin-hook-types.js";
+
+import { gtkxUndeclaredLibrary } from "../../src/vite-plugins/undeclared-library.js";
 
 type ConfigHook = (config: { root?: string }) => void;
 
@@ -71,7 +71,7 @@ describe("gtkxUndeclaredLibrary (resolveId)", () => {
         setupProject(["Bindable-1.gir"]);
         await expect(resolveMissing("@gtkx/gi/bindable")).rejects.toThrow(
             'Cannot resolve "@gtkx/gi/bindable": the "Bindable-1" bindings have not been generated. ' +
-                'Add "Bindable-1" to `libraries` in gtkx.config.ts, then run gtkx dev or gtkx build again.',
+            "Add \"Bindable-1\" to `libraries` in gtkx.config.ts, then run gtkx dev or gtkx build again.",
         );
     });
 
@@ -84,8 +84,8 @@ describe("gtkxUndeclaredLibrary (resolveId)", () => {
     it("reports the searched paths when no GIR data provides the namespace", async () => {
         setupProject(["Bindable-1.gir"]);
         await expect(resolveMissing("@gtkx/gi/nosuchnamespace")).rejects.toThrow(
-            `Cannot resolve "@gtkx/gi/nosuchnamespace": the binding store has no "nosuchnamespace" module, ` +
-                `and no GIR data for it was found in [${girDir}`,
+            "Cannot resolve \"@gtkx/gi/nosuchnamespace\": the binding store has no \"nosuchnamespace\" module, " +
+            `and no GIR data for it was found in [${girDir}`,
         );
     });
 

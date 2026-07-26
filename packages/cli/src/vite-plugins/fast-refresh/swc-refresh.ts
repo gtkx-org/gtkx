@@ -1,6 +1,6 @@
-import { fileURLToPath } from "node:url";
-import { type Output, type Options as SwcOptions, transform } from "@swc/core";
 import type { Plugin } from "vite";
+import { type Output, type Options as SwcOptions, transform } from "@swc/core";
+import { fileURLToPath } from "node:url";
 import { REFRESH_REG, REFRESH_RUNTIME_SPECIFIER, REFRESH_SIG, shouldTransformForRefresh } from "./refresh-filter.js";
 
 const buildSwcOptions = (id: string): SwcOptions => {
@@ -53,7 +53,7 @@ export function gtkxRefreshRuntime(): Plugin {
         apply: "serve",
 
         resolveId(id) {
-            if (id !== REFRESH_RUNTIME_SPECIFIER) return undefined;
+            if (id !== REFRESH_RUNTIME_SPECIFIER) return;
             return fileURLToPath(import.meta.resolve(REFRESH_RUNTIME_SPECIFIER));
         },
 

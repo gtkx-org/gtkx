@@ -1,15 +1,15 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import type { UserEventState } from "./state.js";
 import { emitPress, emitRelease } from "./click.js";
 import { getOrCreateControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
-import type { UserEventState } from "./state.js";
 
 /** A pointer action token: a full click (`click`, `[MouseLeft]`), a button press (`down`, `[MouseLeft>]`), or a button release (`up`, `[/MouseLeft]`). */
 export type PointerInput = "click" | "down" | "up" | "[MouseLeft]" | "[MouseLeft>]" | "[/MouseLeft]";
 
-const PRESS_INPUTS = new Set<PointerInput>(["[MouseLeft>]", "down"]);
-const RELEASE_INPUTS = new Set<PointerInput>(["[/MouseLeft]", "up"]);
-const CLICK_INPUTS = new Set<PointerInput>(["[MouseLeft]", "click"]);
+const PRESS_INPUTS: Set<PointerInput> = new Set(["[MouseLeft>]", "down"]);
+const RELEASE_INPUTS: Set<PointerInput> = new Set(["[/MouseLeft]", "up"]);
+const CLICK_INPUTS: Set<PointerInput> = new Set(["[MouseLeft]", "click"]);
 
 const applyPointerInput = (widget: Gtk.Widget, state: UserEventState, input: PointerInput): void => {
     const controllers = getOrCreateControllers(widget, Gtk.GestureClick);

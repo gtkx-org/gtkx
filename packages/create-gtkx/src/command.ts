@@ -22,7 +22,7 @@ const parsePackageManager = (value: string | undefined): PackageManager | undefi
 };
 
 export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
-    const interactive = args["no-interactive"] ? false : args.yes ? false : process.stdin.isTTY === true;
+    const interactive = args["no-interactive"] || args.yes ? false : process.stdin.isTTY;
     await scaffold({
         name: args.name,
         applicationId: args["application-id"],

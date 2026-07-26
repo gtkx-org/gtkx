@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { ElementType, ReactNode, Ref, RefCallback } from "react";
 import { GtkSizeGroup } from "@gtkx/jsx/gtk";
 import { useMergedRef } from "@gtkx/react/internal";
-import type { ElementType, ReactNode, Ref, RefCallback } from "react";
 import { createContext, useCallback, useContext, useState } from "react";
 import type { SizeGroupChildProps, SizeGroupProps } from "./types.js";
 

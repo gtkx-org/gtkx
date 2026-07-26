@@ -134,12 +134,12 @@ const BlendStack = ({ ref, visible }: { ref?: Ref<Gtk.Stack | null>; visible: bo
     </GtkStack>
 );
 
-interface BlendPageProps {
+type BlendPageProps = {
     labels: [string, string];
     leftClass: string;
     rightClass: string;
     blendClass: string;
-}
+};
 
 const BlendPage = ({ labels, leftClass, rightClass, blendClass }: BlendPageProps) => (
     <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} vexpand rowSpacing={12} columnSpacing={12}>

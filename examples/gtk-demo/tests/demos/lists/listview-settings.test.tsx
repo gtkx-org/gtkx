@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as GLib from "@gtkx/gi/glib";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -29,7 +29,7 @@ const collectEditableLabels = (widget: Gtk.Widget, out: Gtk.EditableLabel[] = []
     return out;
 };
 
-const itemCount = (cv: Gtk.ColumnView): number => (cv.getModel() as Gtk.SelectionModel | null)?.getNItems() ?? 0;
+const itemCount = (cv: Gtk.ColumnView): number => (cv.getModel())?.getNItems() ?? 0;
 
 const selectFirstSchemaWithKeys = async (): Promise<Gtk.ColumnView> => {
     const sidebar = (await screen.findByName("sidebar")) as Gtk.ListView;
@@ -47,11 +47,11 @@ const openKeySearch = async (): Promise<Gtk.SearchEntry> => {
     return (await screen.findByName("search-entry")) as Gtk.SearchEntry;
 };
 
-interface FilteredToZeroState {
+type FilteredToZeroState = {
     columnView: Gtk.ColumnView;
     full: number;
     entry: Gtk.SearchEntry;
-}
+};
 
 const filterKeysToZero = async (): Promise<FilteredToZeroState> => {
     await renderDemo(listviewSettingsDemo);
@@ -216,7 +216,7 @@ describe("listviewSettingsDemo value editing", () => {
             target.setText(flipped);
             await waitFor(() => expect(target.getText()).toBe(flipped));
             expect(setValueSpy).toHaveBeenCalled();
-            const committed = setValueSpy.mock.calls.some((call) => (call[1] as GLib.Variant).print(false) === flipped);
+            const committed = setValueSpy.mock.calls.some((call) => (call[1]).print(false) === flipped);
             expect(committed).toBe(true);
         } finally {
             setValueSpy.mockRestore();

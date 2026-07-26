@@ -25,10 +25,10 @@ import {
 } from "@gtkx/jsx/gtk";
 import { useEffect, useRef, useState } from "react";
 import { path as trashSvgPath } from "#data/demos/gestures/user-trash-opening.gpa";
+import type { Demo } from "../types.js";
 import { at } from "../../transform.js";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
-import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
 
 const buildRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
@@ -112,7 +112,7 @@ const ITEM_SIZE = 40;
 
 type ItemStyle = { type: "default" } | { type: "rgba"; cssColor: string } | { type: "cssClass"; className: string };
 
-interface CanvasItem {
+type CanvasItem = {
     id: string;
     label: string;
     style: ItemStyle;
@@ -120,19 +120,19 @@ interface CanvasItem {
     y: number;
     angle: number;
     angleDelta: number;
-}
+};
 
 const gdkRgbaType = Gdk.RGBA.prototype.__type__;
 
-interface ContextMenuState {
+type ContextMenuState = {
     x: number;
     y: number;
     itemId: string | null;
-}
+};
 
-interface EditState {
+type EditState = {
     itemId: string;
-}
+};
 
 function createRotationTransform(halfW: number, halfH: number, angle: number): Gsk.Transform | undefined {
     if (angle === 0) return undefined;
@@ -313,7 +313,7 @@ function useEntryFocusEffect(editState: EditState | null, entryRef: React.RefObj
     }, [editState, entryRef]);
 }
 
-interface DndHandlerArgs {
+type DndHandlerArgs = {
     items: CanvasItem[];
     setItems: React.Dispatch<React.SetStateAction<CanvasItem[]>>;
     contextMenu: ContextMenuState | null;
@@ -321,7 +321,7 @@ interface DndHandlerArgs {
     setEditState: (e: EditState | null) => void;
     setTrashHovering: (v: boolean) => void;
     refs: DndRefs;
-}
+};
 
 function useDndHandlers(args: DndHandlerArgs) {
     const itemHandlers = useItemHandlers(args);
@@ -494,7 +494,7 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                 }}
                 name={`item${item.id}`}
                 cssClasses={cx(itemStyle, ...getItemStyleClass(item.style))}
-                controllers={
+                controllers={(
                     <>
                         <GtkGestureClick
                             onReleased={() => {
@@ -530,7 +530,7 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                             onEnd={() => handlers.handleRotateEnd(item.id)}
                         />
                     </>
-                }
+                )}
             >
                 {item.label}
             </GtkLabel>
@@ -594,12 +594,12 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
     );
 };
 
-interface DndTrashZoneProps {
+type DndTrashZoneProps = {
     boxRef: React.RefObject<Gtk.Box | null>;
     trashHovering: boolean;
     setTrashHovering: (v: boolean) => void;
     handleTrashDrop: (value: GObject.Value) => boolean;
-}
+};
 
 const loadTrashPaintable = (): Gtk.Svg => {
     const bytes = Gio.resourcesLookupData(trashSvgPath, Gio.ResourceLookupFlags.NONE);
@@ -628,7 +628,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
                     css`padding: 12px;`,
                     trashHovering ? css`background-color: alpha(@error_color, 0.2); border-radius: 12px;` : "",
                 ]}
-                controllers={
+                controllers={(
                     <GtkDropTarget
                         types={[GObject.TYPE_STRING]}
                         actions={Gdk.DragAction.MOVE}
@@ -649,7 +649,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
                             return handleTrashDrop(value);
                         }}
                     />
-                }
+                )}
             >
                 <GtkImage paintable={svg} pixelSize={64} cssClasses={["error"]} onRealize={attachFrameClockAndPlay} />
             </GtkBox>
@@ -688,15 +688,14 @@ const DndDemo = () => {
                 hexpand
                 vexpand
                 cssClasses={[css`min-height: 400px;`]}
-                controllers={
+                controllers={(
                     <>
                         <GtkDropTarget
                             types={[GObject.TYPE_STRING]}
                             actions={Gdk.DragAction.MOVE}
                             onMotion={() => Gdk.DragAction.MOVE}
                             onDrop={(value: GObject.Value, dropX: number, dropY: number) =>
-                                dnd.handlers.handleCanvasDrop(value, dropX, dropY)
-                            }
+                                dnd.handlers.handleCanvasDrop(value, dropX, dropY)}
                         />
                         <GtkGestureClick
                             ref={contextMenuGesture.ref}
@@ -705,7 +704,7 @@ const DndDemo = () => {
                             onReleased={contextMenuGesture.onReleased}
                         />
                     </>
-                }
+                )}
             >
                 {dnd.items.map((item) => (
                     <DndItem key={item.id} item={item} dnd={dnd} />

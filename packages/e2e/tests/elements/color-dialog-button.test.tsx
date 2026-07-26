@@ -1,5 +1,5 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gdk from "@gtkx/gi/gdk";
 import { GtkColorDialog, GtkColorDialogButton } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactElement } from "react";
@@ -28,16 +28,16 @@ describe("render - ColorDialogButton (1)", () => {
 
     it("creates ColorDialogButton with initial rgba", async () => {
         const ref = createRef<Gtk.ColorDialogButton>();
-        const rgba = makeRgba(1.0, 0.5, 0.25, 1.0);
+        const rgba = makeRgba(1, 0.5, 0.25, 1);
 
         await render(<GtkColorDialogButton ref={ref} rgba={rgba} />);
 
         expect(ref.current).not.toBeNull();
         const currentRgba = ref.current?.getRgba();
-        expect(currentRgba?.red).toBeCloseTo(1.0);
+        expect(currentRgba?.red).toBeCloseTo(1);
         expect(currentRgba?.green).toBeCloseTo(0.5);
         expect(currentRgba?.blue).toBeCloseTo(0.25);
-        expect(currentRgba?.alpha).toBeCloseTo(1.0);
+        expect(currentRgba?.alpha).toBeCloseTo(1);
     });
 
     it("updates rgba when prop changes", async () => {
@@ -47,19 +47,19 @@ describe("render - ColorDialogButton (1)", () => {
             return <GtkColorDialogButton ref={ref} rgba={color} />;
         }
 
-        const initialColor = makeRgba(1.0, 0.0, 0.0, 1.0);
+        const initialColor = makeRgba(1, 0, 0, 1);
         await render(<App color={initialColor} />);
 
         const rgba1 = ref.current?.getRgba();
-        expect(rgba1?.red).toBeCloseTo(1.0);
-        expect(rgba1?.green).toBeCloseTo(0.0);
+        expect(rgba1?.red).toBeCloseTo(1);
+        expect(rgba1?.green).toBeCloseTo(0);
 
-        const newColor = makeRgba(0.0, 1.0, 0.0, 1.0);
+        const newColor = makeRgba(0, 1, 0, 1);
         await render(<App color={newColor} />);
 
         const rgba2 = ref.current?.getRgba();
-        expect(rgba2?.red).toBeCloseTo(0.0);
-        expect(rgba2?.green).toBeCloseTo(1.0);
+        expect(rgba2?.red).toBeCloseTo(0);
+        expect(rgba2?.green).toBeCloseTo(1);
     });
 });
 

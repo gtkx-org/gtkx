@@ -14,8 +14,8 @@ import {
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { useEffect, useRef, useState } from "react";
-import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo } from "../types.js";
+import { useTickCallback } from "../../use-tick-callback.js";
 import { createVertexBuffer, setShaderSource } from "./gl-helpers.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
@@ -1104,7 +1104,7 @@ const SHADER_PRESETS = [
 
 const QUAD_VERTICES = [-1, -1, 0, 1, -1, 1, 0, 1, 1, 1, 0, 1, -1, -1, 0, 1, 1, 1, 0, 1, 1, -1, 0, 1];
 
-interface GLState {
+type GLState = {
     program: number;
     vao: number;
     vbo: number;
@@ -1115,16 +1115,16 @@ interface GLState {
         frame: number;
         mouse: number;
     };
-}
+};
 
-interface AnimState {
+type AnimState = {
     firstFrameTime: number;
     firstFrame: number;
     time: number;
     timedelta: number;
     frame: number;
     mouse: [number, number, number, number];
-}
+};
 
 const createInitialAnimState = (): AnimState => ({
     firstFrameTime: 0,
@@ -1232,13 +1232,13 @@ const drawShaderFrame = (state: GLState, anim: AnimState, resolution: [number, n
     gl.useProgram(0);
 };
 
-interface RenderShaderArgs {
+type RenderShaderArgs = {
     glStateRef: React.RefObject<GLState | null>;
     animRef: React.RefObject<AnimState>;
     resolution: [number, number, number];
     self: Gtk.GLArea;
     shaderCode: string;
-}
+};
 
 const renderShaderFrame = ({ glStateRef, animRef, resolution, self, shaderCode }: RenderShaderArgs): boolean => {
     if (!glStateRef.current) {
@@ -1288,12 +1288,12 @@ function useShadertoyRefs() {
     return { glAreaRef, glStateRef, sourceViewRef, resolutionRef, animRef };
 }
 
-interface CompileShadertoyArgs {
+type CompileShadertoyArgs = {
     glAreaRef: React.RefObject<Gtk.GLArea | null>;
     glStateRef: React.RefObject<GLState | null>;
     animRef: React.RefObject<AnimState>;
     imageShader: string;
-}
+};
 
 const compileShadertoyShader = ({ glAreaRef, glStateRef, animRef, imageShader }: CompileShadertoyArgs): boolean => {
     const area = glAreaRef.current;
@@ -1434,13 +1434,13 @@ function useShadertoyEditor(
     return { handleRun, handleClear, loadPreset };
 }
 
-interface ShadertoyGLAreaPanelProps {
+type ShadertoyGLAreaPanelProps = {
     glAreaRef: React.RefObject<Gtk.GLArea | null>;
     handleRender: (context: Gdk.GLContext, self: Gtk.GLArea) => boolean;
     handleResize: (width: number, height: number) => void;
     handleUnrealize: () => void;
     dragHandlers: ReturnType<typeof useShadertoyDrag>;
-}
+};
 
 const ShadertoyGLAreaPanel = ({
     glAreaRef,
@@ -1460,13 +1460,13 @@ const ShadertoyGLAreaPanel = ({
                 onUnrealize={handleUnrealize}
                 hexpand
                 vexpand
-                controllers={
+                controllers={(
                     <GtkGestureDrag
                         onDragBegin={dragHandlers.handleDragBegin}
                         onDragUpdate={dragHandlers.handleDragUpdate}
                         onDragEnd={dragHandlers.handleDragEnd}
                     />
-                }
+                )}
             />
         </GtkGraphicsOffload>
     </GtkAspectFrame>
@@ -1498,15 +1498,15 @@ const ShadertoyEditor = ({
     );
 };
 
-interface ShadertoyControlsProps {
+type ShadertoyControlsProps = {
     onRun: () => void;
     onClear: () => void;
     onLoadPreset: (code: string) => void;
-}
+};
 
 const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsProps) => (
     <GtkCenterBox
-        startWidget={
+        startWidget={(
             <GtkBox spacing={6}>
                 <GtkButton
                     iconName="view-refresh-symbolic"
@@ -1523,8 +1523,8 @@ const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsPr
                     onClicked={onClear}
                 />
             </GtkBox>
-        }
-        endWidget={
+        )}
+        endWidget={(
             <GtkBox spacing={6}>
                 {SHADER_PRESETS.map((preset) => (
                     <GtkButton
@@ -1537,7 +1537,7 @@ const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsPr
                     </GtkButton>
                 ))}
             </GtkBox>
-        }
+        )}
     />
 );
 

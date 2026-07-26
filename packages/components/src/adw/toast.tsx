@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/gi/adw";
 import type { ReactNode, RefObject } from "react";
+import * as Adw from "@gtkx/gi/adw";
 import { createContext, useContext, useMemo } from "react";
 import type { ToastController, ToastOptions, ToastOverlayController, ToastProviderProps } from "./types.js";
 

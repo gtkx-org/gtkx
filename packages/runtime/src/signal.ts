@@ -1,4 +1,5 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
+import type { TypedClass } from "./type.js";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind, createBindCache } from "./bind.js";
 import { wrapCallback } from "./callback.js";
@@ -15,7 +16,6 @@ import {
 import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
-import type { TypedClass } from "./type.js";
 import {
     fromValue,
     getBoxedValue,

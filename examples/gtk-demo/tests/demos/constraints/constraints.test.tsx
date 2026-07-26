@@ -28,12 +28,12 @@ const boundsIn = (widget: Gtk.Widget, container: Gtk.Widget) => {
     return rect;
 };
 
-interface AllocatedLayout {
+type AllocatedLayout = {
     button1: Gtk.Button;
     button2: Gtk.Button;
     button3: Gtk.Button;
     container: Gtk.Box;
-}
+};
 
 const renderAndAllocate = async (): Promise<AllocatedLayout> => {
     await renderDemo(constraintsDemo);

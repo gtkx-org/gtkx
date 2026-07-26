@@ -45,6 +45,7 @@ export function installMixins(target: AnyClass, mixins: Mixin[]): void {
         connect(): number {
             return 0;
         }
+
         emit(): unknown {
             return undefined;
         }

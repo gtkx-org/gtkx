@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { sanitizeIdentifier, sourceStringLiteral, toCamelIdentifier } from "../src/source/index.js";
 
-const LINE_SEPARATOR = String.fromCharCode(0x2028);
-const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
+const LINE_SEPARATOR = String.fromCharCode(0x20_28);
+const PARAGRAPH_SEPARATOR = String.fromCharCode(0x20_29);
 
 describe("sanitizeIdentifier", () => {
     it("leaves a non-reserved identifier unchanged", () => {
@@ -57,6 +57,6 @@ describe("sourceStringLiteral", () => {
     });
 
     it("preserves the standard JSON escapes for quotes and backslashes", () => {
-        expect(sourceStringLiteral('a"b\\c')).toBe('"a\\"b\\\\c"');
+        expect(sourceStringLiteral(String.raw`a"b\c`)).toBe(String.raw`"a\"b\\c"`);
     });
 });

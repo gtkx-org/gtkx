@@ -11,12 +11,14 @@ const installAdjustment = (row: Adw.SpinRow, lower: number, upper: number, value
     return adjustment;
 };
 
-interface ListenerClearedCase<Widget> {
+type ListenerClearedCase<Widget> = {
     renderRow: (ref: RefObject<Widget | null>, handler: Mock | null) => ReactElement;
     afterMount?: (row: Widget) => void;
     fireFirst: (row: Widget) => void;
     fireSecond: (row: Widget) => void;
-}
+};
+
+let setActiveHandler: (next: Mock | null) => void = () => {};
 
 const expectListenerClearedWhenHandlerNull = async <Widget,>({
     renderRow,
@@ -25,10 +27,7 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
     fireSecond,
 }: ListenerClearedCase<Widget>) => {
     const handler = vi.fn();
-    const ref = createRef<Widget>();
-    let setActiveHandler: (next: Mock | null) => void = () => {};
-
-    const Harness = () => {
+    const ref = createRef<Widget>(); const Harness = () => {
         const [active, setActive] = useState<Mock | null>(handler);
         setActiveHandler = setActive;
         return renderRow(ref, active);
@@ -47,7 +46,7 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
     await rerender(<Harness />);
 
     await act(() => fireSecond(row));
-    expect(handler.mock.calls.length).toBe(callsBefore);
+    expect(handler.mock.calls).toHaveLength(callsBefore);
 };
 
 describe("render - SpinRow (1)", () => {

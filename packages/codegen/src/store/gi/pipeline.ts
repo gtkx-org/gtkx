@@ -1,7 +1,7 @@
-import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirAlias, GirNamespace } from "../../gir/namespace.js";
+import { renderTsType } from "../../analysis/ts-type.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../../gir/primitives.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import { ModuleContext } from "../../writer/context.js";
@@ -78,7 +78,7 @@ const visitClass = (state: TopologicalState, klass: GirClass): void => {
 };
 
 const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirClass[] => {
-    const byLocalName = new Map<string, GirClass>();
+    const byLocalName: Map<string, GirClass> = new Map();
     for (const klass of classes) byLocalName.set(klass.name, klass);
     const state: TopologicalState = {
         namespaceName,

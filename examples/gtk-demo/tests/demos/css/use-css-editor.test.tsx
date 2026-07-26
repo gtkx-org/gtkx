@@ -4,9 +4,9 @@ import { render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { useCssEditor } from "../../../src/demos/css/use-css-editor.js";
 
-interface HostProps {
+type HostProps = {
     defaultCss: string;
-}
+};
 
 const Host = ({ defaultCss }: HostProps) => {
     const editor = useCssEditor(defaultCss);

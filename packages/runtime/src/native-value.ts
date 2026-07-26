@@ -21,9 +21,9 @@ const fundamentalFromNative = (descriptor: FundamentalDescriptor, value: unknown
     value == null
         ? null
         : wrapHandle(
-              value as ExternalObject<Handle>,
-              descriptor.wrapperClass ?? getWrapperClass(resolveDescriptorType(descriptor)),
-          );
+                value as ExternalObject<Handle>,
+                descriptor.wrapperClass ?? getWrapperClass(resolveDescriptorType(descriptor)),
+            );
 
 const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): unknown => {
     if (value === null) return null;
@@ -46,20 +46,27 @@ const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): u
  */
 export function fromNative(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {
-        case "object":
+        case "object": {
             return wrapHandle(value as ExternalObject<Handle> | null, undefined);
-        case "struct":
+        }
+        case "struct": {
             return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);
-        case "boxed":
+        }
+        case "boxed": {
             return boxedFromNative(descriptor, value);
-        case "fundamental":
+        }
+        case "fundamental": {
             return fundamentalFromNative(descriptor, value);
-        case "array":
+        }
+        case "array": {
             return collectionFromNative(descriptor, value);
-        case "hashtable":
+        }
+        case "hashtable": {
             return hashTableFromNative(descriptor, value);
-        default:
+        }
+        default: {
             return value;
+        }
     }
 }
 
@@ -71,10 +78,12 @@ export function toNative(descriptor: Descriptor, value: unknown): unknown {
         case "object":
         case "struct":
         case "boxed":
-        case "fundamental":
+        case "fundamental": {
             return tryGetHandle(value as object | null | undefined) ?? null;
-        case "array":
+        }
+        case "array": {
             return collectionToNative(descriptor, value);
+        }
         case "hashtable": {
             if (value == null) return null;
             return [...(value as Map<unknown, unknown>)].map(([key, val]): [unknown, unknown] => [
@@ -82,7 +91,8 @@ export function toNative(descriptor: Descriptor, value: unknown): unknown {
                 toNative(descriptor.valueDescriptor, val),
             ]);
         }
-        default:
+        default: {
             return value;
+        }
     }
 }

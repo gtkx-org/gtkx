@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { callArgs, GTK_LIB } from "./helpers/native-utils.js";
 
-const fixturesDir = dirname(fileURLToPath(new URL("./fixtures/com.gtkx.test.useSetting.gschema.xml", import.meta.url)));
+const fixturesDir = dirname(fileURLToPath(new URL("fixtures/com.gtkx.test.useSetting.gschema.xml", import.meta.url)));
 execFileSync("glib-compile-schemas", [fixturesDir], { stdio: "ignore" });
 
 const existing = process.env.GSETTINGS_SCHEMA_DIR;
@@ -12,7 +12,7 @@ process.env.GSETTINGS_SCHEMA_DIR = existing ? `${fixturesDir}:${existing}` : fix
 process.env.GSETTINGS_BACKEND = "memory";
 
 const collectGarbage = (): void => {
-    if (global.gc) global.gc();
+    if (globalThis.gc) globalThis.gc();
 };
 
 afterEach(collectGarbage);

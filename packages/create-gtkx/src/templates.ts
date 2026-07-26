@@ -1,7 +1,7 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { sortStrings } from "@gtkx/utils";
 import ejs from "ejs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 export type TemplateContext = {
     name: string;
@@ -26,6 +26,6 @@ export const listTemplates = (): string[] =>
     );
 
 export const renderFile = (templateName: string, context: TemplateContext): string => {
-    const templateContent = readFileSync(join(getTemplatesDir(), `${templateName}.ejs`), "utf-8");
+    const templateContent = readFileSync(join(getTemplatesDir(), `${templateName}.ejs`), "utf8");
     return ejs.render(templateContent, context);
 };

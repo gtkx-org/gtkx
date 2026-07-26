@@ -17,9 +17,9 @@ export type TextExpectation = string | RegExp;
 
 type MatcherResult = { pass: boolean; message: () => string };
 
-interface MatcherContext {
+type MatcherContext = {
     isNot: boolean;
-}
+};
 
 type TextMatcher = (this: MatcherContext, received: unknown, expected?: TextExpectation) => MatcherResult;
 type StateMatcher = (this: MatcherContext, received: unknown) => MatcherResult;
@@ -35,7 +35,7 @@ const asWidget = (received: unknown, matcherName: string): Gtk.Widget => {
 const describeWidget = (widget: Gtk.Widget): string => {
     const role = Gtk.AccessibleRole[widget.getAccessibleRole()];
     const name = getWidgetAccessibleName(widget);
-    return name !== null ? `<${role} name=${JSON.stringify(name)}>` : `<${role}>`;
+    return name === null ? `<${role}>` : `<${role} name=${JSON.stringify(name)}>`;
 };
 
 const matchesText = (actual: string, expected: TextExpectation, mode: "exact" | "substring"): boolean => {
@@ -88,7 +88,7 @@ const booleanStateMatcher = (
         if (state === null) {
             throw new Error(
                 `${matcherName}: widget does not expose a ${stateName} state ` +
-                    `(role ${Gtk.AccessibleRole[widget.getAccessibleRole()]})\n${describeWidget(widget)}`,
+                `(role ${Gtk.AccessibleRole[widget.getAccessibleRole()]})\n${describeWidget(widget)}`,
             );
         }
         return {
@@ -124,8 +124,8 @@ export const toHaveValue: ValueMatcher = function (
     const actual = getWidgetValue(widget).now;
     if (actual === null) {
         throw new Error(
-            `toHaveValue: widget does not expose a numeric value ` +
-                `(role ${Gtk.AccessibleRole[widget.getAccessibleRole()]})\n${describeWidget(widget)}`,
+            "toHaveValue: widget does not expose a numeric value " +
+            `(role ${Gtk.AccessibleRole[widget.getAccessibleRole()]})\n${describeWidget(widget)}`,
         );
     }
     return {
@@ -135,7 +135,7 @@ export const toHaveValue: ValueMatcher = function (
     };
 };
 
-interface MatcherImplementations {
+type MatcherImplementations = {
     toHaveDisplayValue: TextMatcher;
     toHaveTextContent: TextMatcher;
     toHaveAccessibleName: TextMatcher;
@@ -145,7 +145,7 @@ interface MatcherImplementations {
     toBeExpanded: StateMatcher;
     toBeSelected: StateMatcher;
     toHaveValue: ValueMatcher;
-}
+};
 
 /** The widget assertion matchers keyed by name, suitable for passing to `expect.extend`. */
 export const matchers: MatcherImplementations = {
@@ -181,7 +181,7 @@ export const registerMatchers = (): void => {
     registered = true;
 };
 
-interface WidgetMatchers<R = void> {
+type WidgetMatchers<R = void> = {
     toHaveDisplayValue(expected?: TextExpectation): R;
     toHaveTextContent(expected?: TextExpectation): R;
     toHaveAccessibleName(expected?: TextExpectation): R;
@@ -191,10 +191,12 @@ interface WidgetMatchers<R = void> {
     toBeExpanded(): R;
     toBeSelected(): R;
     toHaveValue(expected: number): R;
-}
+};
 
 declare module "@vitest/expect" {
-    // biome-ignore lint/suspicious/noExplicitAny: must match the `Assertion<T>` signature it augments for declaration merging
+    /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- must match the `Assertion<T>` signature it augments
     interface Assertion<T = any> extends WidgetMatchers {}
     interface AsymmetricMatchersContaining extends WidgetMatchers {}
+    /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }

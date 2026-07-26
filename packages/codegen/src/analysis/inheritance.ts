@@ -1,13 +1,13 @@
 import { camelCase, lowerFirst, pascalCase, toCamelIdentifier } from "@gtkx/utils";
-import { ancestorChain, type ResolvedAncestor, resolveInterface } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { ModuleContext } from "../writer/context.js";
+import { ancestorChain, type ResolvedAncestor, resolveInterface } from "../gir/ancestry.js";
 import { methodExportName } from "../store/gi/method.js";
 import { resolveAccessorType } from "../store/gi/property-accessor.js";
-import type { ModuleContext } from "../writer/context.js";
 import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
 
@@ -82,7 +82,7 @@ const forEachInheritedProperty = (
 export type OwnedProperty = { owner: GirClass; property: GirProperty };
 
 const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<string> => {
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     for (const property of klass.properties) seen.add(toCamelIdentifier(property.name));
     forEachInheritedProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
     return seen;
@@ -126,7 +126,7 @@ const recordAncestorSignatures = (
 };
 
 const ancestorClassMethodSignatures = (context: ModuleContext, klass: GirClass): Map<string, MethodSignature> => {
-    const signatures = new Map<string, MethodSignature>();
+    const signatures: Map<string, MethodSignature> = new Map();
     forEachAncestor(context, klass, (ancestor) => recordAncestorSignatures(context, ancestor.klass, signatures));
     return signatures;
 };
@@ -160,7 +160,7 @@ export const collectInterfaceMergeOmissions = (
 };
 
 export const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, string> => {
-    const types = new Map<string, string>();
+    const types: Map<string, string> = new Map();
     const record = (owner: GirClass, property: GirProperty): void => {
         const jsName = toCamelIdentifier(property.name);
         if (types.has(jsName)) return;
@@ -246,7 +246,7 @@ const methodsConflict = (options: {
         inheritedReturn !== ownReturn ||
         hasParameterEnumConflict(context, callable, inheritedMethod) ||
         inputParameters(context.library, callable).length !==
-            inputParameters(context.library, inheritedMethod.method).length
+        inputParameters(context.library, inheritedMethod.method).length
     );
 };
 

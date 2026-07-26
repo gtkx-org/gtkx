@@ -55,7 +55,7 @@
         "@gtkx/react": "workspace:*"
     },
     "peerDependencies": {
-        "react": "^19"
+        "react": "^19.2"
     },
     "devDependencies": {
         "@codspeed/vitest-plugin": "^5.7.1",

@@ -19,13 +19,13 @@ import { type ReactNode, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox-controls.tsx?raw";
 
-interface LabeledRowProps {
+type LabeledRowProps = {
     labelText: string;
     useUnderline?: boolean;
     activatable?: boolean;
     mnemonicWidget?: Gtk.Widget | null;
     children: ReactNode;
-}
+};
 
 const LabeledRow = ({ labelText, useUnderline, activatable, mnemonicWidget, children }: LabeledRowProps) => (
     <GtkListBoxRow selectable={false} activatable={activatable}>
@@ -46,7 +46,7 @@ const LabeledRow = ({ labelText, useUnderline, activatable, mnemonicWidget, chil
     </GtkListBoxRow>
 );
 
-interface Group1ListProps {
+type Group1ListProps = {
     switchRef: React.RefObject<Gtk.Switch | null>;
     checkRef: React.RefObject<Gtk.CheckButton | null>;
     imageRef: React.RefObject<Gtk.Image | null>;
@@ -56,7 +56,7 @@ interface Group1ListProps {
     setCheckActive: React.Dispatch<React.SetStateAction<boolean>>;
     imageOpacity: number;
     onRowActivated: (row: Gtk.ListBoxRow) => void;
-}
+};
 
 const Group1List = ({
     switchRef,

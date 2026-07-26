@@ -5,18 +5,18 @@ import { describe, expect, it, vi } from "vitest";
 import { themesDemo } from "../../../src/demos/benchmark/themes.js";
 import { getChildren, renderDemo } from "../../test-utils.js";
 
-vi.setConfig({ testTimeout: 30000 });
+vi.setConfig({ testTimeout: 30_000 });
 
 const THEME_TITLES = ["Adwaita", "Adwaita (dark)", "HighContrast", "HighContrastInverse"];
 
 const FPS_SETTLE_MS = 1200;
 
-interface CycleContext {
+type CycleContext = {
     cycle: Gtk.ToggleButton;
     alert: Adw.AlertDialog;
     header: Gtk.HeaderBar;
     window: Gtk.Window;
-}
+};
 
 const activateCycleAndAwaitAlert = async (): Promise<CycleContext> => {
     await renderDemo(themesDemo);

@@ -1,5 +1,5 @@
-import { attr, attrBool, childOf, childrenOf, docOf, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
+import { attr, attrBool, childOf, childrenOf, docOf, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 type ParameterDirection = "in" | "out" | "inout";

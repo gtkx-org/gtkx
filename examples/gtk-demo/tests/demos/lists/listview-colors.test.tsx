@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import { listviewColorsDemo } from "../../../src/demos/lists/listview-colors.js";
 import { renderDemo } from "../../test-utils.js";
 
-vi.setConfig({ testTimeout: 30000 });
+vi.setConfig({ testTimeout: 30_000 });
 
-interface ColorLike {
+type ColorLike = {
     name: string;
     r: number;
     g: number;
@@ -14,7 +14,7 @@ interface ColorLike {
     h: number;
     s: number;
     v: number;
-}
+};
 
 const colorAt = (model: Gtk.MultiSelection, index: number): ColorLike => {
     const obj = model.getItem(index);

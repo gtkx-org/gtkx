@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { listviewUcdDemo } from "../../../src/demos/lists/listview-ucd.js";
 import { renderDemo } from "../../test-utils.js";
 
-vi.setConfig({ testTimeout: 30000 });
+vi.setConfig({ testTimeout: 30_000 });
 
 const codepointCells = (): Gtk.Inscription[] =>
     screen.queryAllByText(/^0x[0-9a-f]{4,6}$/).map((widget) => widget as Gtk.Inscription);
@@ -42,9 +42,9 @@ describe("listviewUcdDemo column view", () => {
         const headers = await screen.findAllByRole(Gtk.AccessibleRole.COLUMN_HEADER);
         const expectedTitles = ["Codepoint", "Char", "Name", "Type", "Break Type", "Combining Class"];
         expect(headers).toHaveLength(expectedTitles.length);
-        expectedTitles.forEach((title, i) => {
+        for (const [i, title] of expectedTitles.entries()) {
             expect(headers[i]).toHaveAccessibleName(title);
-        });
+        }
     });
 
     it("groups the first section under the 'No script' heading and renders codepoint cells", async () => {

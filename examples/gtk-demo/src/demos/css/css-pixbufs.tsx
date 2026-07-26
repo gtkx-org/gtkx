@@ -101,7 +101,7 @@ const CssPixbufsDemo = () => {
             name="paned"
             orientation={Gtk.Orientation.VERTICAL}
             startChild={<GtkBox orientation={Gtk.Orientation.VERTICAL} />}
-            endChild={
+            endChild={(
                 <GtkScrolledWindow name="scrolled">
                     <GtkTextView
                         name="text-view"
@@ -109,7 +109,7 @@ const CssPixbufsDemo = () => {
                         buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
                     />
                 </GtkScrolledWindow>
-            }
+            )}
         />
     );
 };

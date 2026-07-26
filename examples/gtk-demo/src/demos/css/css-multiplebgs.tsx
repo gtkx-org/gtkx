@@ -10,8 +10,8 @@ import {
     GtkTextBuffer,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import brickUri from "#data/demos/css/brick.png";
 import brick2Uri from "#data/demos/css/brick2.png";
+import brickUri from "#data/demos/css/brick.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-multiplebgs.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
@@ -178,7 +178,7 @@ const CssMultiplebgsDemo = () => {
                         name="paned"
                         orientation={Gtk.Orientation.VERTICAL}
                         startChild={<GtkBox />}
-                        endChild={
+                        endChild={(
                             <GtkScrolledWindow>
                                 <GtkTextView
                                     name="text-view"
@@ -186,7 +186,7 @@ const CssMultiplebgsDemo = () => {
                                     buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
                                 />
                             </GtkScrolledWindow>
-                        }
+                        )}
                     />
                 </GtkOverlayLayoutChild>,
             ]}

@@ -46,5 +46,5 @@ const buildElement = (typeName: string, record: Props): ReactElement => {
 
 export const createElementComponent =
     (typeName: string): ((props: unknown) => ReactNode) =>
-    (props: unknown): ReactNode =>
-        buildElement(typeName, isRecord(props) ? props : {});
+        (props: unknown): ReactNode =>
+            buildElement(typeName, isRecord(props) ? props : {});

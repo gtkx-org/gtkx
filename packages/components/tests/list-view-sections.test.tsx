@@ -1,16 +1,15 @@
-import { ListView, type Section } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { ListView, type Section } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
-interface Row {
+type Row = {
     name: string;
-}
+};
 
 const sectioned: Section<string, Row>[] = [
     {

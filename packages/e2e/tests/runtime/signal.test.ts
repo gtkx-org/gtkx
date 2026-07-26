@@ -10,8 +10,7 @@ describe("emitSignal — basic dispatch", () => {
 
         button.emit("clicked");
 
-        expect(handler).toHaveBeenCalledOnce();
-        expect(handler).toHaveBeenCalledWith();
+        expect(handler).toHaveBeenCalledExactlyOnceWith();
     });
 
     it("emits a signal with primitive arguments and forwards them to the handler", () => {
@@ -21,8 +20,7 @@ describe("emitSignal — basic dispatch", () => {
 
         window.emit("enable-debugging", true);
 
-        expect(handler).toHaveBeenCalledOnce();
-        expect(handler).toHaveBeenCalledWith(true);
+        expect(handler).toHaveBeenCalledExactlyOnceWith(true);
     });
 
     it("returns undefined from any signal emission", () => {
@@ -55,8 +53,7 @@ describe("emitSignal — inheritance and errors", () => {
 
         listBox.emit("row-activated", row);
 
-        expect(handler).toHaveBeenCalledOnce();
-        expect(handler).toHaveBeenCalledWith(row);
+        expect(handler).toHaveBeenCalledExactlyOnceWith(row);
     });
 
     it("throws on an unknown signal at the GObject root", () => {

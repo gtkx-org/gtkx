@@ -223,7 +223,7 @@ describe("assertPublishedShape", () => {
 });
 
 const sourceMap = (sources: string[], sourcesContent?: (string | null)[]): string =>
-    JSON.stringify({ version: 3, sources, ...(sourcesContent === undefined ? {} : { sourcesContent }) });
+    JSON.stringify({ version: 3, sources, ...(sourcesContent !== undefined && { sourcesContent }) });
 
 describe("assertPublishedShape source maps", () => {
     it("accepts a declaration map whose source is shipped alongside it", () => {

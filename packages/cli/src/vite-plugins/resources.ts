@@ -1,10 +1,10 @@
+import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
+import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
+import { error, formatChildProcessError, info } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
-import { error, formatChildProcessError, info } from "@gtkx/utils";
-import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { DATA_IMPORT_PREFIX, resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
@@ -68,13 +68,13 @@ const stageBundle = (dir: string, entries: Map<string, ResourceEntry>): string =
     const prefix = escapeXml(MANIFEST_PREFIX);
     const manifest = join(dir, "gtkx.gresource.xml");
     const xml = [
-        `<?xml version="1.0" encoding="UTF-8"?>`,
-        `<gresources>`,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+        "<gresources>",
         `    <gresource prefix="${prefix}">`,
         ...fileNodes,
-        `    </gresource>`,
-        `</gresources>`,
-        ``,
+        "    </gresource>",
+        "</gresources>",
+        "",
     ].join("\n");
     writeFileSync(manifest, xml);
     return manifest;
@@ -95,10 +95,12 @@ const runCompiler = (sourceDir: string, manifest: string, outputPath: string): B
 };
 
 const ensureStagingDir = (state: PluginState): void => {
-    if (!state.devStagingDir) {
-        state.devStagingDir = mkdtempSync(join(tmpdir(), "gtkx-resources-dev-"));
-        state.devBundlePath = join(state.devStagingDir, BUNDLE_FILENAME);
+    if (state.devStagingDir) {
+        return;
     }
+
+    state.devStagingDir = mkdtempSync(join(tmpdir(), "gtkx-resources-dev-"));
+    state.devBundlePath = join(state.devStagingDir, BUNDLE_FILENAME);
 };
 
 const entriesSignature = (state: PluginState): string =>
@@ -184,7 +186,7 @@ const loadAssetModule = (state: PluginState, virtualId: string): string => {
 
     return [
         `import { ensureRegistered } from ${JSON.stringify(VIRTUAL_INIT)};`,
-        `ensureRegistered();`,
+        "ensureRegistered();",
         `export default ${JSON.stringify(uri)};`,
         `export const path = ${JSON.stringify(entry.resourcePath)};`,
     ].join("\n");
@@ -204,8 +206,8 @@ const refreshDevRegistration = async (state: PluginState): Promise<void> => {
     compileDevBundle(state);
     try {
         await reregisterDevBundle(state);
-    } catch (cause) {
-        error("Failed to refresh GResource bundle:", cause);
+    } catch (error_) {
+        error("Failed to refresh GResource bundle:", error_);
     }
 };
 
@@ -221,8 +223,8 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
     state.server = server;
     const onFileEvent = (file: string): void => {
         if (!isTrackedSource(state, file)) return;
-        refreshDevRegistration(state).catch((cause) => {
-            error("GResource refresh failed:", cause);
+        refreshDevRegistration(state).catch((error_) => {
+            error("GResource refresh failed:", error_);
         });
     };
     server.watcher.on("change", onFileEvent);

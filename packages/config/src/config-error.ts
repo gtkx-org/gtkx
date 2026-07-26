@@ -3,7 +3,7 @@ import type { z } from "zod";
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 
-type IssuePath = Array<string | number>;
+type IssuePath = (string | number)[];
 
 export const rawIssue = (input: unknown, path: IssuePath, message: string, standalone = false) => ({
     code: "custom" as const,
@@ -11,7 +11,7 @@ export const rawIssue = (input: unknown, path: IssuePath, message: string, stand
     path,
     message,
     continue: true as const,
-    ...(standalone ? { params: { standalone: true } } : {}),
+    ...(standalone && { params: { standalone: true } }),
 });
 
 const CONFIG_PREFIX = "gtkx.config.ts:";

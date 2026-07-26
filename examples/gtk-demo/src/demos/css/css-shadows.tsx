@@ -59,14 +59,14 @@ const CssShadowsDemo = () => {
             name="paned"
             orientation={Gtk.Orientation.VERTICAL}
             resizeStartChild={false}
-            startChild={
+            startChild={(
                 <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
                     <GtkButton iconName="go-next" accessibleLabel="Go Next" />
                     <GtkButton iconName="go-previous" accessibleLabel="Go Previous" />
                     <GtkButton label="Hello World" />
                 </GtkBox>
-            }
-            endChild={
+            )}
+            endChild={(
                 <GtkScrolledWindow>
                     <GtkTextView
                         name="text-view"
@@ -74,7 +74,7 @@ const CssShadowsDemo = () => {
                         buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
                     />
                 </GtkScrolledWindow>
-            }
+            )}
         />
     );
 };

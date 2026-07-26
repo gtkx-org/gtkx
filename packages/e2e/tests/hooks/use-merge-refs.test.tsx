@@ -1,18 +1,23 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { Ref } from "react";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { useMergedRef } from "@gtkx/react/internal";
 import { render, renderHook } from "@gtkx/testing";
-import type { Ref } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-interface Target {
+type Target = {
     id: number;
-}
+};
 
 const detachOf = (result: ReturnType<ReturnType<typeof useMergedRef<Target>>>): (() => void) => {
     if (typeof result !== "function") throw new Error("expected the merged ref to return a cleanup");
     return result;
 };
+
+const renderSwappableRef = (initialRef: Ref<Target | null>) =>
+    renderHook(({ ref }: { ref: Ref<Target | null> }) => useMergedRef<Target>(ref), {
+        initialProps: { ref: initialRef },
+    });
 
 describe("useMergedRef", () => {
     it("passes the attached value to callback refs and ref objects", async () => {
@@ -59,14 +64,7 @@ describe("useMergedRef", () => {
 
         expect(objectRef.current).toBeNull();
         expect(callbackCleanup).toHaveBeenCalledTimes(1);
-    });
-
-    const renderSwappableRef = (initialRef: Ref<Target | null>) =>
-        renderHook(({ ref }: { ref: Ref<Target | null> }) => useMergedRef<Target>(ref), {
-            initialProps: { ref: initialRef },
-        });
-
-    it("forwards to the swapped ref object", async () => {
+    }); it("forwards to the swapped ref object", async () => {
         const first: { current: Target | null } = { current: null };
         const second: { current: Target | null } = { current: null };
         const value: Target = { id: 1 };

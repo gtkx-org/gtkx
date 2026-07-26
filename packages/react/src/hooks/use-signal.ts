@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
-import { useLayoutEffect } from "react";
+import { useEffectEvent, useLayoutEffect } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
 type SignalsOf<T extends GObject.Object> = NonNullable<T["__signals__"]>;
@@ -10,10 +10,10 @@ export type SignalNameOf<T extends GObject.Object> = keyof SignalsOf<T> | `${key
 export type SignalHandlerFor<T extends GObject.Object, S extends string> = S extends keyof SignalsOf<T>
     ? SignalsOf<T>[S]
     : S extends `${infer TBase}::${string}`
-      ? TBase extends keyof SignalsOf<T>
-          ? SignalsOf<T>[TBase]
-          : SignalHandler
-      : SignalHandler;
+        ? TBase extends keyof SignalsOf<T>
+            ? SignalsOf<T>[TBase]
+            : SignalHandler
+        : SignalHandler;
 
 type UseSignalOptions = {
     after?: boolean;
@@ -22,6 +22,9 @@ type UseSignalOptions = {
 
 /**
  * Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the object changes.
+ *
+ * Each emission runs the handler from the latest render, so it does not have to be stable and a
+ * changing handler never reconnects the signal.
  *
  * @param object The GObject (or ref to one) to connect to.
  * @param signal The signal name, optionally with a detail suffix.
@@ -34,17 +37,17 @@ export function useSignal<T extends GObject.Object, S extends SignalNameOf<T> & 
     handler: SignalHandlerFor<T, S>,
     { after = false, immediate = false }: UseSignalOptions = {},
 ): void {
-    const handlerFn = handler as SignalHandler;
+    const emit = useEffectEvent(handler as SignalHandler);
 
     useLayoutEffect(() => {
         const resolved = resolveRefProp(object);
         if (!resolved) return;
 
-        resolved.on(signal, handlerFn, after);
-        if (immediate) handlerFn();
+        resolved.on(signal, emit, after);
+        if (immediate) emit();
 
         return () => {
-            resolved.off(signal, handlerFn);
+            resolved.off(signal, emit);
         };
-    }, [object, signal, handlerFn, after, immediate]);
+    }, [object, signal, after, immediate]);
 }

@@ -14,7 +14,7 @@ export const isClassStructRecord = (library: Library, namespaceName: string, rec
     const qualified = qualify(namespaceName, record.name);
     if (TYPE_STRUCT_ROOTS.has(qualified) || EXPLICIT_CLASS_STRUCTS.has(qualified)) return true;
     const first = record.fields[0];
-    if (first === undefined || first.type === undefined) return false;
+    if (first?.type === undefined) return false;
     const name = library.nameOf(first.type);
     if (name === undefined) return false;
     return TYPE_STRUCT_ROOTS.has(qualify(name.namespaceName, name.typeName));
@@ -25,13 +25,16 @@ export const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined
     const type = context.library.typeOf(ref);
     if (type === undefined) return false;
     switch (type.kind) {
-        case "record":
+        case "record": {
             return isClassStructRecord(context.library, type.namespace.name, type.value);
+        }
         case "carray":
-        case "list":
+        case "list": {
             return refIsClassStruct(context, type.element);
-        default:
+        }
+        default: {
             return false;
+        }
     }
 };
 

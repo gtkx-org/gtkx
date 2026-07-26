@@ -48,14 +48,14 @@ const requireCall = (calls: InsertedCall[], index: number): InsertedCall => {
 
 const buildReplaceable =
     (viewRef: Ref<Gtk.TextView | null>, calls: InsertedCall[]) =>
-    (icon: string, show: boolean): ReactNode => (
-        <ReplaceableHarness
-            viewRef={viewRef}
-            icon={icon}
-            show={show}
-            onInserted={(buffer, mark) => calls.push({ buffer, mark })}
-        />
-    );
+        (icon: string, show: boolean): ReactNode => (
+            <ReplaceableHarness
+                viewRef={viewRef}
+                icon={icon}
+                show={show}
+                onInserted={(buffer, mark) => calls.push({ buffer, mark })}
+            />
+        );
 
 const ReplaceableHarness = ({
     viewRef,
@@ -72,13 +72,13 @@ const ReplaceableHarness = ({
     return (
         <GtkTextView
             ref={viewRef}
-            buffer={
+            buffer={(
                 <GtkTextBuffer>
                     {"before "}
                     {show && paintable ? <TextPaintable paintable={paintable} onInserted={onInserted} /> : null}
                     {" after"}
                 </GtkTextBuffer>
-            }
+            )}
         />
     );
 };
@@ -91,7 +91,9 @@ describe("render - TextPaintable", () => {
                 viewRef={viewRef}
                 content={(paintable) => (
                     <>
-                        Inline icon: {paintable ? <TextPaintable paintable={paintable} /> : null}
+                        Inline icon:
+                        {" "}
+                        {paintable ? <TextPaintable paintable={paintable} /> : null}
                         {" end"}
                     </>
                 )}

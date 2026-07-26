@@ -1,8 +1,8 @@
+import * as Gsk from "@gtkx/gi/gsk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import * as Gsk from "@gtkx/gi/gsk";
-import * as Gtk from "@gtkx/gi/gtk";
 import type { ScreenshotOptions, ScreenshotResult, WindowSelector } from "./types.js";
 import { waitFor } from "./wait-for.js";
 

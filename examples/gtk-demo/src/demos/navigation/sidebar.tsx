@@ -28,17 +28,19 @@ const SidebarDemo = () => {
             <GtkStack ref={setStack} name="stack" transitionType={Gtk.StackTransitionType.SLIDE_UP_DOWN} hexpand>
                 {pages.map((title, index) => (
                     <GtkStackPage key={title} name={title} title={title}>
-                        {index === 0 ? (
-                            <GtkImage
-                                gicon={demoIcon}
-                                pixelSize={256}
-                                cssClasses={["icon-dropshadow"]}
-                                halign={Gtk.Align.CENTER}
-                                valign={Gtk.Align.CENTER}
-                            />
-                        ) : (
-                            <GtkLabel>{title}</GtkLabel>
-                        )}
+                        {index === 0
+                            ? (
+                                    <GtkImage
+                                        gicon={demoIcon}
+                                        pixelSize={256}
+                                        cssClasses={["icon-dropshadow"]}
+                                        halign={Gtk.Align.CENTER}
+                                        valign={Gtk.Align.CENTER}
+                                    />
+                                )
+                            : (
+                                    <GtkLabel>{title}</GtkLabel>
+                                )}
                     </GtkStackPage>
                 ))}
             </GtkStack>

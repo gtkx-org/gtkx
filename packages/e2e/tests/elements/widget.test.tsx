@@ -1,3 +1,4 @@
+import type { ComponentProps, ReactNode } from "react";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -20,7 +21,6 @@ import {
 } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement } from "@gtkx/react";
 import { render as baseRender, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import type { ComponentProps, ReactNode } from "react";
 import { createRef, useState } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
@@ -256,32 +256,55 @@ describe("widget - props (1)", () => {
     });
 });
 
+function SameLabel() {
+    return <GtkLabel label="Same" />;
+}
+
+function TextLabel({ text }: { text: string }) {
+    return <GtkLabel label={text} />;
+}
+
+function OptionalLabel({ label }: { label?: string | undefined }) {
+    return <GtkLabel label={label} />;
+}
+
+function CountingButton({ prefix }: { prefix: string }) {
+    const [count, setCount] = useState(0);
+    return <GtkButton onClicked={() => setCount((c) => c + 1)} label={`${prefix}: ${count}`} />;
+}
+
+function LabelListBox({ items }: { items: string[] }) {
+    return <GtkListBox>{labelItems(items)}</GtkListBox>;
+}
+
+function LabelList({ count }: { count: number }) {
+    return (
+        <GtkBox>
+            {Array.from({ length: count }, (_, i) => (
+                <GtkLabel key={`label-${i}`}>Label {i}</GtkLabel>
+            ))}
+        </GtkBox>
+    );
+}
+
 describe("widget - props (2)", () => {
     describe("change detection (1)", () => {
         it("skips update when value unchanged", async () => {
-            function App() {
-                return <GtkLabel label="Same" />;
-            }
-
-            const { rerender } = await render(<App />);
+            const { rerender } = await render(<SameLabel />);
 
             const label = await screen.findByText("Same");
             expect(label).toBeDefined();
 
-            await rerender(<App />);
+            await rerender(<SameLabel />);
 
             expect(screen.queryByText("Same")).not.toBeNull();
         });
 
         it("applies update when value changed", async () => {
-            function App({ text }: { text: string }) {
-                return <GtkLabel label={text} />;
-            }
-
-            const { rerender } = await render(<App text="Initial" />);
+            const { rerender } = await render(<TextLabel text="Initial" />);
             await screen.findByText("Initial");
 
-            await rerender(<App text="Updated" />);
+            await rerender(<TextLabel text="Updated" />);
 
             await waitFor(() => {
                 expect(screen.queryByText("Updated")).not.toBeNull();
@@ -289,13 +312,9 @@ describe("widget - props (2)", () => {
         });
 
         it("handles undefined to value transition", async () => {
-            function App({ label }: { label?: string | undefined }) {
-                return <GtkLabel label={label} />;
-            }
+            const { rerender } = await render(<OptionalLabel label={undefined} />);
 
-            const { rerender } = await render(<App label={undefined} />);
-
-            await rerender(<App label="Now Set" />);
+            await rerender(<OptionalLabel label="Now Set" />);
 
             expect(await screen.findByText("Now Set")).toBeDefined();
         });
@@ -305,14 +324,10 @@ describe("widget - props (2)", () => {
 describe("widget - props (3)", () => {
     describe("change detection (2)", () => {
         it("preserves the last-set value when a prop transitions to undefined", async () => {
-            function App({ label }: { label?: string | undefined }) {
-                return <GtkLabel label={label} />;
-            }
-
-            const { rerender } = await render(<App label="Has Value" />);
+            const { rerender } = await render(<OptionalLabel label="Has Value" />);
             await screen.findByText("Has Value");
 
-            await rerender(<App label={undefined} />);
+            await rerender(<OptionalLabel label={undefined} />);
 
             expect(screen.getByText("Has Value")).toBeDefined();
         });
@@ -514,12 +529,7 @@ describe("widget - signals (4)", () => {
 describe("widget - signals (5)", () => {
     describe("user interactions with waitFor", () => {
         it("waits for state update after click", async () => {
-            function Counter() {
-                const [count, setCount] = useState(0);
-                return <GtkButton onClicked={() => setCount((c) => c + 1)} label={`Count: ${count}`} />;
-            }
-
-            await render(<Counter />);
+            await render(<CountingButton prefix="Count" />);
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Count: 0" });
             await userEvent.click(button);
@@ -530,12 +540,7 @@ describe("widget - signals (5)", () => {
         });
 
         it("handles multiple rapid clicks", async () => {
-            function Counter() {
-                const [count, setCount] = useState(0);
-                return <GtkButton onClicked={() => setCount((c) => c + 1)} label={`Clicks: ${count}`} />;
-            }
-
-            await render(<Counter />);
+            await render(<CountingButton prefix="Clicks" />);
 
             let button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Clicks: 0" });
 
@@ -782,18 +787,8 @@ describe("widget - child management > GtkBox", () => {
     });
 
     it("removes children", async () => {
-        function App({ count }: { count: number }) {
-            return (
-                <GtkBox>
-                    {Array.from({ length: count }, (_, i) => (
-                        <GtkLabel key={`label-${i}`}>Label {i}</GtkLabel>
-                    ))}
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App count={3} />);
-        await rerender(<App count={1} />);
+        const { rerender } = await render(<LabelList count={3} />);
+        await rerender(<LabelList count={1} />);
 
         expect(screen.getAllByText(/Label/)).toHaveLength(1);
     });
@@ -856,12 +851,8 @@ describe("widget - auto-wrapping (2)", () => {
         });
 
         it("reorders children", async () => {
-            function App({ items }: { items: string[] }) {
-                return <GtkListBox>{labelItems(items)}</GtkListBox>;
-            }
-
-            const { rerender } = await render(<App items={["first", "second"]} />);
-            await rerender(<App items={["second", "first"]} />);
+            const { rerender } = await render(<LabelListBox items={["first", "second"]} />);
+            await rerender(<LabelListBox items={["second", "first"]} />);
 
             expect(screen.getByText("first")).toBeDefined();
             expect(screen.getByText("second")).toBeDefined();

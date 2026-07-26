@@ -1,9 +1,9 @@
+import type { ApiLookupResult, ApiReference, ApiSymbol } from "@gtkx/codegen";
+import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ApiLookupResult, ApiReference, ApiSymbol } from "@gtkx/codegen";
-import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { loadApiReferenceMock, loadConfigMock, resolveGirPathMock, resolveLibrariesMock } = vi.hoisted(() => ({
@@ -23,6 +23,7 @@ vi.mock("@gtkx/config", () => ({
     loadConfig: loadConfigMock,
 }));
 
+import type { Tool } from "../src/tool.js";
 import {
     buildReferenceTools,
     createReferenceProvider,
@@ -30,7 +31,6 @@ import {
     type ReferenceProvider,
     registerReferenceResources,
 } from "../src/reference.js";
-import type { Tool } from "../src/tool.js";
 
 const buttonSymbol: ApiSymbol = { namespace: "Gtk", name: "Button", kind: "class", summary: "A button." };
 const headerBarCandidates: ApiSymbol[] = [
@@ -67,7 +67,7 @@ const getTool = (name: string): Tool => {
     return tool;
 };
 
-const textOf = (result: { content: Array<{ type: string }> }): string => {
+const textOf = (result: { content: { type: string }[] }): string => {
     const first = result.content[0];
     if (first === undefined || first.type !== "text") throw new Error("Expected text content");
     return (first as { type: "text"; text: string }).text;
@@ -163,17 +163,17 @@ describe("createReferenceProvider", () => {
 
 describe("gtkx_list_api", () => {
     it("returns the root overview without a namespace", async () => {
-        const result = await getTool("gtkx_list_api").handler({} as never);
+        const result = await getTool("gtkx_list_api").handler({});
         expect(textOf(result)).toBe("ROOT OVERVIEW");
     });
 
     it("returns a namespace overview", async () => {
-        const result = await getTool("gtkx_list_api").handler({ namespace: "Gtk" } as never);
+        const result = await getTool("gtkx_list_api").handler({ namespace: "Gtk" });
         expect(textOf(result)).toBe("GTK OVERVIEW");
     });
 
     it("errors on an unknown namespace, listing the known ones", async () => {
-        const result = await getTool("gtkx_list_api").handler({ namespace: "Nope" } as never);
+        const result = await getTool("gtkx_list_api").handler({ namespace: "Nope" });
         expect(result.isError).toBe(true);
         expect(textOf(result)).toContain('Unknown namespace "Nope"');
         expect(textOf(result)).toContain("Gtk, Adw");
@@ -182,7 +182,7 @@ describe("gtkx_list_api", () => {
 
 describe("gtkx_search_api", () => {
     it("returns matches as JSON", async () => {
-        const result = await getTool("gtkx_search_api").handler({ query: "button" } as never);
+        const result = await getTool("gtkx_search_api").handler({ query: "button" });
         expect(JSON.parse(textOf(result))).toEqual([buttonSymbol]);
     });
 
@@ -192,13 +192,13 @@ describe("gtkx_search_api", () => {
         const tool = buildReferenceTools(filtering).find((candidate) => candidate.name === "gtkx_search_api");
         if (!tool) throw new Error("Tool not found");
 
-        await tool.handler({ query: "button", namespace: "Gtk", kind: "class", limit: 5 } as never);
+        await tool.handler({ query: "button", namespace: "Gtk", kind: "class", limit: 5 });
 
         expect(search).toHaveBeenCalledWith({ query: "button", namespace: "Gtk", kinds: ["class"], limit: 5 });
     });
 
     it("reports when nothing matched", async () => {
-        const result = await getTool("gtkx_search_api").handler({ query: "nothing" } as never);
+        const result = await getTool("gtkx_search_api").handler({ query: "nothing" });
         expect(result.isError).toBeUndefined();
         expect(textOf(result)).toContain('No symbols matched "nothing"');
     });
@@ -206,19 +206,19 @@ describe("gtkx_search_api", () => {
 
 describe("gtkx_get_api_docs", () => {
     it("returns the rendered page", async () => {
-        const result = await getTool("gtkx_get_api_docs").handler({ symbol: "Gtk.Button" } as never);
+        const result = await getTool("gtkx_get_api_docs").handler({ symbol: "Gtk.Button" });
         expect(textOf(result)).toBe("BUTTON PAGE");
     });
 
     it("errors with candidates when the symbol is ambiguous", async () => {
-        const result = await getTool("gtkx_get_api_docs").handler({ symbol: "HeaderBar" } as never);
+        const result = await getTool("gtkx_get_api_docs").handler({ symbol: "HeaderBar" });
         expect(result.isError).toBe(true);
         expect(textOf(result)).toContain("- Gtk.HeaderBar (class)");
         expect(textOf(result)).toContain("- Adw.HeaderBar (class)");
     });
 
     it("errors with a search hint when the symbol is unknown", async () => {
-        const result = await getTool("gtkx_get_api_docs").handler({ symbol: "Missing" } as never);
+        const result = await getTool("gtkx_get_api_docs").handler({ symbol: "Missing" });
         expect(result.isError).toBe(true);
         expect(textOf(result)).toContain("gtkx_search_api");
     });
@@ -269,7 +269,7 @@ const getCompleter = (template: ResourceTemplate, variable: string) => {
 const resourceText = (result: ReadResourceResult): string => {
     const first = result.contents[0];
     if (first === undefined || !("text" in first)) throw new Error("Expected text contents");
-    return String(first.text);
+    return first.text;
 };
 
 describe("registerReferenceResources", () => {

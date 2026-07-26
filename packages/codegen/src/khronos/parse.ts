@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createXmlParser } from "../xml.js";
 
-export type OrderedNode = { [key: string]: unknown };
+export type OrderedNode = Record<string, unknown>;
 
 const ATTRIBUTES_KEY = ":@";
 const TEXT_KEY = "#text";
@@ -12,7 +12,7 @@ const PARSER = createXmlParser({
 });
 
 export const parseRegistryFile = (path: string): OrderedNode[] => {
-    const xml = readFileSync(path, "utf-8");
+    const xml = readFileSync(path, "utf8");
     const documentNodes = PARSER.parse(xml) as OrderedNode[];
     for (const node of documentNodes) {
         if (nodeTag(node) === "registry") return nodeChildren(node);

@@ -1,12 +1,12 @@
 import { sortStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
-import { inputParameters } from "../../analysis/param-structure.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirEnum } from "../../gir/enum.js";
 import type { Library } from "../../gir/library.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
-import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
-import type { GirType } from "../../gir/type.js";
 import type { TypeId } from "../../gir/type-id.js";
+import type { GirType } from "../../gir/type.js";
+import { inputParameters } from "../../analysis/param-structure.js";
+import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import {
     implementedInterfaces,
     isIntrinsicElementClass,
@@ -74,7 +74,7 @@ const collectSignalsFromSource = (source: GirClass, seen: Set<string>, signals: 
 };
 
 const collectSignals = (sources: GirClass[]): [string, string][] => {
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     const signals: [string, string][] = [];
     for (const source of sources) collectSignalsFromSource(source, seen, signals);
     return signals;
@@ -198,8 +198,9 @@ const booleanDefaultLiteral = (raw: string): string | undefined => {
 
 const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): string | undefined => {
     switch (category) {
-        case "boolean":
+        case "boolean": {
             return booleanDefaultLiteral(raw);
+        }
         case "int8":
         case "int16":
         case "int32":
@@ -208,17 +209,20 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
         case "uint32":
         case "int64":
         case "uint64":
-        case "unichar":
+        case "unichar": {
             return INTEGER_PATTERN.test(raw.trim()) ? raw.trim() : undefined;
+        }
         case "float32":
         case "float64": {
             const value = Number.parseFloat(raw);
             return Number.isFinite(value) ? String(value) : undefined;
         }
-        case "string":
+        case "string": {
             return sourceStringLiteral(raw);
-        default:
+        }
+        default: {
             return undefined;
+        }
     }
 };
 

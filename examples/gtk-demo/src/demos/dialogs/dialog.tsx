@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";
 
-interface DialogEntryRowProps {
+type DialogEntryRowProps = {
     entry1: string;
     setEntry1: (v: string) => void;
     entry2: string;
@@ -15,7 +15,7 @@ interface DialogEntryRowProps {
     entry2Widget: Gtk.Entry | null;
     setEntry2Widget: (w: Gtk.Entry | null) => void;
     onOpenInteractive: () => void;
-}
+};
 
 const DialogEntryRow = ({
     entry1,
@@ -80,13 +80,13 @@ const MessageDialog = ({ clickCount, onClose }: { clickCount: number; onClose: (
     />
 );
 
-interface InteractiveDialogProps {
+type InteractiveDialogProps = {
     entry1Text: string;
     setEntry1Text: (v: string) => void;
     entry2Text: string;
     setEntry2Text: (v: string) => void;
     onResponse: (response: string) => void;
-}
+};
 
 const InteractiveFields = ({
     entry1Text,
@@ -149,14 +149,14 @@ const InteractiveDialog = ({
             { id: "ok", label: "_OK" },
         ]}
         onResponse={onResponse}
-        extraChild={
+        extraChild={(
             <InteractiveFields
                 entry1Text={entry1Text}
                 setEntry1Text={setEntry1Text}
                 entry2Text={entry2Text}
                 setEntry2Text={setEntry2Text}
             />
-        }
+        )}
     />
 );
 

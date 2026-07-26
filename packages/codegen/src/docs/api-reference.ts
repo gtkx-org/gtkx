@@ -1,9 +1,9 @@
 import { pascalCase, sortStrings, sortStringsBy } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
+import type { GirRecord } from "../gir/record.js";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
-import type { GirRecord } from "../gir/record.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
 import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
@@ -46,9 +46,9 @@ export type ApiNamespaceSummary = {
 };
 
 export type ApiLookupResult =
-    | { outcome: "page"; symbol: ApiSymbol; markdown: string }
-    | { outcome: "ambiguous"; candidates: ApiSymbol[] }
-    | { outcome: "notFound" };
+    | { outcome: "page"; symbol: ApiSymbol; markdown: string } |
+    { outcome: "ambiguous"; candidates: ApiSymbol[] } |
+    { outcome: "notFound" };
 
 export type ApiSearchOptions = {
     query: string;
@@ -81,17 +81,17 @@ const KIND_SECTION_TITLES: Record<ApiSymbolKind, string> = {
 
 const DEFAULT_SEARCH_LIMIT = 20;
 
-const compareNames = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+const compareNames = (a: string, b: string): number => (a < b ? -1 : (a > b ? 1 : 0));
 
 class ApiReference {
     private library: Library;
     private libraries: string[];
     private elementContext: ElementPageContext;
     private entries: SymbolEntry[] = [];
-    private byQualified = new Map<string, SymbolEntry[]>();
-    private byName = new Map<string, SymbolEntry[]>();
-    private byNamespace = new Map<string, SymbolEntry[]>();
-    private elementsByClass = new Map<string, string>();
+    private byQualified: Map<string, SymbolEntry[]> = new Map();
+    private byName: Map<string, SymbolEntry[]> = new Map();
+    private byNamespace: Map<string, SymbolEntry[]> = new Map();
+    private elementsByClass: Map<string, string> = new Map();
 
     constructor(options: ApiReferenceOptions) {
         this.libraries = options.libraries;
@@ -226,7 +226,7 @@ class ApiReference {
     }
 
     namespaces(): ApiNamespaceSummary[] {
-        const summaries = [...this.byNamespace.entries()].map(([name, entries]) => ({
+        const summaries = [...this.byNamespace].map(([name, entries]) => ({
             name,
             importPath: `@gtkx/gi/${namespaceDirectory({ name })}`,
             symbols: entries.filter((entry) => entry.kind !== "element").length,

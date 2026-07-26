@@ -8,7 +8,7 @@ const hoisted = vi.hoisted(() => {
     class FakeApplication {}
     return {
         listToplevels: vi.fn(() => [] as unknown[]),
-        getDefault: vi.fn(() => null as unknown),
+        getDefault: vi.fn((): unknown => null),
         FakeApplication,
     };
 });

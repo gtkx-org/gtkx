@@ -30,7 +30,7 @@ export const createVirtualNamespace = (prefix: string): VirtualNamespace => {
                 ...request.options,
                 skipSelf: true,
             });
-            if (!resolved || resolved.external) return undefined;
+            if (!resolved || resolved.external) return;
             return toVirtualId(resolved.id);
         },
     };

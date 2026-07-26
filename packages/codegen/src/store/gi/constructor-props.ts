@@ -1,11 +1,11 @@
 import { sourceStringLiteral, toCamelIdentifier, uniqBy } from "@gtkx/utils";
+import type { GirClass } from "../../gir/class.js";
+import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { collectInterfaceProperties } from "../../analysis/inheritance.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { ancestorChain } from "../../gir/ancestry.js";
-import type { GirClass } from "../../gir/class.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
-import type { ModuleContext } from "../../writer/context.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
 
@@ -13,7 +13,7 @@ const constructablePropNames = (klass: GirClass): string[] =>
     klass.properties.filter(isConstructableProperty).map((property) => toCamelIdentifier(property.name));
 
 const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass): Set<string> => {
-    const names = new Set<string>();
+    const names: Set<string> = new Set();
     for (const { klass: ancestor } of ancestorChain(context.library, klass, context.namespace.name)) {
         if (ancestor === klass) continue;
         for (const name of constructablePropNames(ancestor)) names.add(name);

@@ -5,6 +5,7 @@ import { getOrInsert } from "@gtkx/utils";
 import { createContext } from "react";
 import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
+import type { Props } from "./registry.js";
 import { Prop } from "../components/element.js";
 import {
     applyAdoptedProps,
@@ -29,7 +30,6 @@ import {
     lazyTarget,
     type TextNode,
 } from "./node.js";
-import type { Props } from "./registry.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { beginSuppression, disconnectAllHandlers, endSuppression } from "./signals.js";
 import { enclosingHost, flushTextHosts, markTextDirty, surgicalTextUpdate, validateContentMix } from "./text.js";
@@ -40,7 +40,7 @@ export type Container = RootElement | GObject.Object;
 const HOST_CONTEXT: Record<string, never> = {};
 let currentPriority: number = NoEventPriority;
 
-const containerNodes = new WeakMap<object, ElementNode>();
+const containerNodes: WeakMap<object, ElementNode> = new WeakMap();
 
 const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
     if (!isRootElement(container)) attachChild(containerNodeFor(container), child, before);

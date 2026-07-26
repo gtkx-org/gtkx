@@ -1,13 +1,13 @@
 import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
-import { forEachAncestor } from "../../analysis/inheritance.js";
-import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
-import { recordTypeTarget, renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirSignal } from "../../gir/parameter.js";
-import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import type { TypeId } from "../../gir/type-id.js";
+import { forEachAncestor } from "../../analysis/inheritance.js";
+import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
+import { recordTypeTarget, renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
+import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import {
     classExposesMethod,
@@ -92,7 +92,7 @@ const acceptCollectorSignal = (state: PropCollectorState, signal: GirSignal): vo
 
 const createPropEntryCollector = (owner: PropOwner): PropEntryCollector => {
     const { library } = owner;
-    const imports = new Map<string, string>();
+    const imports: Map<string, string> = new Map();
     const types: PropTypeRenderContext = { library, imports };
     const state: PropCollectorState = {
         owner,

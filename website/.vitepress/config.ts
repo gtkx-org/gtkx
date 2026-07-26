@@ -53,17 +53,17 @@ const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)
 const isProdBuild = process.argv.includes("build");
 const fontPreloads: HeadConfig[] = isProdBuild
     ? ["red-hat-display", "red-hat-text", "red-hat-mono"].map(
-          (family): HeadConfig => [
-              "link",
-              {
-                  rel: "preload",
-                  href: `/fonts/${family}-normal-latin.woff2`,
-                  as: "font",
-                  type: "font/woff2",
-                  crossorigin: "",
-              },
-          ],
-      )
+            (family): HeadConfig => [
+                "link",
+                {
+                    rel: "preload",
+                    href: `/fonts/${family}-normal-latin.woff2`,
+                    as: "font",
+                    type: "font/woff2",
+                    crossorigin: "",
+                },
+            ],
+        )
     : [];
 
 export default defineConfig({

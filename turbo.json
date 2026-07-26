@@ -2,7 +2,7 @@
     "$schema": "https://turborepo.com/schema.json",
     "globalDependencies": [
         ".dependency-cruiser.js",
-        "biome.json",
+        "eslint.config.ts",
         "gtkx.config.ts",
         "knip.json",
         "tsconfig.json",
@@ -182,13 +182,20 @@
             "outputs": ["coverage/**"]
         },
         "//#lint:all": {
-            "dependsOn": ["//#lint:deps", "//#lint:knip"],
+            "dependsOn": ["//#lint:deps", "//#lint:knip", "//#codegen:all", "@gtkx/gl#codegen"],
             "inputs": [
                 "$TURBO_DEFAULT$",
+                "eslint.config.ts",
+                "packages/eslint-config/src/**",
                 "packages/**/src/**",
                 "packages/**/tests/**",
                 "packages/**/gtkx.config.ts",
-                "packages/**/vitest.config.ts"
+                "packages/**/vitest.config.ts",
+                {
+                    "mode": "dependencyOutputs",
+                    "from": ["//#codegen:all"],
+                    "globs": ["node_modules/.gtkx/**"]
+                }
             ],
             "outputs": []
         },

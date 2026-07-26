@@ -26,7 +26,7 @@ export type Root = {
 };
 
 let errorHandler: ((error: unknown) => void) | null = null;
-const activeRoots = new Set<OpaqueRoot>();
+const activeRoots: Set<OpaqueRoot> = new Set();
 
 /**
  * Installs a process-wide handler for errors thrown while rendering or applying an update.
@@ -108,7 +108,7 @@ export const createRoot = (container: Container = rootElement): Root => {
 
 /** Unmounts every active render root and returns `true`. */
 export const quit = (): true => {
-    for (const container of [...activeRoots]) unmountContainer(container);
+    for (const container of activeRoots) unmountContainer(container);
     return true;
 };
 

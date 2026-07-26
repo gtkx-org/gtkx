@@ -1,13 +1,4 @@
 import { t } from "@gtkx/runtime";
-import { clientWaitSync, enable, getProgramiv, getProgramPipelineiv, getShaderiv, LIB } from "./generated/commands.js";
-import {
-    ALREADY_SIGNALED,
-    CONDITION_SATISFIED,
-    DEBUG_OUTPUT,
-    DEBUG_OUTPUT_SYNCHRONOUS,
-    INFO_LOG_LENGTH,
-    TIMEOUT_EXPIRED,
-} from "./generated/enums.js";
 import type {
     DebugSeverity,
     DebugSource,
@@ -19,6 +10,15 @@ import type {
     SyncObjectMask,
     SyncStatus,
 } from "./generated/types.js";
+import { clientWaitSync, enable, getProgramiv, getProgramPipelineiv, getShaderiv, LIB } from "./generated/commands.js";
+import {
+    ALREADY_SIGNALED,
+    CONDITION_SATISFIED,
+    DEBUG_OUTPUT,
+    DEBUG_OUTPUT_SYNCHRONOUS,
+    INFO_LOG_LENGTH,
+    TIMEOUT_EXPIRED,
+} from "./generated/enums.js";
 
 type LengthQuery = (id: GLuint, pname: GLenum) => GLint;
 

@@ -30,7 +30,7 @@ export class SocketServer {
             if (await isSocketLive(this.socketPath)) {
                 throw new Error(
                     `Another GTKX MCP server already owns ${this.socketPath}. ` +
-                        "Stop the other server (for example, the gtkx MCP server of another active session) and reconnect.",
+                    "Stop the other server (for example, the gtkx MCP server of another active session) and reconnect.",
                 );
             }
             fs.unlinkSync(this.socketPath);

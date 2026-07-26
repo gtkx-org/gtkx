@@ -1,9 +1,9 @@
-import { rmSync } from "node:fs";
-import { resolve } from "node:path";
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
 import { resolveLazyElements } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
+import { rmSync } from "node:fs";
+import { resolve } from "node:path";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
@@ -70,13 +70,13 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
         version: store.runtimeVersion,
     },
     jsx:
-        store.react !== null
-            ? {
-                  storeDir: store.jsxStoreDir,
-                  linkDir: store.jsxLinkDir,
-                  version: store.react.version,
-              }
-            : undefined,
+        store.react === null
+            ? undefined
+            : {
+                    storeDir: store.jsxStoreDir,
+                    linkDir: store.jsxLinkDir,
+                    version: store.react.version,
+                },
     reactSubexports: store.react?.subexports ?? [],
     userComponents: userModuleExports(elements, "component"),
     userProps: userModuleExports(elements, "props"),

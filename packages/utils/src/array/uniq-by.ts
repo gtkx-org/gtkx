@@ -15,7 +15,7 @@
  * uniqBy([{ id: "a" }, { id: "a" }, { id: "b" }], (item) => item.id); // [{ id: "a" }, { id: "b" }]
  */
 export function uniqBy<T, U>(arr: T[], mapper: (item: T, index: number, array: T[]) => U): T[] {
-    const seen = new Map<U, T>();
+    const seen: Map<U, T> = new Map();
     let index = 0;
     for (const item of arr) {
         const key = mapper(item, index, arr);

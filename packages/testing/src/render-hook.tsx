@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { render } from "./render.js";
 import type { RenderHookOptions, RenderHookResult } from "./types.js";
+import { render } from "./render.js";
 
 /**
  * Renders a test component that calls the given hook, exposing its latest

@@ -1,7 +1,7 @@
 import {
+    registerClass as nativeRegisterClass,
     type RegisterClassOptions as NativeRegisterClassOptions,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
-    registerClass as nativeRegisterClass,
 } from "@gtkx/native";
 import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
@@ -58,7 +58,7 @@ function resolveParentType(klass: AnyClass): bigint {
     return (
         walkClassChain(getParentClass(klass), (cls) => {
             const gtype = getClassType(cls);
-            return gtype !== TYPE_INVALID ? gtype : undefined;
+            return gtype === TYPE_INVALID ? undefined : gtype;
         }) ?? TYPE_INVALID
     );
 }

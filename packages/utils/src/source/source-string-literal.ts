@@ -1,11 +1,11 @@
-const LINE_SEPARATOR = String.fromCharCode(0x2028);
-const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
+const LINE_SEPARATOR = String.fromCharCode(0x20_28);
+const PARAGRAPH_SEPARATOR = String.fromCharCode(0x20_29);
 
 const SOURCE_ESCAPES: Record<string, string> = {
-    "<": "\\u003C",
-    ">": "\\u003E",
-    [LINE_SEPARATOR]: "\\u2028",
-    [PARAGRAPH_SEPARATOR]: "\\u2029",
+    "<": String.raw`\u003C`,
+    ">": String.raw`\u003E`,
+    [LINE_SEPARATOR]: String.raw`\u2028`,
+    [PARAGRAPH_SEPARATOR]: String.raw`\u2029`,
 };
 
 const UNSAFE_SOURCE_CHARS = new RegExp(`[${Object.keys(SOURCE_ESCAPES).join("")}]`, "g");
@@ -21,5 +21,5 @@ const UNSAFE_SOURCE_CHARS = new RegExp(`[${Object.keys(SOURCE_ESCAPES).join("")}
  * sourceStringLiteral("hello"); // '"hello"'
  */
 export function sourceStringLiteral(value: string): string {
-    return JSON.stringify(value).replace(UNSAFE_SOURCE_CHARS, (char) => SOURCE_ESCAPES[char] ?? char);
+    return JSON.stringify(value).replaceAll(UNSAFE_SOURCE_CHARS, (char) => SOURCE_ESCAPES[char] ?? char);
 }

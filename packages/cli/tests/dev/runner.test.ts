@@ -1,5 +1,5 @@
-import { EventEmitter } from "node:events";
 import type { Plugin } from "vite";
+import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
 import { RESTART_EXIT_CODE } from "../../src/dev/supervisor.js";
@@ -147,7 +147,7 @@ describe("createDevRunner (vite config)", () => {
             external: true,
             noExternal: [/^@gtkx\/(?!(?:native|gi|gl|runtime|utils|css)(?:\/|$))/, /[/\\]\.gtkx[/\\]/],
         });
-        const names = (config.plugins as Array<{ name: string }>).map((p) => p.name);
+        const names = (config.plugins as { name: string }[]).map((p) => p.name);
         expect(names).toEqual([
             "gtkx:settings",
             "gtkx:css",
@@ -190,6 +190,18 @@ const emitBoundaryChange = async (harness: Harness, file: string): Promise<void>
     await emitChangeAndFlush(harness, file, 2);
 };
 
+const expectRefreshRestart = async (schedule: (fireShutdown: () => void) => void): Promise<Harness> => {
+    const harness = buildHarness({ applicationId: "com.example.app" });
+
+    await startRunner(harness);
+    const onShutdown = installedShutdown(harness);
+    harness.performRefresh.mockImplementationOnce(() => schedule(() => onShutdown()));
+    await emitBoundaryChange(harness, "/x/y.ts");
+
+    expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    return harness;
+};
+
 describe("createDevRunner (application shutdown)", () => {
     it("tears down the server when the application shuts down outside a refresh pass", async () => {
         const harness = buildHarness({ applicationId: "com.example.app" });
@@ -221,21 +233,7 @@ describe("createDevRunner (application shutdown)", () => {
         expect(written).toContain(error.stack ?? error.message);
         expect(harness.exit).toHaveBeenCalledWith(1);
         stderrSpy.mockRestore();
-    });
-
-    const expectRefreshRestart = async (schedule: (fireShutdown: () => void) => void): Promise<Harness> => {
-        const harness = buildHarness({ applicationId: "com.example.app" });
-
-        await startRunner(harness);
-        const onShutdown = installedShutdown(harness);
-        harness.performRefresh.mockImplementationOnce(() => schedule(() => onShutdown()));
-        await emitBoundaryChange(harness, "/x/y.ts");
-
-        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
-        return harness;
-    };
-
-    it("restarts the runner when the application shuts down during a refresh pass", async () => {
+    }); it("restarts the runner when the application shuts down during a refresh pass", async () => {
         const harness = await expectRefreshRestart((fireShutdown) => fireShutdown());
 
         expect(loggedMessages(harness).some((m) => m.includes("restarting dev runner"))).toBe(true);

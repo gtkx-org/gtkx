@@ -1,6 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getOrInsert, indexBeforeOrEnd, remove } from "@gtkx/utils";
+import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, markFlush } from "./apply-props.js";
 import { typeInfoOf } from "./metadata.js";
 import {
@@ -14,7 +15,6 @@ import {
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
-import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { markTextDirty } from "./text.js";
 
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
@@ -36,8 +36,7 @@ const placeInfo = (entry: PlacedChild, index: number, sibling: GObject.Object | 
 });
 
 const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementBehavior, claim: unknown): void => {
-    if (behavior.resolve !== undefined) entry.adopted = behavior.resolve(parent.object, entry.object);
-    else entry.adopted = claim instanceof GObject.Object ? claim : null;
+    if (behavior.resolve === undefined) { entry.adopted = claim instanceof GObject.Object ? claim : null; } else { entry.adopted = behavior.resolve(parent.object, entry.object); }
 };
 
 const applyLazyProps = (entry: PlacedChild): void => {
@@ -47,10 +46,12 @@ const applyLazyProps = (entry: PlacedChild): void => {
 };
 
 const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
-    if (node.kind === ELEMENT_KIND && node.contentKind === "buffer" && parent.object instanceof Gtk.TextView) {
-        node.bufferView = parent.object;
-        markTextDirty(node);
+    if (!(node.kind === ELEMENT_KIND && node.contentKind === "buffer" && parent.object instanceof Gtk.TextView)) {
+        return;
     }
+
+    node.bufferView = parent.object;
+    markTextDirty(node);
 };
 
 const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
@@ -103,10 +104,10 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
     for (const entry of entries) detachEntry(parent, entry);
-    entries.forEach((entry, index) => {
+    for (const [index, entry] of entries.entries()) {
         entry.behavior = null;
         attachEntry(parent, entry, index, siblingAt(entries, index));
-    });
+    }
 };
 
 const positionOf = (entries: PlacedChild[], before: PlaceableNode | null): number =>
@@ -156,7 +157,7 @@ export const placeChild = (
     const existing = entries.findIndex((entry) => entry.node === node);
     const entry = resolveEntry(entries, existing, slot, node);
     if (entry === null) return;
-    const isMove = existing >= 0;
+    const isMove = existing !== -1;
     if (isMove) entries.splice(existing, 1);
     const index = positionOf(entries, before);
     entries.splice(index, 0, entry);
@@ -169,7 +170,7 @@ export const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableN
     const entries = parent.placements.get(slot);
     if (entries === undefined) return;
     const index = entries.findIndex((entry) => entry.node === node);
-    if (index < 0) return;
+    if (index === -1) return;
     const [entry] = entries.splice(index, 1);
     if (entry !== undefined) detachEntry(parent, entry);
     markFlush(parent);

@@ -1,5 +1,5 @@
-import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
+import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { bench, describe } from "vitest";
 import { cleanup, render } from "../tests/helpers/production-render.js";
 

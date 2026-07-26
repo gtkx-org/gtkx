@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { createContext, type ReactNode, useContext, useState } from "react";
 import type { Demo, TreeItem } from "../demos/types.js";
 
-interface DemoContextValue {
+type DemoContextValue = {
     demos: Demo[];
     treeItems: TreeItem[];
     currentDemo: Demo | null;
@@ -14,7 +14,7 @@ interface DemoContextValue {
     setWindowTitle: (title: string | null) => void;
     defaultWidget: Gtk.Widget | null;
     setDefaultWidget: (widget: Gtk.Widget | null) => void;
-}
+};
 
 const DemoContext = createContext<DemoContextValue | null>(null);
 
@@ -108,10 +108,10 @@ function filterTree(items: TreeItem[], query: string): TreeItem[] {
     return result;
 }
 
-interface DemoTreeProviderProps {
+type DemoTreeProviderProps = {
     demos: Demo[];
     children: ReactNode;
-}
+};
 
 const findFirstDemoInItem = (item: TreeItem): Demo | null => {
     if (item.type === "demo") return item.demo;

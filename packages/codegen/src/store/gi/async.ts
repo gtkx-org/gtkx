@@ -1,7 +1,7 @@
-import { inputParameters } from "../../analysis/param-structure.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { Library } from "../../gir/library.js";
 import type { TypeId } from "../../gir/type-id.js";
+import { inputParameters } from "../../analysis/param-structure.js";
 
 export const matchAsyncFinish = (
     library: Library,

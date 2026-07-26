@@ -7,6 +7,11 @@ import { describe, expect, it } from "vitest";
 let nextAppId = 0;
 const uniqueAppId = (): string => `org.gtkx.useapplicationtest${nextAppId++}`;
 
+const Probe = () => {
+    useApplication();
+    return null;
+};
+
 describe("useApplication", () => {
     it("returns the GTK application provided by ApplicationContext", async () => {
         let captured: unknown = "unset";
@@ -28,11 +33,6 @@ describe("useApplication", () => {
     });
 
     it("throws when the ApplicationContext value is null", async () => {
-        const Probe = () => {
-            useApplication();
-            return null;
-        };
-
         await expect(render(<Probe />, { container: rootElement })).rejects.toThrow(
             /useApplication must be called within GtkApplication/,
         );

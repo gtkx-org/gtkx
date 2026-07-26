@@ -70,7 +70,7 @@ describe("render - layoutManager prop lifecycle", () => {
 
         await rerender(<App show={false} />);
         const remaining = boxRef.current?.getLayoutManager();
-        expect(remaining instanceof Gtk.BoxLayout).toBe(false);
+        expect(remaining).not.toBeInstanceOf(Gtk.BoxLayout);
     });
 
     it("replaces an existing layout manager when a new one mounts", async () => {

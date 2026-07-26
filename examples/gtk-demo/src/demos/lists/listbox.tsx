@@ -22,7 +22,7 @@ import type { Demo } from "../types.js";
 import sourceCode from "./listbox.tsx?raw";
 import messagesRaw from "./messages.txt?raw";
 
-interface Message {
+type Message = {
     id: number;
     senderName: string;
     senderNick: string;
@@ -32,7 +32,7 @@ interface Message {
     resentBy: string | null;
     nFavorites: number;
     nReshares: number;
-}
+};
 
 function parseMessages(raw: string): Message[] {
     const lines = raw.split("\n").filter((line) => line.length > 0);
@@ -79,13 +79,13 @@ function formatDetailedTime(timestamp: number): string {
     return `${time} - ${day} ${month} ${year}`;
 }
 
-interface MessageRowProps {
+type MessageRowProps = {
     message: Message;
     expanded: boolean;
     onToggleExpand: (id: number) => void;
     onFavorite: (id: number) => void;
     onReshare: (id: number) => void;
-}
+};
 
 const MessageAvatar = ({ message }: { message: Message }) => (
     <GtkGridLayoutChild column={0} row={0} rowSpan={5}>
@@ -140,14 +140,14 @@ const MessageResentBy = ({ message }: { message: Message }) => (
     </GtkGridLayoutChild>
 );
 
-interface MessageActionsProps {
+type MessageActionsProps = {
     message: Message;
     expanded: boolean;
     extraButtonsRef: React.RefObject<Gtk.Box | null>;
     onToggleExpand: (id: number) => void;
     onFavorite: (id: number) => void;
     onReshare: (id: number) => void;
-}
+};
 
 const MessageActions = ({
     message,
@@ -174,7 +174,7 @@ const MessageActions = ({
                     receivesDefault
                     hasFrame={false}
                     label="More..."
-                    menuModel={
+                    menuModel={(
                         <GMenu
                             items={[
                                 {
@@ -185,18 +185,18 @@ const MessageActions = ({
                                 },
                             ]}
                         />
-                    }
-                    actionGroups={
+                    )}
+                    actionGroups={(
                         <GSimpleActionGroup
                             prefix="msg"
-                            actions={
+                            actions={(
                                 <>
                                     <GSimpleAction name="email" onActivate={() => {}} />
                                     <GSimpleAction name="embed" onActivate={() => {}} />
                                 </>
-                            }
+                            )}
                         />
-                    }
+                    )}
                 />
             </GtkBox>
         </GtkBox>

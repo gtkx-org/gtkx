@@ -1,41 +1,40 @@
 import type { Item, RenderItemArgs } from "@gtkx/components";
+import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-
 import { act, getWidgetNodeText, screen, waitFor, within } from "@gtkx/testing";
-import type { RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { expectRenderItemFunctionUpdate, namedRows, renderTestItemWithSpy } from "./helpers/list-collection-render.js";
 import {
-    type FixtureInput,
     firstSecondItems,
     firstSecondThirdItems,
+    type FixtureInput,
     type ListViewFixture,
     renderListView,
 } from "./helpers/list-fixtures.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
-interface Category {
+type Category = {
     type: "category";
     id: string;
     name: string;
-}
+};
 
-interface Setting {
+type Setting = {
     type: "setting";
     id: string;
     name: string;
-}
+};
 
 type TreeItem = Category | Setting;
 
-const toTreeItems = (categories: Array<Category & { children: Setting[] }>): FixtureInput<TreeItem> =>
+const toTreeItems = (categories: (Category & { children: Setting[] })[]): FixtureInput<TreeItem> =>
     categories.map((category) => ({
         id: category.id,
-        value: category as TreeItem,
+        value: category,
         children: category.children.map((setting) => ({
             id: setting.id,
-            value: setting as TreeItem,
+            value: setting,
             hideExpander: true,
         })),
     }));
@@ -43,7 +42,7 @@ const toTreeItems = (categories: Array<Category & { children: Setting[] }>): Fix
 const expanderByName = (name: string): Gtk.TreeExpander =>
     screen.getByRole(Gtk.AccessibleRole.BUTTON, { name }) as Gtk.TreeExpander;
 
-const rowTexts = (container: Gtk.ListView | null): Array<string | null> =>
+const rowTexts = (container: Gtk.ListView | null): (string | null)[] =>
     container ? within(container).queryAllByRole(Gtk.AccessibleRole.LABEL).map(getWidgetNodeText) : [];
 
 const listRowByName = (name: string): Gtk.TreeListRow => {
@@ -57,12 +56,12 @@ const setRowExpandedByName = async (name: string, expanded: boolean): Promise<vo
     await act(() => row.setExpanded(expanded));
 };
 
-const waitForRowTexts = (ref: RefObject<Gtk.ListView>, expected: Array<string | null>): Promise<void> =>
+const waitForRowTexts = (ref: RefObject<Gtk.ListView>, expected: (string | null)[]): Promise<void> =>
     waitFor(() => {
         expect(rowTexts(ref.current)).toEqual(expected);
     });
 
-const waitForSettledRowTexts = (ref: RefObject<Gtk.ListView>, expected: Array<string | null>): Promise<void> =>
+const waitForSettledRowTexts = (ref: RefObject<Gtk.ListView>, expected: (string | null)[]): Promise<void> =>
     waitFor(() => {
         expect(screen.queryAllByText("Loading...")).toHaveLength(0);
         expect(rowTexts(ref.current)).toEqual(expected);
@@ -278,7 +277,7 @@ const buildViewportCategoryTree = (): Item<DemoItem>[] =>
         children: (i) => [childNode(`ch-${i}-0`, `Child ${i}-0`), childNode(`ch-${i}-1`, `Child ${i}-1`)],
     });
 
-const allSettingCategories: Array<Category & { children: Setting[] }> = [
+const allSettingCategories: (Category & { children: Setting[] })[] = [
     {
         type: "category",
         id: "appearance",
@@ -340,7 +339,7 @@ const appearanceChildNames = ["Dark Mode", "Large Text", "Enable Animations", "T
 const notificationChildNames = ["Alerts", "Notification Sounds", "Do Not Disturb", "Show Badge Count"];
 
 const expandAppearanceAndWait = async (
-    waitForTexts: (ref: RefObject<Gtk.ListView>, expected: Array<string | null>) => Promise<void>,
+    waitForTexts: (ref: RefObject<Gtk.ListView>, expected: (string | null)[]) => Promise<void>,
 ): Promise<void> => {
     const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 1)));
     await setRowExpandedByName("Appearance", true);
@@ -664,15 +663,19 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
     });
 });
 
+const renderExpandedState = ({ item, isExpanded }: RenderItemArgs<{ name: string }>) => (
+    <GtkLabel>{`${item.name}:${isExpanded}`}</GtkLabel>
+);
+
+const assertChildrenVisible = () => waitForVisibleOnce(appearanceChildNames);
+
+const assertChildrenHidden = () => waitForAllHidden(appearanceChildNames);
+
+const toggleRow = async (row: Gtk.TreeListRow, expanded: boolean) => {
+    await act(() => row.setExpanded(expanded));
+};
+
 describe("render - ListView (tree) (15) > settings tree regression (4)", () => {
-    const assertChildrenVisible = () => waitForVisibleOnce(appearanceChildNames);
-
-    const assertChildrenHidden = () => waitForAllHidden(appearanceChildNames);
-
-    const toggleRow = async (row: Gtk.TreeListRow, expanded: boolean) => {
-        await act(() => row.setExpanded(expanded));
-    };
-
     it("third child does not remain stuck on Loading after expansion", async () => {
         const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 2)), {
             estimatedItemHeight: 48,
@@ -810,11 +813,7 @@ describe("render - ListView (tree) (22)", () => {
         });
 
         it("passes isExpanded to renderItem from expandedIds", async () => {
-            const renderItem = ({ item, isExpanded }: RenderItemArgs<{ name: string }>) => (
-                <GtkLabel>{`${item.name}:${isExpanded}`}</GtkLabel>
-            );
-
-            await renderListView(parentWithChild, { expandedIds: ["parent"], renderItem });
+            await renderListView(parentWithChild, { expandedIds: ["parent"], renderItem: renderExpandedState });
 
             await waitFor(() => expect(screen.queryAllByText("Parent:true")).toHaveLength(1));
         });

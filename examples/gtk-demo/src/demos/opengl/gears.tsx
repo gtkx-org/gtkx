@@ -12,9 +12,8 @@ import {
     GtkScale,
 } from "@gtkx/jsx/gtk";
 import { useEffect, useRef, useState } from "react";
-import { useLatest } from "../../use-latest.js";
-import { useTickCallback } from "../../use-tick-callback.js";
 import type { Demo } from "../types.js";
+import { useTickCallback } from "../../use-tick-callback.js";
 import sourceCode from "./gears.tsx?raw";
 import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
 
@@ -50,18 +49,18 @@ void main() {
     fragColor = Color;
 }`;
 
-interface GearStrip {
+type GearStrip = {
     first: number;
     count: number;
-}
+};
 
-interface GearGeometry {
+type GearGeometry = {
     vertices: number[];
     nvertices: number;
     strips: GearStrip[];
-}
+};
 
-interface GearBuilder {
+type GearBuilder = {
     vertices: number[];
     strips: GearStrip[];
     vi: number;
@@ -73,7 +72,7 @@ interface GearBuilder {
     startStrip: () => void;
     endStrip: () => void;
     quadNormal: (p1x: number, p1y: number, p2x: number, p2y: number) => void;
-}
+};
 
 const createGearBuilder = (width: number): GearBuilder => {
     const vertices: number[] = [];
@@ -110,14 +109,14 @@ const createGearBuilder = (width: number): GearBuilder => {
     return builder;
 };
 
-interface ToothRadii {
+type ToothRadii = {
     r0: number;
     r1: number;
     r2: number;
     da: number;
-}
+};
 
-interface ToothPoints {
+type ToothPoints = {
     p0x: number;
     p0y: number;
     p1x: number;
@@ -132,7 +131,7 @@ interface ToothPoints {
     p5y: number;
     p6x: number;
     p6y: number;
-}
+};
 
 const computeToothPoints = (radii: ToothRadii, base: number): ToothPoints => {
     const { r0, r1, r2, da } = radii;
@@ -318,7 +317,7 @@ function mat4Invert(m: number[]): number[] {
     return mat4Multiply(mat4Transpose(r), t);
 }
 
-interface GLState {
+type GLState = {
     program: number;
     vao: number;
     gearVbos: number[];
@@ -329,7 +328,7 @@ interface GLState {
         lightSourcePosition: number;
         materialColor: number;
     };
-}
+};
 
 const GEAR_COLORS = [
     [0.8, 0.1, 0, 1],
@@ -409,7 +408,7 @@ function initGL(): GLState {
     return { program, vao, gearVbos, gearGeoms, uniforms };
 }
 
-interface DrawGearParams {
+type DrawGearParams = {
     uniforms: GLState["uniforms"];
     projection: number[];
     transform: number[];
@@ -419,7 +418,7 @@ interface DrawGearParams {
     y: number;
     angle: number;
     color: number[];
-}
+};
 
 function drawGear(params: DrawGearParams) {
     const { uniforms, projection, transform, gear, vbo, x, y, angle, color } = params;
@@ -488,25 +487,25 @@ function useGearsState() {
 
 type GearsState = ReturnType<typeof useGearsState>;
 
-interface GearsRefs {
+type ViewRotation = {
+    x: number;
+    y: number;
+    z: number;
+};
+
+type GearsRefs = {
     glAreaRef: React.RefObject<Gtk.GLArea | null>;
     glStateRef: React.RefObject<GLState | null>;
     firstFrameTimeRef: React.RefObject<number>;
     angleRef: React.RefObject<number>;
-    viewRotXRef: React.RefObject<number>;
-    viewRotYRef: React.RefObject<number>;
-    viewRotZRef: React.RefObject<number>;
-}
+};
 
-function useGearsRefs(state: GearsState): GearsRefs {
+function useGearsRefs(): GearsRefs {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
     const firstFrameTimeRef = useRef(0);
     const angleRef = useRef(0);
-    const viewRotXRef = useLatest(state.viewRotX);
-    const viewRotYRef = useLatest(state.viewRotY);
-    const viewRotZRef = useLatest(state.viewRotZ);
-    return { glAreaRef, glStateRef, firstFrameTimeRef, angleRef, viewRotXRef, viewRotYRef, viewRotZRef };
+    return { glAreaRef, glStateRef, firstFrameTimeRef, angleRef };
 }
 
 const sampleFps = (frameClock: Gdk.FrameClock, frameTime: number, fpsRef: React.RefObject<number>): void => {
@@ -573,8 +572,8 @@ const initGLOrError = (
     }
     try {
         glStateRef.current = initGL();
-    } catch (e) {
-        setError(`GL initialization error: ${e}`);
+    } catch (error) {
+        setError(`GL initialization error: ${error}`);
         return false;
     }
     return true;
@@ -606,20 +605,20 @@ const drawAllGears = (state: GLState, transform: number[], projection: number[],
     }
 };
 
-const computeViewTransform = (refs: GearsRefs): number[] => {
+const computeViewTransform = (rotation: ViewRotation): number[] => {
     let transform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
     transform = mat4Translate(transform, 0, 0, -20);
-    transform = mat4Rotate(transform, { angle: (refs.viewRotXRef.current * 2 * Math.PI) / 360, x: 1, y: 0, z: 0 });
-    transform = mat4Rotate(transform, { angle: (refs.viewRotYRef.current * 2 * Math.PI) / 360, x: 0, y: 1, z: 0 });
-    transform = mat4Rotate(transform, { angle: (refs.viewRotZRef.current * 2 * Math.PI) / 360, x: 0, y: 0, z: 1 });
+    transform = mat4Rotate(transform, { angle: (rotation.x * 2 * Math.PI) / 360, x: 1, y: 0, z: 0 });
+    transform = mat4Rotate(transform, { angle: (rotation.y * 2 * Math.PI) / 360, x: 0, y: 1, z: 0 });
+    transform = mat4Rotate(transform, { angle: (rotation.z * 2 * Math.PI) / 360, x: 0, y: 0, z: 1 });
     return transform;
 };
 
-function useGearsRender(refs: GearsRefs, setError: (e: string) => void) {
+function useGearsRender(refs: GearsRefs, state: GearsState) {
     return (_context: Gdk.GLContext, self: Gtk.GLArea) => {
-        if (!initGLOrError(refs.glStateRef, self, setError)) return true;
-        const state = refs.glStateRef.current;
-        if (!state) return true;
+        if (!initGLOrError(refs.glStateRef, self, state.setError)) return true;
+        const glState = refs.glStateRef.current;
+        if (!glState) return true;
 
         const scale = self.getScaleFactor();
         const width = self.getAllocatedWidth() * scale;
@@ -629,11 +628,11 @@ function useGearsRender(refs: GearsRefs, setError: (e: string) => void) {
         gl.viewport(0, 0, width, height);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.bindVertexArray(state.vao);
-        gl.useProgram(state.program);
+        gl.bindVertexArray(glState.vao);
+        gl.useProgram(glState.program);
 
-        const transform = computeViewTransform(refs);
-        drawAllGears(state, transform, projection, refs.angleRef.current);
+        const transform = computeViewTransform({ x: state.viewRotX, y: state.viewRotY, z: state.viewRotZ });
+        drawAllGears(glState, transform, projection, refs.angleRef.current);
 
         gl.useProgram(0);
         gl.bindVertexArray(0);
@@ -651,10 +650,10 @@ const GearsError = ({ error }: { error: string }) => (
 
 const GearsDemo = () => {
     const state = useGearsState();
-    const refs = useGearsRefs(state);
+    const refs = useGearsRefs();
     const animation = useGearsAnimation(refs, state.fpsRef, state.setFps);
     const handleUnrealize = useGearsUnrealize(refs.glStateRef);
-    const handleRender = useGearsRender(refs, state.setError);
+    const handleRender = useGearsRender(refs, state);
 
     if (state.error) return <GearsError error={state.error} />;
 

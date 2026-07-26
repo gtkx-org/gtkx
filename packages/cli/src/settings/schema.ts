@@ -1,8 +1,8 @@
+import { sortStrings, warn } from "@gtkx/utils";
 import { createHash } from "node:crypto";
 import { copyFileSync, type Dirent, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { sortStrings, warn } from "@gtkx/utils";
 import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
 import { removeTempDir } from "../internal/staging-dir.js";
 import { compileSchemas } from "./compile.js";
@@ -81,7 +81,7 @@ export const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_mo
 const parseSchemaFileOrWarn = (filePath: string, dataDirAbs: string): ParsedSchemaFile | null => {
     const specifier = moduleSpecifierFor(dataDirAbs, filePath);
     try {
-        return parseSchemaXml(readFileSync(filePath, "utf-8"), specifier);
+        return parseSchemaXml(readFileSync(filePath, "utf8"), specifier);
     } catch (error) {
         if (!(error instanceof SchemaParseError)) throw error;
         warn(`Skipping ${filePath} in schema type generation: ${error.message}`);
@@ -101,7 +101,7 @@ const parseProjectSchemas = (schemaFiles: string[], dataDirAbs: string): ParsedS
 const writeIfChanged = (path: string, content: string): boolean => {
     let existing: string | null = null;
     try {
-        existing = readFileSync(path, "utf-8");
+        existing = readFileSync(path, "utf8");
     } catch {
         existing = null;
     }

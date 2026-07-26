@@ -1,20 +1,20 @@
 import { ListView, type RenderItemArgs } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
-import { useDemo } from "../context/demo-context.js";
 import type { TreeItem } from "../demos/types.js";
+import { useDemo } from "../context/demo-context.js";
 
-interface SidebarProps {
+type SidebarProps = {
     searchMode: boolean;
     onSearchChanged: (text: string) => void;
-}
+};
 
-interface SidebarItemData {
+type SidebarItemData = {
     id: string;
     value: TreeItem;
     hideExpander?: true;
     children?: SidebarItemData[];
-}
+};
 
 function treeItemToData(item: TreeItem): SidebarItemData {
     if (item.type === "demo") {

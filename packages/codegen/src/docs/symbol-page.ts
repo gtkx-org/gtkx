@@ -1,16 +1,17 @@
 import { pascalCase, sortStringsBy } from "@gtkx/utils";
-import { reservedSignalMemberRename } from "../analysis/inheritance.js";
-import { renderTsType } from "../analysis/ts-type.js";
-import { ancestorChain } from "../gir/ancestry.js";
-import { callbackAsFunction, type GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirEnum } from "../gir/enum.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
-import { type GirAlias, type GirConstant, type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
-import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../gir/primitives.js";
 import type { GirProperty } from "../gir/property.js";
 import type { GirRecord } from "../gir/record.js";
+import type { ModuleContext } from "../writer/context.js";
+import { reservedSignalMemberRename } from "../analysis/inheritance.js";
+import { renderTsType } from "../analysis/ts-type.js";
+import { ancestorChain } from "../gir/ancestry.js";
+import { callbackAsFunction, type GirCallback } from "../gir/callback.js";
+import { type GirAlias, type GirConstant, type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
+import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../gir/primitives.js";
 import {
     dedupeCallables,
     indexMethodsByName,
@@ -27,11 +28,10 @@ import {
     renderMethodSignature,
     renderPromisifiedSignature,
 } from "../store/gi/method.js";
-import { type ResolvedAccessor, resolveAccessor } from "../store/gi/property-accessor.js";
+import { resolveAccessor, type ResolvedAccessor } from "../store/gi/property-accessor.js";
 import { resolveRecordFieldEntry } from "../store/gi/record-field-accessor.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
 import { implementedInterfaces, newlyImplementedInterfaces } from "../store/jsx/intrinsic-elements.js";
-import type { ModuleContext } from "../writer/context.js";
 import {
     classMethodEntries,
     docMarkdown,
@@ -45,8 +45,8 @@ import {
     originSignatureBlocks,
     renderDocsSignalHandlerType,
     renderDocsType,
-    type SignatureEntry,
     signatureBlock,
+    type SignatureEntry,
 } from "./render.js";
 
 type GiSymbolBase = {
@@ -56,13 +56,13 @@ type GiSymbolBase = {
 };
 
 export type GiSymbolEntry =
-    | (GiSymbolBase & { kind: "class" | "interface"; klass: GirClass })
-    | (GiSymbolBase & { kind: "record"; record: GirRecord })
-    | (GiSymbolBase & { kind: "enum"; enumeration: GirEnum })
-    | (GiSymbolBase & { kind: "callback"; callback: GirCallback })
-    | (GiSymbolBase & { kind: "alias"; alias: GirAlias })
-    | (GiSymbolBase & { kind: "function"; fn: GirFunction })
-    | (GiSymbolBase & { kind: "constant"; constant: GirConstant });
+    | (GiSymbolBase & { kind: "class" | "interface"; klass: GirClass }) |
+    (GiSymbolBase & { kind: "record"; record: GirRecord }) |
+    (GiSymbolBase & { kind: "enum"; enumeration: GirEnum }) |
+    (GiSymbolBase & { kind: "callback"; callback: GirCallback }) |
+    (GiSymbolBase & { kind: "alias"; alias: GirAlias }) |
+    (GiSymbolBase & { kind: "function"; fn: GirFunction }) |
+    (GiSymbolBase & { kind: "constant"; constant: GirConstant });
 
 export type SymbolPageOptions = {
     library: Library;
@@ -254,7 +254,7 @@ const propertiesSection = (
     entry: GiSymbolBase & { kind: "class" | "interface"; klass: GirClass },
     library: Library,
 ): string[] => {
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     const entries: MetaDocEntry[] = [];
     for (const [index, owner] of memberOwners(entry, library).entries()) {
         const useClassRenames = index === 0 && entry.kind === "class";
@@ -262,7 +262,7 @@ const propertiesSection = (
         entries.push(...ownerPropertyEntries(owner, setup, seen));
     }
     if (entries.length === 0) return [];
-    const intro = `Properties are read and written as instance fields; changes can be observed with \`connect("notify::<property-name>", handler)\`. Properties inherited from ancestors are documented on their own pages.`;
+    const intro = "Properties are read and written as instance fields; changes can be observed with `connect(\"notify::<property-name>\", handler)`. Properties inherited from ancestors are documented on their own pages.";
     return ["## Properties", intro, ...sortedMetaBlocks(entries)];
 };
 
@@ -284,13 +284,13 @@ const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<stri
 };
 
 const signalsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Library): string[] => {
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     const entries: SignalDocEntry[] = [];
     for (const owner of memberOwners(entry, library)) {
         entries.push(...ownerSignalEntries(owner, library, seen));
     }
     if (entries.length === 0) return [];
-    const intro = `Connect with \`instance.connect("<signal>", handler)\` or \`instance.on("<signal>", handler)\`. Signals inherited from ancestors are documented on their own pages.`;
+    const intro = "Connect with `instance.connect(\"<signal>\", handler)` or `instance.on(\"<signal>\", handler)`. Signals inherited from ancestors are documented on their own pages.";
     return ["## Signals", intro, ...originSignatureBlocks(entries)];
 };
 
@@ -338,20 +338,27 @@ const classPage = (
 export const renderSymbolPage = (entry: GiSymbolEntry, options: SymbolPageOptions): string => {
     switch (entry.kind) {
         case "class":
-        case "interface":
+        case "interface": {
             return classPage(entry, options);
-        case "record":
+        }
+        case "record": {
             return recordPage(entry, options.library);
-        case "enum":
+        }
+        case "enum": {
             return enumPage(entry);
-        case "callback":
+        }
+        case "callback": {
             return callbackPage(entry, options.library);
-        case "alias":
+        }
+        case "alias": {
             return aliasPage(entry, options.library);
-        case "function":
+        }
+        case "function": {
             return functionPage(entry, options.library);
-        case "constant":
+        }
+        case "constant": {
             return constantPage(entry, options.library);
+        }
     }
 };
 
@@ -414,16 +421,16 @@ const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: 
 
 const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }): string => {
     const { enumeration } = entry;
-    const kindLabel = enumeration.errorDomain !== undefined ? "error domain" : enumeration.kind;
+    const kindLabel = enumeration.errorDomain === undefined ? enumeration.kind : "error domain";
     const qualified = qualifiedName(entry);
     const rows = enumeration.members.map((member) => {
-        const description = firstSentence(member.doc).replaceAll("|", "\\|");
+        const description = firstSentence(member.doc).replaceAll("|", String.raw`\|`);
         return `| \`${enumMemberKey(member.name)}\` | \`${member.value}\` | ${description} |`;
     });
     const usage =
-        enumeration.errorDomain !== undefined
-            ? `Members are error codes for the \`${enumeration.errorDomain}\` GError domain, accessed as \`${qualified}.<member>\`.`
-            : `Members are accessed as \`${qualified}.<member>\`.`;
+        enumeration.errorDomain === undefined
+            ? `Members are accessed as \`${qualified}.<member>\`.`
+            : `Members are error codes for the \`${enumeration.errorDomain}\` GError domain, accessed as \`${qualified}.<member>\`.`;
     const table = ["| Member | Value | Description |", "| --- | --- | --- |", ...rows].join("\n");
     return joinSections([...pageHeader(entry, kindLabel), "## Members", usage, table]);
 };

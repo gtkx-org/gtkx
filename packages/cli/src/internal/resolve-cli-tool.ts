@@ -13,7 +13,7 @@ const findInPath = (executable: string): string => {
 };
 
 export const resolveCliTool = (() => {
-    const cache = new Map<string, string>();
+    const cache: Map<string, string> = new Map();
 
     return (executable: string): string => {
         const cached = cache.get(executable);

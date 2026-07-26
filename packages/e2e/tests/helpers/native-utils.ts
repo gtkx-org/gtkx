@@ -30,10 +30,10 @@ export const typeFromName = (name: string): bigint =>
     callArgs(GOBJECT_LIB, "g_type_from_name", [{ type: STRING_BORROWED, value: name }], BIGUINT64) as bigint;
 
 export function forceGC(): void {
-    if (!global.gc) {
+    if (!globalThis.gc) {
         throw new Error("global.gc is not available. Run tests with --expose-gc flag.");
     }
-    global.gc();
+    globalThis.gc();
 }
 
 const UINT32_DESCRIPTOR: Descriptor = { kind: "uint32" };

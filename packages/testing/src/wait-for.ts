@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { WaitForOptions } from "./types.js";
 import { runWithActEnvironment } from "./act.js";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
-import type { WaitForOptions } from "./types.js";
 
 const DEFAULT_INTERVAL = 50;
 
@@ -99,7 +99,7 @@ const isWidgetRemoved = (widget: Gtk.Widget | null): boolean => {
 
 const isTargetRemoved = (target: RemovalTarget): boolean => {
     if (Array.isArray(target)) {
-        return target.length === 0 || target.every(isWidgetRemoved);
+        return target.every(isWidgetRemoved);
     }
     return isWidgetRemoved(target);
 };

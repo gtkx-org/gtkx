@@ -18,14 +18,16 @@ const renderDividerConstraints = (dividerOffset: number | null) => (
     <>
         <ConstraintLayout.Guide id="divider" />
         <ConstraintLayout.Constraint target="divider" targetAttribute={A.WIDTH} sourceAttribute={A.NONE} constant={0} />
-        {dividerOffset === null ? null : (
-            <ConstraintLayout.Constraint
-                target="divider"
-                targetAttribute={A.LEFT}
-                sourceAttribute={A.LEFT}
-                constant={dividerOffset}
-            />
-        )}
+        {dividerOffset === null
+            ? null
+            : (
+                    <ConstraintLayout.Constraint
+                        target="divider"
+                        targetAttribute={A.LEFT}
+                        sourceAttribute={A.LEFT}
+                        constant={dividerOffset}
+                    />
+                )}
     </>
 );
 
@@ -88,14 +90,14 @@ const ConstraintsInteractive = () => {
     return (
         <ConstraintContainer
             layoutManager={renderLayout(dividerOffset)}
-            controllers={
+            controllers={(
                 <GtkGestureDrag
                     onDragUpdate={(offsetX, _offsetY, self) => {
                         const [success, startX] = self.getStartPoint();
                         if (success) setDividerOffset(startX + offsetX);
                     }}
                 />
-            }
+            )}
         />
     );
 };

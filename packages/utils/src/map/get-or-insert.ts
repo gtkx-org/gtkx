@@ -1,8 +1,8 @@
-export interface GetSet<K, V> {
+export type GetSet<K, V> = {
     get(key: K): V | undefined;
     set(key: K, value: V): unknown;
     has(key: K): boolean;
-}
+};
 
 /**
  * Returns the value stored under `key`, or inserts and returns the value produced by `factory` when

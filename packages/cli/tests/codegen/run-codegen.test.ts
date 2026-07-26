@@ -156,7 +156,7 @@ describe("ensureGenerated — announce path", () => {
     it("propagates non-NotFound config errors", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installRuntimePackage(cwd);
-        writeConfig(cwd, `export default { libraries: [] };`);
+        writeConfig(cwd, "export default { libraries: [] };");
 
         await expect(ensureGenerated(cwd, { announce: true })).rejects.toThrow();
     });
@@ -231,7 +231,7 @@ describe("ensureGenerated", () => {
 
     it("propagates non-NotFound config errors", async () => {
         installRuntimePackage(cwd);
-        writeConfig(cwd, `export default { libraries: [] };`);
+        writeConfig(cwd, "export default { libraries: [] };");
 
         await expect(ensureGenerated(cwd)).rejects.toThrow();
     });

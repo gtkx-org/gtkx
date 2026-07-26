@@ -4,11 +4,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
 import { BUNDLE_FILENAME, REL_SEPARATOR, toVirtualId, VIRTUAL_INIT } from "../../src/vite-plugins/resource-shared.js";
 import { gtkxResources } from "../../src/vite-plugins/resources.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-assertions.js";
-
-import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
 
 type ConfigureServerHook = (this: unknown, server: unknown) => void;
 
@@ -72,7 +71,7 @@ describe("gtkxResources (plugin shape)", () => {
     it("config declares an assetsInclude regex covering known asset extensions", async () => {
         const plugin = gtkxResources();
         const root = mkdtempSync(join(tmpdir(), "gtkx-resources-test-"));
-        writeFileSync(join(root, "gtkx.config.ts"), `export default { applicationId: "org.gtkx.app" };\n`);
+        writeFileSync(join(root, "gtkx.config.ts"), "export default { applicationId: \"org.gtkx.app\" };\n");
         try {
             const result = await (plugin.config as ConfigHook).call(plugin, { root });
             expect(result.assetsInclude).toHaveLength(1);
@@ -164,7 +163,7 @@ describe("gtkxResources (init module)", () => {
             const plugin = gtkxResources();
             await initPlugin(plugin, "serve", tmpDir, "org.gtk.Demo4");
 
-            const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+            const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4E, 0x47]));
             (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
 
             const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
@@ -186,7 +185,7 @@ describe("gtkxResources (resource prefix)", () => {
         const assetPath = dataAssetPath("icons", "foo.svg");
         const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "icons/foo.svg")) as string;
 
-        expect(out).toContain(`export const path = "/org/gtkx/app/icons/foo.svg";`);
+        expect(out).toContain("export const path = \"/org/gtkx/app/icons/foo.svg\";");
     });
 });
 
@@ -206,10 +205,10 @@ describe("gtkxResources (asset load)", () => {
         const assetPath = dataAssetPath("icons", "foo.svg");
         const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "icons/foo.svg")) as string;
 
-        expect(out).toContain('import { ensureRegistered } from "\\u0000gtkx-resources-init";');
+        expect(out).toContain(String.raw`import { ensureRegistered } from "\u0000gtkx-resources-init";`);
         expect(out).toContain("ensureRegistered();");
-        expect(out).toContain(`export default "resource:///org/gtk/Demo4/icons/foo.svg";`);
-        expect(out).toContain(`export const path = "/org/gtk/Demo4/icons/foo.svg";`);
+        expect(out).toContain("export default \"resource:///org/gtk/Demo4/icons/foo.svg\";");
+        expect(out).toContain("export const path = \"/org/gtk/Demo4/icons/foo.svg\";");
     });
 
     it("lands a top-level #data asset at the resource base path", async () => {
@@ -219,7 +218,7 @@ describe("gtkxResources (asset load)", () => {
         const assetPath = dataAssetPath("style.css");
         const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "style.css")) as string;
 
-        expect(out).toContain(`export const path = "/org/gtk/Demo4/style.css";`);
+        expect(out).toContain("export const path = \"/org/gtk/Demo4/style.css\";");
     });
 });
 
@@ -237,7 +236,7 @@ describe("gtkxResources (buildEnd)", () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
-        const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+        const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]));
         (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
 
         expectBuildEndEmitsAsset(plugin.buildEnd as BuildEndHook, BUNDLE_FILENAME);
@@ -260,7 +259,7 @@ const waitTicks = async (n = 2): Promise<void> => {
     }
 };
 
-const TINY_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+const TINY_PNG = Buffer.from([0x89, 0x50, 0x4E, 0x47]);
 
 type WatcherHarness = {
     assetPath: string;

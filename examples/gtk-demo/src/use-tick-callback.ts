@@ -1,6 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type RefObject, useLayoutEffect, useRef } from "react";
-import { useLatest } from "./use-latest.js";
+import { type RefObject, useEffectEvent, useLayoutEffect, useRef } from "react";
 
 type TickRegistration = {
     widget: Gtk.Widget;
@@ -8,7 +7,7 @@ type TickRegistration = {
 };
 
 export function useTickCallback(target: RefObject<Gtk.Widget | null> | null, callback: Gtk.TickCallback): void {
-    const callbackRef = useLatest(callback);
+    const tick = useEffectEvent(callback);
     const registrationRef = useRef<TickRegistration | null>(null);
 
     const drop = (): void => {
@@ -26,7 +25,7 @@ export function useTickCallback(target: RefObject<Gtk.Widget | null> | null, cal
         if (widget === null) return;
         const entry: TickRegistration = { widget, id: null };
         entry.id = widget.addTickCallback((tickWidget, frameClock) => {
-            const keep = callbackRef.current(tickWidget, frameClock);
+            const keep = tick(tickWidget, frameClock);
             if (!keep) {
                 entry.id = null;
                 if (registrationRef.current === entry) registrationRef.current = null;

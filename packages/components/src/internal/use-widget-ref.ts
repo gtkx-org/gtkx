@@ -1,5 +1,5 @@
-import { useMergedRef } from "@gtkx/react/internal";
 import type { Ref, RefCallback } from "react";
+import { useMergedRef } from "@gtkx/react/internal";
 import { useState } from "react";
 
 export const useWidgetRef = <T>(external: Ref<T | null> | null | undefined): [T | null, RefCallback<T | null>] => {

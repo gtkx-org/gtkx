@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { gtkxCss } from "../../src/vite-plugins/css.js";
 import type { LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
+import { gtkxCss } from "../../src/vite-plugins/css.js";
 
 let tmpDir: string;
 

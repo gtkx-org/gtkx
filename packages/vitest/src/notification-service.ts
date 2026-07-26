@@ -1,7 +1,7 @@
 /// <reference path="./dbus-native.d.ts" />
 
-import { EventEmitter } from "node:events";
 import { type InterfaceDescriptor, sessionBus } from "@homebridge/dbus-native";
+import { EventEmitter } from "node:events";
 
 const NOTIFICATIONS_NAME = "org.freedesktop.Notifications";
 const NOTIFICATIONS_PATH = "/org/freedesktop/Notifications";

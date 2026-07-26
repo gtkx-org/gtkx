@@ -53,12 +53,12 @@ void main() {
 
 const VERTEX_DATA = [0, 0.5, 0, 1, 1, 0, 0, 1, 0.5, -0.366, 0, 1, 0, 1, 0, 1, -0.5, -0.366, 0, 1, 0, 0, 1, 1];
 
-interface GLState {
+type GLState = {
     program: number;
     vao: number;
     vbo: number;
     mvpLocation: number;
-}
+};
 
 const createRotationMatrix = (rx: number, ry: number, rz: number): number[] => {
     const cosX = Math.cos(rx);
@@ -153,12 +153,12 @@ const releaseGLState = (glStateRef: React.RefObject<GLState | null>) => {
     }
 };
 
-interface RenderGLAreaArgs {
+type RenderGLAreaArgs = {
     glStateRef: React.RefObject<GLState | null>;
     rotationX: number;
     rotationY: number;
     rotationZ: number;
-}
+};
 
 const renderGLArea = ({ glStateRef, rotationX, rotationY, rotationZ }: RenderGLAreaArgs): boolean => {
     const state = glStateRef.current;
@@ -198,7 +198,7 @@ const AxisScale = ({ label, onValueChanged }: { label: string; onValueChanged: (
     );
 };
 
-interface UseGLAreaHandlersArgs {
+type UseGLAreaHandlersArgs = {
     glAreaRef: React.RefObject<Gtk.GLArea | null>;
     glStateRef: React.RefObject<GLState | null>;
     rotationX: number;
@@ -207,7 +207,7 @@ interface UseGLAreaHandlersArgs {
     setRotationX: (v: number) => void;
     setRotationY: (v: number) => void;
     setRotationZ: (v: number) => void;
-}
+};
 
 const useGLAreaHandlers = (args: UseGLAreaHandlersArgs) => {
     const { glAreaRef, glStateRef, rotationX, rotationY, rotationZ } = args;
@@ -219,8 +219,8 @@ const useGLAreaHandlers = (args: UseGLAreaHandlersArgs) => {
         if (area.getError()) return;
         try {
             glStateRef.current = initGL(area.getApi());
-        } catch (e) {
-            if (e instanceof Error) console.error(e.message);
+        } catch (error) {
+            if (error instanceof Error) console.error(error.message);
             glStateRef.current = null;
         }
     };

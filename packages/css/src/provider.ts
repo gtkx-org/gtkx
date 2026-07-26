@@ -1,6 +1,6 @@
+import type { Logger } from "@gtkx/utils";
 import { type Display, DisplayManager } from "@gtkx/gi/gdk";
 import { CssProvider, STYLE_PROVIDER_PRIORITY_APPLICATION, StyleContext } from "@gtkx/gi/gtk";
-import type { Logger } from "@gtkx/utils";
 
 export const registerProviderForDefaultDisplay = (
     priority: number = STYLE_PROVIDER_PRIORITY_APPLICATION,

@@ -4,13 +4,13 @@ import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textscroll.tsx?raw";
 
-interface TickAutoScrollArgs {
+type TickAutoScrollArgs = {
     textView: Gtk.TextView;
     buffer: Gtk.TextBuffer;
     markName: string;
     countRef: React.RefObject<number>;
     scrollToEnd: boolean;
-}
+};
 
 const tickAutoScroll = ({ textView, buffer, markName, countRef, scrollToEnd }: TickAutoScrollArgs) => {
     const count = ++countRef.current;

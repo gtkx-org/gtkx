@@ -1,7 +1,7 @@
 import { pascalCase } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
-import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { splitOptionalNamespace } from "../../gir/type-ref.js";
 
 export const parentCompanionRef = (context: ModuleContext, klass: GirClass, suffix: string): string | undefined => {
     if (klass.parent === undefined) return undefined;

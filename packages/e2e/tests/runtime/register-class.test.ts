@@ -153,6 +153,7 @@ describe("registerClass — vfunc argument and return marshalling", () => {
             override getNItems(): number {
                 return 1;
             }
+
             override getItem(position: number): GObject | null {
                 return position === 0 ? returned : null;
             }
@@ -171,7 +172,7 @@ describe("registerClass — caller-allocated and scalar out parameters", () => {
     it("fills a caller-allocated out boxed parameter from the handler's return value", () => {
         class CustomChooser extends Gtk.ColorButton {
             override getRgba(): Gdk.RGBA {
-                return new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1.0 });
+                return new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1 });
             }
         }
         registerClass(CustomChooser, { typeName: uniqueName("GtkxVfuncCallerOutBoxed") });
@@ -182,7 +183,7 @@ describe("registerClass — caller-allocated and scalar out parameters", () => {
         expect(result.red).toBeCloseTo(0.5);
         expect(result.green).toBeCloseTo(0.25);
         expect(result.blue).toBeCloseTo(0.75);
-        expect(result.alpha).toBeCloseTo(1.0);
+        expect(result.alpha).toBeCloseTo(1);
     });
 
     it("writes scalar out parameters from the handler's returned tuple", () => {

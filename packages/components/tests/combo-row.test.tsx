@@ -1,5 +1,5 @@
-import { DropDown } from "@gtkx/components";
 import type * as Adw from "@gtkx/gi/adw";
+import { DropDown } from "@gtkx/components";
 import { AdwComboRow } from "@gtkx/jsx/adw";
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
@@ -35,7 +35,7 @@ describe("render - AdwComboRow", () => {
         const matches = await screen.findAllByText("By date");
         expect(matches.length).toBeGreaterThanOrEqual(2);
         const unselected = await screen.findAllByText("By size");
-        expect(unselected.length).toBe(1);
+        expect(unselected).toHaveLength(1);
     });
 
     it("updates the row display when selectedId changes", async () => {

@@ -1,5 +1,5 @@
-import EventEmitter from "node:events";
 import type { Socket } from "node:net";
+import EventEmitter from "node:events";
 import type { Message } from "./protocol/schemas.js";
 import { type AppConnectionEvents, type AppConnections, ProtocolConnection } from "./transport.js";
 

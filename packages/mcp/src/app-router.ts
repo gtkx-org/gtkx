@@ -20,10 +20,10 @@ type RegisteredApp = {
     connection: ProtocolConnection;
 };
 
-const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
 export class AppRouter extends EventEmitter<AppRouterEventMap> {
-    private static DEFAULT_WAIT_TIMEOUT = 10000;
+    private static DEFAULT_WAIT_TIMEOUT = 10_000;
 
     private apps: Map<string, RegisteredApp> = new Map();
     private connectionToApp: Map<string, string> = new Map();
@@ -45,7 +45,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
     }
 
     getApps(): AppInfo[] {
-        return Array.from(this.apps.values()).map((app) => app.info);
+        return [...this.apps.values()].map((app) => app.info);
     }
 
     hasConnectedApps(): boolean {
@@ -73,7 +73,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
                 reject(
                     new Error(
                         `Timeout waiting for app registration after ${timeout}ms. ` +
-                            "Make sure your GTKX app is running with 'gtkx dev'.",
+                        "Make sure your GTKX app is running with 'gtkx dev'.",
                     ),
                 );
             }, timeout);
@@ -129,7 +129,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         const appInfo: AppInfo = {
             applicationId: params.applicationId,
             pid: params.pid,
-            ...(params.projectRoot === undefined ? {} : { projectRoot: params.projectRoot }),
+            ...(params.projectRoot !== undefined && { projectRoot: params.projectRoot }),
         };
 
         this.apps.set(params.applicationId, { info: appInfo, connection });

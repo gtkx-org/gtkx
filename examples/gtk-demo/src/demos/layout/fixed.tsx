@@ -2,19 +2,19 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkFixed, GtkFixedLayoutChild, GtkFrame, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import type { Demo } from "../types.js";
 import { at } from "../../transform.js";
 import { useCssResource } from "../../use-css-resource.js";
-import type { Demo } from "../types.js";
 import fixedCss from "./fixed.css?raw";
 import sourceCode from "./fixed.tsx?raw";
 
 const FACE_SIZE = 200;
 
-interface CubeFace {
+type CubeFace = {
     name: string;
     rotateX: number;
     rotateY: number;
-}
+};
 
 const CUBE_FACES: CubeFace[] = [
     { name: "back", rotateX: 0, rotateY: -180 },

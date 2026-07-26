@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 export const DATA_IMPORT_PREFIX = "#data";
 
-const DATA_IMPORT_KEY: string = `${DATA_IMPORT_PREFIX}/*`;
+const DATA_IMPORT_KEY = `${DATA_IMPORT_PREFIX}/*`;
 
 const CONDITION_PRIORITY = ["default", "import", "node"] as const;
 
@@ -34,7 +34,7 @@ const directoryFromTarget = (target: string): string | null => {
 export const resolveDataDir = (root: string): string | null => {
     let manifest: { imports?: Record<string, unknown> };
     try {
-        manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf-8"));
+        manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
     } catch {
         return null;
     }

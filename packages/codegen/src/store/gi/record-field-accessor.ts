@@ -1,12 +1,12 @@
 import { toCamelIdentifier } from "@gtkx/utils";
-import { tStruct } from "../../analysis/descriptor.js";
-import { isInlineCallbackRef, renderDescriptor } from "../../analysis/descriptor-render.js";
-import { renderTsType } from "../../analysis/ts-type.js";
 import type { GirField } from "../../gir/field.js";
 import type { FieldSlot } from "../../gir/size.js";
-import type { GirType } from "../../gir/type.js";
 import type { TypeId } from "../../gir/type-id.js";
+import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { isInlineCallbackRef, renderDescriptor } from "../../analysis/descriptor-render.js";
+import { tStruct } from "../../analysis/descriptor.js";
+import { renderTsType } from "../../analysis/ts-type.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock } from "../../writer/emit.js";
 import { refIsClassStruct } from "./class-struct-record.js";
@@ -123,22 +123,27 @@ const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean =>
     const type = context.library.typeOf(ref);
     if (type === undefined) return true;
     switch (type.kind) {
-        case "primitive":
+        case "primitive": {
             return type.category !== "void" && type.category !== "unichar";
+        }
         case "class":
         case "interface":
         case "record":
         case "enum":
-        case "alias":
+        case "alias": {
             return true;
-        case "callback":
+        }
+        case "callback": {
             return context.library.nameOf(ref) !== undefined;
-        case "carray":
+        }
+        case "carray": {
             return type.fixedSize !== undefined;
+        }
         case "list":
         case "hashtable":
-        case "varargs":
+        case "varargs": {
             return false;
+        }
     }
 };
 
@@ -323,7 +328,7 @@ const structArraySetterStatements = (context: ModuleContext, options: StructArra
     return [
         `const __descriptor = ${elementDescriptor};`,
         `const __array = read(getHandle(this), __descriptor, ${offset}) as ReturnType<typeof getHandle>;`,
-        `for (const [__index, __element] of __value.entries()) {`,
+        "for (const [__index, __element] of __value.entries()) {",
         indent(loop, 1),
         "}",
         `write(getHandle(this), __descriptor, ${offset}, __array);`,

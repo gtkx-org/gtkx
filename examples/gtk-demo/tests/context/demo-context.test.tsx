@@ -1,8 +1,8 @@
-import { act, render, renderHook } from "@gtkx/testing";
 import type { ReactNode } from "react";
+import { act, render, renderHook } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-import { DemoProvider, parseTitle, useDemo } from "../../src/context/demo-context.js";
 import type { Demo, TreeItem } from "../../src/demos/types.js";
+import { DemoProvider, parseTitle, useDemo } from "../../src/context/demo-context.js";
 
 const buildWrapper = (demos: Demo[]) => {
     return ({ children }: { children: ReactNode }) => <DemoProvider demos={demos}>{children}</DemoProvider>;
@@ -117,7 +117,7 @@ describe("DemoProvider", () => {
 
 describe("filteredTreeItems", () => {
     it("returns the full tree when the query is whitespace-only", async () => {
-        const filtered = await captureFiltered([intro, button, expander], "   ");
+        const filtered = await captureFiltered([intro, button, expander], " ".repeat(3));
         expect(filtered.length).toBeGreaterThan(0);
         expect(filtered[0]).toEqual({ type: "demo", demo: intro, displayTitle: "GTK Demo" });
     });
@@ -125,8 +125,8 @@ describe("filteredTreeItems", () => {
     it("matches against title", async () => {
         const filtered = await captureFiltered([intro, button, expander], "Expander");
         const category = filtered.find((item) => item.type === "category" && item.title === "Buttons") as
-            | Extract<TreeItem, { type: "category" }>
-            | undefined;
+            | Extract<TreeItem, { type: "category" }> |
+            undefined;
         expect(category?.children.map((c) => (c.type === "demo" ? c.demo.id : null))).toEqual(["expander"]);
     });
 

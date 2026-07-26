@@ -17,7 +17,7 @@ const hoisted = vi.hoisted(() => ({
         return widget.getLabel?.() ?? widget.getText?.() ?? null;
     }),
     listToplevels: vi.fn(() => [] as unknown[]),
-    AccessibleRole: { BUTTON: 1, LABEL: 2 } as Record<string, number>,
+    AccessibleRole: { BUTTON: 1, LABEL: 2 },
 }));
 const {
     findAllByRole,
@@ -56,10 +56,10 @@ import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
 import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
 
 type FakeApp = {
-    getWindows: () => Array<{ getTitle?: () => string | null }>;
+    getWindows: () => { getTitle?: () => string | null }[];
 };
 
-const makeApp = (windows: Array<{ getTitle?: () => string | null }> = []): FakeApp => ({
+const makeApp = (windows: { getTitle?: () => string | null }[] = []): FakeApp => ({
     getWindows: () => windows,
 });
 
@@ -94,7 +94,7 @@ describe("app.getWindows", () => {
         registry.refresh();
 
         const result = (await dispatch("app.getWindows", {}, { app: makeApp() as never, registry })) as {
-            windows: Array<{ id: string; title: string | null }>;
+            windows: { id: string; title: string | null }[];
         };
 
         expect(result.windows).toHaveLength(2);
@@ -161,7 +161,7 @@ describe("widget.query", () => {
             "widget.query",
             { by: "role", value: "BUTTON", options: { exact: true } },
             { app: makeApp() as never, registry },
-        )) as { widgets: Array<{ text: string | null }> };
+        )) as { widgets: { text: string | null }[] };
 
         expect(findAllByRole).toHaveBeenCalledWith(expect.anything(), 1, { exact: true });
         expect(result.widgets[0]?.text).toBe("OK");
@@ -210,7 +210,7 @@ describe("widget.query", () => {
             "widget.query",
             { by: "role", value: "button" },
             { app: makeApp() as never, registry },
-        )) as { widgets: Array<{ children: unknown[] }> };
+        )) as { widgets: { children: unknown[] }[] };
 
         expect(result.widgets[0]?.children).toEqual([]);
     });

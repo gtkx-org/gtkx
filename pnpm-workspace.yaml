@@ -13,6 +13,7 @@ publicHoistPattern:
 
 trustPolicyExclude:
   - pino@9.14.0
+  - semver@6.3.1
 
 catalog:
   '@types/ejs': ^3.1.5
@@ -29,6 +30,14 @@ catalog:
 allowBuilds:
   '@swc/core': true
   esbuild: true
+
+packageExtensions:
+  eslint-plugin-perfectionist:
+    peerDependencies:
+      typescript: "*"
+  eslint-plugin-sonarjs:
+    peerDependencies:
+      typescript: "*"
 
 overrides:
   vite: ^8.1.5

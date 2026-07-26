@@ -3,10 +3,10 @@ import * as net from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect } from "vitest";
-import { ConnectionRegistry } from "../src/connection-registry.js";
 import type { Request } from "../src/protocol/schemas.js";
-import { SocketServer } from "../src/socket-server.js";
 import type { ProtocolConnection } from "../src/transport.js";
+import { ConnectionRegistry } from "../src/connection-registry.js";
+import { SocketServer } from "../src/socket-server.js";
 
 export const connectClient = (path: string): Promise<net.Socket> =>
     new Promise((resolve, reject) => {
@@ -28,7 +28,7 @@ export const tryConnect = (path: string): Promise<Error | null> =>
 const collectLines = (socket: net.Socket): { lines: string[]; promise: Promise<void> } => {
     let buffer = "";
     const lines: string[] = [];
-    const promise = new Promise<void>((resolve) => {
+    const promise: Promise<void> = new Promise((resolve) => {
         socket.on("data", (data: Buffer) => {
             buffer += data.toString();
             let idx = buffer.indexOf("\n");

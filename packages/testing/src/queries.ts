@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { type BuiltQueries, buildQueries, type QueryAllBy } from "./build-queries.js";
+import type { ByRoleOptions, ByRoleValue, Matcher, MatcherOptions, NormalizerFn, NormalizerOptions } from "./types.js";
+import { buildQueries, type BuiltQueries, type QueryAllBy } from "./build-queries.js";
 import { multipleFoundError, notFoundError } from "./errors.js";
 import { type Container, findAll, traverse } from "./traversal.js";
-import type { ByRoleOptions, ByRoleValue, Matcher, MatcherOptions, NormalizerFn, NormalizerOptions } from "./types.js";
 import {
     getWidgetAccessibleName,
     getWidgetBusyState,
@@ -55,8 +55,8 @@ const buildNormalizer = (options?: MatcherOptions): NormalizerFn => {
     if (trim !== undefined || collapseWhitespace !== undefined) {
         throw new Error(
             "trim and collapseWhitespace are not supported with a normalizer. " +
-                "If you want to use the default trim and collapseWhitespace logic in your normalizer, " +
-                'use "getDefaultNormalizer({ trim, collapseWhitespace })" and compose that into your normalizer',
+            "If you want to use the default trim and collapseWhitespace logic in your normalizer, " +
+            "use \"getDefaultNormalizer({ trim, collapseWhitespace })\" and compose that into your normalizer",
         );
     }
 
@@ -108,8 +108,7 @@ const matchAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, options: B
     for (const [expected, current] of numericChecks) {
         if (!numericValueMatches(expected, current)) return false;
     }
-    if (value.text !== undefined && !matchText(actual.text, value.text, widget, options)) return false;
-    return true;
+    return value.text === undefined || matchText(actual.text, value.text, widget, options);
 };
 
 const matchBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
@@ -240,7 +239,7 @@ const collectLabelMatches = (
  * @returns Every matching widget, or an empty array when none match.
  */
 export const queryAllByLabelText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] => {
-    const results = new Set<Gtk.Widget>();
+    const results: Set<Gtk.Widget> = new Set();
 
     for (const widget of traverse(container)) {
         collectLabelMatches(results, widget, text, options);

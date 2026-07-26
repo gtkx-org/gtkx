@@ -17,7 +17,7 @@ describe("screen binding", () => {
         const all = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: /First|Second/ });
 
         expect(button).toBeDefined();
-        expect(all.length).toBe(2);
+        expect(all).toHaveLength(2);
     });
 
     it("throws when no render has been performed", async () => {
@@ -111,7 +111,7 @@ describe("screen screenshot selectors", () => {
 
 describe("screen screenshot errors", () => {
     it.each([
-        ["throws when no window matches a string selector", "Nonexistent" as string | RegExp],
+        ["throws when no window matches a string selector", "Nonexistent"],
         ["throws when no window matches a regex selector", /^Bogus/],
     ])("%s", async (_title, selector) => {
         await render(

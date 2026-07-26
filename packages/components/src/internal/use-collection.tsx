@@ -1,8 +1,8 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
+import type { ReactElement } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkMultiSelection, GtkNoSelection, GtkSingleSelection } from "@gtkx/jsx/gtk";
-import type { ReactElement } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Item, Section } from "../types.js";
 import {
@@ -11,11 +11,11 @@ import {
     collectionModeOf,
     createCollectionModel,
 } from "./collection-model.js";
-import { type CellSize, type Cells, useCells } from "./use-cells.js";
+import { type Cells, type CellSize, useCells } from "./use-cells.js";
 
 export type CollectionOptions = {
-    items?: Item<unknown>[] | undefined;
-    sections?: Section<unknown, unknown>[] | undefined;
+    items?: Item[] | undefined;
+    sections?: Section[] | undefined;
     mode?: CollectionMode | undefined;
     size: CellSize;
     selectedIds?: string[] | null | undefined;

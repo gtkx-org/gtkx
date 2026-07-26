@@ -5,11 +5,11 @@ import sourceCode from "./scale.tsx?raw";
 
 const INTEGER_MARKS = [0, 1, 2, 3, 4].map((value) => ({ value, position: Gtk.PositionType.BOTTOM }));
 
-interface ScaleRowProps {
+type ScaleRowProps = {
     label: string;
     row: number;
     scaleProps?: Partial<React.ComponentProps<typeof GtkScale>>;
-}
+};
 
 const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (
     <>

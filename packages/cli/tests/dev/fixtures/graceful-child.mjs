@@ -6,7 +6,7 @@ let exited = false;
 const finish = (graceful) => {
     if (exited) return;
     exited = true;
-    const code = graceful ? 0 : firstSignal === "SIGINT" ? 130 : 143;
+    const code = graceful ? 0 : (firstSignal === "SIGINT" ? 130 : 143);
     process.exit(code);
 };
 

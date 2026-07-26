@@ -1,5 +1,5 @@
-import { GtkBox, GtkButton, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
+import { GtkBox, GtkButton, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 
 export const drawButtonBox = (n: number): ReactNode => (
     <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>

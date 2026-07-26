@@ -1,9 +1,9 @@
 import { toCamelIdentifier } from "@gtkx/utils";
-import { tFn } from "../../analysis/descriptor.js";
-import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { tFn } from "../../analysis/descriptor.js";
+import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";

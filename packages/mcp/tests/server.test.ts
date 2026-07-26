@@ -1,11 +1,11 @@
-import { EventEmitter } from "node:events";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppRouter } from "../src/app-router.js";
 import type { AppInfo } from "../src/protocol/schemas.js";
 
 const { mcpServerInstances, registerToolMock, registerResourceMock, mcpConnectMock, mcpCloseMock } = vi.hoisted(() => {
-    const instances: Array<{ name: string; version: string }> = [];
+    const instances: { name: string; version: string }[] = [];
     return {
         mcpServerInstances: instances,
         registerToolMock: vi.fn(),
@@ -20,12 +20,15 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
         constructor(opts: { name: string; version: string }) {
             mcpServerInstances.push(opts);
         }
+
         registerTool(name: string, config: unknown, handler: unknown): void {
             registerToolMock(name, config, handler);
         }
+
         registerResource(name: string, uriOrTemplate: unknown, config: unknown, handler: unknown): void {
             registerResourceMock(name, uriOrTemplate, config, handler);
         }
+
         connect = mcpConnectMock;
         close = mcpCloseMock;
     },
@@ -52,7 +55,7 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
 const { socketStartMock, socketStopMock, socketServerInstances } = vi.hoisted(() => ({
     socketStartMock: vi.fn(async () => undefined),
     socketStopMock: vi.fn(async () => undefined),
-    socketServerInstances: [] as Array<{ start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }>,
+    socketServerInstances: [] as { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }[],
 }));
 
 vi.mock("../src/socket-server.js", () => ({
@@ -60,7 +63,7 @@ vi.mock("../src/socket-server.js", () => ({
         start = socketStartMock;
         stop = socketStopMock;
         constructor(_registry: unknown, _path: string) {
-            socketServerInstances.push(this as { start: typeof socketStartMock; stop: typeof socketStopMock });
+            socketServerInstances.push(this);
         }
     },
 }));
@@ -105,7 +108,7 @@ function makeAppRouter(overrides: Partial<AppRouterStub> = {}): AppRouterStub {
     return {
         getApps: vi.fn(() => []),
         hasConnectedApps: vi.fn(() => false),
-        waitForApp: vi.fn(async () => ({ applicationId: "app-a", pid: 1 }) as AppInfo),
+        waitForApp: vi.fn(async () => ({ applicationId: "app-a", pid: 1 })),
         sendToApp: vi.fn(async () => ({}) as never),
         ...overrides,
     };
@@ -143,7 +146,7 @@ async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "tex
         hasConnectedApps: vi.fn(() => false),
         waitForApp: vi.fn(async () => {
             throw thrown;
-        }) as never,
+        }),
     });
 
     const result = await getTool(appRouter, "gtkx_list_apps").handler({ waitForApps: true } as never);
@@ -227,7 +230,7 @@ describe("buildTools — gtkx_list_apps success", () => {
             apps,
             vi.fn(async () => {
                 throw new Error("boom");
-            }) as never,
+            }),
         );
 
         const result = await getTool(appRouter, "gtkx_list_apps").handler({} as never);
@@ -238,10 +241,10 @@ describe("buildTools — gtkx_list_apps success", () => {
 
 describe("buildTools — gtkx_list_apps waiting", () => {
     it("waits for an app when waitForApps is true and none are connected", async () => {
-        const waitForApp = vi.fn(async () => ({ applicationId: "app-a", pid: 1 }) as AppInfo);
+        const waitForApp = vi.fn(async () => ({ applicationId: "app-a", pid: 1 }));
         const appRouter = makeAppRouter({
             hasConnectedApps: vi.fn(() => false),
-            waitForApp: waitForApp as never,
+            waitForApp: waitForApp,
         });
 
         await getTool(appRouter, "gtkx_list_apps").handler({ waitForApps: true, timeout: 5000 } as never);

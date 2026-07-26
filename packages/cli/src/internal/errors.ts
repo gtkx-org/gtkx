@@ -1,5 +1,5 @@
-import { logger } from "@gtkx/utils";
 import type { ArgsDef, CommandDef } from "citty";
+import { logger } from "@gtkx/utils";
 
 const ERROR_EXIT_CODE = 1;
 
@@ -20,8 +20,8 @@ export const withErrorBoundary = <T extends ArgsDef>(command: CommandDef<T>): Co
         run: async (context) => {
             try {
                 return await run(context);
-            } catch (cause) {
-                printError(cause);
+            } catch (error) {
+                printError(error);
             }
         },
     };

@@ -1,6 +1,6 @@
-import EventEmitter from "node:events";
 import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
+import EventEmitter from "node:events";
 import { ErrorCode, invalidRequestError, isErrorCode, ProtocolError, requestTimeoutError } from "./protocol/errors.js";
 import { type Message, type Request, RequestSchema, type Response, ResponseSchema } from "./protocol/schemas.js";
 
@@ -162,6 +162,6 @@ export type AppConnectionEvents = {
     error: [Error];
 };
 
-export interface AppConnections extends EventEmitter<AppConnectionEvents> {
+export type AppConnections = {
     send(connectionId: string, message: Message): void;
-}
+} & EventEmitter<AppConnectionEvents>;

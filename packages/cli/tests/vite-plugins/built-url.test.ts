@@ -6,12 +6,12 @@ type ConfigHook = (userConfig: {
         renderBuiltUrl?: unknown;
     };
 }) =>
-    | undefined
-    | {
-          experimental: {
-              renderBuiltUrl: (filename: string, ctx: { type: string }) => unknown;
-          };
-      };
+    | undefined |
+    {
+        experimental: {
+            renderBuiltUrl: (filename: string, ctx: { type: string }) => unknown;
+        };
+    };
 
 const callConfig = (plugin: ReturnType<typeof gtkxBuiltUrl>, userConfig: Parameters<ConfigHook>[0]) =>
     (plugin.config as ConfigHook)(userConfig);

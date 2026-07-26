@@ -44,7 +44,7 @@ export type GlRegistry = {
 const NAME_TAG = "name";
 const SKIP_IN_C_TYPE: Set<string> = new Set([NAME_TAG, "comment"]);
 
-const normalizeWhitespace = (text: string): string => text.replace(/\s+/g, " ").trim();
+const normalizeWhitespace = (text: string): string => text.replaceAll(/\s+/g, " ").trim();
 
 const childNamed = (node: OrderedNode, tag: string): OrderedNode | undefined => {
     for (const child of nodeChildren(node)) {
@@ -69,9 +69,9 @@ const parseParam = (node: OrderedNode): GlParam => {
     const objectClass = nodeAttr(node, "class");
     return {
         ...param,
-        ...(group !== undefined ? { group } : {}),
-        ...(len !== undefined ? { len } : {}),
-        ...(objectClass !== undefined ? { objectClass } : {}),
+        ...((group !== undefined) && { group }),
+        ...((len !== undefined) && { len }),
+        ...((objectClass !== undefined) && { objectClass }),
     };
 };
 
@@ -86,7 +86,7 @@ const parseCommand = (node: OrderedNode): GlCommand | undefined => {
     return {
         name: elementName(proto),
         returnCType: normalizeWhitespace(collectText(proto, SKIP_IN_C_TYPE)),
-        ...(returnGroup !== undefined ? { returnGroup } : {}),
+        ...((returnGroup !== undefined) && { returnGroup }),
         params,
     };
 };
@@ -125,7 +125,7 @@ const parseInterfaceBlock = (node: OrderedNode): GlInterfaceBlock => {
     for (const child of nodeChildren(node)) collectInterfaceMember(child, commands, enums);
     const profile = nodeAttr(node, "profile");
     return {
-        ...(profile !== undefined ? { profile } : {}),
+        ...((profile !== undefined) && { profile }),
         commands,
         enums,
     };

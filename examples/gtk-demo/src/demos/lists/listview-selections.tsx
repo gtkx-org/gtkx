@@ -1,4 +1,3 @@
-import { readdirSync, statSync } from "node:fs";
 import { DropDown } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -21,6 +20,7 @@ import {
     GtkSeparator,
     GtkSpinButton,
 } from "@gtkx/jsx/gtk";
+import { readdirSync, statSync } from "node:fs";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
@@ -141,12 +141,12 @@ function highlightMatch(word: string, query: string): string {
 }
 
 const findSuggestions = (words: string[], text: string): string[] => {
-    if (text.length < 1) return [];
+    if (text.length === 0) return [];
     const lower = text.toLowerCase();
     return words.filter((word) => word.toLowerCase().includes(lower)).slice(0, 10);
 };
 
-interface SuggestionEntryViewProps {
+type SuggestionEntryViewProps = {
     name?: string | undefined;
     placeholder: string;
     query: string;
@@ -158,7 +158,7 @@ interface SuggestionEntryViewProps {
     onKeyPressed: (keyval: number) => boolean;
     onClosed: () => void;
     onRowActivated: (index: number) => boolean;
-}
+};
 
 const renderSuggestionEntry = ({
     name,
@@ -208,7 +208,7 @@ const renderSuggestionEntry = ({
     </GtkEntry>
 );
 
-interface SuggestionHandlerDeps {
+type SuggestionHandlerDeps = {
     words: string[];
     matches: string[];
     selected: number;
@@ -216,13 +216,13 @@ interface SuggestionHandlerDeps {
     setQuery: (value: string) => void;
     setSelected: (updater: (current: number) => number) => void;
     setOpen: (value: boolean) => void;
-}
+};
 
-interface SuggestionHandlers {
+type SuggestionHandlers = {
     accept: (index: number) => boolean;
     handleChanged: (entry: Gtk.Entry) => void;
     handleKeyPressed: (keyval: number) => boolean;
-}
+};
 
 const createSuggestionHandlers = (deps: SuggestionHandlerDeps): SuggestionHandlers => {
     const { words, matches, selected, entryRef, setQuery, setSelected, setOpen } = deps;
@@ -396,8 +396,7 @@ const DevicesDropDown = () => {
                     <GtkLabel xalign={0} hexpand>
                         {device.title}
                     </GtkLabel>
-                ))
-            }
+                ))}
             renderListItem={({ item: label }: { item: string }) =>
                 renderDeviceRow(label, (device) => (
                     <>
@@ -409,18 +408,17 @@ const DevicesDropDown = () => {
                         </GtkBox>
                         <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
                     </>
-                ))
-            }
+                ))}
             items={devices.map((d) => ({ id: d.id, value: d.id }))}
         />
     );
 };
 
-interface DirEntry {
+type DirEntry = {
     path: string;
     name: string;
     icon: string;
-}
+};
 
 function loadDirectoryEntries(): DirEntry[] {
     const cwd = process.cwd();
@@ -431,8 +429,8 @@ function loadDirectoryEntries(): DirEntry[] {
             let isDir = false;
             try {
                 isDir = statSync(`${cwd}/${name}`).isDirectory();
-            } catch (e) {
-                if (e instanceof Error) console.error(e.message);
+            } catch (error) {
+                if (error instanceof Error) console.error(error.message);
             }
             results.push({
                 path: name,
@@ -441,8 +439,8 @@ function loadDirectoryEntries(): DirEntry[] {
             });
         }
         return results.sort((a, b) => a.name.localeCompare(b.name));
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
         return [];
     }
 }
@@ -466,7 +464,7 @@ const DirectorySuggestionEntry = () => {
                 name="directory-menu-button"
                 iconName="pan-down-symbolic"
                 tooltipText="Show suggestions"
-                popover={
+                popover={(
                     <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
                         <GtkScrolledWindow
                             maxContentHeight={400}
@@ -491,7 +489,7 @@ const DirectorySuggestionEntry = () => {
                             </GtkBox>
                         </GtkScrolledWindow>
                     </GtkPopover>
-                }
+                )}
             />
         </GtkBox>
     );
@@ -523,7 +521,7 @@ const ListViewSelectionsDemo = () => {
                     enableSearch={enableFontSearch}
                     onSelectionChanged={(id) => {
                         const idx = getFontFamilies().indexOf(id);
-                        if (idx >= 0) setFontIndex(idx);
+                        if (idx !== -1) setFontIndex(idx);
                     }}
                     items={getFontFamilies().map((f) => ({ id: f, value: f }))}
                 />
@@ -532,14 +530,14 @@ const ListViewSelectionsDemo = () => {
                     name="font-spin"
                     halign={Gtk.Align.START}
                     marginStart={20}
-                    adjustment={
+                    adjustment={(
                         <GtkAdjustment
                             value={fontIndex}
                             lower={-1}
                             upper={getFontFamilies().length}
                             stepIncrement={1}
                         />
-                    }
+                    )}
                     onValueChanged={(spin) => handleFontSpinChanged(spin.getValue())}
                 />
 

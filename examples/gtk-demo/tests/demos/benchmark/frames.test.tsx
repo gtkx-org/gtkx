@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { framesDemo } from "../../../src/demos/benchmark/frames.js";
 import { renderDemo } from "../../test-utils.js";
 
-vi.setConfig({ testTimeout: 30000 });
+vi.setConfig({ testTimeout: 30_000 });
 
 const findFpsLabel = (header: Gtk.HeaderBar): Gtk.Label =>
     within(header).getByRole(Gtk.AccessibleRole.LABEL, { name: /^[0-9]+\.[0-9]{2} fps$/ }) as Gtk.Label;
@@ -69,7 +69,7 @@ describe("framesDemo", () => {
             () => {
                 expect(findFpsLabel(header).getLabel()).not.toBe("0.00 fps");
             },
-            { timeout: 10000 },
+            { timeout: 10_000 },
         );
         expect(findFpsLabel(header).getLabel()).toMatch(/^[0-9]+\.[0-9]{2} fps$/);
     });

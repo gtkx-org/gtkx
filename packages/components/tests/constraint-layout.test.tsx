@@ -83,11 +83,11 @@ describe("render - name-based target resolution (b)", () => {
         await expect(
             render(
                 <GtkBox
-                    layoutManager={
+                    layoutManager={(
                         <ConstraintLayout>
                             <ConstraintLayout.Constraint target="GtkButton" targetAttribute={A.WIDTH} constant={100} />
                         </ConstraintLayout>
-                    }
+                    )}
                 >
                     <GtkButton label="unnamed" />
                     <GtkButton name="named" label="named" />
@@ -104,7 +104,7 @@ describe("render - name-based target resolution (b)", () => {
             <GtkBox>
                 <GtkBox
                     ref={firstRef}
-                    layoutManager={
+                    layoutManager={(
                         <ConstraintLayout>
                             <ConstraintLayout.Constraint
                                 target="a"
@@ -113,13 +113,13 @@ describe("render - name-based target resolution (b)", () => {
                                 constant={1}
                             />
                         </ConstraintLayout>
-                    }
+                    )}
                 >
                     <GtkLabel name="a">first</GtkLabel>
                 </GtkBox>
                 <GtkBox
                     ref={secondRef}
-                    layoutManager={
+                    layoutManager={(
                         <ConstraintLayout>
                             <ConstraintLayout.Constraint
                                 target="a"
@@ -128,7 +128,7 @@ describe("render - name-based target resolution (b)", () => {
                                 constant={2}
                             />
                         </ConstraintLayout>
-                    }
+                    )}
                 >
                     <GtkLabel name="a">second</GtkLabel>
                 </GtkBox>
@@ -180,11 +180,11 @@ describe("render - name-based target resolution (b)", () => {
         await expect(
             render(
                 <GtkBox
-                    layoutManager={
+                    layoutManager={(
                         <ConstraintLayout>
                             <ConstraintLayout.Constraint target="ghost" targetAttribute={A.WIDTH} constant={100} />
                         </ConstraintLayout>
-                    }
+                    )}
                 />,
             ),
         ).rejects.toThrow(/unknown id 'ghost'/);
@@ -281,7 +281,7 @@ describe("render - GtkConstraintLayout.Constraint updates", () => {
             return (
                 <GtkBox
                     ref={boxRef}
-                    layoutManager={
+                    layoutManager={(
                         <ConstraintLayout>
                             <ConstraintLayout.Constraint
                                 target="a"
@@ -290,7 +290,7 @@ describe("render - GtkConstraintLayout.Constraint updates", () => {
                                 constant={constant}
                             />
                         </ConstraintLayout>
-                    }
+                    )}
                 >
                     <NamedButton id="a" label="A" />
                 </GtkBox>
@@ -319,7 +319,7 @@ describe("render - GtkConstraintLayout.Constraint removal", () => {
             return (
                 <GtkBox
                     ref={boxRef}
-                    layoutManager={
+                    layoutManager={(
                         <ConstraintLayout>
                             {show && (
                                 <ConstraintLayout.Constraint
@@ -330,7 +330,7 @@ describe("render - GtkConstraintLayout.Constraint removal", () => {
                                 />
                             )}
                         </ConstraintLayout>
-                    }
+                    )}
                 >
                     <NamedButton id="a" label="A" />
                 </GtkBox>
@@ -396,7 +396,7 @@ describe("render - name-based target lifecycle", () => {
             return (
                 <GtkBox
                     ref={boxRef}
-                    layoutManager={
+                    layoutManager={(
                         <ConstraintLayout>
                             <ConstraintLayout.Constraint
                                 target={id}
@@ -405,7 +405,7 @@ describe("render - name-based target lifecycle", () => {
                                 constant={1}
                             />
                         </ConstraintLayout>
-                    }
+                    )}
                 >
                     <NamedLabel id={id} label="L" />
                 </GtkBox>
@@ -499,11 +499,11 @@ describe("render - GtkConstraintLayout.Vfl", () => {
             return (
                 <GtkBox
                     ref={boxRef}
-                    layoutManager={
+                    layoutManager={(
                         <ConstraintLayout>
                             <ConstraintLayout.Vfl lines={lines} />
                         </ConstraintLayout>
-                    }
+                    )}
                 >
                     <NamedButton id="a" label="A" />
                 </GtkBox>
@@ -525,11 +525,11 @@ describe("render - GtkConstraintLayout.Vfl", () => {
         await expect(
             render(
                 <GtkBox
-                    layoutManager={
+                    layoutManager={(
                         <ConstraintLayout>
                             <ConstraintLayout.Vfl lines={["H:|-[ghost]-|"]} />
                         </ConstraintLayout>
-                    }
+                    )}
                 >
                     <NamedButton id="a" label="A" />
                 </GtkBox>,

@@ -50,7 +50,7 @@ const openEasterEggFromClonedButton = async (): Promise<{
 }> => {
     const result = await renderDemo(textviewDemo);
     const buttons = await findClickMeButtons();
-    const cloned = buttons[buttons.length - 1] as Gtk.Button;
+    const cloned = buttons.at(-1) as Gtk.Button;
     const beforeWindows = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW);
     await userEvent.click(cloned);
     await waitFor(() => {
@@ -206,7 +206,7 @@ describe("textviewDemo cloned widgets", () => {
         const buttons = await findClickMeButtons();
         expect(buttons.length).toBe(2);
         expect(enclosingTextViewName(buttons[0] as Gtk.Button)).toBe("text-view-1");
-        expect(enclosingTextViewName(buttons[buttons.length - 1] as Gtk.Button)).toBe("text-view-2");
+        expect(enclosingTextViewName(buttons.at(-1) as Gtk.Button)).toBe("text-view-2");
     });
 
     it("clones the dropdown, scale and entry so each widget appears twice", async () => {
@@ -288,7 +288,7 @@ describe("textviewDemo easter egg", () => {
     it("reuses the same easter-egg window on subsequent activations", async () => {
         await renderDemo(textviewDemo);
         const buttons = await findClickMeButtons();
-        const cloned = buttons[buttons.length - 1] as Gtk.Button;
+        const cloned = buttons.at(-1) as Gtk.Button;
         const beforeCount = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length;
         await userEvent.dblClick(cloned);
         await waitFor(() => {

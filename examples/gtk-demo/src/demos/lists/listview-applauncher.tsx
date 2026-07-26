@@ -8,12 +8,12 @@ import { useParentWindow } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
 
-interface AppItem {
+type AppItem = {
     appInfo: Gio.AppInfo;
     id: string;
     name: string;
     icon: Gio.Icon | null;
-}
+};
 
 const ListViewApplauncherDemo = () => {
     const parentWindow = useParentWindow();

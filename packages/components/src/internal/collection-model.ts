@@ -6,13 +6,13 @@ import type { Item, Section } from "../types.js";
 export type CollectionMode = "flat" | "tree" | "sections";
 
 export type CollectionData = {
-    items?: Item<unknown>[] | undefined;
-    sections?: Section<unknown, unknown>[] | undefined;
+    items?: Item[] | undefined;
+    sections?: Section[] | undefined;
 };
 
 export type CollectionEntry = {
     id: string;
-    item: Item<unknown>;
+    item: Item;
     holder: GObject.Object;
     childStore: Gio.ListStore | null;
     childOrder: GObject.Object[];
@@ -43,7 +43,7 @@ type ModelState = {
     dirty: Set<GObject.Object>;
 };
 
-const hasChildren = (item: Item<unknown>): boolean => item.children !== undefined && item.children.length > 0;
+const hasChildren = (item: Item): boolean => item.children !== undefined && item.children.length > 0;
 
 export const collectionModeOf = (data: CollectionData): CollectionMode => {
     if (data.sections !== undefined) return "sections";
@@ -57,9 +57,9 @@ const sameOrder = (order: GObject.Object[], next: GObject.Object[]): boolean =>
 
 const syncStore = (state: ModelState, store: Gio.ListStore, order: GObject.Object[], next: GObject.Object[]): void => {
     if (sameOrder(order, next)) {
-        next.forEach((holder, index) => {
+        for (const [index, holder] of next.entries()) {
             if (state.dirty.has(holder)) store.splice(index, 1, [holder]);
-        });
+        }
         return;
     }
     store.splice(0, order.length, next);
@@ -67,7 +67,7 @@ const syncStore = (state: ModelState, store: Gio.ListStore, order: GObject.Objec
     for (const holder of next) order.push(holder);
 };
 
-const entryFor = (state: ModelState, item: Item<unknown>): CollectionEntry => {
+const entryFor = (state: ModelState, item: Item): CollectionEntry => {
     const existing = state.entries.get(item.id);
     if (existing !== undefined) return existing;
     const holder = new GObject.Object({});
@@ -84,7 +84,7 @@ const entryFor = (state: ModelState, item: Item<unknown>): CollectionEntry => {
     return entry;
 };
 
-const syncLevel = (state: ModelState, items: Item<unknown>[], sectionValue: unknown): GObject.Object[] =>
+const syncLevel = (state: ModelState, items: Item[], sectionValue: unknown): GObject.Object[] =>
     items.map((item) => {
         const entry = entryFor(state, item);
         entry.item = item;
@@ -94,7 +94,7 @@ const syncLevel = (state: ModelState, items: Item<unknown>[], sectionValue: unkn
         return entry.holder;
     });
 
-function syncChildren(state: ModelState, entry: CollectionEntry, children: Item<unknown>[]): void {
+function syncChildren(state: ModelState, entry: CollectionEntry, children: Item[]): void {
     const had = entry.childOrder.length > 0;
     if (children.length > 0) entry.childStore ??= newStore();
     if (entry.childStore !== null) {
@@ -103,9 +103,9 @@ function syncChildren(state: ModelState, entry: CollectionEntry, children: Item<
     if (had !== children.length > 0) state.dirty.add(entry.holder);
 }
 
-const syncSections = (state: ModelState, next: Section<unknown, unknown>[]): void => {
+const syncSections = (state: ModelState, next: Section[]): void => {
     const active = new Set(next.map((section) => section.id));
-    for (const id of [...state.sections.keys()]) {
+    for (const id of state.sections.keys()) {
         if (!active.has(id)) state.sections.delete(id);
     }
     const stores = next.map((section) => {
@@ -121,7 +121,7 @@ const syncSections = (state: ModelState, next: Section<unknown, unknown>[]): voi
 };
 
 const pruneUnseen = (state: ModelState): void => {
-    for (const [id, entry] of [...state.entries]) {
+    for (const [id, entry] of state.entries) {
         if (state.seen.has(id)) continue;
         state.entries.delete(id);
         state.holders.delete(entry.holder);

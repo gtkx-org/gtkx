@@ -69,6 +69,7 @@ registerClass(ColorWidget, { typeName: COLOR_WIDGET_TYPE_NAME });
 
 declare module "react" {
     namespace JSX {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces
         interface IntrinsicElements {
             GtkxFramesColorWidget: {
                 name?: string;

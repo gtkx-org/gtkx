@@ -5,7 +5,7 @@ import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
 const ROLE_NAMES: Record<number, string> = { 1: "button", 2: "label" };
 
 const testing: WidgetFormatting = {
-    formatRole: (role) => ROLE_NAMES[role as number] ?? String(role),
+    formatRole: (role) => ROLE_NAMES[role] ?? String(role),
     getWidgetNodeText: (widget) => {
         const probe = widget as { getLabel?: () => string | null; getText?: () => string | null };
         return probe.getLabel?.() ?? probe.getText?.() ?? null;
@@ -29,7 +29,7 @@ describe("serializeWidget", () => {
             getFirstChild: () => child,
         });
 
-        const result = serializeWidget(root as never, idFor, testing);
+        const result = serializeWidget(root, idFor, testing);
 
         expect(result.type).toBe("GtkBox");
         expect(result.role).toBe("label");
@@ -47,16 +47,16 @@ describe("serializeWidget", () => {
         const child = makeWidget({ type: "GtkButton", getAccessibleRole: () => 1 });
         const root = makeWidget({ type: "GtkBox", getFirstChild: () => child });
 
-        expect(serializeWidget(root as never, idFor, testing, 0).children).toEqual([]);
-        expect(serializeWidget(root as never, idFor, testing, 1).children).toHaveLength(1);
+        expect(serializeWidget(root, idFor, testing, 0).children).toEqual([]);
+        expect(serializeWidget(root, idFor, testing, 1).children).toHaveLength(1);
     });
 
     it("reads property text through the testing module", () => {
         const labelOnly = makeWidget({ getLabel: () => "L" });
         const textOnly = makeWidget({ getText: () => "T" });
 
-        expect(serializeWidget(labelOnly as never, idFor, testing).text).toBe("L");
-        expect(serializeWidget(textOnly as never, idFor, testing).text).toBe("T");
+        expect(serializeWidget(labelOnly, idFor, testing).text).toBe("L");
+        expect(serializeWidget(textOnly, idFor, testing).text).toBe("T");
     });
 
     it("walks sibling chains via getNextSibling", () => {
@@ -64,7 +64,7 @@ describe("serializeWidget", () => {
         const firstChild = makeWidget({ type: "GtkLabel", getNextSibling: () => sibling });
         const root = makeWidget({ type: "GtkBox", getFirstChild: () => firstChild });
 
-        const result = serializeWidget(root as never, idFor, testing);
+        const result = serializeWidget(root, idFor, testing);
         expect(result.children.map((node) => node.type)).toEqual(["GtkLabel", "GtkButton"]);
     });
 });

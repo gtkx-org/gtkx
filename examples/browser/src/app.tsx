@@ -25,13 +25,13 @@ const normalizeUrl = (targetUrl: string): string => {
     return `https://${trimmed}`;
 };
 
-interface BrowserState {
+type BrowserState = {
     url: string;
     isLoading: boolean;
     canGoBack: boolean;
     canGoForward: boolean;
     progress: number;
-}
+};
 
 const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
     const [state, setState] = useState<BrowserState>({
@@ -112,9 +112,9 @@ const BrowserWindow = () => {
     return (
         <AdwApplicationWindow title="GTKX Browser" defaultWidth={1024} defaultHeight={768} onCloseRequest={quit}>
             <AdwToolbarView
-                topBar={
+                topBar={(
                     <AdwHeaderBar
-                        titleWidget={
+                        titleWidget={(
                             <GtkEntry
                                 text={url}
                                 onChanged={(entry: Gtk.Entry) => setUrl(entry.getText())}
@@ -123,8 +123,8 @@ const BrowserWindow = () => {
                                 cssClasses={[urlBarStyle]}
                                 placeholderText="Enter URL..."
                             />
-                        }
-                        start={
+                        )}
+                        start={(
                             <NavigationButtons
                                 canGoBack={canGoBack}
                                 canGoForward={canGoForward}
@@ -132,12 +132,11 @@ const BrowserWindow = () => {
                                 onBack={() => webViewRef.current?.goBack()}
                                 onForward={() => webViewRef.current?.goForward()}
                                 onReloadOrStop={() =>
-                                    isLoading ? webViewRef.current?.stopLoading() : webViewRef.current?.reload()
-                                }
+                                    isLoading ? webViewRef.current?.stopLoading() : webViewRef.current?.reload()}
                             />
-                        }
+                        )}
                     />
-                }
+                )}
             >
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                     <GtkProgressBar fraction={progress} cssClasses={[progressStyle, isLoading ? "" : "hidden"]} />

@@ -62,9 +62,9 @@ describe("fixedDemo cube faces", () => {
         await renderDemo(fixedDemo);
         const faces = await findCubeFaces();
         expect(faces).toHaveLength(FACE_NAMES.length);
-        faces.forEach((face, i) => {
+        for (const [i, face] of faces.entries()) {
             expect(face.getCssClasses()).toContain(FACE_NAMES[i]);
-        });
+        }
     });
 
     it("sizes each cube-face frame to the FACE_SIZE constant of 200 pixels", async () => {

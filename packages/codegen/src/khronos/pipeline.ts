@@ -3,7 +3,7 @@ import { type GlEnum, loadGlRegistry } from "./model.js";
 import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
 import { paramPairAt } from "./param-pair.js";
 import { type CommandPlan, type GlExclusionReason, type GlPlanPolicy, type GlScalar, planCommand } from "./plan.js";
-import { deriveDeleteSingular, deriveGenSingular, type RenderedCommand, renderCommand } from "./render.js";
+import { deriveDeleteSingular, deriveGenSingular, renderCommand, type RenderedCommand } from "./render.js";
 import { type GlSelection, resolveEnum, selectSubset } from "./select.js";
 
 const BYTE_OFFSET_PARAMS: Set<string> = new Set([
@@ -120,7 +120,7 @@ const collectPlanGroups = (aliases: Map<string, string>, plan: OkPlan): void => 
 };
 
 const collectGroupAliases = (plans: OkPlan[]): Map<string, string> => {
-    const aliases = new Map<string, string>();
+    const aliases: Map<string, string> = new Map();
     for (const plan of plans) collectPlanGroups(aliases, plan);
     return aliases;
 };
@@ -155,7 +155,7 @@ const planSelectedCommands = (
 ): PlannedSelection => {
     const exclusions: GlExclusion[] = [];
     const okPlans: OkPlan[] = [];
-    const planFeatures = new Map<string, string>();
+    const planFeatures: Map<string, string> = new Map();
     for (const [name, feature] of sortStringsBy(commandNames.entries(), ([key]) => key)) {
         const result = planSelectedCommand(registry, name);
         if ("ok" in result) {
@@ -192,7 +192,7 @@ const assertExportNamesDisjoint = (
     enumRows: EnumRow[],
     overrideExports: Set<string>,
 ): void => {
-    const exportNames = new Map<string, string>();
+    const exportNames: Map<string, string> = new Map();
     const claim = (name: string, owner: string): void => {
         const existing = exportNames.get(name);
         if (existing !== undefined) {
@@ -218,7 +218,7 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
     const subset = selectSubset(registry, selection);
     const { okPlans, planFeatures, exclusions } = planSelectedCommands(registry, subset.commands);
 
-    const usedTypes = new Set<string>();
+    const usedTypes: Set<string> = new Set();
     const rendered: RenderedCommand[] = [];
     const singulars: RenderedCommand[] = [];
     for (const plan of okPlans) {
@@ -231,7 +231,7 @@ export const generateGlModules = (options: GlGenerationOptions): GlGenerationRes
     const enumRows = buildEnumRows(registry, subset.enums);
     assertExportNamesDisjoint(rendered, singulars, enumRows, options.overrideExports);
 
-    const files = new Map<string, string>([
+    const files: Map<string, string> = new Map([
         ["types.ts", renderTypesModule(collectGroupAliases(okPlans))],
         ["enums.ts", renderEnumsModule(enumRows)],
         ["commands.ts", renderCommandsModule(rendered, singulars, usedTypes)],

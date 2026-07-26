@@ -48,12 +48,12 @@ export const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseL
 
 const withGlobalActEnvironment =
     (actImplementation: ActImplementation) =>
-    <T>(callback: ActCallback<T>): PromiseLike<T> => {
-        const settled = runWithActEnvironment(true, () => actImplementation(() => callback()));
-        return Promise.resolve(settled);
-    };
+        <T>(callback: ActCallback<T>): PromiseLike<T> => {
+            const settled = runWithActEnvironment(true, () => actImplementation(() => callback()));
+            return Promise.resolve(settled);
+        };
 
-const actImplementation: ActImplementation = reactAct as ActImplementation;
+const actImplementation: ActImplementation = reactAct;
 
 /**
  * Runs a callback inside React's act environment, flushing pending state

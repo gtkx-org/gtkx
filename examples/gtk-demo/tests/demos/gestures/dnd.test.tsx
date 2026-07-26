@@ -89,10 +89,10 @@ describe("dndDemo canvas drop", () => {
         await renderDemo(dndDemo);
         const canvas = await findCanvas();
         const item1 = await findItemLabel("1");
-        const [beforeX, beforeY] = canvas.getChildPosition(item1) as [number, number];
+        const [beforeX, beforeY] = canvas.getChildPosition(item1);
         await userEvent.drop(canvas, makeStringValue("1"), { x: 250, y: 250 });
         await waitFor(() => {
-            const [afterX, afterY] = canvas.getChildPosition(item1) as [number, number];
+            const [afterX, afterY] = canvas.getChildPosition(item1);
             expect([afterX, afterY]).not.toEqual([beforeX, beforeY]);
         });
     });

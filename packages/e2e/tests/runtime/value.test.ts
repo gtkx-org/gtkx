@@ -1,6 +1,6 @@
+import type { Type } from "@gtkx/gi/gobject";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
-import type { Type } from "@gtkx/gi/gobject";
 import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -17,9 +17,8 @@ import {
     TYPE_UINT64,
     TYPE_VARIANT,
 } from "@gtkx/runtime";
-import { describe, expect, it } from "vitest";
-import "@gtkx/gi/gobject";
 import { getHandle, t } from "@gtkx/runtime";
+import "@gtkx/gi/gobject";
 import {
     fromValue,
     getBoxedValue,
@@ -30,6 +29,7 @@ import {
     resolveType,
     toValue,
 } from "@gtkx/runtime/internal";
+import { describe, expect, it } from "vitest";
 
 const callGetType = (lib: string, fn: string): Type => {
     const result = resolveType(lib, fn);
@@ -47,14 +47,14 @@ describe("generated GObject.Value boxed accessors", () => {
     it("round-trips a boxed instance through setBoxed and getBoxed", () => {
         const value = new Value();
         value.init(gdkRgbaGtype());
-        value.setBoxed(makeRgba(0.5, 0.25, 0.75, 1.0));
+        value.setBoxed(makeRgba(0.5, 0.25, 0.75, 1));
 
         const extracted = value.getBoxed<Gdk.RGBA>();
         expect(extracted).toBeInstanceOf(Gdk.RGBA);
         expect(extracted.red).toBeCloseTo(0.5);
         expect(extracted.green).toBeCloseTo(0.25);
         expect(extracted.blue).toBeCloseTo(0.75);
-        expect(extracted.alpha).toBeCloseTo(1.0);
+        expect(extracted.alpha).toBeCloseTo(1);
     });
 
     it("getBoxed returns null for a value that does not hold a boxed type", () => {
@@ -115,7 +115,7 @@ describe("fromValue extra coverage", () => {
     it("returns a Gdk.RGBA wrapper when reading a boxed value", () => {
         const v = new Value();
         v.init(gdkRgbaGtype());
-        v.setBoxed(makeRgba(0.1, 0.2, 0.3, 1.0));
+        v.setBoxed(makeRgba(0.1, 0.2, 0.3, 1));
         expect(fromValue(getHandle(v))).toBeInstanceOf(Gdk.RGBA);
     });
 });

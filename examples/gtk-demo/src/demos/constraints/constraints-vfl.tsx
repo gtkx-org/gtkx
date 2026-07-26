@@ -16,11 +16,11 @@ const ConstraintsVflDemo = () => (
         name="container"
         hexpand
         vexpand
-        layoutManager={
+        layoutManager={(
             <ConstraintLayout>
                 <ConstraintLayout.Vfl lines={VFL_CONSTRAINTS} hspacing={8} vspacing={8} />
             </ConstraintLayout>
-        }
+        )}
     >
         <ConstraintChildButtons />
     </GtkBox>

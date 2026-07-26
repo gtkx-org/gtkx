@@ -1,5 +1,6 @@
-import { css } from "@gtkx/css";
 import type * as Gdk from "@gtkx/gi/gdk";
+import type { Dispatch, RefObject, SetStateAction } from "react";
+import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
@@ -28,10 +29,9 @@ import {
     GtkToggleButton,
     GtkViewport,
 } from "@gtkx/jsx/gtk";
-import type { Dispatch, RefObject, SetStateAction } from "react";
 import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
-import { buildRgba } from "../../build-rgba.js";
 import type { Demo, DemoProviderProps } from "../types.js";
+import { buildRgba } from "../../build-rgba.js";
 import sourceCode from "./font-features.tsx?raw";
 
 const FEATURE_DISPLAY_NAMES: Record<string, string> = {
@@ -100,11 +100,11 @@ const FEATURE_DISPLAY_NAMES: Record<string, string> = {
     dnom: "Denominators",
 };
 
-interface FeatureGroup {
+type FeatureGroup = {
     title: string;
     type: "check" | "radio";
     tags: string[];
-}
+};
 
 const FEATURE_GROUPS: FeatureGroup[] = [
     { title: "Kerning", type: "check", tags: ["kern"] },
@@ -249,16 +249,16 @@ const INITIAL_PREVIEW_TEXT = [
 
 const PARAGRAPH_SAMPLES = [
     "Grumpy wizards make toxic brew for the evil Queen and Jack. A quick movement of the enemy will jeopardize six gunboats. The job of waxing linoleum frequently peeves chintzy kids. My girl wove six dozen plaid jackets before she quit. Twelve ziggurats quickly jumped a finch box.",
-    "\u0420\u0430\u0437\u044a\u044f\u0440\u0435\u043d\u043d\u044b\u0439 \u0447\u0442\u0435\u0446 \u044d\u0433\u043e\u0438\u0441\u0442\u0438\u0447\u043d\u043e \u0431\u044c\u0451\u0442 \u043f\u044f\u0442\u044c\u044e \u0436\u0435\u0440\u0434\u044f\u043c\u0438 \u0448\u0443\u0441\u0442\u0440\u043e\u0433\u043e \u0444\u0435\u0445\u0442\u043e\u0432\u0430\u043b\u044c\u0449\u0438\u043a\u0430. \u041d\u0430\u0448 \u0431\u0430\u043d\u043a \u0432\u0447\u0435\u0440\u0430 \u0436\u0435 \u0432\u044b\u043f\u043b\u0430\u0442\u0438\u043b \u0424.\u042f. \u042d\u0439\u0445\u0433\u043e\u043b\u044c\u0434\u0443 \u043a\u043e\u043c\u0438\u0441\u0441\u0438\u044e \u0437\u0430 \u0446\u0435\u043d\u043d\u044b\u0435 \u0432\u0435\u0449\u0438. \u042d\u0445, \u0447\u0443\u0436\u0430\u043a, \u043e\u0431\u0449\u0438\u0439 \u0441\u044a\u0451\u043c \u0446\u0435\u043d \u0448\u043b\u044f\u043f (\u044e\u0444\u0442\u044c) \u2013 \u0432\u0434\u0440\u044b\u0437\u0433! \u0412 \u0447\u0430\u0449\u0430\u0445 \u044e\u0433\u0430 \u0436\u0438\u043b \u0431\u044b \u0446\u0438\u0442\u0440\u0443\u0441? \u0414\u0430, \u043d\u043e \u0444\u0430\u043b\u044c\u0448\u0438\u0432\u044b\u0439 \u044d\u043a\u0437\u0435\u043c\u043f\u043b\u044f\u0440!",
-    "\u03a4\u03ac\u03c7\u03b9\u03c3\u03c4\u03b7 \u03b1\u03bb\u03ce\u03c0\u03b7\u03be \u03b2\u03b1\u03c6\u03ae\u03c2 \u03c8\u03b7\u03bc\u03ad\u03bd\u03b7 \u03b3\u03b7, \u03b4\u03c1\u03b1\u03c3\u03ba\u03b5\u03bb\u03af\u03b6\u03b5\u03b9 \u03c5\u03c0\u03ad\u03c1 \u03bd\u03c9\u03b8\u03c1\u03bf\u03cd \u03ba\u03c5\u03bd\u03cc\u03c2",
+    "\u{420}\u{430}\u{437}\u{44A}\u{44F}\u{440}\u{435}\u{43D}\u{43D}\u{44B}\u{439} \u{447}\u{442}\u{435}\u{446} \u{44D}\u{433}\u{43E}\u{438}\u{441}\u{442}\u{438}\u{447}\u{43D}\u{43E} \u{431}\u{44C}\u{451}\u{442} \u{43F}\u{44F}\u{442}\u{44C}\u{44E} \u{436}\u{435}\u{440}\u{434}\u{44F}\u{43C}\u{438} \u{448}\u{443}\u{441}\u{442}\u{440}\u{43E}\u{433}\u{43E} \u{444}\u{435}\u{445}\u{442}\u{43E}\u{432}\u{430}\u{43B}\u{44C}\u{449}\u{438}\u{43A}\u{430}. \u{41D}\u{430}\u{448} \u{431}\u{430}\u{43D}\u{43A} \u{432}\u{447}\u{435}\u{440}\u{430} \u{436}\u{435} \u{432}\u{44B}\u{43F}\u{43B}\u{430}\u{442}\u{438}\u{43B} \u{424}.\u{42F}. \u{42D}\u{439}\u{445}\u{433}\u{43E}\u{43B}\u{44C}\u{434}\u{443} \u{43A}\u{43E}\u{43C}\u{438}\u{441}\u{441}\u{438}\u{44E} \u{437}\u{430} \u{446}\u{435}\u{43D}\u{43D}\u{44B}\u{435} \u{432}\u{435}\u{449}\u{438}. \u{42D}\u{445}, \u{447}\u{443}\u{436}\u{430}\u{43A}, \u{43E}\u{431}\u{449}\u{438}\u{439} \u{441}\u{44A}\u{451}\u{43C} \u{446}\u{435}\u{43D} \u{448}\u{43B}\u{44F}\u{43F} (\u{44E}\u{444}\u{442}\u{44C}) \u{2013} \u{432}\u{434}\u{440}\u{44B}\u{437}\u{433}! \u{412} \u{447}\u{430}\u{449}\u{430}\u{445} \u{44E}\u{433}\u{430} \u{436}\u{438}\u{43B} \u{431}\u{44B} \u{446}\u{438}\u{442}\u{440}\u{443}\u{441}? \u{414}\u{430}, \u{43D}\u{43E} \u{444}\u{430}\u{43B}\u{44C}\u{448}\u{438}\u{432}\u{44B}\u{439} \u{44D}\u{43A}\u{437}\u{435}\u{43C}\u{43F}\u{43B}\u{44F}\u{440}!",
+    "\u{3A4}\u{3AC}\u{3C7}\u{3B9}\u{3C3}\u{3C4}\u{3B7} \u{3B1}\u{3BB}\u{3CE}\u{3C0}\u{3B7}\u{3BE} \u{3B2}\u{3B1}\u{3C6}\u{3AE}\u{3C2} \u{3C8}\u{3B7}\u{3BC}\u{3AD}\u{3BD}\u{3B7} \u{3B3}\u{3B7}, \u{3B4}\u{3C1}\u{3B1}\u{3C3}\u{3BA}\u{3B5}\u{3BB}\u{3AF}\u{3B6}\u{3B5}\u{3B9} \u{3C5}\u{3C0}\u{3AD}\u{3C1} \u{3BD}\u{3C9}\u{3B8}\u{3C1}\u{3BF}\u{3CD} \u{3BA}\u{3C5}\u{3BD}\u{3CC}\u{3C2}",
 ];
 
 type ViewMode = "plain" | "waterfall" | "edit";
 
-interface PreviewSelection {
+type PreviewSelection = {
     start: number;
     end: number;
-}
+};
 
 const createDefaultFgColor = () => buildRgba(0, 0, 0, 1);
 const createDefaultBgColor = () => buildRgba(1, 1, 1, 1);
@@ -369,13 +369,13 @@ const buildBgStyle = (bgColor: Gdk.RGBA) => {
     `;
 };
 
-interface PreviewStyleArgs {
+type PreviewStyleArgs = {
     fontDesc: Pango.FontDescription | null;
     size: number;
     fgColor: Gdk.RGBA;
     letterSpacing: number;
     lineHeight: number;
-}
+};
 
 const buildPreviewStyle = ({ fontDesc, size, fgColor, letterSpacing, lineHeight }: PreviewStyleArgs) => {
     const fontFamily = fontDesc?.getFamily() ?? "Sans";
@@ -392,13 +392,13 @@ const buildPreviewStyle = ({ fontDesc, size, fgColor, letterSpacing, lineHeight 
     `;
 };
 
-interface EditStyleArgs {
+type EditStyleArgs = {
     fontDesc: Pango.FontDescription | null;
     size: number;
     fontFeaturesString: string;
     fgColor: Gdk.RGBA;
     letterSpacing: number;
-}
+};
 
 const buildEditStyle = ({ fontDesc, size, fontFeaturesString, fgColor, letterSpacing }: EditStyleArgs) => {
     const fontFamily = fontDesc?.getFamily() ?? "Sans";
@@ -414,13 +414,13 @@ const buildEditStyle = ({ fontDesc, size, fontFeaturesString, fgColor, letterSpa
     `;
 };
 
-interface WaterfallStyleArgs {
+type WaterfallStyleArgs = {
     fontDesc: Pango.FontDescription | null;
     wfSize: number;
     fontFeaturesString: string;
     fgColor: Gdk.RGBA;
     letterSpacing: number;
-}
+};
 
 const buildWaterfallStyle = ({ fontDesc, wfSize, fontFeaturesString, fgColor, letterSpacing }: WaterfallStyleArgs) => {
     const fontFamily = fontDesc?.getFamily() ?? "Sans";
@@ -602,7 +602,7 @@ function useFontFeaturesHandlers(state: ReturnType<typeof useFontFeaturesState>)
 const UTF8_ENCODER = new TextEncoder();
 
 const charOffsetToByteOffset = (text: string, charOffset: number): number =>
-    UTF8_ENCODER.encode(Array.from(text).slice(0, charOffset).join("")).length;
+    UTF8_ENCODER.encode([...text].slice(0, charOffset).join("")).length;
 
 const readPreviewSelection = (label: Gtk.Label | null): PreviewSelection | null => {
     if (!label) return null;
@@ -637,7 +637,7 @@ function usePreviewAttributes(
         const attrList = Pango.AttrList.new();
         const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
         attr.startIndex = previewSelection?.start ?? 0;
-        attr.endIndex = previewSelection?.end ?? 0xffffffff;
+        attr.endIndex = previewSelection?.end ?? 0xFF_FF_FF_FF;
         attrList.insert(attr);
         return attrList;
     })();
@@ -762,7 +762,7 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
     );
 };
 
-interface SliderEntryRowProps {
+type SliderEntryRowProps = {
     row: number;
     label: string;
     entryName: string;
@@ -775,7 +775,7 @@ interface SliderEntryRowProps {
     displayText: string;
     onEntryActivate: (entry: Gtk.Entry) => void;
     sensitive?: boolean;
-}
+};
 
 const SliderEntryRow = ({
     row,
@@ -803,7 +803,7 @@ const SliderEntryRow = ({
                     hexpand
                     widthRequest={100}
                     valign={Gtk.Align.BASELINE}
-                    adjustment={
+                    adjustment={(
                         <GtkAdjustment
                             value={value}
                             lower={lower}
@@ -811,7 +811,7 @@ const SliderEntryRow = ({
                             stepIncrement={stepIncrement}
                             pageIncrement={pageIncrement}
                         />
-                    }
+                    )}
                     onValueChanged={(scale) => onValueChanged(scale.getValue())}
                     sensitive={sensitive}
                 />
@@ -836,11 +836,11 @@ const FontFeaturesExpander = ({ state, handlers }: { state: FontFeaturesState; h
     return (
         <GtkExpander
             name="features-expander"
-            labelWidget={
+            labelWidget={(
                 <GtkLabel xalign={0} marginTop={10} marginBottom={10} cssClasses={["title-4"]}>
                     OpenType Features
                 </GtkLabel>
-            }
+            )}
         >
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 {FEATURE_GROUPS.map((group) => (
@@ -874,14 +874,14 @@ const FontFeaturesSidebar = ({ state, handlers }: { state: FontFeaturesState; ha
     </GtkBox>
 );
 
-interface FeatureGroupBoxProps {
+type FeatureGroupBoxProps = {
     group: FeatureGroup;
     checkStates: Map<string, FeatureState>;
     radioStates: Map<string, string>;
     onToggleCheck: (tag: string) => void;
     onResetToInconsistent: (tag: string) => void;
     onSelectRadio: (groupTitle: string, tag: string) => void;
-}
+};
 
 const FeatureGroupBox = ({
     group,
@@ -897,39 +897,39 @@ const FeatureGroupBox = ({
         </GtkLabel>
         {group.type === "radio"
             ? group.tags.map((tag) => (
-                  <GtkCheckButton
-                      key={tag}
-                      label={getFeatureDisplayName(tag)}
-                      active={(radioStates.get(group.title) ?? "xxxx") === tag}
-                      onToggled={() => onSelectRadio(group.title, tag)}
-                  />
-              ))
+                    <GtkCheckButton
+                        key={tag}
+                        label={getFeatureDisplayName(tag)}
+                        active={(radioStates.get(group.title) ?? "xxxx") === tag}
+                        onToggled={() => onSelectRadio(group.title, tag)}
+                    />
+                ))
             : group.tags.map((tag) => (
-                  <GtkCheckButton
-                      key={tag}
-                      label={getFeatureDisplayName(tag)}
-                      active={checkStates.get(tag) === "active"}
-                      inconsistent={checkStates.get(tag) === "inconsistent"}
-                      onToggled={() => onToggleCheck(tag)}
-                      controllers={<GtkGestureClick button={3} onPressed={() => onResetToInconsistent(tag)} />}
-                  />
-              ))}
+                    <GtkCheckButton
+                        key={tag}
+                        label={getFeatureDisplayName(tag)}
+                        active={checkStates.get(tag) === "active"}
+                        inconsistent={checkStates.get(tag) === "inconsistent"}
+                        onToggled={() => onToggleCheck(tag)}
+                        controllers={<GtkGestureClick button={3} onPressed={() => onResetToInconsistent(tag)} />}
+                    />
+                ))}
     </GtkBox>
 );
 
-interface FontFeaturesPreviewProps {
+type FontFeaturesPreviewProps = {
     state: FontFeaturesState;
     styles: FontFeaturesStyles;
     handlers: FontFeaturesHandlers;
     stackPage: string;
     previewAttributes: Pango.AttrList | null;
-}
+};
 
-interface FontFeaturesPreviewLabelProps {
+type FontFeaturesPreviewLabelProps = {
     state: FontFeaturesState;
     styles: FontFeaturesStyles;
     attributes: Pango.AttrList | null;
-}
+};
 
 const FontFeaturesPreviewLabel = ({ state, styles, attributes }: FontFeaturesPreviewLabelProps) => {
     const { previewText, previewLabelRef, viewMode } = state;
@@ -1010,10 +1010,12 @@ function useViewModeToggleHandlers(state: FontFeaturesState) {
     };
 
     const handleEditToggled = (btn: Gtk.ToggleButton) => {
-        if (btn.getActive()) {
-            savedTextRef.current = previewText;
-            setViewMode("edit");
+        if (!btn.getActive()) {
+            return;
         }
+
+        savedTextRef.current = previewText;
+        setViewMode("edit");
     };
 
     return { handlePlainToggled, handleWaterfallToggled, handleEditToggled };
@@ -1114,11 +1116,11 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttrib
     </GtkBox>
 );
 
-interface FontFeaturesContextValue {
+type FontFeaturesContextValue = {
     state: FontFeaturesState;
     styles: FontFeaturesStyles;
     handlers: FontFeaturesHandlers;
-}
+};
 
 const FontFeaturesContext = createContext<FontFeaturesContextValue | null>(null);
 
@@ -1145,14 +1147,14 @@ const FontFeaturesTitlebar = () => {
     return (
         <GtkHeaderBar
             name="font-features-header"
-            start={
+            start={(
                 <GtkButton
                     name="reset"
                     iconName="view-refresh-symbolic"
                     tooltipText="Reset"
                     onClicked={handlers.resetAll}
                 />
-            }
+            )}
         />
     );
 };
@@ -1176,10 +1178,10 @@ const FontFeaturesDemo = () => {
     return (
         <GtkBox
             ref={state.containerRef}
-            controllers={
+            controllers={(
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.MANAGED}
-                    shortcuts={
+                    shortcuts={(
                         <GtkShortcut
                             trigger={Gtk.ShortcutTrigger.parseString("Escape")}
                             action={Gtk.CallbackAction.new(() => {
@@ -1194,9 +1196,9 @@ const FontFeaturesDemo = () => {
                                 return true;
                             })}
                         />
-                    }
+                    )}
                 />
-            }
+            )}
         >
             <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <GtkViewport cssClasses={["view"]}>

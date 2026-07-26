@@ -1,15 +1,14 @@
 import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderListView, valueItems } from "./helpers/list-fixtures.js";
 
-interface Category {
+type Category = {
     id: string;
     value: { name: string };
-    children: Array<{ id: string; value: { name: string }; hideExpander: true }>;
-}
+    children: { id: string; value: { name: string }; hideExpander: true }[];
+};
 
 const tree: Category[] = [
     {

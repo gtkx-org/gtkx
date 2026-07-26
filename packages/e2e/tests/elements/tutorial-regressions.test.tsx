@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
-import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gio from "@gtkx/gi/gio";
 import {
     AdwApplication,
     AdwApplicationWindow,
@@ -50,21 +50,21 @@ describe("tutorial regressions", () => {
 
         await render(
             <AdwNavigationSplitView
-                content={
+                content={(
                     <AdwNavigationPage title="Details">
                         <AdwToolbarView
-                            topBar={
+                            topBar={(
                                 <AdwHeaderBar
                                     start={
                                         <GtkButton ref={buttonRef} iconName="go-previous-symbolic" onClicked={onBack} />
                                     }
                                 />
-                            }
+                            )}
                         >
                             <GtkLabel>Detail body</GtkLabel>
                         </AdwToolbarView>
                     </AdwNavigationPage>
-                }
+                )}
             />,
         );
 
@@ -82,28 +82,30 @@ describe("tutorial regressions", () => {
             <AdwApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
                 <AdwApplicationWindow actions={<GSimpleAction name="new" onActivate={() => {}} />}>
                     <AdwToolbarView
-                        topBar={
+                        topBar={(
                             <AdwHeaderBar
                                 start={
-                                    detail ? (
-                                        <GtkButton
-                                            ref={buttonRef}
-                                            iconName="go-previous-symbolic"
-                                            onClicked={() => {}}
-                                        />
-                                    ) : (
-                                        <>
-                                            <GtkButton
-                                                ref={buttonRef}
-                                                iconName="list-add-symbolic"
-                                                actionName="win.new"
-                                            />
-                                            <GtkButton iconName="system-search-symbolic" onClicked={() => {}} />
-                                        </>
-                                    )
+                                    detail
+                                        ? (
+                                                <GtkButton
+                                                    ref={buttonRef}
+                                                    iconName="go-previous-symbolic"
+                                                    onClicked={() => {}}
+                                                />
+                                            )
+                                        : (
+                                                <>
+                                                    <GtkButton
+                                                        ref={buttonRef}
+                                                        iconName="list-add-symbolic"
+                                                        actionName="win.new"
+                                                    />
+                                                    <GtkButton iconName="system-search-symbolic" onClicked={() => {}} />
+                                                </>
+                                            )
                                 }
                             />
-                        }
+                        )}
                     >
                         <GtkLabel>Body</GtkLabel>
                     </AdwToolbarView>

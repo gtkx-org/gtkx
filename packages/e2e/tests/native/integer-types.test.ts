@@ -9,39 +9,39 @@ describe("marshalling - integer types across the napi boundary", () => {
     });
 
     it("round-trips signed int16 through a GVariant", () => {
-        const variant = GLib.Variant.newInt16(-12345);
+        const variant = GLib.Variant.newInt16(-12_345);
 
-        expect(variant.getInt16()).toBe(-12345);
+        expect(variant.getInt16()).toBe(-12_345);
     });
 
     it("round-trips unsigned uint16 through a GVariant", () => {
-        const variant = GLib.Variant.newUint16(54321);
+        const variant = GLib.Variant.newUint16(54_321);
 
-        expect(variant.getUint16()).toBe(54321);
+        expect(variant.getUint16()).toBe(54_321);
     });
 
     it("round-trips signed int32 through a GVariant", () => {
-        const variant = GLib.Variant.newInt32(-2000000000);
+        const variant = GLib.Variant.newInt32(-2_000_000_000);
 
-        expect(variant.getInt32()).toBe(-2000000000);
+        expect(variant.getInt32()).toBe(-2_000_000_000);
     });
 
     it("round-trips unsigned uint32 through a GVariant", () => {
-        const variant = GLib.Variant.newUint32(4000000000);
+        const variant = GLib.Variant.newUint32(4_000_000_000);
 
-        expect(variant.getUint32()).toBe(4000000000);
+        expect(variant.getUint32()).toBe(4_000_000_000);
     });
 
     it("round-trips signed int64 through a bigint GVariant", () => {
-        const variant = GLib.Variant.newInt64(-9000000000000000000n);
+        const variant = GLib.Variant.newInt64(-9_000_000_000_000_000_000n);
 
-        expect(variant.getInt64()).toBe(-9000000000000000000n);
+        expect(variant.getInt64()).toBe(-9_000_000_000_000_000_000n);
     });
 
     it("round-trips unsigned uint64 through a bigint GVariant", () => {
-        const variant = GLib.Variant.newUint64(18000000000000000000n);
+        const variant = GLib.Variant.newUint64(18_000_000_000_000_000_000n);
 
-        expect(variant.getUint64()).toBe(18000000000000000000n);
+        expect(variant.getUint64()).toBe(18_000_000_000_000_000_000n);
     });
 
     it("marshals a signed int8 argument and return through g_ascii_toupper", () => {

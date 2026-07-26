@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type ViteConfigSnapshot = {
-    plugins: Array<{ name?: string } | null>;
+    plugins: ({ name?: string } | null)[];
     build: {
         ssr: string;
         outDir: string;
@@ -16,7 +16,7 @@ type ViteConfigSnapshot = {
 };
 
 const { viteBuildMock } = vi.hoisted(() => ({
-    viteBuildMock: vi.fn(async (_config: ViteConfigSnapshot) => undefined),
+    viteBuildMock: vi.fn(async (_config: ViteConfigSnapshot) => {}),
 }));
 
 vi.mock("vite", async (importActual) => {

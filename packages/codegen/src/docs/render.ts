@@ -1,13 +1,13 @@
 import { pascalCase, sortStringsBy } from "@gtkx/utils";
-import { collectInheritedMethods, conflictRename } from "../analysis/inheritance.js";
-import { renderHandlerParameters, renderHandlerResultType } from "../analysis/param-structure.js";
-import { recordTypeTarget, renderBaseTypeFor, type TsTypeTarget } from "../analysis/ts-type.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirSignal } from "../gir/parameter.js";
 import type { TypeId } from "../gir/type-id.js";
+import { collectInheritedMethods, conflictRename } from "../analysis/inheritance.js";
+import { renderHandlerParameters, renderHandlerResultType } from "../analysis/param-structure.js";
+import { recordTypeTarget, renderBaseTypeFor, type TsTypeTarget } from "../analysis/ts-type.js";
 import { dedupeCallables, instanceScope, renderInstanceMethodSignature } from "../store/gi/callables.js";
 import { methodExportName } from "../store/gi/method.js";
 import { ModuleContext } from "../writer/context.js";
@@ -51,9 +51,9 @@ export const docsDefaultValue = (value: string): string => DOCS_DEFAULT_VALUES[v
 
 const stripDocMedia = (markdown: string): string =>
     markdown
-        .replace(/<picture[\s\S]*?<\/picture>/g, "")
-        .replace(/<video[\s\S]*?(?:<\/video>|\/>)/g, "")
-        .replace(/<img[^>]*>/g, "");
+        .replaceAll(/<picture[\s\S]*?<\/picture>/g, "")
+        .replaceAll(/<video[\s\S]*?(?:<\/video>|\/>)/g, "")
+        .replaceAll(/<img[^>]*>/g, "");
 
 const FENCE_LINE = /^\s*(```|~~~)/;
 const HEADING_LINE = /^#{1,5}\s/;
@@ -80,25 +80,25 @@ export const docMarkdown = (doc: string | undefined): string =>
 
 const stripMarkdown = (markdown: string): string =>
     markdown
-        .replace(/```[\s\S]*?```/g, " ")
-        .replace(/`([^`]*)`/g, "$1")
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-        .replace(/[*_#>]/g, "")
-        .replace(/\s+/g, " ")
+        .replaceAll(/```[\s\S]*?```/g, " ")
+        .replaceAll(/`([^`]*)`/g, "$1")
+        .replaceAll(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replaceAll(/[*_#>]/g, "")
+        .replaceAll(/\s+/g, " ")
         .trim();
 
 export const firstSentence = (doc: string | undefined): string => {
     const text = stripMarkdown(docMarkdown(doc));
     if (text.length === 0) return "";
-    const match = text.match(/^.*?[.!?](?=\s|$)/);
+    const match = /^.*?[.!?](?=\s|$)/.exec(text);
     const sentence = match?.[0] ?? text;
     return sentence.length > 220 ? `${sentence.slice(0, 217)}...` : sentence;
 };
 
 export const elementSlug = (className: string): string =>
     className
-        .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-        .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+        .replaceAll(/([a-z0-9])([A-Z])/g, "$1-$2")
+        .replaceAll(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
         .toLowerCase();
 
 export const implementsLine = (names: string[]): string[] =>

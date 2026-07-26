@@ -1,7 +1,7 @@
+import type { ExternalObject, Handle } from "@gtkx/native";
 import * as GdkPixbuf from "@gtkx/gi/gdkpixbuf";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ExternalObject, Handle } from "@gtkx/native";
 import { getHandle, promisify, setHandle } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
@@ -13,7 +13,7 @@ const handle = (id: number): ExternalObject<Handle> => {
 const gobjectHandle = (): ExternalObject<Handle> => getHandle(new Gtk.Label({ label: "" }));
 
 const invokeCallback = (...args: unknown[]): void => {
-    (args[args.length - 1] as (source: ExternalObject<Handle>, result: ExternalObject<Handle>) => void)(
+    (args.at(-1) as (source: ExternalObject<Handle>, result: ExternalObject<Handle>) => void)(
         handle(1),
         gobjectHandle(),
     );
@@ -41,7 +41,7 @@ describe("promisify", () => {
     it("forwards the already-wrapped GAsyncResult straight to the finish callable", async () => {
         const asyncResult = new Gtk.Label({ label: "" });
         const asyncFn = (...args: unknown[]): void => {
-            (args[args.length - 1] as (source: object | null, result: object) => void)(null, asyncResult);
+            (args.at(-1) as (source: object | null, result: object) => void)(null, asyncResult);
         };
 
         const resolvedHandle = await promisify(asyncFn, (result: object) => getHandle(result), undefined);

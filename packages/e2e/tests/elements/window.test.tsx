@@ -1,11 +1,11 @@
 import type * as Adw from "@gtkx/gi/adw";
+import type { ReactNode } from "react";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render as baseRender, screen } from "@gtkx/testing";
-import type { ReactNode } from "react";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -161,15 +161,17 @@ describe("render - Window (4)", () => {
             function App({ first }: { first: boolean }) {
                 return (
                     <GtkApplicationWindow ref={windowRef}>
-                        {first ? (
-                            <GtkLabel ref={label1Ref} key="first">
-                                First
-                            </GtkLabel>
-                        ) : (
-                            <GtkLabel ref={label2Ref} key="second">
-                                Second
-                            </GtkLabel>
-                        )}
+                        {first
+                            ? (
+                                    <GtkLabel ref={label1Ref} key="first">
+                                        First
+                                    </GtkLabel>
+                                )
+                            : (
+                                    <GtkLabel ref={label2Ref} key="second">
+                                        Second
+                                    </GtkLabel>
+                                )}
                     </GtkApplicationWindow>
                 );
             }

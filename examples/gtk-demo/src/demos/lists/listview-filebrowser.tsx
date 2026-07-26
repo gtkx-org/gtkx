@@ -4,34 +4,33 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
-
 import { createContext, useContext, useMemo, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-filebrowser.tsx?raw";
 
 function formatSize(bytes: number): string {
-    if (bytes < 1_000) return `${bytes} bytes`;
-    if (bytes < 1_000_000) return `${(bytes / 1_000).toFixed(1)} kB`;
+    if (bytes < 1000) return `${bytes} bytes`;
+    if (bytes < 1_000_000) return `${(bytes / 1000).toFixed(1)} kB`;
     if (bytes < 1_000_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
     return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
 }
 
-interface FileItem {
+type FileItem = {
     name: string;
     displayName: string;
     isDirectory: boolean;
     size: number;
     icon: Gio.Icon | null;
     contentType: string | null;
-}
+};
 
 type ViewMode = "list" | "grid" | "paged";
 
-interface ViewModeItem {
+type ViewModeItem = {
     id: ViewMode;
     icon: string;
     label: string;
-}
+};
 
 const VIEW_MODES: ViewModeItem[] = [
     { id: "list", icon: "view-list-symbolic", label: "List" },
@@ -129,13 +128,13 @@ const navigateInto = (item: FileItem | undefined, currentPath: string, setCurren
     if (childPath) setCurrentPath(childPath);
 };
 
-interface FilebrowserContextValue {
+type FilebrowserContextValue = {
     viewMode: ViewMode;
     setViewMode: (mode: ViewMode) => void;
     files: FileItem[];
     handleActivate: (position: number) => void;
     navigateUp: () => void;
-}
+};
 
 const FilebrowserContext = createContext<FilebrowserContextValue | null>(null);
 
@@ -175,7 +174,7 @@ const ListViewFilebrowserTitlebar = () => {
         <GtkHeaderBar
             name="filebrowser-header"
             start={<GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />}
-            end={
+            end={(
                 <ListView
                     name="view-switcher"
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -199,7 +198,7 @@ const ListViewFilebrowserTitlebar = () => {
                     )}
                     items={VIEW_MODES.map((mode) => ({ id: mode.id, value: mode }))}
                 />
-            }
+            )}
         />
     );
 };

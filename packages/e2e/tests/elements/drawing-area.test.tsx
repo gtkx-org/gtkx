@@ -6,6 +6,10 @@ import { describe, expect, it } from "vitest";
 
 const noopDraw: Gtk.DrawingAreaDrawFunc = () => {};
 
+const drawFunc1: Gtk.DrawingAreaDrawFunc = () => {};
+
+const drawFunc2: Gtk.DrawingAreaDrawFunc = () => {};
+
 const expectDefaultContentSize = async (drawFunc: Gtk.DrawingAreaDrawFunc | undefined) => {
     const ref = createRef<Gtk.DrawingArea>();
 
@@ -63,8 +67,6 @@ describe("render - DrawingArea (2)", () => {
 
     it("updates draw function when prop changes", async () => {
         const ref = createRef<Gtk.DrawingArea>();
-        const drawFunc1: Gtk.DrawingAreaDrawFunc = () => {};
-        const drawFunc2: Gtk.DrawingAreaDrawFunc = () => {};
 
         function App({ drawFunc }: { drawFunc: Gtk.DrawingAreaDrawFunc }) {
             return <GtkDrawingArea ref={ref} drawFunc={drawFunc} />;

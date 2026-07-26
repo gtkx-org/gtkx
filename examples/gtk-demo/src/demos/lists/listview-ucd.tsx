@@ -9,12 +9,12 @@ import { path as ucdDataPath } from "#data/demos/lists/ucdnames.data";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-ucd.tsx?raw";
 
-interface UcdEntry {
+type UcdEntry = {
     codepoint: number;
     name: string;
     char: string;
     codepointStr: string;
-}
+};
 
 const UNICODE_TYPE_NAMES = [
     "Other, Control",
@@ -332,7 +332,7 @@ function parseUcdData(): UcdEntry[] {
 
     while (offset + 4 <= buffer.length) {
         const cp = buffer.readUInt32LE(offset);
-        if (cp > 0x10ffff || cp < lastCp) {
+        if (cp > 0x10_FF_FF || cp < lastCp) {
             break;
         }
 
@@ -373,10 +373,10 @@ function parseUcdData(): UcdEntry[] {
 
 const characters = parseUcdData();
 
-interface UcdSection {
+type UcdSection = {
     script: string;
     entries: UcdEntry[];
-}
+};
 
 function groupByScript(entries: UcdEntry[]): UcdSection[] {
     const sorted = [...entries].sort((a, b) => {

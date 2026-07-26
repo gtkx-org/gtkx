@@ -52,7 +52,7 @@ describe("within scoping", () => {
         const bound = within(frame);
         const items = await bound.findAllByText("Item");
 
-        expect(items.length).toBe(2);
+        expect(items).toHaveLength(2);
         expect(typeof bound.queryByRole).toBe("function");
         expect(typeof bound.queryAllByName).toBe("function");
     });

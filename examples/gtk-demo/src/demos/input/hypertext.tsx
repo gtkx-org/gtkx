@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import type { ReactNode } from "react";
 import { TextPaintable } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -16,10 +16,10 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
+import { spawn } from "node:child_process";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { lookupIconPaintable } from "../icon-paintable.js";
 import type { Demo } from "../types.js";
+import { lookupIconPaintable } from "../icon-paintable.js";
 import sourceCode from "./hypertext.tsx?raw";
 
 type LinkInfo = {
@@ -29,14 +29,14 @@ type LinkInfo = {
     end: number;
 };
 
-interface PageBuilder {
+type PageBuilder = {
     nodes: ReactNode[];
     links: LinkInfo[];
     offset: number;
     trackText: (text: string) => ReactNode;
     trackLink: (id: string, text: string, targetPage: number) => void;
     trackPlaceholder: () => void;
-}
+};
 
 const InlineIcon = ({ iconName, size }: { iconName: string; size: number }) => {
     const paintable = useMemo(() => lookupIconPaintable(iconName, size), [iconName, size]);
@@ -144,12 +144,12 @@ const buildPage3 = (sayWord: (word: string) => void) =>
         sayWord,
     });
 
-interface DefinitionPageArgs {
+type DefinitionPageArgs = {
     title: string;
     phonetic: string;
     definition: string;
     sayWord: (word: string) => void;
-}
+};
 
 const buildDefinitionPage = ({ title, phonetic, definition, sayWord }: DefinitionPageArgs) => {
     const b = createPageBuilder();
@@ -315,13 +315,13 @@ const HypertextDemo = () => {
                 pixelsBelowLines={10}
                 canFocus
                 focusable
-                controllers={
+                controllers={(
                     <>
                         <GtkGestureClick button={1} onReleased={handlers.handleClick} />
                         <GtkEventControllerMotion onMotion={handlers.handleMotion} />
                         <GtkEventControllerKey onKeyPressed={handlers.handleKeyPress} />
                     </>
-                }
+                )}
                 buffer={<GtkTextBuffer enableUndo>{content}</GtkTextBuffer>}
             />
         </GtkScrolledWindow>

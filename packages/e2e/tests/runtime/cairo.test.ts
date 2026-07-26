@@ -1,4 +1,3 @@
-import { existsSync, unlinkSync } from "node:fs";
 import {
     Content,
     Context,
@@ -24,6 +23,7 @@ import {
     Surface,
     SurfaceType,
 } from "@gtkx/gi/cairo";
+import { existsSync, unlinkSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const createTestSurface = (): Surface => {
@@ -347,8 +347,8 @@ describe("Context — line settings", () => {
 
     it("sets and gets miter limit", () => {
         const ctx = createTestContext();
-        ctx.setMiterLimit(5.0);
-        expect(ctx.getMiterLimit()).toBeCloseTo(5.0);
+        ctx.setMiterLimit(5);
+        expect(ctx.getMiterLimit()).toBeCloseTo(5);
     });
 
     it("sets and gets tolerance", () => {
@@ -1039,7 +1039,7 @@ describe("ImageSurface", () => {
         it("returns data with correct length", () => {
             const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             const data = surface.getData();
-            expect(data.length).toBe(surface.getStride() * surface.getHeight());
+            expect(data).toHaveLength(surface.getStride() * surface.getHeight());
         });
 
         it("contains painted pixel values", () => {
@@ -1057,7 +1057,7 @@ describe("ImageSurface", () => {
         it("returns empty array for zero-size surface", () => {
             const surface = ImageSurface.create(Format.ARGB32, 0, 0);
             const data = surface.getData();
-            expect(data.length).toBe(0);
+            expect(data).toHaveLength(0);
         });
     });
 });

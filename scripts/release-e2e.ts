@@ -50,7 +50,7 @@ function createGtkxVersion(): string {
     const manifestPath = join(PACKAGES_DIR, "create-gtkx", "package.json");
     const manifest: PackageManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     if (typeof manifest.version !== "string") {
-        throw new Error(`create-gtkx has no version in ${manifestPath}`);
+        throw new TypeError(`create-gtkx has no version in ${manifestPath}`);
     }
     return manifest.version;
 }
@@ -71,7 +71,7 @@ function publishablePackageNames(): string[] {
 
 type Packument = {
     "dist-tags": { latest?: string };
-    versions: { [version: string]: { dist: { tarball: string } } };
+    versions: Record<string, { dist: { tarball: string } }>;
 };
 
 async function tarballUrl(name: string): Promise<string> {
@@ -94,7 +94,7 @@ async function tarballUrl(name: string): Promise<string> {
 async function inspectTarball(
     name: string,
     inspectDir: string,
-): Promise<{ entries: string[]; manifest: PackageManifest; maps: { [path: string]: string } }> {
+): Promise<{ entries: string[]; manifest: PackageManifest; maps: Record<string, string> }> {
     const response = await fetch(await tarballUrl(name));
     if (!response.ok) {
         throw new Error(`Failed to download the tarball for ${name}: HTTP ${response.status}`);
@@ -109,7 +109,7 @@ async function inspectTarball(
     const manifest: PackageManifest = JSON.parse(
         await runCapture("tar", ["-xzOf", tarballPath, "package/package.json"]),
     );
-    const maps: { [path: string]: string } = {};
+    const maps: Record<string, string> = {};
     const mapEntries = entries.filter((entry) => entry.endsWith(".map"));
     if (mapEntries.length > 0) {
         await runAsync("tar", ["-xzf", tarballPath, "-C", inspectDir, ...mapEntries], {});

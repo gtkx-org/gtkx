@@ -1,7 +1,7 @@
+import type { Plugin, UserConfig } from "vite";
+import { info } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { info } from "@gtkx/utils";
-import type { Plugin, UserConfig } from "vite";
 import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
@@ -9,10 +9,10 @@ import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 const ICONS_DIR = "icons";
 
 const XDG_ENV_BANNER = [
-    `process.env.XDG_DATA_DIRS = [`,
-    `    decodeURIComponent(new URL(".", import.meta.url).pathname),`,
-    `    process.env.XDG_DATA_DIRS || "/usr/local/share:/usr/share",`,
-    `].join(":");`,
+    "process.env.XDG_DATA_DIRS = [",
+    "    decodeURIComponent(new URL(\".\", import.meta.url).pathname),",
+    "    process.env.XDG_DATA_DIRS || \"/usr/local/share:/usr/share\",",
+    "].join(\":\");",
 ].join("\n");
 
 type PluginState = {

@@ -1,8 +1,8 @@
+import type { ModuleNode, Plugin, UserConfig, ViteDevServer } from "vite";
+import { error, errorMessage, info } from "@gtkx/utils";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { error, errorMessage, info } from "@gtkx/utils";
-import type { ModuleNode, Plugin, UserConfig, ViteDevServer } from "vite";
 import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { removeTempDir, withStagingDir } from "../internal/staging-dir.js";
@@ -16,12 +16,12 @@ const VIRTUAL_PREFIX = "\0gtkx-settings:";
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const SCHEMA_ENV_BANNER = [
-    `process.env.GSETTINGS_SCHEMA_DIR = [`,
-    `    decodeURIComponent(new URL(".", import.meta.url).pathname),`,
-    `    process.env.GSETTINGS_SCHEMA_DIR,`,
-    `]`,
-    `    .filter(Boolean)`,
-    `    .join(":");`,
+    "process.env.GSETTINGS_SCHEMA_DIR = [",
+    "    decodeURIComponent(new URL(\".\", import.meta.url).pathname),",
+    "    process.env.GSETTINGS_SCHEMA_DIR,",
+    "]",
+    "    .filter(Boolean)",
+    "    .join(\":\");",
 ].join("\n");
 
 type PluginState = {
@@ -75,8 +75,8 @@ const syncSchemaEnv = (state: PluginState): void => {
     if (state.rootDir === null) return;
     try {
         emitSchemaEnv(state.rootDir, state.dataDir);
-    } catch (cause) {
-        error(`Failed to generate GSettings schema types: ${errorMessage(cause)}`);
+    } catch (error_) {
+        error(`Failed to generate GSettings schema types: ${errorMessage(error_)}`);
     }
 };
 
@@ -96,7 +96,7 @@ const registerSchemaForMode = (state: PluginState, filePath: string, id: string)
 
 const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): string => {
     const filePath = fromVirtualId(id);
-    const xml = readFileSync(filePath, "utf-8");
+    const xml = readFileSync(filePath, "utf8");
     const fileName = basename(filePath);
 
     registerSchemaForMode(state, filePath, id);

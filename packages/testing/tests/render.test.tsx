@@ -4,7 +4,7 @@ import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } fro
 import { rootElement } from "@gtkx/react";
 import { Component, createContext, type ReactNode, useContext } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { type Container, cleanup, queryAllByRole, render, type WrapperComponent } from "../src/index.js";
+import { cleanup, type Container, queryAllByRole, render, type WrapperComponent } from "../src/index.js";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
     override state = { hasError: false };

@@ -1,7 +1,7 @@
+import type { ParseContext } from "./type-id.js";
 import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
 import { attr, attrBool, childOf, type RawNode } from "./parse.js";
-import type { ParseContext } from "./type-id.js";
 
 export type GirFunction = {
     name: string;

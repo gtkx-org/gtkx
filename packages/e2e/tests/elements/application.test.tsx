@@ -1,6 +1,5 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
-
+import * as Gio from "@gtkx/gi/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -12,7 +11,7 @@ const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
 let nextAppId = 0;
 const uniqueAppId = (): string => `org.gtkx.applicationtest${nextAppId++}`;
 
-const buildMenubar = (entries: Array<{ label: string; items: Array<{ label: string; action: string }> }>): Gio.Menu => {
+const buildMenubar = (entries: { label: string; items: { label: string; action: string }[] }[]): Gio.Menu => {
     const menubar = Gio.Menu.new();
     for (const entry of entries) {
         const submenu = Gio.Menu.new();
@@ -44,6 +43,9 @@ const renderApp = async (menubar: Gio.MenuModel | null): Promise<Gtk.Application
     if (!ref.current) throw new Error("Expected application instance");
     return ref.current;
 };
+
+const fileMenu = (items: string[]): Gio.Menu =>
+    buildMenubar([{ label: "File", items: items.map((label) => ({ label, action: `win.${label}` })) }]);
 
 describe("render - Application", () => {
     describe("menubar slot", () => {
@@ -82,11 +84,7 @@ describe("render - Application", () => {
 
         it("updates menubar when items change", async () => {
             const ref = createRef<Gtk.Application>();
-            const appId = uniqueAppId();
-            const fileMenu = (items: string[]): Gio.Menu =>
-                buildMenubar([{ label: "File", items: items.map((label) => ({ label, action: `win.${label}` })) }]);
-
-            const { rerender } = await render(
+            const appId = uniqueAppId(); const { rerender } = await render(
                 <MenubarApp appRef={ref} appId={appId} menubar={fileMenu(["New", "Open"])} />,
                 { container: rootElement },
             );

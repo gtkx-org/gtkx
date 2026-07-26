@@ -56,7 +56,7 @@ describe("useSetting (variant types: arrays)", () => {
 
     it("reads and writes int64 arrays as bigint arrays", async () => {
         expectTypeOf<ValueOf<"big-offsets">>().toEqualTypeOf<bigint[]>();
-        await expectSettingRoundTrip(SCHEMA, "big-offsets", [1n, 2n], [9007199254740993n, -3n]);
+        await expectSettingRoundTrip(SCHEMA, "big-offsets", [1n, 2n], [9_007_199_254_740_993n, -3n]);
     });
 
     it("reads and writes nested arrays", async () => {
@@ -140,12 +140,12 @@ describe("useSetting (variant types: maybe and variant)", () => {
 describe("useSetting (variant types: scalars)", () => {
     it("reads and writes int16 keys across the full range", async () => {
         expectTypeOf<ValueOf<"small-signed">>().toEqualTypeOf<number>();
-        await expectSettingRoundTrip(SCHEMA, "small-signed", -32768, 32767);
+        await expectSettingRoundTrip(SCHEMA, "small-signed", -32_768, 32_767);
     });
 
     it("reads and writes uint16 keys across the full range", async () => {
         expectTypeOf<ValueOf<"small-unsigned">>().toEqualTypeOf<number>();
-        await expectSettingRoundTrip(SCHEMA, "small-unsigned", 65535, 0);
+        await expectSettingRoundTrip(SCHEMA, "small-unsigned", 65_535, 0);
     });
 
     it("reads and writes byte keys across the full range", async () => {

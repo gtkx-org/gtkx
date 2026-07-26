@@ -14,7 +14,7 @@ execSync("napi create-npm-dirs", { cwd: packageDir, stdio: "inherit" });
 
 const npmDir = join(packageDir, "npm");
 const artifactsDir = join(packageDir, "artifacts");
-const optionalDependencies: { [name: string]: string } = {};
+const optionalDependencies: Record<string, string> = {};
 
 for (const platform of readdirSync(npmDir)) {
     const platformDir = join(npmDir, platform);

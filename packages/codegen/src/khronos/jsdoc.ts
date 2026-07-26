@@ -73,7 +73,7 @@ export const commandJsDoc = ({ command, feature, ins, outs, returnPlan }: Comman
         summary: `\`${formatPrototype(command)}\``,
         body: [
             ...(ins.length > 0 ? [" *", ...ins.map((arg) => inParamDocLine(command, arg))] : []),
-            ...(returnsLine !== undefined ? [returnsLine] : []),
+            ...(returnsLine === undefined ? [] : [returnsLine]),
         ],
     });
 };

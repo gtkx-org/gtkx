@@ -1,5 +1,5 @@
-import * as Adw from "@gtkx/gi/adw";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Adw from "@gtkx/gi/adw";
 import { AdwPreferencesGroup, AdwSwitchRow } from "@gtkx/jsx/adw";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";

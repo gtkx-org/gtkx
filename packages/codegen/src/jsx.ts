@@ -1,13 +1,13 @@
+import type { Library } from "./gir/library.js";
 import {
     computeJsxFingerprint,
     FINGERPRINT_FILENAME,
     isJsxStoreFresh,
     type JsxFingerprintInput,
 } from "./fingerprint.js";
-import type { Library } from "./gir/library.js";
 import { type ModuleExport, readBuiltinElements } from "./react/element-config.js";
-import { generateJsxFiles } from "./store/jsx/pipeline.js";
 import { type JsxStoreOptions, writeJsxStore } from "./store/jsx-store.js";
+import { generateJsxFiles } from "./store/jsx/pipeline.js";
 
 export type RunJsxCodegenOptions = {
     getLibrary: () => Library;

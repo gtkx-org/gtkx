@@ -98,8 +98,8 @@ describe("dialogDemo interactive dialog", () => {
 
     it("seeds the interactive dialog entries from the current demo entry values", async () => {
         await renderDemo(dialogDemo);
-        await userEvent.type((await screen.findByName("demo-entry-1")) as Gtk.Entry, "seed1");
-        await userEvent.type((await screen.findByName("demo-entry-2")) as Gtk.Entry, "seed2");
+        await userEvent.type((await screen.findByName("demo-entry-1")), "seed1");
+        await userEvent.type((await screen.findByName("demo-entry-2")), "seed2");
         await openInteractiveDialog();
         expect(await screen.findByName("dialog-entry-1")).toHaveDisplayValue("seed1");
         expect(await screen.findByName("dialog-entry-2")).toHaveDisplayValue("seed2");
@@ -107,7 +107,7 @@ describe("dialogDemo interactive dialog", () => {
 
     it("discards dialog edits and keeps the prior demo values when responding with 'cancel'", async () => {
         await renderDemo(dialogDemo);
-        await userEvent.type((await screen.findByName("demo-entry-1")) as Gtk.Entry, "orig");
+        await userEvent.type((await screen.findByName("demo-entry-1")), "orig");
         const interactive = await openInteractiveDialog();
         const dialogEntry1 = (await screen.findByName("dialog-entry-1")) as Gtk.Entry;
         expect(dialogEntry1).toHaveDisplayValue("orig");

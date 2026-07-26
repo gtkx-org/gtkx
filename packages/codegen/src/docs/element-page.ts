@@ -1,9 +1,9 @@
 import { sortStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
-import { ancestorChain } from "../gir/ancestry.js";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
-import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import type { GirSignal } from "../gir/parameter.js";
+import { ancestorChain } from "../gir/ancestry.js";
+import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
 import { buildGirIndex, type GirIndex } from "../store/jsx/gir-index.js";
@@ -75,7 +75,7 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
         return glib === undefined ? `\`${ancestor.namespaceName}.${ancestor.klass.name}\`` : glibLabel(context, glib);
     });
     parts.push(`**${entry.glibName}**`);
-    const lines = [`## Hierarchy`, parts.join(" → ")];
+    const lines = ["## Hierarchy", parts.join(" → ")];
     const interfaces = implementedInterfaces(entry.klass, entry.namespace, context.library)
         .map((iface) => glibNameOf(iface.klass))
         .filter((name): name is string => name !== undefined);
@@ -143,12 +143,12 @@ const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, see
 };
 
 const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     const entries = propertyEntries(entry, context, seen);
     const intro = [
         `\`ref\` receives the \`${selfType}\` instance.`,
-        `Every mutable property also has an \`onNotify<Prop>\` handler prop called with the new value when the property changes.`,
-        `Props inherited from ancestor elements are documented on their own pages.`,
+        "Every mutable property also has an `onNotify<Prop>` handler prop called with the new value when the property changes.",
+        "Props inherited from ancestor elements are documented on their own pages.",
     ].join(" ");
     if (entries.length === 0) return ["## Props", intro];
     const sorted = sortStringsBy(entries, (item) => item.name);
@@ -163,7 +163,7 @@ type SignalEntry = {
 };
 
 const signalsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     const entries: SignalEntry[] = [];
     const acceptSignal = (signal: GirSignal, origin: string | undefined): void => {
         const name = signalHandlerName(signal.name);

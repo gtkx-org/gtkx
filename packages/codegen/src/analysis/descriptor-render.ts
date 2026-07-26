@@ -1,6 +1,10 @@
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirCallback } from "../gir/callback.js";
 import type { Library } from "../gir/library.js";
+import type { PrimitiveCategory } from "../gir/primitives.js";
+import type { CArrayType, ListFlavor, TypeId } from "../gir/type-id.js";
+import type { EntityType, GirType } from "../gir/type.js";
+import type { ModuleContext } from "../writer/context.js";
 import {
     type GirParameter,
     type GirReturnValue,
@@ -9,12 +13,8 @@ import {
     isOutParameter,
     type ParameterTransfer,
 } from "../gir/parameter.js";
-import type { PrimitiveCategory } from "../gir/primitives.js";
-import type { EntityType, GirType } from "../gir/type.js";
-import type { CArrayType, ListFlavor, TypeId } from "../gir/type-id.js";
 import { isRecordInout } from "../store/gi/param-marshal.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
-import type { ModuleContext } from "../writer/context.js";
 import {
     type ListDescriptorName,
     type Ownership,
@@ -80,19 +80,23 @@ export const renderDescriptor = (
     const type = context.library.typeOf(ref);
     if (type === undefined) return tObject(ownership);
     switch (type.kind) {
-        case "primitive":
+        case "primitive": {
             return primitiveExpression(type.category, ownership);
+        }
         case "varargs":
-        case "callback":
+        case "callback": {
             return tVoid;
+        }
         case "class":
         case "interface":
         case "record":
         case "enum":
-        case "alias":
+        case "alias": {
             return expressionForResolved(context, type, transfer, options);
-        case "carray":
+        }
+        case "carray": {
             return arrayExpression(context, type, transfer, argIndexOffset);
+        }
         case "list": {
             if (type.flavor === "gbytearray") return tByteArray(ownership);
             const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), {
@@ -118,14 +122,18 @@ const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): G
 
 const isScalarType = (library: Library, type: GirType): boolean => {
     switch (type.kind) {
-        case "primitive":
+        case "primitive": {
             return type.category !== "string" && type.category !== "void";
-        case "enum":
+        }
+        case "enum": {
             return true;
-        case "alias":
+        }
+        case "alias": {
             return type.value.target !== undefined && isScalarRef(library, type.value.target);
-        default:
+        }
+        default: {
             return false;
+        }
     }
 };
 
@@ -156,9 +164,9 @@ export const renderParamDescriptor = (
 
 const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
     let userDataIndex: number | undefined;
-    parameters.forEach((parameter, index) => {
+    for (const [index, parameter] of parameters.entries()) {
         if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;
-    });
+    }
     return userDataIndex;
 };
 
@@ -412,14 +420,18 @@ const expressionForResolved = (
     const ownership = transferOwnership(transfer);
     switch (resolved.kind) {
         case "class":
-        case "interface":
+        case "interface": {
             return classOrInterfaceExpression(resolved, ownership);
-        case "record":
+        }
+        case "record": {
             return recordExpression(context, resolved, ownership, options.callerAllocated ?? false);
-        case "enum":
+        }
+        case "enum": {
             return enumExpression(resolved);
-        case "alias":
+        }
+        case "alias": {
             return aliasExpression(context, resolved.value.target, transfer, options);
+        }
     }
 };
 

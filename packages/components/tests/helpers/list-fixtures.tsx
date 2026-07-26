@@ -1,18 +1,17 @@
-import { type Column, ColumnView, GridView, type Item, ListView, type RenderItemArgs } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
+import { type Column, ColumnView, GridView, type Item, ListView, type RenderItemArgs } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-
 import { render as testingRender } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { ScrollWrapper } from "./scroll-wrapper.js";
 
 export type FixtureRender = (element: ReactNode) => Promise<{ rerender: (element: ReactNode) => Promise<void> }>;
 
-export interface NamedValue {
+export type NamedValue = {
     name: string;
-}
+};
 
-export const valueItems = (values: string[]): Array<{ id: string; value: string }> =>
+export const valueItems = (values: string[]): { id: string; value: string }[] =>
     values.map((value, index) => ({ id: String(index + 1), value }));
 
 export const firstSecondItems: Item<NamedValue>[] = [
@@ -31,10 +30,12 @@ const toListItems = <T,>(items: FixtureInput<T>): Item<T>[] =>
 
 const collectExpandableIds = <T,>(list: Item<T>[], ids: string[]): void => {
     for (const item of list) {
-        if (item.children !== undefined && item.children.length > 0) {
-            ids.push(item.id);
-            collectExpandableIds(item.children, ids);
+        if (item.children === undefined || item.children.length === 0) {
+            continue;
         }
+
+        ids.push(item.id);
+        collectExpandableIds(item.children, ids);
     }
 };
 
@@ -68,15 +69,15 @@ export type RenderGridViewOptions<T> = ListViewFixtureOptions & {
     singleClickActivate?: boolean;
 };
 
-export interface ListViewFixture<T> {
+export type ListViewFixture<T> = {
     ref: RefObject<Gtk.ListView>;
     rerender: (items: FixtureInput<T>, options?: RenderListViewOptions<T>) => Promise<void>;
-}
+};
 
-export interface GridViewFixture<T> {
+export type GridViewFixture<T> = {
     ref: RefObject<Gtk.GridView>;
     rerender: (items: FixtureInput<T>, options?: RenderGridViewOptions<T>) => Promise<void>;
-}
+};
 
 type ContentSizing = {
     minContentHeight?: number | undefined;
@@ -185,10 +186,10 @@ export type RenderColumnViewOptions<T> = {
     minContentWidth?: number;
 };
 
-export interface ColumnViewFixture<T> {
+export type ColumnViewFixture<T> = {
     ref: RefObject<Gtk.ColumnView>;
     rerender: (items: FixtureInput<T>, options?: RenderColumnViewOptions<T>) => Promise<void>;
-}
+};
 
 export const renderColumnView = async <T = NamedValue>(
     items: FixtureInput<T>,

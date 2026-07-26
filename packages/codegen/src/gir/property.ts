@@ -1,6 +1,6 @@
+import type { ParseContext, TypeId } from "./type-id.js";
 import { type ParameterTransfer, transferOwnership } from "./parameter.js";
 import { attr, attrBool, docOf, nameAttr, type RawNode } from "./parse.js";
-import type { ParseContext, TypeId } from "./type-id.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 export type GirProperty = {

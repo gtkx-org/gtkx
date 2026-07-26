@@ -1,8 +1,8 @@
+import type { Plugin } from "vite";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
 import { dirname, join } from "node:path";
-import type { Plugin } from "vite";
 
 const EMITTED_BINDING_SPECIFIER = "./gtkx.node";
 
@@ -38,7 +38,7 @@ function rewriteLoader(code: string): string {
     const bindings = idents.join(", ");
 
     return [
-        `import { createRequire as __gtkxCreateRequire } from "node:module";`,
+        "import { createRequire as __gtkxCreateRequire } from \"node:module\";",
         `const __gtkxNative = __gtkxCreateRequire(import.meta.url)(${JSON.stringify(EMITTED_BINDING_SPECIFIER)});`,
         `const { ${bindings} } = __gtkxNative;`,
         `export { ${bindings} };`,

@@ -4,43 +4,43 @@ import { joinArgs } from "../writer/emit.js";
 export type Ownership = "borrowed" | "full";
 
 type DescriptorName =
-    | "bind"
-    | "int8"
-    | "uint8"
-    | "int16"
-    | "uint16"
-    | "int32"
-    | "uint32"
-    | "int64"
-    | "uint64"
-    | "bigint64"
-    | "biguint64"
-    | "gtype"
-    | "float32"
-    | "float64"
-    | "boolean"
-    | "void"
-    | "unichar"
-    | "buffer"
-    | "string"
-    | "object"
-    | "boxed"
-    | "struct"
-    | "fundamental"
-    | "ref"
-    | "hashTable"
-    | "enum"
-    | "flags"
-    | "array"
-    | "list"
-    | "slist"
-    | "ptrArray"
-    | "gArray"
-    | "byteArray"
-    | "sizedArray"
-    | "fixedArray"
-    | "callback"
-    | "fn";
+    | "bind" |
+    "int8" |
+    "uint8" |
+    "int16" |
+    "uint16" |
+    "int32" |
+    "uint32" |
+    "int64" |
+    "uint64" |
+    "bigint64" |
+    "biguint64" |
+    "gtype" |
+    "float32" |
+    "float64" |
+    "boolean" |
+    "void" |
+    "unichar" |
+    "buffer" |
+    "string" |
+    "object" |
+    "boxed" |
+    "struct" |
+    "fundamental" |
+    "ref" |
+    "hashTable" |
+    "enum" |
+    "flags" |
+    "array" |
+    "list" |
+    "slist" |
+    "ptrArray" |
+    "gArray" |
+    "byteArray" |
+    "sizedArray" |
+    "fixedArray" |
+    "callback" |
+    "fn";
 
 type DescriptorNames = { [K in DescriptorName]: `t.${K}` };
 
@@ -84,9 +84,9 @@ const T: DescriptorNames = {
     fn: "t.fn",
 };
 
-const call = (name: DescriptorName, args: Array<string | undefined>): string => `${T[name]}(${joinArgs(args)})`;
+const call = (name: DescriptorName, args: (string | undefined)[]): string => `${T[name]}(${joinArgs(args)})`;
 
-const optionsObject = (parts: Array<string | undefined>): string | undefined => {
+const optionsObject = (parts: (string | undefined)[]): string | undefined => {
     const present = parts.filter((part): part is string => part !== undefined);
     return present.length === 0 ? undefined : `{ ${present.join(", ")} }`;
 };
@@ -108,20 +108,20 @@ export const tGtype: string = T.gtype;
 export const tBuffer: string = T.buffer;
 
 export type ScalarDescriptorName =
-    | "boolean"
-    | "int8"
-    | "uint8"
-    | "int16"
-    | "uint16"
-    | "int32"
-    | "uint32"
-    | "int64"
-    | "uint64"
-    | "bigint64"
-    | "biguint64"
-    | "float32"
-    | "float64"
-    | "unichar";
+    | "boolean" |
+    "int8" |
+    "uint8" |
+    "int16" |
+    "uint16" |
+    "int32" |
+    "uint32" |
+    "int64" |
+    "uint64" |
+    "bigint64" |
+    "biguint64" |
+    "float32" |
+    "float64" |
+    "unichar";
 
 export const tScalar = (name: ScalarDescriptorName): string => T[name];
 

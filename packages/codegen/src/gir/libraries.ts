@@ -1,7 +1,7 @@
-import { readdirSync } from "node:fs";
 import type { Config } from "@gtkx/config";
 import { GIR_LIBRARY_PATTERN, LIBRARIES_WILDCARD } from "@gtkx/config/internal";
 import { sortStrings } from "@gtkx/utils";
+import { readdirSync } from "node:fs";
 
 const DEFAULT_LIBRARIES: string[] = ["Gtk-4.0"];
 
@@ -17,7 +17,7 @@ export const resolveLibraries = (libraries: Config["libraries"], girPath: string
         if (discovered.length === 0) {
             throw new Error(
                 `gtkx.config.ts: \`libraries: "*"\` matched no .gir files in [${girPath.join(", ")}]. ` +
-                    "Install gobject-introspection data packages, or list the libraries explicitly.",
+                "Install gobject-introspection data packages, or list the libraries explicitly.",
             );
         }
         return discovered;
@@ -68,7 +68,7 @@ const collectDirNamespaces = (highestByName: Map<string, GirNamespace>, dir: str
 };
 
 export const discoverGirNamespaces = (girPath: string[]): string[] => {
-    const highestByName = new Map<string, GirNamespace>();
+    const highestByName: Map<string, GirNamespace> = new Map();
 
     for (const dir of girPath) {
         collectDirNamespaces(highestByName, dir);

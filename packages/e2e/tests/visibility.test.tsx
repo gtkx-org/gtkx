@@ -8,9 +8,9 @@ type Captured = { widget: Gtk.Widget | null };
 
 const capturing =
     (held: Captured) =>
-    (widget: Gtk.Widget | null): void => {
-        if (widget) held.widget = widget;
-    };
+        (widget: Gtk.Widget | null): void => {
+            if (widget) held.widget = widget;
+        };
 
 const visibilityOf = (held: Captured): boolean => {
     if (!held.widget) throw new Error("widget was never captured");
@@ -21,7 +21,7 @@ type DeferredPromise = { promise: Promise<string>; resolve: () => void };
 
 const createDeferred = (): DeferredPromise => {
     let settle: (() => void) | null = null;
-    const promise = new Promise<string>((resolveWith) => {
+    const promise: Promise<string> = new Promise((resolveWith) => {
         settle = () => resolveWith("loaded");
     });
     if (!settle) throw new Error("promise executor did not run synchronously");

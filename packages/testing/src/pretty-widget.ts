@@ -61,10 +61,10 @@ type Colors = {
 };
 
 const ansi = {
-    cyan: "\x1b[36m",
-    yellow: "\x1b[33m",
-    green: "\x1b[32m",
-    reset: "\x1b[0m",
+    cyan: "\u{1B}[36m",
+    yellow: "\u{1B}[33m",
+    green: "\u{1B}[32m",
+    reset: "\u{1B}[0m",
 };
 
 const shouldHighlight = (): boolean => {

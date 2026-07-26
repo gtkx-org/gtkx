@@ -1,7 +1,7 @@
+import type { ParseContext } from "./type-id.js";
 import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, docOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
-import type { ParseContext } from "./type-id.js";
 
 export type GirRecord = {
     isVtable: boolean;

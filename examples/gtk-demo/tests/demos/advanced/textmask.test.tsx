@@ -74,10 +74,12 @@ describe("textmaskDemo paint", () => {
             const cr = Context.create(surface);
             drawFunc(drawingArea, cr, 400, 240);
             for (const call of createLayout.mock.results) {
-                if (call.type === "return") {
-                    const layout = call.value as ReturnType<Gtk.Widget["createPangoLayout"]>;
-                    layoutTexts.push(layout.getText());
+                if (call.type !== "return") {
+                    continue;
                 }
+
+                const layout = call.value;
+                layoutTexts.push(layout.getText());
             }
             surface.finish();
         } finally {

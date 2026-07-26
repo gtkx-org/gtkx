@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
+import { readFileSync } from "node:fs";
 import { createVirtualNamespace } from "./virtual-module.js";
 
 const CSS_RE = /\.css$/i;
@@ -26,8 +26,8 @@ export function gtkxCss(): Plugin {
         load(id) {
             if (isVirtual(id) && id.endsWith(INJECT_SUFFIX)) {
                 const filePath = fromVirtualId(id.slice(0, -INJECT_SUFFIX.length));
-                const content = readFileSync(filePath, "utf-8");
-                return [`import { injectGlobal } from "@gtkx/css";`, `injectGlobal(${JSON.stringify(content)});`].join(
+                const content = readFileSync(filePath, "utf8");
+                return ["import { injectGlobal } from \"@gtkx/css\";", `injectGlobal(${JSON.stringify(content)});`].join(
                     "\n",
                 );
             }

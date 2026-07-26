@@ -13,7 +13,7 @@ describe("ConnectionRegistry", () => {
         setupSocketServer();
         it("silently drops a message for an unknown connection id", async () => {
             await socketCtx.server.start();
-            expect(() => socketCtx.registry.send("missing", { id: "x", method: "noop" } as Message)).not.toThrow();
+            expect(() => socketCtx.registry.send("missing", { id: "x", method: "noop" })).not.toThrow();
         });
 
         it("delivers a message to the connected client", async () => {
@@ -25,9 +25,9 @@ describe("ConnectionRegistry", () => {
             const connection = await connectionPromise;
 
             const parsed = await collectFirstFrame<Message>(client, () =>
-                registry.send(connection.id, { id: "out-1", result: 42 } as Message),
+                registry.send(connection.id, { id: "out-1", result: 42 }),
             );
-            expect((parsed as { id: string }).id).toBe("out-1");
+            expect((parsed).id).toBe("out-1");
         });
     });
 
@@ -42,7 +42,7 @@ describe("ConnectionRegistry", () => {
             const connection = await connectionPromise;
 
             const pending = connection.send("ping", {}, 5000);
-            const disconnection = new Promise<void>((resolve) => registry.once("disconnection", () => resolve()));
+            const disconnection: Promise<void> = new Promise((resolve) => registry.once("disconnection", () => resolve()));
             registry.dispose("Server stopping");
 
             await expect(pending).rejects.toThrow("Server stopping");

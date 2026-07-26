@@ -1,6 +1,6 @@
+import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { logWidget, prettyWidget, render, screen } from "../src/index.js";
 

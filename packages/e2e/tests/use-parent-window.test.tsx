@@ -1,5 +1,5 @@
-import * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gio from "@gtkx/gi/gio";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, type GtkApplicationWindowProps, GtkBox } from "@gtkx/jsx/gtk";
 import { rootElement, useParentWindow } from "@gtkx/react";

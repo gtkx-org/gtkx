@@ -11,7 +11,7 @@ const ENUM_KIND = "enum";
 const FLAGS_KIND = "flags";
 
 const toJsStringLiteral = (value: string): string =>
-    JSON.stringify(value).replaceAll("\u2028", "\\u2028").replaceAll("\u2029", "\\u2029");
+    JSON.stringify(value).replaceAll("\u{2028}", String.raw`\u2028`).replaceAll("\u{2029}", String.raw`\u2029`);
 
 const exportNameFor = (schemaId: string): string => schemaId.replaceAll(".", "_");
 
@@ -30,7 +30,7 @@ const runtimeKeysFor = (schema: ParsedSchema): string => {
 
 export const renderRuntimeModule = (file: ParsedSchemaFile): string => {
     const lines: string[] = [];
-    file.schemas.forEach((schema, index) => {
+    for (const [index, schema] of file.schemas.entries()) {
         const keysName = `keys_${index}`;
         const id = toJsStringLiteral(schema.id);
         lines.push(`const ${keysName} = ${runtimeKeysFor(schema)};`);
@@ -41,7 +41,7 @@ export const renderRuntimeModule = (file: ParsedSchemaFile): string => {
         } else {
             lines.push(`export const ${exportNameFor(schema.id)} = { id: ${id}, path: null, keys: ${keysName} };`);
         }
-    });
+    }
     const first = file.schemas[0];
     if (first !== undefined) {
         lines.push(`export default ${exportNameFor(first.id)};`);
@@ -49,7 +49,7 @@ export const renderRuntimeModule = (file: ParsedSchemaFile): string => {
     return lines.join("\n");
 };
 
-const sanitizeSummary = (summary: string): string => summary.replaceAll("*/", "*\\/");
+const sanitizeSummary = (summary: string): string => summary.replaceAll("*/", String.raw`*\/`);
 
 const interfaceNameFor = (schemaId: string, usedNames: Set<string>): string => {
     const base = `${schemaId
@@ -91,7 +91,7 @@ const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[
         return [
             `    const ${exportName}: {`,
             `        id: ${toJsStringLiteral(schema.id)};`,
-            ...boundRefTypeLines(interfaceName, "        ").slice(1),
+            ...boundRefTypeLines(interfaceName, " ".repeat(8)).slice(1),
             "    };",
         ];
     }
@@ -100,7 +100,7 @@ const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[
         `        id: ${JSON.stringify(schema.id)};`,
         `        keys: ${interfaceName};`,
         "        at(path: string): {",
-        ...boundRefTypeLines(interfaceName, "            "),
+        ...boundRefTypeLines(interfaceName, " ".repeat(12)),
         "        };",
         "    };",
     ];
@@ -109,25 +109,23 @@ const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[
 const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): string[] => {
     const lines = [`declare module "${file.fileName}" {`];
     const exportNames: string[] = [];
-    file.schemas.forEach((schema, index) => {
+    for (const [index, schema] of file.schemas.entries()) {
         if (index > 0) lines.push("");
         const interfaceName = interfaceNameFor(schema.id, usedNames);
-        lines.push(...renderKeysType(interfaceName, schema));
-        lines.push("");
+        lines.push(...renderKeysType(interfaceName, schema), "");
         lines.push(...renderSchemaConst(schema, interfaceName));
         exportNames.push(exportNameFor(schema.id));
-    });
+    }
     if (exportNames.length > 0) {
         lines.push("");
-        lines.push(`    export { ${exportNames.join(", ")} };`);
-        lines.push(`    export default ${exportNames[0]};`);
+        lines.push(`    export { ${exportNames.join(", ")} };`, `    export default ${exportNames[0]};`);
     }
     lines.push("}");
     return lines;
 };
 
 export const renderEnvModule = (files: ParsedSchemaFile[]): string => {
-    const usedNames = new Set<string>();
+    const usedNames: Set<string> = new Set();
     const blocks = files
         .filter((file) => file.schemas.length > 0)
         .map((file) => renderFileModule(file, usedNames).join("\n"));

@@ -1,20 +1,19 @@
 import type * as GObject from "@gtkx/gi/gobject";
+import type { ElementType, ReactNode, Ref } from "react";
 import { GtkDropDown, GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
-import type { ElementType, ReactNode, Ref } from "react";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import type { CollectionModel } from "./internal/collection-model.js";
-import { collectionModeOf } from "./internal/collection-model.js";
 import type { CellRecord, Cells } from "./internal/use-cells.js";
+import type { DropDownProps, ItemRenderer } from "./types.js";
+import { collectionModeOf } from "./internal/collection-model.js";
 import { headerRenderer, renderItemArgs, useCells } from "./internal/use-cells.js";
 import { useCollectionModel } from "./internal/use-collection.js";
-import { useLatest } from "./internal/use-latest.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
-import type { DropDownProps, ItemRenderer } from "./types.js";
 
 type SelectableWidget = GObject.Object & { getSelected: () => number };
 
-type DropDownRuntimeProps = DropDownProps<unknown, unknown> & {
+type DropDownRuntimeProps = DropDownProps & {
     component?: ElementType | undefined;
     ref?: Ref<SelectableWidget | null> | undefined;
 } & Record<string, unknown>;
@@ -32,8 +31,8 @@ const itemContent = (record: CellRecord, model: CollectionModel, props: DropDown
     const args = renderItemArgs(record, { collection: model });
     if (args === null) return null;
     const listRenderer = record.slot === "list" ? (props.renderListItem ?? props.renderItem) : null;
-    const render = (listRenderer ?? props.renderItem) as ItemRenderer<unknown> | null | undefined;
-    return render != null ? render(args) : defaultItemContent(args.item);
+    const render = (listRenderer ?? props.renderItem);
+    return render == null ? defaultItemContent(args.item) : render(args);
 };
 
 const resolvePosition = (
@@ -45,30 +44,30 @@ const resolvePosition = (
     return requested >= 0 ? requested : widget.getSelected();
 };
 
-type SelectionRefs = {
+type KnownSelection = {
     known: { current: string | null };
-    latest: { current: DropDownRuntimeProps };
+    onSelectionChanged: ((id: string) => void) | null | undefined;
 };
 
 const updateKnownSelection = (
-    refs: SelectionRefs,
+    tracker: KnownSelection,
     effectiveId: string,
     selectedId: string | null | undefined,
 ): void => {
-    const { known, latest } = refs;
+    const { known, onSelectionChanged } = tracker;
     const expectedId = selectedId ?? known.current;
     const isNew = effectiveId !== known.current;
     known.current = effectiveId;
     if (expectedId !== null && effectiveId !== expectedId && isNew) {
-        latest.current.onSelectionChanged?.(effectiveId);
+        onSelectionChanged?.(effectiveId);
     }
 };
 
-const reportKnownSelection = (refs: SelectionRefs, id: string | null): void => {
-    const { known, latest } = refs;
+const reportKnownSelection = (tracker: KnownSelection, id: string | null): void => {
+    const { known, onSelectionChanged } = tracker;
     if (id === null || id === known.current) return;
     known.current = id;
-    latest.current.onSelectionChanged?.(id);
+    onSelectionChanged?.(id);
 };
 
 const useDropDownSelection = (options: SelectionOptions): number | undefined => {
@@ -77,7 +76,6 @@ const useDropDownSelection = (options: SelectionOptions): number | undefined => 
     const known = useRef<string | null>(null);
     const applying = useRef(false);
     const [selected, setSelected] = useState<number | undefined>(undefined);
-    const latest = useLatest(options.props);
     const applyUpdate = useCallback((): void => {
         applying.current = true;
         try {
@@ -86,17 +84,15 @@ const useDropDownSelection = (options: SelectionOptions): number | undefined => 
             applying.current = false;
         }
     }, [model, items, sections]);
-    const syncKnownSelection = useCallback(
-        (position: number): void => {
-            const effectiveId = model.idAt(position);
-            if (effectiveId === null) {
-                known.current = null;
-                return;
-            }
-            updateKnownSelection({ known, latest }, effectiveId, selectedId);
-        },
-        [model, selectedId, latest],
-    );
+    const syncKnownSelection = useEffectEvent((position: number): void => {
+        const effectiveId = model.idAt(position);
+        if (effectiveId === null) {
+            known.current = null;
+            return;
+        }
+        const { onSelectionChanged } = options.props;
+        updateKnownSelection({ known, onSelectionChanged }, effectiveId, selectedId);
+    });
     useLayoutEffect(() => {
         if (widget === null) return;
         applyUpdate();
@@ -104,14 +100,13 @@ const useDropDownSelection = (options: SelectionOptions): number | undefined => 
         const position = resolvePosition(widget, model, selectedId);
         setSelected(position);
         syncKnownSelection(position);
-    }, [widget, model, cells, selectedId, applyUpdate, syncKnownSelection]);
-    const reportSelection = useCallback((): void => {
+    }, [widget, model, cells, selectedId, applyUpdate]);
+    useSignal(widget, "notify::selected", (): void => {
         if (widget === null || applying.current) return;
         const position = widget.getSelected();
         setSelected(position);
-        reportKnownSelection({ known, latest }, model.idAt(position));
-    }, [widget, model, latest]);
-    useSignal(widget, "notify::selected", reportSelection);
+        reportKnownSelection({ known, onSelectionChanged: options.props.onSelectionChanged }, model.idAt(position));
+    });
     return selected;
 };
 

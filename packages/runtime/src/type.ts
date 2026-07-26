@@ -2,9 +2,9 @@ import { type Descriptor, resolveType as nativeResolveType } from "@gtkx/native"
 import { bind } from "./bind.js";
 import {
     type ArrayDescriptor,
-    type BoxedDescriptor,
     biguint64T,
     booleanT,
+    type BoxedDescriptor,
     type FundamentalDescriptor,
     refT,
     sizedArrayT,
@@ -18,7 +18,7 @@ export type TypedClass = {
     __type__: bigint;
 };
 
-const resolvedTypeCache = new Map<string, bigint>();
+const resolvedTypeCache: Map<string, bigint> = new Map();
 
 const gTypeFromName = bind(LIB, "g_type_from_name", [stringT("borrowed")], biguint64T);
 const gTypeIsA = bind(LIB, "g_type_is_a", [biguint64T, biguint64T], booleanT);
@@ -39,7 +39,7 @@ export const isTypedClass = (value: unknown): value is TypedClass =>
     typeof value === "object" && value !== null && "__type__" in value && typeof value.__type__ === "bigint";
 
 /** GType tag for an invalid or uninitialized type. */
-export const TYPE_INVALID: bigint = 0n;
+export const TYPE_INVALID = 0n;
 /** GType tag for the absence of a value (`void`). */
 export const TYPE_NONE: bigint = typeFromName("void");
 /** GType tag for the base GInterface type. */
@@ -155,7 +155,7 @@ export const resolveFundamentalType = (descriptor: FundamentalDescriptor): bigin
         const gtype = typeFromName(descriptor.typeName);
         if (gtype !== TYPE_INVALID) return gtype;
     }
-    throw new Error(`Cannot resolve gtype for fundamental type without a typeName`);
+    throw new Error("Cannot resolve gtype for fundamental type without a typeName");
 };
 
 function resolveArrayType(descriptor: ArrayDescriptor): bigint {
@@ -166,40 +166,54 @@ function resolveArrayType(descriptor: ArrayDescriptor): bigint {
 export function resolveDescriptorType(descriptor: Descriptor): bigint {
     if (descriptor.kind === "biguint64" && "type" in descriptor) return TYPE_GTYPE;
     switch (descriptor.kind) {
-        case "boolean":
+        case "boolean": {
             return TYPE_BOOLEAN;
-        case "string":
+        }
+        case "string": {
             return TYPE_STRING;
+        }
         case "int8":
         case "int16":
-        case "int32":
+        case "int32": {
             return TYPE_INT;
+        }
         case "uint8":
         case "uint16":
-        case "uint32":
+        case "uint32": {
             return TYPE_UINT;
+        }
         case "int64":
-        case "bigint64":
+        case "bigint64": {
             return TYPE_INT64;
+        }
         case "uint64":
-        case "biguint64":
+        case "biguint64": {
             return TYPE_UINT64;
-        case "float32":
+        }
+        case "float32": {
             return TYPE_FLOAT;
-        case "float64":
+        }
+        case "float64": {
             return TYPE_DOUBLE;
-        case "object":
+        }
+        case "object": {
             return TYPE_OBJECT;
+        }
         case "enum":
-        case "flags":
+        case "flags": {
             return resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName);
-        case "boxed":
+        }
+        case "boxed": {
             return resolveBoxedType(descriptor);
-        case "fundamental":
+        }
+        case "fundamental": {
             return resolveFundamentalType(descriptor);
-        case "array":
+        }
+        case "array": {
             return resolveArrayType(descriptor);
-        default:
+        }
+        default: {
             throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
+        }
     }
 }

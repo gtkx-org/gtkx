@@ -1,6 +1,6 @@
+import type { PositionalArgDef, StringArgDef } from "citty";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import type { PositionalArgDef, StringArgDef } from "citty";
 
 const DEFAULT_ENTRY_BASE = "src/index";
 const DEFAULT_ENTRY_EXTENSIONS = [".tsx", ".jsx", ".ts", ".js"];

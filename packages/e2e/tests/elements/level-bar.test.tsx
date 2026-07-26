@@ -79,9 +79,9 @@ describe("render - LevelBar (2)", () => {
         function App({ showExtra }: { showExtra: boolean }) {
             const offsets = showExtra
                 ? [
-                      { name: "always", value: 0.5 },
-                      { name: "extra", value: 0.75 },
-                  ]
+                        { name: "always", value: 0.5 },
+                        { name: "extra", value: 0.75 },
+                    ]
                 : [{ name: "always", value: 0.5 }];
             return <GtkLevelBar ref={ref} offsets={offsets} />;
         }

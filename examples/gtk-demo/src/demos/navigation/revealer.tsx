@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./revealer.tsx?raw";
 
-interface RevealerConfig {
+type RevealerConfig = {
     column: number;
     row: number;
     transition: Gtk.RevealerTransitionType;
-}
+};
 
 const revealerConfigs: RevealerConfig[] = [
     { column: 2, row: 2, transition: Gtk.RevealerTransitionType.CROSSFADE },
@@ -25,8 +25,8 @@ const revealerConfigs: RevealerConfig[] = [
 const TRANSITION_DURATION = 2000;
 
 const RevealerDemo = () => {
-    const [revealed, setRevealed] = useState<boolean[]>(new Array(9).fill(false));
-    const activatedRef = useRef<boolean[]>(new Array(9).fill(false));
+    const [revealed, setRevealed] = useState<boolean[]>(Array.from({ length: 9 }, () => false));
+    const activatedRef = useRef<boolean[]>(Array.from({ length: 9 }, () => false));
 
     useEffect(() => {
         let count = 0;

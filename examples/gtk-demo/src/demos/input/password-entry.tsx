@@ -2,15 +2,15 @@ import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkPasswordEntry } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useState } from "react";
-import { useDemo } from "../../context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
+import { useDemo } from "../../context/demo-context.js";
 import sourceCode from "./password-entry.tsx?raw";
 
-interface PasswordEntryContextValue {
+type PasswordEntryContextValue = {
     passwordsMatch: boolean;
     handlePasswordNotify: (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => void;
     handleConfirmNotify: (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => void;
-}
+};
 
 const PasswordEntryContext = createContext<PasswordEntryContextValue | null>(null);
 
@@ -50,7 +50,7 @@ const PasswordEntryTitlebar = ({ onClose }: DemoProps) => {
         <GtkHeaderBar
             name="password-entry-header"
             showTitleButtons={false}
-            end={
+            end={(
                 <GtkButton
                     ref={setDefaultWidget}
                     label="_Done"
@@ -59,7 +59,7 @@ const PasswordEntryTitlebar = ({ onClose }: DemoProps) => {
                     sensitive={passwordsMatch}
                     onClicked={onClose}
                 />
-            }
+            )}
         />
     );
 };

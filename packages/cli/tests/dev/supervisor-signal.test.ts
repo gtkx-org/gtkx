@@ -2,10 +2,10 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-const HARNESS_PATH = fileURLToPath(new URL("./fixtures/supervisor-harness.ts", import.meta.url));
+const HARNESS_PATH = fileURLToPath(new URL("fixtures/supervisor-harness.ts", import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL("../../../..", import.meta.url));
-const READY_TIMEOUT_MS = 15000;
-const EXIT_TIMEOUT_MS = 15000;
+const READY_TIMEOUT_MS = 15_000;
+const EXIT_TIMEOUT_MS = 15_000;
 
 type Harness = {
     process: ChildProcess;
@@ -24,9 +24,9 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise
                 clearTimeout(timer);
                 resolve(value);
             },
-            (reason: unknown) => {
+            (error: unknown) => {
                 clearTimeout(timer);
-                reject(reason instanceof Error ? reason : new Error(String(reason)));
+                reject(error instanceof Error ? error : new Error(String(error)));
             },
         );
     });
@@ -46,7 +46,7 @@ const startHarness = (): Harness => {
         buffer += chunk.toString();
     });
 
-    const exitPromise = new Promise<number | null>((resolve) => {
+    const exitPromise: Promise<number | null> = new Promise((resolve) => {
         child.once("exit", (code) => resolve(code));
     });
 
@@ -69,7 +69,7 @@ const startHarness = (): Harness => {
         );
 
     const childPid = (): number | undefined => {
-        const match = buffer.match(/CHILD_PID (\d+)/);
+        const match = /CHILD_PID (\d+)/.exec(buffer);
         return match?.[1] ? Number.parseInt(match[1], 10) : undefined;
     };
 

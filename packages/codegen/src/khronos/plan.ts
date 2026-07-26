@@ -1,5 +1,5 @@
-import { tScalar } from "../analysis/descriptor.js";
 import type { GlCommand, GlParam } from "./model.js";
+import { tScalar } from "../analysis/descriptor.js";
 
 export type GlScalar = {
     descriptor: string;
@@ -52,34 +52,34 @@ export const parseCType = (cType: string): ParsedCType => {
 };
 
 export type ParamPlan =
-    | { kind: "scalar"; scalar: GlScalar }
-    | { kind: "boolean" }
-    | { kind: "sync" }
-    | { kind: "string-in" }
-    | { kind: "string-array-in" }
-    | { kind: "array-in"; scalar: GlScalar }
-    | { kind: "ref-out"; scalar: GlScalar }
-    | { kind: "ref-array-out"; scalar: GlScalar; lenParamName: string }
-    | { kind: "ref-fixed-out"; scalar: GlScalar; length: number }
-    | { kind: "string-out"; lenParamName: string }
-    | { kind: "buffer" }
-    | { kind: "byte-offset" }
-    | { kind: "byte-offset-array" };
+    | { kind: "scalar"; scalar: GlScalar } |
+    { kind: "boolean" } |
+    { kind: "sync" } |
+    { kind: "string-in" } |
+    { kind: "string-array-in" } |
+    { kind: "array-in"; scalar: GlScalar } |
+    { kind: "ref-out"; scalar: GlScalar } |
+    { kind: "ref-array-out"; scalar: GlScalar; lenParamName: string } |
+    { kind: "ref-fixed-out"; scalar: GlScalar; length: number } |
+    { kind: "string-out"; lenParamName: string } |
+    { kind: "buffer" } |
+    { kind: "byte-offset" } |
+    { kind: "byte-offset-array" };
 
 export type ReturnPlan =
-    | { kind: "void" }
-    | { kind: "scalar"; scalar: GlScalar }
-    | { kind: "boolean" }
-    | { kind: "string" }
-    | { kind: "sync" }
-    | { kind: "opaque-pointer" };
+    | { kind: "void" } |
+    { kind: "scalar"; scalar: GlScalar } |
+    { kind: "boolean" } |
+    { kind: "string" } |
+    { kind: "sync" } |
+    { kind: "opaque-pointer" };
 
 export type GlExclusionReason =
-    | "callback-parameter"
-    | "compsize-output"
-    | "computed-output-length"
-    | "unsupported-shape"
-    | "override-owned";
+    | "callback-parameter" |
+    "compsize-output" |
+    "computed-output-length" |
+    "unsupported-shape" |
+    "override-owned";
 
 export type GlPlanPolicy = {
     byteOffsetParams: Set<string>;
@@ -88,12 +88,12 @@ export type GlPlanPolicy = {
 
 export type CommandPlan =
     | {
-          ok: true;
-          command: GlCommand;
-          params: ParamPlan[];
-          returnPlan: ReturnPlan;
-      }
-    | { ok: false; command: GlCommand; reason: GlExclusionReason };
+        ok: true;
+        command: GlCommand;
+        params: ParamPlan[];
+        returnPlan: ReturnPlan;
+    } |
+    { ok: false; command: GlCommand; reason: GlExclusionReason };
 
 const isCompsize = (len: string): boolean => len.includes("COMPSIZE(");
 

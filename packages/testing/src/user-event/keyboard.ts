@@ -1,10 +1,10 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
+import type { UserEventState } from "./state.js";
 import { getEditableDelegate } from "../editable.js";
 import { fireEvent } from "../fire-event.js";
 import { getOrCreateControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
-import type { UserEventState } from "./state.js";
 
 /** Options for {@link tab}: when `shift` is set, move focus backward instead of forward. */
 export type TabOptions = {

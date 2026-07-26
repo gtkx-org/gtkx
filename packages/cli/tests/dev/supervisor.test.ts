@@ -1,7 +1,7 @@
-import { EventEmitter } from "node:events";
 import type { FSWatcher } from "node:fs";
-import { watch as watchFs } from "node:fs";
 import type { ProcessEventMap } from "node:process";
+import { EventEmitter } from "node:events";
+import { watch as watchFs } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", async (importActual) => {
@@ -69,8 +69,9 @@ function createFakeWatcher(): FSWatcher {
     return watcher;
 }
 
+let fire: () => void = () => {};
+
 function captureConfigWatcher(): { fireConfigChange: () => void } {
-    let fire: () => void = () => {};
     watchMock.mockImplementationOnce((_path, listener) => {
         fire = () => listener("change", "gtkx.config.ts");
         return createFakeWatcher();
@@ -283,7 +284,7 @@ describe("runDevSupervisor (signal forwarding — force kill)", () => {
     it("force-kills the child via SIGKILL on a deliberate second SIGINT after the coalesce window", async () => {
         const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
         const child = await startSupervisor();
-        child.pid = 12345;
+        child.pid = 12_345;
         child.exitCode = null;
 
         vi.useFakeTimers();
@@ -302,7 +303,7 @@ describe("runDevSupervisor (signal forwarding — force kill)", () => {
     it("coalesces a duplicate SIGINT and shuts down without a SIGKILL", async () => {
         const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
         const child = await startSupervisor();
-        child.pid = 12345;
+        child.pid = 12_345;
         child.exitCode = null;
 
         process.emit("SIGINT", "SIGINT");
@@ -312,26 +313,26 @@ describe("runDevSupervisor (signal forwarding — force kill)", () => {
         await flushMicrotasks();
 
         const kills = processKillSpy.mock.calls.filter((args) => args[1] === "SIGKILL");
-        expect(kills.length).toBe(0);
+        expect(kills).toHaveLength(0);
         processKillSpy.mockRestore();
     });
 });
 
+const startWithWatch = async (
+    regenerate: () => Promise<void>,
+): Promise<{ child: FakeChild; fireConfigChange: () => void }> => {
+    const child = queueChild();
+    const { fireConfigChange } = captureConfigWatcher();
+    startWithForkMock("/proj/src/index.tsx", {
+        paths: ["/proj/gtkx.config.ts"],
+        regenerate,
+    });
+    await Promise.resolve();
+    return { child, fireConfigChange };
+};
+
 describe("runDevSupervisor (config watch)", () => {
     const ctx = setupSupervisorCtx();
-
-    const startWithWatch = async (
-        regenerate: () => Promise<void>,
-    ): Promise<{ child: FakeChild; fireConfigChange: () => void }> => {
-        const child = queueChild();
-        const { fireConfigChange } = captureConfigWatcher();
-        startWithForkMock("/proj/src/index.tsx", {
-            paths: ["/proj/gtkx.config.ts"],
-            regenerate,
-        });
-        await Promise.resolve();
-        return { child, fireConfigChange };
-    };
 
     it("regenerates and restarts the runner when the config changes", async () => {
         const regenerate = vi.fn(async () => {});

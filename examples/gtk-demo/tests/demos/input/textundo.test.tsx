@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest";
 import { textundoDemo } from "../../../src/demos/input/textundo.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
 
-interface EditedTextView {
+type EditedTextView = {
     textView: Gtk.TextView;
     buffer: Gtk.TextBuffer;
     before: string;
-}
+};
 
 const renderAndInsert = async (insertedText: string): Promise<EditedTextView> => {
     await renderDemo(textundoDemo);

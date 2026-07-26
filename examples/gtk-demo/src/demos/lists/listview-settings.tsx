@@ -14,25 +14,24 @@ import {
     GtkSearchEntry,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-
 import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-settings.tsx?raw";
 
-interface KeyInfo {
+type KeyInfo = {
     name: string;
     value: string;
     defaultValue: string;
     type: string;
     summary: string;
     description: string;
-}
+};
 
-interface SchemaTreeNode {
+type SchemaTreeNode = {
     nodeId: string;
     schemaId: string;
     children: SchemaTreeNode[];
-}
+};
 
 let nodeIdCounter = 0;
 const settingsMap = new Map<string, Gio.Settings>();
@@ -46,8 +45,8 @@ function buildNodeFromSettings(settings: Gio.Settings, schemaId: string): Schema
     let childNames: string[];
     try {
         childNames = settings.listChildren().sort();
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
         childNames = [];
     }
 
@@ -56,8 +55,8 @@ function buildNodeFromSettings(settings: Gio.Settings, schemaId: string): Schema
         try {
             const child = settings.getChild(name);
             children.push(buildNodeFromSettings(child, `${schemaId}.${name}`));
-        } catch (e) {
-            if (e instanceof Error) console.error(e.message);
+        } catch (error) {
+            if (error instanceof Error) console.error(error.message);
         }
     }
 
@@ -68,7 +67,7 @@ function loadSchemaTree(): SchemaTreeNode[] {
     const source = Gio.SettingsSchemaSource.getDefault();
     if (!source) return [];
 
-    const [nonRelocatable] = source.listSchemas(true) as [string[], string[]];
+    const [nonRelocatable] = source.listSchemas(true);
 
     return nonRelocatable.sort().map((id) => {
         const settings = Gio.Settings.new(id);
@@ -113,8 +112,8 @@ function loadKeysForNode(nodeId: string): KeyInfo[] {
                 summary: schemaKey.getSummary() ?? "",
                 description: schemaKey.getDescription() ?? "",
             });
-        } catch (e) {
-            if (e instanceof Error) console.error(e.message);
+        } catch (error) {
+            if (error instanceof Error) console.error(error.message);
             result.push({
                 name: keyName,
                 value: "<error>",
@@ -129,12 +128,12 @@ function loadKeysForNode(nodeId: string): KeyInfo[] {
     return result;
 }
 
-interface SchemaTreeItemData {
+type SchemaTreeItemData = {
     id: string;
     value: string;
     hideExpander?: true;
     children?: SchemaTreeItemData[];
-}
+};
 
 function schemaNodeToItem(node: SchemaTreeNode): SchemaTreeItemData {
     if (node.children.length === 0) {
@@ -190,11 +189,11 @@ type ListViewSettingsState = ReturnType<typeof useListViewSettingsState>;
 
 type ToggleableColumnId = "type" | "default" | "summary" | "description";
 
-interface ToggleableColumnSpec {
+type ToggleableColumnSpec = {
     id: ToggleableColumnId;
     menuLabel: string;
     action: string;
-}
+};
 
 const TOGGLEABLE_COLUMNS: ToggleableColumnSpec[] = [
     { id: "type", menuLabel: "Type", action: "show-type" },
@@ -225,12 +224,12 @@ const columnVisibilityMenu = (
     />
 );
 
-interface CommitKeyInfoEditArgs {
+type CommitKeyInfoEditArgs = {
     keyInfo: KeyInfo;
     newText: string;
     widget: Gtk.Widget;
     state: ListViewSettingsState;
-}
+};
 
 const commitKeyInfoEdit = ({ keyInfo, newText, widget, state }: CommitKeyInfoEditArgs) => {
     const { selectedNodeId, setKeyInfos } = state;
@@ -255,8 +254,8 @@ const commitKeyInfoEdit = ({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
         }
         settings.setValue(keyInfo.name, variant);
         setKeyInfos((prev) => prev.map((k) => (k.name === keyInfo.name ? { ...k, value: variant.print(false) } : k)));
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
         widget.errorBell();
     }
 };
@@ -289,13 +288,13 @@ const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: strin
     );
 };
 
-interface SettingsColumnViewProps {
+type SettingsColumnViewProps = {
     keySearchActive: boolean;
     onSearchChanged: (entry: Gtk.SearchEntry) => void;
     onStopSearch: () => void;
     filteredKeyInfos: KeyInfo[];
     onValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
-}
+};
 
 const renderColumnVisibilityActions = (
     columnVisibility: ColumnVisibility,
@@ -314,18 +313,18 @@ const renderColumnVisibilityActions = (
     />
 );
 
-interface SettingsColumnsProps {
+type SettingsColumnsProps = {
     columnVisibility: ColumnVisibility;
     onValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
-}
+};
 
 const renderKeyInfoCell =
     (getText: (keyInfo: KeyInfo) => string, wrap = false) =>
-    ({ item }: { item: KeyInfo }) => (
-        <GtkLabel xalign={0} wrap={wrap}>
-            {getText(item)}
-        </GtkLabel>
-    );
+        ({ item }: { item: KeyInfo }) => (
+            <GtkLabel xalign={0} wrap={wrap}>
+                {getText(item)}
+            </GtkLabel>
+        );
 
 const renderSettingsColumns = ({ columnVisibility, onValueEdit }: SettingsColumnsProps): Column<KeyInfo>[] => [
     { id: "name", title: "Name", renderCell: renderKeyInfoCell((keyInfo) => keyInfo.name) },
@@ -407,10 +406,10 @@ const SettingsColumnView = ({
     );
 };
 
-interface SettingsContextValue {
+type SettingsContextValue = {
     state: ListViewSettingsState;
     handleValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
-}
+};
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
@@ -438,7 +437,7 @@ const ListViewSettingsTitlebar = () => {
     const { state } = useSettingsContext();
     return (
         <GtkHeaderBar
-            end={
+            end={(
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"
@@ -448,7 +447,7 @@ const ListViewSettingsTitlebar = () => {
                         state.setKeySearchText("");
                     }}
                 />
-            }
+            )}
         />
     );
 };
@@ -462,7 +461,7 @@ const ListViewSettingsDemo = () => {
             hexpand
             vexpand
             startChild={<SchemaSidebar onSelectionChanged={state.handleSchemaSelected} />}
-            endChild={
+            endChild={(
                 <SettingsColumnView
                     keySearchActive={state.keySearchActive}
                     onSearchChanged={state.handleKeySearchChanged}
@@ -470,7 +469,7 @@ const ListViewSettingsDemo = () => {
                     filteredKeyInfos={state.filteredKeyInfos}
                     onValueEdit={handleValueEdit}
                 />
-            }
+            )}
         />
     );
 };

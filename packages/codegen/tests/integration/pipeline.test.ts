@@ -6,8 +6,8 @@ import type { Library } from "../../src/gir/library.js";
 import type { GirNamespace } from "../../src/gir/namespace.js";
 import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
 import type { GirRecord } from "../../src/gir/record.js";
-import type { GirType } from "../../src/gir/type.js";
 import type { TypeId } from "../../src/gir/type-id.js";
+import type { GirType } from "../../src/gir/type.js";
 import { readBuiltinElements } from "../../src/react/element-config.js";
 import { matchAsyncFinish } from "../../src/store/gi/async.js";
 import { elementPropTypeFor } from "../../src/store/jsx/element-prop-imports.js";
@@ -119,7 +119,7 @@ describe("codegen gi pipeline", () => {
         for (const { directory } of giModules) {
             expect(directory).toMatch(/^[a-z0-9]+$/);
         }
-        expect(giModules.length).toBe(library.namespaces.size);
+        expect(giModules).toHaveLength(library.namespaces.size);
     });
 
     it("produces non-empty source with imports and exports for every namespace", () => {
@@ -169,9 +169,9 @@ describe("codegen return-value convention", () => {
     });
 });
 
-describe("codegen async promisification", () => {
-    const gioSource = (): string => giSource("gio");
+const gioSource = (): string => giSource("gio");
 
+describe("codegen async promisification", () => {
     it("promisifies a module-level async function against its finish sibling", () => {
         const source = gioSource();
         expect(source).toContain(
@@ -593,7 +593,7 @@ const addInterfacePropsNames = (widget: GlibNamedClass, names: Set<string>): voi
 };
 
 const interfacePropsNames = (): Set<string> => {
-    const names = new Set<string>();
+    const names: Set<string> = new Set();
     for (const widget of collectIntrinsicElementClasses(library)) addInterfacePropsNames(widget, names);
     return names;
 };
@@ -601,7 +601,7 @@ const interfacePropsNames = (): Set<string> => {
 const matchAll = (sources: string[], pattern: RegExp): string[] =>
     sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => match[1] ?? ""));
 
-const stripDocComments = (source: string): string => source.replace(/\/\*\*[\s\S]*?\*\//g, "");
+const stripDocComments = (source: string): string => source.replaceAll(/\/\*\*[\s\S]*?\*\//g, "");
 
 const moduleSource = (directory: string): string => {
     const found = giModules.find((entry) => entry.directory === directory);

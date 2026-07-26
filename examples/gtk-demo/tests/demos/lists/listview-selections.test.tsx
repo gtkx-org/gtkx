@@ -1,6 +1,6 @@
-import { readdirSync } from "node:fs";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { listviewSelectionsDemo } from "../../../src/demos/lists/listview-selections.js";
 import { renderDemo } from "../../test-utils.js";
@@ -163,7 +163,7 @@ describe("listviewSelectionsDemo suggestion popover", () => {
         await userEvent.type(entry, "gnom");
         await userEvent.keyboard(entry, "{ArrowDown}");
         const selected = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true });
-        expect(rowLabelText(selected as Gtk.Widget)).toBe("GNOME");
+        expect(rowLabelText(selected)).toBe("GNOME");
     });
 
     it("wraps to the last suggestion row on Down then Up", async () => {
@@ -173,7 +173,7 @@ describe("listviewSelectionsDemo suggestion popover", () => {
         await userEvent.keyboard(entry, "{ArrowDown}");
         await userEvent.keyboard(entry, "{ArrowUp}");
         const selected = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true });
-        expect(rowLabelText(selected as Gtk.Widget)).toBe("totem pole");
+        expect(rowLabelText(selected)).toBe("totem pole");
     });
 
     it("writes the selected suggestion into the entry when Enter is pressed", async () => {
@@ -247,7 +247,7 @@ describe("listviewSelectionsDemo directory suggestion entry", () => {
         const target = readdirSync(process.cwd()).includes("package.json")
             ? "package.json"
             : (readdirSync(process.cwd()).sort()[0] as string);
-        const label = within(popover).getByText(target) as Gtk.Widget;
+        const label = within(popover).getByText(target);
         const button = label.getParent() as Gtk.Button;
         await userEvent.click(button);
         await waitFor(() => expect(entry).toHaveDisplayValue(target));

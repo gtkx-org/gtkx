@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
 
-const SELECTABLE_ROLES = new Set<Gtk.AccessibleRole>([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
+const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
     return SELECTABLE_ROLES.has(widget.getAccessibleRole());
@@ -122,7 +122,7 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
 
 const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     if (!(widget instanceof Gtk.ListBox)) {
-        throw new Error("Cannot deselect options: only ListBox supports deselection");
+        throw new TypeError("Cannot deselect options: only ListBox supports deselection");
     }
     applyListBoxRows(widget, valueArray, false);
 };

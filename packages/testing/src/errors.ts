@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { Container } from "./traversal.js";
+import type { ByRoleOptions, ByRoleValue, Matcher } from "./types.js";
 import { getConfig } from "./config.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { formatRole, prettyRoles } from "./role-helpers.js";
-import type { Container } from "./traversal.js";
-import type { ByRoleOptions, ByRoleValue, Matcher } from "./types.js";
 
 const formatTextMatcher = (text: Matcher): string => {
     if (typeof text === "function") {
@@ -26,15 +26,15 @@ const formatByRoleValue = (value: ByRoleValue): string => {
 
 const roleOptionFormatters: ((options: ByRoleOptions) => string | null)[] = [
     (o) => (o.name ? `name ${formatTextMatcher(o.name)}` : null),
-    (o) => (o.checked !== undefined ? `checked=${o.checked}` : null),
-    (o) => (o.pressed !== undefined ? `pressed=${o.pressed}` : null),
-    (o) => (o.selected !== undefined ? `selected=${o.selected}` : null),
-    (o) => (o.expanded !== undefined ? `expanded=${o.expanded}` : null),
-    (o) => (o.level !== undefined ? `level=${o.level}` : null),
-    (o) => (o.busy !== undefined ? `busy=${o.busy}` : null),
+    (o) => (o.checked === undefined ? null : `checked=${o.checked}`),
+    (o) => (o.pressed === undefined ? null : `pressed=${o.pressed}`),
+    (o) => (o.selected === undefined ? null : `selected=${o.selected}`),
+    (o) => (o.expanded === undefined ? null : `expanded=${o.expanded}`),
+    (o) => (o.level === undefined ? null : `level=${o.level}`),
+    (o) => (o.busy === undefined ? null : `busy=${o.busy}`),
     (o) => (o.description ? `description ${formatTextMatcher(o.description)}` : null),
     (o) => (o.value ? `value ${formatByRoleValue(o.value)}` : null),
-    (o) => (o.hidden !== undefined ? `hidden=${o.hidden}` : null),
+    (o) => (o.hidden === undefined ? null : `hidden=${o.hidden}`),
 ];
 
 const roleOptionParts = (options: ByRoleOptions): string[] => {
@@ -53,27 +53,33 @@ const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptio
 };
 
 export type QueryDescriptor =
-    | { queryType: "role"; role: Gtk.AccessibleRole; options?: ByRoleOptions | undefined }
-    | { queryType: "text"; text: Matcher }
-    | { queryType: "labelText"; text: Matcher }
-    | { queryType: "name"; name: Matcher }
-    | { queryType: "placeholderText"; text: Matcher }
-    | { queryType: "displayValue"; value: Matcher };
+    | { queryType: "role"; role: Gtk.AccessibleRole; options?: ByRoleOptions | undefined } |
+    { queryType: "text"; text: Matcher } |
+    { queryType: "labelText"; text: Matcher } |
+    { queryType: "name"; name: Matcher } |
+    { queryType: "placeholderText"; text: Matcher } |
+    { queryType: "displayValue"; value: Matcher };
 
 const formatQueryDescription = (descriptor: QueryDescriptor): string => {
     switch (descriptor.queryType) {
-        case "role":
+        case "role": {
             return formatByRoleDescription(descriptor.role, descriptor.options);
-        case "text":
+        }
+        case "text": {
             return `text ${formatTextMatcher(descriptor.text)}`;
-        case "labelText":
+        }
+        case "labelText": {
             return `label text ${formatTextMatcher(descriptor.text)}`;
-        case "name":
+        }
+        case "name": {
             return `name ${formatTextMatcher(descriptor.name)}`;
-        case "placeholderText":
+        }
+        case "placeholderText": {
             return `placeholder text ${formatTextMatcher(descriptor.text)}`;
-        case "displayValue":
+        }
+        case "displayValue": {
             return `display value ${formatTextMatcher(descriptor.value)}`;
+        }
     }
 };
 

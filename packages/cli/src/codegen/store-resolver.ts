@@ -1,8 +1,8 @@
+import { type Config, loadConfig } from "@gtkx/config";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { type Config, loadConfig } from "@gtkx/config";
 
 export type CodegenStore = {
     giStoreDir: string;
@@ -78,9 +78,9 @@ export const resolveCodegenStore = (dir: string): CodegenStore => {
         react:
             react !== null && reactRuntime !== null
                 ? {
-                      version: react.version,
-                      subexports: readSubexports(react.dir),
-                  }
+                        version: react.version,
+                        subexports: readSubexports(react.dir),
+                    }
                 : null,
     };
 };

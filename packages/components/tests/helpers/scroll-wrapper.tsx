@@ -1,13 +1,13 @@
-import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
+import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 
-export interface ScrollWrapperProps {
+export type ScrollWrapperProps = {
     children: ReactNode;
     minContentHeight?: number | undefined;
     maxContentHeight?: number | undefined;
     minContentWidth?: number | undefined;
     actionGroups?: ReactNode;
-}
+};
 
 export const ScrollWrapper = ({
     children,

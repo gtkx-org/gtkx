@@ -1,5 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import type { PrimitiveCategory } from "./primitives.js";
+import type { CArrayType, HashTableType, ListType, ParseContext, TypeId } from "./type-id.js";
+import type { GirType } from "./type.js";
 import { callbackFromNode } from "./callback.js";
 import {
     createNamespaceShell,
@@ -9,9 +12,6 @@ import {
     populateNamespaceBody,
 } from "./namespace.js";
 import { parseGirFile, type RawNode } from "./parse.js";
-import type { PrimitiveCategory } from "./primitives.js";
-import type { GirType } from "./type.js";
-import type { CArrayType, HashTableType, ListType, ParseContext, TypeId } from "./type-id.js";
 import { splitOptionalNamespace } from "./type-ref.js";
 
 const INTERNAL_NS_ID = 0;
@@ -25,10 +25,10 @@ type TypeTable = {
 type DiscoveredNamespace = { header: NamespaceHeader; shell: GirNamespace };
 
 export class Library {
-    private namespacesByName = new Map<string, GirNamespace>();
+    private namespacesByName: Map<string, GirNamespace> = new Map();
     private namespaceById: (GirNamespace | undefined)[] = [];
     private nsNameById: string[] = [];
-    private nsIdByName = new Map<string, number>();
+    private nsIdByName: Map<string, number> = new Map();
     private typeTables: TypeTable[] = [];
     private girFilesValue: string[] = [];
 
@@ -208,7 +208,7 @@ export class Library {
         discovered: DiscoveredNamespace[];
     }): void {
         const { identifier, girPath, seen, queue, girFiles, discovered } = input;
-        const namespaceName = identifier.split("-")[0] ?? identifier;
+        const namespaceName = identifier.split("-", 1)[0] ?? identifier;
         if (seen.has(namespaceName)) return;
         seen.add(namespaceName);
         const path = locateGirFile(identifier, girPath);
@@ -226,7 +226,7 @@ export class Library {
         girPath: string[],
     ): { discovered: DiscoveredNamespace[]; girFiles: string[] } {
         const queue: string[] = [...libraries];
-        const seen = new Set<string>();
+        const seen: Set<string> = new Set();
         const discovered: DiscoveredNamespace[] = [];
         const girFiles: string[] = [];
         while (queue.length > 0) {

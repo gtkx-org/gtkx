@@ -23,6 +23,6 @@ describe("escapeXml (internal)", () => {
     });
 
     it("escapes a string containing every reserved character", () => {
-        expect(escapeXml(`<a & b="c">'`)).toBe("&lt;a &amp; b=&quot;c&quot;&gt;&apos;");
+        expect(escapeXml("<a & b=\"c\">'")).toBe("&lt;a &amp; b=&quot;c&quot;&gt;&apos;");
     });
 });

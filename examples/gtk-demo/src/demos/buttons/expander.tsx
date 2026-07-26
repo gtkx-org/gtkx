@@ -1,6 +1,6 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import { TextPaintable } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
-import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
@@ -72,14 +72,14 @@ const ExpanderDemo = () => {
                         rightMargin={10}
                         topMargin={10}
                         bottomMargin={10}
-                        buffer={
+                        buffer={(
                             <GtkTextBuffer>
                                 {DETAILS_TEXT}
                                 <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
                                     <TextPaintable paintable={texture} onInserted={applyLogoTag} />
                                 </GtkTextTag>
                             </GtkTextBuffer>
-                        }
+                        )}
                     />
                 </GtkScrolledWindow>
             </GtkExpander>

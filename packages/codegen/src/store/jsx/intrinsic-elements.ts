@@ -1,8 +1,8 @@
 import { sortStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
-import { ancestorChain } from "../../gir/ancestry.js";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
+import { ancestorChain } from "../../gir/ancestry.js";
 
 export const signalHandlerName = (signalName: string): string => `on${upperFirst(toCamelIdentifier(signalName))}`;
 
@@ -81,7 +81,7 @@ const isCollectibleInterface = (
 ): boolean => interfaceHasPropsBody(iface.klass, hasContainerProps) && iface.namespace.name === targetNamespaceName;
 
 const parentImplementedInterfaceKeys = (klass: GirClass, namespace: GirNamespace, library: Library): Set<string> => {
-    const keys = new Set<string>();
+    const keys: Set<string> = new Set();
     if (klass.parent === undefined) return keys;
     const resolvedParent = library.resolveType(namespace.name, klass.parent);
     if (resolvedParent === undefined || resolvedParent.kind !== "class") return keys;
@@ -182,7 +182,7 @@ export const isIntrinsicElementClass = (klass: GirClass, namespace: GirNamespace
     descendsFrom(klass, namespace, library, (glibName) => glibName === "GObject");
 
 export const collectIntrinsicElementClasses = (library: Library): GlibNamedClass[] => {
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     const entries: GlibNamedClass[] = [];
     for (const candidate of iterateClassesWithGlibName(library)) {
         const { glibName, klass, namespace } = candidate;

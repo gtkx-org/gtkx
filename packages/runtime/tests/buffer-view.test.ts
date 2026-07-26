@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 const GLIB = "libglib-2.0.so.0";
 const G_CHECKSUM_MD5 = 0;
 const ABC_MD5 = "900150983cd24fb0d6963f7d28e17f72";
-const E_ACUTE = 0xe9;
-const E_ACUTE_UTF8 = [0xc3, 0xa9];
+const E_ACUTE = 0xE9;
+const E_ACUTE_UTF8 = [0xC3, 0xA9];
 
 const computeChecksumForData = t.bind(
     GLIB,
@@ -44,14 +44,14 @@ describe("buffer arguments", () => {
     it("lets the callee write into a typed array", () => {
         const out = new Uint8Array(6);
         expect(unicharToUtf8(E_ACUTE, out)).toBe(2);
-        expect(Array.from(out.subarray(0, 2))).toEqual(E_ACUTE_UTF8);
+        expect([...out.subarray(0, 2)]).toEqual(E_ACUTE_UTF8);
     });
 
     it("lets the callee write through a DataView window", () => {
         const backing = new ArrayBuffer(8);
         const view = new DataView(backing, 2, 6);
         expect(unicharToUtf8(E_ACUTE, view)).toBe(2);
-        expect(Array.from(new Uint8Array(backing, 2, 2))).toEqual(E_ACUTE_UTF8);
+        expect([...new Uint8Array(backing, 2, 2)]).toEqual(E_ACUTE_UTF8);
     });
 
     it("encodes null as NULL so the callee only reports the length", () => {

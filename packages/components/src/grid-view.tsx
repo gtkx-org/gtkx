@@ -1,8 +1,8 @@
-import { GtkGridView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
+import { GtkGridView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import type { GridViewProps } from "./types.js";
 import { collectionRenderers } from "./internal/use-cells.js";
 import { useCollection } from "./internal/use-collection.js";
-import type { GridViewProps } from "./types.js";
 
 /**
  * Renders a Gtk.GridView of uniform cells from declarative items, with per-cell

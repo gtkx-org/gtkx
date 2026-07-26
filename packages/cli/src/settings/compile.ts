@@ -1,5 +1,5 @@
-import { execFileSync } from "node:child_process";
 import { formatChildProcessError } from "@gtkx/utils";
+import { execFileSync } from "node:child_process";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 
 const SCHEMA_COMPILER = "glib-compile-schemas";
@@ -10,7 +10,7 @@ export const compileSchemas = (dir: string): void => {
         execFileSync(resolveCliTool(SCHEMA_COMPILER), ["--strict", dir], {
             stdio: ["ignore", "pipe", "pipe"],
             timeout: SCHEMA_COMPILE_TIMEOUT_MS,
-            encoding: "utf-8",
+            encoding: "utf8",
         });
     } catch (error) {
         const details = formatChildProcessError(error);

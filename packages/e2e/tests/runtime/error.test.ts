@@ -1,10 +1,10 @@
-import { inspect } from "node:util";
 import { FileError, Error as GError, quarkFromString } from "@gtkx/gi/glib";
 import { getHandle } from "@gtkx/runtime";
 import { checkError, createErrorDomain } from "@gtkx/runtime/internal";
+import { inspect } from "node:util";
 import { describe, expect, it } from "vitest";
 
-const FILE_ERROR_DOMAIN = 0xbe1;
+const FILE_ERROR_DOMAIN = 0xB_E1;
 const FILE_ERROR_NOENT = 5;
 
 const gerrorIn = (domain: number): GError => GError.newLiteral(domain, FILE_ERROR_NOENT, "missing file");
@@ -79,24 +79,24 @@ describe("createErrorDomain", () => {
     it("matches a GError from the same domain via instanceof", () => {
         const domain = createErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
-        expect(gerrorIn(FILE_ERROR_DOMAIN) instanceof domain).toBe(true);
+        expect(gerrorIn(FILE_ERROR_DOMAIN)).toBeInstanceOf(domain);
     });
 
     it("rejects a GError from a different domain", () => {
         const domain = createErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
-        expect(gerrorIn(FILE_ERROR_DOMAIN + 1) instanceof domain).toBe(false);
+        expect(gerrorIn(FILE_ERROR_DOMAIN + 1)).not.toBeInstanceOf(domain);
     });
 
     it("rejects values that are not a GError", () => {
         const domain = createErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
-        expect(new Error("plain") instanceof domain).toBe(false);
+        expect(new Error("plain")).not.toBeInstanceOf(domain);
     });
 
     it("matches a generated error-domain enum by its GLib quark", () => {
         const gerror = GError.newLiteral(quarkFromString("g-file-error-quark"), FileError.NOENT, "missing file");
 
-        expect(gerror instanceof FileError).toBe(true);
+        expect(gerror).toBeInstanceOf(FileError);
     });
 });

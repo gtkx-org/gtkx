@@ -1,8 +1,8 @@
+import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
 import { fork as nodeFork } from "node:child_process";
 import { type FSWatcher, watch as watchFs } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
 
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
@@ -90,8 +90,8 @@ const restart = async (state: SupervisorState): Promise<void> => {
     info("gtkx.config.ts changed; regenerating bindings...");
     try {
         await state.watch.regenerate();
-    } catch (cause) {
-        error("Codegen failed; keeping the current dev runner. Fix the error and save again.", cause);
+    } catch (error_) {
+        error("Codegen failed; keeping the current dev runner. Fix the error and save again.", error_);
         state.restarting = false;
         return;
     }
@@ -128,7 +128,7 @@ const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: s
 };
 
 const groupWatchNamesByDirectory = (paths: string[]): Map<string, Set<string>> => {
-    const namesByDirectory = new Map<string, Set<string>>();
+    const namesByDirectory: Map<string, Set<string>> = new Map();
     for (const path of paths) {
         const directory = dirname(path);
         const names = namesByDirectory.get(directory) ?? new Set<string>();

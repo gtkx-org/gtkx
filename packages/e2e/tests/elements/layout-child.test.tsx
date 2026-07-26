@@ -289,10 +289,10 @@ describe("render - GtkOverlayLayoutChild", () => {
                     overlays={
                         show
                             ? [
-                                  <GtkOverlayLayoutChild key="a">
-                                      <GtkButton label="Removable" />
-                                  </GtkOverlayLayoutChild>,
-                              ]
+                                    <GtkOverlayLayoutChild key="a">
+                                        <GtkButton label="Removable" />
+                                    </GtkOverlayLayoutChild>,
+                                ]
                             : []
                     }
                 >

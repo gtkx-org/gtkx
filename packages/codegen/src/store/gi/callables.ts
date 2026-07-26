@@ -1,7 +1,7 @@
 import { camelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
-import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
@@ -194,10 +194,10 @@ const instanceMemberRenderer =
             scope: InstanceScope,
         ) => string | undefined,
     ): InstanceMemberRenderer =>
-    (context, callable, scope, nameOverride) => {
-        const member = resolveInstanceMember(context, callable, scope, nameOverride);
-        return member === undefined ? undefined : render(context, callable, member, scope);
-    };
+        (context, callable, scope, nameOverride) => {
+            const member = resolveInstanceMember(context, callable, scope, nameOverride);
+            return member === undefined ? undefined : render(context, callable, member, scope);
+        };
 
 const memberSignatureText = (
     context: ModuleContext,
@@ -220,13 +220,13 @@ export const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMem
 
 export const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }, scope) =>
-        finishFn !== undefined
-            ? renderPromisifiedCallable(context, callable, finishFn, {
-                  name,
-                  isStatic: false,
-                  ownerName: scope.ownerName,
-              })
-            : renderInstanceMethod(context, callable, name),
+        finishFn === undefined
+            ? renderInstanceMethod(context, callable, name)
+            : renderPromisifiedCallable(context, callable, finishFn, {
+                    name,
+                    isStatic: false,
+                    ownerName: scope.ownerName,
+                }),
 );
 
 const matchFinishFunction = (
@@ -267,7 +267,7 @@ const renderPromisifiedCallable = (
 };
 
 export const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {
-    const map = new Map<string, GirFunction>();
+    const map: Map<string, GirFunction> = new Map();
     for (const callable of methods) map.set(callable.name, callable);
     return map;
 };
@@ -371,7 +371,7 @@ export const renderPlainTypeMembers = (
     const { context, className, callables, hasGtype } = options;
     const members: string[] = [];
     if (hasGtype) members.push(gtypeMemberDeclaration(context));
-    const claimedNames = new Set<string>();
+    const claimedNames: Set<string> = new Set();
     members.push(...renderStaticHead(context, callables, className));
     members.push(...renderPlainInstanceMethods(context, callables.methods, claimedNames));
     return { members, claimedNames };

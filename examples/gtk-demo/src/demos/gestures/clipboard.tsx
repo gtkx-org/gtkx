@@ -1,5 +1,5 @@
-import { DropDown } from "@gtkx/components";
 import type { Context } from "@gtkx/gi/cairo";
+import { DropDown } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
@@ -25,8 +25,8 @@ import { useState } from "react";
 import { path as floppyBuddyPath } from "#data/demos/gestures/floppybuddy.gif";
 import { path as demo4LogoPath } from "#data/demos/gestures/org.gtk.Demo4.svg";
 import { path as portlandRosePath } from "#data/demos/gestures/portland-rose.jpg";
-import { buildRgba } from "../../build-rgba.js";
 import type { Demo } from "../types.js";
+import { buildRgba } from "../../build-rgba.js";
 import sourceCode from "./clipboard.tsx?raw";
 
 const setClipboardValue = (clipboard: Gdk.Clipboard, value: GObject.Value): void => clipboard.set(value);
@@ -37,13 +37,13 @@ const readValueAsync = (clipboard: Gdk.Clipboard, type: GObject.Type): Promise<G
 type SourceType = "Text" | "Color" | "Image" | "File" | "Folder";
 type PastedContentType = "" | "Text" | "Color" | "Image" | "File";
 
-interface PastedContent {
+type PastedContent = {
     type: PastedContentType;
     text?: string;
     color?: Gdk.RGBA;
     paintable?: Gdk.Paintable;
     filePath?: string;
-}
+};
 
 const gdkRgbaType = Gdk.RGBA.prototype.__type__;
 const gdkPaintableType = Gdk.Paintable.prototype.__type__;
@@ -75,9 +75,9 @@ function useClipboardState() {
     const canCopy =
         sourceType === "Text"
             ? sourceText.length > 0
-            : sourceType === "File" || sourceType === "Folder"
-              ? sourceFile !== null
-              : true;
+            : (sourceType === "File" || sourceType === "Folder"
+                    ? sourceFile !== null
+                    : true);
 
     return {
         sourceType,
@@ -128,8 +128,8 @@ function useDragProviders(state: ClipboardState) {
         try {
             const texture = Gdk.Texture.newFromResource(path);
             return Gdk.ContentProvider.newForValue(GObject.buildValue(gdkPaintableType, (v) => v.setObject(texture)));
-        } catch (e) {
-            if (e instanceof Error) console.error(e.message);
+        } catch (error) {
+            if (error instanceof Error) console.error(error.message);
             return null;
         }
     };
@@ -167,8 +167,8 @@ const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) =
             clipboard,
             GObject.buildValue(gdkPaintableType, (v) => v.setObject(texture)),
         );
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
     }
 };
 
@@ -184,10 +184,22 @@ function useClipboardHandlers(state: ClipboardState, parentWindow: Gtk.Window | 
     const handleCopy = () => {
         const clipboard = getClipboard();
         if (!clipboard) return;
-        if (sourceType === "Text") copyTextToClipboard(clipboard, sourceText);
-        else if (sourceType === "Color") copyColorToClipboard(clipboard, sourceColor);
-        else if (sourceType === "Image") copyImageToClipboard(clipboard, selectedImage);
-        else if (sourceFile) copyFileToClipboard(clipboard, sourceFile);
+        switch (sourceType) {
+            case "Text": {
+                copyTextToClipboard(clipboard, sourceText);
+                break;
+            }
+            case "Color": {
+                copyColorToClipboard(clipboard, sourceColor);
+                break;
+            }
+            case "Image": {
+                copyImageToClipboard(clipboard, selectedImage);
+                break;
+            }
+            default: { if (sourceFile) copyFileToClipboard(clipboard, sourceFile);
+            }
+        }
     };
 
     const handlePaste = async () => {
@@ -200,8 +212,8 @@ function useClipboardHandlers(state: ClipboardState, parentWindow: Gtk.Window | 
             if (await tryPasteColor(clipboard, formats, setPastedContent)) return;
             if (await tryPasteFile(clipboard, formats, setPastedContent)) return;
             await tryPasteText(clipboard, formats, setPastedContent);
-        } catch (e) {
-            if (e instanceof Error) console.error(e.message);
+        } catch (error) {
+            if (error instanceof Error) console.error(error.message);
         }
     };
 
@@ -285,8 +297,8 @@ const openFileDialog = async (
     try {
         const file = kind === "file" ? await dialog.open(window, null) : await dialog.selectFolder(window, null);
         setSourceFile(file);
-    } catch (e) {
-        if (e instanceof Error) console.error(e.message);
+    } catch (error) {
+        if (error instanceof Error) console.error(error.message);
     }
 };
 
@@ -323,14 +335,14 @@ const handleClipboardDrop = (value: GObject.Value, setPastedContent: SetPastedCo
     handleColorDrop(value, setPastedContent) ||
     handleTextDrop(value, setPastedContent);
 
-interface ClipboardSourceSectionProps {
+type ClipboardSourceSectionProps = {
     state: ClipboardState;
     textures: ReturnType<typeof useClipboardTextures>;
     providers: ReturnType<typeof useDragProviders>;
     onCopy: () => void;
     onFileSelect: () => void;
     onFolderSelect: () => void;
-}
+};
 
 const ClipboardSourceSection = ({
     state,
@@ -409,18 +421,17 @@ const SourcePageColor = ({
             valign={Gtk.Align.CENTER}
             accessibleLabel="Color Drag Source"
             onNotifyRgba={(rgba) =>
-                rgba && state.setSourceColor(buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha))
-            }
+                rgba && state.setSourceColor(buildRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha))}
             controllers={<GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />}
         />
     </GtkStackPage>
 );
 
-interface SourcePageImageProps {
+type SourcePageImageProps = {
     state: ClipboardState;
     textures: ReturnType<typeof useClipboardTextures>;
     createImageDragProvider: () => Gdk.ContentProvider | null;
-}
+};
 
 const SourcePageImage = ({ state, textures, createImageDragProvider }: SourcePageImageProps) => (
     <GtkStackPage name="Image">
@@ -455,7 +466,7 @@ const SourcePageImage = ({ state, textures, createImageDragProvider }: SourcePag
     </GtkStackPage>
 );
 
-interface ImageToggleProps {
+type ImageToggleProps = {
     name: string;
     buttonLabel: string;
     imageLabel: string;
@@ -463,7 +474,7 @@ interface ImageToggleProps {
     state: ClipboardState;
     paintable: Gdk.Texture;
     createProvider?: () => Gdk.ContentProvider | null;
-}
+};
 
 const ImageToggle = ({ name, buttonLabel, imageLabel, index, state, paintable, createProvider }: ImageToggleProps) => (
     <GtkToggleButton
@@ -479,27 +490,27 @@ const ImageToggle = ({ name, buttonLabel, imageLabel, index, state, paintable, c
     </GtkToggleButton>
 );
 
-interface SourcePageFileProps {
+type SourcePageFileProps = {
     id: "File" | "Folder";
     label: string;
     state: ClipboardState;
     onClick: () => void;
     createFileDragProvider: () => Gdk.ContentProvider | null;
-}
+};
 
 const SourcePageFile = ({ id, label, state, onClick, createFileDragProvider }: SourcePageFileProps) => (
     <GtkStackPage name={id}>
         <GtkButton
             valign={Gtk.Align.CENTER}
             accessibleLabel={label}
-            onClicked={() => void onClick()}
-            controllers={
+            onClicked={() => onClick()}
+            controllers={(
                 <GtkDragSource
                     onPrepare={createFileDragProvider}
                     actions={Gdk.DragAction.COPY}
                     propagationPhase={Gtk.PropagationPhase.CAPTURE}
                 />
-            }
+            )}
         >
             <GtkLabel xalign={0} ellipsize={1}>
                 {state.sourceFile ? (state.sourceFile.getPath() ?? "—") : "—"}
@@ -508,17 +519,17 @@ const SourcePageFile = ({ id, label, state, onClick, createFileDragProvider }: S
     </GtkStackPage>
 );
 
-interface ClipboardPasteSectionProps {
+type ClipboardPasteSectionProps = {
     pastedContent: PastedContent;
     canPaste: boolean;
     onPaste: () => Promise<void>;
     onDrop: (value: GObject.Value) => boolean;
-}
+};
 
 const renderPasteStackPages = (pastedContent: PastedContent) => (
     <>
         <GtkStackPage name="Empty">
-            <GtkLabel>{""}</GtkLabel>
+            <GtkLabel></GtkLabel>
         </GtkStackPage>
         <GtkStackPage name="Text">
             <GtkLabel halign={Gtk.Align.END} valign={Gtk.Align.CENTER} xalign={0} ellipsize={3}>
@@ -526,16 +537,18 @@ const renderPasteStackPages = (pastedContent: PastedContent) => (
             </GtkLabel>
         </GtkStackPage>
         <GtkStackPage name="Image">
-            {pastedContent.paintable ? (
-                <GtkImage
-                    paintable={pastedContent.paintable}
-                    halign={Gtk.Align.END}
-                    valign={Gtk.Align.CENTER}
-                    pixelSize={48}
-                />
-            ) : (
-                <GtkLabel>{""}</GtkLabel>
-            )}
+            {pastedContent.paintable
+                ? (
+                        <GtkImage
+                            paintable={pastedContent.paintable}
+                            halign={Gtk.Align.END}
+                            valign={Gtk.Align.CENTER}
+                            pixelSize={48}
+                        />
+                    )
+                : (
+                        <GtkLabel></GtkLabel>
+                    )}
         </GtkStackPage>
         <GtkStackPage name="Color">
             <GtkDrawingArea
@@ -561,13 +574,13 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
     <GtkBox
         name="paste-box"
         spacing={12}
-        controllers={
+        controllers={(
             <GtkDropTarget
                 types={[gdkTextureType, gdkPaintableType, gfileType, gdkRgbaType, GObject.TYPE_STRING]}
                 actions={Gdk.DragAction.COPY}
                 onDrop={onDrop}
             />
-        }
+        )}
     >
         <GtkButton
             label="_Paste"
@@ -609,9 +622,7 @@ const ClipboardDemo = () => {
             marginBottom={12}
         >
             <GtkLabel wrap maxWidthChars={40}>
-                {
-                    "“Copy” will copy the selected data the clipboard, “Paste” will show the current clipboard contents. You can also drag the data to the bottom."
-                }
+                “Copy” will copy the selected data the clipboard, “Paste” will show the current clipboard contents. You can also drag the data to the bottom.
             </GtkLabel>
 
             <ClipboardSourceSection

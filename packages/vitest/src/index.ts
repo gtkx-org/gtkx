@@ -1,12 +1,9 @@
+import type { Plugin } from "vitest/config";
+import createConfigPlugin from "@gtkx/config/vite-plugin";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-
-import createConfigPlugin from "@gtkx/config/vite-plugin";
-import type { Plugin } from "vitest/config";
-import { type CompositorId, type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.js";
-
-export type { CompositorId, HeadlessOptions };
+import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.js";
 
 export const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 
@@ -52,8 +49,8 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
                     globals: true,
                     execArgv: ["--import", headlessPreloadSpecifier(options)],
                     setupFiles: [workerSetupPath()],
-                    testTimeout: 30000,
-                    hookTimeout: 30000,
+                    testTimeout: 30_000,
+                    hookTimeout: 30_000,
                     pool: "forks",
                     env: STATIC_HEADLESS_ENV,
                     server: {
@@ -67,3 +64,5 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
     });
 
 export default gtkx;
+
+export { type CompositorId, type HeadlessOptions } from "./headless-display.js";

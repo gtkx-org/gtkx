@@ -120,7 +120,7 @@ export type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
     "columns" | "model" | "headerFactory" | keyof ColumnViewOwnProps<T, S>
 > &
-    ColumnViewOwnProps<T, S>;
+ColumnViewOwnProps<T, S>;
 
 /** Props for {@link ConstraintLayout}. */
 export type ConstraintLayoutProps = {
@@ -234,7 +234,7 @@ export type ListViewProps<T = unknown, S = unknown> = Omit<
     GtkListViewProps,
     "model" | "factory" | "headerFactory" | keyof ListViewOwnProps<T, S>
 > &
-    ListViewOwnProps<T, S>;
+ListViewOwnProps<T, S>;
 
 /** Props for {@link SizeGroup}. */
 export type SizeGroupProps = {

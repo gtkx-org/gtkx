@@ -1,11 +1,15 @@
 import { camelCase, sourceStringLiteral } from "@gtkx/utils";
-import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
+import type { GirClass } from "../../gir/class.js";
+import type { GirParameter, GirSignal } from "../../gir/parameter.js";
+import type { GirProperty } from "../../gir/property.js";
+import type { ModuleContext } from "../../writer/context.js";
 import {
     isCellInout,
     omitsPrimaryReturn,
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
+import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
 import {
     collectInterfaceProperties,
     forEachAncestor,
@@ -14,11 +18,7 @@ import {
 } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import type { GirClass } from "../../gir/class.js";
-import type { GirParameter, GirSignal } from "../../gir/parameter.js";
 import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
-import type { GirProperty } from "../../gir/property.js";
-import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
@@ -39,10 +39,10 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): st
     const connectCases = signals.map((signal) => renderConnectCase(context, signal));
     const emitCases = signals.map((signal) => renderEmitCase(context, signal));
     const connectDefault = isRootObject
-        ? `default:\n    throw new globalThis.Error("Unknown signal '" + signal + "'");`
+        ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");"
         : "default:\n    return super.connect(signal, handler, after);";
     const emitDefault = isRootObject
-        ? `default:\n    throw new globalThis.Error("Unknown signal '" + sigName + "'");`
+        ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");"
         : "default:\n    return super.emit(sigName, ...args);";
 
     const connectSwitch = `switch (getSignalBaseName(signal)) {\n${indent([...connectCases, connectDefault].join("\n"), 1)}\n}`;
@@ -50,7 +50,7 @@ export const renderSignalMembers = (context: ModuleContext, klass: GirClass): st
 
     return [
         renderBlock(`connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number`, connectSwitch),
-        renderBlock(`emit(sigName: string, ...args: unknown[]): unknown`, emitSwitch),
+        renderBlock("emit(sigName: string, ...args: unknown[]): unknown", emitSwitch),
     ];
 };
 
@@ -294,7 +294,7 @@ const forEachInterfaceSignal = (
 
 const collectClassSignals = (context: ModuleContext, klass: GirClass): GirSignal[] => {
     const inheritedNames = collectInheritedSignalNames(context, klass);
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     const result: GirSignal[] = [];
     const consider = (signal: GirSignal): void => {
         const name = camelCase(signal.name);
@@ -318,7 +318,7 @@ const collectInheritedMemberNames = (
     klass: GirClass,
     select: (source: GirClass) => NamedMember[],
 ): Set<string> => {
-    const names = new Set<string>();
+    const names: Set<string> = new Set();
     forEachAncestor(context, klass, (ancestor, interfaces) => {
         addMemberNames(names, ancestor.klass, select);
         for (const iface of interfaces) addMemberNames(names, iface.klass, select);
@@ -331,7 +331,7 @@ const collectInheritedSignalNames = (context: ModuleContext, klass: GirClass): S
 
 const collectNotifyDetails = (context: ModuleContext, klass: GirClass): string[] => {
     const inherited = collectInheritedMemberNames(context, klass, (source) => source.properties);
-    const seen = new Set<string>();
+    const seen: Set<string> = new Set();
     const result: string[] = [];
     const consider = (property: GirProperty): void => {
         const name = camelCase(property.name);

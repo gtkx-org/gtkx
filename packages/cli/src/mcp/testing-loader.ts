@@ -21,11 +21,11 @@ export const loadTestingModule = async (): Promise<TestingModule> => {
     try {
         testingModule = await loader();
         return testingModule;
-    } catch (cause) {
+    } catch (error) {
         testingLoadError = new Error(
             "@gtkx/testing is not installed, install it to enable MCP widget interactions: " +
-                `pnpm add -D @gtkx/testing (import failed: ${String(cause)})`,
-            { cause },
+            `pnpm add -D @gtkx/testing (import failed: ${String(error)})`,
+            { cause: error },
         );
         throw testingLoadError;
     }

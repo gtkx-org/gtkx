@@ -20,9 +20,9 @@ describe("main (argv parsing)", () => {
 
     it("prints an error and exits 1 when no entry argument is supplied", async () => {
         process.argv = ["node", "runner"];
-        exitSpy.mockImplementationOnce((() => {
+        exitSpy.mockImplementationOnce(() => {
             throw new Error("__exit__");
-        }) as never);
+        });
 
         await expect(main()).rejects.toThrow("__exit__");
 

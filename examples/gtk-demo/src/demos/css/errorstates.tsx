@@ -82,11 +82,11 @@ function useErrorStatesHandlers(state: ErrorStatesState) {
     return { handleDetailsChange, handleMoreDetailsChange, handleLevelChange, handleModeStateSet };
 }
 
-interface FieldLabelProps {
+type FieldLabelProps = {
     row: number;
     target: Gtk.Widget | null;
     children: ReactNode;
-}
+};
 
 const FieldLabel = ({ row, target, children }: FieldLabelProps) => (
     <GtkGridLayoutChild column={0} row={row}>
@@ -102,11 +102,11 @@ const FieldLabel = ({ row, target, children }: FieldLabelProps) => (
     </GtkGridLayoutChild>
 );
 
-interface EntryRowProps {
+type EntryRowProps = {
     detailsEntry: Gtk.Entry | null;
     setDetailsEntry: (e: Gtk.Entry | null) => void;
     onChange: () => void;
-}
+};
 
 const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowProps) => (
     <>
@@ -125,12 +125,12 @@ const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowPr
     </>
 );
 
-interface MoreDetailsRowProps {
+type MoreDetailsRowProps = {
     moreDetailsEntry: Gtk.Entry | null;
     setMoreDetailsEntry: (e: Gtk.Entry | null) => void;
     moreDetailsError: boolean;
     onChange: () => void;
-}
+};
 
 const MoreDetailsEntryRow = ({
     moreDetailsEntry,
@@ -159,11 +159,11 @@ const MoreDetailsEntryRow = ({
     </>
 );
 
-interface LevelScaleProps {
+type LevelScaleProps = {
     levelScale: Gtk.Scale | null;
     setLevelScale: (s: Gtk.Scale | null) => void;
     onValueChanged: (value: number) => void;
-}
+};
 
 const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScaleProps) => (
     <>
@@ -185,10 +185,10 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
     </>
 );
 
-interface ModeSwitchRowProps {
+type ModeSwitchRowProps = {
     state: ErrorStatesState;
     onStateSet: (state: boolean, sw: Gtk.Switch) => boolean;
-}
+};
 
 const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
     const { modeSwitch, setModeSwitch, showError, errorLabel, setErrorLabel } = state;
@@ -208,10 +208,10 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                     accessibleInvalid={showError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE}
                     accessibleErrorMessage={showError && errorLabel ? [errorLabel] : undefined}
                     onStateSet={onStateSet}
-                    controllers={
+                    controllers={(
                         <GtkShortcutController
                             scope={Gtk.ShortcutScope.MANAGED}
-                            shortcuts={
+                            shortcuts={(
                                 <GtkShortcut
                                     trigger={Gtk.ShortcutTrigger.parseString("<Control>m")}
                                     action={Gtk.CallbackAction.new(() => {
@@ -219,9 +219,9 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                                         return true;
                                     })}
                                 />
-                            }
+                            )}
                         />
-                    }
+                    )}
                 />
             </GtkGridLayoutChild>
             {showError && (

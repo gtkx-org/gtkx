@@ -1,5 +1,5 @@
-import { attr, attrBool, childOf, docOf, intAttr, nameAttr, type RawNode } from "./parse.js";
 import type { ParseContext, TypeId } from "./type-id.js";
+import { attr, attrBool, childOf, docOf, intAttr, nameAttr, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 export type GirField = {

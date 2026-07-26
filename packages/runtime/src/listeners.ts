@@ -5,7 +5,7 @@ type SignalConnectable = {
     disconnect(handlerId: number): void;
 };
 
-const listenerTable = new WeakMap<object, Map<string, Map<SignalHandler, number>>>();
+const listenerTable: WeakMap<object, Map<string, Map<SignalHandler, number>>> = new WeakMap();
 
 const findListenerHandlerId = (instance: object, signal: string, handler: SignalHandler): number | undefined =>
     listenerTable.get(instance)?.get(signal)?.get(handler);

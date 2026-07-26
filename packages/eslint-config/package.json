@@ -1,0 +1,37 @@
+{
+    "name": "@gtkx/eslint-config",
+    "version": "0.0.0",
+    "description": "Internal ESLint flat config and custom lint rules for the GTKX workspace",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "typecheck": "tsc -b --emitDeclarationOnly"
+    },
+    "engines": {
+        "node": ">=24"
+    },
+    "dependencies": {
+        "@eslint/compat": "^2.1.0",
+        "@eslint/js": "^10.0.1",
+        "@stylistic/eslint-plugin": "^5.10.0",
+        "@typescript-eslint/eslint-plugin": "^8.65.0",
+        "@typescript-eslint/utils": "^8.65.0",
+        "@vitest/eslint-plugin": "^1.6.24",
+        "eslint": "^10.8.0",
+        "eslint-plugin-perfectionist": "^5.10.0",
+        "eslint-plugin-promise": "^7.3.0",
+        "eslint-plugin-react-hooks": "^7.1.1",
+        "eslint-plugin-sonarjs": "^4.2.0",
+        "eslint-plugin-unicorn": "^72.0.0",
+        "typescript": "^6.0.3",
+        "typescript-eslint": "^8.65.0"
+    },
+    "devDependencies": {
+        "@typescript-eslint/rule-tester": "^8.65.0",
+        "vitest": "catalog:"
+    }
+}

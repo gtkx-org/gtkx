@@ -2,14 +2,14 @@ import { render } from "@gtkx/testing";
 import { createRef, type ReactElement, type RefObject } from "react";
 import { expect } from "vitest";
 
-interface DialogButtonDialog {
+type DialogButtonDialog = {
     getTitle(): string | null;
     getModal(): boolean;
-}
+};
 
-export interface DialogButtonWidget {
+export type DialogButtonWidget = {
     getDialog(): DialogButtonDialog | null;
-}
+};
 
 export type DialogButtonFactory<Widget extends DialogButtonWidget> = (
     ref: RefObject<Widget | null>,

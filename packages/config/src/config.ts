@@ -1,13 +1,13 @@
-import { resolve } from "node:path";
 import { createDefineConfig, type DefineConfig } from "c12";
 import { defu } from "defu";
+import { resolve } from "node:path";
 import { z } from "zod";
 import { configError, isRecord, rawIssue } from "./config-error.js";
 import { resolveUserEventSignals } from "./user-event-signals.js";
 
 export const LIBRARIES_WILDCARD = "*";
 
-export const GIR_LIBRARY_PATTERN: RegExp = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
+export const GIR_LIBRARY_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
@@ -62,8 +62,8 @@ const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((
         ctx.issues.push(rawIssue(value, [], `must be "${LIBRARIES_WILDCARD}", a non-empty string array, or omitted`));
         return;
     }
-    value.forEach((entry, index) => {
-        if (typeof entry === "string" && GIR_LIBRARY_PATTERN.test(entry)) return;
+    for (const [index, entry] of value.entries()) {
+        if (typeof entry === "string" && GIR_LIBRARY_PATTERN.test(entry)) continue;
         if (entry === LIBRARIES_WILDCARD) {
             ctx.issues.push(
                 rawIssue(
@@ -73,17 +73,17 @@ const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((
                     true,
                 ),
             );
-            return;
+            continue;
         }
         ctx.issues.push(
             rawIssue(
                 value,
                 [index],
-                `invalid library identifier "${String(entry)}", must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
+                `invalid library identifier "${entry}", must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
                 true,
             ),
         );
-    });
+    }
 });
 
 const applicationIdSchema = z.custom<string>().check((ctx) => {
@@ -93,7 +93,7 @@ const applicationIdSchema = z.custom<string>().check((ctx) => {
             rawIssue(
                 value,
                 [],
-                `invalid \`applicationId\` "${String(value)}", must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
+                `invalid \`applicationId\` "${value}", must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
                 true,
             ),
         );

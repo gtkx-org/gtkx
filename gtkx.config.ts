@@ -1,3 +1,1 @@
-import base from "./gtkx.config.base.js";
-
-export default base;
+export { default } from "./gtkx.config.base.js";

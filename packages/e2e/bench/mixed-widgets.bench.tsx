@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
     GtkBox,
     GtkButton,
@@ -15,7 +16,6 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
 import { cleanup, render } from "../tests/helpers/production-render.js";
 import { describeSizedBench } from "../tests/helpers/sized-bench.js";
 
@@ -24,38 +24,52 @@ const SIZES = [98, 392];
 const ROW = (i: number): ReactNode => {
     const key = String(i);
     switch (i % 14) {
-        case 0:
-            return <GtkButton key={key} label={`b-${i}`} onClicked={() => undefined} />;
-        case 1:
+        case 0: {
+            return <GtkButton key={key} label={`b-${i}`} onClicked={() => {}} />;
+        }
+        case 1: {
             return <GtkLabel key={key}>{`l-${i}`}</GtkLabel>;
-        case 2:
+        }
+        case 2: {
             return <GtkToggleButton key={key} label={`t-${i}`} active={i % 2 === 0} />;
-        case 3:
+        }
+        case 3: {
             return <GtkCheckButton key={key} label={`c-${i}`} active={i % 3 === 0} />;
-        case 4:
+        }
+        case 4: {
             return <GtkSwitch key={key} active={i % 2 === 0} />;
-        case 5:
+        }
+        case 5: {
             return <GtkEntry key={key} text={`e-${i}`} />;
-        case 6:
+        }
+        case 6: {
             return <GtkImage key={key} iconName="dialog-information" />;
-        case 7:
+        }
+        case 7: {
             return <GtkSpinner key={key} spinning={i % 2 === 0} />;
-        case 8:
+        }
+        case 8: {
             return <GtkProgressBar key={key} fraction={(i % 100) / 100} />;
-        case 9:
+        }
+        case 9: {
             return <GtkLevelBar key={key} value={(i % 10) / 10} />;
-        case 10:
+        }
+        case 10: {
             return <GtkScale key={key} />;
-        case 11:
+        }
+        case 11: {
             return <GtkSeparator key={key} />;
-        case 12:
+        }
+        case 12: {
             return <GtkFrame key={key} label={`f-${i}`} />;
-        default:
+        }
+        default: {
             return (
                 <GtkBox key={key}>
                     <GtkLabel>{`nested-${i}`}</GtkLabel>
                 </GtkBox>
             );
+        }
     }
 };
 

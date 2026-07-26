@@ -5,7 +5,7 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 const getPolicy = (scrolledWindow: Gtk.ScrolledWindow): [Gtk.PolicyType, Gtk.PolicyType] => {
-    return scrolledWindow.getPolicy() as [Gtk.PolicyType, Gtk.PolicyType];
+    return scrolledWindow.getPolicy();
 };
 
 describe("render - ScrolledWindow (1)", () => {
@@ -117,6 +117,14 @@ describe("render - ScrolledWindow (3)", () => {
     });
 });
 
+function App({ text }: { text: string }) {
+    return (
+        <GtkScrolledWindow>
+            <GtkLabel>{text}</GtkLabel>
+        </GtkScrolledWindow>
+    );
+}
+
 describe("render - ScrolledWindow (4)", () => {
     it("works with Box as child", async () => {
         await render(
@@ -133,14 +141,6 @@ describe("render - ScrolledWindow (4)", () => {
     });
 
     it("updates child when changed", async () => {
-        function App({ text }: { text: string }) {
-            return (
-                <GtkScrolledWindow>
-                    <GtkLabel>{text}</GtkLabel>
-                </GtkScrolledWindow>
-            );
-        }
-
         await render(<App text="Initial" />);
         expect(screen.getByText("Initial")).toBeDefined();
 

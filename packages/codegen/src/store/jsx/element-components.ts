@@ -1,9 +1,9 @@
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { LazyElementSpec } from "./element-prop-types.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
 /** A component that wraps a generated element, keyed by GLib type name (built-in or user-provided). */

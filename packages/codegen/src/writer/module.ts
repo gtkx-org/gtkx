@@ -3,8 +3,8 @@ import { ImportsBuilder } from "./imports.js";
 export class ModuleBuilder {
     public imports: ImportsBuilder = new ImportsBuilder();
     private bindings: string[] = [];
-    private bindingNames = new Set<string>();
-    private hoistedDescriptors = new Map<string, string>();
+    private bindingNames: Set<string> = new Set();
+    private hoistedDescriptors: Map<string, string> = new Map();
     private declarations: string[] = [];
     private registrations: string[] = [];
 

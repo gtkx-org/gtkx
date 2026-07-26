@@ -7,10 +7,10 @@ import { expectAllVisibleOnce } from "./helpers/list-collection-render.js";
 import { renderChildren } from "./helpers/render-children.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
-interface TextItem {
+type TextItem = {
     id: string;
     text: string;
-}
+};
 
 const buildTextListView = (items: TextItem[]) => (
     <ScrollWrapper>
@@ -47,20 +47,20 @@ describe("render - ListItem (1)", () => {
     });
 });
 
+function App({ value }: { value: { text: string } }) {
+    return (
+        <ScrollWrapper>
+            <ListView
+                items={[{ id: "dynamic", value }]}
+                renderItem={({ item }) => <GtkLabel>{item.text}</GtkLabel>}
+            />
+        </ScrollWrapper>
+    );
+}
+
 describe("render - ListItem (2)", () => {
     describe("ListItem (2)", () => {
         it("updates item value on prop change", async () => {
-            function App({ value }: { value: { text: string } }) {
-                return (
-                    <ScrollWrapper>
-                        <ListView
-                            items={[{ id: "dynamic", value }]}
-                            renderItem={({ item }) => <GtkLabel>{item.text}</GtkLabel>}
-                        />
-                    </ScrollWrapper>
-                );
-            }
-
             const { rerender } = await render(<App value={{ text: "Initial" }} />);
             expect(screen.queryAllByText("Initial")).toHaveLength(1);
 
@@ -110,6 +110,10 @@ describe("render - ListItem (3)", () => {
     });
 });
 
+function App2({ value }: { value: string }) {
+    return <DropDown items={[{ id: "dynamic", value }]} />;
+}
+
 describe("render - ListItem (4)", () => {
     describe("ListItem in DropDown (1)", () => {
         it("renders list item in DropDown", async () => {
@@ -125,14 +129,10 @@ describe("render - ListItem (4)", () => {
         });
 
         it("updates value on prop change", async () => {
-            function App({ value }: { value: string }) {
-                return <DropDown items={[{ id: "dynamic", value }]} />;
-            }
-
-            const { rerender } = await render(<App value="Initial" />);
+            const { rerender } = await render(<App2 value="Initial" />);
             expect(screen.queryAllByText("Initial").length).toBeGreaterThan(0);
 
-            await rerender(<App value="Updated" />);
+            await rerender(<App2 value="Updated" />);
             expect(screen.queryAllByText("Updated").length).toBeGreaterThan(0);
             expect(screen.queryAllByText("Initial")).toHaveLength(0);
         });

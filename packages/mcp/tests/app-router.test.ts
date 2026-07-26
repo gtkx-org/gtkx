@@ -1,9 +1,9 @@
 import EventEmitter from "node:events";
 import { Duplex } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Message, Request, Response } from "../src/protocol/schemas.js";
 import { AppRouter } from "../src/app-router.js";
 import { ErrorCode, ProtocolError } from "../src/protocol/errors.js";
-import type { Message, Request, Response } from "../src/protocol/schemas.js";
 import { type AppConnectionEvents, type AppConnections, ProtocolConnection } from "../src/transport.js";
 
 class FakeSocket extends Duplex {
@@ -31,7 +31,7 @@ function makeConnection(id: string): TestConnection {
 }
 
 class FakeAppConnections extends EventEmitter<AppConnectionEvents> implements AppConnections {
-    sent: Array<{ connectionId: string; message: Message }> = [];
+    sent: { connectionId: string; message: Message }[] = [];
 
     send(connectionId: string, message: Message): void {
         this.sent.push({ connectionId, message });
@@ -39,12 +39,12 @@ class FakeAppConnections extends EventEmitter<AppConnectionEvents> implements Ap
 }
 
 function lastResponse(connections: FakeAppConnections): Response | undefined {
-    const entry = connections.sent[connections.sent.length - 1];
-    return entry?.message as Response | undefined;
+    const entry = connections.sent.at(-1);
+    return entry?.message;
 }
 
 function lastOutgoingRequest(conn: TestConnection): Request {
-    const line = conn.socket.lines[conn.socket.lines.length - 1];
+    const line = conn.socket.lines.at(-1);
     if (!line) throw new Error("No outgoing request captured");
     return JSON.parse(line) as Request;
 }

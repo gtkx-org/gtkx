@@ -1,7 +1,7 @@
 import type { Element } from "stylis";
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Css, createCss, removeLabel } from "../src/create-css.js";
+import { createCss, type Css, removeLabel } from "../src/create-css.js";
 import { StyleSheet } from "../src/stylesheet.js";
 
 const declElement = (value: string): Element => ({
@@ -152,7 +152,7 @@ describe("cx", () => {
             expect(mergedClass).not.toBe(style1);
             expect(mergedClass).not.toBe(style2);
 
-            const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+            const rules = insertSpy.mock.calls.map((call) => call[0]);
             const mergedRule = rules.find((rule) => rule.startsWith(`.${mergedClass}`));
             expect(mergedRule).toBeDefined();
             expect(mergedRule).toContain("color:red;");
@@ -300,7 +300,7 @@ describe("css — named colors and at-rule scoping", () => {
     });
 
     function findInsertedRule(selectorPrefix: string): string {
-        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rules = insertSpy.mock.calls.map((call) => call[0]);
         const rule = rules.find((r) => r.startsWith(selectorPrefix));
         expect(rule).toBeDefined();
         return rule ?? "";
@@ -331,7 +331,7 @@ describe("css — named colors and at-rule scoping", () => {
             }
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rules = insertSpy.mock.calls.map((call) => call[0]);
         const hoverRule = rules.find((rule) => rule.startsWith(`.${className}:hover`));
         expect(hoverRule).toBeDefined();
         expect(hoverRule).toContain("background:@accent_bg_color;");
@@ -347,7 +347,7 @@ describe("css — named colors and at-rule scoping", () => {
             }
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rules = insertSpy.mock.calls.map((call) => call[0]);
         expect(rules.find((rule) => rule.startsWith(`.${keyframes}`))).toContain("color:@theme_fg_color;");
         const keyframesRule = rules.find((rule) => rule.startsWith("@keyframes"));
         expect(keyframesRule).toBeDefined();
@@ -362,7 +362,7 @@ describe("css — named colors and at-rule scoping", () => {
             }
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rules = insertSpy.mock.calls.map((call) => call[0]);
         const mediaRule = rules.find((rule) => rule.startsWith("@media"));
         expect(mediaRule).toBeDefined();
         expect(mediaRule).toContain(`.${className}{color:blue;}`);
@@ -386,10 +386,10 @@ describe("css — named colors and at-rule scoping", () => {
             }
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rules = insertSpy.mock.calls.map((call) => call[0]);
         const compound = rules.find((rule) => rule.includes(":hover") && rule.includes(":focus"));
         expect(compound).toBeDefined();
-        expect(compound).toMatch(new RegExp(`^\\.${className}:hover:focus`));
+        expect(compound).toMatch(new RegExp(String.raw`^\.${className}:hover:focus`));
         expect(compound).not.toMatch(/:hover\s+\..*:focus/);
     });
 
@@ -408,7 +408,7 @@ describe("css — named colors and at-rule scoping", () => {
             padding: 8px;
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rules = insertSpy.mock.calls.map((call) => call[0]);
         const rule = rules.find((r) => r.startsWith(`.${composed}`));
         expect(rule).toBeDefined();
         expect(rule).toContain("color:red");
@@ -427,7 +427,7 @@ describe("css — named colors and at-rule scoping", () => {
         const callsAfterFirst = insertSpy.mock.calls.length;
 
         instance.css({ background: "red" });
-        expect(insertSpy.mock.calls.length).toBe(callsAfterFirst);
+        expect(insertSpy.mock.calls).toHaveLength(callsAfterFirst);
     });
 
     it("does not re-insert identical styles on the second injectGlobal call", () => {
@@ -435,6 +435,6 @@ describe("css — named colors and at-rule scoping", () => {
         const callsAfterFirst = insertSpy.mock.calls.length;
 
         instance.injectGlobal({ window: { background: "red" } });
-        expect(insertSpy.mock.calls.length).toBe(callsAfterFirst);
+        expect(insertSpy.mock.calls).toHaveLength(callsAfterFirst);
     });
 });

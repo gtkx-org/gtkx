@@ -73,8 +73,7 @@ const collectFailures = (observed: Baseline, skipped: string[], baseline: Baseli
         ([name, status]) => baseline[name] === "green" && status === "red",
     );
 
-    const failures: string[] = [];
-    for (const name of removed) failures.push(`removed spec: ${name}`);
+    const failures: string[] = Array.from(removed, (name) => `removed spec: ${name}`);
     for (const name of skipped) failures.push(`skipped spec: ${name}`);
     for (const [name] of regressed) failures.push(`regressed green to red: ${name}`);
     return failures;
@@ -89,9 +88,9 @@ const reportFixed = (observed: Baseline, baseline: Baseline): number => {
 const reportFailures = (failures: string[]): void => {
     for (const failure of failures) process.stderr.write(`${failure}\n`);
     process.stderr.write(
-        `\nThe spec baseline is frozen. Specs may only move red to green.\n` +
-            `Deleting, skipping, or weakening a spec is not a valid way to make the suite pass.\n` +
-            `After implementing a behavior, re-record with: pnpm spec:record\n`,
+        "\nThe spec baseline is frozen. Specs may only move red to green.\n" +
+        "Deleting, skipping, or weakening a spec is not a valid way to make the suite pass.\n" +
+        "After implementing a behavior, re-record with: pnpm spec:record\n",
     );
     process.exit(1);
 };

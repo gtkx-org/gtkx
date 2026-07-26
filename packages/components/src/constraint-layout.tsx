@@ -1,22 +1,23 @@
+import type { VflConstraints } from "@gtkx/react";
+import type { ReactElement, ReactNode } from "react";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkConstraint, GtkConstraintGuide, GtkConstraintLayout } from "@gtkx/jsx/gtk";
-import type { VflConstraints } from "@gtkx/react";
-import type { ReactElement, ReactNode } from "react";
-import { createContext, useContext, useId, useLayoutEffect, useMemo, useState } from "react";
-import { useLatest } from "./internal/use-latest.js";
-import { useWidgetRef } from "./internal/use-widget-ref.js";
+import { createContext, useContext, useEffectEvent, useId, useLayoutEffect, useMemo, useState } from "react";
 import type { ConstraintGuideProps, ConstraintLayoutProps, ConstraintProps, ConstraintVflProps } from "./types.js";
+import { useWidgetRef } from "./internal/use-widget-ref.js";
 
 type Declaration =
-    | { kind: "constraint"; props: ConstraintProps }
-    | { kind: "guide"; props: ConstraintGuideProps }
-    | { kind: "vfl"; props: ConstraintVflProps };
+    | { kind: "constraint"; props: ConstraintProps } |
+    { kind: "guide"; props: ConstraintGuideProps } |
+    { kind: "vfl"; props: ConstraintVflProps };
 
-type Declarations = Map<string, Declaration>;
+type Entry = { signature: string; declaration: Declaration };
+
+type Declarations = Map<string, Entry>;
 
 type Registry = {
-    set: (key: string, declaration: Declaration) => void;
+    set: (key: string, entry: Entry) => void;
     remove: (key: string) => void;
 };
 
@@ -70,7 +71,7 @@ const resolveTarget = (
     if (target !== undefined) return target;
     throw new Error(
         `<ConstraintLayout.Constraint> references unknown id '${id}'. ` +
-            `Set name="${id}" on the ${role} widget, or add a <ConstraintLayout.Guide id="${id}">.`,
+        `Set name="${id}" on the ${role} widget, or add a <ConstraintLayout.Guide id="${id}">.`,
     );
 };
 
@@ -90,7 +91,7 @@ const guideElement = (key: string, props: ConstraintGuideProps): ReactElement =>
 
 const constraintElement = (key: string, props: ConstraintProps, targets: Targets): ReactElement => (
     <GtkConstraint
-        key={`${key}:${JSON.stringify(props)}`}
+        key={key}
         target={resolveTarget(props.target, "target", targets)}
         targetAttribute={props.targetAttribute}
         relation={props.relation ?? Gtk.ConstraintRelation.EQ}
@@ -102,21 +103,23 @@ const constraintElement = (key: string, props: ConstraintProps, targets: Targets
     />
 );
 
+type EntryOf<K extends Declaration["kind"]> = { signature: string; declaration: Extract<Declaration, { kind: K }> };
+
 const elementsOf = <K extends Declaration["kind"]>(
     declarations: Declarations,
     kind: K,
-    build: (key: string, declaration: Extract<Declaration, { kind: K }>) => ReactElement,
+    build: (key: string, entry: EntryOf<K>) => ReactElement,
 ): ReactElement[] => {
     const elements: ReactElement[] = [];
-    for (const [key, declaration] of declarations) {
-        if (declaration.kind === kind) elements.push(build(key, declaration as Extract<Declaration, { kind: K }>));
+    for (const [key, entry] of declarations) {
+        if (entry.declaration.kind === kind) elements.push(build(key, entry as EntryOf<K>));
     }
     return elements;
 };
 
 const vflBlocks = (declarations: Declarations, targets: Targets): VflConstraints[] => {
     const blocks: VflConstraints[] = [];
-    for (const declaration of declarations.values()) {
+    for (const { declaration } of declarations.values()) {
         if (declaration.kind !== "vfl") continue;
         const { lines, hspacing, vspacing } = declaration.props;
         blocks.push({ lines, hspacing: hspacing ?? 0, vspacing: vspacing ?? 0, views: targets });
@@ -128,11 +131,11 @@ const useDeclaration = (declaration: Declaration): null => {
     const registry = useContext(ConstraintContext);
     if (registry === null) throw new Error(ORPHAN_MESSAGE);
     const key = useId();
-    const latest = useLatest(declaration);
     const signature = JSON.stringify(declaration);
+    const currentDeclaration = useEffectEvent((): Declaration => declaration);
     useLayoutEffect(() => {
-        registry.set(key, latest.current);
-    }, [registry, key, latest, signature]);
+        registry.set(key, { signature, declaration: currentDeclaration() });
+    }, [registry, key, signature]);
     useLayoutEffect(() => () => registry.remove(key), [registry, key]);
     return null;
 };
@@ -146,8 +149,8 @@ const Vfl = (props: ConstraintVflProps): ReactNode => useDeclaration({ kind: "vf
 const useRegistry = (setDeclarations: (update: (previous: Declarations) => Declarations) => void): Registry =>
     useMemo<Registry>(
         () => ({
-            set: (key, declaration) => {
-                setDeclarations((previous) => new Map(previous).set(key, declaration));
+            set: (key, entry) => {
+                setDeclarations((previous) => new Map(previous).set(key, entry));
             },
             remove: (key) => {
                 setDeclarations((previous) => {
@@ -177,14 +180,16 @@ const ConstraintLayoutRoot = (props: ConstraintLayoutProps): ReactNode => {
     const registry = useRegistry(setDeclarations);
     const targets = useTargets(layout);
     const guides = useMemo(
-        () => elementsOf(declarations, "guide", (key, it) => guideElement(key, it.props)),
+        () => elementsOf(declarations, "guide", (key, entry) => guideElement(key, entry.declaration.props)),
         [declarations],
     );
     const constraints = useMemo(
         () =>
             targets === null
                 ? null
-                : elementsOf(declarations, "constraint", (key, it) => constraintElement(key, it.props, targets)),
+                : elementsOf(declarations, "constraint", (key, entry) =>
+                        constraintElement(`${key}:${entry.signature}`, entry.declaration.props, targets),
+                    ),
         [declarations, targets],
     );
     const vfl = useMemo(() => (targets === null ? null : vflBlocks(declarations, targets)), [declarations, targets]);

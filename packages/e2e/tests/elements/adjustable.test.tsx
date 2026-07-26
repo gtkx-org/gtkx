@@ -165,6 +165,6 @@ describe("render - adjustment element (4)", () => {
         ref.current?.getAdjustment().setValue(70);
 
         await new Promise((resolve) => setTimeout(resolve, 50));
-        expect(onValueChanged.mock.calls.length).toBe(callCount);
+        expect(onValueChanged.mock.calls).toHaveLength(callCount);
     });
 });

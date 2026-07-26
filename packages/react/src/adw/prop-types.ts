@@ -9,25 +9,25 @@ export type AlertDialogResponse = {
     enabled?: boolean;
 };
 
-export interface AdwAlertDialogProps extends ChildrenProps {
+export type AdwAlertDialogProps = {
     responses?: AlertDialogResponse[] | null | undefined;
-}
+} & ChildrenProps;
 
-export interface AdwPreferencesRowProps {
+export type AdwPreferencesRowProps = {
     prefix?: ReactNode | null | undefined;
     suffix?: ReactNode | null | undefined;
-}
+};
 
-export interface AdwExpanderRowProps extends AdwPreferencesRowProps {
+export type AdwExpanderRowProps = {
     rows?: ReactNode | null | undefined;
     actions?: ReactNode | null | undefined;
-}
+} & AdwPreferencesRowProps;
 
-export interface AdwToolbarViewProps extends ChildrenProps {
+export type AdwToolbarViewProps = {
     topBar?: ReactNode | null | undefined;
     bottomBar?: ReactNode | null | undefined;
-}
+} & ChildrenProps;
 
-export interface AdwBreakpointsProps extends ChildrenProps {
+export type AdwBreakpointsProps = {
     breakpoints?: ReactNode | null | undefined;
-}
+} & ChildrenProps;

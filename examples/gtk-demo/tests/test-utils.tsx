@@ -4,11 +4,11 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { type RenderResult, render, screen } from "@gtkx/testing";
+import { render, type RenderResult, screen } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
 import { expect } from "vitest";
-import { DemoProvider, useDemo } from "../src/context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
+import { DemoProvider, useDemo } from "../src/context/demo-context.js";
 
 export const makeStringValue = (text: string): GObject.Value => {
     const value = new GObject.Value();
@@ -46,19 +46,19 @@ export const makeFileValue = (path: string): GObject.Value => {
 
 let nextAppId = 0;
 
-export interface RenderDemoOptions {
+export type RenderDemoOptions = {
     onClose?: () => void;
     titlebar?: ComponentType<DemoProps>;
     provider?: ComponentType<DemoProviderProps>;
-}
+};
 
-interface WrapperArgs {
+type WrapperArgs = {
     windowRef: RefObject<Gtk.Window | null>;
     onClose: () => void;
     Provider: ComponentType<DemoProviderProps>;
     Titlebar: ComponentType<DemoProps> | undefined;
     demo: Demo | undefined;
-}
+};
 
 const buildWrapper = ({
     windowRef,

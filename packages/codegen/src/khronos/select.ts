@@ -57,8 +57,8 @@ export const selectSubset = (registry: GlRegistry, selection: GlSelection): GlSu
         .filter((feature) => feature.api === selection.api && feature.number <= selection.version)
         .sort((a, b) => a.number - b.number);
 
-    const commands = new Map<string, string>();
-    const enums = new Map<string, string>();
+    const commands: Map<string, string> = new Map();
+    const enums: Map<string, string> = new Map();
     for (const feature of features) applyRequires(feature, selection, commands, enums);
     for (const feature of features) applyRemoves(feature, selection, commands, enums);
     return { commands, enums };

@@ -1,5 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -13,10 +11,11 @@ import {
     GtkScrolledWindow,
     GtkSearchEntry,
 } from "@gtkx/jsx/gtk";
-
+import { existsSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { useDemo } from "../../context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
+import { useDemo } from "../../context/demo-context.js";
 import sourceCode from "./listview-words.tsx?raw";
 
 const DICT_FILE = "/usr/share/dict/words";
@@ -24,7 +23,7 @@ const DICT_FILE = "/usr/share/dict/words";
 const LOREM_IPSUM =
     "lorem ipsum dolor sit amet consectetur adipisci elit sed eiusmod tempor incidunt labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi consequat";
 
-const FILTER_CHUNK_SIZE = 50000;
+const FILTER_CHUNK_SIZE = 50_000;
 
 function loadInitialWords(): string[] {
     if (existsSync(DICT_FILE)) {
@@ -33,8 +32,8 @@ function loadInitialWords(): string[] {
                 .split("\n")
                 .map((w) => w.trim())
                 .filter((w) => w.length > 0);
-        } catch (e) {
-            if (e instanceof Error) console.error(e.message);
+        } catch (error) {
+            if (error instanceof Error) console.error(error.message);
         }
     }
     return LOREM_IPSUM.split(" ");
@@ -55,16 +54,16 @@ const loadWordsFromFile = async (
             .filter((w) => w.length > 0);
         setWords(wordList);
         setSearchText("");
-    } catch (e) {
+    } catch (error) {
         const dialog = new Gtk.AlertDialog();
-        dialog.setMessage(`Failure reading words from '${filePath}': ${e}`);
+        dialog.setMessage(`Failure reading words from '${filePath}': ${error}`);
         dialog.show(null);
     }
 };
 
-interface FilterState {
+type FilterState = {
     canceled: boolean;
-}
+};
 
 const runFilterStep = ({
     ctx,
@@ -182,13 +181,13 @@ const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[];
     </GtkOverlay>
 );
 
-interface WordsContextValue {
+type WordsContextValue = {
     searchText: string;
     setSearchText: (value: string) => void;
     filteredWords: string[];
     filterProgress: number;
     handleOpen: () => void;
-}
+};
 
 const WordsContext = createContext<WordsContextValue | null>(null);
 
@@ -213,8 +212,8 @@ const ListViewWordsProvider = ({ window, children }: DemoProviderProps) => {
                 const file = await dialog.open(window.current, null);
                 const path = file.getPath();
                 if (path) await loadFile(path);
-            } catch (e) {
-                if (e instanceof Error) console.error(e.message);
+            } catch (error) {
+                if (error instanceof Error) console.error(error.message);
             }
         };
         void run();

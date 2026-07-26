@@ -1,4 +1,4 @@
-import { type ChildProcess, type SpawnSyncReturns, spawn, spawnSync } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,7 +16,7 @@ vi.mock("../src/notification-service.js", () => ({
 
 const { spawn: realSpawn } = await vi.importActual<typeof import("node:child_process")>("node:child_process");
 const { DEFAULT_HEADLESS_SIZE, readHeadlessOptions, resolveHeadlessOptions, startHeadlessDisplay } = await import(
-    "../src/headless-display.js"
+    "../src/headless-display.js",
 );
 
 const spawnMock = vi.mocked(spawn);
@@ -37,7 +37,7 @@ const spawnIdleChild = (): ChildProcess => realSpawn(process.execPath, ["-e", "s
 
 type Compositor = "sway" | "weston";
 
-const compositorSocketName: { [K in Compositor]: string } = {
+const compositorSocketName: Record<Compositor, string> = {
     sway: "wayland-1",
     weston: "wayland-0",
 };
@@ -52,7 +52,7 @@ const wlrKeys = [
 
 const trackedEnvKeys = [...wlrKeys, "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "WAYLAND_DISPLAY"];
 
-const restoreTrackedEnv = (saved: { [key: string]: string | undefined }): void => {
+const restoreTrackedEnv = (saved: Record<string, string | undefined>): void => {
     for (const key of trackedEnvKeys) {
         const value = saved[key];
         if (value === undefined) delete process.env[key];
@@ -60,18 +60,16 @@ const restoreTrackedEnv = (saved: { [key: string]: string | undefined }): void =
     }
 };
 
+const fulfillSockets = (compositor: Compositor): void => {
+    const runtimeDir = process.env.XDG_RUNTIME_DIR ?? "";
+    writeFileSync(join(runtimeDir, compositorSocketName[compositor]), "");
+    writeFileSync(join(runtimeDir, "bus"), "");
+};
+
 describe("startHeadlessDisplay", () => {
     let children: ChildProcess[];
-    let teardowns: Array<() => void>;
-    let savedEnv: { [key: string]: string | undefined };
-
-    const fulfillSockets = (compositor: Compositor): void => {
-        const runtimeDir = process.env.XDG_RUNTIME_DIR ?? "";
-        writeFileSync(join(runtimeDir, compositorSocketName[compositor]), "");
-        writeFileSync(join(runtimeDir, "bus"), "");
-    };
-
-    const startFulfilled = async (options: {
+    let teardowns: (() => void)[];
+    let savedEnv: Record<string, string | undefined>; const startFulfilled = async (options: {
         size: string;
         compositor: Compositor;
     }): Promise<{ teardown: () => void; runtimeDir: string }> => {
@@ -225,7 +223,7 @@ describe("startHeadlessDisplay", () => {
 
     it("rejects and cleans up when a spawned child exits before its socket appears", async () => {
         await expectStartupFailure(
-            () => realSpawn(process.execPath, ["-e", "process.stderr.write('boom on startup\\n'); process.exit(1);"]),
+            () => realSpawn(process.execPath, ["-e", String.raw`process.stderr.write('boom on startup\n'); process.exit(1);`]),
             /exited \(code 1, signal null\)[\s\S]*boom on startup/,
         );
     });

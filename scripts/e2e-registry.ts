@@ -1,3 +1,4 @@
+import type { Server } from "node:http";
 import { spawn } from "node:child_process";
 import {
     copyFileSync,
@@ -9,7 +10,6 @@ import {
     rmSync,
     writeFileSync,
 } from "node:fs";
-import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -27,7 +27,7 @@ const REGISTRAR_USER = "release-e2e";
 
 type HostNativeTarget = { triple: string; platformPackage: string };
 
-const hostNativeTargets: { [arch: string]: HostNativeTarget } = {
+const hostNativeTargets: Record<string, HostNativeTarget> = {
     x64: { triple: "x86_64-unknown-linux-gnu", platformPackage: "@gtkx/native-linux-x64-gnu" },
     arm64: { triple: "aarch64-unknown-linux-gnu", platformPackage: "@gtkx/native-linux-arm64-gnu" },
 };
@@ -35,7 +35,7 @@ const hostNativeTargets: { [arch: string]: HostNativeTarget } = {
 type NativeManifest = {
     version: string;
     napi: { binaryName: string; targets: string[] };
-    optionalDependencies: { [name: string]: string };
+    optionalDependencies: Record<string, string>;
 };
 
 type UserResponse = {
@@ -167,7 +167,7 @@ const prepareHostOnlyPublish = (): (() => void) => {
     if (host === undefined) {
         throw new Error(`release-e2e cannot stage native artifacts for architecture "${process.arch}"`);
     }
-    const snapshot = new Map<string, string>();
+    const snapshot: Map<string, string> = new Map();
     for (const path of trackedFilesRewrittenByPublish()) {
         snapshot.set(path, readFileSync(path, "utf8"));
     }
@@ -262,7 +262,7 @@ const BUILT_APP_STABLE_MS = 8000;
 type HeadlessDisplay = {
     startHeadlessDisplay: (options: { size: string; compositor: "sway" | "weston" }) => Promise<() => void>;
     resolveHeadlessOptions: (provided: object) => { size: string; compositor: "sway" | "weston" };
-    STATIC_HEADLESS_ENV: { [name: string]: string };
+    STATIC_HEADLESS_ENV: Record<string, string>;
 };
 
 async function loadHeadlessDisplay(): Promise<HeadlessDisplay> {

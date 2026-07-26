@@ -1,4 +1,4 @@
-import { type SpawnSyncReturns, spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 
 const ALREADY_PUBLISHED = /cannot publish over|EPUBLISHCONFLICT|previously published version/i;
 

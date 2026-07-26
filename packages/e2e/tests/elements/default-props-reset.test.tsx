@@ -1,5 +1,5 @@
-import * as GLib from "@gtkx/gi/glib";
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as GLib from "@gtkx/gi/glib";
 import * as Pango from "@gtkx/gi/pango";
 import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";

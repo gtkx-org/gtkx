@@ -1,7 +1,7 @@
 import type { HookHandler, Plugin } from "vite";
 import { describe, expect, it, vi } from "vitest";
-import { resolveConfig } from "../src/config.js";
 import type { ConfigLoader } from "../src/internal.js";
+import { resolveConfig } from "../src/config.js";
 import { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "../src/virtual.js";
 import createConfigPlugin from "../src/vite-plugin.js";
 
@@ -10,7 +10,7 @@ const hookHandlerOf = <K extends keyof Plugin>(
     name: K,
 ): OmitThisParameter<NonNullable<HookHandler<Plugin[K]>>> => {
     const hook = plugin[name];
-    if (hook === undefined || hook === null) throw new Error(`expected the plugin to define the ${String(name)} hook`);
+    if (hook === undefined || hook === null) throw new Error(`expected the plugin to define the ${name} hook`);
     if (typeof hook === "object" && "handler" in hook) return hook.handler;
     return hook;
 };
@@ -30,6 +30,8 @@ const load = async (plugin: Plugin, id: string): Promise<string | undefined> => 
 const applyConfig = (plugin: Plugin, root: string): void => {
     hookHandlerOf(plugin, "config")({ root }, { command: "serve", mode: "development" });
 };
+
+const loadConfig: ConfigLoader = async () => resolveConfig({ applicationId: "org.gtk.Demo4" });
 
 describe("createConfigPlugin", () => {
     it("resolves the public virtual id to the internal resolved id", () => {
@@ -63,7 +65,6 @@ describe("createConfigPlugin", () => {
     });
 
     it("renders the resolved config exports for the virtual module", async () => {
-        const loadConfig: ConfigLoader = async () => resolveConfig({ applicationId: "org.gtk.Demo4" });
         const plugin = createConfigPlugin({ name: "gtkx-config", loadConfig });
         const source = await load(plugin, RESOLVED_GTKX_CONFIG_VIRTUAL_ID);
         expect(source).toContain('export * from "@gtkx/jsx/metadata";');

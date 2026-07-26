@@ -1,9 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { Error as GError, quarkFromString } from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { pickersDemo } from "../../../src/demos/dialogs/pickers.js";
 import { makeFileValue, makeStringValue, renderDemo } from "../../test-utils.js";
@@ -12,7 +12,7 @@ const dismissedError = (): GError =>
     GError.newLiteral(quarkFromString("gtk-dialog-error-quark"), Gtk.DialogError.DISMISSED, "Dismissed by user");
 
 const MIN_PDF =
-    "%PDF-1.1\n%\xC2\xA5\xC2\xB1\xC3\xAB\n\n1 0 obj\n  << /Type /Catalog\n     /Pages 2 0 R\n  >>\nendobj\n\n2 0 obj\n  << /Type /Pages\n     /Kids [3 0 R]\n     /Count 1\n     /MediaBox [0 0 99 99]\n  >>\nendobj\n\n3 0 obj\n  <<  /Type /Page\n      /Parent 2 0 R\n      /Resources << >>\n      /Contents 4 0 R\n  >>\nendobj\n\n4 0 obj\n  << /Length 0 >>\nstream\nendstream\nendobj\n\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000063 00000 n\n0000000136 00000 n\n0000000221 00000 n\n\ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n264\n%%EOF\n";
+    "%PDF-1.1\n%\u{C2}\u{A5}\u{C2}\u{B1}\u{C3}\u{AB}\n\n1 0 obj\n  << /Type /Catalog\n     /Pages 2 0 R\n  >>\nendobj\n\n2 0 obj\n  << /Type /Pages\n     /Kids [3 0 R]\n     /Count 1\n     /MediaBox [0 0 99 99]\n  >>\nendobj\n\n3 0 obj\n  <<  /Type /Page\n      /Parent 2 0 R\n      /Resources << >>\n      /Contents 4 0 R\n  >>\nendobj\n\n4 0 obj\n  << /Length 0 >>\nstream\nendstream\nendobj\n\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000063 00000 n\n0000000136 00000 n\n0000000221 00000 n\n\ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n264\n%%EOF\n";
 
 let tmpDir: string;
 let pdfPath: string;

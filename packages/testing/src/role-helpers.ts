@@ -33,7 +33,7 @@ export const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
         return `${names[0]} or ${names[1]}`;
     }
     const head = names.slice(0, -1);
-    const last = names[names.length - 1];
+    const last = names.at(-1);
     return `${head.join(", ")}, or ${last}`;
 };
 
@@ -44,7 +44,7 @@ export const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
  * @returns A map from role name to the widgets that have that role.
  */
 export const getRoles = (container: Container): Map<string, Gtk.Widget[]> => {
-    const roles = new Map<string, Gtk.Widget[]>();
+    const roles: Map<string, Gtk.Widget[]> = new Map();
 
     for (const widget of traverse(container)) {
         const roleName = formatRole(widget.getAccessibleRole());
@@ -82,7 +82,7 @@ export const prettyRoles = (container: Container): string => {
 
     const lines: string[] = [];
 
-    const sortedRoles = sortStringsBy([...roles.entries()], ([roleName]) => roleName);
+    const sortedRoles = sortStringsBy([...roles], ([roleName]) => roleName);
 
     for (const [roleName, widgets] of sortedRoles) {
         lines.push(`${roleName}:`);

@@ -1,7 +1,5 @@
-import { readdirSync } from "node:fs";
 import type { ModuleExport } from "@gtkx/react/config";
-
-export type { ModuleExport };
+import { readdirSync } from "node:fs";
 
 /** The codegen-relevant subset of a React element config; behaviors are ignored at codegen time. */
 export type BuiltinElement = { component?: ModuleExport; lazy?: boolean; props?: ModuleExport };
@@ -18,7 +16,7 @@ const CONFIG_ENTRYPOINT = "config";
 const CONFIG_SUFFIX = `/${CONFIG_ENTRYPOINT}`;
 
 const presentNamespaceDirs = (giStoreDir: string): Set<string> => {
-    const dirs = new Set<string>();
+    const dirs: Set<string> = new Set();
     for (const entry of readdirSync(giStoreDir, { withFileTypes: true })) {
         if (entry.isDirectory()) dirs.add(entry.name);
     }
@@ -69,3 +67,5 @@ export const readBuiltinElements = async (reactSubexports: string[], giStoreDir:
     }
     return result;
 };
+
+export { type ModuleExport } from "@gtkx/react/config";

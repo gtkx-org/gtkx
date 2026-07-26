@@ -1,6 +1,6 @@
+import { formatChildProcessError } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { formatChildProcessError } from "@gtkx/utils";
 
 const SYSTEM_GIR_PATH = "/usr/share/gir-1.0";
 
@@ -29,7 +29,7 @@ export const resolveGirPath = (configGirPath: string[] | undefined): string[] =>
 };
 
 const pkgConfigGirDirError = (error: unknown): undefined => {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
     const details = formatChildProcessError(error);
     throw new Error(`pkg-config failed querying gobject-introspection-1.0 girdir${details ? `:\n${details}` : ""}`, {
         cause: error,
@@ -39,12 +39,12 @@ const pkgConfigGirDirError = (error: unknown): undefined => {
 const queryPkgConfigGirDir = (): string | undefined => {
     try {
         const output = execFileSync("pkg-config", ["--variable=girdir", "gobject-introspection-1.0"], {
-            encoding: "utf-8",
+            encoding: "utf8",
             stdio: ["ignore", "pipe", "pipe"],
         });
         const trimmed = output.trim();
         return trimmed.length > 0 ? trimmed : undefined;
     } catch (error) {
-        return pkgConfigGirDirError(error);
+        pkgConfigGirDirError(error); return;
     }
 };

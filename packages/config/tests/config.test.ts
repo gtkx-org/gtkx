@@ -12,7 +12,7 @@ import { DEFAULT_USER_EVENT_SIGNALS } from "../src/user-event-signals.js";
 const validateUnknown = (config: unknown): void => validateConfig(config as Config);
 
 const validateWithAppId = (config: Partial<Config>): void =>
-    validateConfig({ applicationId: "org.gtk.Test", ...config } as Config);
+    validateConfig({ applicationId: "org.gtk.Test", ...config });
 
 describe("defineConfig", () => {
     it("returns the config unchanged", () => {
@@ -283,13 +283,13 @@ describe("isValidApplicationId", () => {
 
     it("rejects an ID exceeding 255 characters", () => {
         const long = `${"a".repeat(252)}.${"b".repeat(3)}`;
-        expect(long.length).toBe(256);
+        expect(long).toHaveLength(256);
         expect(isValidApplicationId(long)).toBe(false);
     });
 
     it("accepts an ID at the 255-character maximum", () => {
         const maxLength = `${"a".repeat(251)}.${"b".repeat(3)}`;
-        expect(maxLength.length).toBe(255);
+        expect(maxLength).toHaveLength(255);
         expect(isValidApplicationId(maxLength)).toBe(true);
     });
 

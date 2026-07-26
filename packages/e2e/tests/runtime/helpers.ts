@@ -3,7 +3,7 @@ import { type ExternalObject, getType, type Handle } from "@gtkx/native";
 import { TYPE_INVALID } from "@gtkx/runtime";
 
 export function instanceIsA(handle: ExternalObject<Handle>, gtype: Type): boolean {
-    const instanceGtype: Type = BigInt(getType(handle));
+    const instanceGtype: Type = getType(handle);
     if (instanceGtype === TYPE_INVALID) return false;
     return typeIsA(instanceGtype, gtype);
 }

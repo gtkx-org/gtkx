@@ -7,7 +7,7 @@ const packagesDir = join(referenceDir, "@gtkx");
 
 const walk = (dir) =>
     readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-        entry.isDirectory() ? walk(join(dir, entry.name)) : entry.name.endsWith(".md") ? [join(dir, entry.name)] : [],
+        entry.isDirectory() ? walk(join(dir, entry.name)) : (entry.name.endsWith(".md") ? [join(dir, entry.name)] : []),
     );
 
 const frontmatter = /^---\n[\s\S]*?\n---\n+/;

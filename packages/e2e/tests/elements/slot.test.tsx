@@ -66,15 +66,17 @@ describe("render - Slot (2)", () => {
                 <GtkHeaderBar
                     ref={headerBarRef}
                     titleWidget={
-                        first ? (
-                            <GtkLabel ref={label1Ref} key="first">
-                                First Title
-                            </GtkLabel>
-                        ) : (
-                            <GtkLabel ref={label2Ref} key="second">
-                                Second Title
-                            </GtkLabel>
-                        )
+                        first
+                            ? (
+                                    <GtkLabel ref={label1Ref} key="first">
+                                        First Title
+                                    </GtkLabel>
+                                )
+                            : (
+                                    <GtkLabel ref={label2Ref} key="second">
+                                        Second Title
+                                    </GtkLabel>
+                                )
                     }
                 />
             );
@@ -100,11 +102,11 @@ describe("render - Slot (2)", () => {
         await render(
             <GtkMenuButton
                 ref={menuButtonRef}
-                popover={
+                popover={(
                     <GtkPopover ref={popoverRef}>
                         <GtkLabel>Popover Content</GtkLabel>
                     </GtkPopover>
-                }
+                )}
             />,
         );
 

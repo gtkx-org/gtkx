@@ -26,7 +26,7 @@ const DIALOG_TIMEOUT_SECONDS = 20;
 const isCancellation = (error: unknown): boolean =>
     (error instanceof Gtk.DialogError &&
         (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)) ||
-    (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED);
+        (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED);
 
 const reportPickerError = (error: unknown): void => {
     if (isCancellation(error)) return;
@@ -65,8 +65,8 @@ const launchFile = async (selectedFile: Gio.File | null, action: (launcher: Gtk.
     try {
         const launcher = Gtk.FileLauncher.new(selectedFile);
         await action(launcher);
-    } catch (e) {
-        reportPickerError(e);
+    } catch (error) {
+        reportPickerError(error);
     }
 };
 
@@ -89,9 +89,9 @@ function useDropAndOpenHandlers(parentWindow: Gtk.Window | null, state: FilePick
             try {
                 const file = await fileDialog.open(parentWindow, cancellable);
                 setFile(file);
-            } catch (e) {
-                if (isCancellation(e)) return;
-                reportPickerError(e);
+            } catch (error) {
+                if (isCancellation(error)) return;
+                reportPickerError(error);
                 setSelectedFile(null);
                 setFileName("None");
                 setIsPdf(false);
@@ -121,8 +121,8 @@ function useFileLaunchHandlers(parentWindow: Gtk.Window | null, state: FilePicke
             try {
                 const printDialog = new Gtk.PrintDialog();
                 await printDialog.printFile(parentWindow, null, selectedFile, cancellable);
-            } catch (e) {
-                reportPickerError(e);
+            } catch (error) {
+                reportPickerError(error);
             }
         });
     };
@@ -131,8 +131,8 @@ function useFileLaunchHandlers(parentWindow: Gtk.Window | null, state: FilePicke
         try {
             const launcher = Gtk.UriLauncher.new("http://www.gtk.org");
             await launcher.launch(parentWindow, null);
-        } catch (e) {
-            reportPickerError(e);
+        } catch (error) {
+            reportPickerError(error);
         }
     };
 
@@ -145,11 +145,11 @@ function useFilePickerHandlers(parentWindow: Gtk.Window | null, state: FilePicke
     return { ...dropAndOpen, ...launch };
 }
 
-interface PickerLabelProps {
+type PickerLabelProps = {
     row: number;
     target: Gtk.Widget | null;
     children: ReactNode;
-}
+};
 
 const PickerLabel = ({ row, target, children }: PickerLabelProps) => (
     <GtkGridLayoutChild column={0} row={row}>
@@ -159,10 +159,10 @@ const PickerLabel = ({ row, target, children }: PickerLabelProps) => (
     </GtkGridLayoutChild>
 );
 
-interface ColorRowProps {
+type ColorRowProps = {
     colorWidget: Gtk.ColorDialogButton | null;
     setColorWidget: (w: Gtk.ColorDialogButton | null) => void;
-}
+};
 
 const ColorPickerRow = ({ colorWidget, setColorWidget }: ColorRowProps) => (
     <>
@@ -181,10 +181,10 @@ const ColorPickerRow = ({ colorWidget, setColorWidget }: ColorRowProps) => (
     </>
 );
 
-interface FontRowProps {
+type FontRowProps = {
     fontWidget: Gtk.FontDialogButton | null;
     setFontWidget: (w: Gtk.FontDialogButton | null) => void;
-}
+};
 
 const FontPickerRow = ({ fontWidget, setFontWidget }: FontRowProps) => (
     <>
@@ -203,12 +203,12 @@ const FontPickerRow = ({ fontWidget, setFontWidget }: FontRowProps) => (
     </>
 );
 
-interface FilePickerRowProps {
+type FilePickerRowProps = {
     fileState: FilePickerState;
     handlers: ReturnType<typeof useFilePickerHandlers>;
     fileButtonWidget: Gtk.Button | null;
     setFileButtonWidget: (w: Gtk.Button | null) => void;
-}
+};
 
 const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWidget }: FilePickerRowProps) => (
     <>
@@ -227,13 +227,13 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     accessibleLabel="Select File"
                     accessibleHasPopup
                     onClicked={() => void handlers.handleOpenFile()}
-                    controllers={
+                    controllers={(
                         <GtkDropTarget
                             types={[gfileType]}
                             actions={Gdk.DragAction.COPY}
                             onDrop={handlers.handleFileDrop}
                         />
-                    }
+                    )}
                 />
                 <GtkButton
                     name="open-file-button"
@@ -266,11 +266,11 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
     </>
 );
 
-interface UriRowProps {
+type UriRowProps = {
     uriButtonWidget: Gtk.Button | null;
     setUriButtonWidget: (w: Gtk.Button | null) => void;
     onLaunchUri: () => Promise<void>;
-}
+};
 
 const UriPickerRow = ({ uriButtonWidget, setUriButtonWidget, onLaunchUri }: UriRowProps) => (
     <>

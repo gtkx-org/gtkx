@@ -1,4 +1,6 @@
 import { toCamelIdentifier } from "@gtkx/utils";
+import type { GlCommand } from "./model.js";
+import type { CommandPlan, GlScalar, ParamPlan } from "./plan.js";
 import {
     tArray,
     tBoolean,
@@ -10,16 +12,14 @@ import {
     tString,
     tUint64,
 } from "../analysis/descriptor.js";
-import type { GlCommand } from "./model.js";
 import { paramPairAt } from "./param-pair.js";
-import type { CommandPlan, GlScalar, ParamPlan } from "./plan.js";
 
 export const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
     group !== undefined && scalar.groupBearing === true ? group : scalar.tsAlias;
 
 const paramIndexByName = (command: GlCommand, name: string): number => {
     const index = command.params.findIndex((param) => param.name === name);
-    if (index < 0) throw new Error(`Command ${command.name} has no parameter named ${name}`);
+    if (index === -1) throw new Error(`Command ${command.name} has no parameter named ${name}`);
     return index;
 };
 
@@ -65,28 +65,37 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
     const param = command.params[index];
     if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
     switch (plan.kind) {
-        case "scalar":
+        case "scalar": {
             return inArg(name, track(scalarAliasOrGroup(plan.scalar, param.group)), plan.scalar.descriptor);
-        case "boolean":
+        }
+        case "boolean": {
             return inArg(name, "boolean", tBoolean);
-        case "sync":
+        }
+        case "sync": {
             return inArg(name, track("GLsync"), tInlineStruct());
-        case "string-in":
+        }
+        case "string-in": {
             return inArg(name, "string", tString("borrowed"));
-        case "string-array-in":
+        }
+        case "string-array-in": {
             return inArg(name, "string[]", tArray(tString("borrowed")));
+        }
         case "array-in": {
             track(scalarAliasOrGroup(plan.scalar, param.group));
             return inArg(name, arrayInTsType(plan.scalar, param.group), tArray(plan.scalar.descriptor));
         }
-        case "buffer":
+        case "buffer": {
             return inArg(name, `ArrayBufferView | ${track("GLintptr")} | null`, tBuffer);
-        case "byte-offset":
+        }
+        case "byte-offset": {
             return inArg(name, track("GLintptr"), tUint64);
-        case "byte-offset-array":
+        }
+        case "byte-offset-array": {
             return inArg(name, `${track("GLintptr")}[]`, tArray(tUint64));
-        default:
+        }
+        default: {
             throw new Error(`Plan kind ${plan.kind} is not an input parameter`);
+        }
     }
 };
 
@@ -96,7 +105,7 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
     if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
     const cellName = `out${outIndex}`;
     switch (plan.kind) {
-        case "ref-out":
+        case "ref-out": {
             return {
                 out: true,
                 cellName,
@@ -105,6 +114,7 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
                 descriptor: tRef(plan.scalar.descriptor),
                 paramIndex: index,
             };
+        }
         case "ref-array-out": {
             const sizeIndex = paramIndexByName(command, plan.lenParamName);
             const lenIdentifier = toCamelIdentifier(plan.lenParamName);
@@ -117,7 +127,7 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
                 paramIndex: index,
             };
         }
-        case "ref-fixed-out":
+        case "ref-fixed-out": {
             return {
                 out: true,
                 cellName,
@@ -126,7 +136,8 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
                 descriptor: tRef(tFixedArray(plan.scalar.descriptor, plan.length)),
                 paramIndex: index,
             };
-        case "string-out":
+        }
+        case "string-out": {
             return {
                 out: true,
                 cellName,
@@ -135,8 +146,10 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
                 descriptor: tRef(tString("borrowed", toCamelIdentifier(plan.lenParamName))),
                 paramIndex: index,
             };
-        default:
+        }
+        default: {
             throw new Error(`Plan kind ${plan.kind} is not an output parameter`);
+        }
     }
 };
 
@@ -148,10 +161,10 @@ const isOutPlan = (plan: ParamPlan): boolean =>
 
 export const trackInto =
     (usedTypes: Set<string>) =>
-    (alias: string): string => {
-        usedTypes.add(alias);
-        return alias;
-    };
+        (alias: string): string => {
+            usedTypes.add(alias);
+            return alias;
+        };
 
 export const planArgs = (
     plan: CommandPlan & { ok: true },
@@ -161,7 +174,7 @@ export const planArgs = (
     const args: PlannedArg[] = [];
     const ins: InArg[] = [];
     const outs: OutArg[] = [];
-    plan.params.forEach((paramPlan, index) => {
+    for (const [index, paramPlan] of plan.params.entries()) {
         const param = plan.command.params[index];
         if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${plan.command.name}`);
         const options: BuildArgOptions = {
@@ -179,7 +192,7 @@ export const planArgs = (
             args.push(arg);
             ins.push(arg);
         }
-    });
+    }
     return { args, ins, outs };
 };
 

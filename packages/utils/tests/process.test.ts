@@ -90,11 +90,12 @@ describe("installGracefulShutdown — clean shutdown exits 0", () => {
     it("exits 0 after a clean shutdown on SIGHUP", () => expectCleanShutdownExit("SIGHUP"));
 });
 
+let resolveSignal: () => void = () => {};
+
 describe("installGracefulShutdown — async + force-kill behavior", () => {
     const fixture = installFixture();
 
     it("awaits an async onSignal before exiting", async () => {
-        let resolveSignal: () => void = () => {};
         const onSignal = vi.fn().mockReturnValue(new Promise<void>((res) => (resolveSignal = res)));
         installGracefulShutdown({ onSignal });
 

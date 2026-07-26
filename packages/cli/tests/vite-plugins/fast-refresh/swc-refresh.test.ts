@@ -22,7 +22,7 @@ const getTransform = (plugin: Plugin): TransformFn => {
     const hook = plugin.transform;
     const handler = typeof hook === "function" ? hook : hook?.handler;
     if (typeof handler !== "function") {
-        throw new Error("plugin.transform must provide a handler function");
+        throw new TypeError("plugin.transform must provide a handler function");
     }
     const context = {} as TransformContext;
     return async (code, id, options) => {
@@ -155,7 +155,7 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
         const result = runtimeTransform(code, '/src/path with "quotes".tsx', { ssr: true });
 
         expect(result).toBeDefined();
-        expect(result?.code).toContain('"/src/path with \\"quotes\\".tsx"');
+        expect(result?.code).toContain(String.raw`"/src/path with \"quotes\".tsx"`);
     });
 
     it("returns null map", () => {

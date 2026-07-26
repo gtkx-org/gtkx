@@ -36,12 +36,12 @@ const syncMarkupFromSource = (sourceView: Gtk.TextView | null, markupRef: React.
     markupRef.current = buffer.getText(startIter, endIter, false);
 };
 
-interface MarkupStackProps {
+type MarkupStackProps = {
     showSource: boolean;
     formattedViewRef: React.RefObject<Gtk.TextView | null>;
     sourceViewRef: React.RefObject<Gtk.TextView | null>;
     onFormattedRealized: (self: Gtk.Widget) => void;
-}
+};
 
 const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedRealized }: MarkupStackProps) => (
     <GtkStack
@@ -89,14 +89,14 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedR
     </GtkStack>
 );
 
-interface MarkupContextValue {
+type MarkupContextValue = {
     showSource: boolean;
     handleSourceToggle: (active: boolean) => void;
     applyMarkup: () => void;
     formattedViewRef: React.RefObject<Gtk.TextView | null>;
     sourceViewRef: React.RefObject<Gtk.TextView | null>;
     markupRef: React.RefObject<string>;
-}
+};
 
 const MarkupContext = createContext<MarkupContextValue | null>(null);
 
@@ -140,14 +140,14 @@ const MarkupTitlebar = () => {
     const { showSource, handleSourceToggle } = useMarkupContext();
     return (
         <GtkHeaderBar
-            start={
+            start={(
                 <GtkCheckButton
                     label="Source"
                     active={showSource}
                     valign={Gtk.Align.CENTER}
                     onToggled={(btn) => handleSourceToggle(btn.getActive())}
                 />
-            }
+            )}
         />
     );
 };

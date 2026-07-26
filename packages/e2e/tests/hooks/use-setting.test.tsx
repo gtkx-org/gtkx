@@ -70,7 +70,7 @@ describe("useSetting (2)", () => {
     });
 
     it("reads and writes double values", async () => {
-        await expectSettingRoundTrip(TYPED_SCHEMA, "ratio", 1.0, 2.5);
+        await expectSettingRoundTrip(TYPED_SCHEMA, "ratio", 1, 2.5);
     });
 
     it("reflects external GSettings changes via signal handler", async () => {
@@ -120,12 +120,12 @@ describe("useSetting (typed refs: scalars)", () => {
 
     it("reads and writes int64 keys as bigints across the full range", async () => {
         expectTypeOf<SettingValue<TestSchemaKeys, "big-signed">>().toEqualTypeOf<bigint>();
-        await expectSettingRoundTrip(TYPED_SCHEMA, "big-signed", -9223372036854775808n, 9223372036854775807n);
+        await expectSettingRoundTrip(TYPED_SCHEMA, "big-signed", -9_223_372_036_854_775_808n, 9_223_372_036_854_775_807n);
     });
 
     it("reads and writes uint64 keys as bigints across the full range", async () => {
         expectTypeOf<SettingValue<TestSchemaKeys, "big-unsigned">>().toEqualTypeOf<bigint>();
-        await expectSettingRoundTrip(TYPED_SCHEMA, "big-unsigned", 18446744073709551615n, 7n);
+        await expectSettingRoundTrip(TYPED_SCHEMA, "big-unsigned", 18_446_744_073_709_551_615n, 7n);
     });
 });
 

@@ -1,6 +1,6 @@
 export type CleanupFunction = () => void | Promise<void>;
 
-const cleanupQueue = new Set<CleanupFunction>();
+const cleanupQueue: Set<CleanupFunction> = new Set();
 
 export const addToCleanupQueue = (fn: CleanupFunction): void => {
     cleanupQueue.add(fn);

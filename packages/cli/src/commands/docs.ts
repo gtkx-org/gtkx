@@ -1,9 +1,9 @@
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
 import { type ElementProps, readBuiltinElements, resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { resolveReactSubexports } from "../codegen/store-resolver.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 

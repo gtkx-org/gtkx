@@ -1,5 +1,5 @@
-import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { ReactNode } from "react";
+import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { cleanup, render } from "../tests/helpers/production-render.js";
 import { describeSizedBench } from "../tests/helpers/sized-bench.js";
 

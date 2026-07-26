@@ -30,8 +30,8 @@ describe("loadTestingModule", () => {
         });
         const { loadTestingModule } = await importLoader();
 
-        const first = await loadTestingModule().catch((e: Error) => e);
-        const second = await loadTestingModule().catch((e: Error) => e);
+        const first = await loadTestingModule().catch((error: Error) => error);
+        const second = await loadTestingModule().catch((error: Error) => error);
 
         expect(first).toBeInstanceOf(Error);
         expect((first as Error).message).toContain("@gtkx/testing is not installed");

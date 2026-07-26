@@ -28,7 +28,7 @@ export const resolveInterface = (
 };
 
 export function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
-    const visited = new Set<string>();
+    const visited: Set<string> = new Set();
     let current: ResolvedAncestor | undefined = { klass, namespaceName };
     while (current !== undefined) {
         const key = `${current.namespaceName}.${current.klass.name}`;

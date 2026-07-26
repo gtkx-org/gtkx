@@ -17,11 +17,13 @@ export type ErrorDomain<T extends Record<string, number>> = T & {
 };
 
 export function checkError(error: Ref): void {
-    if (error.value !== null) {
-        const gerror = wrapHandle<ErrorLike>(error.value as ExternalObject<Handle>, getWrapperClass(getErrorType()));
-        Error.captureStackTrace(gerror, checkError);
-        throw gerror;
+    if (error.value === null) {
+        return;
     }
+
+    const gerror = wrapHandle<ErrorLike>(error.value as ExternalObject<Handle>, getWrapperClass(getErrorType()));
+    Error.captureStackTrace(gerror, checkError);
+    throw gerror;
 }
 
 const isError = (value: unknown): value is ErrorLike => isTypedClass(value) && value.__type__ === getErrorType();

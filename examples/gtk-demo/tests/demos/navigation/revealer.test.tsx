@@ -6,7 +6,7 @@ import { renderDemo } from "../../test-utils.js";
 
 const REVEALER_COUNT = 9;
 
-const REVEALER_CELLS: Array<{ column: number; row: number }> = [
+const REVEALER_CELLS: { column: number; row: number }[] = [
     { column: 2, row: 2 },
     { column: 2, row: 1 },
     { column: 3, row: 2 },
@@ -72,9 +72,9 @@ describe("revealerDemo structure", () => {
             Gtk.RevealerTransitionType.NONE,
             Gtk.RevealerTransitionType.SLIDE_LEFT,
         ];
-        revealers.forEach((r, i) => {
+        for (const [i, r] of revealers.entries()) {
             expect(r.getTransitionType()).toBe(expectedTransitions[i]);
-        });
+        }
     });
 
     it("places each revealer's child as a GtkImage with the cool-face icon", async () => {
@@ -91,9 +91,9 @@ describe("revealerDemo structure", () => {
         await renderDemo(revealerDemo);
         const grid = (await screen.findByName("revealer-grid")) as Gtk.Grid;
         const revealers = await findAllRevealers();
-        REVEALER_CELLS.forEach((cell, index) => {
+        for (const [index, cell] of REVEALER_CELLS.entries()) {
             expect(grid.getChildAt(cell.column, cell.row)).toBe(revealers[index]);
-        });
+        }
     });
 });
 

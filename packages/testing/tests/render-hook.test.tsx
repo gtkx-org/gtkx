@@ -102,7 +102,7 @@ describe("renderHook unmount", () => {
         });
 
         await unmount();
-        expect(cleanup.length).toBe(1);
+        expect(cleanup).toHaveLength(1);
     });
 });
 
@@ -128,12 +128,12 @@ describe("renderHook wrapper option", () => {
     });
 });
 
+const errorHook = () => {
+    throw new Error("Hook error");
+};
+
 describe("renderHook error handling", () => {
     it("throws when hook throws on initial render", async () => {
-        const errorHook = () => {
-            throw new Error("Hook error");
-        };
-
         await expect(renderHook(errorHook)).rejects.toThrow("Hook error");
     });
 
@@ -197,6 +197,15 @@ describe("renderHook complex hooks state", () => {
     });
 });
 
+const useCounter = (initial: number) => {
+    const [count, setCount] = useState(initial);
+    return {
+        count,
+        increment: () => setCount((c) => c + 1),
+        decrement: () => setCount((c) => c - 1),
+    };
+};
+
 describe("renderHook complex hooks effects", () => {
     it("works with useEffect", async () => {
         const effects: string[] = [];
@@ -223,15 +232,6 @@ describe("renderHook complex hooks effects", () => {
     });
 
     it("works with custom hooks", async () => {
-        const useCounter = (initial: number) => {
-            const [count, setCount] = useState(initial);
-            return {
-                count,
-                increment: () => setCount((c) => c + 1),
-                decrement: () => setCount((c) => c - 1),
-            };
-        };
-
         const { result } = await renderHook(({ initial }: { initial: number }) => useCounter(initial), {
             initialProps: { initial: 10 },
         });

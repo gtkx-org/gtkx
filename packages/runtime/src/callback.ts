@@ -70,14 +70,14 @@ const partitionCallbackArgs = (
 };
 
 const writeOutParams = (outParams: OutParam[], outValues: unknown[]): void => {
-    outParams.forEach((outParam, position) => {
+    for (const [position, outParam] of outParams.entries()) {
         const outValue = outValues[position];
         if (outParam.descriptor.kind === "ref") {
             (outParam.value as { value: unknown }).value = outValue;
         } else if (outValue != null && outParam.value != null) {
-            fillCallerAllocatedBuffer(outParam.descriptor, outParam.value as object, outValue as object);
+            fillCallerAllocatedBuffer(outParam.descriptor, outParam.value, outValue);
         }
-    });
+    }
 };
 
 export const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): unknown =>
@@ -92,7 +92,7 @@ export function wrapCallback(fn: Callback, spec: CallbackSpec, receiver: Callbac
         const wrapped = effectiveTypes.map((descriptor, i) => fromNative(descriptor, rawArgs[i]));
         const thisArg = receiver === "this" ? (wrapped[0] ?? null) : null;
         const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, start);
-        const result = (fn as (this: unknown, ...args: unknown[]) => unknown).apply(thisArg, inputs);
+        const result = (fn).apply(thisArg, inputs);
         if (outParams.length === 0) {
             return toNative(returnDescriptor, result);
         }

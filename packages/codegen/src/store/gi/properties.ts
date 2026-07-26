@@ -1,6 +1,6 @@
-import { collectInterfaceProperties } from "../../analysis/inheritance.js";
 import type { GirClass } from "../../gir/class.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { collectInterfaceProperties } from "../../analysis/inheritance.js";
 import { renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
 import { type ResolvedAccessor, resolveOwnerAccessor } from "./property-accessor.js";
@@ -13,7 +13,7 @@ const interfaceEntries = (context: ModuleContext, klass: GirClass): string[] => 
     const entries: string[] = [];
     for (const { owner, property } of collectInterfaceProperties(context, klass)) {
         const accessor = resolveOwnerAccessor(context, property, owner.methods);
-        if (accessor === undefined || !accessor.hasGetter) continue;
+        if (!accessor?.hasGetter) continue;
         entries.push(propertyEntry(accessor));
     }
     return entries;

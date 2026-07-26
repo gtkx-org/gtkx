@@ -1,8 +1,8 @@
 import { act, render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
+import type { Demo } from "../../src/demos/types.js";
 import { SourceViewer } from "../../src/components/source-viewer.js";
 import { DemoProvider, useDemo } from "../../src/context/demo-context.js";
-import type { Demo } from "../../src/demos/types.js";
 
 type DemoApi = ReturnType<typeof useDemo>;
 

@@ -6,7 +6,7 @@ import { cursorsDemo } from "../../../src/demos/gestures/cursors.js";
 import { renderDemo } from "../../test-utils.js";
 
 const rowFramesFor = async (name: string): Promise<Gtk.Frame[]> => {
-    const label = (await screen.findByText(name)) as Gtk.Widget;
+    const label = (await screen.findByText(name));
     let row: Gtk.Widget | null = label;
     while (row && !(row instanceof Gtk.ListBoxRow)) row = row.getParent();
     const frames: Gtk.Frame[] = [];

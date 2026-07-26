@@ -1,5 +1,5 @@
-import assert from "node:assert";
 import * as Gio from "@gtkx/gi/gio";
+import assert from "node:assert";
 import { useLayoutEffect, useRef } from "react";
 import {
     resolveSettingAccessor,
@@ -21,7 +21,7 @@ export const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSetti
 
     useLayoutEffect(() => {
         const settings = settingsRef.current;
-        assert(settings, "Settings instance should be initialized before useLayoutEffect");
+        assert.ok(settings, "Settings instance should be initialized before useLayoutEffect");
 
         if (path !== settings.path || id !== settings.schema) {
             settingsRef.current = createSettings();

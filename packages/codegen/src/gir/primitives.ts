@@ -1,22 +1,22 @@
 export type PrimitiveCategory =
-    | "void"
-    | "boolean"
-    | "int8"
-    | "uint8"
-    | "int16"
-    | "uint16"
-    | "int32"
-    | "uint32"
-    | "int64"
-    | "uint64"
-    | "bigint64"
-    | "biguint64"
-    | "gtype"
-    | "float32"
-    | "float64"
-    | "string"
-    | "unichar"
-    | "pointer";
+    | "void" |
+    "boolean" |
+    "int8" |
+    "uint8" |
+    "int16" |
+    "uint16" |
+    "int32" |
+    "uint32" |
+    "int64" |
+    "uint64" |
+    "bigint64" |
+    "biguint64" |
+    "gtype" |
+    "float32" |
+    "float64" |
+    "string" |
+    "unichar" |
+    "pointer";
 
 export const PRIMITIVE_SIZE: Record<PrimitiveCategory, number> = {
     void: 0,

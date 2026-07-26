@@ -39,17 +39,17 @@ import { path as wResizePath } from "#data/demos/gestures/cursors/w_resize_curso
 import { path as waitPath } from "#data/demos/gestures/cursors/wait_cursor.png";
 import { path as zoomInPath } from "#data/demos/gestures/cursors/zoom_in_cursor.png";
 import { path as zoomOutPath } from "#data/demos/gestures/cursors/zoom_out_cursor.png";
-import { useCssResource } from "../../use-css-resource.js";
 import type { Demo } from "../types.js";
+import { useCssResource } from "../../use-css-resource.js";
 import cursorsCss from "./cursors.css?raw";
 import sourceCode from "./cursors.tsx?raw";
 
-interface CursorInfo {
+type CursorInfo = {
     name: string;
     image: string;
     hotX: number;
     hotY: number;
-}
+};
 
 const GROUPS: CursorInfo[][] = [
     [
@@ -143,17 +143,17 @@ const buildCursorVariants = (info: CursorInfo) => {
 const buildCursorTooltips = (info: CursorInfo): [string, string, string, string] =>
     info.name === "gtk-logo"
         ? [
-              `The "gtk-logo" named cursor`,
-              "An image cursor for the GTK logo",
-              `An image cursor falling back to the "default" cursor`,
-              `An image cursor falling back to the "default" cursor`,
-          ]
+                `The "gtk-logo" named cursor`,
+                "An image cursor for the GTK logo",
+                `An image cursor falling back to the "default" cursor`,
+                `An image cursor falling back to the "default" cursor`,
+            ]
         : [
-              `The "${info.name}" named cursor`,
-              "An image cursor",
-              `The "${info.name}" named cursor falling back to an image cursor`,
-              `An image cursor falling back to the "${info.name}" cursor`,
-          ];
+                `The "${info.name}" named cursor`,
+                "An image cursor",
+                `The "${info.name}" named cursor falling back to an image cursor`,
+                `An image cursor falling back to the "${info.name}" cursor`,
+            ];
 
 const CursorPreview = ({ info }: { info: CursorInfo }) => {
     const texture = getCursorTexture(info);

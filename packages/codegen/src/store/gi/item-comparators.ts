@@ -1,12 +1,12 @@
+import type { GirFunction } from "../../gir/function.js";
+import type { GirParameter } from "../../gir/parameter.js";
+import type { TypeId } from "../../gir/type-id.js";
+import type { ModuleContext } from "../../writer/context.js";
 import { tObject } from "../../analysis/descriptor.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { resolveInterface } from "../../gir/ancestry.js";
 import { callbackAsFunction, type GirCallback } from "../../gir/callback.js";
-import type { GirFunction } from "../../gir/function.js";
-import type { GirParameter } from "../../gir/parameter.js";
-import type { TypeId } from "../../gir/type-id.js";
-import type { ModuleContext } from "../../writer/context.js";
 
 const COMPARATOR_CALLBACK_TYPES = new Set([
     "GLib.CompareFunc",
@@ -65,7 +65,7 @@ export const itemComparatorArgDescriptors = (
 ): Map<number, string> | undefined => {
     const callback = itemComparatorCallback(context, fn, parameter);
     if (callback === undefined) return undefined;
-    const overrides = new Map<number, string>();
+    const overrides: Map<number, string> = new Map();
     for (const { parameter: item, index } of inputParameters(context.library, callbackAsFunction(callback))) {
         if (isItemPointer(context, item.type)) overrides.set(index, tObject("borrowed"));
     }

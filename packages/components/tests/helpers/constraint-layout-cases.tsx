@@ -1,8 +1,8 @@
+import type { ReactNode, RefObject } from "react";
 import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
-import type { ReactNode, RefObject } from "react";
 import { expect } from "vitest";
 
 export const renderConstraintBox = async (

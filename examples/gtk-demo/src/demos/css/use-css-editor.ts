@@ -1,10 +1,10 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import type * as GLib from "@gtkx/gi/glib";
+import type { RefObject } from "react";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { cssParserWarningQuark } from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { useSignal } from "@gtkx/react";
-import type { RefObject } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 const clearTags = (buffer: Gtk.TextBuffer) => {
@@ -88,7 +88,7 @@ export function useCssEditor(defaultCss: string) {
         setupTags({ buffer, errorTagRef, warningTagRef });
 
         const display = Gdk.DisplayManager.get().getDefaultDisplay();
-        if (display) Gtk.StyleContext.addProviderForDisplay(display, provider, 0xffffffff);
+        if (display) Gtk.StyleContext.addProviderForDisplay(display, provider, 0xFF_FF_FF_FF);
         provider.loadFromString(defaultCss);
 
         return () => {
