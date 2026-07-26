@@ -11,11 +11,11 @@ export const main = defineCommand({
         description: "CLI for GTKX: create and develop GTK4 React applications",
     },
     subCommands: {
-        dev: () => import("./commands/dev.js").then((m) => withErrorBoundary(m.dev)),
-        build: () => import("./commands/build.js").then((m) => withErrorBoundary(m.build)),
-        codegen: () => import("./commands/codegen.js").then((m) => withErrorBoundary(m.codegen)),
-        docs: () => import("./commands/docs.js").then((m) => withErrorBoundary(m.docs)),
-        create: () => import("create-gtkx").then((m) => withErrorBoundary(m.createCommand)),
+        dev: async () => withErrorBoundary((await import("./commands/dev.js")).dev),
+        build: async () => withErrorBoundary((await import("./commands/build.js")).build),
+        codegen: async () => withErrorBoundary((await import("./commands/codegen.js")).codegen),
+        docs: async () => withErrorBoundary((await import("./commands/docs.js")).docs),
+        create: async () => withErrorBoundary((await import("create-gtkx")).createCommand),
     },
 });
 

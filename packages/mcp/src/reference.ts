@@ -75,11 +75,16 @@ type CacheEntry = {
 
 export const createReferenceProvider = (resolveRoot: () => string): ReferenceProvider => {
     const cache: Map<string, CacheEntry> = new Map();
+    const markFailed = async (entry: CacheEntry): Promise<void> => {
+        try {
+            await entry.pending;
+        } catch {
+            entry.failedAt = Date.now();
+        }
+    };
     const startLoad = (root: string): CacheEntry => {
         const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
-        entry.pending.catch(() => {
-            entry.failedAt = Date.now();
-        });
+        void markFailed(entry);
         cache.set(root, entry);
         return entry;
     };
@@ -234,23 +239,24 @@ const variableValue = (value: string | string[] | undefined): string =>
 
 type ResourceServer = Pick<McpServer, "registerResource">;
 
-const swallowLoadFailure =
-    <T>(fallback: T) =>
-        (): T =>
-            fallback;
+const withLoadFallback = async <T>(load: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+        return await load();
+    } catch {
+        return fallback;
+    }
+};
 
 const namespaceCompleter =
     (provider: ReferenceProvider) =>
         (value: string): Promise<string[]> =>
-            provider
-                .get()
-                .then((reference) =>
-                    reference
-                        .namespaces()
-                        .map((summary) => summary.name)
-                        .filter((name) => name.toLowerCase().startsWith(value.toLowerCase())),
-                )
-                .catch(swallowLoadFailure<string[]>([]));
+            withLoadFallback(async () => {
+                const reference = await provider.get();
+                return reference
+                    .namespaces()
+                    .map((summary) => summary.name)
+                    .filter((name) => name.toLowerCase().startsWith(value.toLowerCase()));
+            }, []);
 
 const resourceNotFound = (message: string): McpError => new McpError(ErrorCode.InvalidParams, message);
 
@@ -272,16 +278,19 @@ const registerNamespaceResource = (server: ResourceServer, provider: ReferencePr
         "gtkx-api-namespace",
         new ResourceTemplate("gtkx://reference/{namespace}", {
             list: () =>
-                provider
-                    .get()
-                    .then((reference) => ({
-                        resources: reference.namespaces().map((summary) => ({
-                            uri: `gtkx://reference/${summary.name}`,
-                            name: `${summary.name} namespace reference`,
-                            mimeType: "text/markdown",
-                        })),
-                    }))
-                    .catch(swallowLoadFailure({ resources: [] })),
+                withLoadFallback(
+                    async () => {
+                        const reference = await provider.get();
+                        return {
+                            resources: reference.namespaces().map((summary) => ({
+                                uri: `gtkx://reference/${summary.name}`,
+                                name: `${summary.name} namespace reference`,
+                                mimeType: "text/markdown",
+                            })),
+                        };
+                    },
+                    { resources: [] },
+                ),
             complete: {
                 namespace: namespaceCompleter(provider),
             },
@@ -310,14 +319,12 @@ const registerSymbolResource = (server: ResourceServer, provider: ReferenceProvi
                 symbol: (value, context) => {
                     const namespace = variableValue(context?.arguments?.namespace);
                     if (namespace.length === 0) return [];
-                    return provider
-                        .get()
-                        .then((reference) =>
-                            reference
-                                .symbolNames(namespace)
-                                .filter((name) => name.toLowerCase().startsWith(value.toLowerCase())),
-                        )
-                        .catch(swallowLoadFailure<string[]>([]));
+                    return withLoadFallback(async () => {
+                        const reference = await provider.get();
+                        return reference
+                            .symbolNames(namespace)
+                            .filter((name) => name.toLowerCase().startsWith(value.toLowerCase()));
+                    }, []);
                 },
             },
         }),

@@ -44,9 +44,9 @@ export function newObjectWithProperties(gtype: bigint, props: Record<string, unk
     const values: ExternalObject<Handle>[] = [];
 
     for (const name in props) {
-        const entry = props[name];
+        const entry: unknown = props[name];
         if (!Array.isArray(entry)) continue;
-        const [descriptor, value] = entry;
+        const [descriptor, value] = entry as [Descriptor, unknown];
         if (value === undefined) continue;
         names.push(name);
         values.push(toValue(descriptor, value));

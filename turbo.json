@@ -167,7 +167,7 @@
             "outputs": ["node_modules/.gtkx/**", "node_modules/@gtkx/gi", "node_modules/@gtkx/jsx"]
         },
         "//#coverage:all": {
-            "dependsOn": ["@gtkx/gl#build", "@gtkx/cli#build", "@gtkx/css#build"],
+            "dependsOn": ["@gtkx/gl#build", "@gtkx/cli#build", "@gtkx/css#build", "@gtkx/components#build"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "packages/**/src/**",
@@ -231,7 +231,7 @@
             "outputs": []
         },
         "//#test:all": {
-            "dependsOn": ["@gtkx/gl#build", "@gtkx/cli#build", "@gtkx/css#build"],
+            "dependsOn": ["@gtkx/gl#build", "@gtkx/cli#build", "@gtkx/css#build", "@gtkx/components#build"],
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "packages/**/src/**",

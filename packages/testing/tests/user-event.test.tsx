@@ -381,7 +381,7 @@ describe("userEvent.deselectOptions", () => {
 
 describe("userEvent.rotate", () => {
     it("emits angle-changed on a widget's GestureRotate controller", async () => {
-        const handleAngleChanged = vi.fn();
+        const handleAngleChanged = vi.fn<(angle: number, delta: number) => void>();
         const label = await renderGesturedLabel(
             "rotated",
             "Rotate me",
@@ -395,7 +395,7 @@ describe("userEvent.rotate", () => {
     });
 
     it("supports a separate delta angle", async () => {
-        const handleAngleChanged = vi.fn();
+        const handleAngleChanged = vi.fn<(angle: number, delta: number) => void>();
         const label = await renderGesturedLabel(
             "rotated",
             "Rotate me",
@@ -418,7 +418,7 @@ describe("userEvent.rotate", () => {
 
 describe("userEvent.zoom", () => {
     it("emits scale-changed on a widget's GestureZoom controller", async () => {
-        const handleScaleChanged = vi.fn();
+        const handleScaleChanged = vi.fn<(scale: number) => void>();
         const label = await renderGesturedLabel(
             "zoomed",
             "Zoom me",
@@ -433,7 +433,7 @@ describe("userEvent.zoom", () => {
 
 describe("userEvent.swipe", () => {
     it("emits swipe with the given velocity vector", async () => {
-        const handleSwipe = vi.fn();
+        const handleSwipe = vi.fn<(vx: number, vy: number) => void>();
         const label = await renderGesturedLabel("swiped", "Swipe me", <GtkGestureSwipe onSwipe={handleSwipe} />);
         await userEvent.swipe(label, 200, -100);
 
@@ -445,7 +445,7 @@ describe("userEvent.swipe", () => {
 
 describe("userEvent.longPress", () => {
     it("emits pressed at the given coordinates", async () => {
-        const handlePressed = vi.fn();
+        const handlePressed = vi.fn<(x: number, y: number) => void>();
         const label = await renderGesturedLabel(
             "long-pressed",
             "Long press me",
@@ -459,7 +459,7 @@ describe("userEvent.longPress", () => {
     });
 
     it("defaults to (0, 0) when no coordinates are given", async () => {
-        const handlePressed = vi.fn();
+        const handlePressed = vi.fn<(x: number, y: number) => void>();
         const label = await renderGesturedLabel(
             "long-pressed",
             "Long press me",
@@ -627,7 +627,7 @@ describe("controller fan-out", () => {
     });
 
     it("emits pressed at the center of the widget's allocation", async () => {
-        const handlePressed = vi.fn();
+        const handlePressed = vi.fn<(nPress: number, x: number, y: number) => void>();
         await render(<GtkButton label="Centered" controllers={<GtkGestureClick onPressed={handlePressed} />} />);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Centered" });
         await userEvent.click(button);
@@ -663,7 +663,8 @@ describe("controller fan-out", () => {
 
     it("delivers a drag sequence to every drag gesture controller", async () => {
         const firstEvents: string[] = [];
-        const secondEvents: string[] = []; const label = await renderGesturedLabel(
+        const secondEvents: string[] = [];
+        const label = await renderGesturedLabel(
             "multi-dragged",
             "Drag me",
             <>
@@ -718,39 +719,39 @@ const renderDropZone = async (
 
 describe("userEvent.drop", () => {
     it("emits drop on the widget's DropTarget with a string payload", async () => {
-        const handleDrop = vi.fn().mockReturnValue(true);
+        const handleDrop = vi.fn<(value: GObject.Value, x: number, y: number) => boolean>().mockReturnValue(true);
         const target = await renderDropZone("drop-zone", "Drop here", GObject.TYPE_STRING, handleDrop);
         await userEvent.drop(target, "payload", { x: 10, y: 20 });
 
         expect(handleDrop).toHaveBeenCalledTimes(1);
         const [value, x, y] = handleDrop.mock.calls[0] ?? [];
-        expect((value as GObject.Value).getString()).toBe("payload");
+        expect(value?.getString()).toBe("payload");
         expect(x).toBe(10);
         expect(y).toBe(20);
     });
 
     it("auto-marshals numeric payloads", async () => {
-        const handleDrop = vi.fn().mockReturnValue(true);
+        const handleDrop = vi.fn<(value: GObject.Value, x: number, y: number) => boolean>().mockReturnValue(true);
         const target = await renderDropZone("number-zone", "Drop a number", GObject.TYPE_DOUBLE, handleDrop);
         await userEvent.drop(target, 42);
 
         const [value] = handleDrop.mock.calls[0] ?? [];
-        expect((value as GObject.Value).getDouble()).toBe(42);
+        expect(value?.getDouble()).toBe(42);
     });
 
     it("auto-marshals boolean payloads", async () => {
-        const handleDrop = vi.fn().mockReturnValue(true);
+        const handleDrop = vi.fn<(value: GObject.Value, x: number, y: number) => boolean>().mockReturnValue(true);
         const target = await renderDropZone("bool-zone", "Drop a flag", GObject.TYPE_BOOLEAN, handleDrop);
         await userEvent.drop(target, true);
 
         const [value] = handleDrop.mock.calls[0] ?? [];
-        expect((value as GObject.Value).getBoolean()).toBe(true);
+        expect(value?.getBoolean()).toBe(true);
     });
 });
 
 describe("userEvent.drop — value passthrough and errors", () => {
     it("forwards a pre-built GObject.Value unchanged", async () => {
-        const handleDrop = vi.fn().mockReturnValue(true);
+        const handleDrop = vi.fn<(value: GObject.Value, x: number, y: number) => boolean>().mockReturnValue(true);
         const target = await renderDropZone("value-zone", "Drop a value", GObject.TYPE_STRING, handleDrop);
         const value = new GObject.Value();
         value.init(GObject.TYPE_STRING);
@@ -758,7 +759,7 @@ describe("userEvent.drop — value passthrough and errors", () => {
         await userEvent.drop(target, value);
 
         const [received] = handleDrop.mock.calls[0] ?? [];
-        expect((received as GObject.Value).getString()).toBe("preserved");
+        expect(received?.getString()).toBe("preserved");
     });
 
     it("throws when the widget has no DropTarget controller", async () => {
@@ -771,12 +772,12 @@ describe("userEvent.drop — value passthrough and errors", () => {
 
 describe("userEvent.dragAndDrop", () => {
     it("fires drop on the target after verifying the source's DragSource", async () => {
-        const handleDrop = vi.fn().mockReturnValue(true);
+        const handleDrop = vi.fn<(value: GObject.Value, x: number, y: number) => boolean>().mockReturnValue(true);
         const { source, target } = await renderDragAndDropPair({ onDrop: handleDrop });
         await userEvent.dragAndDrop(source, target, "payload");
 
         const [value] = handleDrop.mock.calls[0] ?? [];
-        expect((value as GObject.Value).getString()).toBe("payload");
+        expect(value?.getString()).toBe("payload");
     });
 
     it("throws when the source has no DragSource controller", async () => {
