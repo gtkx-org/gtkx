@@ -11,10 +11,9 @@ import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-
 let nextAppId = 0;
-const uniqueAppId = (): string => `org.gtkx.actionaccelstest${nextAppId++}`;
 
+const uniqueAppId = (): string => `org.gtkx.actionaccelstest${nextAppId++}`;
 const noop = () => {};
 
 type AccelsAppProps = {
@@ -50,14 +49,12 @@ const renderWinNewAccels = async (appRef: RefObject<Gtk.Application | null>, app
     });
 
     expect(appRef.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
-
     return rendered;
 };
 
 describe("GtkApplication actionAccels", () => {
     it("binds window-scoped accels from the actionAccels prop", async () => {
         const ref = createRef<Gtk.Application>();
-
         await renderWinNewAccels(ref, uniqueAppId());
     });
 
@@ -77,9 +74,7 @@ describe("GtkApplication actionAccels", () => {
     it("clears accels when an entry is removed", async () => {
         const ref = createRef<Gtk.Application>();
         const appId = uniqueAppId();
-
         const { rerender } = await renderWinNewAccels(ref, appId);
-
         await rerender(<AccelsApp appRef={ref} appId={appId} actionAccels={[]} windowActions={newWindowAction} />);
         expect(ref.current?.getAccelsForAction("win.new")).toEqual([]);
     });

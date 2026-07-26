@@ -9,7 +9,7 @@ const elementRefOf = (node: RawNode, context: ParseContext): TypeId => {
     return elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
 };
 
-export const typeRefFromNode = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
+const typeRefFromNode = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
     if (parent === undefined) return undefined;
     if (childOf(parent, "varargs") !== undefined) return context.addVarargs();
     const arrayNode = childOf(parent, "array");
@@ -25,6 +25,7 @@ const hashTableRefFromNode = (typeNode: RawNode, context: ParseContext): TypeId 
     const elementTypes = childrenOf(typeNode, "type");
     const keyNode = elementTypes[0];
     const valueNode = elementTypes[1];
+
     return context.addContainer({
         kind: "hashtable",
         key: keyNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(keyNode, context),
@@ -34,17 +35,15 @@ const hashTableRefFromNode = (typeNode: RawNode, context: ParseContext): TypeId 
 
 const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId => {
     const name = nameAttr(typeNode);
-
     const listFlavor = LIST_FLAVOR_BY_NAME_LOOKUP.get(name);
+
     if (listFlavor !== undefined) {
         return context.addContainer({ kind: "list", flavor: listFlavor, element: elementRefOf(typeNode, context) });
     }
 
     if (name === "GLib.HashTable") return hashTableRefFromNode(typeNode, context);
-
     const primitive = primitiveCategory(name);
     if (primitive !== undefined) return context.addPrimitive(primitive);
-
     return context.findType(name);
 };
 
@@ -52,10 +51,13 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
     const element = elementRefOf(arrayNode, context);
     const arrayName = attr(arrayNode, "name");
     const listFlavor = arrayName === undefined ? undefined : LIST_FLAVOR_BY_NAME_LOOKUP.get(arrayName);
+
     if (listFlavor !== undefined) {
         return context.addContainer({ kind: "list", flavor: listFlavor, element });
     }
+
     const elementNode = childOf(arrayNode, "type");
+
     const carray: CArrayType = {
         kind: "carray",
         element,
@@ -63,13 +65,16 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
         lengthParameterIndex: intAttr(arrayNode, "length"),
         fixedSize: intAttr(arrayNode, "fixed-size"),
     };
+
     return context.addContainer(carray);
 };
 
 const pointerFallback = (context: ParseContext): TypeId => context.addPrimitive("pointer");
 
-export const splitOptionalNamespace = (name: string): [string | undefined, string] => {
+const splitOptionalNamespace = (name: string): [string | undefined, string] => {
     const dot = name.indexOf(".");
     if (dot === -1) return [undefined, name];
     return [name.slice(0, dot), name.slice(dot + 1)];
 };
+
+export { typeRefFromNode, splitOptionalNamespace };

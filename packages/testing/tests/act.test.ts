@@ -11,9 +11,11 @@ describe("act / sync callback", () => {
 
     it("runs the callback synchronously before resolving", () => {
         let ran = false;
+
         act(() => {
             ran = true;
         });
+
         expect(ran).toBe(true);
     });
 
@@ -24,12 +26,15 @@ describe("act / sync callback", () => {
 
     it("drains queued microtasks before resolving", async () => {
         const order: number[] = [];
+
         await act(() => {
             queueMicrotask(() => {
                 order.push(2);
             });
+
             order.push(1);
         });
+
         order.push(3);
         expect(order).toEqual([1, 2, 3]);
     });
@@ -38,11 +43,13 @@ describe("act / sync callback", () => {
 describe("act / async callback", () => {
     it("awaits async callbacks before resolving", async () => {
         const order: number[] = [];
+
         await act(async () => {
             order.push(1);
             await Promise.resolve();
             order.push(2);
         });
+
         order.push(3);
         expect(order).toEqual([1, 2, 3]);
     });
@@ -58,9 +65,11 @@ describe("act / IS_REACT_ACT_ENVIRONMENT", () => {
         const before = getIsReactActEnvironment();
         setIsReactActEnvironment(false);
         let insideEnv: boolean | undefined;
+
         await act(() => {
             insideEnv = getIsReactActEnvironment();
         });
+
         expect(insideEnv).toBe(true);
         expect(getIsReactActEnvironment()).toBe(false);
         setIsReactActEnvironment(before);
@@ -71,11 +80,13 @@ describe("act / IS_REACT_ACT_ENVIRONMENT", () => {
         setIsReactActEnvironment(false);
         let envBeforeAwait: boolean | undefined;
         let envAfterAwait: boolean | undefined;
+
         await act(async () => {
             envBeforeAwait = getIsReactActEnvironment();
             await Promise.resolve();
             envAfterAwait = getIsReactActEnvironment();
         });
+
         expect(envBeforeAwait).toBe(true);
         expect(envAfterAwait).toBe(true);
         expect(getIsReactActEnvironment()).toBe(false);
@@ -85,11 +96,13 @@ describe("act / IS_REACT_ACT_ENVIRONMENT", () => {
     it("restores the flag after a sync throw", () => {
         const before = getIsReactActEnvironment();
         setIsReactActEnvironment(false);
+
         expect(() =>
             act(() => {
                 throw new Error("boom");
             }),
         ).toThrow("boom");
+
         expect(getIsReactActEnvironment()).toBe(false);
         setIsReactActEnvironment(before);
     });
@@ -97,11 +110,13 @@ describe("act / IS_REACT_ACT_ENVIRONMENT", () => {
     it("restores the flag after an async rejection", async () => {
         const before = getIsReactActEnvironment();
         setIsReactActEnvironment(false);
+
         await expect(
             act(async () => {
                 throw new Error("boom");
             }),
         ).rejects.toThrow("boom");
+
         expect(getIsReactActEnvironment()).toBe(false);
         setIsReactActEnvironment(before);
     });

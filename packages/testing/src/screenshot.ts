@@ -6,11 +6,11 @@ import { join } from "node:path";
 import type { ScreenshotOptions, ScreenshotResult, WindowSelector } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
+const DEFAULT_SCREENSHOT_INTERVAL = 10;
+
 const bytesToBase64 = (bytes: number[]): string => {
     return Buffer.from(bytes).toString("base64");
 };
-
-const DEFAULT_SCREENSHOT_INTERVAL = 10;
 
 const describeWidgetState = (widget: Gtk.Widget): string =>
     `realized=${widget.getRealized()} mapped=${widget.getMapped()} visible=${widget.getVisible()}`;
@@ -34,7 +34,6 @@ const captureSnapshot = (widget: Gtk.Widget, scale: number): ScreenshotResult =>
     }
 
     const display = widget.getDisplay();
-
     const renderer = new Gsk.CairoRenderer();
     renderer.realizeForDisplay(display);
 
@@ -65,7 +64,7 @@ const captureSnapshot = (widget: Gtk.Widget, scale: number): ScreenshotResult =>
  * @param options Optional scale, timeout, and retry interval.
  * @returns The base64-encoded PNG data along with its mime type and dimensions.
  */
-export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
+const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
     const scale = options?.scale ?? 1;
 
     if (!Number.isFinite(scale) || scale <= 0) {
@@ -80,32 +79,41 @@ export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions
 
 const firstToplevelWindow = (windows: Gtk.Widget[]): Gtk.Window => {
     const [first] = windows;
+
     if (!(first instanceof Gtk.Window)) {
         throw new TypeError("First toplevel is not a Window");
     }
+
     return first;
 };
 
 const windowAtIndex = (windows: Gtk.Widget[], index: number): Gtk.Window => {
     const indexed = windows[index];
+
     if (!(indexed instanceof Gtk.Window)) {
         throw new TypeError(`Window at index ${index} not found`);
     }
+
     return indexed;
 };
 
+const isWindow = (widget: Gtk.Widget): widget is Gtk.Window => widget instanceof Gtk.Window;
+
+const titleMatches = (window: Gtk.Window, selector: string | RegExp): boolean => {
+    const title = window.getTitle() ?? "";
+    return selector instanceof RegExp ? selector.test(title) : title.includes(selector);
+};
+
+const describeTitleSelector = (selector: string | RegExp): string =>
+    selector instanceof RegExp ? selector.toString() : `"${selector}"`;
+
 const windowByTitle = (windows: Gtk.Widget[], selector: string | RegExp): Gtk.Window => {
-    const isRegex = selector instanceof RegExp;
-    const found = windows.find((w): w is Gtk.Window => {
-        if (!(w instanceof Gtk.Window)) return false;
-        const title = w.getTitle() ?? "";
-        return isRegex ? selector.test(title) : title.includes(selector);
-    });
+    const found = windows.filter(isWindow).find((window) => titleMatches(window, selector));
 
     if (!found) {
-        const pattern = isRegex ? selector.toString() : `"${selector}"`;
-        throw new Error(`No window found with title matching ${pattern}`);
+        throw new Error(`No window found with title matching ${describeTitleSelector(selector)}`);
     }
+
     return found;
 };
 
@@ -123,9 +131,11 @@ const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
 
 const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
     const dir = join(tmpdir(), "gtkx-screenshots");
+
     if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
     }
+
     const filepath = join(dir, `${Date.now()}-screenshot.png`);
     writeFileSync(filepath, Buffer.from(result.data, "base64"));
     return filepath;
@@ -136,7 +146,7 @@ const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
  *
  * @param filepath Absolute path of the saved screenshot file.
  */
-export const logScreenshotPath = (filepath: string): void => {
+const logScreenshotPath = (filepath: string): void => {
     console.log(`Screenshot saved: file://${filepath}`);
 };
 
@@ -149,7 +159,7 @@ export const logScreenshotPath = (filepath: string): void => {
  * @param options Optional scale, timeout, and retry interval.
  * @returns The base64-encoded PNG data along with its mime type and dimensions.
  */
-export const captureAndSaveScreenshot = async (
+const captureAndSaveScreenshot = async (
     selector?: WindowSelector,
     options?: ScreenshotOptions,
 ): Promise<ScreenshotResult> => {
@@ -158,3 +168,5 @@ export const captureAndSaveScreenshot = async (
     logScreenshotPath(saveScreenshotToTempFile(result));
     return result;
 };
+
+export { screenshot, logScreenshotPath, captureAndSaveScreenshot };

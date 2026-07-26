@@ -16,12 +16,13 @@ const renderAssetUrl = (
     }
 
     const filenameLiteral = JSON.stringify(`./${filename}`);
+
     return {
         runtime: `new URL(${filenameLiteral}, import.meta.url).pathname`,
     };
 };
 
-export function gtkxBuiltUrl(assetBase?: string): Plugin {
+function gtkxBuiltUrl(assetBase?: string): Plugin {
     return {
         name: "gtkx:built-url",
         apply: "build",
@@ -41,3 +42,5 @@ export function gtkxBuiltUrl(assetBase?: string): Plugin {
         },
     };
 }
+
+export { gtkxBuiltUrl };

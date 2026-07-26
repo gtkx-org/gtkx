@@ -22,14 +22,12 @@ const buildTextListView = (items: TextItem[]) => (
 );
 
 const buildValueDropDown = (items: string[]) => <DropDown items={items.map((item) => ({ id: item, value: item }))} />;
-
 const comboBox = () => screen.getByRole(Gtk.AccessibleRole.COMBO_BOX);
 
 describe("render - ListItem (1)", () => {
     describe("ListItem (1)", () => {
         it("renders list item in ListView", async () => {
             await render(buildTextListView([{ id: "1", text: "First" }]));
-
             expectAllVisibleOnce("First");
         });
 
@@ -63,7 +61,6 @@ describe("render - ListItem (2)", () => {
         it("updates item value on prop change", async () => {
             const { rerender } = await render(<App value={{ text: "Initial" }} />);
             expect(screen.queryAllByText("Initial")).toHaveLength(1);
-
             await rerender(<App value={{ text: "Updated" }} />);
             expect(screen.queryAllByText("Updated")).toHaveLength(1);
             expect(screen.queryAllByText("Initial")).toHaveLength(0);
@@ -78,8 +75,8 @@ describe("render - ListItem (2)", () => {
                 ],
                 buildTextListView,
             );
-            expectAllVisibleOnce("First", "Second", "Third");
 
+            expectAllVisibleOnce("First", "Second", "Third");
             await rerender([{ id: "1", text: "First" }]);
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Second")).toHaveLength(0);
@@ -98,6 +95,7 @@ describe("render - ListItem (3)", () => {
                 ],
                 buildTextListView,
             );
+
             expectAllVisibleOnce("First", "Last");
 
             await rerender([
@@ -105,6 +103,7 @@ describe("render - ListItem (3)", () => {
                 { id: "middle", text: "Middle" },
                 { id: "last", text: "Last" },
             ]);
+
             expectAllVisibleOnce("First", "Middle", "Last");
         });
     });
@@ -118,20 +117,17 @@ describe("render - ListItem (4)", () => {
     describe("ListItem in DropDown (1)", () => {
         it("renders list item in DropDown", async () => {
             await render(<DropDown items={[{ id: "item1", value: "Item Value" }]} />);
-
             expect(screen.queryAllByText("Item Value").length).toBeGreaterThan(0);
         });
 
         it("handles string value", async () => {
             await render(<DropDown items={[{ id: "test", value: "Test String" }]} />);
-
             expect(screen.queryAllByText("Test String").length).toBeGreaterThan(0);
         });
 
         it("updates value on prop change", async () => {
             const { rerender } = await render(<App2 value="Initial" />);
             expect(screen.queryAllByText("Initial").length).toBeGreaterThan(0);
-
             await rerender(<App2 value="Updated" />);
             expect(screen.queryAllByText("Updated").length).toBeGreaterThan(0);
             expect(screen.queryAllByText("Initial")).toHaveLength(0);
@@ -153,10 +149,8 @@ describe("render - ListItem (5)", () => {
             );
 
             await screen.findAllByText("First");
-
             await userEvent.selectOptions(comboBox(), 1);
             await screen.findAllByText("Second");
-
             await userEvent.selectOptions(comboBox(), 2);
             await screen.findAllByText("Third");
         });
@@ -164,17 +158,13 @@ describe("render - ListItem (5)", () => {
         it("inserts item before existing item", async () => {
             const { rerender } = await renderChildren(["first", "last"], buildValueDropDown);
             await screen.findAllByText("first");
-
             await userEvent.selectOptions(comboBox(), 1);
             await screen.findAllByText("last");
-
             await rerender(["first", "middle", "last"]);
             await userEvent.selectOptions(comboBox(), 0);
             await screen.findAllByText("first");
-
             await userEvent.selectOptions(comboBox(), 1);
             await screen.findAllByText("middle");
-
             await userEvent.selectOptions(comboBox(), 2);
             await screen.findAllByText("last");
         });

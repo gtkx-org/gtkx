@@ -30,15 +30,18 @@ describe("createVirtualNamespace().resolveToVirtual", () => {
 
     it("resolves with skipSelf and wraps the resolved id", async () => {
         const resolve = vi.fn(() => Promise.resolve({ id: "/abs/style.css" }));
+
         const result = await ns.resolveToVirtual(
             { resolve },
             { source: "./style.css", importer: "/importer.ts", options: { custom: 1 } },
         );
+
         expect(resolve).toHaveBeenCalledWith(
             "./style.css",
             "/importer.ts",
             expect.objectContaining({ custom: 1, skipSelf: true }),
         );
+
         expect(result).toBe(`${PREFIX}/abs/style.css`);
     });
 
@@ -47,6 +50,7 @@ describe("createVirtualNamespace().resolveToVirtual", () => {
             { resolve: () => Promise.resolve(null) },
             { source: "./x", importer: undefined, options: {} },
         );
+
         expect(result).toBeUndefined();
     });
 
@@ -55,6 +59,7 @@ describe("createVirtualNamespace().resolveToVirtual", () => {
             { resolve: () => Promise.resolve({ id: "/abs/x.css", external: true }) },
             { source: "./x.css", importer: undefined, options: undefined },
         );
+
         expect(result).toBeUndefined();
     });
 });

@@ -6,25 +6,20 @@ describe("Pango.GlyphString.glyphs", () => {
         const glyphString = Pango.GlyphString.new();
         glyphString.setSize(2);
         expect(glyphString.numGlyphs).toBe(2);
-
         const glyphs = glyphString.glyphs;
         expect(glyphs).toHaveLength(2);
-
         const first = glyphs[0];
         const second = glyphs[1];
         expect(first).toBeDefined();
         expect(second).toBeDefined();
         if (!first || !second) return;
-
         first.glyph = 65;
         first.geometry = { width: 1024, xOffset: 8, yOffset: -4 };
         first.attr = { isClusterStart: 1, isColor: 0 };
         second.glyph = 66;
         second.geometry = { width: 2048, xOffset: -16, yOffset: 32 };
         second.attr = { isClusterStart: 0, isColor: 1 };
-
         glyphString.glyphs = glyphs;
-
         const readBack = glyphString.glyphs;
         expect(readBack[0]?.glyph).toBe(65);
         expect(readBack[0]?.geometry).toEqual({ width: 1024, xOffset: 8, yOffset: -4 });
@@ -42,7 +37,6 @@ describe("Pango.GlyphVisAttr", () => {
         attr.isColor = 1;
         expect(attr.isClusterStart).toBe(1);
         expect(attr.isColor).toBe(1);
-
         attr.isClusterStart = 0;
         expect(attr.isClusterStart).toBe(0);
         expect(attr.isColor).toBe(1);

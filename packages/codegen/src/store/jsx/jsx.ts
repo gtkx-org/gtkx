@@ -25,8 +25,22 @@ type GenerateJsxOptions = {
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
 };
 
-const ACCESSIBLE_INTERFACE_GLIB_NAME = "GtkAccessible";
+type InterfaceBlockContext = {
+    library: Library;
+    targetNamespaceName: string;
+    imports: ImportsBuilder;
+    hasContainerProps: HasContainerProps;
+};
 
+type RenderPropBlockContext = {
+    isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
+    intrinsicElementByGlibName: Map<string, GlibNamedClass>;
+    targetNamespaceName: string;
+    imports: ImportsBuilder;
+    hasContainerProps: (glibName: string | undefined) => boolean;
+};
+
+const ACCESSIBLE_INTERFACE_GLIB_NAME = "GtkAccessible";
 const ACCESSIBLE_PROPS_NAME = "AccessibleProps";
 
 const addGiNamespace = (imports: ImportsBuilder, namespaceName: string, alias: string): void => {
@@ -58,7 +72,7 @@ const dedupePropLines = (lines: string[]): string[] => {
     return result;
 };
 
-export const generateJsxSection = (
+const generateJsxSection = (
     targetNamespace: GirNamespace,
     library: Library,
     options: GenerateJsxOptions,
@@ -66,6 +80,7 @@ export const generateJsxSection = (
     const { excludeNames, imports, intrinsicElements, intrinsicElementByGlibName } = options;
     const namespaceElements = intrinsicElements.filter((entry) => entry.namespace.name === targetNamespace.name);
     const intrinsicElementConsts = namespaceElements.filter((entry) => !excludeNames.has(entry.glibName));
+
     const constLines = intrinsicElementConsts.map(
         (entry) => `export const ${entry.glibName} = ${sourceStringLiteral(entry.glibName)} as const;`,
     );
@@ -74,9 +89,9 @@ export const generateJsxSection = (
         const candidateGlib = glibNameOf(candidate);
         return candidateGlib !== undefined && intrinsicElementByGlibName.has(candidateGlib);
     };
+
     addReactBuiltin(imports, "ReactNode");
     addReactBuiltin(imports, "Ref");
-
     const interfaceResult = renderInterfacePropBlocks(library, targetNamespace.name, options);
     let needsReactElement = interfaceResult.needsReactElement;
     const propBlocks: string[] = [...interfaceResult.blocks];
@@ -88,11 +103,13 @@ export const generateJsxSection = (
         imports,
         hasContainerProps: interfaceResult.hasContainerProps,
     };
+
     for (const entry of namespaceElements) {
         const { block, objectPropNames } = renderPropBlock(library, entry, blockContext);
         if (objectPropNames.length > 0) needsReactElement = true;
         propBlocks.push(block);
     }
+
     if (needsReactElement) addReactBuiltin(imports, "ReactElement");
 
     const source = [
@@ -102,14 +119,8 @@ export const generateJsxSection = (
         "",
         renderJsxAugmentation(namespaceElements),
     ].join("\n");
-    return { source, intrinsicCount: intrinsicElementConsts.length };
-};
 
-type InterfaceBlockContext = {
-    library: Library;
-    targetNamespaceName: string;
-    imports: ImportsBuilder;
-    hasContainerProps: HasContainerProps;
+    return { source, intrinsicCount: intrinsicElementConsts.length };
 };
 
 const hasContainerProps: HasContainerProps = (glibName) =>
@@ -124,6 +135,7 @@ const renderInterfacePropBlocks = (
     const context: InterfaceBlockContext = { library, targetNamespaceName, imports, hasContainerProps };
     const blocks: string[] = [];
     let needsReactElement = false;
+
     for (const iface of collectInterfacePropsClasses(
         library,
         intrinsicElements,
@@ -135,6 +147,7 @@ const renderInterfacePropBlocks = (
         if (objectPropNames.length > 0) needsReactElement = true;
         blocks.push(block);
     }
+
     return { blocks, needsReactElement, hasContainerProps };
 };
 
@@ -174,10 +187,12 @@ const prerequisiteExtendRef = (
 
 const interfacePrerequisiteExtends = (iface: ResolvedQualifiedInterface, context: InterfaceBlockContext): string[] => {
     const refs: string[] = [];
+
     for (const prerequisiteName of iface.klass.prerequisites) {
         const ref = prerequisiteExtendRef(prerequisiteName, iface, context);
         if (ref !== undefined) refs.push(ref);
     }
+
     return refs;
 };
 
@@ -187,6 +202,7 @@ const renderInterfacePropsBlock = (
 ): { block: string; objectPropNames: string[] } => {
     const { library, imports } = context;
     const glib = glibNameOf(iface.klass);
+
     const {
         propLines,
         imports: propImports,
@@ -196,10 +212,12 @@ const renderInterfacePropsBlock = (
         iface: iface.klass,
         namespace: iface.namespace,
     });
+
     for (const [namespace, alias] of propImports) addGiNamespace(imports, namespace, alias);
     const ownerLines = dedupePropLines(propLines);
     const prerequisiteExtends = interfacePrerequisiteExtends(iface, context);
     const declared = glib === undefined ? undefined : elementPropTypeFor(glib);
+
     if (declared !== undefined) {
         const alias = `${declared.export}Base`;
         imports.addNamed(declared.module, declared.export, true, alias);
@@ -210,13 +228,16 @@ const renderInterfacePropsBlock = (
         imports.addNamed("@gtkx/react", ACCESSIBLE_PROPS_NAME, true);
         prerequisiteExtends.push(ACCESSIBLE_PROPS_NAME);
     }
+
     const extendsClause = prerequisiteExtends.length === 0 ? "" : ` extends ${prerequisiteExtends.join(", ")}`;
     addGiNamespace(imports, iface.namespace.name, giNamespaceAlias(iface.namespace.name));
     const selfDefault = `${giNamespaceAlias(iface.namespace.name)}.${iface.klass.name}`;
+
     const block = `${renderJsDoc(iface.klass.doc)}${renderBlock(
         `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`,
         ownerLines.join("\n"),
     )}`;
+
     return { block, objectPropNames };
 };
 
@@ -225,14 +246,6 @@ const renderJsxAugmentation = (namespaceElements: GlibNamedClass[]): string => {
     const intrinsicInterface = renderBlock("interface IntrinsicElements", elementLines);
     const reactJsxNamespace = renderBlock("namespace React.JSX", intrinsicInterface);
     return renderBlock("declare global", reactJsxNamespace);
-};
-
-type RenderPropBlockContext = {
-    isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
-    intrinsicElementByGlibName: Map<string, GlibNamedClass>;
-    targetNamespaceName: string;
-    imports: ImportsBuilder;
-    hasContainerProps: (glibName: string | undefined) => boolean;
 };
 
 const renderPropBlock = (
@@ -246,33 +259,40 @@ const renderPropBlock = (
         namespace: entry.namespace,
         isIntrinsicElementAncestor: context.isIntrinsicElementAncestor,
     });
+
     for (const [namespace, alias] of imports) addGiNamespace(context.imports, namespace, alias);
     addGiNamespace(context.imports, entry.namespace.name, giNamespaceAlias(entry.namespace.name));
     const ownerLines = dedupePropLines(["ref?: Ref<Self | null> | undefined;", ...propLines]);
     const extendsList = resolveElementExtends(library, entry, context);
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
     const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${entry.klass.name}`;
+
     const block = `${renderJsDoc(entry.klass.doc)}${renderBlock(
         `export interface ${entry.glibName}Props<Self = ${selfDefault}>${extendsClause}`,
         ownerLines.join("\n"),
     )}`;
+
     return { block, objectPropNames };
 };
 
 const resolveElementExtends = (library: Library, entry: GlibNamedClass, context: RenderPropBlockContext): string[] => {
     const extendsList: string[] = [];
     const declared = elementPropTypeFor(entry.glibName);
+
     if (declared !== undefined) {
         const alias = `${declared.export}Base`;
         context.imports.addNamed(declared.module, declared.export, true, alias);
         extendsList.push(alias);
     }
+
     const parentRef = resolveParentPropsRef(library, entry, context);
     if (parentRef !== undefined) extendsList.push(parentRef);
+
     for (const iface of newlyImplementedInterfaces(entry.klass, entry.namespace, library, context.hasContainerProps)) {
         const ref = interfacePropsRef(iface, context.targetNamespaceName, context.imports);
         if (ref !== undefined) extendsList.push(ref);
     }
+
     return extendsList;
 };
 
@@ -298,3 +318,5 @@ const resolveParentPropsRef = (
     registerCrossNsProps(context.imports, context.targetNamespaceName, resolved.namespace.name, `${parentGlib}Props`);
     return `${parentGlib}Props<Self>`;
 };
+
+export { generateJsxSection };

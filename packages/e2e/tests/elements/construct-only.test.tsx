@@ -9,9 +9,7 @@ import { describe, expect, it } from "vitest";
 describe("construct-only properties", () => {
     it("sets cssName during widget construction", async () => {
         const ref = createRef<Gtk.Box>();
-
         await render(<GtkBox ref={ref} cssName="my-custom-widget" />);
-
         expect(ref.current).not.toBeNull();
         expect(ref.current?.getCssName()).toBe("my-custom-widget");
     });
@@ -25,25 +23,20 @@ describe("construct-only properties", () => {
 
         const { rerender } = await render(<App name="initial-name" />);
         expect(ref.current?.getCssName()).toBe("initial-name");
-
         await rerender(<App name="changed-name" />);
         expect(ref.current?.getCssName()).toBe("initial-name");
     });
 
     it("creates widget without construct-only prop set", async () => {
         const ref = createRef<Gtk.Box>();
-
         await render(<GtkBox ref={ref} />);
-
         expect(ref.current).not.toBeNull();
         expect(ref.current?.getCssName()).toBeTruthy();
     });
 
     it("constructs and sets a property a class redeclares from an ancestor", async () => {
         const ref = createRef<Adw.PreferencesPage>();
-
         await render(<AdwPreferencesPage ref={ref} name="general" title="General" />);
-
         expect(ref.current).not.toBeNull();
         expect(ref.current?.name).toBe("general");
         expect(ref.current?.getTitle()).toBe("General");

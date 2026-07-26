@@ -8,7 +8,6 @@ describe("createDevServerConfig", () => {
     it("builds the SSR middleware-mode config that externalizes all deps", () => {
         const plugins: Plugin[] = [{ name: "stub" }];
         const config = createDevServerConfig("/proj", plugins);
-
         expect(config.root).toBe("/proj");
         expect(config.appType).toBe("custom");
         expect(config.plugins).toBe(plugins);

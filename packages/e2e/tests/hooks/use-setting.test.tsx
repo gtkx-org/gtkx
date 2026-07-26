@@ -79,7 +79,6 @@ describe("useSetting (2)", () => {
 
     it("reflects external GSettings changes via signal handler", async () => {
         const { result } = await renderCountSetting();
-
         const settings = Gio.Settings.new(SCHEMA_ID);
         await act(() => settings.setInt("count", 99));
 
@@ -92,12 +91,9 @@ describe("useSetting (2)", () => {
 describe("useSetting (3)", () => {
     it("disconnects the signal handler on unmount", async () => {
         const { result, unmount } = await renderCountSetting();
-
         await unmount();
-
         const settings = Gio.Settings.new(SCHEMA_ID);
         await act(() => settings.setInt("count", 7));
-
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(result.current[0]).toBe(0);
     });
@@ -106,11 +102,9 @@ describe("useSetting (3)", () => {
 describe("useSetting (typed refs: scalars)", () => {
     it("reads and writes through a typed schema ref without a type argument", async () => {
         const { result } = await renderCountSetting();
-
         expectTypeOf(result.current[0]).toEqualTypeOf<number>();
         expectTypeOf(result.current[1]).toEqualTypeOf<(value: number) => void>();
         expect(result.current[0]).toBe(0);
-
         await act(() => result.current[1](5));
 
         await waitFor(() => {
@@ -137,10 +131,8 @@ describe("useSetting (typed refs: enums and choices)", () => {
     it("reads and writes enum keys as their integer value", async () => {
         resetSettingsKey(SCHEMA_ID, "wrap-mode");
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "wrap-mode"));
-
         expectTypeOf(result.current[0]).toEqualTypeOf<number>();
         expect(result.current[0]).toBe(0);
-
         await act(() => result.current[1](1));
 
         await waitFor(() => {
@@ -151,10 +143,8 @@ describe("useSetting (typed refs: enums and choices)", () => {
     it("reads and writes string keys with choices", async () => {
         resetSettingsKey(SCHEMA_ID, "theme");
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "theme"));
-
         expectTypeOf(result.current[0]).toEqualTypeOf<string>();
         expect(result.current[0]).toBe("default");
-
         await act(() => result.current[1]("dark"));
 
         await waitFor(() => {
@@ -167,10 +157,8 @@ describe("useSetting (typed refs: tuples)", () => {
     it("reads and writes tuple keys as native arrays", async () => {
         resetSettingsKey(SCHEMA_ID, "window-size");
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "window-size"));
-
         expectTypeOf(result.current[0]).toEqualTypeOf<[number, number]>();
         expect(result.current[0]).toEqual([800, 600]);
-
         await act(() => result.current[1]([1024, 768]));
 
         await waitFor(() => {
@@ -183,6 +171,7 @@ describe("useSetting (typed refs: relocatable paths)", () => {
     it("keeps settings of the same relocatable schema isolated per path", async () => {
         const pathA = "/com/gtkx/test/useSetting/profiles/a/";
         const pathB = "/com/gtkx/test/useSetting/profiles/b/";
+
         const { result } = await renderHook(() => ({
             a: useSetting(profileAt(pathA), "title"),
             b: useSetting(profileAt(pathB), "title"),
@@ -193,6 +182,7 @@ describe("useSetting (typed refs: relocatable paths)", () => {
         await waitFor(() => {
             expect(result.current.a[0]).toBe("alpha");
         });
+
         expect(result.current.b[0]).toBe("untitled");
     });
 });

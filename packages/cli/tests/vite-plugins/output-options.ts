@@ -1,7 +1,7 @@
 import type { Plugin } from "vite";
 import { expect, vi } from "vitest";
 
-export const callOutputOptions = (
+const callOutputOptions = (
     plugin: Plugin,
     options: Record<string, unknown>,
 ): Record<string, unknown> | undefined => {
@@ -22,21 +22,20 @@ const callBannerFunction = async (
     return await (banner as BannerFunction)(chunk);
 };
 
-export const expectComposedBanner = async (plugin: Plugin, marker: string): Promise<void> => {
+const expectComposedBanner = async (plugin: Plugin, marker: string): Promise<void> => {
     const original = vi.fn(() => "original;");
     const chunk = { name: "index" };
-
     const combined = await callBannerFunction(callOutputOptions(plugin, { banner: original }), chunk);
-
     expect(combined).toContain(marker);
     expect(combined.endsWith("original;")).toBe(true);
     expect(original).toHaveBeenCalledWith(chunk);
 };
 
-export const expectComposedAsyncBanner = async (plugin: Plugin, marker: string): Promise<void> => {
+const expectComposedAsyncBanner = async (plugin: Plugin, marker: string): Promise<void> => {
     const result = callOutputOptions(plugin, { banner: () => Promise.resolve("async-original;") });
     const combined = await callBannerFunction(result, { name: "index" });
-
     expect(combined).toContain(marker);
     expect(combined.endsWith("async-original;")).toBe(true);
 };
+
+export { callOutputOptions, expectComposedBanner, expectComposedAsyncBanner };

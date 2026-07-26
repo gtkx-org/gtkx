@@ -59,16 +59,31 @@ type PropCollectorState = {
     seen: Set<string>;
 };
 
+type InterfacePropsOptions = {
+    library: Library;
+    iface: GirClass;
+    namespace: GirNamespace;
+};
+
+type IntrinsicElementMemberWalk = IntrinsicElementScope & {
+    isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
+    acceptProperty: (property: GirProperty) => void;
+    acceptSignal: (signal: GirCallable) => void;
+};
+
 const appendPropertyLines = (state: PropCollectorState, property: GirProperty, jsName: string): void => {
     const tsType = renderReactPropType(state.types, property.type, false);
     const doc = renderJsDoc(property.doc);
+
     if (isObjectProp(state.owner, property, jsName)) {
         state.propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
         state.objectPropNames.push(jsName);
         return;
     }
+
     const settable = isConstructableProperty(property);
     if (settable) state.propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
+
     state.propLines.push(
         `${settable ? "" : doc}onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
     );
@@ -94,6 +109,7 @@ const createPropEntryCollector = (owner: IntrinsicElementScope): PropEntryCollec
     const { library } = owner;
     const imports: Map<string, string> = new Map();
     const types: PropTypeRenderContext = { library, imports };
+
     const state: PropCollectorState = {
         owner,
         types,
@@ -111,9 +127,10 @@ const createPropEntryCollector = (owner: IntrinsicElementScope): PropEntryCollec
     };
 };
 
-export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions): IntrinsicElementPropsEntries => {
+const buildElementPropsEntries = (options: IntrinsicElementPropsOptions): IntrinsicElementPropsEntries => {
     const { library, klass, namespace, isIntrinsicElementAncestor = () => false } = options;
     const collector = createPropEntryCollector({ library, klass, namespace });
+
     walkIntrinsicElementMembers({
         library,
         klass,
@@ -122,16 +139,11 @@ export const buildElementPropsEntries = (options: IntrinsicElementPropsOptions):
         acceptProperty: collector.acceptProperty,
         acceptSignal: collector.acceptSignal,
     });
+
     return { propLines: collector.propLines, imports: collector.imports, objectPropNames: collector.objectPropNames };
 };
 
-type InterfacePropsOptions = {
-    library: Library;
-    iface: GirClass;
-    namespace: GirNamespace;
-};
-
-export const buildInterfacePropsEntries = (options: InterfacePropsOptions): IntrinsicElementPropsEntries => {
+const buildInterfacePropsEntries = (options: InterfacePropsOptions): IntrinsicElementPropsEntries => {
     const { library, iface, namespace } = options;
     const collector = createPropEntryCollector({ library, klass: iface, namespace });
     for (const property of iface.properties) collector.acceptProperty(property);
@@ -139,18 +151,14 @@ export const buildInterfacePropsEntries = (options: InterfacePropsOptions): Intr
     return { propLines: collector.propLines, imports: collector.imports, objectPropNames: collector.objectPropNames };
 };
 
-type IntrinsicElementMemberWalk = IntrinsicElementScope & {
-    isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
-    acceptProperty: (property: GirProperty) => void;
-    acceptSignal: (signal: GirCallable) => void;
-};
-
 const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => {
     const { library, klass, namespace, isIntrinsicElementAncestor, acceptProperty, acceptSignal } = walk;
+
     const visitMembers = (memberClass: GirClass): void => {
         for (const property of memberClass.properties) acceptProperty(property);
         for (const signal of memberClass.signals) acceptSignal(signal);
     };
+
     const ancestry = { library, namespace };
     visitMembers(klass);
     forEachAncestor(ancestry, klass, (ancestor) => visitMembers(ancestor.klass), isIntrinsicElementAncestor);
@@ -164,21 +172,25 @@ const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boole
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
 
-export const isObjectProp = (owner: IntrinsicElementScope, property: GirProperty, jsName: string): boolean => {
+const isObjectProp = (owner: IntrinsicElementScope, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
     if (!resolvesToGObjectType(owner.library, property.type)) return false;
+
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {
         return false;
     }
+
     return true;
 };
 
 const renderSignalHandler = (options: SignalRenderOptions): string => {
     const { types, signal, selfType } = options;
+
     const params = [
         ...renderHandlerParameters(signal.parameters, (ref, nullable) => renderReactPropType(types, ref, nullable)),
         `self: ${selfType}`,
     ];
+
     const result = renderHandlerResultType({
         library: types.library,
         signal,
@@ -186,10 +198,11 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
         includeCallerAllocated: false,
         optOut: true,
     });
+
     return `(${params.join(", ")}) => ${result}`;
 };
 
-export const reactTarget = (context: PropTypeRenderContext): TsTypeTarget =>
+const reactTarget = (context: PropTypeRenderContext): TsTypeTarget =>
     recordTypeTarget(
         context.library,
         (name) => {
@@ -206,3 +219,5 @@ const renderReactPropType = (context: PropTypeRenderContext, ref: TypeId | undef
     const base = renderBaseTypeFor(context.library, reactTarget(context), ref);
     return isNullable ? `${base} | null` : base;
 };
+
+export { buildElementPropsEntries, buildInterfacePropsEntries, isObjectProp, reactTarget };

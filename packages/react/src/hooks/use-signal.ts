@@ -4,10 +4,9 @@ import { useEffectEvent, useLayoutEffect } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
 type SignalsOf<T extends GObject.Object> = NonNullable<T["__signals__"]>;
+type SignalNameOf<T extends GObject.Object> = keyof SignalsOf<T> | `${keyof SignalsOf<T> & string}::${string}`;
 
-export type SignalNameOf<T extends GObject.Object> = keyof SignalsOf<T> | `${keyof SignalsOf<T> & string}::${string}`;
-
-export type SignalHandlerFor<T extends GObject.Object, S extends string> = S extends keyof SignalsOf<T>
+type SignalHandlerFor<T extends GObject.Object, S extends string> = S extends keyof SignalsOf<T>
     ? SignalsOf<T>[S]
     : S extends `${infer TBase}::${string}`
         ? TBase extends keyof SignalsOf<T>
@@ -31,7 +30,7 @@ type UseSignalOptions = {
  * @param handler The callback invoked when the signal is emitted.
  * @param options Connection options such as running after the default handler or invoking immediately.
  */
-export function useSignal<T extends GObject.Object, S extends SignalNameOf<T> & string>(
+function useSignal<T extends GObject.Object, S extends SignalNameOf<T> & string>(
     object: RefProp<T>,
     signal: S,
     handler: SignalHandlerFor<T, S>,
@@ -42,7 +41,6 @@ export function useSignal<T extends GObject.Object, S extends SignalNameOf<T> & 
     useLayoutEffect(() => {
         const resolved = resolveRefProp(object);
         if (!resolved) return;
-
         resolved.on(signal, emit, after);
         if (immediate) emit();
 
@@ -51,3 +49,5 @@ export function useSignal<T extends GObject.Object, S extends SignalNameOf<T> & 
         };
     }, [object, signal, after, immediate]);
 }
+
+export { useSignal, type SignalNameOf, type SignalHandlerFor };

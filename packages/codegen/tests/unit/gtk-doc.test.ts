@@ -13,6 +13,7 @@ describe("gtkDocToMarkdown", () => {
     it("camel-cases callable cross-references and appends parentheses", () => {
         expect(gtkDocToMarkdown("Call [method@Gtk.Widget.set_child].")).toBe("Call `Gtk.Widget.setChild()`.");
         expect(gtkDocToMarkdown("Use [func@Gtk.init].")).toBe("Use `Gtk.init()`.");
+
         expect(gtkDocToMarkdown("Prefer [ctor@Gtk.Button.new_with_label].")).toBe(
             "Prefer `Gtk.Button.newWithLabel()`.",
         );

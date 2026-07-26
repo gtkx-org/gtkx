@@ -962,6 +962,7 @@ describe("Surface — writeToPng", () => {
     it("writes surface to PNG file", () => {
         const outputDir = mkdtempSync(join(tmpdir(), "gtkx-cairo-"));
         const tmpPath = join(outputDir, "write.png");
+
         try {
             const surface = ImageSurface.create(Format.ARGB32, 10, 10);
             const ctx = Context.create(surface);
@@ -1100,6 +1101,7 @@ describe("Region", () => {
             { x: 20, y: 20, width: 10, height: 10 },
             { x: 40, y: 40, width: 10, height: 10 },
         ]);
+
         expect(region.numRectangles()).toBe(3);
     });
 

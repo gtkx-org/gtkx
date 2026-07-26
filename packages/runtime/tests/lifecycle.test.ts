@@ -29,6 +29,7 @@ type FakeApplication = ApplicationLike & {
 const createFakeApplication = (windows: object[] = []): FakeApplication => {
     const handlers: Record<"activate" | "shutdown", (() => void)[]> = { activate: [], shutdown: [] };
     let registered = false;
+
     return {
         registerCalls: 0,
         activateCalls: 0,
@@ -80,14 +81,11 @@ describe("runApplication and quitApplication", () => {
     it("registers, activates, and holds the loop alive until shutdown", () => {
         const app = createFakeApplication();
         nativeMock.keepAlive.mockClear();
-
         runApplication(app);
-
         expect(app.registerCalls).toBe(1);
         expect(app.activateCalls).toBe(1);
         expect(app.getIsRegistered()).toBe(true);
         expect(nativeMock.keepAlive).toHaveBeenLastCalledWith(true);
-
         quitApplication(app);
         expect(signalMock.blockMatchedSignalHandlers).toHaveBeenCalledWith(app, "activate");
         expect(app.lastRunArgv).toEqual([]);
@@ -95,7 +93,6 @@ describe("runApplication and quitApplication", () => {
         expect(app.quitCalls).toBe(1);
         expect(app.getIsRegistered()).toBe(false);
         expect(nativeMock.keepAlive).toHaveBeenLastCalledWith(false);
-
         quitApplication(app);
         expect(app.runCalls).toBe(1);
     });
@@ -103,10 +100,13 @@ describe("runApplication and quitApplication", () => {
     it("blocks activate handlers before running the application", () => {
         const app = createFakeApplication();
         const order: string[] = [];
+
         signalMock.blockMatchedSignalHandlers.mockImplementationOnce(() => {
             order.push("block");
         });
+
         const originalRun = app.run.bind(app);
+
         app.run = (argv: string[]) => {
             order.push("run");
             return originalRun(argv);
@@ -114,16 +114,13 @@ describe("runApplication and quitApplication", () => {
 
         runApplication(app);
         quitApplication(app);
-
         expect(order).toEqual(["block", "run"]);
     });
 
     it("removes every held window before running the application", () => {
         const app = createFakeApplication([{ id: "w1" }, { id: "w2" }]);
-
         runApplication(app);
         quitApplication(app);
-
         expect(app.windows).toEqual([]);
         expect(app.windowsAtRun).toBe(0);
     });
@@ -131,19 +128,14 @@ describe("runApplication and quitApplication", () => {
     it("does not re-register an already-registered application", () => {
         const app = createFakeApplication();
         app.register(null);
-
         runApplication(app);
-
         expect(app.registerCalls).toBe(1);
-
         quitApplication(app);
     });
 
     it("does nothing when the application was never registered", () => {
         const app = createFakeApplication();
-
         quitApplication(app);
-
         expect(app.runCalls).toBe(0);
         expect(app.shutdownEmits).toBe(0);
         expect(app.activateCalls).toBe(0);
@@ -152,13 +144,10 @@ describe("runApplication and quitApplication", () => {
     it("forwards keepalive to the native loop on each activation", () => {
         const app = createFakeApplication();
         nativeMock.keepAlive.mockClear();
-
         runApplication(app);
         app.activate();
-
         expect(app.activateCalls).toBe(2);
         expect(nativeMock.keepAlive).toHaveBeenCalledWith(true);
-
         quitApplication(app);
     });
 });
@@ -167,11 +156,9 @@ describe("onExit", () => {
     it("runs registered callbacks once when the process exits, then ignores further exits", () => {
         let count = 0;
         onExit(() => count++);
-
         process.emit("exit", 0);
         expect(count).toBe(1);
         expect(nativeMock.quit).toHaveBeenCalledTimes(1);
-
         process.emit("exit", 0);
         expect(count).toBe(1);
         expect(nativeMock.quit).toHaveBeenCalledTimes(1);

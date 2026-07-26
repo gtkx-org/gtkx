@@ -17,8 +17,10 @@ import { objectKeysEqual } from "./object-keys-equal.js";
  */
 const isStrictEqual = (a: unknown, b: unknown): boolean => a === b;
 
-export function isShallowEqual(a: unknown, b: unknown): boolean {
+function isShallowEqual(a: unknown, b: unknown): boolean {
     if (a === b) return true;
     if (isPlainObject(a) && isPlainObject(b)) return objectKeysEqual(a, b, isStrictEqual);
     return false;
 }
+
+export { isShallowEqual };

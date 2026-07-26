@@ -4,20 +4,20 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
 
-export type CodegenInputs = {
+type CodegenInputs = {
     girPath: string[];
     libraries: string[];
     store: CodegenStore;
 };
 
-export const resolveCodegenInputs = (cwd: string, config: Config): CodegenInputs => {
+const REACT_GENERATED_MODULES: string[] = ["metadata.js", join("gtk", "gtk.js")];
+
+const resolveCodegenInputs = (cwd: string, config: Config): CodegenInputs => {
     const girPath = resolveGirPath(config.girPath);
     const libraries = resolveLibraries(config.libraries, girPath);
     const store = resolveCodegenStore(cwd);
     return { girPath, libraries, store };
 };
-
-const REACT_GENERATED_MODULES: string[] = ["metadata.js", join("gtk", "gtk.js")];
 
 const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
     const separator = library.indexOf("-");
@@ -40,10 +40,12 @@ const reactStoreStale = (store: CodegenStore): boolean => {
     return REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)));
 };
 
-export const isCodegenStale = (inputs: CodegenInputs): boolean => {
+const isCodegenStale = (inputs: CodegenInputs): boolean => {
     try {
         return giStoreStale(inputs.store, inputs.libraries) || reactStoreStale(inputs.store);
     } catch {
         return true;
     }
 };
+
+export { resolveCodegenInputs, isCodegenStale, type CodegenInputs };

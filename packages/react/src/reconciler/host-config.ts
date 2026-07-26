@@ -35,30 +35,11 @@ import { beginSuppression, disconnectAllHandlers, endSuppression } from "./signa
 import { enclosingHost, flushTextHosts, markTextDirty, surgicalTextUpdate, validateContentMix } from "./text.js";
 
 /** A top-level container an element tree can be mounted into. */
-export type Container = RootElement | GObject.Object;
+type Container = RootElement | GObject.Object;
 
 const HOST_CONTEXT: Record<string, never> = {};
 let currentPriority: number = NoEventPriority;
-
 const containerNodes: WeakMap<object, ElementNode> = new WeakMap();
-
-const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
-    if (!isRootElement(container)) attachChild(containerNodeFor(container), child, before);
-};
-
-const detachFromContainer = (container: Container, child: AnyNode): void => {
-    if (!isRootElement(container)) detachChild(containerNodeFor(container), child);
-};
-
-const publicInstanceOf = (instance: Instance): object => {
-    if (instance.kind === ELEMENT_KIND) return instance.object;
-    if (instance.kind === LAZY_KIND) return instance.adopted ?? instance;
-    return instance;
-};
-
-const setWidgetVisible = (instance: Instance, visible: boolean): void => {
-    if (instance.kind === ELEMENT_KIND && instance.object instanceof Gtk.Widget) instance.object.setVisible(visible);
-};
 
 const hostConfig = {
     supportsMutation: true,
@@ -153,12 +134,31 @@ const hostConfig = {
     HostTransitionContext: createContext(null) as unknown as ReactReconciler.ReactContext<null>,
 };
 
-export const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unknown, unknown, object> =
+const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unknown, unknown, object> =
     ReactReconciler(hostConfig);
+
+const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
+    if (!isRootElement(container)) attachChild(containerNodeFor(container), child, before);
+};
+
+const detachFromContainer = (container: Container, child: AnyNode): void => {
+    if (!isRootElement(container)) detachChild(containerNodeFor(container), child);
+};
+
+const publicInstanceOf = (instance: Instance): object => {
+    if (instance.kind === ELEMENT_KIND) return instance.object;
+    if (instance.kind === LAZY_KIND) return instance.adopted ?? instance;
+    return instance;
+};
+
+const setWidgetVisible = (instance: Instance, visible: boolean): void => {
+    if (instance.kind === ELEMENT_KIND && instance.object instanceof Gtk.Widget) instance.object.setVisible(visible);
+};
 
 const runDiscrete: Dispatch = (fn) => {
     const previous = currentPriority;
     currentPriority = DiscreteEventPriority;
+
     try {
         return fn();
     } finally {
@@ -179,9 +179,13 @@ const containerNodeFor = (container: GObject.Object): ElementNode =>
 const createNode = (type: string, props: Props): Instance => {
     if (type === Prop) return createPropNode(props.propName as string);
     const node = resolveElementNode(type, props, runDiscrete);
+
     if (node.kind === ELEMENT_KIND) {
         containerNodes.set(node.object, node);
         applyElementProps(node, {}, props);
     }
+
     return node;
 };
+
+export { reconciler, type Container };

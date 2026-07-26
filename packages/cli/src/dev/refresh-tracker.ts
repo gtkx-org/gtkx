@@ -1,13 +1,15 @@
-export type RefreshTracker = {
+type RefreshTracker = {
     performRefresh: () => void;
     isRefreshing: () => boolean;
 };
 
-export const createRefreshTracker = (performRefresh: () => void): RefreshTracker => {
+const createRefreshTracker = (performRefresh: () => void): RefreshTracker => {
     let refreshing = false;
+
     return {
         performRefresh: () => {
             refreshing = true;
+
             try {
                 performRefresh();
             } finally {
@@ -19,3 +21,5 @@ export const createRefreshTracker = (performRefresh: () => void): RefreshTracker
         isRefreshing: () => refreshing,
     };
 };
+
+export { createRefreshTracker, type RefreshTracker };

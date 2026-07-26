@@ -1,11 +1,13 @@
 import type { z } from "zod";
 
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === "object" && value !== null && !Array.isArray(value);
-
 type IssuePath = (string | number)[];
 
-export const rawIssue = (input: unknown, path: IssuePath, message: string, standalone = false) => ({
+const CONFIG_PREFIX = "gtkx.config.ts:";
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
+
+const rawIssue = (input: unknown, path: IssuePath, message: string, standalone = false) => ({
     code: "custom" as const,
     input,
     path,
@@ -14,17 +16,14 @@ export const rawIssue = (input: unknown, path: IssuePath, message: string, stand
     ...(standalone && { params: { standalone: true } }),
 });
 
-const CONFIG_PREFIX = "gtkx.config.ts:";
+const appendSegment = (path: string, segment: PropertyKey): string => {
+    if (typeof segment === "number") return `${path}[${segment}]`;
+    return path === "" ? String(segment) : `${path}.${String(segment)}`;
+};
 
 const dottedPath = (segments: PropertyKey[]): string => {
     let path = "";
-    for (const segment of segments) {
-        if (typeof segment === "number") {
-            path += `[${segment}]`;
-        } else {
-            path = path === "" ? String(segment) : `${path}.${String(segment)}`;
-        }
-    }
+    for (const segment of segments) path = appendSegment(path, segment);
     return path;
 };
 
@@ -37,13 +36,16 @@ const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string =
         const path = dottedPath(key === undefined ? fullPath : [...fullPath, key]);
         return `${CONFIG_PREFIX} \`${path}\` is not a recognized key`;
     }
+
     if (isStandaloneIssue(issue)) return `${CONFIG_PREFIX} ${issue.message}`;
     const path = dottedPath(fullPath);
     return path === "" ? `${CONFIG_PREFIX} ${issue.message}` : `${CONFIG_PREFIX} \`${path}\` ${issue.message}`;
 };
 
-export const configError = (error: z.ZodError): Error => {
+const configError = (error: z.ZodError): Error => {
     const issue = error.issues[0];
     if (issue === undefined) return new Error(`${CONFIG_PREFIX} invalid configuration`);
     return new Error(formatIssue(issue, issue.path));
 };
+
+export { isRecord, rawIssue, configError };

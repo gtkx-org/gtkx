@@ -3,7 +3,7 @@ import { getOrInsert } from "@gtkx/utils";
 import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
 import { deferredProps, type ElementBehavior, ELEMENTS } from "./registry.js";
 
-export type TypeInfo = {
+type TypeInfo = {
     typeName: string;
     signals: Record<string, string>;
     userEventSignals: Set<string>;
@@ -33,11 +33,13 @@ const buildAncestry = (name: string): string[] => {
     const names: string[] = [];
     const seen: Set<string> = new Set();
     let type = typeFromName(name);
+
     while (type !== TYPE_INVALID) {
         addAncestor(names, seen, typeName(type));
         for (const iface of typeInterfaces(type)) addAncestor(names, seen, typeName(iface));
         type = typeParent(type);
     }
+
     return names;
 };
 
@@ -68,6 +70,7 @@ const resolveBehaviorFlags = (info: TypeInfo): void => {
 
 const buildTypeInfo = (name: string): TypeInfo => {
     const chain = ancestryOf(name);
+
     const info: TypeInfo = {
         typeName: name,
         signals: {},
@@ -81,6 +84,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
         construct: new Set(),
         defaults: {},
     };
+
     for (const ancestor of chain) accumulateAncestor(info, ancestor);
     resolveBehaviorFlags(info);
     info.lazy = chain.some((ancestor) => ELEMENTS[ancestor]?.lazy === true);
@@ -88,4 +92,6 @@ const buildTypeInfo = (name: string): TypeInfo => {
     return info;
 };
 
-export const typeInfoOf = (name: string): TypeInfo => getOrInsert(typeInfoCache, name, buildTypeInfo);
+const typeInfoOf = (name: string): TypeInfo => getOrInsert(typeInfoCache, name, buildTypeInfo);
+
+export { typeInfoOf, type TypeInfo };

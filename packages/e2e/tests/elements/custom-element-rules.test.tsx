@@ -19,9 +19,7 @@ declare module "@gtkx/jsx/gtk" {
 describe("custom element rules from gtkx.config.ts", () => {
     it("applies a rule declared by the configured module", async () => {
         const labelRef = createRef<Gtk.Label>();
-
         await render(<GtkLabel ref={labelRef} cursorName="pointer" />);
-
         expect(labelRef.current?.getCursor()?.getName()).toBe("pointer");
     });
 
@@ -40,30 +38,26 @@ describe("custom element rules from gtkx.config.ts", () => {
     it("reapplies the rule when the prop changes", async () => {
         const labelRef = createRef<Gtk.Label>();
         const { rerender } = await render(<GtkLabel ref={labelRef} cursorName="pointer" />);
-
         await rerender(<GtkLabel ref={labelRef} cursorName="text" />);
-
         expect(labelRef.current?.getCursor()?.getName()).toBe("text");
     });
 
     it("places children through a declared container prop", async () => {
         const frameRef = createRef<Gtk.Frame>();
-
         await render(<GtkFrame ref={frameRef} labelSlot={<GtkLabel>Section</GtkLabel>} />);
-
         expect(await screen.findByText("Section")).toBeDefined();
         expect(frameRef.current?.getLabelWidget()).not.toBeNull();
     });
 
     it("clears a declared container prop when its child unmounts", async () => {
         const frameRef = createRef<Gtk.Frame>();
+
         const App = ({ withLabel }: { withLabel: boolean }) => (
             <GtkFrame ref={frameRef} labelSlot={withLabel ? <GtkLabel>Section</GtkLabel> : null} />
         );
 
         const { rerender } = await render(<App withLabel={true} />);
         expect(frameRef.current?.getLabelWidget()).not.toBeNull();
-
         await rerender(<App withLabel={false} />);
         expect(frameRef.current?.getLabelWidget()).toBeNull();
     });

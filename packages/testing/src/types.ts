@@ -5,16 +5,14 @@ import type { PrettyWidgetOptions } from "./pretty-widget.js";
 import type { Container } from "./traversal.js";
 
 /** A custom matcher predicate: given a candidate widget's normalized text content and the widget itself, returns whether it matches. */
-export type MatcherFunction = (content: string, widget: Gtk.Widget) => boolean;
-
+type MatcherFunction = (content: string, widget: Gtk.Widget) => boolean;
 /** A value used to match widget text: a string or number, a regular expression, or a custom {@link MatcherFunction}. */
-export type Matcher = string | number | RegExp | MatcherFunction;
-
+type Matcher = string | number | RegExp | MatcherFunction;
 /** Normalizes a widget's text before it is compared against a matcher. */
-export type NormalizerFn = (text: string) => string;
+type NormalizerFn = (text: string) => string;
 
 /** Options controlling the default text normalizer. */
-export type NormalizerOptions = {
+type NormalizerOptions = {
     /** Trim leading and trailing whitespace. */
     trim?: boolean | undefined;
     /** Collapse runs of whitespace into a single space. */
@@ -22,7 +20,7 @@ export type NormalizerOptions = {
 };
 
 /** Options controlling how asynchronous queries and waits poll for a condition. */
-export type WaitForOptions = {
+type WaitForOptions = {
     /** Maximum time in milliseconds to keep retrying before failing. */
     timeout?: number | undefined;
     /** Delay in milliseconds between retries. */
@@ -34,7 +32,7 @@ export type WaitForOptions = {
 };
 
 /** Options controlling text matching and, for asynchronous queries, polling behavior. */
-export type MatcherOptions = {
+type MatcherOptions = {
     /** When true (the default), require an exact match; when false, match case-insensitively as a substring. */
     exact?: boolean | undefined;
     /** Custom normalizer replacing the default; cannot be combined with `trim` or `collapseWhitespace`. */
@@ -48,7 +46,7 @@ export type MatcherOptions = {
 } & WaitForOptions;
 
 /** Constraints on a widget's numeric range value used by role queries. */
-export type ByRoleValue = {
+type ByRoleValue = {
     /** The current value. */
     now?: number | undefined;
     min?: number | undefined;
@@ -58,7 +56,7 @@ export type ByRoleValue = {
 };
 
 /** Options for role queries: an accessible name matcher plus accessible state and value constraints. */
-export type ByRoleOptions = MatcherOptions & {
+type ByRoleOptions = MatcherOptions & {
     name?: Matcher | undefined;
     checked?: boolean | undefined;
     pressed?: boolean | undefined;
@@ -74,22 +72,21 @@ export type ByRoleOptions = MatcherOptions & {
 };
 
 /** A React component that wraps rendered content, receiving it as its children. */
-export type WrapperComponent = ComponentType<{
+type WrapperComponent = ComponentType<{
     children: ReactNode;
 }>;
 
 type Query = (container: Container, ...args: never[]) => unknown;
-
-export type QueryMap = Record<string, Query>;
+type QueryMap = Record<string, Query>;
 
 type BoundQuery<Q extends Query> = Q extends (container: Container, ...args: infer A) => infer R
     ? (...args: A) => R
     : never;
 
-export type BoundCustomQueries<Q extends QueryMap> = { [K in keyof Q]: BoundQuery<Q[K]> };
+type BoundCustomQueries<Q extends QueryMap> = { [K in keyof Q]: BoundQuery<Q[K]> };
 
 /** Options for {@link render}: the container and base element to mount into, an optional wrapper, React behavior toggles, error callbacks, and custom queries to bind. */
-export type RenderOptions<Q extends QueryMap = Record<never, never>> = {
+type RenderOptions<Q extends QueryMap = Record<never, never>> = {
     container?: Gtk.Widget | RootElement | undefined;
     /** Root of the subtree that bound queries search. */
     baseElement?: Container | undefined;
@@ -106,14 +103,14 @@ export type RenderOptions<Q extends QueryMap = Record<never, never>> = {
     queries?: Q | undefined;
 };
 
-export type DebugUtilities = {
+type DebugUtilities = {
     debug: (element?: Container | Container[], options?: PrettyWidgetOptions) => void;
     logRoles: () => void;
     screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
 };
 
 /** A captured screenshot: base64-encoded image data, its MIME type, and pixel dimensions. */
-export type ScreenshotResult = {
+type ScreenshotResult = {
     data: string;
     mimeType: string;
     width: number;
@@ -121,16 +118,16 @@ export type ScreenshotResult = {
 };
 
 /** Options for capturing a screenshot: the poll timeout and interval, plus a rendering scale factor. */
-export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
+type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
     /** Device scale factor applied when rendering. */
     scale?: number;
 };
 
 /** Selects the window to screenshot by index, or by title (exact string or regular expression); undefined targets the default window. */
-export type WindowSelector = number | string | RegExp | undefined;
+type WindowSelector = number | string | RegExp | undefined;
 
 /** Options for {@link renderHook}: an optional wrapper and the initial props (required unless the props type permits undefined). */
-export type RenderHookOptions<Props> = {
+type RenderHookOptions<Props> = {
     wrapper?: WrapperComponent;
 } & (undefined extends Props
     ? {
@@ -141,9 +138,30 @@ export type RenderHookOptions<Props> = {
         });
 
 /** The result of {@link renderHook}: the latest hook return value plus functions to rerender with new props and to unmount. */
-export type RenderHookResult<Result, Props> = {
+type RenderHookResult<Result, Props> = {
     /** Holds the most recent value returned by the hook under `current`. */
     result: { current: Result };
     rerender: (newProps?: Props) => Promise<void>;
     unmount: () => Promise<void>;
+};
+
+export {
+    type MatcherFunction,
+    type Matcher,
+    type NormalizerFn,
+    type NormalizerOptions,
+    type WaitForOptions,
+    type MatcherOptions,
+    type ByRoleValue,
+    type ByRoleOptions,
+    type WrapperComponent,
+    type QueryMap,
+    type BoundCustomQueries,
+    type RenderOptions,
+    type DebugUtilities,
+    type ScreenshotResult,
+    type ScreenshotOptions,
+    type WindowSelector,
+    type RenderHookOptions,
+    type RenderHookResult,
 };

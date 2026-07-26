@@ -15,7 +15,6 @@ describe("getRoles", () => {
         );
 
         const roles = getRoles(container);
-
         expect(roles.has("button")).toBe(true);
         expect(roles.has("label")).toBe(true);
         expect(roles.get("button")?.length).toBe(2);
@@ -23,19 +22,15 @@ describe("getRoles", () => {
 
     it("maps each role to its widgets", async () => {
         const { container } = await render(<GtkButton label="My Button" />);
-
         const roles = getRoles(container);
         const button = roles.get("button")?.[0];
-
         expect(button).toBeInstanceOf(Gtk.Button);
         expect(button && getWidgetNodeText(button)).toBe("My Button");
     });
 
     it("returns empty map for empty container", async () => {
         const { container } = await render(<GtkBox orientation={Gtk.Orientation.VERTICAL} />);
-
         const roles = getRoles(container);
-
         expect(roles.has("button")).toBe(false);
     });
 });
@@ -50,7 +45,6 @@ describe("prettyRoles", () => {
         );
 
         const output = prettyRoles(container);
-
         expect(output).toContain("button:");
         expect(output).toContain("Submit");
         expect(output).toContain("checkbox:");
@@ -59,9 +53,7 @@ describe("prettyRoles", () => {
 
     it("formats all roles including window and generic", async () => {
         const { container } = await render(<GtkBox orientation={Gtk.Orientation.VERTICAL} />);
-
         const output = prettyRoles(container);
-
         expect(output).toContain("window:");
         expect(output).toContain("generic:");
     });
@@ -80,9 +72,7 @@ describe("logRoles", () => {
 
     it("logs roles to console via screen.logRoles", async () => {
         await render(<GtkButton label="Test" />);
-
         screen.logRoles();
-
         expect(consoleSpy).toHaveBeenCalled();
         const output = consoleSpy.mock.calls[0]?.[0] as string;
         expect(output).toContain("button:");

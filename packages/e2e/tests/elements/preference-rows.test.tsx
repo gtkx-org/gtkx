@@ -28,6 +28,7 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
 }: ListenerClearedCase<Widget>) => {
     const handler = vi.fn();
     const ref = createRef<Widget>();
+
     const Harness = () => {
         const [active, setActive] = useState<Mock | null>(handler);
         setActiveHandler = setActive;
@@ -38,14 +39,11 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
     const row = ref.current;
     if (!row) throw new Error("expected ref");
     afterMount?.(row);
-
     await act(() => fireFirst(row));
     const callsBefore = handler.mock.calls.length;
     expect(callsBefore).toBeGreaterThan(0);
-
     await act(() => setActiveHandler(null));
     await rerender(<Harness />);
-
     await act(() => fireSecond(row));
     expect(handler.mock.calls).toHaveLength(callsBefore);
 };
@@ -76,9 +74,7 @@ describe("render - SpinRow (1)", () => {
         const row = ref.current;
         if (!row) throw new Error("expected ref");
         installAdjustment(row, 0, 10, 1);
-
         await act(() => row.setValue(7));
-
         expect(onValueChanged).toHaveBeenCalled();
         const lastCall = onValueChanged.mock.calls.at(-1);
         expect(lastCall?.[0]).toBe(7);
@@ -121,7 +117,6 @@ describe("render - SwitchRow (1)", () => {
         );
 
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: false }));
-
         expect(onActiveChanged).toHaveBeenCalled();
         const lastCall = onActiveChanged.mock.calls.at(-1);
         expect(lastCall?.[0]).toBe(true);

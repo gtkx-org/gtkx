@@ -10,7 +10,7 @@ type ComponentType = (...args: unknown[]) => unknown;
  * @param moduleId Identifier used to namespace registered component types so they are unique across modules.
  * @returns An object with `$RefreshReg$` and `$RefreshSig$` to install as module-local globals.
  */
-export function createModuleRegistration(moduleId: string): {
+function createModuleRegistration(moduleId: string): {
     $RefreshReg$: (type: ComponentType, id: string) => void;
     $RefreshSig$: typeof RefreshRuntime.createSignatureFunctionForTransform;
 } {
@@ -36,10 +36,11 @@ const everyExportIsComponent = (moduleExports: Record<string, unknown>): boolean
     for (const key in moduleExports) {
         if (!isComponentExport(key, moduleExports[key])) return false;
     }
+
     return true;
 };
 
-export function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
+function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
     if (RefreshRuntime.isLikelyComponentType(moduleExports)) {
         return true;
     }
@@ -54,6 +55,8 @@ export function isRefreshBoundary(moduleExports: Record<string, unknown>): boole
 /**
  * Applies all pending React Refresh updates, re-rendering components whose modules have changed.
  */
-export function performRefresh(): void {
+function performRefresh(): void {
     RefreshRuntime.performReactRefresh();
 }
+
+export { createModuleRegistration, isRefreshBoundary, performRefresh };

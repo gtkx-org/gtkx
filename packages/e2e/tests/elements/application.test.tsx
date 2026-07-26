@@ -7,17 +7,19 @@ import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-
 let nextAppId = 0;
+
 const uniqueAppId = (): string => `org.gtkx.applicationtest${nextAppId++}`;
 
 const buildMenubar = (entries: { label: string; items: { label: string; action: string }[] }[]): Gio.Menu => {
     const menubar = Gio.Menu.new();
+
     for (const entry of entries) {
         const submenu = Gio.Menu.new();
         for (const item of entry.items) submenu.append(item.label, item.action);
         menubar.appendSubmenu(entry.label, submenu);
     }
+
     return menubar;
 };
 
@@ -37,9 +39,11 @@ const MenubarApp = ({
 
 const renderApp = async (menubar: Gio.MenuModel | null): Promise<Gtk.Application> => {
     const ref = createRef<Gtk.Application>();
+
     await render(<MenubarApp appRef={ref} appId={uniqueAppId()} menubar={menubar} />, {
         container: rootElement,
     });
+
     if (!ref.current) throw new Error("Expected application instance");
     return ref.current;
 };
@@ -76,8 +80,8 @@ describe("render - Application", () => {
             const { rerender } = await render(<MenubarApp appRef={ref} appId={appId} menubar={fileMenu} />, {
                 container: rootElement,
             });
-            expect(ref.current?.getMenubar()).not.toBeNull();
 
+            expect(ref.current?.getMenubar()).not.toBeNull();
             await rerender(<MenubarApp appRef={ref} appId={appId} menubar={null} />);
             expect(ref.current?.getMenubar()).toBeNull();
         });
@@ -85,12 +89,13 @@ describe("render - Application", () => {
         it("updates menubar when items change", async () => {
             const ref = createRef<Gtk.Application>();
             const appId = uniqueAppId();
+
             const { rerender } = await render(
                 <MenubarApp appRef={ref} appId={appId} menubar={fileMenu(["New", "Open"])} />,
                 { container: rootElement },
             );
-            expect(ref.current?.getMenubar()?.getItemLink(0, "submenu")?.getNItems()).toBe(2);
 
+            expect(ref.current?.getMenubar()?.getItemLink(0, "submenu")?.getNItems()).toBe(2);
             await rerender(<MenubarApp appRef={ref} appId={appId} menubar={fileMenu(["New", "Open", "Save"])} />);
             expect(ref.current?.getMenubar()?.getItemLink(0, "submenu")?.getNItems()).toBe(3);
         });

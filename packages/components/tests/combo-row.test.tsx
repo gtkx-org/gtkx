@@ -21,17 +21,13 @@ const ComboProbe = ({ selectedId, comboRef }: { selectedId: string; comboRef: Re
 describe("render - AdwComboRow", () => {
     it("applies selectedId to the model selection", async () => {
         const ref = createRef<Adw.ComboRow>();
-
         await render(<ComboProbe selectedId="date" comboRef={ref} />);
-
         expect(ref.current?.getSelected()).toBe(1);
     });
 
     it("renders the selected item in the row display", async () => {
         const ref = createRef<Adw.ComboRow>();
-
         await render(<ComboProbe selectedId="date" comboRef={ref} />);
-
         const matches = await screen.findAllByText("By date");
         expect(matches.length).toBeGreaterThanOrEqual(2);
         const unselected = await screen.findAllByText("By size");
@@ -40,10 +36,8 @@ describe("render - AdwComboRow", () => {
 
     it("updates the row display when selectedId changes", async () => {
         const ref = createRef<Adw.ComboRow>();
-
         const { rerender } = await render(<ComboProbe selectedId="title" comboRef={ref} />);
         await rerender(<ComboProbe selectedId="size" comboRef={ref} />);
-
         expect(ref.current?.getSelected()).toBe(2);
         const matches = await screen.findAllByText("By size");
         expect(matches.length).toBeGreaterThanOrEqual(2);

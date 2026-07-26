@@ -9,20 +9,24 @@ import { compileSchemas } from "./compile.js";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
 
-export const SCHEMA_SUFFIX = ".gschema.xml";
+type SchemaEnvResult = {
+    path: string;
+    written: boolean;
+};
 
-export const prependSchemaDir = (dir: string, existing: string | undefined): string => {
+const SCHEMA_SUFFIX = ".gschema.xml";
+const STAGED_NAME_LENGTH = 16;
+
+const prependSchemaDir = (dir: string, existing: string | undefined): string => {
     if (existing === undefined || existing.length === 0) return dir;
     if (existing.split(":").includes(dir)) return existing;
     return `${dir}:${existing}`;
 };
 
-const STAGED_NAME_LENGTH = 16;
-
 const stagedSchemaName = (filePath: string): string =>
     `${createHash("sha1").update(filePath).digest("hex").slice(0, STAGED_NAME_LENGTH)}${SCHEMA_SUFFIX}`;
 
-export const stageSchema = (dir: string, filePath: string): void => {
+const stageSchema = (dir: string, filePath: string): void => {
     copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
 };
 
@@ -30,11 +34,6 @@ const toForwardSlashes = (value: string): string => value.replaceAll(/[/\\]/g, "
 
 const moduleSpecifierFor = (dataDirAbs: string, filePath: string): string =>
     `${DATA_IMPORT_PREFIX}/${toForwardSlashes(relative(dataDirAbs, filePath))}`;
-
-type SchemaEnvResult = {
-    path: string;
-    written: boolean;
-};
 
 const readVisibleEntries = (dir: string): Dirent[] => {
     try {
@@ -49,6 +48,7 @@ const isSchemaFile = (entry: Dirent): boolean => entry.isFile() && entry.name.en
 const collectSchemaFiles = (dir: string, found: string[]): void => {
     for (const entry of readVisibleEntries(dir)) {
         const full = join(dir, entry.name);
+
         if (entry.isDirectory()) {
             collectSchemaFiles(full, found);
         } else if (isSchemaFile(entry)) {
@@ -57,29 +57,28 @@ const collectSchemaFiles = (dir: string, found: string[]): void => {
     }
 };
 
-export const findSchemaFiles = (dataDir: string): string[] => {
+const findSchemaFiles = (dataDir: string): string[] => {
     const found: string[] = [];
     collectSchemaFiles(dataDir, found);
     return sortStrings(found);
 };
 
-export const stageAndCompileProjectSchemas = (root: string, dataDir: string | null): string | null => {
+const stageAndCompileProjectSchemas = (root: string, dataDir: string | null): string | null => {
     if (dataDir === null) return null;
     const schemaFiles = findSchemaFiles(join(root, dataDir));
     if (schemaFiles.length === 0) return null;
-
     const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
     for (const filePath of schemaFiles) stageSchema(dir, filePath);
     compileSchemas(dir);
     process.once("exit", () => removeTempDir(dir));
-
     return dir;
 };
 
-export const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");
+const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");
 
 const parseSchemaFileOrWarn = (filePath: string, dataDirAbs: string): ParsedSchemaFile | null => {
     const specifier = moduleSpecifierFor(dataDirAbs, filePath);
+
     try {
         return parseSchemaXml(readFileSync(filePath, "utf8"), specifier);
     } catch (error) {
@@ -91,10 +90,12 @@ const parseSchemaFileOrWarn = (filePath: string, dataDirAbs: string): ParsedSche
 
 const parseProjectSchemas = (schemaFiles: string[], dataDirAbs: string): ParsedSchemaFile[] => {
     const parsed: ParsedSchemaFile[] = [];
+
     for (const filePath of schemaFiles) {
         const result = parseSchemaFileOrWarn(filePath, dataDirAbs);
         if (result !== null) parsed.push(result);
     }
+
     return parsed;
 };
 
@@ -113,7 +114,7 @@ const writeIfChanged = (path: string, content: string): boolean => {
     return true;
 };
 
-export const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEnvResult => {
+const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEnvResult => {
     const dataDirAbs = dataDir === null ? null : join(rootDir, dataDir);
     const schemaFiles = dataDirAbs === null ? [] : findSchemaFiles(dataDirAbs);
     const parsed = dataDirAbs === null ? [] : parseProjectSchemas(schemaFiles, dataDirAbs);
@@ -121,4 +122,14 @@ export const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEn
     const path = schemaEnvPath(rootDir);
     const written = writeIfChanged(path, content);
     return { path, written };
+};
+
+export {
+    SCHEMA_SUFFIX,
+    prependSchemaDir,
+    stageSchema,
+    findSchemaFiles,
+    stageAndCompileProjectSchemas,
+    schemaEnvPath,
+    emitSchemaEnv,
 };

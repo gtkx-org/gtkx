@@ -4,16 +4,17 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 
 type Equal<A, B> = (<T>(probe: T) => T extends A ? 1 : 2) extends <T>(probe: T) => T extends B ? 1 : 2 ? true : false;
-
 type Expect<T extends true> = T;
 
 describe("generated signal types", () => {
     it("types each signal name with its own handler signature", () => {
         const button = new Gtk.Button();
         let calls = 0;
+
         button.connect("clicked", () => {
             calls += 1;
         });
+
         button.emit("clicked");
 
         const signatures: [

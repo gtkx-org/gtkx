@@ -6,44 +6,51 @@ import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 
-const POST_ACTIVATE_PROPS = new Set(["menubar"]);
-
 type ApplicationComponentProps = {
     applicationId?: string | null | undefined;
     children?: ReactNode | undefined;
     ref?: Ref<Gtk.Application | null> | undefined;
 };
 
-export const createApplicationComponent = (
+const POST_ACTIVATE_PROPS = new Set(["menubar"]);
+
+const useApplicationLifecycle = (
+    application: Gtk.Application | null,
+    setActivated: (value: boolean) => void,
+): void => {
+    useLayoutEffect(() => {
+        if (!application) return;
+        runApplication(application);
+        setActivated(true);
+
+        return () => {
+            quitApplication(application);
+            setActivated(false);
+        };
+    }, [application, setActivated]);
+};
+
+const applicationChildren = (application: Gtk.Application | null, children: ReactNode): ReactNode => {
+    if (!application) return null;
+    return <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>;
+};
+
+const createApplicationComponent = (
     Component: ElementType,
 ): ((props: ApplicationComponentProps) => ReactNode) => {
     return ({ applicationId = defaultApplicationId, children, ref, ...rest }: ApplicationComponentProps): ReactNode => {
         const [application, setApplication] = useState<Gtk.Application | null>(null);
         const [activated, setActivated] = useState(false);
-
-        useLayoutEffect(() => {
-            if (!application) return;
-
-            runApplication(application);
-            setActivated(true);
-
-            return () => {
-                quitApplication(application);
-                setActivated(false);
-            };
-        }, [application]);
-
+        useApplicationLifecycle(application, setActivated);
         const mergedRef = useMergedRef(ref, setApplication);
         const appliedProps = activated ? rest : pickBy(rest, (_value, key) => !POST_ACTIVATE_PROPS.has(key));
 
         return (
             <Component ref={mergedRef} applicationId={applicationId} {...appliedProps}>
-                {activated && application
-                    ? (
-                            <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>
-                        )
-                    : null}
+                {activated ? applicationChildren(application, children) : null}
             </Component>
         );
     };
 };
+
+export { createApplicationComponent };

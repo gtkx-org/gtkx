@@ -59,6 +59,7 @@ describe("renderFile", () => {
     it("uses the import extension for the entry and test imports", async () => {
         expect(await renderFile("src/index.tsx", context({ importExtension: ".js" }))).toContain('from "./app.js"');
         expect(await renderFile("src/index.tsx", context({ importExtension: ".jsx" }))).toContain('from "./app.jsx"');
+
         expect(await renderFile("tests/app.test.tsx", context({ importExtension: ".jsx" }))).toContain(
             'from "../src/app.jsx"',
         );

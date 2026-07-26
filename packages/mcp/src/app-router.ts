@@ -22,7 +22,7 @@ type RegisteredApp = {
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
-export class AppRouter extends EventEmitter<AppRouterEventMap> {
+class AppRouter extends EventEmitter<AppRouterEventMap> {
     private static defaultWaitTimeout = 10_000;
 
     private apps: Map<string, RegisteredApp> = new Map();
@@ -66,12 +66,14 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
 
     private handleRegister(connection: ProtocolConnection, request: Request): void {
         const parseResult = RegisterParamsSchema.safeParse(request.params);
+
         if (!parseResult.success) {
             this.sendError(connection, request, invalidRequestError(parseResult.error.message));
             return;
         }
 
         const params = parseResult.data;
+
         const appInfo: AppInfo = {
             applicationId: params.applicationId,
             pid: params.pid,
@@ -80,9 +82,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
 
         this.apps.set(params.applicationId, { info: appInfo, connection });
         this.connectionToApp.set(connection.id, params.applicationId);
-
         this.acknowledge(connection, request);
-
         this.emit("appRegistered", appInfo);
     }
 
@@ -96,6 +96,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
             id: request.id,
             result: { success: true },
         };
+
         this.connections.send(connection.id, response);
     }
 
@@ -134,6 +135,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
 
     waitForApp(timeout: number = AppRouter.defaultWaitTimeout): Promise<AppInfo> {
         const defaultApp = this.getDefaultApp();
+
         if (defaultApp) {
             return Promise.resolve(defaultApp.info);
         }
@@ -141,6 +143,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
         return new Promise((resolve, reject) => {
             const timeoutId = setTimeout(() => {
                 this.off("appRegistered", onRegister);
+
                 reject(
                     new Error(
                         `Timeout waiting for app registration after ${timeout}ms. ` +
@@ -161,6 +164,7 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
 
     async sendToApp<T>(applicationId: string | undefined, method: string, params?: unknown): Promise<T> {
         const app = this.resolveTargetApp(applicationId);
+
         try {
             return await app.connection.send<T>(method, params, this.requestTimeout);
         } catch (error) {
@@ -168,7 +172,10 @@ export class AppRouter extends EventEmitter<AppRouterEventMap> {
                 this.removeApp(app.connection);
                 throw connectionWriteFailedError(app.info.applicationId);
             }
+
             throw error;
         }
     }
 }
+
+export { AppRouter };

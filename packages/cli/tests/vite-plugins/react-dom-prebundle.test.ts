@@ -6,9 +6,11 @@ type ConfigHook = (config: { optimizeDeps?: { include?: string[] } }) => void;
 const getConfigHook = (): ConfigHook => {
     const plugin = gtkxReactDomPrebundle();
     const hook = plugin.config;
+
     if (typeof hook !== "function") {
         throw new TypeError("expected plugin.config to be a function");
     }
+
     return hook as ConfigHook;
 };
 
@@ -25,15 +27,12 @@ describe("gtkxReactDomPrebundle", () => {
         };
 
         getConfigHook()(config);
-
         expect(config.optimizeDeps?.include).toEqual(["react", "lodash"]);
     });
 
     it("initializes optimizeDeps when missing and leaves include unset", () => {
         const config: { optimizeDeps?: { include?: string[] } } = {};
-
         getConfigHook()(config);
-
         expect(config.optimizeDeps).toEqual({ include: undefined });
     });
 
@@ -43,7 +42,6 @@ describe("gtkxReactDomPrebundle", () => {
         };
 
         getConfigHook()(config);
-
         expect(config.optimizeDeps?.include).toEqual(["react", "lodash"]);
     });
 });

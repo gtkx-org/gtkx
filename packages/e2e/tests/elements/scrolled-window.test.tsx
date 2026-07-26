@@ -99,7 +99,6 @@ describe("render - ScrolledWindow (3)", () => {
         let [hPolicy, vPolicy] = getPolicy(ref.current as Gtk.ScrolledWindow);
         expect(hPolicy).toBe(Gtk.PolicyType.AUTOMATIC);
         expect(vPolicy).toBe(Gtk.PolicyType.AUTOMATIC);
-
         await render(<App hPolicyProp={Gtk.PolicyType.NEVER} vPolicyProp={Gtk.PolicyType.ALWAYS} />);
         [hPolicy, vPolicy] = getPolicy(ref.current as Gtk.ScrolledWindow);
         expect(hPolicy).toBe(Gtk.PolicyType.NEVER);
@@ -143,7 +142,6 @@ describe("render - ScrolledWindow (4)", () => {
     it("updates child when changed", async () => {
         await render(<App text="Initial" />);
         expect(screen.getByText("Initial")).toBeDefined();
-
         await render(<App text="Updated" />);
         expect(screen.getByText("Updated")).toBeDefined();
     });

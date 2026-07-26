@@ -19,9 +19,11 @@ const isDeepArrayEqual = (a: unknown, b: unknown): boolean => {
     return a.every((item, index) => isDeepEqual(item, b[index]));
 };
 
-export function isDeepEqual(a: unknown, b: unknown): boolean {
+function isDeepEqual(a: unknown, b: unknown): boolean {
     if (a === b) return true;
     if (Array.isArray(a) || Array.isArray(b)) return isDeepArrayEqual(a, b);
     if (isPlainObject(a) && isPlainObject(b)) return objectKeysEqual(a, b, isDeepEqual);
     return false;
 }
+
+export { isDeepEqual };

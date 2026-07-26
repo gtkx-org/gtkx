@@ -38,7 +38,6 @@ describe("render - NavigationSplitView", () => {
 
         const { rerender } = await render(<App showContent={true} />);
         expect(viewRef.current?.getContent()).not.toBeNull();
-
         await rerender(<App showContent={false} />);
         expect(viewRef.current?.getContent()).toBeNull();
     });

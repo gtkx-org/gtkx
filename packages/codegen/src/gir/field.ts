@@ -2,7 +2,7 @@ import type { ParseContext, TypeId } from "./type-id.js";
 import { attr, attrBool, childOf, docOf, intAttr, nameAttr, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
-export type GirField = {
+type GirField = {
     name: string;
     doc: string | undefined;
     type: TypeId | undefined;
@@ -13,7 +13,7 @@ export type GirField = {
     bits: number | undefined;
 };
 
-export const fieldFromNode = (node: RawNode, context: ParseContext): GirField => ({
+const fieldFromNode = (node: RawNode, context: ParseContext): GirField => ({
     name: nameAttr(node),
     doc: docOf(node),
     type: typeRefFromNode(node, context),
@@ -23,3 +23,5 @@ export const fieldFromNode = (node: RawNode, context: ParseContext): GirField =>
     private: attrBool(node, "private", false),
     bits: intAttr(node, "bits"),
 });
+
+export { fieldFromNode, type GirField };

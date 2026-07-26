@@ -3,14 +3,15 @@ import { sortStringsBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName } from "./widget-accessible-properties.js";
 
-const enumNamesByValue = (enumObject: Record<string, string | number>): Map<number, string> =>
-    new Map<number, string>(
+const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
+
+function enumNamesByValue(enumObject: Record<string, string | number>): Map<number, string> {
+    return new Map<number, string>(
         Object.entries(enumObject)
             .filter((entry): entry is [string, number] => typeof entry[1] === "number")
             .map(([name, value]) => [value, name]),
     );
-
-const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
+}
 
 /**
  * Converts an accessible role enum value into its lowercase name, falling back
@@ -18,20 +19,23 @@ const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
  *
  * @param role The accessible role to format.
  */
-export const formatRole = (role: Gtk.AccessibleRole): string => {
+const formatRole = (role: Gtk.AccessibleRole): string => {
     const name = ROLE_NAMES_BY_VALUE.get(role);
     if (!name) return String(role);
     return name.toLowerCase();
 };
 
-export const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
+const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
     const names = [...roles].map((role) => formatRole(role).toUpperCase());
+
     if (names.length <= 1) {
         return names.join("");
     }
+
     if (names.length === 2) {
         return `${names[0]} or ${names[1]}`;
     }
+
     const head = names.slice(0, -1);
     const last = names.at(-1);
     return `${head.join(", ")}, or ${last}`;
@@ -43,13 +47,13 @@ export const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
  * @param container The scope to traverse.
  * @returns A map from role name to the widgets that have that role.
  */
-export const getRoles = (container: Container): Map<string, Gtk.Widget[]> => {
+const getRoles = (container: Container): Map<string, Gtk.Widget[]> => {
     const roles: Map<string, Gtk.Widget[]> = new Map();
 
     for (const widget of traverse(container)) {
         const roleName = formatRole(widget.getAccessibleRole());
-
         const existing = roles.get(roleName);
+
         if (existing) {
             existing.push(widget);
         } else {
@@ -73,7 +77,7 @@ const formatWidgetPreview = (widget: Gtk.Widget, name: string | null): string =>
  *
  * @param container The scope to inspect.
  */
-export const prettyRoles = (container: Container): string => {
+const prettyRoles = (container: Container): string => {
     const roles = getRoles(container);
 
     if (roles.size === 0) {
@@ -81,14 +85,15 @@ export const prettyRoles = (container: Container): string => {
     }
 
     const lines: string[] = [];
-
     const sortedRoles = sortStringsBy([...roles], ([roleName]) => roleName);
 
     for (const [roleName, widgets] of sortedRoles) {
         lines.push(`${roleName}:`);
+
         for (const widget of widgets) {
             lines.push(`  ${formatWidgetPreview(widget, getWidgetAccessibleName(widget))}`);
         }
+
         lines.push("");
     }
 
@@ -101,6 +106,8 @@ export const prettyRoles = (container: Container): string => {
  *
  * @param container The scope to inspect.
  */
-export const logRoles = (container: Container): void => {
+const logRoles = (container: Container): void => {
     console.log(prettyRoles(container));
 };
+
+export { formatRole, formatRoleList, getRoles, prettyRoles, logRoles };

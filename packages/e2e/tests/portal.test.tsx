@@ -8,8 +8,8 @@ import { createRef, type ReactNode, type Ref } from "react";
 import { describe, expect, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-
 let nextAppId = 0;
+
 const uniqueAppId = (): string => `org.gtkx.portaltest${nextAppId++}`;
 
 const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: string }) => {
@@ -22,10 +22,12 @@ const plainBox = (ref: Ref<Gtk.Box>): ReactNode => <GtkBox ref={ref} orientation
 const stackChildOrder = (stack: Gtk.Stack): string[] => {
     const names: string[] = [];
     let child = stack.getFirstChild();
+
     while (child !== null) {
         if (child instanceof GtkEnums.Label) names.push(child.getLabel());
         child = child.getNextSibling();
     }
+
     return names;
 };
 
@@ -37,6 +39,7 @@ const renderPortalIntoBox = async (
 
     function App() {
         const box = boxRef.current;
+
         return (
             <>
                 {boxTree(boxRef)}
@@ -47,7 +50,6 @@ const renderPortalIntoBox = async (
 
     const { rerender } = await render(<App />);
     await rerender(<App />);
-
     return boxRef.current as Gtk.Box;
 };
 
@@ -67,7 +69,6 @@ describe("createPortal (1)", () => {
 
     it("renders children into a specific container widget", async () => {
         const box = await renderPortalIntoBox((target) => createPortal(<GtkLabel>In Portal</GtkLabel>, target));
-
         within(box).getByText("In Portal");
     });
 
@@ -76,6 +77,7 @@ describe("createPortal (1)", () => {
 
         function App({ order }: { order: string[] }) {
             const stack = stackRef.current;
+
             return (
                 <>
                     <GtkStack ref={stackRef}>
@@ -91,7 +93,6 @@ describe("createPortal (1)", () => {
         const { rerender } = await render(<App order={["a", "b"]} />);
         await rerender(<App order={["a", "b"]} />);
         expect(stackChildOrder(stackRef.current as Gtk.Stack)).toEqual(["a", "b", "portal"]);
-
         await rerender(<App order={["b", "a"]} />);
         expect(stackChildOrder(stackRef.current as Gtk.Stack)).toEqual(["b", "portal", "a"]);
     });
@@ -149,6 +150,7 @@ describe("createPortal (2)", () => {
             </GtkApplication>,
             { container: rootElement },
         );
+
         await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "First", hidden: true });
 
         await rerender(
@@ -156,6 +158,7 @@ describe("createPortal (2)", () => {
                 <TitledPortal title="Second" />
             </GtkApplication>,
         );
+
         await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "Second", hidden: true });
     });
 });

@@ -5,7 +5,7 @@ import type { GirAlias, GirNamespace } from "./namespace.js";
 import type { GirRecord } from "./record.js";
 import type { StructuralType } from "./type-id.js";
 
-export type EntityType =
+type EntityType =
     | { kind: "class"; namespace: GirNamespace; value: GirClass } |
     { kind: "interface"; namespace: GirNamespace; value: GirClass } |
     { kind: "record"; namespace: GirNamespace; value: GirRecord } |
@@ -13,4 +13,6 @@ export type EntityType =
     { kind: "callback"; namespace: GirNamespace; value: GirCallback } |
     { kind: "alias"; namespace: GirNamespace; value: GirAlias };
 
-export type GirType = StructuralType | EntityType;
+type GirType = StructuralType | EntityType;
+
+export { type EntityType, type GirType };

@@ -8,15 +8,8 @@ import { deselectOptions, selectOptions } from "./selection.js";
 import { createInitialState } from "./state.js";
 import { clear, copy, cut, paste, type } from "./text.js";
 
-export type { ScrollDelta } from "./adjustment.js";
-export type { DragOffset, DragOptions, DropContent, DropOptions } from "./gesture.js";
-export type { TabOptions } from "./keyboard.js";
-export type { PointerInput } from "./pointer.js";
-export type { TypeOptions } from "./text.js";
-export { resetClipboard } from "./text.js";
-
 /** The set of user interaction helpers exposed by {@link userEvent}, covering clicks, typing, keyboard, pointer, gestures, selection, and scrolling. */
-export type UserEvent = {
+type UserEvent = {
     click: typeof click;
     dblClick: typeof dblClick;
     tripleClick: typeof tripleClick;
@@ -46,7 +39,7 @@ export type UserEvent = {
 const state = createInitialState();
 
 /** High-level helpers that drive widgets by dispatching the same events and gestures GTK4 delivers when someone clicks, types, or drags. */
-export const userEvent: UserEvent = {
+const userEvent: UserEvent = {
     click,
     dblClick,
     tripleClick,
@@ -72,3 +65,11 @@ export const userEvent: UserEvent = {
     keyboard: (widget: Gtk.Widget, input: string): Promise<void> => keyboard(state, widget, input),
     pointer: (widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(state, widget, input),
 };
+
+export type { ScrollDelta } from "./adjustment.js";
+export type { DragOffset, DragOptions, DropContent, DropOptions } from "./gesture.js";
+export type { TabOptions } from "./keyboard.js";
+export type { PointerInput } from "./pointer.js";
+export type { TypeOptions } from "./text.js";
+export { resetClipboard } from "./text.js";
+export { userEvent, type UserEvent };

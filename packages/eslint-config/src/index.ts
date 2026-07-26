@@ -16,13 +16,9 @@ import { gtkx } from "./plugin.js";
 type FlatConfig = TSESLint.FlatConfig.Config;
 
 const SOURCES = ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"];
-
 const JS_SOURCES = ["**/*.{js,jsx,mjs,cjs}"];
-
 const TESTS = ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"];
-
 const CORE_SOURCES = ["packages/*/src/**/*.{ts,tsx}"];
-
 const ADW_SOURCES = ["packages/react/src/adw/**", "packages/components/src/adw/**"];
 
 const ADW_CORE_MESSAGE =
@@ -126,7 +122,10 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "@typescript-eslint/no-unnecessary-type-assertion": "off",
     "@typescript-eslint/non-nullable-type-assertion-style": "off",
     "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
-    "gtkx/cognitive-complexity": ["error", { max: 10 }],
+    "gtkx/cognitive-complexity": ["error", { max: 5 }],
+    "gtkx/module-section-order": "error",
+    "gtkx/no-inline-exports": "error",
+    "gtkx/statement-padding": "error",
     "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
     "max-params": ["error", { max: 4 }],
     "perfectionist/sort-imports": [
@@ -150,6 +149,16 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "unicorn/prefer-event-target": "off",
 };
 
+const TEST_RULES: Linter.RulesRecord = {
+    "@typescript-eslint/require-await": "off",
+    "@typescript-eslint/unbound-method": "off",
+    "gtkx/module-section-order": "off",
+    "max-lines-per-function": "off",
+    "sonarjs/assertions-in-tests": "off",
+    "vitest/expect-expect": "off",
+    "vitest/unbound-method": "error",
+};
+
 const restrictAdwImports = (message: string, extra: string[]): Linter.RulesRecord => ({
     "@typescript-eslint/no-restricted-imports": [
         "error",
@@ -159,19 +168,10 @@ const restrictAdwImports = (message: string, extra: string[]): Linter.RulesRecor
     ],
 });
 
-const TEST_RULES: Linter.RulesRecord = {
-    "@typescript-eslint/require-await": "off",
-    "@typescript-eslint/unbound-method": "off",
-    "max-lines-per-function": "off",
-    "sonarjs/assertions-in-tests": "off",
-    "vitest/expect-expect": "off",
-    "vitest/unbound-method": "error",
-};
-
 const scopeTo = (files: string[], configs: (FlatConfig | FlatConfig[])[]): FlatConfig[] =>
     configs.flat().map((entry) => ({ ...entry, files }));
 
-export const config = (root: string): FlatConfig[] => [
+const config = (root: string): FlatConfig[] => [
     includeIgnoreFile(join(root, ".gitignore")),
     { ignores: IGNORES },
     ...scopeTo(SOURCES, SOURCE_EXTENDS),
@@ -197,3 +197,5 @@ export const config = (root: string): FlatConfig[] => [
     ...scopeTo(JS_SOURCES, [tseslint.configs.disableTypeChecked]),
     { files: JS_SOURCES },
 ];
+
+export { config };

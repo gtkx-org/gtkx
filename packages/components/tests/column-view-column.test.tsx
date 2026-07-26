@@ -68,8 +68,10 @@ const expectHeaderMenuItemCounts = (
     expectedCounts: (number | null)[],
 ): void => {
     const columnView = columnViewRef.current as Gtk.ColumnView;
+
     for (const [index, expectedCount] of expectedCounts.entries()) {
         const headerMenu = getColumn(columnView, index).getHeaderMenu();
+
         if (expectedCount === null) {
             expect(headerMenu).toBeNull();
         } else {
@@ -103,17 +105,13 @@ describe("render - ColumnViewColumn (1)", () => {
     describe("ColumnViewColumn (1)", () => {
         it("adds column to ColumnView", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
-
             await renderColumns(columnViewRef, [defaultColumn("name", "Name")]);
-
             expect(columnViewRef.current?.getColumns().getNItems()).toBe(1);
         });
 
         it("sets column title", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
-
             await renderColumns(columnViewRef, [defaultColumn("col", "My Column")]);
-
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             expect(column.getTitle()).toBe("My Column");
         });
@@ -176,7 +174,6 @@ describe("render - ColumnViewColumn (3)", () => {
 
             await render(<App title="Initial" />);
             expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getTitle()).toBe("Initial");
-
             await render(<App title="Updated" />);
             expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getTitle()).toBe("Updated");
         });
@@ -206,7 +203,6 @@ describe("render - ColumnViewColumn (4)", () => {
 
             await render(<App columns={["A", "B", "C"]} />);
             expect(columnViewRef.current?.getColumns().getNItems()).toBe(3);
-
             await render(<App columns={["A", "C"]} />);
             expect(columnViewRef.current?.getColumns().getNItems()).toBe(2);
         });
@@ -217,6 +213,7 @@ describe("render - ColumnViewColumn (5)", () => {
     describe("header menu slot", () => {
         it("installs a header menu from the headerMenu slot", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
+
             await renderColumns(columnViewRef, [
                 defaultColumn("name", "Name", {
                     headerMenu: flatMenu("name", [
@@ -233,12 +230,12 @@ describe("render - ColumnViewColumn (5)", () => {
         it("has no header menu without the slot", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             await renderColumns(columnViewRef, [defaultColumn("name", "Name")]);
-
             expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getHeaderMenu()).toBeNull();
         });
 
         it("supports sections in the header menu", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
+
             await renderColumns(columnViewRef, [
                 defaultColumn("name", "Name", {
                     headerMenu: sectionedMenu("name", [
@@ -280,8 +277,8 @@ describe("render - ColumnViewColumn (6)", () => {
     describe("header menu updates", () => {
         it("dynamically adds menu items", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
-
             const { rerender } = await renderChildren(["A"], buildColumnMenu(columnViewRef));
+
             expect(
                 getColumn(columnViewRef.current as Gtk.ColumnView, 0)
                     .getHeaderMenu()
@@ -289,6 +286,7 @@ describe("render - ColumnViewColumn (6)", () => {
             ).toBe(1);
 
             await rerender(["A", "B", "C"]);
+
             expect(
                 getColumn(columnViewRef.current as Gtk.ColumnView, 0)
                     .getHeaderMenu()
@@ -298,8 +296,8 @@ describe("render - ColumnViewColumn (6)", () => {
 
         it("dynamically removes menu items", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
-
             const { rerender } = await renderChildren(["A", "B", "C"], buildColumnMenu(columnViewRef));
+
             expect(
                 getColumn(columnViewRef.current as Gtk.ColumnView, 0)
                     .getHeaderMenu()
@@ -307,6 +305,7 @@ describe("render - ColumnViewColumn (6)", () => {
             ).toBe(3);
 
             await rerender(["A"]);
+
             expect(
                 getColumn(columnViewRef.current as Gtk.ColumnView, 0)
                     .getHeaderMenu()
@@ -340,7 +339,6 @@ describe("render - ColumnViewColumn (7)", () => {
 
             await render(<App showMenu={true} />);
             expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getHeaderMenu()).not.toBeNull();
-
             await render(<App showMenu={false} />);
             expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getHeaderMenu()).toBeNull();
         });
@@ -397,7 +395,6 @@ describe("render - ColumnViewColumn (9)", () => {
 
             await render(<App showColumn={true} />);
             expect(columnViewRef.current?.getColumns().getNItems()).toBe(2);
-
             await render(<App showColumn={false} />);
             expect(columnViewRef.current?.getColumns().getNItems()).toBe(1);
         });
@@ -409,9 +406,7 @@ describe("render - ColumnViewColumn (13)", () => {
         it("forwards a column def ref to the Gtk.ColumnViewColumn instance", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             const columnRef = createRef<Gtk.ColumnViewColumn>();
-
             await renderColumns(columnViewRef, [{ ...defaultColumn("name", "Name"), ref: columnRef }]);
-
             expect(columnRef.current).not.toBeNull();
             expect(columnRef.current).toBe(getColumn(columnViewRef.current as Gtk.ColumnView, 0));
         });
@@ -429,6 +424,7 @@ const showcasePeople: ShowcasePerson[] = [
 
 const sortShowcasePeople = (sortColumn: ShowcaseSortColumn, sortOrder: Gtk.SortType): ShowcasePerson[] => {
     if (!sortColumn) return showcasePeople;
+
     return showcasePeople.toSorted((a, b) => {
         const av = a[sortColumn];
         const bv = b[sortColumn];
@@ -495,6 +491,7 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
     }, []);
 
     const sortedPeople = useMemo(() => sortShowcasePeople(sortColumn, sortOrder), [sortColumn, sortOrder]);
+
     const sortActions = useCallback(
         (column: ShowcaseSortColumn) => buildSortActions(column, handleSortChange),
         [handleSortChange],
@@ -518,9 +515,7 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
 describe("render - ColumnViewColumn (10) > header menu showcase", () => {
     it("renders sortable columns with independent header menus", async () => {
         const columnViewRef = createRef<Gtk.ColumnView>();
-
         await render(<ShowcaseSortableApp columnViewRef={columnViewRef} />);
-
         expectHeaderMenuItemCounts(columnViewRef, [1, 2, 2]);
     });
 });
@@ -554,16 +549,12 @@ describe("render - ColumnViewColumn (11)", () => {
             );
 
             const columnView = columnViewRef.current as Gtk.ColumnView;
-
             expect(columnView.activateAction("name.sort-asc", null)).toBe(true);
             expect(nameSortAsc).toHaveBeenCalledTimes(1);
-
             expect(columnView.activateAction("name.sort-desc", null)).toBe(true);
             expect(nameSortDesc).toHaveBeenCalledTimes(1);
-
             expect(columnView.activateAction("role.sort-asc", null)).toBe(true);
             expect(roleSortAsc).toHaveBeenCalledTimes(1);
-
             expect(columnView.activateAction("role.hide", null)).toBe(true);
             expect(roleHide).toHaveBeenCalledTimes(1);
         });
@@ -590,16 +581,13 @@ describe("render - ColumnViewColumn (12)", () => {
             const columnView = columnViewRef.current as Gtk.ColumnView;
             const nameMenu = getColumn(columnView, 0).getHeaderMenu();
             expect(nameMenu?.getNItems()).toBe(1);
-
             const nameSection = nameMenu?.getItemLink(0, "section");
             expect(nameSection?.getNItems()).toBe(3);
             expect(nameSection?.getItemAttributeValue(0, "label", null)?.getString()[0]).toBe("Sort Ascending");
             expect(nameSection?.getItemAttributeValue(0, "action", null)?.getString()[0]).toBe("name.sort-asc");
             expect(nameSection?.getItemAttributeValue(2, "action", null)?.getString()[0]).toBe("name.sort-clear");
-
             const roleMenu = getColumn(columnView, 1).getHeaderMenu();
             expect(roleMenu?.getNItems()).toBe(2);
-
             const roleSection2 = roleMenu?.getItemLink(1, "section");
             expect(roleSection2?.getItemAttributeValue(0, "action", null)?.getString()[0]).toBe("role.hide");
         });

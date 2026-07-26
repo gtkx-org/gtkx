@@ -19,14 +19,16 @@ const currentApplicationId = (): string | null => Gio.Application.getDefault()?.
 const waitForApplicationId = async (timeoutMs: number): Promise<string | null> => {
     const deadline = Date.now() + timeoutMs;
     let applicationId = currentApplicationId();
+
     while (applicationId === null && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, APPLICATION_POLL_INTERVAL_MS));
         applicationId = currentApplicationId();
     }
+
     return applicationId;
 };
 
-export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
+const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     createServer,
     waitForApplicationId,
     getConfiguredApplicationId: async (root: string) => {
@@ -54,3 +56,5 @@ export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     log: info,
     exit: (code: number): never => process.exit(code),
 });
+
+export { defaultDevRunnerDeps };

@@ -2,7 +2,7 @@ import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { compileProject, type SourceModule } from "../compile.js";
 
-export type CompileStoreParams = {
+type CompileStoreParams = {
     storeDir: string;
     files: SourceModule[];
     packageName: string;
@@ -27,9 +27,10 @@ const writeEnvReference = (storeDir: string): (() => void) => {
     return () => rmSync(join(storeDir, ENV_REFERENCE_FILE), { force: true });
 };
 
-export const compileStore = (params: CompileStoreParams): void => {
+const compileStore = (params: CompileStoreParams): void => {
     const fileNames = params.files.map((file) => file.fileName);
     const removeEnvReference = params.configEnv === true ? writeEnvReference(params.storeDir) : () => {};
+
     try {
         compileProject({
             projectDir: params.storeDir,
@@ -40,7 +41,10 @@ export const compileStore = (params: CompileStoreParams): void => {
     } finally {
         removeEnvReference();
     }
+
     for (const file of params.files) {
         rmSync(join(params.storeDir, file.fileName), { force: true });
     }
 };
+
+export { compileStore, type CompileStoreParams };

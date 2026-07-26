@@ -10,42 +10,48 @@ import {
     layoutOfPrimitive,
 } from "../../gir/size.js";
 
-const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
-
-export type RecordFieldSlot = {
+type RecordFieldSlot = {
     field: GirField;
     slot: FieldSlot;
 };
 
-export const computeRecordFieldSlots = (
+const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
+const recordLayoutCache: Map<string, FieldLayout> = new Map();
+
+const computeRecordFieldSlots = (
     context: ModuleContext,
     fields: GirField[],
     isUnion = false,
 ): { slots: RecordFieldSlot[]; size: number } => {
     const inputs: FieldLayoutInput[] = Array.from(fields, (field) => fieldLayoutInput(context, field, new Set()));
     const result = computeFieldSlots(inputs, isUnion);
+
     const slots = result.slots.map((slot, index) => {
         const field = fields[index];
+
         if (field === undefined) {
             throw new Error("computeRecordFieldSlots: parallel arrays diverged");
         }
+
         return { field, slot };
     });
+
     return { slots, size: result.size };
 };
 
-export const bitMask = (width: number): number => {
+const bitMask = (width: number): number => {
     if (width >= 32) return 0xFF_FF_FF_FF;
     return (1 << width) - 1;
 };
 
-export const mergeBitfield = (readExpr: string, valueExpr: string, mask: number, shift: number): string =>
+const mergeBitfield = (readExpr: string, valueExpr: string, mask: number, shift: number): string =>
     `((${readExpr} & ~(${mask} << ${shift})) | ((Number(${valueExpr}) & ${mask}) << ${shift})) >>> 0`;
 
 const fieldLayoutInput = (context: ModuleContext, field: GirField, visited: Set<string>): FieldLayoutInput => {
     if (field.type === undefined) {
         return { layout: POINTER_LAYOUT, bits: undefined };
     }
+
     return { layout: layoutOfType(context, field.type, field.cType, visited), bits: field.bits };
 };
 
@@ -60,6 +66,7 @@ const layoutOfType = (
 ): FieldLayout => {
     const type = context.library.typeOf(ref);
     if (type === undefined) return POINTER_LAYOUT;
+
     switch (type.kind) {
         case "primitive": {
             return layoutOfPrimitive(type.category);
@@ -109,8 +116,10 @@ const layoutOfRecord = (
     if (cached !== undefined) return cached;
     const nextVisited = new Set(visited);
     nextVisited.add(key);
+
     const inputs: FieldLayoutInput[] = Array.from(resolved.value.fields, (field) =>
         fieldLayoutInput(context, field, nextVisited));
+
     if (inputs.length === 0) return POINTER_LAYOUT;
     const { size } = computeFieldSlots(inputs, resolved.value.isUnion);
     const align = Math.max(1, ...inputs.map((input) => input.layout.align));
@@ -118,8 +127,6 @@ const layoutOfRecord = (
     recordLayoutCache.set(key, layout);
     return layout;
 };
-
-const recordLayoutCache: Map<string, FieldLayout> = new Map();
 
 const resolveAliasLayout = (
     context: ModuleContext,
@@ -130,3 +137,5 @@ const resolveAliasLayout = (
     if (ref === undefined) return POINTER_LAYOUT;
     return layoutOfType(context, ref, resolved.value.targetCType, visited);
 };
+
+export { computeRecordFieldSlots, bitMask, mergeBitfield, type RecordFieldSlot };

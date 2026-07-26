@@ -8,7 +8,6 @@ describe("toggle-ref rebind", () => {
     it("reuses a single toggle ref and tracks the latest wrapper across rebinds", () => {
         const label = new Gtk.Label();
         const handle = getHandle(label);
-
         expect(getWrapper(handle)).toBe(label);
 
         for (let gen = 1; gen <= 5; gen++) {

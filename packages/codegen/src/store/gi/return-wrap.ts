@@ -10,11 +10,14 @@ type WrapReturnOptions = {
     valueExpression: string;
 };
 
-export const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): string => {
+const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["gtype", "bigint64", "biguint64"]);
+
+const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): string => {
     const { ref, nullable, valueExpression } = options;
     if (ref === undefined) return valueExpression;
     const type = context.library.typeOf(ref);
     if (type === undefined) return wrapValue(context, ref, valueExpression);
+
     switch (type.kind) {
         case "primitive": {
             return wrapPrimitive(type.category, nullable, valueExpression);
@@ -56,8 +59,6 @@ const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string)
     return `(fromNative(${descriptor}, ${valueExpression}) as ${renderTsType(context, ref, false)})`;
 };
 
-const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["gtype", "bigint64", "biguint64"]);
-
 const wrapStringPrimitive = (nullable: boolean, valueExpression: string): string =>
     `(${valueExpression} as ${nullable ? "string | null" : "string"})`;
 
@@ -68,3 +69,5 @@ const wrapPrimitive = (category: PrimitiveCategory, nullable: boolean, valueExpr
     if (BIGINT_CATEGORIES.has(category)) return `(${valueExpression} as bigint)`;
     return `(${valueExpression} as number)`;
 };
+
+export { wrapReturnValue };

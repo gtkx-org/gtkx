@@ -18,9 +18,7 @@ const buildAlertDialog = (ref: RefObject<Adw.AlertDialog | null>) => (responses:
 describe("render - AlertDialog responses (1)", () => {
     it("creates AlertDialog without responses", async () => {
         const ref = createRef<Adw.AlertDialog>();
-
         await render(<AdwAlertDialog ref={ref} heading="Test" />, options());
-
         expect(ref.current).not.toBeNull();
         expect(ref.current?.hasResponse("any")).toBe(false);
     });
@@ -122,7 +120,6 @@ describe("render - AlertDialog responses (3)", () => {
 
         await render(<App label="Initial" />, options());
         expect(ref.current?.getResponseLabel("test")).toBe("Initial");
-
         await render(<App label="Updated" />, options());
         expect(ref.current?.getResponseLabel("test")).toBe("Updated");
     });
@@ -136,7 +133,6 @@ describe("render - AlertDialog responses (3)", () => {
 
         await render(<App appearance={Adw.ResponseAppearance.DEFAULT} />, options());
         expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DEFAULT);
-
         await render(<App appearance={Adw.ResponseAppearance.DESTRUCTIVE} />, options());
         expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DESTRUCTIVE);
     });
@@ -150,7 +146,6 @@ describe("render - AlertDialog responses (3)", () => {
 
         await render(<App enabled={true} />, options());
         expect(ref.current?.getResponseEnabled("test")).toBe(true);
-
         await render(<App enabled={false} />, options());
         expect(ref.current?.getResponseEnabled("test")).toBe(false);
     });
@@ -168,9 +163,9 @@ describe("render - AlertDialog responses (4)", () => {
             buildAlertDialog(ref),
             options(),
         );
+
         expect(ref.current?.hasResponse("always")).toBe(true);
         expect(ref.current?.hasResponse("extra")).toBe(true);
-
         await rerender([{ id: "always", label: "Always" }]);
         expect(ref.current?.hasResponse("always")).toBe(true);
         expect(ref.current?.hasResponse("extra")).toBe(false);
@@ -187,6 +182,7 @@ describe("render - AlertDialog responses (4)", () => {
             buildAlertDialog(ref),
             options(),
         );
+
         expect(ref.current?.hasResponse("first")).toBe(true);
         expect(ref.current?.hasResponse("middle")).toBe(false);
         expect(ref.current?.hasResponse("last")).toBe(true);
@@ -196,6 +192,7 @@ describe("render - AlertDialog responses (4)", () => {
             { id: "middle", label: "Middle" },
             { id: "last", label: "Last" },
         ]);
+
         expect(ref.current?.hasResponse("first")).toBe(true);
         expect(ref.current?.hasResponse("middle")).toBe(true);
         expect(ref.current?.hasResponse("last")).toBe(true);

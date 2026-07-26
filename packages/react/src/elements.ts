@@ -25,28 +25,6 @@ import {
 } from "./reconciler/behaviors.js";
 import { type ElementConfig, forTypes, registerElements } from "./reconciler/registry.js";
 
-const layoutChild = (parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null =>
-    parent.getLayoutManager()?.getLayoutChild(child) ?? null;
-
-const buildMenu = (items: MenuItem[]): Gio.Menu => {
-    const menu = Gio.Menu.new();
-    for (const item of items) appendMenuItem(menu, item);
-    return menu;
-};
-
-function appendMenuItem(menu: Gio.Menu, item: MenuItem): void {
-    const label = item.label ?? null;
-    if (item.submenu !== undefined) {
-        menu.appendSubmenu(label, buildMenu(item.submenu));
-        return;
-    }
-    if (item.section !== undefined) {
-        menu.appendSection(label, buildMenu(item.section));
-        return;
-    }
-    menu.append(label, item.action ?? null);
-}
-
 /** The runtime half of the built-in element configuration: the behaviors bound to each GObject type. */
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     ...forTypes(SINGLE_CHILD_TYPES, {
@@ -340,6 +318,32 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [controlledText("text")],
     },
 };
+
+function layoutChild(parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null {
+    return parent.getLayoutManager()?.getLayoutChild(child) ?? null;
+}
+
+const buildMenu = (items: MenuItem[]): Gio.Menu => {
+    const menu = Gio.Menu.new();
+    for (const item of items) appendMenuItem(menu, item);
+    return menu;
+};
+
+function appendMenuItem(menu: Gio.Menu, item: MenuItem): void {
+    const label = item.label ?? null;
+
+    if (item.submenu !== undefined) {
+        menu.appendSubmenu(label, buildMenu(item.submenu));
+        return;
+    }
+
+    if (item.section !== undefined) {
+        menu.appendSection(label, buildMenu(item.section));
+        return;
+    }
+
+    menu.append(label, item.action ?? null);
+}
 
 registerElements(BUILTIN_ELEMENTS);
 registerElements(BUILTIN_BEHAVIORS);

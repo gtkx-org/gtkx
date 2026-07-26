@@ -25,12 +25,14 @@ const rejectionOf = async (promise: Promise<unknown>): Promise<unknown> => {
     } catch (error) {
         return error;
     }
+
     throw new Error("expected rejection");
 };
 
 describe("promisify", () => {
     it("forwards leading args, the resolved cancellable and the callback to the async fn", async () => {
         const calls: unknown[][] = [];
+
         const asyncFn = (...args: unknown[]): void => {
             calls.push(args);
             invokeCallback(...args);
@@ -39,7 +41,6 @@ describe("promisify", () => {
         const cancellable = {};
         const cancellableHandle = handle(99);
         setHandle(cancellable, cancellableHandle);
-
         const value = await promisify(asyncFn, () => "done", cancellable, "a", "b");
         expect(value).toBe("done");
         const args = calls[0] ?? [];
@@ -49,6 +50,7 @@ describe("promisify", () => {
 
     it("forwards the already-wrapped GAsyncResult straight to the finish callable", async () => {
         const asyncResult = new Gtk.Label({ label: "" });
+
         const asyncFn = (...args: unknown[]): void => {
             (args.at(-1) as (source: object | null, result: object) => void)(null, asyncResult);
         };
@@ -94,9 +96,7 @@ describe("generated promisified bindings", () => {
     it("resolves an instance async method against its annotated static finish", async () => {
         const pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, false, 8, 2, 2);
         const stream = Gio.MemoryOutputStream.newResizable();
-
         const saved = await pixbuf.saveToStreamvAsync(stream, "png", null, null);
-
         expect(saved).toBe(true);
         expect(stream.getDataSize()).toBeGreaterThan(0);
     });
@@ -106,9 +106,7 @@ describe("generated promisified bindings", () => {
         const secondOutput = Gio.MemoryOutputStream.newResizable();
         const first = Gio.SimpleIOStream.new(Gio.MemoryInputStream.newFromData([1, 2, 3, 4], null), firstOutput);
         const second = Gio.SimpleIOStream.new(Gio.MemoryInputStream.newFromData([5, 6], null), secondOutput);
-
         const spliced = await first.spliceAsync(second, Gio.IOStreamSpliceFlags.NONE, 0);
-
         expect(spliced).toBe(true);
         expect(secondOutput.getDataSize()).toBe(4);
         expect(firstOutput.getDataSize()).toBe(2);

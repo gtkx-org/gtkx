@@ -5,13 +5,13 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.js";
 
-export const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
-
 /**
  * Options accepted by the {@link gtkx} Vitest plugin. Every headless display
  * setting is optional and falls back to a built-in default when omitted.
  */
-export type GtkxPluginOptions = Partial<HeadlessOptions>;
+type GtkxPluginOptions = Partial<HeadlessOptions>;
+
+const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 
 const workerPreloadUrl = (): URL => {
     const sibling = join(import.meta.dirname, "worker-preload.js");
@@ -21,9 +21,11 @@ const workerPreloadUrl = (): URL => {
 
 const headlessPreloadSpecifier = (options: GtkxPluginOptions): string => {
     const url = workerPreloadUrl();
+
     for (const [key, value] of Object.entries(options)) {
         url.searchParams.set(key, value);
     }
+
     return url.href;
 };
 
@@ -64,5 +66,5 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
     });
 
 export default gtkx;
-
 export { type CompositorId, type HeadlessOptions } from "./headless-display.js";
+export { GTKX_INLINE_DEPS, type GtkxPluginOptions };

@@ -16,6 +16,7 @@ describe("child insertion", () => {
                     <GtkBox>{labels}</GtkBox>
                 </GtkScrolledWindow>,
             );
+
             await cleanup();
         });
     }

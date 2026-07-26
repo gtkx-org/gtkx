@@ -6,6 +6,14 @@ import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 
+type PluginState = {
+    iconsDir: string | null;
+};
+
+type PluginContext = {
+    emitFile: (file: { type: "asset"; fileName: string; source: Buffer }) => void;
+};
+
 const ICONS_DIR = "icons";
 
 const XDG_ENV_BANNER = [
@@ -15,14 +23,24 @@ const XDG_ENV_BANNER = [
     "].join(\":\");",
 ].join("\n");
 
-type PluginState = {
-    iconsDir: string | null;
-};
-
 const findIconFiles = (iconsDir: string | null): ListedFile[] =>
     iconsDir === null ? [] : listFilesRecursive(iconsDir);
 
-export function gtkxIcons(): Plugin {
+const resolveIconsDir = (config: UserConfig): string | null => {
+    const root = config.root ?? process.cwd();
+    const dataDir = resolveDataDir(root);
+    return dataDir === null ? null : join(root, dataDir, ICONS_DIR);
+};
+
+const emitIcons = (ctx: PluginContext, icons: ListedFile[]): void => {
+    for (const { absPath, rel } of icons) {
+        ctx.emitFile({ type: "asset", fileName: join(ICONS_DIR, rel), source: readFileSync(absPath) });
+    }
+
+    if (icons.length > 0) info(`Copied ${icons.length} icon(s) into ${ICONS_DIR}/`);
+};
+
+function gtkxIcons(): Plugin {
     const state: PluginState = {
         iconsDir: null,
     };
@@ -33,9 +51,7 @@ export function gtkxIcons(): Plugin {
         apply: "build",
 
         config(config: UserConfig) {
-            const root = config.root ?? process.cwd();
-            const dataDir = resolveDataDir(root);
-            state.iconsDir = dataDir === null ? null : join(root, dataDir, ICONS_DIR);
+            state.iconsDir = resolveIconsDir(config);
         },
 
         outputOptions(options) {
@@ -44,15 +60,9 @@ export function gtkxIcons(): Plugin {
         },
 
         buildEnd() {
-            const icons = findIconFiles(state.iconsDir);
-            for (const { absPath, rel } of icons) {
-                this.emitFile({
-                    type: "asset",
-                    fileName: join(ICONS_DIR, rel),
-                    source: readFileSync(absPath),
-                });
-            }
-            if (icons.length > 0) info(`Copied ${icons.length} icon(s) into ${ICONS_DIR}/`);
+            emitIcons(this, findIconFiles(state.iconsDir));
         },
     };
 }
+
+export { gtkxIcons };

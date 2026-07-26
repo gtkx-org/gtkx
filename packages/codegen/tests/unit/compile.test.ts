@@ -19,11 +19,13 @@ describe("compileStore", () => {
     const run = (files: SourceModule[]): string => {
         const storeDir = mkdtempSync(join(tmpdir(), "gtkx-compile-"));
         dir = storeDir;
+
         for (const file of files) {
             const filePath = join(storeDir, file.fileName);
             mkdirSync(dirname(filePath), { recursive: true });
             writeFileSync(filePath, file.source);
         }
+
         compileStore({ storeDir, files, packageName: "@gtkx/gi" });
         return storeDir;
     };
@@ -36,6 +38,7 @@ describe("compileStore", () => {
                 source: 'import { answer } from "../foo/foo.js";\nexport const ok: number = answer;\n',
             },
         ]);
+
         expect(existsSync(join(storeDir, "foo", "foo.js"))).toBe(true);
         expect(existsSync(join(storeDir, "foo", "foo.d.ts"))).toBe(true);
         expect(existsSync(join(storeDir, "bar", "bar.ts"))).toBe(false);
@@ -89,6 +92,7 @@ describe("compileProject", () => {
         const projectDir = mkdtempSync(join(tmpdir(), "gtkx-compile-"));
         dir = projectDir;
         writeFileSync(join(projectDir, "ok.ts"), "export const answer: number = 42;\n");
+
         expect(() =>
             compileProject({
                 projectDir,

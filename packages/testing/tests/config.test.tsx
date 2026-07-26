@@ -16,7 +16,6 @@ describe("configure defaults", () => {
 
     it("has default configuration", () => {
         const config = getConfig();
-
         expect(config.throwSuggestions).toBe(false);
         expect(config.getElementError).toBeDefined();
     });
@@ -27,7 +26,6 @@ describe("configure updates", () => {
 
     it("updates configuration with partial object", () => {
         configure({ throwSuggestions: true });
-
         const config = getConfig();
         expect(config.throwSuggestions).toBe(true);
     });
@@ -70,8 +68,8 @@ describe("configure error factory", () => {
         });
 
         const { container } = await render(<GtkLabel>Test</GtkLabel>);
-
         await expect(findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(Error);
+
         await expect(findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(
             "Unable to find an element with role 'BUTTON'",
         );

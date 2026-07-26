@@ -10,14 +10,18 @@
  * pickBy({ a: 1, b: 2 }, (value) => value > 1); // { b: 2 }
  * pickBy({ a: 1, b: 2 }, (_value, key) => key !== "a"); // { b: 2 }
  */
-export function pickBy<T extends Record<string, unknown>>(
+function pickBy<T extends Record<string, unknown>>(
     obj: T,
     shouldPick: (value: T[keyof T], key: keyof T) => boolean,
 ): Partial<T> {
     const result: Partial<T> = {};
+
     for (const key of Object.keys(obj) as (keyof T)[]) {
         const value = obj[key];
         if (shouldPick(value, key)) result[key] = value;
     }
+
     return result;
 }
+
+export { pickBy };

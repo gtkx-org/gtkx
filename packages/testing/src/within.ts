@@ -21,10 +21,12 @@ const bindCustomQueries = <Q extends QueryMap>(customQueries: Q, container: Cont
  * @param queries Optional custom queries to bind alongside the built-in ones.
  * @returns The queries bound to the container.
  */
-export const within = <Q extends QueryMap = Record<never, never>>(
+const within = <Q extends QueryMap = Record<never, never>>(
     container: Container,
     queries?: Q,
 ): BoundQueries & BoundCustomQueries<Q> => ({
     ...bindCustomQueries(builtinQueries, container),
     ...(queries ? bindCustomQueries(queries, container) : ({} as BoundCustomQueries<Q>)),
 });
+
+export { within };

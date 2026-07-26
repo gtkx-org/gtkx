@@ -6,9 +6,7 @@ import { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "../src/
 import createConfigPlugin from "../src/vite-plugin.js";
 
 type ResolveIdHook = (id: string, importer: string | undefined, options: { isEntry: boolean }) => unknown;
-
 type LoadHook = (id: string) => unknown;
-
 type ConfigHook = (config: { root: string }, env: { command: "serve"; mode: string }) => unknown;
 
 const hookHandlerOf = <T>(hook: T | { handler: T } | undefined | null, name: string): T => {

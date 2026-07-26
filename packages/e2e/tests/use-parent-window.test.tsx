@@ -7,6 +7,7 @@ import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
 let nextAppId = 0;
+
 const uniqueAppId = (): string => `org.gtkx.useparentwindowtest${nextAppId++}`;
 
 const renderProbedWindow = async (props: GtkApplicationWindowProps): Promise<Gtk.Window | null> => {
@@ -39,7 +40,6 @@ describe("useParentWindow", () => {
         };
 
         const windowInstance = await renderProbedWindow({ children: <Probe /> });
-
         expect(windowInstance).not.toBeNull();
         expect(captured).toBe(windowInstance);
     });
@@ -53,10 +53,12 @@ describe("useParentWindow", () => {
             titlebarWindow = useParentWindow();
             return null;
         };
+
         const ControllerProbe = () => {
             controllerWindow = useParentWindow();
             return null;
         };
+
         const ActionProbe = () => {
             actionWindow = useParentWindow();
             return null;
@@ -92,7 +94,6 @@ describe("useParentWindow", () => {
         };
 
         await render(<Probe />);
-
         expect(captured).toBeNull();
     });
 });

@@ -19,8 +19,9 @@ type VirtualNamespace = {
     resolveToVirtual: (ctx: VirtualResolveContext, request: VirtualResolveRequest) => Promise<string | undefined>;
 };
 
-export const createVirtualNamespace = (prefix: string): VirtualNamespace => {
+const createVirtualNamespace = (prefix: string): VirtualNamespace => {
     const toVirtualId = (realId: string): string => prefix + realId;
+
     return {
         isVirtual: (id) => id.startsWith(prefix),
         toVirtualId,
@@ -30,8 +31,11 @@ export const createVirtualNamespace = (prefix: string): VirtualNamespace => {
                 ...request.options,
                 skipSelf: true,
             });
+
             if (!resolved || resolved.external) return;
             return toVirtualId(resolved.id);
         },
     };
 };
+
+export { createVirtualNamespace };

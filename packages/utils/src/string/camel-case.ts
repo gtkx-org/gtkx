@@ -15,6 +15,8 @@ import { mapWordSegments } from "./word-segments.js";
  * camelCase("start-widget"); // "startWidget"
  * camelCase("Box"); // "Box"
  */
-export function camelCase(str: string): string {
+function camelCase(str: string): string {
     return mapWordSegments(str, (part, index) => (index === 0 ? part : upperFirst(part)));
 }
+
+export { camelCase };

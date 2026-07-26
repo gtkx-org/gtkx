@@ -6,6 +6,7 @@ import { z } from "zod";
 import { AppRouter } from "./app-router.js";
 import { ConnectionRegistry } from "./connection-registry.js";
 import {
+    type AppInfo,
     DEFAULT_SOCKET_PATH,
     fireEventParams,
     queryParams,
@@ -18,16 +19,29 @@ import { buildReferenceTools, createReferenceProvider, registerReferenceResource
 import { SocketServer } from "./socket-server.js";
 import { defineTool, imageContent, registerTool, textContent, type Tool } from "./tool.js";
 
+type CreateMcpServerOptions = {
+    socketPath?: string;
+    version: string;
+};
+
+type McpServerHandle = {
+    start(): Promise<void>;
+    stop(): Promise<void>;
+};
+
+type AppWindow = { id: string; title: string | null };
+type AppWithWindows = AppInfo & { windows?: AppWindow[] };
+
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
-
-export const log: Logger = createLogger("mcp");
-
+const log: Logger = createLogger("mcp");
 const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
+
 const WIDGET_ID_DESCRIPTION =
     "Widget ID obtained from `gtkx_get_widget_tree`, `gtkx_query_widgets`, or `gtkx_get_widget_props`. IDs are scoped to a single app. An ID stays valid for as long as its widget is mounted and stops resolving once the widget is unmounted.";
 
 const applicationIdShape = { applicationId: z.string().optional().describe(APPLICATION_ID_DESCRIPTION) };
+
 const widgetIdShape = {
     ...applicationIdShape,
     widgetId: widgetIdParams.shape.widgetId.describe(WIDGET_ID_DESCRIPTION),
@@ -82,6 +96,26 @@ const screenshotShape = {
     ),
 };
 
+const logSocketError = (error: Error): void => {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "EPIPE" || code === "ECONNRESET") return;
+    log.error(`socket error: ${error.message}`);
+};
+
+const appWithWindows = async (appRouter: AppRouter, app: AppInfo): Promise<AppWithWindows> => {
+    try {
+        const result = await appRouter.sendToApp<{ windows: AppWindow[] }>(
+            app.applicationId,
+            "app.getWindows",
+            {},
+        );
+
+        return { ...app, windows: result.windows };
+    } catch {
+        return app;
+    }
+};
+
 const listAppsTool = (appRouter: AppRouter): Tool =>
     defineTool({
         name: "gtkx_list_apps",
@@ -95,18 +129,7 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
             }
 
             const apps = appRouter.getApps();
-            const appsWithWindows = await Promise.all(
-                apps.map(async (app) => {
-                    try {
-                        const result = await appRouter.sendToApp<{
-                            windows: { id: string; title: string | null }[];
-                        }>(app.applicationId, "app.getWindows", {});
-                        return { ...app, windows: result.windows };
-                    } catch {
-                        return app;
-                    }
-                }),
-            );
+            const appsWithWindows = await Promise.all(apps.map((app) => appWithWindows(appRouter, app)));
             return textContent(JSON.stringify(appsWithWindows, null, 2));
         },
     });
@@ -125,6 +148,7 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
                 "widget.screenshot",
                 params,
             );
+
             if (result.savedPath) {
                 return {
                     content: [
@@ -133,6 +157,7 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
                     ],
                 };
             }
+
             return imageContent(result.data, result.mimeType);
         },
     });
@@ -152,6 +177,7 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
                     rootId,
                     maxDepth,
                 });
+
                 return textContent(result.tree);
             },
         }),
@@ -225,29 +251,12 @@ function buildTools(appRouter: AppRouter): Tool[] {
     return [...buildInspectionTools(appRouter), ...buildInteractionTools(appRouter)];
 }
 
-type CreateMcpServerOptions = {
-    socketPath?: string;
-    version: string;
-};
-
-type McpServerHandle = {
-    start(): Promise<void>;
-    stop(): Promise<void>;
-};
-
-export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
+const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
-
     const registry = new ConnectionRegistry();
     const socketServer = new SocketServer(registry, socketPath);
     const appRouter = new AppRouter(registry);
-
-    registry.on("error", (error) => {
-        const code = (error as NodeJS.ErrnoException).code;
-        if (code !== "EPIPE" && code !== "ECONNRESET") {
-            log.error(`socket error: ${error.message}`);
-        }
-    });
+    registry.on("error", logSocketError);
 
     appRouter.on("appRegistered", (appInfo) => {
         log.info(`app registered: ${appInfo.applicationId} (PID: ${appInfo.pid})`);
@@ -258,14 +267,13 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
     });
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
-
     const referenceProvider = createReferenceProvider(() => appRouter.getProjectRoot() ?? process.cwd());
 
     for (const tool of [...buildTools(appRouter), ...buildReferenceTools(referenceProvider)]) {
         registerTool(mcpServer, tool);
     }
-    registerReferenceResources(mcpServer, referenceProvider);
 
+    registerReferenceResources(mcpServer, referenceProvider);
     let stopped = false;
 
     return {
@@ -286,10 +294,14 @@ export const createMcpServer = (options: CreateMcpServerOptions): McpServerHandl
     };
 };
 
-export async function main(): Promise<void> {
+async function main(): Promise<void> {
     const server = createMcpServer({ version });
+
     installGracefulShutdown({
         onSignal: () => server.stop(),
     });
+
     await server.start();
 }
+
+export { log, createMcpServer, main };

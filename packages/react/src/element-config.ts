@@ -1,6 +1,6 @@
 import { type ElementConfig, forTypes, internal } from "./reconciler/registry.js";
 
-export const SINGLE_CHILD_TYPES: string[] = [
+const SINGLE_CHILD_TYPES: string[] = [
     "GtkAspectFrame",
     "GtkButton",
     "GtkCheckButton",
@@ -29,7 +29,7 @@ export const SINGLE_CHILD_TYPES: string[] = [
  * generated element extends, which component wraps it, and whether its GObject is created lazily by its
  * parent. Codegen imports this module, so it must never reach the GObject bindings.
  */
-export const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
+const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     ...forTypes(SINGLE_CHILD_TYPES, {
         props: internal("ChildrenProps"),
     }),
@@ -144,3 +144,5 @@ export const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: internal("GtkDragSourceProps"),
     },
 };
+
+export { SINGLE_CHILD_TYPES, BUILTIN_ELEMENTS };

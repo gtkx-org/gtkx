@@ -1,0 +1,61 @@
+import { RuleTester } from "@typescript-eslint/rule-tester";
+import { afterAll, describe, it } from "vitest";
+import { statementPadding } from "../src/rules/statement-padding.js";
+
+RuleTester.afterAll = afterAll;
+RuleTester.describe = describe;
+RuleTester.it = it;
+RuleTester.itOnly = it.only;
+
+const ruleTester = new RuleTester();
+
+ruleTester.run("statement-padding", statementPadding, {
+    valid: [
+        { code: 'import a from "a";\nimport {\n    b,\n} from "b";\nimport c from "c";\n\nconst d = 1;\n' },
+        { code: 'const a = 1;\n\nexport { a };\nexport * from "b";\n' },
+        { code: "const a = 1;\nconst b = 2;\n" },
+        { code: "type A = 1;\n\nconst b = 2;\n" },
+        { code: "const a = 1;\n\nconst b = () => 2;\n" },
+        { code: "const a = {\n    b: 1,\n};\n\nconst c = 2;\n" },
+        { code: "function f() {\n    const a = 1;\n    const b = 2;\n    return a + b;\n}\n" },
+        { code: "function f() {\n    const a = 1;\n\n    if (a) {\n        g();\n    }\n}\n" },
+        { code: "const a = 1;\nconst b = 2;\n\nexport { a, b };\n" },
+    ],
+    invalid: [
+        {
+            code: "const a = 1;\n\nconst b = 2;\n",
+            output: "const a = 1;\nconst b = 2;\n",
+            errors: [{ messageId: "unexpectedPadding" }],
+        },
+        {
+            code: "type A = 1;\nconst b = 2;\n",
+            output: "type A = 1;\n\nconst b = 2;\n",
+            errors: [{ messageId: "missingPadding", data: { reason: "constants section" } }],
+        },
+        {
+            code: "const a = 1;\nconst b = () => 2;\n",
+            output: "const a = 1;\n\nconst b = () => 2;\n",
+            errors: [{ messageId: "missingPadding", data: { reason: "functions section" } }],
+        },
+        {
+            code: "const a = {\n    b: 1,\n};\nconst c = 2;\n",
+            output: "const a = {\n    b: 1,\n};\n\nconst c = 2;\n",
+            errors: [{ messageId: "missingPadding", data: { reason: "multiline statement" } }],
+        },
+        {
+            code: "const a = 1;\n\n\n\nconst b = () => 2;\n",
+            output: "const a = 1;\n\nconst b = () => 2;\n",
+            errors: [{ messageId: "extraPadding", data: { count: 3 } }],
+        },
+        {
+            code: "function f() {\n    const a = 1;\n\n    const b = 2;\n    return a + b;\n}\n",
+            output: "function f() {\n    const a = 1;\n    const b = 2;\n    return a + b;\n}\n",
+            errors: [{ messageId: "unexpectedPadding" }],
+        },
+        {
+            code: "function f() {\n    if (a) {\n        g();\n    }\n    return 1;\n}\n",
+            output: "function f() {\n    if (a) {\n        g();\n    }\n\n    return 1;\n}\n",
+            errors: [{ messageId: "missingPadding", data: { reason: "multiline statement" } }],
+        },
+    ],
+});

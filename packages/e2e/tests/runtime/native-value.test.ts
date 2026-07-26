@@ -35,10 +35,12 @@ describe("fromNative — hash-table entries are wrapped recursively", () => {
 
     it("self-resolves a plain struct (no GType) value from its descriptor", () => {
         const range = new Gtk.PageRange({ start: 3 });
+
         const map = fromNative(
             t.hashTable(t.string("borrowed"), t.struct("borrowed", { wrapperClass: Gtk.PageRange })),
             [["r", getHandle(range)]],
         );
+
         const wrapped = (map as Map<string, Gtk.PageRange>).get("r");
         expect(wrapped).toBeInstanceOf(Gtk.PageRange);
         expect(wrapped?.start).toBe(3);
@@ -46,10 +48,12 @@ describe("fromNative — hash-table entries are wrapped recursively", () => {
 
     it("self-resolves a plain struct (no GType) used as a key", () => {
         const range = new Gtk.PageRange({ end: 8 });
+
         const map = fromNative(
             t.hashTable(t.struct("borrowed", { wrapperClass: Gtk.PageRange }), t.string("borrowed")),
             [[getHandle(range), "v"]],
         );
+
         const [key] = (map as Map<Gtk.PageRange, string>).keys();
         expect(key).toBeInstanceOf(Gtk.PageRange);
         expect(key?.end).toBe(8);

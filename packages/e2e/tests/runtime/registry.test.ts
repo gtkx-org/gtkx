@@ -11,9 +11,11 @@ const INVALID_GTYPE: Type = 0n;
 describe("registerClassType", () => {
     it("registers a class by GType", () => {
         const fakeGtype: Type = 123_456_789n;
+
         class TestWrapper {
             gtype: Type = fakeGtype;
         }
+
         registerClassType(TestWrapper, fakeGtype);
         expect(resolveWrapperClass(fakeGtype)).toBe(TestWrapper);
     });

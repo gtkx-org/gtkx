@@ -8,6 +8,7 @@ describe("ServerRequestParamsSchemas", () => {
             value: "BUTTON",
             options: { exact: true },
         });
+
         expect(parsed.success).toBe(true);
     });
 

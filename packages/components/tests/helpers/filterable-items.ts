@@ -11,11 +11,13 @@ const FILTERABLE_ITEMS: FilterableItem[] = [
     { id: "5", active: true },
 ];
 
-export type FilterMode = "all" | "active" | "inactive";
+type FilterMode = "all" | "active" | "inactive";
 
-export function filterableIds(filter: FilterMode): string[] {
+function filterableIds(filter: FilterMode): string[] {
     return FILTERABLE_ITEMS.filter((item) => {
         if (filter === "all") return true;
         return filter === "active" ? item.active : !item.active;
     }).map((item) => item.id);
 }
+
+export { filterableIds, type FilterMode };

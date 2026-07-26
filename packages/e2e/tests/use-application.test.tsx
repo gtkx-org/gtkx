@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
 
 let nextAppId = 0;
+
 const uniqueAppId = (): string => `org.gtkx.useapplicationtest${nextAppId++}`;
 
 const Probe = () => {
@@ -19,9 +20,11 @@ describe("useApplication", () => {
 
         const CapturingProbe = () => {
             const application = useApplication();
+
             useEffect(() => {
                 captured = application;
             }, [application]);
+
             return <GtkApplicationWindow defaultWidth={100} defaultHeight={100} />;
         };
 

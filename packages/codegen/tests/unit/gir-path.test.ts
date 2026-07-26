@@ -8,7 +8,6 @@ vi.mock("node:child_process", async (importOriginal) => {
 });
 
 const { resolveGirPath } = await import("../../src/gir/gir-path.js");
-
 let originalGirPath: string | undefined;
 
 const setGirPath = (value: string | undefined): void => {
@@ -29,6 +28,7 @@ describe("resolveGirPath", () => {
     beforeEach(() => {
         originalGirPath = process.env.GTKX_GIR_PATH;
         execFileSyncMock.mockReset();
+
         execFileSyncMock.mockImplementation(() => {
             throw enoentError();
         });

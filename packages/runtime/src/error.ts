@@ -11,11 +11,11 @@ type ErrorLike = Error & {
  * An error enum object carrying its member codes plus an `instanceof` check that
  * matches wrapped GLib errors belonging to a specific error domain.
  */
-export type ErrorDomain<T extends Record<string, number>> = T & {
+type ErrorDomain<T extends Record<string, number>> = T & {
     [Symbol.hasInstance]: (value: unknown) => value is ErrorLike;
 };
 
-export function checkError(error: Ref): void {
+function checkError(error: Ref): void {
     if (error.value === null) {
         return;
     }
@@ -37,16 +37,20 @@ const isError = (value: unknown): value is ErrorLike => isTypedClass(value) && v
  * @param resolveDomain Called once, on first `instanceof` check, to obtain the domain quark.
  * @param members The error code enum members to expose on the returned object.
  */
-export function createErrorDomain<const T extends Record<string, number>>(
+function createErrorDomain<const T extends Record<string, number>>(
     resolveDomain: () => number,
     members: T,
 ): ErrorDomain<T> {
     let domain: number | undefined;
+
     const hasInstance = (value: unknown): value is ErrorLike => {
         domain ??= resolveDomain();
         return isError(value) && value.domain === domain;
     };
+
     const enumObject: Record<string, unknown> = { ...members };
     Object.defineProperty(enumObject, Symbol.hasInstance, { value: hasInstance });
     return enumObject as ErrorDomain<T>;
 }
+
+export { checkError, createErrorDomain, type ErrorDomain };

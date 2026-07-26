@@ -1,38 +1,42 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 
-export type ControllerConstructor<T extends Gtk.EventController> = new () => T;
+type ControllerConstructor<T extends Gtk.EventController> = new () => T;
 
-export const queryAllControllers = <T extends Gtk.EventController>(
+const queryAllControllers = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
 ): T[] => {
     const controllers = widget.observeControllers();
     const nItems = controllers.getNItems();
     const matches: T[] = [];
+
     for (let i = 0; i < nItems; i++) {
         const controller = controllers.getItem(i);
         if (controller instanceof controllerType) matches.push(controller);
     }
+
     return matches;
 };
 
-export const queryController = <T extends Gtk.EventController>(
+const queryController = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
 ): T | null => queryAllControllers(widget, controllerType)[0] ?? null;
 
-export const getAllControllers = <T extends Gtk.EventController>(
+const getAllControllers = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
 ): T[] => {
     const controllers = queryAllControllers(widget, controllerType);
+
     if (controllers.length === 0) {
         throw new Error(`No ${controllerType.name} controller is attached to the widget`);
     }
+
     return controllers;
 };
 
-export const getOrCreateControllers = <T extends Gtk.EventController>(
+const getOrCreateControllers = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
 ): T[] => {
@@ -42,3 +46,5 @@ export const getOrCreateControllers = <T extends Gtk.EventController>(
     widget.addController(controller);
     return [controller];
 };
+
+export { queryAllControllers, queryController, getAllControllers, getOrCreateControllers, type ControllerConstructor };

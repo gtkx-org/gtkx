@@ -9,9 +9,7 @@ describe("emitSignal — basic dispatch", () => {
         const button = new Gtk.Button();
         const handler = vi.fn();
         button.on("clicked", handler);
-
         button.emit("clicked");
-
         expect(handler).toHaveBeenCalledExactlyOnceWith();
     });
 
@@ -19,18 +17,14 @@ describe("emitSignal — basic dispatch", () => {
         const window = new Gtk.Window();
         const handler = vi.fn();
         window.on("enable-debugging", handler);
-
         window.emit("enable-debugging", true);
-
         expect(handler).toHaveBeenCalledExactlyOnceWith(true);
     });
 
     it("returns undefined from any signal emission", () => {
         const button = new Gtk.Button();
         button.on("clicked", () => {});
-
         const result = emissionResult(() => button.emit("clicked"));
-
         expect(result).toBeUndefined();
     });
 });
@@ -40,9 +34,7 @@ describe("emitSignal — inheritance and errors", () => {
         const button = new Gtk.Button();
         const handler = vi.fn();
         button.on("destroy", handler);
-
         button.emit("destroy");
-
         expect(handler).toHaveBeenCalledOnce();
     });
 
@@ -52,9 +44,7 @@ describe("emitSignal — inheritance and errors", () => {
         listBox.append(row);
         const handler = vi.fn();
         listBox.on("row-activated", handler);
-
         listBox.emit("row-activated", row);
-
         expect(handler).toHaveBeenCalledExactlyOnceWith(row);
     });
 

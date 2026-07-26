@@ -26,6 +26,7 @@ describe("parseSchemaXml (schemas and keys)", () => {
         const schema = parsed.schemas[0];
         expect(schema?.id).toBe("com.example.app");
         expect(schema?.path).toBe("/com/example/app/");
+
         expect(schema?.keys).toEqual([
             {
                 name: "enabled",
@@ -124,6 +125,7 @@ describe("parseSchemaXml (extends)", () => {
         );
 
         const child = parsed.schemas[1];
+
         expect(child?.keys.map((key) => [key.name, key.variantType])).toEqual([
             ["shared", "s"],
             ["overridden", "d"],

@@ -11,7 +11,9 @@ import { errorMessage } from "./error-message.js";
  * @example
  * normalizeError("boom"); // Error: boom
  */
-export function normalizeError(error: unknown): Error {
+function normalizeError(error: unknown): Error {
     if (Error.isError(error)) return error;
     return Object.assign(new Error(errorMessage(error)), isErrorLike(error) ? error : {});
 }
+
+export { normalizeError };

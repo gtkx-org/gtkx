@@ -22,7 +22,6 @@ type Declaration =
     { kind: "vfl"; props: ConstraintVflProps };
 
 type Entry = { signature: string; declaration: Declaration };
-
 type Declarations = Map<string, Entry>;
 
 type Registry = {
@@ -31,10 +30,33 @@ type Registry = {
 };
 
 type Targets = Map<string, Gtk.ConstraintTarget>;
+type EntryOf<K extends Declaration["kind"]> = { signature: string; declaration: Extract<Declaration, { kind: K }> };
+
+type TargetsStore = {
+    subscribe: (onChange: () => void) => () => void;
+    snapshot: () => Targets | null;
+    sync: (layout: Gtk.ConstraintLayout | null) => void;
+};
+
+type ConstraintLayoutComponent = ((props: ConstraintLayoutProps) => ReactNode) & {
+    Constraint: (props: ConstraintProps) => ReactNode;
+    Guide: (props: ConstraintGuideProps) => ReactNode;
+    Vfl: (props: ConstraintVflProps) => ReactNode;
+};
 
 const ConstraintContext = createContext<Registry | null>(null);
-
 const ORPHAN_MESSAGE = "<ConstraintLayout.Constraint> / <Guide> / <Vfl> must be a child of <ConstraintLayout>";
+
+/**
+ * Installs a Gtk.ConstraintLayout on a host widget's layoutManager slot, with
+ * `ConstraintLayout.Constraint`, `ConstraintLayout.Guide`, and
+ * `ConstraintLayout.Vfl` declaring its constraints.
+ */
+const ConstraintLayout: ConstraintLayoutComponent = Object.assign(ConstraintLayoutRoot, {
+    Constraint,
+    Guide,
+    Vfl,
+});
 
 const typeNameOfWidget = (widget: Gtk.Widget): string => GObject.typeName(widget._type_) ?? "";
 
@@ -46,6 +68,7 @@ const addNamedGuide = (guide: GObject.Object | null, targets: Targets): void => 
 
 const addNamedGuides = (layout: Gtk.ConstraintLayout, targets: Targets): void => {
     const guides = layout.observeGuides();
+
     for (let index = 0; index < guides.getNItems(); index++) {
         addNamedGuide(guides.getItem(index), targets);
     }
@@ -53,6 +76,7 @@ const addNamedGuides = (layout: Gtk.ConstraintLayout, targets: Targets): void =>
 
 const addNamedChildren = (layout: Gtk.ConstraintLayout, targets: Targets): void => {
     let child = layout.getWidget()?.getFirstChild() ?? null;
+
     while (child !== null) {
         const name = child.getName();
         if (name !== "" && name !== typeNameOfWidget(child) && !targets.has(name)) targets.set(name, child);
@@ -78,6 +102,7 @@ const resolveTarget = (
     if (id === undefined || id === "super") return null;
     const target = targets.get(id);
     if (target !== undefined) return target;
+
     throw new Error(
         `<ConstraintLayout.Constraint> references unknown id '${id}'. ` +
         `Set name="${id}" on the ${role} widget, or add a <ConstraintLayout.Guide id="${id}">.`,
@@ -112,27 +137,29 @@ const constraintElement = (key: string, props: ConstraintProps, targets: Targets
     />
 );
 
-type EntryOf<K extends Declaration["kind"]> = { signature: string; declaration: Extract<Declaration, { kind: K }> };
-
 const elementsOf = <K extends Declaration["kind"]>(
     declarations: Declarations,
     kind: K,
     build: (key: string, entry: EntryOf<K>) => ReactElement,
 ): ReactElement[] => {
     const elements: ReactElement[] = [];
+
     for (const [key, entry] of declarations) {
         if (entry.declaration.kind === kind) elements.push(build(key, entry as EntryOf<K>));
     }
+
     return elements;
 };
 
 const vflBlocks = (declarations: Declarations, targets: Targets): VflConstraints[] => {
     const blocks: VflConstraints[] = [];
+
     for (const { declaration } of declarations.values()) {
         if (declaration.kind !== "vfl") continue;
         const { lines, hspacing, vspacing } = declaration.props;
         blocks.push({ lines, hspacing: hspacing ?? 0, vspacing: vspacing ?? 0, views: targets });
     }
+
     return blocks;
 };
 
@@ -142,18 +169,26 @@ const useDeclaration = (declaration: Declaration): null => {
     const key = useId();
     const signature = JSON.stringify(declaration);
     const currentDeclaration = useEffectEvent((): Declaration => declaration);
+
     useLayoutEffect(() => {
         registry.set(key, { signature, declaration: currentDeclaration() });
     }, [registry, key, signature]);
+
     useLayoutEffect(() => () => registry.remove(key), [registry, key]);
     return null;
 };
 
-const Constraint = (props: ConstraintProps): ReactNode => useDeclaration({ kind: "constraint", props });
+function Constraint(props: ConstraintProps): ReactNode {
+    return useDeclaration({ kind: "constraint", props });
+}
 
-const Guide = (props: ConstraintGuideProps): ReactNode => useDeclaration({ kind: "guide", props });
+function Guide(props: ConstraintGuideProps): ReactNode {
+    return useDeclaration({ kind: "guide", props });
+}
 
-const Vfl = (props: ConstraintVflProps): ReactNode => useDeclaration({ kind: "vfl", props });
+function Vfl(props: ConstraintVflProps): ReactNode {
+    return useDeclaration({ kind: "vfl", props });
+}
 
 const useRegistry = (setDeclarations: (update: (previous: Declarations) => Declarations) => void): Registry =>
     useMemo<Registry>(
@@ -172,27 +207,29 @@ const useRegistry = (setDeclarations: (update: (previous: Declarations) => Decla
         [setDeclarations],
     );
 
-type TargetsStore = {
-    subscribe: (onChange: () => void) => () => void;
-    snapshot: () => Targets | null;
-    sync: (layout: Gtk.ConstraintLayout | null) => void;
+const nextTargets = (current: Targets | null, layout: Gtk.ConstraintLayout | null): Targets | null => {
+    if (layout === null) return null;
+    const next = readTargets(layout);
+    if (current !== null && sameTargets(current, next)) return null;
+    return next;
 };
 
 const createTargetsStore = (): TargetsStore => {
     const listeners: Set<() => void> = new Set();
     let current: Targets | null = null;
+
     return {
         subscribe: (onChange) => {
             listeners.add(onChange);
+
             return () => {
                 listeners.delete(onChange);
             };
         },
         snapshot: () => current,
         sync: (layout) => {
-            if (layout === null) return;
-            const next = readTargets(layout);
-            if (current !== null && sameTargets(current, next)) return;
+            const next = nextTargets(current, layout);
+            if (next === null) return;
             current = next;
             for (const listener of listeners) listener();
         },
@@ -201,22 +238,26 @@ const createTargetsStore = (): TargetsStore => {
 
 const useTargets = (layout: Gtk.ConstraintLayout | null): Targets | null => {
     const store = useMemo(() => createTargetsStore(), []);
+
     useLayoutEffect(() => {
         store.sync(layout);
     });
+
     return useSyncExternalStore(store.subscribe, store.snapshot);
 };
 
-const ConstraintLayoutRoot = (props: ConstraintLayoutProps): ReactNode => {
+function ConstraintLayoutRoot(props: ConstraintLayoutProps): ReactNode {
     const { children, ref } = props;
     const [layout, refCallback] = useWidgetRef<Gtk.ConstraintLayout>(ref);
     const [declarations, setDeclarations] = useState<Declarations>(() => new Map());
     const registry = useRegistry(setDeclarations);
     const targets = useTargets(layout);
+
     const guides = useMemo(
         () => elementsOf(declarations, "guide", (key, entry) => guideElement(key, entry.declaration.props)),
         [declarations],
     );
+
     const constraints = useMemo(
         () =>
             targets === null
@@ -226,28 +267,15 @@ const ConstraintLayoutRoot = (props: ConstraintLayoutProps): ReactNode => {
                     ),
         [declarations, targets],
     );
+
     const vfl = useMemo(() => (targets === null ? null : vflBlocks(declarations, targets)), [declarations, targets]);
+
     return (
         <ConstraintContext.Provider value={registry}>
             <GtkConstraintLayout ref={refCallback} guides={guides} constraints={constraints} vfl={vfl} />
             {children}
         </ConstraintContext.Provider>
     );
-};
+}
 
-type ConstraintLayoutComponent = ((props: ConstraintLayoutProps) => ReactNode) & {
-    Constraint: (props: ConstraintProps) => ReactNode;
-    Guide: (props: ConstraintGuideProps) => ReactNode;
-    Vfl: (props: ConstraintVflProps) => ReactNode;
-};
-
-/**
- * Installs a Gtk.ConstraintLayout on a host widget's layoutManager slot, with
- * `ConstraintLayout.Constraint`, `ConstraintLayout.Guide`, and
- * `ConstraintLayout.Vfl` declaring its constraints.
- */
-export const ConstraintLayout: ConstraintLayoutComponent = Object.assign(ConstraintLayoutRoot, {
-    Constraint,
-    Guide,
-    Vfl,
-});
+export { ConstraintLayout };

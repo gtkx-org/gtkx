@@ -10,10 +10,12 @@ import { renderChildren } from "../helpers/render-children.js";
 
 const carouselLabels = (carousel: Adw.Carousel): string[] => {
     const labels: string[] = [];
+
     for (let index = 0; index < carousel.getNPages(); index += 1) {
         const page = carousel.getNthPage(index);
         if (page instanceof Gtk.Label) labels.push(page.getText());
     }
+
     return labels;
 };
 
@@ -32,9 +34,11 @@ const tabLabels = (notebook: Gtk.Notebook): string[] =>
 
 const tabViewTitles = (view: Adw.TabView): string[] => {
     const titles: string[] = [];
+
     for (let index = 0; index < view.getNPages(); index += 1) {
         titles.push(view.getNthPage(index).getTitle());
     }
+
     return titles;
 };
 

@@ -9,7 +9,7 @@ import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
-export type RunCodegenOptions = {
+type RunCodegenOptions = {
     cwd?: string;
     mode?: string | undefined;
     force?: boolean;
@@ -22,7 +22,7 @@ type LoadedConfig = {
     configFile: string | undefined;
 };
 
-export type RunCodegenResult = {
+type RunCodegenResult = {
     regenerated: boolean;
     namespaces: number;
     intrinsicElements: number;
@@ -31,6 +31,25 @@ export type RunCodegenResult = {
     configFile?: string | undefined;
     libraries?: string[] | undefined;
 };
+
+type CodegenOptionsInput = {
+    store: CodegenStore;
+    libraries: string[];
+    girPath: string[];
+    elements: Config["elements"];
+};
+
+type PreparedCodegen = CodegenInputs & { force: boolean };
+
+type RunOptionsInput = {
+    root: string;
+    mode: string | undefined;
+    inputs: CodegenInputs | null;
+    resolved: LoadedConfig;
+};
+
+const GIR_PATH_MISSING_MESSAGE =
+    "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.";
 
 const removeSharedStoreShadow = (cwd: string): void => {
     for (const path of [
@@ -41,13 +60,6 @@ const removeSharedStoreShadow = (cwd: string): void => {
     ]) {
         rmSync(path, { recursive: true, force: true });
     }
-};
-
-type CodegenOptionsInput = {
-    store: CodegenStore;
-    libraries: string[];
-    girPath: string[];
-    elements: Config["elements"];
 };
 
 const userModuleExports = (
@@ -83,9 +95,6 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
     userLazyElements: resolveLazyElements(elements),
 });
 
-const GIR_PATH_MISSING_MESSAGE =
-    "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.";
-
 const disabledCodegenResult = (configFile: string | undefined): RunCodegenResult => ({
     regenerated: false,
     namespaces: 0,
@@ -105,18 +114,18 @@ const clearGeneratedStores = (store: CodegenStore): void => {
 const resolveLoadedConfig = async (options: RunCodegenOptions, cwd: string): Promise<LoadedConfig> =>
     options.resolved ?? (await loadConfig(cwd, { mode: options.mode }));
 
-type PreparedCodegen = CodegenInputs & { force: boolean };
-
 const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config): PreparedCodegen => {
     const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
+
     if (girPath.length === 0) {
         throw new Error(GIR_PATH_MISSING_MESSAGE);
     }
+
     const force = options.force === true || isCodegenStale({ girPath, libraries, store });
     return { girPath, libraries, store, force };
 };
 
-export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
+const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
     const { config, configFile } = await resolveLoadedConfig(options, cwd);
 
@@ -126,6 +135,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     const { girPath, libraries, store, force } = prepareCodegen(options, cwd, config);
+
     if (options.force) {
         clearGeneratedStores(store);
     }
@@ -146,7 +156,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     };
 };
 
-export const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {
+const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {
     try {
         const { config } = await loadConfig(cwd, { mode });
         return config.codegen === false;
@@ -155,7 +165,7 @@ export const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boo
     }
 };
 
-export const syncSchemaEnv = (cwd: string): void => {
+const syncSchemaEnv = (cwd: string): void => {
     const dataDir = resolveDataDir(cwd);
     if (dataDir === null) return;
     emitSchemaEnv(cwd, dataDir);
@@ -171,16 +181,10 @@ const resolveInputsOrNull = (cwd: string, config: Config): CodegenInputs | null 
 
 const maybeAnnounceStale = (announce: boolean | undefined, inputs: CodegenInputs | null): void => {
     if (!announce) return;
+
     if (inputs === null || isCodegenStale(inputs)) {
         info("generated bindings missing; running codegen...");
     }
-};
-
-type RunOptionsInput = {
-    root: string;
-    mode: string | undefined;
-    inputs: CodegenInputs | null;
-    resolved: LoadedConfig;
 };
 
 const runOptionsFor = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCodegenOptions => {
@@ -188,7 +192,7 @@ const runOptionsFor = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCo
     return { cwd: root, mode, inputs, resolved };
 };
 
-export const ensureGenerated = async (
+const ensureGenerated = async (
     cwd: string,
     options: { announce?: boolean; mode?: string } = {},
 ): Promise<boolean> => {
@@ -197,14 +201,18 @@ export const ensureGenerated = async (
     }
 
     const context = await resolveCodegenContext(cwd, options.mode);
+
     if (!context) {
         return false;
     }
+
     syncSchemaEnv(cwd);
+
     if (context.config.codegen === false) {
         removeSharedStoreShadow(context.root);
         return false;
     }
+
     const inputs = resolveInputsOrNull(context.root, context.config);
     maybeAnnounceStale(options.announce, inputs);
     const resolved = { config: context.config, configFile: context.configFile };
@@ -212,16 +220,27 @@ export const ensureGenerated = async (
     return result.regenerated;
 };
 
-export const resolveConfigWatch = async (
+const resolveConfigWatch = async (
     cwd: string,
     mode?: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
     const { configFile, root } = await loadConfig(cwd, { mode });
     if (configFile === undefined) return undefined;
+
     return {
         paths: [resolve(root, configFile)],
         regenerate: async () => {
             await runCodegen({ cwd: root, mode });
         },
     };
+};
+
+export {
+    runCodegen,
+    isCodegenDisabled,
+    syncSchemaEnv,
+    ensureGenerated,
+    resolveConfigWatch,
+    type RunCodegenOptions,
+    type RunCodegenResult,
 };

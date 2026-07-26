@@ -16,9 +16,7 @@ describe("logWidget", () => {
     it("logs the formatted widget tree", async () => {
         const { container } = await render(<GtkButton label="Logged" />);
         const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
         logWidget(container);
-
         expect(log).toHaveBeenCalledTimes(1);
         expect(log.mock.calls[0]?.[0]).toContain("button");
     });
@@ -30,19 +28,16 @@ describe("logWidget", () => {
                 <GtkButton label="Two" />
             </VBox>,
         );
+
         const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
         logWidget([container, container]);
-
         expect(log).toHaveBeenCalledTimes(2);
     });
 
     it("honors formatting options", async () => {
         const { container } = await render(<GtkButton label="Truncated" />);
         const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
         logWidget(container, { maxLength: 0 });
-
         expect(log).toHaveBeenCalledWith("");
     });
 });
@@ -51,9 +46,7 @@ describe("RenderResult.debug", () => {
     it("defaults to the base element", async () => {
         const { debug } = await render(<GtkButton label="Default" />);
         const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
         debug();
-
         expect(log).toHaveBeenCalledTimes(1);
         expect(log.mock.calls[0]?.[0]).toContain("button");
     });
@@ -61,9 +54,7 @@ describe("RenderResult.debug", () => {
     it("accepts an explicit widget and options", async () => {
         const { container, debug } = await render(<GtkButton label="Explicit" />);
         const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
         debug(container, { maxLength: 0 });
-
         expect(log).toHaveBeenCalledWith("");
     });
 });
@@ -72,9 +63,7 @@ describe("screen.debug", () => {
     it("logs the current screen root", async () => {
         await render(<GtkButton label="Screen" />);
         const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
         screen.debug();
-
         expect(log).toHaveBeenCalledTimes(1);
     });
 });
@@ -93,7 +82,6 @@ describe("prettyWidget maxDepth", () => {
         expect(shallow).toContain("child widget");
         expect(shallow).toContain("hidden");
         expect(shallow).not.toContain("Deep");
-
         expect(prettyWidget(container)).toContain("Deep");
     });
 });

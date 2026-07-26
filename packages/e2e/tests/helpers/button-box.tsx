@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { GtkBox, GtkButton, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 
-export const drawButtonBox = (n: number): ReactNode => (
+const drawButtonBox = (n: number): ReactNode => (
     <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
         <GtkBox>
             {Array.from({ length: n }, (_, i) => `button-${i}`).map((name) => (
@@ -10,3 +10,5 @@ export const drawButtonBox = (n: number): ReactNode => (
         </GtkBox>
     </GtkScrolledWindow>
 );
+
+export { drawButtonBox };

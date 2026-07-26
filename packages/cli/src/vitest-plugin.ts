@@ -10,5 +10,4 @@ import { gtkxSettingsWorkerEnv } from "./vite-plugins/settings-worker-env.js";
  * @returns The ordered array of Vite plugins to include in a Vitest configuration.
  */
 const gtkx = (): Plugin[] => [...gtkxVitePlugins(), gtkxSettingsWorkerEnv(), gtkxVitest()];
-
 export default gtkx;

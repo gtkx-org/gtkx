@@ -30,6 +30,7 @@ describe("stripDevArtifacts", () => {
     it("removes the source condition at every depth", () => {
         const stripped = stripDevArtifacts(reactManifest);
         expect(exportsContainSource(stripped.exports ?? {})).toBe(false);
+
         expect(stripped.exports).toEqual({
             "./package.json": "./package.json",
             ".": { types: "./dist/index.d.ts", default: "./dist/index.js" },
@@ -46,6 +47,7 @@ describe("stripDevArtifacts", () => {
             files: ["dist", "env.d.ts"],
             exports: { "./env": { types: "./env.d.ts" } },
         };
+
         const stripped = stripDevArtifacts(manifest);
         expect(stripped.exports).toEqual({ "./env": { types: "./env.d.ts" } });
         expect(stripped.files).toEqual(["dist", "env.d.ts"]);

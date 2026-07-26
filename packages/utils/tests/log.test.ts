@@ -5,6 +5,7 @@ type Capture = OutputStream & { written: string[] };
 
 const captureStream = (isTTY?: boolean): Capture => {
     const written: string[] = [];
+
     return {
         isTTY,
         written,

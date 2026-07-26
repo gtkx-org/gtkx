@@ -25,6 +25,7 @@ const qualifiedName = (context: ModuleContext, ref: TypeId): string | undefined 
 const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
     const resolved = context.library.typeOf(ref);
     if (resolved?.kind !== "class") return false;
+
     return resolved.value.implements.some((interfaceName) => {
         const iface = resolveInterface(context.library, resolved.namespace.name, interfaceName);
         return iface?.namespaceName === "Gio" && iface.klass.name === "ListModel";
@@ -58,7 +59,7 @@ const itemComparatorCallback = (
     return comparesObjectItems(context, fn) ? resolved.value : undefined;
 };
 
-export const itemComparatorArgDescriptors = (
+const itemComparatorArgDescriptors = (
     context: ModuleContext,
     fn: GirFunction,
     parameter: GirParameter,
@@ -67,13 +68,15 @@ export const itemComparatorArgDescriptors = (
     if (callback === undefined) return undefined;
     const overrides: Map<number, string> = new Map();
     const items = inputParameters(context.library, callbackAsFunction(callback));
+
     for (const { parameter: item, index } of items) {
         if (isItemPointer(context, item.type)) overrides.set(index, tObject("borrowed"));
     }
+
     return overrides.size > 0 ? overrides : undefined;
 };
 
-export const itemComparatorTsType = (
+const itemComparatorTsType = (
     context: ModuleContext,
     fn: GirFunction,
     parameter: GirParameter,
@@ -81,11 +84,15 @@ export const itemComparatorTsType = (
     const callback = itemComparatorCallback(context, fn, parameter);
     if (callback === undefined) return undefined;
     const itemType = `${context.qualify("GObject", "Object")} | null`;
+
     const args = inputParameters(context.library, callbackAsFunction(callback)).map(({ parameter: item, index }) => {
         const tsType = isItemPointer(context, item.type) ? itemType : renderTsType(context, item.type, item.nullable);
         return `${parameterIdentifier(item, index)}: ${tsType}`;
     });
+
     const returnType = renderTsType(context, callback.returnValue.type, callback.returnValue.nullable);
     const fnType = `(${args.join(", ")}) => ${returnType}`;
     return parameter.nullable ? `(${fnType}) | null` : fnType;
 };
+
+export { itemComparatorArgDescriptors, itemComparatorTsType };

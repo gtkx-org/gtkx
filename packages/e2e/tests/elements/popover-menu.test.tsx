@@ -8,8 +8,8 @@ import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-
 let nextAppId = 0;
+
 const uniqueAppId = (): string => `org.gtkx.popovermenutest${nextAppId++}`;
 
 const buildMenu = (items: { label: string; action: string }[]): Gio.Menu => {
@@ -27,6 +27,7 @@ describe("render - PopoverMenu widget integration", () => {
 
     it("installs the menuModel on a PopoverMenu", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
+
         await render(
             <GtkPopoverMenu
                 ref={ref}
@@ -36,11 +37,13 @@ describe("render - PopoverMenu widget integration", () => {
                 ])}
             />,
         );
+
         expect(ref.current?.getMenuModel()?.getNItems()).toBe(2);
     });
 
     it("installs the menuModel on a MenuButton", async () => {
         const ref = createRef<Gtk.MenuButton>();
+
         await render(
             <GtkMenuButton
                 ref={ref}
@@ -50,6 +53,7 @@ describe("render - PopoverMenu widget integration", () => {
                 ])}
             />,
         );
+
         expect(ref.current?.getMenuModel()?.getNItems()).toBe(2);
     });
 });
@@ -74,7 +78,6 @@ describe("render - PopoverMenu actions", () => {
 
     it("removes a menu item's action when it unmounts", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
-
         const appId = uniqueAppId();
 
         function App({ enabled }: { enabled: boolean }) {
@@ -90,7 +93,6 @@ describe("render - PopoverMenu actions", () => {
 
         const { rerender } = await render(<App enabled={true} />, { container: rootElement });
         expect(windowRef.current?.hasAction("toggle")).toBe(true);
-
         await rerender(<App enabled={false} />);
         expect(windowRef.current?.hasAction("toggle")).toBe(false);
     });

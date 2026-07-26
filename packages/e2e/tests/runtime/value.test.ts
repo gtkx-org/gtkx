@@ -33,11 +33,14 @@ import { describe, expect, it } from "vitest";
 
 const callGetType = (lib: string, fn: string): Type => {
     const result = resolveType(lib, fn);
+
     if (typeof result !== "bigint") {
         throw new TypeError(`${fn} did not return a GType`);
     }
+
     return result;
 };
+
 const gdkRgbaGtype = (): Type => callGetType("libgtk-4.so.1", "gdk_rgba_get_type");
 
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
@@ -48,7 +51,6 @@ describe("generated GObject.Value boxed accessors", () => {
         const value = new Value();
         value.init(gdkRgbaGtype());
         value.setBoxed(makeRgba(0.5, 0.25, 0.75, 1));
-
         const extracted = value.getBoxed<Gdk.RGBA>();
         expect(extracted).toBeInstanceOf(Gdk.RGBA);
         expect(extracted.red).toBeCloseTo(0.5);
@@ -158,6 +160,7 @@ describe("toValue — enums and flags", () => {
             { kind: "enum", sharedLibrary: "libgtk-4.so.1", getTypeFnName: "gtk_align_get_type", signed: false },
             Gtk.Align.CENTER,
         );
+
         expect(fromValue(v)).toBe(Gtk.Align.CENTER);
     });
 
@@ -171,6 +174,7 @@ describe("toValue — enums and flags", () => {
             },
             3,
         );
+
         expect(fromValue(v)).toBe(3);
     });
 
@@ -184,6 +188,7 @@ describe("toValue — enums and flags", () => {
             },
             5,
         );
+
         expect(fromValue(v)).toBe(5);
     });
 });
@@ -205,6 +210,7 @@ describe("toValue — objects and boxed", () => {
             },
             makeRgba(0, 0, 0, 1),
         );
+
         expect(getValueType(v)).toBe(gdkRgbaGtype());
     });
 
@@ -223,6 +229,7 @@ describe("toValue — objects and boxed", () => {
 describe("toValue — variant and param fundamentals", () => {
     it("round-trips a GVariant through a fundamental descriptor keyed by typeName", () => {
         const variant = GLib.Variant.newString("payload");
+
         const descriptor = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
             ownership: "borrowed",
             typeName: "GVariant",
@@ -230,7 +237,6 @@ describe("toValue — variant and param fundamentals", () => {
 
         const value = toValue(descriptor, variant);
         expect(getValueType(value)).toBe(TYPE_VARIANT);
-
         const result = fromValue(value);
         expect(result).toBeInstanceOf(GLib.Variant);
         expect((result as GLib.Variant).getString()[0]).toBe("payload");
@@ -238,6 +244,7 @@ describe("toValue — variant and param fundamentals", () => {
 
     it("marshals a GParamSpec through the PARAM fundamental, not the boxed path", () => {
         const spec = paramSpecBoolean("flag", "Flag", "A flag", false, ParamFlags.READABLE);
+
         const descriptor = t.fundamental("libgobject-2.0.so.0", "g_param_spec_ref", "g_param_spec_unref", {
             ownership: "borrowed",
             typeName: "GParam",
@@ -245,7 +252,6 @@ describe("toValue — variant and param fundamentals", () => {
 
         const value = toValue(descriptor, spec);
         expect(getValueType(value)).toBe(TYPE_PARAM);
-
         const result = fromValue(value) as typeof spec | null;
         expect(result?.getName()).toBe(spec.getName());
     });
@@ -262,6 +268,7 @@ describe("toValue — arrays and errors", () => {
             },
             ["one", "two"],
         );
+
         expect(fromValue(v)).toEqual(["one", "two"]);
     });
 
@@ -301,6 +308,7 @@ describe("toValue — arrays and errors", () => {
 
 const gtypeOfEmpty = (ffi: Parameters<typeof newValueForDescriptor>[0]): Type =>
     getValueType(newValueForDescriptor(ffi));
+
 const gdkRgbaFfi = {
     kind: "boxed",
     ownership: "borrowed",
@@ -308,10 +316,12 @@ const gdkRgbaFfi = {
     sharedLibrary: "libgtk-4.so.1",
     getTypeFnName: "gdk_rgba_get_type",
 } as const;
+
 const variantFfi = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
     ownership: "borrowed",
     typeName: "GVariant",
 });
+
 const strvFfi = {
     kind: "array",
     arrayKind: "array",
@@ -343,12 +353,14 @@ describe("newValueForDescriptor — GType resolution from an FFI descriptor", ()
             getTypeFnName: "gtk_align_get_type",
             signed: false,
         } as const;
+
         const flags = {
             kind: "flags",
             sharedLibrary: "libgobject-2.0.so.0",
             getTypeFnName: "g_binding_flags_get_type",
             signed: false,
         } as const;
+
         expect(gtypeOfEmpty(align)).toBe(callGetType("libgtk-4.so.1", "gtk_align_get_type"));
         expect(gtypeOfEmpty(flags)).toBe(callGetType("libgobject-2.0.so.0", "g_binding_flags_get_type"));
     });

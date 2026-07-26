@@ -1,6 +1,6 @@
 import { ImportsBuilder } from "./imports.js";
 
-export class ModuleBuilder {
+class ModuleBuilder {
     private bindings: string[] = [];
     private bindingNames: Set<string> = new Set();
     private hoistedDescriptors: Map<string, string> = new Map();
@@ -13,6 +13,7 @@ export class ModuleBuilder {
             if (this.bindingNames.has(name)) return;
             this.bindingNames.add(name);
         }
+
         this.bindings.push(code);
     }
 
@@ -43,3 +44,5 @@ export class ModuleBuilder {
         return `${sections.join("\n\n")}\n`;
     }
 }
+
+export { ModuleBuilder };

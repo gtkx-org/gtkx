@@ -12,6 +12,8 @@ import { isSameArrayBy } from "./is-same-array-by.js";
  * isSameArray([1, 2], [1, 2]); // true
  * isSameArray([1, 2], [2, 1]); // false
  */
-export function isSameArray<T>(a: T[], b: T[]): boolean {
+function isSameArray<T>(a: T[], b: T[]): boolean {
     return isSameArrayBy(a, b, (x, y) => x === y);
 }
+
+export { isSameArray };

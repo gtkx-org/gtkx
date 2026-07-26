@@ -4,17 +4,15 @@ import { describe, expect, it } from "vitest";
 import { BIGUINT64, callArgs, GOBJECT_LIB, typeFromName } from "../helpers/native-utils.js";
 
 const G_TYPE_INVALID_NAME = "ThisGTypeDefinitelyDoesNotExist";
-
 let uniqueSuffix = 0;
+
 const uniqueName = (prefix: string): string => `${prefix}NativeTest${process.pid}_${++uniqueSuffix}`;
 
 describe("registerClass", () => {
     it("registers a new GType derived from GObject", () => {
         const name = uniqueName("GtkxNativeBare");
         const gobjectGtype = typeFromName("GObject");
-
         const newGtype = registerClass(name, gobjectGtype);
-
         expect(newGtype).toBeGreaterThan(0);
         expect(newGtype).toBe(typeFromName(name));
     });
@@ -22,7 +20,6 @@ describe("registerClass", () => {
     it("rejects registering the same GType name twice", () => {
         const name = uniqueName("GtkxNativeDuplicate");
         const gobjectGtype = typeFromName("GObject");
-
         expect(registerClass(name, gobjectGtype)).toBeGreaterThan(0);
         expect(() => registerClass(name, gobjectGtype)).toThrow();
     });
@@ -55,6 +52,7 @@ describe("registerClass", () => {
             ],
             { kind: "boolean" },
         );
+
         expect(stillImplementsBuildable).toBe(true);
     });
 
@@ -65,6 +63,7 @@ describe("registerClass", () => {
         expect(() => registerClass(name, gobjectGtype, { interfaces: [{ type: gobjectGtype, vfuncs: [] }] })).toThrow(
             /is not an interface/,
         );
+
         expect(typeFromName(name)).toBe(0n);
     });
 
@@ -77,6 +76,7 @@ describe("registerClass", () => {
         expect(() => registerClass(name, gobjectGtype, { interfaces: [{ type: buildableGtype, vfuncs: [] }] })).toThrow(
             /does not conform to interface/,
         );
+
         expect(typeFromName(name)).toBe(0n);
     });
 });

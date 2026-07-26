@@ -6,7 +6,6 @@ describe("fireEvent", () => {
     it("emits clicked signal on button", async () => {
         const { handleClick, button } = await renderClickButton();
         await fireEvent(button, "clicked");
-
         expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
@@ -15,14 +14,12 @@ describe("fireEvent", () => {
         await fireEvent(button, "clicked");
         await fireEvent(button, "clicked");
         await fireEvent(button, "clicked");
-
         expect(handleClick).toHaveBeenCalledTimes(3);
     });
 
     it("returns a promise that resolves after signal emission", async () => {
         const { handleClick, button } = await renderClickButton();
         const promise = fireEvent(button, "clicked");
-
         expect(promise).toBeInstanceOf(Promise);
         await promise;
         expect(handleClick).toHaveBeenCalled();

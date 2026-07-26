@@ -10,8 +10,8 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-
 let nextAppId = 0;
+
 const uniqueAppId = (): string => `org.gtkx.windowtest${nextAppId++}`;
 
 const render = (element: ReactNode, appId: string = uniqueAppId()) =>
@@ -34,18 +34,14 @@ describe("render - Window (1)", () => {
     describe("creation", () => {
         it("creates Gtk.ApplicationWindow with current app", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
-
             await render(<GtkApplicationWindow ref={ref} title="App Window" />);
-
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getApplication()).not.toBeNull();
         });
 
         it("creates Adw.ApplicationWindow with current app", async () => {
             const ref = createRef<Adw.ApplicationWindow>();
-
             await renderAdw(<AdwApplicationWindow ref={ref} />);
-
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getApplication()).not.toBeNull();
         });
@@ -56,9 +52,7 @@ describe("render - Window (2)", () => {
     describe("defaultSize", () => {
         it("sets default size via defaultWidth/defaultHeight", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
-
             await render(<GtkApplicationWindow ref={ref} defaultWidth={300} defaultHeight={200} />);
-
             const [width, height] = ref.current?.getDefaultSize() ?? [0, 0];
             expect(width).toBeGreaterThanOrEqual(300);
             expect(height).toBeGreaterThanOrEqual(200);
@@ -73,7 +67,6 @@ describe("render - Window (2)", () => {
             }
 
             const { rerender } = await render(<App width={200} height={150} />, appId);
-
             const [initialWidth, initialHeight] = ref.current?.getDefaultSize() ?? [0, 0];
 
             await rerender(
@@ -89,18 +82,14 @@ describe("render - Window (2)", () => {
 
         it("handles partial size (only width)", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
-
             await render(<GtkApplicationWindow ref={ref} defaultWidth={300} />);
-
             const [width] = ref.current?.getDefaultSize() ?? [0, 0];
             expect(width).toBeGreaterThanOrEqual(300);
         });
 
         it("handles partial size (only height)", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
-
             await render(<GtkApplicationWindow ref={ref} defaultHeight={200} />);
-
             const [, height] = ref.current?.getDefaultSize() ?? [0, 0];
             expect(height).toBeGreaterThanOrEqual(200);
         });
@@ -111,7 +100,6 @@ describe("render - Window (3)", () => {
     describe("lifecycle", () => {
         it("presents window on mount", async () => {
             await render(<GtkApplicationWindow title="Present" />);
-
             expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Present" })).toBeDefined();
         });
 
@@ -124,7 +112,6 @@ describe("render - Window (3)", () => {
             }
 
             const { rerender } = await render(<App show={true} />, appId);
-
             const windowId = ref.current;
             expect(windowId).toBeDefined();
 
@@ -177,7 +164,6 @@ describe("render - Window (4)", () => {
             }
 
             const { rerender } = await render(<App first={true} />, appId);
-
             expect(windowRef.current?.getChild()).toBe(label1Ref.current);
 
             await rerender(

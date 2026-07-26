@@ -23,6 +23,7 @@ const SIZES = [98, 392];
 
 const ROW = (i: number): ReactNode => {
     const key = String(i);
+
     switch (i % 14) {
         case 0: {
             return <GtkButton key={key} label={`b-${i}`} onClicked={() => {}} />;
@@ -92,10 +93,12 @@ describe("mixed-widget prop update", () => {
     for (const n of SIZES) {
         bench(`update one prop across ${n} mixed-class widgets`, async () => {
             await render(drawMixed(n, "a"));
+
             for (let k = 0; k < 3; k++) {
                 await render(drawMixed(n, "ab"));
                 await render(drawMixed(n, "a"));
             }
+
             await cleanup();
         });
     }

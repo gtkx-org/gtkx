@@ -8,6 +8,15 @@ function touchControllers(button: Gtk.Button): void {
     button.observeControllers().getNItems();
 }
 
+const cycleControllers = async (button: Gtk.Button, iterations: number): Promise<void> => {
+    for (let index = 0; index < iterations; index++) {
+        touchControllers(button);
+        await drain();
+        forceGC();
+        expect(button.observeControllers().getNItems()).toBeGreaterThanOrEqual(0);
+    }
+};
+
 describe("observeControllers wrapper lifetime", () => {
     it("returns a cached, identity-tracked model", () => {
         const button = new Gtk.Button();
@@ -20,14 +29,7 @@ describe("observeControllers wrapper lifetime", () => {
     it("reproduces: re-acquiring the cached model after its wrapper is collected must not read a freed object", async () => {
         const button = new Gtk.Button();
         button.addController(new Gtk.GestureClick());
-
-        for (let i = 0; i < 150; i++) {
-            touchControllers(button);
-            await drain();
-            forceGC();
-            const controllers = button.observeControllers();
-            expect(controllers.getNItems()).toBeGreaterThanOrEqual(0);
-        }
+        await cycleControllers(button, 150);
     }, 30_000);
 
     it("survives a burst of rebinds whose cleanups are left pending together", async () => {
@@ -35,12 +37,7 @@ describe("observeControllers wrapper lifetime", () => {
         button.addController(new Gtk.GestureClick());
 
         for (let round = 0; round < 40; round++) {
-            for (let k = 0; k < 5; k++) {
-                touchControllers(button);
-                await drain();
-                forceGC();
-                button.observeControllers().getNItems();
-            }
+            await cycleControllers(button, 5);
             await drain();
             expect(button.observeControllers().getNItems()).toBeGreaterThanOrEqual(0);
         }

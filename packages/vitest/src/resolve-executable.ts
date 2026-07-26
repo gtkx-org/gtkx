@@ -10,10 +10,10 @@ const isExecutable = (path: string): boolean => {
     }
 };
 
-export const resolveExecutable = (command: string): string => {
+const resolveExecutable = (command: string): string => {
     if (isAbsolute(command)) return command;
-
     const searchPaths = (process.env.PATH ?? "").split(delimiter).filter((entry) => entry.length > 0);
+
     for (const directory of searchPaths) {
         const candidate = join(directory, command);
         if (isExecutable(candidate)) return candidate;
@@ -21,3 +21,5 @@ export const resolveExecutable = (command: string): string => {
 
     throw new Error(`Cannot find the "${command}" executable on PATH`);
 };
+
+export { resolveExecutable };

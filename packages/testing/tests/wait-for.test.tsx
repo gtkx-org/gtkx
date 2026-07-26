@@ -6,12 +6,17 @@ import { findByText, render, screen, userEvent, waitFor, waitForElementToBeRemov
 
 const createDynamicComponent = (removableContent: ReactNode) => () => {
     const [showLabel, setShowLabel] = useState(true);
+
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
             {showLabel && removableContent}
         </GtkBox>
     );
+};
+
+const assertReady = (ready: boolean): void => {
+    if (!ready) throw new Error("Not ready");
 };
 
 const elementIfAttached = (element: Gtk.Widget): Gtk.Widget | null => {
@@ -33,12 +38,13 @@ const expectAlreadyRemovedRejection = async (
 describe("waitFor resolves", () => {
     it("resolves when callback succeeds", async () => {
         let value = 0;
+
         setTimeout(() => {
             value = 42;
         }, 50);
 
         const result = await waitFor(() => {
-            if (value !== 42) throw new Error("Not ready");
+            assertReady(value === 42);
             return value;
         });
 
@@ -50,7 +56,7 @@ describe("waitFor resolves", () => {
 
         await waitFor(() => {
             attempts++;
-            if (attempts < 3) throw new Error("Not ready");
+            assertReady(attempts >= 3);
             return true;
         });
 
@@ -131,6 +137,7 @@ describe("waitFor error handling", () => {
 describe("findBy forwards waitForOptions", () => {
     it("routes a custom onTimeout through the find query", async () => {
         const { container } = await render(<GtkLabel>Present</GtkLabel>);
+
         await expect(
             findByText(container, "Missing", { timeout: 100, onTimeout: () => new Error("custom find timeout") }),
         ).rejects.toThrow("custom find timeout");
@@ -140,42 +147,31 @@ describe("findBy forwards waitForOptions", () => {
 describe("waitForElementToBeRemoved widget", () => {
     it("resolves when element is removed from tree", async () => {
         const DynamicComponent = createDynamicComponent(<GtkButton label="Temporary" />);
-
         await render(<DynamicComponent />);
-
         const tempButton = await screen.findByText("Temporary");
         const removalButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
-
         const removalPromise = waitForElementToBeRemoved(tempButton);
         await userEvent.click(removalButton);
-
         await expect(removalPromise).resolves.toBeUndefined();
     });
 
     it("accepts callback that returns element", async () => {
         const DynamicComponent = createDynamicComponent(<GtkButton label="ToRemove" name="removable" />);
-
         await render(<DynamicComponent />);
-
         const removalButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
-
         const element = await screen.findByName("removable");
-
         const removalPromise = waitForElementToBeRemoved(() => elementIfAttached(element));
-
         await userEvent.click(removalButton);
         await expect(removalPromise).resolves.toBeUndefined();
     });
 
     it("resolves when the element's getRoot throws mid-wait", async () => {
         const DynamicComponent = createDynamicComponent(<GtkButton label="ToDestroy" name="destroyable" />);
-
         await render(<DynamicComponent />);
-
         const removalButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
         const element = await screen.findByName("destroyable");
-
         const originalGetRoot = element.getRoot.bind(element);
+
         element.getRoot = () => {
             const root = originalGetRoot();
             if (root === null) throw new Error("Widget destroyed");
@@ -184,7 +180,6 @@ describe("waitForElementToBeRemoved widget", () => {
 
         const removalPromise = waitForElementToBeRemoved(element);
         await userEvent.click(removalButton);
-
         await expect(removalPromise).resolves.toBeUndefined();
     });
 
@@ -197,14 +192,11 @@ describe("waitForElementToBeRemoved widget", () => {
         );
 
         await render(<DynamicComponent />);
-
         const first = await screen.findByText("First");
         const second = await screen.findByText("Second");
         const removalButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
-
         const removalPromise = waitForElementToBeRemoved([first, second]);
         await userEvent.click(removalButton);
-
         await expect(removalPromise).resolves.toBeUndefined();
     });
 
@@ -216,9 +208,7 @@ describe("waitForElementToBeRemoved widget", () => {
 describe("waitForElementToBeRemoved timeout", () => {
     it("respects custom timeout", async () => {
         await render(<GtkButton label="Permanent" />);
-
         const widget = await screen.findByText("Permanent");
-
         await expect(waitForElementToBeRemoved(widget, { timeout: 100 })).rejects.toThrow("Timed out");
     });
 });

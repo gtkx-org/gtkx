@@ -3,14 +3,15 @@ import { type SettingsSchema, type SettingsSchemaKeys, type SettingValue, useSet
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { expect } from "vitest";
 
-export const resetSettingsKey = (schemaId: string, key: string): void => {
+const resetSettingsKey = (schemaId: string, key: string): void => {
     const settings = Gio.Settings.new(schemaId);
+
     if (settings.isWritable(key)) {
         settings.reset(key);
     }
 };
 
-export const expectSettingRoundTrip = async <K extends SettingsSchemaKeys, P extends keyof K>(
+const expectSettingRoundTrip = async <K extends SettingsSchemaKeys, P extends keyof K>(
     schema: SettingsSchema<K>,
     key: P & string,
     initial: SettingValue<K, P>,
@@ -18,12 +19,12 @@ export const expectSettingRoundTrip = async <K extends SettingsSchemaKeys, P ext
 ): Promise<void> => {
     resetSettingsKey(schema.id, key);
     const { result } = await renderHook(() => useSetting(schema, key));
-
     expect(result.current[0]).toEqual(initial);
-
     await act(() => result.current[1](next));
 
     await waitFor(() => {
         expect(result.current[0]).toEqual(next);
     });
 };
+
+export { resetSettingsKey, expectSettingRoundTrip };

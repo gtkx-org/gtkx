@@ -41,6 +41,7 @@ const renderOverlayWithChild = async (mainLabel: string): Promise<Gtk.Overlay> =
     );
 
     const overlay = overlayRef.current as Gtk.Overlay;
+
     await act(() => {
         const child = Gtk.Box.new(Gtk.Orientation.HORIZONTAL, 0);
         child.setName("overlay-child");
@@ -60,21 +61,16 @@ type SnippetView = {
 
 const renderSnippetView = async (spec: string, initialText?: string): Promise<SnippetView> => {
     const viewRef = createRef<GtkSource.View>();
-
     await render(<GtkSourceView ref={viewRef} />);
-
     const view = viewRef.current as GtkSource.View;
     const buffer = view.getBuffer() as GtkSource.Buffer;
     if (initialText !== undefined) buffer.setText(initialText, -1);
-
     const snippet = GtkSource.Snippet.new(null, null);
     const chunk = GtkSource.SnippetChunk.new();
     chunk.setSpec(spec);
     snippet.addChunk(chunk);
-
     const location = buffer.getStartIter();
     expect(location.getOffset()).toBe(0);
-
     return { view, buffer, snippet, location };
 };
 
@@ -86,24 +82,19 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
         });
 
         await setTextAndUpdate(spin, "value: 042");
-
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 42 } });
     });
 
     it("falls back to GTK's default parsing when the handler returns the not-handled primary", async () => {
         const spin = await renderSpinButton(() => [FALSE, 0]);
-
         await setTextAndUpdate(spin, "55");
-
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 55 } });
     });
 
     it("round-trips the tuple out-value through a direct FFI connect", async () => {
         const spin = await renderSpinButton();
         spin.connect("input", () => [1, 256]);
-
         await setTextAndUpdate(spin, "anything");
-
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 256 } });
     });
 });
@@ -112,13 +103,13 @@ describe("signal inout-parameters - GtkEditable::insert-text", () => {
     it("seeds the handler with the incoming position read from the inout pointer", async () => {
         const text = await renderText();
         const seenPositions: number[] = [];
+
         text.connect("insert-text", (_text: string, _length: number, position: number) => {
             seenPositions.push(position);
             return position;
         });
 
         await act(() => text.insertText("abc", 3, 0));
-
         expect(seenPositions[0]).toBe(0);
         expect(screen.getByDisplayValue("abc")).toBeTruthy();
     });
@@ -127,9 +118,7 @@ describe("signal inout-parameters - GtkEditable::insert-text", () => {
         const text = await renderText();
         await act(() => text.insertText("XXXX", 4, 0));
         text.connect("insert-text", () => 1);
-
         await act(() => text.insertText("Y", 1, 4));
-
         expect(screen.getByDisplayValue("XYXXX")).toBeTruthy();
     });
 });
@@ -143,10 +132,9 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
             expect(allocation).toBeInstanceOf(Gdk.Rectangle);
             return [true, new Gdk.Rectangle({ x: 11, y: 22, width: 33, height: 44 })];
         });
+
         overlay.connect("get-child-position", handleGetChildPosition);
-
         const [handled, allocation] = overlay.emit("get-child-position", child);
-
         expect(handleGetChildPosition).toHaveBeenCalled();
         expect(handled).toBe(true);
         expect([allocation.x, allocation.y, allocation.width, allocation.height]).toEqual([11, 22, 33, 44]);
@@ -157,14 +145,12 @@ describe("signal emit() - reads out-values and return back", () => {
     it("returns the [return, out] tuple when emitting a pure-out signal", async () => {
         const spin = await renderSpinButton();
         spin.connect("input", () => [1, 256]);
-
         expect(spin.emit("input")).toEqual([1, 256]);
     });
 
     it("returns the non-void return value when emitting a signal with no out-parameters", async () => {
         const spin = await renderSpinButton();
         spin.connect("output", () => true);
-
         expect(spin.emit("output")).toBe(true);
     });
 });
@@ -179,7 +165,6 @@ describe("signal emit() - caller-allocated out-parameter", () => {
 
         const child = screen.getByName("overlay-child");
         const [handled, allocation] = overlay.emit("get-child-position", child);
-
         expect(handled).toBe(true);
         expect(allocation.width).toBe(overlay.getWidth());
         expect(allocation.height).toBe(overlay.getHeight());
@@ -189,9 +174,7 @@ describe("signal emit() - caller-allocated out-parameter", () => {
 describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)", () => {
     it("advances the caller's TextIter in place through the shared boxed inout", async () => {
         const { view, buffer, snippet, location } = await renderSnippetView("abc");
-
         view.emit("push-snippet", snippet, location);
-
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("abc");
         expect(location.getOffset()).toBe(3);
     });
@@ -204,7 +187,6 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
         });
 
         view.emit("push-snippet", snippet, location);
-
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("helloX");
     });
 
@@ -218,7 +200,6 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
         });
 
         view.emit("push-snippet", snippet, location);
-
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("helloX");
     });
 });
@@ -236,8 +217,8 @@ describe("signal connect()/emit() - notify::<property> detailed signal", () => {
         const label = labelRef.current as Gtk.Label;
         const onLabelNotify = vi.fn();
         label.connect("notify::label", onLabelNotify);
-
         label.setLabel("changed");
+
         await waitFor(() => {
             expect(onLabelNotify).toHaveBeenCalledTimes(1);
         });
@@ -249,30 +230,27 @@ describe("signal connect()/emit() - notify::<property> detailed signal", () => {
 
     it("routes a typed emit('notify::<property>', pspec) to the detailed handler", async () => {
         const labelRef = createRef<Gtk.Label>();
-
         await render(<GtkLabel ref={labelRef}>initial</GtkLabel>);
-
         const label = labelRef.current as Gtk.Label;
         let capturedPspec: GObject.ParamSpec | undefined;
+
         label.connect("notify::label", (pspec) => {
             capturedPspec = pspec;
         });
 
         label.setLabel("changed");
+
         await waitFor(() => {
             expect(capturedPspec).toBeDefined();
         });
 
         const pspec = capturedPspec;
         if (pspec === undefined) throw new Error("expected the notify handler to capture a ParamSpec");
-
         const onLabelEmit = vi.fn();
         const onOtherEmit = vi.fn();
         label.connect("notify::label", onLabelEmit);
         label.connect("notify::xalign", onOtherEmit);
-
         label.emit("notify::label", pspec);
-
         expect(onLabelEmit).toHaveBeenCalledTimes(1);
         expect(onOtherEmit).not.toHaveBeenCalled();
     });

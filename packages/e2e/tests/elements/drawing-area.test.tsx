@@ -5,16 +5,12 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 const noopDraw: Gtk.DrawingAreaDrawFunc = () => {};
-
 const drawFunc1: Gtk.DrawingAreaDrawFunc = () => {};
-
 const drawFunc2: Gtk.DrawingAreaDrawFunc = () => {};
 
 const expectDefaultContentSize = async (drawFunc: Gtk.DrawingAreaDrawFunc | undefined) => {
     const ref = createRef<Gtk.DrawingArea>();
-
     await render(<GtkDrawingArea ref={ref} drawFunc={drawFunc} />);
-
     expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
     expect(ref.current?.getContentWidth()).toBe(0);
     expect(ref.current?.getContentHeight()).toBe(0);
@@ -23,9 +19,7 @@ const expectDefaultContentSize = async (drawFunc: Gtk.DrawingAreaDrawFunc | unde
 describe("render - DrawingArea (1)", () => {
     it("creates DrawingArea widget", async () => {
         const ref = createRef<Gtk.DrawingArea>();
-
         await render(<GtkDrawingArea ref={ref} />);
-
         expect(ref.current).not.toBeNull();
         expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
     });
@@ -40,9 +34,7 @@ describe("render - DrawingArea (1)", () => {
 
     it("sets content size", async () => {
         const ref = createRef<Gtk.DrawingArea>();
-
         await render(<GtkDrawingArea ref={ref} contentWidth={200} contentHeight={100} />);
-
         expect(ref.current?.getContentWidth()).toBe(200);
         expect(ref.current?.getContentHeight()).toBe(100);
     });
@@ -59,7 +51,6 @@ describe("render - DrawingArea (2)", () => {
         await render(<App width={100} height={50} />);
         expect(ref.current?.getContentWidth()).toBe(100);
         expect(ref.current?.getContentHeight()).toBe(50);
-
         await render(<App width={200} height={100} />);
         expect(ref.current?.getContentWidth()).toBe(200);
         expect(ref.current?.getContentHeight()).toBe(100);
@@ -75,7 +66,6 @@ describe("render - DrawingArea (2)", () => {
         await render(<App drawFunc={drawFunc1} />);
         expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
         expect(ref.current?.getContentWidth()).toBe(0);
-
         await render(<App drawFunc={drawFunc2} />);
         expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
         expect(ref.current?.getContentWidth()).toBe(0);

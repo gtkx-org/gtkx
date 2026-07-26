@@ -22,6 +22,20 @@ const DESCRIPTOR: InterfaceDescriptor = {
     },
 };
 
+const startNotificationService = async (busAddress: string): Promise<() => void> => {
+    const bus = sessionBus({ busAddress });
+    bus.exportInterface(new NotificationService(), NOTIFICATIONS_PATH, DESCRIPTOR);
+
+    await new Promise<void>((resolve, reject) => {
+        bus.requestName(NOTIFICATIONS_NAME, 0, (error) => {
+            if (error) reject(error);
+            else resolve();
+        });
+    });
+
+    return () => bus.connection.stream.destroy();
+};
+
 class NotificationService extends EventEmitter {
     private lastId = 0;
 
@@ -37,16 +51,4 @@ class NotificationService extends EventEmitter {
     }
 }
 
-export const startNotificationService = async (busAddress: string): Promise<() => void> => {
-    const bus = sessionBus({ busAddress });
-    bus.exportInterface(new NotificationService(), NOTIFICATIONS_PATH, DESCRIPTOR);
-
-    await new Promise<void>((resolve, reject) => {
-        bus.requestName(NOTIFICATIONS_NAME, 0, (error) => {
-            if (error) reject(error);
-            else resolve();
-        });
-    });
-
-    return () => bus.connection.stream.destroy();
-};
+export { startNotificationService };

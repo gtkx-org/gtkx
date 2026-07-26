@@ -8,7 +8,7 @@ import { deleteAccessibleMetadata, setAccessibleMetadata } from "./accessible-me
  * (a `Gtk.AccessibleProperty`, `Gtk.AccessibleState`, or `Gtk.AccessibleRelation`) and is applied
  * to the widget's accessible interface; setting a member to `undefined` resets that attribute to its default.
  */
-export type AccessibleProps = {
+type AccessibleProps = {
     accessibleAutocomplete?: Gtk.AccessibleAutocomplete | null | undefined;
     accessibleDescription?: string | null | undefined;
     accessibleHasPopup?: boolean | null | undefined;
@@ -80,24 +80,6 @@ type AccessibleRelationDescriptor = {
 
 type AccessibleDescriptor = AccessiblePropertyDescriptor | AccessibleStateDescriptor | AccessibleRelationDescriptor;
 
-const buildProperty = (property: Gtk.AccessibleProperty, type: AccessibleValueType): AccessiblePropertyDescriptor => ({
-    kind: "property",
-    property,
-    type,
-});
-
-const buildState = (state: Gtk.AccessibleState, type: AccessibleValueType): AccessibleStateDescriptor => ({
-    kind: "state",
-    state,
-    type,
-});
-
-const buildRelation = (relation: Gtk.AccessibleRelation, type: AccessibleValueType): AccessibleRelationDescriptor => ({
-    kind: "relation",
-    relation,
-    type,
-});
-
 const ACCESSIBLE_PROP_MAP: Record<keyof AccessibleProps, AccessibleDescriptor> = {
     accessibleAutocomplete: buildProperty(Gtk.AccessibleProperty.AUTOCOMPLETE, "int"),
     accessibleDescription: buildProperty(Gtk.AccessibleProperty.DESCRIPTION, "string"),
@@ -148,6 +130,30 @@ const ACCESSIBLE_PROP_MAP: Record<keyof AccessibleProps, AccessibleDescriptor> =
     accessibleSetSize: buildRelation(Gtk.AccessibleRelation.SET_SIZE, "int"),
 };
 
+function buildProperty(property: Gtk.AccessibleProperty, type: AccessibleValueType): AccessiblePropertyDescriptor {
+    return {
+        kind: "property",
+        property,
+        type,
+    };
+}
+
+function buildState(state: Gtk.AccessibleState, type: AccessibleValueType): AccessibleStateDescriptor {
+    return {
+        kind: "state",
+        state,
+        type,
+    };
+}
+
+function buildRelation(relation: Gtk.AccessibleRelation, type: AccessibleValueType): AccessibleRelationDescriptor {
+    return {
+        kind: "relation",
+        relation,
+        type,
+    };
+}
+
 const buildValue = (descriptor: AccessibleDescriptor, jsValue: unknown): GObject.Value => {
     switch (descriptor.type) {
         case "string": {
@@ -172,7 +178,7 @@ const buildValue = (descriptor: AccessibleDescriptor, jsValue: unknown): GObject
     }
 };
 
-export const isAccessibleProp = (name: string): name is keyof AccessibleProps =>
+const isAccessibleProp = (name: string): name is keyof AccessibleProps =>
     Object.hasOwn(ACCESSIBLE_PROP_MAP, name);
 
 function applyDescriptor(widget: Gtk.Accessible, descriptor: AccessibleDescriptor, newValue: unknown): void {
@@ -243,7 +249,9 @@ const resetRemovedProps = (widget: Gtk.Accessible, oldProps: Props, newProps: Pr
     }
 };
 
-export const applyAccessibleProps = (widget: Gtk.Accessible, oldProps: Props | null, newProps: Props): void => {
+const applyAccessibleProps = (widget: Gtk.Accessible, oldProps: Props | null, newProps: Props): void => {
     applyChangedProps(widget, oldProps, newProps);
     if (oldProps) resetRemovedProps(widget, oldProps, newProps);
 };
+
+export { isAccessibleProp, applyAccessibleProps, type AccessibleProps };

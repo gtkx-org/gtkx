@@ -4,7 +4,7 @@ import { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "./p
 
 const log = createLogger("css");
 
-export class StyleSheet {
+class StyleSheet {
     private css = "";
     private provider: Gtk.CssProvider | null = null;
     private updateScheduled = false;
@@ -20,6 +20,7 @@ export class StyleSheet {
     private scheduleUpdate(): void {
         if (this.updateScheduled) return;
         this.updateScheduled = true;
+
         queueMicrotask(() => {
             this.updateScheduled = false;
             this.ensureProvider().loadFromString(this.css);
@@ -31,3 +32,5 @@ export class StyleSheet {
         this.scheduleUpdate();
     }
 }
+
+export { StyleSheet };

@@ -77,6 +77,7 @@ describe("render - GtkGridLayoutChild", () => {
         const { rerender } = await render(<App column={0} />);
         const label = gridRef.current?.getChildAt(0, 0) as Gtk.Widget;
         let parentNotifications = 0;
+
         label.connect("notify::parent", () => {
             parentNotifications += 1;
         });
@@ -121,7 +122,6 @@ describe("render - GtkGridLayoutChild", () => {
 
         const { rerender } = await render(<App show={true} />);
         expect(gridRef.current?.getChildAt(0, 0)).not.toBeNull();
-
         await rerender(<App show={false} />);
         expect(gridRef.current?.getChildAt(0, 0)).toBeNull();
     });
@@ -159,6 +159,7 @@ describe("render - GtkFixedLayoutChild", () => {
         const fixed = fixedRef.current as Gtk.Fixed;
         const label = screen.getByText("anchored");
         let parentNotifications = 0;
+
         label.connect("notify::parent", () => {
             parentNotifications += 1;
         });
@@ -186,11 +187,12 @@ describe("render - GtkFixedLayoutChild", () => {
         const fixed = fixedRef.current as Gtk.Fixed;
         const label = screen.getByText("reset");
         await expectPositionAt(fixed, label, 15, 25);
-
         await rerender(<App transform={null} />);
+
         await waitFor(() => {
             expect(fixed.getChildTransform(label)).toBeNull();
         });
+
         await expectPositionAt(fixed, label, 0, 0);
     });
 });
@@ -243,7 +245,6 @@ describe("render - GtkOverlayLayoutChild", () => {
         const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Clipped" });
         const addOverlay = vi.spyOn(overlay, "addOverlay");
         expect(overlay.getClipOverlay(button)).toBe(false);
-
         await rerender(<App clip={true} />);
         expect(overlay.getClipOverlay(button)).toBe(true);
         expect(addOverlay).not.toHaveBeenCalled();
@@ -271,10 +272,8 @@ describe("render - GtkOverlayLayoutChild", () => {
         const { rerender } = await render(<App show={false} />);
         const label = labelRef.current;
         expect(label).not.toBeNull();
-
         await rerender(<App show={true} />);
         expect(labelRef.current).toBe(label);
-
         await rerender(<App show={false} />);
         expect(labelRef.current).toBe(label);
     });
@@ -303,7 +302,6 @@ describe("render - GtkOverlayLayoutChild", () => {
 
         const { rerender } = await render(<App show={true} />);
         expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Removable" })).not.toBeNull();
-
         await rerender(<App show={false} />);
         expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Removable" })).toBeNull();
     });

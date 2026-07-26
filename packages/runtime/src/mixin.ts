@@ -1,6 +1,6 @@
 import type { AnyClass } from "@gtkx/utils";
 
-export type MixinReceiver = {
+type MixinReceiver = {
     connect(signal: string, handler: (...args: unknown[]) => unknown, after?: boolean): number;
     emit(signal: string, ...args: unknown[]): unknown;
 };
@@ -9,14 +9,16 @@ export type MixinReceiver = {
  * A factory that, given a base class, returns a subclass adding extra members to
  * be merged onto a target prototype.
  */
-export type Mixin = (base: AnyClass<MixinReceiver>) => AnyClass;
+type Mixin = (base: AnyClass<MixinReceiver>) => AnyClass;
 
 function definedInClassChain(prototype: object, key: string): boolean {
     let current: object | null = prototype;
+
     while (current !== null && current !== Object.prototype) {
         if (Object.hasOwn(current, key)) return true;
         current = Reflect.getPrototypeOf(current);
     }
+
     return false;
 }
 
@@ -40,7 +42,7 @@ function copyLayerMembers(target: AnyClass, layer: object): void {
     }
 }
 
-export function installMixins(target: AnyClass, mixins: Mixin[]): void {
+function installMixins(target: AnyClass, mixins: Mixin[]): void {
     const empty: AnyClass<MixinReceiver> = class {
         connect(): number {
             return 0;
@@ -50,7 +52,10 @@ export function installMixins(target: AnyClass, mixins: Mixin[]): void {
             return undefined;
         }
     };
+
     for (const mixin of mixins) {
         copyLayerMembers(target, mixin(empty).prototype);
     }
 }
+
+export { installMixins, type MixinReceiver, type Mixin };

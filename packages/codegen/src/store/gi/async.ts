@@ -3,7 +3,7 @@ import type { Library } from "../../gir/library.js";
 import type { TypeId } from "../../gir/type-id.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 
-export const matchAsyncFinish = (
+const matchAsyncFinish = (
     library: Library,
     fn: GirFunction,
     siblings: GirFunction[],
@@ -16,9 +16,11 @@ export const matchAsyncFinish = (
 
 const findFinishSibling = (fn: GirFunction, siblings: GirFunction[]): GirFunction | undefined => {
     const annotated = fn.finishFunc;
+
     if (annotated !== undefined) {
         return siblings.find((sibling) => sibling.name === annotated || sibling.cIdentifier === annotated);
     }
+
     if (fn.name.endsWith("_finish")) return undefined;
     const root = fn.name.endsWith("_async") ? fn.name.slice(0, -"_async".length) : fn.name;
     const finishName = `${root}_finish`;
@@ -34,6 +36,7 @@ const hasCanonicalAsyncCallback = (library: Library, fn: GirFunction): boolean =
     const callbackNames = fn.parameters
         .map((parameter) => callbackParameterName(library, parameter.type))
         .filter((name): name is string => name !== undefined);
+
     return callbackNames.length === 1 && callbackNames[0] === "AsyncReadyCallback";
 };
 
@@ -43,3 +46,5 @@ const isPromisifiableFinish = (library: Library, finishFn: GirFunction): boolean
     const only = inputs[0];
     return only?.parameter.type !== undefined && library.nameOf(only.parameter.type)?.typeName === "AsyncResult";
 };
+
+export { matchAsyncFinish };

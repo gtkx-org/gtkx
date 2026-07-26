@@ -8,10 +8,8 @@ type RegisterClicked = (button: Gtk.Button, handler: ClickedHandler) => GObject;
 const expectRemovableHandlerNeverFires = (register: RegisterClicked): void => {
     const button = new Gtk.Button();
     const handler = vi.fn();
-
     register(button, handler);
     button.off("clicked", handler);
-
     expect(handler).not.toHaveBeenCalled();
 };
 

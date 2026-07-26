@@ -16,9 +16,7 @@ describe("useProperty", () => {
         const ref = createRef<Gtk.Label>();
         await render(<GtkLabel ref={ref} label="Hello" />);
         const label = deref(ref);
-
         const { result } = await renderHook(() => useProperty(label, "label"));
-
         expect(result.current).toBe("Hello");
     });
 
@@ -26,11 +24,8 @@ describe("useProperty", () => {
         const ref = createRef<Gtk.Label>();
         await render(<GtkLabel ref={ref} label="Before" />);
         const label = deref(ref);
-
         const { result } = await renderHook(() => useProperty(label, "label"));
-
         expect(result.current).toBe("Before");
-
         await act(() => label.setLabel("After"));
 
         await waitFor(() => {
@@ -40,15 +35,15 @@ describe("useProperty", () => {
 
     it("reads boolean properties", async () => {
         const ref = createRef<Gtk.Label>();
+
         await render(
             <GtkLabel ref={ref} visible={true}>
                 Test
             </GtkLabel>,
         );
+
         const label = deref(ref);
-
         const { result } = await renderHook(() => useProperty(label, "visible"));
-
         expect(result.current).toBe(true);
     });
 
@@ -56,11 +51,8 @@ describe("useProperty", () => {
         const ref = createRef<Gtk.Label>();
         await render(<GtkLabel ref={ref} label="Test" />);
         const label = deref(ref);
-
         const { result } = await renderHook(() => useProperty(label, "maxWidthChars"));
-
         expect(result.current).toBe(-1);
-
         await act(() => label.setMaxWidthChars(12));
 
         await waitFor(() => {
@@ -72,15 +64,10 @@ describe("useProperty", () => {
         const ref = createRef<Gtk.Label>();
         await render(<GtkLabel ref={ref} label="Test" />);
         const label = deref(ref);
-
         const { result, unmount } = await renderHook(() => useProperty(label, "label"));
-
         expect(result.current).toBe("Test");
-
         await unmount();
-
         await act(() => label.setLabel("Changed"));
-
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(result.current).toBe("Test");
     });
@@ -90,11 +77,8 @@ describe("useProperty (targets)", () => {
     it("reads through a ref target and updates on change", async () => {
         const label = new Gtk.Label({ label: "Hello" });
         const ref: { current: Gtk.Label | null } = { current: label };
-
         const { result } = await renderHook(() => useProperty(ref, "label"));
-
         expect(result.current).toBe("Hello");
-
         await act(() => label.setLabel("After"));
 
         await waitFor(() => {
@@ -112,11 +96,9 @@ describe("useProperty (targets)", () => {
         );
 
         expect(result.current).toBeUndefined();
-
         ref.current = label;
         await rerender({ object: ref });
         expect(result.current).toBe("Hello");
-
         ref.current = null;
         await rerender({ object: ref });
         expect(result.current).toBeUndefined();
@@ -132,10 +114,8 @@ describe("useProperty (targets)", () => {
         );
 
         expect(result.current).toBe("First");
-
         await rerender({ object: second });
         expect(result.current).toBe("Second");
-
         await act(() => first.setLabel("Stale"));
         expect(result.current).toBe("Second");
     });

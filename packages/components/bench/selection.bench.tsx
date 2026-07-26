@@ -8,9 +8,11 @@ const SIZES = [100, 200, 400];
 
 function makeItems(n: number): Item<{ name: string }>[] {
     const items: Item<{ name: string }>[] = [];
+
     for (let i = 0; i < n; i++) {
         items.push({ id: `row-${i}`, value: { name: `row-${i}` } });
     }
+
     return items;
 }
 
@@ -21,10 +23,12 @@ describe("selection apply", () => {
 
         bench(`multi-selection across ${n} items`, async () => {
             const { rerender } = await renderListView(items, { selectionMode: Gtk.SelectionMode.MULTIPLE }, render);
+
             for (let k = 0; k < 3; k++) {
                 await rerender(items, { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: [targetId] });
                 await rerender(items, { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: [] });
             }
+
             await cleanup();
         });
     }

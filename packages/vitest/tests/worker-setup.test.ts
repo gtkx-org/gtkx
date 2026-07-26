@@ -7,6 +7,7 @@ vi.mock("@gtkx/utils", () => ({ installGracefulShutdown }));
 const { headlessShutdownInstalled, setHeadlessShutdownInstalled, setHeadlessTeardown } = await import(
     "../src/headless-globals.js",
 );
+
 const { installHeadlessShutdown } = await import("../src/install-headless-shutdown.js");
 
 const resetGlobals = (): void => {
@@ -30,9 +31,7 @@ describe("installHeadlessShutdown", () => {
     it("wires the stashed teardown into the shared graceful shutdown", () => {
         const teardown = vi.fn();
         setHeadlessTeardown(teardown);
-
         installHeadlessShutdown();
-
         expect(installGracefulShutdown).toHaveBeenCalledTimes(1);
         expect(installGracefulShutdown).toHaveBeenCalledWith({ onSignal: teardown });
         expect(headlessShutdownInstalled()).toBe(true);
@@ -40,10 +39,8 @@ describe("installHeadlessShutdown", () => {
 
     it("installs the handlers only once per process", () => {
         setHeadlessTeardown(vi.fn());
-
         installHeadlessShutdown();
         installHeadlessShutdown();
-
         expect(installGracefulShutdown).toHaveBeenCalledTimes(1);
     });
 });

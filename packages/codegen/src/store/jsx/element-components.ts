@@ -7,10 +7,9 @@ import { renderJsDoc } from "../../writer/doc.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
 /** A component that wraps a generated element, keyed by GLib type name (built-in or user-provided). */
-export type ElementComponent = { module: string; export: string };
-
+type ElementComponent = { module: string; export: string };
 /** Component wrappers keyed by GLib type name; the framework's built-ins merged with the project's own. */
-export type ElementComponentOverrides = Record<string, ElementComponent>;
+type ElementComponentOverrides = Record<string, ElementComponent>;
 
 type ExportCollector = {
     imports: ImportsBuilder;
@@ -18,7 +17,15 @@ type ExportCollector = {
     exportLines: string[];
 };
 
-export const generateElementComponentsSection = (
+type CandidateExportOptions = {
+    targetNamespace: GirNamespace;
+    library: Library;
+    virtualNames: Set<string>;
+    intrinsicElements: GlibNamedClass[];
+    components: Record<string, ElementComponent>;
+};
+
+const generateElementComponentsSection = (
     targetNamespace: GirNamespace,
     library: Library,
     options: {
@@ -29,7 +36,6 @@ export const generateElementComponentsSection = (
     },
 ): { source: string; exportedNames: Set<string> } => {
     const collector: ExportCollector = { imports: options.imports, exportedNames: new Set(), exportLines: [] };
-
     const lazyElements = options.lazyElements;
     const virtualNames = new Set(lazyElements.map((entry) => entry.element));
 
@@ -40,18 +46,10 @@ export const generateElementComponentsSection = (
         intrinsicElements: options.intrinsicElements,
         components: options.components,
     });
-    collectLazyElementExports(collector, lazyElements);
 
+    collectLazyElementExports(collector, lazyElements);
     const source = collector.exportLines.join("\n\n");
     return { source, exportedNames: collector.exportedNames };
-};
-
-type CandidateExportOptions = {
-    targetNamespace: GirNamespace;
-    library: Library;
-    virtualNames: Set<string>;
-    intrinsicElements: GlibNamedClass[];
-    components: Record<string, ElementComponent>;
 };
 
 const appendCandidateExport = (
@@ -113,14 +111,19 @@ const resolveElementComponent = (
         const found = components[name];
         if (found !== undefined) return found;
     }
+
     return undefined;
 };
 
 const renderElementComponentExport = (glibName: string, component: ElementComponent | undefined): string => {
     const propsType = `${glibName}Props`;
+
     if (component === undefined) {
         return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent(${sourceStringLiteral(glibName)});`;
     }
+
     const annotation = `(props: ${propsType}) => ReactNode`;
     return `export const ${glibName}: ${annotation} = ${component.export}(createElementComponent(${sourceStringLiteral(glibName)}));`;
 };
+
+export { generateElementComponentsSection, type ElementComponent, type ElementComponentOverrides };

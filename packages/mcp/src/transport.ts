@@ -4,7 +4,7 @@ import EventEmitter from "node:events";
 import { ErrorCode, invalidRequestError, isErrorCode, ProtocolError, requestTimeoutError } from "./protocol/errors.js";
 import { type Message, type Request, RequestSchema, type Response, ResponseSchema } from "./protocol/schemas.js";
 
-export type ProtocolConnectionEvents = {
+type ProtocolConnectionEvents = {
     request: [Request];
     invalid: [{ id: string; error: ProtocolError }];
 };
@@ -15,14 +15,24 @@ type PendingRequest = {
     timeout: NodeJS.Timeout;
 };
 
-export class ConnectionClosedError extends Error {
+type AppConnectionEvents = {
+    disconnection: [ProtocolConnection];
+    request: [ProtocolConnection, Request];
+    error: [Error];
+};
+
+type AppConnections = {
+    send(connectionId: string, message: Message): void;
+} & EventEmitter<AppConnectionEvents>;
+
+class ConnectionClosedError extends Error {
     constructor() {
         super("Connection stream is not writable");
         this.name = "ConnectionClosedError";
     }
 }
 
-export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
+class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
     static fromSocket(
         socket: Socket,
         options: {
@@ -32,13 +42,16 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
     ): ProtocolConnection {
         const connection = new ProtocolConnection(socket);
         socket.on("data", (data: Buffer) => connection.feed(data));
+
         socket.on("close", () => {
             connection.rejectPending(new Error("Connection closed"));
             options.onClose?.();
         });
+
         if (options.onError) {
             socket.on("error", options.onError);
         }
+
         return connection;
     }
 
@@ -62,12 +75,14 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
 
     private dispatchParsed(parsed: unknown): boolean {
         const message = parsed as Record<string, unknown>;
+
         if (typeof message.method === "string") {
             const requestResult = RequestSchema.safeParse(parsed);
             if (!requestResult.success) return false;
             this.emit("request", requestResult.data);
             return true;
         }
+
         const responseResult = ResponseSchema.safeParse(parsed);
         if (!responseResult.success) return false;
         this.handleResponse(responseResult.data);
@@ -76,6 +91,7 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
 
     private processLine(line: string): void {
         let parsed: unknown;
+
         try {
             parsed = JSON.parse(line);
         } catch {
@@ -84,7 +100,6 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         }
 
         if (this.dispatchParsed(parsed)) return;
-
         const message = parsed as Record<string, unknown>;
         const id = typeof message.id === "string" ? message.id : "unknown";
         this.emit("invalid", { id, error: invalidRequestError("Invalid message format") });
@@ -93,12 +108,12 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
     private handleResponse(response: Response): void {
         const entry = this.pending.get(response.id);
         if (!entry) return;
-
         clearTimeout(entry.timeout);
         this.pending.delete(response.id);
 
         if (response.error) {
             const err = response.error;
+
             entry.reject(
                 new ProtocolError(isErrorCode(err.code) ? err.code : ErrorCode.INTERNAL_ERROR, err.message, err.data),
             );
@@ -109,8 +124,8 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
 
     feed(data: Buffer | string): void {
         this.buffer += typeof data === "string" ? data : data.toString();
-
         let newlineIndex = this.buffer.indexOf("\n");
+
         while (newlineIndex !== -1) {
             const line = this.buffer.slice(0, newlineIndex);
             this.buffer = this.buffer.slice(newlineIndex + 1);
@@ -118,6 +133,7 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
             if (line.trim()) {
                 this.processLine(line);
             }
+
             newlineIndex = this.buffer.indexOf("\n");
         }
     }
@@ -135,6 +151,7 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
             }
 
             const id = crypto.randomUUID();
+
             const timeoutHandle = setTimeout(() => {
                 this.pending.delete(id);
                 reject(requestTimeoutError(timeout));
@@ -156,16 +173,15 @@ export class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
             clearTimeout(entry.timeout);
             entry.reject(error);
         }
+
         this.pending.clear();
     }
 }
 
-export type AppConnectionEvents = {
-    disconnection: [ProtocolConnection];
-    request: [ProtocolConnection, Request];
-    error: [Error];
+export {
+    ConnectionClosedError,
+    ProtocolConnection,
+    type ProtocolConnectionEvents,
+    type AppConnectionEvents,
+    type AppConnections,
 };
-
-export type AppConnections = {
-    send(connectionId: string, message: Message): void;
-} & EventEmitter<AppConnectionEvents>;

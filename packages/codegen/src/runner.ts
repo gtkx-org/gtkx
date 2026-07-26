@@ -10,14 +10,14 @@ import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.j
 
 type ModuleExport = { module: string; export: string };
 
-export type GlCodegenOptions = {
+type GlCodegenOptions = {
     registryPath: string;
     overrideExports: Set<string>;
     outputDir: string;
     resolveFrom: string;
 };
 
-export type CodegenRunnerOptions = {
+type CodegenRunnerOptions = {
     libraries?: string[];
     girPath?: string[];
     gi?: GiStoreOptions;
@@ -30,7 +30,7 @@ export type CodegenRunnerOptions = {
     force?: boolean;
 };
 
-export type CodegenRunnerResult = {
+type CodegenRunnerResult = {
     regenerated: boolean;
     namespaces: number;
     intrinsicElements: number;
@@ -53,10 +53,11 @@ type StoreResult = {
  * @param options - What to generate and where to write it.
  * @returns A summary of what was regenerated and how long the run took.
  */
-export const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerResult> => {
+const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerResult> => {
     const start = Date.now();
     const gl = options.gl === undefined ? undefined : emitGlModules(options.gl);
     const store = await emitStores(options);
+
     return {
         regenerated: store.regenerated,
         namespaces: store.namespaces,
@@ -71,15 +72,19 @@ const emitGlModules = (options: GlCodegenOptions): GlGenerationReport => {
         registryPath: options.registryPath,
         overrideExports: options.overrideExports,
     });
+
     checkModules({
         modules: [...files].map(([fileName, source]) => ({ fileName, source })),
         resolveFrom: options.resolveFrom,
         label: "the generated gl modules",
     });
+
     mkdirSync(options.outputDir, { recursive: true });
+
     for (const [fileName, source] of files) {
         writeFileSync(join(options.outputDir, fileName), source);
     }
+
     return report;
 };
 
@@ -107,6 +112,7 @@ const emitJsxStore = async (input: {
 }): Promise<StoreResult> => {
     const { options, jsx, gi, loadLibrary, giRegenerated, namespaces } = input;
     const { runJsxCodegen } = await import("./jsx.js");
+
     const jsxResult = await runJsxCodegen({
         getLibrary: loadLibrary,
         jsx,
@@ -115,6 +121,7 @@ const emitJsxStore = async (input: {
         giRegenerated,
         force: options.force === true,
     });
+
     return {
         regenerated: giRegenerated || jsxResult.regenerated,
         namespaces,
@@ -132,18 +139,20 @@ const emitStoresWithConfig = async (config: {
     const { options, gi, jsx, libraries, girPath } = config;
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
-
     const giRegenerated = options.force === true || !isGiStoreFresh(gi.storeDir, libraries);
     const namespaces = giRegenerated ? runGiCodegen(loadLibrary(), gi, libraries) : 0;
-
     if (jsx === undefined) return { regenerated: giRegenerated, namespaces, intrinsicElements: 0 };
     return emitJsxStore({ options, jsx, gi, loadLibrary, giRegenerated, namespaces });
 };
 
 const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
     const { gi, jsx, libraries, girPath } = options;
+
     if (gi === undefined || libraries === undefined || girPath === undefined) {
         return { regenerated: false, namespaces: 0, intrinsicElements: 0 };
     }
+
     return emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
 };
+
+export { runCodegen, type GlCodegenOptions, type CodegenRunnerOptions, type CodegenRunnerResult };

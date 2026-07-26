@@ -22,47 +22,6 @@ import {
 
 type LengthQuery = (id: GLuint, pname: GLenum) => GLint;
 
-const readInfoLog = (symbol: string, id: GLuint, query: LengthQuery): string => {
-    const length = query(id, INFO_LOG_LENGTH);
-    if (length <= 0) return "";
-    const written = { value: 0 };
-    const log = { value: "" };
-    t.bind(LIB, symbol, [t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", length))], t.void)(
-        id,
-        length,
-        written,
-        log,
-    );
-    return log.value;
-};
-
-/**
- * Reads the info log for a shader object, containing compilation diagnostics.
- * @param shader The name of the shader object to query.
- * @returns The shader info log, or an empty string when none is available.
- */
-export function getShaderInfoLog(shader: GLuint): string {
-    return readInfoLog("glGetShaderInfoLog", shader, getShaderiv);
-}
-
-/**
- * Reads the info log for a program object, containing linking diagnostics.
- * @param program The name of the program object to query.
- * @returns The program info log, or an empty string when none is available.
- */
-export function getProgramInfoLog(program: GLuint): string {
-    return readInfoLog("glGetProgramInfoLog", program, getProgramiv);
-}
-
-/**
- * Reads the info log for a program pipeline object, containing validation diagnostics.
- * @param pipeline The name of the program pipeline object to query.
- * @returns The pipeline info log, or an empty string when none is available.
- */
-export function getProgramPipelineInfoLog(pipeline: GLuint): string {
-    return readInfoLog("glGetProgramPipelineInfoLog", pipeline, getProgramPipelineiv);
-}
-
 /**
  * Callback invoked for each GL debug message reported by the driver.
  * @param source The origin of the message (API, window system, shader compiler, and so on).
@@ -71,7 +30,7 @@ export function getProgramPipelineInfoLog(pipeline: GLuint): string {
  * @param severity The severity level of the message.
  * @param message The human-readable message text.
  */
-export type DebugMessageCallback = (
+type DebugMessageCallback = (
     source: DebugSource,
     type: DebugType,
     id: GLuint,
@@ -91,25 +50,70 @@ const glDebugMessageCallbackBinding = t.bind(
     t.void,
 );
 
+const MAX_WAIT_CHUNK_NS = 1_000_000_000;
+
+const readInfoLog = (symbol: string, id: GLuint, query: LengthQuery): string => {
+    const length = query(id, INFO_LOG_LENGTH);
+    if (length <= 0) return "";
+    const written = { value: 0 };
+    const log = { value: "" };
+
+    t.bind(LIB, symbol, [t.uint32, t.int32, t.ref(t.int32), t.ref(t.string("borrowed", length))], t.void)(
+        id,
+        length,
+        written,
+        log,
+    );
+
+    return log.value;
+};
+
+/**
+ * Reads the info log for a shader object, containing compilation diagnostics.
+ * @param shader The name of the shader object to query.
+ * @returns The shader info log, or an empty string when none is available.
+ */
+function getShaderInfoLog(shader: GLuint): string {
+    return readInfoLog("glGetShaderInfoLog", shader, getShaderiv);
+}
+
+/**
+ * Reads the info log for a program object, containing linking diagnostics.
+ * @param program The name of the program object to query.
+ * @returns The program info log, or an empty string when none is available.
+ */
+function getProgramInfoLog(program: GLuint): string {
+    return readInfoLog("glGetProgramInfoLog", program, getProgramiv);
+}
+
+/**
+ * Reads the info log for a program pipeline object, containing validation diagnostics.
+ * @param pipeline The name of the program pipeline object to query.
+ * @returns The pipeline info log, or an empty string when none is available.
+ */
+function getProgramPipelineInfoLog(pipeline: GLuint): string {
+    return readInfoLog("glGetProgramPipelineInfoLog", pipeline, getProgramPipelineiv);
+}
+
 /**
  * Installs a callback that receives GL debug messages, enabling synchronous debug output.
  * Passing null removes any previously installed callback.
  * @param callback The handler to invoke for each debug message, or null to clear it.
  */
-export function debugMessageCallback(callback: DebugMessageCallback | null): void {
+function debugMessageCallback(callback: DebugMessageCallback | null): void {
     if (callback === null) {
         glDebugMessageCallbackBinding(null);
         return;
     }
+
     enable(DEBUG_OUTPUT);
     enable(DEBUG_OUTPUT_SYNCHRONOUS);
+
     glDebugMessageCallbackBinding(
         (source: GLenum, type: GLenum, id: GLuint, severity: GLenum, _length: number, message: string) =>
             callback(source, type, id, severity, message),
     );
 }
-
-const MAX_WAIT_CHUNK_NS = 1_000_000_000;
 
 const settledSyncStatus = (status: SyncStatus): SyncStatus | null => {
     if (status === ALREADY_SIGNALED || status === CONDITION_SATISFIED) return status;
@@ -125,9 +129,10 @@ const settledSyncStatus = (status: SyncStatus): SyncStatus | null => {
  * @param timeoutNs The total time to wait, in nanoseconds.
  * @returns The status of the sync object: signaled, condition satisfied, or timeout expired.
  */
-export function clientWaitSyncLoop(sync: GLsync, flags: SyncObjectMask, timeoutNs: number): SyncStatus {
+function clientWaitSyncLoop(sync: GLsync, flags: SyncObjectMask, timeoutNs: number): SyncStatus {
     let remaining = timeoutNs;
     let currentFlags = flags;
+
     for (;;) {
         const chunk = Math.min(remaining, MAX_WAIT_CHUNK_NS);
         const settled = settledSyncStatus(clientWaitSync(sync, currentFlags, chunk));
@@ -137,3 +142,12 @@ export function clientWaitSyncLoop(sync: GLsync, flags: SyncObjectMask, timeoutN
         currentFlags = 0;
     }
 }
+
+export {
+    getShaderInfoLog,
+    getProgramInfoLog,
+    getProgramPipelineInfoLog,
+    debugMessageCallback,
+    clientWaitSyncLoop,
+    type DebugMessageCallback,
+};

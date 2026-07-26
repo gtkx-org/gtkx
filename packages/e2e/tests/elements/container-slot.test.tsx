@@ -55,18 +55,14 @@ const toolbarWithBar = (
 const renderToolbarWithSingleBar = async (bar: { topBar?: ReactNode; bottomBar?: ReactNode }) => {
     const toolbarRef = createRef<Adw.ToolbarView>();
     const contentRef = createRef<Gtk.Label>();
-
     await render(toolbarWithBar(toolbarRef, bar, <GtkLabel ref={contentRef}>Content</GtkLabel>));
-
     return { toolbarRef, contentRef };
 };
 
 const expectTwoLabelSlotMounts = async (build: (labels: ReactNode) => ReactNode): Promise<void> => {
     const firstRef = createRef<Gtk.Label>();
     const secondRef = createRef<Gtk.Label>();
-
     await render(build(twoLabelFragment(firstRef, secondRef)));
-
     expect(firstRef.current).not.toBeNull();
     expect(secondRef.current).not.toBeNull();
 };
@@ -77,12 +73,9 @@ const expectIndividualChildRemoval = async (
     secondRef: RefObject<Gtk.Label | null>,
 ) => {
     const { rerender } = await render(renderApp(true));
-
     expect(firstRef.current).not.toBeNull();
     expect(secondRef.current).not.toBeNull();
-
     await rerender(renderApp(false));
-
     expect(firstRef.current).not.toBeNull();
     expect(secondRef.current).toBeNull();
 };
@@ -103,7 +96,6 @@ describe("render - ContainerProp (1)", () => {
 
         it("appends prefix and suffix children", async () => {
             const { rowRef, prefixRef, suffixRef } = await renderActionRowWithPrefixAndSuffix("First", "Second");
-
             expect(rowRef.current).not.toBeNull();
             expect(prefixRef.current).not.toBeNull();
             expect(suffixRef.current).not.toBeNull();
@@ -136,13 +128,10 @@ describe("render - ContainerProp (2)", () => {
             }
 
             const { rerender } = await render(<App count={3} />);
-
             expect(labelRefs[0]?.current).not.toBeNull();
             expect(labelRefs[1]?.current).not.toBeNull();
             expect(labelRefs[2]?.current).not.toBeNull();
-
             await rerender(<App count={1} />);
-
             expect(labelRefs[0]?.current).not.toBeNull();
             expect(labelRefs[1]?.current).toBeNull();
             expect(labelRefs[2]?.current).toBeNull();
@@ -151,9 +140,7 @@ describe("render - ContainerProp (2)", () => {
         it("adds child as prefix via prefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const prefixRef = createRef<Gtk.Label>();
-
             await render(actionRowInListBox(rowRef, { prefix: <GtkLabel ref={prefixRef}>Prefix</GtkLabel> }));
-
             expect(prefixRef.current).not.toBeNull();
         });
     });
@@ -164,15 +151,12 @@ describe("render - ContainerProp (3)", () => {
         it("adds child as suffix via suffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const suffixRef = createRef<Gtk.Label>();
-
             await render(actionRowInListBox(rowRef, { suffix: <GtkLabel ref={suffixRef}>Suffix</GtkLabel> }));
-
             expect(suffixRef.current).not.toBeNull();
         });
 
         it("combines prefix and suffix", async () => {
             const { prefixRef, suffixRef } = await renderActionRowWithPrefixAndSuffix("Prefix", "Suffix");
-
             expect(prefixRef.current).not.toBeNull();
             expect(suffixRef.current).not.toBeNull();
         });
@@ -194,12 +178,9 @@ describe("render - ContainerProp (4)", () => {
             }
 
             const { rerender } = await render(<App showPrefix={true} />);
-
             expect(prefixRef.current).not.toBeNull();
             expect(alwaysRef.current).not.toBeNull();
-
             await rerender(<App showPrefix={false} />);
-
             expect(prefixRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
         });
@@ -255,9 +236,7 @@ describe("render - ContainerProp (7)", () => {
     describe("AdwExpanderRow (rows/actions) (1)", () => {
         it("creates ExpanderRow widget", async () => {
             const ref = createRef<Adw.ExpanderRow>();
-
             await render(<AdwExpanderRow ref={ref} title="Test" />);
-
             expect(ref.current).not.toBeNull();
             expect(screen.getByText("Test")).toBeDefined();
         });
@@ -271,7 +250,6 @@ describe("render - ContainerProp (7)", () => {
 
             const { rerender } = await render(<App title="Initial" />);
             expect(ref.current?.getTitle()).toBe("Initial");
-
             await rerender(<App title="Updated" />);
             expect(ref.current?.getTitle()).toBe("Updated");
         });
@@ -295,9 +273,7 @@ describe("render - ContainerProp (8)", () => {
     describe("AdwExpanderRow (rows/actions) (2)", () => {
         it("adds nested rows to ExpanderRow", async () => {
             const rowRef = createRef<Adw.ActionRow>();
-
             await render(<AdwExpanderRow title="Settings" rows={<AdwActionRow ref={rowRef} title="Option 1" />} />);
-
             expect(rowRef.current).not.toBeNull();
             expect(screen.getByText("Option 1")).toBeDefined();
         });
@@ -343,14 +319,12 @@ describe("render - ContainerProp (9)", () => {
 
             const { rerender } = await render(<App showRow={true} />);
             expect(expanderRef.current).not.toBeNull();
-
             await rerender(<App showRow={false} />);
             expect(expanderRef.current).not.toBeNull();
         });
 
         it("adds action widgets to ExpanderRow", async () => {
             await render(<AdwExpanderRow title="Group" actions={<GtkButton label="Action" />} />);
-
             expect(screen.getByText("Action")).toBeDefined();
         });
     });
@@ -408,9 +382,7 @@ describe("render - ContainerProp (11)", () => {
         it("packs child at start via start", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const startRef = createRef<Gtk.Label>();
-
             await render(headerBarWithPack(headerBarRef, { start: <GtkLabel ref={startRef}>Start</GtkLabel> }));
-
             expect(startRef.current).not.toBeNull();
             expect(screen.getByText("Start")).toBeDefined();
         });
@@ -418,9 +390,7 @@ describe("render - ContainerProp (11)", () => {
         it("packs child at end via end", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const endRef = createRef<Gtk.Label>();
-
             await render(headerBarWithPack(headerBarRef, { end: <GtkLabel ref={endRef}>End</GtkLabel> }));
-
             expect(endRef.current).not.toBeNull();
             expect(screen.getByText("End")).toBeDefined();
         });
@@ -461,12 +431,9 @@ describe("render - ContainerProp (12)", () => {
             }
 
             const { rerender } = await render(<App showStart={true} />);
-
             expect(startRef.current).not.toBeNull();
             expect(alwaysRef.current).not.toBeNull();
-
             await rerender(<App showStart={false} />);
-
             expect(startRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
         });
@@ -487,45 +454,38 @@ describe("render - ContainerProp (13)", () => {
     });
 });
 
+function SwapKeyedApp({
+    headerBarRef,
+    showBack,
+}: {
+    headerBarRef: RefObject<Gtk.HeaderBar | null>;
+    showBack: boolean;
+}) {
+    return (
+        <GtkHeaderBar
+            ref={headerBarRef}
+            start={(
+                <>
+                    {showBack ? <GtkButton key="back" label="Back" /> : <GtkButton key="search" label="Search" />}
+                    <GtkButton label="Delete" />
+                </>
+            )}
+        />
+    );
+}
+
 describe("render - ContainerProp (14)", () => {
     describe("GtkHeaderBar (start/end) (4)", () => {
         it("swaps keyed children in start without duplication", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
-
-            function App({ showBack }: { showBack: boolean }) {
-                return (
-                    <GtkHeaderBar
-                        ref={headerBarRef}
-                        start={(
-                            <>
-                                {showBack
-                                    ? (
-                                            <GtkButton key="back" label="Back" />
-                                        )
-                                    : (
-                                            <GtkButton key="search" label="Search" />
-                                        )}
-                                <GtkButton label="Delete" />
-                            </>
-                        )}
-                    />
-                );
-            }
-
-            const { rerender } = await render(<App showBack={false} />);
-
+            const { rerender } = await render(<SwapKeyedApp headerBarRef={headerBarRef} showBack={false} />);
             const headerBar = headerBarRef.current;
             if (headerBar === null) throw new Error("expected the header bar to be mounted");
             const buttonCount = (): number => within(headerBar).getAllByRole(Gtk.AccessibleRole.BUTTON).length;
-
             const initialCount = buttonCount();
-
-            await rerender(<App showBack={true} />);
-
+            await rerender(<SwapKeyedApp headerBarRef={headerBarRef} showBack={true} />);
             expect(buttonCount()).toBe(initialCount);
-
-            await rerender(<App showBack={false} />);
-
+            await rerender(<SwapKeyedApp headerBarRef={headerBarRef} showBack={false} />);
             expect(buttonCount()).toBe(initialCount);
         });
     });
@@ -557,12 +517,9 @@ describe("render - ContainerProp (15)", () => {
     describe("GtkHeaderBar (start/end) (5)", () => {
         it("reorders children in start via insertBefore", async () => {
             const { rerender } = await render(<App order="ab" />);
-
             expect(screen.getByText("A")).toBeDefined();
             expect(screen.getByText("B")).toBeDefined();
-
             await rerender(<App order="ba" />);
-
             expect(screen.getByText("A")).toBeDefined();
             expect(screen.getByText("B")).toBeDefined();
         });
@@ -599,14 +556,12 @@ describe("render - ContainerProp (17)", () => {
     describe("AdwToolbarView (topBar/bottomBar) (1)", () => {
         it("adds child to top bar via topBar", async () => {
             const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ topBar: <AdwHeaderBar /> });
-
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
         it("adds child to bottom bar via bottomBar", async () => {
             const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ bottomBar: <AdwHeaderBar /> });
-
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
@@ -652,7 +607,6 @@ describe("render - ContainerProp (18)", () => {
 
             const { rerender } = await render(<App showTop={false} />);
             await rerender(<App showTop={true} />);
-
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });

@@ -5,7 +5,6 @@ import { cleanup, render } from "../tests/helpers/production-render.js";
 import { BENCH_SIZES } from "../tests/helpers/sized-bench.js";
 
 const TOGGLED_SUFFIXES = ["b", "a", "b", "a", "b", "a"];
-
 const UNCHANGED_SUFFIXES = Array.from({ length: 10 }, () => "a");
 
 const drawLabels = (n: number, suffix: string): ReactNode => (
@@ -20,9 +19,11 @@ const drawLabels = (n: number, suffix: string): ReactNode => (
 
 const rerenderLabels = async (n: number, suffixes: string[]): Promise<void> => {
     const { rerender } = await render(drawLabels(n, "a"));
+
     for (const suffix of suffixes) {
         await rerender(drawLabels(n, suffix));
     }
+
     await cleanup();
 };
 

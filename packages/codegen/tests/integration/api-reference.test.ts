@@ -2,7 +2,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { type ApiReference, loadApiReference } from "../../src/index.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
-
 let reference: ApiReference;
 
 beforeAll(() => {
@@ -18,14 +17,15 @@ const pageResultFor = (query: string): PageResult => {
 };
 
 const pageFor = (query: string): string => pageResultFor(query).markdown;
-
 const symbolNameFor = (query: string): string => pageResultFor(query).symbol.name;
 
 const candidateNamespacesFor = (query: string): string[] => {
     const result = reference.lookup(query);
+
     if (result.outcome !== "ambiguous") {
         throw new Error(`Expected ambiguous candidates for ${query}, got ${result.outcome}`);
     }
+
     return result.candidates.map((candidate) => candidate.namespace);
 };
 
@@ -107,6 +107,7 @@ describe("ApiReference — lookup", () => {
 
     it("renders promisified async method pairs on class pages", () => {
         const page = pageFor("Gtk.FileDialog");
+
         expect(page).toContain(
             "open(parent: Gtk.Window | null, cancellable?: Gio.Cancellable | null): Promise<Gio.File>",
         );
@@ -114,17 +115,21 @@ describe("ApiReference — lookup", () => {
 
     it("renders promisified static async members on class pages", () => {
         const page = pageFor("Gio.DBusConnection");
+
         expect(page).toContain(
             "new(stream: Gio.IOStream, guid: string | null, flags: Gio.DBusConnectionFlags, observer: Gio.DBusAuthObserver | null, cancellable?: Gio.Cancellable | null): Promise<Gio.DBusConnection>",
         );
+
         expect(page).toContain("newFinish(res: Gio.AsyncResult): Gio.DBusConnection");
     });
 
     it("renders promisified module-level async functions on function pages", () => {
         const page = pageFor("Gio.busGet");
+
         expect(page).toContain(
             "function busGet(busType: Gio.BusType, cancellable?: Gio.Cancellable | null): Promise<Gio.DBusConnection>",
         );
+
         const finishPage = pageFor("Gio.busGetFinish");
         expect(finishPage).toContain("function busGetFinish(res: Gio.AsyncResult): Gio.DBusConnection");
     });
@@ -221,10 +226,12 @@ describe("ApiReference — search", () => {
     it("filters by namespace and kind and honors the limit", () => {
         const results = reference.search({ query: "header", namespace: "Adw", kinds: ["element"], limit: 2 });
         expect(results.length).toBeLessThanOrEqual(2);
+
         for (const result of results) {
             expect(result.namespace).toBe("Adw");
             expect(result.kind).toBe("element");
         }
+
         expect(results.map((result) => result.name)).toContain("AdwHeaderBar");
     });
 

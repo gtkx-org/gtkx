@@ -5,23 +5,23 @@ import { render as testingRender } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { ScrollWrapper } from "./scroll-wrapper.js";
 
-export type FixtureRender = (element: ReactNode) => Promise<{ rerender: (element: ReactNode) => Promise<void> }>;
+type FixtureRender = (element: ReactNode) => Promise<{ rerender: (element: ReactNode) => Promise<void> }>;
 
-export type NamedValue = {
+type NamedValue = {
     name: string;
 };
 
-export const valueItems = (values: string[]): { id: string; value: string }[] =>
+const valueItems = (values: string[]): { id: string; value: string }[] =>
     values.map((value, index) => ({ id: String(index + 1), value }));
 
-export const firstSecondItems: Item<NamedValue>[] = [
+const firstSecondItems: Item<NamedValue>[] = [
     { id: "1", value: { name: "First" } },
     { id: "2", value: { name: "Second" } },
 ];
 
-export const firstSecondThirdItems: Item<NamedValue>[] = [...firstSecondItems, { id: "3", value: { name: "Third" } }];
+const firstSecondThirdItems: Item<NamedValue>[] = [...firstSecondItems, { id: "3", value: { name: "Third" } }];
 
-export type FixtureInput<T> = string[] | Item<T>[];
+type FixtureInput<T> = string[] | Item<T>[];
 
 const toListItems = <T,>(items: FixtureInput<T>): Item<T>[] =>
     items.length > 0 && typeof items[0] === "string"
@@ -39,7 +39,7 @@ const collectExpandableIds = <T,>(list: Item<T>[], ids: string[]): void => {
     }
 };
 
-export const allExpandableIds = <T,>(items: Item<T>[]): string[] => {
+const allExpandableIds = <T,>(items: Item<T>[]): string[] => {
     const ids: string[] = [];
     collectExpandableIds(items, ids);
     return ids;
@@ -57,24 +57,24 @@ type ListViewFixtureOptions = {
     minContentWidth?: number;
 };
 
-export type RenderListViewOptions<T> = ListViewFixtureOptions & {
+type RenderListViewOptions<T> = ListViewFixtureOptions & {
     renderItem?: (props: RenderItemArgs<T>) => ReactNode;
     expandedIds?: string[];
     onExpandedChange?: (ids: string[]) => void;
     expandAll?: boolean;
 };
 
-export type RenderGridViewOptions<T> = ListViewFixtureOptions & {
+type RenderGridViewOptions<T> = ListViewFixtureOptions & {
     renderItem?: (props: RenderItemArgs<T>) => ReactNode;
     singleClickActivate?: boolean;
 };
 
-export type ListViewFixture<T> = {
+type ListViewFixture<T> = {
     ref: RefObject<Gtk.ListView>;
     rerender: (items: FixtureInput<T>, options?: RenderListViewOptions<T>) => Promise<void>;
 };
 
-export type GridViewFixture<T> = {
+type GridViewFixture<T> = {
     ref: RefObject<Gtk.GridView>;
     rerender: (items: FixtureInput<T>, options?: RenderGridViewOptions<T>) => Promise<void>;
 };
@@ -104,6 +104,7 @@ const wireFixture = async <W, T, O extends object>(config: {
 }): Promise<{ ref: RefObject<W>; rerender: (items: FixtureInput<T>, options?: O) => Promise<void> }> => {
     const { ref, draw, items, options, render } = config;
     const { rerender } = await render(draw(items, options));
+
     return {
         ref: ref as RefObject<W>,
         rerender: async (nextItems, nextOptions) => {
@@ -112,15 +113,17 @@ const wireFixture = async <W, T, O extends object>(config: {
     };
 };
 
-export const renderListView = async <T = NamedValue>(
+const renderListView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderListViewOptions<T> = {},
     render: FixtureRender = testingRender,
 ): Promise<ListViewFixture<T>> => {
     const ref = createRef<Gtk.ListView>();
+
     const draw = (data: FixtureInput<T>, opts: RenderListViewOptions<T>): ReactNode => {
         const { renderItem = renderNamed } = opts;
         const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
+
         return withScrollWrapper(
             opts,
             <ListView
@@ -136,15 +139,17 @@ export const renderListView = async <T = NamedValue>(
             />,
         );
     };
+
     return wireFixture({ ref, draw, items, options, render });
 };
 
-export const renderGridView = async <T = NamedValue>(
+const renderGridView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderGridViewOptions<T> = {},
     render: FixtureRender = testingRender,
 ): Promise<GridViewFixture<T>> => {
     const ref = createRef<Gtk.GridView>();
+
     return wireFixture({
         ref,
         items,
@@ -152,6 +157,7 @@ export const renderGridView = async <T = NamedValue>(
         render,
         draw: (data, opts) => {
             const { renderItem = renderNamed } = opts;
+
             return withScrollWrapper(
                 opts,
                 <GridView
@@ -171,7 +177,7 @@ export const renderGridView = async <T = NamedValue>(
 
 export type { Column } from "@gtkx/components";
 
-export type RenderColumnViewOptions<T> = {
+type RenderColumnViewOptions<T> = {
     columns?: Column<T>[];
     selected?: string[];
     selectionMode?: Gtk.SelectionMode;
@@ -186,21 +192,23 @@ export type RenderColumnViewOptions<T> = {
     minContentWidth?: number;
 };
 
-export type ColumnViewFixture<T> = {
+type ColumnViewFixture<T> = {
     ref: RefObject<Gtk.ColumnView>;
     rerender: (items: FixtureInput<T>, options?: RenderColumnViewOptions<T>) => Promise<void>;
 };
 
-export const renderColumnView = async <T = NamedValue>(
+const renderColumnView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderColumnViewOptions<T> = {},
     render: FixtureRender = testingRender,
 ): Promise<ColumnViewFixture<T>> => {
     const ref = createRef<Gtk.ColumnView>();
     const defaultColumns: Column<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
+
     const draw = (data: FixtureInput<T>, opts: RenderColumnViewOptions<T>): ReactNode => {
         const { columns = defaultColumns } = opts;
         const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
+
         return withScrollWrapper(
             { minContentHeight: opts.minContentHeight ?? 500, minContentWidth: opts.minContentWidth },
             <ColumnView
@@ -218,5 +226,25 @@ export const renderColumnView = async <T = NamedValue>(
             />,
         );
     };
+
     return wireFixture({ ref, draw, items, options, render });
+};
+
+export {
+    valueItems,
+    firstSecondItems,
+    firstSecondThirdItems,
+    allExpandableIds,
+    renderListView,
+    renderGridView,
+    renderColumnView,
+    type FixtureRender,
+    type NamedValue,
+    type FixtureInput,
+    type RenderListViewOptions,
+    type RenderGridViewOptions,
+    type ListViewFixture,
+    type GridViewFixture,
+    type RenderColumnViewOptions,
+    type ColumnViewFixture,
 };

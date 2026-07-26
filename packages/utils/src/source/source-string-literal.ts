@@ -20,6 +20,8 @@ const UNSAFE_SOURCE_CHARS = new RegExp(`[${Object.keys(SOURCE_ESCAPES).join("")}
  * @example
  * sourceStringLiteral("hello"); // '"hello"'
  */
-export function sourceStringLiteral(value: string): string {
+function sourceStringLiteral(value: string): string {
     return JSON.stringify(value).replaceAll(UNSAFE_SOURCE_CHARS, (char) => SOURCE_ESCAPES[char] ?? char);
 }
+
+export { sourceStringLiteral };

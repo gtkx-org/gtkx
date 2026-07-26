@@ -12,8 +12,10 @@
  * isPlainObject([1, 2]); // false
  * isPlainObject(new Date()); // false
  */
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
     if (typeof value !== "object" || value === null) return false;
     const proto: unknown = Object.getPrototypeOf(value);
     return proto === Object.prototype || proto === null;
 }
+
+export { isPlainObject };

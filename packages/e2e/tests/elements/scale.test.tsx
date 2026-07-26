@@ -27,7 +27,6 @@ const MIN_MID_MAX_MARKS = [
 const expectMarksTransition = async (initialMarks: ScaleMark[], updatedMarks: ScaleMark[]): Promise<void> => {
     const { rerender } = await render(<ScaleWithMarks marks={initialMarks} />);
     expectDefaultRange();
-
     await rerender(<ScaleWithMarks marks={updatedMarks} />);
     expectDefaultRange();
 };
@@ -35,13 +34,11 @@ const expectMarksTransition = async (initialMarks: ScaleMark[], updatedMarks: Sc
 describe("render - Scale marks (1)", () => {
     it("creates Scale widget without marks", async () => {
         await render(<ScaleWithMarks />);
-
         expectDefaultRange();
     });
 
     it("creates Scale widget with marks", async () => {
         await render(<ScaleWithMarks marks={MIN_MID_MAX_MARKS} />);
-
         expectDefaultRange();
     });
 

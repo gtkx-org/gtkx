@@ -17,6 +17,8 @@ import {
 } from "./node.js";
 import { markTextDirty } from "./text.js";
 
+type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
+
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
     const object = nodeObject(node);
     if (object === null) return null;
@@ -40,6 +42,7 @@ const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementB
         entry.adopted = behavior.resolve(parent.object, entry.object);
         return;
     }
+
     entry.adopted = claim instanceof GObject.Object ? claim : null;
 };
 
@@ -65,8 +68,6 @@ const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
     entry.attached = true;
 };
 
-type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
-
 const tryAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
     const attach = behavior.attach;
     if (attach === undefined) return false;
@@ -82,9 +83,11 @@ const tryAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
 
 const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
     const ctx: AttachContext = { parent, entry, index, sibling };
+
     for (const behavior of typeInfoOf(parent.typeName).behaviors) {
         if (tryAttach(ctx, behavior)) return;
     }
+
     if (entry.slot !== DEFAULT_SLOT) setObjectSlot(parent, entry);
 };
 
@@ -99,15 +102,18 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
     if (!entry.attached) return;
     entry.attached = false;
     const behavior = entry.behavior;
+
     if (behavior === null) {
         if (entry.slot !== DEFAULT_SLOT) Reflect.set(parent.object, entry.slot, null);
         return;
     }
+
     behavior.detach?.(parent.object, entry.object, detachInfo(entry, contextFor(parent, behavior)));
 };
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
     for (const entry of entries) detachEntry(parent, entry);
+
     for (const [index, entry] of entries.entries()) {
         entry.behavior = null;
         attachEntry(parent, entry, index, siblingAt(entries, index));
@@ -119,10 +125,12 @@ const positionOf = (entries: PlacedChild[], before: PlaceableNode | null): numbe
 
 const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[], index: number): void => {
     attachEntry(parent, entry, index, siblingAt(entries, index));
+
     if (!entry.attached) {
         remove(entries, entry);
         return;
     }
+
     const insertedBeforeEnd = index < entries.length - 1;
     const cannotReorderInPlace = entry.behavior !== null && entry.behavior.reorder === undefined;
     if (insertedBeforeEnd && cannotReorderInPlace) rebuild(parent, entries);
@@ -131,10 +139,12 @@ const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[
 const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[], index: number): void => {
     const behavior = entry.behavior;
     const reorder = behavior?.reorder;
+
     if (behavior === null || reorder === undefined) {
         rebuild(parent, entries);
         return;
     }
+
     const context = contextFor(parent, behavior);
     const claim = reorder(parent.object, entry.object, placeInfo(entry, index, siblingAt(entries, index), context));
     adoptedFrom(parent, entry, behavior, claim);
@@ -151,7 +161,7 @@ const resolveEntry = (
     return createEntry(slot, node);
 };
 
-export const placeChild = (
+const placeChild = (
     parent: ElementNode,
     slot: string,
     node: PlaceableNode,
@@ -165,12 +175,14 @@ export const placeChild = (
     if (isMove) entries.splice(existing, 1);
     const index = positionOf(entries, before);
     entries.splice(index, 0, entry);
+
     if (isMove) moveEntry(parent, entry, entries, index);
     else placeNew(parent, entry, entries, index);
+
     markFlush(parent);
 };
 
-export const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): void => {
+const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): void => {
     const entries = parent.placements.get(slot);
     if (entries === undefined) return;
     const index = entries.findIndex((entry) => entry.node === node);
@@ -179,3 +191,5 @@ export const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableN
     if (entry !== undefined) detachEntry(parent, entry);
     markFlush(parent);
 };
+
+export { placeChild, unplaceChild };

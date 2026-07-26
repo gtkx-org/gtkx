@@ -9,9 +9,7 @@ import { expectDialogModalProp, expectDialogTitleTracksProp } from "../helpers/d
 describe("render - FontDialogButton (1)", () => {
     it("creates FontDialogButton widget", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
-
         await render(<GtkFontDialogButton ref={ref} dialog={<GtkFontDialog />} />);
-
         expect(ref.current?.getDialog()).not.toBeNull();
         expect(ref.current?.getLevel()).toBe(Gtk.FontLevel.FONT);
     });
@@ -19,9 +17,7 @@ describe("render - FontDialogButton (1)", () => {
     it("creates FontDialogButton with initial fontDesc", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
         const fontDesc = Pango.FontDescription.fromString("Sans Bold 12");
-
         await render(<GtkFontDialogButton ref={ref} fontDesc={fontDesc} />);
-
         expect(ref.current).not.toBeNull();
         const currentFontDesc = ref.current?.getFontDesc();
         expect(currentFontDesc?.toString()).toBe("Sans Bold 12");
@@ -36,13 +32,10 @@ describe("render - FontDialogButton (1)", () => {
 
         const initialFont = Pango.FontDescription.fromString("Sans 10");
         await render(<App font={initialFont} />);
-
         const fontDesc1 = ref.current?.getFontDesc();
         expect(fontDesc1?.toString()).toBe("Sans 10");
-
         const newFont = Pango.FontDescription.fromString("Serif Bold 14");
         await render(<App font={newFont} />);
-
         const fontDesc2 = ref.current?.getFontDesc();
         expect(fontDesc2?.toString()).toBe("Serif Bold 14");
     });
@@ -51,9 +44,7 @@ describe("render - FontDialogButton (1)", () => {
 describe("render - FontDialogButton (2)", () => {
     it("sets dialog title", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
-
         await render(<GtkFontDialogButton ref={ref} dialog={<GtkFontDialog title="Select Font" />} />);
-
         expect(ref.current).not.toBeNull();
         const dialog = ref.current?.getDialog();
         expect(dialog?.getTitle()).toBe("Select Font");
@@ -73,9 +64,7 @@ describe("render - FontDialogButton (2)", () => {
 
     it("sets useFont property", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
-
         await render(<GtkFontDialogButton ref={ref} useFont={true} />);
-
         expect(ref.current).not.toBeNull();
         expect(ref.current?.getUseFont()).toBe(true);
     });
@@ -91,16 +80,13 @@ describe("render - FontDialogButton (3)", () => {
 
         await render(<App useFont={false} />);
         expect(ref.current?.getUseFont()).toBe(false);
-
         await render(<App useFont={true} />);
         expect(ref.current?.getUseFont()).toBe(true);
     });
 
     it("sets useSize property", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
-
         await render(<GtkFontDialogButton ref={ref} useSize={true} />);
-
         expect(ref.current).not.toBeNull();
         expect(ref.current?.getUseSize()).toBe(true);
     });
@@ -114,16 +100,13 @@ describe("render - FontDialogButton (3)", () => {
 
         await render(<App useSize={false} />);
         expect(ref.current?.getUseSize()).toBe(false);
-
         await render(<App useSize={true} />);
         expect(ref.current?.getUseSize()).toBe(true);
     });
 
     it("sets level property", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
-
         await render(<GtkFontDialogButton ref={ref} level={Gtk.FontLevel.FAMILY} />);
-
         expect(ref.current).not.toBeNull();
         expect(ref.current?.getLevel()).toBe(Gtk.FontLevel.FAMILY);
     });
@@ -139,7 +122,6 @@ describe("render - FontDialogButton (4)", () => {
 
         await render(<App level={Gtk.FontLevel.FONT} />);
         expect(ref.current?.getLevel()).toBe(Gtk.FontLevel.FONT);
-
         await render(<App level={Gtk.FontLevel.FEATURES} />);
         expect(ref.current?.getLevel()).toBe(Gtk.FontLevel.FEATURES);
     });

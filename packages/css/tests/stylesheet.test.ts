@@ -4,6 +4,7 @@ import { StyleSheet } from "../src/stylesheet.js";
 describe("StyleSheet", () => {
     it("accepts a rule via insert", () => {
         const stylesheet = new StyleSheet();
+
         expect(() => {
             stylesheet.insert(".test { color: red; }");
         }).not.toThrow();
@@ -11,6 +12,7 @@ describe("StyleSheet", () => {
 
     it("accepts multiple rules via insert", () => {
         const stylesheet = new StyleSheet();
+
         expect(() => {
             stylesheet.insert(".rule1 { color: red; }");
             stylesheet.insert(".rule2 { color: blue; }");
@@ -20,6 +22,7 @@ describe("StyleSheet", () => {
 
     it("warns when GTK4 rejects a declaration", async () => {
         const warn = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
         try {
             const stylesheet = new StyleSheet();
             stylesheet.insert(".bad { not-a-real-property: 1; }");

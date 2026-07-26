@@ -33,9 +33,7 @@ describe("render - ToggleGroup (1)", () => {
     describe("AdwToggleGroup (1)", () => {
         it("creates ToggleGroup widget without toggles", async () => {
             const ref = createRef<Adw.ToggleGroup>();
-
             await render(<AdwToggleGroup ref={ref} />);
-
             expect(ref.current).not.toBeNull();
             expect(screen.queryAllByRole(Gtk.AccessibleRole.RADIO)).toHaveLength(0);
         });
@@ -97,10 +95,8 @@ describe("render - ToggleGroup (2)", () => {
     describe("AdwToggleGroup (2)", () => {
         it("updates toggle props", async () => {
             const ref = createRef<Adw.ToggleGroup>();
-
             const { rerender } = await renderChildren([{ id: "test", label: "Initial" }], buildToggleGroup(ref));
             await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Initial" });
-
             await rerender([{ id: "test", label: "Updated" }]);
             await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Updated" });
         });
@@ -115,10 +111,10 @@ describe("render - ToggleGroup (2)", () => {
                 ],
                 buildToggleGroup(ref),
             );
+
             expect(await screen.findAllByRole(Gtk.AccessibleRole.RADIO)).toHaveLength(2);
             expect(screen.getByRole(Gtk.AccessibleRole.RADIO, { name: "Always" })).toBeDefined();
             expect(screen.getByRole(Gtk.AccessibleRole.RADIO, { name: "Extra" })).toBeDefined();
-
             await rerender([{ id: "always", label: "Always" }]);
             await waitFor(() => expect(screen.queryAllByRole(Gtk.AccessibleRole.RADIO)).toHaveLength(1));
             expect(screen.getByRole(Gtk.AccessibleRole.RADIO, { name: "Always" })).toBeDefined();
@@ -139,6 +135,7 @@ describe("render - ToggleGroup (3)", () => {
                 ],
                 buildToggleGroup(ref),
             );
+
             expect(await screen.findAllByRole(Gtk.AccessibleRole.RADIO)).toHaveLength(2);
 
             await rerender([
@@ -146,6 +143,7 @@ describe("render - ToggleGroup (3)", () => {
                 { id: "middle", label: "Middle" },
                 { id: "last", label: "Last" },
             ]);
+
             await waitFor(() => expect(screen.queryAllByRole(Gtk.AccessibleRole.RADIO)).toHaveLength(3));
             expect(screen.getByRole(Gtk.AccessibleRole.RADIO, { name: "Middle" })).toBeDefined();
         });
@@ -156,13 +154,11 @@ describe("render - ToggleGroup (4)", () => {
     describe("user interactions (1)", () => {
         it("clicks toggle to activate it", async () => {
             await render(<AdwToggleGroup>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
-
             await clickToggleAndExpectActive("List");
         });
 
         it("switches between toggles", async () => {
             await render(<AdwToggleGroup>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
-
             await clickToggleAndExpectActive("Grid");
         });
     });
@@ -172,11 +168,8 @@ describe("render - ToggleGroup (6)", () => {
     describe("uncontrolled selection", () => {
         it("preserves the clicked selection across an unrelated re-render", async () => {
             const { rerender } = await render(<AdwToggleGroup>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
-
             await clickToggleAndExpectActive("Grid");
-
             await rerender(<AdwToggleGroup cssClasses={["flat"]}>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
-
             expect(await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Grid", pressed: true })).toBeDefined();
         });
     });
@@ -195,7 +188,6 @@ describe("render - ToggleGroup (5)", () => {
 
             const toggles = await screen.findAllByRole(Gtk.AccessibleRole.RADIO);
             expect(toggles).toHaveLength(3);
-
             const listToggle = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "List View" });
             expect(listToggle).toBeDefined();
         });

@@ -28,19 +28,23 @@ const buildNativeArgTypes = (args: Arg[], throws: boolean): Descriptor[] => {
     const nativeArgTypes = args.map((argSpec) =>
         argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );
+
     if (throws)
         nativeArgTypes.push(
             refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_error_get_type" })),
         );
+
     return nativeArgTypes;
 };
 
 const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
     let inputCursor = 0;
+
     return args.map((arg) => {
         const isRef = isRefArg(arg);
         const consumesInput = !isRef || isInoutArg(arg);
         const isOutParam = isOutputArg(arg) && arg.consumed !== true;
+
         return {
             arg,
             isRef,
@@ -74,16 +78,19 @@ const buildNativeValues = (plans: ArgSpec[], inputs: unknown[]): unknown[] =>
 
 const readOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
     const outParams: unknown[] = [];
+
     for (const [index, { arg, isCallerAllocated, inputIndex, isOutParam }] of plans.entries()) {
         if (!isOutParam) continue;
+
         outParams.push(
             isCallerAllocated ? inputs[inputIndex] : fromNative(arg.type, (nativeValues[index] as Ref).value),
         );
     }
+
     return outParams;
 };
 
-export function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
+function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
     const { args, returns: returnDescriptor, throws = false } = spec;
     const nativeArgTypes = buildNativeArgTypes(args, throws);
     const nativeFn = bind(sharedLibrary, symbol, nativeArgTypes, returnDescriptor);
@@ -111,3 +118,5 @@ export function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inp
         return shape(inputs, nativeValues, nativeFn(...nativeValues));
     };
 }
+
+export { fn };

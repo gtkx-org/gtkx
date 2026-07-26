@@ -3,7 +3,7 @@ import type { ReactNode, RefObject } from "react";
 import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
 import type { ChildrenBuilder } from "./render-children.js";
 
-export type NotebookPageContent = (label: string) => ReactNode;
+type NotebookPageContent = (label: string) => ReactNode;
 
 const buildNotebookFrom =
     (ref: RefObject<Gtk.Notebook | null>, content: NotebookPageContent): ChildrenBuilder<string> =>
@@ -17,8 +17,10 @@ const buildNotebookFrom =
             </GtkNotebook>
         );
 
-export const buildPlainNotebook = (ref: RefObject<Gtk.Notebook | null>): ChildrenBuilder<string> =>
+const buildPlainNotebook = (ref: RefObject<Gtk.Notebook | null>): ChildrenBuilder<string> =>
     buildNotebookFrom(ref, (label) => <GtkLabel>{label}</GtkLabel>);
 
-export const buildLabelNotebook = (ref: RefObject<Gtk.Notebook | null>): ChildrenBuilder<string> =>
+const buildLabelNotebook = (ref: RefObject<Gtk.Notebook | null>): ChildrenBuilder<string> =>
     buildNotebookFrom(ref, (label) => <GtkLabel>{`Content: ${label}`}</GtkLabel>);
+
+export { buildPlainNotebook, buildLabelNotebook, type NotebookPageContent };

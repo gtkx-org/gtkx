@@ -13,14 +13,10 @@ describe("createRefreshTracker", () => {
     it("invokes the underlying refresh and opens the window for one macrotask", () => {
         const performRefresh = vi.fn();
         const tracker = createRefreshTracker(performRefresh);
-
         expect(tracker.isRefreshing()).toBe(false);
-
         tracker.performRefresh();
-
         expect(performRefresh).toHaveBeenCalledTimes(1);
         expect(tracker.isRefreshing()).toBe(true);
-
         vi.runAllTimers();
         expect(tracker.isRefreshing()).toBe(false);
     });
@@ -32,7 +28,6 @@ describe("createRefreshTracker", () => {
 
         expect(() => tracker.performRefresh()).toThrow("boom");
         expect(tracker.isRefreshing()).toBe(true);
-
         vi.runAllTimers();
         expect(tracker.isRefreshing()).toBe(false);
     });

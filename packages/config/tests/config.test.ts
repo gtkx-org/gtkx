@@ -26,6 +26,7 @@ describe("defineConfig", () => {
             libraries: ["Gtk-4.0"],
             $production: { applicationId: "org.gtk.Prod" },
         });
+
         expect(config.libraries).toEqual(["Gtk-4.0"]);
     });
 });
@@ -220,6 +221,7 @@ describe("resolveConfig", () => {
             applicationId: "org.gtk.Demo4",
             reactCompiler: { compilationMode: "annotation" },
         };
+
         expect(resolveConfig(configured)).toEqual({
             applicationId: "org.gtk.Demo4",
             reactCompiler: { target: "19", compilationMode: "annotation" },
@@ -234,6 +236,7 @@ describe("resolveConfig", () => {
             { applicationId: "org.example.App", elements: { behaviors: "./elements.ts" } },
             "/project",
         );
+
         expect(resolved.elements).toBe("/project/elements.ts");
     });
 
@@ -252,6 +255,7 @@ describe("resolveConfig", () => {
             applicationId: "org.example.App",
             userEventSignals: { GObject: ["notify", "custom-changed"], MyWidget: ["changed"] },
         });
+
         expect(resolved.userEventSignals.GObject).toEqual(["notify", "custom-changed"]);
         expect(resolved.userEventSignals.MyWidget).toEqual(["changed"]);
         expect(resolved.userEventSignals.GtkEditable).toEqual(DEFAULT_USER_EVENT_SIGNALS.GtkEditable);

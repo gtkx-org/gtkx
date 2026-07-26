@@ -8,16 +8,23 @@ import { type TypeInfo, typeInfoOf } from "./metadata.js";
 import { contextFor, type ElementNode, type SignalTarget } from "./node.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
 
-const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
-const isHandlerName = (name: string): boolean => /^on[A-Z]/.test(name);
+type PropDelta = { name: string; value: unknown; prevValue: unknown };
+type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };
+type PropChange = { prev: Props; next: Props };
 
+const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const NOTIFY_PREFIX = "onNotify";
 const HANDLER_PREFIX = "on";
+const flushDirty: Set<ElementNode> = new Set();
+
+const isHandlerName = (name: string): boolean => /^on[A-Z]/.test(name);
 
 const signalForProp = (info: TypeInfo, name: string): string => {
     if (name === NOTIFY_PREFIX) return "notify";
+
     if (name.startsWith(NOTIFY_PREFIX) && name.length > NOTIFY_PREFIX.length)
         return `notify::${kebabCase(name.slice(NOTIFY_PREFIX.length))}`;
+
     return info.signals[name] ?? kebabCase(name.slice(HANDLER_PREFIX.length));
 };
 
@@ -26,8 +33,6 @@ const isReservedName = (name: string, info: TypeInfo): boolean =>
 
 const skipValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
     isReservedName(name, info) || consumed.has(name);
-
-type PropDelta = { name: string; value: unknown; prevValue: unknown };
 
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
     if (Object.hasOwn(info.defaults, name)) Reflect.set(object, name, info.defaults[name]);
@@ -52,10 +57,12 @@ const propText = (value: unknown): string => (typeof value === "string" ? value 
 
 const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void => {
     const { name, value, prevValue } = delta;
+
     if (value !== undefined && isBufferText(node, name)) {
         applyBufferText(node.object, propText(value));
         return;
     }
+
     const isInitialNull = value === null && prevValue === undefined;
     if (!isInitialNull) setOrReset(node.object, info, name, value);
 };
@@ -64,8 +71,6 @@ const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void
     const names = new Set([...Object.keys(prev), ...Object.keys(next)]);
     for (const name of names) visit(name);
 };
-
-type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };
 
 const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior): void => {
     if (behavior.update === undefined) return;
@@ -80,8 +85,6 @@ const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, prev: Props, next
     for (const behavior of info.behaviors) collectConsumed(ctx, behavior);
     return consumed;
 };
-
-type PropChange = { prev: Props; next: Props };
 
 const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange, consumed: Set<string>): void => {
     eachChangedName(change.prev, change.next, (name) => {
@@ -100,15 +103,14 @@ const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: 
     eachChangedName(prev, next, (name) => {
         if (!isHandlerName(name)) return;
         const value = next[name];
+
         if (typeof value === "function")
             connectHandler(target, name, signalForProp(info, name), value as SignalHandler);
         else disconnectHandler(target, name);
     });
 };
 
-const flushDirty: Set<ElementNode> = new Set();
-
-export const markFlush = (node: ElementNode): void => {
+const markFlush = (node: ElementNode): void => {
     if (typeInfoOf(node.typeName).hasFlush) flushDirty.add(node);
 };
 
@@ -116,16 +118,16 @@ const eachBehavior = (node: ElementNode, visit: (behavior: ElementBehavior, cont
     for (const behavior of typeInfoOf(node.typeName).behaviors) visit(behavior, contextFor(node, behavior));
 };
 
-export const flushBehaviors = (): void => {
+const flushBehaviors = (): void => {
     drain(flushDirty, (node) => eachBehavior(node, (behavior, context) => behavior.flush?.(node.object, context)));
 };
 
-export const mountBehaviors = (node: ElementNode): void => {
+const mountBehaviors = (node: ElementNode): void => {
     if (!typeInfoOf(node.typeName).hasMount) return;
     eachBehavior(node, (behavior, context) => behavior.mount?.(node.object, context));
 };
 
-export const unmountBehaviors = (node: ElementNode): void => {
+const unmountBehaviors = (node: ElementNode): void => {
     eachBehavior(node, (behavior, context) => behavior.unmount?.(node.object, context));
 };
 
@@ -133,7 +135,7 @@ const applyAccessible = (object: GObject.Object, prev: Props, next: Props): void
     if (object instanceof Gtk.Widget) applyAccessibleProps(object, prev, next);
 };
 
-export const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
+const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
     const info = typeInfoOf(node.typeName);
     const consumed = runBehaviorUpdates(node, info, prev, next);
     applyValueEntries(node, info, { prev, next }, consumed);
@@ -146,13 +148,17 @@ export const applyElementProps = (node: ElementNode, prev: Props, next: Props): 
 
 const skipAdoptedName = (info: TypeInfo, name: string): boolean => isReservedName(name, info);
 
-export const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void => {
+const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void => {
     const { object, typeName } = target;
     const info = typeInfoOf(typeName);
+
     eachChangedName(prev, next, (name) => {
         if (skipAdoptedName(info, name) || Object.is(prev[name], next[name])) return;
         setOrReset(object, info, name, next[name]);
     });
+
     applyAccessible(object, prev, next);
     applyHandlers(target, info, prev, next);
 };
+
+export { markFlush, flushBehaviors, mountBehaviors, unmountBehaviors, applyElementProps, applyAdoptedProps };

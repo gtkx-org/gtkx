@@ -59,6 +59,8 @@ const RESERVED: Set<string> = new Set([
  * sanitizeIdentifier("iconName"); // "iconName"
  * sanitizeIdentifier("class"); // "class_"
  */
-export function sanitizeIdentifier(name: string): string {
+function sanitizeIdentifier(name: string): string {
     return RESERVED.has(name) ? `${name}_` : name;
 }
+
+export { sanitizeIdentifier };

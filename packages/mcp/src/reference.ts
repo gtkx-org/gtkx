@@ -7,12 +7,12 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { defineTool, textContent, textError, type Tool, type ToolArgs } from "./tool.js";
 
-export type ReferenceApi = Pick<
+type ReferenceApi = Pick<
     ApiReference,
     "lookup" | "namespaceOverview" | "namespaces" | "overview" | "search" | "symbolNames"
 >;
 
-export type ReferenceProvider = {
+type ReferenceProvider = {
     get(): Promise<ReferenceApi>;
 };
 
@@ -27,46 +27,6 @@ type LoadedReference = {
     watched: WatchedFile[];
 };
 
-const watchFile = (path: string): WatchedFile => {
-    try {
-        const stats = statSync(path);
-        return { path, mtimeMs: stats.mtimeMs, size: stats.size };
-    } catch {
-        return { path, mtimeMs: -1, size: -1 };
-    }
-};
-
-const isFresh = (loaded: LoadedReference): boolean =>
-    loaded.watched.every((file) => {
-        const current = watchFile(file.path);
-        return current.mtimeMs === file.mtimeMs && current.size === file.size;
-    });
-
-const loadReference = async (root: string): Promise<LoadedReference> => {
-    const { config, configFile } = await loadConfig(root);
-    if (config.codegen === false) {
-        throw new Error(
-            `codegen is disabled for the project at ${root}, so there are no generated bindings to document. Remove \`codegen: false\` from gtkx.config.ts to use the API reference.`,
-        );
-    }
-    const girPath = resolveGirPath(config.girPath);
-    if (girPath.length === 0) {
-        throw new Error(
-            "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
-        );
-    }
-    const libraries = resolveLibraries(config.libraries, girPath);
-    const reference = loadApiReference({ libraries, girPath });
-    const watched = [
-        ...(configFile === undefined ? [] : [watchFile(resolve(root, configFile))]),
-        ...reference.girFiles.map((file) => watchFile(file)),
-    ];
-    return { reference, watched };
-};
-
-const FRESHNESS_INTERVAL_MS = 2000;
-const FAILURE_RETRY_MS = 5000;
-
 type CacheEntry = {
     pending: Promise<LoadedReference>;
     verifiedAt: number;
@@ -74,53 +34,11 @@ type CacheEntry = {
 };
 
 type ReferenceCache = Map<string, CacheEntry>;
+type SearchOptions = Parameters<ReferenceApi["search"]>[0];
+type ResourceServer = Pick<McpServer, "registerResource">;
 
-const markFailed = async (entry: CacheEntry): Promise<void> => {
-    try {
-        await entry.pending;
-    } catch {
-        entry.failedAt = Date.now();
-    }
-};
-
-const startLoad = (cache: ReferenceCache, root: string): CacheEntry => {
-    const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
-    void markFailed(entry);
-    cache.set(root, entry);
-    return entry;
-};
-
-const isRetryDue = (entry: CacheEntry): boolean =>
-    entry.failedAt !== undefined && Date.now() - entry.failedAt >= FAILURE_RETRY_MS;
-
-const resolveEntry = (cache: ReferenceCache, root: string): CacheEntry => {
-    const entry = cache.get(root) ?? startLoad(cache, root);
-    return isRetryDue(entry) ? startLoad(cache, root) : entry;
-};
-
-const revalidate = (cache: ReferenceCache, root: string, entry: CacheEntry): CacheEntry => {
-    const current = cache.get(root);
-    return current === undefined || current === entry ? startLoad(cache, root) : current;
-};
-
-const currentReference = async (cache: ReferenceCache, root: string): Promise<ReferenceApi> => {
-    const entry = resolveEntry(cache, root);
-    const loaded = await entry.pending;
-    if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) return loaded.reference;
-    if (isFresh(loaded)) {
-        entry.verifiedAt = Date.now();
-        return loaded.reference;
-    }
-    const revalidated = await revalidate(cache, root, entry).pending;
-    return revalidated.reference;
-};
-
-export const createReferenceProvider = (resolveRoot: () => string): ReferenceProvider => {
-    const cache: ReferenceCache = new Map();
-    return {
-        get: () => currentReference(cache, resolve(resolveRoot())),
-    };
-};
+const FRESHNESS_INTERVAL_MS = 2000;
+const FAILURE_RETRY_MS = 5000;
 
 const SYMBOL_KIND = z.enum([
     "element",
@@ -156,10 +74,101 @@ const apiDocsShape = {
     kind: SYMBOL_KIND.optional().describe("Disambiguate when several kinds share the symbol name."),
 };
 
+const watchFile = (path: string): WatchedFile => {
+    try {
+        const stats = statSync(path);
+        return { path, mtimeMs: stats.mtimeMs, size: stats.size };
+    } catch {
+        return { path, mtimeMs: -1, size: -1 };
+    }
+};
+
+const isFresh = (loaded: LoadedReference): boolean =>
+    loaded.watched.every((file) => {
+        const current = watchFile(file.path);
+        return current.mtimeMs === file.mtimeMs && current.size === file.size;
+    });
+
+const loadReference = async (root: string): Promise<LoadedReference> => {
+    const { config, configFile } = await loadConfig(root);
+
+    if (config.codegen === false) {
+        throw new Error(
+            `codegen is disabled for the project at ${root}, so there are no generated bindings to document. Remove \`codegen: false\` from gtkx.config.ts to use the API reference.`,
+        );
+    }
+
+    const girPath = resolveGirPath(config.girPath);
+
+    if (girPath.length === 0) {
+        throw new Error(
+            "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
+        );
+    }
+
+    const libraries = resolveLibraries(config.libraries, girPath);
+    const reference = loadApiReference({ libraries, girPath });
+
+    const watched = [
+        ...(configFile === undefined ? [] : [watchFile(resolve(root, configFile))]),
+        ...reference.girFiles.map((file) => watchFile(file)),
+    ];
+
+    return { reference, watched };
+};
+
+const markFailed = async (entry: CacheEntry): Promise<void> => {
+    try {
+        await entry.pending;
+    } catch {
+        entry.failedAt = Date.now();
+    }
+};
+
+const startLoad = (cache: ReferenceCache, root: string): CacheEntry => {
+    const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
+    void markFailed(entry);
+    cache.set(root, entry);
+    return entry;
+};
+
+const isRetryDue = (entry: CacheEntry): boolean =>
+    entry.failedAt !== undefined && Date.now() - entry.failedAt >= FAILURE_RETRY_MS;
+
+const resolveEntry = (cache: ReferenceCache, root: string): CacheEntry => {
+    const entry = cache.get(root) ?? startLoad(cache, root);
+    return isRetryDue(entry) ? startLoad(cache, root) : entry;
+};
+
+const revalidate = (cache: ReferenceCache, root: string, entry: CacheEntry): CacheEntry => {
+    const current = cache.get(root);
+    return current === undefined || current === entry ? startLoad(cache, root) : current;
+};
+
+const currentReference = async (cache: ReferenceCache, root: string): Promise<ReferenceApi> => {
+    const entry = resolveEntry(cache, root);
+    const loaded = await entry.pending;
+    if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) return loaded.reference;
+
+    if (isFresh(loaded)) {
+        entry.verifiedAt = Date.now();
+        return loaded.reference;
+    }
+
+    const revalidated = await revalidate(cache, root, entry).pending;
+    return revalidated.reference;
+};
+
+const createReferenceProvider = (resolveRoot: () => string): ReferenceProvider => {
+    const cache: ReferenceCache = new Map();
+
+    return {
+        get: () => currentReference(cache, resolve(resolveRoot())),
+    };
+};
+
 const formatCandidates = (candidates: ApiSymbol[]): string =>
     candidates.map((candidate) => `- ${candidate.namespace}.${candidate.name} (${candidate.kind})`).join("\n");
-
-type SearchOptions = Parameters<ReferenceApi["search"]>[0];
 
 const buildSearchOptions = (args: ToolArgs<typeof searchApiShape>): SearchOptions => {
     const options: SearchOptions = { query: args.query };
@@ -181,13 +190,16 @@ const listApiTool = (provider: ReferenceProvider): Tool =>
             const reference = await provider.get();
             if (namespace === undefined) return textContent(reference.overview());
             const overview = reference.namespaceOverview(namespace);
+
             if (overview === undefined) {
                 const names = reference
                     .namespaces()
                     .map((summary) => summary.name)
                     .join(", ");
+
                 return textError(`Unknown namespace "${namespace}". Available namespaces: ${names}`);
             }
+
             return textContent(overview);
         },
     });
@@ -203,9 +215,11 @@ const searchApiTool = (provider: ReferenceProvider): Tool =>
         handler: async (args) => {
             const reference = await provider.get();
             const results = reference.search(buildSearchOptions(args));
+
             if (results.length === 0) {
                 return textContent(`No symbols matched "${args.query}". Try a shorter substring or \`gtkx_list_api\`.`);
             }
+
             return textContent(JSON.stringify(results, null, 2));
         },
     });
@@ -221,19 +235,22 @@ const getApiDocsTool = (provider: ReferenceProvider): Tool =>
         handler: async ({ symbol, kind }) => {
             const reference = await provider.get();
             const result = reference.lookup(symbol, kind);
+
             if (result.outcome === "notFound") {
                 return textError(`No symbol named "${symbol}". Use \`gtkx_search_api\` to find the right name.`);
             }
+
             if (result.outcome === "ambiguous") {
                 return textError(
                     `"${symbol}" matches several symbols. Pass a qualified name or a kind:\n${formatCandidates(result.candidates)}`,
                 );
             }
+
             return textContent(result.markdown);
         },
     });
 
-export const buildReferenceTools = (provider: ReferenceProvider): Tool[] => [
+const buildReferenceTools = (provider: ReferenceProvider): Tool[] => [
     listApiTool(provider),
     searchApiTool(provider),
     getApiDocsTool(provider),
@@ -245,8 +262,6 @@ const markdownResource = (uri: URL, text: string): ReadResourceResult => ({
 
 const variableValue = (value: string | string[] | undefined): string =>
     Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-
-type ResourceServer = Pick<McpServer, "registerResource">;
 
 const withLoadFallback = async <T>(load: () => Promise<T>, fallback: T): Promise<T> => {
     try {
@@ -261,13 +276,42 @@ const namespaceCompleter =
         (value: string): Promise<string[]> =>
             withLoadFallback(async () => {
                 const reference = await provider.get();
+
                 return reference
                     .namespaces()
                     .map((summary) => summary.name)
                     .filter((name) => name.toLowerCase().startsWith(value.toLowerCase()));
             }, []);
 
+const completeSymbol = async (provider: ReferenceProvider, namespace: string, value: string): Promise<string[]> => {
+    if (namespace.length === 0) return [];
+
+    return withLoadFallback(async () => {
+        const reference = await provider.get();
+        return reference.symbolNames(namespace).filter((name) => name.toLowerCase().startsWith(value.toLowerCase()));
+    }, []);
+};
+
 const resourceNotFound = (message: string): McpError => new McpError(ErrorCode.InvalidParams, message);
+
+const symbolPage = async (
+    uri: URL,
+    provider: ReferenceProvider,
+    namespace: string,
+    symbol: string,
+): Promise<ReadResourceResult> => {
+    const reference = await provider.get();
+    const result = reference.lookup(`${namespace}.${symbol}`);
+    if (result.outcome === "page") return markdownResource(uri, result.markdown);
+
+    if (result.outcome === "ambiguous") {
+        throw resourceNotFound(
+            `"${namespace}.${symbol}" matches several symbols:\n${formatCandidates(result.candidates)}`,
+        );
+    }
+
+    throw resourceNotFound(`No symbol named "${namespace}.${symbol}"`);
+};
 
 const registerIndexResource = (server: ResourceServer, provider: ReferenceProvider): void => {
     server.registerResource(
@@ -293,6 +337,7 @@ const registerNamespaceResource = (server: ResourceServer, provider: ReferencePr
                 withLoadFallback(
                     async () => {
                         const reference = await provider.get();
+
                         return {
                             resources: reference.namespaces().map((summary) => ({
                                 uri: `gtkx://reference/${summary.name}`,
@@ -329,16 +374,8 @@ const registerSymbolResource = (server: ResourceServer, provider: ReferenceProvi
             list: undefined,
             complete: {
                 namespace: namespaceCompleter(provider),
-                symbol: async (value, context) => {
-                    const namespace = variableValue(context?.arguments?.namespace);
-                    if (namespace.length === 0) return [];
-                    return withLoadFallback(async () => {
-                        const reference = await provider.get();
-                        return reference
-                            .symbolNames(namespace)
-                            .filter((name) => name.toLowerCase().startsWith(value.toLowerCase()));
-                    }, []);
-                },
+                symbol: (value, context) =>
+                    completeSymbol(provider, variableValue(context?.arguments?.namespace), value),
             },
         }),
         {
@@ -347,24 +384,21 @@ const registerSymbolResource = (server: ResourceServer, provider: ReferenceProvi
                 "Reference page for one symbol of the project's generated GTK4 bindings: a JSX element or a class, interface, record, enum, callback, alias, function, or constant.",
             mimeType: "text/markdown",
         },
-        async (uri, variables) => {
-            const namespace = variableValue(variables.namespace);
-            const symbol = variableValue(variables.symbol);
-            const reference = await provider.get();
-            const result = reference.lookup(`${namespace}.${symbol}`);
-            if (result.outcome === "page") return markdownResource(uri, result.markdown);
-            if (result.outcome === "ambiguous") {
-                throw resourceNotFound(
-                    `"${namespace}.${symbol}" matches several symbols:\n${formatCandidates(result.candidates)}`,
-                );
-            }
-            throw resourceNotFound(`No symbol named "${namespace}.${symbol}"`);
-        },
+        (uri, variables) =>
+            symbolPage(uri, provider, variableValue(variables.namespace), variableValue(variables.symbol)),
     );
 };
 
-export const registerReferenceResources = (server: ResourceServer, provider: ReferenceProvider): void => {
+const registerReferenceResources = (server: ResourceServer, provider: ReferenceProvider): void => {
     registerIndexResource(server, provider);
     registerNamespaceResource(server, provider);
     registerSymbolResource(server, provider);
+};
+
+export {
+    createReferenceProvider,
+    buildReferenceTools,
+    registerReferenceResources,
+    type ReferenceApi,
+    type ReferenceProvider,
 };

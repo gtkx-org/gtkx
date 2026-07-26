@@ -1,11 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const DATA_IMPORT_PREFIX = "#data";
-
+const DATA_IMPORT_PREFIX = "#data";
 const DATA_IMPORT_KEY = `${DATA_IMPORT_PREFIX}/*`;
-
 const CONDITION_PRIORITY = ["default", "import", "node"] as const;
+const DATA_TARGET_PATTERN = /^\.?\/?(.+?)\/\*$/;
 
 const isConditionMap = (entry: unknown): entry is Record<string, unknown> =>
     entry !== null && typeof entry === "object" && !Array.isArray(entry);
@@ -15,6 +14,7 @@ const conditionTarget = (conditions: Record<string, unknown>): string | null => 
         const value = conditions[condition];
         if (typeof value === "string") return value;
     }
+
     return null;
 };
 
@@ -24,20 +24,20 @@ const targetString = (entry: unknown): string | null => {
     return null;
 };
 
-const DATA_TARGET_PATTERN = /^\.?\/?(.+?)\/\*$/;
-
 const directoryFromTarget = (target: string): string | null => {
     const match = DATA_TARGET_PATTERN.exec(target);
     return match?.[1] ?? null;
 };
 
-export const resolveDataDir = (root: string): string | null => {
+const resolveDataDir = (root: string): string | null => {
     let manifest: unknown;
+
     try {
         manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
     } catch {
         return null;
     }
+
     if (!isConditionMap(manifest)) return null;
     const imports = manifest.imports;
     if (!isConditionMap(imports)) return null;
@@ -45,3 +45,5 @@ export const resolveDataDir = (root: string): string | null => {
     if (target === null) return null;
     return directoryFromTarget(target);
 };
+
+export { DATA_IMPORT_PREFIX, resolveDataDir };

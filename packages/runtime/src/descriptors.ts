@@ -1,34 +1,34 @@
 import type { ArrayKind, Descriptor, Ownership } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 
-export type Int8Descriptor = Extract<Descriptor, { kind: "int8" }>;
-export type Uint8Descriptor = Extract<Descriptor, { kind: "uint8" }>;
-export type Int16Descriptor = Extract<Descriptor, { kind: "int16" }>;
-export type Uint16Descriptor = Extract<Descriptor, { kind: "uint16" }>;
-export type Int32Descriptor = Extract<Descriptor, { kind: "int32" }>;
-export type Uint32Descriptor = Extract<Descriptor, { kind: "uint32" }>;
-export type Int64Descriptor = Extract<Descriptor, { kind: "int64" }>;
-export type Uint64Descriptor = Extract<Descriptor, { kind: "uint64" }>;
-export type BigInt64Descriptor = Extract<Descriptor, { kind: "bigint64" }>;
-export type BigUint64Descriptor = Extract<Descriptor, { kind: "biguint64" }>;
-export type Float32Descriptor = Extract<Descriptor, { kind: "float32" }>;
-export type Float64Descriptor = Extract<Descriptor, { kind: "float64" }>;
-export type EnumDescriptor = Extract<Descriptor, { kind: "enum" }>;
-export type FlagsDescriptor = Extract<Descriptor, { kind: "flags" }>;
-export type BooleanDescriptor = Extract<Descriptor, { kind: "boolean" }>;
-export type StringDescriptor = Extract<Descriptor, { kind: "string" }>;
-export type ObjectDescriptor = Extract<Descriptor, { kind: "object" }>;
-export type UnicharDescriptor = Extract<Descriptor, { kind: "unichar" }>;
-export type VoidDescriptor = Extract<Descriptor, { kind: "void" }>;
-export type BufferDescriptor = Extract<Descriptor, { kind: "buffer" }>;
-export type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }>;
-export type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & { wrapperClass?: AnyClass };
-export type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & { wrapperClass?: AnyClass };
-export type ArrayDescriptor = Extract<Descriptor, { kind: "array" }>;
-export type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
-export type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
-export type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
-export type TypeDescriptor = BigUint64Descriptor & { type: true };
+type Int8Descriptor = Extract<Descriptor, { kind: "int8" }>;
+type Uint8Descriptor = Extract<Descriptor, { kind: "uint8" }>;
+type Int16Descriptor = Extract<Descriptor, { kind: "int16" }>;
+type Uint16Descriptor = Extract<Descriptor, { kind: "uint16" }>;
+type Int32Descriptor = Extract<Descriptor, { kind: "int32" }>;
+type Uint32Descriptor = Extract<Descriptor, { kind: "uint32" }>;
+type Int64Descriptor = Extract<Descriptor, { kind: "int64" }>;
+type Uint64Descriptor = Extract<Descriptor, { kind: "uint64" }>;
+type BigInt64Descriptor = Extract<Descriptor, { kind: "bigint64" }>;
+type BigUint64Descriptor = Extract<Descriptor, { kind: "biguint64" }>;
+type Float32Descriptor = Extract<Descriptor, { kind: "float32" }>;
+type Float64Descriptor = Extract<Descriptor, { kind: "float64" }>;
+type EnumDescriptor = Extract<Descriptor, { kind: "enum" }>;
+type FlagsDescriptor = Extract<Descriptor, { kind: "flags" }>;
+type BooleanDescriptor = Extract<Descriptor, { kind: "boolean" }>;
+type StringDescriptor = Extract<Descriptor, { kind: "string" }>;
+type ObjectDescriptor = Extract<Descriptor, { kind: "object" }>;
+type UnicharDescriptor = Extract<Descriptor, { kind: "unichar" }>;
+type VoidDescriptor = Extract<Descriptor, { kind: "void" }>;
+type BufferDescriptor = Extract<Descriptor, { kind: "buffer" }>;
+type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }>;
+type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & { wrapperClass?: AnyClass };
+type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & { wrapperClass?: AnyClass };
+type ArrayDescriptor = Extract<Descriptor, { kind: "array" }>;
+type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
+type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
+type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
+type TypeDescriptor = BigUint64Descriptor & { type: true };
 
 type BoxedOptions = {
     callerAllocated?: boolean;
@@ -63,33 +63,33 @@ type StructOptions = {
     wrapperClass?: AnyClass;
 };
 
-export const int8T: Int8Descriptor = { kind: "int8" };
-export const uint8T: Uint8Descriptor = { kind: "uint8" };
-export const int16T: Int16Descriptor = { kind: "int16" };
-export const uint16T: Uint16Descriptor = { kind: "uint16" };
-export const int32T: Int32Descriptor = { kind: "int32" };
-export const uint32T: Uint32Descriptor = { kind: "uint32" };
-export const int64T: Int64Descriptor = { kind: "int64" };
-export const uint64T: Uint64Descriptor = { kind: "uint64" };
-export const bigint64T: BigInt64Descriptor = { kind: "bigint64" };
-export const biguint64T: BigUint64Descriptor = { kind: "biguint64" };
-export const gtypeT: TypeDescriptor = { kind: "biguint64", type: true };
-export const float32T: Float32Descriptor = { kind: "float32" };
-export const float64T: Float64Descriptor = { kind: "float64" };
-export const booleanT: BooleanDescriptor = { kind: "boolean" };
-export const voidT: VoidDescriptor = { kind: "void" };
-export const unicharT: UnicharDescriptor = { kind: "unichar" };
-export const bufferT: BufferDescriptor = { kind: "buffer" };
+const int8T: Int8Descriptor = { kind: "int8" };
+const uint8T: Uint8Descriptor = { kind: "uint8" };
+const int16T: Int16Descriptor = { kind: "int16" };
+const uint16T: Uint16Descriptor = { kind: "uint16" };
+const int32T: Int32Descriptor = { kind: "int32" };
+const uint32T: Uint32Descriptor = { kind: "uint32" };
+const int64T: Int64Descriptor = { kind: "int64" };
+const uint64T: Uint64Descriptor = { kind: "uint64" };
+const bigint64T: BigInt64Descriptor = { kind: "bigint64" };
+const biguint64T: BigUint64Descriptor = { kind: "biguint64" };
+const gtypeT: TypeDescriptor = { kind: "biguint64", type: true };
+const float32T: Float32Descriptor = { kind: "float32" };
+const float64T: Float64Descriptor = { kind: "float64" };
+const booleanT: BooleanDescriptor = { kind: "boolean" };
+const voidT: VoidDescriptor = { kind: "void" };
+const unicharT: UnicharDescriptor = { kind: "unichar" };
+const bufferT: BufferDescriptor = { kind: "buffer" };
 
-export const stringT = (ownership: Ownership = "borrowed", length?: number): StringDescriptor =>
+const stringT = (ownership: Ownership = "borrowed", length?: number): StringDescriptor =>
     length === undefined ? { kind: "string", ownership } : { kind: "string", ownership, length };
 
-export const objectT = (ownership: Ownership = "borrowed"): ObjectDescriptor => ({ kind: "object", ownership });
+const objectT = (ownership: Ownership = "borrowed"): ObjectDescriptor => ({ kind: "object", ownership });
 
-export const refT = (innerDescriptor: Descriptor, inout = false): RefDescriptor =>
+const refT = (innerDescriptor: Descriptor, inout = false): RefDescriptor =>
     inout ? { kind: "ref", innerDescriptor, inout: true } : { kind: "ref", innerDescriptor };
 
-export const hashTableT = (
+const hashTableT = (
     keyDescriptor: Descriptor,
     valueDescriptor: Descriptor,
     ownership: Ownership = "borrowed",
@@ -100,14 +100,14 @@ export const hashTableT = (
     ownership,
 });
 
-export const enumT = (sharedLibrary: string, typeFnName: string, signed: boolean): EnumDescriptor => ({
+const enumT = (sharedLibrary: string, typeFnName: string, signed: boolean): EnumDescriptor => ({
     kind: "enum",
     sharedLibrary,
     getTypeFnName: typeFnName,
     signed,
 });
 
-export const flagsT = (sharedLibrary: string, typeFnName: string, signed: boolean): FlagsDescriptor => ({
+const flagsT = (sharedLibrary: string, typeFnName: string, signed: boolean): FlagsDescriptor => ({
     kind: "flags",
     sharedLibrary,
     getTypeFnName: typeFnName,
@@ -122,17 +122,18 @@ const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void
     if (options.size !== undefined) result.size = options.size;
 };
 
-export const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor => {
+const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor => {
     const result: BoxedDescriptor = {
         kind: "boxed",
         ownership: options.ownership ?? "borrowed",
         typeName,
     };
+
     applyBoxedOptions(result, options);
     return result;
 };
 
-export const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructDescriptor => {
+const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructDescriptor => {
     const result: StructDescriptor = { kind: "struct", ownership };
     if (options.size !== undefined) result.size = options.size;
     if (options.wrapperClass !== undefined) result.wrapperClass = options.wrapperClass;
@@ -140,7 +141,7 @@ export const structT = (ownership: Ownership = "borrowed", options: StructOption
     return result;
 };
 
-export const fundamentalT = (
+const fundamentalT = (
     sharedLibrary: string,
     refFnName: string,
     unrefFnName: string,
@@ -153,7 +154,7 @@ export const fundamentalT = (
     return result;
 };
 
-export const arrayT = (
+const arrayT = (
     itemDescriptor: Descriptor,
     arrayKind: ArrayKind = "array",
     ownership: Ownership = "borrowed",
@@ -166,40 +167,40 @@ export const arrayT = (
     return result;
 };
 
-export const listT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
+const listT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(itemDescriptor, "glist", ownership);
 
-export const slistT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
+const slistT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(itemDescriptor, "gslist", ownership);
 
-export const ptrArrayT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
+const ptrArrayT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(itemDescriptor, "gptrarray", ownership);
 
-export const gArrayT = (
+const gArrayT = (
     itemDescriptor: Descriptor,
     ownership: Ownership = "borrowed",
     elementSize?: number,
 ): ArrayDescriptor =>
     arrayT(itemDescriptor, "garray", ownership, elementSize === undefined ? undefined : { elementSize });
 
-export const byteArrayT = (ownership: Ownership = "borrowed"): ArrayDescriptor =>
+const byteArrayT = (ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(uint8T, "gbytearray", ownership);
 
-export const sizedArrayT = (
+const sizedArrayT = (
     itemDescriptor: Descriptor,
     sizeParamIndex: number,
     ownership: Ownership = "borrowed",
     elementSize?: number,
 ): ArrayDescriptor => arrayT(itemDescriptor, "sized", ownership, { sizeParamIndex, elementSize });
 
-export const fixedArrayT = (
+const fixedArrayT = (
     itemDescriptor: Descriptor,
     fixedSize: number,
     ownership: Ownership = "borrowed",
     elementSize?: number,
 ): ArrayDescriptor => arrayT(itemDescriptor, "fixed", ownership, { fixedSize, elementSize });
 
-export const callbackT = (
+const callbackT = (
     argDescriptors: Descriptor[],
     returnDescriptor: Descriptor,
     options?: CallbackOptions,
@@ -209,4 +210,70 @@ export const callbackT = (
     if (options?.userDataIndex !== undefined) result.userDataIndex = options.userDataIndex;
     if (options?.scope !== undefined) result.scope = options.scope;
     return result;
+};
+
+export {
+    int8T,
+    uint8T,
+    int16T,
+    uint16T,
+    int32T,
+    uint32T,
+    int64T,
+    uint64T,
+    bigint64T,
+    biguint64T,
+    gtypeT,
+    float32T,
+    float64T,
+    booleanT,
+    voidT,
+    unicharT,
+    bufferT,
+    stringT,
+    objectT,
+    refT,
+    hashTableT,
+    enumT,
+    flagsT,
+    boxedT,
+    structT,
+    fundamentalT,
+    arrayT,
+    listT,
+    slistT,
+    ptrArrayT,
+    gArrayT,
+    byteArrayT,
+    sizedArrayT,
+    fixedArrayT,
+    callbackT,
+    type Int8Descriptor,
+    type Uint8Descriptor,
+    type Int16Descriptor,
+    type Uint16Descriptor,
+    type Int32Descriptor,
+    type Uint32Descriptor,
+    type Int64Descriptor,
+    type Uint64Descriptor,
+    type BigInt64Descriptor,
+    type BigUint64Descriptor,
+    type Float32Descriptor,
+    type Float64Descriptor,
+    type EnumDescriptor,
+    type FlagsDescriptor,
+    type BooleanDescriptor,
+    type StringDescriptor,
+    type ObjectDescriptor,
+    type UnicharDescriptor,
+    type VoidDescriptor,
+    type BufferDescriptor,
+    type BoxedDescriptor,
+    type StructDescriptor,
+    type FundamentalDescriptor,
+    type ArrayDescriptor,
+    type HashTableDescriptor,
+    type CallbackDescriptor,
+    type RefDescriptor,
+    type TypeDescriptor,
 };

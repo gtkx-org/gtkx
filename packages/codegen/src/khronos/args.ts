@@ -14,7 +14,35 @@ import {
 } from "../analysis/descriptor.js";
 import { paramPairAt } from "./param-pair.js";
 
-export const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
+type InArg = {
+    out: false;
+    name: string;
+    tsType: string;
+    descriptor: string;
+};
+
+type OutArg = {
+    out: true;
+    cellName: string;
+    seed: string;
+    tsType: string;
+    descriptor: string;
+    paramIndex: number;
+};
+
+type PlannedArg = InArg | OutArg;
+type OutArgCell = Pick<OutArg, "out" | "cellName" | "paramIndex">;
+
+type BuildArgOptions = {
+    command: GlCommand;
+    index: number;
+    plan: ParamPlan;
+    outIndex: number;
+};
+
+const OUT_PLAN_KINDS: Set<string> = new Set(["ref-out", "ref-array-out", "ref-fixed-out", "string-out"]);
+
+const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
     group !== undefined && scalar.groupBearing === true ? group : scalar.tsAlias;
 
 const paramIndexByName = (command: GlCommand, name: string): number => {
@@ -28,33 +56,6 @@ const arrayInTsType = (scalar: GlScalar, group: string | undefined): string => {
     return scalar.viewType === undefined ? `${element}[]` : `${element}[] | ${scalar.viewType}`;
 };
 
-export type InArg = {
-    out: false;
-    name: string;
-    tsType: string;
-    descriptor: string;
-};
-
-export type OutArg = {
-    out: true;
-    cellName: string;
-    seed: string;
-    tsType: string;
-    descriptor: string;
-    paramIndex: number;
-};
-
-type PlannedArg = InArg | OutArg;
-
-type OutArgCell = Pick<OutArg, "out" | "cellName" | "paramIndex">;
-
-type BuildArgOptions = {
-    command: GlCommand;
-    index: number;
-    plan: ParamPlan;
-    outIndex: number;
-};
-
 const inArg = (name: string, tsType: string, descriptor: string): InArg => ({
     out: false,
     name,
@@ -66,6 +67,7 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
     const { command, index, plan } = options;
     const param = command.params[index];
     if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
+
     switch (plan.kind) {
         case "scalar": {
             return inArg(name, track(scalarAliasOrGroup(plan.scalar, param.group)), plan.scalar.descriptor);
@@ -107,6 +109,7 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
     if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
     const cellName = `out${outIndex}`;
     const cell: OutArgCell = { out: true, cellName, paramIndex: index };
+
     switch (plan.kind) {
         case "ref-out": {
             return {
@@ -119,6 +122,7 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
         case "ref-array-out": {
             const sizeIndex = paramIndexByName(command, plan.lenParamName);
             const lenIdentifier = toCamelIdentifier(plan.lenParamName);
+
             return {
                 ...cell,
                 seed: `const ${cellName} = { value: new Array<number>(${lenIdentifier}).fill(0) };`,
@@ -148,45 +152,42 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
     }
 };
 
-const OUT_PLAN_KINDS: Set<string> = new Set(["ref-out", "ref-array-out", "ref-fixed-out", "string-out"]);
-
 const isOutPlan = (plan: ParamPlan): boolean => OUT_PLAN_KINDS.has(plan.kind);
+const isInArg = (arg: PlannedArg): arg is InArg => !arg.out;
+const isOutArg = (arg: PlannedArg): arg is OutArg => arg.out;
 
-export const trackInto =
+const buildArg = (options: BuildArgOptions, name: string, track: (alias: string) => string): PlannedArg =>
+    isOutPlan(options.plan) ? buildOutArg(options, track) : buildInArg(options, name, track);
+
+const trackInto =
     (usedTypes: Set<string>) =>
         (alias: string): string => {
             usedTypes.add(alias);
             return alias;
         };
 
-export const planArgs = (
+const planArgs = (
     plan: CommandPlan & { ok: true },
     usedTypes: Set<string>,
 ): { args: PlannedArg[]; ins: InArg[]; outs: OutArg[] } => {
     const track = trackInto(usedTypes);
     const args: PlannedArg[] = [];
-    const ins: InArg[] = [];
-    const outs: OutArg[] = [];
+
     for (const [index, paramPlan] of plan.params.entries()) {
         const param = plan.command.params[index];
         if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${plan.command.name}`);
+
         const options: BuildArgOptions = {
             command: plan.command,
             index,
             plan: paramPlan,
-            outIndex: outs.length,
+            outIndex: args.filter(isOutArg).length,
         };
-        if (isOutPlan(paramPlan)) {
-            const arg = buildOutArg(options, track);
-            args.push(arg);
-            outs.push(arg);
-        } else {
-            const arg = buildInArg(options, toCamelIdentifier(param.name), track);
-            args.push(arg);
-            ins.push(arg);
-        }
+
+        args.push(buildArg(options, toCamelIdentifier(param.name), track));
     }
-    return { args, ins, outs };
+
+    return { args, ins: args.filter(isInArg), outs: args.filter(isOutArg) };
 };
 
 const scalarPrefixArg = (
@@ -197,6 +198,7 @@ const scalarPrefixArg = (
     const { paramPlan, param } = paramPairAt(plan, index);
     if (param === undefined) return undefined;
     if (paramPlan?.kind !== "scalar") return undefined;
+
     return buildInArg(
         { command: plan.command, index, plan: paramPlan, outIndex: 0 },
         toCamelIdentifier(param.name),
@@ -204,13 +206,17 @@ const scalarPrefixArg = (
     );
 };
 
-export const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Set<string>): InArg[] | undefined => {
+const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Set<string>): InArg[] | undefined => {
     const track = trackInto(usedTypes);
     const prefix: InArg[] = [];
+
     for (let index = 0; index < plan.params.length - 2; index++) {
         const arg = scalarPrefixArg(plan, index, track);
         if (arg === undefined) return undefined;
         prefix.push(arg);
     }
+
     return prefix;
 };
+
+export { scalarAliasOrGroup, trackInto, planArgs, scalarPrefixArgs, type InArg, type OutArg };

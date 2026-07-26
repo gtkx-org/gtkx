@@ -1,6 +1,6 @@
 import { collectText, nodeAttr, nodeChildren, nodeTag, type OrderedNode, parseRegistryFile } from "./parse.js";
 
-export type GlParam = {
+type GlParam = {
     name: string;
     cType: string;
     group?: string;
@@ -8,26 +8,26 @@ export type GlParam = {
     objectClass?: string;
 };
 
-export type GlCommand = {
+type GlCommand = {
     name: string;
     returnCType: string;
     returnGroup?: string;
     params: GlParam[];
 };
 
-export type GlEnum = {
+type GlEnum = {
     name: string;
     value: string;
     groups: string[];
 };
 
-export type GlInterfaceBlock = {
+type GlInterfaceBlock = {
     profile?: string;
     commands: string[];
     enums: string[];
 };
 
-export type GlFeature = {
+type GlFeature = {
     api: string;
     name: string;
     number: number;
@@ -35,7 +35,7 @@ export type GlFeature = {
     removes: GlInterfaceBlock[];
 };
 
-export type GlRegistry = {
+type GlRegistry = {
     commands: Map<string, GlCommand>;
     enums: GlEnum[];
     features: GlFeature[];
@@ -50,6 +50,7 @@ const childNamed = (node: OrderedNode, tag: string): OrderedNode | undefined => 
     for (const child of nodeChildren(node)) {
         if (nodeTag(child) === tag) return child;
     }
+
     return undefined;
 };
 
@@ -64,9 +65,11 @@ const parseParam = (node: OrderedNode): GlParam => {
         name: elementName(node),
         cType: normalizeWhitespace(collectText(node, SKIP_IN_C_TYPE)),
     };
+
     const group = nodeAttr(node, "group");
     const len = nodeAttr(node, "len");
     const objectClass = nodeAttr(node, "class");
+
     return {
         ...param,
         ...((group !== undefined) && { group }),
@@ -79,10 +82,13 @@ const parseCommand = (node: OrderedNode): GlCommand | undefined => {
     const proto = childNamed(node, "proto");
     if (proto === undefined) return undefined;
     const params: GlParam[] = [];
+
     for (const child of nodeChildren(node)) {
         if (nodeTag(child) === "param") params.push(parseParam(child));
     }
+
     const returnGroup = nodeAttr(proto, "group");
+
     return {
         name: elementName(proto),
         returnCType: normalizeWhitespace(collectText(proto, SKIP_IN_C_TYPE)),
@@ -97,6 +103,7 @@ const parseEnum = (child: OrderedNode): GlEnum | undefined => {
     const value = nodeAttr(child, "value");
     if (name === undefined || value === undefined) return undefined;
     const group = nodeAttr(child, "group");
+
     return {
         name,
         value,
@@ -115,6 +122,7 @@ const collectInterfaceMember = (child: OrderedNode, commands: string[], enums: s
     const name = nodeAttr(child, "name");
     if (name === undefined) return;
     const tag = nodeTag(child);
+
     if (tag === "command") commands.push(name);
     else if (tag === "enum") enums.push(name);
 };
@@ -124,6 +132,7 @@ const parseInterfaceBlock = (node: OrderedNode): GlInterfaceBlock => {
     const enums: string[] = [];
     for (const child of nodeChildren(node)) collectInterfaceMember(child, commands, enums);
     const profile = nodeAttr(node, "profile");
+
     return {
         ...((profile !== undefined) && { profile }),
         commands,
@@ -133,6 +142,7 @@ const parseInterfaceBlock = (node: OrderedNode): GlInterfaceBlock => {
 
 const collectFeatureBlock = (child: OrderedNode, requires: GlInterfaceBlock[], removes: GlInterfaceBlock[]): void => {
     const tag = nodeTag(child);
+
     if (tag === "require") requires.push(parseInterfaceBlock(child));
     else if (tag === "remove") removes.push(parseInterfaceBlock(child));
 };
@@ -160,21 +170,34 @@ const parseCommandsSection = (section: OrderedNode, into: Map<string, GlCommand>
 
 const parseSection = (section: OrderedNode, registry: GlRegistry): void => {
     const tag = nodeTag(section);
+
     if (tag === "commands") {
         parseCommandsSection(section, registry.commands);
         return;
     }
+
     if (tag === "enums") {
         parseEnums(section, registry.enums);
         return;
     }
+
     if (tag !== "feature") return;
     const feature = parseFeature(section);
     if (feature !== undefined) registry.features.push(feature);
 };
 
-export const loadGlRegistry = (path: string): GlRegistry => {
+const loadGlRegistry = (path: string): GlRegistry => {
     const registry: GlRegistry = { commands: new Map<string, GlCommand>(), enums: [], features: [] };
     for (const section of parseRegistryFile(path)) parseSection(section, registry);
     return registry;
+};
+
+export {
+    loadGlRegistry,
+    type GlParam,
+    type GlCommand,
+    type GlEnum,
+    type GlInterfaceBlock,
+    type GlFeature,
+    type GlRegistry,
 };

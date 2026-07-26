@@ -1,16 +1,64 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESLint, type TSESTree } from "@typescript-eslint/utils";
 
 type Options = [{ max: number }];
-
 type MessageIds = "excessiveComplexity";
-
 type VisitorKeys = TSESLint.SourceCode.VisitorKeys;
+type KeyedParent = TSESTree.Property | TSESTree.MethodDefinition | TSESTree.PropertyDefinition;
 
 const FUNCTION_TYPES: Set<string> = new Set([
     AST_NODE_TYPES.ArrowFunctionExpression,
     AST_NODE_TYPES.FunctionDeclaration,
     AST_NODE_TYPES.FunctionExpression,
 ]);
+
+const KEYED_PARENT_TYPES: Set<string> = new Set([
+    AST_NODE_TYPES.Property,
+    AST_NODE_TYPES.MethodDefinition,
+    AST_NODE_TYPES.PropertyDefinition,
+]);
+
+const cognitiveComplexity = ESLintUtils.RuleCreator.withoutDocs<Options, MessageIds>({
+    meta: {
+        type: "suggestion",
+        docs: {
+            description:
+                "Disallow functions whose cognitive complexity, summed across every nested closure, exceeds a threshold",
+        },
+        messages: {
+            excessiveComplexity:
+                "Cognitive complexity of {{complexity}} (max: {{max}}), counting every nested function. Extract the closures into named top-level functions or split this one up.",
+        },
+        schema: [
+            {
+                type: "object",
+                properties: {
+                    max: { type: "integer", minimum: 0 },
+                },
+                additionalProperties: false,
+            },
+        ],
+    },
+    defaultOptions: [{ max: 15 }],
+    create(context, [{ max }]) {
+        const check = (node: TSESTree.Node): void => {
+            if (hasEnclosingFunction(node)) return;
+            const complexity = childrenComplexity(node, 0, context.sourceCode.visitorKeys);
+            if (complexity <= max) return;
+
+            context.report({
+                node: nameNodeOf(node),
+                messageId: "excessiveComplexity",
+                data: { complexity, max },
+            });
+        };
+
+        return {
+            ArrowFunctionExpression: check,
+            FunctionDeclaration: check,
+            FunctionExpression: check,
+        };
+    },
+});
 
 const isNode = (value: unknown): value is TSESTree.Node =>
     typeof value === "object" && value !== null && "type" in value && typeof value.type === "string";
@@ -26,34 +74,31 @@ const hasEnclosingFunction = (node: TSESTree.Node): boolean => {
     return false;
 };
 
-const nameNodeOf = (node: TSESTree.Node): TSESTree.Node => {
-    const parent = node.parent;
+const isKeyedParent = (node: TSESTree.Node): node is KeyedParent => KEYED_PARENT_TYPES.has(node.type);
 
-    if (parent?.type === AST_NODE_TYPES.VariableDeclarator && parent.id.type === AST_NODE_TYPES.Identifier) {
-        return parent.id;
-    }
+const declaratorName = (parent: TSESTree.VariableDeclarator): TSESTree.Node | undefined =>
+    parent.id.type === AST_NODE_TYPES.Identifier ? parent.id : undefined;
 
-    if (
-        (parent?.type === AST_NODE_TYPES.Property ||
-            parent?.type === AST_NODE_TYPES.MethodDefinition ||
-            parent?.type === AST_NODE_TYPES.PropertyDefinition) &&
-            !parent.computed
-    ) {
-        return parent.key;
-    }
-
-    const named = node.type === AST_NODE_TYPES.FunctionDeclaration || node.type === AST_NODE_TYPES.FunctionExpression;
-    if (named && node.id !== null) {
-        return node.id;
-    }
-
-    return node;
+const parentName = (parent: TSESTree.Node | undefined): TSESTree.Node | undefined => {
+    if (parent === undefined) return undefined;
+    if (isKeyedParent(parent)) return parent.computed ? undefined : parent.key;
+    if (parent.type === AST_NODE_TYPES.VariableDeclarator) return declaratorName(parent);
+    return undefined;
 };
+
+const ownName = (node: TSESTree.Node): TSESTree.Node | undefined => {
+    if (node.type === AST_NODE_TYPES.FunctionDeclaration || node.type === AST_NODE_TYPES.FunctionExpression) {
+        return node.id ?? undefined;
+    }
+
+    return undefined;
+};
+
+const nameNodeOf = (node: TSESTree.Node): TSESTree.Node => parentName(node.parent) ?? ownName(node) ?? node;
 
 const nodesIn = (value: unknown): TSESTree.Node[] => {
     if (isNode(value)) return [value];
     if (!Array.isArray(value)) return [];
-
     const nodes: TSESTree.Node[] = [];
 
     for (const item of value) {
@@ -66,9 +111,7 @@ const nodesIn = (value: unknown): TSESTree.Node[] => {
 const childNodesOf = (node: TSESTree.Node, keys: VisitorKeys): TSESTree.Node[] => {
     const nodeKeys = keys[node.type] ?? [];
     const children: TSESTree.Node[] = [];
-
     for (const key of nodeKeys) children.push(...nodesIn(Reflect.get(node, key)));
-
     return children;
 };
 
@@ -92,8 +135,15 @@ const operandComplexity = (node: TSESTree.Node, operator: string, nesting: numbe
     return complexityAt(node, nesting, keys);
 };
 
+const branchComplexity = (
+    test: TSESTree.Node,
+    consequent: TSESTree.Node,
+    nesting: number,
+    keys: VisitorKeys,
+): number => 1 + nesting + complexityAt(test, nesting, keys) + complexityAt(consequent, nesting + 1, keys);
+
 const ifComplexity = (node: TSESTree.IfStatement, nesting: number, keys: VisitorKeys): number => {
-    let total = 1 + nesting + complexityAt(node.test, nesting, keys) + complexityAt(node.consequent, nesting + 1, keys);
+    let total = branchComplexity(node.test, node.consequent, nesting, keys);
     let alternate = node.alternate;
 
     while (alternate !== null) {
@@ -113,21 +163,21 @@ const ifComplexity = (node: TSESTree.IfStatement, nesting: number, keys: Visitor
     return total;
 };
 
+const loopChildComplexity = (node: TSESTree.Node, key: string, nesting: number, keys: VisitorKeys): number => {
+    const child: unknown = Reflect.get(node, key);
+    if (!isNode(child)) return 0;
+    return complexityAt(child, key === "body" ? nesting + 1 : nesting, keys);
+};
+
 const loopComplexity = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): number => {
     const nodeKeys = keys[node.type] ?? [];
     let total = 1 + nesting;
-
-    for (const key of nodeKeys) {
-        const child: unknown = Reflect.get(node, key);
-        if (isNode(child)) total += complexityAt(child, key === "body" ? nesting + 1 : nesting, keys);
-    }
-
+    for (const key of nodeKeys) total += loopChildComplexity(node, key, nesting, keys);
     return total;
 };
 
 const ternaryComplexity = (node: TSESTree.ConditionalExpression, nesting: number, keys: VisitorKeys): number =>
-    1 + nesting + complexityAt(node.test, nesting, keys) + complexityAt(node.consequent, nesting + 1, keys) +
-    complexityAt(node.alternate, nesting + 1, keys);
+    branchComplexity(node.test, node.consequent, nesting, keys) + complexityAt(node.alternate, nesting + 1, keys);
 
 const logicalComplexity = (node: TSESTree.LogicalExpression, nesting: number, keys: VisitorKeys): number =>
     1 + operandComplexity(node.left, node.operator, nesting, keys) +
@@ -175,47 +225,4 @@ const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): 
     }
 };
 
-export const cognitiveComplexity = ESLintUtils.RuleCreator.withoutDocs<Options, MessageIds>({
-    meta: {
-        type: "suggestion",
-        docs: {
-            description:
-                "Disallow functions whose cognitive complexity, summed across every nested closure, exceeds a threshold",
-        },
-        messages: {
-            excessiveComplexity:
-                "Cognitive complexity of {{complexity}} (max: {{max}}), counting every nested function. Extract the closures into named top-level functions or split this one up.",
-        },
-        schema: [
-            {
-                type: "object",
-                properties: {
-                    max: { type: "integer", minimum: 0 },
-                },
-                additionalProperties: false,
-            },
-        ],
-    },
-    defaultOptions: [{ max: 15 }],
-    create(context, [{ max }]) {
-        const check = (node: TSESTree.Node): void => {
-            if (hasEnclosingFunction(node)) return;
-
-            const complexity = childrenComplexity(node, 0, context.sourceCode.visitorKeys);
-
-            if (complexity <= max) return;
-
-            context.report({
-                node: nameNodeOf(node),
-                messageId: "excessiveComplexity",
-                data: { complexity, max },
-            });
-        };
-
-        return {
-            ArrowFunctionExpression: check,
-            FunctionDeclaration: check,
-            FunctionExpression: check,
-        };
-    },
-});
+export { cognitiveComplexity };

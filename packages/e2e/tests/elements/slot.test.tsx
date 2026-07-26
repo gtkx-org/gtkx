@@ -7,9 +7,7 @@ import { describe, expect, it } from "vitest";
 const expectPanedStartChild = async (label: string) => {
     const panedRef = createRef<Gtk.Paned>();
     const labelRef = createRef<Gtk.Label>();
-
     await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef}>{label}</GtkLabel>} />);
-
     expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
 };
 
@@ -32,9 +30,7 @@ describe("render - Slot (1)", () => {
     it("accepts a constructed widget instance through a slot prop", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const title = new Gtk.Label({ label: "Imperative Title" });
-
         await render(<GtkHeaderBar ref={headerBarRef} titleWidget={title} />);
-
         expect(headerBarRef.current?.getTitleWidget()).toBe(title);
     });
 
@@ -46,11 +42,8 @@ describe("render - Slot (1)", () => {
         }
 
         await render(<App showTitle />);
-
         expect(headerBarRef.current?.getTitleWidget()).not.toBeNull();
-
         await render(<App showTitle={false} />);
-
         expect(headerBarRef.current?.getTitleWidget()).toBeNull();
     });
 });
@@ -83,11 +76,8 @@ describe("render - Slot (2)", () => {
         }
 
         await render(<App first={true} />);
-
         expect(headerBarRef.current?.getTitleWidget()).toBe(label1Ref.current);
-
         await render(<App first={false} />);
-
         expect(headerBarRef.current?.getTitleWidget()).toBe(label2Ref.current);
     });
 

@@ -1,4 +1,5 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import type { Readable } from "node:stream";
+import { type ChildProcess, type ChildProcessByStdio, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -6,6 +7,9 @@ const HARNESS_PATH = fileURLToPath(new URL("fixtures/supervisor-harness.ts", imp
 const REPO_ROOT = fileURLToPath(new URL("../../../..", import.meta.url));
 const READY_TIMEOUT_MS = 15_000;
 const EXIT_TIMEOUT_MS = 15_000;
+const READY_MARKER = "CHILD_READY";
+
+type HarnessProcess = ChildProcessByStdio<null, Readable, Readable>;
 
 type Harness = {
     process: ChildProcess;
@@ -17,12 +21,15 @@ type Harness = {
 
 const withTimeout = async <T>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
     let timer: NodeJS.Timeout | undefined;
+
     const expiry: Promise<never> = new Promise((_resolve, reject) => {
         timer = setTimeout(() => {
             reject(new Error(`${label} timed out after ${ms}ms`));
         }, ms);
+
         timer.unref();
     });
+
     try {
         return await Promise.race([promise, expiry]);
     } catch (error) {
@@ -30,6 +37,19 @@ const withTimeout = async <T>(promise: Promise<T>, ms: number, label: string): P
     } finally {
         clearTimeout(timer);
     }
+};
+
+const readyPromise = (child: HarnessProcess, output: () => string): Promise<void> => {
+    if (output().includes(READY_MARKER)) return Promise.resolve();
+
+    return new Promise<void>((resolve, reject) => {
+        const check = (): void => {
+            if (output().includes(READY_MARKER)) resolve();
+        };
+
+        child.stdout.on("data", check);
+        child.once("exit", () => reject(new Error(`harness exited before ready:\n${output()}`)));
+    });
 };
 
 const startHarness = (): Harness => {
@@ -40,9 +60,11 @@ const startHarness = (): Harness => {
     });
 
     let buffer = "";
+
     child.stdout.on("data", (chunk: Buffer) => {
         buffer += chunk.toString();
     });
+
     child.stderr.on("data", (chunk: Buffer) => {
         buffer += chunk.toString();
     });
@@ -53,18 +75,7 @@ const startHarness = (): Harness => {
 
     const waitForReady = (): Promise<void> =>
         withTimeout(
-            new Promise<void>((resolve, reject) => {
-                const check = (): boolean => {
-                    if (buffer.includes("CHILD_READY")) {
-                        resolve();
-                        return true;
-                    }
-                    return false;
-                };
-                if (check()) return;
-                child.stdout.on("data", () => check());
-                child.once("exit", () => reject(new Error(`harness exited before ready:\n${buffer}`)));
-            }),
+            readyPromise(child, () => buffer),
             READY_TIMEOUT_MS,
             "harness ready",
         );
@@ -111,17 +122,13 @@ describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
     const runCleanShutdown = async (deliverSignals: (groupPid: number) => void): Promise<void> => {
         harness = startHarness();
         await harness.waitForReady();
-
         const groupPid = harness.process.pid;
         expect(groupPid).toBeGreaterThan(0);
         if (groupPid === undefined) throw new Error("harness has no pid");
-
         deliverSignals(groupPid);
-
         const code = await harness.waitForExit();
         const output = harness.output();
         const signalsReceived = output.match(/SIGRECV/g)?.length ?? 0;
-
         expect(signalsReceived, `child should receive exactly one signal:\n${output}`).toBe(1);
         expect(code, `harness should exit 0:\n${output}`).toBe(0);
     };

@@ -4,7 +4,7 @@ import { formatCodegenResult } from "../codegen/report.js";
 import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
-export const codegen = defineCommand({
+const codegen = defineCommand({
     meta: {
         name: "codegen",
         description: "Generate TypeScript bindings for the GIR libraries declared in gtkx.config.ts",
@@ -36,10 +36,12 @@ export const codegen = defineCommand({
         const startedAt = Date.now();
         const result = await runCodegen({ cwd, force: true });
         syncSchemaEnv(cwd);
-
         const lines = formatCodegenResult(result, Date.now() - startedAt);
+
         for (const line of lines) {
             info(line);
         }
     },
 });
+
+export { codegen };

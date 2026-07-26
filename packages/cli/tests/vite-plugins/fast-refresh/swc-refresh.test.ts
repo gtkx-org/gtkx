@@ -10,7 +10,6 @@ type TransformHook = Extract<Plugin["transform"], (...args: never[]) => unknown>
 type TransformContext = ThisParameterType<TransformHook>;
 type TransformOptions = Parameters<TransformHook>[2];
 type TransformResult = { code: string; map?: unknown } | null | undefined;
-
 type TransformFn = (code: string, id: string, options?: { ssr?: boolean }) => Promise<TransformResult>;
 
 const normalizeResult = (result: Awaited<ReturnType<TransformHook>>): TransformResult => {
@@ -21,10 +20,13 @@ const normalizeResult = (result: Awaited<ReturnType<TransformHook>>): TransformR
 const getTransform = (plugin: Plugin): TransformFn => {
     const hook = plugin.transform;
     const handler = typeof hook === "function" ? hook : hook?.handler;
+
     if (typeof handler !== "function") {
         throw new TypeError("plugin.transform must provide a handler function");
     }
+
     const context = {} as TransformContext;
+
     return async (code, id, options) => {
         const hookOptions = options as TransformOptions;
         return normalizeResult(await handler.call(context, code, id, hookOptions));
@@ -54,9 +56,11 @@ describe("gtkxSwcRefresh", () => {
 
     it("transforms TSX files in SSR mode and emits a sourcemap", async () => {
         const transform = getTransform(gtkxSwcRefresh());
+
         const result = await transform("export const Component = () => <div />;\n", "/proj/src/component.tsx", {
             ssr: true,
         });
+
         expect(result).toBeDefined();
         expect(typeof result?.code).toBe("string");
         expect(result?.code.length).toBeGreaterThan(0);
@@ -121,7 +125,6 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
     it("transforms code with $RefreshReg$", () => {
         const code = "const $RefreshReg$ = something;";
         const result = runtimeTransform(code, "/src/app.tsx", { ssr: true });
-
         expect(result).toBeDefined();
         expect(result?.code).toContain("import { createModuleRegistration");
         expect(result?.code).toContain('__createModuleRegistration__("/src/app.tsx")');
@@ -131,7 +134,6 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
     it("transforms code with $RefreshSig$", () => {
         const code = "const $RefreshSig$ = something;";
         const result = runtimeTransform(code, "/src/component.tsx", { ssr: true });
-
         expect(result).toBeDefined();
         expect(result?.code).toContain("import { createModuleRegistration");
     });
@@ -139,7 +141,6 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
     it("transforms code with both refresh markers", () => {
         const code = "$RefreshReg$(); $RefreshSig$();";
         const result = runtimeTransform(code, "/src/both.tsx", { ssr: true });
-
         expect(result).toBeDefined();
         expect(result?.code).toContain("import { createModuleRegistration");
     });
@@ -147,7 +148,6 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
     it("escapes module id in JSON", () => {
         const code = "const $RefreshReg$ = 1;";
         const result = runtimeTransform(code, '/src/path with "quotes".tsx', { ssr: true });
-
         expect(result).toBeDefined();
         expect(result?.code).toContain(String.raw`"/src/path with \"quotes\".tsx"`);
     });
@@ -155,7 +155,6 @@ describe("gtkxRefreshRuntime transform (refresh markers)", () => {
     it("returns null map", () => {
         const code = "const $RefreshReg$ = 1;";
         const result = runtimeTransform(code, "/src/app.tsx", { ssr: true });
-
         expect(result?.map).toBeNull();
     });
 });
@@ -175,7 +174,6 @@ describe("gtkxRefreshRuntime transform (file extensions)", () => {
 describe("gtkxFastRefresh", () => {
     it("returns the swc transform and refresh-runtime plugins in enforce order", () => {
         const plugins = gtkxFastRefresh();
-
         expect(plugins).toHaveLength(2);
         expect(plugins.map((plugin) => plugin.name)).toEqual(["gtkx:swc-refresh", "gtkx:refresh-runtime"]);
         expect(plugins.map((plugin) => plugin.enforce)).toEqual(["pre", "post"]);

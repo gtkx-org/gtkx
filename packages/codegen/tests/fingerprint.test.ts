@@ -18,10 +18,12 @@ describe("computeGiFingerprint", () => {
 describe("computeJsxFingerprint", () => {
     it("changes when component overrides change", () => {
         const base = computeJsxFingerprint(jsxInput(), 0).value;
+
         const withComponent = computeJsxFingerprint(
             jsxInput({ components: { GtkButton: { module: "@example/wrappers", export: "withButton" } } }),
             0,
         ).value;
+
         expect(withComponent).not.toBe(base);
     });
 
@@ -32,10 +34,12 @@ describe("computeJsxFingerprint", () => {
 
     it("changes when the base props change", () => {
         const base = computeJsxFingerprint(jsxInput(), 0).value;
+
         const withProps = computeJsxFingerprint(
             jsxInput({ props: { GtkButton: { module: "@gtkx/react/internal", export: "ChildrenProps" } } }),
             0,
         ).value;
+
         expect(withProps).not.toBe(base);
     });
 
@@ -46,12 +50,14 @@ describe("computeJsxFingerprint", () => {
             }),
             0,
         ).value;
+
         const b = computeJsxFingerprint(
             jsxInput({
                 components: { GtkLabel: { module: "n", export: "b" }, GtkButton: { module: "m", export: "a" } },
             }),
             0,
         ).value;
+
         expect(a).toBe(b);
     });
 

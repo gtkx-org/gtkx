@@ -8,7 +8,7 @@ import { useCollection } from "./internal/use-collection.js";
  * Renders a Gtk.GridView of uniform cells from declarative items, with per-cell
  * rendering, controlled selection, and estimated item sizing.
  */
-export function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
+function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
     const {
         items,
         renderItem,
@@ -19,6 +19,7 @@ export function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
         estimatedItemWidth,
         ...rest
     } = props;
+
     const { model, cells, selection } = useCollection({
         items,
         mode: "flat",
@@ -27,6 +28,7 @@ export function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
         onSelectionChanged,
         selectionMode,
     });
+
     return (
         <>
             <GtkGridView model={selection} factory={<GtkSignalListItemFactory {...cells.item} />} {...rest} />
@@ -34,3 +36,5 @@ export function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
         </>
     );
 }
+
+export { GridView };

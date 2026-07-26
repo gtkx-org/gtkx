@@ -7,6 +7,7 @@ import type { AppInfo } from "../src/protocol/schemas.js";
 
 const { mcpServerInstances, registerToolMock, registerResourceMock, mcpConnectMock, mcpCloseMock } = vi.hoisted(() => {
     const instances: { name: string; version: string }[] = [];
+
     return {
         mcpServerInstances: instances,
         registerToolMock: vi.fn(),
@@ -137,6 +138,7 @@ function registerTools(appRouter: AppRouterStub): RegisteredTool[] {
     const instance = appRouterInstances.at(-1);
     if (!instance) throw new Error("AppRouter was not created");
     Object.assign(instance, appRouter);
+
     return registerToolMock.mock.calls.map(([name, config, handler]) => ({
         name: name as string,
         config: config as RegisteredTool["config"],
@@ -159,7 +161,6 @@ async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "tex
     });
 
     const result = await getTool(appRouter, "gtkx_list_apps").handler({ waitForApps: true } as never);
-
     expect(result.isError).toBe(true);
     return result.content[0] as { type: "text"; text: string };
 }
@@ -172,9 +173,7 @@ async function expectWidgetActionTool(options: {
 }): Promise<void> {
     const sendToApp = vi.fn(async () => undefined);
     const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
-
     const result = await getTool(appRouter, options.tool).handler(options.payload as never);
-
     expect(sendToApp).toHaveBeenCalledWith(undefined, options.method, options.payload);
     expect(result.content[0]).toEqual({ type: "text", text: options.confirmation });
 }
@@ -203,6 +202,7 @@ describe("buildTools — registration", () => {
 
     it("attaches a description and inputSchema to every tool", () => {
         const tools = registerTools(makeAppRouter());
+
         for (const tool of tools) {
             expect(tool.config.description.length).toBeGreaterThan(0);
             expect(tool.config.inputSchema).toBeDefined();
@@ -219,16 +219,17 @@ describe("buildTools — registration", () => {
 describe("buildTools — gtkx_list_apps success", () => {
     it("returns connected apps with their windows", async () => {
         const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1 }];
+
         const sendToApp = vi.fn(async () => ({
             windows: [{ id: "w1", title: "Main" }],
         }));
+
         const appRouter = makeConnectedAppRouter(apps, sendToApp as never);
-
         const result = await getTool(appRouter, "gtkx_list_apps").handler({} as never);
-
         expect(sendToApp).toHaveBeenCalledWith("app-a", "app.getWindows", {});
         expect(result.content[0]).toMatchObject({ type: "text" });
         const text = result.content[0] as { type: "text"; text: string };
+
         expect(JSON.parse(text.text)).toEqual([
             { applicationId: "app-a", pid: 1, windows: [{ id: "w1", title: "Main" }] },
         ]);
@@ -236,6 +237,7 @@ describe("buildTools — gtkx_list_apps success", () => {
 
     it("falls back to the original app info when getWindows fails", async () => {
         const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1 }];
+
         const appRouter = makeConnectedAppRouter(
             apps,
             vi.fn(async () => {
@@ -252,13 +254,13 @@ describe("buildTools — gtkx_list_apps success", () => {
 describe("buildTools — gtkx_list_apps waiting", () => {
     it("waits for an app when waitForApps is true and none are connected", async () => {
         const waitForApp = vi.fn(async () => ({ applicationId: "app-a", pid: 1 }));
+
         const appRouter = makeAppRouter({
             hasConnectedApps: vi.fn(() => false),
             waitForApp: waitForApp,
         });
 
         await getTool(appRouter, "gtkx_list_apps").handler({ waitForApps: true, timeout: 5000 } as never);
-
         expect(waitForApp).toHaveBeenCalledWith(5000);
     });
 
@@ -274,13 +276,13 @@ describe("buildTools — gtkx_list_apps waiting", () => {
 
     it("does not call waitForApp when apps are already connected", async () => {
         const waitForApp = vi.fn();
+
         const appRouter = makeAppRouter({
             hasConnectedApps: vi.fn(() => true),
             waitForApp: waitForApp as never,
         });
 
         await getTool(appRouter, "gtkx_list_apps").handler({ waitForApps: true } as never);
-
         expect(waitForApp).not.toHaveBeenCalled();
     });
 });
@@ -289,9 +291,7 @@ describe("buildTools — gtkx_get_widget_tree", () => {
     it("forwards applicationId and returns the tree string", async () => {
         const sendToApp = vi.fn(async () => ({ tree: "TREE" }));
         const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
-
         const result = await getTool(appRouter, "gtkx_get_widget_tree").handler({ applicationId: "app-a" } as never);
-
         expect(sendToApp).toHaveBeenCalledWith("app-a", "widget.getTree", {});
         expect(result.content[0]).toEqual({ type: "text", text: "TREE" });
     });
@@ -314,6 +314,7 @@ describe("buildTools — gtkx_query_widgets", () => {
             value: "button",
             options: { exact: true },
         });
+
         const text = result.content[0] as { type: "text"; text: string };
         expect(JSON.parse(text.text)).toEqual({ widgets: [{ id: "w1" }] });
     });
@@ -405,6 +406,7 @@ function resetMainMocks(): void {
 
 function setupMainMocks(): MainSetup {
     resetMainMocks();
+
     return {
         errorSpy: vi.spyOn(process.stderr, "write").mockImplementation(() => true),
         exitSpy: vi.spyOn(process, "exit").mockImplementation((() => undefined) as never),
@@ -423,6 +425,7 @@ function teardownMainMocks({ errorSpy, exitSpy, prevSigInt, prevSigTerm }: MainS
     errorSpy.mockRestore();
     exitSpy.mockRestore();
     pruneListeners(process.listeners("SIGINT"), prevSigInt, (listener) => process.removeListener("SIGINT", listener));
+
     pruneListeners(process.listeners("SIGTERM"), prevSigTerm, (listener) =>
         process.removeListener("SIGTERM", listener),
     );
@@ -430,9 +433,11 @@ function teardownMainMocks({ errorSpy, exitSpy, prevSigInt, prevSigTerm }: MainS
 
 function useMainSetup(): () => MainSetup {
     let setup: MainSetup;
+
     beforeEach(() => {
         setup = setupMainMocks();
     });
+
     afterEach(() => teardownMainMocks(setup));
     return () => setup;
 }
@@ -446,7 +451,6 @@ describe("main — startup", () => {
 
     it("starts the socket server, registers all tools, and connects the MCP server", async () => {
         await main();
-
         expect(socketStartMock).toHaveBeenCalledOnce();
         expect(mcpServerInstances).toHaveLength(1);
         expect(mcpServerInstances[0]?.name).toBe("gtkx-mcp");
@@ -463,11 +467,9 @@ describe("main — error logging", () => {
         await main();
         const registry = connectionRegistryInstances[0];
         if (!registry) throw new Error("Registry not created");
-
         registry.emit("error", Object.assign(new Error("pipe gone"), { code: "EPIPE" }));
         registry.emit("error", Object.assign(new Error("conn gone"), { code: "ECONNRESET" }));
         registry.emit("error", Object.assign(new Error("real boom"), { code: "EACCES" }));
-
         const messages = collectErrorMessages(getSetup());
         expect(messages.filter((m: string) => m.includes("real boom"))).toHaveLength(1);
         expect(messages.some((m: string) => m.includes("pipe gone"))).toBe(false);
@@ -478,10 +480,8 @@ describe("main — error logging", () => {
         await main();
         const appRouter = appRouterInstances[0];
         if (!appRouter) throw new Error("AppRouter not registered");
-
         appRouter.emit("appRegistered", { applicationId: "app-a", pid: 42 });
         appRouter.emit("appUnregistered", "app-a");
-
         const messages = collectErrorMessages(getSetup());
         expect(messages.some((m: string) => m.includes("app registered: app-a (PID: 42)"))).toBe(true);
         expect(messages.some((m: string) => m.includes("app unregistered: app-a"))).toBe(true);
@@ -493,17 +493,13 @@ describe("main — shutdown", () => {
 
     it("shuts down on SIGINT, cleaning up resources exactly once", async () => {
         await main();
-
         process.emit("SIGINT", "SIGINT");
         await new Promise((resolve) => setImmediate(resolve));
-
         expect(socketStopMock).toHaveBeenCalledOnce();
         expect(mcpCloseMock).toHaveBeenCalledOnce();
         expect(getSetup().exitSpy).toHaveBeenCalledWith(0);
-
         process.emit("SIGTERM", "SIGTERM");
         await new Promise((resolve) => setImmediate(resolve));
-
         expect(socketStopMock).toHaveBeenCalledOnce();
     });
 });

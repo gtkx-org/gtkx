@@ -4,13 +4,31 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { ancestorChain } from "../../gir/ancestry.js";
 
-export const signalHandlerName = (signalName: string): string => `on${upperFirst(toCamelIdentifier(signalName))}`;
-
-export type GlibNamedClass = {
+type GlibNamedClass = {
     glibName: string;
     klass: GirClass;
     namespace: GirNamespace;
 };
+
+type ResolvedQualifiedInterface = { klass: GirClass; namespace: GirNamespace };
+
+type InterfaceVisitState = {
+    library: Library;
+    visited: Set<string>;
+    result: ResolvedQualifiedInterface[];
+};
+
+type HasContainerProps = (glibName: string | undefined) => boolean;
+
+type InterfacePropsCollector = {
+    library: Library;
+    targetNamespaceName: string;
+    hasContainerProps: HasContainerProps;
+    seen: Set<string>;
+    result: ResolvedQualifiedInterface[];
+};
+
+const signalHandlerName = (signalName: string): string => `on${upperFirst(toCamelIdentifier(signalName))}`;
 
 function* classesWithGlibNameIn(namespace: GirNamespace): IterableIterator<GlibNamedClass> {
     for (const klass of namespace.classes) {
@@ -20,19 +38,11 @@ function* classesWithGlibNameIn(namespace: GirNamespace): IterableIterator<GlibN
     }
 }
 
-export function* iterateClassesWithGlibName(library: Library): IterableIterator<GlibNamedClass> {
+function* iterateClassesWithGlibName(library: Library): IterableIterator<GlibNamedClass> {
     for (const namespace of library.namespaces.values()) {
         yield* classesWithGlibNameIn(namespace);
     }
 }
-
-export type ResolvedQualifiedInterface = { klass: GirClass; namespace: GirNamespace };
-
-type InterfaceVisitState = {
-    library: Library;
-    visited: Set<string>;
-    result: ResolvedQualifiedInterface[];
-};
 
 function collectImplementedInterface(state: InterfaceVisitState, name: string, fromNamespace: GirNamespace): void {
     const resolved = state.library.resolveType(fromNamespace.name, name);
@@ -48,7 +58,7 @@ function visitImplementedInterfaces(state: InterfaceVisitState, names: string[],
     for (const name of names) collectImplementedInterface(state, name, fromNamespace);
 }
 
-export const implementedInterfaces = (
+const implementedInterfaces = (
     klass: GirClass,
     namespace: GirNamespace,
     library: Library,
@@ -58,15 +68,11 @@ export const implementedInterfaces = (
     return state.result;
 };
 
-export const glibNameOf = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
-
-export const giNamespaceAlias = (namespaceName: string): string => `${namespaceName}$`;
-
-export type HasContainerProps = (glibName: string | undefined) => boolean;
-
+const glibNameOf = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
+const giNamespaceAlias = (namespaceName: string): string => `${namespaceName}$`;
 const noContainerProps: HasContainerProps = () => false;
 
-export const interfaceHasPropsBody = (
+const interfaceHasPropsBody = (
     klass: GirClass,
     hasContainerProps: HasContainerProps = noContainerProps,
 ): boolean => klass.properties.length > 0 || klass.signals.length > 0 || hasContainerProps(glibNameOf(klass));
@@ -85,47 +91,45 @@ const parentImplementedInterfaceKeys = (klass: GirClass, namespace: GirNamespace
     if (klass.parent === undefined) return keys;
     const resolvedParent = library.resolveType(namespace.name, klass.parent);
     if (resolvedParent?.kind !== "class") return keys;
+
     for (const iface of implementedInterfaces(resolvedParent.value, resolvedParent.namespace, library)) {
         keys.add(qualifiedInterfaceKey(iface));
     }
+
     return keys;
 };
 
-export const newlyImplementedInterfaces = (
+const newlyImplementedInterfaces = (
     klass: GirClass,
     namespace: GirNamespace,
     library: Library,
     hasContainerProps: HasContainerProps = noContainerProps,
 ): ResolvedQualifiedInterface[] => {
     const inherited = parentImplementedInterfaceKeys(klass, namespace, library);
+
     const own = implementedInterfaces(klass, namespace, library).filter(
         (iface) =>
             interfaceHasPropsBody(iface.klass, hasContainerProps) && !inherited.has(qualifiedInterfaceKey(iface)),
     );
-    return sortStringsBy(own, qualifiedInterfaceKey);
-};
 
-type InterfacePropsCollector = {
-    library: Library;
-    targetNamespaceName: string;
-    hasContainerProps: HasContainerProps;
-    seen: Set<string>;
-    result: ResolvedQualifiedInterface[];
+    return sortStringsBy(own, qualifiedInterfaceKey);
 };
 
 const collectInterfacePropsFromElement = (element: GlibNamedClass, collector: InterfacePropsCollector): void => {
     const { library, targetNamespaceName, hasContainerProps, seen, result } = collector;
+
     for (const iface of implementedInterfaces(element.klass, element.namespace, library)) {
         const key = qualifiedInterfaceKey(iface);
         if (seen.has(key)) continue;
         seen.add(key);
+
         if (isCollectibleInterface(iface, targetNamespaceName, hasContainerProps)) {
             result.push(iface);
         }
     }
 };
 
-export const collectInterfacePropsClasses = (
+const collectInterfacePropsClasses = (
     library: Library,
     intrinsicElements: GlibNamedClass[],
     targetNamespaceName: string,
@@ -138,16 +142,19 @@ export const collectInterfacePropsClasses = (
         seen: new Set<string>(),
         result: [],
     };
+
     for (const element of intrinsicElements) collectInterfacePropsFromElement(element, collector);
     return sortStringsBy(collector.result, qualifiedInterfaceKey);
 };
 
-export const ancestorGlibNames = (klass: GirClass, namespace: GirNamespace, library: Library): string[] => {
+const ancestorGlibNames = (klass: GirClass, namespace: GirNamespace, library: Library): string[] => {
     const names: string[] = [];
+
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {
         const glibName = glibNameOf(ancestor);
         if (glibName !== undefined) names.push(glibName);
     }
+
     return names;
 };
 
@@ -161,6 +168,7 @@ const someAncestor = (
         const glibName = glibNameOf(ancestor) ?? "";
         if (predicate(ancestor, glibName)) return true;
     }
+
     return false;
 };
 
@@ -171,19 +179,20 @@ const descendsFrom = (
     matches: (glibName: string) => boolean,
 ): boolean => someAncestor(klass, namespace, library, (_klass, glibName) => matches(glibName));
 
-export const classExposesMethod = (
+const classExposesMethod = (
     klass: GirClass,
     namespace: GirNamespace,
     library: Library,
     methodName: string,
 ): boolean => someAncestor(klass, namespace, library, (current) => current.methods.some((m) => m.name === methodName));
 
-export const isIntrinsicElementClass = (klass: GirClass, namespace: GirNamespace, library: Library): boolean =>
+const isIntrinsicElementClass = (klass: GirClass, namespace: GirNamespace, library: Library): boolean =>
     descendsFrom(klass, namespace, library, (glibName) => glibName === "GObject");
 
-export const collectIntrinsicElementClasses = (library: Library): GlibNamedClass[] => {
+const collectIntrinsicElementClasses = (library: Library): GlibNamedClass[] => {
     const seen: Set<string> = new Set();
     const entries: GlibNamedClass[] = [];
+
     for (const candidate of iterateClassesWithGlibName(library)) {
         const { glibName, klass, namespace } = candidate;
         if (!isIntrinsicElementClass(klass, namespace, library)) continue;
@@ -191,5 +200,24 @@ export const collectIntrinsicElementClasses = (library: Library): GlibNamedClass
         seen.add(glibName);
         entries.push(candidate);
     }
+
     return sortStringsBy(entries, (entry) => entry.glibName);
+};
+
+export {
+    signalHandlerName,
+    iterateClassesWithGlibName,
+    implementedInterfaces,
+    glibNameOf,
+    giNamespaceAlias,
+    interfaceHasPropsBody,
+    newlyImplementedInterfaces,
+    collectInterfacePropsClasses,
+    ancestorGlibNames,
+    classExposesMethod,
+    isIntrinsicElementClass,
+    collectIntrinsicElementClasses,
+    type GlibNamedClass,
+    type ResolvedQualifiedInterface,
+    type HasContainerProps,
 };

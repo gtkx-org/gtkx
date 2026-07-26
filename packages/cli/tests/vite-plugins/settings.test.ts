@@ -11,8 +11,8 @@ import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-asse
 import { callOutputOptions, expectComposedAsyncBanner, expectComposedBanner } from "./output-options.js";
 
 type HandleHotUpdateHook = (this: unknown, ctx: { file: string; server: unknown }) => unknown;
-
 type ConfigResolvedHook = (config: { command: "build" | "serve"; root?: string }) => void;
+
 type LoadHook = (
     this: { error: (message: string) => never; emitFile: (asset: unknown) => string },
     id: string,
@@ -87,6 +87,7 @@ describe("gtkxSettings (resolveId)", () => {
             () => Promise.resolve({ id: "/abs.gschema.xml", external: true }),
             "./x.gschema.xml",
         );
+
         expect(result).toBeUndefined();
     });
 
@@ -95,6 +96,7 @@ describe("gtkxSettings (resolveId)", () => {
             () => Promise.resolve({ id: "/schema/path.gschema.xml" }),
             "./path.gschema.xml",
         );
+
         expect(resolved).toBe("\0gtkx-settings:/schema/path.gschema.xml");
     });
 });
@@ -109,6 +111,7 @@ describe("gtkxSettings (load)", () => {
     it.skipIf(!hasGlibCompileSchemas())("load builds JS exports from a multi-schema file in build mode", () => {
         const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-test-"));
         const schemaPath = join(tmp, "test.gschema.xml");
+
         writeFileSync(
             schemaPath,
             `<?xml version="1.0"?>
@@ -125,16 +128,18 @@ describe("gtkxSettings (load)", () => {
         try {
             const plugin = gtkxSettings();
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-
             const code = (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-settings:${schemaPath}`) as string;
 
             expect(code).toContain(
                 "export const com_example_alpha = { id: \"com.example.alpha\", path: null, keys: keys_0 };",
             );
+
             expect(code).toContain("const keys_0 = { \"enabled\": \"b\" };");
+
             expect(code).toContain(
                 "export const com_example_beta = { id: \"com.example.beta\", path: null, keys: keys_1 };",
             );
+
             expect(code).toContain("export default com_example_alpha;");
         } finally {
             rmSync(tmp, { recursive: true, force: true });
@@ -162,6 +167,7 @@ describe("gtkxSettings (load errors)", () => {
                     `\0gtkx-settings:${schemaPath}`,
                 ),
             ).toThrow();
+
             expect(errorMock).toHaveBeenCalled();
         } finally {
             rmSync(tmp, { recursive: true, force: true });
@@ -173,13 +179,13 @@ describe("gtkxSettings (buildEnd)", () => {
     it("buildEnd is a no-op when no schemas were queued", () => {
         const plugin = gtkxSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-
         expectBuildEndIsNoop(plugin.buildEnd as BuildEndHook);
     });
 
     it.skipIf(!hasGlibCompileSchemas())("buildEnd emits a compiled gschemas asset for queued schemas", () => {
         const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-buildend-"));
         const schemaPath = join(tmp, "build.gschema.xml");
+
         writeFileSync(
             schemaPath,
             `<?xml version="1.0"?>
@@ -194,7 +200,6 @@ describe("gtkxSettings (buildEnd)", () => {
             const plugin = gtkxSettings();
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
             (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-settings:${schemaPath}`);
-
             expectBuildEndEmitsAsset(plugin.buildEnd as BuildEndHook, "gschemas.compiled");
         } finally {
             rmSync(tmp, { recursive: true, force: true });
@@ -206,10 +211,12 @@ const firstSchemaDir = (): string => (process.env.GSETTINGS_SCHEMA_DIR ?? "").sp
 
 const setupSchemaDirEnv = (): void => {
     let prevSchemaDir: string | undefined;
+
     beforeEach(() => {
         prevSchemaDir = process.env.GSETTINGS_SCHEMA_DIR;
         delete process.env.GSETTINGS_SCHEMA_DIR;
     });
+
     afterEach(() => {
         if (prevSchemaDir === undefined) {
             delete process.env.GSETTINGS_SCHEMA_DIR;
@@ -221,6 +228,7 @@ const setupSchemaDirEnv = (): void => {
 
 const writeSchema = (tmp: string, fileName: string, schemaId: string): string => {
     const schemaPath = join(tmp, fileName);
+
     writeFileSync(
         schemaPath,
         `<?xml version="1.0"?>
@@ -230,6 +238,7 @@ const writeSchema = (tmp: string, fileName: string, schemaId: string): string =>
     </schema>
 </schemalist>`,
     );
+
     return schemaPath;
 };
 
@@ -285,12 +294,13 @@ describe("gtkxSettings (dev-mode load: fresh schema dir)", () => {
                     stubLoadContext(),
                     `\0gtkx-settings:${schemaPath}`,
                 ) as string;
+
                 expect(code).toContain(
                     "export const com_example_dev = { id: \"com.example.dev\", path: null, keys: keys_0 };",
                 );
+
                 expect(code).toContain("export default com_example_dev;");
                 expect(code).not.toContain("gtkx-settings-init");
-
                 expect(process.env.GSETTINGS_SCHEMA_DIR).toBeDefined();
                 expect(firstSchemaDir()).toMatch(/gtkx-schemas-/);
             } finally {
@@ -310,7 +320,6 @@ describe("gtkxSettings (dev-mode load: existing schema dir)", () => {
 
         try {
             loadSchemaInServeMode(schemaPath);
-
             expect(process.env.GSETTINGS_SCHEMA_DIR).toMatch(/^.*:\/existing\/dir$/);
         } finally {
             rmSync(tmp, { recursive: true, force: true });
@@ -330,10 +339,12 @@ describe("gtkxSettings (handleHotUpdate: untracked)", () => {
             },
             watcher: new EventEmitter(),
         };
+
         const result = (plugin.handleHotUpdate as HandleHotUpdateHook).call(plugin, {
             file: "/never-seen.gschema.xml",
             server,
         });
+
         expect(result).toBeUndefined();
         expect(server.moduleGraph.getModuleById).not.toHaveBeenCalled();
     });
@@ -348,8 +359,8 @@ describe("gtkxSettings (handleHotUpdate: tracked match)", () => {
 
             try {
                 const { plugin, virtualId } = loadSchemaInServeMode(schemaPath);
-
                 const matchingModule = { id: virtualId };
+
                 const server = {
                     moduleGraph: {
                         getModuleById: vi.fn((id: string) => (id === virtualId ? matchingModule : undefined)),
@@ -382,12 +393,9 @@ describe("gtkxSettings (closeBundle)", () => {
 
         try {
             const { plugin } = loadSchemaInServeMode(schemaPath);
-
             const schemaDir = firstSchemaDir();
             expect(existsSync(schemaDir)).toBe(true);
-
             (plugin.closeBundle as () => void).call(plugin);
-
             expect(existsSync(schemaDir)).toBe(false);
             (plugin.closeBundle as () => void).call(plugin);
         } finally {
@@ -405,14 +413,11 @@ describe("gtkxSettings (configureServer)", () => {
 
         try {
             const { plugin } = loadSchemaInServeMode(schemaPath);
-
             const schemaDir = firstSchemaDir();
             expect(existsSync(schemaDir)).toBe(true);
-
             const httpServer = new EventEmitter();
             const watcher = new EventEmitter();
             (plugin.configureServer as (server: unknown) => void).call(plugin, { httpServer, watcher });
-
             httpServer.emit("close");
             expect(existsSync(schemaDir)).toBe(false);
         } finally {
@@ -424,11 +429,14 @@ describe("gtkxSettings (configureServer)", () => {
 describe("gtkxSettings (schema env emission)", () => {
     it("emits the project env.d.ts from schemas under the #data import root", () => {
         const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-env-"));
+
         try {
             const { envPath } = initSchemaEnvPlugin(tmp, (dataDir) => {
                 writeSchema(dataDir, "com.example.envtest.gschema.xml", "com.example.envtest");
             });
+
             expect(existsSync(envPath)).toBe(true);
+
             expect(readFileSync(envPath, "utf8")).toContain(
                 "declare module \"#data/com.example.envtest.gschema.xml\" {",
             );
@@ -439,15 +447,14 @@ describe("gtkxSettings (schema env emission)", () => {
 
     it("refreshes the env.d.ts when the watcher reports schema file changes", () => {
         const tmp = mkdtempSync(join(tmpdir(), "gtkx-settings-env-watch-"));
+
         try {
             const { dataDir, plugin, envPath } = initSchemaEnvPlugin(tmp);
             expect(readFileSync(envPath, "utf8")).not.toContain("declare module");
-
             const schemaPath = writeSchema(dataDir, "com.example.added.gschema.xml", "com.example.added");
             const watcher = new EventEmitter();
             (plugin.configureServer as (server: unknown) => void).call(plugin, { httpServer: null, watcher });
             watcher.emit("add", schemaPath);
-
             expect(readFileSync(envPath, "utf8")).toContain("declare module \"#data/com.example.added.gschema.xml\" {");
         } finally {
             rmSync(tmp, { recursive: true, force: true });

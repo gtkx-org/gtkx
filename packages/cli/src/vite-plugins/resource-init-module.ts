@@ -16,6 +16,7 @@ const buildInitModuleSource = (): string =>
 
 const devInitModuleSource = (bundlePath: string): string => {
     const bundlePathLiteral = JSON.stringify(bundlePath);
+
     return [
         "import { existsSync, statSync } from \"node:fs\";",
         "import { resourceLoad, resourcesRegister, resourcesUnregister } from \"@gtkx/gi/gio\";",
@@ -50,5 +51,7 @@ const devInitModuleSource = (bundlePath: string): string => {
     ].join("\n");
 };
 
-export const renderInitModule = (options: { isBuild: boolean; devBundlePath: string }): string =>
+const renderInitModule = (options: { isBuild: boolean; devBundlePath: string }): string =>
     options.isBuild ? buildInitModuleSource() : devInitModuleSource(options.devBundlePath);
+
+export { renderInitModule };

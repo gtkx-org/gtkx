@@ -18,9 +18,7 @@ type BasicValueMap = {
 };
 
 type BasicCode = keyof BasicValueMap;
-
 type ParseArray<S extends string> = Parse<S> extends [infer V, infer R extends string] ? [V[], R] : never;
-
 type ParseMaybe<S extends string> = Parse<S> extends [infer V, infer R extends string] ? [V | null, R] : never;
 
 type ParseTuple<S extends string, Acc extends unknown[]> = S extends `)${infer Rest}`
@@ -68,13 +66,13 @@ type Parse<S extends string> = S extends `a${infer Rest}`
                         : never
                     : never;
 
-export type VariantValue<S extends string> = [Parse<S>] extends [never]
+type VariantValue<S extends string> = [Parse<S>] extends [never]
     ? unknown
     : Parse<S> extends [infer V, ""]
         ? V
         : unknown;
 
-export type VariantTypeNode =
+type VariantTypeNode =
     | { kind: "basic"; code: BasicCode } |
     { kind: "array"; elementTypeString: string; element: VariantTypeNode } |
     { kind: "dict"; entryTypeString: string; key: VariantTypeNode; value: VariantTypeNode } |
@@ -83,53 +81,7 @@ export type VariantTypeNode =
     { kind: "maybe"; elementTypeString: string; element: VariantTypeNode };
 
 const BASIC_CODES = "bynqiuxthdsogv";
-
-const isBasicCode = (code: string): code is BasicCode => BASIC_CODES.includes(code);
-
 const STRING_KEY_CODES: Set<string> = new Set(["s", "o", "g"]);
-
-const isStringKeyed = (key: VariantTypeNode): boolean => key.kind === "basic" && STRING_KEY_CODES.has(key.code);
-
-const invalidType = (source: string): Error => new Error(`Invalid GVariant type string "${source}"`);
-
-const parsePair = (source: string, start: number): [VariantTypeNode, VariantTypeNode, number] => {
-    const [key, keyEnd] = parseNode(source, start);
-    if (key.kind !== "basic" || key.code === "v") throw invalidType(source);
-    const [value, valueEnd] = parseNode(source, keyEnd);
-    if (source[valueEnd] !== "}") throw invalidType(source);
-    return [key, value, valueEnd + 1];
-};
-
-const parseArrayNode = (source: string, start: number): [VariantTypeNode, number] => {
-    if (source[start] === "{") {
-        const [key, value, end] = parsePair(source, start + 1);
-        return [{ kind: "dict", entryTypeString: source.slice(start, end), key, value }, end];
-    }
-    const [element, end] = parseNode(source, start);
-    return [{ kind: "array", elementTypeString: source.slice(start, end), element }, end];
-};
-
-const parseMaybeNode = (source: string, start: number): [VariantTypeNode, number] => {
-    const [element, end] = parseNode(source, start);
-    return [{ kind: "maybe", elementTypeString: source.slice(start, end), element }, end];
-};
-
-const parseTupleNode = (source: string, start: number): [VariantTypeNode, number] => {
-    const items: VariantTypeNode[] = [];
-    let position = start;
-    while (source[position] !== ")") {
-        if (position >= source.length) throw invalidType(source);
-        const [item, end] = parseNode(source, position);
-        items.push(item);
-        position = end;
-    }
-    return [{ kind: "tuple", items }, position + 1];
-};
-
-const parseEntryNode = (source: string, start: number): [VariantTypeNode, number] => {
-    const [key, value, end] = parsePair(source, start);
-    return [{ kind: "entry", key, value }, end];
-};
 
 const CONTAINER_PARSERS: Record<string, (source: string, start: number) => [VariantTypeNode, number]> = {
     a: parseArrayNode,
@@ -138,25 +90,7 @@ const CONTAINER_PARSERS: Record<string, (source: string, start: number) => [Vari
     "{": parseEntryNode,
 };
 
-const parseNode = (source: string, start: number): [VariantTypeNode, number] => {
-    const code = source[start];
-    if (code === undefined) throw invalidType(source);
-    const container = CONTAINER_PARSERS[code];
-    if (container !== undefined) return container(source, start + 1);
-    if (isBasicCode(code)) return [{ kind: "basic", code }, start + 1];
-    throw invalidType(source);
-};
-
 const parsedTypes: Map<string, VariantTypeNode> = new Map();
-
-export const parseVariantType = (typeString: string): VariantTypeNode => {
-    const cached = parsedTypes.get(typeString);
-    if (cached !== undefined) return cached;
-    const [node, end] = parseNode(typeString, 0);
-    if (end !== typeString.length) throw invalidType(typeString);
-    parsedTypes.set(typeString, node);
-    return node;
-};
 
 const unpackBasic: Record<BasicCode, (variant: GLib.Variant) => unknown> = {
     b: (variant) => variant.getBoolean(),
@@ -175,12 +109,95 @@ const unpackBasic: Record<BasicCode, (variant: GLib.Variant) => unknown> = {
     v: (variant) => variant.getVariant(),
 };
 
+const packBasic: Record<BasicCode, (value: unknown) => GLib.Variant> = {
+    b: (value) => GLib.Variant.newBoolean(value as boolean),
+    y: (value) => GLib.Variant.newByte(value as number),
+    n: (value) => GLib.Variant.newInt16(value as number),
+    q: (value) => GLib.Variant.newUint16(value as number),
+    i: (value) => GLib.Variant.newInt32(value as number),
+    u: (value) => GLib.Variant.newUint32(value as number),
+    h: (value) => GLib.Variant.newHandle(value as number),
+    d: (value) => GLib.Variant.newDouble(value as number),
+    x: (value) => GLib.Variant.newInt64(value as bigint),
+    t: (value) => GLib.Variant.newUint64(value as bigint),
+    s: (value) => GLib.Variant.newString(value as string),
+    o: packObjectPath,
+    g: packSignature,
+    v: (value) => GLib.Variant.newVariant(value as GLib.Variant),
+};
+
+const isBasicCode = (code: string): code is BasicCode => BASIC_CODES.includes(code);
+const isStringKeyed = (key: VariantTypeNode): boolean => key.kind === "basic" && STRING_KEY_CODES.has(key.code);
+const invalidType = (source: string): Error => new Error(`Invalid GVariant type string "${source}"`);
+
+const parsePair = (source: string, start: number): [VariantTypeNode, VariantTypeNode, number] => {
+    const [key, keyEnd] = parseNode(source, start);
+    if (key.kind !== "basic" || key.code === "v") throw invalidType(source);
+    const [value, valueEnd] = parseNode(source, keyEnd);
+    if (source[valueEnd] !== "}") throw invalidType(source);
+    return [key, value, valueEnd + 1];
+};
+
+function parseArrayNode(source: string, start: number): [VariantTypeNode, number] {
+    if (source[start] === "{") {
+        const [key, value, end] = parsePair(source, start + 1);
+        return [{ kind: "dict", entryTypeString: source.slice(start, end), key, value }, end];
+    }
+
+    const [element, end] = parseNode(source, start);
+    return [{ kind: "array", elementTypeString: source.slice(start, end), element }, end];
+}
+
+function parseMaybeNode(source: string, start: number): [VariantTypeNode, number] {
+    const [element, end] = parseNode(source, start);
+    return [{ kind: "maybe", elementTypeString: source.slice(start, end), element }, end];
+}
+
+function parseTupleNode(source: string, start: number): [VariantTypeNode, number] {
+    const items: VariantTypeNode[] = [];
+    let position = start;
+
+    while (source[position] !== ")") {
+        if (position >= source.length) throw invalidType(source);
+        const [item, end] = parseNode(source, position);
+        items.push(item);
+        position = end;
+    }
+
+    return [{ kind: "tuple", items }, position + 1];
+}
+
+function parseEntryNode(source: string, start: number): [VariantTypeNode, number] {
+    const [key, value, end] = parsePair(source, start);
+    return [{ kind: "entry", key, value }, end];
+}
+
+const parseNode = (source: string, start: number): [VariantTypeNode, number] => {
+    const code = source[start];
+    if (code === undefined) throw invalidType(source);
+    const container = CONTAINER_PARSERS[code];
+    if (container !== undefined) return container(source, start + 1);
+    if (isBasicCode(code)) return [{ kind: "basic", code }, start + 1];
+    throw invalidType(source);
+};
+
+const parseVariantType = (typeString: string): VariantTypeNode => {
+    const cached = parsedTypes.get(typeString);
+    if (cached !== undefined) return cached;
+    const [node, end] = parseNode(typeString, 0);
+    if (end !== typeString.length) throw invalidType(typeString);
+    parsedTypes.set(typeString, node);
+    return node;
+};
+
 const unpackChildren = (variant: GLib.Variant, unpackChild: (child: GLib.Variant) => unknown): unknown[] => {
     const children: unknown[] = [];
     const count = variant.nChildren();
+
     for (let index = 0; index < count; index += 1) {
         children.push(unpackChild(variant.getChildValue(index)));
     }
+
     return children;
 };
 
@@ -204,7 +221,7 @@ const unpackMaybe = (element: VariantTypeNode, variant: GLib.Variant): unknown =
     return child === null ? null : unpackVariant(element, child);
 };
 
-export const unpackVariant = (node: VariantTypeNode, variant: GLib.Variant): unknown => {
+const unpackVariant = (node: VariantTypeNode, variant: GLib.Variant): unknown => {
     switch (node.kind) {
         case "basic": {
             return unpackBasic[node.code](variant);
@@ -236,41 +253,27 @@ const packValidatedString = (
     if (typeof value !== "string" || !isValid(value)) {
         throw new Error(`"${String(value)}" is not a valid GVariant ${description}`);
     }
+
     return construct(value);
 };
 
-const packObjectPath = (value: unknown): GLib.Variant =>
-    packValidatedString(
+function packObjectPath(value: unknown): GLib.Variant {
+    return packValidatedString(
         value,
         (path) => GLib.Variant.isObjectPath(path),
         "object path",
         (path) => GLib.Variant.newObjectPath(path),
     );
+}
 
-const packSignature = (value: unknown): GLib.Variant =>
-    packValidatedString(
+function packSignature(value: unknown): GLib.Variant {
+    return packValidatedString(
         value,
         (signature) => GLib.Variant.isSignature(signature),
         "type signature",
         (signature) => GLib.Variant.newSignature(signature),
     );
-
-const packBasic: Record<BasicCode, (value: unknown) => GLib.Variant> = {
-    b: (value) => GLib.Variant.newBoolean(value as boolean),
-    y: (value) => GLib.Variant.newByte(value as number),
-    n: (value) => GLib.Variant.newInt16(value as number),
-    q: (value) => GLib.Variant.newUint16(value as number),
-    i: (value) => GLib.Variant.newInt32(value as number),
-    u: (value) => GLib.Variant.newUint32(value as number),
-    h: (value) => GLib.Variant.newHandle(value as number),
-    d: (value) => GLib.Variant.newDouble(value as number),
-    x: (value) => GLib.Variant.newInt64(value as bigint),
-    t: (value) => GLib.Variant.newUint64(value as bigint),
-    s: (value) => GLib.Variant.newString(value as string),
-    o: packObjectPath,
-    g: packSignature,
-    v: (value) => GLib.Variant.newVariant(value as GLib.Variant),
-};
+}
 
 const packEntry = (key: VariantTypeNode, value: VariantTypeNode, pair: [unknown, unknown]): GLib.Variant =>
     GLib.Variant.newDictEntry(packVariant(key, pair[0]), packVariant(value, pair[1]));
@@ -293,7 +296,7 @@ const packMaybe = (node: { elementTypeString: string; element: VariantTypeNode }
         value === null ? null : packVariant(node.element, value),
     );
 
-export const packVariant = (node: VariantTypeNode, value: unknown): GLib.Variant => {
+const packVariant = (node: VariantTypeNode, value: unknown): GLib.Variant => {
     switch (node.kind) {
         case "basic": {
             return packBasic[node.code](value);
@@ -320,3 +323,5 @@ export const packVariant = (node: VariantTypeNode, value: unknown): GLib.Variant
         }
     }
 };
+
+export { parseVariantType, unpackVariant, packVariant, type VariantValue, type VariantTypeNode };

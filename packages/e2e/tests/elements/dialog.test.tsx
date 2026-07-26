@@ -8,6 +8,7 @@ import { createRef, type ReactNode, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 let nextAppId = 0;
+
 const uniqueAppId = (): string => `org.gtkx.dialogtest${nextAppId++}`;
 
 const requireDialog = (ref: RefObject<Adw.AlertDialog | null>): Adw.AlertDialog => {
@@ -18,6 +19,7 @@ const requireDialog = (ref: RefObject<Adw.AlertDialog | null>): Adw.AlertDialog 
 
 const InApp = ({ children }: { children: ReactNode }) => {
     const [appId] = useState(uniqueAppId);
+
     return (
         <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
             <GtkApplicationWindow defaultWidth={100} defaultHeight={100}>
@@ -79,7 +81,6 @@ describe("Dialog - render prop and lifecycle", () => {
 
         const { rerender } = await render(<App open={true} />);
         await rerender(<App open={false} />);
-
         expect(onClose).not.toHaveBeenCalled();
     });
 });

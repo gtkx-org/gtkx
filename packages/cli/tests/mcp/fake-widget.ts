@@ -1,4 +1,4 @@
-export type FakeWidgetOverrides = {
+type FakeWidgetOverrides = {
     type?: string;
     getFirstChild?: () => unknown;
     getNextSibling?: () => unknown;
@@ -22,11 +22,14 @@ const DEFAULTS = {
     getCssClasses: () => [],
 };
 
-export const makeFakeWidget = (overrides: FakeWidgetOverrides = {}): never => {
+const makeFakeWidget = (overrides: FakeWidgetOverrides = {}): never => {
     const { type = "GtkWidget", ...rest } = overrides;
+
     return {
         constructor: { name: type },
         ...DEFAULTS,
         ...rest,
     } as never;
 };
+
+export { makeFakeWidget, type FakeWidgetOverrides };

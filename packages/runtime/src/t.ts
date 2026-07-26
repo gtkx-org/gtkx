@@ -47,7 +47,7 @@ type T = {
  * FFI marshalling, plus `bind` to bind a native function and `fn` to describe a
  * function signature.
  */
-export const t: T = {
+const t: T = {
     bind,
     int8: helpers.int8T,
     uint8: helpers.uint8T,
@@ -86,3 +86,5 @@ export const t: T = {
     callback: helpers.callbackT,
     fn,
 };
+
+export { t };

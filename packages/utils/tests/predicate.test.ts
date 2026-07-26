@@ -118,18 +118,14 @@ describe("structuredClone", () => {
         const nested = { b: 1 };
         const source = { a: [nested] };
         const copy = structuredClone(source);
-
         expect(isDeepEqual(copy, source)).toBe(true);
-
         nested.b = 2;
-
         expect(copy).toEqual({ a: [{ b: 1 }] });
         expect(isDeepEqual(copy, source)).toBe(false);
     });
 
     it("shares values that are neither arrays nor plain objects", () => {
         const date = new Date(0);
-
         expect(structuredClone({ date }).date).toBe(date);
         expect(structuredClone(date)).toBe(date);
     });

@@ -16,6 +16,15 @@ const SCHEMA_XML = `<?xml version="1.0" encoding="UTF-8"?>
 
 const DATA_DIR = "data";
 
+const restoreEnv = (name: string, value: string | undefined): void => {
+    if (value === undefined) {
+        Reflect.deleteProperty(process.env, name);
+        return;
+    }
+
+    process.env[name] = value;
+};
+
 describe("prepareDevSchemaDir", () => {
     let projectDir: string;
     let savedSchemaDir: string | undefined;
@@ -37,15 +46,12 @@ describe("prepareDevSchemaDir", () => {
 
     afterEach(() => {
         rmSync(projectDir, { recursive: true, force: true });
-        if (savedSchemaDir === undefined) delete process.env.GSETTINGS_SCHEMA_DIR;
-        else process.env.GSETTINGS_SCHEMA_DIR = savedSchemaDir;
-        if (savedDevSchemaDir === undefined) delete process.env.GTKX_DEV_SCHEMA_DIR;
-        else process.env.GTKX_DEV_SCHEMA_DIR = savedDevSchemaDir;
+        restoreEnv("GSETTINGS_SCHEMA_DIR", savedSchemaDir);
+        restoreEnv("GTKX_DEV_SCHEMA_DIR", savedDevSchemaDir);
     });
 
     it("returns null and leaves the environment alone without schemas", () => {
         const dir = prepareDevSchemaDir(projectDir, DATA_DIR);
-
         expect(dir).toBeNull();
         expect(process.env.GSETTINGS_SCHEMA_DIR).toBeUndefined();
         expect(process.env.GTKX_DEV_SCHEMA_DIR).toBeUndefined();
@@ -53,9 +59,7 @@ describe("prepareDevSchemaDir", () => {
 
     it("compiles project schemas and exports the directory before GTK loads", () => {
         writeSchema(join(DATA_DIR, "com.example.schemaenv.gschema.xml"));
-
         const dir = prepareDevSchemaDir(projectDir, DATA_DIR);
-
         expect(dir).not.toBeNull();
         expect(existsSync(join(dir ?? "", "gschemas.compiled"))).toBe(true);
         expect(process.env.GTKX_DEV_SCHEMA_DIR).toBe(dir);
@@ -65,17 +69,13 @@ describe("prepareDevSchemaDir", () => {
     it("prepends to an existing GSETTINGS_SCHEMA_DIR", () => {
         writeSchema(join(DATA_DIR, "com.example.schemaenv.gschema.xml"));
         process.env.GSETTINGS_SCHEMA_DIR = "/usr/share/glib-2.0/schemas";
-
         const dir = prepareDevSchemaDir(projectDir, DATA_DIR);
-
         expect(process.env.GSETTINGS_SCHEMA_DIR).toBe(`${dir}:/usr/share/glib-2.0/schemas`);
     });
 
     it("ignores schemas outside the data directory", () => {
         writeSchema("com.example.outside.gschema.xml");
-
         const dir = prepareDevSchemaDir(projectDir, DATA_DIR);
-
         expect(dir).toBeNull();
     });
 });

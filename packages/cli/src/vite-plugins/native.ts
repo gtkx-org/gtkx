@@ -31,12 +31,15 @@ function resolvePlatformBinary(projectRequire: ReturnType<typeof createRequire>)
 
 function rewriteLoader(code: string): string {
     const idents: string[] = [];
+
     for (const match of code.matchAll(/export\s*\{\s*([A-Za-z0-9_$]+)\s*\}/g)) {
         const ident = match[1];
+
         if (ident) {
             idents.push(ident);
         }
     }
+
     const bindings = idents.join(", ");
 
     return [
@@ -47,7 +50,7 @@ function rewriteLoader(code: string): string {
     ].join("\n");
 }
 
-export function gtkxNative(root: string): Plugin {
+function gtkxNative(root: string): Plugin {
     const projectRequire = createRequire(join(root, "package.json"));
     let cachedLoaderPath: string | undefined;
 
@@ -74,3 +77,5 @@ export function gtkxNative(root: string): Plugin {
         },
     };
 }
+
+export { gtkxNative };

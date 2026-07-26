@@ -7,19 +7,12 @@ import { getOrCreateControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 
 /** Options for {@link tab}: when `shift` is set, move focus backward instead of forward. */
-export type TabOptions = {
+type TabOptions = {
     shift?: boolean;
 };
 
-export const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
-    wrapEvent(widget, () => {
-        const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
-        const root = widget.getRoot();
-
-        if (root) {
-            root.childFocus(direction);
-        }
-    });
+type KeyAction = { keyval: number; press: boolean };
+type ParseStep = { actions: KeyAction[]; next: number };
 
 const KEY_MAP: Record<string, number> = {
     Enter: Gdk.KEY_Return,
@@ -54,7 +47,26 @@ const KEY_MAP: Record<string, number> = {
     F12: Gdk.KEY_F12,
 };
 
-type KeyAction = { keyval: number; press: boolean };
+const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
+    [Gdk.KEY_Shift_L]: Gdk.ModifierType.SHIFT_MASK,
+    [Gdk.KEY_Shift_R]: Gdk.ModifierType.SHIFT_MASK,
+    [Gdk.KEY_Control_L]: Gdk.ModifierType.CONTROL_MASK,
+    [Gdk.KEY_Control_R]: Gdk.ModifierType.CONTROL_MASK,
+    [Gdk.KEY_Alt_L]: Gdk.ModifierType.ALT_MASK,
+    [Gdk.KEY_Alt_R]: Gdk.ModifierType.ALT_MASK,
+    [Gdk.KEY_Meta_L]: Gdk.ModifierType.META_MASK,
+    [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
+};
+
+const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
+    wrapEvent(widget, () => {
+        const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
+        const root = widget.getRoot();
+
+        if (root) {
+            root.childFocus(direction);
+        }
+    });
 
 const parseKeyToken = (token: string): { keyval: number; press: boolean; release: boolean } => {
     let keyName = token;
@@ -70,16 +82,17 @@ const parseKeyToken = (token: string): { keyval: number; press: boolean; release
     }
 
     const keyval = KEY_MAP[keyName];
+
     if (keyval === undefined) {
         throw new Error(`Unknown key: {${keyName}}`);
     }
+
     return { keyval, press, release };
 };
 
-type ParseStep = { actions: KeyAction[]; next: number };
-
 const parseCharAt = (input: string, i: number): ParseStep => {
     const keyval = input.codePointAt(i) ?? 0;
+
     return {
         actions: [
             { keyval, press: true },
@@ -92,7 +105,6 @@ const parseCharAt = (input: string, i: number): ParseStep => {
 const parseBraceAt = (input: string, i: number): ParseStep | null => {
     const endBrace = input.indexOf("}", i);
     if (endBrace === -1) return null;
-
     const { keyval, press, release } = parseKeyToken(input.slice(i + 1, endBrace));
     const actions: KeyAction[] = [];
     if (press) actions.push({ keyval, press: true });
@@ -117,20 +129,10 @@ const parseKeyboardInput = (input: string): KeyAction[] => {
     return actions;
 };
 
-const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
-    [Gdk.KEY_Shift_L]: Gdk.ModifierType.SHIFT_MASK,
-    [Gdk.KEY_Shift_R]: Gdk.ModifierType.SHIFT_MASK,
-    [Gdk.KEY_Control_L]: Gdk.ModifierType.CONTROL_MASK,
-    [Gdk.KEY_Control_R]: Gdk.ModifierType.CONTROL_MASK,
-    [Gdk.KEY_Alt_L]: Gdk.ModifierType.ALT_MASK,
-    [Gdk.KEY_Alt_R]: Gdk.ModifierType.ALT_MASK,
-    [Gdk.KEY_Meta_L]: Gdk.ModifierType.META_MASK,
-    [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
-};
-
 const updateModifierState = (state: UserEventState, action: KeyAction): void => {
     const mask = MODIFIER_KEYVAL_TO_MASK[action.keyval];
     if (!mask) return;
+
     if (action.press) {
         state.modifierState |= mask;
     } else {
@@ -146,12 +148,14 @@ const matchesTrigger = (
     if (trigger instanceof Gtk.KeyvalTrigger) {
         return trigger.getKeyval() === keyval && trigger.getModifiers() === modifiers;
     }
+
     if (trigger instanceof Gtk.AlternativeTrigger) {
         return (
             matchesTrigger(trigger.getFirst(), keyval, modifiers) ||
             matchesTrigger(trigger.getSecond(), keyval, modifiers)
         );
     }
+
     return false;
 };
 
@@ -174,18 +178,22 @@ const activateMatchingShortcut = (
     modifiers: number,
 ): boolean => {
     const count = controller.getNItems();
+
     for (let j = 0; j < count; j++) {
         const shortcut = controller.getItem(j);
         if (!(shortcut instanceof Gtk.Shortcut)) continue;
         if (tryActivateShortcut(shortcut, widget, keyval, modifiers)) return true;
     }
+
     return false;
 };
 
 const dispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
     const controllers = widget.observeControllers();
+
     for (let i = 0; i < controllers.getNItems(); i++) {
         const controller = controllers.getItem(i);
+
         if (
             controller instanceof Gtk.ShortcutController &&
             activateMatchingShortcut(controller, widget, keyval, modifiers)
@@ -193,20 +201,24 @@ const dispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers
             return true;
         }
     }
+
     return false;
 };
 
 const dispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
     const delegate = getEditableDelegate(widget);
     if (delegate && dispatchShortcutsOnWidget(delegate, keyval, modifiers)) return true;
+
     for (let current: Gtk.Widget | null = widget; current; current = current.getParent()) {
         if (dispatchShortcutsOnWidget(current, keyval, modifiers)) return true;
     }
+
     return false;
 };
 
 const handleKeyPress = async (widget: Gtk.Widget, keyval: number, modifiers: number): Promise<void> => {
     const handled = dispatchShortcuts(widget, keyval, modifiers);
+
     if (!handled && keyval === Gdk.KEY_Return && widget instanceof Gtk.Editable) {
         await fireEvent(widget, "activate");
     }
@@ -220,18 +232,23 @@ const applyKeyAction = async (
 ): Promise<void> => {
     updateModifierState(state, action);
     const signalName = action.press ? "key-pressed" : "key-released";
+
     for (const controller of controllers) {
         controller.emit(signalName, action.keyval, 0, state.modifierState);
     }
+
     if (action.press) {
         await handleKeyPress(widget, action.keyval, state.modifierState);
     }
 };
 
-export const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
+const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
     wrapEvent(widget, async () => {
         const controllers = getOrCreateControllers(widget, Gtk.EventControllerKey);
+
         for (const action of parseKeyboardInput(input)) {
             await applyKeyAction(widget, controllers, state, action);
         }
     });
+
+export { tab, keyboard, type TabOptions };

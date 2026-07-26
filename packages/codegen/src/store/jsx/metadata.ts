@@ -14,17 +14,44 @@ import {
     signalHandlerName,
 } from "./intrinsic-elements.js";
 
-export const generateMetadata = (library: Library): string => {
+type IntrinsicElementEntry = {
+    glibName: string;
+    signals: [string, string][];
+    constructOnly: string[];
+    constructable: string[];
+    defaults: [string, string][];
+};
+
+type PropNameCollector = {
+    keep: (property: GirProperty) => boolean;
+    seen: Set<string>;
+    names: string[];
+};
+
+type DefaultPropsCollector = {
+    library: Library;
+    seen: Set<string>;
+    defaults: [string, string][];
+};
+
+const INTEGER_PATTERN = /^-?\d+$/;
+const FLOAT_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
+
+const generateMetadata = (library: Library): string => {
     const intrinsicElements = collectIntrinsicElements(library);
+
     const signalsEntries = intrinsicElements.map(
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
     );
+
     const constructOnlyEntries = intrinsicElements
         .filter(({ constructOnly }) => constructOnly.length > 0)
         .map(({ glibName, constructOnly }) => `    "${glibName}": ${renderStringSet(constructOnly)},`);
+
     const constructableEntries = intrinsicElements
         .filter(({ constructable }) => constructable.length > 0)
         .map(({ glibName, constructable }) => `    "${glibName}": ${renderStringSet(constructable)},`);
+
     const defaultsEntries = intrinsicElements
         .filter(({ defaults }) => defaults.length > 0)
         .map(({ glibName, defaults }) => `    "${glibName}": ${renderDefaultsObject(defaults)},`);
@@ -37,22 +64,17 @@ export const generateMetadata = (library: Library): string => {
     ].join("\n\n")}\n`;
 };
 
-type IntrinsicElementEntry = {
-    glibName: string;
-    signals: [string, string][];
-    constructOnly: string[];
-    constructable: string[];
-    defaults: [string, string][];
-};
-
 const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => {
     const entries: IntrinsicElementEntry[] = [];
+
     for (const { glibName, klass, namespace } of iterateClassesWithGlibName(library)) {
         if (!isIntrinsicElementClass(klass, namespace, library)) continue;
+
         const sources: GirClass[] = [
             klass,
             ...implementedInterfaces(klass, namespace, library).map((entry) => entry.klass),
         ];
+
         entries.push({
             glibName,
             signals: collectSignals(sources),
@@ -61,6 +83,7 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
             defaults: collectDefaultProps(library, sources),
         });
     }
+
     return sortStringsBy(entries, (entry) => entry.glibName);
 };
 
@@ -80,14 +103,9 @@ const collectSignals = (sources: GirClass[]): [string, string][] => {
     return signals;
 };
 
-type PropNameCollector = {
-    keep: (property: GirProperty) => boolean;
-    seen: Set<string>;
-    names: string[];
-};
-
 const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollector): void => {
     const { keep, seen, names } = collector;
+
     for (const property of source.properties) {
         if (!keep(property)) continue;
         const jsName = toCamelIdentifier(property.name);
@@ -118,12 +136,6 @@ const renderStringSet = (names: string[]): string =>
     `new Set([${names.map((name) => sourceStringLiteral(name)).join(",")}])`;
 
 const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, sourceStringLiteral);
-
-type DefaultPropsCollector = {
-    library: Library;
-    seen: Set<string>;
-    defaults: [string, string][];
-};
 
 const collectDefaultsFromClass = (klass: GirClass, collector: DefaultPropsCollector): void => {
     for (const property of klass.properties) {
@@ -189,14 +201,22 @@ const resolveTypeDefaultLiteral = (library: Library, resolved: GirType, raw: str
     return undefined;
 };
 
-const INTEGER_PATTERN = /^-?\d+$/;
-
-const FLOAT_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
-
 const booleanDefaultLiteral = (raw: string): string | undefined => {
     if (raw === "TRUE") return "true";
     if (raw === "FALSE") return "false";
     return undefined;
+};
+
+const integerDefaultLiteral = (raw: string): string | undefined => {
+    const trimmed = raw.trim();
+    return INTEGER_PATTERN.test(trimmed) ? trimmed : undefined;
+};
+
+const floatDefaultLiteral = (raw: string): string | undefined => {
+    const trimmed = raw.trim();
+    if (!FLOAT_PATTERN.test(trimmed)) return undefined;
+    const value = Number(trimmed);
+    return Number.isFinite(value) ? String(value) : undefined;
 };
 
 const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): string | undefined => {
@@ -213,14 +233,11 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
         case "int64":
         case "uint64":
         case "unichar": {
-            return INTEGER_PATTERN.test(raw.trim()) ? raw.trim() : undefined;
+            return integerDefaultLiteral(raw);
         }
         case "float32":
         case "float64": {
-            const trimmed = raw.trim();
-            if (!FLOAT_PATTERN.test(trimmed)) return undefined;
-            const value = Number(trimmed);
-            return Number.isFinite(value) ? String(value) : undefined;
+            return floatDefaultLiteral(raw);
         }
         case "string": {
             return sourceStringLiteral(raw);
@@ -240,3 +257,5 @@ const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined 
 
 const renderDefaultsObject = (entries: [string, string][]): string =>
     renderObjectLiteral(entries, (literal) => literal);
+
+export { generateMetadata };

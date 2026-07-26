@@ -6,7 +6,9 @@
  * @param set - The set to drain and clear.
  * @param visit - Called with each item before the set is cleared.
  */
-export const drain = <T>(set: Set<T>, visit: (item: T) => void): void => {
+const drain = <T>(set: Set<T>, visit: (item: T) => void): void => {
     for (const item of set) visit(item);
     set.clear();
 };
+
+export { drain };

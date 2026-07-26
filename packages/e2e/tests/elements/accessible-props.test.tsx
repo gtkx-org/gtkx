@@ -12,33 +12,25 @@ const accessible = (current: Gtk.Accessible | null): Gtk.Accessible => {
 describe("accessible props - GValue marshaling regression (1)", () => {
     it("sets accessibleLabel (string) without crashing", async () => {
         const ref = createRef<Gtk.Button>();
-
         await render(<GtkButton ref={ref} accessibleLabel="Zoom in" />);
-
         expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(true);
     });
 
     it("sets accessibleHasPopup (boolean) without crashing", async () => {
         const ref = createRef<Gtk.Button>();
-
         await render(<GtkButton ref={ref} accessibleHasPopup />);
-
         expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.HAS_POPUP)).toBe(true);
     });
 
     it("sets accessibleKeyShortcuts (string) without crashing", async () => {
         const ref = createRef<Gtk.Switch>();
-
         await render(<GtkSwitch ref={ref} accessibleKeyShortcuts="Control+M" />);
-
         expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.KEY_SHORTCUTS)).toBe(true);
     });
 
     it("sets accessibleInvalid (token) without crashing", async () => {
         const ref = createRef<Gtk.Entry>();
-
         await render(<GtkEntry ref={ref} accessibleInvalid={Gtk.AccessibleInvalidState.TRUE} />);
-
         expect(Gtk.testAccessibleHasState(accessible(ref.current), Gtk.AccessibleState.INVALID)).toBe(true);
     });
 });
@@ -49,6 +41,7 @@ describe("accessible props - GValue marshaling regression (2)", () => {
 
         function App() {
             const [label, setLabel] = useState<Gtk.Label | null>(null);
+
             return (
                 <>
                     <GtkLabel ref={setLabel}>Description</GtkLabel>
@@ -74,7 +67,6 @@ describe("accessible props - GValue marshaling regression (2)", () => {
         const { rerender } = await render(<App label="First" />);
         await rerender(<App label="Second" />);
         await rerender(<App label="Third" />);
-
         expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(true);
     });
 });
@@ -106,7 +98,6 @@ describe("accessible props - GValue marshaling regression (3)", () => {
 
         const { rerender } = await render(<App label="With label" />);
         expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(true);
-
         await rerender(<App label={undefined} />);
         expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(false);
     });

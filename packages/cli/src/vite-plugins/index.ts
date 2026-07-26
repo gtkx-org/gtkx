@@ -8,8 +8,9 @@ import { gtkxResources } from "./resources.js";
 import { gtkxSettings } from "./settings.js";
 import { gtkxUndeclaredLibrary } from "./undeclared-library.js";
 
-export const gtkxVitePlugins = (mode?: string): Plugin[] => {
+const gtkxVitePlugins = (mode?: string): Plugin[] => {
     const loadConfig = createConfigLoader(mode === undefined ? {} : { mode });
+
     return [
         createConfigPlugin({ name: "gtkx:config", loadConfig }),
         gtkxUndeclaredLibrary(mode),
@@ -20,3 +21,5 @@ export const gtkxVitePlugins = (mode?: string): Plugin[] => {
         gtkxReactCompiler(loadConfig),
     ];
 };
+
+export { gtkxVitePlugins };

@@ -42,6 +42,44 @@ import {
     tVoid,
 } from "./descriptor.js";
 
+type RenderDescriptorOptions = {
+    argIndexOffset?: number;
+    callerAllocated?: boolean;
+};
+
+type FundamentalDescriptor = {
+    lib: string;
+    refFunc: string;
+    unrefFunc: string;
+    typeName: string | undefined;
+    ownership: Ownership;
+    wrapperClass?: string | undefined;
+};
+
+type AncestorFundamental = {
+    lib: string;
+    refFunc: string;
+    unrefFunc: string;
+    typeName: string | undefined;
+};
+
+type ResolvedRecord = Extract<EntityType, { kind: "record" }>["value"];
+
+type FundamentalRecordOptions = {
+    resolved: Extract<EntityType, { kind: "record" }>;
+    refFunc: string;
+    unrefFunc: string;
+    ownership: Ownership;
+    wrapperClass: string | undefined;
+};
+
+const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName> = {
+    glist: "list",
+    gslist: "slist",
+    gptrarray: "ptrArray",
+    garray: "gArray",
+};
+
 const transferOwnership = (transfer: ParameterTransfer): Ownership => {
     if (transfer === "full") return "full";
     if (transfer === "container") return "full";
@@ -51,24 +89,19 @@ const transferOwnership = (transfer: ParameterTransfer): Ownership => {
 const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =>
     transfer === "container" ? "none" : transfer;
 
-type RenderDescriptorOptions = {
-    argIndexOffset?: number;
-    callerAllocated?: boolean;
-};
-
 const isVoidRef = (library: Library, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return true;
     const type = library.typeOf(ref);
     return type?.kind === "primitive" && type.category === "void";
 };
 
-export const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): boolean =>
+const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): boolean =>
     ref !== undefined && library.typeOf(ref)?.kind === "callback" && library.nameOf(ref) === undefined;
 
-export const omitsPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
+const omitsPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
     isVoidRef(library, returnValue.type) || returnValue.skip;
 
-export const renderDescriptor = (
+const renderDescriptor = (
     context: ModuleContext,
     ref: TypeId | undefined,
     transfer: ParameterTransfer = "none",
@@ -79,6 +112,7 @@ export const renderDescriptor = (
     const ownership = transferOwnership(transfer);
     const type = context.library.typeOf(ref);
     if (type === undefined) return tObject(ownership);
+
     switch (type.kind) {
         case "primitive": {
             return primitiveExpression(type.category, ownership);
@@ -99,9 +133,11 @@ export const renderDescriptor = (
         }
         case "list": {
             if (type.flavor === "gbytearray") return tByteArray(ownership);
+
             const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), {
                 argIndexOffset,
             });
+
             return tList(LIST_HELPERS[type.flavor], element, ownership);
         }
         case "hashtable": {
@@ -137,16 +173,16 @@ const isScalarType = (library: Library, type: GirType): boolean => {
     }
 };
 
-export const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
+const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
     const type = library.typeOf(ref);
     return type !== undefined && isScalarType(library, type);
 };
 
-export const isCellInout = (library: Library, parameter: GirParameter): boolean =>
+const isCellInout = (library: Library, parameter: GirParameter): boolean =>
     isInoutParameter(parameter) && isScalarRef(library, parameter.type);
 
-export const renderParamDescriptor = (
+const renderParamDescriptor = (
     context: ModuleContext,
     parameter: GirParameter,
     ref: TypeId | undefined,
@@ -154,9 +190,11 @@ export const renderParamDescriptor = (
     if (isCellInout(context.library, parameter)) {
         return tRef(renderDescriptor(context, ref, parameter.transferOwnership), true);
     }
+
     if (isOutParameter(parameter)) {
         return tRef(renderDescriptor(context, ref, parameter.transferOwnership));
     }
+
     return renderDescriptor(context, ref, parameter.transferOwnership, {
         callerAllocated: isCallerAllocatedOut(parameter) || isRecordInout(context, parameter),
     });
@@ -164,9 +202,11 @@ export const renderParamDescriptor = (
 
 const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
     let userDataIndex: number | undefined;
+
     for (const [index, parameter] of parameters.entries()) {
         if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;
     }
+
     return userDataIndex;
 };
 
@@ -178,7 +218,7 @@ const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number
     return options.length > 0 ? `{ ${options.join(", ")} }` : undefined;
 };
 
-export const renderCallbackType = (
+const renderCallbackType = (
     context: ModuleContext,
     ref: TypeId | undefined,
     owningParameter: GirParameter,
@@ -186,22 +226,19 @@ export const renderCallbackType = (
 ): string | undefined => {
     const callback = resolveCallbackType(context, ref);
     if (callback === undefined) return undefined;
+
     const argTypes = callback.parameters.map(
         (parameter, index) => argOverrides?.get(index) ?? renderParamDescriptor(context, parameter, parameter.type),
     );
+
     const returnRef = callback.returnValue.type;
+
     const returnType = isVoidRef(context.library, returnRef)
         ? tVoid
         : renderDescriptor(context, returnRef, callback.returnValue.transferOwnership);
+
     const optionsArg = callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters));
     return tCallback(argTypes, returnType, optionsArg);
-};
-
-const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName> = {
-    glist: "list",
-    gslist: "slist",
-    gptrarray: "ptrArray",
-    garray: "gArray",
 };
 
 const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership): string => {
@@ -212,17 +249,9 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership):
     return tScalar(category satisfies ScalarDescriptorName);
 };
 
-type FundamentalDescriptor = {
-    lib: string;
-    refFunc: string;
-    unrefFunc: string;
-    typeName: string | undefined;
-    ownership: Ownership;
-    wrapperClass?: string | undefined;
-};
-
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
     const { lib, refFunc, unrefFunc, typeName, ownership, wrapperClass } = descriptor;
+
     return tFundamental(lib, refFunc, unrefFunc, {
         ownership,
         typeName,
@@ -235,9 +264,11 @@ const classOrInterfaceExpression = (
     ownership: Ownership,
 ): string => {
     const cls = resolved.value;
+
     if (cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
         return tObject(ownership);
     }
+
     return renderFundamental({
         lib: resolved.namespace.sharedLibrary ?? "",
         refFunc: cls.glibRefFunc,
@@ -247,19 +278,13 @@ const classOrInterfaceExpression = (
     });
 };
 
-type AncestorFundamental = {
-    lib: string;
-    refFunc: string;
-    unrefFunc: string;
-    typeName: string | undefined;
-};
-
 const isClassOrInterface = (type: GirType | undefined): type is Extract<EntityType, { kind: "class" | "interface" }> =>
     type !== undefined && (type.kind === "class" || type.kind === "interface");
 
 const fundamentalOf = (node: Extract<EntityType, { kind: "class" | "interface" }>): AncestorFundamental | undefined => {
     const cls = node.value;
     if (!cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) return undefined;
+
     return {
         lib: node.namespace.sharedLibrary ?? "",
         refFunc: cls.glibRefFunc,
@@ -297,7 +322,7 @@ const classSelfDescriptor = (
     return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
 };
 
-export const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): string => {
+const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): string => {
     const ref = instance.type;
     if (ref === undefined) return tObject("borrowed");
     const type = context.library.typeOf(ref);
@@ -306,8 +331,6 @@ export const renderSelfDescriptor = (context: ModuleContext, instance: GirParame
     if (type.kind === "record") return recordExpression(context, type, transferOwnership(instance.transferOwnership));
     return tObject("borrowed");
 };
-
-type ResolvedRecord = Extract<EntityType, { kind: "record" }>["value"];
 
 const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; unrefFunc: string | undefined } => ({
     refFunc: record.glibRefFunc ?? record.copyFunc,
@@ -328,6 +351,7 @@ const structExpression = (
 ): string => {
     const { size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const wrapperClass = context.qualify(resolved.namespace.name, resolved.value.name);
+
     return tStruct(ownership, {
         size: size > 0 ? size : undefined,
         wrapperClass,
@@ -335,16 +359,9 @@ const structExpression = (
     });
 };
 
-type FundamentalRecordOptions = {
-    resolved: Extract<EntityType, { kind: "record" }>;
-    refFunc: string;
-    unrefFunc: string;
-    ownership: Ownership;
-    wrapperClass: string | undefined;
-};
-
 const fundamentalRecordExpression = (options: FundamentalRecordOptions): string => {
     const { resolved, refFunc, unrefFunc, ownership, wrapperClass } = options;
+
     return renderFundamental({
         lib: resolved.namespace.sharedLibrary ?? "",
         refFunc,
@@ -366,6 +383,7 @@ const boxedRecordExpression = (options: {
     const record = resolved.value;
     const glibName = record.glibTypeName ?? record.cType ?? record.name;
     const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+
     return tBoxed(glibName, {
         ownership,
         sharedLibrary: resolved.namespace.sharedLibrary,
@@ -383,15 +401,19 @@ const recordExpression = (
 ): string => {
     const record = resolved.value;
     const { refFunc, unrefFunc } = recordRefPair(record);
+
     const wrapperClass = recordNeedsFallbackClass(record)
         ? context.qualify(resolved.namespace.name, record.name)
         : undefined;
+
     if (refFunc !== undefined && unrefFunc !== undefined) {
         return fundamentalRecordExpression({ resolved, refFunc, unrefFunc, ownership, wrapperClass });
     }
+
     if (record.glibGetType === undefined) {
         return structExpression(context, resolved, ownership, callerAllocated);
     }
+
     return boxedRecordExpression({
         context,
         resolved,
@@ -418,6 +440,7 @@ const expressionForResolved = (
     options: RenderDescriptorOptions,
 ): string => {
     const ownership = transferOwnership(transfer);
+
     switch (resolved.kind) {
         case "class":
         case "interface": {
@@ -444,12 +467,15 @@ const arrayExpression = (
     const ownership = transferOwnership(transfer);
     const element = renderDescriptor(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
     const size = inlineElementSize(context, ref.element, ref.elementCType);
+
     if (ref.lengthParameterIndex !== undefined) {
         return tSizedArray(element, ref.lengthParameterIndex + argIndexOffset, ownership, size);
     }
+
     if (ref.fixedSize !== undefined) {
         return tFixedArray(element, ref.fixedSize, ownership, size);
     }
+
     return tArray(element, ownership, size);
 };
 
@@ -480,5 +506,17 @@ const aliasExpression = (
     if (target === undefined) {
         return tObject(transferOwnership(transfer));
     }
+
     return renderDescriptor(context, target, transfer, options);
+};
+
+export {
+    isInlineCallbackRef,
+    omitsPrimaryReturn,
+    renderDescriptor,
+    isScalarRef,
+    isCellInout,
+    renderParamDescriptor,
+    renderCallbackType,
+    renderSelfDescriptor,
 };

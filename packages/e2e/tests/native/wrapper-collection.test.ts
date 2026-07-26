@@ -9,6 +9,7 @@ import { forceGC, getRefCount } from "../helpers/native-utils.js";
 class NameObject extends GObject.Object {
     name = "";
 }
+
 registerClass(NameObject, { typeName: "GtkxTestModelNameObject" });
 
 async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boolean> {
@@ -18,6 +19,7 @@ async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boole
         forceGC();
         await new Promise((resolve) => setImmediate(resolve));
     }
+
     return predicate();
 }
 
@@ -37,11 +39,8 @@ describe("wrapper identity and reference counting", () => {
     it("keeps a strongly-held wrapper alive across GC and preserves identity", async () => {
         const box = new Gtk.Box();
         const { handle, weak } = appendDetachedLabel(box);
-
         expect(getRefCount(handle)).toBe(2);
-
         await gcUntil(() => false, 5);
-
         expect(weak.deref()).toBeDefined();
         expect(getWrapper(handle)).toBe(weak.deref());
     });
@@ -50,15 +49,11 @@ describe("wrapper identity and reference counting", () => {
         const box = new Gtk.Box();
         const label = new Gtk.Label();
         const handle = getHandle(label);
-
         expect(getRefCount(handle)).toBe(1);
-
         box.append(label);
         expect(getRefCount(handle)).toBe(2);
-
         box.remove(label);
         expect(getRefCount(handle)).toBe(1);
-
         expect(getWrapper(handle)).toBe(label);
     });
 
@@ -67,7 +62,6 @@ describe("wrapper identity and reference counting", () => {
         item.name = "Persisted";
         const store = Gio.ListStore.new(NameObject.prototype._type_);
         store.append(item);
-
         expect(store.getItem(0)).toBe(item);
         expect((store.getItem(0) as NameObject).name).toBe("Persisted");
     });
@@ -76,11 +70,8 @@ describe("wrapper identity and reference counting", () => {
 describe("wrapper collection", () => {
     it("collects a wrapper with no other holder once its JS reference is dropped", async () => {
         const { handle, weak } = detachLabel();
-
         expect(getRefCount(handle)).toBe(1);
-
         const collected = await gcUntil(() => weak.deref() === undefined);
-
         expect(collected).toBe(true);
     });
 });

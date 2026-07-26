@@ -26,57 +26,6 @@ import { appendInterfaceRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 import { renderVfuncMetadata } from "./vtable.js";
 
-export const generateInterface = (context: ModuleContext, iface: GirClass): void => {
-    if (!iface.introspectable) return;
-    if (iface.name.length === 0) return;
-    const className = pascalCase(iface.name);
-    const callables: Callables = {
-        constructors: dedupeCallables(iface.constructors),
-        functions: dedupeCallables(iface.functions),
-        methods: dedupeCallables(iface.methods),
-    };
-    generateBindings(context, callables);
-
-    const gtypeExpr = gtypeExprFor(context, iface);
-
-    context.module.appendDeclaration(renderInterfaceType(context, iface, className, callables));
-    context.module.appendDeclaration(renderInterfaceClass(context, className, callables, gtypeExpr));
-    for (const declaration of renderSignalDeclarations(context, iface, className, true)) {
-        context.module.appendDeclaration(declaration);
-    }
-    context.module.appendDeclaration(renderInterfaceMaker(context, iface, className, callables));
-
-    appendInterfaceRegistration(context, {
-        className,
-        makerName: makerName(className),
-        gtypeExpr,
-        vfuncs: renderVfuncMetadata(context, iface),
-    });
-};
-
-const makerName = (className: string): string => `make${className}`;
-
-const interfaceTypeExtends = (context: ModuleContext, iface: GirClass): string => {
-    const refs = iface.prerequisites
-        .map((name) => resolvePrerequisiteReference(context, name))
-        .filter((entry): entry is string => entry !== undefined);
-    if (refs.length > 0) return refs.join(", ");
-    return context.qualify("GObject", "Object");
-};
-
-const renderInterfaceType = (
-    context: ModuleContext,
-    iface: GirClass,
-    className: string,
-    callables: Callables,
-): string => {
-    const members = renderInterfaceTypeMembers(context, iface, callables);
-    return `${renderJsDoc(iface.doc)}${renderBracedOrEmpty(
-        `export interface ${className} extends ${interfaceTypeExtends(context, iface)}`,
-        members.join("\n"),
-    )}`;
-};
-
 type InterfaceMemberRenderers = {
     renderMethod: (
         context: ModuleContext,
@@ -96,19 +45,6 @@ type MethodMemberOptions = {
     claimedNames: Set<string>;
 };
 
-const collectMethodMembers = (options: MethodMemberOptions): string[] => {
-    const { context, className, scope, callables, renderers, claimedNames } = options;
-    const members: string[] = [];
-    for (const callable of callables.methods) {
-        const rename = reservedSignalMemberRename(className, callable);
-        const block = renderers.renderMethod(context, callable, scope, rename);
-        if (block === undefined) continue;
-        members.push(block);
-        claimedNames.add(rename ?? methodExportName(callable));
-    }
-    return members;
-};
-
 type PropertyMemberOptions = {
     context: ModuleContext;
     iface: GirClass;
@@ -117,13 +53,85 @@ type PropertyMemberOptions = {
     claimedNames: Set<string>;
 };
 
+const generateInterface = (context: ModuleContext, iface: GirClass): void => {
+    if (!iface.introspectable) return;
+    if (iface.name.length === 0) return;
+    const className = pascalCase(iface.name);
+
+    const callables: Callables = {
+        constructors: dedupeCallables(iface.constructors),
+        functions: dedupeCallables(iface.functions),
+        methods: dedupeCallables(iface.methods),
+    };
+
+    generateBindings(context, callables);
+    const gtypeExpr = gtypeExprFor(context, iface);
+    context.module.appendDeclaration(renderInterfaceType(context, iface, className, callables));
+    context.module.appendDeclaration(renderInterfaceClass(context, className, callables, gtypeExpr));
+
+    for (const declaration of renderSignalDeclarations(context, iface, className, true)) {
+        context.module.appendDeclaration(declaration);
+    }
+
+    context.module.appendDeclaration(renderInterfaceMaker(context, iface, className, callables));
+
+    appendInterfaceRegistration(context, {
+        className,
+        makerName: makerName(className),
+        gtypeExpr,
+        vfuncs: renderVfuncMetadata(context, iface),
+    });
+};
+
+const makerName = (className: string): string => `make${className}`;
+
+const interfaceTypeExtends = (context: ModuleContext, iface: GirClass): string => {
+    const refs = iface.prerequisites
+        .map((name) => resolvePrerequisiteReference(context, name))
+        .filter((entry): entry is string => entry !== undefined);
+
+    if (refs.length > 0) return refs.join(", ");
+    return context.qualify("GObject", "Object");
+};
+
+const renderInterfaceType = (
+    context: ModuleContext,
+    iface: GirClass,
+    className: string,
+    callables: Callables,
+): string => {
+    const members = renderInterfaceTypeMembers(context, iface, callables);
+
+    return `${renderJsDoc(iface.doc)}${renderBracedOrEmpty(
+        `export interface ${className} extends ${interfaceTypeExtends(context, iface)}`,
+        members.join("\n"),
+    )}`;
+};
+
+const collectMethodMembers = (options: MethodMemberOptions): string[] => {
+    const { context, className, scope, callables, renderers, claimedNames } = options;
+    const members: string[] = [];
+
+    for (const callable of callables.methods) {
+        const rename = reservedSignalMemberRename(className, callable);
+        const block = renderers.renderMethod(context, callable, scope, rename);
+        if (block === undefined) continue;
+        members.push(block);
+        claimedNames.add(rename ?? methodExportName(callable));
+    }
+
+    return members;
+};
+
 const collectPropertyMembers = (options: PropertyMemberOptions): string[] => {
     const { context, iface, scope, renderers, claimedNames } = options;
     const members: string[] = [];
+
     for (const property of iface.properties) {
         const block = renderers.renderProperty({ context, property, claimedNames, methodByName: scope.methodByName });
         if (block !== undefined) members.push(block);
     }
+
     return members;
 };
 
@@ -161,6 +169,7 @@ const renderInterfaceClass = (
 
 const renderInterfaceHasInstance = (context: ModuleContext, className: string, gtypeExpr: string): string => {
     context.addRuntimeImport("valueIsA");
+
     return renderBlock(
         `static [Symbol.hasInstance](value: unknown): value is ${className}`,
         `return valueIsA(value, ${gtypeExpr});`,
@@ -186,3 +195,5 @@ const renderInterfaceInstanceMembers = (context: ModuleContext, iface: GirClass,
     }),
     ...renderSignalMembers(context, iface),
 ];
+
+export { generateInterface };

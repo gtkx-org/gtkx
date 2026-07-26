@@ -3,13 +3,13 @@ import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxNative } from "./vite-plugins/native.js";
 
-const BUILD_MODE = "production";
-
-export type BuildOptions = {
+type BuildOptions = {
     entry: string;
     assetBase?: string | undefined;
     vite?: InlineConfig | undefined;
 };
+
+const BUILD_MODE = "production";
 
 const buildDefaults: InlineConfig = {
     build: {
@@ -23,7 +23,7 @@ const buildDefaults: InlineConfig = {
     },
 };
 
-export const build = async (options: BuildOptions): Promise<void> => {
+const build = async (options: BuildOptions): Promise<void> => {
     const { entry, assetBase, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
 
@@ -41,6 +41,7 @@ export const build = async (options: BuildOptions): Promise<void> => {
     };
 
     const merged: InlineConfig = mergeConfig(mergeConfig(buildDefaults, viteConfig ?? {}), forced);
-
     await viteBuild({ ...merged, ssr: { ...merged.ssr, noExternal: true } });
 };
+
+export { build, type BuildOptions };

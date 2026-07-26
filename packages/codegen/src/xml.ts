@@ -1,6 +1,6 @@
 import { type X2jOptions, XMLParser } from "fast-xml-parser";
 
-export const createXmlParser = (options: Partial<X2jOptions>): XMLParser =>
+const createXmlParser = (options: Partial<X2jOptions>): XMLParser =>
     new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: "@_",
@@ -8,3 +8,5 @@ export const createXmlParser = (options: Partial<X2jOptions>): XMLParser =>
         parseTagValue: false,
         ...options,
     });
+
+export { createXmlParser };

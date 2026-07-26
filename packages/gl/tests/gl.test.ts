@@ -38,28 +38,23 @@ const compileShader = (type: number, source: string): number => {
 const compileShaderPair = (vertSrc: string, fragSrc: string): number => {
     const vertShader = compileShader(gl.VERTEX_SHADER, vertSrc);
     const fragShader = compileShader(gl.FRAGMENT_SHADER, fragSrc);
-
     const program = gl.createProgram();
     gl.attachShader(program, vertShader);
     gl.attachShader(program, fragShader);
     gl.linkProgram(program);
-
     gl.deleteShader(vertShader);
     gl.deleteShader(fragShader);
-
     return program;
 };
 
 const setUpTriangleAttribArray = (): { vao: number; vbo: number } => {
     const vao = gl.genVertexArray();
     gl.bindVertexArray(vao);
-
     const vbo = gl.genBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferData(gl.ARRAY_BUFFER, TRIANGLE_POSITIONS.byteLength, TRIANGLE_POSITIONS, gl.STATIC_DRAW);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(0);
-
     return { vao, vbo };
 };
 
@@ -74,12 +69,15 @@ beforeAll(async () => {
             glArea.makeCurrent();
             if (glArea.getError()) resolve(false);
         });
+
         glArea.on("render", () => {
             resolve(true);
             return true;
         });
+
         window.present();
     });
+
     if (!glReady) {
         throw new Error("GLArea could not provide a desktop GL context; the GL contract suite cannot run");
     }
@@ -124,6 +122,7 @@ describe("shader operations", () => {
                 gl_Position = vec4(0.0);
             }`,
         );
+
         const log = gl.getShaderInfoLog(shader);
         expect(log).toBe("");
         gl.deleteShader(shader);
@@ -256,9 +255,11 @@ describe("buffer operations", () => {
     it("generates buffers in bulk as a returned array", () => {
         const buffers = gl.genBuffers(3);
         expect(buffers).toHaveLength(3);
+
         for (const buffer of buffers) {
             expect(buffer).toBeGreaterThan(0);
         }
+
         gl.deleteBuffers(3, buffers);
     });
 
@@ -310,7 +311,6 @@ describe("vertex attributes", () => {
     it("configures vertex attribute pointers", () => {
         const { vao, vbo } = setUpTriangleAttribArray();
         expect(gl.getError()).toBe(gl.NO_ERROR);
-
         gl.disableVertexAttribArray(0);
         gl.bindVertexArray(0);
         gl.deleteBuffer(vbo);
@@ -332,16 +332,14 @@ describe("vertex attributes", () => {
             in vec3 position;
             void main() { gl_Position = vec4(position, 1.0); }`,
         );
-        const fragShader = compileShader(gl.FRAGMENT_SHADER, BASIC_FRAG);
 
+        const fragShader = compileShader(gl.FRAGMENT_SHADER, BASIC_FRAG);
         const program = gl.createProgram();
         gl.attachShader(program, vertShader);
         gl.attachShader(program, fragShader);
         gl.bindAttribLocation(program, 5, "position");
         gl.linkProgram(program);
-
         expect(gl.getAttribLocation(program, "position")).toBe(5);
-
         gl.deleteShader(vertShader);
         gl.deleteShader(fragShader);
         gl.deleteProgram(program);
@@ -371,10 +369,8 @@ describe("drawing operations — state", () => {
 describe("drawing operations — draw calls", () => {
     it("draws arrays", () => {
         const { vao, vbo } = setUpTriangleAttribArray();
-
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         expect(gl.getError()).toBe(gl.NO_ERROR);
-
         gl.bindVertexArray(0);
         gl.deleteBuffer(vbo);
         gl.deleteVertexArray(vao);
@@ -382,15 +378,12 @@ describe("drawing operations — draw calls", () => {
 
     it("draws elements", () => {
         const { vao, vbo } = setUpTriangleAttribArray();
-
         const ebo = gl.genBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
         const indices = new Uint16Array([0, 1, 2]);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices.byteLength, indices, gl.STATIC_DRAW);
-
         gl.drawElements(gl.TRIANGLES, 3, gl.UNSIGNED_SHORT, 0);
         expect(gl.getError()).toBe(gl.NO_ERROR);
-
         gl.bindVertexArray(0);
         gl.deleteBuffer(ebo);
         gl.deleteBuffer(vbo);
@@ -402,17 +395,14 @@ describe("framebuffer rendering", () => {
     it("renders into an offscreen framebuffer and reads pixels back", () => {
         const fbo = gl.genFramebuffer();
         gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-
         const rbo = gl.genRenderbuffer();
         gl.bindRenderbuffer(gl.RENDERBUFFER, rbo);
         gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA8, 4, 4);
         gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rbo);
         expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).toBe(gl.FRAMEBUFFER_COMPLETE);
-
         gl.viewport(0, 0, 4, 4);
         gl.clearColor(1, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
-
         const pixels = new Uint8Array(4 * 4 * 4);
         gl.readPixels(0, 0, 4, 4, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         expect(gl.getError()).toBe(gl.NO_ERROR);
@@ -420,7 +410,6 @@ describe("framebuffer rendering", () => {
         expect(pixels[1]).toBe(0);
         expect(pixels[2]).toBe(0);
         expect(pixels[3]).toBe(255);
-
         gl.bindFramebuffer(gl.FRAMEBUFFER, 0);
         gl.bindRenderbuffer(gl.RENDERBUFFER, 0);
         gl.deleteRenderbuffer(rbo);
@@ -440,10 +429,13 @@ describe("sync objects", () => {
 describe("debug output", () => {
     it("delivers inserted messages to the synchronous callback", () => {
         const received: string[] = [];
+
         gl.debugMessageCallback((_source, _type, _id, _severity, message) => {
             received.push(message);
         });
+
         gl.debugMessageControl(gl.DONT_CARE, gl.DONT_CARE, gl.DONT_CARE, 0, [], true);
+
         gl.debugMessageInsert(
             gl.DEBUG_SOURCE_APPLICATION,
             gl.DEBUG_TYPE_OTHER,
@@ -452,6 +444,7 @@ describe("debug output", () => {
             -1,
             "gtkx-debug-probe",
         );
+
         gl.debugMessageCallback(null);
         expect(received).toContain("gtkx-debug-probe");
     });

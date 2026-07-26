@@ -8,6 +8,7 @@ describe("uniqBy", () => {
             { id: "b", n: 2 },
             { id: "a", n: 3 },
         ];
+
         expect(uniqBy(items, (item) => item.id)).toEqual([
             { id: "a", n: 1 },
             { id: "b", n: 2 },

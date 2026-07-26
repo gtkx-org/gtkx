@@ -18,7 +18,6 @@ describe("within scoping", () => {
 
         const sectionA = await screen.findByName("section-a");
         const submit = await within(sectionA).findByRole(Gtk.AccessibleRole.BUTTON);
-
         expect(submit).toBeDefined();
         expect((submit as Gtk.Button).getLabel()).toBe("Submit");
     });
@@ -34,7 +33,6 @@ describe("within scoping", () => {
         );
 
         const frame = await screen.findByName("inner-frame");
-
         await expect(within(frame).findByText("Outside", { timeout: 100 })).rejects.toThrow("Unable to find");
     });
 
@@ -51,7 +49,6 @@ describe("within scoping", () => {
         const frame = await screen.findByName("container");
         const bound = within(frame);
         const items = await bound.findAllByText("Item");
-
         expect(items).toHaveLength(2);
         expect(typeof bound.queryByRole).toBe("function");
         expect(typeof bound.queryAllByName).toBe("function");
@@ -71,7 +68,6 @@ describe("within nested", () => {
         const outer = await screen.findByName("outer-frame");
         const inner = await within(outer).findByName("inner-frame");
         const button = await within(inner).findByRole(Gtk.AccessibleRole.BUTTON);
-
         expect(button).toBeDefined();
     });
 });

@@ -23,13 +23,6 @@ import {
 } from "./resource-shared.js";
 import { stripQuery } from "./strip-query.js";
 
-const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
-
-const RESOURCE_COMPILER = "glib-compile-resources";
-const MANIFEST_PREFIX = "/";
-
-const deriveResourcePrefix = (applicationId: string): string => `/${applicationId.replaceAll(".", "/")}`;
-
 type ResourceEntry = {
     sourcePath: string;
     stagedRelPath: string;
@@ -48,6 +41,12 @@ type PluginState = {
     dataDir: string | null;
 };
 
+const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
+const RESOURCE_COMPILER = "glib-compile-resources";
+const MANIFEST_PREFIX = "/";
+
+const deriveResourcePrefix = (applicationId: string): string => `/${applicationId.replaceAll(".", "/")}`;
+
 const compileBundle = (state: PluginState, outputPath: string): Buffer =>
     withStagingDir("resources", (dir) => {
         const manifest = stageBundle(dir, state.entries);
@@ -56,14 +55,17 @@ const compileBundle = (state: PluginState, outputPath: string): Buffer =>
 
 const stageBundle = (dir: string, entries: Map<string, ResourceEntry>): string => {
     const fileNodes: string[] = [];
+
     for (const entry of entries.values()) {
         const targetPath = join(dir, entry.stagedRelPath);
         mkdirSync(dirname(targetPath), { recursive: true });
         copyFileSync(entry.sourcePath, targetPath);
         fileNodes.push(`        <file>${escapeXml(entry.stagedRelPath)}</file>`);
     }
+
     const prefix = escapeXml(MANIFEST_PREFIX);
     const manifest = join(dir, "gtkx.gresource.xml");
+
     const xml = [
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
         "<gresources>",
@@ -73,6 +75,7 @@ const stageBundle = (dir: string, entries: Map<string, ResourceEntry>): string =
         "</gresources>",
         "",
     ].join("\n");
+
     writeFileSync(manifest, xml);
     return manifest;
 };
@@ -89,6 +92,7 @@ const runCompiler = (sourceDir: string, manifest: string, outputPath: string): B
         const suffix = details ? `:\n${details}` : "";
         throw new Error(`${RESOURCE_COMPILER} failed${suffix}`, { cause: error });
     }
+
     return readFileSync(outputPath);
 };
 
@@ -124,9 +128,11 @@ const scanDataAssets = (dataDir: string): ListedFile[] => listFilesRecursive(dat
 
 const primeDevBundle = (state: PluginState): void => {
     if (state.dataDir === null) return;
+
     for (const { absPath, rel } of scanDataAssets(state.dataDir)) {
         registerEntry(state, absPath, rel);
     }
+
     compileDevBundle(state);
 };
 
@@ -139,13 +145,14 @@ const registerDevAsset = (state: PluginState): void => {
 const registerEntry = (state: PluginState, absPath: string, rel: string): ResourceEntry => {
     const existing = state.entries.get(absPath);
     if (existing) return existing;
-
     const resourcePath = `${state.prefix}/${rel}`;
+
     const entry: ResourceEntry = {
         sourcePath: absPath,
         stagedRelPath: resourcePath.replace(/^\/+/, ""),
         resourcePath,
     };
+
     state.entries.set(absPath, entry);
     state.sourcePaths.add(absPath);
     return entry;
@@ -204,6 +211,7 @@ const emitBuildBundle = (
 
 const refreshDevRegistration = async (state: PluginState): Promise<void> => {
     compileDevBundle(state);
+
     try {
         await reregisterDevBundle(state);
     } catch (error_) {
@@ -214,6 +222,7 @@ const refreshDevRegistration = async (state: PluginState): Promise<void> => {
 const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader) => {
     const { applicationId } = await loadConfig(config.root ?? process.cwd());
     state.prefix = deriveResourcePrefix(applicationId);
+
     return {
         assetsInclude: [ASSET_RE],
     };
@@ -221,6 +230,7 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
 
 const refreshTrackedSource = async (state: PluginState, file: string): Promise<void> => {
     if (!isTrackedSource(state, file)) return;
+
     try {
         await refreshDevRegistration(state);
     } catch (error_) {
@@ -230,9 +240,11 @@ const refreshTrackedSource = async (state: PluginState, file: string): Promise<v
 
 const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void => {
     state.server = server;
+
     const onFileEvent = (file: string): void => {
         void refreshTrackedSource(state, file);
     };
+
     server.watcher.on("change", onFileEvent);
     server.watcher.on("add", onFileEvent);
 };
@@ -250,7 +262,7 @@ const loadResourceModule = (state: PluginState, id: string): string | undefined 
     return loadAssetModule(state, id);
 };
 
-export function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
+function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: PluginState = {
         prefix: "",
         isBuild: false,
@@ -284,7 +296,6 @@ export function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): 
             if (source === VIRTUAL_INIT) return VIRTUAL_INIT;
             const clean = dataAssetSource(source);
             if (clean === null) return;
-
             const resolved = await this.resolve(clean, importer, { ...opts, skipSelf: true });
             return resolvedAssetId(resolved, clean);
         },
@@ -298,3 +309,5 @@ export function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): 
         },
     };
 }
+
+export { gtkxResources };

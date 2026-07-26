@@ -2,19 +2,20 @@ import type { Plugin, UserConfig } from "vite";
 import { discoverGirNamespaces, resolveGirPath } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
 
-const GENERATED_MODULE_PATTERN = /^@gtkx\/(?:gi|jsx)\/([a-z0-9]+)$/;
-
 type PluginState = {
     root: string;
     mode: string | undefined;
     girPath: string[] | null;
 };
 
+const GENERATED_MODULE_PATTERN = /^@gtkx\/(?:gi|jsx)\/([a-z0-9]+)$/;
+
 const girSearchPaths = async (state: PluginState): Promise<string[]> => {
     if (state.girPath === null) {
         const { config } = await loadConfig(state.root, { mode: state.mode });
         state.girPath = resolveGirPath(config.girPath);
     }
+
     return state.girPath;
 };
 
@@ -41,7 +42,7 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
     );
 };
 
-export function gtkxUndeclaredLibrary(mode?: string): Plugin {
+function gtkxUndeclaredLibrary(mode?: string): Plugin {
     const state: PluginState = {
         root: "",
         mode,
@@ -59,11 +60,11 @@ export function gtkxUndeclaredLibrary(mode?: string): Plugin {
         async resolveId(source, importer, options) {
             const namespace = GENERATED_MODULE_PATTERN.exec(source)?.[1];
             if (namespace === undefined) return;
-
             const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
             if (resolved !== null) return;
-
             throw undeclaredLibraryError(source, namespace, await girSearchPaths(state));
         },
     };
 }
+
+export { gtkxUndeclaredLibrary };

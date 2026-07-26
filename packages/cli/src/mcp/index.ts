@@ -11,20 +11,18 @@ const connectQuietly = async (client: McpClient): Promise<boolean> => {
     }
 };
 
-export const startMcpClient = async (applicationId: string): Promise<McpClient> => {
+const startMcpClient = async (applicationId: string): Promise<McpClient> => {
     if (globalClient) {
         return globalClient;
     }
 
     const client = new McpClient({ applicationId });
     globalClient = client;
-
     await connectQuietly(client);
-
     return client;
 };
 
-export const stopMcpClient = (): void => {
+const stopMcpClient = (): void => {
     if (!globalClient) {
         return;
     }
@@ -32,3 +30,5 @@ export const stopMcpClient = (): void => {
     globalClient.disconnect();
     globalClient = null;
 };
+
+export { startMcpClient, stopMcpClient };

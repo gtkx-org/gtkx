@@ -10,14 +10,16 @@ const emitOnAll = async <T extends Gtk.EventController>(controllers: T[], emit: 
     }
 };
 
-export const dispatchOnOrCreateControllers = <T extends Gtk.EventController>(
+const dispatchOnOrCreateControllers = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
     emit: ControllerEmit<T>,
 ): Promise<void> => wrapEvent(widget, () => emitOnAll(getOrCreateControllers(widget, controllerType), emit));
 
-export const dispatchOnControllers = <T extends Gtk.EventController>(
+const dispatchOnControllers = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
     emit: ControllerEmit<T>,
 ): Promise<void> => wrapEvent(widget, () => emitOnAll(getAllControllers(widget, controllerType), emit));
+
+export { dispatchOnOrCreateControllers, dispatchOnControllers };

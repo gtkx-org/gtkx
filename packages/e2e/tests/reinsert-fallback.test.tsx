@@ -7,6 +7,7 @@ import { renderChildren } from "./helpers/render-children.js";
 
 function* walk(widget: Gtk.Widget): IterableIterator<Gtk.Widget> {
     let child = widget.getFirstChild();
+
     while (child) {
         yield child;
         yield* walk(child);
@@ -16,9 +17,11 @@ function* walk(widget: Gtk.Widget): IterableIterator<Gtk.Widget> {
 
 const rowTitles = (group: Adw.PreferencesGroup): string[] => {
     const titles: string[] = [];
+
     for (const widget of walk(group)) {
         if (widget instanceof Adw.PreferencesRow) titles.push(widget.getTitle());
     }
+
     return titles;
 };
 

@@ -38,7 +38,6 @@ import { type CreateOptions, scaffold } from "../src/scaffolder.js";
 const addDependencyMock = vi.mocked(addDependency);
 const detectMock = vi.mocked(detectPackageManager);
 const xMock = vi.mocked(x);
-
 const TEST_DIR = "/test-workspace";
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
 const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
@@ -46,10 +45,10 @@ const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { ver
 type ScaffoldedManifest = { name?: string; scripts: Record<string, string | undefined> };
 
 const readJson = (path: string): ScaffoldedManifest => JSON.parse(read(path)) as ScaffoldedManifest;
-
 const pin = (name: string): string => (name.startsWith("@gtkx/") ? `${name}@^${SELF_VERSION}` : name);
 
 vi.spyOn(process, "cwd").mockReturnValue(TEST_DIR);
+
 const exitSpy = vi
     .spyOn(process, "exit")
     .mockImplementation((() => {}) as (code?: string | number | null) => never);
@@ -59,6 +58,7 @@ const templateFiles: Record<string, string> = {};
 beforeAll(async () => {
     const realFs = await vi.importActual<typeof import("node:fs")>("node:fs");
     const entries = realFs.readdirSync(TEMPLATES_DIR, { recursive: true, withFileTypes: true });
+
     for (const entry of entries) {
         if (!entry.isFile()) continue;
         const absolute = join(entry.parentPath, entry.name);
@@ -90,15 +90,12 @@ const defaultOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions =
 });
 
 const run = (overrides: Partial<CreateOptions> = {}): Promise<void> => scaffold(defaultOptions(overrides));
-
 const read = (path: string): string => vol.readFileSync(path, "utf8") as string;
-
 const lastNote = (): string => String(clack.note.mock.calls.at(-1)?.[0] ?? "");
 
 describe("scaffold (directory structure)", () => {
     it("creates the src and tests directories when includeTesting=true", async () => {
         await run({ includeTesting: true });
-
         expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/src`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/tests`)).toBe(true);
@@ -113,7 +110,6 @@ describe("scaffold (directory structure)", () => {
 describe("scaffold (top-level generated files)", () => {
     it("writes package.json with the project name", async () => {
         await run({ includeTesting: true });
-
         const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.name).toBe("test-app");
         expect(content.scripts.test).toContain("vitest");
@@ -121,14 +117,12 @@ describe("scaffold (top-level generated files)", () => {
 
     it("omits the test script from package.json when includeTesting=false", async () => {
         await run({ includeTesting: false });
-
         const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.scripts.test).toBeUndefined();
     });
 
     it("writes gtkx.config.ts with the default libraries", async () => {
         await run();
-
         const content = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
         expect(content).toContain('import { defineConfig } from "@gtkx/config"');
         expect(content).toContain('libraries: ["Gtk-4.0"]');
@@ -136,7 +130,6 @@ describe("scaffold (top-level generated files)", () => {
 
     it("writes .gitignore with node_modules and dist", async () => {
         await run();
-
         const content = read(`${TEST_DIR}/test-app/.gitignore`);
         expect(content).toContain("node_modules/");
         expect(content).toContain("dist/");
@@ -146,17 +139,14 @@ describe("scaffold (top-level generated files)", () => {
 describe("scaffold (src/* generated files)", () => {
     it("derives the app title from the project name", async () => {
         await run({ name: "my-cool-app" });
-
         const content = read(`${TEST_DIR}/my-cool-app/src/app.tsx`);
         expect(content).toContain('title="My Cool App"');
     });
 
     it("declares the application id in gtkx.config.ts and lets the application default to it", async () => {
         await run();
-
         const config = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
         expect(config).toContain('applicationId: "org.test.app"');
-
         const app = read(`${TEST_DIR}/test-app/src/app.tsx`);
         expect(app).toContain("<GtkApplication>");
         expect(app).not.toContain('import { applicationId } from "virtual:gtkx-config";');
@@ -174,14 +164,12 @@ describe("scaffold (src/* generated files)", () => {
 
     it("references the generated schema declarations from gtkx-env.d.ts", async () => {
         await run();
-
         const content = read(`${TEST_DIR}/test-app/src/gtkx-env.d.ts`);
         expect(content).toContain('/// <reference path="../node_modules/.gtkx/env.d.ts" />');
     });
 
     it("writes the initial empty schema declaration file after install", async () => {
         await run();
-
         const content = read(`${TEST_DIR}/test-app/node_modules/.gtkx/env.d.ts`);
         expect(content).toContain("Generated by `gtkx codegen`, `gtkx dev`, and `gtkx build`; do not edit.");
         expect(content).not.toContain("declare module");
@@ -191,20 +179,17 @@ describe("scaffold (src/* generated files)", () => {
 describe("scaffold (JavaScript variant)", () => {
     it("emits .jsx sources and a .js config instead of the TypeScript files", async () => {
         await run({ typescript: false, includeTesting: true });
-
         expect(vol.existsSync(`${TEST_DIR}/test-app/src/app.jsx`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/src/index.jsx`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/gtkx.config.js`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.js`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/tests/app.test.jsx`)).toBe(true);
-
         expect(vol.existsSync(`${TEST_DIR}/test-app/src/app.tsx`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/gtkx.config.ts`)).toBe(false);
     });
 
     it("omits the TypeScript-only files", async () => {
         await run({ typescript: false });
-
         expect(vol.existsSync(`${TEST_DIR}/test-app/tsconfig.json`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/src/gtkx-env.d.ts`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/node_modules/.gtkx/env.d.ts`)).toBe(false);
@@ -212,20 +197,17 @@ describe("scaffold (JavaScript variant)", () => {
 
     it("wires the entry import to the .jsx source", async () => {
         await run({ typescript: false });
-
         expect(read(`${TEST_DIR}/test-app/src/index.jsx`)).toContain('from "./app.jsx"');
     });
 
     it("omits the typecheck script from package.json", async () => {
         await run({ typescript: false });
-
         const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.scripts.typecheck).toBeUndefined();
     });
 
     it("drops typescript and @types/react from the installed dev dependencies", async () => {
         await run({ typescript: false, includeTesting: true });
-
         const devCall = addDependencyMock.mock.calls[1];
         expect(devCall?.[0]).toEqual([pin("@gtkx/cli"), pin("@gtkx/config"), "vite", pin("@gtkx/testing"), "vitest"]);
     });
@@ -234,17 +216,19 @@ describe("scaffold (JavaScript variant)", () => {
 describe("scaffold (dependency installation)", () => {
     it("invokes install twice: pinned production deps then dev deps with silent flag", async () => {
         await run({ includeTesting: true });
-
         expect(addDependencyMock).toHaveBeenCalledTimes(2);
         const [prodCall, devCall] = addDependencyMock.mock.calls;
         expect(prodCall?.[0]).toEqual([pin("@gtkx/css"), pin("@gtkx/runtime"), pin("@gtkx/react"), "react"]);
+
         expect(prodCall?.[1]).toEqual({
             cwd: `${TEST_DIR}/test-app`,
             packageManager: "pnpm",
             dev: false,
             silent: true,
         });
+
         expect(devCall?.[1]).toMatchObject({ dev: true, silent: true });
+
         expect(devCall?.[0]).toEqual([
             pin("@gtkx/cli"),
             pin("@gtkx/config"),
@@ -265,16 +249,13 @@ describe("scaffold (dependency installation)", () => {
 
     it("forwards the chosen package manager", async () => {
         await run({ packageManager: "npm" });
-
         expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "npm" });
         expect(addDependencyMock.mock.calls[1]?.[1]).toMatchObject({ packageManager: "npm" });
     });
 
     it("aborts with a non-zero exit and a manual install command when installation fails", async () => {
         addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
-
         await run({ packageManager: "npm" });
-
         expect(clack.log.error.mock.calls.some(([m]) => String(m).includes("install failed"))).toBe(true);
         expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("cd test-app"))).toBe(true);
         expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("npm install"))).toBe(true);
@@ -285,21 +266,21 @@ describe("scaffold (dependency installation)", () => {
 describe("scaffold (git initialization)", () => {
     it("runs git init, add -A, and commit in the scaffolded project", async () => {
         await run();
-
         expect(xMock).toHaveBeenCalledTimes(3);
+
         expect(xMock).toHaveBeenNthCalledWith(
             1,
             "git",
             ["init"],
             expect.objectContaining({ nodeOptions: { cwd: `${TEST_DIR}/test-app` } }),
         );
+
         expect(xMock).toHaveBeenNthCalledWith(2, "git", ["add", "-A"], expect.anything());
         expect(xMock).toHaveBeenNthCalledWith(3, "git", ["commit", "-m", "Initial commit"], expect.anything());
     });
 
     it("swallows git initialization errors", async () => {
         xMock.mockRejectedValueOnce(new Error("git failed"));
-
         await expect(run()).resolves.toBeUndefined();
         expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(true);
     });
@@ -308,7 +289,6 @@ describe("scaffold (git initialization)", () => {
 describe("scaffold (next steps)", () => {
     it("prints the package-manager-specific dev command and the compositor note for vitest", async () => {
         await run({ packageManager: "npm", includeTesting: true });
-
         const note = lastNote();
         expect(note).toContain("cd test-app");
         expect(note).toContain("npm run dev");
@@ -341,6 +321,7 @@ const partialOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions =
 const captureInitialValue = async (detectedName: string | undefined): Promise<unknown> => {
     detectMock.mockResolvedValueOnce(detectedName === undefined ? undefined : ({ name: detectedName } as never));
     let initialValue: unknown;
+
     clack.select.mockImplementationOnce(async (opts) => {
         initialValue = opts.initialValue;
         return opts.initialValue;
@@ -354,9 +335,7 @@ describe("scaffold (prompting)", () => {
     it("cancels the operation and exits when the user cancels a prompt", async () => {
         clack.text.mockResolvedValueOnce("__CANCEL__");
         clack.isCancel.mockImplementationOnce((value) => value === "__CANCEL__");
-
         await scaffold(partialOptions({ packageManager: "pnpm" }));
-
         expect(clack.cancel).toHaveBeenCalledWith("Operation canceled");
         expect(exitSpy).toHaveBeenCalledWith(0);
     });
@@ -442,9 +421,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
         vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
         vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
         vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
-
         await run({ overwrite: true });
-
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
@@ -452,14 +429,11 @@ describe("scaffold (non-interactive and overwrite)", () => {
 
     it("resolves defaults from a partial non-TTY invocation without prompting", async () => {
         await scaffold({ name: "test-app", interactive: false });
-
         expect(clack.text).not.toHaveBeenCalled();
         expect(clack.select).not.toHaveBeenCalled();
         expect(clack.confirm).not.toHaveBeenCalled();
-
         const config = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
         expect(config).toContain('applicationId: "com.testapp.app"');
-
         const pkg = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(pkg.scripts.test).toContain("vitest");
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
@@ -469,9 +443,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
     it("empties an existing directory when --overwrite is set", async () => {
         vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
         vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
-
         await run({ overwrite: true });
-
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
     });

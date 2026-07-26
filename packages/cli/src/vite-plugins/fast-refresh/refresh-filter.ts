@@ -1,13 +1,10 @@
-export const REFRESH_REG = "$RefreshReg$";
-
-export const REFRESH_SIG = "$RefreshSig$";
-
-export const REFRESH_RUNTIME_SPECIFIER = "@gtkx/cli/refresh-runtime";
-
+const REFRESH_REG = "$RefreshReg$";
+const REFRESH_SIG = "$RefreshSig$";
+const REFRESH_RUNTIME_SPECIFIER = "@gtkx/cli/refresh-runtime";
 const REFRESH_INCLUDE = /\.[tj]sx?$/;
 const REFRESH_EXCLUDE = /node_modules|[/\\]dist[/\\]|[/\\]\.gtkx[/\\]/;
 
-export const shouldTransformForRefresh = (
+const shouldTransformForRefresh = (
     id: string,
     transformOptions: { ssr?: boolean | undefined } | undefined,
 ): boolean => {
@@ -16,3 +13,5 @@ export const shouldTransformForRefresh = (
     if (REFRESH_EXCLUDE.test(id)) return false;
     return true;
 };
+
+export { REFRESH_REG, REFRESH_SIG, REFRESH_RUNTIME_SPECIFIER, shouldTransformForRefresh };

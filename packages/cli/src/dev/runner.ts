@@ -4,11 +4,7 @@ import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js"
 import { RESTART_EXIT_CODE } from "./supervisor.js";
 import { createDevServerConfig, type DevServer } from "./vite-dev-server.js";
 
-export type { DevServer } from "./vite-dev-server.js";
-
-const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
-
-export type DevRunnerDeps = {
+type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<DevServer>;
     waitForApplicationId(timeoutMs: number): Promise<string | null>;
     getConfiguredApplicationId(root: string): Promise<string | undefined>;
@@ -36,6 +32,8 @@ type ShutdownController = {
     shutdown: (quitApplication: () => void) => Promise<void>;
 };
 
+const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
+
 const requestRestart = async (server: DevServer, deps: DevRunnerDeps): Promise<never> => {
     deps.log("Full restart (process restart)");
     await server.close();
@@ -45,21 +43,22 @@ const requestRestart = async (server: DevServer, deps: DevRunnerDeps): Promise<n
 const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedPath: string): Promise<void> => {
     const module = server.moduleGraph.getModuleById(changedPath);
     if (!module) return;
-
     deps.log(`File changed: ${changedPath}`);
-
     const loadedExports = module.ssrModule;
+
     if (loadedExports && !deps.isRefreshBoundary(loadedExports)) {
         await requestRestart(server, deps);
         return;
     }
 
     server.moduleGraph.invalidateModule(module);
+
     for (const importer of module.importers) {
         server.moduleGraph.invalidateModule(importer);
     }
 
     const newMod = await server.ssrLoadModule(changedPath);
+
     if (deps.isRefreshBoundary(newMod)) {
         deps.log("Running Fast Refresh...");
         deps.performRefresh();
@@ -123,35 +122,33 @@ const onApplicationShutdown =
     (deps: DevRunnerDeps, refreshTracker: RefreshTracker, controller: ShutdownController): (() => void) =>
         () => {
             if (controller.isShuttingDown()) return;
+
             if (refreshTracker.isRefreshing()) {
                 deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
                 return deps.exit(RESTART_EXIT_CODE);
             }
+
             deps.log("Application quit - stopping dev runner...");
             void closeAndExit(deps, controller);
         };
 
-export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
+const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
     async run(entryPath: string): Promise<void> {
         const root = process.cwd();
         const server = await deps.createServer(createDevServerConfig(root, deps.plugins()));
-
         const refreshTracker = createRefreshTracker(deps.performRefresh);
         const refreshTrackingDeps: DevRunnerDeps = { ...deps, performRefresh: refreshTracker.performRefresh };
         const controller = createShutdownController(server, deps);
-
         deps.installShutdownHandlers(onShutdownSignal(deps, controller));
         server.watcher.on("change", onFileChange(server, refreshTrackingDeps, controller));
-
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
-
         // React 19 mounts the application asynchronously, so poll for it rather than
         // reading a single snapshot immediately after loading the entry.
         const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS);
+
         if (liveApplicationId) {
             deps.watchApplicationShutdown(onApplicationShutdown(deps, refreshTracker, controller));
-
             const applicationId = (await deps.getConfiguredApplicationId(root)) ?? liveApplicationId;
             deps.log(`Connected application ID: ${applicationId}`);
             await deps.startMcpClient(applicationId, (id) => server.ssrLoadModule(id));
@@ -162,3 +159,6 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         deps.log("HMR enabled - watching for changes...");
     },
 });
+
+export type { DevServer } from "./vite-dev-server.js";
+export { createDevRunner, type DevRunnerDeps };

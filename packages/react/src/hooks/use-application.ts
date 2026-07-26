@@ -1,12 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type Context, createContext, use } from "react";
 
-export const ApplicationContext: Context<Gtk.Application | null> = createContext<Gtk.Application | null>(null);
+const ApplicationContext: Context<Gtk.Application | null> = createContext<Gtk.Application | null>(null);
 
 /**
  * Returns the `Gtk.Application` provided by the nearest `GtkApplication` ancestor, throwing if used outside one.
  */
-export const useApplication = (): Gtk.Application => {
+const useApplication = (): Gtk.Application => {
     const context = use(ApplicationContext);
 
     if (!context) {
@@ -15,3 +15,5 @@ export const useApplication = (): Gtk.Application => {
 
     return context;
 };
+
+export { ApplicationContext, useApplication };

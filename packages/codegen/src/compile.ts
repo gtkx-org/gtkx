@@ -4,20 +4,22 @@ import { createRequire } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const require = createRequire(import.meta.url);
-
-export type SourceModule = {
+type SourceModule = {
     fileName: string;
     source: string;
 };
 
-export type CompileProjectParams = {
+type CompileProjectParams = {
     projectDir: string;
     fileNames: string[];
     compilerOptions: Record<string, unknown>;
     label: string;
     paths?: Record<string, string[]>;
 };
+
+type ProjectDiagnostic = { file: string; line: string; column: string; code: string; message: string };
+
+const require = createRequire(import.meta.url);
 
 const BASE_COMPILER_OPTIONS = {
     module: "esnext",
@@ -37,6 +39,14 @@ const BASE_COMPILER_OPTIONS = {
     resolveJsonModule: true,
     skipLibCheck: true,
     types: ["node"],
+};
+
+const DIAGNOSTIC_LINE = /^(.+?)\((\d+),(\d+)\): error TS(\d+): (.*)$/;
+
+const CHECK_OPTIONS = {
+    declaration: true,
+    isolatedDeclarations: true,
+    noEmit: true,
 };
 
 /** `@gtkx/codegen`'s own `node_modules`, which has `@types/node` plus the `@gtkx/*` deps the store typecheck needs. */
@@ -62,6 +72,7 @@ const runTsc = (tsconfigPath: string, cwd: string): { code: number; output: stri
             stdio: ["ignore", "pipe", "pipe"],
             maxBuffer: 64 * 1024 * 1024,
         });
+
         return { code: 0, output: "" };
     } catch (error) {
         const {
@@ -69,13 +80,10 @@ const runTsc = (tsconfigPath: string, cwd: string): { code: number; output: stri
             stdout = "",
             stderr = "",
         } = error as { status?: number | null; stdout?: string; stderr?: string };
+
         return { code: typeof status === "number" ? status : 1, output: `${stdout}\n${stderr}` };
     }
 };
-
-const DIAGNOSTIC_LINE = /^(.+?)\((\d+),(\d+)\): error TS(\d+): (.*)$/;
-
-type ProjectDiagnostic = { file: string; line: string; column: string; code: string; message: string };
 
 const isProjectFile = (rel: string): boolean =>
     !rel.startsWith("..") && !isAbsolute(rel) && !rel.split(/[/\\]/).includes("node_modules");
@@ -92,10 +100,12 @@ const parseDiagnosticLine = (raw: string, projectDir: string): ProjectDiagnostic
 
 const parseDiagnostics = (output: string, projectDir: string): ProjectDiagnostic[] => {
     const diagnostics: ProjectDiagnostic[] = [];
+
     for (const raw of output.split(/\r?\n/)) {
         const diagnostic = parseDiagnosticLine(raw, projectDir);
         if (diagnostic !== undefined) diagnostics.push(diagnostic);
     }
+
     return diagnostics;
 };
 
@@ -104,12 +114,14 @@ const formatDiagnostics = (label: string, projectDir: string, diagnostics: Proje
         (diagnostic) =>
             `${relative(projectDir, diagnostic.file)}:${diagnostic.line}:${diagnostic.column} - ${diagnostic.message} (TS${diagnostic.code})`,
     );
+
     return `Type checking ${label} found ${diagnostics.length} error(s):\n${messages.join("\n")}`;
 };
 
-export const compileProject = (params: CompileProjectParams): void => {
+const compileProject = (params: CompileProjectParams): void => {
     const tsconfigPath = join(params.projectDir, "tsconfig.json");
     const unlinkToolingModules = linkToolingModules(params.projectDir);
+
     try {
         writeFileSync(
             tsconfigPath,
@@ -122,11 +134,14 @@ export const compileProject = (params: CompileProjectParams): void => {
                 files: params.fileNames.map((name) => `./${name}`),
             }),
         );
+
         const { code, output } = runTsc(tsconfigPath, params.projectDir);
         const diagnostics = parseDiagnostics(output, params.projectDir);
+
         if (diagnostics.length > 0) {
             throw new Error(formatDiagnostics(params.label, params.projectDir, diagnostics));
         }
+
         if (code !== 0) {
             throw new Error(`Type checking ${params.label} failed:\n${output.trim()}`);
         }
@@ -136,22 +151,18 @@ export const compileProject = (params: CompileProjectParams): void => {
     }
 };
 
-const CHECK_OPTIONS = {
-    declaration: true,
-    isolatedDeclarations: true,
-    noEmit: true,
-};
-
-export const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; label: string }): void => {
+const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; label: string }): void => {
     const checkRoot = join(params.resolveFrom, "node_modules");
     mkdirSync(checkRoot, { recursive: true });
     const projectDir = mkdtempSync(join(checkRoot, ".gtkx-check-"));
+
     try {
         for (const module of params.modules) {
             const filePath = join(projectDir, module.fileName);
             mkdirSync(dirname(filePath), { recursive: true });
             writeFileSync(filePath, module.source);
         }
+
         compileProject({
             projectDir,
             fileNames: params.modules.map((module) => module.fileName),
@@ -162,3 +173,5 @@ export const checkModules = (params: { modules: SourceModule[]; resolveFrom: str
         rmSync(projectDir, { recursive: true, force: true });
     }
 };
+
+export { compileProject, checkModules, type SourceModule, type CompileProjectParams };

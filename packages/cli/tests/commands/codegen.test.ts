@@ -47,7 +47,6 @@ describe("codegen command (default — conditional)", () => {
 
     it("delegates to ensureGenerated and reports a regeneration", async () => {
         await run({ cwd: "/custom/dir" });
-
         expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(runCodegenMock).not.toHaveBeenCalled();
         expect(collectLogged(state.stderrSpy)).toContain("regenerated stale bindings");
@@ -55,17 +54,13 @@ describe("codegen command (default — conditional)", () => {
 
     it("reports up to date when nothing was regenerated", async () => {
         ensureGeneratedMock.mockResolvedValueOnce(false);
-
         await run({});
-
         expect(collectLogged(state.stderrSpy)).toContain("bindings up to date");
     });
 
     it("cleans up and reports a shared store when codegen is disabled", async () => {
         isCodegenDisabledMock.mockResolvedValueOnce(true);
-
         await run({ force: true, cwd: "/custom/dir" });
-
         const options = firstRunCodegenOptions();
         expect(options.cwd).toContain("custom/dir");
         expect(omit(options, ["cwd"])).toEqual({});
@@ -79,13 +74,11 @@ describe("codegen command (--force)", () => {
 
     it("wipes and regenerates, reporting config, libraries, gir path, and totals", async () => {
         await run({ force: true, cwd: "/custom/dir" });
-
         const options = firstRunCodegenOptions();
         expect(options.cwd).toContain("custom/dir");
         expect(omit(options, ["cwd"])).toEqual({ force: true });
         expect(syncSchemaEnvMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(ensureGeneratedMock).not.toHaveBeenCalled();
-
         const logged = collectLogged(state.stderrSpy);
         expect(logged).toContain("config=/project/gtkx.config.ts");
         expect(logged).toContain("libraries=Gtk-4.0, Adw-1");
@@ -101,7 +94,6 @@ describe("codegen command (--force)", () => {
         } as never);
 
         await run({ force: true });
-
         const logged = collectLogged(state.stderrSpy);
         expect(logged).not.toContain("config=");
         expect(logged).not.toContain("libraries=");

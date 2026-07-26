@@ -30,7 +30,6 @@ describe("byText", () => {
 
     it("matches a button's text through its internal label", async () => {
         await render(<GtkButton label="Increment" />);
-
         const label = await screen.findByText("Increment");
         expect(label).toBeInstanceOf(Gtk.Label);
         expect(label).not.toBeInstanceOf(Gtk.Button);
@@ -41,18 +40,14 @@ describe("userEvent.click upward resolution", () => {
     it("clicking a button's internal label activates the button", async () => {
         const onClicked = vi.fn();
         await render(<GtkButton label="Save" onClicked={onClicked} />);
-
         await userEvent.click(await screen.findByText("Save"));
-
         expect(onClicked).toHaveBeenCalledTimes(1);
     });
 
     it("clicking a button found by role and name activates it", async () => {
         const onClicked = vi.fn();
         await render(<GtkButton label="Save" onClicked={onClicked} />);
-
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }));
-
         expect(onClicked).toHaveBeenCalledTimes(1);
     });
 });

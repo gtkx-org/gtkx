@@ -10,7 +10,7 @@ import { useObjectValue } from "./use-object-value.js";
 
 type UseSettingsProps<K extends SettingsSchemaKeys> = Pick<SettingsSchema<K>, "id" | "path">;
 
-export const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSettingsProps<K>): Gio.Settings =>
+const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSettingsProps<K>): Gio.Settings =>
     useMemo(() => (path ? new Gio.Settings({ schema: id, path }) : Gio.Settings.new(id)), [id, path]);
 
 /**
@@ -20,7 +20,7 @@ export const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSetti
  * @param key The key within the schema to read and write.
  * @returns A tuple of the current value and a setter that persists a new value.
  */
-export function useSetting<K extends SettingsSchemaKeys, P extends keyof K>(
+function useSetting<K extends SettingsSchemaKeys, P extends keyof K>(
     schema: SettingsSchema<K>,
     key: P & string,
 ): [SettingValue<K, P>, (value: SettingValue<K, P>) => void] {
@@ -29,3 +29,5 @@ export function useSetting<K extends SettingsSchemaKeys, P extends keyof K>(
     const value = useObjectValue(settings, `changed::${key}`, () => accessor.get());
     return [value, accessor.set];
 }
+
+export { useSettings, useSetting };

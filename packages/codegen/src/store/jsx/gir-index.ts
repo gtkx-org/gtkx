@@ -4,13 +4,13 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import { ancestorChain } from "../../gir/ancestry.js";
 import { glibNameOf, implementedInterfaces } from "./intrinsic-elements.js";
 
-export type GirTypeEntry = {
+type GirTypeEntry = {
     klass: GirClass;
     namespace: GirNamespace;
     isInterface: boolean;
 };
 
-export type GirIndex = {
+type GirIndex = {
     library: Library;
     index: Map<string, GirTypeEntry>;
 };
@@ -23,25 +23,30 @@ const indexClasses = (
 ): void => {
     for (const klass of classes) {
         const glibName = glibNameOf(klass);
+
         if (glibName !== undefined && !index.has(glibName)) {
             index.set(glibName, { klass, namespace, isInterface });
         }
     }
 };
 
-export const buildGirIndex = (library: Library): GirIndex => {
+const buildGirIndex = (library: Library): GirIndex => {
     const index: Map<string, GirTypeEntry> = new Map();
+
     for (const namespace of library.namespaces.values()) {
         indexClasses(index, namespace.classes, namespace, false);
         indexClasses(index, namespace.interfaces, namespace, true);
     }
+
     return { library, index };
 };
 
-export const chainOf = (context: GirIndex, entry: GirTypeEntry): GirClass[] => {
+const chainOf = (context: GirIndex, entry: GirTypeEntry): GirClass[] => {
     if (entry.isInterface) return [entry.klass];
     const chain: GirClass[] = [];
     for (const { klass } of ancestorChain(context.library, entry.klass, entry.namespace.name)) chain.push(klass);
     for (const iface of implementedInterfaces(entry.klass, entry.namespace, context.library)) chain.push(iface.klass);
     return chain;
 };
+
+export { buildGirIndex, chainOf, type GirTypeEntry, type GirIndex };

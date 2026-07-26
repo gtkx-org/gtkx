@@ -2,10 +2,15 @@ import { sourceStringLiteral } from "@gtkx/utils";
 import type { ModuleContext } from "../../writer/context.js";
 import { PRIMITIVE_TS_TYPE } from "../../gir/primitives.js";
 
-export const gtypeTsType = (context: ModuleContext): string =>
+type TypeSource = {
+    glibGetType: string | undefined;
+    glibTypeName: string | undefined;
+};
+
+const gtypeTsType = (context: ModuleContext): string =>
     context.namespace.name === "GObject" ? "Type" : PRIMITIVE_TS_TYPE.gtype;
 
-export const gtypeMemberDeclaration = (context: ModuleContext): string => `declare _type_: ${gtypeTsType(context)};`;
+const gtypeMemberDeclaration = (context: ModuleContext): string => `declare _type_: ${gtypeTsType(context)};`;
 
 const renderInternGtype = (context: ModuleContext, typeName: string | undefined): string | undefined => {
     if (typeName === undefined) return undefined;
@@ -26,12 +31,9 @@ const renderGtypeExpression = (
 ): string | undefined =>
     typeFnName === "intern" ? renderInternGtype(context, typeName) : renderResolveGtype(context, typeFnName);
 
-type TypeSource = {
-    glibGetType: string | undefined;
-    glibTypeName: string | undefined;
-};
-
-export const gtypeExprFor = (context: ModuleContext, source: TypeSource): string | undefined =>
+const gtypeExprFor = (context: ModuleContext, source: TypeSource): string | undefined =>
     source.glibGetType === undefined
         ? undefined
         : renderGtypeExpression(context, source.glibGetType, source.glibTypeName);
+
+export { gtypeTsType, gtypeMemberDeclaration, gtypeExprFor };

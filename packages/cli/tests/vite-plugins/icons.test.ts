@@ -49,9 +49,7 @@ describe("gtkxIcons", () => {
         writeIcon();
         const plugin = configuredPlugin();
         const emitFile = vi.fn();
-
         (plugin.buildEnd as BuildEndHook).call({ emitFile });
-
         expect(emitFile).toHaveBeenCalledTimes(1);
         const asset = emitFile.mock.calls[0]?.[0] as { type: string; fileName: string; source: Buffer };
         expect(asset.type).toBe("asset");
@@ -63,9 +61,7 @@ describe("gtkxIcons", () => {
         writeManifest();
         const plugin = configuredPlugin();
         const emitFile = vi.fn();
-
         (plugin.buildEnd as BuildEndHook).call({ emitFile });
-
         expect(emitFile).not.toHaveBeenCalled();
     });
 
@@ -73,9 +69,7 @@ describe("gtkxIcons", () => {
         writeManifest();
         writeIcon();
         const plugin = configuredPlugin();
-
         const result = callOutputOptions(plugin, {});
-
         expect(result?.banner).toContain("XDG_DATA_DIRS");
         expect(result?.banner).toContain("import.meta.url");
     });
@@ -84,9 +78,7 @@ describe("gtkxIcons", () => {
         writeManifest();
         writeIcon();
         const plugin = configuredPlugin();
-
         const result = callOutputOptions(plugin, { banner: "existing;" });
-
         expect(result?.banner).toContain("XDG_DATA_DIRS");
         expect(result?.banner).toContain("existing;");
     });
@@ -106,7 +98,6 @@ describe("gtkxIcons", () => {
     it("leaves output options untouched without icons", () => {
         writeManifest();
         const plugin = configuredPlugin();
-
         expect(callOutputOptions(plugin, {})).toBeUndefined();
     });
 });

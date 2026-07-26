@@ -25,6 +25,7 @@ describe("renderConfigModule", () => {
             applicationId: "org.gtk.Test",
             userEventSignals: { MyWidget: ["changed"] },
         });
+
         const source = renderConfigModule(resolved);
         expect(source).toContain(`export const userEventSignals = ${JSON.stringify(resolved.userEventSignals)};`);
     });
@@ -39,6 +40,7 @@ describe("renderConfigModule", () => {
             { applicationId: "org.gtk.Test", elements: { behaviors: "./src/elements.ts" } },
             "/project",
         );
+
         const source = renderConfigModule(resolved);
         expect(source.split("\n")).toContain('import { mergeElementConfigs } from "@gtkx/react/config";');
         expect(source.split("\n")).toContain('import __elementBehaviors from "/project/src/elements.ts";');
@@ -50,6 +52,7 @@ describe("renderConfigModule", () => {
             applicationId: "org.gtk.Test",
             elements: { config: { GtkFoo: { lazy: true } } },
         });
+
         const source = renderConfigModule(resolved);
         expect(source.split("\n")).toContain('export const elements = {"GtkFoo":{"lazy":true}};');
     });
@@ -57,6 +60,7 @@ describe("renderConfigModule", () => {
     it("exports the metadata re-export, application id, signals, and elements", () => {
         const resolved = resolveConfig({ applicationId: "org.gtk.Test", girPath: ["/opt/gir"] });
         const source = renderConfigModule(resolved);
+
         expect(source.split("\n")).toEqual([
             'export * from "@gtkx/jsx/metadata";',
             'export const applicationId = "org.gtk.Test";',

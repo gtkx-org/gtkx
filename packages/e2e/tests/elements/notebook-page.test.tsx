@@ -24,15 +24,12 @@ const renderPage = async (pageProps: { tabLabel: string; tabExpand?: boolean; ta
 describe("render - NotebookPage (1)", () => {
     it("adds page to Notebook", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
-
         await renderChildren(["Page 1"], buildPlainNotebook(notebookRef));
-
         expect(notebookRef.current?.getNPages()).toBe(1);
     });
 
     it("sets page tab label", async () => {
         const page = await renderPage({ tabLabel: "My Tab" });
-
         expect(page?.tabLabel).toBe("My Tab");
     });
 });
@@ -55,7 +52,6 @@ describe("render - NotebookPage (2)", () => {
         await render(<App labelText="Initial" />);
         let page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(page?.tabLabel).toBe("Initial");
-
         await render(<App labelText="Updated" />);
         page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(page?.tabLabel).toBe("Updated");
@@ -63,18 +59,14 @@ describe("render - NotebookPage (2)", () => {
 
     it("adds multiple pages", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
-
         await renderChildren(["Page 1", "Page 2", "Page 3"], buildPlainNotebook(notebookRef));
-
         expect(notebookRef.current?.getNPages()).toBe(3);
     });
 
     it("removes page from Notebook", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
-
         const { rerender } = await renderChildren(["A", "B", "C"], buildPlainNotebook(notebookRef));
         expect(notebookRef.current?.getNPages()).toBe(3);
-
         await rerender(["A", "C"]);
         expect(notebookRef.current?.getNPages()).toBe(2);
     });
@@ -83,10 +75,8 @@ describe("render - NotebookPage (2)", () => {
 describe("render - NotebookPage (3)", () => {
     it("handles page reordering", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
-
         const { rerender } = await renderChildren(["First", "Second", "Third"], buildPlainNotebook(notebookRef));
         await rerender(["Second", "First", "Third"]);
-
         expect(notebookRef.current?.getNPages()).toBe(3);
     });
 });
@@ -108,7 +98,6 @@ describe("render - NotebookPage (4)", () => {
 
         await render(<App showContent={false} />);
         expect(notebookRef.current?.getNPages()).toBe(0);
-
         await render(<App showContent={true} />);
         expect(notebookRef.current?.getNPages()).toBe(1);
         const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
@@ -119,7 +108,6 @@ describe("render - NotebookPage (4)", () => {
 describe("render - NotebookPage (5)", () => {
     it("applies tabExpand and tabFill page metadata", async () => {
         const page = await renderPage({ tabLabel: "Meta Tab", tabExpand: true, tabFill: false });
-
         expect(page?.tabExpand).toBe(true);
         expect(page?.tabFill).toBe(false);
     });

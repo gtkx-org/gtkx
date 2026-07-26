@@ -2,33 +2,41 @@ import type * as Gtk from "@gtkx/gi/gtk";
 
 const CLOCK_STALL_FALLBACK_MS = 500;
 
-export const scheduleAfterLayout = (widget: Gtk.Widget | null, callback: () => void): void => {
-    let done = false;
-    let removeTick: (() => void) | null = null;
-    let fallback: ReturnType<typeof setTimeout> | null = null;
+const once = (callback: () => void): (() => void) => {
+    let called = false;
 
-    const finish = (): void => {
-        if (done) return;
-        done = true;
-        if (fallback !== null) clearTimeout(fallback);
-        removeTick?.();
-        removeTick = null;
-        fallback = null;
+    return () => {
+        if (called) return;
+        called = true;
         callback();
     };
+};
+
+const runWhenSized = (widget: Gtk.Widget, finish: () => void): void => {
+    let tickId = 0;
+
+    const fallback = setTimeout(() => {
+        widget.removeTickCallback(tickId);
+        finish();
+    }, CLOCK_STALL_FALLBACK_MS);
+
+    tickId = widget.addTickCallback(() => {
+        if (widget.getWidth() === 0) return true;
+        clearTimeout(fallback);
+        finish();
+        return false;
+    });
+};
+
+const scheduleAfterLayout = (widget: Gtk.Widget | null, callback: () => void): void => {
+    const finish = once(callback);
 
     if (widget?.getFrameClock() == null || widget.getWidth() > 0) {
         queueMicrotask(finish);
         return;
     }
 
-    fallback = setTimeout(finish, CLOCK_STALL_FALLBACK_MS);
-
-    const tickId = widget.addTickCallback(() => {
-        if (widget.getWidth() === 0) return true;
-        finish();
-        return false;
-    });
-
-    removeTick = () => widget.removeTickCallback(tickId);
+    runWhenSized(widget, finish);
 };
+
+export { scheduleAfterLayout };

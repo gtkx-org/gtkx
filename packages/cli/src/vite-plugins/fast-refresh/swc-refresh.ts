@@ -28,7 +28,23 @@ const buildSwcOptions = (id: string): SwcOptions => {
 const buildRefreshResult = (result: Output): { code: string; map?: string } =>
     result.map === undefined ? { code: result.code } : { code: result.code, map: result.map };
 
-export function gtkxSwcRefresh(): Plugin {
+const injectRefreshRegistration = (
+    code: string,
+    id: string,
+    transformOptions: { ssr?: boolean | undefined } | undefined,
+): { code: string; map: null } | undefined => {
+    if (!shouldTransformForRefresh(id, transformOptions)) return;
+    if (!code.includes(REFRESH_REG) && !code.includes(REFRESH_SIG)) return;
+
+    const header = `
+import { createModuleRegistration as __createModuleRegistration__ } from "${REFRESH_RUNTIME_SPECIFIER}";
+const { ${REFRESH_REG}, ${REFRESH_SIG} } = __createModuleRegistration__(${JSON.stringify(id)});
+`;
+
+    return { code: header + code, map: null };
+};
+
+function gtkxSwcRefresh(): Plugin {
     return {
         name: "gtkx:swc-refresh",
         enforce: "pre",
@@ -40,13 +56,12 @@ export function gtkxSwcRefresh(): Plugin {
             }
 
             const result = await transform(code, buildSwcOptions(id));
-
             return buildRefreshResult(result);
         },
     };
 }
 
-export function gtkxRefreshRuntime(): Plugin {
+function gtkxRefreshRuntime(): Plugin {
     return {
         name: "gtkx:refresh-runtime",
         enforce: "post",
@@ -58,27 +73,11 @@ export function gtkxRefreshRuntime(): Plugin {
         },
 
         transform(code, id, transformOptions) {
-            if (!shouldTransformForRefresh(id, transformOptions)) {
-                return;
-            }
-
-            if (!code.includes(REFRESH_REG) && !code.includes(REFRESH_SIG)) {
-                return;
-            }
-
-            const moduleIdJson = JSON.stringify(id);
-
-            const header = `
-import { createModuleRegistration as __createModuleRegistration__ } from "${REFRESH_RUNTIME_SPECIFIER}";
-const { ${REFRESH_REG}, ${REFRESH_SIG} } = __createModuleRegistration__(${moduleIdJson});
-`;
-
-            return {
-                code: header + code,
-                map: null,
-            };
+            return injectRefreshRegistration(code, id, transformOptions);
         },
     };
 }
 
-export const gtkxFastRefresh = (): Plugin[] => [gtkxSwcRefresh(), gtkxRefreshRuntime()];
+const gtkxFastRefresh = (): Plugin[] => [gtkxSwcRefresh(), gtkxRefreshRuntime()];
+
+export { gtkxSwcRefresh, gtkxRefreshRuntime, gtkxFastRefresh };

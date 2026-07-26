@@ -1,6 +1,5 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-
 import { ROOT_DIR, runAsync, verifyBuiltAppStarts, withRegistry } from "./e2e-registry.js";
 
 const TUTORIAL_DIR = join(ROOT_DIR, "examples", "tutorial");
@@ -21,8 +20,10 @@ async function validateTutorial(env: NodeJS.ProcessEnv): Promise<void> {
 
 async function main(): Promise<void> {
     const passthrough = process.argv.slice(2);
+
     await withRegistry(async ({ env }) => {
         await installTutorial(env);
+
         if (passthrough.length > 0) {
             await runAsync("npm", passthrough, { cwd: TUTORIAL_DIR, env });
         } else {

@@ -24,7 +24,6 @@ import { giModules, library } from "../helpers/library.js";
 
 const GI_STORE_DIR = fileURLToPath(new URL("../../../../node_modules/.gtkx/gi", import.meta.url));
 const REACT_SUBEXPORTS = ["config", "adw", "adw/config", "internal"];
-
 /** The @gtkx/react element config, read from the linked package the same way codegen threads it into the pipeline. */
 const REACT_SURFACE = await readBuiltinElements(REACT_SUBEXPORTS, GI_STORE_DIR);
 
@@ -47,10 +46,12 @@ const visitTypeRef = (walker: UnresolvedWalker, ref: TypeId | undefined): void =
     if (walker.seen.has(key)) return;
     walker.seen.add(key);
     const type = walker.target.typeOf(ref);
+
     if (type === undefined) {
         recordUnresolved(walker, ref);
         return;
     }
+
     visitContainedRefs(walker, type);
 };
 
@@ -110,6 +111,7 @@ const collectUnresolvedTypeNames = (target: Library): string[] => {
 };
 
 const reactPipeline = generateJsxFiles(library, REACT_SURFACE);
+
 const sourceFor = (files: typeof reactPipeline, directory: string): string =>
     files.namespaces.find((entry) => entry.directory === directory)?.source ?? "";
 
@@ -129,6 +131,7 @@ describe("codegen gi pipeline", () => {
         for (const { directory } of giModules) {
             expect(directory).toMatch(/^[a-z0-9]+$/);
         }
+
         expect(giModules).toHaveLength(library.namespaces.size);
     });
 
@@ -172,9 +175,11 @@ describe("codegen return-value convention", () => {
 
     it("drops a skip-annotated return value from the surfaced result", () => {
         const source = giSource("glib");
+
         expect(source).toContain(
             "uriSplit(uriRef: string, flags: UriFlags): [string, string, string, number, string, string, string]",
         );
+
         expect(source).not.toContain("[boolean, string, string, string, number, string, string, string]");
     });
 });
@@ -184,29 +189,36 @@ const gioSource = (): string => giSource("gio");
 describe("codegen async promisification", () => {
     it("promisifies a module-level async function against its finish sibling", () => {
         const source = gioSource();
+
         expect(source).toContain(
             "export function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection> {",
         );
+
         expect(source).toContain("return promisify(gBusGet, busGetFinish, cancellable, busType);");
         expect(source).toContain("export function busGetFinish(res: AsyncResult): DBusConnection {");
     });
 
     it("promisifies a static async constructor against its static finish", () => {
         const source = gioSource();
+
         expect(source).toContain(
             "static new(stream: IOStream, guid: string | null, flags: DBusConnectionFlags, observer: DBusAuthObserver | null, cancellable?: Cancellable | null): Promise<DBusConnection> {",
         );
+
         expect(source).toContain(
             "return promisify(gDbusConnectionNew, this.newFinish.bind(this), cancellable, getHandle(stream), guid, flags, tryGetHandle(observer));",
         );
+
         expect(source).toContain("static newFinish(res: AsyncResult): DBusConnection {");
     });
 
     it("leaves a function callback-based when its finish needs more than the async result", () => {
         const source = giSource("gtk");
+
         expect(source).toContain(
             "export function showUriFull(parent: Window | null, uri: string, timestamp: number, cancellable: Gio.Cancellable | null, callback: Gio.AsyncReadyCallback | null): void {",
         );
+
         expect(source).not.toContain(
             "export function showUriFull(parent: Window | null, uri: string, timestamp: number, cancellable?: Gio.Cancellable | null): Promise",
         );
@@ -214,9 +226,11 @@ describe("codegen async promisification", () => {
 
     it("does not promisify a synchronous method that only carries a progress callback", () => {
         const source = gioSource();
+
         expect(source).toContain(
             "copy(destination: File, flags: FileCopyFlags, cancellable: Cancellable | null, progressCallback: FileProgressCallback | null): boolean;",
         );
+
         expect(source).not.toContain(
             "copy(destination: File, flags: FileCopyFlags, cancellable?: Cancellable | null): Promise",
         );
@@ -224,6 +238,7 @@ describe("codegen async promisification", () => {
 
     it("does not promisify a static async op that also takes a non-async callback", () => {
         const source = gioSource();
+
         expect(source).toContain(
             "static new(connection: DBusConnection, flags: DBusObjectManagerClientFlags, name: string, objectPath: string, getProxyTypeFunc: DBusProxyTypeFunc | null, cancellable: Cancellable | null, callback: AsyncReadyCallback | null): void {",
         );
@@ -239,15 +254,18 @@ describe("codegen async promisification", () => {
         const gio = namespaceNamed("Gio");
         const methods = gio?.interfaces.find((candidate) => candidate.name === "File")?.methods ?? [];
         const asyncFn = methods.find((method) => method.name === "replace_contents_bytes_async");
+
         const finishFn =
             asyncFn === undefined
                 ? undefined
                 : matchAsyncFinish(library, { ...asyncFn, finishFunc: "replace_contents_finish" }, methods);
+
         expect(finishFn?.name).toBe("replace_contents_finish");
     });
 
     it("pairs through an annotation that holds the finish C identifier", () => {
         const gdkpixbuf = giSource("gdkpixbuf");
+
         expect(gdkpixbuf).toContain(
             "static newFromStreamAtScaleAsync(stream: Gio.InputStream, width: number, height: number, preserveAspectRatio: boolean, cancellable?: Gio.Cancellable | null): Promise<Pixbuf | null>",
         );
@@ -255,14 +273,17 @@ describe("codegen async promisification", () => {
 
     it("promisifies an instance async method against its annotated static finish", () => {
         const gdkpixbuf = giSource("gdkpixbuf");
+
         expect(gdkpixbuf).toContain(
             "saveToStreamvAsync(stream: Gio.OutputStream, type: string, optionKeys: string[] | null, optionValues: string[] | null, cancellable?: Gio.Cancellable | null): Promise<boolean>",
         );
+
         expect(gdkpixbuf).toContain("Pixbuf.saveToStreamFinish.bind(Pixbuf)");
     });
 
     it("promisifies an instance async method against its name-matched static finish", () => {
         const source = gioSource();
+
         expect(source).toContain(
             "spliceAsync(stream2: IOStream, flags: IOStreamSpliceFlags, ioPriority: number, cancellable?: Cancellable | null): Promise<boolean>",
         );
@@ -336,15 +357,19 @@ describe("codegen GObject item comparators", () => {
     it("types ListStore comparator callbacks over borrowed object items", () => {
         const source = giSource("gio");
         expect(source).toContain(`sort(compareFunc: ${itemComparatorSignature} => number): void`);
+
         expect(source).toContain(
             `insertSorted(item: GObject.Object, compareFunc: ${itemComparatorSignature} => number): number`,
         );
+
         expect(source).toContain(
             `findWithEqualFunc(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`,
         );
+
         expect(source).toContain(
             `findWithEqualFuncFull(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`,
         );
+
         expect(source).toContain(`${itemComparatorArgs}, { userDataIndex: 2, scope: "call" })`);
         expect(source).toContain(`${itemEqualityArgs}, { scope: "call" })`);
         expect(source).toContain(`${itemEqualityFullArgs}, { userDataIndex: 2, scope: "call" })`);
@@ -368,9 +393,11 @@ describe("codegen GObject item comparators", () => {
 describe("codegen React pipeline", () => {
     it("emits a module per namespace plus the merged metadata", () => {
         expect(reactPipeline.namespaces.length).toBeGreaterThan(0);
+
         for (const { source } of reactPipeline.namespaces) {
             expect(source.length).toBeGreaterThan(0);
         }
+
         expect(reactPipeline.metadata).toContain("export const SIGNALS");
         expect(reactPipeline.metadata).toContain("export const CONSTRUCT_ONLY_PROPS");
         expect(reactPipeline.metadata).toContain("export const DEFAULT_PROPS");
@@ -393,9 +420,11 @@ describe("codegen React pipeline", () => {
 
     it("emits page elements as lazy-element components", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
+
         expect(gtk).toContain(
             'export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createElementComponent("GtkNotebookPage");',
         );
+
         expect(gtk).toContain('createElementComponent("GtkStackPage")');
     });
 });
@@ -414,6 +443,7 @@ describe("codegen configurable element components", () => {
 
     it("wraps a plain element with the user's component and imports it", () => {
         expect(overridden).toContain('import { withButton } from "@example/wrappers";');
+
         expect(overridden).toContain(
             'export const GtkButton: (props: GtkButtonProps) => ReactNode = withButton(createElementComponent("GtkButton"));',
         );
@@ -444,6 +474,7 @@ describe("codegen configurable element components", () => {
             }),
             "gtk",
         );
+
         expect(gtk).toContain('withWindow(createElementComponent("GtkWindow"))');
         expect(gtk).not.toContain('createWindowComponent(createElementComponent("GtkWindow"))');
     });
@@ -463,6 +494,7 @@ describe("codegen widget-slot props", () => {
 
     it("widens a text view's buffer into a ReactElement slot", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
+
         expect(interfaceBody(gtk, "GtkTextView")).toContain(
             "buffer?: Gtk$.TextBuffer | ReactElement | null | undefined;",
         );
@@ -476,17 +508,21 @@ describe("codegen widget-slot props", () => {
 
     it("extends the configured base props interface on a container-prop host", () => {
         const adw = sourceFor(reactPipeline, "adw");
+
         expect(adw).toMatch(
             /import \{[^}]*type GtkHeaderBarProps as GtkHeaderBarPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
         );
+
         expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends GtkHeaderBarPropsBase,/);
     });
 
     it("extends the configured base props interface on GtkWidget", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
+
         expect(gtk).toMatch(
             /import \{[^}]*type GtkWidgetProps as GtkWidgetPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
         );
+
         expect(gtk).toMatch(/export interface GtkWidgetProps<[^>]*> extends GtkWidgetPropsBase,/);
     });
 });
@@ -504,17 +540,21 @@ describe("codegen applied element props", () => {
 
     it("extends the configured placement props on the child element's interface", () => {
         const gio = sourceFor(reactPipeline, "gio");
+
         expect(gio).toMatch(
             /import \{[^}]*type GActionGroupProps as GActionGroupPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
         );
+
         expect(gio).toMatch(/export interface GActionGroupProps<[^>]*> extends GActionGroupPropsBase/);
     });
 
     it("emits lazy-element props from the page class interface", () => {
         const gtk = sourceFor(reactPipeline, "gtk");
+
         expect(gtk).toContain(
             'export type GtkStackPageElementProps = Omit<GtkStackPageProps, "child"> & { children?: ReactNode };',
         );
+
         expect(gtk).toMatch(/export type GtkNotebookPageElementProps = Omit<GtkNotebookPageProps, [^;>]*>[^;]*;/);
         expect(interfaceBody(gtk, "GtkNotebookPage")).toContain("tabLabel?: string | null | undefined;");
     });
@@ -576,10 +616,12 @@ describe("Library.resolveType", () => {
 
     it("leaves only non-introspectable C types unresolved across the closure", () => {
         const unresolved = collectUnresolvedTypeNames(library);
+
         const unexpected = unresolved.filter((name) => {
             const local = name.slice(name.indexOf(".") + 1);
             return local !== "va_list" && local !== "";
         });
+
         expect(unexpected).toEqual([]);
     });
 });
@@ -666,7 +708,6 @@ describe("jsx prop-interface naming convention", () => {
         const declaredProps = matchAll(sources, /export interface (\w+Props)\b/g);
         const elementGlibNames = matchAll(sources, /^[ \t]*(\w+): \w+Props;$/gm);
         const allowed = new Set([...elementGlibNames.map((name) => `${name}Props`), ...interfacePropsNames()]);
-
         const offenders = declaredProps.filter((name) => !allowed.has(name));
         expect(offenders, `unexpected props interface names: ${offenders.join(", ")}`).toEqual([]);
     });

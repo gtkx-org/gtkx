@@ -29,6 +29,7 @@ describe("render - AboutDialog credit sections", () => {
         const { rerender } = await render(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />, {
             container: rootElement,
         });
+
         await rerender(
             <GtkAboutDialog
                 ref={ref}
@@ -46,8 +47,8 @@ describe("render - AboutDialog credit sections", () => {
         const { rerender } = await render(<GtkAboutDialog ref={ref} programName="GTKX" />, {
             container: rootElement,
         });
-        await rerender(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />);
 
+        await rerender(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />);
         expect(ref.current?.getProgramName()).toBe("GTKX");
     });
 });

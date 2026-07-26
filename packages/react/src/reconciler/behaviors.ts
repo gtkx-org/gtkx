@@ -4,6 +4,41 @@ import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runt
 import { getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 
+type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
+    attach: (parent: P, child: C, info: PlaceInfo) => unknown;
+    detach?: (parent: P, child: C, info: DetachInfo) => void;
+    reorder?: (parent: P, child: C, info: PlaceInfo) => unknown;
+    resolve?: (parent: P, child: C) => GObject.Object | null;
+};
+
+type ValueApply<P extends GObject.Object, V> = (object: P, value: V) => void;
+
+type ListHooks<P extends GObject.Object, I, H> = {
+    add?: (parent: P, item: I) => H;
+    remove?: (parent: P, item: I, handle: H) => void;
+    clear?: (parent: P) => void;
+};
+
+type ListEntry = { item: unknown; handle: unknown };
+type ListState = { snapshot: unknown[]; entries: ListEntry[] };
+type DeferredState = { desired: unknown; present: boolean; applied: unknown };
+type CanApply<P extends GObject.Object, V> = (object: P, value: V) => boolean;
+type ChildSetter = GObject.Object & { setChild: (child: Gtk.Widget | null) => void };
+type ContentSetter<C extends Gtk.Widget> = GObject.Object & { setContent: (content: C | null) => void };
+
+type BoxLike = GObject.Object & {
+    remove: (child: Gtk.Widget) => void;
+    insertChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => unknown;
+    reorderChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => void;
+};
+
+type RowCache = WeakMap<GObject.Object, Gtk.Widget>;
+
+type IndexedInserter = GObject.Object & {
+    remove: (child: Gtk.Widget) => void;
+    insert: (child: Gtk.Widget, position: number) => unknown;
+};
+
 const childTypeCache: Map<string, bigint> = new Map();
 
 const childTypeOf = (name: string): bigint => getOrInsert(childTypeCache, name, typeFromName);
@@ -15,39 +50,41 @@ const childMatcher =
             return type === TYPE_INVALID || typeIsA(getInstanceType(child), type);
         };
 
-type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
-    attach: (parent: P, child: C, info: PlaceInfo) => unknown;
-    detach?: (parent: P, child: C, info: DetachInfo) => void;
-    reorder?: (parent: P, child: C, info: PlaceInfo) => unknown;
-    resolve?: (parent: P, child: C) => GObject.Object | null;
-};
+const slotAttach =
+    <P extends GObject.Object, C extends GObject.Object>(
+        slotName: string,
+        matches: (child: GObject.Object) => boolean,
+        attach: SlotHooks<P, C>["attach"],
+    ): NonNullable<ElementBehavior["attach"]> =>
+        (object, child, info) => {
+            if (info.slot !== slotName || !matches(child)) return;
+            return attach(object as P, child as C, info) ?? true;
+        };
 
 /** Builds a behavior for a named child slot holding children of `childType`, claiming matches only. */
-export const slot = <P extends GObject.Object, C extends GObject.Object>(
+const slot = <P extends GObject.Object, C extends GObject.Object>(
     slotName: string,
     childType: string,
     hooks: SlotHooks<P, C>,
 ): ElementBehavior => {
     const matches = childMatcher(childType);
     const { attach, detach, reorder, resolve } = hooks;
-    const behavior: ElementBehavior = {
-        attach: (object, child, info) =>
-            info.slot === slotName && matches(child) ? (attach(object as P, child as C, info) ?? true) : undefined,
-    };
+    const behavior: ElementBehavior = { attach: slotAttach(slotName, matches, attach) };
+
     if (reorder !== undefined)
         behavior.reorder = (object, child, info) => reorder(object as P, child as C, info) ?? true;
+
     if (detach !== undefined)
         behavior.detach = (object, child, info) => {
             detach(object as P, child as C, info);
         };
+
     if (resolve !== undefined) behavior.resolve = (object, child) => resolve(object as P, child as C);
     return behavior;
 };
 
-type ValueApply<P extends GObject.Object, V> = (object: P, value: V) => void;
-
 /** Builds a scalar-prop behavior that invokes `apply` whenever the value changes, and claims the prop. */
-export const value = <P extends GObject.Object, V>(
+const value = <P extends GObject.Object, V>(
     prop: string,
     apply: ValueApply<P, V>,
 ): ElementBehavior<P> => ({
@@ -56,15 +93,6 @@ export const value = <P extends GObject.Object, V>(
         return [prop];
     },
 });
-
-type ListHooks<P extends GObject.Object, I, H> = {
-    add?: (parent: P, item: I) => H;
-    remove?: (parent: P, item: I, handle: H) => void;
-    clear?: (parent: P) => void;
-};
-
-type ListEntry = { item: unknown; handle: unknown };
-type ListState = { snapshot: unknown[]; entries: ListEntry[] };
 
 const teardownList = <P extends GObject.Object, I, H>(
     object: P,
@@ -75,6 +103,7 @@ const teardownList = <P extends GObject.Object, I, H>(
         hooks.clear(object);
         return;
     }
+
     const remove = hooks.remove;
     if (remove === undefined) return;
     for (const entry of entries) remove(object, entry.item as I, entry.handle as H);
@@ -85,11 +114,12 @@ const teardownList = <P extends GObject.Object, I, H>(
  * change. `add` may return a handle that the same item's later `remove` receives, for items whose
  * teardown needs what `add` produced (as VFL constraints need the objects the layout created).
  */
-export const list = <P extends GObject.Object, I, H = void>(
+const list = <P extends GObject.Object, I, H = void>(
     prop: string,
     hooks: ListHooks<P, I, H>,
 ): ElementBehavior<P> => {
     const { add } = hooks;
+
     return {
         createContext: (): ListState => ({ snapshot: [], entries: [] }),
         update: (object, _prev, next, context) => {
@@ -105,10 +135,6 @@ export const list = <P extends GObject.Object, I, H = void>(
     };
 };
 
-type DeferredState = { desired: unknown; present: boolean; applied: unknown };
-
-type CanApply<P extends GObject.Object, V> = (object: P, value: V) => boolean;
-
 const flushDeferred = <P extends GObject.Object, V>(
     object: GObject.Object,
     context: unknown,
@@ -123,7 +149,7 @@ const flushDeferred = <P extends GObject.Object, V>(
 };
 
 /** Builds a behavior for a prop applied after the surrounding commit, deferred until `canApply` returns true. */
-export const deferred = <P extends GObject.Object, V>(
+const deferred = <P extends GObject.Object, V>(
     prop: string,
     canApply?: CanApply<P, V>,
 ): ElementBehavior<P> => ({
@@ -139,24 +165,20 @@ export const deferred = <P extends GObject.Object, V>(
 });
 
 /** Builds a behavior for a text prop kept in controlled-input sync: set when provided, never reset. */
-export const controlledText = (prop: string): ElementBehavior =>
+const controlledText = (prop: string): ElementBehavior =>
     value(prop, (object, next) => {
         Reflect.set(object, prop, next);
     });
 
-type ChildSetter = GObject.Object & { setChild: (child: Gtk.Widget | null) => void };
-
 /** Behavior for a container that installs its single child with `setChild`. */
-export const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
+const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", "GtkWidget", {
         attach: (parent, child) => parent.setChild(child),
         detach: (parent) => parent.setChild(null),
     });
 
-type ContentSetter<C extends Gtk.Widget> = GObject.Object & { setContent: (content: C | null) => void };
-
 /** Behavior for a container that installs its single child with `setContent`. */
-export const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widget = Gtk.Widget>(
+const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widget = Gtk.Widget>(
     childType = "GtkWidget",
 ): ElementBehavior<P> =>
     slot<P, C>("children", childType, {
@@ -164,14 +186,8 @@ export const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widg
         detach: (parent) => parent.setContent(null),
     });
 
-type BoxLike = GObject.Object & {
-    remove: (child: Gtk.Widget) => void;
-    insertChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => unknown;
-    reorderChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => void;
-};
-
 /** Behavior for a `GtkBox`-style container that orders children by sibling. */
-export const boxSlot = <P extends BoxLike>(): ElementBehavior<P> =>
+const boxSlot = <P extends BoxLike>(): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", "GtkWidget", {
         attach: (box, child, info) => box.insertChildAfter(child, info.sibling as Gtk.Widget | null),
         detach: (box, child) => box.remove(child),
@@ -179,7 +195,7 @@ export const boxSlot = <P extends BoxLike>(): ElementBehavior<P> =>
     });
 
 /** Behavior for a container whose children are added and removed by a pair of methods. */
-export const addRemoveSlot = <C extends GObject.Object, P extends GObject.Object>(
+const addRemoveSlot = <C extends GObject.Object, P extends GObject.Object>(
     slotName: string,
     childType: string,
     add: (parent: P, child: C) => unknown,
@@ -187,41 +203,60 @@ export const addRemoveSlot = <C extends GObject.Object, P extends GObject.Object
 ): ElementBehavior => slot<P, C>(slotName, childType, { attach: add, detach: remove });
 
 /** Behavior for a `children` slot whose attach call returns the page object the container adopts. */
-export const adoptedChildrenSlot = <P extends GObject.Object, C extends GObject.Object>(
+const adoptedChildrenSlot = <P extends GObject.Object, C extends GObject.Object>(
     childType: string,
     add: (parent: P, item: C) => unknown,
     remove: (parent: P, item: C) => void,
 ): ElementBehavior => addRemoveSlot<C, P>("children", childType, add, remove);
 
-type RowCache = WeakMap<GObject.Object, Gtk.Widget>;
+const wrappedRow = <W extends Gtk.Widget>(
+    Wrapper: new (props: Props) => W,
+    setChild: (wrapper: W, inner: Gtk.Widget) => void,
+    rows: RowCache,
+    child: Gtk.Widget,
+): Gtk.Widget => {
+    if (child instanceof Wrapper) return child;
+    const existing = rows.get(child);
+    if (existing !== undefined) return existing;
+    const wrapper = new Wrapper({});
+    setChild(wrapper, child);
+    rows.set(child, wrapper);
+    return wrapper;
+};
 
-type IndexedInserter = GObject.Object & {
-    remove: (child: Gtk.Widget) => void;
-    insert: (child: Gtk.Widget, position: number) => unknown;
+const removeWrappedRow = (
+    Wrapper: new (props: Props) => Gtk.Widget,
+    parent: IndexedInserter,
+    child: Gtk.Widget,
+    rows: RowCache,
+): void => {
+    const row = child instanceof Wrapper ? child : rows.get(child);
+    if (row !== undefined) parent.remove(row);
 };
 
 /** Behavior for an index-placed container that wraps each child in `Wrapper` before adding it. */
-export const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedInserter>(
+const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedInserter>(
     Wrapper: new (props: Props) => W,
     setChild: (wrapper: W, inner: Gtk.Widget) => void,
-): ElementBehavior<P> => {
-    const rowFor = (rows: RowCache, child: Gtk.Widget): Gtk.Widget => {
-        if (child instanceof Wrapper) return child;
-        const existing = rows.get(child);
-        if (existing !== undefined) return existing;
-        const wrapper = new Wrapper({});
-        setChild(wrapper, child);
-        rows.set(child, wrapper);
-        return wrapper;
-    };
-    return {
-        ...slot<P, Gtk.Widget>("children", "GtkWidget", {
-            attach: (parent, child, info) => parent.insert(rowFor(info.context as RowCache, child), info.index),
-            detach: (parent, child, info) => {
-                const row = child instanceof Wrapper ? child : (info.context as RowCache).get(child);
-                if (row !== undefined) parent.remove(row);
-            },
-        }),
-        createContext: (): RowCache => new WeakMap(),
-    };
+): ElementBehavior<P> => ({
+    ...slot<P, Gtk.Widget>("children", "GtkWidget", {
+        attach: (parent, child, info) =>
+            parent.insert(wrappedRow(Wrapper, setChild, info.context as RowCache, child), info.index),
+        detach: (parent, child, info) => removeWrappedRow(Wrapper, parent, child, info.context as RowCache),
+    }),
+    createContext: (): RowCache => new WeakMap(),
+});
+
+export {
+    slot,
+    value,
+    list,
+    deferred,
+    controlledText,
+    childSetterSlot,
+    contentSetterSlot,
+    boxSlot,
+    addRemoveSlot,
+    adoptedChildrenSlot,
+    wrappingIndexedSlot,
 };

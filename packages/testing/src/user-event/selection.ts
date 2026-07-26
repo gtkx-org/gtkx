@@ -2,6 +2,9 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
 
+type CollectionWidget = Gtk.ListView | Gtk.GridView | Gtk.ColumnView;
+type ListBoxRowAction = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow) => void;
+
 const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
@@ -15,6 +18,7 @@ const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: numb
     }
 
     const [first] = positions;
+
     if (exclusive && first !== undefined && positions.length === 1) {
         selectionModel.selectItem(first, true);
         return;
@@ -31,8 +35,6 @@ const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: numb
     selectionModel.setSelection(selected, mask);
 };
 
-type CollectionWidget = Gtk.ListView | Gtk.GridView | Gtk.ColumnView;
-
 const isListView = (widget: Gtk.Widget): widget is CollectionWidget =>
     widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
 
@@ -40,8 +42,10 @@ const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void =>
     if (valueArray.length > 1) {
         throw new Error("Cannot select multiple options: ComboBox only supports single selection");
     }
+
     const [selection] = valueArray;
     if (selection === undefined) return;
+
     if (widget instanceof Gtk.DropDown) {
         widget.setSelected(selection);
     } else if (widget instanceof Gtk.ComboBox) {
@@ -58,8 +62,6 @@ const unselectListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => 
     listBox.unselectRow(row);
 };
 
-type ListBoxRowAction = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow) => void;
-
 const applyListBoxRows = (listBox: Gtk.ListBox, valueArray: number[], apply: ListBoxRowAction): void => {
     for (const value of valueArray) {
         const row = listBox.getRowAtIndex(value);
@@ -73,9 +75,11 @@ const requireSelectionModel = (
     verb: string,
 ): Gtk.SelectionModel => {
     const selectionModel = widget.getModel();
+
     if (selectionModel === null) {
         throw new Error(`Cannot ${verb} options: list view has no selection model`);
     }
+
     return selectionModel;
 };
 
@@ -91,6 +95,7 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     }
 
     const role = widget.getAccessibleRole();
+
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
         selectComboBoxOption(widget, valueArray);
     } else if (widget instanceof Gtk.ListBox) {
@@ -106,18 +111,21 @@ const runSelectionEvent = (
 ): Promise<void> =>
     wrapEvent(widget, () => {
         const valueArray = Array.isArray(values) ? values : [values];
+
         if (isListView(widget)) {
             inListView(widget, valueArray);
             return;
         }
+
         byRole(widget, valueArray);
     });
 
-export const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
+const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, selectInListView, selectByRole);
 
 const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
     const selectionModel = requireSelectionModel(widget, "deselect");
+
     for (const pos of valueArray) {
         selectionModel.unselectItem(pos);
     }
@@ -127,8 +135,11 @@ const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     if (!(widget instanceof Gtk.ListBox)) {
         throw new TypeError("Cannot deselect options: only ListBox supports deselection");
     }
+
     applyListBoxRows(widget, valueArray, unselectListBoxRow);
 };
 
-export const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
+const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, deselectInListView, deselectByRole);
+
+export { selectOptions, deselectOptions };

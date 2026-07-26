@@ -1,13 +1,11 @@
 import pc from "picocolors";
 
-const BASE_PREFIX = "[gtkx]";
-
 type Colors = ReturnType<typeof pc.createColors>;
 
 /**
  * Minimal writable-stream shape a {@link Logger} writes formatted lines to.
  */
-export type OutputStream = {
+type OutputStream = {
     write(chunk: string): unknown;
     /** Whether the stream is a terminal, used to decide if colored output is emitted. */
     isTTY?: boolean | undefined;
@@ -16,7 +14,7 @@ export type OutputStream = {
 /**
  * Options for constructing a {@link Logger}.
  */
-export type LoggerOptions = {
+type LoggerOptions = {
     /** Namespace appended to the log prefix and matched against debug configuration. */
     namespace?: string | undefined;
     /** Stream to write log lines to; defaults to `process.stderr`. */
@@ -25,6 +23,8 @@ export type LoggerOptions = {
     debugEnabled?: boolean | undefined;
 };
 
+const BASE_PREFIX = "[gtkx]";
+
 function colorsFor(stream: OutputStream): Colors {
     return pc.createColors(pc.isColorSupported && stream.isTTY === true);
 }
@@ -32,6 +32,7 @@ function colorsFor(stream: OutputStream): Colors {
 function formatValue(value: unknown): string {
     if (typeof value === "string") return value;
     if (value instanceof Error) return value.stack ?? value.message;
+
     try {
         return JSON.stringify(value);
     } catch {
@@ -56,7 +57,7 @@ function prefixFor(namespace: string | undefined): string {
  * Writes prefixed, optionally colored log lines to an output stream, with debug lines gated by
  * command-line and environment configuration.
  */
-export class Logger {
+class Logger {
     private stream: OutputStream;
     private prefix: string;
     private debugEnabled: boolean;
@@ -118,3 +119,5 @@ export class Logger {
         this.write(message, rest);
     }
 }
+
+export { Logger, type OutputStream, type LoggerOptions };

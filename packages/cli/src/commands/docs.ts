@@ -7,14 +7,7 @@ import { join, resolve } from "node:path";
 import { resolveReactSubexports } from "../codegen/store-resolver.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
-const resolveDocsProps = async (cwd: string): Promise<ElementProps> => {
-    const giStoreDir = join(cwd, "node_modules", ".gtkx", "gi");
-    if (!existsSync(giStoreDir)) return {};
-    const { props } = await readBuiltinElements(resolveReactSubexports(cwd), giStoreDir);
-    return props;
-};
-
-export const docs = defineCommand({
+const docs = defineCommand({
     meta: {
         name: "docs",
         description:
@@ -41,20 +34,25 @@ export const docs = defineCommand({
     async run({ args }) {
         const cwd = resolveCwd(args);
         const { config } = await loadConfig(cwd);
+
         if (config.codegen === false) {
             throw new Error(
                 "codegen is disabled for this project, so there are no GIR libraries to document. Remove `codegen: false` from gtkx.config.ts to use `gtkx docs`.",
             );
         }
+
         const girPath = resolveGirPath(config.girPath);
+
         if (girPath.length === 0) {
             throw new Error(
                 "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
             );
         }
+
         const libraries = resolveLibraries(config.libraries, girPath);
         const startedAt = Date.now();
         const outDir = resolve(cwd, args.out);
+
         const { regenerated, namespaces } = writeDocs({
             libraries,
             girPath,
@@ -63,13 +61,25 @@ export const docs = defineCommand({
             props: await resolveDocsProps(cwd),
             force: args.force,
         });
+
         if (!regenerated) {
             info(`docs: pages in ${outDir} are up to date`);
             return;
         }
+
         const count = namespaces.reduce((total, namespace) => total + namespace.elements.length, 0);
+
         info(
             `docs: wrote ${count} element pages across ${namespaces.length} namespaces to ${outDir} in ${Date.now() - startedAt}ms`,
         );
     },
 });
+
+const resolveDocsProps = async (cwd: string): Promise<ElementProps> => {
+    const giStoreDir = join(cwd, "node_modules", ".gtkx", "gi");
+    if (!existsSync(giStoreDir)) return {};
+    const { props } = await readBuiltinElements(resolveReactSubexports(cwd), giStoreDir);
+    return props;
+};
+
+export { docs };

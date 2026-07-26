@@ -60,6 +60,7 @@ const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
         host.remove(page);
     },
 );
+
 /** The runtime half of the built-in element configuration: the behaviors bound to each GObject type. */
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwBin: {
@@ -313,9 +314,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             list<Adw.AlertDialog, AlertDialogResponse>("responses", {
                 add: (dialog, response) => {
                     dialog.addResponse(response.id, response.label);
+
                     if (response.appearance !== undefined) {
                         dialog.setResponseAppearance(response.id, response.appearance);
                     }
+
                     if (response.enabled !== undefined) dialog.setResponseEnabled(response.id, response.enabled);
                 },
                 remove: (dialog, response) => dialog.removeResponse(response.id),

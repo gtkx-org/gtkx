@@ -17,9 +17,11 @@ describe("escapeNamedColors / restoreNamedColors", () => {
 
     it("tokenizes multiple named colors in a single declaration", () => {
         const escaped = escapeNamedColors("box-shadow:0 0 0 1px alpha(@accent_bg_color, 0.4), @borders;");
+
         expect(escaped).toBe(
             `box-shadow:0 0 0 1px alpha(${NAMED_COLOR_TOKEN}accent_bg_color, 0.4), ${NAMED_COLOR_TOKEN}borders;`,
         );
+
         expect(restoreNamedColors(escaped)).toBe("box-shadow:0 0 0 1px alpha(@accent_bg_color, 0.4), @borders;");
     });
 

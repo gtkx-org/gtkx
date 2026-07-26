@@ -14,8 +14,6 @@ import {
 import { parseGirFile, type RawNode } from "./parse.js";
 import { splitOptionalNamespace } from "./type-ref.js";
 
-const INTERNAL_NS_ID = 0;
-
 type TypeTable = {
     types: (GirType | undefined)[];
     names: (string | undefined)[];
@@ -24,15 +22,43 @@ type TypeTable = {
 
 type DiscoveredNamespace = { header: NamespaceHeader; shell: GirNamespace };
 
-export class Library {
+const INTERNAL_NS_ID = 0;
+
+const readRepositoryNode = (path: string): RawNode => {
+    const root = parseGirFile(path);
+    const repository = root.repository;
+
+    if (typeof repository !== "object" || repository === null) {
+        throw new Error(`GIR file at ${path} has no <repository> root`);
+    }
+
+    return repository as RawNode;
+};
+
+const locateGirFile = (identifier: string, girPath: string[]): string => {
+    const filename = `${identifier}.gir`;
+
+    for (const directory of girPath) {
+        const candidate = join(directory, filename);
+        if (existsSync(candidate)) return candidate;
+    }
+
+    const tried = girPath.map((directory) => join(directory, filename)).join(", ");
+    throw new Error(`GIR file ${filename} not found on girPath. Tried: ${tried}`);
+};
+
+class Library {
     private static drive(library: Library, libraries: string[], girPath: string[]): void {
         const { discovered, girFiles } = library.discoverNamespaces(libraries, girPath);
+
         for (const { header, shell } of discovered) {
             populateNamespaceBody(shell, header.namespaceNode, library.parseContext(shell.id));
         }
+
         for (const { shell } of discovered) {
             library.addDeclarations(shell);
         }
+
         library.girFilesValue = girFiles;
     }
 
@@ -76,17 +102,21 @@ export class Library {
 
     private namespaceOf(nsId: number): GirNamespace {
         const namespace = this.namespaceById[nsId];
+
         if (namespace === undefined) {
             throw new Error(`No namespace registered for type table id ${nsId}`);
         }
+
         return namespace;
     }
 
     private typeTableOf(nsId: number): TypeTable {
         const typeTable = this.typeTables[nsId];
+
         if (typeTable === undefined) {
             throw new Error(`No type table for namespace id ${nsId}`);
         }
+
         return typeTable;
     }
 
@@ -142,6 +172,7 @@ export class Library {
                     value: callbackFromNode(node, context),
                 }),
         };
+
         return context;
     }
 
@@ -169,18 +200,22 @@ export class Library {
     private addClassDeclarations(shell: GirNamespace): void {
         const nsId = shell.id;
         for (const value of shell.classes) this.addType(nsId, value.name, { kind: "class", namespace: shell, value });
+
         for (const value of shell.interfaces) {
             this.addType(nsId, value.name, { kind: "interface", namespace: shell, value });
         }
+
         for (const value of shell.records) this.addType(nsId, value.name, { kind: "record", namespace: shell, value });
     }
 
     private addValueDeclarations(shell: GirNamespace): void {
         const nsId = shell.id;
         for (const value of shell.enums) this.addType(nsId, value.name, { kind: "enum", namespace: shell, value });
+
         for (const value of shell.callbacks) {
             this.addType(nsId, value.name, { kind: "callback", namespace: shell, value });
         }
+
         for (const alias of shell.aliases) {
             this.addType(nsId, alias.name, { kind: "alias", namespace: shell, value: alias });
         }
@@ -203,6 +238,7 @@ export class Library {
         const header = parseNamespaceHeader(readRepositoryNode(path));
         const shell = this.registerNamespace(header);
         discovered.push({ header, shell });
+
         for (const include of header.includes) {
             queue.push(`${include.name}-${include.version}`);
         }
@@ -216,12 +252,15 @@ export class Library {
         const seen: Set<string> = new Set();
         const discovered: DiscoveredNamespace[] = [];
         const girFiles: string[] = [];
+
         while (queue.length > 0) {
             const identifier = queue.shift();
+
             if (identifier !== undefined) {
                 this.processIdentifier({ identifier, girPath, seen, queue, girFiles, discovered });
             }
         }
+
         return { discovered, girFiles };
     }
 
@@ -256,21 +295,4 @@ export class Library {
     }
 }
 
-const readRepositoryNode = (path: string): RawNode => {
-    const root = parseGirFile(path);
-    const repository = root.repository;
-    if (typeof repository !== "object" || repository === null) {
-        throw new Error(`GIR file at ${path} has no <repository> root`);
-    }
-    return repository as RawNode;
-};
-
-const locateGirFile = (identifier: string, girPath: string[]): string => {
-    const filename = `${identifier}.gir`;
-    for (const directory of girPath) {
-        const candidate = join(directory, filename);
-        if (existsSync(candidate)) return candidate;
-    }
-    const tried = girPath.map((directory) => join(directory, filename)).join(", ");
-    throw new Error(`GIR file ${filename} not found on girPath. Tried: ${tried}`);
-};
+export { Library };

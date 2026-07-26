@@ -21,6 +21,7 @@ const asContentChild = (node: AnyNode | null): ContentChild | null =>
 
 const attachToContentHost = (parent: ElementNode, child: AnyNode, before: AnyNode | null): void => {
     if (child.kind === TEXT_KIND && !acceptsText(parent)) throw textRestrictionError(child.text);
+
     if (child.kind === TEXT_KIND || child.kind === ELEMENT_KIND) {
         addContent(parent, child, asContentChild(before));
     }
@@ -31,10 +32,12 @@ const attachToElement = (parent: ElementNode, child: AnyNode, before: AnyNode | 
         attachPropToElement(parent, child, before);
         return;
     }
+
     if (parent.contentKind !== null) {
         attachToContentHost(parent, child, before);
         return;
     }
+
     if (child.kind === TEXT_KIND) throw textRestrictionError(child.text);
     if (child.kind === LAZY_KIND) child.parent = parent;
     placeChild(parent, DEFAULT_SLOT, child, asPlaceable(before));
@@ -42,6 +45,7 @@ const attachToElement = (parent: ElementNode, child: AnyNode, before: AnyNode | 
 
 const insertPlaceable = (list: PlaceableNode[], node: PlaceableNode, before: AnyNode | null): void => {
     const beforeNode = asPlaceable(before);
+
     list.splice(
         indexBeforeOrEnd(list, beforeNode, (item, target) => item === target),
         0,
@@ -73,6 +77,7 @@ const syncLazy = (node: LazyNode): void => {
     if (owner === null) return;
     const entry = owner.placements.get(DEFAULT_SLOT)?.find((entry) => entry.node === node);
     const object = nodeObject(node);
+
     if (entry === undefined) {
         placeLazy(owner, node, object !== null);
     } else if (entry.object !== object) {
@@ -86,7 +91,7 @@ const attachToLazy = (parent: LazyNode, child: AnyNode, before: AnyNode | null):
     syncLazy(parent);
 };
 
-export const attachChild = (parent: ParentNode, child: AnyNode, before: AnyNode | null): void => {
+const attachChild = (parent: ParentNode, child: AnyNode, before: AnyNode | null): void => {
     if (parent.kind === ELEMENT_KIND) attachToElement(parent, child, before);
     else if (parent.kind === PROP_KIND) attachToProp(parent, child, before);
     else attachToLazy(parent, child, before);
@@ -122,8 +127,10 @@ const detachFromLazy = (parent: LazyNode, child: AnyNode): void => {
     syncLazy(parent);
 };
 
-export const detachChild = (parent: ParentNode, child: AnyNode): void => {
+const detachChild = (parent: ParentNode, child: AnyNode): void => {
     if (parent.kind === ELEMENT_KIND) detachFromElement(parent, child);
     else if (parent.kind === PROP_KIND) detachFromProp(parent, child);
     else detachFromLazy(parent, child);
 };
+
+export { attachChild, detachChild };

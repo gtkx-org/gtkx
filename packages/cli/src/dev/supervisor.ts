@@ -4,13 +4,7 @@ import { type FSWatcher, watch as watchFs } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
-const FORCE_KILL_TIMEOUT_MS = 5000;
-const CONFIG_DEBOUNCE_MS = 150;
-
-export const RESTART_EXIT_CODE = 75;
-
-export type SupervisedChild = {
+type SupervisedChild = {
     killed: boolean;
     pid?: number | undefined;
     exitCode: number | null;
@@ -19,12 +13,9 @@ export type SupervisedChild = {
     once(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
 };
 
-export type ForkRunner = (modulePath: string, args: string[], cwd: string) => SupervisedChild;
+type ForkRunner = (modulePath: string, args: string[], cwd: string) => SupervisedChild;
 
-export const defaultForkRunner: ForkRunner = (modulePath, args, cwd) =>
-    nodeFork(modulePath, [...args], { cwd, stdio: "inherit", detached: true });
-
-export type DevWatch = {
+type DevWatch = {
     paths: string[];
     regenerate: () => Promise<void>;
 };
@@ -42,6 +33,16 @@ type SupervisorState = {
     capturedChildExit: number | undefined;
 };
 
+type DebounceTimer = { handle: NodeJS.Timeout | null };
+
+const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
+const FORCE_KILL_TIMEOUT_MS = 5000;
+const CONFIG_DEBOUNCE_MS = 150;
+const RESTART_EXIT_CODE = 75;
+
+const defaultForkRunner: ForkRunner = (modulePath, args, cwd) =>
+    nodeFork(modulePath, [...args], { cwd, stdio: "inherit", detached: true });
+
 const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => {
     if (!child.killed) {
         child.kill(signal);
@@ -50,6 +51,7 @@ const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => 
 
 const forceKillChild = (child: SupervisedChild | null): boolean => {
     if (!child?.pid || child.exitCode !== null || child.killed) return false;
+
     try {
         return process.kill(child.pid, "SIGKILL");
     } catch {
@@ -68,15 +70,18 @@ const captureShutdownExit = (state: SupervisorState, code: number | null, signal
 const handleChildExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
     state.child = null;
     if (state.restarting) return;
+
     if (state.shuttingDown) {
         captureShutdownExit(state, code, signal);
         return;
     }
+
     if (code === RESTART_EXIT_CODE) {
         info("Restarting dev runner...");
         launch(state);
         return;
     }
+
     process.exit(code ?? exitCodeForSignal(signal));
 };
 
@@ -88,11 +93,19 @@ const launch = (state: SupervisorState): void => {
 
 const isRestartBlocked = (state: SupervisorState): boolean => state.restarting || state.shuttingDown;
 
+const relaunchAfterExit = (state: SupervisorState): void => {
+    state.restarting = false;
+    if (state.shuttingDown) return;
+    info("Restarting dev runner...");
+    launch(state);
+};
+
 const restart = async (state: SupervisorState): Promise<void> => {
     const watch = state.watch;
     if (watch === undefined || isRestartBlocked(state)) return;
     state.restarting = true;
     info("gtkx.config.ts changed; regenerating bindings...");
+
     try {
         await watch.regenerate();
     } catch (error_) {
@@ -100,27 +113,23 @@ const restart = async (state: SupervisorState): Promise<void> => {
         state.restarting = false;
         return;
     }
+
     if (state.shuttingDown) {
         state.restarting = false;
         return;
     }
+
     const current = state.child;
+
     if (current === null) {
         state.restarting = false;
         launch(state);
         return;
     }
-    current.once("exit", () => {
-        state.restarting = false;
-        if (!state.shuttingDown) {
-            info("Restarting dev runner...");
-            launch(state);
-        }
-    });
+
+    current.once("exit", () => relaunchAfterExit(state));
     forwardSignal(current, "SIGTERM");
 };
-
-type DebounceTimer = { handle: NodeJS.Timeout | null };
 
 const scheduleRestart = (state: SupervisorState, timer: DebounceTimer): void => {
     if (timer.handle !== null) clearTimeout(timer.handle);
@@ -134,12 +143,14 @@ const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: s
 
 const groupWatchNamesByDirectory = (paths: string[]): Map<string, Set<string>> => {
     const namesByDirectory: Map<string, Set<string>> = new Map();
+
     for (const path of paths) {
         const directory = dirname(path);
         const names = namesByDirectory.get(directory) ?? new Set<string>();
         names.add(basename(path));
         namesByDirectory.set(directory, names);
     }
+
     return namesByDirectory;
 };
 
@@ -152,6 +163,7 @@ const watchConfigDirectory = (
     const watcher = watchFs(directory, (_event, filename) => {
         if (isWatchedChange(state, names, filename)) scheduleRestart(state, timer);
     });
+
     watcher.on("error", () => {});
     state.watchers.push(watcher);
 };
@@ -160,6 +172,7 @@ const installConfigWatchers = (state: SupervisorState): void => {
     const watch = state.watch;
     if (watch === undefined || watch.paths.length === 0) return;
     const timer: DebounceTimer = { handle: null };
+
     for (const [directory, names] of groupWatchNamesByDirectory(watch.paths)) {
         watchConfigDirectory(state, directory, names, timer);
     }
@@ -173,10 +186,12 @@ const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promi
     new Promise<void>((resolve) => {
         state.shuttingDown = true;
         closeWatchers(state);
+
         if (!state.child) {
             resolve();
             return;
         }
+
         state.child.once("exit", () => resolve());
         forwardSignal(state.child, signal);
     });
@@ -190,7 +205,7 @@ const installShutdown = (state: SupervisorState): void => {
     });
 };
 
-export const runDevSupervisor = async (
+const runDevSupervisor = async (
     entryPath: string,
     cwd: string,
     watch?: DevWatch,
@@ -212,6 +227,7 @@ export const runDevSupervisor = async (
     installConfigWatchers(state);
     installShutdown(state);
     launch(state);
-
     return new Promise<never>(() => {});
 };
+
+export { RESTART_EXIT_CODE, defaultForkRunner, runDevSupervisor, type SupervisedChild, type ForkRunner, type DevWatch };

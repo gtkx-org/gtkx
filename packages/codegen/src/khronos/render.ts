@@ -4,7 +4,27 @@ import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../analysis/
 import { type OutArg, planArgs, scalarAliasOrGroup, scalarPrefixArgs, trackInto } from "./args.js";
 import { commandJsDoc, inParamDocLine, singularJsDoc } from "./jsdoc.js";
 
+type RenderedCommand = {
+    exportName: string;
+    binding?: string;
+    declaration: string;
+};
+
+type EmittedReturn = {
+    tsType: string;
+    descriptor: string;
+    expr?: (call: string) => string;
+};
+
+type GenSingularShape = {
+    countScalar: GlScalar;
+    outScalar: GlScalar;
+    objectClass: string;
+};
+
 const GL_LIB_EXPRESSION = "LIB";
+const GEN_FAMILY = /^gl(Gen|Create)[A-Z][A-Za-z]*s$/;
+const DELETE_FAMILY = /^glDelete[A-Z][A-Za-z]*s$/;
 
 const glBind = (name: string, argList: string, returnType: string): string =>
     tBind({
@@ -23,24 +43,13 @@ const singularize = (plural: string): string =>
 const renderDescriptorList = (descriptors: string[]): string =>
     descriptors.length === 0 ? "[]" : `[${descriptors.join(", ")}]`;
 
-export type RenderedCommand = {
-    exportName: string;
-    binding?: string;
-    declaration: string;
-};
-
-type EmittedReturn = {
-    tsType: string;
-    descriptor: string;
-    expr?: (call: string) => string;
-};
-
 const buildEmittedReturn = (
     plan: ReturnPlan,
     returnGroup: string | undefined,
     usedTypes: Set<string>,
 ): EmittedReturn => {
     const track = trackInto(usedTypes);
+
     switch (plan.kind) {
         case "void": {
             return { tsType: "void", descriptor: tVoid };
@@ -71,9 +80,11 @@ const buildEmittedReturn = (
 const returnTsType = (returned: EmittedReturn, outs: OutArg[]): string => {
     if (outs.length === 0) return returned.tsType;
     const outTypes = outs.map((out) => out.tsType);
+
     if (returned.expr === undefined) {
         return outTypes.length === 1 && outTypes[0] !== undefined ? outTypes[0] : `[${outTypes.join(", ")}]`;
     }
+
     return `[${returned.tsType}, ${outTypes.join(", ")}]`;
 };
 
@@ -83,14 +94,16 @@ const returnNoOut = (call: string, returned: EmittedReturn): string[] =>
 const returnStatements = (call: string, returned: EmittedReturn, outs: OutArg[]): string[] => {
     if (outs.length === 0) return returnNoOut(call, returned);
     const outValues = outs.map((out) => `${out.cellName}.value`);
+
     if (returned.expr === undefined) {
         const tail = outValues.length === 1 ? `return ${outValues[0]};` : `return [${outValues.join(", ")}];`;
         return [`${call};`, tail];
     }
+
     return [`const result = ${call};`, `return [${returned.expr("result")}, ${outValues.join(", ")}];`];
 };
 
-export const renderCommand = (
+const renderCommand = (
     plan: CommandPlan & { ok: true },
     feature: string,
     usedTypes: Set<string>,
@@ -108,6 +121,7 @@ export const renderCommand = (
     const bindExpression = glBind(command.name, descriptors, returned.descriptor);
     const inline = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
     const bindingName = inline ? "binding" : toCamelIdentifier(command.name);
+
     const body = [
         ...seeds,
         ...(inline ? [`const ${bindingName} = ${bindExpression};`] : []),
@@ -115,6 +129,7 @@ export const renderCommand = (
     ]
         .map((line) => `    ${line}`)
         .join("\n");
+
     return {
         exportName,
         ...(!inline && { binding: `const ${bindingName} = ${bindExpression};` }),
@@ -128,15 +143,6 @@ const singularCommandJsDoc = (
     summary: string,
     body: string[],
 ): string => singularJsDoc({ commandName: plan.command.name, feature, summary, body });
-
-const GEN_FAMILY = /^gl(Gen|Create)[A-Z][A-Za-z]*s$/;
-const DELETE_FAMILY = /^glDelete[A-Z][A-Za-z]*s$/;
-
-type GenSingularShape = {
-    countScalar: GlScalar;
-    outScalar: GlScalar;
-    objectClass: string;
-};
 
 const genSingularScalars = (
     plan: CommandPlan & { ok: true },
@@ -164,7 +170,7 @@ const genSingularShape = (plan: CommandPlan & { ok: true }): GenSingularShape | 
     return { countScalar: scalars.countScalar, outScalar: scalars.outScalar, objectClass };
 };
 
-export const deriveGenSingular = (
+const deriveGenSingular = (
     plan: CommandPlan & { ok: true },
     feature: string,
     usedTypes: Set<string>,
@@ -181,16 +187,20 @@ export const deriveGenSingular = (
     usedTypes.add(outScalar.tsAlias);
     const signature = prefix.map((arg) => `${arg.name}: ${arg.tsType}`).join(", ");
     const callArgs = [...prefix.map((arg) => arg.name), "1", "out"].join(", ");
+
     const jsDoc = singularCommandJsDoc(
         plan,
         feature,
         `Returns one ${objectClass} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
         [...prefix.map((arg) => inParamDocLine(plan.command, arg)), ` * @returns The new ${objectClass} object name`],
     );
+
     const body = ["    const out = { value: 0 };", `    ${bindingName}(${callArgs});`, "    return out.value;"].join(
         "\n",
     );
+
     const binding = glBind(plan.command.name, renderDescriptorList(descriptors), tVoid);
+
     return {
         exportName,
         binding: `const ${bindingName} = ${binding};`,
@@ -213,7 +223,7 @@ const deleteSingularObjectClass = (plan: CommandPlan & { ok: true }): string | u
     return arrayParam.objectClass;
 };
 
-export const deriveDeleteSingular = (
+const deriveDeleteSingular = (
     plan: CommandPlan & { ok: true },
     feature: string,
     usedTypes: Set<string>,
@@ -225,14 +235,18 @@ export const deriveDeleteSingular = (
     if (objectClass === undefined) return undefined;
     usedTypes.add(scalarAlias);
     const exportName = singularize(commandExportName(plan.command.name));
+
     const jsDoc = singularCommandJsDoc(
         plan,
         feature,
         `Deletes one ${objectClass} object name via \`${plan.command.name}(1, ...)\`.`,
         [` * @param name - The ${objectClass} object name to delete`],
     );
+
     return {
         exportName,
         declaration: `${jsDoc}\nexport function ${exportName}(name: ${scalarAlias}): void {\n    ${plan.command.name}(1, [name]);\n}`,
     };
 };
+
+export { renderCommand, deriveGenSingular, deriveDeleteSingular, type RenderedCommand };

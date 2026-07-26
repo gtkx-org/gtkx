@@ -14,6 +14,7 @@ afterAll(() => {
 
 const giOptions = (name: string) => {
     const root = join(workDir, name);
+
     return {
         root,
         gi: {
@@ -27,6 +28,7 @@ const giOptions = (name: string) => {
 describe("runCodegen", () => {
     it("writes the gi store with raw modules, barrels, a package.json and the visible alias", async () => {
         const { gi } = giOptions("gi-only");
+
         const result = await runCodegen({
             libraries: ["GObject-2.0"],
             girPath: GIR_PATH,
@@ -46,6 +48,7 @@ describe("runCodegen", () => {
 
     it("writes the jsx unit when jsx options are given", async () => {
         const { root, gi } = giOptions("with-jsx");
+
         const jsx = {
             storeDir: join(root, "node_modules", ".gtkx", "jsx"),
             linkDir: join(root, "node_modules", "@gtkx", "jsx"),
@@ -90,10 +93,12 @@ describe("runCodegen", () => {
         const { gi } = giOptions("stale-fp");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         await runCodegen(options);
+
         writeFileSync(
             join(gi.storeDir, ".codegen-fingerprint.json"),
             JSON.stringify({ value: "stale", girFiles: [], libraries: ["GLib-2.0"] }),
         );
+
         const rerun = await runCodegen(options);
         expect(rerun.regenerated).toBe(true);
     });

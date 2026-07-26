@@ -3,7 +3,7 @@ import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, attrBool, childrenOf, docOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 
-export type GirRecord = {
+type GirRecord = {
     isVtable: boolean;
     name: string;
     doc: string | undefined;
@@ -24,7 +24,7 @@ export type GirRecord = {
     isUnion: boolean;
 };
 
-export const recordFromNode = (
+const recordFromNode = (
     node: RawNode,
     isVtable: boolean,
     isUnion: boolean,
@@ -50,4 +50,6 @@ export const recordFromNode = (
     isUnion,
 });
 
-export const isVtableRecord = (node: RawNode): boolean => attr(node, "glib:is-gtype-struct-for") !== undefined;
+const isVtableRecord = (node: RawNode): boolean => attr(node, "glib:is-gtype-struct-for") !== undefined;
+
+export { recordFromNode, isVtableRecord, type GirRecord };

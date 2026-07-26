@@ -3,8 +3,6 @@ import { ConcurrentRoot } from "react-reconciler/constants.js";
 import { type Container, reconciler } from "./host-config.js";
 import { rootElement } from "./root-element.js";
 
-declare const opaqueRoot: unique symbol;
-
 type OpaqueRoot = { [opaqueRoot]: true };
 
 type RootErrorCallbacks = {
@@ -16,17 +14,18 @@ type RootErrorCallbacks = {
 type ReconcilerRootOptions = RootErrorCallbacks & { containerInfo: Container };
 
 /** A root that mounts an element tree into an explicit container and reports render errors. */
-export type ReconcilerRoot = {
+type ReconcilerRoot = {
     update: (element: ReactNode) => void;
     unmount: (teardown: (root: ReconcilerRoot) => Promise<void>) => Promise<void>;
 };
 
 /** The object {@link createRoot} returns: it renders an element tree into a container and can tear it down. */
-export type Root = {
+type Root = {
     render: (element: ReactNode) => void;
     unmount: () => void;
 };
 
+declare const opaqueRoot: unique symbol;
 let errorHandler: ((error: unknown) => void) | null = null;
 const activeRoots: Set<OpaqueRoot> = new Set();
 
@@ -36,7 +35,7 @@ const activeRoots: Set<OpaqueRoot> = new Set();
  * @param handler The handler to install.
  * @returns The previously installed handler, or null.
  */
-export const setReconcilerErrorHandler = (handler: (error: unknown) => void): ((error: unknown) => void) | null => {
+const setReconcilerErrorHandler = (handler: (error: unknown) => void): ((error: unknown) => void) | null => {
     const previous = errorHandler;
     errorHandler = handler;
     return previous;
@@ -63,6 +62,7 @@ const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks):
         },
         () => {},
     ) as OpaqueRoot;
+
     activeRoots.add(container);
     return container;
 };
@@ -78,8 +78,9 @@ const unmountContainer = (container: OpaqueRoot): void => {
  * @param options The container to render into and the error callbacks to route failures to.
  * @returns A {@link ReconcilerRoot}.
  */
-export const createReconcilerRoot = (options: ReconcilerRootOptions): ReconcilerRoot => {
+const createReconcilerRoot = (options: ReconcilerRootOptions): ReconcilerRoot => {
     const container = openContainer(options.containerInfo, options);
+
     const root: ReconcilerRoot = {
         update: (element) => {
             reconciler.updateContainer(element, container, null, null);
@@ -89,6 +90,7 @@ export const createReconcilerRoot = (options: ReconcilerRootOptions): Reconciler
             activeRoots.delete(container);
         },
     };
+
     return root;
 };
 
@@ -98,8 +100,9 @@ export const createReconcilerRoot = (options: ReconcilerRootOptions): Reconciler
  * @param container The top-level container to render into; defaults to the shared {@link rootElement}.
  * @returns A {@link Root} exposing render and unmount.
  */
-export const createRoot = (container: Container = rootElement): Root => {
+const createRoot = (container: Container = rootElement): Root => {
     const opaque = openContainer(container, {});
+
     return {
         render: (element) => {
             reconciler.updateContainer(element, opaque, null, null);
@@ -109,7 +112,7 @@ export const createRoot = (container: Container = rootElement): Root => {
 };
 
 /** Unmounts every active render root and returns `true`. */
-export const quit = (): true => {
+const quit = (): true => {
     for (const container of activeRoots) unmountContainer(container);
     return true;
 };
@@ -122,5 +125,15 @@ export const quit = (): true => {
  * @param key An optional stable key.
  * @returns A React portal.
  */
-export const createPortal = (children: ReactNode, container: Container, key?: string): ReactNode =>
+const createPortal = (children: ReactNode, container: Container, key?: string): ReactNode =>
     Object.assign(reconciler.createPortal(children, container, null, key ?? null), { type: "gtkx-portal", props: {} });
+
+export {
+    setReconcilerErrorHandler,
+    createReconcilerRoot,
+    createRoot,
+    quit,
+    createPortal,
+    type ReconcilerRoot,
+    type Root,
+};

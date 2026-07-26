@@ -11,7 +11,6 @@ const schemaXmlWithId = (id: string): string => `<schemalist>
 </schemalist>`;
 
 const SCHEMA_XML = schemaXmlWithId("com.example.app");
-
 let root: string;
 
 beforeEach(() => {
@@ -35,7 +34,6 @@ describe("findSchemaFiles", () => {
         mkdirSync(join(root, "schemas"), { recursive: true });
         writeFileSync(join(root, "b.gschema.xml"), SCHEMA_XML);
         writeFileSync(join(root, "schemas", "a.gschema.xml"), SCHEMA_XML);
-
         expect(findSchemaFiles(root)).toEqual([join(root, "b.gschema.xml"), join(root, "schemas", "a.gschema.xml")]);
     });
 
@@ -43,7 +41,6 @@ describe("findSchemaFiles", () => {
         mkdirSync(join(root, ".hidden"), { recursive: true });
         writeFileSync(join(root, ".hidden", "x.gschema.xml"), SCHEMA_XML);
         writeFileSync(join(root, "y.gschema.xml"), SCHEMA_XML);
-
         expect(findSchemaFiles(root)).toEqual([join(root, "y.gschema.xml")]);
     });
 
@@ -55,9 +52,7 @@ describe("findSchemaFiles", () => {
 describe("emitSchemaEnv", () => {
     it("writes the declaration file into node_modules/.gtkx", () => {
         writeDataSchema("com.example.app.gschema.xml");
-
         const result = emitSchemaEnv(root, DATA_DIR);
-
         expect(result.path).toBe(schemaEnvPath(root));
         expect(result.written).toBe(true);
         const content = readFileSync(result.path, "utf8");
@@ -67,42 +62,33 @@ describe("emitSchemaEnv", () => {
 
     it("types a nested schema under its #data/<rel> specifier", () => {
         writeDataSchema(join("schemas", "com.example.app.gschema.xml"));
-
         const content = readFileSync(emitSchemaEnv(root, DATA_DIR).path, "utf8");
-
         expect(content).toContain("declare module \"#data/schemas/com.example.app.gschema.xml\" {");
     });
 
     it("emits an empty declaration file when no data directory is configured", () => {
         writeDataSchema("com.example.app.gschema.xml");
-
         const content = readFileSync(emitSchemaEnv(root, null).path, "utf8");
-
         expect(content).not.toContain("declare module");
     });
 
     it("ignores schemas outside the data directory", () => {
         writeFileSync(join(root, "com.example.outside.gschema.xml"), SCHEMA_XML);
-
         const result = emitSchemaEnv(root, DATA_DIR);
-
         expect(readFileSync(result.path, "utf8")).not.toContain("declare module");
     });
 
     it("writes an empty declaration file for a project without schemas", () => {
         const result = emitSchemaEnv(root, DATA_DIR);
-
         expect(existsSync(result.path)).toBe(true);
         expect(readFileSync(result.path, "utf8")).not.toContain("declare module");
     });
 
     it("leaves the file untouched when nothing changed", () => {
         writeDataSchema("com.example.app.gschema.xml");
-
         const first = emitSchemaEnv(root, DATA_DIR);
         const stamped = statSync(first.path).mtimeMs;
         const second = emitSchemaEnv(root, DATA_DIR);
-
         expect(first.written).toBe(true);
         expect(second.written).toBe(false);
         expect(statSync(second.path).mtimeMs).toBe(stamped);
@@ -111,21 +97,18 @@ describe("emitSchemaEnv", () => {
     it("types same-basename schemas in different subdirectories independently", () => {
         writeDataSchema(join("a", "settings.gschema.xml"), schemaXmlWithId("com.example.a"));
         writeDataSchema(join("b", "settings.gschema.xml"), schemaXmlWithId("com.example.b"));
-
         const content = readFileSync(emitSchemaEnv(root, DATA_DIR).path, "utf8");
-
         expect(content).toContain("declare module \"#data/a/settings.gschema.xml\" {");
         expect(content).toContain("declare module \"#data/b/settings.gschema.xml\" {");
     });
 
     it("skips unparseable files with a warning and still writes the file", () => {
         const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
         try {
             writeDataSchema("broken.gschema.xml", "<not-a-schemalist/>");
             writeDataSchema("com.example.app.gschema.xml");
-
             const result = emitSchemaEnv(root, DATA_DIR);
-
             const warnings = stderr.mock.calls.map((call) => String(call[0])).filter((line) => line.includes("broken"));
             expect(warnings).toHaveLength(1);
             const content = readFileSync(result.path, "utf8");

@@ -1,10 +1,10 @@
 import type * as GObject from "@gtkx/gi/gobject";
 
 /** The props of a host element or node, as React passes them through the reconciler. */
-export type Props = Record<string, unknown>;
+type Props = Record<string, unknown>;
 
 /** Per-child values a slot hook receives while placing or moving one child. */
-export type PlaceInfo = {
+type PlaceInfo = {
     slot: string;
     index: number;
     sibling: GObject.Object | null;
@@ -14,7 +14,7 @@ export type PlaceInfo = {
 };
 
 /** Per-child values a slot hook receives while removing one child. */
-export type DetachInfo = {
+type DetachInfo = {
     slot: string;
     adopted: GObject.Object | null;
     props: Props;
@@ -28,7 +28,7 @@ export type DetachInfo = {
  * the container adopts for the child. `update` returns the prop names it consumed so those props
  * are not also set as plain GObject properties.
  */
-export type ElementBehavior<T extends GObject.Object = GObject.Object> = {
+type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     createContext?: (object: T) => unknown;
     attach?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown;
     reorder?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown;
@@ -41,11 +41,8 @@ export type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     deferred?: string[];
 };
 
-/** Props a behavior applies after construction; the constructor is never given them. */
-export const deferredProps = (behavior: ElementBehavior): string[] => behavior.deferred ?? [];
-
 /** A named export in a module, referenced as plain data (the module is never imported at runtime). */
-export type ModuleExport = { module: string; export: string };
+type ModuleExport = { module: string; export: string };
 
 /**
  * Per-element configuration keyed by GLib type name: whether the element is lazy (its GObject is
@@ -53,7 +50,7 @@ export type ModuleExport = { module: string; export: string };
  * its type, an optional component that wraps the generated element, and the base props interface its
  * generated props extend. `component` and `props` are inert at runtime; they are read only by codegen.
  */
-export type ElementConfig<T extends GObject.Object = GObject.Object> = {
+type ElementConfig<T extends GObject.Object = GObject.Object> = {
     lazy?: boolean;
     behaviors?: ElementBehavior<T>[];
     component?: ModuleExport;
@@ -61,7 +58,10 @@ export type ElementConfig<T extends GObject.Object = GObject.Object> = {
 };
 
 /** Every registered element config, keyed by GLib type name. Adwaita entries appear once `@gtkx/react/adw` is loaded. */
-export const ELEMENTS: Record<string, ElementConfig> = {};
+const ELEMENTS: Record<string, ElementConfig> = {};
+
+/** Props a behavior applies after construction; the constructor is never given them. */
+const deferredProps = (behavior: ElementBehavior): string[] => behavior.deferred ?? [];
 
 const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], prepend: boolean): ElementBehavior[] => {
     const baseBehaviors = base.behaviors ?? [];
@@ -70,9 +70,11 @@ const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], prepend: 
 
 const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, prepend = false): ElementConfig => {
     const entry: ElementConfig = { ...base };
+
     if (added.behaviors !== undefined) {
         entry.behaviors = mergeBehaviors(entry, added.behaviors as ElementBehavior[], prepend);
     }
+
     if (added.lazy === true) entry.lazy = true;
     if (added.component !== undefined) entry.component = added.component;
     if (added.props !== undefined) entry.props = added.props;
@@ -84,11 +86,13 @@ const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, prep
  * behaviors in the order the maps are given (an earlier map's behaviors come first) and taking the last
  * lazy flag, component, and props seen. Use it to combine an app's element config with its behaviors.
  */
-export const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>>[]): Record<string, ElementConfig> => {
+const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>>[]): Record<string, ElementConfig> => {
     const merged: Record<string, ElementConfig> = {};
+
     for (const map of maps) {
         for (const [type, config] of Object.entries(map)) merged[type] = mergeConfigEntry(merged[type] ?? {}, config);
     }
+
     return merged;
 };
 
@@ -98,7 +102,7 @@ export const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>
  * `{ prepend: true }` for an app's own configuration so its behaviors are consulted before the
  * built-ins for the same slot, letting it override them regardless of registration order.
  */
-export const registerElements = (
+const registerElements = (
     map: Record<string, ElementConfig<never>>,
     options: { prepend?: boolean } = {},
 ): void => {
@@ -112,12 +116,28 @@ export const registerElements = (
  * editor autocompletion and type checking. Key each entry by GLib type name and annotate each hook's
  * object parameter with the concrete GObject class the behavior applies to.
  */
-export const defineElements = (elements: Record<string, ElementConfig<never>>): Record<string, ElementConfig<never>> =>
+const defineElements = (elements: Record<string, ElementConfig<never>>): Record<string, ElementConfig<never>> =>
     elements;
 
 /** Spreads one config across many GLib type names. */
-export const forTypes = (types: string[], config: ElementConfig<never>): Record<string, ElementConfig<never>> =>
+const forTypes = (types: string[], config: ElementConfig<never>): Record<string, ElementConfig<never>> =>
     Object.fromEntries(types.map((type) => [type, config]));
 
 /** References a base props interface exported from `@gtkx/react/internal`. */
-export const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
+const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
+
+export {
+    ELEMENTS,
+    deferredProps,
+    mergeElementConfigs,
+    registerElements,
+    defineElements,
+    forTypes,
+    internal,
+    type Props,
+    type PlaceInfo,
+    type DetachInfo,
+    type ElementBehavior,
+    type ModuleExport,
+    type ElementConfig,
+};

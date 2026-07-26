@@ -9,7 +9,6 @@ const NOT_MAPPED = "it is not mapped (it is not shown on screen, e.g. it is hidd
 const WINDOW_NOT_ACTIVE = "its window never became active";
 
 const actionableHop = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 1));
-
 const displayDeliversActivation = (window: Gtk.Window): boolean => window.getDisplay().getDefaultSeat() !== null;
 
 const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): string | null => {
@@ -37,10 +36,12 @@ const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {
     const timeout = getConfig().actionabilityTimeout;
     const deadline = Date.now() + timeout;
     let failure = findActionabilityFailure(widget);
+
     while (failure !== null && Date.now() < deadline) {
         await actionableHop();
         failure = findActionabilityFailure(widget);
     }
+
     if (failure !== null) {
         throw new Error(
             `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable within ${timeout}ms because ${failure}`,
@@ -48,9 +49,12 @@ const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {
     }
 };
 
-export const wrapEvent = async (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> => {
+const wrapEvent = async (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> => {
     await waitForActionable(widget);
+
     await runInAct(async () => {
         await body();
     });
 };
+
+export { wrapEvent };

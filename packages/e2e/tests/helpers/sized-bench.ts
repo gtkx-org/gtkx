@@ -1,1 +1,3 @@
-export const BENCH_SIZES: number[] = [100, 400];
+const BENCH_SIZES: number[] = [100, 400];
+
+export { BENCH_SIZES };

@@ -8,44 +8,51 @@ import type { ProtocolConnection } from "../src/transport.js";
 import { ConnectionRegistry } from "../src/connection-registry.js";
 import { SocketServer } from "../src/socket-server.js";
 
-export const connectClient = (path: string): Promise<net.Socket> =>
+const connectClient = (path: string): Promise<net.Socket> =>
     new Promise((resolve, reject) => {
         const socket = net.createConnection(path);
         socket.once("connect", () => resolve(socket));
         socket.once("error", reject);
     });
 
-export const tryConnect = (path: string): Promise<Error | null> =>
+const tryConnect = (path: string): Promise<Error | null> =>
     new Promise((resolve) => {
         const socket = net.createConnection(path);
+
         socket.once("connect", () => {
             socket.destroy();
             resolve(null);
         });
+
         socket.once("error", (error) => resolve(error));
     });
 
 const collectLines = (socket: net.Socket): { lines: string[]; promise: Promise<void> } => {
     let buffer = "";
     const lines: string[] = [];
+
     const promise: Promise<void> = new Promise((resolve) => {
         socket.on("data", (data: Buffer) => {
             buffer += data.toString();
             let idx = buffer.indexOf("\n");
+
             while (idx !== -1) {
                 lines.push(buffer.slice(0, idx));
                 buffer = buffer.slice(idx + 1);
                 idx = buffer.indexOf("\n");
             }
         });
+
         socket.on("close", () => resolve());
     });
+
     return { lines, promise };
 };
 
-export const waitForConnection = (registry: ConnectionRegistry): Promise<ProtocolConnection> =>
+const waitForConnection = (registry: ConnectionRegistry): Promise<ProtocolConnection> =>
     new Promise((resolve) => {
         const original = registry.register.bind(registry);
+
         registry.register = (socket) => {
             const connection = original(socket);
             registry.register = original;
@@ -54,16 +61,16 @@ export const waitForConnection = (registry: ConnectionRegistry): Promise<Protoco
         };
     });
 
-export type SocketServerContext = {
+type SocketServerContext = {
     tmpDir: string;
     socketPath: string;
     server: SocketServer;
     registry: ConnectionRegistry;
 };
 
-export const socketCtx = {} as SocketServerContext;
+const socketCtx = {} as SocketServerContext;
 
-export function setupSocketServer(): void {
+function setupSocketServer(): void {
     beforeEach(() => {
         socketCtx.tmpDir = mkdtempSync(join(tmpdir(), "gtkx-socket-server-"));
         socketCtx.socketPath = join(socketCtx.tmpDir, "test.sock");
@@ -77,25 +84,39 @@ export function setupSocketServer(): void {
     });
 }
 
-export const startWithClient = async (): Promise<net.Socket> => {
+const startWithClient = async (): Promise<net.Socket> => {
     await socketCtx.server.start();
     return connectClient(socketCtx.socketPath);
 };
 
-export const nextRequest = (registry: ConnectionRegistry): Promise<Request> =>
+const nextRequest = (registry: ConnectionRegistry): Promise<Request> =>
     new Promise((resolve) => {
         registry.once("request", (_conn, req) => resolve(req));
     });
 
-export const collectFirstFrame = async <T>(client: net.Socket, act: () => void): Promise<T> => {
+const collectFirstFrame = async <T>(client: net.Socket, act: () => void): Promise<T> => {
     const collector = collectLines(client);
     act();
     const deadline = Date.now() + 2000;
+
     while (collector.lines.length === 0 && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 5));
     }
+
     client.destroy();
     await collector.promise;
     expect(collector.lines.length).toBeGreaterThan(0);
     return JSON.parse(collector.lines[0] as string) as T;
+};
+
+export {
+    connectClient,
+    tryConnect,
+    waitForConnection,
+    socketCtx,
+    setupSocketServer,
+    startWithClient,
+    nextRequest,
+    collectFirstFrame,
+    type SocketServerContext,
 };

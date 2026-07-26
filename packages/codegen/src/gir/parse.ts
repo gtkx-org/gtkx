@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createXmlParser } from "../xml.js";
 
-export type RawNode = Record<string, unknown>;
+type RawNode = Record<string, unknown>;
 
 const MULTI_TAGS: Set<string> = new Set([
     "include",
@@ -26,12 +26,8 @@ const MULTI_TAGS: Set<string> = new Set([
     "parameter",
 ]);
 
-export const GIR_CONSTRUCTOR_TAG = "gir-constructor";
-
+const GIR_CONSTRUCTOR_TAG = "gir-constructor";
 const RESERVED_TAG_RENAMES: Map<string, string> = new Map([["constructor", GIR_CONSTRUCTOR_TAG]]);
-
-const renameReservedTag = (tag: string): string => RESERVED_TAG_RENAMES.get(tag) ?? tag;
-
 const RENAMED_MULTI_TAGS: Set<string> = new Set([...MULTI_TAGS].map((tag) => renameReservedTag(tag)));
 
 const PARSER = createXmlParser({
@@ -40,26 +36,30 @@ const PARSER = createXmlParser({
     isArray: (name) => RENAMED_MULTI_TAGS.has(name),
 });
 
-export const parseGirFile = (path: string): RawNode => {
+function renameReservedTag(tag: string): string {
+    return RESERVED_TAG_RENAMES.get(tag) ?? tag;
+}
+
+const parseGirFile = (path: string): RawNode => {
     const xml = readFileSync(path, "utf8");
     return PARSER.parse(xml) as RawNode;
 };
 
-export const attr = (node: RawNode | undefined, name: string): string | undefined => {
+const attr = (node: RawNode | undefined, name: string): string | undefined => {
     if (node === undefined) return undefined;
     const value = node[`@_${name}`];
     return typeof value === "string" ? value : undefined;
 };
 
-export const attrBool = (node: RawNode | undefined, name: string, fallback = false): boolean => {
+const attrBool = (node: RawNode | undefined, name: string, fallback = false): boolean => {
     const value = attr(node, name);
     if (value === undefined) return fallback;
     return value === "1";
 };
 
-export const nameAttr = (node: RawNode): string => attr(node, "name") ?? "";
+const nameAttr = (node: RawNode): string => attr(node, "name") ?? "";
 
-export const intAttr = (node: RawNode, name: string): number | undefined => {
+const intAttr = (node: RawNode, name: string): number | undefined => {
     const raw = attr(node, name);
     return raw === undefined ? undefined : Number(raw);
 };
@@ -68,17 +68,18 @@ const enumMember = <T extends string>(raw: string, members: Set<T>, label: strin
     for (const member of members) {
         if (member === raw) return member;
     }
+
     throw new Error(`Unknown ${label} value "${raw}"`);
 };
 
-export const parseEnumAttr = <T extends string, F extends T | undefined>(
+const parseEnumAttr = <T extends string, F extends T | undefined>(
     raw: string | undefined,
     members: Set<T>,
     fallback: F,
     label: string,
 ): T | F => (raw === undefined ? fallback : enumMember(raw, members, label));
 
-export const childrenOf = (node: RawNode | undefined, tag: string): RawNode[] => {
+const childrenOf = (node: RawNode | undefined, tag: string): RawNode[] => {
     if (node === undefined) return [];
     const value = node[tag];
     if (value === undefined) return [];
@@ -86,13 +87,15 @@ export const childrenOf = (node: RawNode | undefined, tag: string): RawNode[] =>
     return [value as RawNode];
 };
 
-export const childOf = (node: RawNode | undefined, tag: string): RawNode | undefined => {
+const childOf = (node: RawNode | undefined, tag: string): RawNode | undefined => {
     if (node === undefined) return undefined;
     const value = node[tag];
     if (value === undefined) return undefined;
+
     if (Array.isArray(value)) {
         return value.length === 0 ? undefined : (value[0] as RawNode);
     }
+
     return value as RawNode;
 };
 
@@ -108,10 +111,24 @@ const docTextFromObject = (value: object): string | undefined => {
     return typeof text === "string" ? normalizeDoc(text) : undefined;
 };
 
-export const docOf = (node: RawNode | undefined): string | undefined => {
+const docOf = (node: RawNode | undefined): string | undefined => {
     if (node === undefined) return undefined;
     const value = firstDocValue(node.doc);
     if (typeof value === "string") return normalizeDoc(value);
     if (value === null || typeof value !== "object") return undefined;
     return docTextFromObject(value);
+};
+
+export {
+    GIR_CONSTRUCTOR_TAG,
+    parseGirFile,
+    attr,
+    attrBool,
+    nameAttr,
+    intAttr,
+    parseEnumAttr,
+    childrenOf,
+    childOf,
+    docOf,
+    type RawNode,
 };

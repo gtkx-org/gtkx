@@ -40,7 +40,6 @@ describe("dev command", () => {
 
     it("runs preflight codegen and hands off to the supervisor with the resolved entry", async () => {
         await runDev("src/main.tsx");
-
         expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true, mode: "development" });
         expect(resolveConfigWatchMock).toHaveBeenCalledExactlyOnceWith(expect.any(String), "development");
         expect(runDevSupervisorMock).toHaveBeenCalledOnce();
@@ -52,7 +51,6 @@ describe("dev command", () => {
 
     it("uses src/index.tsx as the default entry when no positional is supplied", async () => {
         await runDev();
-
         const [entryPath] = runDevSupervisorMock.mock.calls[0] ?? [];
         expect(entryPath).toMatch(/src\/index\.tsx$/);
     });

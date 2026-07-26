@@ -3,7 +3,7 @@ import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js"
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
 import { attr, attrBool, childOf, type RawNode } from "./parse.js";
 
-export type GirFunction = {
+type GirFunction = {
     name: string;
     doc: string | undefined;
     cIdentifier: string | undefined;
@@ -28,8 +28,9 @@ const relaxMissingNullable = (fn: GirFunction): GirFunction => {
     return fn;
 };
 
-export const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => {
+const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => {
     const instanceNode = childOf(childOf(node, "parameters"), "instance-parameter");
+
     return relaxMissingNullable({
         ...parseCallable(node, context),
         name: attr(node, "shadows") ?? attr(node, "name") ?? "",
@@ -41,3 +42,5 @@ export const functionFromNode = (node: RawNode, context: ParseContext): GirFunct
         instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),
     });
 };
+
+export { functionFromNode, type GirFunction };

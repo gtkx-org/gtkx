@@ -72,6 +72,7 @@ describe("fundamental GType constants", () => {
             TYPE_OBJECT,
             TYPE_BOXED,
         ]);
+
         expect(types.size).toBe(8);
     });
 });

@@ -35,9 +35,7 @@ const expectScaleAdjustment = async (
 describe("render - adjustment element (1)", () => {
     it("supplies an Adjustment to the Scale widget", async () => {
         const ref = createRef<Gtk.Scale>();
-
         await render(<ScaleWithAdjustment config={{ value: 50, lower: 0, upper: 100 }} scaleRef={ref} />);
-
         expect(ref.current).not.toBeNull();
         expect(ref.current?.getAdjustment()).not.toBeNull();
     });
@@ -85,9 +83,7 @@ describe("render - adjustment element (2)", () => {
 
     it("uses GObject defaults when not specified", async () => {
         const ref = createRef<Gtk.Scale>();
-
         await render(<ScaleWithAdjustment config={{}} scaleRef={ref} />);
-
         expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 0, min: 0, max: 0 } })).toBeTruthy();
         const adjustment = ref.current?.getAdjustment();
         expect(adjustment?.getStepIncrement()).toBe(0);
@@ -103,9 +99,9 @@ describe("render - adjustment element (3)", () => {
         const { rerender } = await render(
             <ScaleWithAdjustment config={{ value: 25, lower: 0, upper: 100 }} scaleRef={ref} />,
         );
+
         const adjustment = ref.current?.getAdjustment();
         expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 25 } })).toBeTruthy();
-
         await rerender(<ScaleWithAdjustment config={{ value: 75, lower: 0, upper: 200 }} scaleRef={ref} />);
         expect(ref.current?.getAdjustment()).toBe(adjustment);
         expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 75, max: 200 } })).toBeTruthy();
@@ -113,12 +109,10 @@ describe("render - adjustment element (3)", () => {
 
     it("reflects values driven through the returned adjustment", async () => {
         const ref = createRef<Gtk.Scale>();
-
         await render(<ScaleWithAdjustment config={{ value: 50, lower: 0, upper: 100 }} scaleRef={ref} />);
         const adjustment = ref.current?.getAdjustment();
         adjustment?.setUpper(200);
         adjustment?.setValue(80);
-
         expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 80, max: 200 } })).toBeTruthy();
     });
 });
@@ -154,16 +148,16 @@ describe("render - adjustment element (4)", () => {
                 onValueChanged={onValueChanged}
             />,
         );
+
         ref.current?.getAdjustment().setValue(60);
 
         await waitFor(() => {
             expect(onValueChanged).toHaveBeenCalledWith(60);
         });
-        const callCount = onValueChanged.mock.calls.length;
 
+        const callCount = onValueChanged.mock.calls.length;
         await rerender(<ScaleWithAdjustment config={{ value: 60, lower: 0, upper: 100 }} scaleRef={ref} />);
         ref.current?.getAdjustment().setValue(70);
-
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(onValueChanged.mock.calls).toHaveLength(callCount);
     });

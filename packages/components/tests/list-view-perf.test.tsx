@@ -17,13 +17,10 @@ describe("ListView performance", () => {
         const n = 10_000;
         const items: Item<string>[] = Array.from({ length: n }, (_, i) => ({ id: `w-${i}`, value: `w-${i}` }));
         const few = items.slice(0, 2);
-
         const { rerender } = await render(<App items={items} />);
-
         const start = performance.now();
         await rerender(<App items={few} />);
         const elapsed = performance.now() - start;
-
         expect(elapsed).toBeLessThan(4000);
     });
 });

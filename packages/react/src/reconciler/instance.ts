@@ -25,9 +25,11 @@ let contentTypes: { kind: ContentKind; type: bigint }[] | null = null;
 
 const resolveContentKind = (type: bigint): ContentKind | null => {
     contentTypes ??= CONTENT_TYPE_NAMES.map((entry) => ({ kind: entry.kind, type: typeFromName(entry.name) }));
+
     for (const entry of contentTypes) {
         if (entry.type !== TYPE_INVALID && typeIsA(type, entry.type)) return entry.kind;
     }
+
     return null;
 };
 
@@ -45,10 +47,12 @@ const instantiate = (type: bigint, input: Props): GObject.Object => {
     return new cls(input);
 };
 
-export const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
+const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
     const info = typeInfoOf(typeName);
     if (info.lazy) return createLazyNode(typeName, props, dispatch);
     const type = typeFromName(typeName);
     const object = instantiate(type, constructInput(info, props));
     return createElementNode(typeName, object, dispatch, resolveContentKind(type));
 };
+
+export { resolveElementNode };

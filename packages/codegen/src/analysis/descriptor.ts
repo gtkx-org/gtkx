@@ -1,7 +1,7 @@
 import { sourceStringLiteral } from "@gtkx/utils";
 import { joinArgs } from "../writer/emit.js";
 
-export type Ownership = "borrowed" | "full";
+type Ownership = "borrowed" | "full";
 
 type DescriptorName =
     | "bind" |
@@ -44,6 +44,51 @@ type DescriptorName =
 
 type DescriptorNames = { [K in DescriptorName]: `t.${K}` };
 
+type ScalarDescriptorName =
+    | "boolean" |
+    "int8" |
+    "uint8" |
+    "int16" |
+    "uint16" |
+    "int32" |
+    "uint32" |
+    "int64" |
+    "uint64" |
+    "bigint64" |
+    "biguint64" |
+    "float32" |
+    "float64" |
+    "unichar";
+
+type BoxedOptions = {
+    ownership: Ownership;
+    sharedLibrary: string | undefined;
+    getTypeFnName: string;
+    callerAllocated: boolean;
+    size: number | undefined;
+};
+
+type StructOptions = {
+    size: number | string | undefined;
+    wrapperClass: string | undefined;
+    callerAllocated: boolean;
+};
+
+type FundamentalOptions = {
+    ownership: Ownership;
+    typeName: string | undefined;
+    wrapperClass: string | undefined;
+};
+
+type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
+
+type BindArgs = {
+    libExpr: string;
+    symbolExpr: string;
+    argList: string;
+    returnType: string;
+};
+
 const T: DescriptorNames = {
     bind: "t.bind",
     int8: "t.int8",
@@ -84,6 +129,15 @@ const T: DescriptorNames = {
     fn: "t.fn",
 };
 
+const tVoid: string = T.void;
+const tBoolean: string = T.boolean;
+const tUint8: string = T.uint8;
+const tUint32: string = T.uint32;
+const tInt32: string = T.int32;
+const tUint64: string = T.uint64;
+const tGtype: string = T.gtype;
+const tBuffer: string = T.buffer;
+
 const call = (name: DescriptorName, args: (string | undefined)[]): string => `${T[name]}(${joinArgs(args)})`;
 
 const optionsObject = (parts: (string | undefined)[]): string | undefined => {
@@ -91,54 +145,14 @@ const optionsObject = (parts: (string | undefined)[]): string | undefined => {
     return present.length === 0 ? undefined : `{ ${present.join(", ")} }`;
 };
 
-export const tVoid: string = T.void;
+const tScalar = (name: ScalarDescriptorName): string => T[name];
 
-export const tBoolean: string = T.boolean;
-
-export const tUint8: string = T.uint8;
-
-export const tUint32: string = T.uint32;
-
-export const tInt32: string = T.int32;
-
-export const tUint64: string = T.uint64;
-
-export const tGtype: string = T.gtype;
-
-export const tBuffer: string = T.buffer;
-
-export type ScalarDescriptorName =
-    | "boolean" |
-    "int8" |
-    "uint8" |
-    "int16" |
-    "uint16" |
-    "int32" |
-    "uint32" |
-    "int64" |
-    "uint64" |
-    "bigint64" |
-    "biguint64" |
-    "float32" |
-    "float64" |
-    "unichar";
-
-export const tScalar = (name: ScalarDescriptorName): string => T[name];
-
-export const tString = (ownership: Ownership, length?: string): string =>
+const tString = (ownership: Ownership, length?: string): string =>
     call("string", [sourceStringLiteral(ownership), length]);
 
-export const tObject = (ownership: Ownership): string => call("object", [sourceStringLiteral(ownership)]);
+const tObject = (ownership: Ownership): string => call("object", [sourceStringLiteral(ownership)]);
 
-export type BoxedOptions = {
-    ownership: Ownership;
-    sharedLibrary: string | undefined;
-    getTypeFnName: string;
-    callerAllocated: boolean;
-    size: number | undefined;
-};
-
-export const tBoxed = (glibName: string, options: BoxedOptions): string =>
+const tBoxed = (glibName: string, options: BoxedOptions): string =>
     call("boxed", [
         sourceStringLiteral(glibName),
         optionsObject([
@@ -152,13 +166,7 @@ export const tBoxed = (glibName: string, options: BoxedOptions): string =>
         ]),
     ]);
 
-export type StructOptions = {
-    size: number | string | undefined;
-    wrapperClass: string | undefined;
-    callerAllocated: boolean;
-};
-
-export const tStruct = (ownership: Ownership, options: StructOptions): string =>
+const tStruct = (ownership: Ownership, options: StructOptions): string =>
     call("struct", [
         sourceStringLiteral(ownership),
         optionsObject([
@@ -168,16 +176,10 @@ export const tStruct = (ownership: Ownership, options: StructOptions): string =>
         ]),
     ]);
 
-export const tInlineStruct = (): string =>
+const tInlineStruct = (): string =>
     tStruct("borrowed", { size: undefined, wrapperClass: undefined, callerAllocated: false });
 
-export type FundamentalOptions = {
-    ownership: Ownership;
-    typeName: string | undefined;
-    wrapperClass: string | undefined;
-};
-
-export const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: FundamentalOptions): string =>
+const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: FundamentalOptions): string =>
     call("fundamental", [
         sourceStringLiteral(lib),
         sourceStringLiteral(refFunc),
@@ -189,25 +191,23 @@ export const tFundamental = (lib: string, refFunc: string, unrefFunc: string, op
         ]),
     ]);
 
-export const tRef = (inner: string, inout = false): string => call("ref", [inner, inout ? "true" : undefined]);
+const tRef = (inner: string, inout = false): string => call("ref", [inner, inout ? "true" : undefined]);
 
-export const tHashTable = (key: string, value: string, ownership: Ownership): string =>
+const tHashTable = (key: string, value: string, ownership: Ownership): string =>
     call("hashTable", [key, value, sourceStringLiteral(ownership)]);
 
-export const tEnum = (lib: string, typeFnName: string, signed: boolean): string =>
+const tEnum = (lib: string, typeFnName: string, signed: boolean): string =>
     call("enum", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(signed)]);
 
-export const tFlags = (lib: string, typeFnName: string, signed: boolean): string =>
+const tFlags = (lib: string, typeFnName: string, signed: boolean): string =>
     call("flags", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(signed)]);
 
-export const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
+const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 
-export type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
-
-export const tList = (name: ListDescriptorName, element: string, ownership: Ownership): string =>
+const tList = (name: ListDescriptorName, element: string, ownership: Ownership): string =>
     call(name, [element, sourceStringLiteral(ownership)]);
 
-export const tArray = (element: string, ownership?: Ownership, elementSize?: number): string =>
+const tArray = (element: string, ownership?: Ownership, elementSize?: number): string =>
     call("array", [
         element,
         ownership === undefined ? undefined : sourceStringLiteral("array"),
@@ -215,7 +215,7 @@ export const tArray = (element: string, ownership?: Ownership, elementSize?: num
         elementSize === undefined ? undefined : `{ elementSize: ${elementSize} }`,
     ]);
 
-export const tSizedArray = (
+const tSizedArray = (
     element: string,
     lengthIndex: number,
     ownership?: Ownership,
@@ -228,7 +228,7 @@ export const tSizedArray = (
         elementSize === undefined ? undefined : String(elementSize),
     ]);
 
-export const tFixedArray = (element: string, length: number, ownership?: Ownership, elementSize?: number): string =>
+const tFixedArray = (element: string, length: number, ownership?: Ownership, elementSize?: number): string =>
     call("fixedArray", [
         element,
         String(length),
@@ -236,28 +236,58 @@ export const tFixedArray = (element: string, length: number, ownership?: Ownersh
         elementSize === undefined ? undefined : String(elementSize),
     ]);
 
-export const tCallback = (argTypes: string[], returnType: string, options?: string): string =>
+const tCallback = (argTypes: string[], returnType: string, options?: string): string =>
     call("callback", [`[${argTypes.join(", ")}]`, returnType, options]);
 
-type BindArgs = {
-    libExpr: string;
-    symbolExpr: string;
-    argList: string;
-    returnType: string;
-};
-
-export const tBind = (args: BindArgs): string =>
+const tBind = (args: BindArgs): string =>
     call("bind", [args.libExpr, args.symbolExpr, args.argList, args.returnType]);
 
-export const tFn = (
+const tFn = (
     lib: string,
     cIdentifier: string,
     spec: { args: string; returns: string; throws: boolean },
 ): string => {
     const throwsEntry = spec.throws ? ", throws: true" : "";
+
     return call("fn", [
         sourceStringLiteral(lib),
         sourceStringLiteral(cIdentifier),
         `{ args: ${spec.args}, returns: ${spec.returns}${throwsEntry} }`,
     ]);
+};
+
+export {
+    tVoid,
+    tBoolean,
+    tUint8,
+    tUint32,
+    tInt32,
+    tUint64,
+    tGtype,
+    tBuffer,
+    tScalar,
+    tString,
+    tObject,
+    tBoxed,
+    tStruct,
+    tInlineStruct,
+    tFundamental,
+    tRef,
+    tHashTable,
+    tEnum,
+    tFlags,
+    tByteArray,
+    tList,
+    tArray,
+    tSizedArray,
+    tFixedArray,
+    tCallback,
+    tBind,
+    tFn,
+    type Ownership,
+    type ScalarDescriptorName,
+    type BoxedOptions,
+    type StructOptions,
+    type FundamentalOptions,
+    type ListDescriptorName,
 };

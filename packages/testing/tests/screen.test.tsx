@@ -15,13 +15,13 @@ describe("screen binding", () => {
 
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
         const all = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: /First|Second/ });
-
         expect(button).toBeDefined();
         expect(all).toHaveLength(2);
     });
 
     it("throws when no render has been performed", async () => {
         await cleanup();
+
         expect(() => screen.findByRole(Gtk.AccessibleRole.BUTTON, { timeout: 100 })).toThrow(
             "No render has been performed",
         );
@@ -31,9 +31,7 @@ describe("screen binding", () => {
 describe("screen screenshot capture", () => {
     it("captures the first window when no selector is provided", async () => {
         await render(<GtkLabel>Snapshot</GtkLabel>);
-
         const result = await screen.screenshot();
-
         expect(result.mimeType).toBe("image/png");
         expect(result.data.length).toBeGreaterThan(0);
         expect(result.width).toBeGreaterThan(0);
@@ -42,16 +40,13 @@ describe("screen screenshot capture", () => {
 
     it("captures the window at the requested index", async () => {
         await render(<GtkLabel>Indexed</GtkLabel>);
-
         const result = await screen.screenshot(0);
-
         expect(result.mimeType).toBe("image/png");
         expect(result.data.length).toBeGreaterThan(0);
     });
 
     it("throws when the index is out of range", async () => {
         await render(<GtkLabel>Bounds</GtkLabel>);
-
         await expect(screen.screenshot(99)).rejects.toThrow(/Window at index 99 not found/);
     });
 });
@@ -64,10 +59,8 @@ const decodePngSize = (base64Data: string): { width: number; height: number } =>
 describe("screen screenshot scale", () => {
     it("supersamples the capture by the requested factor", async () => {
         await render(<GtkLabel>Scaled</GtkLabel>);
-
         const base = await screen.screenshot(0);
         const scaled = await screen.screenshot(0, { scale: 2 });
-
         expect(scaled.width).toBe(base.width * 2);
         expect(scaled.height).toBe(base.height * 2);
         expect(decodePngSize(scaled.data)).toEqual({ width: scaled.width, height: scaled.height });
@@ -76,7 +69,6 @@ describe("screen screenshot scale", () => {
 
     it("rejects a non-positive scale", async () => {
         await render(<GtkLabel>Invalid scale</GtkLabel>);
-
         await expect(screen.screenshot(0, { scale: 0 })).rejects.toThrow(/positive number/);
     });
 });
@@ -91,7 +83,6 @@ describe("screen screenshot selectors", () => {
         );
 
         const result = await screen.screenshot("Settings");
-
         expect(result.mimeType).toBe("image/png");
     });
 
@@ -104,7 +95,6 @@ describe("screen screenshot selectors", () => {
         );
 
         const result = await screen.screenshot(/^Demo/);
-
         expect(result.mimeType).toBe("image/png");
     });
 });
@@ -126,7 +116,6 @@ describe("screen screenshot errors", () => {
 
     it("throws when no windows are available", async () => {
         await cleanup();
-
         await expect(captureAndSaveScreenshot()).rejects.toThrow(/No windows available for screenshot/);
     });
 });

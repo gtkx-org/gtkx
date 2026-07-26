@@ -4,7 +4,12 @@ import { runWithActEnvironment } from "./act.js";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
 
+type PollResult<T> = { status: "resolved"; value: T } | { status: "timedout"; lastError: Error | null };
+type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;
+type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
+
 const DEFAULT_INTERVAL = 50;
+const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -12,14 +17,14 @@ const copyStackTrace = (target: Error, source: Error): void => {
     const { stack } = source;
     if (stack === undefined) return;
     const index = stack.indexOf(source.message);
+
     if (index === -1) {
         target.stack = stack;
         return;
     }
+
     target.stack = stack.slice(0, index) + target.message + stack.slice(index + source.message.length);
 };
-
-type PollResult<T> = { status: "resolved"; value: T } | { status: "timedout"; lastError: Error | null };
 
 const pollUntilSuccess = async <T>(
     callback: () => T | Promise<T>,
@@ -63,7 +68,7 @@ const buildTimeoutError = (
  * @param options Optional timeout, interval, and timeout error customization.
  * @returns The callback's result once it succeeds.
  */
-export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
+const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
     if (typeof callback !== "function") {
         throw new TypeError("Received `callback` arg must be a function");
     }
@@ -80,10 +85,6 @@ export const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOpti
         }),
     );
 };
-
-type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;
-
-type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
 
 const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget =>
     typeof elementOrCallback === "function" ? elementOrCallback() : elementOrCallback;
@@ -102,10 +103,9 @@ const isTargetRemoved = (target: RemovalTarget): boolean => {
     if (Array.isArray(target)) {
         return target.every((widget) => isWidgetRemoved(widget));
     }
+
     return isWidgetRemoved(target);
 };
-
-const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
 
 /**
  * Waits until the given widget or widgets are detached from the tree. Rejects
@@ -115,11 +115,12 @@ const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
  * returning them to observe for removal.
  * @param options Optional timeout and interval settings.
  */
-export const waitForElementToBeRemoved = (
+const waitForElementToBeRemoved = (
     elementOrCallback: ElementOrCallback,
     options?: WaitForOptions,
 ): Promise<void> => {
     const stackTraceError = new Error("STACK_TRACE_MESSAGE");
+
     if (isTargetRemoved(getTarget(elementOrCallback))) {
         return Promise.reject(
             new Error(
@@ -127,6 +128,7 @@ export const waitForElementToBeRemoved = (
             ),
         );
     }
+
     return waitFor(
         () => {
             if (!isTargetRemoved(getTarget(elementOrCallback))) throw ELEMENT_NOT_REMOVED;
@@ -134,3 +136,5 @@ export const waitForElementToBeRemoved = (
         { ...options, stackTraceError },
     );
 };
+
+export { waitFor, waitForElementToBeRemoved };

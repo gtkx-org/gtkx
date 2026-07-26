@@ -17,9 +17,11 @@ type Handles = { toast: ToastController; overlay: ToastOverlayController };
 const Probe = ({ onHandles }: { onHandles: (handles: Handles) => void }): ReactNode => {
     const toast = useToast();
     const overlay = useToastOverlay();
+
     useLayoutEffect(() => {
         onHandles({ toast, overlay });
     });
+
     return <GtkLabel>probe</GtkLabel>;
 };
 
@@ -66,20 +68,16 @@ describe("render - toast (useToast / useToastOverlay)", () => {
     it("invokes onButtonClicked when the toast button is activated", async () => {
         const { handles } = await renderToastHost();
         const onButtonClicked = vi.fn();
-
         const toast = handles.toast.show({ title: "Undoable", buttonLabel: "Undo", onButtonClicked });
         toast.emit("button-clicked");
-
         expect(onButtonClicked).toHaveBeenCalledTimes(1);
     });
 
     it("dismisses a single toast and reports it through onDismissed", async () => {
         const { handles } = await renderToastHost();
         const onDismissed = vi.fn();
-
         const toast = handles.toast.show({ title: "Bye", onDismissed });
         handles.toast.dismiss(toast);
-
         await waitFor(() => expect(onDismissed).toHaveBeenCalledTimes(1));
     });
 
@@ -87,7 +85,6 @@ describe("render - toast (useToast / useToastOverlay)", () => {
         const { handles } = await renderToastHost();
         const onFirst = vi.fn();
         const onSecond = vi.fn();
-
         handles.toast.show({ title: "First", onDismissed: onFirst });
         handles.toast.show({ title: "Second", onDismissed: onSecond });
         handles.overlay.dismissAll();

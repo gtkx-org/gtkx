@@ -73,6 +73,7 @@ describe("useSetting (variant types: dictionaries)", () => {
 
     it("reads and writes non-string-keyed dictionaries as maps", async () => {
         expectTypeOf<ValueOf<"scores">>().toEqualTypeOf<Map<number, bigint>>();
+
         await expectSettingRoundTrip(
             SCHEMA,
             "scores",
@@ -88,14 +89,13 @@ describe("useSetting (variant types: dictionaries)", () => {
         expectTypeOf<ValueOf<"extras">>().toEqualTypeOf<Record<string, GLib.Variant>>();
         resetSettingsKey(SCHEMA_ID, "extras");
         const { result } = await renderHook(() => useSetting(SCHEMA, "extras"));
-
         expect(result.current[0]).toEqual({});
-
         await act(() => result.current[1]({ name: GLib.Variant.newString("x"), size: GLib.Variant.newInt32(5) }));
 
         await waitFor(() => {
             expect(Object.keys(result.current[0]).toSorted((a, b) => a.localeCompare(b))).toEqual(["name", "size"]);
         });
+
         expect(result.current[0].name?.getString()[0]).toBe("x");
         expect(result.current[0].size?.getInt32()).toBe(5);
     });
@@ -106,9 +106,7 @@ describe("useSetting (variant types: maybe and variant)", () => {
         expectTypeOf<ValueOf<"opt-limit">>().toEqualTypeOf<number | null>();
         resetSettingsKey(SCHEMA_ID, "opt-limit");
         const { result } = await renderHook(() => useSetting(SCHEMA, "opt-limit"));
-
         expect(result.current[0]).toBeNull();
-
         await act(() => result.current[1](5));
 
         await waitFor(() => {
@@ -126,9 +124,7 @@ describe("useSetting (variant types: maybe and variant)", () => {
         expectTypeOf<ValueOf<"wrapped">>().toEqualTypeOf<GLib.Variant>();
         resetSettingsKey(SCHEMA_ID, "wrapped");
         const { result } = await renderHook(() => useSetting(SCHEMA, "wrapped"));
-
         expect(result.current[0].getString()[0]).toBe("hello");
-
         await act(() => result.current[1](GLib.Variant.newInt32(7)));
 
         await waitFor(() => {
@@ -188,7 +184,6 @@ describe("useSetting (variant types: invalid input)", () => {
         resetSettingsKey(SCHEMA_ID, "bus-signature");
         const paths = await renderHook(() => useSetting(SCHEMA, "bus-path"));
         const signatures = await renderHook(() => useSetting(SCHEMA, "bus-signature"));
-
         expect(() => paths.result.current[1]("not a path")).toThrow('"not a path" is not a valid GVariant object path');
         expect(() => signatures.result.current[1]("nope")).toThrow('"nope" is not a valid GVariant type signature');
     });
@@ -196,6 +191,7 @@ describe("useSetting (variant types: invalid input)", () => {
     it("rejects schema kinds that are not valid GVariant type strings", async () => {
         for (const kind of ["zz", "ii", "(ii", "a{vs}"]) {
             const schema: SettingsSchema = { id: SCHEMA_ID, path: null, keys: { count: kind } };
+
             await expect(renderHook(() => useSetting(schema, "count"))).rejects.toThrow(
                 `Invalid GVariant type string "${kind}"`,
             );
@@ -204,6 +200,7 @@ describe("useSetting (variant types: invalid input)", () => {
 
     it("rejects keys the schema object does not declare", async () => {
         const untyped: SettingsSchema = SCHEMA;
+
         await expect(renderHook(() => useSetting(untyped, "missing"))).rejects.toThrow(
             'Key "missing" is not defined in schema "com.gtkx.test.useSetting"',
         );

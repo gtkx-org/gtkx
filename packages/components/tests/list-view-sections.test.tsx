@@ -44,7 +44,6 @@ describe("ListView sections", () => {
     it("renders a header per section through the header factory", async () => {
         const ref = createRef<Gtk.ListView>();
         await renderSectioned(ref);
-
         await screen.findAllByText("Section One");
         await screen.findAllByText("Section Two");
         await screen.findAllByText("Alpha");
@@ -56,14 +55,12 @@ describe("ListView sections", () => {
         const ref = createRef<Gtk.ListView>();
         await renderSectioned(ref);
         await screen.findAllByText("Alpha");
-
         expect(ref.current?.getModel()?.getNItems()).toBe(3);
     });
 
     it("renders the header label as the header's direct content with no wrapper container", async () => {
         const ref = createRef<Gtk.ListView>();
         await renderSectioned(ref);
-
         const [headerLabel] = await screen.findAllByText("Section One");
         if (headerLabel === undefined || ref.current === null) throw new Error("Expected the header to render");
         expectNoBoxBetween(headerLabel, ref.current);

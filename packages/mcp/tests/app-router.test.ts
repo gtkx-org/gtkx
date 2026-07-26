@@ -79,24 +79,25 @@ function setupRouterContext(): void {
         ctx.connections = new FakeAppConnections();
         ctx.router = new AppRouter(ctx.connections);
     });
+
     afterEach(() => {
         for (const connection of createdConnections) {
             connection.rejectPending(new Error("test teardown"));
         }
+
         vi.useRealTimers();
     });
 }
 
 describe("AppRouter registration — basics", () => {
     setupRouterContext();
+
     it("registers an app and emits appRegistered with its info", () => {
         const { connections, router } = ctx;
         const conn = makeConnection("c1");
         const onRegister = vi.fn();
         router.on("appRegistered", onRegister);
-
         emitRegister(conn, { applicationId: "app-a", pid: 1234 });
-
         expect(onRegister).toHaveBeenCalledWith({ applicationId: "app-a", pid: 1234 });
         expect(router.hasConnectedApps()).toBe(true);
         expect(router.getApps()).toEqual([{ applicationId: "app-a", pid: 1234 }]);
@@ -106,7 +107,6 @@ describe("AppRouter registration — basics", () => {
     it("keeps the registered project root and exposes the default app's root", () => {
         const { router } = ctx;
         expect(router.getProjectRoot()).toBeUndefined();
-
         emitRegister(makeConnection("c1"), { applicationId: "app-a", pid: 1, projectRoot: "/projects/app-a" });
         emitRegister(makeConnection("c2"), { applicationId: "app-b", pid: 2, projectRoot: "/projects/app-b" }, "req-2");
 
@@ -114,13 +114,13 @@ describe("AppRouter registration — basics", () => {
             { applicationId: "app-a", pid: 1, projectRoot: "/projects/app-a" },
             { applicationId: "app-b", pid: 2, projectRoot: "/projects/app-b" },
         ]);
+
         expect(router.getProjectRoot()).toBe("/projects/app-a");
     });
 
     it("registers without a project root and reports it as undefined", () => {
         const { router } = ctx;
         emitRegister(makeConnection("c1"), { applicationId: "app-a", pid: 1 });
-
         expect(router.getApps()).toEqual([{ applicationId: "app-a", pid: 1 }]);
         expect(router.getProjectRoot()).toBeUndefined();
     });
@@ -130,9 +130,7 @@ describe("AppRouter registration — basics", () => {
         const conn = makeConnection("c1");
         const onRegister = vi.fn();
         router.on("appRegistered", onRegister);
-
         emitRegister(conn, { applicationId: "app-a" });
-
         expect(onRegister).not.toHaveBeenCalled();
         expect(router.hasConnectedApps()).toBe(false);
         const response = lastResponse(connections);
@@ -151,11 +149,11 @@ describe("AppRouter registration — basics", () => {
 
 describe("AppRouter registration — explicit unregister", () => {
     setupRouterContext();
+
     it("unregisters an app via app.unregister and emits appUnregistered", () => {
         const { connections, router } = ctx;
         const { conn, onUnregister } = registerWithUnregisterSpy();
         connections.emit("request", conn, { id: "req-2", method: "app.unregister" });
-
         expect(onUnregister).toHaveBeenCalledWith("app-a");
         expect(router.hasConnectedApps()).toBe(false);
         expect(lastResponse(connections)).toEqual({ id: "req-2", result: { success: true } });
@@ -166,9 +164,7 @@ describe("AppRouter registration — explicit unregister", () => {
         const conn = makeConnection("c1");
         const onUnregister = vi.fn();
         router.on("appUnregistered", onUnregister);
-
         connections.emit("request", conn, { id: "req-1", method: "app.unregister" });
-
         expect(onUnregister).not.toHaveBeenCalled();
         expect(lastResponse(connections)).toEqual({ id: "req-1", result: { success: true } });
     });
@@ -176,11 +172,11 @@ describe("AppRouter registration — explicit unregister", () => {
 
 describe("AppRouter registration — disconnect", () => {
     setupRouterContext();
+
     it("removes the app when its connection disconnects", () => {
         const { connections, router } = ctx;
         const { conn, onUnregister } = registerWithUnregisterSpy();
         connections.emit("disconnection", conn);
-
         expect(onUnregister).toHaveBeenCalledWith("app-a");
         expect(router.hasConnectedApps()).toBe(false);
     });
@@ -190,15 +186,14 @@ describe("AppRouter registration — disconnect", () => {
         const conn = makeConnection("c1");
         const onUnregister = vi.fn();
         router.on("appUnregistered", onUnregister);
-
         connections.emit("disconnection", conn);
-
         expect(onUnregister).not.toHaveBeenCalled();
     });
 });
 
 describe("AppRouter getDefaultApp", () => {
     setupRouterContext();
+
     it("returns undefined when no apps are connected", () => {
         expect(ctx.router.getDefaultApp()).toBeUndefined();
     });
@@ -207,13 +202,13 @@ describe("AppRouter getDefaultApp", () => {
         const { router } = ctx;
         const conn = makeConnection("c1");
         emitRegister(conn, { applicationId: "app-a", pid: 1 });
-
         expect(router.getDefaultApp()?.info.applicationId).toBe("app-a");
     });
 });
 
 describe("AppRouter waitForApp", () => {
     setupRouterContext();
+
     it("resolves immediately when an app is already registered", async () => {
         const { router } = ctx;
         const conn = makeConnection("c1");
@@ -229,9 +224,7 @@ describe("AppRouter waitForApp", () => {
         const { router } = ctx;
         const promise = router.waitForApp(5000);
         const conn = makeConnection("c1");
-
         emitRegister(conn, { applicationId: "app-late", pid: 99 });
-
         await expect(promise).resolves.toEqual({ applicationId: "app-late", pid: 99 });
     });
 
@@ -251,13 +244,12 @@ function registerAppForContext(applicationId: string, connectionId = "c1"): Test
 
 describe("AppRouter sendToApp — happy paths", () => {
     setupRouterContext();
+
     it("sends a request to the named app and resolves with the response result", async () => {
         const conn = registerAppForContext("app-a");
         const promise = ctx.router.sendToApp("app-a", "ping", { hello: "world" });
         const sent = lastOutgoingRequest(conn);
-
         conn.feed(`${JSON.stringify({ id: sent.id, result: { ok: true } })}\n`);
-
         await expect(promise).resolves.toEqual({ ok: true });
     });
 
@@ -265,9 +257,7 @@ describe("AppRouter sendToApp — happy paths", () => {
         const conn = registerAppForContext("app-a");
         const promise = ctx.router.sendToApp(undefined, "ping");
         const sent = lastOutgoingRequest(conn);
-
         conn.feed(`${JSON.stringify({ id: sent.id, result: 42 })}\n`);
-
         await expect(promise).resolves.toBe(42);
     });
 
@@ -275,16 +265,15 @@ describe("AppRouter sendToApp — happy paths", () => {
         const conn = registerAppForContext("app-a");
         const promise = ctx.router.sendToApp("app-a", "ping");
         const sent = lastOutgoingRequest(conn);
-
         conn.feed(`${JSON.stringify({ id: "unknown", result: 1 })}\n`);
         conn.feed(`${JSON.stringify({ id: sent.id, result: 2 })}\n`);
-
         await expect(promise).resolves.toBe(2);
     });
 });
 
 describe("AppRouter sendToApp — lookup errors", () => {
     setupRouterContext();
+
     it("rejects with appNotFound when the named app is unknown", async () => {
         await expect(ctx.router.sendToApp("missing", "ping")).rejects.toMatchObject({
             code: ErrorCode.APP_NOT_FOUND,
@@ -300,6 +289,7 @@ describe("AppRouter sendToApp — lookup errors", () => {
 
 describe("AppRouter sendToApp — transport errors", () => {
     setupRouterContext();
+
     it("rejects with connectionWriteFailed and removes the app when the underlying send fails", async () => {
         const conn = registerAppForContext("app-a");
         const onUnregister = vi.fn();
@@ -318,10 +308,8 @@ describe("AppRouter sendToApp — transport errors", () => {
         const customRouter = new AppRouter(ctx.connections, { requestTimeout: 5000 });
         const conn = makeConnection("c2");
         emitRegister(conn, { applicationId: "app-x", pid: 1 }, "reg");
-
         const promise = customRouter.sendToApp("app-x", "slow");
         vi.advanceTimersByTime(5000);
-
         await expect(promise).rejects.toMatchObject({ code: ErrorCode.REQUEST_TIMEOUT });
     });
 
@@ -338,6 +326,7 @@ describe("AppRouter sendToApp — transport errors", () => {
         );
 
         await expect(promise).rejects.toBeInstanceOf(ProtocolError);
+
         await expect(promise).rejects.toMatchObject({
             code: ErrorCode.INTERNAL_ERROR,
             message: "boom",

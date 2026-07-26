@@ -18,7 +18,7 @@ import {
     renderReturnDescriptor,
 } from "./method.js";
 
-export const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
+const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
     if (fn.cIdentifier === undefined) return undefined;
     const library = context.namespace.sharedLibrary;
     if (library === undefined) return undefined;
@@ -35,7 +35,7 @@ const namespaceFunctionEmittable = (context: ModuleContext, fn: GirFunction): bo
     !callableReferencesClassStruct(context, fn) &&
     !hasCallerAllocatedArrayLength(context.library, fn);
 
-export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
+const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
     if (!namespaceFunctionEmittable(context, fn)) return;
     const expression = renderFnExpression(context, fn);
     if (expression === undefined) return;
@@ -43,7 +43,6 @@ export const generateNamespaceFunction = (context: ModuleContext, fn: GirFunctio
     if (cIdentifier === undefined) return;
     const bindingName = toCamelIdentifier(cIdentifier);
     context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
-
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
     const declaration = renderNamespaceFunctionDeclaration(context, fn, exportName, bindingName);
     context.module.appendDeclaration(`${renderJsDoc(fn.doc)}${declaration}`);
@@ -57,38 +56,45 @@ const renderNamespaceFunctionDeclaration = (
 ): string => {
     const finishFn = matchAsyncFinish(context.library, fn, context.namespace.functions);
     const finishCIdentifier = finishFn?.cIdentifier;
+
     if (finishFn !== undefined && finishCIdentifier !== undefined && namespaceFunctionEmittable(context, finishFn)) {
         const finishExport = namespaceFunctionExportName(
             finishCIdentifier,
             finishFn.name,
             context.namespace.cSymbolPrefixes,
         );
+
         const { signature, returnType } = renderPromisifiedSignature(context, fn, finishFn);
         const body = renderPromisifiedBody(context, fn, finishExport, bindingName);
         return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
     }
+
     const signature = renderMethodSignature(context, fn);
     const returnType = renderMethodReturnType(context, fn);
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName });
     return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
 };
 
-export const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {
+const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbolPrefixes: string[]): string => {
     if (girName.length > 0) {
         return toCamelIdentifier(girName);
     }
+
     const stripped = stripLongestPrefix(cIdentifier, symbolPrefixes);
     return toCamelIdentifier(stripped);
 };
 
 const stripLongestPrefix = (input: string, prefixes: string[]): string => {
     let best = "";
+
     for (const prefix of prefixes) {
         const candidate = `${prefix}_`;
+
         if (input.startsWith(candidate) && candidate.length > best.length) {
             best = candidate;
         }
     }
+
     return best.length === 0 ? input : input.slice(best.length);
 };
 
@@ -100,16 +106,19 @@ const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, ex
         context.module.appendRegistration(`${exportName}();`);
         return;
     }
+
     if (fn.name === "finalize") {
         context.addRuntimeImport("onExit");
         context.module.appendRegistration(`onExit(${exportName});`);
     }
 };
 
-export const generateNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {
+const generateNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {
     for (const fn of namespace.functions) {
         if (!isBootstrapFunction(fn) || fn.cIdentifier === undefined) continue;
         const exportName = namespaceFunctionExportName(fn.cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
         appendBootstrapRegistration(context, fn, exportName);
     }
 };
+
+export { renderFnExpression, generateNamespaceFunction, namespaceFunctionExportName, generateNamespaceBootstrap };

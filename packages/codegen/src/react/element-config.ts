@@ -2,25 +2,26 @@ import type { ModuleExport } from "@gtkx/react/config";
 import { readdirSync } from "node:fs";
 
 /** The codegen-relevant subset of a React element config; behaviors are ignored at codegen time. */
-export type BuiltinElement = { component?: ModuleExport; lazy?: boolean; props?: ModuleExport };
+type BuiltinElement = { component?: ModuleExport; lazy?: boolean; props?: ModuleExport };
 
 /** The framework's built-in element config, split into the maps codegen consumes. */
-export type BuiltinElements = {
+type BuiltinElements = {
     components: Record<string, ModuleExport>;
     lazyElements: string[];
     props: Record<string, ModuleExport>;
 };
 
 const CONFIG_ENTRYPOINT = "config";
-
 const CONFIG_SUFFIX = `/${CONFIG_ENTRYPOINT}`;
 
 const presentNamespaceDirs = (giStoreDir: string): Set<string> => {
     const dirs: Set<string> = new Set();
     const entries = readdirSync(giStoreDir, { withFileTypes: true });
+
     for (const entry of entries) {
         if (entry.isDirectory()) dirs.add(entry.name);
     }
+
     return dirs;
 };
 
@@ -36,9 +37,11 @@ const configEntrypoints = (reactSubexports: string[], present: Set<string>): str
 
 const importBuiltinElements = async (entrypoint: string): Promise<Record<string, BuiltinElement>> => {
     const specifier = `@gtkx/react/${entrypoint}`;
+
     const imported = (await import(/* @vite-ignore */ specifier)) as {
         BUILTIN_ELEMENTS?: Record<string, BuiltinElement>;
     };
+
     return imported.BUILTIN_ELEMENTS ?? {};
 };
 
@@ -59,14 +62,17 @@ const collectBuiltinElements = (target: BuiltinElements, elements: Record<string
     }
 };
 
-export const readBuiltinElements = async (reactSubexports: string[], giStoreDir: string): Promise<BuiltinElements> => {
+const readBuiltinElements = async (reactSubexports: string[], giStoreDir: string): Promise<BuiltinElements> => {
     const present = presentNamespaceDirs(giStoreDir);
     const entrypoints = configEntrypoints(reactSubexports, present);
     const result: BuiltinElements = { components: {}, lazyElements: [], props: {} };
+
     for (const entrypoint of entrypoints) {
         collectBuiltinElements(result, await importBuiltinElements(entrypoint));
     }
+
     return result;
 };
 
 export { type ModuleExport } from "@gtkx/react/config";
+export { readBuiltinElements, type BuiltinElement, type BuiltinElements };

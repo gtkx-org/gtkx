@@ -60,9 +60,11 @@ describe("khronos generation counts", () => {
 describe("khronos generation surface", () => {
     it("emits prefix-stripped typed wrappers", () => {
         const commands = result.files.get("commands.ts") ?? "";
+
         expect(commands).toContain(
             "export function clearColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat): void",
         );
+
         expect(commands).toContain("export function createShader(type: ShaderType): GLuint");
         expect(commands).toContain("return glCreateShader(type) as GLuint;");
     });
@@ -70,6 +72,7 @@ describe("khronos generation surface", () => {
     it("types curated byte-offset parameters as numbers, never views", () => {
         const commands = result.files.get("commands.ts") ?? "";
         expect(commands).toContain("pointer: GLintptr");
+
         expect(commands).toMatch(
             /drawElements\(\s*mode: PrimitiveType,\s*count: GLsizei,\s*type: DrawElementsType,\s*indices: GLintptr,?\s*\)/,
         );
@@ -85,6 +88,7 @@ describe("khronos generation surface", () => {
         expect(commands).toContain("export function genBuffers(n: GLsizei): GLuint[]");
         expect(commands).toContain("const out0 = { value: new Array<number>(n).fill(0) };");
         expect(commands).toContain("export function getShaderiv(shader: GLuint, pname: ShaderParameterName): GLint");
+
         expect(commands).toContain(
             "export function getShaderSource(shader: GLuint, bufSize: GLsizei): [GLsizei, string]",
         );

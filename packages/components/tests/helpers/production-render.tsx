@@ -5,15 +5,16 @@ const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve,
 
 const activeRoots: Set<Root> = new Set();
 
-export type ProductionRenderResult = {
+type ProductionRenderResult = {
     rerender: (element: ReactNode) => Promise<void>;
 };
 
-export const render = async (element: ReactNode): Promise<ProductionRenderResult> => {
+const render = async (element: ReactNode): Promise<ProductionRenderResult> => {
     const root = createRoot();
     activeRoots.add(root);
     root.render(element);
     await settle();
+
     return {
         rerender: async (next: ReactNode): Promise<void> => {
             root.render(next);
@@ -22,8 +23,10 @@ export const render = async (element: ReactNode): Promise<ProductionRenderResult
     };
 };
 
-export const cleanup = async (): Promise<void> => {
+const cleanup = async (): Promise<void> => {
     for (const root of activeRoots) root.unmount();
     activeRoots.clear();
     await settle();
 };
+
+export { render, cleanup, type ProductionRenderResult };

@@ -5,7 +5,7 @@ import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 const SCHEMA_COMPILER = "glib-compile-schemas";
 const SCHEMA_COMPILE_TIMEOUT_MS = 30_000;
 
-export const compileSchemas = (dir: string): void => {
+const compileSchemas = (dir: string): void => {
     try {
         execFileSync(resolveCliTool(SCHEMA_COMPILER), ["--strict", dir], {
             stdio: ["ignore", "pipe", "pipe"],
@@ -18,3 +18,5 @@ export const compileSchemas = (dir: string): void => {
         throw new Error(`glib-compile-schemas failed for ${dir}${suffix}`, { cause: error });
     }
 };
+
+export { compileSchemas };

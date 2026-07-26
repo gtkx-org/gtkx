@@ -8,15 +8,17 @@ import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from 
  * resolved config file path (`undefined` when none was found), and the project
  * root it was loaded from.
  */
-export type LoadedConfig = {
+type LoadedConfig = {
     config: Config;
     configFile: string | undefined;
     root: string;
 };
 
-export type LoadConfigOptions = {
+type LoadConfigOptions = {
     mode?: string | undefined;
 };
+
+type ConfigLoader = (cwd: string) => Promise<ResolvedConfig>;
 
 /**
  * Loads and validates the `gtkx.config.ts` file for a project, returning the
@@ -24,7 +26,7 @@ export type LoadConfigOptions = {
  * @param cwd Directory from which to search for the configuration file.
  * @param options Loading options, such as the environment mode.
  */
-export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise<LoadedConfig> => {
+const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise<LoadedConfig> => {
     const result = await loadConfigFile<Config>({
         name: "gtkx",
         cwd,
@@ -37,7 +39,6 @@ export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): 
 
     const config = result.config;
     const found = result.configFile !== undefined && existsSync(resolve(cwd, result.configFile));
-
     if (found) validateConfig(config);
 
     return {
@@ -47,22 +48,26 @@ export const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): 
     };
 };
 
-export type ConfigLoader = (cwd: string) => Promise<ResolvedConfig>;
-
-export const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
+const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
     const cache: Map<string, Promise<ResolvedConfig>> = new Map();
+
     const loadResolved = async (root: string): Promise<ResolvedConfig> => {
         const { config } = await loadConfig(root, options);
         validateConfig(config);
         return resolveConfig(config, root);
     };
+
     return (cwd: string): Promise<ResolvedConfig> => {
         const root = resolve(cwd);
         let pending = cache.get(root);
+
         if (!pending) {
             pending = loadResolved(root);
             cache.set(root, pending);
         }
+
         return pending;
     };
 };
+
+export { loadConfig, createConfigLoader, type LoadedConfig, type LoadConfigOptions, type ConfigLoader };

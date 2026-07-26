@@ -11,6 +11,7 @@ const setupAssetsTmpDir = (): void => {
     beforeEach(() => {
         tmpDir = mkdtempSync(join(tmpdir(), "gtkx-assets-test-"));
     });
+
     afterEach(() => {
         rmSync(tmpDir, { recursive: true, force: true });
     });
@@ -45,6 +46,7 @@ describe("gtkxCss (resolveId)", () => {
             () => Promise.resolve({ id: "/abs/style.css", external: true }),
             "./style.css",
         );
+
         expect(result).toBeUndefined();
     });
 
@@ -66,9 +68,7 @@ describe("gtkxCss (load)", () => {
         const plugin = gtkxCss();
         const cssPath = join(tmpDir, "style.css");
         writeFileSync(cssPath, "body { color: red; }");
-
         const out = (plugin.load as LoadHook)(`\0gtkx-css:${cssPath}?inject`);
-
         expect(out).toContain('import { injectGlobal } from "@gtkx/css";');
         expect(out).toContain(`injectGlobal(${JSON.stringify("body { color: red; }")});`);
     });

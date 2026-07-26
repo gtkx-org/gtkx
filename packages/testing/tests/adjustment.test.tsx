@@ -11,11 +11,10 @@ describe("userEvent.slide", () => {
                 adjustment={<GtkAdjustment value={10} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
             />,
         );
-        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
 
+        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
         await userEvent.slide(scale, 45);
         expect(scale.getValue()).toBe(45);
-
         await userEvent.slide(scale, 999);
         expect(scale.getValue()).toBe(100);
     });
@@ -30,6 +29,7 @@ describe("userEvent.slide", () => {
 describe("userEvent.scroll", () => {
     it("drives a Gtk.ScrolledWindow's adjustments, including from a descendant", async () => {
         const ref = createRef<Gtk.ScrolledWindow>();
+
         await render(
             <GtkScrolledWindow ref={ref} minContentHeight={200}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} heightRequest={2000} widthRequest={2000}>
@@ -37,17 +37,15 @@ describe("userEvent.scroll", () => {
                 </GtkBox>
             </GtkScrolledWindow>,
         );
+
         const sw = ref.current;
         expect(sw).not.toBeNull();
         const vadjustment = (sw as Gtk.ScrolledWindow).getVadjustment();
         await waitFor(() => expect(vadjustment.getUpper()).toBeGreaterThan(vadjustment.getPageSize()));
-
         await userEvent.scroll(sw as Gtk.ScrolledWindow, { y: 100 });
         expect(vadjustment.getValue()).toBe(100);
-
         await userEvent.scroll(await screen.findByText("top"), { y: 50 });
         expect(vadjustment.getValue()).toBe(150);
-
         await userEvent.scroll(sw as Gtk.ScrolledWindow, { x: 40 });
         expect((sw as Gtk.ScrolledWindow).getHadjustment().getValue()).toBe(40);
     });

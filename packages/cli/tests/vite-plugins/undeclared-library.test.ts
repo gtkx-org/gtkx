@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ResolveIdHook } from "./plugin-hook-types.js";
-
 import { gtkxUndeclaredLibrary } from "../../src/vite-plugins/undeclared-library.js";
 
 type ConfigHook = (config: { root?: string }) => void;
@@ -14,9 +13,11 @@ let girDir: string;
 const setupProject = (girFiles: string[]): void => {
     girDir = join(root, "gir-1.0");
     mkdirSync(girDir, { recursive: true });
+
     for (const file of girFiles) {
         writeFileSync(join(girDir, file), "");
     }
+
     writeFileSync(
         join(root, "gtkx.config.ts"),
         `export default { applicationId: "org.gtkx.app", girPath: [${JSON.stringify(girDir)}] };\n`,
@@ -26,6 +27,7 @@ const setupProject = (girFiles: string[]): void => {
 const resolveMissing = (source: string): Promise<string | undefined | null> => {
     const plugin = gtkxUndeclaredLibrary();
     (plugin.config as ConfigHook)({ root });
+
     return Promise.resolve(
         (plugin.resolveId as ResolveIdHook).call({ resolve: () => Promise.resolve(null) }, source, undefined, {}),
     );
@@ -58,17 +60,20 @@ describe("gtkxUndeclaredLibrary (resolveId)", () => {
         setupProject(["Bindable-1.gir"]);
         const plugin = gtkxUndeclaredLibrary();
         (plugin.config as ConfigHook)({ root });
+
         const result = await (plugin.resolveId as ResolveIdHook).call(
             { resolve: () => Promise.resolve({ id: "/store/gi/bindable/index.js" }) },
             "@gtkx/gi/bindable",
             undefined,
             {},
         );
+
         expect(result).toBeUndefined();
     });
 
     it("names the GIR identifier to declare when the library is installed", async () => {
         setupProject(["Bindable-1.gir"]);
+
         await expect(resolveMissing("@gtkx/gi/bindable")).rejects.toThrow(
             'Cannot resolve "@gtkx/gi/bindable": the "Bindable-1" bindings have not been generated. ' +
             "Add \"Bindable-1\" to `libraries` in gtkx.config.ts, then run gtkx dev or gtkx build again.",
@@ -83,6 +88,7 @@ describe("gtkxUndeclaredLibrary (resolveId)", () => {
 
     it("reports the searched paths when no GIR data provides the namespace", async () => {
         setupProject(["Bindable-1.gir"]);
+
         await expect(resolveMissing("@gtkx/gi/nosuchnamespace")).rejects.toThrow(
             "Cannot resolve \"@gtkx/gi/nosuchnamespace\": the binding store has no \"nosuchnamespace\" module, " +
             `and no GIR data for it was found in [${girDir}`,

@@ -16,19 +16,14 @@ const THREE_ITEMS = [...TWO_ITEMS, { id: "3", value: { name: "Third" } }];
 
 const expectSelectionChangedOnFirstRowClick = async (): Promise<void> => {
     const onSelectionChanged = vi.fn();
-
     const { ref } = await renderListView(TWO_ITEMS, { onSelectionChanged });
-
     await userEvent.selectOptions(ref.current, 0);
-
     expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
 };
 
 const expectUnselectKeepsRow = async (): Promise<void> => {
     const { rerender } = await renderListView([{ id: "1", value: { name: "First" } }], { selected: ["1"] });
-
     await rerender([{ id: "1", value: { name: "First" } }], { selected: [] });
-
     expect(screen.queryAllByText("First")).toHaveLength(1);
 };
 
@@ -36,7 +31,6 @@ describe("render - ListView - selection (1)", () => {
     describe("single (1)", () => {
         it("sets selected item via selected prop", async () => {
             await renderListView(TWO_ITEMS, { selected: ["2"] });
-
             expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
@@ -44,18 +38,16 @@ describe("render - ListView - selection (1)", () => {
 
         it("selects correct item after scrolling to bottom of large list", async () => {
             const onSelectionChanged = vi.fn();
+
             const items = Array.from({ length: 100 }, (_, i) => ({
                 id: `item-${i}`,
                 value: { name: `Item ${i}` },
             }));
 
             const { ref } = await renderListView(items, { onSelectionChanged });
-
             const listView = ref.current;
             listView.scrollTo(99, Gtk.ListScrollFlags.NONE, null);
-
             await userEvent.selectOptions(listView, 99);
-
             expect(onSelectionChanged).toHaveBeenCalledWith(["item-99"]);
         });
     });
@@ -71,7 +63,6 @@ describe("render - ListView - selection (3)", () => {
     describe("multiple", () => {
         it("enables multi-select with selectionMode", async () => {
             await renderListView(TWO_ITEMS, { selectionMode: Gtk.SelectionMode.MULTIPLE });
-
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
@@ -95,7 +86,6 @@ describe("render - ListView - selection (3)", () => {
             });
 
             await userEvent.selectOptions(ref.current, [0, 1]);
-
             expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
         });
     });
@@ -105,9 +95,7 @@ describe("render - ListView - selection (4)", () => {
     describe("tree - single (1)", () => {
         it("sets selected item via selected prop", async () => {
             const onSelectionChanged = vi.fn();
-
             await renderListView(TWO_ITEMS, { selected: ["2"], onSelectionChanged });
-
             expect(onSelectionChanged).toHaveBeenCalledWith(["2"]);
         });
 
@@ -136,6 +124,7 @@ describe("render - ListView - selection (5)", () => {
 
         it("selects correct child item after scrolling to bottom of expanded tree", async () => {
             const onSelectionChanged = vi.fn();
+
             const groups = Array.from({ length: 20 }, (_, gi) => ({
                 id: `group-${gi}`,
                 name: `Group ${gi}`,
@@ -162,9 +151,7 @@ describe("render - ListView - selection (5)", () => {
             const model = listView.getModel() as Gio.ListModel;
             const lastPosition = model.getNItems() - 1;
             listView.scrollTo(lastPosition, Gtk.ListScrollFlags.NONE, null);
-
             await userEvent.selectOptions(listView, lastPosition);
-
             expect(onSelectionChanged).toHaveBeenCalledWith(["group-19-child-4"]);
         });
     });
@@ -254,13 +241,10 @@ describe("render - ListView - selection (6) > tree - single (3)", () => {
     it("preserves tree state and scroll position when selecting after scrolling down", async () => {
         const ref = createRef<Gtk.ListView>();
         const scrollRef = createRef<Gtk.ScrolledWindow>();
-
         await render(<SidebarApp listRef={ref} scrollRef={scrollRef} />);
-
         const listView = ref.current as Gtk.ListView;
         const selectionModel = listView.getModel() as Gtk.SingleSelection;
         const totalItems = selectionModel.getNItems();
-
         const targetPosition = totalItems - 1;
         const scrolledWindow = scrollRef.current as Gtk.ScrolledWindow;
         const vadj = scrolledWindow.getVadjustment();
@@ -275,16 +259,14 @@ describe("render - ListView - selection (6) > tree - single (3)", () => {
             if (vadj.getValue() === 0) {
                 vadj.setValue(vadj.getUpper() - vadj.getPageSize());
             }
+
             expect(vadj.getValue()).toBeGreaterThan(0);
         });
 
         const scrollPosBefore = vadj.getValue();
         expect(scrollPosBefore).toBeGreaterThan(0);
-
         await userEvent.selectOptions(listView, targetPosition);
-
         expect(selectionModel.getSelected()).toBe(targetPosition);
-
         const scrollPosAfter = vadj.getValue();
         expect(scrollPosAfter).toBe(scrollPosBefore);
     });

@@ -1,4 +1,4 @@
-export const DEFAULT_USER_EVENT_SIGNALS: Record<string, string[]> = {
+const DEFAULT_USER_EVENT_SIGNALS: Record<string, string[]> = {
     AdwAlertDialog: ["response"],
     AdwCarousel: ["page-changed"],
     AdwDialog: ["closed"],
@@ -43,11 +43,15 @@ export const DEFAULT_USER_EVENT_SIGNALS: Record<string, string[]> = {
     GtkWidget: ["state-flags-changed"],
 };
 
-export const resolveUserEventSignals = (overrides: Record<string, string[]> | undefined): Record<string, string[]> => {
+const resolveUserEventSignals = (overrides: Record<string, string[]> | undefined): Record<string, string[]> => {
     const resolved: Record<string, string[]> = { ...DEFAULT_USER_EVENT_SIGNALS };
     const overrideEntries = Object.entries(overrides ?? {});
+
     for (const [typeName, signals] of overrideEntries) {
         resolved[typeName] = [...new Set([...(resolved[typeName] ?? []), ...signals])];
     }
+
     return resolved;
 };
+
+export { DEFAULT_USER_EVENT_SIGNALS, resolveUserEventSignals };

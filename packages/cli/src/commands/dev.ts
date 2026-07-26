@@ -5,7 +5,7 @@ import { entryArg, resolveEntry } from "../internal/entry-arg.js";
 
 const DEV_MODE = "development";
 
-export const dev = defineCommand({
+const dev = defineCommand({
     meta: {
         name: "dev",
         description: "Start development server with HMR",
@@ -15,11 +15,10 @@ export const dev = defineCommand({
     },
     async run({ args }) {
         const { cwd, entry: entryPath } = resolveEntry(args);
-
         await ensureGenerated(cwd, { announce: true, mode: DEV_MODE });
-
         const watch: DevWatch | undefined = await resolveConfigWatch(cwd, DEV_MODE);
-
         await runDevSupervisor(entryPath, cwd, watch);
     },
 });
+
+export { dev };

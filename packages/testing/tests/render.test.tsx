@@ -74,9 +74,7 @@ describe("render container", () => {
         const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
         host.setChild(box);
         host.present();
-
         const { container, findByRole } = await render(<GtkButton label="Into Box" />, { container: box });
-
         expect(container).toBe(box);
         expect(await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Into Box" })).toBeDefined();
         host.destroy();
@@ -86,15 +84,20 @@ describe("render container", () => {
 describe("render wrapper", () => {
     it("applies a context-provider wrapper around the element", async () => {
         const Context = createContext("default");
+
         const Provider: WrapperComponent = ({ children }) => (
             <Context.Provider value="wrapped">{children}</Context.Provider>
         );
+
         const observed: { seen: string } = { seen: "default" };
+
         const Probe = (): ReactNode => {
             const value = useContext(Context);
+
             useLayoutEffect(() => {
                 observed.seen = value;
             });
+
             return <GtkLabel>probe</GtkLabel>;
         };
 
@@ -104,15 +107,20 @@ describe("render wrapper", () => {
 
     it("re-applies the wrapper on rerender", async () => {
         const Context = createContext("default");
+
         const Provider: WrapperComponent = ({ children }) => (
             <Context.Provider value="wrapped">{children}</Context.Provider>
         );
+
         const seen: string[] = [];
+
         const Probe = ({ tag }: { tag: string }): ReactNode => {
             const value = useContext(Context);
+
             useLayoutEffect(() => {
                 seen.push(`${tag}:${value}`);
             });
+
             return <GtkLabel>{tag}</GtkLabel>;
         };
 
@@ -120,7 +128,6 @@ describe("render wrapper", () => {
         await findByText("first");
         await rerender(<Probe tag="second" />);
         await findByText("second");
-
         expect(seen).toContain("first:wrapped");
         expect(seen).toContain("second:wrapped");
     });
@@ -129,19 +136,15 @@ describe("render wrapper", () => {
 describe("render lifecycle", () => {
     it("rerender updates content", async () => {
         const { findByText, rerender } = await render(<GtkLabel>Initial</GtkLabel>);
-
         await findByText("Initial");
         await rerender(<GtkLabel>Updated</GtkLabel>);
-
         expect(await findByText("Updated")).toBeDefined();
     });
 
     it("unmount removes content and destroys the host window", async () => {
         const { container, findByRole, unmount } = await render(<GtkButton label="Test" />);
-
         await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
         await unmount();
-
         expect(Gtk.Window.listToplevels()).not.toContain(container);
     });
 
@@ -154,18 +157,21 @@ describe("render lifecycle", () => {
 describe("render options", () => {
     it("double-invokes renders under reactStrictMode", async () => {
         let plain = 0;
+
         const Plain = () => {
             plain++;
             return <GtkButton label="plain" />;
         };
+
         await render(<Plain />);
         expect(plain).toBe(1);
-
         let strict = 0;
+
         const Strict = () => {
             strict++;
             return <GtkButton label="strict" />;
         };
+
         await render(<Strict />, { reactStrictMode: true });
         expect(strict).toBe(2);
     });
@@ -208,16 +214,13 @@ describe("cleanup", () => {
     it("removes rendered content and host windows", async () => {
         const { container } = await render(<GtkButton label="Test" />);
         await cleanup();
-
         expect(Gtk.Window.listToplevels()).not.toContain(container);
     });
 
     it("allows rendering again after cleanup", async () => {
         const { findByText } = await render(<GtkLabel>First</GtkLabel>);
         await findByText("First");
-
         await cleanup();
-
         const { findByText: findByText2 } = await render(<GtkLabel>Second</GtkLabel>);
         expect(await findByText2("Second")).toBeDefined();
     });

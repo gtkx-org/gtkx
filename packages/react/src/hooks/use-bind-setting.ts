@@ -15,7 +15,7 @@ import { useSettings } from "./use-setting.js";
  * @param property The name of the object property to bind.
  * @param flags Flags controlling the binding's direction and behaviour.
  */
-export function useBindSetting<K extends SettingsSchemaKeys>(
+function useBindSetting<K extends SettingsSchemaKeys>(
     schema: SettingsSchema<K>,
     key: keyof K & string,
     object: RefProp<GObject.Object>,
@@ -28,7 +28,6 @@ export function useBindSetting<K extends SettingsSchemaKeys>(
     useLayoutEffect(() => {
         const resolved = resolveRefProp(object);
         if (!resolved) return;
-
         settings.bind(key, resolved, propertyName, flags);
 
         return () => {
@@ -36,3 +35,5 @@ export function useBindSetting<K extends SettingsSchemaKeys>(
         };
     }, [settings, key, object, propertyName, flags]);
 }
+
+export { useBindSetting };

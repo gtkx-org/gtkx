@@ -16,7 +16,36 @@ type AncestryContext = {
     namespace: { name: string };
 };
 
-export const resolveImplementedInterface = (
+type OwnedProperty = { owner: GirClass; property: GirProperty };
+type MethodSignature = { returnType: string; arity: number };
+
+type InheritedMethod = {
+    method: GirFunction;
+    namespaceName: string;
+};
+
+type InheritedMethods = {
+    returnTypes: Map<string, string>;
+    definitions: Map<string, InheritedMethod>;
+};
+
+type InheritedMatch = {
+    inheritedReturn: string;
+    inheritedMethod: InheritedMethod;
+};
+
+const RESERVED_SIGNAL_MEMBERS = new Set([
+    "connect",
+    "disconnect",
+    "emit",
+    "on",
+    "once",
+    "off",
+    "addEventListener",
+    "removeEventListener",
+]);
+
+const resolveImplementedInterface = (
     context: AncestryContext,
     name: string,
     defaultNamespace: string = context.namespace.name,
@@ -28,32 +57,36 @@ const resolveDirectInterfaces = (
     defaultNamespace: string,
 ): ResolvedAncestor[] => {
     const interfaces: ResolvedAncestor[] = [];
+
     for (const implementName of klass.implements) {
         const iface = resolveImplementedInterface(context, implementName, defaultNamespace);
         if (iface !== undefined) interfaces.push(iface);
     }
+
     return interfaces;
 };
 
-export const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
+const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
     const resolved = context.library.resolveType(context.namespace.name, name);
     if (resolved === undefined) return undefined;
     if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
     return context.qualify(resolved.namespace.name, pascalCase(resolved.value.name));
 };
 
-export const forEachAncestor = (
+const forEachAncestor = (
     context: AncestryContext,
     klass: GirClass,
     visit: (ancestor: ResolvedAncestor, interfaces: ResolvedAncestor[]) => void,
     stop: (ancestor: GirClass) => boolean = () => false,
 ): void => {
     let first = true;
+
     for (const ancestor of ancestorChain(context.library, klass, context.namespace.name)) {
         if (first) {
             first = false;
             continue;
         }
+
         if (stop(ancestor.klass)) break;
         visit(ancestor, resolveDirectInterfaces(context, ancestor.klass, ancestor.namespaceName));
     }
@@ -79,8 +112,6 @@ const forEachInheritedProperty = (
     });
 };
 
-export type OwnedProperty = { owner: GirClass; property: GirProperty };
-
 const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const seen: Set<string> = new Set();
     for (const property of klass.properties) seen.add(toCamelIdentifier(property.name));
@@ -90,25 +121,27 @@ const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<
 
 const collectNewInterfaceProperties = (iface: ResolvedAncestor, seen: Set<string>): OwnedProperty[] => {
     const result: OwnedProperty[] = [];
+
     for (const property of iface.klass.properties) {
         const name = toCamelIdentifier(property.name);
         if (seen.has(name)) continue;
         seen.add(name);
         result.push({ owner: iface.klass, property });
     }
+
     return result;
 };
 
-export const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): OwnedProperty[] => {
+const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): OwnedProperty[] => {
     const seen = collectSeenPropertyNames(context, klass);
     const result: OwnedProperty[] = [];
+
     for (const iface of resolveDirectInterfaces(context, klass, context.namespace.name)) {
         result.push(...collectNewInterfaceProperties(iface, seen));
     }
+
     return result;
 };
-
-type MethodSignature = { returnType: string; arity: number };
 
 const recordAncestorSignatures = (
     context: ModuleContext,
@@ -118,6 +151,7 @@ const recordAncestorSignatures = (
     for (const method of klass.methods) {
         const name = camelCase(method.name);
         if (!method.introspectable || signatures.has(name)) continue;
+
         signatures.set(name, {
             returnType: renderTsType(context, method.returnValue.type, method.returnValue.nullable),
             arity: inputParameters(context.library, method).length,
@@ -145,54 +179,51 @@ const mergeOmissionName = (
     return ancestor.returnType !== returnType || ancestor.arity !== arity ? name : undefined;
 };
 
-export const collectInterfaceMergeOmissions = (
+const collectInterfaceMergeOmissions = (
     context: ModuleContext,
     klass: GirClass,
     iface: { klass: GirClass; namespaceName: string },
 ): string[] => {
     const ancestors = ancestorClassMethodSignatures(context, klass);
     const omissions: string[] = [];
+
     for (const method of iface.klass.methods) {
         const name = mergeOmissionName(context, method, ancestors);
         if (name !== undefined) omissions.push(name);
     }
+
     return omissions;
 };
 
-export const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, string> => {
+const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, string> => {
     const types: Map<string, string> = new Map();
+
     const record = (owner: GirClass, property: GirProperty): void => {
         const jsName = toCamelIdentifier(property.name);
         if (types.has(jsName)) return;
         const tsType = resolveAccessorType(context, property, owner.methods);
         if (tsType !== undefined) types.set(jsName, tsType);
     };
+
     forEachInheritedProperty(context, klass, record);
     return types;
 };
 
-type InheritedMethod = {
-    method: GirFunction;
-    namespaceName: string;
-};
-
-export type InheritedMethods = {
-    returnTypes: Map<string, string>;
-    definitions: Map<string, InheritedMethod>;
-};
-
-export const collectInheritedMethods = (context: ModuleContext, klass: GirClass): InheritedMethods => {
+const collectInheritedMethods = (context: ModuleContext, klass: GirClass): InheritedMethods => {
     const accumulator: InheritedMethods = {
         returnTypes: new Map<string, string>(),
         definitions: new Map<string, InheritedMethod>(),
     };
+
     for (const iface of resolveDirectInterfaces(context, klass, context.namespace.name)) {
         absorbInheritedMethods(context, iface, accumulator);
     }
+
     forEachAncestor(context, klass, (ancestor, interfaces) => {
         absorbInheritedMethods(context, ancestor, accumulator);
         for (const iface of interfaces) absorbInheritedMethods(context, iface, accumulator);
     });
+
     return accumulator;
 };
 
@@ -202,6 +233,7 @@ const absorbInheritedMethods = (
     accumulator: InheritedMethods,
 ): void => {
     const { returnTypes, definitions } = accumulator;
+
     for (const method of resolved.klass.methods) {
         if (!method.introspectable) continue;
         const name = camelCase(method.name);
@@ -209,22 +241,6 @@ const absorbInheritedMethods = (
         definitions.set(name, { method, namespaceName: resolved.namespaceName });
         returnTypes.set(name, renderTsType(context, method.returnValue.type, method.returnValue.nullable));
     }
-};
-
-const RESERVED_SIGNAL_MEMBERS = new Set([
-    "connect",
-    "disconnect",
-    "emit",
-    "on",
-    "once",
-    "off",
-    "addEventListener",
-    "removeEventListener",
-]);
-
-type InheritedMatch = {
-    inheritedReturn: string;
-    inheritedMethod: InheritedMethod;
 };
 
 const inheritedMatch = (inherited: InheritedMethods, name: string): InheritedMatch | undefined => {
@@ -242,6 +258,7 @@ const methodsConflict = (options: {
 }): boolean => {
     const { context, callable, inheritedReturn, inheritedMethod } = options;
     const ownReturn = renderTsType(context, callable.returnValue.type, callable.returnValue.nullable);
+
     return (
         inheritedReturn !== ownReturn ||
         hasParameterEnumConflict(context, callable, inheritedMethod) ||
@@ -250,7 +267,7 @@ const methodsConflict = (options: {
     );
 };
 
-export const conflictRename = (
+const conflictRename = (
     context: ModuleContext,
     callable: GirFunction,
     inherited: InheritedMethods,
@@ -268,7 +285,7 @@ export const conflictRename = (
 const conflictingMethodName = (className: string, methodName: string): string =>
     `${lowerFirst(className)}${pascalCase(methodName)}`;
 
-export const reservedSignalMemberRename = (className: string, callable: GirFunction): string | undefined =>
+const reservedSignalMemberRename = (className: string, callable: GirFunction): string | undefined =>
     RESERVED_SIGNAL_MEMBERS.has(methodExportName(callable))
         ? conflictingMethodName(className, callable.name)
         : undefined;
@@ -287,9 +304,11 @@ const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inhe
     const ownParams = inputParameters(context.library, own);
     const inheritedParams = inputParameters(context.library, inherited.method);
     const count = Math.min(ownParams.length, inheritedParams.length);
+
     for (let index = 0; index < count; index += 1) {
         const ownParam = ownParams[index];
         const inheritedParam = inheritedParams[index];
+
         if (
             ownParam !== undefined &&
             inheritedParam !== undefined &&
@@ -298,6 +317,7 @@ const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inhe
             return true;
         }
     }
+
     return false;
 };
 
@@ -306,4 +326,18 @@ const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string |
     const resolved = context.library.typeOf(ref);
     if (resolved?.kind !== "enum") return undefined;
     return `${resolved.namespace.name}.${resolved.value.name}`;
+};
+
+export {
+    resolveImplementedInterface,
+    resolvePrerequisiteReference,
+    forEachAncestor,
+    collectInterfaceProperties,
+    collectInterfaceMergeOmissions,
+    collectInheritedPropertyTypes,
+    collectInheritedMethods,
+    conflictRename,
+    reservedSignalMemberRename,
+    type OwnedProperty,
+    type InheritedMethods,
 };

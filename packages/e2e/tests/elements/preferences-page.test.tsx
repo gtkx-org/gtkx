@@ -38,7 +38,6 @@ describe("render - PreferencesPage", () => {
     it("removes a preference group when unmounted", async () => {
         const { rerender } = await render(<App showBehavior={true} />);
         expect(await screen.findByText("Autosave")).toBeDefined();
-
         await rerender(<App showBehavior={false} />);
         expect(screen.queryByText("Autosave")).toBeNull();
         expect(await screen.findByText("Dark Mode")).toBeDefined();

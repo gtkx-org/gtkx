@@ -3,7 +3,7 @@ import type { GirClass } from "../../gir/class.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 
-export const parentCompanionRef = (context: ModuleContext, klass: GirClass, suffix: string): string | undefined => {
+const parentCompanionRef = (context: ModuleContext, klass: GirClass, suffix: string): string | undefined => {
     if (klass.parent === undefined) return undefined;
     const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
     const namespaceName = parentNamespace ?? context.namespace.name;
@@ -11,3 +11,5 @@ export const parentCompanionRef = (context: ModuleContext, klass: GirClass, suff
     if (namespaceName === context.namespace.name) return name;
     return `${context.addCrossNamespaceImport(namespaceName)}.${name}`;
 };
+
+export { parentCompanionRef };

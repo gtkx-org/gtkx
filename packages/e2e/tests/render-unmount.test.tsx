@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 describe("Root.unmount", () => {
     it("shuts the application down when the unmounted tree contains the application component", async () => {
         const appRef = createRef<Gtk.Application>();
+
         const { unmount } = await render(
             <GtkApplication
                 ref={appRef}
@@ -24,9 +25,7 @@ describe("Root.unmount", () => {
         if (!app) throw new Error("application was not captured");
         const shutdownHandler = vi.fn();
         app.on("shutdown", shutdownHandler);
-
         await unmount();
-
         expect(shutdownHandler).toHaveBeenCalledTimes(1);
     });
 });

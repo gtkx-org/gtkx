@@ -11,7 +11,6 @@ const SHORT_HEIGHT = 10;
 const TALL_HEIGHT = 80;
 
 const naturalWidth = (widget: Gtk.Widget): number => widget.measure(Gtk.Orientation.HORIZONTAL, -1)[1];
-
 const naturalHeight = (widget: Gtk.Widget): number => widget.measure(Gtk.Orientation.VERTICAL, -1)[1];
 
 const GroupedLabels = ({ count, mode }: { count: 0 | 1 | 2; mode?: Gtk.SizeGroupMode }) => (
@@ -47,16 +46,13 @@ describe("SizeGroup members", () => {
 
     it("stops sharing size with a widget once it leaves the group", async () => {
         const { rerender } = await renderGroupOfTwo();
-
         await rerender(<GroupedLabels count={1} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
         expect(naturalWidth(screen.getByText("A"))).toBe(NARROW_WIDTH);
     });
 
     it("clears membership when the group empties", async () => {
         const { rerender } = await renderGroupOfTwo();
-
         await rerender(<GroupedLabels count={0} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
-
         await rerender(<GroupedLabels count={1} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
         expect(naturalWidth(screen.getByText("A"))).toBe(NARROW_WIDTH);
     });
@@ -81,7 +77,6 @@ describe("SizeGroup mode", () => {
         expect(naturalWidth(screen.getByText("A"))).toBe(WIDE_WIDTH);
         expect(naturalHeight(screen.getByText("A"))).toBe(TALL_HEIGHT);
         expect(naturalHeight(screen.getByText("B"))).not.toBe(naturalHeight(screen.getByText("A")));
-
         await rerender(<GroupedLabelsWithMode mode={Gtk.SizeGroupMode.BOTH} />);
         expect(naturalHeight(screen.getByText("A"))).toBe(TALL_HEIGHT);
         expect(naturalHeight(screen.getByText("B"))).toBe(TALL_HEIGHT);
@@ -108,7 +103,6 @@ describe("SizeGroup across subtrees", () => {
         );
 
         await expectGroupedWide(<App />);
-
         expect(within(screen.getByRole(Gtk.AccessibleRole.GROUP, { name: /Frame A/ })).getByText("A")).toBeDefined();
         expect(within(screen.getByRole(Gtk.AccessibleRole.GROUP, { name: /Frame B/ })).getByText("B")).toBeDefined();
     });

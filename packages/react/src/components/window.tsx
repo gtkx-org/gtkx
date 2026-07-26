@@ -7,14 +7,13 @@ type WindowComponentProps = {
     ref?: Ref<Gtk.Window | null> | undefined;
 };
 
-export const createWindowComponent = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) => {
+const createWindowComponent = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) => {
     return ({ ref, ...rest }: WindowComponentProps): ReactNode => {
         const [window, setWindow] = useState<Gtk.Window | null>(null);
         const mergedRef = useMergedRef(ref, setWindow);
 
         useLayoutEffect(() => {
             if (!window) return;
-
             window.present();
 
             return () => {
@@ -29,3 +28,5 @@ export const createWindowComponent = (Component: ElementType): ((props: WindowCo
         );
     };
 };
+
+export { createWindowComponent };

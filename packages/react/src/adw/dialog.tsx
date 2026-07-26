@@ -9,14 +9,13 @@ type DialogComponentProps = {
     ref?: Ref<Adw.Dialog | null> | undefined;
 };
 
-export const createDialogComponent = (Component: ElementType): ((props: DialogComponentProps) => ReactNode) => {
+const createDialogComponent = (Component: ElementType): ((props: DialogComponentProps) => ReactNode) => {
     return ({ ref, ...rest }: DialogComponentProps): ReactNode => {
         const parent = useParentWindow();
         const [dialog, setDialog] = useState<Adw.Dialog | null>(null);
 
         useLayoutEffect(() => {
             if (!dialog) return;
-
             dialog.present(parent);
 
             return () => {
@@ -25,7 +24,8 @@ export const createDialogComponent = (Component: ElementType): ((props: DialogCo
         }, [dialog, parent]);
 
         const mergedRef = useMergedRef(ref, setDialog);
-
         return createPortal(<Component ref={mergedRef} {...rest} />, rootElement);
     };
 };
+
+export { createDialogComponent };

@@ -26,6 +26,22 @@ type SelectionOptions = {
     props: DropDownRuntimeProps;
 };
 
+type KnownSelection = {
+    known: { current: string | null };
+    onSelectionChanged: ((id: string) => void) | null | undefined;
+};
+
+type DropDownComponent = <T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown>(
+    props: DropDownProps<T, S, C>,
+) => ReactNode;
+
+/**
+ * Renders a drop-down backed by a collection model, with customizable renderers for the
+ * collapsed display, popup rows, and popup section headers, and controlled selection.
+ * The backing widget defaults to GtkDropDown and is swappable through `component`.
+ */
+const DropDown: DropDownComponent = DropDownImpl as DropDownComponent;
+
 const defaultItemContent = (value: unknown): ReactNode =>
     value == null ? null : <GtkLabel>{typeof value === "string" ? value : JSON.stringify(value)}</GtkLabel>;
 
@@ -46,11 +62,6 @@ const resolvePosition = (
     return requested >= 0 ? requested : widget.getSelected();
 };
 
-type KnownSelection = {
-    known: { current: string | null };
-    onSelectionChanged: ((id: string) => void) | null | undefined;
-};
-
 const updateKnownSelection = (
     tracker: KnownSelection,
     effectiveId: string,
@@ -60,6 +71,7 @@ const updateKnownSelection = (
     const expectedId = selectedId ?? known.current;
     const isNew = effectiveId !== known.current;
     known.current = effectiveId;
+
     if (expectedId !== null && effectiveId !== expectedId && isNew) {
         onSelectionChanged?.(effectiveId);
     }
@@ -72,8 +84,19 @@ const reportKnownSelection = (tracker: KnownSelection, id: string | null): void 
     onSelectionChanged?.(id);
 };
 
+const reportSelectedNotify = (
+    options: SelectionOptions,
+    tracker: KnownSelection,
+    applying: RefObject<boolean>,
+): void => {
+    const { widget, model } = options;
+    if (widget === null || applying.current) return;
+    reportKnownSelection(tracker, model.idAt(widget.getSelected()));
+};
+
 const applySelectedPosition = (widget: SelectableWidget, position: number, applying: RefObject<boolean>): void => {
     applying.current = true;
+
     try {
         widget.selected = position;
     } finally {
@@ -86,23 +109,29 @@ const useDropDownSelection = (options: SelectionOptions): void => {
     const { items, sections, selectedId } = options.props;
     const known = useRef<string | null>(null);
     const applying = useRef(false);
+
     const applyUpdate = useCallback((): void => {
         applying.current = true;
+
         try {
             model.update({ items, sections });
         } finally {
             applying.current = false;
         }
     }, [model, items, sections]);
+
     const syncKnownSelection = useEffectEvent((position: number): void => {
         const effectiveId = model.idAt(position);
+
         if (effectiveId === null) {
             known.current = null;
             return;
         }
+
         const { onSelectionChanged } = options.props;
         updateKnownSelection({ known, onSelectionChanged }, effectiveId, selectedId);
     });
+
     useLayoutEffect(() => {
         if (widget === null) return;
         applyUpdate();
@@ -111,15 +140,15 @@ const useDropDownSelection = (options: SelectionOptions): void => {
         applySelectedPosition(widget, position, applying);
         syncKnownSelection(position);
     }, [widget, model, cells, selectedId, applyUpdate]);
+
     useSignal(widget, "notify::selected", (): void => {
-        if (widget === null || applying.current) return;
-        const position = widget.getSelected();
-        reportKnownSelection({ known, onSelectionChanged: options.props.onSelectionChanged }, model.idAt(position));
+        reportSelectedNotify(options, { known, onSelectionChanged: options.props.onSelectionChanged }, applying);
     });
 };
 
-const DropDownImpl = (props: DropDownRuntimeProps): ReactNode => {
+function DropDownImpl(props: DropDownRuntimeProps): ReactNode {
     const { component, items, sections, renderListItem, renderHeader, ref } = props;
+
     const rest = omit(props, [
         "component",
         "items",
@@ -131,11 +160,13 @@ const DropDownImpl = (props: DropDownRuntimeProps): ReactNode => {
         "renderHeader",
         "ref",
     ]);
+
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
     const model = useCollectionModel(collectionModeOf({ items, sections }));
     const cells = useCells({ width: -1, height: -1 });
     useDropDownSelection({ widget, model, cells, props });
     const Component = component ?? GtkDropDown;
+
     return (
         <>
             <Component
@@ -157,15 +188,6 @@ const DropDownImpl = (props: DropDownRuntimeProps): ReactNode => {
             )}
         </>
     );
-};
+}
 
-type DropDownComponent = <T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown>(
-    props: DropDownProps<T, S, C>,
-) => ReactNode;
-
-/**
- * Renders a drop-down backed by a collection model, with customizable renderers for the
- * collapsed display, popup rows, and popup section headers, and controlled selection.
- * The backing widget defaults to GtkDropDown and is swappable through `component`.
- */
-export const DropDown: DropDownComponent = DropDownImpl as DropDownComponent;
+export { DropDown };

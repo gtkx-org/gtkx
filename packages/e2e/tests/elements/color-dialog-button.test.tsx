@@ -8,9 +8,7 @@ import { expectDialogModalProp, expectDialogTitleTracksProp } from "../helpers/d
 
 const renderDialogSlot = async (dialog: ReactElement): Promise<Gtk.ColorDialog | null> => {
     const ref = createRef<Gtk.ColorDialogButton>();
-
     await render(<GtkColorDialogButton ref={ref} dialog={dialog} />);
-
     expect(ref.current).not.toBeNull();
     return ref.current?.getDialog() ?? null;
 };
@@ -21,7 +19,6 @@ const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.
 describe("render - ColorDialogButton (1)", () => {
     it("creates ColorDialogButton widget", async () => {
         const dialog = await renderDialogSlot(<GtkColorDialog />);
-
         expect(dialog).not.toBeNull();
         expect(dialog?.getWithAlpha()).toBe(true);
     });
@@ -29,9 +26,7 @@ describe("render - ColorDialogButton (1)", () => {
     it("creates ColorDialogButton with initial rgba", async () => {
         const ref = createRef<Gtk.ColorDialogButton>();
         const rgba = makeRgba(1, 0.5, 0.25, 1);
-
         await render(<GtkColorDialogButton ref={ref} rgba={rgba} />);
-
         expect(ref.current).not.toBeNull();
         const currentRgba = ref.current?.getRgba();
         expect(currentRgba?.red).toBeCloseTo(1);
@@ -49,14 +44,11 @@ describe("render - ColorDialogButton (1)", () => {
 
         const initialColor = makeRgba(1, 0, 0, 1);
         await render(<App color={initialColor} />);
-
         const rgba1 = ref.current?.getRgba();
         expect(rgba1?.red).toBeCloseTo(1);
         expect(rgba1?.green).toBeCloseTo(0);
-
         const newColor = makeRgba(0, 1, 0, 1);
         await render(<App color={newColor} />);
-
         const rgba2 = ref.current?.getRgba();
         expect(rgba2?.red).toBeCloseTo(0);
         expect(rgba2?.green).toBeCloseTo(1);
@@ -66,7 +58,6 @@ describe("render - ColorDialogButton (1)", () => {
 describe("render - ColorDialogButton (2)", () => {
     it("sets dialog title", async () => {
         const dialog = await renderDialogSlot(<GtkColorDialog title="Pick a Color" />);
-
         expect(dialog?.getTitle()).toBe("Pick a Color");
     });
 
@@ -84,7 +75,6 @@ describe("render - ColorDialogButton (2)", () => {
 
     it("sets dialog withAlpha property", async () => {
         const dialog = await renderDialogSlot(<GtkColorDialog withAlpha={false} />);
-
         expect(dialog?.getWithAlpha()).toBe(false);
     });
 });
@@ -99,7 +89,6 @@ describe("render - ColorDialogButton (3)", () => {
 
         await render(<App withAlpha={true} />);
         expect(ref.current?.getDialog()?.getWithAlpha()).toBe(true);
-
         await render(<App withAlpha={false} />);
         expect(ref.current?.getDialog()?.getWithAlpha()).toBe(false);
     });

@@ -12,7 +12,7 @@ type DevServerModuleGraph = {
     invalidateModule(module: DevServerModule): void;
 };
 
-export type DevServer = {
+type DevServer = {
     close(): Promise<void>;
     moduleGraph: DevServerModuleGraph;
     ssrLoadModule(id: string): Promise<Record<string, unknown>>;
@@ -21,7 +21,7 @@ export type DevServer = {
     };
 };
 
-export const createDevServerConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
+const createDevServerConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
     root,
     appType: "custom",
     plugins,
@@ -32,3 +32,5 @@ export const createDevServerConfig = (root: string, plugins: Plugin[]): InlineCo
         noExternal: [/^@gtkx\/(?!(?:native|gi|gl|runtime|utils|css)(?:\/|$))/, /[/\\]\.gtkx[/\\]/],
     },
 });
+
+export { createDevServerConfig, type DevServer };

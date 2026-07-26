@@ -19,9 +19,7 @@ describe("render - Stack (1)", () => {
     describe("GtkStack", () => {
         it("creates Stack widget", async () => {
             const ref = createRef<Gtk.Stack>();
-
             await render(<GtkStack ref={ref} />);
-
             expect(ref.current).not.toBeNull();
         });
     });
@@ -51,7 +49,6 @@ describe("render - Stack (1)", () => {
             );
 
             await screen.findByText("Titled Content");
-
             const page = stackRef.current?.getPage(stackRef.current.getChildByName("titled") as Gtk.Widget);
             expect(page?.getTitle()).toBe("Page Title");
         });
@@ -84,7 +81,6 @@ describe("render - Stack (2)", () => {
             );
 
             await screen.findByText("With Props");
-
             const child = stackRef.current?.getChildByName("props-test");
             const page = stackRef.current?.getPage(child as Gtk.Widget);
             expect(page?.getIconName()).toBe("dialog-information");
@@ -97,11 +93,8 @@ describe("render - Stack (3)", () => {
     describe("page management", () => {
         it("inserts page before existing page", async () => {
             const stackRef = createRef<Gtk.Stack>();
-
             const { rerender } = await renderChildren(["first", "last"], buildIdStack(stackRef));
-
             await rerender(["first", "middle", "last"]);
-
             expect(stackRef.current?.getChildByName("first")).not.toBeNull();
             expect(stackRef.current?.getChildByName("middle")).not.toBeNull();
             expect(stackRef.current?.getChildByName("last")).not.toBeNull();
@@ -109,11 +102,8 @@ describe("render - Stack (3)", () => {
 
         it("removes page", async () => {
             const stackRef = createRef<Gtk.Stack>();
-
             const { rerender } = await renderChildren(["a", "b", "c"], buildIdStack(stackRef));
-
             await rerender(["a", "c"]);
-
             expect(stackRef.current?.getChildByName("a")).not.toBeNull();
             expect(stackRef.current?.getChildByName("b")).toBeNull();
             expect(stackRef.current?.getChildByName("c")).not.toBeNull();
@@ -133,13 +123,10 @@ describe("render - Stack (3)", () => {
             }
 
             const { rerender } = await render(<App iconName="dialog-information" />);
-
             const child = stackRef.current?.getChildByName("dynamic");
             let page = stackRef.current?.getPage(child as Gtk.Widget);
             expect(page?.getIconName()).toBe("dialog-information");
-
             await rerender(<App iconName="dialog-warning" />);
-
             page = stackRef.current?.getPage(child as Gtk.Widget);
             expect(page?.getIconName()).toBe("dialog-warning");
         });
@@ -181,7 +168,6 @@ describe("render - Stack (4)", () => {
             }
 
             const { rerender } = await render(<App pages={["other"]} />);
-
             await rerender(<App pages={["other", "target"]} />);
 
             await waitFor(() => {
@@ -198,6 +184,7 @@ describe("render - Stack (5)", () => {
 
             function NavigableStack() {
                 const [page] = useState("page1");
+
                 return (
                     <GtkStack ref={stackRef} visibleChildName={page}>
                         <GtkStackPage name="page1">
@@ -211,7 +198,6 @@ describe("render - Stack (5)", () => {
             }
 
             await render(<NavigableStack />);
-
             expect(stackRef.current?.getVisibleChildName()).toBe("page1");
         });
 

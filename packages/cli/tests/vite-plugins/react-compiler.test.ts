@@ -22,7 +22,9 @@ const hookOf = <K extends keyof PluginHooks>(hook: unknown, name: K): PluginHook
 
 const transformOf = (plugin: ReturnType<typeof gtkxReactCompiler>): TransformFn =>
     hookOf(plugin.transform, "transform");
+
 const configOf = (plugin: ReturnType<typeof gtkxReactCompiler>): ConfigFn => hookOf(plugin.config, "config");
+
 const configResolvedOf = (plugin: ReturnType<typeof gtkxReactCompiler>): ConfigResolvedFn =>
     hookOf(plugin.configResolved, "configResolved");
 
@@ -63,6 +65,7 @@ const enabledPlugin = async (): Promise<ReturnType<typeof gtkxReactCompiler>> =>
         elements: null,
         lazyElements: [],
     }));
+
     await configOf(plugin)({});
     return plugin;
 };
@@ -79,7 +82,6 @@ const transformForProjectConfig = async (cwd: string, reactCompiler: boolean): P
     const plugin = gtkxReactCompiler();
     await configOf(plugin)({ root: cwd });
     configResolvedOf(plugin)({ root: cwd });
-
     return transformOf(plugin);
 };
 
@@ -92,7 +94,6 @@ describe("gtkxReactCompiler", () => {
 
     it("compiles a project source file, injecting the memo cache and compiler runtime", async () => {
         const result = await transformWithEnabledPlugin(COMPONENT, "/proj/src/counter.tsx");
-
         expect(result).toBeDefined();
         expect(result?.code).toContain('from "react/compiler-runtime"');
         expect(result?.code).toContain("_c(");
@@ -101,7 +102,6 @@ describe("gtkxReactCompiler", () => {
 
     it("strips TypeScript while leaving JSX for the downstream transform", async () => {
         const result = await transformWithEnabledPlugin(COMPONENT, "/proj/src/counter.tsx");
-
         expect(result?.code).not.toContain(": { label: string }");
         expect(result?.code).toContain("<button");
     });
@@ -113,7 +113,6 @@ describe("gtkxReactCompiler", () => {
 
     it("compiles a .jsx source file, injecting the memo cache and compiler runtime", async () => {
         const result = await transformWithEnabledPlugin(JS_COMPONENT, "/proj/src/counter.jsx");
-
         expect(result).toBeDefined();
         expect(result?.code).toContain('from "react/compiler-runtime"');
         expect(result?.code).toContain("_c(");
@@ -122,14 +121,12 @@ describe("gtkxReactCompiler", () => {
 
     it("compiles a plain .js hook module", async () => {
         const result = await transformWithEnabledPlugin(JS_HOOK, "/proj/src/use-counter.js");
-
         expect(result).toBeDefined();
         expect(result?.code).toContain('from "react/compiler-runtime"');
     });
 
     it("compiles JSX authored in a plain .js file", async () => {
         const result = await transformWithEnabledPlugin(JS_COMPONENT, "/proj/src/widget.js");
-
         expect(result).toBeDefined();
         expect(result?.code).toContain('from "react/compiler-runtime"');
         expect(result?.code).toContain("<button");
@@ -144,14 +141,12 @@ describe("gtkxReactCompiler", () => {
         const plugin = await enabledPlugin();
         configResolvedOf(plugin)({ root: "/proj" });
         const transform = transformOf(plugin);
-
         await expect(transform(COMPONENT, "/elsewhere/src/counter.tsx")).resolves.toBeUndefined();
         await expect(transform(COMPONENT, "/proj/src/counter.tsx")).resolves.toBeDefined();
     });
 
     it("compiles .ts source files, not only .tsx", async () => {
         const result = await transformWithEnabledPlugin(HOOK, "/proj/src/use-counter.ts");
-
         expect(result).toBeDefined();
         expect(result?.code).not.toContain(": number");
         expect(result?.code).toContain('from "react/compiler-runtime"');

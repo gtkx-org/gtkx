@@ -1,13 +1,11 @@
 import type * as Gio from "@gtkx/gi/gio";
 import { packVariant, parseVariantType, unpackVariant, type VariantValue } from "./variant.js";
 
-export type SettingsSchemaKeys = Record<string, string>;
-
+type SettingsSchemaKeys = Record<string, string>;
 type SettingKindValue<S extends string> = S extends "enum" | "flags" ? number : VariantValue<S>;
+type SettingValue<K extends SettingsSchemaKeys, P extends keyof K> = SettingKindValue<K[P] & string>;
 
-export type SettingValue<K extends SettingsSchemaKeys, P extends keyof K> = SettingKindValue<K[P] & string>;
-
-export type SettingsSchema<K extends SettingsSchemaKeys = SettingsSchemaKeys> = {
+type SettingsSchema<K extends SettingsSchemaKeys = SettingsSchemaKeys> = {
     id: string;
     path: string | null;
     keys: K;
@@ -40,6 +38,7 @@ const ACCESSORS: Record<string, SettingAccessor<number> | undefined> = {
 
 const defaultAccessor = (kind: string): SettingAccessor => {
     const node = parseVariantType(kind);
+
     return {
         get: (settings: Gio.Settings, key: string) => unpackVariant(node, settings.getValue(key)),
         set: (settings: Gio.Settings, key: string, value: unknown) => {
@@ -48,7 +47,7 @@ const defaultAccessor = (kind: string): SettingAccessor => {
     };
 };
 
-export const resolveSettingAccessor = <K extends SettingsSchemaKeys, P extends keyof K>(
+const resolveSettingAccessor = <K extends SettingsSchemaKeys, P extends keyof K>(
     settings: Gio.Settings,
     schema: SettingsSchema<K>,
     key: P & string,
@@ -62,3 +61,5 @@ export const resolveSettingAccessor = <K extends SettingsSchemaKeys, P extends k
         set: accessor.set.bind(null, settings, key),
     };
 };
+
+export { resolveSettingAccessor, type SettingsSchemaKeys, type SettingValue, type SettingsSchema };

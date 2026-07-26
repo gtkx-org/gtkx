@@ -1,4 +1,4 @@
-export type PrimitiveCategory =
+type PrimitiveCategory =
     | "void" |
     "boolean" |
     "int8" |
@@ -18,7 +18,7 @@ export type PrimitiveCategory =
     "unichar" |
     "pointer";
 
-export const PRIMITIVE_SIZE: Record<PrimitiveCategory, number> = {
+const PRIMITIVE_SIZE: Record<PrimitiveCategory, number> = {
     void: 0,
     boolean: 4,
     int8: 1,
@@ -91,9 +91,7 @@ const PRIMITIVE_BY_NAME: Map<string, PrimitiveCategory> = new Map([
     ["gconstpointer", "pointer"],
 ] as const);
 
-export const primitiveCategory = (name: string): PrimitiveCategory | undefined => PRIMITIVE_BY_NAME.get(name);
-
-export const PRIMITIVE_TS_TYPE: Record<PrimitiveCategory, string> = {
+const PRIMITIVE_TS_TYPE: Record<PrimitiveCategory, string> = {
     void: "void",
     boolean: "boolean",
     int8: "number",
@@ -113,3 +111,7 @@ export const PRIMITIVE_TS_TYPE: Record<PrimitiveCategory, string> = {
     unichar: "string",
     pointer: "number",
 };
+
+const primitiveCategory = (name: string): PrimitiveCategory | undefined => PRIMITIVE_BY_NAME.get(name);
+
+export { PRIMITIVE_SIZE, PRIMITIVE_TS_TYPE, primitiveCategory, type PrimitiveCategory };

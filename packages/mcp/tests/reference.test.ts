@@ -33,6 +33,7 @@ import {
 } from "../src/reference.js";
 
 const buttonSymbol: ApiSymbol = { namespace: "Gtk", name: "Button", kind: "class", summary: "A button." };
+
 const headerBarCandidates: ApiSymbol[] = [
     { namespace: "Gtk", name: "HeaderBar", kind: "class", summary: "A titlebar." },
     { namespace: "Adw", name: "HeaderBar", kind: "class", summary: "A title bar widget." },
@@ -54,6 +55,7 @@ const fakeReference: FakeReference = {
         if (query === "Gtk.Button" || query === "Button") {
             return { outcome: "page", symbol: buttonSymbol, markdown: "BUTTON PAGE" };
         }
+
         if (query === "HeaderBar") return { outcome: "ambiguous", candidates: headerBarCandidates };
         return { outcome: "notFound" };
     },
@@ -82,12 +84,11 @@ describe("createReferenceProvider", () => {
         loadConfigMock.mockResolvedValue({ config: {} });
         loadApiReferenceMock.mockReturnValue(fakeReference);
         const cached = createReferenceProvider(() => "/project");
-
         await cached.get();
         await cached.get();
-
         expect(loadConfigMock).toHaveBeenCalledExactlyOnceWith("/project");
         expect(resolveLibrariesMock).toHaveBeenCalledWith(undefined, ["/usr/share/gir-1.0"]);
+
         expect(loadApiReferenceMock).toHaveBeenCalledExactlyOnceWith({
             libraries: ["Gtk-4.0"],
             girPath: ["/usr/share/gir-1.0"],
@@ -99,10 +100,8 @@ describe("createReferenceProvider", () => {
         loadApiReferenceMock.mockReturnValue(fakeReference);
         const roots = ["/one", "/two"];
         const changing = createReferenceProvider(() => roots.shift() ?? "/two");
-
         await changing.get();
         await changing.get();
-
         expect(loadApiReferenceMock).toHaveBeenCalledTimes(2);
         expect(loadConfigMock).toHaveBeenNthCalledWith(1, "/one");
         expect(loadConfigMock).toHaveBeenNthCalledWith(2, "/two");
@@ -113,13 +112,12 @@ describe("createReferenceProvider", () => {
         loadConfigMock.mockResolvedValueOnce({ config: {} });
         loadApiReferenceMock.mockReturnValue(fakeReference);
         const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
+
         try {
             const failing = createReferenceProvider(() => "/project");
-
             await expect(failing.get()).rejects.toThrow(/codegen is disabled/);
             await expect(failing.get()).rejects.toThrow(/codegen is disabled/);
             expect(loadConfigMock).toHaveBeenCalledTimes(1);
-
             nowSpy.mockReturnValue(10_000);
             await expect(failing.get()).resolves.toBe(fakeReference);
             expect(loadConfigMock).toHaveBeenCalledTimes(2);
@@ -132,7 +130,6 @@ describe("createReferenceProvider", () => {
         loadConfigMock.mockResolvedValue({ config: {} });
         resolveGirPathMock.mockReturnValueOnce([]);
         const failing = createReferenceProvider(() => "/project");
-
         await expect(failing.get()).rejects.toThrow(/No GIR search paths available/);
     });
 
@@ -140,17 +137,16 @@ describe("createReferenceProvider", () => {
         loadConfigMock.mockResolvedValue({ config: {} });
         const dir = mkdtempSync(join(tmpdir(), "gtkx-reference-"));
         const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
+
         try {
             const girFile = join(dir, "Gtk-4.0.gir");
             writeFileSync(girFile, "before");
             loadApiReferenceMock.mockReturnValue({ ...fakeReference, girFiles: [girFile] });
             const watching = createReferenceProvider(() => "/project");
-
             await watching.get();
             writeFileSync(girFile, "after-with-different-size");
             await watching.get();
             expect(loadApiReferenceMock).toHaveBeenCalledTimes(1);
-
             nowSpy.mockReturnValue(10_000);
             await watching.get();
             expect(loadApiReferenceMock).toHaveBeenCalledTimes(2);
@@ -191,9 +187,7 @@ describe("gtkx_search_api", () => {
         const filtering: ReferenceProvider = { get: async () => ({ ...fakeReference, search }) };
         const tool = buildReferenceTools(filtering).find((candidate) => candidate.name === "gtkx_search_api");
         if (!tool) throw new Error("Tool not found");
-
         await tool.handler({ query: "button", namespace: "Gtk", kind: "class", limit: 5 });
-
         expect(search).toHaveBeenCalledWith({ query: "button", namespace: "Gtk", kinds: ["class"], limit: 5 });
     });
 
@@ -233,8 +227,9 @@ type RegisteredResource = {
     read: ReadCallback;
 };
 
-const registerAll = (): RegisteredResource[] => {
+const registerAllWith = (source: ReferenceProvider): RegisteredResource[] => {
     const registered: RegisteredResource[] = [];
+
     const server = {
         registerResource: ((
             name: string,
@@ -245,14 +240,23 @@ const registerAll = (): RegisteredResource[] => {
             registered.push({ name, uriOrTemplate, config, read });
         }) as never,
     };
-    registerReferenceResources(server, provider);
+
+    registerReferenceResources(server, source);
     return registered;
 };
 
-const getResource = (name: string): RegisteredResource => {
-    const resource = registerAll().find((candidate) => candidate.name === name);
+const findResource = (registered: RegisteredResource[], name: string): RegisteredResource => {
+    const resource = registered.find((candidate) => candidate.name === name);
     if (!resource) throw new Error(`Resource not found: ${name}`);
     return resource;
+};
+
+const getResource = (name: string): RegisteredResource => findResource(registerAllWith(provider), name);
+
+const getListCallback = (template: ResourceTemplate) => {
+    const listCallback = template.listCallback;
+    if (!listCallback) throw new Error("Expected a list callback");
+    return listCallback;
 };
 
 const getTemplate = (resource: RegisteredResource): ResourceTemplate => {
@@ -286,18 +290,15 @@ describe("registerReferenceResources", () => {
         const resource = getResource("gtkx-api-namespace");
         const template = getTemplate(resource);
         expect(template.uriTemplate.toString()).toBe("gtkx://reference/{namespace}");
-
         const result = await resource.read(new URL("gtkx://reference/Gtk"), { namespace: "Gtk" });
         expect(resourceText(result)).toBe("GTK OVERVIEW");
+
         await expect(resource.read(new URL("gtkx://reference/Nope"), { namespace: "Nope" })).rejects.toThrow(
             /Unknown namespace/,
         );
 
-        const listCallback = template.listCallback;
-        if (!listCallback) throw new Error("Expected a list callback");
-        const listed = await listCallback({} as never);
+        const listed = await getListCallback(template)({} as never);
         expect(listed.resources.map((entry) => entry.uri)).toEqual(["gtkx://reference/Gtk", "gtkx://reference/Adw"]);
-
         await expect(getCompleter(template, "namespace")("g")).resolves.toEqual(["Gtk"]);
     });
 
@@ -307,26 +308,12 @@ describe("registerReferenceResources", () => {
                 throw new Error("codegen is disabled");
             },
         };
-        const registered: RegisteredResource[] = [];
-        const server = {
-            registerResource: ((
-                name: string,
-                uriOrTemplate: string | ResourceTemplate,
-                config: { mimeType?: string },
-                read: ReadCallback,
-            ) => {
-                registered.push({ name, uriOrTemplate, config, read });
-            }) as never,
-        };
-        registerReferenceResources(server, failing);
 
-        const namespaceResource = registered.find((resource) => resource.name === "gtkx-api-namespace");
-        if (!namespaceResource) throw new Error("Resource not found");
+        const namespaceResource = findResource(registerAllWith(failing), "gtkx-api-namespace");
         const template = getTemplate(namespaceResource);
-        const listCallback = template.listCallback;
-        if (!listCallback) throw new Error("Expected a list callback");
-        await expect(listCallback({} as never)).resolves.toEqual({ resources: [] });
+        await expect(getListCallback(template)({} as never)).resolves.toEqual({ resources: [] });
         await expect(getCompleter(template, "namespace")("g")).resolves.toEqual([]);
+
         await expect(namespaceResource.read(new URL("gtkx://reference/Gtk"), { namespace: "Gtk" })).rejects.toThrow(
             /codegen is disabled/,
         );
@@ -341,15 +328,19 @@ describe("registerReferenceResources", () => {
             namespace: "Gtk",
             symbol: "Button",
         });
+
         expect(resourceText(result)).toBe("BUTTON PAGE");
+
         await expect(
             resource.read(new URL("gtkx://reference/Gtk/Missing"), { namespace: "Gtk", symbol: "Missing" }),
         ).rejects.toThrow(/No symbol named/);
 
         await expect(getCompleter(template, "namespace")("a")).resolves.toEqual(["Adw"]);
+
         await expect(getCompleter(template, "symbol")("gtk", { arguments: { namespace: "Gtk" } })).resolves.toEqual([
             "GtkButton",
         ]);
+
         expect(await getCompleter(template, "symbol")("gtk")).toEqual([]);
     });
 });

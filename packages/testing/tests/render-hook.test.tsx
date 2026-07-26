@@ -11,12 +11,9 @@ describe("renderHook", () => {
 
     it("updates result when hook state changes", async () => {
         const { result } = await renderHook(() => useState(0));
-
         expect(result.current[0]).toBe(0);
-
         const [, setState] = result.current;
         await act(() => setState(10));
-
         expect(result.current[0]).toBe(10);
     });
 });
@@ -39,13 +36,13 @@ describe("renderHook initialProps", () => {
 describe("renderHook rerender", () => {
     it("re-renders the hook with the same props", async () => {
         let renderCount = 0;
+
         const { result, rerender } = await renderHook(() => {
             renderCount++;
             return renderCount;
         });
 
         expect(result.current).toBe(1);
-
         await rerender();
         expect(result.current).toBe(2);
     });
@@ -56,7 +53,6 @@ describe("renderHook rerender", () => {
         });
 
         expect(result.current).toBe(20);
-
         await rerender({ multiplier: 5 });
         expect(result.current).toBe(50);
     });
@@ -68,9 +64,7 @@ describe("renderHook rerender", () => {
         });
 
         expect(result.current.count).toBe(0);
-
         await act(() => result.current.increment());
-
         expect(result.current.count).toBe(1);
     });
 });
@@ -78,6 +72,7 @@ describe("renderHook rerender", () => {
 describe("renderHook unmount", () => {
     it("unmounts the component containing the hook", async () => {
         let unmounted = false;
+
         const { unmount } = await renderHook(() => {
             useEffect(() => {
                 return () => {
@@ -93,6 +88,7 @@ describe("renderHook unmount", () => {
 
     it("cleans up after unmount", async () => {
         const cleanup: (() => void)[] = [];
+
         const { unmount } = await renderHook(() => {
             useEffect(() => {
                 return () => {
@@ -120,11 +116,11 @@ describe("renderHook wrapper option", () => {
             useLayoutEffect(() => {
                 rendered.wrapper = true;
             });
+
             return <Ctx.Provider value="from-wrapper">{children}</Ctx.Provider>;
         };
 
         const { result } = await renderHook(() => useContext(Ctx), { wrapper: ContextWrapper });
-
         expect(rendered.wrapper).toBe(true);
         expect(result.current).toBe("from-wrapper");
     });
@@ -141,16 +137,17 @@ describe("renderHook error handling", () => {
 
     it("throws when hook throws on rerender", async () => {
         let shouldThrow = false;
+
         const conditionalErrorHook = () => {
             if (shouldThrow) {
                 throw new Error("Rerender error");
             }
+
             return "ok";
         };
 
         const { result, rerender } = await renderHook(conditionalErrorHook);
         expect(result.current).toBe("ok");
-
         shouldThrow = true;
         await expect(rerender()).rejects.toThrow("Rerender error");
     });
@@ -159,12 +156,9 @@ describe("renderHook error handling", () => {
 describe("renderHook complex hooks state", () => {
     it("works with useState", async () => {
         const { result } = await renderHook(() => useState({ count: 0 }));
-
         expect(result.current[0]).toEqual({ count: 0 });
-
         const [, setState] = result.current;
         await act(() => setState({ count: 5 }));
-
         expect(result.current[0]).toEqual({ count: 5 });
     });
 
@@ -178,7 +172,6 @@ describe("renderHook complex hooks state", () => {
 
         const callback1 = result.current;
         expect(callback1()).toBe(1);
-
         await rerender({ value: 2 });
         const callback2 = result.current;
         expect(callback2()).toBe(2);
@@ -193,7 +186,6 @@ describe("renderHook complex hooks state", () => {
         });
 
         expect(result.current.current).toBe(1);
-
         await rerender();
         expect(result.current.current).toBe(2);
     });
@@ -201,6 +193,7 @@ describe("renderHook complex hooks state", () => {
 
 const useCounter = (initial: number) => {
     const [count, setCount] = useState(initial);
+
     return {
         count,
         increment: () => setCount((c) => c + 1),
@@ -216,6 +209,7 @@ describe("renderHook complex hooks effects", () => {
             ({ value }: { value: string }) => {
                 useEffect(() => {
                     effects.push(`effect:${value}`);
+
                     return () => {
                         effects.push(`cleanup:${value}`);
                     };
@@ -225,10 +219,8 @@ describe("renderHook complex hooks effects", () => {
         );
 
         expect(effects).toEqual(["effect:a"]);
-
         await rerender({ value: "b" });
         expect(effects).toEqual(["effect:a", "cleanup:a", "effect:b"]);
-
         await unmount();
         expect(effects).toEqual(["effect:a", "cleanup:a", "effect:b", "cleanup:b"]);
     });
@@ -239,10 +231,8 @@ describe("renderHook complex hooks effects", () => {
         });
 
         expect(result.current.count).toBe(10);
-
         await act(() => result.current.increment());
         expect(result.current.count).toBe(11);
-
         await act(() => result.current.decrement());
         await act(() => result.current.decrement());
         expect(result.current.count).toBe(9);

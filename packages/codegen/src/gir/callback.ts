@@ -3,16 +3,16 @@ import type { ParseContext } from "./type-id.js";
 import { type GirCallable, parseCallable } from "./parameter.js";
 import { attrBool, type RawNode } from "./parse.js";
 
-export type GirCallback = GirCallable & {
+type GirCallback = GirCallable & {
     introspectable: boolean;
 };
 
-export const callbackFromNode = (node: RawNode, context: ParseContext): GirCallback => ({
+const callbackFromNode = (node: RawNode, context: ParseContext): GirCallback => ({
     ...parseCallable(node, context),
     introspectable: attrBool(node, "introspectable", true),
 });
 
-export const callbackAsFunction = (callback: GirCallback): GirFunction => ({
+const callbackAsFunction = (callback: GirCallback): GirFunction => ({
     name: callback.name,
     doc: callback.doc,
     cIdentifier: undefined,
@@ -24,3 +24,5 @@ export const callbackAsFunction = (callback: GirCallback): GirFunction => ({
     parameters: callback.parameters,
     returnValue: callback.returnValue,
 });
+
+export { callbackFromNode, callbackAsFunction, type GirCallback };

@@ -1,7 +1,5 @@
 import { type ElementConfig, internal, type ModuleExport } from "../reconciler/registry.js";
 
-const adw = (name: string): ModuleExport => ({ module: "@gtkx/react/adw", export: name });
-
 const childrenProps = internal("ChildrenProps");
 const breakpointsProps = adw("AdwBreakpointsProps");
 const preferencesRowProps = adw("AdwPreferencesRowProps");
@@ -11,7 +9,7 @@ const preferencesRowProps = adw("AdwPreferencesRowProps");
  * generated element extends, which component wraps it, and whether its GObject is created lazily by its
  * parent. Codegen imports this module, so it must never reach the GObject bindings.
  */
-export const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
+const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwBin: {
         props: childrenProps,
     },
@@ -134,3 +132,9 @@ export const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: adw("AdwAlertDialogProps"),
     },
 };
+
+function adw(name: string): ModuleExport {
+    return { module: "@gtkx/react/adw", export: name };
+}
+
+export { BUILTIN_ELEMENTS };

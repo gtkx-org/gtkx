@@ -28,17 +28,13 @@ const requireWidget = <T,>(ref: RefObject<T | null>): T => {
 describe("render - GtkConstraintLayout attach", () => {
     it("attaches a ConstraintLayout to the host widget", async () => {
         const boxRef = createRef<Gtk.Box>();
-
         await render(<GtkBox ref={boxRef} layoutManager={<ConstraintLayout />} />);
-
         expect(boxRef.current?.getLayoutManager()).toBeInstanceOf(Gtk.ConstraintLayout);
     });
 
     it("accepts an empty <ConstraintLayout> without errors", async () => {
         const boxRef = createRef<Gtk.Box>();
-
         await render(<GtkBox ref={boxRef} layoutManager={<ConstraintLayout />} />);
-
         const layout = layoutFrom(boxRef);
         expect(collectConstraints(layout)).toHaveLength(0);
         expect(collectGuides(layout)).toHaveLength(0);
@@ -266,7 +262,6 @@ describe("render - GtkConstraintLayout.Guide (references)", () => {
         const { rerender } = await render(<App show={true} />);
         let layout = layoutFrom(boxRef);
         expect(collectGuides(layout)).toHaveLength(1);
-
         await rerender(<App show={false} />);
         layout = layoutFrom(boxRef);
         expect(collectGuides(layout)).toHaveLength(0);
@@ -302,7 +297,6 @@ describe("render - GtkConstraintLayout.Constraint updates", () => {
         let constraints = collectConstraints(layout);
         expect(constraints).toHaveLength(1);
         expect((constraints[0] as Gtk.Constraint).getConstant()).toBe(10);
-
         await rerender(<App constant={50} />);
         layout = layoutFrom(boxRef);
         constraints = collectConstraints(layout);
@@ -340,7 +334,6 @@ describe("render - GtkConstraintLayout.Constraint removal", () => {
         const { rerender } = await render(<App show={true} />);
         let layout = layoutFrom(boxRef);
         expect(collectConstraints(layout)).toHaveLength(1);
-
         await rerender(<App show={false} />);
         layout = layoutFrom(boxRef);
         expect(collectConstraints(layout)).toHaveLength(0);
@@ -414,7 +407,6 @@ describe("render - name-based target lifecycle", () => {
 
         const { rerender } = await render(<App id="first" />);
         expect(firstConstraint(boxRef).getTarget()).toBe(screen.getByName("first"));
-
         await rerender(<App id="second" />);
         expect(firstConstraint(boxRef).getTarget()).toBe(screen.getByName("second"));
     });
@@ -434,7 +426,6 @@ describe("render - name-based target lifecycle", () => {
         const { rerender } = await render(<App show={true} />);
         expect(within(requireWidget(boxRef)).getByName("persist")).toBeTruthy();
         expect(within(requireWidget(boxRef)).getByName("cond")).toBeTruthy();
-
         await rerender(<App show={false} />);
         expect(within(requireWidget(boxRef)).getByName("persist")).toBeTruthy();
         expect(within(requireWidget(boxRef)).queryByName("cond")).toBeNull();
@@ -514,7 +505,6 @@ describe("render - GtkConstraintLayout.Vfl", () => {
         let layout = layoutFrom(boxRef);
         const initialCount = collectConstraints(layout).length;
         expect(initialCount).toBeGreaterThan(0);
-
         await rerender(<App lines={["H:|-[a]-|", "V:|-[a]-|"]} />);
         layout = layoutFrom(boxRef);
         const updatedCount = collectConstraints(layout).length;

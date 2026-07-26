@@ -6,7 +6,7 @@ import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
 
 /** Options for {@link type}. */
-export type TypeOptions = {
+type TypeOptions = {
     /** Do not focus the widget before typing. */
     skipClick?: boolean | undefined;
     /** Select from this offset before typing, replacing the selected range with the typed text. */
@@ -22,7 +22,9 @@ const insertEditableText = (widget: EditableTarget, text: string): void => {
         widget.emit("insert-at-cursor", text);
         return;
     }
+
     const target = getEditableDelegate(widget) ?? widget;
+
     if (target instanceof Gtk.Text) {
         target.emit("insert-at-cursor", text);
         return;
@@ -39,6 +41,7 @@ const readSelection = (widget: EditableTarget): string => {
         const [hasSelection, start, end] = buffer.getSelectionBounds();
         return hasSelection ? buffer.getText(start, end, true) : "";
     }
+
     const [hasSelection, start, end] = widget.getSelectionBounds();
     return hasSelection ? widget.getChars(start, end) : "";
 };
@@ -48,6 +51,7 @@ const deleteSelection = (widget: EditableTarget): void => {
         widget.getBuffer().deleteSelection(false, true);
         return;
     }
+
     widget.deleteSelection();
 };
 
@@ -56,6 +60,7 @@ const setEditableText = (widget: EditableTarget, text: string): void => {
         widget.getBuffer().setText(text, text.length);
         return;
     }
+
     widget.setText(text);
 };
 
@@ -75,10 +80,12 @@ const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): vo
     if (options.initialSelectionStart === undefined) return;
     const start = options.initialSelectionStart;
     const end = options.initialSelectionEnd ?? start;
+
     if (widget instanceof Gtk.TextView) {
         applyTextViewSelection(widget, start, end);
         return;
     }
+
     applyEditableSelection(widget, start, end);
 };
 
@@ -87,7 +94,7 @@ const writeClipboardText = (widget: Gtk.Widget, text: string): void => {
     widget.getClipboard().set(value);
 };
 
-export const resetClipboard = (): void => {
+const resetClipboard = (): void => {
     Gdk.Display.getDefault()?.getClipboard().setContent(null);
 };
 
@@ -104,7 +111,7 @@ const runEditableEvent = (
         action(widget);
     });
 
-export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
+const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
     runEditableEvent(widget, "Cannot type into element", (editable) => {
         if (!options?.skipClick) {
             editable.grabFocus();
@@ -114,29 +121,32 @@ export const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): P
         insertEditableText(editable, text);
     });
 
-export const clear = (widget: Gtk.Widget): Promise<void> =>
+const clear = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot clear element", (editable) => {
         setEditableText(editable, "");
     });
 
-export const copy = (widget: Gtk.Widget): Promise<void> =>
+const copy = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot copy", (editable) => {
         writeClipboardText(editable, readSelection(editable));
     });
 
-export const cut = (widget: Gtk.Widget): Promise<void> =>
+const cut = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot cut", (editable) => {
         writeClipboardText(editable, readSelection(editable));
         deleteSelection(editable);
     });
 
-export const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
+const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
         throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);
     }
 
     const content = text ?? (await widget.getClipboard().readTextAsync(null)) ?? "";
+
     await wrapEvent(widget, () => {
         insertEditableText(widget, content);
     });
 };
+
+export { resetClipboard, type, clear, copy, cut, paste, type TypeOptions };

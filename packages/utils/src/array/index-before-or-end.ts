@@ -10,7 +10,7 @@
  * @param matches - Called with each item and the non-null `before`; return `true` on a match.
  * @returns The matched index, or `list.length`.
  */
-export const indexBeforeOrEnd = <T, B>(
+const indexBeforeOrEnd = <T, B>(
     list: T[],
     before: B | null,
     matches: (item: T, before: B) => boolean,
@@ -19,3 +19,5 @@ export const indexBeforeOrEnd = <T, B>(
     const index = list.findIndex((item) => matches(item, before));
     return index === -1 ? list.length : index;
 };
+
+export { indexBeforeOrEnd };

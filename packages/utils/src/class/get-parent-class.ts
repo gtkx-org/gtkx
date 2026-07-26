@@ -6,7 +6,9 @@ import type { AnyClass } from "./any-class.js";
  * @param cls - The class whose prototype parent to inspect.
  * @returns The parent class, or `null` when there is none.
  */
-export function getParentClass(cls: AnyClass): AnyClass | null {
+function getParentClass(cls: AnyClass): AnyClass | null {
     const parent: unknown = Object.getPrototypeOf(cls);
     return typeof parent === "function" && parent !== Function.prototype ? (parent as AnyClass) : null;
 }
+
+export { getParentClass };

@@ -1,14 +1,66 @@
 import type { GlCommand, GlParam } from "./model.js";
 import { tScalar } from "../analysis/descriptor.js";
 
-export type GlScalar = {
+type GlScalar = {
     descriptor: string;
     tsAlias: string;
     viewType?: string;
     groupBearing?: boolean;
 };
 
-export const GL_SCALARS: Map<string, GlScalar> = new Map([
+type ParsedCType = {
+    base: string;
+    pointers: number;
+    constData: boolean;
+};
+
+type ParamPlan =
+    | { kind: "scalar"; scalar: GlScalar } |
+    { kind: "boolean" } |
+    { kind: "sync" } |
+    { kind: "string-in" } |
+    { kind: "string-array-in" } |
+    { kind: "array-in"; scalar: GlScalar } |
+    { kind: "ref-out"; scalar: GlScalar } |
+    { kind: "ref-array-out"; scalar: GlScalar; lenParamName: string } |
+    { kind: "ref-fixed-out"; scalar: GlScalar; length: number } |
+    { kind: "string-out"; lenParamName: string } |
+    { kind: "buffer" } |
+    { kind: "byte-offset" } |
+    { kind: "byte-offset-array" };
+
+type ReturnPlan =
+    | { kind: "void" } |
+    { kind: "scalar"; scalar: GlScalar } |
+    { kind: "boolean" } |
+    { kind: "string" } |
+    { kind: "sync" } |
+    { kind: "opaque-pointer" };
+
+type GlExclusionReason =
+    | "callback-parameter" |
+    "compsize-output" |
+    "computed-output-length" |
+    "unsupported-shape" |
+    "override-owned";
+
+type GlPlanPolicy = {
+    byteOffsetParams: Set<string>;
+    singleValuedQueries: Set<string>;
+};
+
+type CommandPlan =
+    | {
+        ok: true;
+        command: GlCommand;
+        params: ParamPlan[];
+        returnPlan: ReturnPlan;
+    } |
+    { ok: false; command: GlCommand; reason: GlExclusionReason };
+
+type ParamOutcome = { plan: ParamPlan } | { reason: GlExclusionReason };
+
+const GL_SCALARS: Map<string, GlScalar> = new Map([
     ["GLenum", { descriptor: tScalar("uint32"), tsAlias: "GLenum", viewType: "Uint32Array", groupBearing: true }],
     [
         "GLbitfield",
@@ -34,70 +86,20 @@ const GL_CHAR = "GLchar";
 const GL_SYNC = "GLsync";
 const CALLBACK_BASES: Set<string> = new Set(["GLDEBUGPROC", "GLDEBUGPROCARB", "GLDEBUGPROCKHR", "GLVULKANPROCNV"]);
 
-export type ParsedCType = {
-    base: string;
-    pointers: number;
-    constData: boolean;
-};
-
-export const parseCType = (cType: string): ParsedCType => {
+const parseCType = (cType: string): ParsedCType => {
     const pointers = (cType.match(/\*/g) ?? []).length;
     const constData = /(^|\s)const(\s|\*)/.test(` ${cType} `) && pointers > 0;
+
     const base = cType
         .replaceAll("*", " ")
         .split(/\s+/)
         .filter((token) => token.length > 0 && token !== "const" && token !== "struct")
         .join(" ");
+
     return { base, pointers, constData };
 };
 
-export type ParamPlan =
-    | { kind: "scalar"; scalar: GlScalar } |
-    { kind: "boolean" } |
-    { kind: "sync" } |
-    { kind: "string-in" } |
-    { kind: "string-array-in" } |
-    { kind: "array-in"; scalar: GlScalar } |
-    { kind: "ref-out"; scalar: GlScalar } |
-    { kind: "ref-array-out"; scalar: GlScalar; lenParamName: string } |
-    { kind: "ref-fixed-out"; scalar: GlScalar; length: number } |
-    { kind: "string-out"; lenParamName: string } |
-    { kind: "buffer" } |
-    { kind: "byte-offset" } |
-    { kind: "byte-offset-array" };
-
-export type ReturnPlan =
-    | { kind: "void" } |
-    { kind: "scalar"; scalar: GlScalar } |
-    { kind: "boolean" } |
-    { kind: "string" } |
-    { kind: "sync" } |
-    { kind: "opaque-pointer" };
-
-export type GlExclusionReason =
-    | "callback-parameter" |
-    "compsize-output" |
-    "computed-output-length" |
-    "unsupported-shape" |
-    "override-owned";
-
-export type GlPlanPolicy = {
-    byteOffsetParams: Set<string>;
-    singleValuedQueries: Set<string>;
-};
-
-export type CommandPlan =
-    | {
-        ok: true;
-        command: GlCommand;
-        params: ParamPlan[];
-        returnPlan: ReturnPlan;
-    } |
-    { ok: false; command: GlCommand; reason: GlExclusionReason };
-
 const isCompsize = (len: string): boolean => len.includes("COMPSIZE(");
-
-type ParamOutcome = { plan: ParamPlan } | { reason: GlExclusionReason };
 
 const planCompsizeOut = (command: GlCommand, scalar: GlScalar, policy: GlPlanPolicy): ParamOutcome => {
     if (policy.singleValuedQueries.has(command.name)) return { plan: { kind: "ref-out", scalar } };
@@ -109,9 +111,11 @@ const planPointerOut = (command: GlCommand, param: GlParam, scalar: GlScalar, po
     if (len === undefined || len === "1") return { plan: { kind: "ref-out", scalar } };
     if (isCompsize(len)) return planCompsizeOut(command, scalar, policy);
     if (/^\d+$/.test(len)) return { plan: { kind: "ref-fixed-out", scalar, length: Number(len) } };
+
     if (command.params.some((other) => other.name === len)) {
         return { plan: { kind: "ref-array-out", scalar, lenParamName: len } };
     }
+
     return { reason: "computed-output-length" };
 };
 
@@ -143,9 +147,11 @@ const planScalarParam = (
     policy: GlPlanPolicy,
 ): ParamOutcome => {
     const scalar = GL_SCALARS.get(parsed.base);
+
     if (scalar === undefined) {
         throw new Error(`Unmapped C base type "${parsed.base}" on ${command.name}(${param.name}: ${param.cType})`);
     }
+
     if (parsed.pointers === 0) return { plan: { kind: "scalar", scalar } };
     if (parsed.pointers === 1 && parsed.constData) return { plan: { kind: "array-in", scalar } };
     if (parsed.pointers === 1) return planPointerOut(command, param, scalar, policy);
@@ -178,12 +184,15 @@ const planByBase = (command: GlCommand, param: GlParam, parsed: ParsedCType, pol
 const planParam = (command: GlCommand, param: GlParam, policy: GlPlanPolicy): ParamOutcome => {
     const parsed = parseCType(param.cType);
     const { base } = parsed;
+
     if (CALLBACK_BASES.has(base) || base.startsWith("_cl_")) {
         return { reason: "callback-parameter" };
     }
+
     if (policy.byteOffsetParams.has(`${command.name}:${param.name}`)) {
         return planByteOffsetParam(parsed);
     }
+
     return planByBase(command, param, parsed, policy);
 };
 
@@ -205,20 +214,39 @@ const planPointerReturn = (base: string): ReturnPlan | undefined => {
 const planReturn = (command: GlCommand): ReturnPlan => {
     const { base, pointers } = parseCType(command.returnCType);
     let plan: ReturnPlan | undefined;
+
     if (pointers === 0) plan = planScalarReturn(base);
     else if (pointers === 1) plan = planPointerReturn(base);
+
     if (plan !== undefined) return plan;
     throw new Error(`Unmapped return type "${command.returnCType}" on ${command.name}`);
 };
 
-export const planCommand = (command: GlCommand, policy: GlPlanPolicy): CommandPlan => {
+const planCommand = (command: GlCommand, policy: GlPlanPolicy): CommandPlan => {
     const params: ParamPlan[] = [];
+
     for (const param of command.params) {
         const outcome = planParam(command, param, policy);
+
         if ("reason" in outcome) {
             return { ok: false, command, reason: outcome.reason };
         }
+
         params.push(outcome.plan);
     }
+
     return { ok: true, command, params, returnPlan: planReturn(command) };
+};
+
+export {
+    GL_SCALARS,
+    parseCType,
+    planCommand,
+    type GlScalar,
+    type ParsedCType,
+    type ParamPlan,
+    type ReturnPlan,
+    type GlExclusionReason,
+    type GlPlanPolicy,
+    type CommandPlan,
 };

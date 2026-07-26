@@ -1,11 +1,8 @@
 import { camelCase } from "@gtkx/utils";
 
 const CONSTANT_MAP: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
-
 const CALLABLE_LINK_KINDS: Set<string> = new Set(["method", "func", "ctor", "vfunc"]);
-
 const SENTINEL = String.fromCodePoint(0xE0_00);
-
 const CODE_BLOCK_OPEN = "|[";
 const CODE_BLOCK_CLOSE = "]|";
 const CODE_LANGUAGE_PATTERN = /^\s*<!--\s*language="([^"]*)"\s*-->/;
@@ -20,9 +17,11 @@ const FUNCTION_REF_PATTERN = /\b([a-z_][a-z0-9_]*)\(\)/g;
 const renderLink = (kind: string, target: string): string => {
     const segments = target.split(/::|[.:]/);
     const lastIndex = segments.length - 1;
+
     if (kind === "property" || CALLABLE_LINK_KINDS.has(kind)) {
         segments[lastIndex] = camelCase(segments[lastIndex] ?? "");
     }
+
     const symbol = segments.join(".");
     return `\`${symbol}${CALLABLE_LINK_KINDS.has(kind) ? "()" : ""}\``;
 };
@@ -44,6 +43,7 @@ const renderCodeFence = (body: string): string => {
 const protectCodeBlocks = (raw: string, protect: (value: string) => string): string => {
     let result = "";
     let cursor = 0;
+
     while (cursor < raw.length) {
         const open = raw.indexOf(CODE_BLOCK_OPEN, cursor);
         if (open === -1) break;
@@ -53,11 +53,13 @@ const protectCodeBlocks = (raw: string, protect: (value: string) => string): str
         result += protect(renderCodeFence(raw.slice(open + CODE_BLOCK_OPEN.length, close)));
         cursor = close + CODE_BLOCK_CLOSE.length;
     }
+
     return result + raw.slice(cursor);
 };
 
-export const gtkDocToMarkdown = (raw: string): string => {
+const gtkDocToMarkdown = (raw: string): string => {
     const stash: string[] = [];
+
     const protect = (value: string): string => {
         const token = `${SENTINEL}${stash.length}${SENTINEL}`;
         stash.push(value);
@@ -77,5 +79,8 @@ export const gtkDocToMarkdown = (raw: string): string => {
         const value = stash[index] ?? "";
         text = text.replaceAll(`${SENTINEL}${index}${SENTINEL}`, () => value);
     }
+
     return text;
 };
+
+export { gtkDocToMarkdown };

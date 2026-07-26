@@ -13,6 +13,7 @@ describe("errorMessage", () => {
                 this.name = "CustomError";
             }
         }
+
         expect(errorMessage(new CustomError())).toBe("custom");
     });
 

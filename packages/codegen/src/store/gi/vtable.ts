@@ -15,7 +15,16 @@ import { computeRecordFieldSlots } from "./record-layout.js";
 
 type VtableKind = "class" | "interface";
 
-export const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
+type RenderVtableSlotDescriptorOptions = {
+    key: string;
+    structName: string;
+    kind: VtableKind;
+    field: GirField;
+    callback: GirCallback;
+    byteOffset: number;
+};
+
+const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.glibTypeStruct === undefined) return undefined;
     const structName = pascalCase(klass.glibTypeStruct);
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
@@ -50,10 +59,12 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
     const { slots } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const entries: string[] = [];
     const claimedNames: Set<string> = new Set();
+
     for (const { field, slot } of slots) {
         const entry = vtableSlotEntry(context, field, claimedNames);
         if (entry === undefined) continue;
         claimedNames.add(entry.key);
+
         entries.push(
             renderVtableSlotDescriptor(context, {
                 key: entry.key,
@@ -65,6 +76,7 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
             }),
         );
     }
+
     return entries;
 };
 
@@ -81,31 +93,27 @@ const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boo
 
 const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): boolean => {
     if (!callback.introspectable) return false;
+
     for (const param of callback.parameters) {
         if (!isEligibleVtableParam(context, param)) return false;
     }
-    return !isInlineCallbackRef(context.library, callback.returnValue.type);
-};
 
-type RenderVtableSlotDescriptorOptions = {
-    key: string;
-    structName: string;
-    kind: VtableKind;
-    field: GirField;
-    callback: GirCallback;
-    byteOffset: number;
+    return !isInlineCallbackRef(context.library, callback.returnValue.type);
 };
 
 const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtableSlotDescriptorOptions): string => {
     const { key, structName, kind, field, callback, byteOffset } = options;
+
     const argDescriptors = callback.parameters
         .map((param) => renderParamDescriptor(context, param, param.type))
         .join(", ");
+
     const returnDescriptor = renderDescriptor(
         context,
         callback.returnValue.type,
         callback.returnValue.transferOwnership,
     );
+
     const lines = [
         `kind: ${sourceStringLiteral(kind)} as const,`,
         `className: ${sourceStringLiteral(structName)},`,
@@ -114,5 +122,8 @@ const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtabl
         `argDescriptors: [${argDescriptors}],`,
         `returnDescriptor: ${returnDescriptor},`,
     ];
+
     return `${key}: ${renderBraced(lines.join("\n"))},`;
 };
+
+export { renderVfuncMetadata };

@@ -20,10 +20,12 @@ const writeFingerprint = (cwd: string, libraries: string[] = ["Gtk-4.0"]) => {
 const installPackage = (cwd: string, name: string) => {
     const dir = join(cwd, "node_modules", "@gtkx", name);
     mkdirSync(dir, { recursive: true });
+
     writeFileSync(
         join(dir, "package.json"),
         JSON.stringify({ name: `@gtkx/${name}`, version: "0.0.0", main: "./index.js" }),
     );
+
     writeFileSync(join(dir, "index.js"), "");
 };
 
@@ -72,6 +74,7 @@ const writeJsxStore = (cwd: string) => {
 
 const announceLogs = async (cwd: string): Promise<string> => {
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
     try {
         await ensureGenerated(cwd, { announce: true });
         return stderrSpy.mock.calls.map((call) => String(call[0])).join("");
@@ -103,6 +106,7 @@ describe("runCodegen", () => {
         writeConfig(cwd);
         const originalCwd = process.cwd();
         process.chdir(cwd);
+
         try {
             const result = await runCodegen();
             expect(result.configFile).toBeDefined();
@@ -117,9 +121,7 @@ describe("runCodegen", () => {
         writeDefaultGiBarrels(cwd);
         const giStale = join(cwd, "node_modules", ".gtkx", "gi", "stale.js");
         writeFileSync(giStale, "");
-
         const result = await runCodegen({ cwd, force: true });
-
         expect(existsSync(giStale)).toBe(false);
         expect(result.namespaces).toBe(1);
     });
@@ -135,6 +137,7 @@ describe("ensureGenerated — announce path", () => {
 
     afterEach(() => {
         rmSync(cwd, { recursive: true, force: true });
+
         if (originalEnv === undefined) {
             delete process.env.GTKX_DISABLE_PREFLIGHT;
         } else {
@@ -157,7 +160,6 @@ describe("ensureGenerated — announce path", () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installRuntimePackage(cwd);
         writeConfig(cwd, "export default { libraries: [] };");
-
         await expect(ensureGenerated(cwd, { announce: true })).rejects.toThrow();
     });
 
@@ -165,7 +167,6 @@ describe("ensureGenerated — announce path", () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installRuntimePackage(cwd);
         writeConfig(cwd);
-
         expect(await announceLogs(cwd)).toContain("running codegen");
     });
 
@@ -177,7 +178,6 @@ describe("ensureGenerated — announce path", () => {
         writeDefaultGiBarrels(cwd);
         writeJsxStore(cwd);
         writeFingerprint(cwd);
-
         expect(await announceLogs(cwd)).toBe("");
     });
 });
@@ -198,7 +198,6 @@ describe("ensureGenerated", () => {
         installReactStack(cwd);
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
-
         expect(await ensureGenerated(cwd)).toBe(true);
     });
 
@@ -209,7 +208,6 @@ describe("ensureGenerated", () => {
         writeDefaultGiBarrels(cwd);
         writeJsxStore(cwd);
         writeFingerprint(cwd);
-
         expect(await ensureGenerated(cwd)).toBe(false);
     });
 
@@ -219,20 +217,17 @@ describe("ensureGenerated", () => {
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
         writeFingerprint(cwd);
-
         expect(await ensureGenerated(cwd)).toBe(false);
     });
 
     it("does nothing when there is no gtkx.config.ts", async () => {
         installRuntimePackage(cwd);
-
         expect(await ensureGenerated(cwd)).toBe(false);
     });
 
     it("propagates non-NotFound config errors", async () => {
         installRuntimePackage(cwd);
         writeConfig(cwd, "export default { libraries: [] };");
-
         await expect(ensureGenerated(cwd)).rejects.toThrow();
     });
 });
@@ -254,6 +249,7 @@ describe("ensureGenerated — store links", () => {
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
         writeJsxStore(cwd);
+
         rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "gi"), {
             recursive: true,
             force: true,

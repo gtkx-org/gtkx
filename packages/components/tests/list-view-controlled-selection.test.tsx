@@ -16,6 +16,7 @@ const TASKS: Task[] = [
 function SelectScreen({ listRef }: { listRef: RefObject<Gtk.ListView | null> }) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const visible = TASKS;
+
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkLabel>{`${selectedIds.length} selected`}</GtkLabel>
@@ -78,6 +79,7 @@ describe("render - ColumnView - controlled selection updates", () => {
                 onSelectionChanged={onSelectionChanged}
             />,
         );
+
         onSelectionChanged.mockClear();
 
         await rerender(
@@ -95,6 +97,7 @@ describe("render - ColumnView - controlled selection updates", () => {
             expect(model.isSelected(1)).toBe(false);
             expect(model.isSelected(2)).toBe(true);
         });
+
         expect(onSelectionChanged.mock.calls).toEqual([[["a", "c"]]]);
     });
 });
@@ -103,7 +106,6 @@ describe("render - ListView - controlled multi-selection feedback", () => {
     it("updates parent state when a row is selected", async () => {
         const listRef = createRef<Gtk.ListView>();
         await render(<SelectScreen listRef={listRef} />);
-
         await userEvent.selectOptions(listRef.current as Gtk.ListView, 0);
 
         await waitFor(() => {
@@ -114,7 +116,6 @@ describe("render - ListView - controlled multi-selection feedback", () => {
     it("selects every row when Select All updates selectedIds", async () => {
         const listRef = createRef<Gtk.ListView>();
         await render(<SelectScreen listRef={listRef} />);
-
         const selectAll = screen.getByText("Select All");
         await userEvent.click(selectAll);
 

@@ -1,7 +1,6 @@
 import { sortStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
-import type { GirCallable } from "../gir/parameter.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
@@ -29,16 +28,11 @@ import {
     renderDocsType,
 } from "./render.js";
 
-export type ElementPageContext = {
+type ElementPageContext = {
     library: Library;
     girIndex: GirIndex;
     linkFor: (glibName: string) => string | undefined;
 };
-
-export const createElementPageContext = (
-    library: Library,
-    linkFor: (glibName: string) => string | undefined,
-): ElementPageContext => ({ library, girIndex: buildGirIndex(library), linkFor });
 
 type MemberOwner = {
     klass: GirClass;
@@ -52,6 +46,18 @@ type PropEntry = {
     meta: string;
     doc: string;
 };
+
+type SignalEntry = {
+    name: string;
+    signature: string;
+    doc: string;
+    origin: string | undefined;
+};
+
+const createElementPageContext = (
+    library: Library,
+    linkFor: (glibName: string) => string | undefined,
+): ElementPageContext => ({ library, girIndex: buildGirIndex(library), linkFor });
 
 const frontmatter = (entry: GlibNamedClass): string => {
     const sentence = firstSentence(entry.klass.doc);
@@ -70,15 +76,19 @@ const glibLabel = (context: ElementPageContext, glibName: string): string => {
 const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): string[] => {
     const ancestors = [...ancestorChain(context.library, entry.klass, entry.namespace.name)].slice(1).toReversed();
     if (ancestors.length === 0) return [];
+
     const parts = ancestors.map((ancestor) => {
         const glib = glibNameOf(ancestor.klass);
         return glib === undefined ? `\`${ancestor.namespaceName}.${ancestor.klass.name}\`` : glibLabel(context, glib);
     });
+
     parts.push(`**${entry.glibName}**`);
     const lines = ["## Hierarchy", parts.join(" → ")];
+
     const interfaces = implementedInterfaces(entry.klass, entry.namespace, context.library)
         .map((iface) => glibNameOf(iface.klass))
         .filter((name): name is string => name !== undefined);
+
     lines.push(...implementsLine(interfaces));
     return lines;
 };
@@ -107,6 +117,7 @@ const propertyEntry = (
         property,
         jsName,
     );
+
     const baseType = renderDocsType(context.library, property.type, false);
     const type = object ? `${baseType} | ReactElement` : baseType;
     const meta: string[] = [`\`${type}\``];
@@ -127,58 +138,72 @@ const propJsName = (property: GirProperty, seen: Set<string>): string | undefine
 
 const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen: Set<string>): PropEntry[] => {
     const entries: PropEntry[] = [];
+
     for (const property of owner.klass.properties) {
         const jsName = propJsName(property, seen);
         if (jsName !== undefined) entries.push(propertyEntry(context, owner, property, jsName));
     }
+
     return entries;
 };
 
 const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
     const entries: PropEntry[] = [];
+
     for (const owner of memberOwners(entry, context)) {
         entries.push(...ownerPropEntries(context, owner, seen));
     }
+
     return entries;
 };
 
 const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
     const seen: Set<string> = new Set();
     const entries = propertyEntries(entry, context, seen);
+
     const intro = [
         `\`ref\` receives the \`${selfType}\` instance.`,
         "Every mutable property also has an `onNotify<Prop>` handler prop called with the new value when the property changes.",
         "Props inherited from ancestor elements are documented on their own pages.",
     ].join(" ");
+
     if (entries.length === 0) return ["## Props", intro];
     const sorted = sortStringsBy(entries, (item) => item.name);
     return ["## Props", intro, ...sorted.map((item) => metaBlock(item.name, item.meta, item.doc))];
 };
 
-type SignalEntry = {
-    name: string;
-    signature: string;
-    doc: string;
-    origin: string | undefined;
+const ownerSignalEntries = (
+    context: ElementPageContext,
+    owner: MemberOwner,
+    selfType: string,
+    seen: Set<string>,
+): SignalEntry[] => {
+    const entries: SignalEntry[] = [];
+
+    for (const signal of owner.klass.signals) {
+        const name = signalHandlerName(signal.name);
+        if (seen.has(name)) continue;
+        seen.add(name);
+
+        entries.push({
+            name,
+            signature: renderDocsSignalSignature(context.library, signal, selfType),
+            doc: docMarkdown(signal.doc),
+            origin: owner.origin,
+        });
+    }
+
+    return entries;
 };
 
 const signalsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
     const seen: Set<string> = new Set();
     const entries: SignalEntry[] = [];
-    const acceptSignal = (signal: GirCallable, origin: string | undefined): void => {
-        const name = signalHandlerName(signal.name);
-        if (seen.has(name)) return;
-        seen.add(name);
-        entries.push({
-            name,
-            signature: renderDocsSignalSignature(context.library, signal, selfType),
-            doc: docMarkdown(signal.doc),
-            origin,
-        });
-    };
+
     for (const owner of memberOwners(entry, context)) {
-        for (const signal of owner.klass.signals) acceptSignal(signal, owner.origin);
+        entries.push(...ownerSignalEntries(context, owner, selfType, seen));
     }
+
     if (entries.length === 0) return [];
     return ["## Signals", ...originSignatureBlocks(entries)];
 };
@@ -189,8 +214,9 @@ const methodsSection = (entry: GlibNamedClass, context: ElementPageContext, self
     return methodsSectionBlocks(entries, intro);
 };
 
-export const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): string => {
+const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): string => {
     const selfType = `${entry.namespace.name}.${entry.klass.name}`;
+
     return joinSections([
         frontmatter(entry),
         `# ${entry.glibName}`,
@@ -202,3 +228,5 @@ export const renderElementPage = (entry: GlibNamedClass, context: ElementPageCon
         ...methodsSection(entry, context, selfType),
     ]);
 };
+
+export { createElementPageContext, renderElementPage, type ElementPageContext };

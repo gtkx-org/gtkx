@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 describe("wrapper toggle references", () => {
     it("resolves a constructed wrapper back from its native handle by identity", () => {
         const label = new Gtk.Label();
-
         expect(getWrapper(getHandle(label))).toBe(label);
     });
 
@@ -14,9 +13,7 @@ describe("wrapper toggle references", () => {
         const label = new Gtk.Label();
         const handle = getHandle(label);
         const wrapper = { tag: "label-wrapper" };
-
         setWrapper(handle, wrapper);
-
         expect(getWrapper(handle)).toBe(wrapper);
     });
 });

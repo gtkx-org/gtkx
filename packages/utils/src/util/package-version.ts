@@ -9,6 +9,8 @@ import { createRequire } from "node:module";
  * @example
  * packageVersion(import.meta.url); // "1.2.3"
  */
-export function packageVersion(importMetaUrl: string): string {
+function packageVersion(importMetaUrl: string): string {
     return (createRequire(importMetaUrl)("../package.json") as { version: string }).version;
 }
+
+export { packageVersion };

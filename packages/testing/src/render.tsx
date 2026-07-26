@@ -20,16 +20,19 @@ import { type Container, TOPLEVELS, traverse } from "./traversal.js";
 import { resetClipboard } from "./user-event/index.js";
 import { within } from "./within.js";
 
-let lastRenderError: Error | null = null;
-let errorHandlerInstalled = false;
-
 type ActiveRender = {
     root: ReconcilerRoot;
     window: Gtk.Window | null;
 };
 
-const activeRenders: Set<ActiveRender> = new Set();
+type ResolvedContainer = {
+    containerInfo: Gtk.Widget | RootElement;
+    window: Gtk.Window | null;
+};
 
+let lastRenderError: Error | null = null;
+let errorHandlerInstalled = false;
+const activeRenders: Set<ActiveRender> = new Set();
 const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
 
@@ -52,6 +55,7 @@ const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> =
 
 const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
     if (!activeRenders.delete(active)) return;
+
     await active.root.unmount(async (root) => {
         await update(null, root);
         active.window?.destroy();
@@ -74,18 +78,15 @@ const installErrorHandler = (): void => {
     errorHandlerInstalled = true;
 };
 
-type ResolvedContainer = {
-    containerInfo: Gtk.Widget | RootElement;
-    window: Gtk.Window | null;
-};
-
 const resolveContainer = (container: RenderOptions["container"]): ResolvedContainer => {
     if (isRootElement(container)) {
         return { containerInfo: container, window: null };
     }
+
     if (container instanceof Gtk.Widget) {
         return { containerInfo: container, window: null };
     }
+
     const window = new Gtk.Window({ defaultWidth: HARNESS_WINDOW_WIDTH, defaultHeight: HARNESS_WINDOW_HEIGHT });
     window.setTitlebar(new Gtk.HeaderBar({ showTitleButtons: false }));
     return { containerInfo: window, window };
@@ -121,6 +122,7 @@ const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | und
 
 const applyEnableAnimations = (enabled: boolean): void => {
     const settings = Gtk.Settings.getDefault();
+
     if (settings) {
         settings.gtkEnableAnimations = enabled;
     }
@@ -135,25 +137,23 @@ const applyEnableAnimations = (enabled: boolean): void => {
  * @param options Optional container, wrapper, custom queries, and other render settings.
  * @returns A render result with bound queries, debug helpers, and lifecycle controls.
  */
-export const render = async <Q extends QueryMap = Record<never, never>>(
+const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,
     options?: RenderOptions<Q>,
 ): Promise<RenderResult<Q>> => {
     installErrorHandler();
-
     applyEnableAnimations(options?.animations === true);
-
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
-
     const resolved = resolveContainer(options?.container);
+
     const root = createReconcilerRoot({
         containerInfo: resolved.containerInfo,
         ...renderErrorHandlers(options),
     });
+
     const active: ActiveRender = { root, window: resolved.window };
     activeRenders.add(active);
-
     addToCleanupQueue(disposeAllActiveRenders);
     addToCleanupQueue(clearScreen);
     addToCleanupQueue(resetClipboard);
@@ -166,7 +166,6 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     await update(wrap(element), root);
     resolved.window?.present();
     await flushLayout(resolved.window);
-
     const container = resolveResultContainer(resolved, options?.container, baseElement);
 
     const result: RenderResult<Q> = {
@@ -191,7 +190,6 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
     };
 
     setScreen(result);
-
     return result;
 };
 
@@ -199,6 +197,8 @@ export const render = async <Q extends QueryMap = Record<never, never>>(
  * Unmounts every active render and runs all registered cleanup callbacks,
  * resetting the screen and clipboard. Called automatically after each test.
  */
-export const cleanup = async (): Promise<void> => {
+const cleanup = async (): Promise<void> => {
     await runCleanup();
 };
+
+export { render, cleanup };

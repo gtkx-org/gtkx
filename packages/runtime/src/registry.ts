@@ -14,10 +14,10 @@ import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeP
  * Static side of class `C` with its construct signature preserved but the member
  * named `K` (default `"new"`) removed.
  */
-export type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &
+type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &
     (C extends new (...args: infer A) => infer R ? new (...args: A) => R : never);
 
-export type VfuncDescriptor<K extends "class" | "interface"> = {
+type VfuncDescriptor<K extends "class" | "interface"> = {
     kind: K;
     className: string;
     vfuncName: string;
@@ -26,7 +26,7 @@ export type VfuncDescriptor<K extends "class" | "interface"> = {
     returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
 };
 
-export type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
+type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
 
 const classRegistry: Map<bigint, AnyClass> = new Map();
 const interfaceMixinRegistry: Map<bigint, Mixin> = new Map();
@@ -39,17 +39,17 @@ function setClassType(cls: AnyClass, type: bigint): void {
     (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] })._type_ = type;
 }
 
-export function getClassType(cls: AnyClass): bigint {
+function getClassType(cls: AnyClass): bigint {
     const proto: object = cls.prototype;
     return Object.hasOwn(proto, "_type_") ? (proto as TypedClass)._type_ : TYPE_INVALID;
 }
 
 /** Returns the GType tag of the given wrapper instance. */
-export function getInstanceType(instance: object): bigint {
+function getInstanceType(instance: object): bigint {
     return getClassType(instance.constructor as AnyClass);
 }
 
-export function registerClassType(cls: AnyClass, type: bigint): void {
+function registerClassType(cls: AnyClass, type: bigint): void {
     if (type === TYPE_INVALID) {
         return;
     }
@@ -65,7 +65,7 @@ export function registerClassType(cls: AnyClass, type: bigint): void {
  * @param type GType the class wraps.
  * @param vfuncs Virtual functions the class overrides.
  */
-export function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistry): void {
+function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistry): void {
     registerClassType(cls, type);
     if (vfuncs) registerVfuncRegistry(cls, vfuncs);
 }
@@ -78,7 +78,7 @@ export function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: Vfunc
  * @param mixin Mixin that applies the interface to a wrapper class.
  * @param vfuncs Virtual functions the interface exposes.
  */
-export function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry): void {
+function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry): void {
     if (type === TYPE_INVALID) return;
     setClassType(cls, type);
     interfaceMixinRegistry.set(type, mixin);
@@ -93,19 +93,24 @@ export function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfu
  * @param handle Native handle to wrap.
  * @param cls Wrapper class to instantiate, or omitted to resolve it from the runtime type.
  */
-export function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
-export function wrapHandle<T extends object>(handle: ExternalObject<Handle>, cls: AnyClass<T>): T;
-export function wrapHandle<T extends object>(
+function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
+function wrapHandle<T extends object>(handle: ExternalObject<Handle>, cls: AnyClass<T>): T;
+
+function wrapHandle<T extends object>(
     handle: ExternalObject<Handle> | null | undefined,
     cls: AnyClass<T>,
 ): T | null;
-export function wrapHandle(handle: ExternalObject<Handle>, cls?: AnyClass): TypedClass;
-export function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: AnyClass): TypedClass | null;
-export function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: AnyClass): object | null {
+
+function wrapHandle(handle: ExternalObject<Handle>, cls?: AnyClass): TypedClass;
+function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: AnyClass): TypedClass | null;
+
+function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: AnyClass): object | null {
     if (handle === null || handle === undefined) return null;
+
     if (cls === undefined) {
         return getOrCreateWrapper(handle);
     }
+
     const instance: object = Object.create(cls.prototype) as object;
     setHandle(instance, handle);
     return instance;
@@ -115,21 +120,25 @@ export function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cl
  * Returns the wrapper class registered for a GType, walking up to ancestor types,
  * and throws if none is registered.
  */
-export function getWrapperClass(type: bigint): AnyClass {
+function getWrapperClass(type: bigint): AnyClass {
     const cls = resolveWrapperClass(type);
+
     if (!cls) {
         throw new Error(`No registered wrapper class for type '${typeName(type) ?? String(type)}'`);
     }
+
     return cls;
 }
 
-export function resolveWrapperClass(type: bigint): AnyClass | null {
+function resolveWrapperClass(type: bigint): AnyClass | null {
     let currentType = type;
+
     while (currentType !== TYPE_INVALID) {
         const cls = classRegistry.get(currentType);
         if (cls) return cls;
         currentType = typeParent(currentType);
     }
+
     return null;
 }
 
@@ -145,9 +154,11 @@ function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
     const baseType = getClassType(base);
     const applied: Set<bigint> = new Set();
     let cls: AnyClass = base;
+
     for (const type of typeInterfaces(runtimeType)) {
         cls = applyInterfaceMixin(cls, type, baseType, applied);
     }
+
     return applied.size === 0 ? base : cls;
 }
 
@@ -168,8 +179,8 @@ function resolveComposedClass(runtimeType: bigint): AnyClass | null {
 function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
     const existing = getWrapper(handle);
     if (existing) return existing;
-
     const runtimeType: bigint = getType(handle);
+
     if (runtimeType === TYPE_INVALID) {
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
@@ -182,22 +193,24 @@ function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
 }
 
 /** Returns the native handle bound to a wrapper instance, throwing if none is set. */
-export function getHandle(instance: object): ExternalObject<Handle> {
+function getHandle(instance: object): ExternalObject<Handle> {
     const handle = handleMap.get(instance);
+
     if (handle === undefined) {
         const name = (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
         throw new Error(`No native handle associated with ${name}`);
     }
+
     return handle;
 }
 
 /** Returns the native handle bound to an instance, or undefined when there is none or the instance is null. */
-export function tryGetHandle(instance: object | null | undefined): ExternalObject<Handle> | undefined {
+function tryGetHandle(instance: object | null | undefined): ExternalObject<Handle> | undefined {
     return instance == null ? undefined : handleMap.get(instance);
 }
 
 /** Associates a native handle with a wrapper instance. */
-export function setHandle(instance: object, handle: ExternalObject<Handle>): void {
+function setHandle(instance: object, handle: ExternalObject<Handle>): void {
     handleMap.set(instance, handle);
 }
 
@@ -210,7 +223,7 @@ function registerVfuncRegistry(cls: object, registry: VfuncRegistry): void {
     vfuncRegistry.set(cls, registry);
 }
 
-export function getVfuncRegistry(cls: object): VfuncRegistry | undefined {
+function getVfuncRegistry(cls: object): VfuncRegistry | undefined {
     return vfuncRegistry.get(cls);
 }
 
@@ -219,6 +232,25 @@ function registerInterfaceVfuncRegistry(type: bigint, registry: VfuncRegistry): 
     interfaceVfuncRegistry.set(type, registry);
 }
 
-export function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
+function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
     return interfaceVfuncRegistry.get(type);
 }
+
+export {
+    getClassType,
+    getInstanceType,
+    registerClassType,
+    registerWrapperClass,
+    registerInterface,
+    wrapHandle,
+    getWrapperClass,
+    resolveWrapperClass,
+    getHandle,
+    tryGetHandle,
+    setHandle,
+    getVfuncRegistry,
+    getInterfaceVfuncRegistry,
+    type StaticBase,
+    type VfuncDescriptor,
+    type VfuncRegistry,
+};

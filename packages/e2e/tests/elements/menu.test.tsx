@@ -59,11 +59,9 @@ const renderItemListTransition = async (
     betweenRenders?: (initial: Gio.MenuModel) => void,
 ): Promise<Gio.MenuModel> => {
     const ref = createRef<Gtk.PopoverMenu>();
-
     await render(<ItemListApp menuRef={ref} items={initialItems} />);
     betweenRenders?.(requireModel(ref.current));
     await render(<ItemListApp menuRef={ref} items={updatedItems} />);
-
     return requireModel(ref.current);
 };
 
@@ -85,7 +83,6 @@ const RemovableItemApp = ({ menuRef, showItem }: { menuRef: MenuRef; showItem: b
 describe("render - Menu items", () => {
     it("adds a menu item with a label and detailed action", async () => {
         const model = await renderPopoverMenu([{ label: "Item 1", action: "win.item1" }]);
-
         expect(model.getNItems()).toBe(1);
         expect(itemLabel(model, 0)).toBe("Item 1");
         expect(itemAction(model, 0)).toBe("win.item1");
@@ -102,7 +99,6 @@ describe("render - Menu items", () => {
 
     it("places a new item at its array position, not the end", async () => {
         const model = await renderItemListTransition(["A", "C"], ["A", "B", "C"]);
-
         expect(model.getNItems()).toBe(3);
         expect(itemLabel(model, 0)).toBe("A");
         expect(itemLabel(model, 1)).toBe("B");
@@ -111,7 +107,6 @@ describe("render - Menu items", () => {
 
     it("reflects a reordered items array", async () => {
         const model = await renderItemListTransition(["A", "B", "C"], ["C", "A", "B"]);
-
         expect([itemLabel(model, 0), itemLabel(model, 1), itemLabel(model, 2)]).toEqual(["C", "A", "B"]);
     });
 });
@@ -119,20 +114,16 @@ describe("render - Menu items", () => {
 describe("render - Menu item updates", () => {
     it("updates a label when its entry changes", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
-
         await render(<LabeledItemApp menuRef={ref} label="Initial" />);
         expect(itemLabel(requireModel(ref.current), 0)).toBe("Initial");
-
         await render(<LabeledItemApp menuRef={ref} label="Updated" />);
         expect(itemLabel(requireModel(ref.current), 0)).toBe("Updated");
     });
 
     it("removes an item when it leaves the items array", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
-
         await render(<RemovableItemApp menuRef={ref} showItem={true} />);
         expect(requireModel(ref.current).getNItems()).toBe(1);
-
         await render(<RemovableItemApp menuRef={ref} showItem={false} />);
         expect(requireModel(ref.current).getNItems()).toBe(0);
     });
@@ -178,9 +169,11 @@ const DeepMenuApp = ({ menuRef, quitLabel }: { menuRef: MenuRef; quitLabel: stri
 
 const observeItemsChanged = (model: Gio.MenuModel): { count: number } => {
     const observed = { count: 0 };
+
     model.connect("items-changed", () => {
         observed.count++;
     });
+
     return observed;
 };
 
@@ -195,9 +188,7 @@ describe("render - Menu change notification", () => {
         const { ref, rerender } = await setupDeepMenu();
         const model = requireModel(ref.current);
         const notifications = observeItemsChanged(model);
-
         await rerender(<DeepMenuApp menuRef={ref} quitLabel="Quit" />);
-
         expect(notifications.count).toBe(0);
         expect(model.getNItems()).toBe(3);
     });
@@ -207,9 +198,7 @@ describe("render - Menu change notification", () => {
         await rerender(<DeepMenuApp menuRef={ref} quitLabel="Quit" />);
         const model = requireModel(ref.current);
         const notifications = observeItemsChanged(model);
-
         await rerender(<DeepMenuApp menuRef={ref} quitLabel="Exit" />);
-
         expect(notifications.count).toBeGreaterThan(0);
         const section = requireLink(sectionAt(model, 2));
         expect(itemLabel(section, 0)).toBe("Exit");
@@ -251,11 +240,9 @@ describe("render - Menu submenus", () => {
     it("links a submenu entry's items as a submenu", async () => {
         const ref = createRef<Gtk.PopoverMenuBar>();
         await render(<GtkPopoverMenuBar ref={ref} menuModel={<GMenu items={FILE_SUBMENU_ITEMS} />} />);
-
         const model = requireModel(ref.current);
         expect(model.getNItems()).toBe(1);
         expect(itemLabel(model, 0)).toBe("File");
-
         const submenu = requireLink(submenuAt(model, 0));
         expect(submenu.getNItems()).toBe(2);
         expect(itemLabel(submenu, 0)).toBe("New");
@@ -264,11 +251,9 @@ describe("render - Menu submenus", () => {
 
     it("supports nested submenus", async () => {
         const model = await renderPopoverMenu(NESTED_SUBMENU_ITEMS);
-
         const file = requireLink(submenuAt(model, 0));
         expect(file.getNItems()).toBe(1);
         expect(itemLabel(file, 0)).toBe("Recent");
-
         const recent = requireLink(submenuAt(file, 0));
         expect(recent.getNItems()).toBe(2);
         expect(itemLabel(recent, 0)).toBe("File 1");
@@ -277,11 +262,9 @@ describe("render - Menu submenus", () => {
 
     it("adds items to a submenu when its entries grow", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
-
         await render(<GrowingSubmenuApp menuRef={ref} extra={false} />);
         const submenu = requireLink(submenuAt(requireModel(ref.current), 0));
         expect(submenu.getNItems()).toBe(1);
-
         await render(<GrowingSubmenuApp menuRef={ref} extra={true} />);
         const grownSubmenu = requireLink(submenuAt(requireModel(ref.current), 0));
         expect(grownSubmenu.getNItems()).toBe(2);

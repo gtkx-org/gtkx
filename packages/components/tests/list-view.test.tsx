@@ -42,11 +42,8 @@ const gridViewView = async (items: Parameters<typeof renderGridView>[0]): Promis
 
 const expectSingleItemValueUpdate = async (): Promise<void> => {
     const { rerender } = await renderListView([{ id: "1", value: { name: "Initial" } }]);
-
     expect(screen.queryAllByText("Initial")).toHaveLength(1);
-
     await rerender([{ id: "1", value: { name: "Updated" } }]);
-
     expect(screen.queryAllByText("Updated")).toHaveLength(1);
     expect(screen.queryAllByText("Initial")).toHaveLength(0);
 };
@@ -55,7 +52,6 @@ describe("render - ListView (1)", () => {
     describe("GtkListView", () => {
         it("creates ListView widget", async () => {
             await renderListView([{ id: "1", value: { name: "First" } }]);
-
             expect(screen.getByRole(Gtk.AccessibleRole.LIST)).toBeTruthy();
         });
     });
@@ -134,7 +130,6 @@ describe("render - ListView (3)", () => {
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
             const renderItem = await renderTestItemWithSpy();
-
             expect(renderItem).toHaveBeenCalledWith(expect.objectContaining({ item: { name: "Test Item" } }));
         });
 
@@ -146,7 +141,6 @@ describe("render - ListView (3)", () => {
     describe("GtkGridView", () => {
         it("creates GridView widget", async () => {
             await renderGridView([{ id: "1", value: { name: "First" } }]);
-
             expect(screen.getByRole(Gtk.AccessibleRole.GRID)).toBeTruthy();
         });
 
@@ -226,6 +220,7 @@ describe("render - ListView (6)", () => {
                     ["3", "Charlie"],
                 ]),
             );
+
             expect(collectLabelTexts(ref.current)).toEqual(["Alice", "Bob", "Charlie"]);
 
             await rerender(
@@ -235,6 +230,7 @@ describe("render - ListView (6)", () => {
                     ["3", "Charlie Updated"],
                 ]),
             );
+
             expect(collectLabelTexts(ref.current)).toEqual(["Alice Updated", "Bob Updated", "Charlie Updated"]);
         });
     });
@@ -251,7 +247,6 @@ describe("render - ListView (7)", () => {
         it("preserves order when updating a single item value", async () => {
             const { ref, rerender } = await renderListView(counterBaselineRows(), { renderItem: renderCounterCell });
             expect(collectLabelTexts(ref.current)).toEqual(COUNTER_BASELINE_TEXTS);
-
             await rerender(counterSingleUpdateRows(), { renderItem: renderCounterCell });
             expect(collectLabelTexts(ref.current)).toEqual(COUNTER_SINGLE_UPDATE_TEXTS);
         });
@@ -290,13 +285,11 @@ describe("render - ListView (9)", () => {
     describe("direct cell rendering", () => {
         it("renders the item label as the list cell's direct content with no wrapper container", async () => {
             const { ref } = await renderListView(["First"]);
-
             expectNoBoxBetween(screen.getByText("First"), ref.current);
         });
 
         it("renders the item label as the grid cell's direct content with no wrapper container", async () => {
             const { ref } = await renderGridView(["First"]);
-
             expectNoBoxBetween(screen.getByText("First"), ref.current);
         });
     });

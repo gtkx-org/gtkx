@@ -64,6 +64,7 @@ describe("render - Shortcut (2)", () => {
 
         const Harness = () => {
             const [show, setShow] = useState(true);
+
             return (
                 <GtkBox
                     controllers={(
@@ -88,10 +89,8 @@ describe("render - Shortcut (2)", () => {
 
         const { rerender } = await render(<Harness />);
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
-
         const Empty = () => <GtkBox controllers={<GtkShortcutController ref={controllerRef} />} />;
         await rerender(<Empty />);
-
         expect(controllerRef.current?.getNItems() ?? 0).toBe(0);
     });
 });
@@ -101,9 +100,11 @@ let updateDisabled: (next: boolean) => void = () => {};
 describe("render - Shortcut (3)", () => {
     it("re-applies the trigger when it changes", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
+
         const Harness = () => {
             const [disabled, setDisabled] = useState(false);
             updateDisabled = setDisabled;
+
             return (
                 <GtkBox
                     controllers={(
@@ -127,10 +128,8 @@ describe("render - Shortcut (3)", () => {
 
         const { rerender } = await render(<Harness />);
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
-
         await act(() => updateDisabled(true));
         await rerender(<Harness />);
-
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
     });
 });

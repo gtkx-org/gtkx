@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 
-export type ScrollWrapperProps = {
+type ScrollWrapperProps = {
     children: ReactNode;
     minContentHeight?: number | undefined;
     maxContentHeight?: number | undefined;
@@ -9,7 +9,7 @@ export type ScrollWrapperProps = {
     actionGroups?: ReactNode;
 };
 
-export const ScrollWrapper = ({
+const ScrollWrapper = ({
     children,
     minContentHeight = 200,
     maxContentHeight,
@@ -25,3 +25,5 @@ export const ScrollWrapper = ({
         {children}
     </GtkScrolledWindow>
 );
+
+export { ScrollWrapper, type ScrollWrapperProps };

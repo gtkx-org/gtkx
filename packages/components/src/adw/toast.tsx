@@ -22,13 +22,14 @@ const buildToast = (options: ToastOptions): Adw.Toast => {
 };
 
 /** Shares an Adw.ToastOverlay reference with the toast hooks in every descendant. */
-export function ToastProvider(props: ToastProviderProps): ReactNode {
+function ToastProvider(props: ToastProviderProps): ReactNode {
     return <ToastContext.Provider value={props.overlayRef}>{props.children}</ToastContext.Provider>;
 }
 
 /** Returns a {@link ToastController} that shows and dismisses toasts on the nearest provider's overlay. */
-export function useToast(): ToastController {
+function useToast(): ToastController {
     const overlayRef = useOverlayRef();
+
     return useMemo<ToastController>(
         () => ({
             show: (options?: ToastOptions) => {
@@ -45,8 +46,9 @@ export function useToast(): ToastController {
 }
 
 /** Returns a {@link ToastOverlayController} for the nearest provider's overlay as a whole. */
-export function useToastOverlay(): ToastOverlayController {
+function useToastOverlay(): ToastOverlayController {
     const overlayRef = useOverlayRef();
+
     return useMemo<ToastOverlayController>(
         () => ({
             dismissAll: () => {
@@ -56,3 +58,5 @@ export function useToastOverlay(): ToastOverlayController {
         [overlayRef],
     );
 }
+
+export { ToastProvider, useToast, useToastOverlay };

@@ -10,12 +10,16 @@ import { getParentClass } from "./get-parent-class.js";
  * @param visit - Called with each class in the chain; a defined return value stops the walk.
  * @returns The first defined result from `visit`, or `undefined` when none was produced.
  */
-export function walkClassChain<T>(cls: AnyClass | null, visit: (ancestor: AnyClass) => T | undefined): T | undefined {
+function walkClassChain<T>(cls: AnyClass | null, visit: (ancestor: AnyClass) => T | undefined): T | undefined {
     let current = cls;
+
     while (current !== null) {
         const result = visit(current);
         if (result !== undefined) return result;
         current = getParentClass(current);
     }
+
     return undefined;
 }
+
+export { walkClassChain };

@@ -28,6 +28,7 @@ describe("formatCodegenResult", () => {
             result({ configFile: undefined, libraries: undefined, girPath: undefined }),
             5,
         );
+
         expect(lines).toEqual(["codegen: 2 namespaces, 142 intrinsic elements in 250ms (total 5ms)"]);
     });
 });

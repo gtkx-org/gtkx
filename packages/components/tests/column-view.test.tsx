@@ -72,6 +72,7 @@ type TitledColumnViewFixture = {
 
 const renderTitledColumnView = async (titles: string[]): Promise<TitledColumnViewFixture> => {
     const { ref, rerender } = await renderColumnView(singleNamedRow, { columns: titleColumns(titles) });
+
     return {
         ref,
         rerenderTitles: (nextTitles) => rerender(singleNamedRow, { columns: titleColumns(nextTitles) }),
@@ -99,6 +100,7 @@ type Employee = {
 
 const generateEmployees = (count: number): Employee[] => {
     const employees: Employee[] = [];
+
     for (let i = 0; i < count; i++) {
         employees.push({
             id: String(i + 1),
@@ -106,6 +108,7 @@ const generateEmployees = (count: number): Employee[] => {
             salary: 50_000 + ((i * 7919) % 80_000),
         });
     }
+
     return employees;
 };
 
@@ -126,6 +129,7 @@ const expectCellsAreDirectChildLabels = (view: Gtk.ColumnView, expectedCount: nu
     if (firstRow === undefined) throw new Error("Expected a data row to render");
     const cells = within(firstRow).getAllByRole(Gtk.AccessibleRole.GRID_CELL);
     expect(cells).toHaveLength(expectedCount);
+
     for (const cell of cells) {
         const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
         if (label === undefined) throw new Error("Expected the cell to contain a label");
@@ -141,6 +145,7 @@ const sortByColumnHeader = async (columnView: Gtk.ColumnView, columnId: string, 
     const headers = within(columnView).getAllByRole(Gtk.AccessibleRole.COLUMN_HEADER);
     const index = headers.findIndex((header) => cellText(header) === title);
     const column = columnView.getColumns().getItem(index);
+
     if (column instanceof Gtk.ColumnViewColumn) {
         await act(() => columnView.sortByColumn(column, order));
     }
@@ -165,7 +170,6 @@ function SortableColumnView({
 
     const sortedEmployees = useMemo(() => {
         if (!sortColumn) return employees;
-
         return employees.toSorted((a, b) => compareBySort(a, b, sortColumn, sortOrder));
     }, [employees, sortColumn, sortOrder]);
 
@@ -236,7 +240,6 @@ describe("render - ColumnView (1)", () => {
     describe("GtkColumnView", () => {
         it("creates ColumnView widget", async () => {
             const { ref } = await renderColumnView(singleNamedRow);
-
             expect(ref.current).not.toBeNull();
         });
     });
@@ -246,38 +249,30 @@ describe("render - ColumnView (2)", () => {
     describe("ColumnViewColumn", () => {
         it("adds column with title", async () => {
             const { ref } = await renderTitledColumnView(["Column Title"]);
-
             expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("inserts column before existing column", async () => {
             const { ref, rerenderTitles } = await renderTitledColumnView(["First", "Last"]);
-
             await rerenderTitles(["First", "Middle", "Last"]);
-
             expect(ref.current.getColumns()).not.toBeNull();
         });
 
         it("keeps cells in column order after inserting a column mid-list", async () => {
             const rows = [{ id: "1", value: { name: "r1" } }];
             const { ref, rerender } = await renderColumnView(rows, { columns: orderedColumns(["A", "C"]) });
-
             expect(getFirstRowCellTexts(ref.current)).toEqual(["A:r1", "C:r1"]);
-
             await rerender(rows, { columns: orderedColumns(["A", "B", "C"]) });
-
             expect(getFirstRowCellTexts(ref.current)).toEqual(["A:r1", "B:r1", "C:r1"]);
         });
 
         it("renders each cell's label as the cell's direct child with no wrapper container", async () => {
             const { ref } = await renderColumnView(["r1"], { columns: orderedColumns(["A", "B"]) });
-
             expectCellsAreDirectChildLabels(ref.current, 2);
         });
 
         it("removes column", async () => {
             const { ref } = await renderAbcThenReorder(["A", "C"]);
-
             expect(ref.current.getColumns()).not.toBeNull();
         });
 
@@ -291,9 +286,7 @@ describe("render - ColumnView (2)", () => {
 
         it("updates column properties when props change", async () => {
             const { ref, rerenderTitles } = await renderTitledColumnView(["Initial"]);
-
             await rerenderTitles(["Updated"]);
-
             expect(ref.current.getColumns()).not.toBeNull();
         });
     });
@@ -370,7 +363,6 @@ describe("render - ColumnView (5)", () => {
     describe("sorting", () => {
         it("sets sort column via sortColumn prop", async () => {
             const { ref } = await renderColumnView(singleNamedRow, { sortColumn: "name" });
-
             expect(ref.current.getSorter()).not.toBeNull();
         });
 
@@ -385,9 +377,7 @@ describe("render - ColumnView (5)", () => {
 
         it("calls onSortChanged when sort changes", async () => {
             const onSortChanged = vi.fn();
-
             const { ref } = await renderColumnView(singleNamedRow, { onSortChanged });
-
             expect(ref.current).not.toBeNull();
         });
 
@@ -403,7 +393,6 @@ describe("render - ColumnView (5)", () => {
             });
 
             await rerender(singleNamedRow, { columns, sortColumn: "age" });
-
             expect(ref.current.getSorter()).not.toBeNull();
         });
     });
@@ -413,7 +402,6 @@ describe("render - ColumnView (6)", () => {
     describe("selection", () => {
         it("supports single selection", async () => {
             const { ref } = await renderColumnView(firstSecondItems, { selected: ["1"] });
-
             expect(ref.current.getModel()).not.toBeNull();
         });
 
@@ -432,7 +420,6 @@ describe("render - ColumnView (7)", () => {
     describe("React-side sorting with large dataset (1)", () => {
         it("renders 200 rows in initial order", async () => {
             const { latestOrder } = await renderSortableColumnView(200);
-
             const initialOrder = latestOrder();
             expect(initialOrder).toBeDefined();
             expect(initialOrder?.length).toBe(200);
@@ -442,20 +429,15 @@ describe("render - ColumnView (7)", () => {
 
         it("sorts 200 rows when clicking salary column header", async () => {
             const { ref, employees, latestOrder } = await renderSortableColumnView(200);
-
             const unsortedOrder = latestOrder();
             expect(unsortedOrder?.[0]).toBe("1");
-
             await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
-
             const sortedBySalary = latestOrder();
             expect(sortedBySalary).toBeDefined();
-
             const firstItemId = sortedBySalary?.[0];
             const lastItemId = sortedBySalary?.[199];
             expect(firstItemId).toBeDefined();
             expect(lastItemId).toBeDefined();
-
             const firstEmployee = employees.find((e) => e.id === firstItemId);
             const lastEmployee = employees.find((e) => e.id === lastItemId);
             expect(firstEmployee).toBeDefined();
@@ -469,19 +451,14 @@ describe("render - ColumnView (8)", () => {
     describe("React-side sorting with large dataset (2)", () => {
         it("sorts 200 rows descending when clicking column header with DESC order", async () => {
             const { ref, employees, latestOrder } = await renderSortableColumnView(200);
-
             await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
-
             const ascendingOrder = latestOrder();
             const firstInAsc = employees.find((e) => e.id === ascendingOrder?.[0]);
             const lastInAsc = employees.find((e) => e.id === ascendingOrder?.[199]);
-
             await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.DESCENDING);
-
             const descendingOrder = latestOrder();
             const firstInDesc = employees.find((e) => e.id === descendingOrder?.[0]);
             const lastInDesc = employees.find((e) => e.id === descendingOrder?.[199]);
-
             expect(firstInDesc?.salary).toBeGreaterThanOrEqual(lastInDesc?.salary ?? 0);
             expect(firstInDesc?.id).toBe(lastInAsc?.id);
             expect(lastInDesc?.id).toBe(firstInAsc?.id);
@@ -489,17 +466,11 @@ describe("render - ColumnView (8)", () => {
 
         it("switches sort column when clicking different column header", async () => {
             const { ref, latestOrder } = await renderSortableColumnView(200);
-
             await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
-
             const sortedBySalary = [...(latestOrder() ?? [])];
-
             await sortByColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.ASCENDING);
-
             const sortedByName = latestOrder();
-
             expect(sortedByName).not.toEqual(sortedBySalary);
-
             expect(sortedByName?.[0]).toBe("1");
             expect(sortedByName?.[99]).toBe("100");
         });
@@ -510,15 +481,11 @@ describe("render - ColumnView (9)", () => {
     describe("React-side sorting with large dataset (3)", () => {
         it("maintains model integrity after multiple sort operations on 200 rows", async () => {
             const { ref } = await renderSortableColumnView(200);
-
             expect(ref.current?.getModel()).not.toBeNull();
-
             await sortByColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.ASCENDING);
             expect(ref.current?.getModel()).not.toBeNull();
-
             await sortByColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.DESCENDING);
             expect(ref.current?.getModel()).not.toBeNull();
-
             await sortByColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.DESCENDING);
             expect(ref.current?.getModel()).not.toBeNull();
         });
@@ -599,6 +566,7 @@ describe("render - ColumnView (13)", () => {
                 { id: "1", name: "Alice", salary: 50_000 },
                 { id: "2", name: "Bob", salary: 55_000 },
             ];
+
             const columns: Column<Item>[] = [
                 {
                     id: "name",
@@ -613,12 +581,15 @@ describe("render - ColumnView (13)", () => {
                     renderCell: ({ item }) => <GtkLabel>{String(item.salary)}</GtkLabel>,
                 },
             ];
+
             const sortBy = (sortColumn: SortColumn, sortOrder: Gtk.SortType): Item[] => {
                 if (!sortColumn) return items;
                 return items.toSorted((a, b) => compareBySort(a, b, sortColumn, sortOrder));
             };
+
             const toRows = (rows: Item[]) => rows.map((item) => ({ id: item.id, value: item }));
             const rowsFor = (sortColumn: SortColumn) => toRows(sortBy(sortColumn, Gtk.SortType.ASCENDING));
+
             const optionsFor = (sortColumn: SortColumn) => ({
                 columns,
                 sortColumn,
@@ -627,10 +598,8 @@ describe("render - ColumnView (13)", () => {
 
             const { ref, rerender } = await renderColumnView(rowsFor(null), optionsFor(null));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Charlie", "Alice", "Bob"]);
-
             await rerender(rowsFor("name"), optionsFor("name"));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Alice", "Bob", "Charlie"]);
-
             await rerender(rowsFor(null), optionsFor(null));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Charlie", "Alice", "Bob"]);
         });
@@ -647,6 +616,7 @@ describe("render - ColumnView (14)", () => {
                     ["3", "Charlie"],
                 ]),
             );
+
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Alice", "Bob", "Charlie"]);
 
             await rerender(
@@ -656,11 +626,13 @@ describe("render - ColumnView (14)", () => {
                     ["3", "Charlie Updated"],
                 ]),
             );
+
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Alice Updated", "Bob Updated", "Charlie Updated"]);
         });
 
         it("preserves order when updating a single item value", async () => {
             type Item = { name: string; count: number };
+
             const columns: Column<Item>[] = [
                 {
                     id: "name",
@@ -671,7 +643,6 @@ describe("render - ColumnView (14)", () => {
 
             const { ref, rerender } = await renderColumnView(counterBaselineRows(), { columns });
             expect(getColumnViewItemTexts(ref.current)).toEqual(COUNTER_BASELINE_TEXTS);
-
             await rerender(counterSingleUpdateRows(), { columns });
             expect(getColumnViewItemTexts(ref.current)).toEqual(COUNTER_SINGLE_UPDATE_TEXTS);
         });
@@ -702,14 +673,12 @@ describe("render - ColumnView (16)", () => {
     describe("column reordering", () => {
         it("respects React declaration order for columns", async () => {
             const { ref } = await renderTitledColumnView(["C", "A", "B"]);
-
             expect(getColumnTitles(ref.current)).toEqual(["C", "A", "B"]);
         });
 
         it("handles complete reversal of columns", async () => {
             const { ref, rerenderTitles } = await renderTitledColumnView(["A", "B", "C", "D", "E"]);
             expect(getColumnTitles(ref.current)).toEqual(["A", "B", "C", "D", "E"]);
-
             await rerenderTitles(["E", "D", "C", "B", "A"]);
             expect(getColumnTitles(ref.current)).toEqual(["E", "D", "C", "B", "A"]);
         });
@@ -717,7 +686,6 @@ describe("render - ColumnView (16)", () => {
         it("handles interleaved column reordering", async () => {
             const { ref, rerenderTitles } = await renderTitledColumnView(["A", "B", "C", "D"]);
             expect(getColumnTitles(ref.current)).toEqual(["A", "B", "C", "D"]);
-
             await rerenderTitles(["B", "D", "A", "C"]);
             expect(getColumnTitles(ref.current)).toEqual(["B", "D", "A", "C"]);
         });
@@ -726,7 +694,6 @@ describe("render - ColumnView (16)", () => {
             const { ref, rerenderTitles } = await renderAbcThenReorder(["C", "A", "B"]);
             await rerenderTitles(["B", "C", "A"]);
             await rerenderTitles(["A", "B", "C"]);
-
             expect(getColumnTitles(ref.current)).toEqual(["A", "B", "C"]);
         });
     });
@@ -763,35 +730,35 @@ describe("render - ColumnView (columns with inferred item type)", () => {
     });
 });
 
+const estimatedSizeItems = Array.from({ length: 20 }, (_, index) => ({
+    id: String(index),
+    value: { name: `Item ${index}` },
+}));
+
+const renderEmptyCells = async (estimatedItemHeight?: number): Promise<Gtk.ColumnView> => {
+    const ref = createRef<Gtk.ColumnView>();
+
+    await render(
+        <ScrollWrapper minContentHeight={200}>
+            <ColumnView
+                ref={ref}
+                items={estimatedSizeItems}
+                estimatedItemHeight={estimatedItemHeight}
+                columns={[{ id: "name", title: "Name", renderCell: () => null }]}
+            />
+        </ScrollWrapper>,
+    );
+
+    const columnView = ref.current;
+    if (columnView === null) throw new Error("Expected ColumnView to render");
+    return columnView;
+};
+
 describe("render - ColumnView (estimated item size)", () => {
-    const items = Array.from({ length: 20 }, (_, index) => ({
-        id: String(index),
-        value: { name: `Item ${index}` },
-    }));
-
-    const renderEmptyCells = async (estimatedItemHeight?: number): Promise<Gtk.ColumnView> => {
-        const ref = createRef<Gtk.ColumnView>();
-        await render(
-            <ScrollWrapper minContentHeight={200}>
-                <ColumnView
-                    ref={ref}
-                    items={items}
-                    estimatedItemHeight={estimatedItemHeight}
-                    columns={[{ id: "name", title: "Name", renderCell: () => null }]}
-                />
-            </ScrollWrapper>,
-        );
-        const columnView = ref.current;
-        if (columnView === null) throw new Error("Expected ColumnView to render");
-        return columnView;
-    };
-
     it("applies estimatedItemHeight to data-row cells and leaves width unconstrained", async () => {
         const columnView = await renderEmptyCells(48);
-
         const sized = collectBoxSizeRequests(columnView).filter(([, height]) => height === 48);
-
-        expect(sized).toHaveLength(items.length);
+        expect(sized).toHaveLength(estimatedSizeItems.length);
         for (const [width] of sized) expect(width).toBe(-1);
     });
 

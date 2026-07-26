@@ -10,6 +10,8 @@ import { isErrorLike } from "./error-like.js";
  * errorMessage(new Error("boom")); // "boom"
  * errorMessage(42); // "42"
  */
-export function errorMessage(error: unknown): string {
+function errorMessage(error: unknown): string {
     return Error.isError(error) || isErrorLike(error) ? error.message : String(error);
 }
+
+export { errorMessage };

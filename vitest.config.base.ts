@@ -1,7 +1,7 @@
 import { GTKX_INLINE_DEPS } from "@gtkx/vitest";
 import { defineConfig } from "vitest/config";
 
-export const sourceResolveConfig = defineConfig({
+const sourceResolveConfig = defineConfig({
     ssr: {
         resolve: {
             conditions: ["source", "module", "node", "development|production"],
@@ -15,3 +15,5 @@ export const sourceResolveConfig = defineConfig({
         },
     },
 });
+
+export { sourceResolveConfig };

@@ -58,7 +58,6 @@ describe("render - page adoption > NotebookPage", () => {
         const { rerender } = await render(<App reorderable={true} />);
         let page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(page?.reorderable).toBe(true);
-
         await rerender(<App reorderable={false} />);
         page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(page?.reorderable).toBe(false);

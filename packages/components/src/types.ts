@@ -10,12 +10,12 @@ import type {
 import type { ComponentPropsWithRef, ElementType, ReactNode, Ref } from "react";
 
 /** Props of a container's Child component: the widget to render and its own props. */
-export type ChildProps<C extends ElementType> = {
+type ChildProps<C extends ElementType> = {
     component: C;
 } & ComponentPropsWithRef<C>;
 
 /** Props of a component whose backing widget defaults to one type but can be swapped through `component`. */
-export type WidgetProps<C extends ElementType, Own = unknown, ExtraOmit extends string = never> = Own & {
+type WidgetProps<C extends ElementType, Own = unknown, ExtraOmit extends string = never> = Own & {
     component?: C;
 } & Omit<ComponentPropsWithRef<C>, ExtraOmit | keyof Own>;
 
@@ -23,7 +23,7 @@ export type WidgetProps<C extends ElementType, Own = unknown, ExtraOmit extends 
  * A single item in a collection model, identified by a stable id and holding an
  * arbitrary value. Nested items form a tree.
  */
-export type Item<T = unknown> = {
+type Item<T = unknown> = {
     /** Stable identifier used to track the item across updates and selection. */
     id: string;
     value: T;
@@ -37,7 +37,7 @@ export type Item<T = unknown> = {
 };
 
 /** A group of items rendered under a shared section header. */
-export type Section<S = unknown, T = unknown> = {
+type Section<S = unknown, T = unknown> = {
     /** Stable identifier used to track the section across updates. */
     id: string;
     value: S;
@@ -46,7 +46,7 @@ export type Section<S = unknown, T = unknown> = {
 };
 
 /** Arguments passed to an {@link ItemRenderer} when rendering one cell. */
-export type RenderItemArgs<T> = {
+type RenderItemArgs<T> = {
     item: T;
     index: number;
     /** Depth of the item within a tree, starting at zero for top-level items. */
@@ -56,15 +56,14 @@ export type RenderItemArgs<T> = {
 };
 
 /** Arguments passed to a {@link HeaderRenderer} when rendering one section header. */
-export type RenderHeaderArgs<S> = {
+type RenderHeaderArgs<S> = {
     section: S;
 };
 
 /** Renders the contents of one cell of a collection view. */
-export type ItemRenderer<T> = (args: RenderItemArgs<T>) => ReactNode;
-
+type ItemRenderer<T> = (args: RenderItemArgs<T>) => ReactNode;
 /** Renders the contents of one section header of a collection view. */
-export type HeaderRenderer<S> = (args: RenderHeaderArgs<S>) => ReactNode;
+type HeaderRenderer<S> = (args: RenderHeaderArgs<S>) => ReactNode;
 
 type ItemSizeProps = {
     estimatedItemHeight?: number | undefined;
@@ -88,7 +87,7 @@ type SourceProps<T, S> = {
 };
 
 /** One column of a {@link ColumnView}, pairing Gtk.ColumnViewColumn props with a cell renderer. */
-export type Column<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter" | "id" | "title"> & {
+type Column<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter" | "id" | "title"> & {
     /** Stable identifier, also used to address the column through sorting props. */
     id: string;
     title: string;
@@ -116,14 +115,14 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
  * and expansion, sorting (sortColumn, sortOrder, onSortChanged), an optional section
  * header renderer, and the columns to render.
  */
-export type ColumnViewProps<T = unknown, S = unknown> = Omit<
+type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
     "columns" | "model" | "headerFactory" | keyof ColumnViewOwnProps<T, S>
 > &
 ColumnViewOwnProps<T, S>;
 
 /** Props for {@link ConstraintLayout}. */
-export type ConstraintLayoutProps = {
+type ConstraintLayoutProps = {
     children?: ReactNode;
     ref?: Ref<Gtk.ConstraintLayout | null>;
 };
@@ -132,7 +131,7 @@ export type ConstraintLayoutProps = {
  * Describes one constraint added by `<ConstraintLayout.Constraint>`, relating a
  * target widget attribute to a source attribute of another widget or guide.
  */
-export type ConstraintProps = {
+type ConstraintProps = {
     /** Name of the target widget or guide. Use "super" or omit to reference the layout's own widget. */
     target?: string;
     targetAttribute: Gtk.ConstraintAttribute;
@@ -153,7 +152,7 @@ export type ConstraintProps = {
  * Describes an invisible spacing guide added by `<ConstraintLayout.Guide>`,
  * usable as a constraint target under its id.
  */
-export type ConstraintGuideProps = {
+type ConstraintGuideProps = {
     /** Identifier used to reference this guide from constraints. */
     id: string;
     minWidth?: number;
@@ -172,7 +171,7 @@ export type ConstraintGuideProps = {
  * Describes constraints authored with the Visual Format Language (VFL), applied by
  * `<ConstraintLayout.Vfl>`.
  */
-export type ConstraintVflProps = {
+type ConstraintVflProps = {
     /** VFL lines describing the constraints between named widgets and guides. */
     lines: string[];
     /** Default horizontal spacing used by the layout operator (defaults to 0). */
@@ -196,7 +195,7 @@ type DropDownOwnProps<T, S> = SourceProps<T, S> & {
  * Props for {@link DropDown}. The backing widget is chosen through the `component` prop, defaulting to
  * GtkDropDown, and its own props combine with the declarative collection props.
  */
-export type DropDownProps<T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown> = WidgetProps<
+type DropDownProps<T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown> = WidgetProps<
     C,
     DropDownOwnProps<T, S>,
     "model" | "factory" | "listFactory" | "headerFactory"
@@ -213,7 +212,7 @@ type GridViewOwnProps<T> = ItemSizeProps &
  * declarative collection props: items, a per-cell renderItem, controlled selection,
  * and estimated item sizing.
  */
-export type GridViewProps<T = unknown> = Omit<GtkGridViewProps, "model" | "factory" | keyof GridViewOwnProps<T>> &
+type GridViewProps<T = unknown> = Omit<GtkGridViewProps, "model" | "factory" | keyof GridViewOwnProps<T>> &
     GridViewOwnProps<T>;
 
 type ListViewOwnProps<T, S> = ItemSizeProps &
@@ -230,14 +229,14 @@ type ListViewOwnProps<T, S> = ItemSizeProps &
  * an optional section header renderer, controlled selection and expansion, and
  * estimated item sizing.
  */
-export type ListViewProps<T = unknown, S = unknown> = Omit<
+type ListViewProps<T = unknown, S = unknown> = Omit<
     GtkListViewProps,
     "model" | "factory" | "headerFactory" | keyof ListViewOwnProps<T, S>
 > &
 ListViewOwnProps<T, S>;
 
 /** Props for {@link SizeGroup}. */
-export type SizeGroupProps = {
+type SizeGroupProps = {
     /** How the group equalizes sizes: horizontal, vertical, or both. */
     mode?: Gtk.SizeGroupMode | null | undefined;
     ref?: Ref<Gtk.SizeGroup | null>;
@@ -245,12 +244,35 @@ export type SizeGroupProps = {
 };
 
 /** Adds a single widget, rendered by the given component, to the enclosing {@link SizeGroup}. */
-export type SizeGroupChildProps<C extends ElementType> = ChildProps<C>;
+type SizeGroupChildProps<C extends ElementType> = ChildProps<C>;
 
 /** Props for {@link TextPaintable}. */
-export type TextPaintableProps = {
+type TextPaintableProps = {
     /** The paintable inserted into the enclosing text buffer at this position. */
     paintable: Gdk.Paintable;
     /** Called with the buffer and the position mark right after the paintable is inserted. */
     onInserted?: (buffer: Gtk.TextBuffer, mark: Gtk.TextMark) => void;
+};
+
+export {
+    type ChildProps,
+    type WidgetProps,
+    type Item,
+    type Section,
+    type RenderItemArgs,
+    type RenderHeaderArgs,
+    type ItemRenderer,
+    type HeaderRenderer,
+    type Column,
+    type ColumnViewProps,
+    type ConstraintLayoutProps,
+    type ConstraintProps,
+    type ConstraintGuideProps,
+    type ConstraintVflProps,
+    type DropDownProps,
+    type GridViewProps,
+    type ListViewProps,
+    type SizeGroupProps,
+    type SizeGroupChildProps,
+    type TextPaintableProps,
 };

@@ -7,7 +7,7 @@ import { prepareDevSchemaDir } from "./schema-dir.js";
 
 const ENTRY_ARG_INDEX = 2;
 
-export const main = async (): Promise<void> => {
+const main = async (): Promise<void> => {
     if (process.channel) {
         process.once("disconnect", () => {
             process.exit(0);
@@ -25,9 +25,10 @@ export const main = async (): Promise<void> => {
     const dataDir = resolveDataDir(cwd);
     prepareDevSchemaDir(cwd, dataDir);
     prepareDevIconDir(cwd, dataDir);
-
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
     const runner = createDevRunner(defaultDevRunnerDeps());
     await runner.run(entryPath);
 };
+
+export { main };

@@ -4,27 +4,18 @@ import type { SignalHandler } from "@gtkx/runtime";
 import { getOrInsert } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 
-export const ELEMENT_KIND = "element";
-export const PROP_KIND = "prop";
-export const TEXT_KIND = "text";
-export const LAZY_KIND = "lazy";
+type ContentKind = "label" | "buffer" | "tag" | "anchor";
+type HandlerRecord = { signal: string; handler: SignalHandler; wrapped: SignalHandler; blockable: boolean };
+type Dispatch = (fn: () => unknown) => unknown;
 
-export const DEFAULT_SLOT = "children";
-
-export type ContentKind = "label" | "buffer" | "tag" | "anchor";
-
-export type HandlerRecord = { signal: string; handler: SignalHandler; wrapped: SignalHandler; blockable: boolean };
-
-export type Dispatch = (fn: () => unknown) => unknown;
-
-export type SignalTarget = {
+type SignalTarget = {
     object: GObject.Object;
     handlers: Map<string, HandlerRecord>;
     typeName: string;
     dispatch: Dispatch;
 };
 
-export type PlacedChild = {
+type PlacedChild = {
     node: PlaceableNode;
     object: GObject.Object;
     adopted: GObject.Object | null;
@@ -33,7 +24,7 @@ export type PlacedChild = {
     attached: boolean;
 };
 
-export type ElementNode = SignalTarget & {
+type ElementNode = SignalTarget & {
     kind: typeof ELEMENT_KIND;
     props: Props;
     placements: Map<string, PlacedChild[]>;
@@ -44,14 +35,14 @@ export type ElementNode = SignalTarget & {
     bufferView: Gtk.TextView | null;
 };
 
-export type PropNode = {
+type PropNode = {
     kind: typeof PROP_KIND;
     slot: string;
     children: PlaceableNode[];
     parent: ElementNode | null;
 };
 
-export type LazyNode = {
+type LazyNode = {
     kind: typeof LAZY_KIND;
     typeName: string;
     props: Props;
@@ -62,26 +53,32 @@ export type LazyNode = {
     dispatch: Dispatch;
 };
 
-export type TextNode = {
+type TextNode = {
     kind: typeof TEXT_KIND;
     text: string;
     parent: ParentNode | null;
 };
 
-export type PlaceableNode = ElementNode | LazyNode;
-export type ParentNode = ElementNode | PropNode | LazyNode;
-export type ContentChild = TextNode | ElementNode;
-export type Instance = ElementNode | PropNode | LazyNode;
-export type AnyNode = Instance | TextNode;
+type PlaceableNode = ElementNode | LazyNode;
+type ParentNode = ElementNode | PropNode | LazyNode;
+type ContentChild = TextNode | ElementNode;
+type Instance = ElementNode | PropNode | LazyNode;
+type AnyNode = Instance | TextNode;
 
-export const createPropNode = (slot: string): PropNode => ({
+const ELEMENT_KIND = "element";
+const PROP_KIND = "prop";
+const TEXT_KIND = "text";
+const LAZY_KIND = "lazy";
+const DEFAULT_SLOT = "children";
+
+const createPropNode = (slot: string): PropNode => ({
     kind: PROP_KIND,
     slot,
     children: [],
     parent: null,
 });
 
-export const createLazyNode = (typeName: string, props: Props, dispatch: Dispatch): LazyNode => ({
+const createLazyNode = (typeName: string, props: Props, dispatch: Dispatch): LazyNode => ({
     kind: LAZY_KIND,
     typeName,
     props,
@@ -92,7 +89,7 @@ export const createLazyNode = (typeName: string, props: Props, dispatch: Dispatc
     dispatch,
 });
 
-export const createElementNode = (
+const createElementNode = (
     typeName: string,
     object: GObject.Object,
     dispatch: Dispatch,
@@ -112,22 +109,52 @@ export const createElementNode = (
     dispatch,
 });
 
-export const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, text, parent: null });
+const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, text, parent: null });
 
-export const nodeObject = (node: PlaceableNode): GObject.Object | null => {
+const nodeObject = (node: PlaceableNode): GObject.Object | null => {
     if (node.kind === LAZY_KIND) {
         const [child] = node.children;
         return child === undefined ? null : nodeObject(child);
     }
+
     return node.object;
 };
 
-export const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarget => ({
+const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarget => ({
     object: adopted,
     handlers: node.handlers,
     typeName: node.typeName,
     dispatch: node.dispatch,
 });
 
-export const contextFor = (node: ElementNode, behavior: ElementBehavior): unknown =>
+const contextFor = (node: ElementNode, behavior: ElementBehavior): unknown =>
     getOrInsert(node.contexts, behavior, () => behavior.createContext?.(node.object));
+
+export {
+    ELEMENT_KIND,
+    PROP_KIND,
+    TEXT_KIND,
+    LAZY_KIND,
+    DEFAULT_SLOT,
+    createPropNode,
+    createLazyNode,
+    createElementNode,
+    createTextNode,
+    nodeObject,
+    lazyTarget,
+    contextFor,
+    type ContentKind,
+    type HandlerRecord,
+    type Dispatch,
+    type SignalTarget,
+    type PlacedChild,
+    type ElementNode,
+    type PropNode,
+    type LazyNode,
+    type TextNode,
+    type PlaceableNode,
+    type ParentNode,
+    type ContentChild,
+    type Instance,
+    type AnyNode,
+};

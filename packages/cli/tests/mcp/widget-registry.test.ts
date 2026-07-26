@@ -19,10 +19,8 @@ describe("WidgetRegistry.idFor", () => {
         const registry = new WidgetRegistry();
         const a = makeWidget();
         const b = makeWidget();
-
         const idA = registry.idFor(a);
         const idB = registry.idFor(b);
-
         expect(idA).not.toBe(idB);
         expect(registry.idFor(a)).toBe(idA);
     });
@@ -34,13 +32,10 @@ describe("WidgetRegistry.register / get", () => {
         const grandchild = makeWidget();
         const child = makeWidget({ getFirstChild: () => grandchild });
         const root = makeWidget({ getFirstChild: () => child });
-
         registry.register(root);
-
         const rootId = registry.idFor(root);
         const childId = registry.idFor(child);
         const grandId = registry.idFor(grandchild);
-
         expect(registry.get(rootId)).toBe(root);
         expect(registry.get(childId)).toBe(child);
         expect(registry.get(grandId)).toBe(grandchild);
@@ -51,9 +46,7 @@ describe("WidgetRegistry.register / get", () => {
         const sibling = makeWidget();
         const firstChild = makeWidget({ getNextSibling: () => sibling });
         const root = makeWidget({ getFirstChild: () => firstChild });
-
         registry.register(root);
-
         expect(registry.get(registry.idFor(sibling))).toBe(sibling);
     });
 });
@@ -65,10 +58,8 @@ describe("WidgetRegistry.refresh / windows", () => {
         const registry = new WidgetRegistry();
         registry.register(stale);
         const staleId = registry.idFor(stale);
-
         listToplevels.mockReturnValueOnce([fresh]);
         registry.refresh();
-
         expect(registry.get(staleId)).toBeUndefined();
         expect(registry.get(registry.idFor(fresh))).toBe(fresh);
     });
@@ -77,12 +68,9 @@ describe("WidgetRegistry.refresh / windows", () => {
         const first = makeWidget();
         const second = makeWidget();
         const registry = new WidgetRegistry();
-
         expect(registry.toplevels()).toEqual([]);
-
         listToplevels.mockReturnValueOnce([first, second]);
         registry.refresh();
-
         expect(registry.toplevels()).toEqual([first, second]);
     });
 });

@@ -39,34 +39,6 @@ type ImplementedRef = {
     interfaceNamespace: string;
 };
 
-export const generateClass = (context: ModuleContext, klass: GirClass): void => {
-    if (!klass.introspectable) return;
-    if (klass.name.length === 0) return;
-    const className = pascalCase(klass.name);
-    const callables: Callables = {
-        constructors: dedupeCallables(klass.constructors),
-        functions: dedupeCallables(klass.functions),
-        methods: dedupeCallables(klass.methods),
-    };
-    generateBindings(context, callables);
-
-    const parentExpression = resolveParent(context, klass);
-    const extendsClause = renderExtendsClause(context, parentExpression, callables);
-    const implemented = resolveImplementedRefs(context, klass);
-    const typeRefs = implemented.map((ref) => ref.typeRef);
-    const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
-    const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
-    const body = indentMembers(members);
-    context.module.appendDeclaration(
-        `${renderJsDoc(klass.doc)}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
-    );
-    context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
-    appendMemberDeclarations({ context, klass, className, accessors, implemented });
-
-    appendInstallMixins(context, className, implemented);
-    appendClassRegistrations(context, klass, className);
-};
-
 type MemberDeclarationsOptions = {
     context: ModuleContext;
     klass: GirClass;
@@ -75,14 +47,59 @@ type MemberDeclarationsOptions = {
     implemented: ImplementedRef[];
 };
 
+type ClassMembers = { members: string[]; accessors: ResolvedAccessor[] };
+
+type AppendInstanceMethodsOptions = {
+    context: ModuleContext;
+    methods: GirFunction[];
+    scope: InstanceScope;
+    inherited: InheritedMethods;
+    members: string[];
+    claimedNames: Set<string>;
+    className: string;
+};
+
+const generateClass = (context: ModuleContext, klass: GirClass): void => {
+    if (!klass.introspectable) return;
+    if (klass.name.length === 0) return;
+    const className = pascalCase(klass.name);
+
+    const callables: Callables = {
+        constructors: dedupeCallables(klass.constructors),
+        functions: dedupeCallables(klass.functions),
+        methods: dedupeCallables(klass.methods),
+    };
+
+    generateBindings(context, callables);
+    const parentExpression = resolveParent(context, klass);
+    const extendsClause = renderExtendsClause(context, parentExpression, callables);
+    const implemented = resolveImplementedRefs(context, klass);
+    const typeRefs = implemented.map((ref) => ref.typeRef);
+    const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
+    const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
+    const body = indentMembers(members);
+
+    context.module.appendDeclaration(
+        `${renderJsDoc(klass.doc)}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
+    );
+
+    context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
+    appendMemberDeclarations({ context, klass, className, accessors, implemented });
+    appendInstallMixins(context, className, implemented);
+    appendClassRegistrations(context, klass, className);
+};
+
 const appendMemberDeclarations = (options: MemberDeclarationsOptions): void => {
     const { context, klass, className, accessors, implemented } = options;
+
     for (const declaration of renderPropertyDeclarations(context, klass, className, accessors)) {
         context.module.appendDeclaration(declaration);
     }
+
     for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
         context.module.appendDeclaration(declaration);
     }
+
     appendInterfaceMerge(context, klass, className, implemented);
 };
 
@@ -96,8 +113,6 @@ const appendInterfaceMerge = (
     const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
     context.module.appendDeclaration(`export interface ${className} extends ${mergeRefs.join(", ")} {}`);
 };
-
-type ClassMembers = { members: string[]; accessors: ResolvedAccessor[] };
 
 const renderClassMembers = (
     context: ModuleContext,
@@ -113,6 +128,7 @@ const renderClassMembers = (
     members.push(...renderStaticHead(context, callables, className));
     const inherited = collectInheritedMethods(context, klass);
     const scope = instanceScope(className, callables);
+
     appendInstanceMethods({
         context,
         methods: callables.methods,
@@ -122,10 +138,13 @@ const renderClassMembers = (
         claimedNames,
         className,
     });
+
     const inheritedPropertyTypes = collectInheritedPropertyTypes(context, klass);
     const accessors: ResolvedAccessor[] = [];
+
     for (const property of klass.properties) {
         const inheritedType = inheritedPropertyTypes.get(toCamelIdentifier(property.name));
+
         const accessor = resolveAccessor({
             context,
             property,
@@ -133,26 +152,19 @@ const renderClassMembers = (
             methodByName: scope.methodByName,
             inheritedType,
         });
+
         if (accessor === undefined) continue;
         accessors.push(accessor);
         members.push(renderResolvedPropertyAccessor(context, property, accessor));
     }
+
     members.push(...renderSignalMembers(context, klass));
     return { members, accessors };
 };
 
-type AppendInstanceMethodsOptions = {
-    context: ModuleContext;
-    methods: GirFunction[];
-    scope: InstanceScope;
-    inherited: InheritedMethods;
-    members: string[];
-    claimedNames: Set<string>;
-    className: string;
-};
-
 const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
     const { context, methods, scope, inherited, members, claimedNames, className } = options;
+
     for (const callable of methods) {
         const rename = conflictRename(context, callable, inherited, className);
         const block = renderClassInstanceMember(context, callable, scope, rename);
@@ -171,6 +183,7 @@ const appendInstallMixins = (context: ModuleContext, className: string, implemen
 
 const appendClassRegistrations = (context: ModuleContext, klass: GirClass, className: string): void => {
     const gtypeExpr = gtypeExprFor(context, klass);
+
     appendWrapperClassRegistration(context, {
         className,
         gtypeExpr,
@@ -190,9 +203,11 @@ const inheritedInterfaceKeys = (context: ModuleContext, klass: GirClass): Set<st
     if (klass.parent === undefined) return keys;
     const parent = context.library.resolveType(context.namespace.name, klass.parent);
     if (parent?.kind !== "class") return keys;
+
     for (const ancestor of ancestorChain(context.library, parent.value, parent.namespace.name)) {
         addAncestorInterfaceKeys(context, ancestor, keys);
     }
+
     return keys;
 };
 
@@ -201,6 +216,7 @@ const interfaceMergeRef = (context: ModuleContext, klass: GirClass, ref: Impleme
         klass: ref.interfaceKlass,
         namespaceName: ref.interfaceNamespace,
     });
+
     if (omissions.length === 0) return ref.typeRef;
     const keys = omissions.map((name) => JSON.stringify(name)).join(" | ");
     return `Omit<${ref.typeRef}, ${keys}>`;
@@ -215,6 +231,7 @@ const implementedRefFor = (
     if (resolved?.kind !== "interface") return undefined;
     if (inherited.has(`${resolved.namespace.name}.${resolved.value.name}`)) return undefined;
     const pascal = pascalCase(resolved.value.name);
+
     return {
         typeRef: context.qualify(resolved.namespace.name, pascal),
         makerRef: context.qualify(resolved.namespace.name, `make${pascal}`),
@@ -226,10 +243,12 @@ const implementedRefFor = (
 const resolveImplementedRefs = (context: ModuleContext, klass: GirClass): ImplementedRef[] => {
     const inherited = inheritedInterfaceKeys(context, klass);
     const refs: ImplementedRef[] = [];
+
     for (const name of klass.implements) {
         const ref = implementedRefFor(context, name, inherited);
         if (ref !== undefined) refs.push(ref);
     }
+
     return refs;
 };
 
@@ -251,3 +270,5 @@ const resolveParent = (context: ModuleContext, klass: GirClass): string | undefi
     const [namespace, typeName] = splitOptionalNamespace(klass.parent);
     return context.qualify(namespace ?? context.namespace.name, pascalCase(typeName));
 };
+
+export { generateClass };

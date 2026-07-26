@@ -3,7 +3,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkTextBuffer, GtkTextTag, GtkTextView } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
-import { createRef, type ReactNode, type Ref, type RefObject, useMemo } from "react";
+import { createRef, type ReactElement, type ReactNode, type Ref, type RefObject, useMemo } from "react";
 import { describe, expect, it } from "vitest";
 
 const getTextBuffer = (ref: RefObject<Gtk.TextView | null>): Gtk.TextBuffer =>
@@ -29,12 +29,34 @@ const PaintableHarness = ({
     return <GtkTextView ref={viewRef} buffer={<GtkTextBuffer>{content(paintable)}</GtkTextBuffer>} />;
 };
 
+const inlineIconContent = (paintable: Gtk.IconPaintable | null): ReactNode => (
+    <>
+        Inline icon:
+        {" "}
+        {paintable ? <TextPaintable paintable={paintable} /> : null}
+        {" end"}
+    </>
+);
+
+const taggedIconContent = (prefix: string, paintable: Gtk.IconPaintable | null): ReactNode => (
+    <>
+        {prefix}
+        <GtkTextTag name="wrap">{paintable ? <TextPaintable paintable={paintable} /> : null}</GtkTextTag>
+    </>
+);
+
+const taggedHarness = (viewRef: Ref<Gtk.TextView | null>, prefix: string): ReactElement => (
+    <PaintableHarness viewRef={viewRef} content={(paintable) => taggedIconContent(prefix, paintable)} />
+);
+
 const countPaintables = (buffer: Gtk.TextBuffer): number => {
     const iter = buffer.getStartIter();
     let count = 0;
+
     do {
         if (iter.getPaintable()) count++;
     } while (iter.forwardChar());
+
     return count;
 };
 
@@ -71,6 +93,7 @@ const ReplaceableHarness = ({
     onInserted: (buffer: Gtk.TextBuffer, mark: Gtk.TextMark) => void;
 }) => {
     const paintable = usePaintable(icon);
+
     return (
         <GtkTextView
             ref={viewRef}
@@ -88,20 +111,7 @@ const ReplaceableHarness = ({
 describe("render - TextPaintable", () => {
     it("inserts an inline paintable at a GtkTextMark", async () => {
         const viewRef = createRef<Gtk.TextView>();
-        await render(
-            <PaintableHarness
-                viewRef={viewRef}
-                content={(paintable) => (
-                    <>
-                        Inline icon:
-                        {" "}
-                        {paintable ? <TextPaintable paintable={paintable} /> : null}
-                        {" end"}
-                    </>
-                )}
-            />,
-        );
-
+        await render(<PaintableHarness viewRef={viewRef} content={inlineIconContent} />);
         expect(screen.getByDisplayValue(/Inline icon:/)).toBeTruthy();
         expect(screen.getByDisplayValue(/end/)).toBeTruthy();
         expect(countPaintables(getTextBuffer(viewRef))).toBe(1);
@@ -109,30 +119,14 @@ describe("render - TextPaintable", () => {
 
     it("renders surrounding text without the paintable child", async () => {
         await render(<GtkTextView buffer={<GtkTextBuffer>Plain text without paintable</GtkTextBuffer>} />);
-
         expect(screen.getByDisplayValue(/Plain text without paintable/)).toBeTruthy();
     });
 
     it("keeps a paintable inside a tag across sibling text updates", async () => {
         const viewRef = createRef<Gtk.TextView>();
-        const buildHarness = (prefix: string) => (
-            <PaintableHarness
-                viewRef={viewRef}
-                content={(paintable) => (
-                    <>
-                        {prefix}
-                        <GtkTextTag name="wrap">
-                            {paintable ? <TextPaintable paintable={paintable} /> : null}
-                        </GtkTextTag>
-                    </>
-                )}
-            />
-        );
-
-        const { rerender } = await render(buildHarness("short"));
+        const { rerender } = await render(taggedHarness(viewRef, "short"));
         expect(countPaintables(getTextBuffer(viewRef))).toBe(1);
-
-        await rerender(buildHarness("a much longer prefix"));
+        await rerender(taggedHarness(viewRef, "a much longer prefix"));
         expect(screen.getByDisplayValue(/a much longer prefix/)).toBeTruthy();
         expect(countPaintables(getTextBuffer(viewRef))).toBe(1);
     });
@@ -140,9 +134,7 @@ describe("render - TextPaintable", () => {
     it("fires onInserted with the buffer and a mark positioned at the paintable", async () => {
         const calls: InsertedCall[] = [];
         const build = buildReplaceable(createRef<Gtk.TextView>(), calls);
-
         await render(build("image-x-generic-symbolic", true));
-
         expect(calls).toHaveLength(1);
         const call = requireCall(calls, 0);
         expect(call.mark.getLeftGravity()).toBe(true);
@@ -153,13 +145,10 @@ describe("render - TextPaintable", () => {
         const viewRef = createRef<Gtk.TextView>();
         const calls: InsertedCall[] = [];
         const build = buildReplaceable(viewRef, calls);
-
         const { rerender } = await render(build("image-x-generic-symbolic", true));
         expect(calls).toHaveLength(1);
         expect(countPaintables(getTextBuffer(viewRef))).toBe(1);
-
         await rerender(build("folder-symbolic", true));
-
         expect(calls).toHaveLength(2);
         expect(countPaintables(getTextBuffer(viewRef))).toBe(1);
         const call = requireCall(calls, 1);
@@ -169,12 +158,9 @@ describe("render - TextPaintable", () => {
     it("deletes exactly the paintable on unmount, preserving surrounding text", async () => {
         const viewRef = createRef<Gtk.TextView>();
         const build = buildReplaceable(viewRef, []);
-
         const { rerender } = await render(build("image-x-generic-symbolic", true));
         expect(countPaintables(getTextBuffer(viewRef))).toBe(1);
-
         await rerender(build("image-x-generic-symbolic", false));
-
         const buffer = getTextBuffer(viewRef);
         expect(countPaintables(buffer)).toBe(0);
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("before  after");

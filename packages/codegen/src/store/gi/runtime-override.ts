@@ -27,10 +27,12 @@ const RUNTIME_OVERRIDES: Map<string, RuntimeOverride> = new Map([
     ],
 ]);
 
-export const renderRuntimeOverride = (callable: GirFunction, memberName: string): string | undefined => {
+const renderRuntimeOverride = (callable: GirFunction, memberName: string): string | undefined => {
     if (callable.cIdentifier === undefined) return undefined;
     const override = RUNTIME_OVERRIDES.get(callable.cIdentifier);
     if (override === undefined) return undefined;
     const generics = override.generics ?? "";
     return `${memberName}${generics}(${override.signature}): ${override.returnType} {\n    ${override.body}\n}`;
 };
+
+export { renderRuntimeOverride };

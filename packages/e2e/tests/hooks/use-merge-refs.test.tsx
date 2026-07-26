@@ -24,11 +24,8 @@ describe("useMergedRef", () => {
         const callback = vi.fn();
         const objectRef: { current: Target | null } = { current: null };
         const value: Target = { id: 1 };
-
         const { result } = await renderHook(() => useMergedRef<Target>(callback, objectRef));
-
         result.current(value);
-
         expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenCalledWith(value);
         expect(objectRef.current).toBe(value);
@@ -37,14 +34,10 @@ describe("useMergedRef", () => {
     it("runs a callback ref's returned cleanup on detach", async () => {
         const cleanup = vi.fn();
         const callback = vi.fn(() => cleanup);
-
         const { result } = await renderHook(() => useMergedRef<Target>(callback, undefined));
-
         const detach = detachOf(result.current({ id: 1 }));
         expect(cleanup).not.toHaveBeenCalled();
-
         detach();
-
         expect(cleanup).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenCalledTimes(1);
     });
@@ -54,14 +47,10 @@ describe("useMergedRef", () => {
         const callbackCleanup = vi.fn();
         const callback = vi.fn(() => callbackCleanup);
         const value: Target = { id: 1 };
-
         const { result } = await renderHook(() => useMergedRef<Target>(objectRef, callback));
-
         const detach = detachOf(result.current(value));
         expect(objectRef.current).toBe(value);
-
         detach();
-
         expect(objectRef.current).toBeNull();
         expect(callbackCleanup).toHaveBeenCalledTimes(1);
     });
@@ -70,12 +59,9 @@ describe("useMergedRef", () => {
         const first: { current: Target | null } = { current: null };
         const second: { current: Target | null } = { current: null };
         const value: Target = { id: 1 };
-
         const { result, rerender } = await renderSwappableRef(first);
-
         await rerender({ ref: second });
         result.current(value);
-
         expect(second.current).toBe(value);
         expect(first.current).toBeNull();
     });
@@ -84,12 +70,9 @@ describe("useMergedRef", () => {
         const firstCallback = vi.fn();
         const secondCallback = vi.fn();
         const value: Target = { id: 1 };
-
         const { result, rerender } = await renderSwappableRef(firstCallback);
-
         await rerender({ ref: secondCallback });
         result.current(value);
-
         expect(secondCallback).toHaveBeenCalledWith(value);
         expect(firstCallback).not.toHaveBeenCalled();
     });
@@ -106,9 +89,7 @@ describe("useMergedRef", () => {
         expect(attach).toHaveBeenCalledTimes(1);
         const button = attach.mock.calls[0]?.[0];
         expect(button).not.toBeNull();
-
         await rerender(<App tick={1} />);
-
         expect(attach).toHaveBeenCalledWith(null);
         expect(attach.mock.calls.at(-1)?.[0]).toBe(button);
         expect(attach.mock.calls.length).toBeGreaterThan(1);
@@ -127,9 +108,7 @@ describe("useMergedRef", () => {
         expect(attach).toHaveBeenCalledTimes(1);
         const button = objectRef.current;
         expect(button).not.toBeNull();
-
         await rerender(<App tick={1} />);
-
         expect(attach).toHaveBeenCalledTimes(1);
         expect(attach).not.toHaveBeenCalledWith(null);
         expect(objectRef.current).toBe(button);

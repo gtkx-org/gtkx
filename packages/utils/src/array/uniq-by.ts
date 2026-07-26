@@ -13,13 +13,17 @@
  * uniqBy([2.1, 1.2, 2.3], Math.floor); // [2.1, 1.2]
  * uniqBy([{ id: "a" }, { id: "a" }, { id: "b" }], (item) => item.id); // [{ id: "a" }, { id: "b" }]
  */
-export function uniqBy<T>(arr: T[], mapper: (item: T, index: number, array: T[]) => unknown): T[] {
+function uniqBy<T>(arr: T[], mapper: (item: T, index: number, array: T[]) => unknown): T[] {
     const seen: Map<unknown, T> = new Map();
     let index = 0;
+
     for (const item of arr) {
         const key = mapper(item, index, arr);
         if (!seen.has(key)) seen.set(key, item);
         index++;
     }
+
     return seen.values().toArray();
 }
+
+export { uniqBy };

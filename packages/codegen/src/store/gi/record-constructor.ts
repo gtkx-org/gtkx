@@ -17,7 +17,7 @@ const isWritableFieldSlot = (context: ModuleContext, entry: RecordFieldSlot): en
 
 const isOpaque = (record: GirRecord): boolean => record.glibGetType === undefined && record.disguised;
 
-export const renderRecordConstructorPropsInterface = (
+const renderRecordConstructorPropsInterface = (
     context: ModuleContext,
     record: GirRecord,
     className: string,
@@ -25,9 +25,11 @@ export const renderRecordConstructorPropsInterface = (
     const head = `export interface ${className}ConstructorProps`;
     if (isOpaque(record)) return renderBracedOrEmpty(head, "");
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+
     const lines = slots
         .filter((entry): entry is WritableFieldSlot => isWritableFieldSlot(context, entry))
         .map((entry) => `${toCamelIdentifier(entry.field.name)}?: ${renderTsType(context, entry.field.type, true)};`);
+
     return renderBracedOrEmpty(head, lines.join("\n"));
 };
 
@@ -43,13 +45,15 @@ const renderEmptyConstructor = (className: string, extendsError: boolean): strin
 
 const renderFieldWrites = (context: ModuleContext, slots: RecordFieldSlot[]): string[] => {
     const statements: string[] = [];
+
     for (const entry of slots) {
         if (isWritableFieldSlot(context, entry)) statements.push(renderFieldWrite(context, entry));
     }
+
     return statements;
 };
 
-export const renderRecordConstructor = (
+const renderRecordConstructor = (
     context: ModuleContext,
     record: GirRecord,
     className: string,
@@ -61,20 +65,24 @@ export const renderRecordConstructor = (
     if (size === 0) return renderEmptyConstructor(className, extendsError);
     context.addRuntimeImport("alloc");
     context.addRuntimeImport("setHandle");
+
     const statements = [
         ...superCall,
         `const handle = alloc(${allocArgs(context, record, size).join(", ")});`,
         ...renderFieldWrites(context, slots),
         "setHandle(this, handle);",
     ];
+
     return renderBlock(`constructor(props: ${className}ConstructorProps = {})`, statements.join("\n"));
 };
 
 const allocArgs = (context: ModuleContext, record: GirRecord, size: number): string[] => {
     const args = [String(size)];
+
     if (gtypeExprFor(context, record) !== undefined) {
         args.push("this._type_");
     }
+
     return args;
 };
 
@@ -82,11 +90,15 @@ const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): str
     context.addRuntimeImport("t");
     const descriptor = context.hoistDescriptor(renderDescriptor(context, entry.field.type, "none"));
     const name = toCamelIdentifier(entry.field.name);
+
     const write = emitFieldWrite(context, {
         descriptor,
         slot: entry.slot,
         targetExpr: "handle",
         valueExpr: `props.${name}`,
     });
+
     return `if (props.${name} !== undefined) ${write}`;
 };
+
+export { renderRecordConstructorPropsInterface, renderRecordConstructor };

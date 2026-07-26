@@ -52,12 +52,14 @@ type DocsContext = Parameters<DocsRun>[0];
 const run = (overrides: DocsArgs): Promise<unknown> => {
     const handler = docs.run;
     if (!handler) throw new Error("docs command has no run handler");
+
     const args = {
         out: "docs/reference",
         "base-path": "/reference",
         force: false,
         ...overrides,
     } as DocsContext["args"];
+
     return Promise.resolve(handler({ rawArgs: [], args, cmd: docs }));
 };
 
@@ -66,9 +68,9 @@ describe("docs command", () => {
 
     it("generates pages from the resolved config and reports totals", async () => {
         await run({ cwd: "/custom/dir" });
-
         expect(loadConfigMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(resolveLibrariesMock).toHaveBeenCalledWith(["Gtk-4.0"], ["/usr/share/gir-1.0"]);
+
         expect(writeDocsMock).toHaveBeenCalledWith({
             libraries: ["Gtk-4.0"],
             girPath: ["/usr/share/gir-1.0"],
@@ -77,6 +79,7 @@ describe("docs command", () => {
             props: {},
             force: false,
         });
+
         expect(collectLogged(state.stderrSpy)).toContain("wrote 3 element pages across 2 namespaces");
     });
 
@@ -100,9 +103,7 @@ describe("docs command", () => {
 
     it("reports up to date when nothing was regenerated", async () => {
         writeDocsMock.mockReturnValueOnce({ regenerated: false, namespaces: [] });
-
         await run({});
-
         expect(collectLogged(state.stderrSpy)).toContain("up to date");
     });
 
@@ -118,7 +119,6 @@ describe("docs command", () => {
 
     it("fails when no GIR search paths are available", async () => {
         resolveGirPathMock.mockReturnValueOnce([]);
-
         await expect(run({})).rejects.toThrow("No GIR search paths available");
         expect(writeDocsMock).not.toHaveBeenCalled();
     });

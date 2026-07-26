@@ -5,12 +5,11 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 
 const TYPE_STRUCT_ROOTS = new Set(["GObject.TypeClass", "GObject.TypeInterface"]);
-
 const EXPLICIT_CLASS_STRUCTS = new Set(["Pango.AttrClass"]);
 
 const qualify = (namespaceName: string, name: string): string => `${namespaceName}.${name}`;
 
-export const isClassStructRecord = (library: Library, namespaceName: string, record: GirRecord): boolean => {
+const isClassStructRecord = (library: Library, namespaceName: string, record: GirRecord): boolean => {
     const qualified = qualify(namespaceName, record.name);
     if (TYPE_STRUCT_ROOTS.has(qualified) || EXPLICIT_CLASS_STRUCTS.has(qualified)) return true;
     const first = record.fields[0];
@@ -20,10 +19,11 @@ export const isClassStructRecord = (library: Library, namespaceName: string, rec
     return TYPE_STRUCT_ROOTS.has(qualify(name.namespaceName, name.typeName));
 };
 
-export const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): boolean => {
+const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
     const type = context.library.typeOf(ref);
     if (type === undefined) return false;
+
     switch (type.kind) {
         case "record": {
             return isClassStructRecord(context.library, type.namespace.name, type.value);
@@ -38,6 +38,8 @@ export const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined
     }
 };
 
-export const callableReferencesClassStruct = (context: ModuleContext, fn: GirFunction): boolean =>
+const callableReferencesClassStruct = (context: ModuleContext, fn: GirFunction): boolean =>
     refIsClassStruct(context, fn.returnValue.type) ||
     fn.parameters.some((parameter) => refIsClassStruct(context, parameter.type));
+
+export { isClassStructRecord, refIsClassStruct, callableReferencesClassStruct };

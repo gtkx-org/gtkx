@@ -9,7 +9,7 @@ type EnumMember = {
 
 type EnumKind = "enumeration" | "bitfield";
 
-export type GirEnum = {
+type GirEnum = {
     kind: EnumKind;
     name: string;
     doc: string | undefined;
@@ -20,7 +20,7 @@ export type GirEnum = {
     members: EnumMember[];
 };
 
-export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
+const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
     kind,
     name: nameAttr(node),
     doc: docOf(node),
@@ -35,3 +35,5 @@ export const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
         cIdentifier: attr(member, "c:identifier"),
     })),
 });
+
+export { enumFromNode, type GirEnum };

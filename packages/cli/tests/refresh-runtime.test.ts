@@ -40,6 +40,7 @@ describe("isRefreshBoundary", () => {
             },
             {} as Record<string, unknown>,
         );
+
         expect(isRefreshBoundary(Component)).toBe(true);
     });
 

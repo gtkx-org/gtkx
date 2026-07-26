@@ -14,6 +14,8 @@ import { mapWordSegments } from "./word-segments.js";
  * pascalCase("icon_name"); // "IconName"
  * pascalCase("scrolled-window"); // "ScrolledWindow"
  */
-export function pascalCase(str: string): string {
+function pascalCase(str: string): string {
     return mapWordSegments(str, upperFirst);
 }
+
+export { pascalCase };

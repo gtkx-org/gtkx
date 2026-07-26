@@ -3,7 +3,7 @@ import type { GirClass } from "../../gir/class.js";
 import { chainOf, type GirIndex, type GirTypeEntry } from "./gir-index.js";
 import { glibNameOf } from "./intrinsic-elements.js";
 
-export type LazyElementSpec = {
+type LazyElementSpec = {
     element: string;
     typeName: string;
     typeSource: string;
@@ -31,8 +31,9 @@ const specFor = (context: GirIndex, element: string, entry: GirTypeEntry): LazyE
 };
 
 /** Lazy element prop types to emit, grouped by the namespace declaring each element. */
-export const lazyElementSpecs = (context: GirIndex, lazyElements: string[]): Map<string, LazyElementSpec[]> => {
+const lazyElementSpecs = (context: GirIndex, lazyElements: string[]): Map<string, LazyElementSpec[]> => {
     const specs: Map<string, LazyElementSpec[]> = new Map();
+
     for (const element of lazyElements) {
         const entry = context.index.get(element);
         if (entry === undefined) continue;
@@ -40,5 +41,8 @@ export const lazyElementSpecs = (context: GirIndex, lazyElements: string[]): Map
         list.push(specFor(context, element, entry));
         specs.set(entry.namespace.name, list);
     }
+
     return specs;
 };
+
+export { lazyElementSpecs, type LazyElementSpec };

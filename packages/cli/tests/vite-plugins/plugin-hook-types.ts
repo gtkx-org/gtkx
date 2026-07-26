@@ -1,4 +1,4 @@
-export type ResolveIdHook = (
+type ResolveIdHook = (
     this: {
         resolve: (
             source: string,
@@ -11,8 +11,10 @@ export type ResolveIdHook = (
     options?: unknown,
 ) => string | undefined | null | Promise<string | undefined | null>;
 
-export type LoadHook = (id: string) => string | undefined | null;
+type LoadHook = (id: string) => string | undefined | null;
 
-export type BuildEndHook = (this: {
+type BuildEndHook = (this: {
     emitFile: (asset: { type: "asset"; fileName: string; source: Buffer }) => string;
 }) => void;
+
+export { type ResolveIdHook, type LoadHook, type BuildEndHook };

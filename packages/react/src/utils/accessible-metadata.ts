@@ -1,15 +1,17 @@
 const metadataStore: WeakMap<object, Map<string, unknown>> = new WeakMap();
 
-export const setAccessibleMetadata = (widget: object, name: string, value: unknown): void => {
+const setAccessibleMetadata = (widget: object, name: string, value: unknown): void => {
     let entries = metadataStore.get(widget);
+
     if (entries === undefined) {
         entries = new Map();
         metadataStore.set(widget, entries);
     }
+
     entries.set(name, value);
 };
 
-export const deleteAccessibleMetadata = (widget: object, name: string): void => {
+const deleteAccessibleMetadata = (widget: object, name: string): void => {
     metadataStore.get(widget)?.delete(name);
 };
 
@@ -20,7 +22,9 @@ export const deleteAccessibleMetadata = (widget: object, name: string): void => 
  * @param name The accessible prop name.
  * @returns The last applied value, or null.
  */
-export const getAccessibleMetadata = (widget: object, name: string): unknown => {
+const getAccessibleMetadata = (widget: object, name: string): unknown => {
     const value = metadataStore.get(widget)?.get(name);
     return value === undefined ? null : value;
 };
+
+export { setAccessibleMetadata, deleteAccessibleMetadata, getAccessibleMetadata };

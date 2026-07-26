@@ -3,7 +3,7 @@ import { type ParameterTransfer, transferOwnership } from "./parameter.js";
 import { attr, attrBool, docOf, nameAttr, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
-export type GirProperty = {
+type GirProperty = {
     name: string;
     doc: string | undefined;
     type: TypeId | undefined;
@@ -18,10 +18,10 @@ export type GirProperty = {
     defaultValue: string | undefined;
 };
 
-export const isConstructableProperty = (property: GirProperty): boolean =>
+const isConstructableProperty = (property: GirProperty): boolean =>
     property.writable || property.construct || property.constructOnly;
 
-export const propertyFromNode = (node: RawNode, context: ParseContext): GirProperty => ({
+const propertyFromNode = (node: RawNode, context: ParseContext): GirProperty => ({
     name: nameAttr(node),
     doc: docOf(node),
     type: typeRefFromNode(node, context),
@@ -35,3 +35,5 @@ export const propertyFromNode = (node: RawNode, context: ParseContext): GirPrope
     setter: attr(node, "setter"),
     defaultValue: attr(node, "default-value"),
 });
+
+export { isConstructableProperty, propertyFromNode, type GirProperty };

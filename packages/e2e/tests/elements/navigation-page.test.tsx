@@ -85,7 +85,6 @@ describe("render - NavigationPage (2)", () => {
 
         await render(<App showPage={true} />);
         expect(viewRef.current?.findPage("removable")).not.toBeNull();
-
         await render(<App showPage={false} />);
         expect(viewRef.current?.findPage("removable")).toBeNull();
     });
@@ -108,7 +107,6 @@ describe("render - NavigationPage (3)", () => {
         await render(<App title="Initial Title" />);
         let page = viewRef.current?.findPage("dynamic");
         expect(page?.getTitle()).toBe("Initial Title");
-
         await render(<App title="Updated Title" />);
         page = viewRef.current?.findPage("dynamic");
         expect(page?.getTitle()).toBe("Updated Title");
@@ -130,7 +128,6 @@ describe("render - NavigationPage (3)", () => {
         await render(<App canPop={true} />);
         let page = viewRef.current?.findPage("page");
         expect(page?.getCanPop()).toBe(true);
-
         await render(<App canPop={false} />);
         page = viewRef.current?.findPage("page");
         expect(page?.getCanPop()).toBe(false);

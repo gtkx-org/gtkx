@@ -13,12 +13,6 @@ import { refIsClassStruct } from "./class-struct-record.js";
 import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
 
-export const isEmittableField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
-    !field.private &&
-    field.type !== undefined &&
-    !isInlineCallbackRef(context.library, field.type) &&
-    !refIsClassStruct(context, field.type);
-
 type FieldWriteSpec = {
     descriptor: string;
     slot: FieldSlot;
@@ -26,25 +20,101 @@ type FieldWriteSpec = {
     valueExpr: string;
 };
 
-export const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): string => {
+type AdmittedField = {
+    field: GirField & { type: TypeId };
+    jsName: string;
+};
+
+type RecordFieldEntry = {
+    jsName: string;
+    tsType: string;
+    writable: boolean;
+    doc: string | undefined;
+};
+
+type InlineFieldVisit = {
+    jsName: string;
+    descriptor: string;
+    offset: number;
+    slot: FieldSlot;
+    type: TypeId;
+};
+
+type InlineFieldVisitors = {
+    leaf: (visit: InlineFieldVisit) => void;
+    nested: (jsName: string, nested: GirField[], offset: number) => void;
+};
+
+type ElementWriteOptions = {
+    fields: GirField[];
+    baseOffset: number;
+    valuePath: string;
+    out: string[];
+};
+
+type StructArrayTarget = {
+    field: GirField;
+    jsName: string;
+    slot: FieldSlot;
+    siblingFields: GirField[];
+};
+
+type StructArrayAccessorOptions = {
+    context: ModuleContext;
+    jsName: string;
+    tsType: string;
+    elementDescriptor: string;
+    offset: number;
+    lengthExpr: string;
+    elementSize: number;
+    elementFields: GirField[];
+};
+
+type StructArrayResolution = {
+    fieldType: TypeId;
+    elementFields: GirField[];
+    lengthExpr: string;
+    elementSize: number;
+};
+
+type StructArrayElements = {
+    arrayType: Extract<GirType, { kind: "carray" }>;
+    elementFields: GirField[];
+};
+
+type AccessorOptions = {
+    context: ModuleContext;
+    jsName: string;
+    tsType: string;
+    descriptor: string;
+    slot: FieldSlot;
+    fieldType: TypeId;
+};
+
+const isEmittableField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
+    !field.private &&
+    field.type !== undefined &&
+    !isInlineCallbackRef(context.library, field.type) &&
+    !refIsClassStruct(context, field.type);
+
+const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): string => {
     const { descriptor, slot, targetExpr, valueExpr } = spec;
     context.addRuntimeImport("write");
+
     if (slot.bitWidth === undefined) {
         return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${valueExpr});`;
     }
+
     context.addRuntimeImport("read");
+
     const merged = mergeBitfield(
         `(read(${targetExpr}, ${descriptor}, ${slot.byteOffset}) as number)`,
         valueExpr,
         bitMask(slot.bitWidth),
         slot.bitOffset ?? 0,
     );
-    return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${merged});`;
-};
 
-type AdmittedField = {
-    field: GirField & { type: TypeId };
-    jsName: string;
+    return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${merged});`;
 };
 
 const admitField = (
@@ -61,20 +131,14 @@ const admitField = (
     return { field, jsName };
 };
 
-export type RecordFieldEntry = {
-    jsName: string;
-    tsType: string;
-    writable: boolean;
-    doc: string | undefined;
-};
-
-export const resolveRecordFieldEntry = (
+const resolveRecordFieldEntry = (
     context: ModuleContext,
     slot: RecordFieldSlot,
     claimedNames: Set<string>,
 ): RecordFieldEntry | undefined => {
     const admitted = admitField(context, slot, claimedNames);
     if (admitted === undefined) return undefined;
+
     return {
         jsName: admitted.jsName,
         tsType: renderTsType(context, admitted.field.type, false),
@@ -83,7 +147,7 @@ export const resolveRecordFieldEntry = (
     };
 };
 
-export const renderRecordFieldAccessor = (
+const renderRecordFieldAccessor = (
     context: ModuleContext,
     slot: RecordFieldSlot,
     claimedNames: Set<string>,
@@ -93,7 +157,6 @@ export const renderRecordFieldAccessor = (
     if (admitted === undefined) return undefined;
     const { field, jsName } = admitted;
     const doc = renderJsDoc(field.doc);
-
     const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });
     if (structArray !== undefined) return `${doc}${structArray}`;
 
@@ -104,6 +167,7 @@ export const renderRecordFieldAccessor = (
 
     const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none"));
     const tsType = renderTsType(context, field.type, false);
+
     const accessorOptions: AccessorOptions = {
         context,
         jsName,
@@ -112,16 +176,20 @@ export const renderRecordFieldAccessor = (
         slot: slot.slot,
         fieldType: field.type,
     };
+
     const blocks: string[] = [getterBlock(accessorOptions)];
+
     if (field.writable) {
         blocks.push(setterBlock(accessorOptions));
     }
+
     return `${doc}${blocks.join("\n\n")}`;
 };
 
 const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean => {
     const type = context.library.typeOf(ref);
     if (type === undefined) return true;
+
     switch (type.kind) {
         case "primitive": {
             return type.category !== "void" && type.category !== "unichar";
@@ -172,19 +240,6 @@ const arrayLengthExpression = (
     return `this.${toCamelIdentifier(lengthField.name)}`;
 };
 
-type InlineFieldVisit = {
-    jsName: string;
-    descriptor: string;
-    offset: number;
-    slot: FieldSlot;
-    type: TypeId;
-};
-
-type InlineFieldVisitors = {
-    leaf: (visit: InlineFieldVisit) => void;
-    nested: (jsName: string, nested: GirField[], offset: number) => void;
-};
-
 const visitInlineStructSlot = (
     context: ModuleContext,
     entry: RecordFieldSlot,
@@ -196,10 +251,12 @@ const visitInlineStructSlot = (
     const jsName = toCamelIdentifier(field.name);
     const offset = baseOffset + slot.byteOffset;
     const nested = resolveInlineStructFields(context, field.type, field.cType);
+
     if (nested !== undefined) {
         visitors.nested(jsName, nested, offset);
         return;
     }
+
     if (!isAccessorEligibleType(context, field.type)) return;
     const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none"));
     visitors.leaf({ jsName, descriptor, offset, slot, type: field.type });
@@ -212,6 +269,7 @@ const visitInlineStructFields = (
     visitors: InlineFieldVisitors,
 ): void => {
     const { slots } = computeRecordFieldSlots(context, fields);
+
     for (const entry of slots) {
         visitInlineStructSlot(context, entry, baseOffset, visitors);
     }
@@ -223,15 +281,18 @@ const elementAccessExpr = (descriptor: string, offset: number): string =>
 const renderElementReadEntry = (context: ModuleContext, visit: InlineFieldVisit): string => {
     const { jsName, descriptor, offset, slot, type } = visit;
     const access = elementAccessExpr(descriptor, offset);
+
     if (slot.bitWidth === undefined) {
         return `${jsName}: ${access} as ${renderTsType(context, type, false)}`;
     }
+
     const shift = slot.bitOffset ?? 0;
     return `${jsName}: (((${access} as number) >>> ${shift}) & ${bitMask(slot.bitWidth)})`;
 };
 
 const renderElementReadObject = (context: ModuleContext, fields: GirField[], baseOffset: number): string => {
     const entries: string[] = [];
+
     visitInlineStructFields(context, fields, baseOffset, {
         leaf: (visit) => {
             entries.push(renderElementReadEntry(context, visit));
@@ -240,33 +301,31 @@ const renderElementReadObject = (context: ModuleContext, fields: GirField[], bas
             entries.push(`${jsName}: ${renderElementReadObject(context, nested, offset)}`);
         },
     });
-    return `{ ${entries.join(", ")} }`;
-};
 
-type ElementWriteOptions = {
-    fields: GirField[];
-    baseOffset: number;
-    valuePath: string;
-    out: string[];
+    return `{ ${entries.join(", ")} }`;
 };
 
 const renderElementWriteStatement = (visit: InlineFieldVisit, valuePath: string): string => {
     const { jsName, descriptor, offset, slot } = visit;
     const valueExpr = `${valuePath}.${jsName}`;
+
     if (slot.bitWidth === undefined) {
         return `write(__array, ${descriptor}, __base + ${offset}, ${valueExpr});`;
     }
+
     const merged = mergeBitfield(
         `(${elementAccessExpr(descriptor, offset)} as number)`,
         valueExpr,
         bitMask(slot.bitWidth),
         slot.bitOffset ?? 0,
     );
+
     return `write(__array, ${descriptor}, __base + ${offset}, ${merged});`;
 };
 
 const appendElementWriteStatements = (context: ModuleContext, options: ElementWriteOptions): void => {
     const { fields, baseOffset, valuePath, out } = options;
+
     visitInlineStructFields(context, fields, baseOffset, {
         leaf: (visit) => {
             out.push(renderElementWriteStatement(visit, valuePath));
@@ -282,28 +341,11 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
     });
 };
 
-type StructArrayTarget = {
-    field: GirField;
-    jsName: string;
-    slot: FieldSlot;
-    siblingFields: GirField[];
-};
-
-type StructArrayAccessorOptions = {
-    context: ModuleContext;
-    jsName: string;
-    tsType: string;
-    elementDescriptor: string;
-    offset: number;
-    lengthExpr: string;
-    elementSize: number;
-    elementFields: GirField[];
-};
-
 const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => {
     const { context, jsName, tsType, elementDescriptor, offset, lengthExpr, elementSize, elementFields } = options;
     const element = renderElementReadObject(context, elementFields, 0);
     const loop = [`const __base = __index * ${elementSize};`, `__result.push(${element});`].join("\n");
+
     const body = [
         `const __array = read(getHandle(this), ${elementDescriptor}, ${offset}) as ReturnType<typeof getHandle>;`,
         `const __result: ${tsType} = [];`,
@@ -312,19 +354,23 @@ const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => 
         "}",
         "return __result;",
     ].join("\n");
+
     return renderBlock(`get ${jsName}(): ${tsType}`, body);
 };
 
 const structArraySetterStatements = (context: ModuleContext, options: StructArrayAccessorOptions): string => {
     const { elementDescriptor, offset, elementSize, elementFields } = options;
     const writes: string[] = [];
+
     appendElementWriteStatements(context, {
         fields: elementFields,
         baseOffset: 0,
         valuePath: "__element",
         out: writes,
     });
+
     const loop = [`const __base = __index * ${elementSize};`, ...writes].join("\n");
+
     return [
         `const __descriptor = ${elementDescriptor};`,
         `const __array = read(getHandle(this), __descriptor, ${offset}) as ReturnType<typeof getHandle>;`,
@@ -340,18 +386,6 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string =>
         `set ${options.jsName}(__value: ${options.tsType})`,
         structArraySetterStatements(options.context, options),
     );
-
-type StructArrayResolution = {
-    fieldType: TypeId;
-    elementFields: GirField[];
-    lengthExpr: string;
-    elementSize: number;
-};
-
-type StructArrayElements = {
-    arrayType: Extract<GirType, { kind: "carray" }>;
-    elementFields: GirField[];
-};
 
 const resolveStructArrayElements = (context: ModuleContext, fieldType: TypeId): StructArrayElements | undefined => {
     const arrayType = context.library.typeOf(fieldType);
@@ -382,6 +416,7 @@ const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): 
     if (elements === undefined) return undefined;
     const shape = resolveStructArrayShape(context, elements, siblingFields);
     if (shape === undefined) return undefined;
+
     return {
         fieldType: field.type,
         elementFields: elements.elementFields,
@@ -395,10 +430,10 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     if (resolution === undefined) return undefined;
     const { field, jsName, slot } = target;
     const { fieldType, elementFields, lengthExpr, elementSize } = resolution;
-
     context.addRuntimeImport("read");
     context.addRuntimeImport("getHandle");
     context.addRuntimeImport("t");
+
     const options: StructArrayAccessorOptions = {
         context,
         jsName,
@@ -413,38 +448,36 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
         elementSize,
         elementFields,
     };
+
     const blocks: string[] = [];
     if (field.readable) blocks.push(structArrayGetterBlock(options));
+
     if (field.writable) {
         context.addRuntimeImport("write");
         blocks.push(structArraySetterBlock(options));
     }
-    return blocks.length === 0 ? undefined : blocks.join("\n\n");
-};
 
-type AccessorOptions = {
-    context: ModuleContext;
-    jsName: string;
-    tsType: string;
-    descriptor: string;
-    slot: FieldSlot;
-    fieldType: TypeId;
+    return blocks.length === 0 ? undefined : blocks.join("\n\n");
 };
 
 const getterBlock = (options: AccessorOptions): string => {
     const { context, jsName, tsType, descriptor, slot, fieldType } = options;
     context.addRuntimeImport("read");
     context.addRuntimeImport("getHandle");
+
     if (slot.bitWidth === undefined) {
         const valueExpression = `read(getHandle(this), ${descriptor}, ${slot.byteOffset})`;
+
         const wrapped = wrapReturnValue(context, {
             ref: fieldType,
             nullable: false,
             valueExpression,
         });
+
         const body = `return ${wrapped};`;
         return renderBlock(`get ${jsName}(): ${tsType}`, body);
     }
+
     const mask = bitMask(slot.bitWidth);
     const shift = slot.bitOffset ?? 0;
     const body = `const __unit = read(getHandle(this), ${descriptor}, ${slot.byteOffset}) as number;\nreturn (((__unit >>> ${shift}) & ${mask}) >>> 0) as ${tsType};`;
@@ -461,3 +494,5 @@ const setterBlock = (options: AccessorOptions): string =>
         `set ${options.jsName}(value: ${options.tsType})`,
         setterBody(options.context, options.descriptor, options.slot),
     );
+
+export { isEmittableField, emitFieldWrite, resolveRecordFieldEntry, renderRecordFieldAccessor, type RecordFieldEntry };

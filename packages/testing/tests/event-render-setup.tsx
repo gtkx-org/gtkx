@@ -6,31 +6,30 @@ import { GtkBox, GtkButton, GtkDragSource, GtkDropTarget, GtkLabel } from "@gtkx
 import { type Mock, vi } from "vitest";
 import { render, screen } from "../src/index.js";
 
-export type RenderedClickButton = {
+type RenderedClickButton = {
     handleClick: Mock;
     button: Gtk.Widget;
 };
 
-export async function renderClickButton(label = "Click me"): Promise<RenderedClickButton> {
+async function renderClickButton(label = "Click me"): Promise<RenderedClickButton> {
     const handleClick = vi.fn();
     await render(<GtkButton label={label} onClicked={handleClick} />);
-
     const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
     return { handleClick, button };
 }
 
-export type DragAndDropPairOptions = {
+type DragAndDropPairOptions = {
     onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"];
     sourceSensitive?: boolean;
     withDragSource?: boolean;
 };
 
-export type RenderedDragAndDropPair = {
+type RenderedDragAndDropPair = {
     source: Gtk.Widget;
     target: Gtk.Widget;
 };
 
-export async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<RenderedDragAndDropPair> {
+async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<RenderedDragAndDropPair> {
     await render(
         <GtkBox>
             <GtkLabel
@@ -61,3 +60,11 @@ export async function renderDragAndDropPair(options: DragAndDropPairOptions): Pr
     const target = await screen.findByName("drop-target");
     return { source, target };
 }
+
+export {
+    renderClickButton,
+    renderDragAndDropPair,
+    type RenderedClickButton,
+    type DragAndDropPairOptions,
+    type RenderedDragAndDropPair,
+};

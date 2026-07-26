@@ -9,7 +9,9 @@
  * const items = ["a", "b", "c"];
  * remove(items, "b"); // items is now ["a", "c"]
  */
-export function remove<T>(arr: T[], value: T): void {
+function remove<T>(arr: T[], value: T): void {
     const index = arr.indexOf(value);
     if (index !== -1) arr.splice(index, 1);
 }
+
+export { remove };

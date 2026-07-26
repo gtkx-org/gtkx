@@ -2,7 +2,7 @@ import type { GlEnum, GlFeature, GlInterfaceBlock, GlRegistry } from "./model.js
 
 type GlProfile = "core";
 
-export type GlSelection = {
+type GlSelection = {
     api: string;
     version: number;
     profile: GlProfile;
@@ -52,7 +52,7 @@ const applyRemoves = (
     }
 };
 
-export const selectSubset = (registry: GlRegistry, selection: GlSelection): GlSubset => {
+const selectSubset = (registry: GlRegistry, selection: GlSelection): GlSubset => {
     const features = registry.features
         .filter((feature) => feature.api === selection.api && feature.number <= selection.version)
         .toSorted((a, b) => a.number - b.number);
@@ -64,10 +64,14 @@ export const selectSubset = (registry: GlRegistry, selection: GlSelection): GlSu
     return { commands, enums };
 };
 
-export const resolveEnum = (registry: GlRegistry, name: string): GlEnum => {
+const resolveEnum = (registry: GlRegistry, name: string): GlEnum => {
     const found = registry.enums.find((candidate) => candidate.name === name);
+
     if (found === undefined) {
         throw new Error(`Enum token ${name} has no definition in the registry`);
     }
+
     return found;
 };
+
+export { selectSubset, resolveEnum, type GlSelection };

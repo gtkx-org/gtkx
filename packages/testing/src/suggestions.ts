@@ -11,13 +11,12 @@ import {
 } from "./widget-accessible-properties.js";
 
 /** The query variant a suggestion targets. */
-export type Variant = "get" | "getAll" | "query" | "queryAll" | "find" | "findAll";
-
+type Variant = "get" | "getAll" | "query" | "queryAll" | "find" | "findAll";
 /** The query family a suggestion targets. */
-export type Method = "Role" | "LabelText" | "PlaceholderText" | "Text" | "DisplayValue" | "Name";
+type Method = "Role" | "LabelText" | "PlaceholderText" | "Text" | "DisplayValue" | "Name";
 
 /** A suggested query for reaching a widget, including its family, variant, method name, and a `toString` that renders the full call. */
-export type Suggestion = {
+type Suggestion = {
     queryName: Method;
     /** The full query function name, such as `getByRole`. */
     queryMethod: string;
@@ -27,6 +26,7 @@ export type Suggestion = {
 
 const makeSuggestion = (queryName: Method, variant: Variant, argsText: string): Suggestion => {
     const queryMethod = `${variant}By${queryName}`;
+
     return {
         queryName,
         queryMethod,
@@ -38,12 +38,13 @@ const makeSuggestion = (queryName: Method, variant: Variant, argsText: string): 
 const roleSuggestion = (widget: Gtk.Widget, variant: Variant): Suggestion | undefined => {
     const role = widget.getAccessibleRole();
     if (role === Gtk.AccessibleRole.NONE || role === Gtk.AccessibleRole.GENERIC) return undefined;
-
     const roleText = `Gtk.AccessibleRole.${formatRole(role).toUpperCase()}`;
     const name = getWidgetAccessibleName(widget);
+
     if (name === null) {
         return makeSuggestion("Role", variant, roleText);
     }
+
     return makeSuggestion("Role", variant, `${roleText}, { name: '${name}' }`);
 };
 
@@ -59,7 +60,7 @@ const textSuggestion = (queryName: Method, variant: Variant, value: string | nul
  * @param method Restrict the suggestion to a specific query family instead of choosing by priority.
  * @returns The best available suggestion, or undefined when no query applies.
  */
-export const getSuggestedQuery = (
+const getSuggestedQuery = (
     widget: Gtk.Widget,
     variant: Variant = "get",
     method?: Method,
@@ -79,9 +80,13 @@ export const getSuggestedQuery = (
     }
 
     const priority: Method[] = ["Role", "LabelText", "PlaceholderText", "Text", "DisplayValue", "Name"];
+
     for (const candidate of priority) {
         const suggestion = builders[candidate]();
         if (suggestion) return suggestion;
     }
+
     return undefined;
 };
+
+export { getSuggestedQuery, type Variant, type Method, type Suggestion };

@@ -41,10 +41,8 @@ describe("visibility", () => {
         const held: Captured = { widget: null };
         const { rerender } = await render(activityTree("visible", held));
         expect(visibilityOf(held)).toBe(true);
-
         await rerender(activityTree("hidden", held));
         expect(visibilityOf(held)).toBe(false);
-
         await rerender(activityTree("visible", held));
         expect(visibilityOf(held)).toBe(true);
     });
@@ -53,10 +51,8 @@ describe("visibility", () => {
         const held: Captured = { widget: null };
         const { rerender } = await render(hiddenPanelTree("visible", held));
         expect(visibilityOf(held)).toBe(false);
-
         await rerender(hiddenPanelTree("hidden", held));
         expect(visibilityOf(held)).toBe(false);
-
         await rerender(hiddenPanelTree("visible", held));
         expect(visibilityOf(held)).toBe(false);
     });
@@ -64,7 +60,6 @@ describe("visibility", () => {
     it("hides and restores a subtree that suspends after mount", async () => {
         const deferred = createDeferred();
         const held: Captured = { widget: null };
-
         const Deferred = (): ReactNode => <GtkLabel>{use(deferred.promise)}</GtkLabel>;
 
         const tree = (pending: boolean): ReactNode => (
@@ -78,7 +73,6 @@ describe("visibility", () => {
 
         const { rerender } = await render(tree(false));
         expect(visibilityOf(held)).toBe(true);
-
         await rerender(tree(true));
         expect(visibilityOf(held)).toBe(false);
 
@@ -86,6 +80,7 @@ describe("visibility", () => {
             deferred.resolve();
             await deferred.promise;
         });
+
         expect(visibilityOf(held)).toBe(true);
     });
 });

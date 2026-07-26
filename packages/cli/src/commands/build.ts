@@ -6,7 +6,7 @@ import { entryArg, resolveEntry } from "../internal/entry-arg.js";
 
 const BUILD_MODE = "production";
 
-export const build = defineCommand({
+const build = defineCommand({
     meta: {
         name: "build",
         description: "Build application for production",
@@ -21,7 +21,6 @@ export const build = defineCommand({
     async run({ args }) {
         const { cwd, entry } = resolveEntry(args);
         info(`Building ${entry}`);
-
         await ensureGenerated(cwd, { announce: true, mode: BUILD_MODE });
 
         await buildApp({
@@ -35,3 +34,5 @@ export const build = defineCommand({
         info("Build complete: dist/bundle.js");
     },
 });
+
+export { build };

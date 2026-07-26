@@ -9,7 +9,7 @@ type ObjectValueCache<T extends GObject.Object, V> = {
     value: V;
 };
 
-export function useObjectValue<T extends GObject.Object, V>(
+function useObjectValue<T extends GObject.Object, V>(
     object: RefProp<T>,
     signal: string,
     read: (object: T | null) => V,
@@ -46,3 +46,5 @@ export function useObjectValue<T extends GObject.Object, V>(
 
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
+
+export { useObjectValue };

@@ -25,15 +25,18 @@ const runtimeKeysFor = (schema: ParsedSchema): string => {
     const entries = schema.keys.map(
         (key) => `${toJsStringLiteral(key.name)}: ${toJsStringLiteral(runtimeKindForKey(key))}`,
     );
+
     return `{ ${entries.join(", ")} }`;
 };
 
-export const renderRuntimeModule = (file: ParsedSchemaFile): string => {
+const renderRuntimeModule = (file: ParsedSchemaFile): string => {
     const lines: string[] = [];
+
     for (const [index, schema] of file.schemas.entries()) {
         const keysName = `keys_${index}`;
         const id = toJsStringLiteral(schema.id);
         lines.push(`const ${keysName} = ${runtimeKeysFor(schema)};`);
+
         if (schema.path === null) {
             lines.push(
                 `export const ${exportNameFor(schema.id)} = { id: ${id}, keys: ${keysName}, at: (path) => ({ id: ${id}, path, keys: ${keysName} }) };`,
@@ -42,10 +45,13 @@ export const renderRuntimeModule = (file: ParsedSchemaFile): string => {
             lines.push(`export const ${exportNameFor(schema.id)} = { id: ${id}, path: null, keys: ${keysName} };`);
         }
     }
+
     const first = file.schemas[0];
+
     if (first !== undefined) {
         lines.push(`export default ${exportNameFor(first.id)};`);
     }
+
     return lines.join("\n");
 };
 
@@ -57,24 +63,30 @@ const interfaceNameFor = (schemaId: string, usedNames: Set<string>): string => {
         .filter((part) => part.length > 0)
         .map((part) => upperFirst(part))
         .join("")}Keys`;
+
     let name = base;
     let suffix = 2;
+
     while (usedNames.has(name)) {
         name = `${base}${suffix}`;
         suffix += 1;
     }
+
     usedNames.add(name);
     return name;
 };
 
 const renderKeysType = (name: string, schema: ParsedSchema): string[] => {
     const lines = [`    type ${name} = {`];
+
     for (const key of schema.keys) {
         if (key.summary !== null) {
             lines.push(`        /** ${sanitizeSummary(key.summary)} */`);
         }
+
         lines.push(`        ${toJsStringLiteral(key.name)}: ${toJsStringLiteral(runtimeKindForKey(key))};`);
     }
+
     lines.push("    };");
     return lines;
 };
@@ -87,6 +99,7 @@ const boundRefTypeLines = (interfaceName: string, indent: string): string[] => [
 
 const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[] => {
     const exportName = exportNameFor(schema.id);
+
     if (schema.path !== null) {
         return [
             `    const ${exportName}: {`,
@@ -95,6 +108,7 @@ const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[
             "    };",
         ];
     }
+
     return [
         `    const ${exportName}: {`,
         `        id: ${JSON.stringify(schema.id)};`,
@@ -109,23 +123,30 @@ const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[
 const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): string[] => {
     const lines = [`declare module "${file.fileName}" {`];
     const exportNames: string[] = [];
+
     for (const [index, schema] of file.schemas.entries()) {
         if (index > 0) lines.push("");
         const interfaceName = interfaceNameFor(schema.id, usedNames);
         lines.push(...renderKeysType(interfaceName, schema), "", ...renderSchemaConst(schema, interfaceName));
         exportNames.push(exportNameFor(schema.id));
     }
+
     if (exportNames.length > 0) {
         lines.push("", `    export { ${exportNames.join(", ")} };`, `    export default ${exportNames[0]};`);
     }
+
     lines.push("}");
     return lines;
 };
 
-export const renderEnvModule = (files: ParsedSchemaFile[]): string => {
+const renderEnvModule = (files: ParsedSchemaFile[]): string => {
     const usedNames: Set<string> = new Set();
+
     const blocks = files
         .filter((file) => file.schemas.length > 0)
         .map((file) => renderFileModule(file, usedNames).join("\n"));
+
     return `${[GTKX_ENV_MODULE_HEADER, ...blocks].join("\n\n")}\n`;
 };
+
+export { renderRuntimeModule, renderEnvModule };

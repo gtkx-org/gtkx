@@ -8,10 +8,12 @@ const makeIds = (n: number): string[] => Array.from({ length: n }, (_, i) => `ro
 
 const spliceBench = (ids: string[], spliced: string[]) => async (): Promise<void> => {
     const { rerender } = await renderListView(ids, {}, render);
+
     for (let k = 0; k < 3; k++) {
         await rerender(spliced);
         await rerender(ids);
     }
+
     await cleanup();
 };
 
@@ -20,6 +22,7 @@ describe("list splices", () => {
         const ids = makeIds(n);
         bench(`append one item to ${n} rows`, spliceBench(ids, [...ids, "row-extra"]));
         bench(`prepend one item to ${n} rows`, spliceBench(ids, ["row-extra", ...ids]));
+
         bench(
             `remove the middle item of ${n} rows`,
             spliceBench(
@@ -27,6 +30,7 @@ describe("list splices", () => {
                 ids.filter((id) => id !== `row-${n / 2}`),
             ),
         );
+
         bench(`reverse ${n} rows`, spliceBench(ids, ids.toReversed()));
     }
 });

@@ -11,6 +11,8 @@ import { sanitizeIdentifier } from "./sanitize-identifier.js";
  * toCamelIdentifier("icon_name"); // "iconName"
  * toCamelIdentifier("class"); // "class_"
  */
-export function toCamelIdentifier(name: string): string {
+function toCamelIdentifier(name: string): string {
     return sanitizeIdentifier(camelCase(name));
 }
+
+export { toCamelIdentifier };

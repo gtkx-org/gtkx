@@ -2,32 +2,41 @@ import type * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
 import type { ChildrenProps } from "../prop-types.js";
 
-export type AlertDialogResponse = {
+type AlertDialogResponse = {
     id: string;
     label: string;
     appearance?: Adw.ResponseAppearance;
     enabled?: boolean;
 };
 
-export type AdwAlertDialogProps = {
+type AdwAlertDialogProps = {
     responses?: AlertDialogResponse[] | null | undefined;
 } & ChildrenProps;
 
-export type AdwPreferencesRowProps = {
+type AdwPreferencesRowProps = {
     prefix?: ReactNode | null | undefined;
     suffix?: ReactNode | null | undefined;
 };
 
-export type AdwExpanderRowProps = {
+type AdwExpanderRowProps = {
     rows?: ReactNode | null | undefined;
     actions?: ReactNode | null | undefined;
 } & AdwPreferencesRowProps;
 
-export type AdwToolbarViewProps = {
+type AdwToolbarViewProps = {
     topBar?: ReactNode | null | undefined;
     bottomBar?: ReactNode | null | undefined;
 } & ChildrenProps;
 
-export type AdwBreakpointsProps = {
+type AdwBreakpointsProps = {
     breakpoints?: ReactNode | null | undefined;
 } & ChildrenProps;
+
+export {
+    type AlertDialogResponse,
+    type AdwAlertDialogProps,
+    type AdwPreferencesRowProps,
+    type AdwExpanderRowProps,
+    type AdwToolbarViewProps,
+    type AdwBreakpointsProps,
+};

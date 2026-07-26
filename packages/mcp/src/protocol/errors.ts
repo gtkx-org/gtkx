@@ -1,4 +1,6 @@
-export const ErrorCode = {
+type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
+
+const ErrorCode = {
     INTERNAL_ERROR: 1000,
     NO_APP_CONNECTED: 1001,
     APP_NOT_FOUND: 1002,
@@ -9,13 +11,47 @@ export const ErrorCode = {
     METHOD_NOT_FOUND: 1007,
 } as const;
 
-export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
-
-export function isErrorCode(code: number): code is ErrorCode {
+function isErrorCode(code: number): code is ErrorCode {
     return (Object.values(ErrorCode) as number[]).includes(code);
 }
 
-export class ProtocolError extends Error {
+function noAppConnectedError(): ProtocolError {
+    return new ProtocolError(
+        ErrorCode.NO_APP_CONNECTED,
+        "No GTKX application connected: start an app with 'gtkx dev' to connect",
+        { hint: "Run 'gtkx dev' in your project directory" },
+    );
+}
+
+function appNotFoundError(applicationId: string): ProtocolError {
+    return new ProtocolError(ErrorCode.APP_NOT_FOUND, `Application '${applicationId}' not found`, { applicationId });
+}
+
+function connectionWriteFailedError(applicationId: string): ProtocolError {
+    return new ProtocolError(
+        ErrorCode.CONNECTION_WRITE_FAILED,
+        `Connection to application '${applicationId}' is no longer writable`,
+        { applicationId },
+    );
+}
+
+function widgetNotFoundError(widgetId: string): ProtocolError {
+    return new ProtocolError(ErrorCode.WIDGET_NOT_FOUND, `Widget '${widgetId}' not found`, { widgetId });
+}
+
+function requestTimeoutError(timeout: number): ProtocolError {
+    return new ProtocolError(ErrorCode.REQUEST_TIMEOUT, `Request timed out after ${timeout}ms`, { timeout });
+}
+
+function invalidRequestError(reason: string): ProtocolError {
+    return new ProtocolError(ErrorCode.INVALID_REQUEST, `Invalid request: ${reason}`, { reason });
+}
+
+function methodNotFoundError(method: string): ProtocolError {
+    return new ProtocolError(ErrorCode.METHOD_NOT_FOUND, `Method '${method}' not found`, { method });
+}
+
+class ProtocolError extends Error {
     code: ErrorCode;
     data?: unknown;
 
@@ -35,38 +71,15 @@ export class ProtocolError extends Error {
     }
 }
 
-export function noAppConnectedError(): ProtocolError {
-    return new ProtocolError(
-        ErrorCode.NO_APP_CONNECTED,
-        "No GTKX application connected: start an app with 'gtkx dev' to connect",
-        { hint: "Run 'gtkx dev' in your project directory" },
-    );
-}
-
-export function appNotFoundError(applicationId: string): ProtocolError {
-    return new ProtocolError(ErrorCode.APP_NOT_FOUND, `Application '${applicationId}' not found`, { applicationId });
-}
-
-export function connectionWriteFailedError(applicationId: string): ProtocolError {
-    return new ProtocolError(
-        ErrorCode.CONNECTION_WRITE_FAILED,
-        `Connection to application '${applicationId}' is no longer writable`,
-        { applicationId },
-    );
-}
-
-export function widgetNotFoundError(widgetId: string): ProtocolError {
-    return new ProtocolError(ErrorCode.WIDGET_NOT_FOUND, `Widget '${widgetId}' not found`, { widgetId });
-}
-
-export function requestTimeoutError(timeout: number): ProtocolError {
-    return new ProtocolError(ErrorCode.REQUEST_TIMEOUT, `Request timed out after ${timeout}ms`, { timeout });
-}
-
-export function invalidRequestError(reason: string): ProtocolError {
-    return new ProtocolError(ErrorCode.INVALID_REQUEST, `Invalid request: ${reason}`, { reason });
-}
-
-export function methodNotFoundError(method: string): ProtocolError {
-    return new ProtocolError(ErrorCode.METHOD_NOT_FOUND, `Method '${method}' not found`, { method });
-}
+export {
+    ErrorCode,
+    isErrorCode,
+    noAppConnectedError,
+    appNotFoundError,
+    connectionWriteFailedError,
+    widgetNotFoundError,
+    requestTimeoutError,
+    invalidRequestError,
+    methodNotFoundError,
+    ProtocolError,
+};

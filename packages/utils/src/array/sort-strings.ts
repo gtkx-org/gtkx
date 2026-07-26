@@ -7,6 +7,8 @@
  * @example
  * sortStrings(["b", "a", "c"]); // ["a", "b", "c"]
  */
-export function sortStrings(values: Iterable<string>): string[] {
+function sortStrings(values: Iterable<string>): string[] {
     return [...values].toSorted((a, b) => a.localeCompare(b));
 }
+
+export { sortStrings };

@@ -27,7 +27,7 @@ import {
 } from "./value.js";
 
 /** Function invoked when a connected GObject signal is emitted. */
-export type SignalHandler = (...args: unknown[]) => unknown;
+type SignalHandler = (...args: unknown[]) => unknown;
 
 type SignalConnectSpec = {
     callback: CallbackDescriptor;
@@ -56,7 +56,7 @@ const gSignalHandlersBlockMatched = bind(
 );
 
 /** Returns the signal name without its detail suffix (the part after `::`). */
-export const getSignalBaseName = (signal: string): string => {
+const getSignalBaseName = (signal: string): string => {
     const detailIndex = signal.indexOf("::");
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
@@ -74,6 +74,7 @@ const getSignalId = (instance: object, signal: string): number => {
 
 function connectBind(type: bigint, signal: string, callback: CallbackDescriptor): (...values: unknown[]) => unknown {
     const key = `${type}\0${getSignalBaseName(signal)}`;
+
     return connectCache(
         key,
         LIB,
@@ -89,7 +90,7 @@ function connectBind(type: bigint, signal: string, callback: CallbackDescriptor)
  * @param signal Signal name, optionally including a `::detail` suffix.
  * @param spec Callback descriptor, handler function, and whether to run after the default handler.
  */
-export function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
+function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
     const { callback, handler, after } = spec;
     const wrapped = wrapCallback(handler, callback, "emitter");
     const type: bigint = (instance as TypedClass)._type_;
@@ -97,18 +98,20 @@ export function connectSignal(instance: object, signal: string, spec: SignalConn
     return connect(getHandle(instance), signal, wrapped, after ? 1 : 0) as number;
 }
 
-export function blockMatchedSignalHandlers(instance: object, signal: string): void {
+function blockMatchedSignalHandlers(instance: object, signal: string): void {
     const signalId = getSignalId(instance, signal);
     gSignalHandlersBlockMatched(getHandle(instance), 1, signalId, 0, undefined, undefined, undefined);
 }
 
 const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: () => unknown } => {
     if (!isOutputArg(arg)) return { value: toValue(arg.type, arg.value) };
+
     if (isCallerAllocatedArg(arg)) {
         if (isInoutArg(arg)) return { value: inoutValueForBoxedDescriptor(arg.type, arg.value as object) };
         const value = outValueForBoxedDescriptor(arg.type, arg.value as object);
         return { value, read: () => getBoxedValue(value) };
     }
+
     return isInoutArg(arg) ? outValueForDescriptor(arg.type, arg.value) : outValueForDescriptor(arg.type);
 };
 
@@ -120,7 +123,7 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
  * @param args Arguments to pass, including output and inout arguments.
  * @param returnDescriptor Descriptor for the signal's return value, omitted when it returns void.
  */
-export function emitSignal(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor): unknown {
+function emitSignal(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor): unknown {
     const signalId = getSignalId(instance, signal);
     const detail = getQuarkForSignalDetail(signal);
     const values: ExternalObject<Handle>[] = [toValue(objectT("full"), instance)];
@@ -135,6 +138,7 @@ export function emitSignal(instance: object, signal: string, args: EmitArg[], re
     if (returnDescriptor !== undefined) {
         const returnValue = newValueForDescriptor(returnDescriptor);
         gSignalEmitv(values, signalId, detail, returnValue);
+
         return packTupleResult(
             reads.map((read) => read()),
             fromValue(returnValue),
@@ -150,3 +154,5 @@ export function emitSignal(instance: object, signal: string, args: EmitArg[], re
         false,
     );
 }
+
+export { getSignalBaseName, connectSignal, blockMatchedSignalHandlers, emitSignal, type SignalHandler };

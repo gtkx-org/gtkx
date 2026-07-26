@@ -19,10 +19,10 @@ describe("resolveLibraries", () => {
 
     it('expands "*" to the namespaces discovered on the search path', () => {
         const dir = mkdtempSync(join(tmpdir(), "gir-resolve-"));
+
         try {
             writeFileSync(join(dir, "Gtk-4.0.gir"), "");
             writeFileSync(join(dir, "Adw-1.gir"), "");
-
             expect(resolveLibraries("*", [dir])).toEqual(["Adw-1", "Gtk-4.0"]);
         } finally {
             rmSync(dir, { recursive: true, force: true });
@@ -48,7 +48,6 @@ describe('resolveLibraries — "*" GIR discovery', () => {
     it("returns sorted namespace identifiers for matching .gir files", () => {
         writeFileSync(join(dir, "Gtk-4.0.gir"), "");
         writeFileSync(join(dir, "Adw-1.gir"), "");
-
         expect(resolveLibraries("*", [dir])).toEqual(["Adw-1", "Gtk-4.0"]);
     });
 
@@ -57,7 +56,6 @@ describe('resolveLibraries — "*" GIR discovery', () => {
         writeFileSync(join(dir, "notes.txt"), "");
         writeFileSync(join(dir, "weird name.gir"), "");
         writeFileSync(join(dir, "NoVersion.gir"), "");
-
         expect(resolveLibraries("*", [dir])).toEqual(["Gtk-4.0"]);
     });
 
@@ -66,16 +64,15 @@ describe('resolveLibraries — "*" GIR discovery', () => {
         writeFileSync(join(dir, "Gtk-4.0.gir"), "");
         writeFileSync(join(dir, "Soup-2.4.gir"), "");
         writeFileSync(join(dir, "Soup-3.0.gir"), "");
-
         expect(resolveLibraries("*", [dir])).toEqual(["Gtk-4.0", "Soup-3.0"]);
     });
 
     it("deduplicates a namespace found across multiple search directories", () => {
         const other = mkdtempSync(join(tmpdir(), "gir-discover-b-"));
+
         try {
             writeFileSync(join(dir, "Gtk-4.0.gir"), "");
             writeFileSync(join(other, "Gtk-4.0.gir"), "");
-
             expect(resolveLibraries("*", [dir, other])).toEqual(["Gtk-4.0"]);
         } finally {
             rmSync(other, { recursive: true, force: true });

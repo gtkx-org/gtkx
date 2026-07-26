@@ -6,7 +6,9 @@ type ParamPair = {
     param: GlParam | undefined;
 };
 
-export const paramPairAt = (plan: CommandPlan & { ok: true }, index: number): ParamPair => ({
+const paramPairAt = (plan: CommandPlan & { ok: true }, index: number): ParamPair => ({
     paramPlan: plan.params[index],
     param: plan.command.params[index],
 });
+
+export { paramPairAt };

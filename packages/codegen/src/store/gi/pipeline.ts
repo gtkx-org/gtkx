@@ -14,7 +14,15 @@ import { generateNamespaceBootstrap, generateNamespaceFunction } from "./functio
 import { generateInterface } from "./interface.js";
 import { generateRecord } from "./record.js";
 
-export const generateNamespaceModule = (namespace: GirNamespace, library: Library): string => {
+type TopologicalState = {
+    namespaceName: string;
+    byLocalName: Map<string, GirClass>;
+    placed: Set<GirClass>;
+    visiting: Set<GirClass>;
+    result: GirClass[];
+};
+
+const generateNamespaceModule = (namespace: GirNamespace, library: Library): string => {
     const context = new ModuleContext(namespace, library);
     context.addGObjectBootstrapImports();
     generateNamespaceTypes(context, namespace);
@@ -26,12 +34,15 @@ const generateNamespaceTypes = (context: ModuleContext, namespace: GirNamespace)
     for (const enumeration of namespace.enums) {
         generateEnum(context, enumeration);
     }
+
     for (const record of namespace.records) {
         generateRecord(context, record);
     }
+
     for (const klass of topologicalClassOrder(namespace.classes, namespace.name)) {
         generateClass(context, klass);
     }
+
     for (const iface of namespace.interfaces) {
         generateInterface(context, iface);
     }
@@ -41,13 +52,17 @@ const generateNamespaceMembers = (context: ModuleContext, namespace: GirNamespac
     for (const callback of namespace.callbacks) {
         generateCallback(context, callback);
     }
+
     for (const fn of namespace.functions) {
         generateNamespaceFunction(context, fn);
     }
+
     generateNamespaceBootstrap(context, namespace);
+
     for (const constant of namespace.constants) {
         generateConstant(context, constant);
     }
+
     for (const alias of namespace.aliases) {
         generateAlias(context, alias);
     }
@@ -57,14 +72,6 @@ const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
     const category = alias.cType === undefined ? undefined : primitiveCategory(alias.cType);
     const targetType = category === "gtype" ? PRIMITIVE_TS_TYPE.gtype : renderTsType(context, alias.target);
     context.module.appendDeclaration(`${renderJsDoc(alias.doc)}export type ${alias.name} = ${targetType};`);
-};
-
-type TopologicalState = {
-    namespaceName: string;
-    byLocalName: Map<string, GirClass>;
-    placed: Set<GirClass>;
-    visiting: Set<GirClass>;
-    result: GirClass[];
 };
 
 const visitClass = (state: TopologicalState, klass: GirClass): void => {
@@ -80,6 +87,7 @@ const visitClass = (state: TopologicalState, klass: GirClass): void => {
 const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirClass[] => {
     const byLocalName: Map<string, GirClass> = new Map();
     for (const klass of classes) byLocalName.set(klass.name, klass);
+
     const state: TopologicalState = {
         namespaceName,
         byLocalName,
@@ -87,6 +95,7 @@ const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirC
         visiting: new Set<GirClass>(),
         result: [],
     };
+
     for (const klass of classes) visitClass(state, klass);
     return state.result;
 };
@@ -101,3 +110,5 @@ const sameNamespaceParent = (
     if (parentNamespace !== undefined && parentNamespace !== namespaceName) return undefined;
     return byLocalName.get(typeName);
 };
+
+export { generateNamespaceModule };

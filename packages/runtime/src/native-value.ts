@@ -28,6 +28,7 @@ const fundamentalFromNative = (descriptor: FundamentalDescriptor, value: unknown
 const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): unknown => {
     if (value === null) return null;
     const entries = value as [unknown, unknown][];
+
     return new Map(
         entries.map(([key, val]): [unknown, unknown] => [
             fromNative(descriptor.keyDescriptor, key),
@@ -44,7 +45,7 @@ const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): u
  * @param descriptor Describes the native type of the value.
  * @param value The raw native value to convert.
  */
-export function fromNative(descriptor: Descriptor, value: unknown): unknown {
+function fromNative(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {
         case "object": {
             return wrapHandle(value as ExternalObject<Handle> | null);
@@ -73,7 +74,7 @@ export function fromNative(descriptor: Descriptor, value: unknown): unknown {
 const collectionToNative = (descriptor: ArrayDescriptor, value: unknown): unknown =>
     value == null ? null : mapCollection(descriptor, value, toNative);
 
-export function toNative(descriptor: Descriptor, value: unknown): unknown {
+function toNative(descriptor: Descriptor, value: unknown): unknown {
     switch (descriptor.kind) {
         case "object":
         case "struct":
@@ -86,6 +87,7 @@ export function toNative(descriptor: Descriptor, value: unknown): unknown {
         }
         case "hashtable": {
             if (value == null) return null;
+
             return [...(value as Map<unknown, unknown>)].map(([key, val]): [unknown, unknown] => [
                 toNative(descriptor.keyDescriptor, key),
                 toNative(descriptor.valueDescriptor, val),
@@ -96,3 +98,5 @@ export function toNative(descriptor: Descriptor, value: unknown): unknown {
         }
     }
 }
+
+export { fromNative, toNative };

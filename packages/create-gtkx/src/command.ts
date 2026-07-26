@@ -2,7 +2,7 @@ import { defineCommand } from "citty";
 import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./package-managers.js";
 import { scaffold } from "./scaffolder.js";
 
-export type CreateCommandArgs = {
+type CreateCommandArgs = {
     name?: string | undefined;
     "application-id"?: string | undefined;
     "package-manager"?: string | undefined;
@@ -13,34 +13,13 @@ export type CreateCommandArgs = {
     overwrite?: boolean | undefined;
 };
 
-const parsePackageManager = (value: string | undefined): PackageManager | undefined => {
-    if (value === undefined) return undefined;
-    if (!isKnownPackageManager(value)) {
-        throw new Error(`Unknown package manager "${value}". Expected one of: ${PACKAGE_MANAGER_FLAG_DESCRIPTION}.`);
-    }
-    return value;
-};
-
-export const runCreate = async (args: CreateCommandArgs): Promise<void> => {
-    const interactive = args["no-interactive"] || args.yes ? false : process.stdin.isTTY;
-    await scaffold({
-        name: args.name,
-        applicationId: args["application-id"],
-        packageManager: parsePackageManager(args["package-manager"]),
-        typescript: args.typescript,
-        includeTesting: args.vitest,
-        interactive,
-        overwrite: args.overwrite,
-    });
-};
-
 /**
  * Citty command definition for the CLI `create` subcommand. It declares the
  * scaffolder's arguments (target name, application ID, package manager,
  * TypeScript and Vitest toggles, prompt behavior, and overwrite) and runs the
  * scaffolder to generate a new GTKX application.
  */
-export const scaffoldCommand = defineCommand({
+const scaffoldCommand = defineCommand({
     meta: {
         name: "create",
         description: "Create a new GTKX application",
@@ -87,3 +66,29 @@ export const scaffoldCommand = defineCommand({
     },
     run: ({ args }) => runCreate(args),
 });
+
+const parsePackageManager = (value: string | undefined): PackageManager | undefined => {
+    if (value === undefined) return undefined;
+
+    if (!isKnownPackageManager(value)) {
+        throw new Error(`Unknown package manager "${value}". Expected one of: ${PACKAGE_MANAGER_FLAG_DESCRIPTION}.`);
+    }
+
+    return value;
+};
+
+const runCreate = async (args: CreateCommandArgs): Promise<void> => {
+    const interactive = args["no-interactive"] || args.yes ? false : process.stdin.isTTY;
+
+    await scaffold({
+        name: args.name,
+        applicationId: args["application-id"],
+        packageManager: parsePackageManager(args["package-manager"]),
+        typescript: args.typescript,
+        includeTesting: args.vitest,
+        interactive,
+        overwrite: args.overwrite,
+    });
+};
+
+export { scaffoldCommand, runCreate, type CreateCommandArgs };

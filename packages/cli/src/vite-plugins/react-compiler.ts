@@ -5,17 +5,16 @@ import babelPresetTypescriptNs from "@babel/preset-typescript";
 import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
 import babelPluginReactCompilerNs from "babel-plugin-react-compiler";
 
-const babelPresetTypescript = babelPresetTypescriptNs.default ?? babelPresetTypescriptNs;
-const babelPluginReactCompiler = babelPluginReactCompilerNs.default ?? babelPluginReactCompilerNs;
-
-const SOURCE_EXTENSION = /\.[jt]sx?$/;
-const TYPESCRIPT_EXTENSION = /\.tsx?$/;
-const NODE_MODULES = /(?:^|\/)node_modules\//;
-
 type ReactCompilerState = {
     root: string;
     options: ResolvedReactCompilerOptions | null;
 };
+
+const babelPresetTypescript = babelPresetTypescriptNs.default ?? babelPresetTypescriptNs;
+const babelPluginReactCompiler = babelPluginReactCompilerNs.default ?? babelPluginReactCompilerNs;
+const SOURCE_EXTENSION = /\.[jt]sx?$/;
+const TYPESCRIPT_EXTENSION = /\.tsx?$/;
+const NODE_MODULES = /(?:^|\/)node_modules\//;
 
 const isProjectSource = (root: string, id: string): boolean => {
     if (!SOURCE_EXTENSION.test(id)) return false;
@@ -42,7 +41,7 @@ const compileSource = async (code: string, id: string, options: ResolvedReactCom
     return result.map == null ? { code: result.code } : { code: result.code, map: JSON.stringify(result.map) };
 };
 
-export function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
+function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: ReactCompilerState = {
         root: "",
         options: null,
@@ -63,6 +62,7 @@ export function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader(
 
         async transform(code, id) {
             const options = state.options;
+
             if (options === null || !isProjectSource(state.root, id)) {
                 return;
             }
@@ -71,3 +71,5 @@ export function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader(
         },
     };
 }
+
+export { gtkxReactCompiler };

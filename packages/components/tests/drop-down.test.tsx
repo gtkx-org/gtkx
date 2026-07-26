@@ -19,19 +19,14 @@ const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, 
 describe("render - DropDown (1)", () => {
     it("creates DropDown widget", async () => {
         const ref = createRef<Gtk.DropDown>();
-
         await render(<DropDown ref={ref} />);
-
         expect(ref.current).not.toBeNull();
     });
 
     it("populates with items", async () => {
         const dropDownRef = createRef<Gtk.DropDown>();
-
         await render(<DropDown ref={dropDownRef} items={valueItems(["Option 1", "Option 2", "Option 3"])} />);
-
         await screen.findAllByText("Option 1");
-
         await expectSelectedText(dropDownRef.current, 1, "Option 2");
         await expectSelectedText(dropDownRef.current, 2, "Option 3");
     });
@@ -61,31 +56,24 @@ describe("render - DropDown (2)", () => {
         );
 
         if (dropDownRef.current) await userEvent.selectOptions(dropDownRef.current, 1);
-
         await waitFor(() => expect(onSelectionChanged).toHaveBeenCalledWith("2"));
     });
 
     it("updates items dynamically", async () => {
         const dropDownRef = createRef<Gtk.DropDown>();
-
         const { rerender } = await renderChildren(["First", "Second"], buildDropDown(dropDownRef));
         await screen.findAllByText("First");
-
         await expectSelectedText(dropDownRef.current, 1, "Second");
-
         await rerender(["First", "Second", "Third"]);
-
         await expectSelectedText(dropDownRef.current, 2, "Third");
     });
 
     it("removes items", async () => {
         const dropDownRef = createRef<Gtk.DropDown>();
-
         const { rerender } = await renderChildren(["First", "Second", "Third"], buildDropDown(dropDownRef));
-
         await expectSelectedText(dropDownRef.current, 2, "Third");
-
         await rerender(["First"]);
+
         await waitFor(() => {
             expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
             expect(screen.queryAllByText("Second")).toHaveLength(0);
@@ -116,7 +104,6 @@ describe("render - DropDown (3)", () => {
 
     it("renders no section headers when renderHeader is omitted", async () => {
         await render(<DropDown sections={sections} />);
-
         await screen.findAllByText("Alpha");
         await screen.findAllByText("One");
         expect(screen.queryAllByText("Letters")).toHaveLength(0);
@@ -127,9 +114,9 @@ describe("render - DropDown (3)", () => {
 describe("render - DropDown (4)", () => {
     it("renders item labels as direct cell children with no wrapper container", async () => {
         await render(<DropDown items={valueItems(["Alpha", "Beta"])} />);
-
         const labels = await screen.findAllByText("Alpha");
         expect(labels.length).toBeGreaterThan(0);
+
         for (const label of labels) {
             expect(label.getParent()).not.toBeInstanceOf(Gtk.Box);
         }
@@ -156,6 +143,7 @@ describe("render - DropDown (5)", () => {
         const dropDownRef = createRef<Gtk.DropDown>();
         const onSelectionChanged = vi.fn();
         const remaining = abcItems().filter((item) => item.id !== options.removedId);
+
         const draw = (items: IdItem[]) => (
             <DropDown
                 ref={dropDownRef}
@@ -168,9 +156,7 @@ describe("render - DropDown (5)", () => {
         const { rerender } = await renderChildren(abcItems(), draw);
         await waitFor(() => expect(dropDownRef.current?.getSelected()).toBe(options.initialPosition));
         expect(onSelectionChanged).not.toHaveBeenCalled();
-
         await rerender(remaining);
-
         await waitFor(() => expect(onSelectionChanged).toHaveBeenCalledTimes(1));
         const effective = idAtSelected(dropDownRef.current, remaining);
         expect(effective).toBeDefined();
@@ -188,6 +174,7 @@ describe("render - DropDown (5)", () => {
     it("does not report when a controlled apply lands on the requested id", async () => {
         const dropDownRef = createRef<Gtk.DropDown>();
         const onSelectionChanged = vi.fn();
+
         const draw = (selectedId: string) => (
             <DropDown
                 ref={dropDownRef}
@@ -199,9 +186,7 @@ describe("render - DropDown (5)", () => {
 
         const { rerender } = await render(draw("a"));
         await waitFor(() => expect(dropDownRef.current?.getSelected()).toBe(0));
-
         await rerender(draw("c"));
-
         await waitFor(() => expect(dropDownRef.current?.getSelected()).toBe(2));
         expect(onSelectionChanged).not.toHaveBeenCalled();
     });

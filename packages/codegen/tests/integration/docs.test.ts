@@ -98,6 +98,7 @@ describe("writeDocs", () => {
         expect(button).toContain("### `setLabel`");
         expect(button).toContain("setLabel(label: string): void");
         const fileDialog = page(outDir, join("gtk", "file-dialog.md"));
+
         expect(fileDialog).toContain(
             "open(parent: Gtk.Window | null, cancellable?: Gio.Cancellable | null): Promise<Gio.File>",
         );
@@ -130,6 +131,7 @@ describe("writeDocs with a custom base path", () => {
             outDir,
             basePath: "/docs/elements",
         });
+
         expect(result.regenerated).toBe(true);
         const gtk = result.namespaces.find((namespace) => namespace.name === "Gtk");
         expect(gtk?.link).toBe("/docs/elements/gtk/");

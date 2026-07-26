@@ -43,25 +43,23 @@ describe("act safety", () => {
         const warned = errorSpy.mock.calls.some((args: unknown[]) =>
             args.some((arg) => typeof arg === "string" && arg.includes("not wrapped in act")),
         );
+
         expect(warned).toBe(false);
     };
 
     it("expands and collapses a tree row without an act warning", async () => {
         await renderListView(tree, { estimatedItemHeight: 48 });
-
         const row = expandableExpanders()[0]?.getListRow();
         if (!row) throw new Error("expected an expandable tree row");
-
         await act(() => row.setExpanded(true));
         await screen.findAllByText("Alpha");
-
         await act(() => row.setExpanded(false));
-
         assertNoActWarning();
     });
 
     it("changes a multi-selection without an act warning", async () => {
         const onSelectionChanged = vi.fn();
+
         const { ref } = await renderListView(
             [
                 { id: "1", value: { name: "First" } },
@@ -71,7 +69,6 @@ describe("act safety", () => {
         );
 
         await userEvent.selectOptions(ref.current, [0, 1]);
-
         expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
         assertNoActWarning();
     });
@@ -85,11 +82,10 @@ describe("act safety", () => {
                 items={valueItems(["Option 1", "Option 2", "Option 3"])}
             />,
         );
-        await screen.findAllByText("Option 1");
 
+        await screen.findAllByText("Option 1");
         await userEvent.selectOptions(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX), [2]);
         await screen.findAllByText("Option 3");
-
         expect(onSelectionChanged).toHaveBeenCalledWith("3");
         assertNoActWarning();
     });

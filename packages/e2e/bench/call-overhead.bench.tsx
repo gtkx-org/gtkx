@@ -2,7 +2,6 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { bench, describe } from "vitest";
 
 const CALL_COUNTS = [100, 400];
-
 const START_LABEL = "start";
 
 const runSetterRoundTrips = (label: Gtk.Label, n: number): void => {
@@ -13,9 +12,11 @@ const runSetterRoundTrips = (label: Gtk.Label, n: number): void => {
 
 const runGetterRoundTrips = (label: Gtk.Label, n: number): void => {
     let total = 0;
+
     for (let i = 0; i < n; i++) {
         total += label.getLabel().length;
     }
+
     if (total !== n * START_LABEL.length) {
         throw new Error(`Getter round trips returned unexpected text totaling ${total}`);
     }
@@ -26,6 +27,7 @@ describe("ffi call overhead", () => {
         bench(`${n} setter round trips`, () => {
             runSetterRoundTrips(new Gtk.Label({ label: START_LABEL }), n);
         });
+
         bench(`${n} getter round trips`, () => {
             runGetterRoundTrips(new Gtk.Label({ label: START_LABEL }), n);
         });

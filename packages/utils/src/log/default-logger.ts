@@ -4,7 +4,7 @@ import { Logger } from "./logger.js";
  * The default namespace-less {@link Logger} backing the module-level {@link info}, {@link warn},
  * {@link error}, and {@link debug} functions.
  */
-export const logger: Logger = new Logger();
+const logger: Logger = new Logger();
 
 /**
  * Writes an informational line through the shared {@link logger}.
@@ -12,7 +12,7 @@ export const logger: Logger = new Logger();
  * @param message - The message text.
  * @param rest - Extra values appended after the message, formatted for display.
  */
-export function info(message: string, ...rest: unknown[]): void {
+function info(message: string, ...rest: unknown[]): void {
     logger.info(message, ...rest);
 }
 
@@ -22,7 +22,7 @@ export function info(message: string, ...rest: unknown[]): void {
  * @param message - The message text.
  * @param rest - Extra values appended after the message, formatted for display.
  */
-export function warn(message: string, ...rest: unknown[]): void {
+function warn(message: string, ...rest: unknown[]): void {
     logger.warn(message, ...rest);
 }
 
@@ -32,7 +32,7 @@ export function warn(message: string, ...rest: unknown[]): void {
  * @param message - The message text.
  * @param rest - Extra values appended after the message, formatted for display.
  */
-export function error(message: string, ...rest: unknown[]): void {
+function error(message: string, ...rest: unknown[]): void {
     logger.error(message, ...rest);
 }
 
@@ -42,6 +42,8 @@ export function error(message: string, ...rest: unknown[]): void {
  * @param message - The message text.
  * @param rest - Extra values appended after the message, formatted for display.
  */
-export function debug(message: string, ...rest: unknown[]): void {
+function debug(message: string, ...rest: unknown[]): void {
     logger.debug(message, ...rest);
 }
+
+export { logger, info, warn, error, debug };

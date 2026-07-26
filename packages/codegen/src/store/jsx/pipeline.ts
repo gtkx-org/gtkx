@@ -10,7 +10,7 @@ import { collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic
 import { generateJsxSection } from "./jsx.js";
 import { generateMetadata } from "./metadata.js";
 
-export type JsxNamespaceFile = {
+type JsxNamespaceFile = {
     directory: string;
     source: string;
 };
@@ -21,18 +21,34 @@ type JsxFiles = {
     intrinsicElementCount: number;
 };
 
-export type JsxGenerationOptions = {
+type JsxGenerationOptions = {
     reactSubexports?: string[];
     components?: ElementComponentOverrides;
     props?: ElementProps;
     lazyElements?: string[];
 };
 
-export const generateJsxFiles = (library: Library, options: JsxGenerationOptions = {}): JsxFiles => {
+type NamespaceFilesOptions = {
+    library: Library;
+    intrinsicElements: GlibNamedClass[];
+    intrinsicElementByGlibName: Map<string, GlibNamedClass>;
+    lazyByNamespace: Map<string, LazyElementSpec[]>;
+    reactSubexports: string[];
+    components: ElementComponentOverrides;
+};
+
+type JsxNamespaceContext = {
+    lazyElements: LazyElementSpec[];
+    intrinsicElements: GlibNamedClass[];
+    intrinsicElementByGlibName: Map<string, GlibNamedClass>;
+    reactSubexports: string[];
+    components: ElementComponentOverrides;
+};
+
+const generateJsxFiles = (library: Library, options: JsxGenerationOptions = {}): JsxFiles => {
     setElementProps(options.props ?? {});
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const intrinsicElementByGlibName = new Map(intrinsicElements.map((entry) => [entry.glibName, entry]));
-
     const girIndex = buildGirIndex(library);
     const lazyByNamespace = lazyElementSpecs(girIndex, options.lazyElements ?? []);
 
@@ -46,24 +62,16 @@ export const generateJsxFiles = (library: Library, options: JsxGenerationOptions
     });
 
     const metadata = generateMetadata(library);
-
     return { namespaces, metadata, intrinsicElementCount };
-};
-
-type NamespaceFilesOptions = {
-    library: Library;
-    intrinsicElements: GlibNamedClass[];
-    intrinsicElementByGlibName: Map<string, GlibNamedClass>;
-    lazyByNamespace: Map<string, LazyElementSpec[]>;
-    reactSubexports: string[];
-    components: ElementComponentOverrides;
 };
 
 const orderedIntrinsicNamespaces = (intrinsicElements: GlibNamedClass[]): GirNamespace[] => {
     const namespacesWithIntrinsicElements: Map<string, GirNamespace> = new Map();
+
     for (const entry of intrinsicElements) {
         namespacesWithIntrinsicElements.set(entry.namespace.name, entry.namespace);
     }
+
     return sortStringsBy(namespacesWithIntrinsicElements.values(), (entry) => entry.name);
 };
 
@@ -72,8 +80,10 @@ const generateNamespaceFiles = (
 ): { namespaces: JsxNamespaceFile[]; intrinsicElementCount: number } => {
     const { library, intrinsicElements, intrinsicElementByGlibName, lazyByNamespace, reactSubexports, components } =
         options;
+
     const namespaces: JsxNamespaceFile[] = [];
     let intrinsicElementCount = 0;
+
     for (const namespace of orderedIntrinsicNamespaces(intrinsicElements)) {
         const { source, count } = generateJsxNamespace(namespace, library, {
             lazyElements: lazyByNamespace.get(namespace.name) ?? [],
@@ -82,18 +92,12 @@ const generateNamespaceFiles = (
             reactSubexports,
             components,
         });
+
         namespaces.push({ directory: namespaceDirectory(namespace), source });
         intrinsicElementCount += count;
     }
-    return { namespaces, intrinsicElementCount };
-};
 
-type JsxNamespaceContext = {
-    lazyElements: LazyElementSpec[];
-    intrinsicElements: GlibNamedClass[];
-    intrinsicElementByGlibName: Map<string, GlibNamedClass>;
-    reactSubexports: string[];
-    components: ElementComponentOverrides;
+    return { namespaces, intrinsicElementCount };
 };
 
 const generateJsxNamespace = (
@@ -113,7 +117,9 @@ const generateJsxNamespace = (
         intrinsicElements,
         components,
     });
+
     const excludeNames: Set<string> = new Set(elementComponents.exportedNames);
+
     const { source: jsxSection, intrinsicCount } = generateJsxSection(targetNamespace, library, {
         excludeNames,
         imports,
@@ -123,7 +129,8 @@ const generateJsxNamespace = (
 
     const body = [imports.toSource().trimEnd(), "", jsxSection];
     if (elementComponents.source.length > 0) body.push("", elementComponents.source);
-
     const count = elementComponents.exportedNames.size + intrinsicCount;
     return { source: `${body.join("\n")}\n`, count };
 };
+
+export { generateJsxFiles, type JsxNamespaceFile, type JsxGenerationOptions };

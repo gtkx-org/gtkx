@@ -23,7 +23,6 @@ describe("build", () => {
 
     it("runs codegen preflight and builds with the default entry", async () => {
         await runCommand(build, { rawArgs: [] });
-
         expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true, mode: "production" });
         expect(buildMock).toHaveBeenCalledOnce();
         const buildCall = buildMock.mock.calls[0];
@@ -35,7 +34,6 @@ describe("build", () => {
 
     it("forwards a custom entry and asset-base flag", async () => {
         await runCommand(build, { rawArgs: ["src/main.tsx", "--asset-base", "../share/myapp"] });
-
         const buildCall = buildMock.mock.calls[0];
         if (!buildCall) throw new Error("build was not invoked");
         const buildArgs = buildCall[0];

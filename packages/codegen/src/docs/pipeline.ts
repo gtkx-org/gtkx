@@ -9,19 +9,19 @@ import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/js
 import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
 import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
 
-export type DocsElementLink = {
+type DocsElementLink = {
     text: string;
     link: string;
 };
 
-export type DocsNamespace = {
+type DocsNamespace = {
     name: string;
     directory: string;
     link: string;
     elements: DocsElementLink[];
 };
 
-export type DocsOptions = {
+type DocsOptions = {
     libraries: string[];
     girPath: string[];
     outDir: string;
@@ -34,6 +34,19 @@ type DocsManifest = {
     namespaces: DocsNamespace[];
 };
 
+type GeneratedDocs = {
+    pages: { path: string; content: string }[];
+    namespaces: DocsNamespace[];
+};
+
+type Page = { path: string; content: string };
+type NamespacePages = { docs: DocsNamespace; pages: Page[] };
+
+type DocsResult = {
+    regenerated: boolean;
+    namespaces: DocsNamespace[];
+};
+
 const MANIFEST_FILENAME = "manifest.json";
 
 const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]): string => {
@@ -42,7 +55,9 @@ const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]
         const description = firstSentence(entry.klass.doc).replaceAll("|", String.raw`\|`);
         return `| [${entry.glibName}](${link}) | ${description} |`;
     });
+
     const description = `Reference pages for the ${namespace.elements.length} JSX elements in the ${namespace.name} namespace.`;
+
     return [
         "---",
         `description: ${JSON.stringify(description)}`,
@@ -63,7 +78,9 @@ const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string
     const rows = namespaces.map(
         (ns) => `| [${ns.name}](${ns.link}) | \`@gtkx/jsx/${ns.directory}\` | ${ns.elements.length} |`,
     );
+
     const librariesList = libraries.map((library) => `\`${library}\``).join(", ");
+
     return [
         "---",
         "description: \"Generated reference documentation for every JSX element in this project's GIR libraries.\"",
@@ -88,37 +105,34 @@ const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string
     ].join("\n");
 };
 
-type GeneratedDocs = {
-    pages: { path: string; content: string }[];
-    namespaces: DocsNamespace[];
-};
-
 const groupElementsByNamespace = (elements: GlibNamedClass[]): Map<string, GlibNamedClass[]> => {
     const byNamespace: Map<string, GlibNamedClass[]> = new Map();
+
     for (const entry of elements) {
         const list = byNamespace.get(entry.namespace.name) ?? [];
         list.push(entry);
         byNamespace.set(entry.namespace.name, list);
     }
+
     return byNamespace;
 };
 
 const buildElementLinks = (elements: GlibNamedClass[], basePath: string): Map<string, string> => {
     const linkByGlibName: Map<string, string> = new Map();
+
     for (const entry of elements) {
         const directory = namespaceDirectory(entry.namespace);
         const link = `${basePath}/${directory}/${elementSlug(entry.klass.name)}`;
+
         if (linkByGlibName.values().some((existing) => existing === link)) {
             throw new Error(`Docs page slug collision for ${entry.glibName} at ${link}`);
         }
+
         linkByGlibName.set(entry.glibName, link);
     }
+
     return linkByGlibName;
 };
-
-type Page = { path: string; content: string };
-
-type NamespacePages = { docs: DocsNamespace; pages: Page[] };
 
 const namespacePages = (input: {
     name: string;
@@ -129,16 +143,19 @@ const namespacePages = (input: {
 }): NamespacePages => {
     const { name, elements, basePath, linkByGlibName, pageContext } = input;
     const directory = name.toLowerCase();
+
     const docs: DocsNamespace = {
         name,
         directory,
         link: `${basePath}/${directory}/`,
         elements: elements.map((entry) => ({ text: entry.glibName, link: linkByGlibName.get(entry.glibName) ?? "" })),
     };
+
     const pages: Page[] = elements.map((entry) => ({
         path: `${directory}/${elementSlug(entry.klass.name)}.md`,
         content: renderElementPage(entry, pageContext),
     }));
+
     pages.push({ path: `${directory}/index.md`, content: namespaceIndexPage(docs, elements) });
     return { docs, pages };
 };
@@ -148,23 +165,19 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
     const byNamespace = groupElementsByNamespace(intrinsicElements);
     const linkByGlibName = buildElementLinks(intrinsicElements, basePath);
     const pageContext = createElementPageContext(library, (glibName: string) => linkByGlibName.get(glibName));
-
     const pages: Page[] = [];
     const namespaces: DocsNamespace[] = [];
     const orderedNames = sortStringsBy(byNamespace.keys(), namespaceOrder);
+
     for (const name of orderedNames) {
         const elements = sortStringsBy(byNamespace.get(name) ?? [], (entry) => entry.glibName);
         const result = namespacePages({ name, elements, basePath, linkByGlibName, pageContext });
         pages.push(...result.pages);
         namespaces.push(result.docs);
     }
+
     pages.push({ path: "index.md", content: rootIndexPage(namespaces, options.libraries) });
     return { pages, namespaces };
-};
-
-export type DocsResult = {
-    regenerated: boolean;
-    namespaces: DocsNamespace[];
 };
 
 const cachedDocsResult = (options: DocsOptions, manifestPath: string): DocsResult | undefined => {
@@ -182,24 +195,26 @@ const writePages = (outDir: string, pages: Page[]): void => {
     }
 };
 
-export const writeDocs = (options: DocsOptions): DocsResult => {
+const writeDocs = (options: DocsOptions): DocsResult => {
     setElementProps(options.props ?? {});
     const basePath = options.basePath ?? "/reference";
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
     const cached = cachedDocsResult(options, manifestPath);
     if (cached !== undefined) return cached;
-
     const library = Library.load(options.libraries, options.girPath);
     const { pages, namespaces } = generatePages(options, basePath, library);
-
     rmSync(options.outDir, { recursive: true, force: true });
     mkdirSync(options.outDir, { recursive: true });
     writePages(options.outDir, pages);
     const manifest: DocsManifest = { namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
+
     writeFileSync(
         join(options.outDir, FINGERPRINT_FILENAME),
         JSON.stringify(computeGiFingerprint(library.girFiles, options.libraries)),
     );
+
     return { regenerated: true, namespaces };
 };
+
+export { writeDocs, type DocsElementLink, type DocsNamespace, type DocsOptions, type DocsResult };

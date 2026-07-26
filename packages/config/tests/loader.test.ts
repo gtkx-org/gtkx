@@ -27,6 +27,7 @@ describe("loadConfig", () => {
         writeConfig(
             `${defineConfigImport()}export default defineConfig({ applicationId: "org.gtk.Demo4", libraries: ["Gtk-4.0"] });\n`,
         );
+
         const result = await loadConfig(cwd);
         expect(result.config.libraries).toEqual(["Gtk-4.0"]);
         expect(result.configFile?.endsWith("gtkx.config.ts")).toBe(true);
@@ -37,6 +38,7 @@ describe("loadConfig", () => {
         writeConfig(
             "export default { applicationId: 'org.gtk.Demo4', libraries: ['Gtk-4.0', 'Adw-1'], girPath: ['/usr/share/gir-1.0'] };\n",
         );
+
         const result = await loadConfig(cwd);
         expect(result.config.libraries).toEqual(["Gtk-4.0", "Adw-1"]);
         expect(result.config.girPath).toEqual(["/usr/share/gir-1.0"]);
@@ -75,6 +77,7 @@ describe("loadConfig", () => {
         writeConfig(
             "export default { applicationId: \"org.gtk.Base\", $production: { applicationId: \"org.gtk.Prod\" } };\n",
         );
+
         const result = await loadConfig(cwd, { mode: "production" });
         expect(result.config.applicationId).toBe("org.gtk.Prod");
     });
@@ -83,6 +86,7 @@ describe("loadConfig", () => {
         writeConfig(
             "export default (env) => ({ applicationId: env.mode === \"production\" ? \"org.gtk.Prod\" : \"org.gtk.Dev\" });\n",
         );
+
         const result = await loadConfig(cwd, { mode: "production" });
         expect(result.config.applicationId).toBe("org.gtk.Prod");
     });
@@ -127,6 +131,7 @@ describe("createConfigLoader", () => {
         writeConfig("export default { applicationId: \"org.gtk.Demo4\" };\n");
         const other = mkdtempSync(join(tmpdir(), "gtkx-config-loader-"));
         writeFileSync(join(other, "gtkx.config.ts"), "export default { applicationId: \"org.gtk.Other\" };\n");
+
         try {
             const load = createConfigLoader();
             const cwdConfig = await load(cwd);

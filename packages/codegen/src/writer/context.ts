@@ -2,7 +2,7 @@ import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { ModuleBuilder } from "./module.js";
 
-export class ModuleContext {
+class ModuleContext {
     public module: ModuleBuilder = new ModuleBuilder();
     public namespace: GirNamespace;
     public library: Library;
@@ -46,3 +46,5 @@ export class ModuleContext {
         return `${this.addCrossNamespaceImport(namespaceName)}.${typeName}`;
     }
 }
+
+export { ModuleContext };

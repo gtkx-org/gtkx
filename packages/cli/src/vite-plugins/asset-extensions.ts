@@ -1,4 +1,4 @@
-export const ASSET_EXTENSIONS = [
+const ASSET_EXTENSIONS = [
     "png",
     "jpg",
     "jpeg",
@@ -23,6 +23,7 @@ export const ASSET_EXTENSIONS = [
     "gpa",
 ];
 
-export const ASSET_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
+const ASSET_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
+const ASSET_PATH_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})(?:\?.*)?$`, "i");
 
-export const ASSET_PATH_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})(?:\?.*)?$`, "i");
+export { ASSET_EXTENSIONS, ASSET_RE, ASSET_PATH_RE };

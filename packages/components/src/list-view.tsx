@@ -8,7 +8,7 @@ import { useCollection } from "./internal/use-collection.js";
  * Renders a Gtk.ListView from declarative items or sections, with per-row rendering,
  * controlled selection, controlled tree expansion, and estimated item sizing.
  */
-export function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNode {
+function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNode {
     const {
         items,
         sections,
@@ -23,6 +23,7 @@ export function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         estimatedItemWidth,
         ...rest
     } = props;
+
     const { model, cells, selection } = useCollection({
         items,
         sections,
@@ -33,6 +34,7 @@ export function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         expandedIds,
         onExpandedChange,
     });
+
     return (
         <>
             <GtkListView
@@ -45,3 +47,5 @@ export function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): 
         </>
     );
 }
+
+export { ListView };

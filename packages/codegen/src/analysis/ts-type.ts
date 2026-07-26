@@ -11,7 +11,7 @@ type ReferenceName = {
     typeName: string;
 };
 
-export type TsTypeTarget = {
+type TsTypeTarget = {
     containerStyle: "map" | "record";
     callbackType: string;
     byteArrayAsNumber: boolean;
@@ -48,11 +48,12 @@ const renderEntityType = (
     name: ReferenceName | undefined,
 ): string => renderNamedType(target, type, willEmitEntity(library, type) ? name : undefined);
 
-export const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
+const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
     if (ref === undefined) return "void";
     const type = library.typeOf(ref);
     const name = library.nameOf(ref);
     if (type === undefined) return renderNamedType(target, undefined, name);
+
     switch (type.kind) {
         case "primitive": {
             return renderPrimitiveType(target, type);
@@ -86,6 +87,7 @@ const renderContainerType = (
         const value = renderBaseTypeFor(library, target, type.value);
         return target.containerStyle === "record" ? `Record<${key}, ${value}>` : `Map<${key}, ${value}>`;
     }
+
     if (type.kind === "list" && type.flavor === "gbytearray" && target.byteArrayAsNumber) return "number[]";
     return `${renderBaseTypeFor(library, target, type.element)}[]`;
 };
@@ -107,12 +109,12 @@ const moduleTarget = (context: ModuleContext): TsTypeTarget => ({
     renderGtype: () => gtypeTsType(context),
 });
 
-export const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string => {
+const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string => {
     const base = renderBaseTypeFor(context.library, moduleTarget(context), ref);
     return isNullable ? `${base} | null` : base;
 };
 
-export const recordTypeTarget = (
+const recordTypeTarget = (
     library: Library,
     renderNamedRef: (name: ReferenceName) => string,
     renderGtype: () => string,
@@ -127,9 +129,13 @@ export const recordTypeTarget = (
                     ? "number"
                     : renderBaseTypeFor(library, target, resolved.value.target);
             }
+
             return renderNamedRef(name);
         },
         renderGtype,
     };
+
     return target;
 };
+
+export { renderBaseTypeFor, renderTsType, recordTypeTarget, type TsTypeTarget };

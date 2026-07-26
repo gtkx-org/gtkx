@@ -17,52 +17,13 @@ type SortProps = {
     onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
 };
 
-const columnById = (view: Gtk.ColumnView, id: string): Gtk.ColumnViewColumn | null => {
-    const columns = view.getColumns();
-    for (let index = 0; index < columns.getNItems(); index++) {
-        const column = columns.getItem(index);
-        if (column instanceof Gtk.ColumnViewColumn && column.getId() === id) return column;
-    }
-    return null;
-};
-
 type SortTarget = { view: Gtk.ColumnView; column: Gtk.ColumnViewColumn | null };
 
-const sortTargetFor = (view: Gtk.ColumnView | null, sortColumn: string | null | undefined): SortTarget | null => {
-    if (view === null || sortColumn === undefined) return null;
-    if (sortColumn === null) return { view, column: null };
-    const column = columnById(view, sortColumn);
-    return column === null ? null : { view, column };
-};
-
-const applySort = (
-    sorting: { current: boolean },
-    view: Gtk.ColumnView,
-    column: Gtk.ColumnViewColumn | null,
-    order: Gtk.SortType | null | undefined,
-): void => {
-    sorting.current = true;
-    try {
-        view.sortByColumn(column, order ?? Gtk.SortType.ASCENDING);
-    } finally {
-        sorting.current = false;
-    }
-};
-
-const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns: Column[]): void => {
-    const sorting = useRef(false);
-    const sorter = useProperty(view, "sorter");
-    const columnSorter = sorter instanceof Gtk.ColumnViewSorter ? sorter : null;
-    useSignal(columnSorter, "changed", (): void => {
-        if (columnSorter === null || sorting.current) return;
-        sort.onSortChanged?.(columnSorter.getPrimarySortColumn()?.getId() ?? null, columnSorter.getPrimarySortOrder());
-    });
-    const { sortColumn, sortOrder } = sort;
-    useLayoutEffect(() => {
-        const target = sortTargetFor(view, sortColumn);
-        if (target === null) return;
-        applySort(sorting, target.view, target.column, sortOrder);
-    }, [view, sortColumn, sortOrder, columns]);
+type ColumnRenderersOptions = {
+    collection: CollectionModel;
+    columns: Column[];
+    expandedIds: string[] | null | undefined;
+    renderHeader: HeaderRenderer<never> | null | undefined;
 };
 
 const COLUMN_VIEW_PROPS = [
@@ -83,9 +44,79 @@ const COLUMN_VIEW_PROPS = [
     "ref",
 ] as const satisfies (keyof ColumnViewProps)[];
 
+const columnById = (view: Gtk.ColumnView, id: string): Gtk.ColumnViewColumn | null => {
+    const columns = view.getColumns();
+
+    for (let index = 0; index < columns.getNItems(); index++) {
+        const column = columns.getItem(index);
+        if (column instanceof Gtk.ColumnViewColumn && column.getId() === id) return column;
+    }
+
+    return null;
+};
+
+const sortTargetFor = (view: Gtk.ColumnView | null, sortColumn: string | null | undefined): SortTarget | null => {
+    if (view === null || sortColumn === undefined) return null;
+    if (sortColumn === null) return { view, column: null };
+    const column = columnById(view, sortColumn);
+    return column === null ? null : { view, column };
+};
+
+const applySort = (
+    sorting: { current: boolean },
+    view: Gtk.ColumnView,
+    column: Gtk.ColumnViewColumn | null,
+    order: Gtk.SortType | null | undefined,
+): void => {
+    sorting.current = true;
+
+    try {
+        view.sortByColumn(column, order ?? Gtk.SortType.ASCENDING);
+    } finally {
+        sorting.current = false;
+    }
+};
+
+const emitSortChanged = (
+    sorter: Gtk.ColumnViewSorter | null,
+    sorting: { current: boolean },
+    sort: SortProps,
+): void => {
+    if (sorter === null || sorting.current) return;
+    sort.onSortChanged?.(sorter.getPrimarySortColumn()?.getId() ?? null, sorter.getPrimarySortOrder());
+};
+
+const syncSort = (
+    sorting: { current: boolean },
+    view: Gtk.ColumnView | null,
+    sortColumn: string | null | undefined,
+    sortOrder: Gtk.SortType | null | undefined,
+): void => {
+    const target = sortTargetFor(view, sortColumn);
+    if (target === null) return;
+    applySort(sorting, target.view, target.column, sortOrder);
+};
+
+const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns: Column[]): void => {
+    const sorting = useRef(false);
+    const sorter = useProperty(view, "sorter");
+    const columnSorter = sorter instanceof Gtk.ColumnViewSorter ? sorter : null;
+
+    useSignal(columnSorter, "changed", (): void => {
+        emitSortChanged(columnSorter, sorting, sort);
+    });
+
+    const { sortColumn, sortOrder } = sort;
+
+    useLayoutEffect(() => {
+        syncSort(sorting, view, sortColumn, sortOrder);
+    }, [view, sortColumn, sortOrder, columns]);
+};
+
 const renderColumn = (column: Column, cells: Cells): ReactNode => {
     const { id, sortable } = column;
     const rest = omit(column, ["id", "renderCell", "sortable"]);
+
     return (
         <GtkColumnViewColumn
             key={id}
@@ -95,13 +126,6 @@ const renderColumn = (column: Column, cells: Cells): ReactNode => {
             {...rest}
         />
     );
-};
-
-type ColumnRenderersOptions = {
-    collection: CollectionModel;
-    columns: Column[];
-    expandedIds: string[] | null | undefined;
-    renderHeader: HeaderRenderer<never> | null | undefined;
 };
 
 const columnItem = (
@@ -117,6 +141,7 @@ const columnItem = (
 
 const columnRenderers = (options: ColumnRenderersOptions): CellRenderers => {
     const byId = new Map(options.columns.map((column) => [column.id, column]));
+
     return {
         item: (record) => columnItem(record, byId, options),
         header: headerRenderer(options.collection, options.renderHeader),
@@ -128,7 +153,7 @@ const columnRenderers = (options: ColumnRenderersOptions): CellRenderers => {
  * with controlled selection, expansion, and sorting, per-column header menus, and
  * section header rendering.
  */
-export function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode {
+function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode {
     const {
         items,
         sections,
@@ -145,8 +170,10 @@ export function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S
         estimatedItemHeight,
         ref,
     } = props;
+
     const rest = omit(props, COLUMN_VIEW_PROPS);
     const [view, refCallback] = useWidgetRef<Gtk.ColumnView>(ref);
+
     const { model, cells, selection } = useCollection({
         items,
         sections,
@@ -157,8 +184,10 @@ export function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S
         expandedIds,
         onExpandedChange,
     });
+
     const columnList = columns as Column[];
     useColumnSorting(view, { sortColumn, sortOrder, onSortChanged }, columnList);
+
     return (
         <>
             <GtkColumnView
@@ -176,3 +205,5 @@ export function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S
         </>
     );
 }
+
+export { ColumnView };

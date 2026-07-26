@@ -3,7 +3,7 @@ import ejs from "ejs";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 
-export type TemplateContext = {
+type TemplateContext = {
     name: string;
     applicationId: string;
     title: string;
@@ -16,7 +16,7 @@ const getTemplatesDir = (): string => {
     return join(import.meta.dirname, "templates");
 };
 
-export const listTemplates = (): string[] =>
+const listTemplates = (): string[] =>
     sortStrings(
         readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
             .filter((entry) => entry.isFile())
@@ -25,5 +25,7 @@ export const listTemplates = (): string[] =>
             .map((relative) => relative.replace(/\.ejs$/, "")),
     );
 
-export const renderFile = async (templateName: string, context: TemplateContext): Promise<string> =>
+const renderFile = async (templateName: string, context: TemplateContext): Promise<string> =>
     ejs.renderFile(join(getTemplatesDir(), `${templateName}.ejs`), context);
+
+export { listTemplates, renderFile, type TemplateContext };

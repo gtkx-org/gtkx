@@ -48,6 +48,7 @@ describe("jest-dom-style matchers", () => {
                 <AdwToggle name="grid" label="Grid" />
             </AdwToggleGroup>,
         );
+
         const list = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "List" });
         const grid = await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Grid" });
         expect(list).toBeChecked();

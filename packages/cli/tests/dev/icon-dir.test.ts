@@ -24,29 +24,26 @@ describe("prepareDevIconDir", () => {
 
     afterEach(() => {
         rmSync(projectDir, { recursive: true, force: true });
+
         if (savedXdgDataDirs === undefined) delete process.env.XDG_DATA_DIRS;
         else process.env.XDG_DATA_DIRS = savedXdgDataDirs;
     });
 
     it("returns null and leaves the environment alone without an icons directory", () => {
         const dir = prepareDevIconDir(projectDir, DATA_DIR);
-
         expect(dir).toBeNull();
         expect(process.env.XDG_DATA_DIRS).toBeUndefined();
     });
 
     it("returns null when there is no data directory", () => {
         const dir = prepareDevIconDir(projectDir, null);
-
         expect(dir).toBeNull();
         expect(process.env.XDG_DATA_DIRS).toBeUndefined();
     });
 
     it("exports the data directory with the spec default appended when XDG_DATA_DIRS is unset", () => {
         writeIcon(join(DATA_DIR, "icons", "hicolor", "scalable", "apps", "com.example.app.svg"));
-
         const dir = prepareDevIconDir(projectDir, DATA_DIR);
-
         expect(dir).toBe(join(projectDir, DATA_DIR));
         expect(process.env.XDG_DATA_DIRS).toBe(`${dir}:/usr/local/share:/usr/share`);
     });
@@ -54,9 +51,7 @@ describe("prepareDevIconDir", () => {
     it("prepends to an existing XDG_DATA_DIRS", () => {
         writeIcon(join(DATA_DIR, "icons", "hicolor", "scalable", "apps", "com.example.app.svg"));
         process.env.XDG_DATA_DIRS = "/app/share:/usr/share";
-
         const dir = prepareDevIconDir(projectDir, DATA_DIR);
-
         expect(process.env.XDG_DATA_DIRS).toBe(`${dir}:/app/share:/usr/share`);
     });
 
@@ -64,9 +59,7 @@ describe("prepareDevIconDir", () => {
         writeIcon(join(DATA_DIR, "icons", "hicolor", "scalable", "apps", "com.example.app.svg"));
         const first = prepareDevIconDir(projectDir, DATA_DIR);
         const before = process.env.XDG_DATA_DIRS;
-
         const second = prepareDevIconDir(projectDir, DATA_DIR);
-
         expect(second).toBe(first);
         expect(process.env.XDG_DATA_DIRS).toBe(before);
     });

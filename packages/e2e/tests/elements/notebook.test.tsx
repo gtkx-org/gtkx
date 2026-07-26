@@ -17,9 +17,7 @@ describe("render - Notebook (1)", () => {
     describe("GtkNotebook", () => {
         it("creates Notebook widget", async () => {
             const ref = createRef<Gtk.Notebook>();
-
             await render(<GtkNotebook ref={ref} />);
-
             expect(ref.current).not.toBeNull();
         });
     });
@@ -47,11 +45,8 @@ describe("render - Notebook (2)", () => {
     describe("page management", () => {
         it("inserts page before existing page", async () => {
             const notebookRef = createRef<Gtk.Notebook>();
-
             const { rerender } = await renderChildren(["First", "Last"], buildLabelNotebook(notebookRef));
-
             await rerender(["First", "Middle", "Last"]);
-
             const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
             expect(labels).toHaveLength(3);
             expect(labels).toEqual(expect.arrayContaining(["First", "Middle", "Last"]));
@@ -59,11 +54,8 @@ describe("render - Notebook (2)", () => {
 
         it("removes page", async () => {
             const notebookRef = createRef<Gtk.Notebook>();
-
             const { rerender } = await renderChildren(["A", "B", "C"], buildLabelNotebook(notebookRef));
-
             await rerender(["A", "C"]);
-
             const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
             expect(labels).toEqual(["A", "C"]);
         });
@@ -82,11 +74,8 @@ describe("render - Notebook (2)", () => {
             }
 
             await render(<App label="Initial" />);
-
             expect(getPageLabels(notebookRef.current as Gtk.Notebook)).toEqual(["Initial"]);
-
             await render(<App label="Updated" />);
-
             expect(getPageLabels(notebookRef.current as Gtk.Notebook)).toEqual(["Updated"]);
         });
     });

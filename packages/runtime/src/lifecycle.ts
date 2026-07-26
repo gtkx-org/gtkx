@@ -5,7 +5,7 @@ import { blockMatchedSignalHandlers } from "./signal.js";
  * Minimal structural interface of a GTK4/GIO application needed to register, run,
  * and shut it down, plus the signals its lifecycle helpers connect to.
  */
-export type ApplicationLike = {
+type ApplicationLike = {
     getIsRegistered(): boolean;
     register(cancellable: null): boolean;
     activate(): void;
@@ -25,7 +25,7 @@ let hasQuit = false;
  *
  * @param callback Invoked during shutdown.
  */
-export const onExit = (callback: () => void): void => {
+const onExit = (callback: () => void): void => {
     shutdownCallbacks.push(callback);
 };
 
@@ -33,12 +33,10 @@ export const onExit = (callback: () => void): void => {
  * Runs every registered exit callback and shuts down the native runtime. Safe to
  * call more than once; only the first call takes effect.
  */
-export const quit = (): void => {
+const quit = (): void => {
     if (hasQuit) return;
     hasQuit = true;
-
     for (const callback of shutdownCallbacks) callback();
-
     nativeQuit();
 };
 
@@ -48,10 +46,9 @@ export const quit = (): void => {
  *
  * @param application The application to register and activate.
  */
-export const runApplication = (application: ApplicationLike): void => {
+const runApplication = (application: ApplicationLike): void => {
     application.on("activate", () => keepAlive(true));
     application.on("shutdown", () => keepAlive(false));
-
     if (!application.getIsRegistered()) application.register(null);
     application.activate();
 };
@@ -62,7 +59,7 @@ export const runApplication = (application: ApplicationLike): void => {
  *
  * @param application The application to shut down.
  */
-export const quitApplication = (application: ApplicationLike): void => {
+const quitApplication = (application: ApplicationLike): void => {
     if (!application.getIsRegistered()) return;
     const windows = application.getWindows?.() ?? [];
     for (const window of windows) application.removeWindow?.(window);
@@ -70,3 +67,5 @@ export const quitApplication = (application: ApplicationLike): void => {
     blockMatchedSignalHandlers(application, "activate");
     application.run([]);
 };
+
+export { onExit, quit, runApplication, quitApplication, type ApplicationLike };

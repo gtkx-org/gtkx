@@ -3,7 +3,7 @@ import { createElement, type ElementType, isValidElement, type ReactElement, typ
 import type { Props } from "../reconciler/registry.js";
 
 /** The intrinsic element that carries an object-valued prop's element into its parent's named property. */
-export const Prop = "gtkx:prop";
+const Prop = "gtkx:prop";
 
 const containsElement = (value: unknown): boolean =>
     isValidElement(value) || (Array.isArray(value) && value.some((item: unknown) => containsElement(item)));
@@ -22,10 +22,12 @@ const buildElement = (typeName: string, record: Props): ReactElement => {
     const Host = typeName as ElementType;
     const hostProps: Props = {};
     const propChildren: ReactNode[] = [];
+
     for (const key in record) {
         if (key === "children") continue;
         routeProp(key, record[key], hostProps, propChildren);
     }
+
     return (
         <Host {...hostProps}>
             {propChildren}
@@ -34,7 +36,9 @@ const buildElement = (typeName: string, record: Props): ReactElement => {
     );
 };
 
-export const createElementComponent =
+const createElementComponent =
     (typeName: string): ((props: unknown) => ReactNode) =>
         (props: unknown): ReactNode =>
             buildElement(typeName, isRecord(props) ? props : {});
+
+export { Prop, createElementComponent };

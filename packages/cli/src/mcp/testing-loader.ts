@@ -1,20 +1,21 @@
-export type TestingModule = typeof import("@gtkx/testing");
-
-export type TestingModuleLoader = () => Promise<TestingModule>;
-
-const defaultLoader: TestingModuleLoader = () => import("@gtkx/testing");
+type TestingModule = typeof import("@gtkx/testing");
+type TestingModuleLoader = () => Promise<TestingModule>;
 
 let loader: TestingModuleLoader = defaultLoader;
 let testingModule: TestingModule | null = null;
 let testingLoadError: Error | null = null;
 
-export const setTestingModuleLoader = (next: TestingModuleLoader | null): void => {
+function defaultLoader(): Promise<TestingModule> {
+    return import("@gtkx/testing");
+}
+
+const setTestingModuleLoader = (next: TestingModuleLoader | null): void => {
     loader = next ?? defaultLoader;
     testingModule = null;
     testingLoadError = null;
 };
 
-export const loadTestingModule = async (): Promise<TestingModule> => {
+const loadTestingModule = async (): Promise<TestingModule> => {
     if (testingModule) return testingModule;
     if (testingLoadError) throw testingLoadError;
 
@@ -27,6 +28,9 @@ export const loadTestingModule = async (): Promise<TestingModule> => {
             `pnpm add -D @gtkx/testing (import failed: ${String(error)})`,
             { cause: error },
         );
+
         throw testingLoadError;
     }
 };
+
+export { setTestingModuleLoader, loadTestingModule, type TestingModule, type TestingModuleLoader };

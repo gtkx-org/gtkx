@@ -1,14 +1,17 @@
-export type CleanupFunction = () => void | Promise<void>;
+type CleanupFunction = () => void | Promise<void>;
 
 const cleanupQueue: Set<CleanupFunction> = new Set();
 
-export const addToCleanupQueue = (fn: CleanupFunction): void => {
+const addToCleanupQueue = (fn: CleanupFunction): void => {
     cleanupQueue.add(fn);
 };
 
-export const runCleanup = async (): Promise<void> => {
+const runCleanup = async (): Promise<void> => {
     for (const fn of cleanupQueue) {
         await fn();
     }
+
     cleanupQueue.clear();
 };
+
+export { addToCleanupQueue, runCleanup, type CleanupFunction };

@@ -6,17 +6,19 @@ import { join } from "node:path";
 
 type Status = "green" | "red";
 type Baseline = Record<string, Status>;
-
-const PROJECT = "animated";
-const BASELINE_PATH = join(import.meta.dirname, "..", "packages", "animated", "tests", "baseline.json");
-
 type VitestAssertion = { fullName?: string; title?: string; status?: string };
 type VitestSuite = { name?: string; assertionResults?: VitestAssertion[] };
 type VitestReport = { testResults?: VitestSuite[] };
 
-const runSuite = (): VitestReport => {
+const PROJECT = "animated";
+const BASELINE_PATH = join(import.meta.dirname, "..", "packages", "animated", "tests", "baseline.json");
+const SKIP_STATUSES = new Set(["pending", "skipped", "todo"]);
+const { observed, skipped } = collect(runSuite());
+
+function runSuite(): VitestReport {
     const root = join(import.meta.dirname, "..");
     const reportPath = join(tmpdir(), `gtkx-spec-report-${process.pid}.json`);
+
     try {
         execFileSync(resolveExecutable("npx"), ["vitest", "run", "--project", PROJECT, "--reporter=json", `--outputFile=${reportPath}`], {
             cwd: root,
@@ -27,36 +29,42 @@ const runSuite = (): VitestReport => {
     } catch {
         if (!existsSync(reportPath)) throw new Error("vitest produced no JSON report");
     }
+
     const report = JSON.parse(readFileSync(reportPath, "utf8")) as VitestReport;
     rmSync(reportPath, { force: true });
     return report;
-};
+}
 
-const SKIP_STATUSES = new Set(["pending", "skipped", "todo"]);
+function allAssertions(report: VitestReport): VitestAssertion[] {
+    return (report.testResults ?? []).flatMap((suite) => suite.assertionResults ?? []);
+}
 
-const allAssertions = (report: VitestReport): VitestAssertion[] =>
-    (report.testResults ?? []).flatMap((suite) => suite.assertionResults ?? []);
+function statusOf(status: string | undefined): Status {
+    return status === "passed" ? "green" : "red";
+}
 
-const statusOf = (status: string | undefined): Status => (status === "passed" ? "green" : "red");
-
-const recordAssertion = (assertion: VitestAssertion, observed: Baseline, skipped: string[]): void => {
+function recordAssertion(assertion: VitestAssertion, observed: Baseline, skipped: string[]): void {
     const name = assertion.fullName ?? assertion.title;
     if (!name) return;
+
     if (SKIP_STATUSES.has(assertion.status ?? "")) {
         skipped.push(name);
         return;
     }
-    observed[name] = statusOf(assertion.status);
-};
 
-const collect = (report: VitestReport): { observed: Baseline; skipped: string[] } => {
+    observed[name] = statusOf(assertion.status);
+}
+
+function collect(report: VitestReport): { observed: Baseline; skipped: string[] } {
     const observed: Baseline = {};
     const skipped: string[] = [];
+
     for (const assertion of allAssertions(report)) {
         recordAssertion(assertion, observed, skipped);
     }
+
     return { observed, skipped };
-};
+}
 
 const readBaseline = (): Baseline =>
     existsSync(BASELINE_PATH) ? (JSON.parse(readFileSync(BASELINE_PATH, "utf8")) as Baseline) : {};
@@ -70,6 +78,7 @@ const record = (observed: Baseline): void => {
 
 const collectFailures = (observed: Baseline, skipped: string[], baseline: Baseline): string[] => {
     const removed = Object.keys(baseline).filter((name) => !Object.hasOwn(observed, name));
+
     const regressed = Object.entries(observed).filter(
         ([name, status]) => baseline[name] === "green" && status === "red",
     );
@@ -88,11 +97,13 @@ const reportFixed = (observed: Baseline, baseline: Baseline): number => {
 
 const reportFailures = (failures: string[]): void => {
     for (const failure of failures) process.stderr.write(`${failure}\n`);
+
     process.stderr.write(
         "\nThe spec baseline is frozen. Specs may only move red to green.\n" +
         "Deleting, skipping, or weakening a spec is not a valid way to make the suite pass.\n" +
         "After implementing a behavior, re-record with: pnpm spec:record\n",
     );
+
     process.exit(1);
 };
 
@@ -100,7 +111,6 @@ const check = (observed: Baseline, skipped: string[]): void => {
     const baseline = readBaseline();
     const failures = collectFailures(observed, skipped, baseline);
     const fixedCount = reportFixed(observed, baseline);
-
     if (failures.length > 0) reportFailures(failures);
 
     process.stdout.write(
@@ -108,7 +118,6 @@ const check = (observed: Baseline, skipped: string[]): void => {
     );
 };
 
-const { observed, skipped } = collect(runSuite());
 if (process.argv.includes("--record")) {
     record(observed);
 } else {

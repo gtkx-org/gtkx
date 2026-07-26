@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 
 const SYSTEM_GIR_PATH = "/usr/share/gir-1.0";
 
-export const resolveGirPath = (configGirPath: string[] | undefined): string[] => {
+const resolveGirPath = (configGirPath: string[] | undefined): string[] => {
     const paths: string[] = [];
 
     if (configGirPath) {
@@ -12,6 +12,7 @@ export const resolveGirPath = (configGirPath: string[] | undefined): string[] =>
     }
 
     const envPath = process.env.GTKX_GIR_PATH;
+
     if (envPath) {
         paths.push(...envPath.split(":").filter((path) => path.length > 0));
     }
@@ -21,6 +22,7 @@ export const resolveGirPath = (configGirPath: string[] | undefined): string[] =>
     }
 
     const pkgConfigPath = queryPkgConfigGirDir();
+
     if (pkgConfigPath !== undefined && existsSync(pkgConfigPath)) {
         paths.push(pkgConfigPath);
     }
@@ -45,11 +47,13 @@ const resolvePkgConfig = (): string | undefined => {
 const queryPkgConfigGirDir = (): string | undefined => {
     const pkgConfig = resolvePkgConfig();
     if (pkgConfig === undefined) return undefined;
+
     try {
         const output = execFileSync(pkgConfig, ["--variable=girdir", "gobject-introspection-1.0"], {
             encoding: "utf8",
             stdio: ["ignore", "pipe", "pipe"],
         });
+
         const trimmed = output.trim();
         return trimmed.length > 0 ? trimmed : undefined;
     } catch (error) {
@@ -57,3 +61,5 @@ const queryPkgConfigGirDir = (): string | undefined => {
         throw pkgConfigGirDirError(error);
     }
 };
+
+export { resolveGirPath };
