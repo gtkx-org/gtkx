@@ -53,9 +53,9 @@ RUN apt-get update \
 
 # ubuntu:26.04 packages weston 14, whose headless backend provides no input seat,
 # so a GTK popover's autohide grab fails and the popover never maps under the
-# vitest headless compositor. weston 15 adds --fake-seat (which the headless
-# display setup passes), so build it from source over the packaged runtime.
-ARG WESTON_VERSION=15.0.1
+# vitest headless compositor. weston 15 and later add --fake-seat (which the
+# headless display setup passes), so build it from source over the packaged runtime.
+ARG WESTON_VERSION=16.0.0
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         meson ninja-build hwdata wayland-protocols libwayland-bin \
@@ -68,7 +68,8 @@ RUN apt-get update \
         -Dbackend-default=headless -Dbackend-drm=false -Dbackend-rdp=false \
         -Dbackend-vnc=false -Dbackend-pipewire=false -Dbackend-x11=false \
         -Drenderer-gl=false -Drenderer-vulkan=false -Dxwayland=false \
-        -Dremoting=false -Dpipewire=false -Dimage-jpeg=false -Dimage-webp=false \
+        -Ddeprecated-remoting=false -Ddeprecated-pipewire=false \
+        -Dimage-jpeg=false -Dimage-webp=false \
         -Dshell-lua=false -Dshell-ivi=false -Dshell-kiosk=false \
         -Dcolor-management-lcms=false -Ddemo-clients=false \
         -Dsimple-clients=[] -Dtools=[] -Dtests=false \
@@ -104,8 +105,8 @@ ENV CARGO_HTTP_MULTIPLEXING=false
 
 # Keep in sync with /rust-toolchain.toml (stable) and scripts/run-headless.ts (nightly), which pin
 # the same toolchains for local builds; the image is built without the repository checked out.
-ARG RUST_VERSION=1.97.0
-ARG RUST_NIGHTLY=nightly-2026-07-13
+ARG RUST_VERSION=1.97.1
+ARG RUST_NIGHTLY=nightly-2026-07-26
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 

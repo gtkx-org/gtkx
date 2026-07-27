@@ -68,7 +68,8 @@
                 "{projectRoot}/build.rs",
                 "{projectRoot}/Cargo.toml",
                 "{projectRoot}/Cargo.lock",
-                "{projectRoot}/package.json"
+                "{projectRoot}/package.json",
+                "{workspaceRoot}/rust-toolchain.toml"
             ],
             "crateTests": [
                 "crate",
@@ -137,6 +138,6 @@
         "node": ">=24"
     },
     "devDependencies": {
-        "@napi-rs/cli": "^3.7.3"
+        "@napi-rs/cli": "^3.7.4"
     }
 }

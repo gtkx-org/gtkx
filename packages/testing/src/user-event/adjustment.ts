@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { wrapEvent } from "./event-wrapper.js";
 
+/** A scroll distance in pixels along each axis. */
 type ScrollDelta = {
     x?: number;
     y?: number;

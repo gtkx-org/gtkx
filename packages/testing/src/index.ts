@@ -79,6 +79,7 @@ export type {
     DropContent,
     DropOptions,
     PointerInput,
+    ScrollDelta,
     TabOptions,
     TypeOptions,
     UserEvent,
