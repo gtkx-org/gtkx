@@ -1,6 +1,9 @@
 use test_support as helpers;
 use test_support::napi_mock;
 
+use napi::bindgen_prelude::FromNapiValue as _;
+use native::ffi::descriptor::Descriptor;
+
 use std::ffi::c_void;
 
 use libffi::middle;
@@ -54,6 +57,8 @@ fn transfer_release_matches_codec_ownership() {
             get_type_fn_name: None,
             free_fn_name: None,
             caller_allocated: false,
+            size: None,
+            inline: false,
         };
         assert!(matches!(
             full_boxed.transfer_release(),
@@ -69,6 +74,7 @@ fn transfer_release_matches_codec_ownership() {
             ownership: Ownership::Full,
             size: None,
             caller_allocated: false,
+            inline: false,
         };
         assert!(plain_struct.transfer_release().is_none());
     });
@@ -79,6 +85,7 @@ fn struct_codec() -> StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(8),
         caller_allocated: false,
+        inline: false,
     }
 }
 
@@ -204,5 +211,25 @@ fn descriptor_enum_dispatch_routes_codec_traits() {
         assert!(matches!(encoded, ffi::Stash::I32(1)));
         let decoded = Decoder::decode(&descriptor, &env, &ffi::Stash::I32(0)).unwrap();
         assert_eq!(napi_mock::read_bool(decoded.raw()), Some(false));
+    });
+}
+
+#[test]
+fn descriptor_nesting_is_bounded() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut value = napi_mock::fake_object(&[("kind", napi_mock::fake_string("int32"))]);
+
+        for _ in 0..64 {
+            value = napi_mock::fake_object(&[
+                ("kind", napi_mock::fake_string("ref")),
+                ("innerDescriptor", value),
+            ]);
+        }
+
+        let Err(error) = (unsafe { Descriptor::from_napi_value(env.raw(), value) }) else {
+            panic!("a descriptor this deep must be refused");
+        };
+        assert!(error.reason.contains("maximum depth"));
     });
 }

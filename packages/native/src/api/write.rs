@@ -23,6 +23,27 @@ fn write_field(
     )
 }
 
+// A string field is written as a fresh GLib copy that the record does not own: the descriptor's
+// transfer is "none", so the codec deliberately leaves the displaced pointer alone. Handing the
+// copy to the handle's field store makes the record the owner instead, which is the only lifetime
+// long enough for the callee and short enough not to leak. Only a plain struct qualifies: a boxed
+// record is released through its own `GType`'s free function, which already owns its fields.
+fn adopt_field_allocation(
+    handle: &Handle,
+    field_codec: &Codec,
+    field_ptr: *mut c_void,
+    offset: usize,
+) {
+    if !field_codec.allocates_written_value() {
+        return;
+    }
+    let Some(fields) = handle.field_store() else {
+        return;
+    };
+    let written = unsafe { crate::ffi::Slot::new(field_ptr).load() };
+    unsafe { fields.adopt(offset, written) };
+}
+
 /// Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes.
 #[napi(catch_unwind)]
 pub fn write<'env>(
@@ -40,6 +61,7 @@ pub fn write<'env>(
         "field write",
         write_field(env, field_ptr, &field_codec, value),
     )?;
+    adopt_field_allocation(handle, &field_codec, field_ptr, offset);
     ().into_unknown(env)
 }
 

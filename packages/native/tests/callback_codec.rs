@@ -18,8 +18,15 @@ fn callback_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
         arg_codecs: Vec::new(),
         return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy,
-        user_data_index: None,
+        user_data_index: Some(0),
         scope,
+    }
+}
+
+fn closureless_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
+    CallbackCodec {
+        user_data_index: None,
+        ..callback_codec(has_destroy, scope)
     }
 }
 
@@ -27,23 +34,42 @@ fn callback_type(has_destroy: bool) -> CallbackCodec {
     callback_codec(has_destroy, CallbackScope::Call)
 }
 
-type Recorded = (*mut c_void, *mut c_void, Option<*mut c_void>);
+type Recorded = (*mut c_void, Option<*mut c_void>, Option<*mut c_void>);
 
 thread_local! {
     static RECORDED: Cell<Option<Recorded>> = const { Cell::new(None) };
 }
 
+extern "C" fn record_one(fn_ptr: *mut c_void) {
+    RECORDED.set(Some((fn_ptr, None, None)));
+}
+
 extern "C" fn record_two(fn_ptr: *mut c_void, user_data: *mut c_void) {
-    RECORDED.set(Some((fn_ptr, user_data, None)));
+    RECORDED.set(Some((fn_ptr, Some(user_data), None)));
 }
 
 extern "C" fn record_three(fn_ptr: *mut c_void, user_data: *mut c_void, destroy: *mut c_void) {
-    RECORDED.set(Some((fn_ptr, user_data, Some(destroy))));
+    RECORDED.set(Some((fn_ptr, Some(user_data), Some(destroy))));
+}
+
+extern "C" fn record_fn_and_destroy(fn_ptr: *mut c_void, destroy: *mut c_void) {
+    RECORDED.set(Some((fn_ptr, None, Some(destroy))));
 }
 
 struct Invocation {
     arity: usize,
+    user_data: Option<*mut c_void>,
     destroy: Option<*mut c_void>,
+}
+
+fn target_for(arity: usize, has_user_data: bool) -> *mut c_void {
+    match (arity, has_user_data) {
+        (1, false) => record_one as *mut c_void,
+        (2, true) => record_two as *mut c_void,
+        (2, false) => record_fn_and_destroy as *mut c_void,
+        (3, true) => record_three as *mut c_void,
+        (other, _) => panic!("unexpected callback arity {other}"),
+    }
 }
 
 fn invoke_through_cif(codec: &CallbackCodec) -> Invocation {
@@ -65,11 +91,8 @@ fn invoke_through_cif(codec: &CallbackCodec) -> Invocation {
     encoded.append_libffi_args(&mut args);
     assert_eq!(args.len(), arity);
 
-    let target = match arity {
-        2 => record_two as *mut c_void,
-        3 => record_three as *mut c_void,
-        other => panic!("unexpected callback arity {other}"),
-    };
+    let has_user_data = codec.user_data_index.is_some();
+    let target = target_for(arity, has_user_data);
 
     RECORDED.set(None);
     let cif = libffi::Cif::new(types, libffi::Type::void());
@@ -77,10 +100,16 @@ fn invoke_through_cif(codec: &CallbackCodec) -> Invocation {
     let (fn_ptr, user_data, destroy) = RECORDED.get().expect("the target function should run");
 
     assert_eq!(fn_ptr, callback.fn_ptr());
-    assert_eq!(user_data, callback.state_ptr());
     assert!(!fn_ptr.is_null());
+    if has_user_data {
+        assert_eq!(user_data, Some(callback.state_ptr()));
+    }
 
-    Invocation { arity, destroy }
+    Invocation {
+        arity,
+        user_data,
+        destroy,
+    }
 }
 
 fn assert_null_callback(
@@ -120,6 +149,34 @@ fn append_ffi_arg_types_with_destroy_pushes_three_pointers() {
         let mut types: Vec<libffi::Type> = Vec::new();
         callback_type(true).append_ffi_arg_types(&mut types);
         assert_eq!(types.len(), 3);
+    });
+}
+
+#[test]
+fn append_ffi_arg_types_without_user_data_pushes_only_the_function_pointer() {
+    helpers::run(|| {
+        let mut types: Vec<libffi::Type> = Vec::new();
+        closureless_codec(false, CallbackScope::Call).append_ffi_arg_types(&mut types);
+        assert_eq!(types.len(), 1);
+    });
+}
+
+#[test]
+fn append_ffi_arg_types_without_user_data_still_pushes_a_destroy_slot() {
+    helpers::run(|| {
+        let mut types: Vec<libffi::Type> = Vec::new();
+        closureless_codec(true, CallbackScope::Notified).append_ffi_arg_types(&mut types);
+        assert_eq!(types.len(), 2);
+    });
+}
+
+#[test]
+fn a_closureless_callback_is_invoked_with_the_trampoline_alone() {
+    helpers::run(|| {
+        let invocation = invoke_through_cif(&closureless_codec(false, CallbackScope::Call));
+        assert_eq!(invocation.arity, 1);
+        assert_eq!(invocation.user_data, None);
+        assert_eq!(invocation.destroy, None);
     });
 }
 

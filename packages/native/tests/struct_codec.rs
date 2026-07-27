@@ -4,7 +4,10 @@ use gtk4::glib;
 
 use native::Handle;
 use native::ffi;
-use native::ffi::codec::{Decoder, Encoder, Ownership, ReadSource, StructCodec};
+use native::ffi::Slot;
+use native::ffi::codec::{
+    Decoder, Encoder, Ownership, PtrWriter, ReadSource, SlotInit, StructCodec,
+};
 
 use napi::Env;
 use napi::JsValue as _;
@@ -20,6 +23,7 @@ fn struct_type() -> StructCodec {
         ownership: Ownership::Borrowed,
         size: None,
         caller_allocated: false,
+        inline: false,
     }
 }
 
@@ -28,6 +32,7 @@ fn struct_codec(ownership: Ownership, size: Option<usize>) -> StructCodec {
         ownership,
         size,
         caller_allocated: false,
+        inline: false,
     }
 }
 
@@ -243,5 +248,61 @@ fn write_return_object_ptr_writes_null_for_non_object_ok() {
             Ok(napi_mock::to_unknown(&env, napi_mock::fake_double(3.0)));
         let slot = write_return_into_slot(&env, &struct_type(), &value);
         assert!(slot.is_null());
+    });
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct InlineRecord {
+    left: i32,
+    right: i32,
+}
+
+fn inline_struct_codec() -> StructCodec {
+    StructCodec {
+        ownership: Ownership::Borrowed,
+        size: Some(size_of::<InlineRecord>()),
+        caller_allocated: false,
+        inline: true,
+    }
+}
+
+#[test]
+fn an_inline_field_is_read_at_its_own_address() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let record = InlineRecord { left: 3, right: 12 };
+        let field_ptr = (&raw const record).cast::<c_void>();
+        let decoded = unsafe {
+            Decoder::read(
+                &inline_struct_codec(),
+                &env,
+                ReadSource::Slot(field_ptr, "field read"),
+            )
+        }
+        .expect("an inline field decodes from its own address");
+        let ptr = native::value::handle_ptr(decoded, "inline field").expect("a handle pointer");
+        assert_eq!(unsafe { ptr.cast::<InlineRecord>().read() }, record);
+    });
+}
+
+#[test]
+fn an_inline_field_is_written_at_its_own_address() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let source = InlineRecord { left: 7, right: 9 };
+        let mut target = InlineRecord { left: 0, right: 0 };
+        let value = handle_value_of(&env, (&raw const source).cast_mut().cast::<c_void>());
+
+        PtrWriter::write_value_to_ptr(
+            &inline_struct_codec(),
+            &env,
+            unsafe { Slot::new((&raw mut target).cast::<c_void>()) },
+            value,
+            SlotInit::Initialized,
+        )
+        .expect("an inline field writes in place");
+
+        assert_eq!(target, source);
     });
 }

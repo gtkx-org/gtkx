@@ -1,6 +1,7 @@
 use super::super::prelude::*;
 use super::ArrayCodec;
 use super::container::{ArrayContainer, BufferViewSupport};
+use super::null_terminated::NullTerminatedArrayEncoder;
 
 #[derive(Debug, Clone)]
 pub(crate) struct FixedArrayCodec {
@@ -14,6 +15,22 @@ impl FixedArrayCodec {
 }
 
 impl ArrayContainer for FixedArrayCodec {
+    fn encode(
+        &self,
+        codec: &ArrayCodec,
+        env: Env,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<ffi::Stash> {
+        let expected = self.fixed_size as usize;
+        anyhow::ensure!(
+            array.len() == expected,
+            "Expected an array of exactly {expected} elements for a fixed-size array, got {}",
+            array.len()
+        );
+
+        codec.encode_items(env, &NullTerminatedArrayEncoder, array)
+    }
+
     fn decode<'e>(
         &self,
         codec: &ArrayCodec,

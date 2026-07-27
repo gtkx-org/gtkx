@@ -245,6 +245,7 @@ macro_rules! impl_numeric_codecs {
                 _init: $crate::ffi::codec::SlotInit,
             ) -> anyhow::Result<()> {
                 let n = <$kind>::number_from_value(value)?;
+                self.check_range(n)?;
                 unsafe { self.write_ptr(slot.as_ptr().cast::<u8>(), n) };
                 Ok(())
             }
@@ -478,7 +479,7 @@ impl FloatCodec {
         }
     }
 
-    fn check_range(self, value: f64) -> anyhow::Result<()> {
+    pub(super) fn check_range(self, value: f64) -> anyhow::Result<()> {
         if let Self::F32 = self
             && value.is_finite()
             && (value > f64::from(f32::MAX) || value < -f64::from(f32::MAX))

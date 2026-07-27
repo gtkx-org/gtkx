@@ -601,24 +601,50 @@ fn enum_flags_pointer_codec() {
             &enum_flags,
             &env,
             unsafe { Slot::new(ptr) },
-            double(&env, 2.0),
+            double(&env, 1.0),
             SlotInit::Initialized,
         )
         .unwrap();
         let read =
             unsafe { Decoder::read(&enum_flags, &env, ReadSource::Slot(ptr.cast_const(), "c")) }
                 .unwrap();
-        assert_eq!(napi_mock::read_double(read.raw()), Some(2.0));
+        assert_eq!(napi_mock::read_double(read.raw()), Some(1.0));
         PtrWriter::write_return_to_ptr(
             &enum_flags,
             &env,
             unsafe { Slot::new(ptr) },
-            &Ok(double(&env, 4.0)),
+            &Ok(double(&env, 0.0)),
         );
-        let from_ptr =
-            unsafe { Decoder::read(&enum_flags, &env, ReadSource::Value(3 as *mut c_void, "c")) }
-                .unwrap();
-        assert_eq!(napi_mock::read_double(from_ptr.raw()), Some(3.0));
+        let from_ptr = unsafe {
+            Decoder::read(
+                &enum_flags,
+                &env,
+                ReadSource::Value(std::ptr::without_provenance_mut::<c_void>(1), "c"),
+            )
+        }
+        .unwrap();
+        assert_eq!(napi_mock::read_double(from_ptr.raw()), Some(1.0));
+    });
+}
+
+#[test]
+fn enum_flags_pointer_codec_rejects_a_value_outside_the_enumeration() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let enum_flags = helpers::enum_codec();
+        let mut slot: i64 = 0;
+        let ptr = (&raw mut slot).cast::<c_void>();
+        assert!(
+            PtrWriter::write_value_to_ptr(
+                &enum_flags,
+                &env,
+                unsafe { Slot::new(ptr) },
+                double(&env, 2.0),
+                SlotInit::Initialized,
+            )
+            .is_err()
+        );
+        assert_eq!(slot, 0);
     });
 }
 
@@ -790,4 +816,64 @@ fn i64_slice_read_checked_converts_small_and_rejects_beyond_2_53() {
     let err = unsafe { IntegerCodec::I64.checked_read_slice(big.as_ptr().cast(), 1, "test slice") }
         .expect_err("a 64-bit element beyond -2^53 must not round silently");
     assert!(err.to_string().contains("2^53"));
+}
+
+#[test]
+fn integer_write_value_to_ptr_rejects_an_out_of_range_number() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut slot: i16 = 5;
+        let ptr = (&raw mut slot).cast::<c_void>();
+        assert!(
+            PtrWriter::write_value_to_ptr(
+                &IntegerCodec::I16,
+                &env,
+                unsafe { Slot::new(ptr) },
+                double(&env, 40_000.0),
+                SlotInit::Initialized,
+            )
+            .is_err()
+        );
+        assert_eq!(slot, 5);
+    });
+}
+
+#[test]
+fn integer_write_value_to_ptr_rejects_a_non_finite_number() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut slot: i32 = 5;
+        let ptr = (&raw mut slot).cast::<c_void>();
+        assert!(
+            PtrWriter::write_value_to_ptr(
+                &IntegerCodec::I32,
+                &env,
+                unsafe { Slot::new(ptr) },
+                double(&env, f64::NAN),
+                SlotInit::Initialized,
+            )
+            .is_err()
+        );
+        assert_eq!(slot, 5);
+    });
+}
+
+#[test]
+fn float_write_value_to_ptr_rejects_a_value_beyond_f32() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut slot: f32 = 1.0;
+        let ptr = (&raw mut slot).cast::<c_void>();
+        assert!(
+            PtrWriter::write_value_to_ptr(
+                &FloatCodec::F32,
+                &env,
+                unsafe { Slot::new(ptr) },
+                double(&env, 1e300),
+                SlotInit::Initialized,
+            )
+            .is_err()
+        );
+        assert!((slot - 1.0).abs() < f32::EPSILON);
+    });
 }

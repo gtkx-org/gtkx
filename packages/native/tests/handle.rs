@@ -112,7 +112,7 @@ fn drop_borrowed_handle_is_noop() {
 fn struct_handle_records_pointer_and_frees_on_drop() {
     helpers::run(|| {
         let ptr = unsafe { glib::ffi::g_malloc0(32) };
-        let handle = Handle::Struct(ptr);
+        let handle = Handle::owned_struct(ptr);
 
         assert_eq!(handle.as_ptr(), ptr);
         assert!(handle.size_hint() > 0);
@@ -124,7 +124,7 @@ fn struct_handle_records_pointer_and_frees_on_drop() {
 
 #[test]
 fn drop_struct_handle_with_null_pointer_is_safe() {
-    let handle = Handle::Struct(std::ptr::null_mut());
+    let handle = Handle::owned_struct(std::ptr::null_mut());
 
     assert!(handle.as_ptr().is_null());
     drop(handle);

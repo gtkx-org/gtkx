@@ -1,5 +1,5 @@
 use native::ffi::codec::{ArrayKind, BigIntCodec, Codec, FloatCodec, IntegerCodec, Ownership};
-use native::ffi::descriptor::{Descriptor, NestedDescriptor};
+use native::ffi::descriptor::{Descriptor, Descriptors, NestedDescriptor};
 
 fn nested(descriptor: Descriptor) -> NestedDescriptor {
     NestedDescriptor(Box::new(descriptor))
@@ -113,6 +113,7 @@ fn string_object_boxed_struct_and_fundamental_descriptors_map_to_their_codecs() 
         free_fn_name: None,
         caller_allocated: Some(true),
         size: Some(16),
+        inline: None,
     };
     assert!(matches!(codec(boxed), Codec::Boxed(_)));
 
@@ -120,6 +121,7 @@ fn string_object_boxed_struct_and_fundamental_descriptors_map_to_their_codecs() 
         ownership: Ownership::Borrowed,
         size: Some(8),
         caller_allocated: None,
+        inline: None,
     };
     assert!(matches!(codec(struct_), Codec::Struct(_)));
 
@@ -162,7 +164,7 @@ fn hashtable_descriptor_recurses_into_key_and_value_codecs() {
 #[test]
 fn callback_descriptor_recurses_into_argument_and_return_codecs() {
     let callback = Descriptor::Callback {
-        arg_descriptors: vec![Descriptor::Int32, Descriptor::Boolean],
+        arg_descriptors: Descriptors(vec![Descriptor::Int32, Descriptor::Boolean]),
         return_descriptor: nested(Descriptor::Void),
         has_destroy: Some(true),
         user_data_index: Some(1),
@@ -191,4 +193,16 @@ fn array_descriptor_propagates_codec_construction_errors() {
         element_size: None,
     };
     assert!(invalid.into_codec().is_err());
+}
+
+#[test]
+fn a_negative_string_length_is_rejected() {
+    let descriptor = Descriptor::String {
+        ownership: Ownership::Borrowed,
+        length: Some(-1),
+    };
+    let error = descriptor
+        .into_codec()
+        .expect_err("a negative buffer length must not wrap around");
+    assert!(error.reason.contains("must not be negative"));
 }

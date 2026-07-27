@@ -62,12 +62,21 @@ impl EnumFlagsCodec {
     }
 }
 
+impl EnumFlagsCodec {
+    fn validate(&self, value: Unknown<'_>) -> anyhow::Result<()> {
+        if self.kind != EnumFlagsKind::Enum || !matches!(value.get_type()?, ValueType::Number) {
+            return Ok(());
+        }
+        let n = value::read_napi::<f64>(value)?;
+
+        self.validate_enum_value(enum_member_from_f64(n)?)
+    }
+}
+
 impl Encoder for EnumFlagsCodec {
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        if self.kind == EnumFlagsKind::Enum && matches!(value.get_type()?, ValueType::Number) {
-            let n = value::read_napi::<f64>(value)?;
-            self.validate_enum_value(enum_member_from_f64(n)?)?;
-        }
+        self.validate(value)?;
+
         Encoder::encode(&self.storage, env, value)
     }
 
@@ -92,6 +101,8 @@ impl PtrWriter for EnumFlagsCodec {
         value: Unknown<'_>,
         init: SlotInit,
     ) -> anyhow::Result<()> {
+        self.validate(value)?;
+
         PtrWriter::write_value_to_ptr(&self.storage, env, slot, value, init)
     }
 }

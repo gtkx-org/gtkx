@@ -29,6 +29,8 @@ fn boxed_codec() -> BoxedCodec {
         get_type_fn_name: None,
         free_fn_name: None,
         caller_allocated: false,
+        size: None,
+        inline: false,
     }
 }
 
@@ -37,6 +39,7 @@ fn struct_codec() -> StructCodec {
         ownership: Ownership::Borrowed,
         size: None,
         caller_allocated: false,
+        inline: false,
     }
 }
 

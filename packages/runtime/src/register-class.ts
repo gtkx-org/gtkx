@@ -19,7 +19,7 @@ type VfuncFn = NativeRegisterClassVfunc["fn"];
 type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn };
 type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
 type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
-type InterfaceVfuncBinding = { gtype: bigint; vfuncs: DiscoveredInterfaceVfunc[] };
+type InterfaceVfuncBinding = { gtype: bigint; vtableSize: number; vfuncs: DiscoveredInterfaceVfunc[] };
 
 const UNSUPPORTED_CONSTRUCT_VFUNCS: Set<string> = new Set(["constructed", "setProperty", "getProperty"]);
 
@@ -162,10 +162,10 @@ function discoverInheritedInterfaceVfuncs(
     const bindings: InterfaceVfuncBinding[] = [];
 
     for (const interfaceGtype of typeInterfaces(parentGtype)) {
-        const vfuncs = discoverInterfaceVfuncs(klass, interfaceGtype, claimedMethodNames);
+        const [first, ...rest] = discoverInterfaceVfuncs(klass, interfaceGtype, claimedMethodNames);
 
-        if (vfuncs.length > 0) {
-            bindings.push({ gtype: interfaceGtype, vfuncs });
+        if (first !== undefined) {
+            bindings.push({ gtype: interfaceGtype, vtableSize: first.vtableSize, vfuncs: [first, ...rest] });
         }
     }
 
@@ -224,6 +224,7 @@ function toNativeOptions(
     if (hasInterfaces) {
         options.interfaces = interfaceBindings.map((binding) => ({
             type: binding.gtype,
+            vtableSize: binding.vtableSize,
             vfuncs: [...binding.vfuncs],
         }));
     }

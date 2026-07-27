@@ -1,5 +1,6 @@
-use std::cell::Cell;
-use std::ffi::{c_char, c_void};
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
+use std::ffi::{CString, c_char, c_void};
 
 use ::libffi::low as libffi_low;
 use ::libffi::middle as libffi;
@@ -56,9 +57,12 @@ pub struct ClosureData {
     pub return_codec: Codec,
     pub user_data_index: Option<usize>,
     pub is_oneshot: bool,
-    pub oneshot_state_ptr: Cell<*mut ClosureState>,
-    pub retained_string_return: Cell<*mut c_char>,
-    pub retained_container_return: Cell<*mut Stash>,
+    pub state_ptr: Cell<*mut ClosureState>,
+    pub oneshot_fired: Cell<bool>,
+    in_flight: Cell<u32>,
+    pending_destroy: Cell<bool>,
+    retained_strings: RefCell<HashMap<CString, *mut c_char>>,
+    retained_containers: RefCell<Vec<Stash>>,
 }
 
 impl ClosureData {
@@ -76,17 +80,21 @@ impl ClosureData {
             return_codec,
             user_data_index,
             is_oneshot,
-            oneshot_state_ptr: Cell::new(std::ptr::null_mut()),
-            retained_string_return: Cell::new(std::ptr::null_mut()),
-            retained_container_return: Cell::new(std::ptr::null_mut()),
+            state_ptr: Cell::new(std::ptr::null_mut()),
+            oneshot_fired: Cell::new(false),
+            in_flight: Cell::new(0),
+            pending_destroy: Cell::new(false),
+            retained_strings: RefCell::new(HashMap::new()),
+            retained_containers: RefCell::new(Vec::new()),
         }
     }
 }
 
 impl Drop for ClosureData {
     fn drop(&mut self) {
-        self.replace_string_return(std::ptr::null_mut());
-        self.replace_container_return(std::ptr::null_mut());
+        for (_, ptr) in self.retained_strings.get_mut().drain() {
+            unsafe { glib::ffi::g_free(ptr.cast()) };
+        }
     }
 }
 
@@ -170,19 +178,25 @@ impl ClosureState {
     /// is what `ClosureState::boxed` produces) and must still be live. This takes ownership of that
     /// box and frees it, along with the `ClosureData` and the libffi closure it owns, so the caller
     /// must not use `user_data`, the closure's code pointer, or any trampoline installed from it
-    /// afterwards, and must invoke this at most once per pointer. When called off the thread the
-    /// Node environment was installed on, the drop is deferred onto that thread, so the pointer
-    /// must stay valid until it runs.
+    /// afterwards, and must invoke this at most once per pointer. Invoking it from inside the
+    /// callback itself is allowed: the release is then deferred until the invocation returns. When
+    /// called off the thread the Node environment was installed on, the drop is deferred onto that
+    /// thread, so the pointer must stay valid until it runs.
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         guard_ffi_boundary("callback destroy notify", || {
-            if node_env::is_installed_on_current_thread() {
-                drop(unsafe { Box::from_raw(user_data.cast::<Self>()) });
+            let state_ptr = user_data.cast::<Self>();
+            if !state_ptr.is_null() && unsafe { (*state_ptr).data_ref() }.defer_destroy() {
                 return;
             }
 
-            let state_ptr = user_data as usize;
+            if node_env::is_installed_on_current_thread() {
+                drop(unsafe { Box::from_raw(state_ptr) });
+                return;
+            }
+
+            let state_address = user_data as usize;
             node_env::invoke_on_install_thread("callback destroy notify", move || {
-                drop(unsafe { Box::from_raw(state_ptr as *mut Self) });
+                drop(unsafe { Box::from_raw(state_address as *mut Self) });
             });
         });
     }
@@ -200,7 +214,108 @@ struct RefSlot<'e> {
     init: SlotInit,
 }
 
+struct InFlightGuard<'a>(&'a ClosureData);
+
+impl<'a> InFlightGuard<'a> {
+    fn enter(data: &'a ClosureData) -> Self {
+        data.in_flight.set(data.in_flight.get() + 1);
+        Self(data)
+    }
+}
+
+impl Drop for InFlightGuard<'_> {
+    fn drop(&mut self) {
+        self.0
+            .in_flight
+            .set(self.0.in_flight.get().saturating_sub(1));
+    }
+}
+
 impl ClosureData {
+    fn defer_destroy(&self) -> bool {
+        if self.in_flight.get() == 0 {
+            return false;
+        }
+        self.pending_destroy.set(true);
+        true
+    }
+
+    fn release_after_call(&self, oneshot: Option<*mut ClosureState>) -> Option<*mut ClosureState> {
+        if self.in_flight.get() != 0 {
+            return oneshot;
+        }
+        if !self.pending_destroy.replace(false) || oneshot.is_some() {
+            return oneshot;
+        }
+        let ptr = self.state_ptr.get();
+
+        (!ptr.is_null()).then_some(ptr)
+    }
+
+    fn take_oneshot_state(&self) -> Option<*mut ClosureState> {
+        if !self.is_oneshot || self.oneshot_fired.replace(true) {
+            return None;
+        }
+        let ptr = self.state_ptr.get();
+
+        (!ptr.is_null()).then_some(ptr)
+    }
+
+    unsafe fn sibling_stashes(&self, args: *const *const c_void) -> Vec<Stash> {
+        self.arg_codecs
+            .iter()
+            .enumerate()
+            .map(|(i, codec)| {
+                let arg_ptr = unsafe { *args.add(i) };
+                match codec {
+                    Codec::Integer(kind) => {
+                        kind.to_stash(unsafe { kind.read_ptr(arg_ptr.cast::<u8>()) })
+                    }
+                    _ => Stash::Void,
+                }
+            })
+            .collect()
+    }
+
+    unsafe fn read_arg<'e>(
+        &'e self,
+        env: &'e Env,
+        codec: &'e Codec,
+        arg_ptr: *const c_void,
+        siblings: &[Stash],
+    ) -> anyhow::Result<Unknown<'e>> {
+        if !matches!(codec, Codec::Array(_)) {
+            return unsafe { codec.read(env, ReadSource::Slot(arg_ptr, "callback arg")) };
+        }
+        let value_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
+
+        codec.decode_with_context(env, &Stash::Ptr(value_ptr), siblings, &self.arg_codecs)
+    }
+
+    unsafe fn read_ref_arg<'e>(
+        env: &'e Env,
+        ref_codec: &'e crate::ffi::codec::RefCodec,
+        arg_ptr: *const c_void,
+    ) -> anyhow::Result<RefSlot<'e>> {
+        let inner_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
+        let seed = if ref_codec.inout {
+            seed_ref(env, inner_ptr, &ref_codec.inner_codec)?
+        } else {
+            value::js_null(env)?
+        };
+
+        Ok(RefSlot {
+            obj: wrap_ref(env, seed)?,
+            inner_ptr,
+            inner_codec: &ref_codec.inner_codec,
+            init: if ref_codec.inout {
+                SlotInit::Initialized
+            } else {
+                SlotInit::Uninitialized
+            },
+        })
+    }
+
     unsafe fn read_args<'e>(
         &'e self,
         env: &'e Env,
@@ -208,6 +323,7 @@ impl ClosureData {
     ) -> anyhow::Result<ClosureArgs<'e>> {
         let mut js_args = Vec::with_capacity(self.arg_codecs.len());
         let mut ref_slots: Vec<RefSlot<'e>> = Vec::new();
+        let siblings = unsafe { self.sibling_stashes(args) };
 
         for (i, codec) in self.arg_codecs.iter().enumerate() {
             if self.user_data_index == Some(i) {
@@ -216,27 +332,12 @@ impl ClosureData {
 
             let arg_ptr = unsafe { *args.add(i) };
             if let Codec::Ref(ref_codec) = codec {
-                let inner_ptr = unsafe { *arg_ptr.cast::<*mut c_void>() };
-                let seed = if ref_codec.inout {
-                    seed_ref(env, inner_ptr, &ref_codec.inner_codec)?
-                } else {
-                    value::js_null(env)?
-                };
-                let ref_obj = wrap_ref(env, seed)?;
-                ref_slots.push(RefSlot {
-                    obj: ref_obj,
-                    inner_ptr,
-                    inner_codec: &ref_codec.inner_codec,
-                    init: if ref_codec.inout {
-                        SlotInit::Initialized
-                    } else {
-                        SlotInit::Uninitialized
-                    },
-                });
-                js_args.push(ref_obj);
+                let slot = unsafe { Self::read_ref_arg(env, ref_codec, arg_ptr) }?;
+                js_args.push(slot.obj);
+                ref_slots.push(slot);
                 continue;
             }
-            let val = match unsafe { codec.read(env, ReadSource::Slot(arg_ptr, "callback arg")) } {
+            let val = match unsafe { self.read_arg(env, codec, arg_ptr, &siblings) } {
                 Ok(val) => val,
                 Err(e) => {
                     error_reporter::report(&e.context(format!("callback: failed to read arg {i}")));
@@ -254,16 +355,24 @@ impl ClosureData {
         args: *const *const c_void,
         result: *mut c_void,
     ) -> Option<*mut ClosureState> {
+        let oneshot = {
+            let _guard = InFlightGuard::enter(self);
+            unsafe { self.dispatch(args, result) }
+        };
+
+        self.release_after_call(oneshot)
+    }
+
+    unsafe fn dispatch(
+        &self,
+        args: *const *const c_void,
+        result: *mut c_void,
+    ) -> Option<*mut ClosureState> {
         let env = node_env::env();
 
         let capture_result = !matches!(self.return_codec, Codec::Void(_));
 
-        let state_ptr = if self.is_oneshot {
-            let ptr = self.oneshot_state_ptr.replace(std::ptr::null_mut());
-            if ptr.is_null() { None } else { Some(ptr) }
-        } else {
-            None
-        };
+        let state_ptr = self.take_oneshot_state();
 
         let outcome: Result<(), CallbackError> = (|| {
             let ClosureArgs { js_args, ref_slots } =
@@ -321,18 +430,25 @@ impl ClosureData {
         }
     }
 
-    fn replace_container_return(&self, new_ptr: *mut Stash) {
-        let previous = self.retained_container_return.replace(new_ptr);
-        if !previous.is_null() {
-            drop(unsafe { Box::from_raw(previous) });
-        }
+    // A transfer-none return stays owned by the implementation, so the caller may hold it for as
+    // long as the implementation lives. Strings are interned by content so a getter called in a
+    // loop reuses one allocation, and containers are retained outright; both are released with the
+    // `ClosureData`.
+    pub fn retain_container(&self, stash: Stash) {
+        self.retained_containers.borrow_mut().push(stash);
     }
 
-    fn replace_string_return(&self, new_ptr: *mut c_char) {
-        let previous = self.retained_string_return.replace(new_ptr);
-        if !previous.is_null() {
-            unsafe { glib::ffi::g_free(previous.cast()) };
-        }
+    #[must_use]
+    pub fn retained_string(&self, text: &str) -> *mut c_char {
+        let Ok(key) = CString::new(text.as_bytes()) else {
+            return std::ptr::null_mut();
+        };
+
+        self.retained_strings
+            .borrow()
+            .get(&key)
+            .copied()
+            .unwrap_or(std::ptr::null_mut())
     }
 
     fn write_retained_container_return(
@@ -349,20 +465,37 @@ impl ClosureData {
             .as_ref()
             .and_then(|stash| stash.as_ptr("container return").ok())
             .unwrap_or(std::ptr::null_mut());
-        let new_ptr = built.map_or(std::ptr::null_mut(), |stash| Box::into_raw(Box::new(stash)));
-        self.replace_container_return(new_ptr);
+        if let Some(stash) = built {
+            self.retain_container(stash);
+        }
         unsafe { crate::ffi::Slot::new(result).store(ptr) };
     }
 
-    fn write_retained_string_return(&self, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
-        let new_ptr: *mut c_char = match value {
-            Ok(unknown) => string_from_unknown(*unknown)
-                .and_then(|s| str_to_glib_full(&s).ok())
-                .unwrap_or(std::ptr::null_mut()),
-            Err(()) => std::ptr::null_mut(),
+    fn intern_string_return(&self, value: &Result<Unknown<'_>, ()>) -> *mut c_char {
+        let Ok(unknown) = value else {
+            return std::ptr::null_mut();
         };
-        self.replace_string_return(new_ptr);
-        unsafe { crate::ffi::Slot::new(result).store(new_ptr.cast()) };
+        let Some(text) = string_from_unknown(*unknown) else {
+            return std::ptr::null_mut();
+        };
+        let Ok(key) = CString::new(text.as_bytes()) else {
+            return std::ptr::null_mut();
+        };
+        let mut retained = self.retained_strings.borrow_mut();
+        if let Some(&existing) = retained.get(&key) {
+            return existing;
+        }
+        let Ok(ptr) = str_to_glib_full(&text) else {
+            return std::ptr::null_mut();
+        };
+        retained.insert(key, ptr);
+
+        ptr
+    }
+
+    fn write_retained_string_return(&self, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
+        let ptr = self.intern_string_return(value);
+        unsafe { crate::ffi::Slot::new(result).store(ptr.cast()) };
     }
 }
 

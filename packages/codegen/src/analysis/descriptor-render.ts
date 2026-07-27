@@ -45,6 +45,12 @@ import {
 type RenderDescriptorOptions = {
     argIndexOffset?: number;
     callerAllocated?: boolean;
+    isInline?: boolean;
+};
+
+type RecordPlacement = {
+    isCallerAllocated?: boolean;
+    isInline?: boolean;
 };
 
 type FundamentalDescriptor = {
@@ -223,16 +229,18 @@ const renderParamDescriptor = (
     context: ModuleContext,
     parameter: GirParameter,
     ref: TypeId | undefined,
+    argIndexOffset = 0,
 ): string => {
     if (isCellInout(context.library, parameter)) {
-        return tRef(renderDescriptor(context, ref, parameter.transferOwnership), true);
+        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, { argIndexOffset }), true);
     }
 
     if (isOutParameter(parameter)) {
-        return tRef(renderDescriptor(context, ref, parameter.transferOwnership));
+        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, { argIndexOffset }));
     }
 
     return renderDescriptor(context, ref, parameter.transferOwnership, {
+        argIndexOffset,
         callerAllocated: isCallerAllocatedOut(parameter) || isRecordInout(context, parameter),
     });
 };
@@ -451,7 +459,7 @@ const structExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
     ownership: Ownership,
-    isCallerAllocated: boolean,
+    options: { callerAllocated: boolean; inline: boolean },
 ): string => {
     const { size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const wrapperClass = context.qualify(resolved.namespace.name, resolved.value.name);
@@ -459,7 +467,8 @@ const structExpression = (
     return tStruct(ownership, {
         size: size > 0 ? size : undefined,
         wrapperClass,
-        callerAllocated: isCallerAllocated,
+        callerAllocated: options.callerAllocated,
+        inline: options.inline,
     });
 };
 
@@ -481,9 +490,10 @@ const boxedRecordExpression = (options: {
     resolved: Extract<EntityType, { kind: "record" }>;
     ownership: Ownership;
     callerAllocated: boolean;
+    inline: boolean;
     typeFnName: string;
 }): string => {
-    const { context, resolved, ownership, callerAllocated, typeFnName } = options;
+    const { context, resolved, ownership, callerAllocated, inline, typeFnName } = options;
     const record = resolved.value;
     const glibName = record.glibTypeName ?? record.cType ?? record.name;
     const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
@@ -493,38 +503,49 @@ const boxedRecordExpression = (options: {
         sharedLibrary: resolved.namespace.sharedLibrary,
         getTypeFnName: typeFnName,
         callerAllocated,
+        inline,
         size: size > 0 ? size : undefined,
     });
+};
+
+const plainRecordExpression = (
+    context: ModuleContext,
+    resolved: Extract<EntityType, { kind: "record" }>,
+    ownership: Ownership,
+    placement: RecordPlacement,
+): string => {
+    const record = resolved.value;
+
+    const layout = {
+        callerAllocated: placement.isCallerAllocated ?? false,
+        inline: placement.isInline ?? false,
+    };
+
+    if (record.glibGetType === undefined) {
+        return structExpression(context, resolved, ownership, layout);
+    }
+
+    return boxedRecordExpression({ context, resolved, ownership, ...layout, typeFnName: record.glibGetType });
 };
 
 const recordExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
     ownership: Ownership,
-    isCallerAllocated = false,
+    placement: RecordPlacement = {},
 ): string => {
     const record = resolved.value;
     const { refFunc, unrefFunc } = recordRefPair(record);
 
-    const wrapperClass = requiresFallbackClass(record)
-        ? context.qualify(resolved.namespace.name, record.name)
-        : undefined;
-
     if (refFunc !== undefined && unrefFunc !== undefined) {
+        const wrapperClass = requiresFallbackClass(record)
+            ? context.qualify(resolved.namespace.name, record.name)
+            : undefined;
+
         return fundamentalRecordExpression({ resolved, refFunc, unrefFunc, ownership, wrapperClass });
     }
 
-    if (record.glibGetType === undefined) {
-        return structExpression(context, resolved, ownership, isCallerAllocated);
-    }
-
-    return boxedRecordExpression({
-        context,
-        resolved,
-        ownership,
-        callerAllocated: isCallerAllocated,
-        typeFnName: record.glibGetType,
-    });
+    return plainRecordExpression(context, resolved, ownership, placement);
 };
 
 const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tUint32);
@@ -556,7 +577,10 @@ const expressionForResolved = (
             return classOrInterfaceExpression(resolved, ownership);
         }
         case "record": {
-            return recordExpression(context, resolved, ownership, options.callerAllocated ?? false);
+            return recordExpression(context, resolved, ownership, {
+                isCallerAllocated: options.callerAllocated ?? false,
+                isInline: options.isInline ?? false,
+            });
         }
         case "enum": {
             return enumExpression(resolved);

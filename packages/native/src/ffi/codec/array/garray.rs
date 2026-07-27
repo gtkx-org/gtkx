@@ -26,6 +26,7 @@ impl ArrayContainer for GArrayCodec {
         _env: Env,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
+        let inline_size = codec.inline_element_size();
         let item_size = codec.item_element_size();
         let element_size = codec.element_size.or(item_size).ok_or_else(|| {
             anyhow::anyhow!(
@@ -34,7 +35,7 @@ impl ArrayContainer for GArrayCodec {
             )
         })?;
 
-        if let Some(item_size) = item_size
+        if let (None, Some(item_size)) = (inline_size, item_size)
             && element_size != item_size
         {
             bail!(
@@ -128,11 +129,25 @@ impl ArrayCodec {
         Ok(acquired)
     }
 
+    fn append_inline_values_to_garray(
+        g_array: *mut glib::ffi::GArray,
+        stride: usize,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
+        let buffer = ArrayCodec::inline_element_buffer(stride, array)?;
+        unsafe { Self::append_vals(g_array, buffer.as_ptr().cast::<c_void>(), array.len()) }?;
+
+        Ok(Vec::new())
+    }
+
     fn append_items_to_garray(
         &self,
         g_array: *mut glib::ffi::GArray,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
+        if let Some(stride) = self.inline_element_size() {
+            return Self::append_inline_values_to_garray(g_array, stride, array);
+        }
         match self.item_codec("GArray")? {
             ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => {
                 let storage = kind.to_stash_storage(&Self::extract_numbers(array)?);

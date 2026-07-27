@@ -245,6 +245,58 @@ impl ArrayCodec {
         ItemCodec::from_codec(&self.item_codec).map(ItemCodec::element_size)
     }
 
+    // A handle-backed item paired with an explicit `element_size` is codegen's encoding of an array
+    // whose elements are stored by value: the C element type is the record itself, not a pointer to
+    // it. Every element therefore lives at `base + index * element_size` and its own address is the
+    // value, so no word may be loaded out of it.
+    pub(super) fn inline_element_size(&self) -> Option<usize> {
+        if !self.item_codec.is_handle_backed() {
+            return None;
+        }
+
+        self.element_size
+    }
+
+    pub(super) fn inline_element_buffer(
+        stride: usize,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<Vec<u8>> {
+        let handles = Self::extract_handles(array)?;
+        let mut buffer = vec![0u8; handles.len() * stride];
+        for (index, handle) in handles.iter().enumerate() {
+            let ptr = handle.as_ptr();
+            if ptr.is_null() {
+                bail!("An inline array element has a null pointer");
+            }
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    ptr.cast::<u8>().cast_const(),
+                    buffer.as_mut_ptr().add(index * stride),
+                    stride,
+                );
+            }
+        }
+
+        Ok(buffer)
+    }
+
+    pub(super) fn decode_inline<'e>(
+        &self,
+        env: &'e Env,
+        stride: usize,
+        data: *const u8,
+        len: usize,
+    ) -> anyhow::Result<Vec<Unknown<'e>>> {
+        (0..len)
+            .map(|index| unsafe {
+                self.item_codec.read(
+                    env,
+                    ReadSource::Value(data.add(index * stride).cast_mut().cast(), "array element"),
+                )
+            })
+            .collect()
+    }
+
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {
         ItemCodec::from_codec(&self.item_codec).ok_or_else(|| {
             anyhow::anyhow!("Unsupported {context} item codec: {:?}", self.item_codec)
@@ -331,28 +383,16 @@ impl ArrayCodec {
                 encoder.encode_strings(array, dup_items, self.ownership)
             }
             ItemCodec::Pointer => {
-                let handles = Self::extract_handles(array)?;
-
-                if let Some(element_size) = self.element_size {
-                    let mut buffer = vec![0u8; handles.len() * element_size];
-                    for (i, handle) in handles.iter().enumerate() {
-                        let ptr = handle.as_ptr();
-                        if ptr.is_null() {
-                            bail!("GObject in array has a null pointer");
-                        }
-                        let offset = i * element_size;
-                        unsafe {
-                            std::ptr::copy_nonoverlapping(
-                                ptr as *const u8,
-                                buffer.as_mut_ptr().add(offset),
-                                element_size,
-                            );
-                        }
-                    }
+                if let Some(element_size) = self.inline_element_size() {
+                    let buffer = Self::inline_element_buffer(element_size, array)?;
                     return self.finish_scalar_storage(buffer.into());
                 }
 
-                encoder.encode_handles(handles, &self.item_codec, self.ownership)
+                encoder.encode_handles(
+                    Self::extract_handles(array)?,
+                    &self.item_codec,
+                    self.ownership,
+                )
             }
         }
     }
@@ -370,6 +410,9 @@ impl ArrayCodec {
     ) -> anyhow::Result<Vec<Unknown<'e>>> {
         if len == 0 || data.is_null() {
             return Ok(Vec::new());
+        }
+        if let Some(stride) = self.inline_element_size() {
+            return self.decode_inline(env, stride, data, len);
         }
         let numbers_to_unknowns = |numbers: Vec<f64>| -> anyhow::Result<Vec<Unknown<'e>>> {
             numbers

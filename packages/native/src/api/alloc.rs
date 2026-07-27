@@ -23,7 +23,7 @@ fn alloc_handle(size: usize, type_: Option<glib::Type>) -> Handle {
     let ptr = unsafe { g_malloc0(size) };
     match type_ {
         Some(type_) => Handle::Boxed(Boxed::from_glib_full(type_, ptr)),
-        None => Handle::Struct(ptr),
+        None => Handle::owned_struct(ptr),
     }
 }
 

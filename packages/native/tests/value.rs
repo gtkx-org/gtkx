@@ -39,6 +39,8 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Codec {
         get_type_fn_name: None,
         free_fn_name: None,
         caller_allocated: false,
+        size: None,
+        inline: false,
     })
 }
 

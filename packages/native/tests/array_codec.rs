@@ -28,6 +28,7 @@ fn struct_item_codec() -> Codec {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
         caller_allocated: false,
+        inline: false,
     })
 }
 
@@ -2216,5 +2217,159 @@ fn write_return_to_pointer_encode_error_writes_null() {
         let ret = (&raw mut slot).cast::<c_void>();
         PtrWriter::write_return_to_ptr(&descriptor, &env, unsafe { Slot::new(ret) }, &Ok(val));
         assert!(slot.is_null());
+    });
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct InlinePair {
+    first: i32,
+    second: i32,
+}
+
+fn inline_pair_codec(ownership: Ownership, kind: ArrayKind, size_index: Option<u32>) -> ArrayCodec {
+    ArrayCodec::new(
+        Box::new(Codec::Struct(StructCodec {
+            ownership: Ownership::Borrowed,
+            size: Some(size_of::<InlinePair>()),
+            caller_allocated: false,
+            inline: false,
+        })),
+        kind,
+        ownership,
+        size_index,
+        None,
+        Some(size_of::<InlinePair>()),
+    )
+    .expect("valid inline array codec")
+}
+
+fn read_inline_pair(env: &Env, value: sys::napi_value) -> InlinePair {
+    let ptr = native::value::handle_ptr(napi_mock::to_unknown(env, value), "inline element")
+        .expect("an inline element decodes to a handle");
+    unsafe { ptr.cast::<InlinePair>().read() }
+}
+
+#[test]
+fn a_sized_array_cannot_decode_without_its_length_parameter() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = sized_array_type(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed);
+        let elements: [i32; 3] = [7, 8, 9];
+        let stash = Stash::Ptr(elements.as_ptr().cast_mut().cast::<c_void>());
+        let Err(error) = codec.decode(&env, &stash) else {
+            panic!("a sized array has no terminator to scan for");
+        };
+        assert!(error.to_string().contains("length parameter"));
+    });
+}
+
+#[test]
+fn a_fixed_array_argument_must_match_its_declared_length() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = fixed_array_type(Codec::Float(FloatCodec::F32), 4, Ownership::Borrowed);
+        let short = array(&env, &[number(1.0), number(2.0)]);
+        let error = codec
+            .encode(&env, short)
+            .expect_err("a short array would make the callee read past the buffer");
+        assert!(error.to_string().contains("exactly 4 elements"));
+        assert!(
+            codec
+                .encode(
+                    &env,
+                    array(&env, &[number(1.0), number(2.0), number(3.0), number(4.0)]),
+                )
+                .is_ok()
+        );
+    });
+}
+
+#[test]
+fn a_gptrarray_argument_is_encoded_as_a_real_gptrarray() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = array_codec(
+            gobject_item_codec(Ownership::Borrowed),
+            ArrayKind::GPtrArray,
+            Ownership::Borrowed,
+        );
+        let (first, first_ptr) = new_gobject();
+        let (second, second_ptr) = new_gobject();
+        let value = array(
+            &env,
+            &[
+                object(&env, Handle::from_glib_borrow(first_ptr)),
+                object(&env, Handle::from_glib_borrow(second_ptr)),
+            ],
+        );
+
+        let encoded = codec.encode(&env, value).expect("encode should succeed");
+        let ptr = encoded.as_ptr("GPtrArray").expect("a container pointer");
+        let ptr_array = ptr.cast::<glib::ffi::GPtrArray>();
+        assert_eq!(unsafe { (*ptr_array).len }, 2);
+        let pdata = unsafe { (*ptr_array).pdata };
+        assert_eq!(unsafe { *pdata.add(0) }, first_ptr);
+        assert_eq!(unsafe { *pdata.add(1) }, second_ptr);
+
+        drop(encoded);
+        drop(first);
+        drop(second);
+    });
+}
+
+#[test]
+fn an_inline_struct_array_decodes_elements_by_value() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = ArrayCodec::new(
+            Box::new(Codec::Struct(StructCodec {
+                ownership: Ownership::Borrowed,
+                size: Some(size_of::<InlinePair>()),
+                caller_allocated: false,
+                inline: false,
+            })),
+            ArrayKind::Fixed,
+            Ownership::Borrowed,
+            None,
+            Some(2),
+            Some(size_of::<InlinePair>()),
+        )
+        .expect("valid fixed inline array codec");
+
+        let elements = [
+            InlinePair {
+                first: 1,
+                second: 5,
+            },
+            InlinePair {
+                first: 9,
+                second: 3,
+            },
+        ];
+        let stash = Stash::Ptr(elements.as_ptr().cast_mut().cast::<c_void>());
+        let decoded = codec.decode(&env, &stash).expect("decode should succeed");
+        let items = decoded_items(&decoded);
+        assert_eq!(items.len(), 2);
+        assert_eq!(read_inline_pair(&env, items[0]), elements[0]);
+        assert_eq!(read_inline_pair(&env, items[1]), elements[1]);
+    });
+}
+
+#[test]
+fn an_inline_struct_array_round_trips_through_encode() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = inline_pair_codec(Ownership::Borrowed, ArrayKind::Array, None);
+        let source = InlinePair {
+            first: 11,
+            second: 22,
+        };
+        let handle = Handle::from_glib_borrow((&raw const source).cast_mut().cast::<c_void>());
+        let encoded = codec
+            .encode(&env, array(&env, &[object(&env, handle)]))
+            .expect("encode should succeed");
+        let ptr = encoded.as_ptr("inline array").expect("a container pointer");
+        assert_eq!(unsafe { ptr.cast::<InlinePair>().read() }, source);
     });
 }

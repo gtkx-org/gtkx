@@ -47,6 +47,10 @@ pub struct RegisterClassVfunc {
 pub struct RegisterClassInterface {
     /// `GType` of the interface to implement.
     pub r#type: BigInt,
+    /// Byte size of the interface's vtable struct, used to bounds-check each vfunc's `byteOffset`.
+    /// `g_type_query` reports nothing for an interface type, so the size has to come from the same
+    /// generated metadata the offsets do; when it is omitted the offsets are only alignment-checked.
+    pub vtable_size: Option<u32>,
     /// Interface vfunc implementations to install.
     pub vfuncs: Vec<RegisterClassVfunc>,
 }
@@ -80,6 +84,7 @@ impl RegisterClassInterface {
         let type_ = type_from_bigint(&self.r#type, "register_class: interface")?;
         Ok(RawInterface {
             type_,
+            vtable_size: self.vtable_size,
             vfuncs: self
                 .vfuncs
                 .into_iter()
@@ -116,6 +121,7 @@ struct RawVfunc {
 
 struct RawInterface {
     type_: glib::Type,
+    vtable_size: Option<u32>,
     vfuncs: Vec<RawVfunc>,
 }
 
@@ -228,7 +234,7 @@ impl ClassRegistration {
                     vfunc.byte_offset,
                     pointer_align,
                     pointer_size,
-                    None,
+                    iface.vtable_size,
                     "interface vfunc",
                 )?;
             }
@@ -413,6 +419,7 @@ mod tests {
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
                 interfaces: vec![RawInterface {
+                    vtable_size: None,
                     type_: glib::Object::static_type(),
                     vfuncs: Vec::new(),
                 }],
@@ -435,6 +442,7 @@ mod tests {
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
                 interfaces: vec![RawInterface {
+                    vtable_size: None,
                     type_: plugin_type,
                     vfuncs: Vec::new(),
                 }],
@@ -457,6 +465,7 @@ mod tests {
                 parent_type: glib::TypeModule::static_type(),
                 vfuncs: Vec::new(),
                 interfaces: vec![RawInterface {
+                    vtable_size: None,
                     type_: plugin_type,
                     vfuncs: Vec::new(),
                 }],
@@ -484,6 +493,44 @@ mod tests {
     #[test]
     fn validate_vfunc_offset_rejects_offset_beyond_class_size() {
         assert!(ClassRegistration::validate_vfunc_offset(64, 8, 8, Some(64), "vfunc").is_err());
+    }
+
+    #[test]
+    fn validate_layout_bounds_interface_offsets_against_the_declared_vtable_size() {
+        let registration = ClassRegistration {
+            name: gstring("GtkxRegisterClassBoundedInterfaceType"),
+            parent_type: glib::Object::static_type(),
+            vfuncs: Vec::new(),
+            interfaces: vec![RawInterface {
+                type_: glib::Object::static_type(),
+                vtable_size: Some(16),
+                vfuncs: vec![RawVfunc {
+                    byte_offset: 24,
+                    js_fn: ClosureHandle::from_js_value(
+                        &test_support::fake_env(),
+                        &test_support::napi_mock::to_unknown(
+                            &test_support::fake_env(),
+                            test_support::napi_mock::fake_function(|_| {
+                                test_support::napi_mock::fake_undefined()
+                            }),
+                        ),
+                    )
+                    .expect("a reference to the callback"),
+                    arg_codecs: Vec::new(),
+                    return_codec: Codec::Void(crate::ffi::codec::VoidCodec),
+                }],
+            }],
+        };
+        let query = gobject_ffi::GTypeQuery {
+            type_: 1,
+            type_name: std::ptr::null(),
+            class_size: 128,
+            instance_size: 128,
+        };
+        let error = registration
+            .validate_layout(&query)
+            .expect_err("an interface offset past the vtable must be rejected");
+        assert!(error.to_string().contains("exceeds class size 16"));
     }
 
     #[test]

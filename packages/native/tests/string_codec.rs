@@ -8,6 +8,7 @@ use napi::Env;
 use napi::JsValue as _;
 use napi::bindgen_prelude::Unknown;
 
+use native::Handle;
 use native::ffi;
 use native::ffi::codec::{Decoder, Encoder, Ownership, ReadSource, StringCodec};
 
@@ -312,4 +313,37 @@ fn write_value_to_pointer_borrowed_keeps_previous_string() {
         unsafe { glib::ffi::g_free(slot) };
         unsafe { glib::ffi::g_free(previous) };
     });
+}
+
+#[test]
+fn a_struct_handle_owns_the_strings_written_into_its_fields() {
+    helpers::run(|| {
+        let block = unsafe { glib::ffi::g_malloc0(16) };
+        let handle = Handle::owned_struct(block);
+        let fields = handle
+            .field_store()
+            .expect("a struct handle owns its fields");
+        let first = unsafe { glib::ffi::g_strdup(c"first".as_ptr()) }.cast::<c_void>();
+        let second = unsafe { glib::ffi::g_strdup(c"second".as_ptr()) }.cast::<c_void>();
+
+        unsafe { fields.adopt(0, first) };
+        drain_g_freed();
+
+        unsafe { fields.adopt(0, second) };
+        assert_eq!(drain_g_freed(), vec![first as usize]);
+
+        drop(handle);
+        let freed = drain_g_freed();
+        assert!(freed.contains(&(second as usize)));
+        assert!(freed.contains(&(block as usize)));
+    });
+}
+
+#[test]
+fn a_borrowed_handle_has_no_field_store() {
+    assert!(
+        Handle::from_glib_borrow(std::ptr::dangling_mut())
+            .field_store()
+            .is_none()
+    );
 }

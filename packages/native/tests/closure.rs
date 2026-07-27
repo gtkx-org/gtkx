@@ -299,7 +299,7 @@ fn a_borrowed_string_return_stays_valid_after_the_call() {
         assert!(!first.is_null());
         assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("hello"));
         assert_eq!(
-            state.data_ref().retained_string_return.get().cast_const(),
+            state.data_ref().retained_string("hello").cast_const(),
             first
         );
 
@@ -307,9 +307,28 @@ fn a_borrowed_string_return_stays_valid_after_the_call() {
         assert!(!second.is_null());
         assert_eq!(unsafe { CStr::from_ptr(second) }.to_str(), Ok("world"));
         assert_eq!(
-            state.data_ref().retained_string_return.get().cast_const(),
+            state.data_ref().retained_string("world").cast_const(),
             second
         );
+        assert_ne!(first, second);
+        assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("hello"));
+        assert!(napi_mock::fatal_exceptions().is_empty());
+
+        drop(state);
+    });
+}
+
+#[test]
+fn a_repeated_borrowed_string_return_reuses_one_allocation() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (js_fn, _) = counting_function(|_, _| napi_mock::fake_string("stable"));
+        let (state, call) = string_return_closure(&env, js_fn);
+
+        let first = unsafe { call() };
+        let second = unsafe { call() };
+        assert_eq!(first, second);
+        assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("stable"));
         assert!(napi_mock::fatal_exceptions().is_empty());
 
         drop(state);
@@ -341,12 +360,12 @@ fn a_borrowed_container_return_stays_valid_after_the_call() {
         let first = unsafe { call() };
         assert!(!first.is_null());
         assert_eq!(unsafe { std::slice::from_raw_parts(first, 3) }, [1, 2, 3]);
-        assert!(!state.data_ref().retained_container_return.get().is_null());
 
         let second = unsafe { call() };
         assert!(!second.is_null());
         assert_eq!(unsafe { std::slice::from_raw_parts(second, 3) }, [4, 5, 6]);
-        assert!(!state.data_ref().retained_container_return.get().is_null());
+        assert_ne!(first, second);
+        assert_eq!(unsafe { std::slice::from_raw_parts(first, 3) }, [1, 2, 3]);
         assert!(napi_mock::fatal_exceptions().is_empty());
 
         drop(state);
@@ -361,7 +380,7 @@ fn a_oneshot_closure_releases_its_resources_once_via_the_idle() {
         let state = void_closure(&env, js_fn, true);
         let call: unsafe extern "C" fn() = unsafe { std::mem::transmute(state.code_ptr) };
         let callback_value =
-            native::ffi::CallbackValue::new_pending_transfer(state.code_ptr, None, state);
+            native::ffi::CallbackValue::new_pending_transfer(state.code_ptr, true, None, state);
         callback_value.disarm_pending_transfer();
         drop(callback_value);
 
@@ -396,8 +415,7 @@ fn a_panicking_drop_in_the_destroy_notify_is_reported_and_contained() {
         let state = void_closure(&env, js_fn, false);
         state
             .data_ref()
-            .retained_container_return
-            .set(Box::into_raw(Box::new(stash_that_panics_on_drop())));
+            .retain_container(stash_that_panics_on_drop());
         let deletions_before = napi_mock::count("napi_delete_reference");
 
         unsafe { ClosureState::destroy(Box::into_raw(state).cast()) };
@@ -460,6 +478,8 @@ fn a_transfer_full_boxed_return_with_an_unresolvable_type_yields_null_and_report
                 get_type_fn_name: None,
                 free_fn_name: None,
                 caller_allocated: false,
+                size: None,
+                inline: false,
             }),
             "GtkxUnknownBoxedType",
         );
@@ -489,6 +509,7 @@ fn a_transfer_full_struct_return_with_an_unknown_size_yields_null_and_reports() 
                 ownership: Ownership::Full,
                 size: None,
                 caller_allocated: false,
+                inline: false,
             }),
             "its size is unknown",
         );
@@ -541,7 +562,7 @@ fn the_closure_stays_usable_after_a_throw() {
 }
 
 #[test]
-fn a_throw_clears_the_retained_borrowed_string_return() {
+fn a_throw_returns_null_without_disturbing_earlier_borrowed_string_returns() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let exception = napi_mock::fake_error("second call exploded");
@@ -557,11 +578,11 @@ fn a_throw_clears_the_retained_borrowed_string_return() {
 
         let first = unsafe { call() };
         assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("alpha"));
-        assert!(!state.data_ref().retained_string_return.get().is_null());
+        assert!(!state.data_ref().retained_string("alpha").is_null());
 
         let second = unsafe { call() };
         assert!(second.is_null());
-        assert!(state.data_ref().retained_string_return.get().is_null());
+        assert_eq!(unsafe { CStr::from_ptr(first) }.to_str(), Ok("alpha"));
         assert_eq!(napi_mock::take_pending_exception(), Some(exception));
         assert_eq!(napi_mock::thrown_exceptions(), vec![exception]);
         assert!(napi_mock::fatal_exceptions().is_empty());

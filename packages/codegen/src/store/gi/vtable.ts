@@ -22,6 +22,7 @@ type RenderVtableSlotDescriptorOptions = {
     field: GirField;
     callback: GirCallback;
     byteOffset: number;
+    vtableSize: number;
 };
 
 const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
@@ -85,7 +86,7 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
         return [];
     }
 
-    const { slots } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
+    const { slots, size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const entries: string[] = [];
     const claimedNames: Set<string> = new Set();
 
@@ -106,6 +107,7 @@ const vtableEntries = (context: ModuleContext, structName: string, kind: VtableK
                 field,
                 callback: entry.callback,
                 byteOffset: slot.byteOffset,
+                vtableSize: size,
             }),
         );
     }
@@ -145,7 +147,7 @@ const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): bo
 };
 
 const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtableSlotDescriptorOptions): string => {
-    const { key, structName, kind, field, callback, byteOffset } = options;
+    const { key, structName, kind, field, callback, byteOffset, vtableSize } = options;
 
     const argDescriptors = callback.parameters
         .map((param) => renderParamDescriptor(context, param, param.type))
@@ -162,6 +164,7 @@ const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtabl
         `className: ${sourceStringLiteral(structName)},`,
         `vfuncName: ${sourceStringLiteral(field.name)},`,
         `byteOffset: ${String(byteOffset)},`,
+        `vtableSize: ${String(vtableSize)},`,
         `argDescriptors: [${argDescriptors}],`,
         `returnDescriptor: ${returnDescriptor},`,
     ];

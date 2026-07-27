@@ -8,8 +8,8 @@ use crate::ffi::closure::ClosureState;
 mod storage;
 
 pub use storage::{
-    GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListNode, ListOps, ListPayload, PendingTransfer,
-    ReleaseKind, StashData, StashStorage, build_list,
+    GArrayData, GLIST_OPS, GPtrArrayData, GSLIST_OPS, ListData, ListNode, ListOps, ListPayload,
+    PendingTransfer, ReleaseKind, StashData, StashStorage, build_list,
 };
 
 #[derive(Debug)]
@@ -33,6 +33,7 @@ pub enum Stash {
 pub struct CallbackValue {
     fn_ptr: *mut c_void,
     state_ptr: *mut c_void,
+    has_user_data: bool,
     destroy_ptr: Option<*mut c_void>,
     _owned_state: Option<Box<ClosureState>>,
     pending_transfer: Cell<Option<*mut ClosureState>>,
@@ -42,12 +43,14 @@ impl CallbackValue {
     pub fn new(
         fn_ptr: *mut c_void,
         state_ptr: *mut c_void,
+        has_user_data: bool,
         destroy_ptr: Option<*mut c_void>,
         owned_state: Option<Box<ClosureState>>,
     ) -> Self {
         Self {
             fn_ptr,
             state_ptr,
+            has_user_data,
             destroy_ptr,
             _owned_state: owned_state,
             pending_transfer: Cell::new(None),
@@ -56,17 +59,16 @@ impl CallbackValue {
 
     pub fn new_pending_transfer(
         fn_ptr: *mut c_void,
+        has_user_data: bool,
         destroy_ptr: Option<*mut c_void>,
         state: Box<ClosureState>,
     ) -> Self {
         let state_ptr = Box::into_raw(state);
-        let data = unsafe { (*state_ptr).data_ref() };
-        if data.is_oneshot {
-            data.oneshot_state_ptr.set(state_ptr);
-        }
+        unsafe { (*state_ptr).data_ref() }.state_ptr.set(state_ptr);
         Self {
             fn_ptr,
             state_ptr: state_ptr.cast(),
+            has_user_data,
             destroy_ptr,
             _owned_state: None,
             pending_transfer: Cell::new(Some(state_ptr)),
@@ -95,11 +97,11 @@ impl Drop for CallbackValue {
         let Some(state_ptr) = self.pending_transfer.take() else {
             return;
         };
-        let oneshot_fired = {
+        let already_released = {
             let data = unsafe { (*state_ptr).data_ref() };
-            data.is_oneshot && data.oneshot_state_ptr.get().is_null()
+            data.is_oneshot && data.oneshot_fired.get()
         };
-        if !oneshot_fired {
+        if !already_released {
             drop(unsafe { Box::from_raw(state_ptr) });
         }
     }
@@ -211,7 +213,9 @@ impl Stash {
         match self {
             Self::Callback(callback) => {
                 args.push(libffi::arg(&callback.fn_ptr));
-                args.push(libffi::arg(&callback.state_ptr));
+                if callback.has_user_data {
+                    args.push(libffi::arg(&callback.state_ptr));
+                }
                 if let Some(destroy_ptr) = &callback.destroy_ptr {
                     args.push(libffi::arg(destroy_ptr));
                 }

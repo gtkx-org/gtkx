@@ -32,6 +32,7 @@ type TypeDescriptor = BigUint64Descriptor & { type: true };
 
 type BoxedOptions = {
     callerAllocated?: boolean;
+    inline?: boolean;
     ownership?: Ownership;
     sharedLibrary?: string;
     getTypeFnName?: string;
@@ -59,6 +60,7 @@ type FundamentalOptions = {
 
 type StructOptions = {
     callerAllocated?: boolean;
+    inline?: boolean;
     size?: number;
     wrapperClass?: AnyClass;
 };
@@ -114,7 +116,7 @@ const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): F
     signed: isSigned,
 });
 
-const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void => {
+const applyBoxedNames = (result: BoxedDescriptor, options: BoxedOptions): void => {
     if (options.sharedLibrary !== undefined) {
         result.sharedLibrary = options.sharedLibrary;
     }
@@ -126,9 +128,17 @@ const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void
     if (options.freeFnName !== undefined) {
         result.freeFnName = options.freeFnName;
     }
+};
+
+const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void => {
+    applyBoxedNames(result, options);
 
     if (options.callerAllocated) {
         result.callerAllocated = true;
+    }
+
+    if (options.inline) {
+        result.inline = true;
     }
 
     if (options.size !== undefined) {
@@ -161,6 +171,10 @@ const structT = (ownership: Ownership = "borrowed", options: StructOptions = {})
 
     if (options.callerAllocated) {
         result.callerAllocated = true;
+    }
+
+    if (options.inline) {
+        result.inline = true;
     }
 
     return result;

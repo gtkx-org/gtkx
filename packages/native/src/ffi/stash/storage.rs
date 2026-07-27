@@ -36,6 +36,7 @@ pub enum ReleaseKind {
     StringElements,
     HashTableUnref,
     GArrayUnref,
+    GPtrArrayUnref,
     GByteArrayUnref,
     GListFree,
     GSListFree,
@@ -77,6 +78,9 @@ impl PendingTransfer {
                 }
                 ReleaseKind::GArrayUnref => {
                     glib::ffi::g_array_unref(self.ptr.cast::<glib::ffi::GArray>());
+                }
+                ReleaseKind::GPtrArrayUnref => {
+                    glib::ffi::g_ptr_array_unref(self.ptr.cast::<glib::ffi::GPtrArray>());
                 }
                 ReleaseKind::GByteArrayUnref => {
                     glib::ffi::g_byte_array_unref(self.ptr.cast::<glib::ffi::GByteArray>());
@@ -205,6 +209,12 @@ pub struct GArrayData {
 }
 
 #[derive(Debug)]
+pub struct GPtrArrayData {
+    pub ptr: *mut glib::ffi::GPtrArray,
+    pub should_free: bool,
+}
+
+#[derive(Debug)]
 pub enum StashData {
     Unit,
     U8Vec(Vec<u8>),
@@ -222,6 +232,7 @@ pub enum StashData {
     List(ListData),
     CString(std::ffi::CString),
     GArray(GArrayData),
+    GPtrArray(GPtrArrayData),
     GByteArray(Option<glib::ByteArray>),
     Buffer(Vec<u8>),
     PtrSlot(Vec<*mut c_void>),
@@ -294,6 +305,7 @@ impl StashStorage {
             | StashData::List(_)
             | StashData::CString(_)
             | StashData::GArray(_)
+            | StashData::GPtrArray(_)
             | StashData::GByteArray(_)
             | StashData::PtrSlot(_)
             | StashData::StrV(_)
@@ -306,6 +318,12 @@ impl StashStorage {
     fn free_garray(data: &GArrayData) {
         if data.should_free && !data.ptr.is_null() {
             unsafe { glib::ffi::g_array_unref(data.ptr) };
+        }
+    }
+
+    fn free_gptrarray(data: &GPtrArrayData) {
+        if data.should_free && !data.ptr.is_null() {
+            unsafe { glib::ffi::g_ptr_array_unref(data.ptr) };
         }
     }
 }
@@ -335,6 +353,7 @@ impl Drop for StashStorage {
                 }
             }
             StashData::GArray(data) => Self::free_garray(data),
+            StashData::GPtrArray(data) => Self::free_gptrarray(data),
             StashData::GByteArray(_)
             | StashData::Unit
             | StashData::U8Vec(_)

@@ -11,9 +11,9 @@ use napi::bindgen_prelude::{Array, FromNapiValue as _};
 
 use native::api::{bind::bind, call::call};
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
-    HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadSource, RefCodec, StringCodec,
-    UnicharCodec,
+    ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind,
+    FloatCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadSource, RefCodec,
+    StringCodec, UnicharCodec,
 };
 use native::ffi::descriptor::{Descriptor, NestedDescriptor};
 use native::ffi::{self, StashData, StashStorage};
@@ -589,5 +589,25 @@ fn read_from_pointer_string_inner_reads_value() {
             napi_mock::read_string(value.raw()),
             Some("raw-ref".to_owned())
         );
+    });
+}
+
+#[test]
+fn a_ref_string_buffer_length_beyond_addressable_memory_is_an_error() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let codec = RefCodec::new(
+            Codec::String(StringCodec {
+                ownership: Ownership::Borrowed,
+                length: Some(usize::MAX),
+            }),
+            false,
+        )
+        .expect("String is a valid Ref inner");
+        let value = napi_mock::to_unknown(
+            &env,
+            napi_mock::fake_object(&[("value", napi_mock::fake_null())]),
+        );
+        assert!(codec.encode(&env, value).is_err());
     });
 }

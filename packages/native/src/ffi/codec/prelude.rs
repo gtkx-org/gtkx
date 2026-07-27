@@ -138,6 +138,26 @@ where
     Ok(())
 }
 
+// The callee owns the container from here on, so the pending transfers are disarmed. Only the
+// backing store the C container actually points into has to outlive this call; everything else the
+// stash owns is Rust-side bookkeeping that would otherwise leak on every invocation.
+fn aliases_stash_backing(stash: &ffi::Stash) -> bool {
+    let ffi::Stash::Storage(storage) = stash else {
+        return true;
+    };
+    match storage.data() {
+        ffi::StashData::Unit | ffi::StashData::ObjectArray(_, _) => false,
+        ffi::StashData::List(list) => matches!(
+            &list.payload,
+            ffi::ListPayload::Strings {
+                items_duped: false,
+                ..
+            }
+        ),
+        _ => true,
+    }
+}
+
 pub(super) fn encode_and_leak_container<F>(
     value: &std::result::Result<Unknown<'_>, ()>,
     context: &'static str,
@@ -155,9 +175,13 @@ where
     let Some(stash) = encode(*unknown).report_err(context) else {
         return std::ptr::null_mut();
     };
-    let container = stash.as_ptr(context).expect(context);
+    let Some(container) = stash.as_ptr(context).report_err(context) else {
+        return std::ptr::null_mut();
+    };
     stash.disarm_pending_transfer();
-    std::mem::forget(stash);
+    if aliases_stash_backing(&stash) {
+        std::mem::forget(stash);
+    }
     container
 }
 

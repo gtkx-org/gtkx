@@ -16,6 +16,7 @@ fn callback_value(destroy: bool) -> CallbackValue {
     CallbackValue::new(
         std::ptr::without_provenance_mut::<c_void>(0xCAFE),
         std::ptr::without_provenance_mut::<c_void>(0xBEEF),
+        true,
         destroy_ptr,
         None,
     )
@@ -34,7 +35,7 @@ fn armed_callback_value(env: &Env, destroy_ptr: Option<*mut c_void>) -> Callback
     let data = ClosureData::new(js_fn, Vec::new(), Codec::Void(VoidCodec), None, false);
     let state = Box::new(ClosureState::new(data));
     let fn_ptr = state.code_ptr;
-    CallbackValue::new_pending_transfer(fn_ptr, destroy_ptr, state)
+    CallbackValue::new_pending_transfer(fn_ptr, true, destroy_ptr, state)
 }
 
 fn release_handed_over_state(state_ptr: *mut c_void) {

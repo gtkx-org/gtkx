@@ -65,6 +65,7 @@ type BoxedOptions = {
     sharedLibrary: string | undefined;
     getTypeFnName: string;
     callerAllocated: boolean;
+    inline?: boolean;
     size: number | undefined;
 };
 
@@ -72,6 +73,7 @@ type StructOptions = {
     size: number | string | undefined;
     wrapperClass: string | undefined;
     callerAllocated: boolean;
+    inline?: boolean;
 };
 
 type FundamentalOptions = {
@@ -163,6 +165,7 @@ const tBoxed = (glibName: string, options: BoxedOptions): string =>
                 : `sharedLibrary: ${sourceStringLiteral(options.sharedLibrary)}`,
             `getTypeFnName: ${sourceStringLiteral(options.getTypeFnName)}`,
             options.callerAllocated ? "callerAllocated: true" : undefined,
+            options.inline === true ? "inline: true" : undefined,
             options.size === undefined ? undefined : `size: ${String(options.size)}`,
         ]),
     ]);
@@ -174,6 +177,7 @@ const tStruct = (ownership: Ownership, options: StructOptions): string =>
             options.size === undefined ? undefined : `size: ${String(options.size)}`,
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
             options.callerAllocated ? "callerAllocated: true" : undefined,
+            options.inline === true ? "inline: true" : undefined,
         ]),
     ]);
 

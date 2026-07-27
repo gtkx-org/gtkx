@@ -7,7 +7,7 @@ use crate::ffi::codec::Codec;
 
 #[derive(Debug, Clone)]
 pub(crate) struct SizedArrayCodec {
-    size_param_index: u32,
+    pub(super) size_param_index: u32,
 }
 
 impl SizedArrayCodec {
@@ -17,6 +17,21 @@ impl SizedArrayCodec {
 }
 
 impl ArrayContainer for SizedArrayCodec {
+    // The length lives in a sibling parameter, so decoding without the surrounding argument list is
+    // not possible. Falling back to the container default would scan for a terminator this array
+    // does not have, so it fails loudly instead.
+    fn decode<'e>(
+        &self,
+        _codec: &ArrayCodec,
+        _env: &'e Env,
+        _stash: &ffi::Stash,
+    ) -> anyhow::Result<Unknown<'e>> {
+        bail!(
+            "A sized array cannot be decoded without its length parameter (index {})",
+            self.size_param_index
+        )
+    }
+
     fn decode_with_context<'e>(
         &self,
         codec: &ArrayCodec,

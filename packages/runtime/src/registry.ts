@@ -22,6 +22,7 @@ type VfuncDescriptor<K extends "class" | "interface"> = {
     className: string;
     vfuncName: string;
     byteOffset: number;
+    vtableSize: number;
     argDescriptors: NativeRegisterClassVfunc["argDescriptors"];
     returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
 };

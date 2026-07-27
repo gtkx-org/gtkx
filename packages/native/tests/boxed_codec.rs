@@ -36,6 +36,8 @@ fn boxed(ownership: Ownership) -> BoxedCodec {
         get_type_fn_name: None,
         free_fn_name: None,
         caller_allocated: false,
+        size: None,
+        inline: false,
     }
 }
 
@@ -44,6 +46,7 @@ fn struct_type(ownership: Ownership, size: Option<usize>) -> StructCodec {
         ownership,
         size,
         caller_allocated: false,
+        inline: false,
     }
 }
 
@@ -111,6 +114,8 @@ fn type_resolves_via_library_lookup() {
             get_type_fn_name: Some("g_bytes_get_type".to_owned()),
             free_fn_name: None,
             caller_allocated: false,
+            size: None,
+            inline: false,
         };
         let resolved = bytes_type.type_().expect("type resolves");
         assert_eq!(resolved, Some(glib::Bytes::static_type()));
@@ -219,6 +224,8 @@ fn unresolvable_boxed(ownership: Ownership) -> BoxedCodec {
         get_type_fn_name: None,
         free_fn_name: None,
         caller_allocated: false,
+        size: None,
+        inline: false,
     }
 }
 
@@ -337,6 +344,8 @@ fn caller_allocated_boxed_aliases_source_without_copying() {
 
         let descriptor = BoxedCodec {
             caller_allocated: true,
+            size: None,
+            inline: false,
             ..boxed(Ownership::Borrowed)
         };
         assert_read_aliases_source(
@@ -357,6 +366,7 @@ fn caller_allocated_struct_aliases_source_without_copying() {
 
         let descriptor = StructCodec {
             caller_allocated: true,
+            inline: false,
             ..struct_type(Ownership::Borrowed, Some(size_of::<gdk::ffi::GdkRGBA>()))
         };
         assert_read_aliases_source(
@@ -512,6 +522,8 @@ fn write_value_to_pointer_falls_back_when_type_unresolvable() {
             get_type_fn_name: None,
             free_fn_name: None,
             caller_allocated: false,
+            size: None,
+            inline: false,
         };
 
         let slot = write_value_into_slot(
@@ -787,6 +799,8 @@ mod free_fn {
             get_type_fn_name: None,
             free_fn_name: Some(G_FREE.to_owned()),
             caller_allocated: false,
+            size: None,
+            inline: false,
         }
     }
 
@@ -859,6 +873,8 @@ mod free_fn {
                 get_type_fn_name: None,
                 free_fn_name: Some("definitely_not_a_real_symbol_xyz".to_owned()),
                 caller_allocated: false,
+                size: None,
+                inline: false,
             };
 
             let err = descriptor
@@ -885,6 +901,8 @@ mod free_fn {
                 get_type_fn_name: None,
                 free_fn_name: Some(G_FREE.to_owned()),
                 caller_allocated: false,
+                size: None,
+                inline: false,
             };
 
             let err = descriptor
@@ -916,6 +934,8 @@ mod free_fn {
                 get_type_fn_name: None,
                 free_fn_name: Some(G_FREE.to_owned()),
                 caller_allocated: false,
+                size: None,
+                inline: false,
             };
 
             let err = descriptor

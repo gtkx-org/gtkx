@@ -113,7 +113,7 @@ impl Encoder for RefCodec {
                     (None, None) => return Ok(Self::null_ptr_stash()),
                 };
 
-                let mut buffer: Vec<u8> = vec![0u8; buffer_size];
+                let mut buffer: Vec<u8> = Self::zeroed_buffer(buffer_size)?;
                 if let Some(content) = inner_string.as_deref() {
                     let bytes = content.as_bytes();
                     let copy_len = bytes.len().min(buffer_size.saturating_sub(1));
@@ -150,7 +150,7 @@ impl Decoder for RefCodec {
                 storage
             }
             ReadSource::Slot(ptr, _context) => {
-                let inner_ptr = unsafe { *ptr.cast::<*mut c_void>() };
+                let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
                 if inner_ptr.is_null() {
                     return Ok(value::js_null(env)?);
                 }
@@ -232,6 +232,19 @@ impl Decoder for RefCodec {
 impl PtrWriter for RefCodec {}
 
 impl RefCodec {
+    // `vec![0u8; n]` aborts the process through `handle_alloc_error` when the request cannot be
+    // served, which no `catch_unwind` can intercept, so an out-of-range buffer length has to fail
+    // as an ordinary error before the allocator sees it.
+    fn zeroed_buffer(size: usize) -> anyhow::Result<Vec<u8>> {
+        let mut buffer: Vec<u8> = Vec::new();
+        buffer
+            .try_reserve_exact(size)
+            .map_err(|_| anyhow::anyhow!("Cannot allocate a {size}-byte Ref<String> buffer"))?;
+        buffer.resize(size, 0);
+
+        Ok(buffer)
+    }
+
     fn null_ptr_stash() -> ffi::Stash {
         let mut slot: Vec<*mut c_void> = vec![std::ptr::null_mut()];
         let ptr = slot.as_mut_ptr().cast::<c_void>();

@@ -348,6 +348,13 @@ impl Codec {
             Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_)
         )
     }
+
+    // True when `write_value_to_ptr` stores a pointer to memory it allocated itself, which the slot
+    // it was written into does not own.
+    #[must_use]
+    pub fn allocates_written_value(&self) -> bool {
+        matches!(self, Codec::String(_))
+    }
 }
 
 impl std::fmt::Display for Codec {

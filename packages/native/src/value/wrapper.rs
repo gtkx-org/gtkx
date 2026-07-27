@@ -76,6 +76,18 @@ fn delete_reference(napi_ref: sys::napi_ref) {
     unsafe { sys::napi_delete_reference(node_env::env().raw(), napi_ref) };
 }
 
+// Re-installing detaches the previous wrapper: its finalizer still runs, but with a stale
+// generation, so `schedule_cleanup` will not touch this handle again. The strong count the old
+// reference was given at `set_wrapper` therefore has to be given back here, or the outgoing wrapper
+// stays reachable from the reference alone and never becomes collectable.
+fn release_outgoing_ref(napi_ref: sys::napi_ref, was_strong: bool) {
+    if napi_ref.is_null() || !was_strong {
+        return;
+    }
+    let mut count: u32 = 0;
+    unsafe { sys::napi_reference_unref(node_env::env().raw(), napi_ref, &raw mut count) };
+}
+
 /// # Safety
 ///
 /// `gobject` must be a non-null pointer to a live `GObject`, and the caller must hold a strong
@@ -92,9 +104,10 @@ pub unsafe fn install(
     if let Some(nn) = unsafe { handle_qdata(gobject) } {
         let handle = unsafe { nn.as_ref() };
         let generation = handle.generation.get() + 1;
-        handle.napi_ref.set(napi_ref);
+        let outgoing = handle.napi_ref.replace(napi_ref);
+        let outgoing_was_strong = handle.wrapper_strong.replace(true);
         handle.generation.set(generation);
-        handle.wrapper_strong.set(true);
+        release_outgoing_ref(outgoing, outgoing_was_strong);
         (Rc::clone(handle), generation)
     } else {
         let handle = Rc::new(WrapperHandle {

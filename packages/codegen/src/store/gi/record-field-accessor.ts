@@ -190,7 +190,10 @@ const renderRecordFieldAccessor = (
         return `${doc}declare ${jsName}: ${tsType};`;
     }
 
-    const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none"));
+    // A record field whose C type is the record itself rather than a pointer to it holds the value
+    // in place, so its own address is the value and no word may be loaded out of it.
+    const isInline = resolveInlineStructFields(context, field.type, field.cType) !== undefined;
+    const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none", { isInline }));
     const tsType = renderTsType(context, field.type, false);
 
     const accessorOptions: AccessorOptions = {

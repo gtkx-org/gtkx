@@ -39,11 +39,18 @@ fn execute_call<'e>(
         stash.append_libffi_args(&mut ffi_args);
     }
 
+    let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(descriptor.arg_codecs.len());
+    for codec in &descriptor.arg_codecs {
+        codec.append_ffi_arg_types(&mut arg_types);
+    }
+    anyhow::ensure!(
+        arg_types.len() == ffi_args.len(),
+        "{symbol_name}: the call interface declares {} native arguments but {} were marshalled",
+        arg_types.len(),
+        ffi_args.len()
+    );
+
     let cif = descriptor.cif.get_or_init(|| {
-        let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(descriptor.arg_codecs.len());
-        for codec in &descriptor.arg_codecs {
-            codec.append_ffi_arg_types(&mut arg_types);
-        }
         libffi::Builder::new()
             .res(return_codec.libffi_type())
             .args(arg_types)

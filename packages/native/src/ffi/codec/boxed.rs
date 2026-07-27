@@ -14,6 +14,8 @@ pub struct BoxedCodec {
     pub get_type_fn_name: Option<String>,
     pub free_fn_name: Option<String>,
     pub caller_allocated: bool,
+    pub size: Option<usize>,
+    pub inline: bool,
 }
 
 impl BoxedCodec {
@@ -52,6 +54,26 @@ impl BoxedCodec {
             );
         };
         Ok(unsafe { Boxed::from_glib_none(type_, ptr) }.into())
+    }
+
+    fn write_inline(&self, slot: ffi::Slot, value: Unknown<'_>) -> anyhow::Result<()> {
+        let Some(size) = self.size else {
+            bail!(
+                "Cannot write the inline boxed field '{}': its size is unknown",
+                self.type_name
+            )
+        };
+        let src_ptr = value::handle_ptr(value, "Boxed field write")?;
+        if src_ptr.is_null() {
+            bail!(
+                "Cannot write null into the inline boxed field '{}'",
+                self.type_name
+            )
+        }
+        unsafe {
+            std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), slot.as_ptr().cast::<u8>(), size);
+        }
+        Ok(())
     }
 
     fn try_resolve_type_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
@@ -107,13 +129,26 @@ impl Decoder for BoxedCodec {
             let handle = match self.ownership {
                 Ownership::Full => match self.type_()? {
                     Some(type_) => Boxed::from_glib_full(type_, ptr).into(),
-                    None => Handle::Struct(ptr),
+                    None => Handle::owned_struct(ptr),
                 },
                 Ownership::Borrowed => self.copied(ptr)?,
             };
 
             Ok(value::handle_to_unknown(env, handle)?)
         })
+    }
+
+    unsafe fn read_pointer_slot<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *const c_void,
+        context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if self.inline {
+            return unsafe { self.read_value(env, ptr.cast_mut(), context) };
+        }
+        let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
+        unsafe { self.read_value(env, inner_ptr, context) }
     }
 
     read_value_non_null!(|self, env, ptr| {
@@ -137,6 +172,9 @@ impl PtrWriter for BoxedCodec {
         value: Unknown<'_>,
         init: SlotInit,
     ) -> anyhow::Result<()> {
+        if self.inline {
+            return self.write_inline(slot, value);
+        }
         let Some(type_) = self.type_()? else {
             return write_object_ptr(slot, value, "Boxed field write");
         };

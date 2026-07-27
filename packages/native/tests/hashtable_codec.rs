@@ -107,6 +107,7 @@ fn struct_codec_with(ownership: Ownership, size: Option<usize>) -> Codec {
         ownership,
         size,
         caller_allocated: false,
+        inline: false,
     })
 }
 
@@ -147,6 +148,8 @@ fn full_boxed_codec() -> Codec {
         get_type_fn_name: None,
         free_fn_name: None,
         caller_allocated: false,
+        size: None,
+        inline: false,
     })
 }
 

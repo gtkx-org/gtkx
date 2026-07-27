@@ -39,6 +39,17 @@ fn leak_container_to_callee(ptrs: &[*mut c_void]) -> *mut c_void {
     unsafe { glib::ffi::g_memdup2(ptrs.as_ptr().cast::<c_void>(), size_of_val(ptrs)) }
 }
 
+fn zero_terminated_len(base: *const u8, stride: usize) -> usize {
+    let mut len = 0usize;
+    loop {
+        let element = unsafe { std::slice::from_raw_parts(base.add(len * stride), stride) };
+        if element.iter().all(|&byte| byte == 0) {
+            return len;
+        }
+        len += 1;
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct NullTerminatedArrayCodec;
 
@@ -146,6 +157,11 @@ impl ArrayCodec {
         if ptr.is_null() {
             return build_js_array(env, Vec::new());
         }
+        if let Some(stride) = self.inline_element_size() {
+            return self.decode_zero_terminated_contiguous(env, stride, *ptr, |env, base, len| {
+                self.decode_inline(env, stride, base, len)
+            });
+        }
 
         match self.item_codec("array")? {
             ItemCodec::String => self.decode_null_terminated_string_array(env, *ptr),
@@ -156,6 +172,26 @@ impl ArrayCodec {
             | ItemCodec::Float(_)
             | ItemCodec::Boolean) => self.decode_zero_terminated_scalar_array(env, codec, *ptr),
         }
+    }
+
+    fn decode_zero_terminated_contiguous<'e, F>(
+        &self,
+        env: &'e Env,
+        stride: usize,
+        ptr: *mut c_void,
+        decode: F,
+    ) -> anyhow::Result<Unknown<'e>>
+    where
+        F: FnOnce(&'e Env, *const u8, usize) -> anyhow::Result<Vec<Unknown<'e>>>,
+    {
+        let base = ptr as *const u8;
+        let values = decode(env, base, zero_terminated_len(base, stride));
+
+        if self.ownership.is_full() {
+            unsafe { glib::ffi::g_free(ptr) };
+        }
+
+        build_js_array(env, values?)
     }
 
     fn decode_null_terminated_ptr_array<'e>(
@@ -188,24 +224,9 @@ impl ArrayCodec {
         codec: ItemCodec,
         ptr: *mut c_void,
     ) -> anyhow::Result<Unknown<'e>> {
-        let stride = codec.element_size();
-        let base = ptr as *const u8;
-        let mut len = 0usize;
-        loop {
-            let element = unsafe { std::slice::from_raw_parts(base.add(len * stride), stride) };
-            if element.iter().all(|&byte| byte == 0) {
-                break;
-            }
-            len += 1;
-        }
-
-        let values = self.decode_contiguous(env, codec, base, len);
-
-        if self.ownership.is_full() {
-            unsafe { glib::ffi::g_free(ptr) };
-        }
-
-        build_js_array(env, values?)
+        self.decode_zero_terminated_contiguous(env, codec.element_size(), ptr, |env, base, len| {
+            self.decode_contiguous(env, codec, base, len)
+        })
     }
 
     fn decode_null_terminated_string_array<'e>(

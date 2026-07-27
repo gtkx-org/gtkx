@@ -11,31 +11,59 @@ thread_local! {
     static RESOURCE_REF: Cell<sys::napi_ref> = const { Cell::new(std::ptr::null_mut()) };
 }
 
-pub fn install(env: Env) -> napi::Result<()> {
-    let raw = env.raw();
-    NODE_ENV.set(raw);
+fn check(status: sys::napi_status, what: &str) -> napi::Result<()> {
+    if status == sys::Status::napi_ok {
+        return Ok(());
+    }
 
+    Err(napi::Error::new(
+        Status::GenericFailure,
+        format!("Failed to {what} while installing the Node environment (status {status})"),
+    ))
+}
+
+unsafe fn install_dispatch_context(raw: sys::napi_env) -> napi::Result<()> {
     unsafe {
         let mut resource: sys::napi_value = std::ptr::null_mut();
-        if sys::napi_create_object(raw, &raw mut resource) != sys::Status::napi_ok {
-            return Err(napi::Error::new(
-                Status::GenericFailure,
-                "Failed to create the dispatch resource object",
-            ));
-        }
+        check(
+            sys::napi_create_object(raw, &raw mut resource),
+            "create the dispatch resource object",
+        )?;
 
         let name = c"gtkx:dispatch";
         let mut resource_name: sys::napi_value = std::ptr::null_mut();
-        sys::napi_create_string_utf8(raw, name.as_ptr(), 13, &raw mut resource_name);
+        check(
+            sys::napi_create_string_utf8(raw, name.as_ptr(), 13, &raw mut resource_name),
+            "name the dispatch resource",
+        )?;
 
         let mut async_context: sys::napi_async_context = std::ptr::null_mut();
-        sys::napi_async_init(raw, resource, resource_name, &raw mut async_context);
-        ASYNC_CONTEXT.set(async_context);
+        check(
+            sys::napi_async_init(raw, resource, resource_name, &raw mut async_context),
+            "create the dispatch async context",
+        )?;
 
         let mut resource_ref: sys::napi_ref = std::ptr::null_mut();
-        sys::napi_create_reference(raw, resource, 1, &raw mut resource_ref);
+        check(
+            sys::napi_create_reference(raw, resource, 1, &raw mut resource_ref),
+            "retain the dispatch resource object",
+        )?;
+
+        ASYNC_CONTEXT.set(async_context);
         RESOURCE_REF.set(resource_ref);
     }
+
+    Ok(())
+}
+
+pub fn install(env: Env) -> napi::Result<()> {
+    if is_installed_on_current_thread() {
+        return Ok(());
+    }
+
+    let raw = env.raw();
+    unsafe { install_dispatch_context(raw) }?;
+    NODE_ENV.set(raw);
 
     Ok(())
 }
