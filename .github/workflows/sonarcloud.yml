@@ -22,6 +22,11 @@ permissions:
   pull-requests: read
 
 env:
+  # Pushes to main (and manual runs from main) may populate the shared cache;
+  # pull requests and tag builds get a read-only token so unreviewed code can
+  # never poison it. Fork pull requests receive no secrets at all and simply
+  # run without the remote cache.
+  NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
 
 jobs:
   sonarcloud:

@@ -44,7 +44,7 @@ runs:
           DOCKER_ARGS+=(-v "$HOME/.local/share/pnpm/store:/root/.local/share/pnpm/store")
         fi
 
-        for var in NODE_VERSION GTK4_VERSION VERSION; do
+        for var in NODE_VERSION GTK4_VERSION VERSION NX_CLOUD_ACCESS_TOKEN; do
           if [ -n "${!var:-}" ]; then
             DOCKER_ARGS+=(-e "$var")
           fi
