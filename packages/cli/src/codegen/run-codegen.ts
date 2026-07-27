@@ -172,13 +172,7 @@ const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> =
 };
 
 const syncSchemaEnv = (cwd: string): void => {
-    const dataDir = resolveDataDir(cwd);
-
-    if (dataDir === null) {
-        return;
-    }
-
-    emitSchemaEnv(cwd, dataDir);
+    emitSchemaEnv(cwd, resolveDataDir(cwd));
 };
 
 const resolveInputsOrNull = (cwd: string, config: Config): CodegenInputs | null => {

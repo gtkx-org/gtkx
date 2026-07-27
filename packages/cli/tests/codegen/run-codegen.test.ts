@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ensureGenerated, runCodegen } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 
 const writeFingerprint = (cwd: string, libraries: string[] = ["Gtk-4.0"]) => {
     writeFileSync(
@@ -64,6 +64,13 @@ const writeJsxStore = (cwd: string) => {
     writeFileSync(join(dir, "metadata.js"), "");
     writeFileSync(join(dir, "gtk", "gtk.js"), "");
     mkdirSync(join(cwd, "node_modules", "@gtkx", "jsx"), { recursive: true });
+};
+
+const installReactProject = (cwd: string) => {
+    installRuntimePackage(cwd);
+    installReactStack(cwd);
+    writeConfig(cwd);
+    writeDefaultGiBarrels(cwd);
 };
 
 const announceLogs = async (cwd: string): Promise<string> => {
@@ -195,18 +202,12 @@ describe("ensureGenerated", () => {
     });
 
     it("regenerates when the jsx unit is missing", async () => {
-        installRuntimePackage(cwd);
-        installReactStack(cwd);
-        writeConfig(cwd);
-        writeDefaultGiBarrels(cwd);
+        installReactProject(cwd);
         expect(await ensureGenerated(cwd)).toBe(true);
     });
 
     it("does nothing when the gi and jsx stores are present", async () => {
-        installRuntimePackage(cwd);
-        installReactStack(cwd);
-        writeConfig(cwd);
-        writeDefaultGiBarrels(cwd);
+        installReactProject(cwd);
         writeJsxStore(cwd);
         writeFingerprint(cwd);
         expect(await ensureGenerated(cwd)).toBe(false);
@@ -245,10 +246,7 @@ describe("ensureGenerated — store links", () => {
     });
 
     it("regenerates when the bundled gi store links are pruned", async () => {
-        installRuntimePackage(cwd);
-        installReactStack(cwd);
-        writeConfig(cwd);
-        writeDefaultGiBarrels(cwd);
+        installReactProject(cwd);
         writeJsxStore(cwd);
 
         rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "gi"), {
@@ -257,5 +255,23 @@ describe("ensureGenerated — store links", () => {
         });
 
         expect(await ensureGenerated(cwd)).toBe(true);
+    });
+});
+
+describe("syncSchemaEnv", () => {
+    let cwd: string;
+
+    beforeEach(() => {
+        cwd = mkdtempSync(join(tmpdir(), "gtkx-sync-schema-env-"));
+    });
+
+    afterEach(() => {
+        rmSync(cwd, { recursive: true, force: true });
+    });
+
+    it("writes the declaration file for a project that declares no data directory", () => {
+        writeFileSync(join(cwd, "package.json"), JSON.stringify({ name: "app", version: "0.0.0" }));
+        syncSchemaEnv(cwd);
+        expect(existsSync(join(cwd, "node_modules", ".gtkx", "env.d.ts"))).toBe(true);
     });
 });
