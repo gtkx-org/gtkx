@@ -10,6 +10,8 @@ import {
     layoutOfPrimitive,
 } from "../../gir/size.js";
 
+type ResolvedRecordValue = Extract<EntityType, { kind: "record" }>["value"];
+
 type RecordFieldSlot = {
     field: GirField;
     slot: FieldSlot;
@@ -17,6 +19,15 @@ type RecordFieldSlot = {
 
 const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
 const recordLayoutCache: Map<string, FieldLayout> = new Map();
+
+// GIR carries no alignment attribute, and a type whose alignment exceeds its widest member cannot be
+// derived from the field list: Graphene models `graphene_simd4f_t` as four `gfloat`, which computes
+// to align 4 while the real type is a 16-byte SIMD vector. Keying the override on `c:type` keeps it
+// to the handful of types where the XML genuinely cannot express the ABI.
+const ALIGNMENT_OVERRIDES: Map<string, FieldLayout> = new Map([
+    ["graphene_simd4f_t", { size: 16, align: 16 }],
+    ["graphene_simd4x4f_t", { size: 64, align: 16 }],
+]);
 
 const computeRecordFieldSlots = (
     context: ModuleContext,
@@ -58,11 +69,34 @@ const mergeBitfield = (readExpr: string, valueExpr: string, mask: number, shift:
 };
 
 const fieldLayoutInput = (context: ModuleContext, field: GirField, visited: Set<string>): FieldLayoutInput => {
+    if (field.inlineMembers !== undefined) {
+        const layout = inlineMemberLayout(context, field.inlineMembers, field.inlineIsUnion, visited);
+
+        return { layout, bits: undefined };
+    }
+
     if (field.type === undefined) {
         return { layout: POINTER_LAYOUT, bits: undefined };
     }
 
     return { layout: layoutOfType(context, field.type, field.cType, visited), bits: field.bits };
+};
+
+const inlineMemberLayout = (
+    context: ModuleContext,
+    members: GirField[],
+    isUnion: boolean,
+    visited: Set<string>,
+): FieldLayout => {
+    const inputs = Array.from(members, (member) => fieldLayoutInput(context, member, visited));
+
+    if (inputs.length === 0) {
+        return { size: 0, align: 1 };
+    }
+
+    const { size } = computeFieldSlots(inputs, isUnion);
+
+    return { size, align: Math.max(1, ...inputs.map((input) => input.layout.align)) };
 };
 
 const pointerOr = (occurrenceCType: string | undefined, otherwise: () => FieldLayout): FieldLayout =>
@@ -82,7 +116,7 @@ const layoutOfType = (
 
     switch (type.kind) {
         case "primitive": {
-            return layoutOfPrimitive(type.category);
+            return pointerOr(occurrenceCType, () => layoutOfPrimitive(type.category));
         }
         case "carray": {
             return arrayLayout(context, type, visited);
@@ -121,13 +155,23 @@ const arrayLayout = (
     return { size: elementLayout.size * ref.fixedSize, align: elementLayout.align };
 };
 
+const declaredLayout = (record: ResolvedRecordValue): FieldLayout | undefined => {
+    if (record.cType?.endsWith("*") === true) {
+        return POINTER_LAYOUT;
+    }
+
+    return record.cType === undefined ? undefined : ALIGNMENT_OVERRIDES.get(record.cType);
+};
+
 const layoutOfRecord = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
     visited: Set<string>,
 ): FieldLayout => {
-    if (resolved.value.cType?.endsWith("*") === true) {
-        return POINTER_LAYOUT;
+    const declared = declaredLayout(resolved.value);
+
+    if (declared !== undefined) {
+        return declared;
     }
 
     const key = `${resolved.namespace.name}.${resolved.value.name}`;

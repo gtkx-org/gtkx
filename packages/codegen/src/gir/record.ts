@@ -1,5 +1,5 @@
 import type { ParseContext } from "./type-id.js";
-import { fieldFromNode, type GirField } from "./field.js";
+import { collectFields, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, isAttrTrue, type RawNode } from "./parse.js";
 
@@ -43,7 +43,7 @@ const recordFromNode = (
     disguised: isAttrTrue(node, "disguised"),
     opaque: isAttrTrue(node, "opaque"),
     introspectable: isAttrTrue(node, "introspectable", true),
-    fields: getChildren(node, "field").map((field) => fieldFromNode(field, context)),
+    fields: collectFields(node, context),
     methods: getChildren(node, "method").map((method) => functionFromNode(method, context)),
     constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
     functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),

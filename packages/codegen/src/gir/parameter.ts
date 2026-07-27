@@ -42,6 +42,8 @@ type GirCallable = {
     doc: string | undefined;
     parameters: GirParameter[];
     returnValue: GirReturnValue;
+    throws: boolean;
+    introspectable: boolean;
 };
 
 const DIRECTIONS: Set<ParameterDirection> = new Set(["in", "out", "inout"]);
@@ -51,7 +53,18 @@ const SCOPES: Set<CallbackScope> = new Set(["call", "notified", "async", "foreve
 const transferOwnership = (node: RawNode): ParameterTransfer =>
     parseEnumAttr(attr(node, "transfer-ownership"), TRANSFERS, "none", "transfer-ownership");
 
-const hasNullableAttr = (node: RawNode): boolean => isAttrTrue(node, "nullable") || isAttrTrue(node, "allow-none");
+// `allow-none` is the legacy spelling of two different attributes: on an in-parameter it means the
+// value may be NULL (`nullable`), but on an out-parameter it means the caller may pass a NULL
+// location (`optional`). Folding it into `nullable` for an out-parameter would claim the returned
+// value can be null for the 494 out-parameters across the installed GIRs that only say `allow-none`.
+const isInDirection = (node: RawNode): boolean =>
+    parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction") === "in";
+
+const hasNullableAttr = (node: RawNode): boolean =>
+    isAttrTrue(node, "nullable") || (isInDirection(node) && isAttrTrue(node, "allow-none"));
+
+const hasOptionalAttr = (node: RawNode): boolean =>
+    isAttrTrue(node, "optional") || (!isInDirection(node) && isAttrTrue(node, "allow-none"));
 
 const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => ({
     name: nameAttr(node),
@@ -59,7 +72,7 @@ const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter =
     direction: parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction"),
     transferOwnership: transferOwnership(node),
     nullable: hasNullableAttr(node),
-    optional: isAttrTrue(node, "optional"),
+    optional: hasOptionalAttr(node),
     callerAllocates: isAttrTrue(node, "caller-allocates"),
     scope: parseEnumAttr(attr(node, "scope"), SCOPES, undefined, "scope"),
     closureIndex: intAttr(node, "closure"),
@@ -97,6 +110,8 @@ const parseCallable = (node: RawNode, context: ParseContext): GirCallable => {
         doc: getDoc(node),
         parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, context)),
         returnValue: returnValueFromNode(getChild(node, "return-value"), context),
+        throws: isAttrTrue(node, "throws"),
+        introspectable: isAttrTrue(node, "introspectable", true),
     };
 };
 

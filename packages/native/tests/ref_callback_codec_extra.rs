@@ -49,6 +49,7 @@ fn fundamental_codec() -> FundamentalCodec {
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "g_param_spec_ref".to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
+        inline: false,
     }
 }
 

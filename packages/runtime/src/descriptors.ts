@@ -56,6 +56,7 @@ type FundamentalOptions = {
     ownership?: Ownership;
     typeName?: string;
     wrapperClass?: AnyClass;
+    inline?: boolean;
 };
 
 type StructOptions = {
@@ -195,6 +196,10 @@ const fundamentalT = (
 
     if (options.wrapperClass !== undefined) {
         result.wrapperClass = options.wrapperClass;
+    }
+
+    if (options.inline) {
+        result.inline = true;
     }
 
     return result;

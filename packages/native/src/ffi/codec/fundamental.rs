@@ -8,6 +8,7 @@ pub struct FundamentalCodec {
     pub shared_library: String,
     pub ref_fn_name: String,
     pub unref_fn_name: String,
+    pub inline: bool,
 }
 
 impl FundamentalCodec {
@@ -63,6 +64,19 @@ impl Decoder for FundamentalCodec {
         self.decode_call_non_null(env, stash, "Fundamental", |ptr| {
             Ok(value::handle_to_unknown(env, self.wrap_ptr(ptr)?)?)
         })
+    }
+
+    unsafe fn read_pointer_slot<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *const c_void,
+        context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if self.inline {
+            return unsafe { self.read_value(env, ptr.cast_mut(), context) };
+        }
+        let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
+        unsafe { self.read_value(env, inner_ptr, context) }
     }
 
     read_value_non_null!(|self, env, ptr| {

@@ -141,6 +141,7 @@ pub enum Descriptor {
         ref_fn_name: String,
         unref_fn_name: String,
         type_name: Option<String>,
+        inline: Option<bool>,
     },
     Array {
         #[napi(ts_type = "Descriptor")]
@@ -260,11 +261,13 @@ impl Descriptor {
                 ref_fn_name,
                 unref_fn_name,
                 type_name: _,
+                inline,
             } => Codec::Fundamental(FundamentalCodec {
                 ownership,
                 shared_library,
                 ref_fn_name,
                 unref_fn_name,
+                inline: inline.unwrap_or(false),
             }),
             nested => nested.into_nested_codec()?,
         })

@@ -182,7 +182,7 @@ function logError(error: unknown) {
 }
 
 function loadFontFamilies(): string[] {
-    const fontMap = PangoCairo.fontMapGetDefault();
+    const fontMap = PangoCairo.FontMap.getDefault();
     const count = fontMap.getNItems();
     const names: string[] = [];
 

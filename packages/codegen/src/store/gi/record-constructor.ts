@@ -15,7 +15,7 @@ type WritableFieldSlot = RecordFieldSlot & { field: GirField & { type: TypeId } 
 const isWritableFieldSlot = (context: ModuleContext, entry: RecordFieldSlot): entry is WritableFieldSlot =>
     entry.field.writable && isEmittableField(context, entry.field);
 
-const isOpaque = (record: GirRecord): boolean => record.glibGetType === undefined && record.disguised;
+const isOpaque = (record: GirRecord): boolean => record.opaque || record.disguised;
 
 const renderRecordConstructorPropsInterface = (
     context: ModuleContext,

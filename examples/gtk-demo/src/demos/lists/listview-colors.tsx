@@ -215,7 +215,7 @@ const listviewColorsDemo: Demo = {
 
 function createTnumAttrs(): Pango.AttrList {
     const attrs = Pango.AttrList.new();
-    attrs.insert(Pango.attrFontFeaturesNew("tnum"));
+    attrs.insert(Pango.AttrFontFeatures.new("tnum"));
 
     return attrs;
 }

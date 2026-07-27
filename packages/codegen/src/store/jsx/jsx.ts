@@ -291,7 +291,11 @@ const renderInterfacePropsBlock = (
 };
 
 const renderJsxAugmentation = (namespaceElements: GlibNamedClass[]): string => {
-    const elementLines = namespaceElements.map((entry) => `${entry.glibName}: ${entry.glibName}Props;`).join("\n");
+    const elementLines = namespaceElements
+        .filter((entry) => !entry.klass.isAbstract)
+        .map((entry) => `${entry.glibName}: ${entry.glibName}Props;`)
+        .join("\n");
+
     const intrinsicInterface = renderBlock("interface IntrinsicElements", elementLines);
     const reactJsxNamespace = renderBlock("namespace React.JSX", intrinsicInterface);
 

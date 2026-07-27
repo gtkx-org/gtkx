@@ -364,7 +364,7 @@ function nextKeyInfos(keyInfos: KeyInfo[], name: string, value: string): KeyInfo
 function writeKeyValue(context: KeyEditContext) {
     const { keyInfo, newText, widget, settings, schema, setKeyInfos } = context;
     const variantType = GLib.VariantType.new(keyInfo.type);
-    const variant = GLib.variantParse(variantType, newText, null, null);
+    const variant = GLib.Variant.parse(variantType, newText, null, null);
     const schemaKey = schema.getKey(keyInfo.name);
 
     if (!schemaKey.rangeCheck(variant)) {

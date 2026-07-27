@@ -169,7 +169,7 @@ describe("videoPlayerDemo open dialog", () => {
     it("applies the picked file to the video when the Open dialog resolves", async () => {
         const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation((): void => undefined);
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
-        openSpy.mockResolvedValue(Gio.fileNewForPath(FAKE_VIDEO_PATH));
+        openSpy.mockResolvedValue(Gio.File.newForPath(FAKE_VIDEO_PATH));
 
         try {
             await renderAndClickOpenButton();

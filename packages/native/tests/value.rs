@@ -50,6 +50,7 @@ fn gvariant_fundamental_type_of(ownership: Ownership) -> Codec {
         shared_library: "libglib-2.0.so.0".to_string(),
         ref_fn_name: "g_variant_ref_sink".to_string(),
         unref_fn_name: "g_variant_unref".to_string(),
+        inline: false,
     })
 }
 

@@ -123,7 +123,7 @@ const ResourcesColumn = ({ gifPaintable }: { gifPaintable: Gtk.MediaFile | null 
 );
 
 const VideoColumn = ({ widgetPaintable }: { widgetPaintable: Gtk.WidgetPaintable | null }) => {
-    const videoFile = Gio.fileNewForUri(gtkLogoWebmUri);
+    const videoFile = Gio.File.newForUri(gtkLogoWebmUri);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>

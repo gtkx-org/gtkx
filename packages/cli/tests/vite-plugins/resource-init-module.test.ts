@@ -5,7 +5,7 @@ describe("renderInitModule", () => {
     it("renders the build-mode registrar that loads the bundle next to itself", () => {
         const source = renderInitModule({ isBuild: true, devBundlePath: "" });
         expect(source).toContain("fileURLToPath(import.meta.url)");
-        expect(source).toContain("resourceLoad(join(bundleDir,");
+        expect(source).toContain("Resource.load(join(bundleDir,");
         expect(source).toContain("resourcesRegister(resource)");
         expect(source).toContain("export function ensureRegistered()");
         expect(source).toContain("export function __refresh()");

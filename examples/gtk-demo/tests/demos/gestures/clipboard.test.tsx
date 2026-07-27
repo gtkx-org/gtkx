@@ -73,7 +73,7 @@ const populateClipboardRgba = async (): Promise<void> => {
 
 const populateClipboardFile = async (): Promise<void> => {
     const clipboard = getDefaultClipboard();
-    const file = Gio.fileNewForPath("/tmp");
+    const file = Gio.File.newForPath("/tmp");
     const value = new GObject.Value();
     value.init(GObject.typeFromName("GFile"));
     value.setObject(file);
@@ -603,7 +603,7 @@ describe("clipboardDemo paste after copy round-trip", () => {
 
 describe("clipboardDemo file source selection", () => {
     it("opens a Gtk.FileDialog and updates the source file when the File button is clicked", async () => {
-        await runWithFileDialog("open", Gio.fileNewForPath(join(TEMP_DIR, "fake-file.txt")), async () => {
+        await runWithFileDialog("open", Gio.File.newForPath(join(TEMP_DIR, "fake-file.txt")), async () => {
             await clickSourceButtonAfterDialog("File", "File Drag Source");
             const copyButton = await findButtonByLabel("_Copy");
 
@@ -614,7 +614,7 @@ describe("clipboardDemo file source selection", () => {
     });
 
     it("opens a Gtk.FileDialog folder picker when the Folder button is clicked", async () => {
-        await runWithFileDialog("selectFolder", Gio.fileNewForPath("/tmp"), async () => {
+        await runWithFileDialog("selectFolder", Gio.File.newForPath("/tmp"), async () => {
             await clickSourceButtonAfterDialog("Folder", "Folder Drag Source");
             const copyButton = await findButtonByLabel("_Copy");
 
@@ -643,7 +643,7 @@ describe("clipboardDemo file source selection", () => {
 
 describe("clipboardDemo file source copying", () => {
     it("copies a file to the clipboard after the file dialog selects a file", async () => {
-        await runWithFileDialog("open", Gio.fileNewForPath(join(TEMP_DIR, "some-file.txt")), async () => {
+        await runWithFileDialog("open", Gio.File.newForPath(join(TEMP_DIR, "some-file.txt")), async () => {
             await clickSourceButtonAfterDialog("File", "File Drag Source");
             const copyButton = await findButtonByLabel("_Copy");
 
@@ -660,7 +660,7 @@ describe("clipboardDemo file source copying", () => {
     });
 
     it("copies a folder GFile to the clipboard after the folder dialog selects a folder", async () => {
-        await runWithFileDialog("selectFolder", Gio.fileNewForPath("/tmp"), async () => {
+        await runWithFileDialog("selectFolder", Gio.File.newForPath("/tmp"), async () => {
             await clickSourceButtonAfterDialog("Folder", "Folder Drag Source");
             const copyButton = await findButtonByLabel("_Copy");
 
@@ -696,7 +696,7 @@ describe("clipboardDemo image and file drag sources", () => {
     });
 
     it("exposes a GFile content provider from the File source drag source after a file is chosen", async () => {
-        await runWithFileDialog("open", Gio.fileNewForPath(join(TEMP_DIR, "dragged.txt")), async () => {
+        await runWithFileDialog("open", Gio.File.newForPath(join(TEMP_DIR, "dragged.txt")), async () => {
             await clickSourceButtonAfterDialog("File", "File Drag Source");
 
             const sourceButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {

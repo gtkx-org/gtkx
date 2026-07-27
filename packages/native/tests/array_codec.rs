@@ -102,6 +102,7 @@ fn unresolvable_fundamental_item_codec() -> Codec {
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "no_such_array_ref_symbol_12345".to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
+        inline: false,
     })
 }
 

@@ -225,7 +225,7 @@ function isWithinSchemaRange(variant: GLib.Variant, key: KeyItem): boolean {
 
 function applySettingValue(key: KeyItem, entry: Gtk.Entry, keysState: KeysState) {
     const variantType = GLib.VariantType.new(key.valueType);
-    const variant = GLib.variantParse(variantType, entry.getText(), null, null);
+    const variant = GLib.Variant.parse(variantType, entry.getText(), null, null);
 
     if (!isWithinSchemaRange(variant, key)) {
         revertEntry(entry, key, keysState);

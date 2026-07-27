@@ -90,7 +90,7 @@ function useFramesState() {
 
     const fpsAttrs = (() => {
         const attrs = Pango.AttrList.new();
-        attrs.insert(Pango.attrFontFeaturesNew("tnum=1"));
+        attrs.insert(Pango.AttrFontFeatures.new("tnum=1"));
 
         return attrs;
     })();

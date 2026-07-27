@@ -80,6 +80,7 @@ type FundamentalOptions = {
     ownership: Ownership;
     typeName: string | undefined;
     wrapperClass: string | undefined;
+    inline?: boolean | undefined;
 };
 
 type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
@@ -193,6 +194,7 @@ const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: 
             `ownership: ${sourceStringLiteral(options.ownership)}`,
             options.typeName === undefined ? undefined : `typeName: ${sourceStringLiteral(options.typeName)}`,
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
+            options.inline === true ? "inline: true" : undefined,
         ]),
     ]);
 

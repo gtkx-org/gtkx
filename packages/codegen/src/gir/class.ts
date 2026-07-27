@@ -15,6 +15,7 @@ type GirClass = {
     glibRefFunc: string | undefined;
     glibUnrefFunc: string | undefined;
     fundamental: boolean;
+    isAbstract: boolean;
     isInterface: boolean;
     introspectable: boolean;
     implements: string[];
@@ -37,6 +38,7 @@ const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContex
     glibRefFunc: attr(node, "glib:ref-func"),
     glibUnrefFunc: attr(node, "glib:unref-func"),
     fundamental: isAttrTrue(node, "glib:fundamental"),
+    isAbstract: isAttrTrue(node, "abstract"),
     isInterface,
     introspectable: isAttrTrue(node, "introspectable", true),
     implements: getChildren(node, "implements")

@@ -11,7 +11,12 @@ const jsxInput = (overrides: Partial<JsxFingerprintInput> = {}): JsxFingerprintI
 
 describe("computeGiFingerprint", () => {
     it("changes when the libraries change", () => {
-        expect(computeGiFingerprint([], ["Gtk-4.0"]).value).not.toBe(computeGiFingerprint([], ["Adw-1"]).value);
+        expect(computeGiFingerprint([], ["Gtk-4.0"], []).value).not.toBe(computeGiFingerprint([], ["Adw-1"], []).value);
+    });
+
+    it("changes when the GIR search path changes", () => {
+        const base = computeGiFingerprint([], ["Gtk-4.0"], ["/usr/share/gir-1.0"]).value;
+        expect(computeGiFingerprint([], ["Gtk-4.0"], ["/opt/gir-1.0"]).value).not.toBe(base);
     });
 });
 

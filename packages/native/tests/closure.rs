@@ -495,6 +495,7 @@ fn a_transfer_full_fundamental_return_with_unresolvable_fns_yields_null_and_repo
                 shared_library: "libgobject-2.0.so.0".to_owned(),
                 ref_fn_name: "gtkx_missing_fundamental_ref".to_owned(),
                 unref_fn_name: "gtkx_missing_fundamental_unref".to_owned(),
+                inline: false,
             }),
             "gtkx_missing_fundamental_ref",
         );

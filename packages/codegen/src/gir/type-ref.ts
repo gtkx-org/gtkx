@@ -1,4 +1,4 @@
-import { attr, getChild, getChildren, intAttr, nameAttr, type RawNode } from "./parse.js";
+import { attr, getChild, getChildren, intAttr, isAttrTrue, nameAttr, type RawNode } from "./parse.js";
 import { primitiveCategory } from "./primitives.js";
 import { type CArrayType, LIST_FLAVOR_BY_NAME, type ListFlavor, type ParseContext, type TypeId } from "./type-id.js";
 
@@ -90,6 +90,7 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
         elementCType: elementNode === undefined ? undefined : attr(elementNode, "c:type"),
         lengthParameterIndex: intAttr(arrayNode, "length"),
         fixedSize: intAttr(arrayNode, "fixed-size"),
+        zeroTerminated: isAttrTrue(arrayNode, "zero-terminated", true),
     };
 
     return context.addContainer(carray);

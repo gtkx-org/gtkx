@@ -73,8 +73,15 @@ const appendCandidateExport = (
     collector.exportedNames.add(candidate.glibName);
 };
 
+// An abstract GType cannot be instantiated: `g_object_new` on one is a fatal GObject error rather
+// than a NULL return. Its props interface and metadata still have to be emitted, since every
+// concrete subclass extends them, so only the constructible component export is withheld.
 const collectCandidateExports = (collector: ExportCollector, options: CandidateExportOptions): void => {
     for (const candidate of options.intrinsicElements) {
+        if (candidate.klass.isAbstract) {
+            continue;
+        }
+
         appendCandidateExport(collector, candidate, options);
     }
 };

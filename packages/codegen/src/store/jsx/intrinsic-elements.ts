@@ -232,11 +232,7 @@ const collectIntrinsicElementClasses = (library: Library): GlibNamedClass[] => {
     for (const candidate of iterateClassesWithGlibName(library)) {
         const { glibName, klass, namespace } = candidate;
 
-        if (!isIntrinsicElementClass(klass, namespace, library)) {
-            continue;
-        }
-
-        if (seen.has(glibName)) {
+        if (!isIntrinsicElementClass(klass, namespace, library) || seen.has(glibName)) {
             continue;
         }
 

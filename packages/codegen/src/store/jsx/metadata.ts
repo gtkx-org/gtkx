@@ -145,7 +145,8 @@ const collectPropNames = (sources: GirClass[], shouldKeep: (property: GirPropert
 const collectConstructOnly = (sources: GirClass[]): string[] =>
     collectPropNames(sources, (property) => property.constructOnly && property.introspectable);
 
-const collectConstructable = (sources: GirClass[]): string[] => collectPropNames(sources, isConstructableProperty);
+const collectConstructable = (sources: GirClass[]): string[] =>
+    collectPropNames(sources, (property) => isConstructableProperty(property) && property.introspectable);
 
 const renderObjectLiteral = (entries: [string, string][], renderValue: (value: string) => string): string => {
     if (entries.length === 0) {
@@ -227,12 +228,30 @@ const willSetterRejectNull = (library: Library, klass: GirClass, property: GirPr
     return value !== undefined && !value.parameter.nullable && !value.parameter.optional;
 };
 
+const setterValueRef = (library: Library, klass: GirClass, property: GirProperty): TypeId | undefined => {
+    if (property.setter === undefined) {
+        return undefined;
+    }
+
+    const setter = klass.methods.find((method) => method.name === property.setter);
+
+    if (setter === undefined) {
+        return undefined;
+    }
+
+    const [value] = inputParameters(library, setter);
+
+    return value?.parameter.type;
+};
+
 const renderDefaultLiteral = (library: Library, klass: GirClass, property: GirProperty): string | undefined => {
     if (property.defaultValue === "NULL" && willSetterRejectNull(library, klass, property)) {
         return undefined;
     }
 
-    return resolveDefaultLiteral(library, property.type, property.defaultValue);
+    const ref = setterValueRef(library, klass, property) ?? property.type;
+
+    return resolveDefaultLiteral(library, ref, property.defaultValue);
 };
 
 const resolveDefaultLiteral = (
@@ -332,12 +351,20 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
         }
         case "bigint64":
         case "biguint64":
-        case "gtype":
+        case "gtype": {
+            return bigintDefaultLiteral(raw);
+        }
         case "pointer":
         case "void": {
             return undefined;
         }
     }
+};
+
+const bigintDefaultLiteral = (raw: string): string | undefined => {
+    const trimmed = raw.trim();
+
+    return INTEGER_PATTERN.test(trimmed) ? `${trimmed}n` : undefined;
 };
 
 const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined => {

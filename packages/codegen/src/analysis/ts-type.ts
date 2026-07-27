@@ -1,8 +1,14 @@
 import type { Library } from "../gir/library.js";
-import type { CArrayType, HashTableType, ListType, TypeId } from "../gir/type-id.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
+import {
+    type CArrayType,
+    type HashTableType,
+    hasUnknownArrayLength,
+    type ListType,
+    type TypeId,
+} from "../gir/type-id.js";
 import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { gtypeTsType } from "../store/gi/gtype-binding.js";
 
@@ -98,8 +104,18 @@ const renderContainerType = (
         return target.containerStyle === "record" ? `Record<${key}, ${value}>` : `Map<${key}, ${value}>`;
     }
 
+    return renderSequenceType(library, target, type);
+};
+
+// An array whose length nothing states decodes as the bare pointer it is, so its TypeScript type has
+// to say so too rather than promising elements nothing can count.
+const renderSequenceType = (library: Library, target: TsTypeTarget, type: CArrayType | ListType): string => {
     if (type.kind === "list" && type.flavor === "gbytearray" && target.byteArrayAsNumber) {
         return "number[]";
+    }
+
+    if (type.kind === "carray" && hasUnknownArrayLength(type)) {
+        return "number";
     }
 
     return `${renderBaseType(library, target, type.element)}[]`;
@@ -110,7 +126,7 @@ const renderNamedType = (
     resolved: GirType | undefined,
     name: ReferenceName | undefined,
 ): string => {
-    if (name === undefined) {
+    if (name === undefined || name.typeName.length === 0) {
         return resolved?.kind === "callback" ? target.callbackType : "unknown";
     }
 

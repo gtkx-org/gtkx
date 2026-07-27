@@ -80,7 +80,7 @@ const makeRgbaValue = (r: number, g: number, b: number, a: number): GObject.Valu
 };
 
 const makeFileValue = (path: string): GObject.Value => {
-    const file = Gio.fileNewForPath(path);
+    const file = Gio.File.newForPath(path);
     const value = new GObject.Value();
     value.init(GObject.typeFromName("GFile"));
     value.setObject(file);

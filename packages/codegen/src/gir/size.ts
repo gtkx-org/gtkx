@@ -17,12 +17,11 @@ type FieldLayoutInput = {
 };
 
 type StructLayoutState = {
-    cursor: number;
+    bitCursor: number;
     maxAlign: number;
-    bitfieldWordOffset: number | undefined;
-    bitfieldWordSize: number;
-    bitfieldUsedBits: number;
 };
+
+const floorDown = (value: number, multiple: number): number => value - (value % multiple);
 
 const layoutOfPrimitive = (category: PrimitiveCategory): FieldLayout => {
     const size = PRIMITIVE_SIZE[category];
@@ -55,14 +54,14 @@ const computeUnionSlots = (fields: FieldLayoutInput[]): { slots: FieldSlot[]; si
 };
 
 const pushPlainField = (state: StructLayoutState, slots: FieldSlot[], field: FieldLayoutInput, align: number): void => {
-    state.bitfieldWordOffset = undefined;
-    state.bitfieldWordSize = 0;
-    state.bitfieldUsedBits = 0;
-    state.cursor = roundUp(state.cursor, align);
-    slots.push({ byteOffset: state.cursor, bitOffset: undefined, bitWidth: undefined });
-    state.cursor += field.layout.size;
+    const byteOffset = roundUp(roundUp(state.bitCursor, 8) / 8, align);
+    slots.push({ byteOffset, bitOffset: undefined, bitWidth: undefined });
+    state.bitCursor = (byteOffset + field.layout.size) * 8;
 };
 
+// SysV AMD64 places a bit-field at the current bit offset whenever it still fits inside a storage
+// unit of its declared type aligned to that type's alignment, so the unit the cursor already sits in
+// may have room even though the cursor is not on a unit boundary.
 const pushBitfield = (input: {
     state: StructLayoutState;
     slots: FieldSlot[];
@@ -71,23 +70,16 @@ const pushBitfield = (input: {
     bits: number;
 }): void => {
     const { state, slots, field, align, bits } = input;
-    const wordSizeBits = field.layout.size * 8;
+    const unitStart = floorDown(floorDown(state.bitCursor, 8) / 8, align);
+    const isFitsInCurrentUnit = state.bitCursor + bits <= (unitStart + field.layout.size) * 8;
+    const byteOffset = isFitsInCurrentUnit ? unitStart : roundUp(roundUp(state.bitCursor, 8) / 8, align);
 
-    const canFit =
-        state.bitfieldWordOffset !== undefined &&
-        state.bitfieldWordSize === field.layout.size &&
-        state.bitfieldUsedBits + bits <= wordSizeBits;
-
-    if (!canFit) {
-        state.cursor = roundUp(state.cursor, align);
-        state.bitfieldWordOffset = state.cursor;
-        state.bitfieldWordSize = field.layout.size;
-        state.bitfieldUsedBits = 0;
-        state.cursor += field.layout.size;
+    if (!isFitsInCurrentUnit) {
+        state.bitCursor = byteOffset * 8;
     }
 
-    slots.push({ byteOffset: state.bitfieldWordOffset ?? 0, bitOffset: state.bitfieldUsedBits, bitWidth: bits });
-    state.bitfieldUsedBits += bits;
+    slots.push({ byteOffset, bitOffset: state.bitCursor - byteOffset * 8, bitWidth: bits });
+    state.bitCursor += bits;
 };
 
 const processStructField = (state: StructLayoutState, slots: FieldSlot[], field: FieldLayoutInput): void => {
@@ -108,20 +100,13 @@ const processStructField = (state: StructLayoutState, slots: FieldSlot[], field:
 
 const computeStructSlots = (fields: FieldLayoutInput[]): { slots: FieldSlot[]; size: number } => {
     const slots: FieldSlot[] = [];
-
-    const state: StructLayoutState = {
-        cursor: 0,
-        maxAlign: 1,
-        bitfieldWordOffset: undefined,
-        bitfieldWordSize: 0,
-        bitfieldUsedBits: 0,
-    };
+    const state: StructLayoutState = { bitCursor: 0, maxAlign: 1 };
 
     for (const field of fields) {
         processStructField(state, slots, field);
     }
 
-    return { slots, size: roundUp(state.cursor, state.maxAlign) };
+    return { slots, size: roundUp(roundUp(state.bitCursor, 8) / 8, state.maxAlign) };
 };
 
 const computeFieldSlots = (fields: FieldLayoutInput[], isUnion = false): { slots: FieldSlot[]; size: number } =>

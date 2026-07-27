@@ -114,7 +114,7 @@ function navigateInto(item: FileItem | undefined, currentPath: string, setCurren
         return;
     }
 
-    const parent = Gio.fileNewForPath(currentPath);
+    const parent = Gio.File.newForPath(currentPath);
     const child = parent.getChild(item.name);
     const childPath = child.getPath();
 
@@ -125,7 +125,7 @@ function navigateInto(item: FileItem | undefined, currentPath: string, setCurren
 
 function useDirectoryFiles(currentPath: string) {
     const [files, setFiles] = useState<FileItem[]>([]);
-    const dirList = useMemo(() => Gtk.DirectoryList.new(ATTRIBUTES, Gio.fileNewForPath(currentPath)), [currentPath]);
+    const dirList = useMemo(() => Gtk.DirectoryList.new(ATTRIBUTES, Gio.File.newForPath(currentPath)), [currentPath]);
 
     const refresh = () => {
         if (dirList.isLoading()) {
@@ -200,7 +200,7 @@ function FilebrowserProvider({ children }: DemoProviderProps) {
     const files = useDirectoryFiles(currentPath);
 
     const navigateUp = () => {
-        const file = Gio.fileNewForPath(currentPath);
+        const file = Gio.File.newForPath(currentPath);
         const parent = file.getParent();
 
         if (parent) {

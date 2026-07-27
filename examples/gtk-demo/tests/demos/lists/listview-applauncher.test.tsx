@@ -6,7 +6,7 @@ import { listviewApplauncherDemo } from "../../../src/demos/lists/listview-appla
 import { renderDemo } from "../../test-utils.js";
 
 const firstAppInfo = (): Gio.AppInfo => {
-    const [first] = Gio.appInfoGetAll();
+    const [first] = Gio.AppInfo.getAll();
 
     if (first === undefined) {
         throw new Error("expected at least one installed application");
@@ -68,12 +68,12 @@ describe("listviewApplauncherDemo structure", () => {
 });
 
 describe("listviewApplauncherDemo rows", () => {
-    it("renders one row per application returned by Gio.appInfoGetAll", async () => {
+    it("renders one row per application returned by Gio.AppInfo.getAll", async () => {
         await renderDemo(listviewApplauncherDemo);
         const listView = (await screen.findByName("list-view")) as Gtk.ListView;
         const model = listView.getModel();
         expect(model).not.toBeNull();
-        const expectedCount = Gio.appInfoGetAll().length;
+        const expectedCount = Gio.AppInfo.getAll().length;
         expect((model as Gtk.SelectionModel).getNItems()).toBe(expectedCount);
     });
 

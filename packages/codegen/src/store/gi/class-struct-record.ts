@@ -18,7 +18,9 @@ const isClassStructRecord = (library: Library, namespaceName: string, record: Gi
 
     const first = record.fields[0];
 
-    if (first?.type === undefined) {
+    // A class struct embeds its parent vtable by value (`GTypeClass g_type_class`); an instance
+    // struct stores a pointer to it (`GTypeClass *g_class`). Only the first is a vtable.
+    if (first?.type === undefined || first.cType?.endsWith("*") === true) {
         return false;
     }
 

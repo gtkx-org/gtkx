@@ -10,13 +10,13 @@ import { generateNamespaceModule } from "./store/gi/pipeline.js";
  *
  * @returns The number of namespaces written.
  */
-const runGiCodegen = (library: Library, gi: GiStoreOptions, libraries: string[]): number => {
+const runGiCodegen = (library: Library, gi: GiStoreOptions, libraries: string[], girPath: string[]): number => {
     const namespaces: GiNamespaceInput[] = Array.from(library.namespaces.values(), (namespace) => ({
         directory: namespaceDirectory(namespace),
         rawSource: generateNamespaceModule(namespace, library),
     }));
 
-    writeGiStore(gi, namespaces, computeGiFingerprint(library.girFiles, [...libraries]));
+    writeGiStore(gi, namespaces, computeGiFingerprint(library.girFiles, [...libraries], [...girPath]));
 
     return library.namespaces.size;
 };

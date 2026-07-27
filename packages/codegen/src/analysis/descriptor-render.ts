@@ -2,7 +2,6 @@ import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirCallback } from "../gir/callback.js";
 import type { Library } from "../gir/library.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
-import type { CArrayType, ListFlavor, TypeId } from "../gir/type-id.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import {
@@ -13,6 +12,13 @@ import {
     isOutParameter,
     type ParameterTransfer,
 } from "../gir/parameter.js";
+import {
+    type CArrayType,
+    hasUnknownArrayLength,
+    type ListFlavor,
+    type ListType,
+    type TypeId,
+} from "../gir/type-id.js";
 import { isRecordInout } from "../store/gi/param-marshal.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
 import {
@@ -44,8 +50,15 @@ import {
 
 type RenderDescriptorOptions = {
     argIndexOffset?: number;
+    /** GIR parameter index to emitted argument index, for callables that drop parameters. */
+    argIndexMap?: Map<number, number> | undefined;
     callerAllocated?: boolean;
     isInline?: boolean;
+};
+
+type ArgIndexOptions = {
+    argIndexOffset: number;
+    argIndexMap: Map<number, number> | undefined;
 };
 
 type RecordPlacement = {
@@ -60,6 +73,7 @@ type FundamentalDescriptor = {
     typeName: string | undefined;
     ownership: Ownership;
     wrapperClass?: string | undefined;
+    inline?: boolean | undefined;
 };
 
 type AncestorFundamental = {
@@ -77,6 +91,7 @@ type FundamentalRecordOptions = {
     unrefFunc: string;
     ownership: Ownership;
     wrapperClass: string | undefined;
+    inline: boolean;
 };
 
 const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName> = {
@@ -85,6 +100,12 @@ const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName
     gptrarray: "ptrArray",
     garray: "gArray",
 };
+
+// A callable that drops parameters (varargs, and the closure/destroy slots folded into a callback)
+// shifts every later parameter left, so a GIR length index has to be looked up in the emitted list
+// rather than shifted by the instance offset alone.
+const mapArgIndex = (options: ArgIndexOptions, girIndex: number): number =>
+    options.argIndexMap?.get(girIndex) ?? girIndex + options.argIndexOffset;
 
 const transferOwnership = (transfer: ParameterTransfer): Ownership => {
     if (transfer === "full") {
@@ -128,6 +149,7 @@ const renderDescriptor = (
     }
 
     const { argIndexOffset = 0 } = options;
+    const indexOptions: ArgIndexOptions = { argIndexOffset, argIndexMap: options.argIndexMap };
     const ownership = transferOwnership(transfer);
     const type = context.library.typeFor(ref);
 
@@ -139,9 +161,14 @@ const renderDescriptor = (
         case "primitive": {
             return primitiveExpression(type.category, ownership);
         }
-        case "varargs":
-        case "callback": {
+        case "varargs": {
             return tVoid;
+        }
+        // A callback in a slot no `renderCallbackType` covers (a vtable entry, a signal argument, a
+        // record field) is still a function pointer occupying a pointer-sized slot. `t.void` would
+        // hand the implementation `undefined` where the pointer belongs.
+        case "callback": {
+            return tUint64;
         }
         case "class":
         case "interface":
@@ -151,27 +178,36 @@ const renderDescriptor = (
             return expressionForResolved(context, type, transfer, options);
         }
         case "carray": {
-            return arrayExpression(context, type, transfer, argIndexOffset);
+            return arrayExpression(context, type, transfer, indexOptions);
         }
         case "list": {
-            if (type.flavor === "gbytearray") {
-                return tByteArray(ownership);
-            }
-
-            const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), {
-                argIndexOffset,
-            });
-
-            return tList(LIST_HELPERS[type.flavor], element, ownership);
+            return listExpression(context, type, transfer, indexOptions);
         }
         case "hashtable": {
             const elementTransfer = deriveElementTransfer(transfer);
-            const key = renderDescriptor(context, type.key, elementTransfer, { argIndexOffset });
-            const value = renderDescriptor(context, type.value, elementTransfer, { argIndexOffset });
+            const key = renderDescriptor(context, type.key, elementTransfer, indexOptions);
+            const value = renderDescriptor(context, type.value, elementTransfer, indexOptions);
 
             return tHashTable(key, value, ownership);
         }
     }
+};
+
+const listExpression = (
+    context: ModuleContext,
+    type: ListType,
+    transfer: ParameterTransfer,
+    indexOptions: ArgIndexOptions,
+): string => {
+    const ownership = transferOwnership(transfer);
+
+    if (type.flavor === "gbytearray") {
+        return tByteArray(ownership);
+    }
+
+    const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), indexOptions);
+
+    return tList(LIST_HELPERS[type.flavor], element, ownership);
 };
 
 const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): GirCallback | undefined => {
@@ -229,23 +265,26 @@ const renderParamDescriptor = (
     context: ModuleContext,
     parameter: GirParameter,
     ref: TypeId | undefined,
-    argIndexOffset = 0,
+    argIndex: Partial<ArgIndexOptions> = {},
 ): string => {
     if (isCellInout(context.library, parameter)) {
-        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, { argIndexOffset }), true);
+        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, argIndex), true);
     }
 
     if (isOutParameter(parameter)) {
-        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, { argIndexOffset }));
+        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, argIndex));
     }
 
     return renderDescriptor(context, ref, parameter.transferOwnership, {
-        argIndexOffset,
+        ...argIndex,
         callerAllocated: isCallerAllocatedOut(parameter) || isRecordInout(context, parameter),
     });
 };
 
-const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
+// `closure=` on a callback's own parameter states which slot carries the user data, and it is what
+// the TypeScript signature already goes by. The name scan stays as a fallback: 88 callbacks across
+// the installed GIRs carry no `closure=` at all.
+const userDataIndexByName = (parameters: GirParameter[]): number | undefined => {
     let userDataIndex: number | undefined;
 
     for (const [index, parameter] of parameters.entries()) {
@@ -255,6 +294,12 @@ const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
     }
 
     return userDataIndex;
+};
+
+const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
+    const declared = parameters.find((parameter) => parameter.closureIndex !== undefined);
+
+    return declared?.closureIndex ?? userDataIndexByName(parameters);
 };
 
 const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number | undefined): string | undefined => {
@@ -323,12 +368,13 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership):
 };
 
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
-    const { lib, refFunc, unrefFunc, typeName, ownership, wrapperClass } = descriptor;
+    const { lib, refFunc, unrefFunc, typeName, ownership, wrapperClass, inline } = descriptor;
 
     return tFundamental(lib, refFunc, unrefFunc, {
         ownership,
         typeName,
         wrapperClass,
+        inline,
     });
 };
 
@@ -440,6 +486,9 @@ const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): s
     return tObject("borrowed");
 };
 
+// A record expresses its acquire/release pair as `copy-function`/`free-function`: no `<record>` in
+// any installed GIR carries `glib:ref-func`, and GVariant's copy function really is
+// `g_variant_ref_sink`.
 const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; unrefFunc: string | undefined } => ({
     refFunc: record.glibRefFunc ?? record.copyFunc,
     unrefFunc: record.glibUnrefFunc ?? record.freeFunc,
@@ -473,7 +522,7 @@ const structExpression = (
 };
 
 const fundamentalRecordExpression = (options: FundamentalRecordOptions): string => {
-    const { resolved, refFunc, unrefFunc, ownership, wrapperClass } = options;
+    const { resolved, refFunc, unrefFunc, ownership, wrapperClass, inline } = options;
 
     return renderFundamental({
         lib: resolved.namespace.sharedLibrary ?? "",
@@ -482,6 +531,7 @@ const fundamentalRecordExpression = (options: FundamentalRecordOptions): string 
         typeName: resolved.value.glibTypeName,
         ownership,
         wrapperClass,
+        inline,
     });
 };
 
@@ -542,7 +592,14 @@ const recordExpression = (
             ? context.qualify(resolved.namespace.name, record.name)
             : undefined;
 
-        return fundamentalRecordExpression({ resolved, refFunc, unrefFunc, ownership, wrapperClass });
+        return fundamentalRecordExpression({
+            resolved,
+            refFunc,
+            unrefFunc,
+            ownership,
+            wrapperClass,
+            inline: placement.isInline ?? false,
+        });
     }
 
     return plainRecordExpression(context, resolved, ownership, placement);
@@ -595,14 +652,18 @@ const arrayExpression = (
     context: ModuleContext,
     ref: CArrayType,
     transfer: ParameterTransfer,
-    argIndexOffset: number,
+    options: ArgIndexOptions,
 ): string => {
+    if (hasUnknownArrayLength(ref)) {
+        return tUint64;
+    }
+
     const ownership = transferOwnership(transfer);
-    const element = renderDescriptor(context, ref.element, deriveElementTransfer(transfer), { argIndexOffset });
+    const element = renderDescriptor(context, ref.element, deriveElementTransfer(transfer), options);
     const size = inlineElementSize(context, ref.element, ref.elementCType);
 
     if (ref.lengthParameterIndex !== undefined) {
-        return tSizedArray(element, ref.lengthParameterIndex + argIndexOffset, ownership, size);
+        return tSizedArray(element, mapArgIndex(options, ref.lengthParameterIndex), ownership, size);
     }
 
     if (ref.fixedSize !== undefined) {

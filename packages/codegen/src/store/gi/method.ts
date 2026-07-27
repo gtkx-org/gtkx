@@ -1,6 +1,5 @@
 import { camelCase, sourceStringLiteral } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
-import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
 import {
@@ -12,6 +11,7 @@ import {
 import {
     arrayLengthSources,
     closureAndDestroyIndices,
+    emittedArgIndices,
     foldedLengthIndices,
     foldOutParamShape,
     inputParameters,
@@ -19,6 +19,7 @@ import {
 } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
+import { hasUnknownArrayLength, type TypeId } from "../../gir/type-id.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
 import { isCollectibleCallerOut, isHandlePassedInPlace, isHandlePassing } from "./param-marshal.js";
 
@@ -47,9 +48,15 @@ type ParamDescriptorOptions = {
     consumed?: boolean;
 };
 
+type ArgIndexOptions = {
+    argIndexOffset: number;
+    argIndexMap: Map<number, number>;
+};
+
 type PlanArgsContext = {
     fn: GirFunction;
     instanceOffset: number;
+    argIndex: ArgIndexOptions;
     lengthSources: Map<number, number>;
     closureIndices: Set<number>;
     folded: Set<number>;
@@ -123,7 +130,7 @@ const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string
         return primary ?? "void";
     }
 
-    const outTypes = outs.map((parameter) => renderTsType(context, parameter.type, false));
+    const outTypes = outs.map((parameter) => renderTsType(context, parameter.type, parameter.nullable));
 
     return foldOutParamShape(primary, outTypes);
 };
@@ -307,6 +314,7 @@ const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): string
 
     return renderDescriptor(context, fn.returnValue.type, fn.returnValue.transferOwnership, {
         argIndexOffset: instanceOffset,
+        argIndexMap: emittedArgIndices(fn, instanceOffset),
     });
 };
 
@@ -322,9 +330,12 @@ const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPlan[] =>
         });
     }
 
+    const instanceOffset = fn.instance === undefined ? 0 : 1;
+
     const planContext: PlanArgsContext = {
         fn,
-        instanceOffset: fn.instance === undefined ? 0 : 1,
+        instanceOffset,
+        argIndex: { argIndexOffset: instanceOffset, argIndexMap: emittedArgIndices(fn, instanceOffset) },
         lengthSources: arrayLengthSources(context.library, fn),
         closureIndices: closureAndDestroyIndices(fn),
         folded: foldedLengthIndices(context.library, fn),
@@ -350,18 +361,18 @@ const planParameter = (
     index: number,
     planContext: PlanArgsContext,
 ): CallArgPlan | undefined => {
-    const { instanceOffset, folded, closureIndices, lengthSources } = planContext;
+    const { folded, closureIndices, lengthSources } = planContext;
 
     if (isSkippedPlanParameter(parameter, index, closureIndices)) {
         return undefined;
     }
 
     if (isOutParameter(parameter)) {
-        return planOutParam(context, parameter, instanceOffset, folded.has(index));
+        return planOutParam(context, parameter, planContext.argIndex, folded.has(index));
     }
 
     if (isCallerAllocatedOut(parameter)) {
-        return planCallerOut(context, parameter, instanceOffset);
+        return planCallerOut(context, parameter, planContext.argIndex);
     }
 
     if (isInoutParameter(parameter)) {
@@ -383,7 +394,7 @@ const planInoutArgument = (
     index: number,
     planContext: PlanArgsContext,
 ): CallArgPlan => {
-    const { fn, instanceOffset, folded, lengthSources } = planContext;
+    const { fn, folded, lengthSources } = planContext;
     const lengthSourceIndex = lengthSources.get(index);
     const lengthSourceParam = lengthSourceIndex === undefined ? undefined : fn.parameters[lengthSourceIndex];
 
@@ -392,7 +403,12 @@ const planInoutArgument = (
             ? { source: lengthSourceParam, index: lengthSourceIndex }
             : undefined;
 
-    return planInoutParam(context, parameter, { index, instanceOffset, consumed: folded.has(index), lengthSource });
+    return planInoutParam(context, parameter, {
+        index,
+        argIndex: planContext.argIndex,
+        consumed: folded.has(index),
+        lengthSource,
+    });
 };
 
 const planLengthArgument = (
@@ -402,10 +418,7 @@ const planLengthArgument = (
     planContext: PlanArgsContext,
 ): CallArgPlan => {
     const source = planContext.fn.parameters[sourceIndex];
-
-    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
-        argIndexOffset: planContext.instanceOffset,
-    });
+    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, planContext.argIndex);
 
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, {}),
@@ -416,12 +429,10 @@ const planLengthArgument = (
 const planOutParam = (
     context: ModuleContext,
     parameter: GirParameter,
-    instanceOffset: number,
+    argIndex: ArgIndexOptions,
     isConsumed: boolean,
 ): CallArgPlan => {
-    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
-        argIndexOffset: instanceOffset,
-    });
+    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, argIndex);
 
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", consumed: isConsumed }),
@@ -449,8 +460,12 @@ const constructibleName = (
     return undefined;
 };
 
-const planCallerOut = (context: ModuleContext, parameter: GirParameter, instanceOffset: number): CallArgPlan => {
-    const descriptor = renderDescriptor(context, parameter.type, "none", { argIndexOffset: instanceOffset });
+const planCallerOut = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    argIndex: ArgIndexOptions,
+): CallArgPlan => {
+    const descriptor = renderDescriptor(context, parameter.type, "none", argIndex);
     const name = constructibleName(context, parameter.type);
 
     if (name !== undefined && isCollectibleCallerOut(context, parameter)) {
@@ -471,15 +486,15 @@ const planInoutParam = (
     parameter: GirParameter,
     options: {
         index: number;
-        instanceOffset: number;
+        argIndex: ArgIndexOptions;
         consumed: boolean;
         lengthSource?: { source: GirParameter; index: number } | undefined;
     },
 ): CallArgPlan => {
-    const { index, instanceOffset, consumed, lengthSource } = options;
+    const { index, argIndex, consumed, lengthSource } = options;
 
     if (isHandlePassedInPlace(context, parameter)) {
-        const descriptor = renderDescriptor(context, parameter.type, "none", { argIndexOffset: instanceOffset });
+        const descriptor = renderDescriptor(context, parameter.type, "none", argIndex);
 
         return {
             paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", callerAllocated: true, consumed }),
@@ -487,9 +502,7 @@ const planInoutParam = (
         };
     }
 
-    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
-        argIndexOffset: instanceOffset,
-    });
+    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, argIndex);
 
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", consumed }),
@@ -506,7 +519,7 @@ const planInParam = (
     index: number,
     planContext: PlanArgsContext,
 ): CallArgPlan => {
-    const { fn, instanceOffset } = planContext;
+    const { fn } = planContext;
 
     const callback = renderCallbackType(
         context,
@@ -517,7 +530,12 @@ const planInParam = (
 
     const descriptor =
         callback ??
-        renderDescriptor(context, parameter.type, parameter.transferOwnership, { argIndexOffset: instanceOffset });
+        renderDescriptor(
+            context,
+            parameter.type,
+            parameter.transferOwnership,
+            planContext.argIndex,
+        );
 
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, {}),
@@ -556,17 +574,27 @@ const collectionArgument = (
     name: string,
     isNullable: boolean,
 ): string | undefined => {
-    if ((type?.kind === "carray" || type?.kind === "list") && isHandlePassing(context, type.element)) {
-        context.addRuntimeImport("getHandle");
-
-        return mapHandleExpression(name, isNullable);
-    }
-
     if (type?.kind === "hashtable") {
         return hashtableArgument(context, type.value, name);
     }
 
-    return undefined;
+    if (!isMappableSequence(context, type)) {
+        return undefined;
+    }
+
+    context.addRuntimeImport("getHandle");
+
+    return mapHandleExpression(name, isNullable);
+};
+
+// An array whose length nothing states is marshalled as the bare pointer it is, so there is nothing
+// to map over.
+const isMappableSequence = (context: ModuleContext, type: GirType | undefined): boolean => {
+    if (type?.kind === "carray") {
+        return !hasUnknownArrayLength(type) && isHandlePassing(context, type.element);
+    }
+
+    return type?.kind === "list" && isHandlePassing(context, type.element);
 };
 
 const parameterCallExpression = (

@@ -122,8 +122,8 @@ const resolveOwnType = (
     return renderTsType(context, property.type, isNullablePropertyType(context, property.type));
 };
 
-const isSkippedAccessorName = (jsName: string, claimedNames: Set<string>): boolean =>
-    claimedNames.has(jsName) || jsName === "constructor";
+const isSkippedAccessor = (property: GirProperty, jsName: string, claimedNames: Set<string>): boolean =>
+    !property.introspectable || claimedNames.has(jsName) || jsName === "constructor";
 
 const resolveTsType = (inheritedType: string | undefined, ownType: string): string =>
     inheritedType !== undefined && inheritedType !== ownType ? inheritedType : ownType;
@@ -132,11 +132,13 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
     const { context, property, claimedNames } = args;
     const jsName = toCamelIdentifier(property.name);
 
-    if (isSkippedAccessorName(jsName, claimedNames)) {
+    if (isSkippedAccessor(property, jsName, claimedNames)) {
         return undefined;
     }
 
-    const isWritable = isConstructableProperty(property);
+    // `g_object_set_property` rejects a construct-only pspec with a critical and drops the write, so
+    // the property is settable at construction time only and must not advertise a setter.
+    const isWritable = isConstructableProperty(property) && !property.constructOnly;
     const { member: getterMember, method: getterMethod } = resolveGetterDelegate(args, jsName);
     const { member: setterMember, method: setterMethod } = resolveSetterDelegate(args, jsName, isWritable);
     const hasGetter = property.readable || getterMember !== undefined;

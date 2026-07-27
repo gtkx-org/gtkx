@@ -4,10 +4,10 @@ const buildInitModuleSource = (): string =>
     [
         "import { dirname, join } from \"node:path\";",
         "import { fileURLToPath } from \"node:url\";",
-        "import { resourceLoad, resourcesRegister } from \"@gtkx/gi/gio\";",
+        "import { Resource, resourcesRegister } from \"@gtkx/gi/gio\";",
         "",
         "const bundleDir = dirname(fileURLToPath(import.meta.url));",
-        `const resource = resourceLoad(join(bundleDir, ${JSON.stringify(BUNDLE_FILENAME)}));`,
+        `const resource = Resource.load(join(bundleDir, ${JSON.stringify(BUNDLE_FILENAME)}));`,
         "resourcesRegister(resource);",
         "",
         "export function ensureRegistered() {}",
@@ -19,13 +19,13 @@ const devInitModuleSource = (bundlePath: string): string => {
 
     return [
         "import { existsSync, statSync } from \"node:fs\";",
-        "import { resourceLoad, resourcesRegister, resourcesUnregister } from \"@gtkx/gi/gio\";",
+        "import { Resource, resourcesRegister, resourcesUnregister } from \"@gtkx/gi/gio\";",
         "",
         "let current = null;",
         "let lastSig = \"\";",
         "",
         "function register() {",
-        `    const next = resourceLoad(${bundlePathLiteral});`,
+        `    const next = Resource.load(${bundlePathLiteral});`,
         "    if (current) resourcesUnregister(current);",
         "    resourcesRegister(next);",
         "    current = next;",

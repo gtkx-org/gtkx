@@ -87,7 +87,7 @@ describe("listviewWordsDemo search interactions", () => {
     it("renders each loaded word as list-item content and filters it down to the match", async () => {
         const dialogSpy = vi
             .spyOn(Gtk.FileDialog.prototype, "open")
-            .mockResolvedValue(Gio.fileNewForPath(wordsFile(["alpha", "beta", "gamma", "delta"])));
+            .mockResolvedValue(Gio.File.newForPath(wordsFile(["alpha", "beta", "gamma", "delta"])));
 
         try {
             await renderDemoAndClickOpen();
@@ -159,7 +159,7 @@ describe("listviewWordsDemo search filtering", () => {
 
 describe("listviewWordsDemo Open button", () => {
     it("loads words and re-titles the window to the new line count", async () => {
-        const file = Gio.fileNewForPath(wordsFile(["alpha", "beta", "gamma", "delta"]));
+        const file = Gio.File.newForPath(wordsFile(["alpha", "beta", "gamma", "delta"]));
         const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(file);
 
         try {
@@ -208,7 +208,7 @@ describe("listviewWordsDemo Open button failures", () => {
     });
 
     it("shows an alert dialog when the selected file cannot be read", async () => {
-        const missingFile = Gio.fileNewForPath(join(tempDirRef.path, "does-not-exist.txt"));
+        const missingFile = Gio.File.newForPath(join(tempDirRef.path, "does-not-exist.txt"));
         const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(missingFile);
         const alertShowSpy = vi.spyOn(Gtk.AlertDialog.prototype, "show").mockImplementation((): void => undefined);
         const setMessageSpy = vi.spyOn(Gtk.AlertDialog.prototype, "setMessage");

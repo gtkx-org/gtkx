@@ -205,7 +205,7 @@ function useFpsPolling(isRunning: boolean, fpsRef: React.RefObject<string>, setF
 function useFpsAttrs() {
     return (() => {
         const attrs = Pango.AttrList.new();
-        attrs.insert(Pango.attrFontFeaturesNew("tnum=1"));
+        attrs.insert(Pango.AttrFontFeatures.new("tnum=1"));
 
         return attrs;
     })();

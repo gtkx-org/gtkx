@@ -32,7 +32,7 @@ const sidebarDemo: Demo = {
 };
 
 function SidebarDemo() {
-    const demoIcon = Gio.FileIcon.new(Gio.fileNewForUri(demoIconUri));
+    const demoIcon = Gio.FileIcon.new(Gio.File.newForUri(demoIconUri));
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
     return (

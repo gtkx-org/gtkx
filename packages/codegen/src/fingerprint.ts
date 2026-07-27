@@ -1,14 +1,16 @@
 import { sortStrings } from "@gtkx/utils";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /** The freshness sentinel of the `@gtkx/gi` store, derived purely from the GIR inputs. */
 type GiFingerprint = {
     value: string;
     girFiles: string[];
     libraries: string[];
+    girPath?: string[];
 };
 
 type ModuleExport = { module: string; export: string };
@@ -30,16 +32,32 @@ type JsxFingerprint = {
 const require = createRequire(import.meta.url);
 const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 const CODEGEN_VERSION: string = (require("../package.json") as { version: string }).version;
+const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "overrides");
 
 const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
 
-const hashGi = (girFiles: string[], libraries: string[]): string => {
+// The overrides are copied verbatim into the store, so editing one changes the output even though no
+// GIR file moved. Without them in the hash a stale override survives every non-forced run.
+const overrideFiles = (): string[] => {
+    if (!existsSync(OVERRIDES_ROOT)) {
+        return [];
+    }
+
+    return readdirSync(OVERRIDES_ROOT, { recursive: true, withFileTypes: true })
+        .filter((entry: Dirent) => entry.isFile())
+        .map((entry: Dirent) => join(entry.parentPath, entry.name));
+};
+
+const hashGi = (girFiles: string[], libraries: string[], girPath: string[]): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
     hash.update(sortAlpha(libraries));
+    hash.update("\n");
+    hash.update(sortAlpha(girPath));
+    const hashedFiles = sortStrings([...girFiles, ...overrideFiles()]);
 
-    for (const file of sortStrings(girFiles)) {
+    for (const file of hashedFiles) {
         hash.update("\n");
         hash.update(file);
         hash.update("\0");
@@ -49,13 +67,14 @@ const hashGi = (girFiles: string[], libraries: string[]): string => {
     return hash.digest("hex");
 };
 
-const computeGiFingerprint = (girFiles: string[], libraries: string[]): GiFingerprint => ({
-    value: hashGi(girFiles, libraries),
+const computeGiFingerprint = (girFiles: string[], libraries: string[], girPath: string[]): GiFingerprint => ({
+    value: hashGi(girFiles, libraries, girPath),
     girFiles,
     libraries,
+    girPath,
 });
 
-const isGiStoreFresh = (giStoreDir: string, libraries: string[]): boolean => {
+const isGiStoreFresh = (giStoreDir: string, libraries: string[], girPath: string[]): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
 
     if (!existsSync(sentinelPath)) {
@@ -70,16 +89,19 @@ const isGiStoreFresh = (giStoreDir: string, libraries: string[]): boolean => {
         return false;
     }
 
-    if (sortAlpha(sentinel.libraries) !== sortAlpha(libraries)) {
+    if (!hasMatchingRecordedInputs(sentinel, libraries, girPath)) {
         return false;
     }
 
     try {
-        return hashGi(sentinel.girFiles, sentinel.libraries) === sentinel.value;
+        return hashGi(sentinel.girFiles, sentinel.libraries, girPath) === sentinel.value;
     } catch {
         return false;
     }
 };
+
+const hasMatchingRecordedInputs = (sentinel: GiFingerprint, libraries: string[], girPath: string[]): boolean =>
+    sortAlpha(sentinel.libraries) === sortAlpha(libraries) && sortAlpha(sentinel.girPath ?? []) === sortAlpha(girPath);
 
 const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
     sortStrings(Object.keys(map)).map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);

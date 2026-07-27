@@ -191,7 +191,7 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
 };
 
 const cachedDocsResult = (options: DocsOptions, manifestPath: string): DocsResult | undefined => {
-    if (options.force === true || !isGiStoreFresh(options.outDir, options.libraries)) {
+    if (options.force === true || !isGiStoreFresh(options.outDir, options.libraries, options.girPath)) {
         return undefined;
     }
 
@@ -232,7 +232,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
 
     writeFileSync(
         join(options.outDir, FINGERPRINT_FILENAME),
-        JSON.stringify(computeGiFingerprint(library.girFiles, options.libraries)),
+        JSON.stringify(computeGiFingerprint(library.girFiles, options.libraries, options.girPath)),
     );
 
     return { regenerated: true, namespaces };

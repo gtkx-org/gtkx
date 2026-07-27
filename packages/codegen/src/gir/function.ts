@@ -1,7 +1,7 @@
 import type { ParseContext } from "./type-id.js";
 import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
-import { attr, getChild, isAttrTrue, type RawNode } from "./parse.js";
+import { attr, getChild, type RawNode } from "./parse.js";
 
 type GirFunction = {
     name: string;
@@ -9,6 +9,7 @@ type GirFunction = {
     cIdentifier: string | undefined;
     throws: boolean;
     introspectable: boolean;
+    movedTo: string | undefined;
     shadowedBy: string | undefined;
     finishFunc: string | undefined;
     instance: GirParameter | undefined;
@@ -41,8 +42,7 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
         ...parseCallable(node, context),
         name: attr(node, "shadows") ?? attr(node, "name") ?? "",
         cIdentifier: attr(node, "c:identifier"),
-        throws: isAttrTrue(node, "throws"),
-        introspectable: isAttrTrue(node, "introspectable", true),
+        movedTo: attr(node, "moved-to"),
         shadowedBy: attr(node, "shadowed-by"),
         finishFunc: attr(node, "glib:finish-func"),
         instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),

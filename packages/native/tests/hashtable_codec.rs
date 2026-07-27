@@ -172,6 +172,7 @@ fn full_variant_fundamental_encoder(ref_fn_name: &str, unref_fn_name: &str) -> H
         shared_library: "libglib-2.0.so.0".to_owned(),
         ref_fn_name: ref_fn_name.to_owned(),
         unref_fn_name: unref_fn_name.to_owned(),
+        inline: false,
     })))
 }
 
@@ -181,6 +182,7 @@ fn param_spec_fundamental_codec() -> Codec {
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "g_param_spec_ref".to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
+        inline: false,
     })
 }
 
@@ -904,6 +906,7 @@ fn handle_entry_encode_unresolvable_transfer_ref_fails_without_leaking() {
             shared_library: "libgobject-2.0.so.0".to_owned(),
             ref_fn_name: "no_such_hashtable_ref_symbol_54321".to_owned(),
             unref_fn_name: "g_param_spec_unref".to_owned(),
+            inline: false,
         });
         unsafe {
             helpers::assert_unresolvable_symbol_failure_keeps_param_spec(

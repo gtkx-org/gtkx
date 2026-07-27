@@ -266,6 +266,20 @@ const addInterfacePropsNames = (widget: GlibNamedClass, names: Set<string>): voi
     }
 };
 
+// An abstract GType is not an element -- `g_object_new` on one aborts -- but its props interface has
+// to stay, because every concrete subclass extends it.
+const abstractPropsNames = (): Set<string> => {
+    const names: Set<string> = new Set();
+
+    for (const entry of collectIntrinsicElementClasses(library)) {
+        if (entry.klass.isAbstract) {
+            names.add(`${entry.glibName}Props`);
+        }
+    }
+
+    return names;
+};
+
 const interfacePropsNames = (): Set<string> => {
     const names: Set<string> = new Set();
 
@@ -399,7 +413,7 @@ describe("codegen element-prop metadata", () => {
 describe("codegen return-value convention", () => {
     it("folds an out-array length companion out of the return tuple", () => {
         const source = giSource("gio");
-        expect(source).toContain("loadContents(cancellable: Cancellable | null): [boolean, number[], string]");
+        expect(source).toContain("loadContents(cancellable: Cancellable | null): [boolean, number[], string | null]");
         expect(source).not.toContain("[boolean, number[], number, string]");
     });
 
@@ -418,7 +432,8 @@ describe("codegen return-value convention", () => {
         const source = giSource("glib");
 
         expect(source).toContain(
-            "uriSplit(uriRef: string, flags: UriFlags): [string, string, string, number, string, string, string]",
+            "static split(uriRef: string, flags: UriFlags): " +
+            "[string | null, string | null, string | null, number, string, string | null, string | null]",
         );
 
         expect(source).not.toContain("[boolean, string, string, string, number, string, string, string]");
@@ -798,11 +813,17 @@ describe("identifier naming convention", () => {
 });
 
 describe("jsx prop-interface naming convention", () => {
-    it("names every exported props interface after an element or implemented interface glib name", () => {
+    it("names every exported props interface after an element, abstract base or implemented interface", () => {
         const sources = jsxSources();
         const declaredProps = matchAll(sources, /export interface (\w+Props)\b/g);
         const elementGlibNames = matchAll(sources, /^[ \t]*(\w+): \w+Props;$/gm);
-        const allowed = new Set([...elementGlibNames.map((name) => `${name}Props`), ...interfacePropsNames()]);
+
+        const allowed = new Set([
+            ...elementGlibNames.map((name) => `${name}Props`),
+            ...abstractPropsNames(),
+            ...interfacePropsNames(),
+        ]);
+
         const offenders = declaredProps.filter((name) => !allowed.has(name));
         expect(offenders, `unexpected props interface names: ${offenders.join(", ")}`).toEqual([]);
     });

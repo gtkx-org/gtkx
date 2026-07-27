@@ -75,6 +75,25 @@ const closureAndDestroyIndices = (fn: GirFunction): Set<number> => {
     return indices;
 };
 
+// The emitted argument list is the instance parameter followed by every parameter `planParameter`
+// keeps, so a GIR index only lines up with an emitted index when nothing before it was dropped.
+const emittedArgIndices = (fn: GirFunction, instanceOffset: number): Map<number, number> => {
+    const closureIndices = closureAndDestroyIndices(fn);
+    const map: Map<number, number> = new Map();
+    let emitted = instanceOffset;
+
+    for (const [index, parameter] of fn.parameters.entries()) {
+        if (parameter.isVarargs || closureIndices.has(index)) {
+            continue;
+        }
+
+        map.set(index, emitted);
+        emitted += 1;
+    }
+
+    return map;
+};
+
 const arrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     const map = arrayLengthSources(library, fn);
 
@@ -216,7 +235,7 @@ const renderHandlerResultType = (options: HandlerResultOptions): string => {
 
     const outTypes = signal.parameters
         .filter((parameter) => isHandlerOutParameter({ library, parameter, includeCallerAllocated }))
-        .map((parameter) => renderType(parameter.type, false));
+        .map((parameter) => renderType(parameter.type, parameter.nullable));
 
     if (outTypes.length === 0) {
         return scalarResultType(primary, optOut);
@@ -226,6 +245,7 @@ const renderHandlerResultType = (options: HandlerResultOptions): string => {
 };
 
 export {
+    emittedArgIndices,
     inputParameters,
     closureAndDestroyIndices,
     arrayLengthSources,

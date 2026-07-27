@@ -332,7 +332,7 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
     // parameter descriptor carries (an array's `sizeParamIndex`, above all) sits one slot further
     // right than the position GIR assigned it.
     const callbackParamDescriptors = params.map((parameter) =>
-        renderParamDescriptor(context, parameter, parameter.type, 1),
+        renderParamDescriptor(context, parameter, parameter.type, { argIndexOffset: 1 }),
     );
 
     const isVoid = shouldOmitPrimaryReturn(context.library, signal.returnValue);
@@ -376,7 +376,7 @@ const collectClassSignals = (context: ModuleContext, klass: GirClass): GirCallab
     const consider = (signal: GirCallable): void => {
         const name = camelCase(signal.name);
 
-        if (inheritedNames.has(name) || seen.has(name)) {
+        if (!signal.introspectable || inheritedNames.has(name) || seen.has(name)) {
             return;
         }
 

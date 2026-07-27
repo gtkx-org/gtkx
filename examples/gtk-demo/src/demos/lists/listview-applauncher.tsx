@@ -71,7 +71,7 @@ function launchApp(app: AppItem, parentWindow: Gtk.Window | null) {
 function ListViewApplauncherDemo() {
     const parentWindow = useParentWindow();
 
-    const apps = Gio.appInfoGetAll().map((app) => ({
+    const apps = Gio.AppInfo.getAll().map((app) => ({
         appInfo: app,
         id: app.getId() ?? crypto.randomUUID(),
         name: app.getDisplayName(),

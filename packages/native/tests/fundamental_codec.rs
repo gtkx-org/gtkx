@@ -39,6 +39,7 @@ fn fundamental_with_fns(
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: ref_fn_name.to_owned(),
         unref_fn_name: unref_fn_name.to_owned(),
+        inline: false,
     }
 }
 

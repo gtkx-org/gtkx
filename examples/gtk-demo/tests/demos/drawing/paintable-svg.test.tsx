@@ -69,7 +69,7 @@ describe("paintableSvgDemo rendering", () => {
 describe("paintableSvgDemo open dialog", () => {
     it("invokes the file picker and replaces the picture's paintable when a new file is chosen", async () => {
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
-        openSpy.mockResolvedValue(Gio.fileNewForUri(nodeEditorSvgUri));
+        openSpy.mockResolvedValue(Gio.File.newForUri(nodeEditorSvgUri));
 
         try {
             const { picture } = await renderAndFindSvgPicture();

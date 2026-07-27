@@ -770,7 +770,7 @@ function usePreviewAttributes(
         }
 
         const attrList = Pango.AttrList.new();
-        const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
+        const attr = Pango.AttrFontFeatures.new(pangoFontFeaturesString);
         attr.startIndex = previewSelection?.start ?? 0;
         attr.endIndex = previewSelection?.end ?? 0xFF_FF_FF_FF;
         attrList.insert(attr);

@@ -36,8 +36,31 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
     return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, throws: fn.throws });
 };
 
+// `moved-to` names the type member this function is also reachable as, so the namespace-level copy
+// is a second export of one binding. Suppressing it is only right when that member is really
+// emitted: 15 of Gtk-4.0's 28 `moved-to` targets are enum or error-domain members codegen emits no
+// static for, and dropping those would delete API with nothing to replace it.
+const isMovedOntoEmittedMember = (context: ModuleContext, fn: GirFunction): boolean => {
+    const [typeName, memberName] = fn.movedTo?.split(".") ?? [];
+
+    if (typeName === undefined || memberName === undefined) {
+        return false;
+    }
+
+    const resolved = context.library.resolveType(context.namespace.name, typeName);
+
+    if (resolved?.kind !== "class" && resolved?.kind !== "interface" && resolved?.kind !== "record") {
+        return false;
+    }
+
+    const members = [...resolved.value.methods, ...resolved.value.functions, ...resolved.value.constructors];
+
+    return members.some((member) => member.name === memberName);
+};
+
 const canEmitNamespaceFunction = (context: ModuleContext, fn: GirFunction): boolean =>
     fn.introspectable &&
+    !isMovedOntoEmittedMember(context, fn) &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
     !hasClassStructReference(context, fn) &&

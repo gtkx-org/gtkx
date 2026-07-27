@@ -76,7 +76,7 @@ const usePaintableSvgContext = (): PaintableSvgContextValue => {
 };
 
 function PaintableSvgProvider({ window, children }: DemoProviderProps) {
-    const [svg, setSvg] = useState<Gtk.Svg | null>(() => loadSvgFromFile(Gio.fileNewForUri(nodeEditorSvgUri)));
+    const [svg, setSvg] = useState<Gtk.Svg | null>(() => loadSvgFromFile(Gio.File.newForUri(nodeEditorSvgUri)));
 
     const handleOpen = async () => {
         const file = await pickSvgFile(window.current);

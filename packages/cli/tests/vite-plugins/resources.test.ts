@@ -223,11 +223,11 @@ describe("gtkxResources (resolveId)", () => {
 describe("gtkxResources (init module)", () => {
     setupTmpDir();
 
-    it("renders the build-mode init module with resourceLoad bootstrap", async () => {
+    it("renders the build-mode init module with a Resource.load bootstrap", async () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "build", tmpDir.path, "org.gtk.Demo4");
         const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
-        expect(out).toContain("resourceLoad");
+        expect(out).toContain("Resource.load");
         expect(out).toContain("resourcesRegister");
         expect(out).toContain(BUNDLE_FILENAME);
         expect(out).toContain("import.meta.url");
@@ -235,7 +235,7 @@ describe("gtkxResources (init module)", () => {
     });
 
     it.skipIf(!hasGlibCompileResources())(
-        "renders the dev-mode init module with refresh-capable resourceLoad",
+        "renders the dev-mode init module with a refresh-capable Resource.load",
         async () => {
             const plugin = gtkxResources();
             await initPlugin(plugin, "serve", tmpDir.path, "org.gtk.Demo4");

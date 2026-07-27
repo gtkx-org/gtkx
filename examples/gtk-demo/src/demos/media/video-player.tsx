@@ -105,11 +105,11 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     };
 
     const handleLogo = () => {
-        setVideoFile(Gio.fileNewForUri(gtkLogoUri));
+        setVideoFile(Gio.File.newForUri(gtkLogoUri));
     };
 
     const handleBBB = () => {
-        setVideoFile(Gio.fileNewForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
+        setVideoFile(Gio.File.newForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
     };
 
     const handleFullscreen = () => window.current?.fullscreen();
