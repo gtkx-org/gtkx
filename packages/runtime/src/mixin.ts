@@ -16,6 +16,7 @@ function definedInClassChain(prototype: object, key: string): boolean {
 
     while (current !== null && current !== Object.prototype) {
         if (Object.hasOwn(current, key)) return true;
+
         current = Reflect.getPrototypeOf(current);
     }
 
@@ -24,7 +25,9 @@ function definedInClassChain(prototype: object, key: string): boolean {
 
 function copyLayerMember(target: AnyClass, layer: object, key: string): void {
     if (key === "constructor") return;
+
     if (definedInClassChain(target.prototype, key)) return;
+
     const descriptor = Object.getOwnPropertyDescriptor(layer, key);
     if (descriptor !== undefined) Object.defineProperty(target.prototype, key, descriptor);
 }

@@ -17,6 +17,7 @@ const exportNameFor = (schemaId: string): string => schemaId.replaceAll(".", "_"
 
 const runtimeKindForKey = (key: ParsedKey): string => {
     if (key.enumId !== null) return ENUM_KIND;
+
     if (key.flagsId !== null) return FLAGS_KIND;
 
     return key.variantType ?? "";

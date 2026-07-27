@@ -11,6 +11,7 @@ class ModuleBuilder {
     appendBinding(code: string, name?: string): void {
         if (name !== undefined) {
             if (this.bindingNames.has(name)) return;
+
             this.bindingNames.add(name);
         }
 
@@ -19,7 +20,9 @@ class ModuleBuilder {
 
     hoistDescriptor(expression: string): string {
         const existing = this.hoistedDescriptors.get(expression);
+
         if (existing !== undefined) return existing;
+
         const name = `_desc${this.hoistedDescriptors.size}`;
         this.hoistedDescriptors.set(expression, name);
         this.appendBinding(`const ${name} = ${expression};`, name);

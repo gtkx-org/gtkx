@@ -18,7 +18,9 @@ const NODE_MODULES = /(?:^|\/)node_modules\//;
 
 const isProjectSource = (root: string, id: string): boolean => {
     if (!SOURCE_EXTENSION.test(id)) return false;
+
     if (NODE_MODULES.test(id)) return false;
+
     if (root !== "" && !id.startsWith(`${root}/`)) return false;
 
     return true;

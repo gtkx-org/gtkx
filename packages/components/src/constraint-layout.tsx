@@ -62,6 +62,7 @@ const typeNameOfWidget = (widget: Gtk.Widget): string => GObject.typeName(widget
 
 const addNamedGuide = (guide: GObject.Object | null, targets: Targets): void => {
     if (!(guide instanceof Gtk.ConstraintGuide)) return;
+
     const name = guide.getName();
     if (name !== null && name !== "") targets.set(name, guide);
 };
@@ -101,7 +102,9 @@ const resolveTarget = (
     targets: Targets,
 ): Gtk.ConstraintTarget | null => {
     if (id === undefined || id === "super") return null;
+
     const target = targets.get(id);
+
     if (target !== undefined) return target;
 
     throw new Error(
@@ -212,7 +215,9 @@ const useRegistry = (setDeclarations: (update: (previous: Declarations) => Decla
 
 const nextTargets = (current: Targets | null, layout: Gtk.ConstraintLayout | null): Targets | null => {
     if (layout === null) return null;
+
     const next = readTargets(layout);
+
     if (current !== null && sameTargets(current, next)) return null;
 
     return next;
@@ -233,7 +238,9 @@ const createTargetsStore = (): TargetsStore => {
         snapshot: () => current,
         sync: (layout) => {
             const next = nextTargets(current, layout);
+
             if (next === null) return;
+
             current = next;
             for (const listener of listeners) listener();
         },

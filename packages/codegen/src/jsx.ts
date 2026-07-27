@@ -46,6 +46,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
 
     if (!options.force && !options.giRegenerated) {
         const { fresh, intrinsicElementCount } = isJsxStoreFresh(options.jsx.storeDir, fingerprintInput);
+
         if (fresh) return { regenerated: false, intrinsicElementCount };
     }
 

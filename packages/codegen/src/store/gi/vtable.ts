@@ -26,9 +26,11 @@ type RenderVtableSlotDescriptorOptions = {
 
 const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.glibTypeStruct === undefined) return undefined;
+
     const structName = pascalCase(klass.glibTypeStruct);
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
     const entries = vtableEntries(context, structName, kind, klass.glibTypeStruct);
+
     if (entries.length === 0) return undefined;
 
     return renderBraced(entries.join("\n"));
@@ -36,7 +38,9 @@ const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | 
 
 const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallback | undefined => {
     if (field.type === undefined) return undefined;
+
     const type = context.library.typeOf(field.type);
+
     if (type?.kind !== "callback" || context.library.nameOf(field.type) !== undefined) return undefined;
 
     return type.value;
@@ -48,9 +52,13 @@ const vtableSlotEntry = (
     claimedNames: Set<string>,
 ): { key: string; callback: GirCallback } | undefined => {
     const callback = vtableCallbackType(context, field);
+
     if (callback === undefined) return undefined;
+
     const key = toCamelIdentifier(field.name);
+
     if (key === "constructor" || claimedNames.has(key)) return undefined;
+
     if (!isVtableSlotEligible(context, callback)) return undefined;
 
     return { key, callback };
@@ -58,7 +66,9 @@ const vtableSlotEntry = (
 
 const vtableEntries = (context: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
     const resolved = context.library.resolveType(context.namespace.name, typeStruct);
+
     if (resolved?.kind !== "record") return [];
+
     const { slots } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const entries: string[] = [];
     const claimedNames: Set<string> = new Set();
@@ -90,6 +100,7 @@ const isUnsupportedOutParam = (context: ModuleContext, param: GirParameter): boo
 
 const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boolean => {
     if (param.isVarargs) return false;
+
     if (isUnsupportedOutParam(context, param)) return false;
 
     return !isInlineCallbackRef(context.library, param.type);

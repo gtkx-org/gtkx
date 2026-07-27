@@ -12,7 +12,9 @@ const getTextBuffer = (ref: RefObject<Gtk.TextView | null>): Gtk.TextBuffer =>
 const usePaintable = (icon = "image-x-generic-symbolic"): Gtk.IconPaintable | null => {
     return useMemo(() => {
         const display = Gdk.Display.getDefault();
+
         if (!display) return null;
+
         const theme = Gtk.IconTheme.getForDisplay(display);
 
         return theme.lookupIcon(icon, null, 16, 1, Gtk.TextDirection.LTR, Gtk.IconLookupFlags.PRELOAD);

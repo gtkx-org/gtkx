@@ -107,6 +107,7 @@ const killIfAlive = (pid: number): boolean => {
 
 const killGroup = (pid: number | undefined): void => {
     if (pid === undefined) return;
+
     killIfAlive(-pid);
     killIfAlive(pid);
 };
@@ -116,6 +117,7 @@ describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
 
     afterEach(() => {
         if (!harness) return;
+
         killGroup(harness.process.pid);
         killGroup(harness.childPid());
         harness = undefined;

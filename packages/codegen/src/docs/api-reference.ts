@@ -96,8 +96,11 @@ const functionEntry = (
     fn: GirFunction,
 ): GiSymbolEntry | undefined => {
     if (!isEmittableCallable(docsContext, fn)) return undefined;
+
     const cIdentifier = fn.cIdentifier;
+
     if (cIdentifier === undefined) return undefined;
+
     const name = namespaceFunctionExportName(cIdentifier, fn.name, namespace.cSymbolPrefixes);
 
     return { kind: "function", namespace, name, doc: fn.doc, fn };
@@ -105,6 +108,7 @@ const functionEntry = (
 
 const classEntry = (namespace: GirNamespace, klass: GirClass): GiSymbolEntry | undefined => {
     if (!klass.introspectable || klass.name.length === 0) return undefined;
+
     const kind = klass.isInterface ? "interface" : "class";
 
     return { kind, namespace, name: pascalCase(klass.name), doc: klass.doc, klass };
@@ -123,6 +127,7 @@ const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
 
 const recordEntry = (library: Library, namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
     if (!record.introspectable || record.isVtable || record.name.length === 0) return undefined;
+
     if (isClassStructRecord(library, namespace.name, record)) return undefined;
 
     return { kind: "record", namespace, name: record.name, doc: record.doc, record };
@@ -190,6 +195,7 @@ const matchesSearchFilters = (
     kinds: ApiSymbolKind[] | undefined,
 ): boolean => {
     if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) return false;
+
     if (kinds !== undefined && !kinds.includes(entry.kind)) return false;
 
     return true;
@@ -202,7 +208,9 @@ const scoredEntryFor = (
     kinds: ApiSymbolKind[] | undefined,
 ): ScoredEntry | undefined => {
     if (!matchesSearchFilters(entry, namespaceFilter, kinds)) return undefined;
+
     const score = searchScore(entry, query);
+
     if (score === 0) return undefined;
 
     return { score, entry };
@@ -218,8 +226,11 @@ const compareScoredEntries = (a: ScoredEntry, b: ScoredEntry): number =>
 const searchScore = (entry: SymbolEntry, query: string): number => {
     const name = entry.name.toLowerCase();
     const qualified = `${entry.namespace.name.toLowerCase()}.${name}`;
+
     if (name === query || qualified === query) return 3;
+
     if (name.startsWith(query)) return 2;
+
     if (name.includes(query) || qualified.includes(query)) return 1;
 
     return 0;
@@ -290,6 +301,7 @@ class ApiReference {
 
     private indexFunctions(namespace: GirNamespace): void {
         if (namespace.sharedLibrary === undefined) return;
+
         const docsContext = docsSignatureContext(namespace, this.library);
 
         for (const fn of dedupeCallables(namespace.functions)) {
@@ -360,9 +372,12 @@ class ApiReference {
 
     lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
         const trimmed = query.trim();
+
         if (trimmed.length === 0) return { outcome: "notFound" };
+
         const candidates = this.lookupCandidates(trimmed, kind);
         const entry = candidates[0];
+
         if (entry === undefined) return { outcome: "notFound" };
 
         if (candidates.length > 1) {
@@ -374,7 +389,9 @@ class ApiReference {
 
     search(options: ApiSearchOptions): ApiSymbol[] {
         const query = options.query.trim().toLowerCase();
+
         if (query.length === 0) return [];
+
         const limit = Math.max(1, Math.floor(options.limit ?? DEFAULT_SEARCH_LIMIT));
         const namespaceFilter = options.namespace?.toLowerCase();
         const scored = this.scoreEntries(query, namespaceFilter, options.kinds);
@@ -396,7 +413,9 @@ class ApiReference {
 
     symbolNames(namespaceName: string): string[] {
         const namespace = this.findNamespace(namespaceName);
+
         if (namespace === undefined) return [];
+
         const entries = this.byNamespace.get(namespace.name) ?? [];
 
         return sortStrings(entries.map((entry) => entry.name));
@@ -425,7 +444,9 @@ class ApiReference {
 
     namespaceOverview(name: string): string | undefined {
         const namespace = this.findNamespace(name);
+
         if (namespace === undefined) return undefined;
+
         const entries = this.byNamespace.get(namespace.name) ?? [];
         const directory = namespaceDirectory(namespace);
 

@@ -16,7 +16,9 @@ function createBindCache(): (key: string, ...args: Parameters<typeof bind>) => R
 
     return (key, ...args) => {
         const existing = cache.get(key);
+
         if (existing !== undefined) return existing;
+
         const bound = bind(...args);
         cache.set(key, bound);
 

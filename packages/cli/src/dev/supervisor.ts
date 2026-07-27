@@ -69,6 +69,7 @@ const captureShutdownExit = (state: SupervisorState, code: number | null, signal
 
 const handleChildExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
     state.child = null;
+
     if (state.restarting) return;
 
     if (state.shuttingDown) {
@@ -97,14 +98,18 @@ const isRestartBlocked = (state: SupervisorState): boolean => state.restarting |
 
 const relaunchAfterExit = (state: SupervisorState): void => {
     state.restarting = false;
+
     if (state.shuttingDown) return;
+
     info("Restarting dev runner...");
     launch(state);
 };
 
 const restart = async (state: SupervisorState): Promise<void> => {
     const watch = state.watch;
+
     if (watch === undefined || isRestartBlocked(state)) return;
+
     state.restarting = true;
     info("gtkx.config.ts changed; regenerating bindings...");
 
@@ -176,7 +181,9 @@ const watchConfigDirectory = (
 
 const installConfigWatchers = (state: SupervisorState): void => {
     const watch = state.watch;
+
     if (watch === undefined || watch.paths.length === 0) return;
+
     const timer: DebounceTimer = { handle: null };
 
     for (const [directory, names] of groupWatchNamesByDirectory(watch.paths)) {

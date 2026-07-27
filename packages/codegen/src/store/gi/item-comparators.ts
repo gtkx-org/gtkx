@@ -25,6 +25,7 @@ const qualifiedName = (context: ModuleContext, ref: TypeId): string | undefined 
 
 const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
     const resolved = context.library.typeOf(ref);
+
     if (resolved?.kind !== "class") return false;
 
     return resolved.value.implements.some((interfaceName) => {
@@ -36,8 +37,11 @@ const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
 
 const comparesObjectItems = (context: ModuleContext, fn: GirFunction): boolean => {
     const ownerRef = fn.instance?.type ?? fn.returnValue.type;
+
     if (ownerRef === undefined) return false;
+
     const owner = qualifiedName(context, ownerRef);
+
     if (owner !== undefined && OBJECT_ITEM_COMPARATOR_OWNERS.has(owner)) return true;
 
     return implementsListModel(context, ownerRef);
@@ -45,6 +49,7 @@ const comparesObjectItems = (context: ModuleContext, fn: GirFunction): boolean =
 
 const isItemPointer = (context: ModuleContext, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
+
     const resolved = context.library.typeOf(ref);
 
     return resolved?.kind === "primitive" && resolved.category === "pointer";
@@ -56,9 +61,13 @@ const itemComparatorCallback = (
     parameter: GirParameter,
 ): GirCallback | undefined => {
     if (parameter.type === undefined) return undefined;
+
     const resolved = context.library.typeOf(parameter.type);
+
     if (resolved?.kind !== "callback") return undefined;
+
     const name = qualifiedName(context, parameter.type);
+
     if (name === undefined || !COMPARATOR_CALLBACK_TYPES.has(name)) return undefined;
 
     return comparesObjectItems(context, fn) ? resolved.value : undefined;
@@ -70,7 +79,9 @@ const itemComparatorArgDescriptors = (
     parameter: GirParameter,
 ): Map<number, string> | undefined => {
     const callback = itemComparatorCallback(context, fn, parameter);
+
     if (callback === undefined) return undefined;
+
     const overrides: Map<number, string> = new Map();
     const items = inputParameters(context.library, callbackAsFunction(callback));
 
@@ -87,7 +98,9 @@ const itemComparatorTsType = (
     parameter: GirParameter,
 ): string | undefined => {
     const callback = itemComparatorCallback(context, fn, parameter);
+
     if (callback === undefined) return undefined;
+
     const itemType = `${context.qualify("GObject", "Object")} | null`;
 
     const args = inputParameters(context.library, callbackAsFunction(callback)).map(({ parameter: item, index }) => {

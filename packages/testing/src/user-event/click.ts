@@ -5,6 +5,7 @@ import { wrapEvent } from "./event-wrapper.js";
 const pressPointOf = (widget: Gtk.Widget): { x: number; y: number } => {
     const width = widget.getWidth();
     const height = widget.getHeight();
+
     if (width > 0 && height > 0) return { x: width / 2, y: height / 2 };
 
     return { x: 0, y: 0 };
@@ -50,6 +51,7 @@ const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
 
 const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL) return false;
+
     let activated = false;
 
     await wrapEvent(widget, () => {
@@ -75,6 +77,7 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
     }
 
     if (await tryActivate(widget)) return;
+
     const target = findClickableAncestor(widget);
     if (target) await emitClickSequence(widget, target, 1);
 };

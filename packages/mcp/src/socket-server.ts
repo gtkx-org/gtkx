@@ -40,6 +40,7 @@ class SocketServer {
 
     async start(): Promise<void> {
         if (this.server) return;
+
         await removeStaleSocket(this.socketPath);
 
         return new Promise((resolve, reject) => {
@@ -60,6 +61,7 @@ class SocketServer {
 
     async stop(): Promise<void> {
         if (!this.server) return;
+
         this.registry.dispose("Server stopping");
 
         return new Promise((resolve) => {

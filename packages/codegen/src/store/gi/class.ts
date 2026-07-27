@@ -61,7 +61,9 @@ type AppendInstanceMethodsOptions = {
 
 const generateClass = (context: ModuleContext, klass: GirClass): void => {
     if (!klass.introspectable) return;
+
     if (klass.name.length === 0) return;
+
     const className = pascalCase(klass.name);
 
     const callables: Callables = {
@@ -110,6 +112,7 @@ const appendInterfaceMerge = (
     implemented: ImplementedRef[],
 ): void => {
     if (implemented.length === 0) return;
+
     const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
     context.module.appendDeclaration(`export interface ${className} extends ${mergeRefs.join(", ")} {}`);
 };
@@ -177,6 +180,7 @@ const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
 
 const appendInstallMixins = (context: ModuleContext, className: string, implemented: ImplementedRef[]): void => {
     if (implemented.length === 0) return;
+
     context.addRuntimeImport("installMixins");
     const makers = implemented.map((ref) => ref.makerRef).join(", ");
     context.module.appendRegistration(`installMixins(${className}, [${makers}]);`);
@@ -201,8 +205,11 @@ const addAncestorInterfaceKeys = (context: ModuleContext, ancestor: ResolvedAnce
 
 const inheritedInterfaceKeys = (context: ModuleContext, klass: GirClass): Set<string> => {
     const keys: Set<string> = new Set();
+
     if (klass.parent === undefined) return keys;
+
     const parent = context.library.resolveType(context.namespace.name, klass.parent);
+
     if (parent?.kind !== "class") return keys;
 
     for (const ancestor of ancestorChain(context.library, parent.value, parent.namespace.name)) {
@@ -219,6 +226,7 @@ const interfaceMergeRef = (context: ModuleContext, klass: GirClass, ref: Impleme
     });
 
     if (omissions.length === 0) return ref.typeRef;
+
     const keys = omissions.map((name) => JSON.stringify(name)).join(" | ");
 
     return `Omit<${ref.typeRef}, ${keys}>`;
@@ -230,8 +238,11 @@ const implementedRefFor = (
     inherited: Set<string>,
 ): ImplementedRef | undefined => {
     const resolved = context.library.resolveType(context.namespace.name, name);
+
     if (resolved?.kind !== "interface") return undefined;
+
     if (inherited.has(`${resolved.namespace.name}.${resolved.value.name}`)) return undefined;
+
     const pascal = pascalCase(resolved.value.name);
 
     return {
@@ -260,8 +271,11 @@ const renderExtendsClause = (
     callables: Callables,
 ): string => {
     if (parentExpression === undefined) return "";
+
     const constructorNames = classConstructorMemberNames(context, callables);
+
     if (constructorNames.length === 0) return ` extends ${parentExpression}`;
+
     context.addRuntimeTypeImport("StaticBase");
     const omitted = constructorNames.map((name) => JSON.stringify(name)).join(" | ");
 
@@ -270,6 +284,7 @@ const renderExtendsClause = (
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
+
     const [namespace, typeName] = splitOptionalNamespace(klass.parent);
 
     return context.qualify(namespace ?? context.namespace.name, pascalCase(typeName));

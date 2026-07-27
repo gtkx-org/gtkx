@@ -192,7 +192,9 @@ const newBoxedValue = (
  */
 function getBoxedValue(value: ExternalObject<Handle>): object | null {
     const type = getValueType(value);
+
     if (typeFundamental(type) !== TYPE_BOXED) return null;
+
     const cls = getWrapperClass(type);
     const boxed = dupBoxedBind(getBoxedTypeName(type))(value) as ExternalObject<Handle> | null;
 
@@ -219,6 +221,7 @@ const resolveValueType = (descriptor: Descriptor): ValueType => {
     }
 
     const plain = PLAIN_VALUE_TYPES[descriptor.kind];
+
     if (plain !== undefined) return plain;
 
     switch (descriptor.kind) {
@@ -280,6 +283,7 @@ const resolveValueGetter = (fundamental: bigint): ValueGetter | undefined =>
 
 const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
     const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
+
     if (!isHandleKind) return toNative(descriptor, value);
 
     return value == null ? null : getHandle(value);
@@ -302,7 +306,9 @@ function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle>
 
 function fromValue(value: ExternalObject<Handle>): unknown {
     const type = getValueType(value);
+
     if (type === getStrvType()) return strvValueType.get(value);
+
     const get = resolveValueGetter(typeFundamental(type));
 
     if (get === undefined) {

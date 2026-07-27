@@ -58,7 +58,9 @@ const maybeThrowSuggestion = (options: {
 }): void => {
     const { container, match, queryName, variant, suggest } = options;
     const shouldSuggest = suggest ?? getConfig().throwSuggestions;
+
     if (!shouldSuggest) return;
+
     const suggestion = getSuggestedQuery(match, variant);
 
     if (suggestion && suggestion.queryName !== queryName) {

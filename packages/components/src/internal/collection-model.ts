@@ -76,7 +76,9 @@ const syncStore = (state: ModelState, store: Gio.ListStore, order: GObject.Objec
 
 const entryFor = (state: ModelState, item: Item): CollectionEntry => {
     const existing = state.entries.get(item.id);
+
     if (existing !== undefined) return existing;
+
     const holder = new GObject.Object({});
 
     const entry: CollectionEntry = {
@@ -159,7 +161,9 @@ const update = (state: ModelState, data: CollectionData): void => {
 
 const idAt = (state: ModelState, model: Gio.ListModel, position: number): string | null => {
     const item = model.getItem(position);
+
     if (item === null) return null;
+
     const holder = item instanceof Gtk.TreeListRow ? item.getItem() : item;
 
     return holder === null ? null : (state.holders.get(holder)?.id ?? null);
@@ -181,6 +185,7 @@ const positionsOfIds = (state: ModelState, model: Gio.ListModel, ids: string[]):
 
 const childModelOf = (state: ModelState, holder: GObject.Object): Gio.ListStore | null => {
     const entry = state.holders.get(holder);
+
     if (entry === undefined || !hasChildren(entry.item)) return null;
 
     return entry.childStore;

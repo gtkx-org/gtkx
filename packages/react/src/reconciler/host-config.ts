@@ -57,6 +57,7 @@ const hostConfig = {
     appendInitialChild: (parent: Instance, child: AnyNode): void => attachChild(parent, child, null),
     finalizeInitialChildren: (instance: Instance, _type: string, props: Props): boolean => {
         if (instance.kind !== ELEMENT_KIND) return false;
+
         validateContentMix(instance, props);
 
         return typeInfoOf(instance.typeName).hasMount;
@@ -149,6 +150,7 @@ const detachFromContainer = (container: Container, child: AnyNode): void => {
 
 const publicInstanceOf = (instance: Instance): object => {
     if (instance.kind === ELEMENT_KIND) return instance.object;
+
     if (instance.kind === LAZY_KIND) return instance.adopted ?? instance;
 
     return instance;
@@ -182,6 +184,7 @@ const containerNodeFor = (container: GObject.Object): ElementNode =>
 
 const createNode = (type: string, props: Props): Instance => {
     if (type === Prop) return createPropNode(props.propName as string);
+
     const node = resolveElementNode(type, props, runDiscrete);
 
     if (node.kind === ELEMENT_KIND) {

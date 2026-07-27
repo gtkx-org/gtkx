@@ -188,6 +188,7 @@ function registryEnv(userConfig: string): NodeJS.ProcessEnv {
 const trackedFilesRewrittenByPublish = (): string[] => {
     const paths = [join(ROOT_DIR, "pnpm-lock.yaml"), join(NATIVE_DIR, "package.json")];
     const npmDir = join(NATIVE_DIR, "npm");
+
     if (!existsSync(npmDir)) return paths;
 
     for (const entry of readdirSync(npmDir)) {

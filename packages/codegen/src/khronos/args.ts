@@ -200,7 +200,9 @@ const scalarPrefixArg = (
     track: (alias: string) => string,
 ): InArg | undefined => {
     const { paramPlan, param } = paramPairAt(plan, index);
+
     if (param === undefined) return undefined;
+
     if (paramPlan?.kind !== "scalar") return undefined;
 
     return buildInArg(
@@ -216,7 +218,9 @@ const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Set<strin
 
     for (let index = 0; index < plan.params.length - 2; index++) {
         const arg = scalarPrefixArg(plan, index, track);
+
         if (arg === undefined) return undefined;
+
         prefix.push(arg);
     }
 

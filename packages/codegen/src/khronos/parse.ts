@@ -32,7 +32,9 @@ const nodeTag = (node: OrderedNode): string => {
 
 const nodeChildren = (node: OrderedNode): OrderedNode[] => {
     const tag = nodeTag(node);
+
     if (tag === TEXT_KEY) return [];
+
     const children = node[tag];
 
     return Array.isArray(children) ? (children as OrderedNode[]) : [];
@@ -40,7 +42,9 @@ const nodeChildren = (node: OrderedNode): OrderedNode[] => {
 
 const nodeAttr = (node: OrderedNode, name: string): string | undefined => {
     const attributes = node[ATTRIBUTES_KEY];
+
     if (typeof attributes !== "object" || attributes === null) return undefined;
+
     const value = (attributes as Record<string, unknown>)[`@_${name}`];
 
     return typeof value === "string" ? value : undefined;

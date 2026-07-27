@@ -46,9 +46,13 @@ function* iterateClassesWithGlibName(library: Library): IterableIterator<GlibNam
 
 function collectImplementedInterface(state: InterfaceVisitState, name: string, fromNamespace: GirNamespace): void {
     const resolved = state.library.resolveType(fromNamespace.name, name);
+
     if (resolved?.kind !== "interface") return;
+
     const key = `${resolved.namespace.name}.${resolved.value.name}`;
+
     if (state.visited.has(key)) return;
+
     state.visited.add(key);
     state.result.push({ klass: resolved.value, namespace: resolved.namespace });
     visitImplementedInterfaces(state, resolved.value.prerequisites, resolved.namespace);
@@ -89,8 +93,11 @@ const isCollectibleInterface = (
 
 const parentImplementedInterfaceKeys = (klass: GirClass, namespace: GirNamespace, library: Library): Set<string> => {
     const keys: Set<string> = new Set();
+
     if (klass.parent === undefined) return keys;
+
     const resolvedParent = library.resolveType(namespace.name, klass.parent);
+
     if (resolvedParent?.kind !== "class") return keys;
 
     for (const iface of implementedInterfaces(resolvedParent.value, resolvedParent.namespace, library)) {
@@ -168,6 +175,7 @@ const someAncestor = (
 ): boolean => {
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {
         const glibName = glibNameOf(ancestor) ?? "";
+
         if (predicate(ancestor, glibName)) return true;
     }
 

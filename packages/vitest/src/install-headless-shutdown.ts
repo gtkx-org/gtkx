@@ -3,7 +3,9 @@ import { headlessShutdownInstalled, headlessTeardown, setHeadlessShutdownInstall
 
 const installHeadlessShutdown = (): void => {
     const teardown = headlessTeardown();
+
     if (teardown === undefined || headlessShutdownInstalled()) return;
+
     setHeadlessShutdownInstalled(true);
     installGracefulShutdown({ onSignal: teardown });
 };

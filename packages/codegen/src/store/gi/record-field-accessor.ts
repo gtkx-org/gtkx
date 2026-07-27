@@ -123,10 +123,15 @@ const admitField = (
     claimedNames: Set<string>,
 ): AdmittedField | undefined => {
     const { field } = slot;
+
     if (!field.readable && !field.writable) return undefined;
+
     if (!isEmittableField(context, field)) return undefined;
+
     const jsName = toCamelIdentifier(field.name);
+
     if (claimedNames.has(jsName)) return undefined;
+
     if (jsName === "constructor") return undefined;
 
     return { field, jsName };
@@ -138,6 +143,7 @@ const resolveRecordFieldEntry = (
     claimedNames: Set<string>,
 ): RecordFieldEntry | undefined => {
     const admitted = admitField(context, slot, claimedNames);
+
     if (admitted === undefined) return undefined;
 
     return {
@@ -155,10 +161,13 @@ const renderRecordFieldAccessor = (
     siblingFields: GirField[],
 ): string | undefined => {
     const admitted = admitField(context, slot, claimedNames);
+
     if (admitted === undefined) return undefined;
+
     const { field, jsName } = admitted;
     const doc = renderJsDoc(field.doc);
     const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });
+
     if (structArray !== undefined) return `${doc}${structArray}`;
 
     if (!isAccessorEligibleType(context, field.type)) {
@@ -190,6 +199,7 @@ const renderRecordFieldAccessor = (
 
 const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean => {
     const type = context.library.typeOf(ref);
+
     if (type === undefined) return true;
 
     switch (type.kind) {
@@ -223,10 +233,15 @@ const resolveInlineStructFields = (
     occurrenceCType: string | undefined,
 ): GirField[] | undefined => {
     if (ref === undefined) return undefined;
+
     if (occurrenceCType?.endsWith("*") === true) return undefined;
+
     const type = context.library.typeOf(ref);
+
     if (type?.kind !== "record") return undefined;
+
     if (type.value.cType?.endsWith("*") === true) return undefined;
+
     if (type.value.fields.length === 0) return undefined;
 
     return type.value.fields;
@@ -237,8 +252,11 @@ const arrayLengthExpression = (
     siblingFields: GirField[],
 ): string | undefined => {
     if (arrayRef.fixedSize !== undefined) return String(arrayRef.fixedSize);
+
     if (arrayRef.lengthParameterIndex === undefined) return undefined;
+
     const lengthField = siblingFields.filter((field) => !field.private)[arrayRef.lengthParameterIndex];
+
     if (lengthField === undefined) return undefined;
 
     return `this.${toCamelIdentifier(lengthField.name)}`;
@@ -251,7 +269,9 @@ const visitInlineStructSlot = (
     visitors: InlineFieldVisitors,
 ): void => {
     const { field, slot } = entry;
+
     if (field.private || field.type === undefined || isInlineCallbackRef(context.library, field.type)) return;
+
     const jsName = toCamelIdentifier(field.name);
     const offset = baseOffset + slot.byteOffset;
     const nested = resolveInlineStructFields(context, field.type, field.cType);
@@ -263,6 +283,7 @@ const visitInlineStructSlot = (
     }
 
     if (!isAccessorEligibleType(context, field.type)) return;
+
     const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none"));
     visitors.leaf({ jsName, descriptor, offset, slot, type: field.type });
 };
@@ -395,10 +416,15 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string =>
 
 const resolveStructArrayElements = (context: ModuleContext, fieldType: TypeId): StructArrayElements | undefined => {
     const arrayType = context.library.typeOf(fieldType);
+
     if (arrayType?.kind !== "carray") return undefined;
+
     const elementType = context.library.typeOf(arrayType.element);
+
     if (elementType?.kind === "record" && elementType.value.glibGetType !== undefined) return undefined;
+
     const elementFields = resolveInlineStructFields(context, arrayType.element, arrayType.elementCType);
+
     if (elementFields === undefined) return undefined;
 
     return { arrayType, elementFields };
@@ -410,8 +436,11 @@ const resolveStructArrayShape = (
     siblingFields: GirField[],
 ): { lengthExpr: string; elementSize: number } | undefined => {
     const lengthExpr = arrayLengthExpression(elements.arrayType, siblingFields);
+
     if (lengthExpr === undefined) return undefined;
+
     const elementSize = computeRecordFieldSlots(context, elements.elementFields).size;
+
     if (elementSize === 0) return undefined;
 
     return { lengthExpr, elementSize };
@@ -419,10 +448,15 @@ const resolveStructArrayShape = (
 
 const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): StructArrayResolution | undefined => {
     const { field, slot, siblingFields } = target;
+
     if (field.type === undefined || slot.bitWidth !== undefined) return undefined;
+
     const elements = resolveStructArrayElements(context, field.type);
+
     if (elements === undefined) return undefined;
+
     const shape = resolveStructArrayShape(context, elements, siblingFields);
+
     if (shape === undefined) return undefined;
 
     return {
@@ -435,7 +469,9 @@ const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): 
 
 const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {
     const resolution = resolveStructArray(context, target);
+
     if (resolution === undefined) return undefined;
+
     const { field, jsName, slot } = target;
     const { fieldType, elementFields, lengthExpr, elementSize } = resolution;
     context.addRuntimeImport("read");

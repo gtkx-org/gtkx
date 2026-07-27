@@ -49,7 +49,9 @@ class AppRouter extends EventEmitter<AppRouterEventMap> {
 
     private resolveTargetApp(applicationId: string | undefined): RegisteredApp {
         const app = applicationId ? this.apps.get(applicationId) : this.getDefaultApp();
+
         if (app) return app;
+
         if (applicationId) throw appNotFoundError(applicationId);
         throw noAppConnectedError();
     }
@@ -111,8 +113,11 @@ class AppRouter extends EventEmitter<AppRouterEventMap> {
     private removeApp(connection: ProtocolConnection): void {
         const applicationId = this.connectionToApp.get(connection.id);
         this.connectionToApp.delete(connection.id);
+
         if (applicationId === undefined) return;
+
         if (this.apps.get(applicationId)?.connection !== connection) return;
+
         this.apps.delete(applicationId);
         this.emit("appUnregistered", applicationId);
     }

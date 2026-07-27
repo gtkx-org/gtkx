@@ -23,7 +23,9 @@ const renderRecordConstructorPropsInterface = (
     className: string,
 ): string => {
     const head = `export interface ${className}ConstructorProps`;
+
     if (isOpaque(record)) return renderBracedOrEmpty(head, "");
+
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
     const lines = slots
@@ -61,9 +63,13 @@ const renderRecordConstructor = (
     extendsError = false,
 ): string => {
     const superCall = extendsError ? ["super();"] : [];
+
     if (isOpaque(record)) return renderOpaqueConstructor(className, superCall);
+
     const { slots, size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+
     if (size === 0) return renderEmptyConstructor(className, extendsError);
+
     context.addRuntimeImport("alloc");
     context.addRuntimeImport("setHandle");
 

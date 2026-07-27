@@ -113,6 +113,7 @@ const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string
         : renderTsType(context, fn.returnValue.type, fn.returnValue.nullable);
 
     if (outs.length === 0) return primary ?? "void";
+
     const outTypes = outs.map((parameter) => renderTsType(context, parameter.type, false));
 
     return foldOutParamShape(primary, outTypes);
@@ -125,6 +126,7 @@ const classifyPromisifiedParameter = (
     state: { cancellableIndex: number; sawOptional: boolean },
 ): PromisifiedStep => {
     if (parameter.isVarargs) return { sawOptional: state.sawOptional, expression: undefined };
+
     if (index === state.cancellableIndex) return { sawOptional: true, expression: undefined };
 
     if (skipPromisifiedParameter(promisify, parameter, index)) {
@@ -151,6 +153,7 @@ const collectPromisifiedArguments = (promisify: PromisifyContext, cancellableInd
 
 const renderCancellableExpression = (parameters: GirParameter[], cancellableIndex: number): string => {
     if (cancellableIndex < 0) return "null";
+
     const parameter = parameters[cancellableIndex];
 
     return parameter === undefined ? "null" : parameterIdentifier(parameter, cancellableIndex);
@@ -205,6 +208,7 @@ const promisifiedArgument = (
     const { context, asyncFn, lengthFor } = promisify;
     const sourceIndex = lengthFor.get(index);
     const source = sourceIndex === undefined ? undefined : asyncFn.parameters[sourceIndex];
+
     if (sourceIndex !== undefined && source !== undefined) return arrayLengthArgument(source, sourceIndex);
 
     return parameterCallExpression(context, parameter, index, sawOptional);
@@ -235,6 +239,7 @@ const isCancellable = (context: ModuleContext, parameter: GirParameter): boolean
 
 const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): boolean => {
     const ref = parameter.type;
+
     if (ref === undefined) return false;
 
     return context.library.typeOf(ref)?.kind === "callback";
@@ -308,11 +313,17 @@ const planParameter = (
     planContext: PlanArgsContext,
 ): CallArgPlan | undefined => {
     const { instanceOffset, folded, closureIndices, lengthFor } = planContext;
+
     if (isSkippedPlanParameter(parameter, index, closureIndices)) return undefined;
+
     if (isOutParameter(parameter)) return planOutParam(context, parameter, instanceOffset, folded.has(index));
+
     if (isCallerAllocatedOut(parameter)) return planCallerOut(context, parameter, instanceOffset);
+
     if (isInoutParameter(parameter)) return planInoutArgument(context, parameter, index, planContext);
+
     const sourceIndex = lengthFor.get(index);
+
     if (sourceIndex !== undefined) return planLengthArgument(context, parameter, sourceIndex, planContext);
 
     return planInParam(context, parameter, index, planContext);
@@ -513,9 +524,13 @@ const parameterCallExpression = (
 ): string => {
     const name = parameterIdentifier(parameter, index);
     const ref = parameter.type;
+
     if (ref === undefined) return name;
+
     const nullable = parameter.nullable || parameter.optional || forceNullable;
+
     if (isHandlePassing(context, ref)) return handleArgument(context, name, nullable);
+
     const type = context.library.typeOf(ref);
 
     return collectionArgument(context, type, name, nullable) ?? name;

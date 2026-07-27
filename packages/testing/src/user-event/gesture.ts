@@ -132,6 +132,7 @@ const runDragSequence = (controllers: Gtk.GestureDrag[], start: DragOffset, upda
 
 const resolveDragUpdates = (dx: number, dy: number, options: DragOptions): DragOffset[] => {
     if (options.offsets) return [...options.offsets, { x: dx, y: dy }];
+
     const steps = Math.max(1, Math.floor(options.steps ?? 2));
     const updates: DragOffset[] = [];
 

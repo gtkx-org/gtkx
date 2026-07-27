@@ -71,6 +71,7 @@ const stripDocMedia = (markdown: string): string =>
 
 const demoteLine = (line: string, inFence: boolean): { text: string; inFence: boolean } => {
     if (FENCE_LINE.test(line)) return { text: line, inFence: !inFence };
+
     if (inFence) return { text: line, inFence };
 
     return { text: HEADING_LINE.test(line) ? `#${line}` : line, inFence };
@@ -103,7 +104,9 @@ const stripMarkdown = (markdown: string): string =>
 
 const firstSentence = (doc: string | undefined): string => {
     const text = stripMarkdown(docMarkdown(doc));
+
     if (text.length === 0) return "";
+
     const match = /^.*?[.!?](?=\s|$)/.exec(text);
     const sentence = match?.[0] ?? text;
 
@@ -118,6 +121,7 @@ const elementSlug = (className: string): string =>
 
 const implementsLine = (names: string[]): string[] => {
     if (names.length === 0) return [];
+
     const quotedNames = names.map((name) => `\`${name}\``).join(", ");
 
     return [`Implements ${quotedNames}.`];

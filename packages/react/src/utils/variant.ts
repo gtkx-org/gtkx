@@ -181,14 +181,19 @@ const parseNode = (source: string, start: number): [VariantTypeNode, number] => 
     const code = source[start];
     if (code === undefined) throw invalidType(source);
     const container = CONTAINER_PARSERS[code];
+
     if (container !== undefined) return container(source, start + 1);
+
     if (isBasicCode(code)) return [{ kind: "basic", code }, start + 1];
+
     throw invalidType(source);
 };
 
 const parseVariantType = (typeString: string): VariantTypeNode => {
     const cached = parsedTypes.get(typeString);
+
     if (cached !== undefined) return cached;
+
     const [node, end] = parseNode(typeString, 0);
     if (end !== typeString.length) throw invalidType(typeString);
     parsedTypes.set(typeString, node);
@@ -217,7 +222,9 @@ const unpackDict = (
     variant: GLib.Variant,
 ): Record<string, unknown> | Map<unknown, unknown> => {
     const entries = unpackChildren(variant, (entry) => unpackPair(node.key, node.value, entry)) as [unknown, unknown][];
+
     if (!isStringKeyed(node.key)) return new Map(entries);
+
     const stringEntries: [string, unknown][] = entries.map(([key, value]) => [key as string, value]);
 
     return Object.fromEntries(stringEntries);

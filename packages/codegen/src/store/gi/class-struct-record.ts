@@ -11,10 +11,15 @@ const qualify = (namespaceName: string, name: string): string => `${namespaceNam
 
 const isClassStructRecord = (library: Library, namespaceName: string, record: GirRecord): boolean => {
     const qualified = qualify(namespaceName, record.name);
+
     if (TYPE_STRUCT_ROOTS.has(qualified) || EXPLICIT_CLASS_STRUCTS.has(qualified)) return true;
+
     const first = record.fields[0];
+
     if (first?.type === undefined) return false;
+
     const name = library.nameOf(first.type);
+
     if (name === undefined) return false;
 
     return TYPE_STRUCT_ROOTS.has(qualify(name.namespaceName, name.typeName));
@@ -22,7 +27,9 @@ const isClassStructRecord = (library: Library, namespaceName: string, record: Gi
 
 const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
+
     const type = context.library.typeOf(ref);
+
     if (type === undefined) return false;
 
     switch (type.kind) {

@@ -126,6 +126,7 @@ const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
     }
 
     if (selector === undefined) return firstToplevelWindow(windows);
+
     if (typeof selector === "number") return windowAtIndex(windows, selector);
 
     return windowByTitle(windows, selector);

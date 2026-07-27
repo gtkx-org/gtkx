@@ -96,13 +96,17 @@ const removeRecord = (state: CellsState, cell: GObject.Object): void => {
 
 const bindItem = (state: CellsState, slot: string | null, cell: Gtk.ListItem): void => {
     const bound = cell.getItem();
+
     if (bound === null) return;
+
     let holder = bound;
     let row: Gtk.TreeListRow | null = null;
 
     if (bound instanceof Gtk.TreeListRow) {
         const inner = bound.getItem();
+
         if (inner === null) return;
+
         row = bound;
         holder = inner;
     }
@@ -124,7 +128,9 @@ const itemHandlers = (state: CellsState, slot: string | null): FactoryHandlers =
 
 const bindHeader = (state: CellsState, header: Gtk.ListHeader): void => {
     const holder = header.getItem();
+
     if (holder === null) return;
+
     if (header.getChild() === null) header.setChild(placeholder(state.size()));
 
     addRecord(state, {
@@ -209,13 +215,17 @@ const applyRowArgs = (
     expandedIds: string[] | null | undefined,
 ): void => {
     args.depth = row.getDepth();
+
     if (!row.isExpandable()) return;
+
     args.isExpanded = expandedIds == null ? row.getExpanded() : expandedIds.includes(id);
 };
 
 const renderItemArgs = (record: CellRecord, options: ItemArgsOptions): RenderItemArgs<unknown> | null => {
     const entry = options.collection.entryOf(record.holder);
+
     if (entry === undefined) return null;
+
     const args: RenderItemArgs<unknown> = { item: entry.item.value, index: record.position() };
     if (record.row !== null) applyRowArgs(args, record.row, entry.id, options.expandedIds);
 
@@ -227,6 +237,7 @@ const headerRenderer = (
     renderHeader: HeaderRenderer<never> | null | undefined,
 ): ((record: CellRecord) => ReactNode) => {
     if (renderHeader == null) return () => null;
+
     const render = renderHeader as HeaderRenderer<unknown>;
 
     return (record) => render({ section: collection.entryOf(record.holder)?.sectionValue });

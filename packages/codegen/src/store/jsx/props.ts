@@ -92,15 +92,20 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
 
 const acceptCollectorProperty = (state: PropCollectorState, property: GirProperty): void => {
     if (!property.introspectable) return;
+
     const jsName = toCamelIdentifier(property.name);
+
     if (state.seen.has(jsName)) return;
+
     state.seen.add(jsName);
     appendPropertyLines(state, property, jsName);
 };
 
 const acceptCollectorSignal = (state: PropCollectorState, signal: GirCallable): void => {
     const handlerName = signalHandlerName(signal.name);
+
     if (state.seen.has(handlerName)) return;
+
     state.seen.add(handlerName);
     const signature = renderSignalHandler({ types: state.types, signal, selfType: "Self" });
     state.propLines.push(`${renderJsDoc(signal.doc)}${handlerName}?: (${signature}) | undefined;`);
@@ -168,8 +173,11 @@ const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => 
 
 const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
+
     const resolved = library.typeOf(ref);
+
     if (resolved?.kind === "interface") return true;
+
     if (resolved?.kind !== "class") return false;
 
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
@@ -177,6 +185,7 @@ const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boole
 
 const isObjectProp = (owner: IntrinsicElementScope, property: GirProperty, jsName: string): boolean => {
     if (!property.writable || property.constructOnly) return false;
+
     if (!resolvesToGObjectType(owner.library, property.type)) return false;
 
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {

@@ -46,6 +46,7 @@ function statusOf(status: string | undefined): Status {
 
 function recordAssertion(assertion: VitestAssertion, observed: Baseline, skipped: string[]): void {
     const name = assertion.fullName ?? assertion.title;
+
     if (!name) return;
 
     if (SKIP_STATUSES.has(assertion.status ?? "")) {

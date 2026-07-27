@@ -110,7 +110,9 @@ const teardownList = <P extends GObject.Object, I, H>(
     }
 
     const remove = hooks.remove;
+
     if (remove === undefined) return;
+
     for (const entry of entries) remove(object, entry.item as I, entry.handle as H);
 };
 
@@ -131,7 +133,9 @@ const list = <P extends GObject.Object, I, H = void>(
             const state = context as ListState;
             const raw = next[prop];
             const items: unknown[] = Array.isArray(raw) ? raw : [];
+
             if (isDeepEqual(state.snapshot, items)) return [prop];
+
             teardownList(object as P, state.entries, hooks);
             state.entries = items.map((item) => ({ item, handle: add?.(object as P, item as I) }));
             state.snapshot = structuredClone(items);
@@ -148,8 +152,11 @@ const flushDeferred = <P extends GObject.Object, V>(
     canApply: CanApply<P, V> | undefined,
 ): void => {
     const state = context as DeferredState;
+
     if (!state.present || Object.is(state.applied, state.desired)) return;
+
     if (canApply !== undefined && !canApply(object as P, state.desired as V)) return;
+
     Reflect.set(object, prop, state.desired);
     state.applied = state.desired;
 };
@@ -223,8 +230,11 @@ const wrappedRow = <W extends Gtk.Widget>(
     child: Gtk.Widget,
 ): Gtk.Widget => {
     if (child instanceof Wrapper) return child;
+
     const existing = rows.get(child);
+
     if (existing !== undefined) return existing;
+
     const wrapper = new Wrapper({});
     setChild(wrapper, child);
     rows.set(child, wrapper);

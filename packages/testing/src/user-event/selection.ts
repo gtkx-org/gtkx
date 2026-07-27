@@ -46,6 +46,7 @@ const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void =>
     }
 
     const [selection] = valueArray;
+
     if (selection === undefined) return;
 
     if (widget instanceof Gtk.DropDown) {

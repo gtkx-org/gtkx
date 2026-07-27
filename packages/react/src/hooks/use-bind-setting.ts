@@ -27,7 +27,9 @@ function useBindSetting<K extends SettingsSchemaKeys>(
 
     useLayoutEffect(() => {
         const resolved = resolveRefProp(object);
+
         if (!resolved) return;
+
         settings.bind(key, resolved, propertyName, flags);
 
         return () => {

@@ -64,6 +64,7 @@ const text = (node: RawNode, name: string): string | null => {
 
 const children = (node: RawNode, name: string): RawNode[] => {
     const value = node[name];
+
     if (!Array.isArray(value)) return [];
 
     return value.filter(isRawNode);
@@ -87,6 +88,7 @@ const parseDefinitions = (schemalist: RawNode, tag: string): Map<string, string[
 
 const parseChoices = (key: RawNode): string[] => {
     const choices = key.choices;
+
     if (!isRawNode(choices)) return [];
 
     return children(choices, "choice")
@@ -128,6 +130,7 @@ const parseRawSchema = (schema: RawNode, fileName: string): RawSchema => {
 
 const collectInheritedKeys = (context: MergeContext, current: RawSchema): void => {
     if (context.visited.has(current.id)) return;
+
     context.visited.add(current.id);
     const parent = current.extendsId === null ? undefined : context.byId.get(current.extendsId);
     if (parent !== undefined) collectInheritedKeys(context, parent);

@@ -14,6 +14,7 @@ const gtypeMemberDeclaration = (context: ModuleContext): string => `declare _typ
 
 const renderInternGtype = (context: ModuleContext, typeName: string | undefined): string | undefined => {
     if (typeName === undefined) return undefined;
+
     if (context.namespace.name !== "GObject") context.addRuntimeImport("typeFromName");
 
     return `typeFromName(${sourceStringLiteral(typeName)})`;

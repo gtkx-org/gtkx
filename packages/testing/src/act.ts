@@ -19,6 +19,7 @@ const act: ActImplementation = withGlobalActEnvironment(actImplementation);
 
 const getGlobalThis = (): typeof globalThis => {
     if (typeof globalThis !== "undefined") return globalThis;
+
     throw new Error("unable to locate global object");
 };
 
@@ -45,7 +46,9 @@ const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseLike<T>)
 
     try {
         const result: T | PromiseLike<T> = fn();
+
         if (isThenable<T>(result)) return restoreAfter(result, previousActEnvironment);
+
         setIsReactActEnvironment(previousActEnvironment);
 
         return Promise.resolve(result);

@@ -57,7 +57,9 @@ const insertPlaceable = (list: PlaceableNode[], node: PlaceableNode, before: Any
 
 const insertChild = (parent: PropNode | LazyNode, child: AnyNode, before: AnyNode | null): PlaceableNode | null => {
     const placeable = asPlaceable(child);
+
     if (placeable === null) return null;
+
     insertPlaceable(parent.children, placeable, before);
 
     return placeable;
@@ -65,9 +67,13 @@ const insertChild = (parent: PropNode | LazyNode, child: AnyNode, before: AnyNod
 
 const attachToProp = (parent: PropNode, child: AnyNode, before: AnyNode | null): void => {
     const placeable = insertChild(parent, child, before);
+
     if (placeable === null) return;
+
     const owner = parent.parent;
+
     if (owner === null) return;
+
     placeChild(owner, parent.slot, placeable, asPlaceable(before));
 };
 
@@ -77,7 +83,9 @@ const placeLazy = (owner: ElementNode, node: LazyNode, hasObject: boolean): void
 
 const syncLazy = (node: LazyNode): void => {
     const owner = node.parent;
+
     if (owner === null) return;
+
     const entry = owner.placements.get(DEFAULT_SLOT)?.find((entry) => entry.node === node);
     const object = nodeObject(node);
 
@@ -91,6 +99,7 @@ const syncLazy = (node: LazyNode): void => {
 
 const attachToLazy = (parent: LazyNode, child: AnyNode, before: AnyNode | null): void => {
     if (insertChild(parent, child, before) === null) return;
+
     syncLazy(parent);
 };
 
@@ -117,10 +126,14 @@ const detachFromElement = (parent: ElementNode, child: AnyNode): void => {
 
 const detachFromProp = (parent: PropNode, child: AnyNode): void => {
     const placeable = asPlaceable(child);
+
     if (placeable === null) return;
+
     remove(parent.children, placeable);
     const owner = parent.parent;
+
     if (owner === null) return;
+
     unplaceChild(owner, parent.slot, placeable);
 };
 

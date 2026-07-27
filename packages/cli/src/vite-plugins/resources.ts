@@ -111,7 +111,9 @@ const entriesSignature = (state: PluginState): string => sortStrings(state.entri
 
 const compileDevBundle = (state: PluginState): void => {
     ensureStagingDir(state);
+
     if (state.entries.size === 0) return;
+
     compileBundle(state, state.devBundlePath);
     state.compiledSignature = entriesSignature(state);
 };
@@ -120,7 +122,9 @@ const isRefreshHook = (value: unknown): value is () => void => typeof value === 
 
 const reregisterDevBundle = async (state: PluginState): Promise<void> => {
     const server = state.server;
+
     if (!server) return;
+
     const mod = await server.ssrLoadModule(VIRTUAL_INIT);
     const refresh: unknown = mod[REFRESH_EXPORT];
     if (isRefreshHook(refresh)) refresh();
@@ -146,7 +150,9 @@ const registerDevAsset = (state: PluginState): void => {
 
 const registerEntry = (state: PluginState, absPath: string, rel: string): ResourceEntry => {
     const existing = state.entries.get(absPath);
+
     if (existing) return existing;
+
     const resourcePath = `${state.prefix}/${rel}`;
 
     const entry: ResourceEntry = {
@@ -165,6 +171,7 @@ const isTrackedSource = (state: PluginState, file: string): boolean => state.sou
 
 const dataAssetSource = (source: string): string | null => {
     const clean = stripQuery(source);
+
     if (!clean.startsWith(DATA_PREFIX) || !ASSET_PATH_RE.test(clean)) return null;
 
     return clean;
@@ -210,6 +217,7 @@ const emitBuildBundle = (
     state: PluginState,
 ): void => {
     if (!state.isBuild || state.entries.size === 0) return;
+
     const compiled = withStagingDir("resources-out", (outDir) => compileBundle(state, join(outDir, BUNDLE_FILENAME)));
     ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
     info(`Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
@@ -257,13 +265,16 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
 
 const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
     state.isBuild = config.command === "build";
+
     if (state.isBuild) return;
+
     const relativeDataDir = resolveDataDir(config.root);
     state.dataDir = relativeDataDir === null ? null : join(config.root, relativeDataDir);
 };
 
 const loadResourceModule = (state: PluginState, id: string): string | undefined => {
     if (id === VIRTUAL_INIT) return loadInitModule(state);
+
     if (!isVirtual(id)) return undefined;
 
     return loadAssetModule(state, id);
@@ -301,8 +312,11 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin 
 
         async resolveId(source, importer, opts) {
             if (source === VIRTUAL_INIT) return VIRTUAL_INIT;
+
             const clean = dataAssetSource(source);
+
             if (clean === null) return;
+
             const resolved = await this.resolve(clean, importer, { ...opts, skipSelf: true });
 
             return resolvedAssetId(resolved, clean);

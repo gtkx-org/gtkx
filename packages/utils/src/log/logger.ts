@@ -31,6 +31,7 @@ function colorsFor(stream: OutputStream): Colors {
 
 function formatValue(value: unknown): string {
     if (typeof value === "string") return value;
+
     if (value instanceof Error) return value.stack ?? value.message;
 
     try {
@@ -42,9 +43,13 @@ function formatValue(value: unknown): string {
 
 function resolveDebugEnabled(namespace: string | undefined, argv: string[], env: NodeJS.ProcessEnv): boolean {
     if (argv.includes("--debug")) return true;
+
     const spec = env.GTKX_DEBUG;
+
     if (!spec) return false;
+
     const names = new Set(spec.split(/[\s,]+/).filter((name) => name.length > 0));
+
     if (names.has("1") || names.has("*")) return true;
 
     return namespace !== undefined && names.has(namespace);
@@ -117,6 +122,7 @@ class Logger {
      */
     debug(message: string, ...rest: unknown[]): void {
         if (!this.debugEnabled) return;
+
         this.write(message, rest);
     }
 }

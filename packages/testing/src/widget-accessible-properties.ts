@@ -16,7 +16,9 @@ const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
 
 const callStringGetter = (widget: Gtk.Widget, method: string): string | null => {
     const fn: unknown = Reflect.get(widget, method);
+
     if (typeof fn !== "function") return null;
+
     const value = (fn as () => string | null).call(widget);
 
     return value ?? null;
@@ -36,7 +38,9 @@ const readAccessibleNumber = (widget: Gtk.Widget, key: string): number | null =>
 
 const readAccessibleWidgets = (widget: Gtk.Widget, key: string): Gtk.Widget[] | null => {
     const value = getAccessibleMetadata(widget, key);
+
     if (!Array.isArray(value)) return null;
+
     const widgets = value.filter((item): item is Gtk.Widget => item instanceof Gtk.Widget);
 
     return widgets.length > 0 ? widgets : null;
@@ -50,6 +54,7 @@ const readAccessibleBoolean = (widget: Gtk.Widget, key: string): boolean | null 
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
     if (widget instanceof Gtk.Label) return widget.getLabel();
+
     if (widget instanceof Gtk.Inscription) return widget.getText() ?? null;
 
     return null;
@@ -64,6 +69,7 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
 const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
     for (const getter of DEFAULT_TEXT_GETTERS) {
         const value = callStringGetter(widget, getter);
+
         if (value) return value;
     }
 
@@ -74,6 +80,7 @@ const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
 
 const namingLabelText = (widget: Gtk.Widget): string | null => {
     const text = getLabelText(widget);
+
     if (text === null) return null;
 
     return widget instanceof Gtk.Label && widget.getUseUnderline() ? stripMnemonic(text) : text;
@@ -113,12 +120,19 @@ const tabPanelTitle = (widget: Gtk.Widget): string | null => {
 
 const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     const role = widget.getAccessibleRole();
+
     if (role === Gtk.AccessibleRole.TAB_PANEL) return tabPanelTitle(widget);
+
     const accessibleLabel = readAccessibleString(widget, "accessibleLabel");
+
     if (accessibleLabel) return accessibleLabel;
+
     const ownText = getWidgetNodeText(widget);
+
     if (ownText) return ownText;
+
     const childLabels = collectLabels(widget);
+
     if (childLabels.length > 0) return childLabels.join(" ");
 
     return callStringGetter(widget, "getTooltipText");
@@ -146,6 +160,7 @@ const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
 
 const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
     if (widget instanceof Gtk.CheckButton) return widget.getActive();
+
     if (widget instanceof Gtk.Switch) return widget.getActive();
 
     if (widget instanceof Gtk.ToggleButton && widget.getAccessibleRole() === Gtk.AccessibleRole.RADIO) {
@@ -214,8 +229,11 @@ const adjustmentValue = (adjustment: Gtk.Adjustment): ValueTriplet => ({
 
 const adjustmentWidgetValue = (widget: Gtk.Widget): ValueTriplet | null => {
     if (widget instanceof Gtk.Range) return adjustmentValue(widget.getAdjustment());
+
     if (widget instanceof Gtk.Scrollbar) return adjustmentValue(widget.getAdjustment());
+
     if (widget instanceof Gtk.SpinButton) return adjustmentValue(widget.getAdjustment());
+
     if (widget instanceof Gtk.ScaleButton) return adjustmentValue(widget.getAdjustment());
 
     return null;
@@ -223,6 +241,7 @@ const adjustmentWidgetValue = (widget: Gtk.Widget): ValueTriplet | null => {
 
 const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
     const adjustmentBased = adjustmentWidgetValue(widget);
+
     if (adjustmentBased) return adjustmentBased;
 
     if (widget instanceof Gtk.LevelBar) {
@@ -237,6 +256,7 @@ const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
 const getWidgetValue = (widget: Gtk.Widget): WidgetValue => {
     const text = readAccessibleString(widget, "accessibleValueText");
     const live = getWidgetLiveValue(widget);
+
     if (live) return { ...live, text };
 
     return {
@@ -264,7 +284,9 @@ const collectAccessibleNames = (targets: Gtk.Widget[]): string[] => {
 
 const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
     const targets = readAccessibleWidgets(widget, "accessibleLabelledBy");
+
     if (targets === null) return null;
+
     const texts = collectAccessibleNames(targets);
 
     return texts.length > 0 ? texts.join(" ") : null;
@@ -275,7 +297,9 @@ const isInaccessible = (widget: Gtk.Widget): boolean => {
 
     while (current) {
         if (!current.getVisible()) return true;
+
         if (readAccessibleBoolean(current, "accessibleHidden") === true) return true;
+
         current = current.getParent();
     }
 

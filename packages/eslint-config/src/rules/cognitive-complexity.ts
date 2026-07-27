@@ -42,7 +42,9 @@ const cognitiveComplexity = ESLintUtils.RuleCreator.withoutDocs<Options, Message
     create(context, [{ max }]) {
         const check = (node: TSESTree.Node): void => {
             if (hasEnclosingFunction(node)) return;
+
             const complexity = childrenComplexity(node, 0, context.sourceCode.visitorKeys);
+
             if (complexity <= max) return;
 
             context.report({
@@ -68,6 +70,7 @@ const hasEnclosingFunction = (node: TSESTree.Node): boolean => {
 
     while (current) {
         if (FUNCTION_TYPES.has(current.type)) return true;
+
         current = current.parent;
     }
 
@@ -81,7 +84,9 @@ const declaratorName = (parent: TSESTree.VariableDeclarator): TSESTree.Node | un
 
 const parentName = (parent: TSESTree.Node | undefined): TSESTree.Node | undefined => {
     if (parent === undefined) return undefined;
+
     if (isKeyedParent(parent)) return parent.computed ? undefined : parent.key;
+
     if (parent.type === AST_NODE_TYPES.VariableDeclarator) return declaratorName(parent);
 
     return undefined;
@@ -99,7 +104,9 @@ const nameNodeOf = (node: TSESTree.Node): TSESTree.Node => parentName(node.paren
 
 const nodesIn = (value: unknown): TSESTree.Node[] => {
     if (isNode(value)) return [value];
+
     if (!Array.isArray(value)) return [];
+
     const nodes: TSESTree.Node[] = [];
 
     for (const item of value) {
@@ -168,6 +175,7 @@ const ifComplexity = (node: TSESTree.IfStatement, nesting: number, keys: Visitor
 
 const loopChildComplexity = (node: TSESTree.Node, key: string, nesting: number, keys: VisitorKeys): number => {
     const child: unknown = Reflect.get(node, key);
+
     if (!isNode(child)) return 0;
 
     return complexityAt(child, key === "body" ? nesting + 1 : nesting, keys);

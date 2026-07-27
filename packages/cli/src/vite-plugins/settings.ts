@@ -73,6 +73,7 @@ const releaseSchemaDir = (state: PluginState): void => {
 
 const compileSchemaDir = (state: PluginState): void => {
     if (!state.schemaDir) return;
+
     compileSchemas(state.schemaDir);
     process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(state.schemaDir, process.env.GSETTINGS_SCHEMA_DIR);
 };
@@ -116,6 +117,7 @@ const registerSchemaForMode = (state: PluginState, filePath: string, id: string)
 
 const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): string | undefined => {
     if (!isVirtual(id)) return undefined;
+
     const filePath = fromVirtualId(id);
     const xml = readFileSync(filePath, "utf8");
     const fileName = basename(filePath);
@@ -161,7 +163,9 @@ const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
 const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDevServer): ModuleNode[] | undefined => {
     if (file.endsWith(SCHEMA_SUFFIX)) syncSchemaEnv(state);
     const virtualId = state.trackedSchemas.get(file);
+
     if (!virtualId) return;
+
     const dir = ensureSchemaDir(state);
     stageSchema(dir, file);
     compileSchemaDir(state);

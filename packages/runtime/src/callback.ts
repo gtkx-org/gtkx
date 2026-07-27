@@ -107,7 +107,9 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     const thisArg = thisArgOf(plan.receiver, wrapped);
     const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, plan.start);
     const result = plan.fn.apply(thisArg, inputs);
+
     if (outParams.length === 0) return toNative(returnDescriptor, result);
+
     const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", outParams.length);
     writeOutParams(outParams, outValues);
 
@@ -116,6 +118,7 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
 
 const effectiveTypesOf = (spec: CallbackSpec): Descriptor[] => {
     const { userDataIndex } = spec;
+
     if (userDataIndex === undefined) return spec.argDescriptors;
 
     return spec.argDescriptors.filter((_, i) => i !== userDataIndex);

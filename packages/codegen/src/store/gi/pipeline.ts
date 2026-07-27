@@ -77,6 +77,7 @@ const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
 
 const visitClass = (state: TopologicalState, klass: GirClass): void => {
     if (state.placed.has(klass) || state.visiting.has(klass)) return;
+
     state.visiting.add(klass);
     const parent = sameNamespaceParent(klass, state.namespaceName, state.byLocalName);
     if (parent !== undefined) visitClass(state, parent);
@@ -108,7 +109,9 @@ const sameNamespaceParent = (
     byLocalName: Map<string, GirClass>,
 ): GirClass | undefined => {
     if (klass.parent === undefined) return undefined;
+
     const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
+
     if (parentNamespace !== undefined && parentNamespace !== namespaceName) return undefined;
 
     return byLocalName.get(typeName);

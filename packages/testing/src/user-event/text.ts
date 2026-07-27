@@ -84,6 +84,7 @@ const applyEditableSelection = (widget: Gtk.Editable, start: number, end: number
 
 const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): void => {
     if (options.initialSelectionStart === undefined) return;
+
     const start = options.initialSelectionStart;
     const end = options.initialSelectionEnd ?? start;
 

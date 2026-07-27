@@ -55,7 +55,9 @@ const renderClassConstructor = (
     hasParent: boolean,
 ): string | undefined => {
     if (!hasParent) return renderRootConstructor(context);
+
     const props = collectConstructableProps(context, klass);
+
     if (props.length === 0) return undefined;
 
     return renderTranslatingConstructor(context, props, className);

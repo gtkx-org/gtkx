@@ -27,6 +27,7 @@ const resolveCwd = (args: { cwd?: string }): string => (args.cwd ? resolve(args.
 const resolveDefaultEntry = (cwd: string): string => {
     for (const extension of DEFAULT_ENTRY_EXTENSIONS) {
         const candidate = resolve(cwd, `${DEFAULT_ENTRY_BASE}${extension}`);
+
         if (existsSync(candidate)) return candidate;
     }
 

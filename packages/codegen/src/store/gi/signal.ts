@@ -48,8 +48,11 @@ const SIGNAL_EMIT_SUFFIX = "SignalEmit";
 
 const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] => {
     if (klass.glibGetType === undefined) return [];
+
     const signals = collectClassSignals(context, klass);
+
     if (signals.length === 0) return [];
+
     const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
     context.addRuntimeImport("connectSignal");
     context.addRuntimeImport("getSignalBaseName");
@@ -133,7 +136,9 @@ const signalMapParentRefs = (
     suffix: string,
 ): string[] => {
     const parentRef = parentCompanionRef(context, klass, suffix);
+
     if (parentRef !== undefined) return [parentRef];
+
     if (!parentlessExtendsObject) return [];
 
     const prerequisiteRefs = klass.prerequisites
@@ -341,7 +346,9 @@ const collectClassSignals = (context: ModuleContext, klass: GirClass): GirCallab
 
     const consider = (signal: GirCallable): void => {
         const name = camelCase(signal.name);
+
         if (inheritedNames.has(name) || seen.has(name)) return;
+
         seen.add(name);
         result.push(signal);
     };
@@ -381,7 +388,9 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): string[]
 
     const consider = (property: GirProperty): void => {
         const name = camelCase(property.name);
+
         if (inherited.has(name) || seen.has(name)) return;
+
         seen.add(name);
         result.push(property.name);
     };

@@ -32,6 +32,7 @@ const layoutOfPrimitive = (category: PrimitiveCategory): FieldLayout => {
 
 const roundUp = (value: number, multiple: number): number => {
     if (multiple <= 1) return value;
+
     const remainder = value % multiple;
 
     return remainder === 0 ? value : value + (multiple - remainder);

@@ -68,8 +68,11 @@ const buildRefValue = (consumesInput: boolean, inputs: unknown[], inputIndex: nu
 
 const buildNativeValue = (spec: ArgSpec, inputs: unknown[]): unknown => {
     const { arg, isRef, isCallerAllocated, consumesInput, inputIndex } = spec;
+
     if (isCallerAllocated) return resolveCallerAllocated(inputs, inputIndex);
+
     if (isRef) return buildRefValue(consumesInput, inputs, inputIndex);
+
     if (arg.type.kind === "callback") return wrapCallbackValue(arg.type, inputs[inputIndex]);
 
     return inputs[inputIndex];

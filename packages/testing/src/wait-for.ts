@@ -15,7 +15,9 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 
 const copyStackTrace = (target: Error, source: Error): void => {
     const { stack } = source;
+
     if (stack === undefined) return;
+
     const index = stack.indexOf(source.message);
 
     if (index === -1) {
@@ -83,7 +85,9 @@ const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): P
             const config = getConfig();
             const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
             const result = await pollUntilSuccess(callback, timeout, interval);
+
             if (result.status === "resolved") return result.value;
+
             throw buildTimeoutError(timeout, result.lastError, stackTraceError, onTimeout);
         }),
     );

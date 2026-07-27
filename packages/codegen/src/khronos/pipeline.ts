@@ -120,6 +120,7 @@ const enumLiteral = (token: GlEnum): string | undefined => {
     }
 
     if (value > MAX_SAFE) return undefined;
+
     if (/^0[xX]/.test(text)) return `0x${text.slice(2).toLowerCase()}`;
 
     return text;
@@ -133,9 +134,13 @@ const groupAliasValue = (existing: string | undefined, scalarAlias: string): str
 
 const mergeGroupAlias = (aliases: Map<string, string>, scalar: GlScalar, group: string | undefined): void => {
     if (group === undefined) return;
+
     if (scalar.groupBearing !== true) return;
+
     const existing = aliases.get(group);
+
     if (existing === "GLbitfield") return;
+
     aliases.set(group, groupAliasValue(existing, scalar.tsAlias));
 };
 
@@ -144,6 +149,7 @@ const isGroupBearingParam = (paramPlan: ParamPlan): paramPlan is GroupBearingPar
 
 const considerParamGroup = (aliases: Map<string, string>, plan: OkPlan, index: number): void => {
     const { paramPlan, param } = paramPairAt(plan, index);
+
     if (paramPlan === undefined || param === undefined) return;
 
     if (isGroupBearingParam(paramPlan)) {
@@ -169,8 +175,11 @@ const collectGroupAliases = (plans: OkPlan[]): Map<string, string> => {
 const planSelectedCommand = (registry: ReturnType<typeof loadGlRegistry>, name: string): OkPlan | GlExclusion => {
     const command = registry.commands.get(name);
     if (command === undefined) throw new Error(`Selected command ${name} is not defined in the registry`);
+
     if (OVERRIDE_OWNED.has(name)) return { command: name, reason: "override-owned" };
+
     const plan = planCommand(command, PLAN_POLICY);
+
     if (!plan.ok) return { command: name, reason: plan.reason };
 
     return plan;

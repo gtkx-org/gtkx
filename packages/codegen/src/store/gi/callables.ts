@@ -98,11 +98,17 @@ const renderBinding = (
     callable: GirFunction,
 ): { text: string; cIdentifier: string } | undefined => {
     if (!callable.introspectable) return undefined;
+
     if (callable.shadowedBy !== undefined) return undefined;
+
     const cIdentifier = callable.cIdentifier;
+
     if (cIdentifier === undefined) return undefined;
+
     if (callableReferencesClassStruct(context, callable)) return undefined;
+
     const expression = renderFnExpression(context, callable);
+
     if (expression === undefined) return undefined;
 
     return { text: `const ${toCamelIdentifier(cIdentifier)} = ${expression};`, cIdentifier };
@@ -123,9 +129,13 @@ const resolveCallableMember = (
     resolveName: (callable: GirFunction) => string | undefined,
 ): { cIdentifier: string; name: string } | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
+
     const cIdentifier = callable.cIdentifier;
+
     if (cIdentifier === undefined) return undefined;
+
     const name = resolveName(callable);
+
     if (name === undefined || name === "constructor") return undefined;
 
     return { cIdentifier, name };
@@ -138,6 +148,7 @@ const runtimeOverrideMember = (
     allow: boolean | undefined,
 ): string | undefined => {
     if (allow !== true) return undefined;
+
     const override = renderRuntimeOverride(callable, name);
 
     return override === undefined ? undefined : `${doc}${override}`;
@@ -149,11 +160,15 @@ const renderCallableMember = (
     options: CallableMemberOptions,
 ): string | undefined => {
     const resolved = resolveCallableMember(context, callable, options.resolveName);
+
     if (resolved === undefined) return undefined;
+
     const { cIdentifier, name } = resolved;
     const doc = renderJsDoc(callable.doc);
     const override = runtimeOverrideMember(callable, name, doc, options.allowRuntimeOverride);
+
     if (override !== undefined) return override;
+
     const signature = renderMethodSignature(context, callable);
     const returnType = options.returnTypeOverride ?? renderMethodReturnType(context, callable);
 
@@ -178,6 +193,7 @@ const renderStaticEntry = (
 
     if (finishFn !== undefined) {
         const name = options.resolveName(callable);
+
         if (name === undefined || name === "constructor") return undefined;
 
         return renderPromisifiedCallable(context, callable, finishFn, {
@@ -212,9 +228,13 @@ const resolveInstanceMember = (
     nameOverride?: string,
 ): ResolvedInstanceMember | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
+
     const name = nameOverride ?? methodExportName(callable);
+
     if (name === "constructor") return undefined;
+
     const finishFn = matchFinishFunction(context, callable, scope);
+
     if (finishFn !== undefined && !isEmittableCallable(context, finishFn)) return undefined;
 
     return { name, finishFn };
@@ -265,7 +285,9 @@ const matchStaticFinishFunction = (
     siblings: GirFunction[],
 ): GirFunction | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
+
     const finishFn = matchAsyncFinish(context.library, callable, siblings);
+
     if (finishFn === undefined || !isEmittableCallable(context, finishFn)) return undefined;
 
     return finishFn;
@@ -278,7 +300,9 @@ const renderPromisifiedCallable = (
     member: { name: string; isStatic: boolean; ownerName: string },
 ): string | undefined => {
     const cIdentifier = callable.cIdentifier;
+
     if (cIdentifier === undefined) return undefined;
+
     const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
 
     const body = renderPromisifiedBody(
@@ -310,6 +334,7 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
 
 const constructorMemberName = (girName: string): string | undefined => {
     const camel = camelCase(girName);
+
     if (camel === "constructor") return undefined;
 
     return camel;
@@ -321,7 +346,9 @@ const renderStaticSignature = (
     options?: { returnTypeOverride?: string | undefined; siblings?: GirFunction[] | undefined },
 ): { name: string; signature: string } | undefined => {
     if (!isEmittableCallable(context, callable)) return undefined;
+
     const name = constructorMemberName(callable.name);
+
     if (name === undefined) return undefined;
 
     const finishFn =

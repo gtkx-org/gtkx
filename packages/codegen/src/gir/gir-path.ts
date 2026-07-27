@@ -47,6 +47,7 @@ const resolvePkgConfig = (): string | undefined => {
 
 const queryPkgConfigGirDir = (): string | undefined => {
     const pkgConfig = resolvePkgConfig();
+
     if (pkgConfig === undefined) return undefined;
 
     try {
@@ -60,6 +61,7 @@ const queryPkgConfigGirDir = (): string | undefined => {
         return trimmed.length > 0 ? trimmed : undefined;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+
         throw pkgConfigGirDirError(error);
     }
 };

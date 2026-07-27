@@ -153,6 +153,7 @@ const revalidate = (cache: ReferenceCache, root: string, entry: CacheEntry): Cac
 const currentReference = async (cache: ReferenceCache, root: string): Promise<ReferenceApi> => {
     const entry = resolveEntry(cache, root);
     const loaded = await entry.pending;
+
     if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) return loaded.reference;
 
     if (isFresh(loaded)) {
@@ -196,7 +197,9 @@ const listApiTool = (provider: ReferenceProvider): Tool =>
         inputSchema: listApiShape,
         handler: async ({ namespace }) => {
             const reference = await provider.get();
+
             if (namespace === undefined) return textContent(reference.overview());
+
             const overview = reference.namespaceOverview(namespace);
 
             if (overview === undefined) {
@@ -311,6 +314,7 @@ const symbolPage = async (
 ): Promise<ReadResourceResult> => {
     const reference = await provider.get();
     const result = reference.lookup(`${namespace}.${symbol}`);
+
     if (result.outcome === "page") return markdownResource(uri, result.markdown);
 
     if (result.outcome === "ambiguous") {

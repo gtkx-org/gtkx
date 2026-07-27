@@ -45,6 +45,7 @@ const setOrReset = (object: GObject.Object, info: TypeInfo, name: string, value:
 
 const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
     if (buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) === text) return;
+
     buffer.beginIrreversibleAction();
     buffer.setText(text, -1);
     buffer.endIrreversibleAction();
@@ -75,8 +76,11 @@ const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void
 
 const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior): void => {
     if (behavior.update === undefined) return;
+
     const result = behavior.update(ctx.node.object, ctx.prev, ctx.next, contextFor(ctx.node, behavior));
+
     if (result === undefined) return;
+
     for (const name of result) ctx.consumed.add(name);
 };
 
@@ -91,12 +95,14 @@ const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, prev: Props, next
 const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange, consumed: Set<string>): void => {
     eachChangedName(change.prev, change.next, (name) => {
         if (skipValueName(name, info, consumed) || Object.is(change.prev[name], change.next[name])) return;
+
         applyEntry(node, info, { name, value: change.next[name], prevValue: change.prev[name] });
     });
 };
 
 const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: Props, next: Props): void => {
     if (prev.actionName === undefined || next.actionName !== undefined) return;
+
     const desired = "sensitive" in next ? next.sensitive : info.defaults.sensitive;
     if (typeof desired === "boolean") Reflect.set(node.object, "sensitive", desired);
 };
@@ -104,6 +110,7 @@ const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: P
 const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: Props): void => {
     eachChangedName(prev, next, (name) => {
         if (!isHandlerName(name)) return;
+
         const value = next[name];
 
         if (typeof value === "function")
@@ -126,6 +133,7 @@ const flushBehaviors = (): void => {
 
 const mountBehaviors = (node: ElementNode): void => {
     if (!typeInfoOf(node.typeName).hasMount) return;
+
     eachBehavior(node, (behavior, context) => behavior.mount?.(node.object, context));
 };
 
@@ -156,6 +164,7 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
 
     eachChangedName(prev, next, (name) => {
         if (skipAdoptedName(info, name) || Object.is(prev[name], next[name])) return;
+
         setOrReset(object, info, name, next[name]);
     });
 

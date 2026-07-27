@@ -100,7 +100,9 @@ const applyMultiSelection = (selection: Gtk.SelectionModel, positions: number[])
 
 const applySelection = (selection: Gtk.SelectionModel, model: CollectionModel, ids: string[]): void => {
     if (selection instanceof Gtk.NoSelection) return;
+
     const positions = model.positionsOf(ids);
+
     if (ids.length > 0 && positions.length === 0) return;
 
     if (selection instanceof Gtk.SingleSelection) {
@@ -129,18 +131,24 @@ const eachRow = (
 
 const reportSelection = (report: SelectionReport): void => {
     const { selection, model, cells } = report;
+
     if (selection === null) return;
+
     const ids = selectedIdsOf(selection, model);
     const key = ids.join(" ");
     const last = lastSelections.get(cells);
+
     if (last?.selection === selection && last.key === key) return;
+
     lastSelections.set(cells, { selection, key });
     report.onSelectionChanged?.(ids);
 };
 
 const reportExpansion = (report: ExpansionReport): void => {
     const tree = report.model.treeModel;
+
     if (tree === null) return;
+
     const ids: string[] = [];
 
     eachRow(tree, report.model, (row, id) => {
@@ -148,13 +156,16 @@ const reportExpansion = (report: ExpansionReport): void => {
     });
 
     const key = ids.join(" ");
+
     if (report.last.current === key) return;
+
     report.last.current = key;
     report.onExpandedChange?.(ids);
 };
 
 const selectionElement = (mode: Gtk.SelectionMode | null | undefined, props: SelectionElementProps): ReactElement => {
     if (mode === Gtk.SelectionMode.MULTIPLE) return <GtkMultiSelection {...props} />;
+
     if (mode === Gtk.SelectionMode.NONE) return <GtkNoSelection {...props} />;
 
     return <GtkSingleSelection {...props} autoselect={false} canUnselect />;
@@ -199,7 +210,9 @@ const runControlledExpansion = (
     report: () => void,
 ): void => {
     const tree = model.treeModel;
+
     if (tree === null || expandedIds == null) return;
+
     expanding.current = true;
 
     try {
@@ -218,11 +231,13 @@ const useControlledExpansion = (sync: ExpansionSync): void => {
 
     const report = useEffectEvent((): void => {
         if (expanding.current) return;
+
         reportExpansion({ model, last: lastExpansion, onExpandedChange });
     });
 
     useLayoutEffect(() => {
         const tree = model.treeModel;
+
         if (tree === null) return;
 
         return watchExpansion(tree, cells, report);
@@ -242,6 +257,7 @@ const useControlledSelection = (sync: SelectionSync): void => {
 
     useLayoutEffect(() => {
         if (selection === null) return;
+
         if (selectedIds != null) applySelection(selection, model, selectedIds);
         report();
     }, [selection, model, selectedIds, items, sections]);

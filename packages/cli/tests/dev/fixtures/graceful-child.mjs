@@ -6,6 +6,7 @@ const interruptedCode = () => (firstSignal === "SIGINT" ? 130 : 143);
 
 const finish = (graceful) => {
     if (exited) return;
+
     exited = true;
     process.exit(graceful ? 0 : interruptedCode());
 };

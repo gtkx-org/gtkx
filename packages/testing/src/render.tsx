@@ -74,6 +74,7 @@ const handleError = (error: unknown): void => {
 
 const installErrorHandler = (): void => {
     if (errorHandlerInstalled) return;
+
     setReconcilerErrorHandler(handleError);
     errorHandlerInstalled = true;
 };
@@ -95,8 +96,11 @@ const resolveContainer = (container: RenderOptions["container"]): ResolvedContai
 
 const firstToplevelWidget = (baseElement: Container): Gtk.Widget => {
     if (baseElement instanceof Gtk.Widget) return baseElement;
+
     const [first] = traverse(baseElement);
+
     if (first) return first;
+
     throw new Error("render() produced no widgets: ensure the element renders visible content");
 };
 
@@ -106,6 +110,7 @@ const resolveResultContainer = (
     baseElement: Container,
 ): Gtk.Widget => {
     if (resolved.window) return resolved.window;
+
     if (container instanceof Gtk.Widget) return container;
 
     return firstToplevelWidget(baseElement);

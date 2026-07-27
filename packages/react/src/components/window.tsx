@@ -14,6 +14,7 @@ const createWindowComponent = (Component: ElementType): ((props: WindowComponent
 
         useLayoutEffect(() => {
             if (!window) return;
+
             window.present();
 
             return () => {

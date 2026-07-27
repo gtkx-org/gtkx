@@ -66,6 +66,7 @@ const layoutOfType = (
     visited: Set<string>,
 ): FieldLayout => {
     const type = context.library.typeOf(ref);
+
     if (type === undefined) return POINTER_LAYOUT;
 
     switch (type.kind) {
@@ -101,6 +102,7 @@ const arrayLayout = (
     visited: Set<string>,
 ): FieldLayout => {
     if (ref.fixedSize === undefined) return POINTER_LAYOUT;
+
     const elementLayout = layoutOfType(context, ref.element, ref.elementCType, visited);
 
     return { size: elementLayout.size * ref.fixedSize, align: elementLayout.align };
@@ -112,10 +114,15 @@ const layoutOfRecord = (
     visited: Set<string>,
 ): FieldLayout => {
     if (resolved.value.cType?.endsWith("*") === true) return POINTER_LAYOUT;
+
     const key = `${resolved.namespace.name}.${resolved.value.name}`;
+
     if (visited.has(key)) return POINTER_LAYOUT;
+
     const cached = recordLayoutCache.get(key);
+
     if (cached !== undefined) return cached;
+
     const nextVisited = new Set(visited);
     nextVisited.add(key);
 
@@ -123,6 +130,7 @@ const layoutOfRecord = (
         fieldLayoutInput(context, field, nextVisited));
 
     if (inputs.length === 0) return POINTER_LAYOUT;
+
     const { size } = computeFieldSlots(inputs, resolved.value.isUnion);
     const align = Math.max(1, ...inputs.map((input) => input.layout.align));
     const layout: FieldLayout = { size, align };
@@ -137,6 +145,7 @@ const resolveAliasLayout = (
     visited: Set<string>,
 ): FieldLayout => {
     const ref = resolved.value.target;
+
     if (ref === undefined) return POINTER_LAYOUT;
 
     return layoutOfType(context, ref, resolved.value.targetCType, visited);

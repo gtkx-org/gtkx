@@ -6,6 +6,7 @@ import type { TextPaintableProps } from "./types.js";
 
 const deleteEmbeddedPaintable = (buffer: Gtk.TextBuffer, position: Gtk.TextIter): void => {
     if (position.getPaintable() === null) return;
+
     const after = position.copy();
     after.forwardChar();
     buffer.delete(position, after);
@@ -31,8 +32,11 @@ function TextPaintable(props: TextPaintableProps): ReactNode {
 
     useLayoutEffect(() => {
         if (mark === null) return;
+
         const buffer = mark.getBuffer();
+
         if (buffer === null) return;
+
         buffer.insertPaintable(buffer.getIterAtMark(mark), paintable);
         notifyInserted(buffer, mark);
 

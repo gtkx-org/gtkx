@@ -55,7 +55,9 @@ type PropertyMemberOptions = {
 
 const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     if (!iface.introspectable) return;
+
     if (iface.name.length === 0) return;
+
     const className = pascalCase(iface.name);
 
     const callables: Callables = {

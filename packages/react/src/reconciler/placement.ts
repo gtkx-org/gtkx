@@ -21,6 +21,7 @@ type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; s
 
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
     const object = nodeObject(node);
+
     if (object === null) return null;
 
     return { node, object, adopted: null, slot, behavior: null, attached: false };
@@ -50,6 +51,7 @@ const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementB
 
 const applyLazyProps = (entry: PlacedChild): void => {
     if (entry.node.kind !== LAZY_KIND || entry.adopted === null) return;
+
     applyAdoptedProps(lazyTarget(entry.node, entry.adopted), {}, entry.node.props);
     entry.node.adopted = entry.adopted;
 };
@@ -72,10 +74,14 @@ const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
 
 const tryAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
     const attach = behavior.attach;
+
     if (attach === undefined) return false;
+
     const context = contextFor(ctx.parent, behavior);
     const claim = attach(ctx.parent.object, ctx.entry.object, placeInfo(ctx.entry, ctx.index, ctx.sibling, context));
+
     if (claim === undefined) return false;
+
     ctx.entry.behavior = behavior;
     adoptedFrom(ctx.parent, ctx.entry, behavior, claim);
     ctx.entry.attached = true;
@@ -103,6 +109,7 @@ const detachInfo = (entry: PlacedChild, context: unknown): DetachInfo => ({
 
 const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
     if (!entry.attached) return;
+
     entry.attached = false;
     const behavior = entry.behavior;
 
@@ -177,7 +184,9 @@ const placeChild = (
     const entries = getOrInsert(parent.placements, slot, () => []);
     const existing = entries.findIndex((entry) => entry.node === node);
     const entry = resolveEntry(entries, existing, slot, node);
+
     if (entry === null) return;
+
     const isMove = existing !== -1;
     if (isMove) entries.splice(existing, 1);
     const index = positionOf(entries, before);
@@ -191,9 +200,13 @@ const placeChild = (
 
 const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): void => {
     const entries = parent.placements.get(slot);
+
     if (entries === undefined) return;
+
     const index = entries.findIndex((entry) => entry.node === node);
+
     if (index === -1) return;
+
     const [entry] = entries.splice(index, 1);
     if (entry !== undefined) detachEntry(parent, entry);
     markFlush(parent);

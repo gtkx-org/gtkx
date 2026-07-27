@@ -171,7 +171,9 @@ const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> =
 
 const syncSchemaEnv = (cwd: string): void => {
     const dataDir = resolveDataDir(cwd);
+
     if (dataDir === null) return;
+
     emitSchemaEnv(cwd, dataDir);
 };
 
@@ -232,6 +234,7 @@ const resolveConfigWatch = async (
     mode?: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
     const { configFile, root } = await loadConfig(cwd, { mode });
+
     if (configFile === undefined) return undefined;
 
     return {

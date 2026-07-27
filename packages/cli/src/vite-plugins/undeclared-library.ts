@@ -59,9 +59,13 @@ function gtkxUndeclaredLibrary(mode?: string): Plugin {
 
         async resolveId(source, importer, options) {
             const namespace = GENERATED_MODULE_PATTERN.exec(source)?.[1];
+
             if (namespace === undefined) return;
+
             const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+
             if (resolved !== null) return;
+
             throw undeclaredLibraryError(source, namespace, await girSearchPaths(state));
         },
     };

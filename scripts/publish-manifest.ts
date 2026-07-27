@@ -28,7 +28,9 @@ type SourceMap = {
 const distTagForVersion = (version: string): string => {
     const core = version.split("+", 1)[0] ?? "";
     const dashIndex = core.indexOf("-");
+
     if (dashIndex === -1) return "latest";
+
     const identifier = core.slice(dashIndex + 1).split(".", 1)[0] ?? "";
 
     return identifier === "" || /^\d+$/.test(identifier) ? "next" : identifier;
@@ -72,6 +74,7 @@ const collectExportTargets = (entry: ExportsField): string[] => {
 
 const binTargets = (bin: PackageManifest["bin"]): string[] => {
     if (bin === undefined) return [];
+
     if (typeof bin === "string") return [bin];
 
     return Object.values(bin);
@@ -135,9 +138,12 @@ const sourceViolation = (options: {
     files: Set<string>;
 }): string | undefined => {
     const { parsed, source, index, mapPath, files } = options;
+
     if (typeof parsed.sourcesContent?.[index] === "string") return undefined;
+
     const sourceRoot = parsed.sourceRoot ?? "";
     const resolved = posix.normalize(posix.join(posix.dirname(mapPath), sourceRoot, source));
+
     if (files.has(resolved)) return undefined;
 
     return `source map ${mapPath} references missing source ${source}`;
@@ -145,6 +151,7 @@ const sourceViolation = (options: {
 
 const mapSourceViolations = (mapPath: string, content: string, files: Set<string>): string[] => {
     const parsed = parseSourceMap(content);
+
     if (parsed === undefined) return [`source map ${mapPath} is not valid JSON`];
 
     return (parsed.sources ?? [])

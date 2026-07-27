@@ -56,6 +56,7 @@ const childNamed = (node: OrderedNode, tag: string): OrderedNode | undefined => 
 
 const elementName = (node: OrderedNode): string => {
     const nameChild = childNamed(node, NAME_TAG);
+
     if (nameChild === undefined) return "";
 
     return normalizeWhitespace(collectText(nameChild, new Set()));
@@ -81,7 +82,9 @@ const parseParam = (node: OrderedNode): GlParam => {
 
 const parseCommand = (node: OrderedNode): GlCommand | undefined => {
     const proto = childNamed(node, "proto");
+
     if (proto === undefined) return undefined;
+
     const params: GlParam[] = [];
 
     for (const child of nodeChildren(node)) {
@@ -100,9 +103,12 @@ const parseCommand = (node: OrderedNode): GlCommand | undefined => {
 
 const parseEnum = (child: OrderedNode): GlEnum | undefined => {
     if (nodeTag(child) !== "enum") return undefined;
+
     const name = nodeAttr(child, "name");
     const value = nodeAttr(child, "value");
+
     if (name === undefined || value === undefined) return undefined;
+
     const group = nodeAttr(child, "group");
 
     return {
@@ -121,7 +127,9 @@ const parseEnums = (node: OrderedNode, into: GlEnum[]): void => {
 
 const collectInterfaceMember = (child: OrderedNode, commands: string[], enums: string[]): void => {
     const name = nodeAttr(child, "name");
+
     if (name === undefined) return;
+
     const tag = nodeTag(child);
 
     if (tag === "command") commands.push(name);
@@ -152,7 +160,9 @@ const parseFeature = (node: OrderedNode): GlFeature | undefined => {
     const api = nodeAttr(node, "api");
     const name = nodeAttr(node, "name");
     const number = nodeAttr(node, "number");
+
     if (api === undefined || name === undefined || number === undefined) return undefined;
+
     const requires: GlInterfaceBlock[] = [];
     const removes: GlInterfaceBlock[] = [];
     for (const child of nodeChildren(node)) collectFeatureBlock(child, requires, removes);
@@ -162,6 +172,7 @@ const parseFeature = (node: OrderedNode): GlFeature | undefined => {
 
 const addCommand = (child: OrderedNode, into: Map<string, GlCommand>): void => {
     if (nodeTag(child) !== "command") return;
+
     const command = parseCommand(child);
     if (command !== undefined && command.name.length > 0) into.set(command.name, command);
 };
@@ -186,6 +197,7 @@ const parseSection = (section: OrderedNode, registry: GlRegistry): void => {
     }
 
     if (tag !== "feature") return;
+
     const feature = parseFeature(section);
     if (feature !== undefined) registry.features.push(feature);
 };

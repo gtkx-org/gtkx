@@ -64,6 +64,7 @@ const getSignalBaseName = (signal: string): string => {
 
 function getQuarkForSignalDetail(signal: string): number {
     const detailIndex = signal.indexOf("::");
+
     if (detailIndex === -1) return 0;
 
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
@@ -112,6 +113,7 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
 
     if (isCallerAllocatedArg(arg)) {
         if (isInoutArg(arg)) return { value: inoutValueForBoxedDescriptor(arg.type, arg.value as object) };
+
         const value = outValueForBoxedDescriptor(arg.type, arg.value as object);
 
         return { value, read: () => getBoxedValue(value) };

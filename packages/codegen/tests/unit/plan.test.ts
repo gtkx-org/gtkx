@@ -104,7 +104,9 @@ describe("planCommand outputs", () => {
 
         const excluded = planCommand(query, NO_POLICY);
         expect(excluded.ok).toBe(false);
+
         if (excluded.ok) return;
+
         expect(excluded.reason).toBe("compsize-output");
 
         const carvedOut = okPlan(query, {
@@ -150,7 +152,9 @@ describe("planCommand exclusions", () => {
         );
 
         expect(computed.ok).toBe(false);
+
         if (computed.ok) return;
+
         expect(computed.reason).toBe("computed-output-length");
 
         const callback = planCommand(
@@ -162,7 +166,9 @@ describe("planCommand exclusions", () => {
         );
 
         expect(callback.ok).toBe(false);
+
         if (callback.ok) return;
+
         expect(callback.reason).toBe("callback-parameter");
     });
 

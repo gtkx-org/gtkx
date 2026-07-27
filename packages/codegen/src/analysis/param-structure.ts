@@ -25,9 +25,13 @@ const isInputParameter = (options: {
     closureIndices: Set<number>;
 }): boolean => {
     const { parameter, index, lengthIndices, closureIndices } = options;
+
     if (parameter.isVarargs) return false;
+
     if (isOutParameter(parameter)) return false;
+
     if (isCallerAllocatedOut(parameter)) return false;
+
     if (lengthIndices.has(index)) return false;
 
     return !closureIndices.has(index);
@@ -66,6 +70,7 @@ const arrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
 
 const carrayLengthIndex = (library: Library, ref: TypeId | undefined): number | undefined => {
     const type = ref === undefined ? undefined : library.typeOf(ref);
+
     if (type?.kind !== "carray") return undefined;
 
     return type.lengthParameterIndex;
@@ -85,6 +90,7 @@ const arrayLengthSources = (library: Library, fn: GirFunction): Map<number, numb
 const hasCallerAllocatedArrayLength = (library: Library, fn: GirFunction): boolean => {
     for (const arrayIndex of arrayLengthSources(library, fn).values()) {
         const array = fn.parameters[arrayIndex];
+
         if (array !== undefined && isCallerAllocatedOut(array)) return true;
     }
 
@@ -93,8 +99,11 @@ const hasCallerAllocatedArrayLength = (library: Library, fn: GirFunction): boole
 
 const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     const returnType = fn.returnValue.type === undefined ? undefined : library.typeOf(fn.returnValue.type);
+
     if (returnType?.kind !== "carray") return new Set();
+
     const lengthIndex = returnType.lengthParameterIndex;
+
     if (lengthIndex === undefined) return new Set();
 
     return new Set([lengthIndex]);
@@ -127,7 +136,9 @@ const renderHandlerParameters = (
 
 const foldOutParamShape = (primary: string | undefined, outTypes: string[]): string => {
     if (primary !== undefined) return `[${primary}, ${outTypes.join(", ")}]`;
+
     const [single, ...rest] = outTypes;
+
     if (single !== undefined && rest.length === 0) return single;
 
     return `[${outTypes.join(", ")}]`;
@@ -139,8 +150,11 @@ const isHandlerOutParameter = (options: {
     includeCallerAllocated: boolean;
 }): boolean => {
     const { library, parameter, includeCallerAllocated } = options;
+
     if (parameter.isVarargs) return false;
+
     if (isOutParameter(parameter)) return true;
+
     if (isCellInout(library, parameter)) return true;
 
     return includeCallerAllocated && isCallerAllocatedOut(parameter);

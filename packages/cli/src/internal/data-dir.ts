@@ -12,6 +12,7 @@ const isConditionMap = (entry: unknown): entry is Record<string, unknown> =>
 const conditionTarget = (conditions: Record<string, unknown>): string | null => {
     for (const condition of CONDITION_PRIORITY) {
         const value = conditions[condition];
+
         if (typeof value === "string") return value;
     }
 
@@ -20,6 +21,7 @@ const conditionTarget = (conditions: Record<string, unknown>): string | null => 
 
 const targetString = (entry: unknown): string | null => {
     if (typeof entry === "string") return entry;
+
     if (isConditionMap(entry)) return conditionTarget(entry);
 
     return null;
@@ -41,9 +43,13 @@ const resolveDataDir = (root: string): string | null => {
     }
 
     if (!isConditionMap(manifest)) return null;
+
     const imports = manifest.imports;
+
     if (!isConditionMap(imports)) return null;
+
     const target = targetString(imports[DATA_IMPORT_KEY]);
+
     if (target === null) return null;
 
     return directoryFromTarget(target);

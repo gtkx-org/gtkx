@@ -26,13 +26,16 @@ class ModuleContext {
 
     addGObjectBootstrapImports(): void {
         if (this.namespace.name === "GObject") return;
+
         if (this.namespace.name === "GLib") return;
+
         this.module.imports.addSideEffect("../gobject/overrides/object.js");
         this.module.imports.addSideEffect("../gobject/overrides/value.js");
     }
 
     addCrossNamespaceImport(namespaceName: string): string {
         if (namespaceName === this.namespace.name) return namespaceName;
+
         const directory = namespaceName.toLowerCase();
         const isFoundational = directory === "gobject" || directory === "glib";
         const path = isFoundational ? `../${directory}/${directory}.js` : `../${directory}/index.js`;

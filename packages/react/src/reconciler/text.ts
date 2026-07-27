@@ -20,6 +20,7 @@ const charLength = (text: string): number => text[Symbol.iterator]().toArray().l
 
 const contentTextLength = (node: ContentChild): number => {
     if (node.kind === TEXT_KIND) return charLength(node.text);
+
     if (node.contentKind === "tag") return node.content.reduce((sum, child) => sum + contentTextLength(child), 0);
 
     return node.contentKind === "anchor" ? 1 : 0;
@@ -30,6 +31,7 @@ const isTagElement = (node: ContentChild): node is ElementNode =>
 
 const stepOffset = (node: ContentChild, target: TextNode, offset: number): OffsetResult => {
     if (node === target) return { found: true, offset };
+
     if (isTagElement(node)) return offsetOf(node.content, target, offset);
 
     return { found: false, offset: offset + contentTextLength(node) };
@@ -40,7 +42,9 @@ const offsetOf = (nodes: ContentChild[], target: TextNode, start: number): Offse
 
     for (const node of nodes) {
         const step = stepOffset(node, target, offset);
+
         if (step.found) return step;
+
         offset = step.offset;
     }
 
@@ -79,6 +83,7 @@ const rootHostOf = (node: ElementNode): ElementNode | null => {
 
     while (current !== null) {
         if (isRootHost(current)) return current;
+
         current = parentElement(current);
     }
 
@@ -128,14 +133,18 @@ const validateContentMix = (node: ElementNode, props: Props): void => {
 const detachTag = (tag: Gtk.TextTag, table: Gtk.TextTagTable, name: string | null): void => {
     const previous = tagTables.get(tag);
     if (previous !== undefined && previous !== table) previous.remove(tag);
+
     if (name === null) return;
+
     const existing = table.lookup(name);
     if (existing !== null && existing !== tag) table.remove(existing);
 };
 
 const ensureTag = (table: Gtk.TextTagTable, node: ElementNode): void => {
     const tag = node.object;
+
     if (!(tag instanceof Gtk.TextTag) || tagTables.get(tag) === table) return;
+
     const name = typeof node.props.name === "string" ? node.props.name : null;
     detachTag(tag, table, name);
     if (name === null || table.lookup(name) !== tag) table.add(tag);
@@ -177,7 +186,9 @@ const insertContent = (build: BufferBuild, nodes: ContentChild[]): void => {
 
 const placeMark = (buffer: Gtk.TextBuffer, node: ElementNode, offset: number): void => {
     const mark = node.object;
+
     if (!(mark instanceof Gtk.TextMark)) return;
+
     const iter = buffer.getIterAtOffset(offset);
 
     if (mark.getBuffer() === null) buffer.addMark(mark, iter);
@@ -186,7 +197,9 @@ const placeMark = (buffer: Gtk.TextBuffer, node: ElementNode, offset: number): v
 
 const rebuildBuffer = (node: ElementNode): void => {
     const buffer = node.object;
+
     if (node.props.text !== undefined || !(buffer instanceof Gtk.TextBuffer)) return;
+
     buffer.setText("", -1);
     const build: BufferBuild = { buffer, view: node.bufferView, marks: [] };
     insertContent(build, node.content);
@@ -195,8 +208,11 @@ const rebuildBuffer = (node: ElementNode): void => {
 
 const rebuildLabel = (node: ElementNode): void => {
     if (node.props.label !== undefined) return;
+
     const label = node.object;
+
     if (!(label instanceof Gtk.Label)) return;
+
     label.setLabel(node.content.map((child) => (child.kind === TEXT_KIND ? child.text : "")).join(""));
 };
 
@@ -221,9 +237,13 @@ const applyEnclosingTags = (
 
 const surgicalTextUpdate = (host: ElementNode, node: TextNode, oldText: string, newText: string): boolean => {
     const buffer = host.object;
+
     if (host.contentKind !== "buffer" || !(buffer instanceof Gtk.TextBuffer)) return false;
+
     const located = offsetOf(host.content, node, 0);
+
     if (!located.found) return false;
+
     const start = located.offset;
     buffer.delete(buffer.getIterAtOffset(start), buffer.getIterAtOffset(start + charLength(oldText)));
     buffer.insert(buffer.getIterAtOffset(start), newText, -1);

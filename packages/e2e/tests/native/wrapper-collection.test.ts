@@ -15,6 +15,7 @@ registerClass(NameObject, { typeName: "GtkxTestModelNameObject" });
 async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boolean> {
     for (let i = 0; i < maxRounds; i++) {
         if (predicate()) return true;
+
         await new Promise((resolve) => setImmediate(resolve));
         forceGC();
         await new Promise((resolve) => setImmediate(resolve));

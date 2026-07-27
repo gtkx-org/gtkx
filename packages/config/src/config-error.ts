@@ -41,6 +41,7 @@ const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string =
     }
 
     if (isStandaloneIssue(issue)) return `${CONFIG_PREFIX} ${issue.message}`;
+
     const path = dottedPath(fullPath);
 
     return path === "" ? `${CONFIG_PREFIX} ${issue.message}` : `${CONFIG_PREFIX} \`${path}\` ${issue.message}`;
@@ -48,6 +49,7 @@ const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string =
 
 const configError = (error: z.ZodError): Error => {
     const issue = error.issues[0];
+
     if (issue === undefined) return new Error(`${CONFIG_PREFIX} invalid configuration`);
 
     return new Error(formatIssue(issue, issue.path));

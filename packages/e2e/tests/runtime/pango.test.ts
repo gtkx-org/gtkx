@@ -12,7 +12,9 @@ describe("Pango.GlyphString.glyphs", () => {
         const second = glyphs[1];
         expect(first).toBeDefined();
         expect(second).toBeDefined();
+
         if (!first || !second) return;
+
         first.glyph = 65;
         first.geometry = { width: 1024, xOffset: 8, yOffset: -4 };
         first.attr = { isClusterStart: 1, isColor: 0 };

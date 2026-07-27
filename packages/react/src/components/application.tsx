@@ -20,6 +20,7 @@ const useApplicationLifecycle = (
 ): void => {
     useLayoutEffect(() => {
         if (!application) return;
+
         runApplication(application);
         setActivated(true);
 

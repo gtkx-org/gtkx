@@ -42,8 +42,11 @@ const recordUnresolved = (walker: UnresolvedWalker, ref: TypeId): void => {
 
 const visitTypeRef = (walker: UnresolvedWalker, ref: TypeId | undefined): void => {
     if (ref === undefined) return;
+
     const key = `${ref.nsId}:${ref.id}`;
+
     if (walker.seen.has(key)) return;
+
     walker.seen.add(key);
     const type = walker.target.typeOf(ref);
 
@@ -638,6 +641,7 @@ const hasContainerProps = (glibName: string | undefined): boolean =>
 
 const interfacePropsNameOf = (iface: ResolvedQualifiedInterface): string | undefined => {
     if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) return undefined;
+
     const glib = glibNameOf(iface.klass);
 
     return glib === undefined ? undefined : `${glib}Props`;

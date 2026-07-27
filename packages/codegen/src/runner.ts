@@ -141,6 +141,7 @@ const emitStoresWithConfig = async (config: {
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
     const giRegenerated = options.force === true || !isGiStoreFresh(gi.storeDir, libraries);
     const namespaces = giRegenerated ? runGiCodegen(loadLibrary(), gi, libraries) : 0;
+
     if (jsx === undefined) return { regenerated: giRegenerated, namespaces, intrinsicElements: 0 };
 
     return emitJsxStore({ options, jsx, gi, loadLibrary, giRegenerated, namespaces });

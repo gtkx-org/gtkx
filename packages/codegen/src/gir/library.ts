@@ -40,6 +40,7 @@ const locateGirFile = (identifier: string, girPath: string[]): string => {
 
     for (const directory of girPath) {
         const candidate = join(directory, filename);
+
         if (existsSync(candidate)) return candidate;
     }
 
@@ -84,7 +85,9 @@ class Library {
 
     private ensureNsId(name: string): number {
         const existing = this.nsIdByName.get(name);
+
         if (existing !== undefined) return existing;
+
         const nsId = this.typeTables.length;
         this.typeTables[nsId] = { types: [], names: [], index: new Map() };
         this.namespaceById[nsId] = undefined;
@@ -138,6 +141,7 @@ class Library {
     private resolveTypeId(nsId: number, name: string, type: GirType | undefined): number {
         const typeTable = this.typeTableOf(nsId);
         const existing = typeTable.index.get(name);
+
         if (existing !== undefined) return existing;
 
         return this.insertIntoTypeTable(typeTable, { type, indexKey: name, displayName: name });
@@ -194,7 +198,9 @@ class Library {
     private findOrAddContainer(key: string, type: GirType): TypeId {
         const typeTable = this.typeTableOf(INTERNAL_NS_ID);
         const existing = typeTable.index.get(key);
+
         if (existing !== undefined) return { nsId: INTERNAL_NS_ID, id: existing };
+
         const id = this.insertIntoTypeTable(typeTable, { type, indexKey: key });
 
         return { nsId: INTERNAL_NS_ID, id };
@@ -239,7 +245,9 @@ class Library {
     }): void {
         const { identifier, girPath, seen, queue, girFiles, discovered } = input;
         const namespaceName = identifier.split("-", 1)[0] ?? identifier;
+
         if (seen.has(namespaceName)) return;
+
         seen.add(namespaceName);
         const path = locateGirFile(identifier, girPath);
         girFiles.push(path);
@@ -287,6 +295,7 @@ class Library {
     nameOf(tid: TypeId): { namespaceName: string; typeName: string } | undefined {
         const typeName = this.typeTables[tid.nsId]?.names[tid.id];
         const namespaceName = this.nsNameById[tid.nsId];
+
         if (typeName === undefined || namespaceName === undefined) return undefined;
 
         return { namespaceName, typeName };
@@ -294,11 +303,16 @@ class Library {
 
     resolveType(currentNamespaceName: string, name: string): GirType | undefined {
         const currentNsId = this.nsIdByName.get(currentNamespaceName);
+
         if (currentNsId === undefined) return undefined;
+
         const [namespaceName, localName] = splitOptionalNamespace(name);
         const targetNsId = namespaceName === undefined ? currentNsId : this.nsIdByName.get(namespaceName);
+
         if (targetNsId === undefined) return undefined;
+
         const id = this.typeTableOf(targetNsId).index.get(localName);
+
         if (id === undefined) return undefined;
 
         return this.typeTableOf(targetNsId).types[id];

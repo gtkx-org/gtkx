@@ -130,6 +130,7 @@ const collectConstructable = (sources: GirClass[]): string[] => collectPropNames
 
 const renderObjectLiteral = (entries: [string, string][], renderValue: (value: string) => string): string => {
     if (entries.length === 0) return "{}";
+
     const lines = entries.map(([key, value]) => `        ${sourceStringLiteral(key)}: ${renderValue(value)}`);
 
     return `{\n${lines.join(",\n")}\n    }`;
@@ -164,10 +165,14 @@ const defaultPropEntry = (
     seen: Set<string>,
 ): [string, string] | undefined => {
     if (!isDefaultCandidate(property)) return undefined;
+
     const jsName = toCamelIdentifier(property.name);
+
     if (seen.has(jsName)) return undefined;
+
     seen.add(jsName);
     const literal = renderDefaultLiteral(library, klass, property);
+
     if (literal === undefined) return undefined;
 
     return [jsName, literal];
@@ -175,8 +180,11 @@ const defaultPropEntry = (
 
 const setterRejectsNull = (library: Library, klass: GirClass, property: GirProperty): boolean => {
     if (property.setter === undefined) return false;
+
     const setter = klass.methods.find((method) => method.name === property.setter);
+
     if (setter === undefined) return false;
+
     const [value] = inputParameters(library, setter);
 
     return value !== undefined && !value.parameter.nullable && !value.parameter.optional;
@@ -194,9 +202,13 @@ const resolveDefaultLiteral = (
     raw: string | undefined,
 ): string | undefined => {
     if (raw === undefined) return undefined;
+
     if (raw === "NULL") return "null";
+
     if (ref === undefined) return undefined;
+
     const resolved = library.typeOf(ref);
+
     if (resolved === undefined) return undefined;
 
     return resolveTypeDefaultLiteral(library, resolved, raw);
@@ -204,7 +216,9 @@ const resolveDefaultLiteral = (
 
 const resolveTypeDefaultLiteral = (library: Library, resolved: GirType, raw: string): string | undefined => {
     if (resolved.kind === "primitive") return primitiveDefaultLiteral(resolved.category, raw);
+
     if (resolved.kind === "enum") return enumDefaultLiteral(resolved.value, raw);
+
     if (resolved.kind === "alias") return resolveDefaultLiteral(library, resolved.value.target, raw);
 
     return undefined;
@@ -212,6 +226,7 @@ const resolveTypeDefaultLiteral = (library: Library, resolved: GirType, raw: str
 
 const booleanDefaultLiteral = (raw: string): string | undefined => {
     if (raw === "TRUE") return "true";
+
     if (raw === "FALSE") return "false";
 
     return undefined;
@@ -225,7 +240,9 @@ const integerDefaultLiteral = (raw: string): string | undefined => {
 
 const floatDefaultLiteral = (raw: string): string | undefined => {
     const trimmed = raw.trim();
+
     if (!FLOAT_PATTERN.test(trimmed)) return undefined;
+
     const value = Number(trimmed);
 
     return Number.isFinite(value) ? String(value) : undefined;
@@ -262,7 +279,9 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
 
 const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined => {
     const trimmed = raw.trim();
+
     if (INTEGER_PATTERN.test(trimmed)) return trimmed;
+
     const member = enumType.members.find((entry) => entry.cIdentifier === trimmed || entry.name === trimmed);
 
     return member?.value;

@@ -80,6 +80,7 @@ const buildEmittedReturn = (
 
 const returnTsType = (returned: EmittedReturn, outs: OutArg[]): string => {
     if (outs.length === 0) return returned.tsType;
+
     const outTypes = outs.map((out) => out.tsType);
 
     if (returned.expr === undefined) {
@@ -94,6 +95,7 @@ const returnNoOut = (call: string, returned: EmittedReturn): string[] =>
 
 const returnStatements = (call: string, returned: EmittedReturn, outs: OutArg[]): string[] => {
     if (outs.length === 0) return returnNoOut(call, returned);
+
     const outValues = outs.map((out) => `${out.cellName}.value`);
 
     if (returned.expr === undefined) {
@@ -150,8 +152,11 @@ const genSingularScalars = (
     plan: CommandPlan & { ok: true },
 ): { countScalar: GlScalar; outScalar: GlScalar; lenParamName: string } | undefined => {
     const countPlan = plan.params.at(-2);
+
     if (countPlan?.kind !== "scalar") return undefined;
+
     const outPlan = plan.params.at(-1);
+
     if (outPlan?.kind !== "ref-array-out") return undefined;
 
     return { countScalar: countPlan.scalar, outScalar: outPlan.scalar, lenParamName: outPlan.lenParamName };
@@ -160,7 +165,9 @@ const genSingularScalars = (
 const genSingularObjectClass = (plan: CommandPlan & { ok: true }, lenParamName: string): string | undefined => {
     const countParam = plan.command.params[plan.params.length - 2];
     const outParam = plan.command.params[plan.params.length - 1];
+
     if (countParam === undefined || outParam === undefined) return undefined;
+
     if (lenParamName !== countParam.name) return undefined;
 
     return outParam.objectClass;
@@ -168,8 +175,11 @@ const genSingularObjectClass = (plan: CommandPlan & { ok: true }, lenParamName: 
 
 const genSingularShape = (plan: CommandPlan & { ok: true }): GenSingularShape | undefined => {
     const scalars = genSingularScalars(plan);
+
     if (scalars === undefined) return undefined;
+
     const objectClass = genSingularObjectClass(plan, scalars.lenParamName);
+
     if (objectClass === undefined) return undefined;
 
     return { countScalar: scalars.countScalar, outScalar: scalars.outScalar, objectClass };
@@ -181,10 +191,15 @@ const deriveGenSingular = (
     usedTypes: Set<string>,
 ): RenderedCommand | undefined => {
     if (!GEN_FAMILY.test(plan.command.name)) return undefined;
+
     const shape = genSingularShape(plan);
+
     if (shape === undefined) return undefined;
+
     const prefix = scalarPrefixArgs(plan, usedTypes);
+
     if (prefix === undefined) return undefined;
+
     const { countScalar, outScalar, objectClass } = shape;
     const exportName = singularize(commandExportName(plan.command.name));
     const bindingName = `${plan.command.name}Single`;
@@ -215,8 +230,11 @@ const deriveGenSingular = (
 
 const deleteSingularAlias = (plan: CommandPlan & { ok: true }): string | undefined => {
     if (plan.params.length !== 2) return undefined;
+
     const [countPlan, arrayPlan] = plan.params;
+
     if (countPlan?.kind !== "scalar") return undefined;
+
     if (arrayPlan?.kind !== "array-in") return undefined;
 
     return arrayPlan.scalar.tsAlias;
@@ -224,7 +242,9 @@ const deleteSingularAlias = (plan: CommandPlan & { ok: true }): string | undefin
 
 const deleteSingularObjectClass = (plan: CommandPlan & { ok: true }): string | undefined => {
     const [countParam, arrayParam] = plan.command.params;
+
     if (countParam === undefined || arrayParam === undefined) return undefined;
+
     if (arrayParam.len !== countParam.name) return undefined;
 
     return arrayParam.objectClass;
@@ -236,10 +256,15 @@ const deriveDeleteSingular = (
     usedTypes: Set<string>,
 ): RenderedCommand | undefined => {
     if (!DELETE_FAMILY.test(plan.command.name)) return undefined;
+
     const scalarAlias = deleteSingularAlias(plan);
+
     if (scalarAlias === undefined) return undefined;
+
     const objectClass = deleteSingularObjectClass(plan);
+
     if (objectClass === undefined) return undefined;
+
     usedTypes.add(scalarAlias);
     const exportName = singularize(commandExportName(plan.command.name));
 

@@ -58,7 +58,9 @@ const resolvePackage = (require: NodeJS.Require, dir: string, packageName: strin
     } catch {
         const unscoped = packageName.replace(/^@[^/]+\//, "");
         const workspacePkg = join(dir, "packages", unscoped, "package.json");
+
         if (!existsSync(workspacePkg)) return null;
+
         const real = realpathSync(workspacePkg);
 
         return { dir: dirname(real), version: readVersion(real) };
@@ -101,6 +103,7 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
 
 const resolveCodegenContext = async (cwd: string, mode?: string): Promise<CodegenContext | null> => {
     const { config, configFile } = await loadConfig(cwd, { mode });
+
     if (configFile === undefined) return null;
 
     return { root: cwd, config, configFile };

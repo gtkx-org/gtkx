@@ -15,9 +15,13 @@ const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
 
 const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     if (!record.introspectable) return;
+
     if (record.isVtable) return;
+
     if (record.name.length === 0) return;
+
     if (isClassStructRecord(context.library, context.namespace.name, record)) return;
+
     const className = record.name;
     const extendsError = isGErrorRecord(context, record);
 

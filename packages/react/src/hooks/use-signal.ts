@@ -40,7 +40,9 @@ function useSignal<T extends GObject.Object, S extends SignalNameOf<T> & string>
 
     useLayoutEffect(() => {
         const resolved = resolveRefProp(object);
+
         if (!resolved) return;
+
         resolved.on(signal, emit, after);
         if (immediate) emit();
 

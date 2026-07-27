@@ -11,7 +11,9 @@ import { expectNoBufferChangedOnReconcile } from "../helpers/text-buffer-view-re
 const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number): boolean => {
     const tagTable = buffer.getTagTable();
     const tag = tagTable.lookup(tagName);
+
     if (!tag) return false;
+
     const iter = buffer.getIterAtOffset(offset);
 
     return iter.hasTag(tag);

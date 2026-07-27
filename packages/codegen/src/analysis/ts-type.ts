@@ -50,8 +50,10 @@ const renderEntityType = (
 
 const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
     if (ref === undefined) return "void";
+
     const type = library.typeOf(ref);
     const name = library.nameOf(ref);
+
     if (type === undefined) return renderNamedType(target, undefined, name);
 
     switch (type.kind) {

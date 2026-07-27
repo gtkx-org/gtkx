@@ -11,6 +11,7 @@ class StyleSheet {
 
     private ensureProvider(): Gtk.CssProvider {
         if (this.provider) return this.provider;
+
         const provider = registerProviderForDefaultDisplay();
         this.provider = provider;
         attachParsingErrorLogger(provider, log, "CSS");
@@ -20,6 +21,7 @@ class StyleSheet {
 
     private scheduleUpdate(): void {
         if (this.updateScheduled) return;
+
         this.updateScheduled = true;
 
         queueMicrotask(() => {

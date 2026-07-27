@@ -35,6 +35,7 @@ const connectSettler = (callbacks: ConnectCallbacks): ConnectSettler => {
 
     const settle = (notify: () => void): void => {
         if (settled) return;
+
         settled = true;
         notify();
     };
@@ -150,6 +151,7 @@ class McpClient {
     private async respondToRequest(request: Request): Promise<void> {
         const { id, method, params } = request;
         const connection = this.connection;
+
         if (!connection) return;
 
         try {

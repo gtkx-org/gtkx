@@ -61,7 +61,9 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
 
 const disconnectHandler = (target: SignalTarget, prop: string): void => {
     const record = target.handlers.get(prop);
+
     if (record === undefined) return;
+
     target.object.off(record.signal, record.wrapped);
     target.handlers.delete(prop);
 };

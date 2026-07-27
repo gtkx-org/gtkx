@@ -50,7 +50,9 @@ const instantiate = (type: bigint, input: Props): GObject.Object => {
 
 const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
     const info = typeInfoOf(typeName);
+
     if (info.lazy) return createLazyNode(typeName, props, dispatch);
+
     const type = typeFromName(typeName);
     const object = instantiate(type, constructInput(info, props));
 

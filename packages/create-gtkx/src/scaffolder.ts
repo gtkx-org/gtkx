@@ -176,6 +176,7 @@ const promptApplicationId = async (name: string): Promise<string> => {
 
 const detectPackageManager = async (cwd: string): Promise<PackageManager | undefined> => {
     const detected = await nypmDetectPackageManager(cwd, { includeParentDirs: true });
+
     if (!detected) return undefined;
 
     return isKnownPackageManager(detected.name) ? detected.name : undefined;
@@ -186,6 +187,7 @@ const packageManagerHint = (
     detected: PackageManager | undefined,
 ): string | undefined => {
     if (detected === manager.value) return "detected";
+
     if (manager.recommended) return "recommended";
 
     return undefined;
@@ -273,6 +275,7 @@ const handleTargetDirectory = async (root: string, target: string, options: Crea
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
     if (options.name !== undefined) return formatTargetDir(options.name);
+
     if (!options.interactive) return fail("Project directory is required");
 
     return formatTargetDir(await promptTarget());
@@ -286,6 +289,7 @@ const resolveApplicationId = async (options: CreateOptions, name: string): Promi
 
 const resolvePackageManager = async (options: CreateOptions): Promise<PackageManager> => {
     if (options.packageManager !== undefined) return options.packageManager;
+
     if (options.interactive) return promptPackageManager();
 
     return (await detectedPackageManager()) ?? "pnpm";
@@ -319,6 +323,7 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
 
 const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
     if (TESTING_TEMPLATES.has(templateRelativePath)) return resolved.includeTesting;
+
     if (TYPESCRIPT_TEMPLATES.has(templateRelativePath)) return resolved.typescript;
 
     return true;

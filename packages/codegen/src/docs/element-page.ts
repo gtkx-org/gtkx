@@ -77,6 +77,7 @@ const glibLabel = (context: ElementPageContext, glibName: string): string => {
 
 const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): string[] => {
     const ancestors = [...ancestorChain(context.library, entry.klass, entry.namespace.name)].slice(1).toReversed();
+
     if (ancestors.length === 0) return [];
 
     const parts = ancestors.map((ancestor) => {
@@ -136,8 +137,11 @@ const propertyEntry = (
 
 const propJsName = (property: GirProperty, seen: Set<string>): string | undefined => {
     if (!property.introspectable) return undefined;
+
     const jsName = toCamelIdentifier(property.name);
+
     if (seen.has(jsName)) return undefined;
+
     seen.add(jsName);
 
     return jsName;
@@ -175,6 +179,7 @@ const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfTy
     ].join(" ");
 
     if (entries.length === 0) return ["## Props", intro];
+
     const sorted = sortStringsBy(entries, (item) => item.name);
 
     return ["## Props", intro, ...sorted.map((item) => metaBlock(item.name, item.meta, item.doc))];

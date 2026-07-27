@@ -15,7 +15,9 @@ function walkClassChain<T>(cls: AnyClass | null, visit: (ancestor: AnyClass) => 
 
     while (current !== null) {
         const result = visit(current);
+
         if (result !== undefined) return result;
+
         current = getParentClass(current);
     }
 

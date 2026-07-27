@@ -22,6 +22,9 @@ ruleTester.run("statement-padding", statementPadding, {
         { code: "const a = 1;\nconst b = 2;\n\nexport { a, b };\n" },
         { code: "function f() {\n    return 1;\n}\n" },
         { code: "function f() {\n    if (a) return 1;\n\n    return 2;\n}\n" },
+        { code: "function f() {\n    if (a) return 1;\n\n    g();\n}\n" },
+        { code: "function f() {\n    if (a) g();\n    h();\n}\n" },
+        { code: "function f() {\n    if (a) g();\n    else h();\n\n    return 1;\n}\n" },
         { code: "switch (a) {\n    case 1: {\n        g();\n\n        return 1;\n    }\n}\n" },
     ],
     invalid: [
@@ -76,6 +79,21 @@ ruleTester.run("statement-padding", statementPadding, {
         {
             code: "switch (a) {\n    case 1: {\n        g();\n        return 1;\n    }\n}\n",
             output: "switch (a) {\n    case 1: {\n        g();\n\n        return 1;\n    }\n}\n",
+            errors: [{ messageId: "missingPadding", data: { reason: "return statement" } }],
+        },
+        {
+            code: "function f() {\n    if (a) return 1;\n    g();\n}\n",
+            output: "function f() {\n    if (a) return 1;\n\n    g();\n}\n",
+            errors: [{ messageId: "missingPadding", data: { reason: "return statement" } }],
+        },
+        {
+            code: "function f() {\n    if (a) return 1;\n    if (b) return 2;\n\n    return 3;\n}\n",
+            output: "function f() {\n    if (a) return 1;\n\n    if (b) return 2;\n\n    return 3;\n}\n",
+            errors: [{ messageId: "missingPadding", data: { reason: "return statement" } }],
+        },
+        {
+            code: "function f() {\n    if (a) g(); else return 1;\n    h();\n}\n",
+            output: "function f() {\n    if (a) g(); else return 1;\n\n    h();\n}\n",
             errors: [{ messageId: "missingPadding", data: { reason: "return statement" } }],
         },
     ],

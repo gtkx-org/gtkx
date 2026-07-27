@@ -57,6 +57,7 @@ const PANIC_THRESHOLD_SET: Set<string> = new Set(PANIC_THRESHOLDS);
 
 const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((ctx) => {
     const value = ctx.value;
+
     if (value === LIBRARIES_WILDCARD) return;
 
     if (!Array.isArray(value) || value.length === 0) {
@@ -87,6 +88,7 @@ const applicationIdSchema = z.custom<string>().check((ctx) => {
 
 const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ctx) => {
     const value = ctx.value;
+
     if (typeof value === "boolean") return;
 
     if (!isRecord(value)) {
@@ -195,6 +197,7 @@ const isValidApplicationId = (applicationId: string): boolean => {
 
 const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): ResolvedReactCompilerOptions | null => {
     if (setting === false) return null;
+
     const overrides = setting === undefined || setting === true ? {} : setting;
 
     return { ...overrides, target: REACT_COMPILER_TARGET };

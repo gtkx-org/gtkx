@@ -57,7 +57,9 @@ const computeGiFingerprint = (girFiles: string[], libraries: string[]): GiFinger
 
 const isGiStoreFresh = (giStoreDir: string, libraries: string[]): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
+
     if (!existsSync(sentinelPath)) return false;
+
     let sentinel: GiFingerprint;
 
     try {
@@ -101,7 +103,9 @@ const isJsxStoreFresh = (
     input: JsxFingerprintInput,
 ): { fresh: boolean; intrinsicElementCount: number } => {
     const sentinelPath = join(jsxStoreDir, FINGERPRINT_FILENAME);
+
     if (!existsSync(sentinelPath)) return { fresh: false, intrinsicElementCount: 0 };
+
     let sentinel: JsxFingerprint;
 
     try {

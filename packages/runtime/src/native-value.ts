@@ -27,6 +27,7 @@ const fundamentalFromNative = (descriptor: FundamentalDescriptor, value: unknown
 
 const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): unknown => {
     if (value === null) return null;
+
     const entries = value as [unknown, unknown][];
 
     return new Map(

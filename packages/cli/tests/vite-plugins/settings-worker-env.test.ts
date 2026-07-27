@@ -31,7 +31,9 @@ const SCHEMA_XML = `<?xml version="1.0" encoding="UTF-8"?>
 const writeProject = (root: string, options: { dataDir: string | null; schema: boolean }): void => {
     const imports = options.dataDir === null ? {} : { imports: { "#data/*": `./${options.dataDir}/*` } };
     writeFileSync(join(root, "package.json"), JSON.stringify({ name: "worker-env-fixture", ...imports }));
+
     if (options.dataDir === null) return;
+
     const dataDir = join(root, options.dataDir);
     mkdirSync(dataDir, { recursive: true });
     if (options.schema) writeFileSync(join(dataDir, "com.example.worker.gschema.xml"), SCHEMA_XML);

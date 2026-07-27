@@ -243,7 +243,9 @@ const stderrSuffix = (child: ChildProcess | undefined, stderr: StderrCapture): s
 
 const listenForAbort = (signal: AbortSignal | undefined, onAbort: () => void, cleanups: (() => void)[]): boolean => {
     if (signal === undefined) return false;
+
     if (signal.aborted) return true;
+
     signal.addEventListener("abort", onAbort);
 
     cleanups.push(() => {
@@ -336,6 +338,7 @@ const makeTeardown = (
 
     return (): void => {
         if (torndown) return;
+
         torndown = true;
         reportUnexpectedCompositorExit(compositor, capturedStderr);
         stopNotifications();

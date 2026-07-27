@@ -20,8 +20,11 @@ import {
 
 const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
     if (fn.cIdentifier === undefined) return undefined;
+
     const library = context.namespace.sharedLibrary;
+
     if (library === undefined) return undefined;
+
     context.addRuntimeImport("t");
     const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
     const ret = renderReturnDescriptor(context, fn);
@@ -38,10 +41,15 @@ const namespaceFunctionEmittable = (context: ModuleContext, fn: GirFunction): bo
 
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
     if (!namespaceFunctionEmittable(context, fn)) return;
+
     const expression = renderFnExpression(context, fn);
+
     if (expression === undefined) return;
+
     const cIdentifier = fn.cIdentifier;
+
     if (cIdentifier === undefined) return;
+
     const bindingName = toCamelIdentifier(cIdentifier);
     context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);

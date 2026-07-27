@@ -25,7 +25,7 @@ const statementPadding = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
         fixable: "whitespace",
         docs: {
             description:
-                "Separate module sections, multiline statements and return statements with one blank line, and keep adjacent single-line statements together",
+                "Separate module sections, multiline statements and statements that return with one blank line, and keep adjacent single-line statements together",
         },
         messages: {
             missingPadding: "Expected a blank line before this {{reason}}.",
@@ -64,8 +64,16 @@ const statementPadding = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
 
 const isMultiline = (node: TSESTree.Node): boolean => node.loc.start.line !== node.loc.end.line;
 const isEmpty = (node: TSESTree.Node): boolean => node.type === AST_NODE_TYPES.EmptyStatement;
-const isReturn = (node: TSESTree.Node): boolean => node.type === AST_NODE_TYPES.ReturnStatement;
-const isPadded = (node: TSESTree.Node): boolean => isMultiline(node) || isReturn(node);
+
+const returnsFrom = (node: TSESTree.Node): boolean => {
+    if (node.type === AST_NODE_TYPES.ReturnStatement) return true;
+
+    if (node.type !== AST_NODE_TYPES.IfStatement) return false;
+
+    return returnsFrom(node.consequent) || (node.alternate !== null && returnsFrom(node.alternate));
+};
+
+const isPadded = (node: TSESTree.Node): boolean => isMultiline(node) || returnsFrom(node);
 
 const anchorOf = (node: TSESTree.Node, previous: TSESTree.Node, source: SourceCode): Anchor => {
     const leading = source.getCommentsBefore(node).find((comment) => comment.loc.start.line > previous.loc.end.line);
@@ -120,13 +128,15 @@ const needsPadding = (pair: Pair): boolean =>
 
 const reasonOf = (pair: Pair): string => {
     if (pair.boundary) return `${String(sectionOf(pair.next))} section`;
-    if (isReturn(pair.next) || isReturn(pair.previous)) return "return statement";
+
+    if (returnsFrom(pair.next) || returnsFrom(pair.previous)) return "return statement";
 
     return "multiline statement";
 };
 
 const violationOf = (pair: Pair, wants: number): Violation => {
     if (wants === 0) return { messageId: "unexpectedPadding", data: {} };
+
     if (pair.blankLines === 0) return { messageId: "missingPadding", data: { reason: reasonOf(pair) } };
 
     return { messageId: "extraPadding", data: { count: pair.blankLines } };
@@ -134,9 +144,13 @@ const violationOf = (pair: Pair, wants: number): Violation => {
 
 const report = (context: TSESLint.RuleContext<MessageIds, []>, pair: Pair): void => {
     const { previous, next, anchor, blankLines } = pair;
+
     if (anchor.loc.start.line <= previous.loc.end.line) return;
+
     const wants = needsPadding(pair) ? 1 : 0;
+
     if (blankLines === wants) return;
+
     const loc = context.sourceCode.getFirstToken(next)?.loc ?? next.loc;
     const violation = violationOf(pair, wants);
 

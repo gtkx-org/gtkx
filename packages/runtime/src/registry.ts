@@ -81,6 +81,7 @@ function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistr
  */
 function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry): void {
     if (type === TYPE_INVALID) return;
+
     setClassType(cls, type);
     interfaceMixinRegistry.set(type, mixin);
     if (vfuncs) registerInterfaceVfuncRegistry(type, vfuncs);
@@ -137,7 +138,9 @@ function resolveWrapperClass(type: bigint): AnyClass | null {
 
     while (currentType !== TYPE_INVALID) {
         const cls = classRegistry.get(currentType);
+
         if (cls) return cls;
+
         currentType = typeParent(currentType);
     }
 
@@ -146,8 +149,11 @@ function resolveWrapperClass(type: bigint): AnyClass | null {
 
 function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, applied: Set<bigint>): AnyClass {
     if (applied.has(type) || typeIsA(baseType, type)) return cls;
+
     const mixin = interfaceMixinRegistry.get(type);
+
     if (mixin === undefined) return cls;
+
     applied.add(type);
 
     return mixin(cls as AnyClass<MixinReceiver>);
@@ -167,13 +173,21 @@ function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
 
 function resolveComposedClass(runtimeType: bigint): AnyClass | null {
     const exact = classRegistry.get(runtimeType);
+
     if (exact) return exact;
+
     const cached = composedClassRegistry.get(runtimeType);
+
     if (cached) return cached;
+
     const base = resolveWrapperClass(runtimeType);
+
     if (base === null) return null;
+
     const composed = createComposedClass(base, runtimeType);
+
     if (composed === base) return base;
+
     setClassType(composed, runtimeType);
     composedClassRegistry.set(runtimeType, composed);
 
@@ -182,7 +196,9 @@ function resolveComposedClass(runtimeType: bigint): AnyClass | null {
 
 function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
     const existing = getWrapper(handle);
+
     if (existing) return existing;
+
     const runtimeType: bigint = getType(handle);
 
     if (runtimeType === TYPE_INVALID) {
@@ -234,6 +250,7 @@ function getVfuncRegistry(cls: object): VfuncRegistry | undefined {
 
 function registerInterfaceVfuncRegistry(type: bigint, registry: VfuncRegistry): void {
     if (type === TYPE_INVALID) return;
+
     interfaceVfuncRegistry.set(type, registry);
 }
 

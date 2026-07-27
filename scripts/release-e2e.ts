@@ -67,8 +67,11 @@ function createGtkxVersion(): string {
 
 function publishableName(entry: string): string | undefined {
     const manifestPath = join(PACKAGES_DIR, entry, "package.json");
+
     if (!existsSync(manifestPath)) return undefined;
+
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
+
     if (manifest.private === true) return undefined;
 
     return typeof manifest.name === "string" ? manifest.name : undefined;

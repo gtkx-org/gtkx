@@ -68,7 +68,9 @@ const resolveDirectInterfaces = (
 
 const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
     const resolved = context.library.resolveType(context.namespace.name, name);
+
     if (resolved === undefined) return undefined;
+
     if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
 
     return context.qualify(resolved.namespace.name, pascalCase(resolved.value.name));
@@ -174,9 +176,12 @@ const mergeOmissionName = (
     ancestors: Map<string, MethodSignature>,
 ): string | undefined => {
     if (!method.introspectable) return undefined;
+
     const name = camelCase(method.name);
     const ancestor = ancestors.get(name);
+
     if (ancestor === undefined) return undefined;
+
     const returnType = renderTsType(context, method.returnValue.type, method.returnValue.nullable);
     const arity = inputParameters(context.library, method).length;
 
@@ -204,7 +209,9 @@ const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass):
 
     const record = (owner: GirClass, property: GirProperty): void => {
         const jsName = toCamelIdentifier(property.name);
+
         if (types.has(jsName)) return;
+
         const tsType = resolveAccessorType(context, property, owner.methods);
         if (tsType !== undefined) types.set(jsName, tsType);
     };
@@ -251,6 +258,7 @@ const absorbInheritedMethods = (
 const inheritedMatch = (inherited: InheritedMethods, name: string): InheritedMatch | undefined => {
     const inheritedReturn = inherited.returnTypes.get(name);
     const inheritedMethod = inherited.definitions.get(name);
+
     if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
 
     return { inheritedReturn, inheritedMethod };
@@ -280,10 +288,15 @@ const conflictRename = (
     className: string,
 ): string | undefined => {
     if (!callable.introspectable) return undefined;
+
     const name = methodExportName(callable);
+
     if (RESERVED_SIGNAL_MEMBERS.has(name)) return conflictingMethodName(className, callable.name);
+
     const match = inheritedMatch(inherited, name);
+
     if (match === undefined) return undefined;
+
     const conflicts = methodsConflict({ context, callable, ...match });
 
     return conflicts ? conflictingMethodName(className, callable.name) : undefined;
@@ -331,7 +344,9 @@ const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inhe
 
 const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string | undefined => {
     if (ref === undefined) return undefined;
+
     const resolved = context.library.typeOf(ref);
+
     if (resolved?.kind !== "enum") return undefined;
 
     return `${resolved.namespace.name}.${resolved.value.name}`;

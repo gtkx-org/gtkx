@@ -51,6 +51,7 @@ function SizeGroupRoot(props: SizeGroupProps): ReactNode {
     const register = useCallback<Register>(
         (widget) => {
             if (widget === null) return;
+
             setWidgets((previous) => addWidget(previous, widget));
 
             return () => {

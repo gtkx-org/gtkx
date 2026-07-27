@@ -68,6 +68,7 @@ function resolveParentType(klass: AnyClass): bigint {
 
 function ownInstanceMethodNames(klass: AnyClass): string[] {
     const proto = (klass as { prototype?: object }).prototype;
+
     if (!proto) return [];
 
     return Object.getOwnPropertyNames(proto).filter((name) => {
@@ -84,9 +85,13 @@ function buildDiscoveredVfunc<K extends "class" | "interface">(
     skip: Set<string> | undefined,
 ): DiscoveredVfunc<K> | undefined {
     if (skip?.has(methodName)) return undefined;
+
     const descriptor = resolveDescriptor(methodName);
+
     if (!descriptor) return undefined;
+
     const fn = proto[methodName];
+
     if (!fn) return undefined;
 
     return {
@@ -158,6 +163,7 @@ function discoverInterfaceVfuncs(
     claimedMethodNames: Set<string>,
 ): DiscoveredInterfaceVfunc[] {
     const vfuncRegistry = getInterfaceVfuncRegistry(interfaceGtype);
+
     if (!vfuncRegistry) return [];
 
     return collectDiscoveredVfuncs(

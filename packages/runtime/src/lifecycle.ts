@@ -35,6 +35,7 @@ const onExit = (callback: () => void): void => {
  */
 const quit = (): void => {
     if (hasQuit) return;
+
     hasQuit = true;
     for (const callback of shutdownCallbacks) callback();
     nativeQuit();
@@ -61,6 +62,7 @@ const runApplication = (application: ApplicationLike): void => {
  */
 const quitApplication = (application: ApplicationLike): void => {
     if (!application.getIsRegistered()) return;
+
     const windows = application.getWindows?.() ?? [];
     for (const window of windows) application.removeWindow?.(window);
     application.on("shutdown", () => application.quit());

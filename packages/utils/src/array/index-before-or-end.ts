@@ -16,6 +16,7 @@ const indexBeforeOrEnd = <T, B>(
     matches: (item: T, before: B) => boolean,
 ): number => {
     if (before === null) return list.length;
+
     const index = list.findIndex((item) => matches(item, before));
 
     return index === -1 ? list.length : index;

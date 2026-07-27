@@ -122,6 +122,7 @@ const qualifiedClassName = (namespaceName: string, className: string): string =>
 
 const elementNote = (entry: GiSymbolBase & { klass: GirClass }, options: SymbolPageOptions): string[] => {
     const glibName = options.elementNameFor(entry.namespace.name, entry.klass.name);
+
     if (glibName === undefined) return [];
 
     return [
@@ -137,6 +138,7 @@ const hierarchySection = (entry: GiSymbolBase & { klass: GirClass }, library: Li
     );
 
     if (ancestors.length === 0 && interfaces.length === 0) return [];
+
     const lines = ["## Hierarchy"];
 
     if (ancestors.length > 0) {
@@ -295,6 +297,7 @@ const propertiesSection = (
     }
 
     if (entries.length === 0) return [];
+
     const intro = "Properties are read and written as instance fields; changes can be observed with `connect(\"notify::<property-name>\", handler)`. Properties inherited from ancestors are documented on their own pages.";
 
     return ["## Properties", intro, ...sortedMetaBlocks(entries)];
@@ -327,6 +330,7 @@ const signalsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Libr
     }
 
     if (entries.length === 0) return [];
+
     const intro = "Connect with `instance.connect(\"<signal>\", handler)` or `instance.on(\"<signal>\", handler)`. Signals inherited from ancestors are documented on their own pages.";
 
     return ["## Signals", intro, ...originSignatureBlocks(entries)];

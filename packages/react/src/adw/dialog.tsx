@@ -16,6 +16,7 @@ const createDialogComponent = (Component: ElementType): ((props: DialogComponent
 
         useLayoutEffect(() => {
             if (!dialog) return;
+
             dialog.present(parent);
 
             return () => {

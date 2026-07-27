@@ -59,10 +59,15 @@ const appendCandidateExport = (
     options: CandidateExportOptions,
 ): void => {
     const { targetNamespace, library, virtualNames, components } = options;
+
     if (candidate.namespace.name !== targetNamespace.name) return;
+
     if (virtualNames.has(candidate.glibName)) return;
+
     const line = renderCandidateExport(candidate, library, collector.imports, components);
+
     if (line === null) return;
+
     collector.exportLines.push(line);
     collector.exportedNames.add(candidate.glibName);
 };
@@ -112,6 +117,7 @@ const resolveElementComponent = (
 ): ElementComponent | undefined => {
     for (const name of ancestry) {
         const found = components[name];
+
         if (found !== undefined) return found;
     }
 

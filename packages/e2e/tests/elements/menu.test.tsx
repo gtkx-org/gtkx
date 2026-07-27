@@ -9,7 +9,9 @@ import { describe, expect, it } from "vitest";
 
 const itemLabel = (model: Gio.MenuModel, index: number): string | null => {
     const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_LABEL, null);
+
     if (!variant) return null;
+
     const [text] = variant.dupString();
 
     return typeof text === "string" ? text : null;
@@ -17,7 +19,9 @@ const itemLabel = (model: Gio.MenuModel, index: number): string | null => {
 
 const itemAction = (model: Gio.MenuModel, index: number): string | null => {
     const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_ACTION, null);
+
     if (!variant) return null;
+
     const [text] = variant.dupString();
 
     return typeof text === "string" ? text : null;

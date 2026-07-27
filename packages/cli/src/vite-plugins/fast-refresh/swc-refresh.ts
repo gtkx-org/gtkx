@@ -34,6 +34,7 @@ const injectRefreshRegistration = (
     transformOptions: { ssr?: boolean | undefined } | undefined,
 ): { code: string; map: null } | undefined => {
     if (!shouldTransformForRefresh(id, transformOptions)) return;
+
     if (!code.includes(REFRESH_REG) && !code.includes(REFRESH_SIG)) return;
 
     const header = `

@@ -63,6 +63,7 @@ const runStylis = (sheet: StyleSheet, input: string): void => {
 
 const markNewStyle = (state: CssState, serialized: SerializedStyles): boolean => {
     if (state.inserted.has(serialized.name)) return false;
+
     state.inserted.add(serialized.name);
 
     return true;
@@ -70,6 +71,7 @@ const markNewStyle = (state: CssState, serialized: SerializedStyles): boolean =>
 
 const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
     if (!markNewStyle(state, serialized)) return;
+
     const className = classNameFor(serialized);
     runStylis(state.sheet, `.${className}{${serialized.styles}}`);
     state.registered[className] = serialized.styles;
@@ -77,6 +79,7 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
 
 const insertWithoutScoping = (state: CssState, serialized: SerializedStyles): void => {
     if (!markNewStyle(state, serialized)) return;
+
     runStylis(state.sheet, serialized.styles);
 };
 
@@ -90,6 +93,7 @@ const cssClassName = (state: CssState, args: CSSInterpolation[]): string => {
 const cxClassNames = (state: CssState, classNames: CxToken[]): string[] => {
     const tokens = classNames.filter(isNonEmptyString);
     const { rawClasses, registeredStyles } = partitionTokens(tokens, state.registered);
+
     if (registeredStyles.length < 2) return tokens;
 
     return [...rawClasses, cssClassName(state, [registeredStyles.join("")])];
