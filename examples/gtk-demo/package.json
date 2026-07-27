@@ -94,6 +94,26 @@
                     "@gtkx/gl:codegen",
                     "codegen"
                 ]
+            },
+            "coverage": {
+                "command": "vitest run --coverage",
+                "options": {
+                    "cwd": "{projectRoot}"
+                },
+                "cache": true,
+                "inputs": [
+                    "default",
+                    "^production"
+                ],
+                "outputs": [
+                    "{projectRoot}/coverage"
+                ],
+                "dependsOn": [
+                    "codegen",
+                    "@gtkx/cli:build",
+                    "@gtkx/testing:build",
+                    "@gtkx/vitest:build"
+                ]
             }
         }
     }

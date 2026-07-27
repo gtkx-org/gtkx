@@ -23,6 +23,15 @@
             "build": {
                 "cache": true,
                 "dependsOn": [
+                    "reference"
+                ],
+                "outputs": [
+                    "{projectRoot}/.vitepress/dist/**"
+                ]
+            },
+            "reference": {
+                "cache": true,
+                "dependsOn": [
                     "gtkx:codegen",
                     "@gtkx/components:build",
                     "@gtkx/config:build",
@@ -35,12 +44,8 @@
                     "@gtkx/vitest:build"
                 ],
                 "outputs": [
-                    "{projectRoot}/.vitepress/dist/**",
                     "{projectRoot}/reference/**"
                 ]
-            },
-            "reference": {
-                "cache": false
             },
             "dev": {
                 "cache": false,
@@ -49,6 +54,18 @@
             "preview": {
                 "cache": false,
                 "continuous": true
+            },
+            "lint": {
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/gl:codegen",
+                    "reference"
+                ]
+            },
+            "typecheck": {
+                "dependsOn": [
+                    "reference"
+                ]
             }
         }
     }

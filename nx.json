@@ -3,7 +3,10 @@
     "defaultBase": "main",
     "analytics": false,
     "namedInputs": {
-        "default": ["{projectRoot}/**/*", "sharedGlobals"],
+        "default": [
+            "{projectRoot}/**/*",
+            "sharedGlobals"
+        ],
         "production": [
             "default",
             "!{projectRoot}/tests/**/*",
@@ -19,44 +22,75 @@
             "{workspaceRoot}/tsconfig.test.json",
             "{workspaceRoot}/gtkx.config.base.ts",
             "{workspaceRoot}/vitest.config.base.ts",
-            { "env": "GTK4_VERSION" },
-            { "env": "GTKX_GIR_PATH" },
-            { "env": "NODE_VERSION" }
+            {
+                "env": "GTK4_VERSION"
+            },
+            {
+                "env": "GTKX_GIR_PATH"
+            },
+            {
+                "env": "NODE_VERSION"
+            }
         ]
     },
     "plugins": [
         {
             "plugin": "@nx/js/typescript",
             "options": {
-                "typecheck": { "targetName": "typecheck" },
-                "build": { "targetName": "build", "configName": "tsconfig.lib.json" }
+                "typecheck": {
+                    "targetName": "typecheck"
+                },
+                "build": {
+                    "targetName": "build",
+                    "configName": "tsconfig.lib.json"
+                }
             }
         },
         {
             "plugin": "@nx/eslint/plugin",
-            "options": { "targetName": "lint" }
+            "options": {
+                "targetName": "lint"
+            }
         },
         {
             "plugin": "@nx/vitest",
-            "options": { "testTargetName": "test" },
-            "exclude": ["examples/gtk-demo/*"]
+            "options": {
+                "testTargetName": "test"
+            },
+            "exclude": [
+                "examples/gtk-demo/*"
+            ]
         }
     ],
     "targetDefaults": {
         "build": {
-            "dependsOn": ["^build", "gtkx:codegen"]
+            "dependsOn": [
+                "^build",
+                "gtkx:codegen"
+            ]
         },
         "typecheck": {
-            "dependsOn": ["build", "^typecheck", "gtkx:codegen"]
+            "dependsOn": [
+                "build",
+                "^typecheck",
+                "gtkx:codegen"
+            ]
         },
         "lint": {
-            "dependsOn": ["gtkx:codegen", "@gtkx/gl:codegen"],
+            "dependsOn": [
+                "gtkx:codegen",
+                "@gtkx/gl:codegen"
+            ],
             "inputs": [
                 "default",
                 "^default",
                 "{workspaceRoot}/eslint.config.ts",
                 "{workspaceRoot}/packages/eslint/src/**/*",
-                { "externalDependencies": ["eslint"] }
+                {
+                    "externalDependencies": [
+                        "eslint"
+                    ]
+                }
             ]
         },
         "test": {
@@ -72,11 +106,27 @@
         },
         "bench": {
             "cache": false,
-            "dependsOn": ["gtkx:codegen", "^build"]
+            "dependsOn": [
+                "gtkx:codegen",
+                "^build"
+            ]
         },
         "release": {
             "cache": false,
-            "dependsOn": ["build"]
+            "dependsOn": [
+                "build"
+            ]
+        },
+        "coverage": {
+            "parallelism": false,
+            "dependsOn": [
+                "gtkx:codegen",
+                "@gtkx/vitest:build",
+                "@gtkx/cli:build",
+                "@gtkx/components:build",
+                "@gtkx/css:build",
+                "@gtkx/gl:build"
+            ]
         }
     }
 }
