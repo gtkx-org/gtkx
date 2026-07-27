@@ -4,9 +4,13 @@ import { renderJsDoc } from "../../writer/doc.js";
 import { renderMethodReturnType, renderMethodSignature } from "./method.js";
 
 const generateCallback = (context: ModuleContext, callback: GirCallback): void => {
-    if (!callback.introspectable) return;
+    if (!callback.introspectable) {
+        return;
+    }
 
-    if (callback.name.length === 0) return;
+    if (callback.name.length === 0) {
+        return;
+    }
 
     const fn = callbackAsFunction(callback);
     const signature = renderMethodSignature(context, fn);

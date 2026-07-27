@@ -29,10 +29,11 @@ const buildNativeArgTypes = (args: Arg[], throws: boolean): Descriptor[] => {
         argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );
 
-    if (throws)
+    if (throws) {
         nativeArgTypes.push(
             refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_error_get_type" })),
         );
+    }
 
     return nativeArgTypes;
 };
@@ -69,11 +70,17 @@ const buildRefValue = (consumesInput: boolean, inputs: unknown[], inputIndex: nu
 const buildNativeValue = (spec: ArgSpec, inputs: unknown[]): unknown => {
     const { arg, isRef, isCallerAllocated, consumesInput, inputIndex } = spec;
 
-    if (isCallerAllocated) return resolveCallerAllocated(inputs, inputIndex);
+    if (isCallerAllocated) {
+        return resolveCallerAllocated(inputs, inputIndex);
+    }
 
-    if (isRef) return buildRefValue(consumesInput, inputs, inputIndex);
+    if (isRef) {
+        return buildRefValue(consumesInput, inputs, inputIndex);
+    }
 
-    if (arg.type.kind === "callback") return wrapCallbackValue(arg.type, inputs[inputIndex]);
+    if (arg.type.kind === "callback") {
+        return wrapCallbackValue(arg.type, inputs[inputIndex]);
+    }
 
     return inputs[inputIndex];
 };
@@ -85,7 +92,9 @@ const readOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknow
     const outParams: unknown[] = [];
 
     for (const [index, { arg, isCallerAllocated, inputIndex, isOutParam }] of plans.entries()) {
-        if (!isOutParam) continue;
+        if (!isOutParam) {
+            continue;
+        }
 
         outParams.push(
             isCallerAllocated ? inputs[inputIndex] : fromNative(arg.type, (nativeValues[index] as Ref).value),

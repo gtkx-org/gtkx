@@ -16,7 +16,9 @@ const isSocketLive = (socketPath: string): Promise<boolean> =>
     });
 
 const removeStaleSocket = async (socketPath: string): Promise<void> => {
-    if (!fs.existsSync(socketPath)) return;
+    if (!fs.existsSync(socketPath)) {
+        return;
+    }
 
     if (await isSocketLive(socketPath)) {
         throw new Error(
@@ -39,7 +41,9 @@ class SocketServer {
     }
 
     async start(): Promise<void> {
-        if (this.server) return;
+        if (this.server) {
+            return;
+        }
 
         await removeStaleSocket(this.socketPath);
 
@@ -49,7 +53,10 @@ class SocketServer {
 
             this.server.on("error", (error) => {
                 this.registry.emit("error", error);
-                if (!listening) reject(error);
+
+                if (!listening) {
+                    reject(error);
+                }
             });
 
             this.server.listen(this.socketPath, () => {
@@ -60,7 +67,9 @@ class SocketServer {
     }
 
     async stop(): Promise<void> {
-        if (!this.server) return;
+        if (!this.server) {
+            return;
+        }
 
         this.registry.dispose("Server stopping");
 

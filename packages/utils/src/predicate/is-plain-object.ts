@@ -13,7 +13,9 @@
  * isPlainObject(new Date()); // false
  */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-    if (typeof value !== "object" || value === null) return false;
+    if (typeof value !== "object" || value === null) {
+        return false;
+    }
 
     const proto: unknown = Object.getPrototypeOf(value);
 

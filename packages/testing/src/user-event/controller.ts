@@ -12,7 +12,10 @@ const queryAllControllers = <T extends Gtk.EventController>(
 
     for (let i = 0; i < nItems; i++) {
         const controller = controllers.getItem(i);
-        if (controller instanceof controllerType) matches.push(controller);
+
+        if (controller instanceof controllerType) {
+            matches.push(controller);
+        }
     }
 
     return matches;
@@ -42,7 +45,9 @@ const getOrCreateControllers = <T extends Gtk.EventController>(
 ): T[] => {
     const existing = queryAllControllers(widget, controllerType);
 
-    if (existing.length > 0) return existing;
+    if (existing.length > 0) {
+        return existing;
+    }
 
     const controller = new controllerType();
     widget.addController(controller);

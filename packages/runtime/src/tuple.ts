@@ -3,9 +3,13 @@ const packTupleResult = (outs: unknown[], primary: unknown, hasPrimary: boolean)
         return outs.length === 0 ? primary : [primary, ...outs];
     }
 
-    if (outs.length === 0) return undefined;
+    if (outs.length === 0) {
+        return undefined;
+    }
 
-    if (outs.length === 1) return outs[0];
+    if (outs.length === 1) {
+        return outs[0];
+    }
 
     return outs;
 };

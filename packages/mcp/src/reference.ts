@@ -154,7 +154,9 @@ const currentReference = async (cache: ReferenceCache, root: string): Promise<Re
     const entry = resolveEntry(cache, root);
     const loaded = await entry.pending;
 
-    if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) return loaded.reference;
+    if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) {
+        return loaded.reference;
+    }
 
     if (isFresh(loaded)) {
         entry.verifiedAt = Date.now();
@@ -180,9 +182,18 @@ const formatCandidates = (candidates: ApiSymbol[]): string =>
 
 const buildSearchOptions = (args: ToolArgs<typeof searchApiShape>): SearchOptions => {
     const options: SearchOptions = { query: args.query };
-    if (args.namespace !== undefined) options.namespace = args.namespace;
-    if (args.kind !== undefined) options.kinds = [args.kind];
-    if (args.limit !== undefined) options.limit = args.limit;
+
+    if (args.namespace !== undefined) {
+        options.namespace = args.namespace;
+    }
+
+    if (args.kind !== undefined) {
+        options.kinds = [args.kind];
+    }
+
+    if (args.limit !== undefined) {
+        options.limit = args.limit;
+    }
 
     return options;
 };
@@ -198,7 +209,9 @@ const listApiTool = (provider: ReferenceProvider): Tool =>
         handler: async ({ namespace }) => {
             const reference = await provider.get();
 
-            if (namespace === undefined) return textContent(reference.overview());
+            if (namespace === undefined) {
+                return textContent(reference.overview());
+            }
 
             const overview = reference.namespaceOverview(namespace);
 
@@ -295,7 +308,9 @@ const namespaceCompleter =
             }, []);
 
 const completeSymbol = async (provider: ReferenceProvider, namespace: string, value: string): Promise<string[]> => {
-    if (namespace.length === 0) return [];
+    if (namespace.length === 0) {
+        return [];
+    }
 
     return withLoadFallback(async () => {
         const reference = await provider.get();
@@ -315,7 +330,9 @@ const symbolPage = async (
     const reference = await provider.get();
     const result = reference.lookup(`${namespace}.${symbol}`);
 
-    if (result.outcome === "page") return markdownResource(uri, result.markdown);
+    if (result.outcome === "page") {
+        return markdownResource(uri, result.markdown);
+    }
 
     if (result.outcome === "ambiguous") {
         throw resourceNotFound(
@@ -375,7 +392,10 @@ const registerNamespaceResource = (server: ResourceServer, provider: ReferencePr
             const namespace = variableValue(variables.namespace);
             const reference = await provider.get();
             const overview = reference.namespaceOverview(namespace);
-            if (overview === undefined) throw resourceNotFound(`Unknown namespace "${namespace}"`);
+
+            if (overview === undefined) {
+                throw resourceNotFound(`Unknown namespace "${namespace}"`);
+            }
 
             return markdownResource(uri, overview);
         },

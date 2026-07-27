@@ -67,7 +67,9 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
     }
 
     private rejectWhenClosed(id: string, timeoutHandle: NodeJS.Timeout, reject: (error: Error) => void): void {
-        if (this.writer.writable) return;
+        if (this.writer.writable) {
+            return;
+        }
 
         clearTimeout(timeoutHandle);
         this.pending.delete(id);
@@ -80,7 +82,9 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         if (typeof message.method === "string") {
             const requestResult = RequestSchema.safeParse(parsed);
 
-            if (!requestResult.success) return false;
+            if (!requestResult.success) {
+                return false;
+            }
 
             this.emit("request", requestResult.data);
 
@@ -89,7 +93,9 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
 
         const responseResult = ResponseSchema.safeParse(parsed);
 
-        if (!responseResult.success) return false;
+        if (!responseResult.success) {
+            return false;
+        }
 
         this.handleResponse(responseResult.data);
 
@@ -107,7 +113,9 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
             return;
         }
 
-        if (this.dispatchParsed(parsed)) return;
+        if (this.dispatchParsed(parsed)) {
+            return;
+        }
 
         const message = parsed as Record<string, unknown>;
         const id = typeof message.id === "string" ? message.id : "unknown";
@@ -117,7 +125,9 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
     private handleResponse(response: Response): void {
         const entry = this.pending.get(response.id);
 
-        if (!entry) return;
+        if (!entry) {
+            return;
+        }
 
         clearTimeout(entry.timeout);
         this.pending.delete(response.id);
@@ -150,7 +160,9 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
     }
 
     write(message: Message): void {
-        if (!this.writer.writable) return;
+        if (!this.writer.writable) {
+            return;
+        }
 
         this.writer.write(`${JSON.stringify(message)}\n`);
     }

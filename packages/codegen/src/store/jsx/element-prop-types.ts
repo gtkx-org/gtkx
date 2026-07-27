@@ -11,13 +11,18 @@ type LazyElementSpec = {
 
 const appendConstructOnlyNames = (klass: GirClass, names: string[]): void => {
     for (const property of klass.properties) {
-        if (property.constructOnly) names.push(toCamelIdentifier(property.name));
+        if (property.constructOnly) {
+            names.push(toCamelIdentifier(property.name));
+        }
     }
 };
 
 const constructOnlyNames = (context: GirIndex, entry: GirTypeEntry): string[] => {
     const names: string[] = [];
-    for (const klass of chainOf(context, entry)) appendConstructOnlyNames(klass, names);
+
+    for (const klass of chainOf(context, entry)) {
+        appendConstructOnlyNames(klass, names);
+    }
 
     return names;
 };
@@ -38,7 +43,11 @@ const lazyElementSpecs = (context: GirIndex, lazyElements: string[]): Map<string
 
     for (const element of lazyElements) {
         const entry = context.index.get(element);
-        if (entry === undefined) continue;
+
+        if (entry === undefined) {
+            continue;
+        }
+
         const list = specs.get(entry.namespace.name) ?? [];
         list.push(specFor(context, element, entry));
         specs.set(entry.namespace.name, list);

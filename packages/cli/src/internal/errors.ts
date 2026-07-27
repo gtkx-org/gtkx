@@ -17,7 +17,9 @@ const printError = (cause: unknown): never => {
 const withErrorBoundary = <T extends ArgsDef>(command: CommandDef<T>): CommandDef<T> => {
     const run = command.run;
 
-    if (run === undefined) return command;
+    if (run === undefined) {
+        return command;
+    }
 
     return {
         ...command,

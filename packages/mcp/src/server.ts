@@ -99,7 +99,9 @@ const screenshotShape = {
 const logSocketError = (error: Error): void => {
     const code = (error as NodeJS.ErrnoException).code;
 
-    if (code === "EPIPE" || code === "ECONNRESET") return;
+    if (code === "EPIPE" || code === "ECONNRESET") {
+        return;
+    }
 
     log.error(`socket error: ${error.message}`);
 };
@@ -294,7 +296,9 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
             await mcpServer.connect(transport);
         },
         async stop() {
-            if (stopped) return;
+            if (stopped) {
+                return;
+            }
 
             stopped = true;
             await socketServer.stop();

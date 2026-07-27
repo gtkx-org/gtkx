@@ -25,14 +25,20 @@ const itemValue = (item: GObject.Object | null): number => {
 
 const valueStore = (...values: number[]): Gio.ListStore => {
     const store = Gio.ListStore.new(ValueObject.prototype._type_);
-    for (const value of values) store.append(valueObject(value));
+
+    for (const value of values) {
+        store.append(valueObject(value));
+    }
 
     return store;
 };
 
 const storeValues = (model: Gio.ListModel): number[] => {
     const values: number[] = [];
-    for (let index = 0; index < model.getNItems(); index += 1) values.push(itemValue(model.getItem(index)));
+
+    for (let index = 0; index < model.getNItems(); index += 1) {
+        values.push(itemValue(model.getItem(index)));
+    }
 
     return values;
 };

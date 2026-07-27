@@ -8,11 +8,17 @@ const shouldTransformForRefresh = (
     id: string,
     transformOptions: { ssr?: boolean | undefined } | undefined,
 ): boolean => {
-    if (!transformOptions?.ssr) return false;
+    if (!transformOptions?.ssr) {
+        return false;
+    }
 
-    if (!REFRESH_INCLUDE.test(id)) return false;
+    if (!REFRESH_INCLUDE.test(id)) {
+        return false;
+    }
 
-    if (REFRESH_EXCLUDE.test(id)) return false;
+    if (REFRESH_EXCLUDE.test(id)) {
+        return false;
+    }
 
     return true;
 };

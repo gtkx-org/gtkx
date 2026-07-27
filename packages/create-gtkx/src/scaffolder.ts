@@ -81,7 +81,10 @@ const suggestApplicationId = (name: string): string => `com.${name.replaceAll("-
 
 const stripTrailingSlashes = (value: string): string => {
     let end = value.length;
-    while (end > 0 && value[end - 1] === "/") end--;
+
+    while (end > 0 && value[end - 1] === "/") {
+        end--;
+    }
 
     return value.slice(0, end);
 };
@@ -122,7 +125,9 @@ const guardCancellation = <T>(value: T | symbol): T => {
 };
 
 const validateProjectName = (value: string | undefined): string | undefined => {
-    if (!value) return "Project name is required";
+    if (!value) {
+        return "Project name is required";
+    }
 
     if (!isValidProjectName(value)) {
         return "Project name must be lowercase letters, numbers, and hyphens only";
@@ -132,7 +137,9 @@ const validateProjectName = (value: string | undefined): string | undefined => {
 };
 
 const validateApplicationIdInput = (value: string | undefined): string | undefined => {
-    if (!value) return "Application ID is required";
+    if (!value) {
+        return "Application ID is required";
+    }
 
     if (!isValidApplicationId(value)) {
         return "Application ID must be reverse domain notation (e.g., com.example.myapp)";
@@ -147,7 +154,9 @@ const fail = (message: string): never => {
 };
 
 const validateTarget = (value: string | undefined): string | undefined => {
-    if (!value) return "Project directory is required";
+    if (!value) {
+        return "Project directory is required";
+    }
 
     return validateProjectName(deriveProjectName(formatTargetDir(value)));
 };
@@ -177,7 +186,9 @@ const promptApplicationId = async (name: string): Promise<string> => {
 const detectPackageManager = async (cwd: string): Promise<PackageManager | undefined> => {
     const detected = await nypmDetectPackageManager(cwd, { includeParentDirs: true });
 
-    if (!detected) return undefined;
+    if (!detected) {
+        return undefined;
+    }
 
     return isKnownPackageManager(detected.name) ? detected.name : undefined;
 };
@@ -186,9 +197,13 @@ const packageManagerHint = (
     manager: (typeof PACKAGE_MANAGERS)[number],
     detected: PackageManager | undefined,
 ): string | undefined => {
-    if (detected === manager.value) return "detected";
+    if (detected === manager.value) {
+        return "detected";
+    }
 
-    if (manager.recommended) return "recommended";
+    if (manager.recommended) {
+        return "recommended";
+    }
 
     return undefined;
 };
@@ -238,20 +253,32 @@ const promptTesting = async (): Promise<boolean> =>
 
 const emptyDir = (root: string): void => {
     for (const entry of readdirSync(root)) {
-        if (entry === ".git") continue;
+        if (entry === ".git") {
+            continue;
+        }
+
         rmSync(join(root, entry), { recursive: true, force: true });
     }
 };
 
 const validateResolvedOptions = (name: string, applicationId: string): void => {
     const nameError = validateProjectName(name);
-    if (nameError) fail(nameError);
+
+    if (nameError) {
+        fail(nameError);
+    }
+
     const applicationIdError = validateApplicationIdInput(applicationId);
-    if (applicationIdError) fail(applicationIdError);
+
+    if (applicationIdError) {
+        fail(applicationIdError);
+    }
 };
 
 const confirmOverwrite = async (target: string, options: CreateOptions): Promise<boolean> => {
-    if (!options.interactive) return options.overwrite === true;
+    if (!options.interactive) {
+        return options.overwrite === true;
+    }
 
     return guardCancellation(
         await p.confirm({
@@ -262,7 +289,9 @@ const confirmOverwrite = async (target: string, options: CreateOptions): Promise
 };
 
 const handleTargetDirectory = async (root: string, target: string, options: CreateOptions): Promise<void> => {
-    if (!existsSync(root) || isDirEmpty(root)) return;
+    if (!existsSync(root) || isDirEmpty(root)) {
+        return;
+    }
 
     if (await confirmOverwrite(target, options)) {
         emptyDir(root);
@@ -274,35 +303,49 @@ const handleTargetDirectory = async (root: string, target: string, options: Crea
 };
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
-    if (options.name !== undefined) return formatTargetDir(options.name);
+    if (options.name !== undefined) {
+        return formatTargetDir(options.name);
+    }
 
-    if (!options.interactive) return fail("Project directory is required");
+    if (!options.interactive) {
+        return fail("Project directory is required");
+    }
 
     return formatTargetDir(await promptTarget());
 };
 
 const resolveApplicationId = async (options: CreateOptions, name: string): Promise<string> => {
-    if (options.applicationId !== undefined) return options.applicationId;
+    if (options.applicationId !== undefined) {
+        return options.applicationId;
+    }
 
     return options.interactive ? promptApplicationId(name) : suggestApplicationId(name);
 };
 
 const resolvePackageManager = async (options: CreateOptions): Promise<PackageManager> => {
-    if (options.packageManager !== undefined) return options.packageManager;
+    if (options.packageManager !== undefined) {
+        return options.packageManager;
+    }
 
-    if (options.interactive) return promptPackageManager();
+    if (options.interactive) {
+        return promptPackageManager();
+    }
 
     return (await detectedPackageManager()) ?? "pnpm";
 };
 
 const resolveTypeScript = async (options: CreateOptions): Promise<boolean> => {
-    if (options.typescript !== undefined) return options.typescript;
+    if (options.typescript !== undefined) {
+        return options.typescript;
+    }
 
     return options.interactive ? promptTypeScript() : true;
 };
 
 const resolveIncludeTesting = async (options: CreateOptions): Promise<boolean> => {
-    if (options.includeTesting !== undefined) return options.includeTesting;
+    if (options.includeTesting !== undefined) {
+        return options.includeTesting;
+    }
 
     return options.interactive ? promptTesting() : true;
 };
@@ -322,9 +365,13 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
 };
 
 const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
-    if (TESTING_TEMPLATES.has(templateRelativePath)) return resolved.includeTesting;
+    if (TESTING_TEMPLATES.has(templateRelativePath)) {
+        return resolved.includeTesting;
+    }
 
-    if (TYPESCRIPT_TEMPLATES.has(templateRelativePath)) return resolved.typescript;
+    if (TYPESCRIPT_TEMPLATES.has(templateRelativePath)) {
+        return resolved.typescript;
+    }
 
     return true;
 };
@@ -358,7 +405,10 @@ const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise
     mkdirSync(root, { recursive: true });
 
     for (const template of listTemplates()) {
-        if (!isTemplateIncluded(template, resolved)) continue;
+        if (!isTemplateIncluded(template, resolved)) {
+            continue;
+        }
+
         const destination = join(root, toDestinationPath(template, typescript));
         mkdirSync(dirname(destination), { recursive: true });
         writeFileSync(destination, await renderFile(template, context));

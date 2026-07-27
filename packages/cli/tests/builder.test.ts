@@ -29,7 +29,10 @@ import { build } from "../src/builder.js";
 
 function getViteConfig(): ViteConfigSnapshot {
     const call = viteBuildMock.mock.calls[0];
-    if (!call) throw new Error("vite.build was not invoked");
+
+    if (!call) {
+        throw new Error("vite.build was not invoked");
+    }
 
     return call[0];
 }

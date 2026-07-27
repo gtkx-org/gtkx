@@ -65,7 +65,9 @@ const text = (node: RawNode, name: string): string | null => {
 const children = (node: RawNode, name: string): RawNode[] => {
     const value = node[name];
 
-    if (!Array.isArray(value)) return [];
+    if (!Array.isArray(value)) {
+        return [];
+    }
 
     return value.filter(isRawNode);
 };
@@ -80,7 +82,10 @@ const parseDefinitions = (schemalist: RawNode, tag: string): Map<string, string[
 
     for (const definition of children(schemalist, tag)) {
         const id = attr(definition, "id");
-        if (id !== null) definitions.set(id, parseNicks(definition));
+
+        if (id !== null) {
+            definitions.set(id, parseNicks(definition));
+        }
     }
 
     return definitions;
@@ -89,7 +94,9 @@ const parseDefinitions = (schemalist: RawNode, tag: string): Map<string, string[
 const parseChoices = (key: RawNode): string[] => {
     const choices = key.choices;
 
-    if (!isRawNode(choices)) return [];
+    if (!isRawNode(choices)) {
+        return [];
+    }
 
     return children(choices, "choice")
         .map((choice) => attr(choice, "value"))
@@ -129,12 +136,20 @@ const parseRawSchema = (schema: RawNode, fileName: string): RawSchema => {
 };
 
 const collectInheritedKeys = (context: MergeContext, current: RawSchema): void => {
-    if (context.visited.has(current.id)) return;
+    if (context.visited.has(current.id)) {
+        return;
+    }
 
     context.visited.add(current.id);
     const parent = current.extendsId === null ? undefined : context.byId.get(current.extendsId);
-    if (parent !== undefined) collectInheritedKeys(context, parent);
-    for (const key of current.keys) context.merged.set(key.name, key);
+
+    if (parent !== undefined) {
+        collectInheritedKeys(context, parent);
+    }
+
+    for (const key of current.keys) {
+        context.merged.set(key.name, key);
+    }
 };
 
 const mergeInheritedKeys = (schema: RawSchema, byId: Map<string, RawSchema>): ParsedKey[] => {

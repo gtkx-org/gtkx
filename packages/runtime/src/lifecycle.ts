@@ -34,10 +34,16 @@ const onExit = (callback: () => void): void => {
  * call more than once; only the first call takes effect.
  */
 const quit = (): void => {
-    if (hasQuit) return;
+    if (hasQuit) {
+        return;
+    }
 
     hasQuit = true;
-    for (const callback of shutdownCallbacks) callback();
+
+    for (const callback of shutdownCallbacks) {
+        callback();
+    }
+
     nativeQuit();
 };
 
@@ -50,7 +56,11 @@ const quit = (): void => {
 const runApplication = (application: ApplicationLike): void => {
     application.on("activate", () => keepAlive(true));
     application.on("shutdown", () => keepAlive(false));
-    if (!application.getIsRegistered()) application.register(null);
+
+    if (!application.getIsRegistered()) {
+        application.register(null);
+    }
+
     application.activate();
 };
 
@@ -61,10 +71,16 @@ const runApplication = (application: ApplicationLike): void => {
  * @param application The application to shut down.
  */
 const quitApplication = (application: ApplicationLike): void => {
-    if (!application.getIsRegistered()) return;
+    if (!application.getIsRegistered()) {
+        return;
+    }
 
     const windows = application.getWindows?.() ?? [];
-    for (const window of windows) application.removeWindow?.(window);
+
+    for (const window of windows) {
+        application.removeWindow?.(window);
+    }
+
     application.on("shutdown", () => application.quit());
     blockMatchedSignalHandlers(application, "activate");
     application.run([]);

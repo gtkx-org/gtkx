@@ -16,9 +16,13 @@ type Settlement<R extends object, T> = {
 };
 
 const attachCreationStack = (error: unknown, creationStack: Error | undefined): void => {
-    if (creationStack === undefined || !(error instanceof Error)) return;
+    if (creationStack === undefined || !(error instanceof Error)) {
+        return;
+    }
 
-    if (error.cause !== undefined || !Object.isExtensible(error)) return;
+    if (error.cause !== undefined || !Object.isExtensible(error)) {
+        return;
+    }
 
     error.cause = creationStack;
 };

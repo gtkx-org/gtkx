@@ -73,17 +73,26 @@ const setEditableText = (widget: EditableTarget, text: string): void => {
 const applyTextViewSelection = (widget: Gtk.TextView, start: number, end: number): void => {
     const buffer = widget.getBuffer();
     buffer.selectRange(buffer.getIterAtOffset(start), buffer.getIterAtOffset(end));
-    if (end !== start) deleteSelection(widget);
+
+    if (end !== start) {
+        deleteSelection(widget);
+    }
 };
 
 const applyEditableSelection = (widget: Gtk.Editable, start: number, end: number): void => {
     widget.selectRegion(start, end);
-    if (end !== start) widget.deleteSelection();
+
+    if (end !== start) {
+        widget.deleteSelection();
+    }
+
     widget.setPosition(start);
 };
 
 const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): void => {
-    if (options.initialSelectionStart === undefined) return;
+    if (options.initialSelectionStart === undefined) {
+        return;
+    }
 
     const start = options.initialSelectionStart;
     const end = options.initialSelectionEnd ?? start;

@@ -19,7 +19,9 @@ const useApplicationLifecycle = (
     setActivated: (value: boolean) => void,
 ): void => {
     useLayoutEffect(() => {
-        if (!application) return;
+        if (!application) {
+            return;
+        }
 
         runApplication(application);
         setActivated(true);
@@ -32,7 +34,9 @@ const useApplicationLifecycle = (
 };
 
 const applicationChildren = (application: Gtk.Application | null, children: ReactNode): ReactNode => {
-    if (!application) return null;
+    if (!application) {
+        return null;
+    }
 
     return <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>;
 };

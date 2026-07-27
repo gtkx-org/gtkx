@@ -10,9 +10,13 @@ type LoadHook = (id: string) => unknown;
 type ConfigHook = (config: { root: string }, env: { command: "serve"; mode: string }) => unknown;
 
 const hookHandlerOf = <T>(hook: T | { handler: T } | undefined | null, name: string): T => {
-    if (hook === undefined || hook === null) throw new Error(`expected the plugin to define the ${name} hook`);
+    if (hook === undefined || hook === null) {
+        throw new Error(`expected the plugin to define the ${name} hook`);
+    }
 
-    if (typeof hook === "object" && "handler" in hook) return hook.handler;
+    if (typeof hook === "object" && "handler" in hook) {
+        return hook.handler;
+    }
 
     return hook;
 };

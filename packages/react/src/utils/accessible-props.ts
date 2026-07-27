@@ -230,9 +230,15 @@ const applyChangedProp = (widget: Gtk.Accessible, name: keyof AccessibleProps, n
 
 const applyChangedProps = (widget: Gtk.Accessible, oldProps: Props | null, newProps: Props): void => {
     for (const name in newProps) {
-        if (!isAccessibleProp(name)) continue;
+        if (!isAccessibleProp(name)) {
+            continue;
+        }
+
         const newValue = newProps[name];
-        if (oldProps?.[name] !== newValue) applyChangedProp(widget, name, newValue);
+
+        if (oldProps?.[name] !== newValue) {
+            applyChangedProp(widget, name, newValue);
+        }
     }
 };
 
@@ -252,7 +258,10 @@ const resetRemovedProps = (widget: Gtk.Accessible, oldProps: Props, newProps: Pr
 
 const applyAccessibleProps = (widget: Gtk.Accessible, oldProps: Props | null, newProps: Props): void => {
     applyChangedProps(widget, oldProps, newProps);
-    if (oldProps) resetRemovedProps(widget, oldProps, newProps);
+
+    if (oldProps) {
+        resetRemovedProps(widget, oldProps, newProps);
+    }
 };
 
 export { isAccessibleProp, applyAccessibleProps, type AccessibleProps };

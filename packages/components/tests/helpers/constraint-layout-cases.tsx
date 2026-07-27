@@ -26,7 +26,10 @@ const collectConstraints = (layout: Gtk.ConstraintLayout): Gtk.Constraint[] => {
 
     for (let i = 0; i < observer.getNItems(); i++) {
         const item = observer.getItem(i);
-        if (item instanceof Gtk.Constraint) out.push(item);
+
+        if (item instanceof Gtk.Constraint) {
+            out.push(item);
+        }
     }
 
     return out;
@@ -38,7 +41,10 @@ const collectGuides = (layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide[] => {
 
     for (let i = 0; i < observer.getNItems(); i++) {
         const item = observer.getItem(i);
-        if (item instanceof Gtk.ConstraintGuide) out.push(item);
+
+        if (item instanceof Gtk.ConstraintGuide) {
+            out.push(item);
+        }
     }
 
     return out;
@@ -48,7 +54,10 @@ const constraintsOf = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint[] => c
 
 const firstConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => {
     const [constraint] = constraintsOf(boxRef);
-    if (!constraint) throw new Error("expected at least one constraint");
+
+    if (!constraint) {
+        throw new Error("expected at least one constraint");
+    }
 
     return constraint;
 };
@@ -57,7 +66,10 @@ const onlyConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => {
     const constraints = constraintsOf(boxRef);
     expect(constraints).toHaveLength(1);
     const [constraint] = constraints;
-    if (!constraint) throw new Error("expected exactly one constraint");
+
+    if (!constraint) {
+        throw new Error("expected exactly one constraint");
+    }
 
     return constraint;
 };

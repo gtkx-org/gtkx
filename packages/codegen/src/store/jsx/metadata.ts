@@ -68,7 +68,9 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
     const entries: IntrinsicElementEntry[] = [];
 
     for (const { glibName, klass, namespace } of iterateClassesWithGlibName(library)) {
-        if (!isIntrinsicElementClass(klass, namespace, library)) continue;
+        if (!isIntrinsicElementClass(klass, namespace, library)) {
+            continue;
+        }
 
         const sources: GirClass[] = [
             klass,
@@ -90,7 +92,11 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
 const collectSignalsFromSource = (source: GirClass, seen: Set<string>, signals: [string, string][]): void => {
     for (const signal of source.signals) {
         const handlerName = signalHandlerName(signal.name);
-        if (seen.has(handlerName)) continue;
+
+        if (seen.has(handlerName)) {
+            continue;
+        }
+
         seen.add(handlerName);
         signals.push([handlerName, signal.name] as const);
     }
@@ -99,7 +105,10 @@ const collectSignalsFromSource = (source: GirClass, seen: Set<string>, signals: 
 const collectSignals = (sources: GirClass[]): [string, string][] => {
     const seen: Set<string> = new Set();
     const signals: [string, string][] = [];
-    for (const source of sources) collectSignalsFromSource(source, seen, signals);
+
+    for (const source of sources) {
+        collectSignalsFromSource(source, seen, signals);
+    }
 
     return signals;
 };
@@ -108,9 +117,16 @@ const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollect
     const { keep, seen, names } = collector;
 
     for (const property of source.properties) {
-        if (!keep(property)) continue;
+        if (!keep(property)) {
+            continue;
+        }
+
         const jsName = toCamelIdentifier(property.name);
-        if (seen.has(jsName)) continue;
+
+        if (seen.has(jsName)) {
+            continue;
+        }
+
         seen.add(jsName);
         names.push(jsName);
     }
@@ -118,7 +134,10 @@ const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollect
 
 const collectPropNames = (sources: GirClass[], keep: (property: GirProperty) => boolean): string[] => {
     const collector: PropNameCollector = { keep, seen: new Set<string>(), names: [] };
-    for (const source of sources) collectPropNamesFromSource(source, collector);
+
+    for (const source of sources) {
+        collectPropNamesFromSource(source, collector);
+    }
 
     return collector.names;
 };
@@ -129,7 +148,9 @@ const collectConstructOnly = (sources: GirClass[]): string[] =>
 const collectConstructable = (sources: GirClass[]): string[] => collectPropNames(sources, isConstructableProperty);
 
 const renderObjectLiteral = (entries: [string, string][], renderValue: (value: string) => string): string => {
-    if (entries.length === 0) return "{}";
+    if (entries.length === 0) {
+        return "{}";
+    }
 
     const lines = entries.map(([key, value]) => `        ${sourceStringLiteral(key)}: ${renderValue(value)}`);
 
@@ -144,13 +165,19 @@ const renderSignalsObject = (entries: [string, string][]): string => renderObjec
 const collectDefaultsFromClass = (klass: GirClass, collector: DefaultPropsCollector): void => {
     for (const property of klass.properties) {
         const entry = defaultPropEntry(collector.library, klass, property, collector.seen);
-        if (entry !== undefined) collector.defaults.push(entry);
+
+        if (entry !== undefined) {
+            collector.defaults.push(entry);
+        }
     }
 };
 
 const collectDefaultProps = (library: Library, sources: GirClass[]): [string, string][] => {
     const collector: DefaultPropsCollector = { library, seen: new Set<string>(), defaults: [] };
-    for (const klass of sources) collectDefaultsFromClass(klass, collector);
+
+    for (const klass of sources) {
+        collectDefaultsFromClass(klass, collector);
+    }
 
     return collector.defaults;
 };
@@ -164,26 +191,36 @@ const defaultPropEntry = (
     property: GirProperty,
     seen: Set<string>,
 ): [string, string] | undefined => {
-    if (!isDefaultCandidate(property)) return undefined;
+    if (!isDefaultCandidate(property)) {
+        return undefined;
+    }
 
     const jsName = toCamelIdentifier(property.name);
 
-    if (seen.has(jsName)) return undefined;
+    if (seen.has(jsName)) {
+        return undefined;
+    }
 
     seen.add(jsName);
     const literal = renderDefaultLiteral(library, klass, property);
 
-    if (literal === undefined) return undefined;
+    if (literal === undefined) {
+        return undefined;
+    }
 
     return [jsName, literal];
 };
 
 const setterRejectsNull = (library: Library, klass: GirClass, property: GirProperty): boolean => {
-    if (property.setter === undefined) return false;
+    if (property.setter === undefined) {
+        return false;
+    }
 
     const setter = klass.methods.find((method) => method.name === property.setter);
 
-    if (setter === undefined) return false;
+    if (setter === undefined) {
+        return false;
+    }
 
     const [value] = inputParameters(library, setter);
 
@@ -191,7 +228,9 @@ const setterRejectsNull = (library: Library, klass: GirClass, property: GirPrope
 };
 
 const renderDefaultLiteral = (library: Library, klass: GirClass, property: GirProperty): string | undefined => {
-    if (property.defaultValue === "NULL" && setterRejectsNull(library, klass, property)) return undefined;
+    if (property.defaultValue === "NULL" && setterRejectsNull(library, klass, property)) {
+        return undefined;
+    }
 
     return resolveDefaultLiteral(library, property.type, property.defaultValue);
 };
@@ -201,33 +240,51 @@ const resolveDefaultLiteral = (
     ref: TypeId | undefined,
     raw: string | undefined,
 ): string | undefined => {
-    if (raw === undefined) return undefined;
+    if (raw === undefined) {
+        return undefined;
+    }
 
-    if (raw === "NULL") return "null";
+    if (raw === "NULL") {
+        return "null";
+    }
 
-    if (ref === undefined) return undefined;
+    if (ref === undefined) {
+        return undefined;
+    }
 
     const resolved = library.typeOf(ref);
 
-    if (resolved === undefined) return undefined;
+    if (resolved === undefined) {
+        return undefined;
+    }
 
     return resolveTypeDefaultLiteral(library, resolved, raw);
 };
 
 const resolveTypeDefaultLiteral = (library: Library, resolved: GirType, raw: string): string | undefined => {
-    if (resolved.kind === "primitive") return primitiveDefaultLiteral(resolved.category, raw);
+    if (resolved.kind === "primitive") {
+        return primitiveDefaultLiteral(resolved.category, raw);
+    }
 
-    if (resolved.kind === "enum") return enumDefaultLiteral(resolved.value, raw);
+    if (resolved.kind === "enum") {
+        return enumDefaultLiteral(resolved.value, raw);
+    }
 
-    if (resolved.kind === "alias") return resolveDefaultLiteral(library, resolved.value.target, raw);
+    if (resolved.kind === "alias") {
+        return resolveDefaultLiteral(library, resolved.value.target, raw);
+    }
 
     return undefined;
 };
 
 const booleanDefaultLiteral = (raw: string): string | undefined => {
-    if (raw === "TRUE") return "true";
+    if (raw === "TRUE") {
+        return "true";
+    }
 
-    if (raw === "FALSE") return "false";
+    if (raw === "FALSE") {
+        return "false";
+    }
 
     return undefined;
 };
@@ -241,7 +298,9 @@ const integerDefaultLiteral = (raw: string): string | undefined => {
 const floatDefaultLiteral = (raw: string): string | undefined => {
     const trimmed = raw.trim();
 
-    if (!FLOAT_PATTERN.test(trimmed)) return undefined;
+    if (!FLOAT_PATTERN.test(trimmed)) {
+        return undefined;
+    }
 
     const value = Number(trimmed);
 
@@ -280,7 +339,9 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
 const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined => {
     const trimmed = raw.trim();
 
-    if (INTEGER_PATTERN.test(trimmed)) return trimmed;
+    if (INTEGER_PATTERN.test(trimmed)) {
+        return trimmed;
+    }
 
     const member = enumType.members.find((entry) => entry.cIdentifier === trimmed || entry.name === trimmed);
 

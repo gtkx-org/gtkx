@@ -14,7 +14,10 @@ const param = (name: string, cType: string, extra?: Partial<GlParam>): GlParam =
 
 const okPlan = (input: GlCommand, policy: GlPlanPolicy = NO_POLICY): CommandPlan & { ok: true } => {
     const plan = planCommand(input, policy);
-    if (!plan.ok) throw new Error(`Expected ${input.name} to plan, got exclusion: ${plan.reason}`);
+
+    if (!plan.ok) {
+        throw new Error(`Expected ${input.name} to plan, got exclusion: ${plan.reason}`);
+    }
 
     return plan;
 };
@@ -105,7 +108,9 @@ describe("planCommand outputs", () => {
         const excluded = planCommand(query, NO_POLICY);
         expect(excluded.ok).toBe(false);
 
-        if (excluded.ok) return;
+        if (excluded.ok) {
+            return;
+        }
 
         expect(excluded.reason).toBe("compsize-output");
 
@@ -153,7 +158,9 @@ describe("planCommand exclusions", () => {
 
         expect(computed.ok).toBe(false);
 
-        if (computed.ok) return;
+        if (computed.ok) {
+            return;
+        }
 
         expect(computed.reason).toBe("computed-output-length");
 
@@ -167,7 +174,9 @@ describe("planCommand exclusions", () => {
 
         expect(callback.ok).toBe(false);
 
-        if (callback.ok) return;
+        if (callback.ok) {
+            return;
+        }
 
         expect(callback.reason).toBe("callback-parameter");
     });

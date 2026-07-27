@@ -16,9 +16,13 @@ const isRefObject = <T extends object>(value: T | RefObject<T | null>): value is
  * @returns The resolved object, or null.
  */
 const resolveRefProp = <T extends object>(prop: RefProp<T>): T | null => {
-    if (prop === null || prop === undefined) return null;
+    if (prop === null || prop === undefined) {
+        return null;
+    }
 
-    if (isRefObject(prop)) return prop.current;
+    if (isRefObject(prop)) {
+        return prop.current;
+    }
 
     return prop;
 };

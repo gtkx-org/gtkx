@@ -60,7 +60,9 @@ const ensureSchemaDir = (state: PluginState): string => {
 };
 
 const releaseSchemaDir = (state: PluginState): void => {
-    if (!state.schemaDir) return;
+    if (!state.schemaDir) {
+        return;
+    }
 
     if (state.cleanupProcessExit) {
         removeTempDir(state.schemaDir);
@@ -72,14 +74,18 @@ const releaseSchemaDir = (state: PluginState): void => {
 };
 
 const compileSchemaDir = (state: PluginState): void => {
-    if (!state.schemaDir) return;
+    if (!state.schemaDir) {
+        return;
+    }
 
     compileSchemas(state.schemaDir);
     process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(state.schemaDir, process.env.GSETTINGS_SCHEMA_DIR);
 };
 
 const syncSchemaEnv = (state: PluginState): void => {
-    if (state.rootDir === null) return;
+    if (state.rootDir === null) {
+        return;
+    }
 
     try {
         emitSchemaEnv(state.rootDir, state.dataDir);
@@ -116,7 +122,9 @@ const registerSchemaForMode = (state: PluginState, filePath: string, id: string)
 };
 
 const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): string | undefined => {
-    if (!isVirtual(id)) return undefined;
+    if (!isVirtual(id)) {
+        return undefined;
+    }
 
     const filePath = fromVirtualId(id);
     const xml = readFileSync(filePath, "utf8");
@@ -127,7 +135,10 @@ const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): s
     try {
         parsed = parseSchemaXml(xml, fileName);
     } catch (error) {
-        if (!(error instanceof SchemaParseError)) throw error;
+        if (!(error instanceof SchemaParseError)) {
+            throw error;
+        }
+
         ctx.error(error.message);
     }
 
@@ -139,7 +150,9 @@ const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): s
 };
 
 const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
-    if (!state.isBuild || state.buildSchemas.size === 0) return;
+    if (!state.isBuild || state.buildSchemas.size === 0) {
+        return;
+    }
 
     const compiled = withStagingDir("schemas-build", (dir) => {
         for (const filePath of state.buildSchemas) {
@@ -161,10 +174,15 @@ const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
 };
 
 const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDevServer): ModuleNode[] | undefined => {
-    if (file.endsWith(SCHEMA_SUFFIX)) syncSchemaEnv(state);
+    if (file.endsWith(SCHEMA_SUFFIX)) {
+        syncSchemaEnv(state);
+    }
+
     const virtualId = state.trackedSchemas.get(file);
 
-    if (!virtualId) return;
+    if (!virtualId) {
+        return;
+    }
 
     const dir = ensureSchemaDir(state);
     stageSchema(dir, file);
@@ -186,7 +204,9 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
     server.watcher.once("close", () => releaseSchemaDir(state));
 
     const refreshSchemaTypes = (file: string): void => {
-        if (file.endsWith(SCHEMA_SUFFIX)) syncSchemaEnv(state);
+        if (file.endsWith(SCHEMA_SUFFIX)) {
+            syncSchemaEnv(state);
+        }
     };
 
     server.watcher.on("add", refreshSchemaTypes);
@@ -221,13 +241,17 @@ function gtkxSettings(): Plugin {
         },
 
         outputOptions(options) {
-            if (!state.isBuild) return;
+            if (!state.isBuild) {
+                return;
+            }
 
             return prependBanner(options, SCHEMA_ENV_BANNER);
         },
 
         async resolveId(source, importer, options) {
-            if (!source.endsWith(SCHEMA_SUFFIX)) return;
+            if (!source.endsWith(SCHEMA_SUFFIX)) {
+                return;
+            }
 
             return resolveToVirtual(this, { source, importer, options });
         },

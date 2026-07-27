@@ -31,7 +31,9 @@ class ConnectionRegistry extends EventEmitter<AppConnectionEvents> implements Ap
     send(connectionId: string, message: Message): void {
         const connection = this.connections.get(connectionId);
 
-        if (!connection) return;
+        if (!connection) {
+            return;
+        }
 
         connection.write(message);
     }

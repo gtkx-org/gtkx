@@ -189,11 +189,16 @@ const trackedFilesRewrittenByPublish = (): string[] => {
     const paths = [join(ROOT_DIR, "pnpm-lock.yaml"), join(NATIVE_DIR, "package.json")];
     const npmDir = join(NATIVE_DIR, "npm");
 
-    if (!existsSync(npmDir)) return paths;
+    if (!existsSync(npmDir)) {
+        return paths;
+    }
 
     for (const entry of readdirSync(npmDir)) {
         const manifest = join(npmDir, entry, "package.json");
-        if (existsSync(manifest)) paths.push(manifest);
+
+        if (existsSync(manifest)) {
+            paths.push(manifest);
+        }
     }
 
     return paths;
@@ -219,7 +224,9 @@ const prepareHostOnlyPublish = (): (() => void) => {
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 4)}\n`);
 
     return () => {
-        for (const [path, content] of snapshot) writeFileSync(path, content);
+        for (const [path, content] of snapshot) {
+            writeFileSync(path, content);
+        }
     };
 };
 

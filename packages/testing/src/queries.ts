@@ -241,7 +241,9 @@ const normalizeText = (text: string, options?: MatcherOptions): string => {
 };
 
 const matchText = (actual: string | null, expected: Matcher, widget: Gtk.Widget, options?: MatcherOptions): boolean => {
-    if (actual === null) return false;
+    if (actual === null) {
+        return false;
+    }
 
     const normalizedActual = normalizeText(actual, options);
 
@@ -264,7 +266,9 @@ const matchText = (actual: string | null, expected: Matcher, widget: Gtk.Widget,
 };
 
 const matchAccessibleName = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
-    if (options.name === undefined) return true;
+    if (options.name === undefined) {
+        return true;
+    }
 
     const text = getWidgetAccessibleName(widget);
 
@@ -284,7 +288,9 @@ const matchAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, options: B
     ];
 
     for (const [expected, current] of numericChecks) {
-        if (!numericValueMatches(expected, current)) return false;
+        if (!numericValueMatches(expected, current)) {
+            return false;
+        }
     }
 
     return value.text === undefined || matchText(actual.text, value.text, widget, options);
@@ -300,7 +306,9 @@ const matchBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean
     ];
 
     for (const [expected, getActual] of stateChecks) {
-        if (expected !== undefined && getActual() !== expected) return false;
+        if (expected !== undefined && getActual() !== expected) {
+            return false;
+        }
     }
 
     return true;
@@ -322,7 +330,9 @@ const matchAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): bool
     matchValueState(widget, options);
 
 const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
-    if (!options) return true;
+    if (!options) {
+        return true;
+    }
 
     return matchAccessibleName(widget, options) && matchAccessibleStates(widget, options);
 };
@@ -358,9 +368,13 @@ function queryAllByRole(
     options?: ByRoleOptions,
 ): Gtk.Widget[] {
     return findAll(container, (widget) => {
-        if (widget.getAccessibleRole() !== role) return false;
+        if (widget.getAccessibleRole() !== role) {
+            return false;
+        }
 
-        if (!options?.hidden && isInaccessible(widget)) return false;
+        if (!options?.hidden && isInaccessible(widget)) {
+            return false;
+        }
 
         return matchByRoleOptions(widget, options);
     });
@@ -371,11 +385,15 @@ const collectMnemonicMatch = (
     text: Matcher,
     options: MatcherOptions | undefined,
 ): Gtk.Widget | null => {
-    if (!(widget instanceof Gtk.Label)) return null;
+    if (!(widget instanceof Gtk.Label)) {
+        return null;
+    }
 
     const labelText = widget.getLabel();
 
-    if (!labelText || !matchText(labelText, text, widget, options)) return null;
+    if (!labelText || !matchText(labelText, text, widget, options)) {
+        return null;
+    }
 
     return widget.getMnemonicWidget();
 };
@@ -387,11 +405,22 @@ const collectLabelMatches = (
     options: MatcherOptions | undefined,
 ): void => {
     const mnemonicTarget = collectMnemonicMatch(widget, text, options);
-    if (mnemonicTarget) results.add(mnemonicTarget);
+
+    if (mnemonicTarget) {
+        results.add(mnemonicTarget);
+    }
+
     const ownLabel = getWidgetOwnLabel(widget);
-    if (ownLabel !== null && matchText(ownLabel, text, widget, options)) results.add(widget);
+
+    if (ownLabel !== null && matchText(ownLabel, text, widget, options)) {
+        results.add(widget);
+    }
+
     const labelledByText = getWidgetLabelledByText(widget);
-    if (labelledByText !== null && matchText(labelledByText, text, widget, options)) results.add(widget);
+
+    if (labelledByText !== null && matchText(labelledByText, text, widget, options)) {
+        results.add(widget);
+    }
 };
 
 /**

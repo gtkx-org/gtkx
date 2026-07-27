@@ -18,8 +18,13 @@ const ancestorConstructablePropNames = (context: ModuleContext, klass: GirClass)
     const names: Set<string> = new Set();
 
     for (const { klass: ancestor } of ancestorChain(context.library, klass, context.namespace.name)) {
-        if (ancestor === klass) continue;
-        for (const name of constructablePropNames(ancestor)) names.add(name);
+        if (ancestor === klass) {
+            continue;
+        }
+
+        for (const name of constructablePropNames(ancestor)) {
+            names.add(name);
+        }
     }
 
     return names;
@@ -54,11 +59,15 @@ const renderClassConstructor = (
     className: string,
     hasParent: boolean,
 ): string | undefined => {
-    if (!hasParent) return renderRootConstructor(context);
+    if (!hasParent) {
+        return renderRootConstructor(context);
+    }
 
     const props = collectConstructableProps(context, klass);
 
-    if (props.length === 0) return undefined;
+    if (props.length === 0) {
+        return undefined;
+    }
 
     return renderTranslatingConstructor(context, props, className);
 };

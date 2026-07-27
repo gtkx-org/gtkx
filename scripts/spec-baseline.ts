@@ -27,7 +27,9 @@ function runSuite(): VitestReport {
             maxBuffer: 64 * 1024 * 1024,
         });
     } catch {
-        if (!existsSync(reportPath)) throw new Error("vitest produced no JSON report");
+        if (!existsSync(reportPath)) {
+            throw new Error("vitest produced no JSON report");
+        }
     }
 
     const report = JSON.parse(readFileSync(reportPath, "utf8")) as VitestReport;
@@ -47,7 +49,9 @@ function statusOf(status: string | undefined): Status {
 function recordAssertion(assertion: VitestAssertion, observed: Baseline, skipped: string[]): void {
     const name = assertion.fullName ?? assertion.title;
 
-    if (!name) return;
+    if (!name) {
+        return;
+    }
 
     if (SKIP_STATUSES.has(assertion.status ?? "")) {
         skipped.push(name);
@@ -87,21 +91,32 @@ const collectFailures = (observed: Baseline, skipped: string[], baseline: Baseli
     );
 
     const failures: string[] = Array.from(removed, (name) => `removed spec: ${name}`);
-    for (const name of skipped) failures.push(`skipped spec: ${name}`);
-    for (const [name] of regressed) failures.push(`regressed green to red: ${name}`);
+
+    for (const name of skipped) {
+        failures.push(`skipped spec: ${name}`);
+    }
+
+    for (const [name] of regressed) {
+        failures.push(`regressed green to red: ${name}`);
+    }
 
     return failures;
 };
 
 const reportFixed = (observed: Baseline, baseline: Baseline): number => {
     const fixed = Object.entries(observed).filter(([name, status]) => baseline[name] === "red" && status === "green");
-    for (const [name] of fixed) process.stdout.write(`fixed: ${name}\n`);
+
+    for (const [name] of fixed) {
+        process.stdout.write(`fixed: ${name}\n`);
+    }
 
     return fixed.length;
 };
 
 const reportFailures = (failures: string[]): void => {
-    for (const failure of failures) process.stderr.write(`${failure}\n`);
+    for (const failure of failures) {
+        process.stderr.write(`${failure}\n`);
+    }
 
     process.stderr.write(
         "\nThe spec baseline is frozen. Specs may only move red to green.\n" +
@@ -116,7 +131,10 @@ const check = (observed: Baseline, skipped: string[]): void => {
     const baseline = readBaseline();
     const failures = collectFailures(observed, skipped, baseline);
     const fixedCount = reportFixed(observed, baseline);
-    if (failures.length > 0) reportFailures(failures);
+
+    if (failures.length > 0) {
+        reportFailures(failures);
+    }
 
     process.stdout.write(
         `Baseline holds: ${Object.keys(observed).length} specs, ${fixedCount} newly green, none removed or skipped.\n`,

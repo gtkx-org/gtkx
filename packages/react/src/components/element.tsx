@@ -24,7 +24,10 @@ const buildElement = (typeName: string, record: Props): ReactElement => {
     const propChildren: ReactNode[] = [];
 
     for (const key in record) {
-        if (key === "children") continue;
+        if (key === "children") {
+            continue;
+        }
+
         routeProp(key, record[key], hostProps, propChildren);
     }
 

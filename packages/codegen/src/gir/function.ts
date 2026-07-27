@@ -18,13 +18,18 @@ type GirFunction = {
 
 const relaxParameters = (parameters: GirParameter[], names: string[]): void => {
     for (const parameter of parameters) {
-        if (names.includes(parameter.name)) parameter.nullable = true;
+        if (names.includes(parameter.name)) {
+            parameter.nullable = true;
+        }
     }
 };
 
 const relaxMissingNullable = (fn: GirFunction): GirFunction => {
     const names = fn.cIdentifier === undefined ? undefined : PARAMETERS_MISSING_NULLABLE_ANNOTATION.get(fn.cIdentifier);
-    if (names !== undefined) relaxParameters(fn.parameters, names);
+
+    if (names !== undefined) {
+        relaxParameters(fn.parameters, names);
+    }
 
     return fn;
 };

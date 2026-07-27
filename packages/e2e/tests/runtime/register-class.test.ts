@@ -113,7 +113,11 @@ describe("registerClass — vfunc self argument convention", () => {
         builder.addFromString(`<interface><object class="${name}" id="customWidget"/></interface>`, -1);
         expect(observed).toHaveLength(1);
         const call = observed[0];
-        if (!call) throw new Error("expected one observed vfunc call");
+
+        if (!call) {
+            throw new Error("expected one observed vfunc call");
+        }
+
         expect(call.positionalArgs).toHaveLength(1);
         expect(call.positionalArgs[0]).toBeInstanceOf(Gtk.Builder);
         expect(call.thisRef).toBeInstanceOf(CustomWidget);

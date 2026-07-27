@@ -86,7 +86,11 @@ describe("gtkxResources (plugin shape)", () => {
             const result = await (plugin.config as ConfigHook).call(plugin, { root });
             expect(result.assetsInclude).toHaveLength(1);
             const [regex] = result.assetsInclude;
-            if (!regex) throw new Error("assetsInclude regex missing");
+
+            if (!regex) {
+                throw new Error("assetsInclude regex missing");
+            }
+
             expect(regex.test("logo.png")).toBe(true);
             expect(regex.test("song.mp3")).toBe(true);
             expect(regex.test("font.woff2")).toBe(true);

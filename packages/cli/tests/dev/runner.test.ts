@@ -134,7 +134,10 @@ const loggedMessages = (harness: Harness): string[] => harness.log.mock.calls.ma
 
 const createdServerConfig = (harness: Harness): InlineConfig => {
     const [config] = harness.createServer.mock.calls[0] ?? [];
-    if (!config) throw new Error("createServer was never called");
+
+    if (!config) {
+        throw new Error("createServer was never called");
+    }
 
     return config;
 };

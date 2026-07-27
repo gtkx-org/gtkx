@@ -40,11 +40,15 @@ const withTimeout = async <T>(promise: Promise<T>, ms: number, label: string): P
 };
 
 const readyPromise = (child: HarnessProcess, output: () => string): Promise<void> => {
-    if (output().includes(READY_MARKER)) return Promise.resolve();
+    if (output().includes(READY_MARKER)) {
+        return Promise.resolve();
+    }
 
     return new Promise<void>((resolve, reject) => {
         const check = (): void => {
-            if (output().includes(READY_MARKER)) resolve();
+            if (output().includes(READY_MARKER)) {
+                resolve();
+            }
         };
 
         child.stdout.on("data", check);
@@ -106,7 +110,9 @@ const killIfAlive = (pid: number): boolean => {
 };
 
 const killGroup = (pid: number | undefined): void => {
-    if (pid === undefined) return;
+    if (pid === undefined) {
+        return;
+    }
 
     killIfAlive(-pid);
     killIfAlive(pid);
@@ -116,7 +122,9 @@ describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
     let harness: Harness | undefined;
 
     afterEach(() => {
-        if (!harness) return;
+        if (!harness) {
+            return;
+        }
 
         killGroup(harness.process.pid);
         killGroup(harness.childPid());
@@ -128,7 +136,11 @@ describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
         await harness.waitForReady();
         const groupPid = harness.process.pid;
         expect(groupPid).toBeGreaterThan(0);
-        if (groupPid === undefined) throw new Error("harness has no pid");
+
+        if (groupPid === undefined) {
+            throw new Error("harness has no pid");
+        }
+
         deliverSignals(groupPid);
         const code = await harness.waitForExit();
         const output = harness.output();

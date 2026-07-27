@@ -32,7 +32,9 @@ const createVirtualNamespace = (prefix: string): VirtualNamespace => {
                 skipSelf: true,
             });
 
-            if (!resolved || resolved.external) return;
+            if (!resolved || resolved.external) {
+                return;
+            }
 
             return toVirtualId(resolved.id);
         },

@@ -33,9 +33,13 @@ const injectRefreshRegistration = (
     id: string,
     transformOptions: { ssr?: boolean | undefined } | undefined,
 ): { code: string; map: null } | undefined => {
-    if (!shouldTransformForRefresh(id, transformOptions)) return;
+    if (!shouldTransformForRefresh(id, transformOptions)) {
+        return;
+    }
 
-    if (!code.includes(REFRESH_REG) && !code.includes(REFRESH_SIG)) return;
+    if (!code.includes(REFRESH_REG) && !code.includes(REFRESH_SIG)) {
+        return;
+    }
 
     const header = `
 import { createModuleRegistration as __createModuleRegistration__ } from "${REFRESH_RUNTIME_SPECIFIER}";
@@ -70,7 +74,9 @@ function gtkxRefreshRuntime(): Plugin {
         apply: "serve",
 
         resolveId(id) {
-            if (id !== REFRESH_RUNTIME_SPECIFIER) return;
+            if (id !== REFRESH_RUNTIME_SPECIFIER) {
+                return;
+            }
 
             return fileURLToPath(import.meta.resolve(REFRESH_RUNTIME_SPECIFIER));
         },

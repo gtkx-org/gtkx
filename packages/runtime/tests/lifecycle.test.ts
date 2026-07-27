@@ -74,9 +74,15 @@ const createFakeApplication = (windows: object[] = []): FakeApplication => {
             handlers[signal].push(handler);
         },
         emit(signal) {
-            if (signal === "shutdown") this.shutdownEmits++;
+            if (signal === "shutdown") {
+                this.shutdownEmits++;
+            }
+
             const signalHandlers = handlers[signal];
-            for (const handler of signalHandlers) handler();
+
+            for (const handler of signalHandlers) {
+                handler();
+            }
         },
     };
 };

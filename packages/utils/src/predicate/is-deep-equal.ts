@@ -15,17 +15,25 @@ import { objectKeysEqual } from "./object-keys-equal.js";
  * isDeepEqual({ a: [1] }, { a: [2] }); // false
  */
 const isDeepArrayEqual = (a: unknown, b: unknown): boolean => {
-    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
+        return false;
+    }
 
     return a.every((item, index) => isDeepEqual(item, b[index]));
 };
 
 function isDeepEqual(a: unknown, b: unknown): boolean {
-    if (a === b) return true;
+    if (a === b) {
+        return true;
+    }
 
-    if (Array.isArray(a) || Array.isArray(b)) return isDeepArrayEqual(a, b);
+    if (Array.isArray(a) || Array.isArray(b)) {
+        return isDeepArrayEqual(a, b);
+    }
 
-    if (isPlainObject(a) && isPlainObject(b)) return objectKeysEqual(a, b, isDeepEqual);
+    if (isPlainObject(a) && isPlainObject(b)) {
+        return objectKeysEqual(a, b, isDeepEqual);
+    }
 
     return false;
 }

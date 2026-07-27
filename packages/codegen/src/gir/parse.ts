@@ -47,7 +47,9 @@ const parseGirFile = (path: string): RawNode => {
 };
 
 const attr = (node: RawNode | undefined, name: string): string | undefined => {
-    if (node === undefined) return undefined;
+    if (node === undefined) {
+        return undefined;
+    }
 
     const value = node[`@_${name}`];
 
@@ -57,7 +59,9 @@ const attr = (node: RawNode | undefined, name: string): string | undefined => {
 const attrBool = (node: RawNode | undefined, name: string, fallback = false): boolean => {
     const value = attr(node, name);
 
-    if (value === undefined) return fallback;
+    if (value === undefined) {
+        return fallback;
+    }
 
     return value === "1";
 };
@@ -72,7 +76,9 @@ const intAttr = (node: RawNode, name: string): number | undefined => {
 
 const enumMember = <T extends string>(raw: string, members: Set<T>, label: string): T => {
     for (const member of members) {
-        if (member === raw) return member;
+        if (member === raw) {
+            return member;
+        }
     }
 
     throw new Error(`Unknown ${label} value "${raw}"`);
@@ -86,23 +92,33 @@ const parseEnumAttr = <T extends string, F extends T | undefined>(
 ): T | F => (raw === undefined ? fallback : enumMember(raw, members, label));
 
 const childrenOf = (node: RawNode | undefined, tag: string): RawNode[] => {
-    if (node === undefined) return [];
+    if (node === undefined) {
+        return [];
+    }
 
     const value = node[tag];
 
-    if (value === undefined) return [];
+    if (value === undefined) {
+        return [];
+    }
 
-    if (Array.isArray(value)) return value as RawNode[];
+    if (Array.isArray(value)) {
+        return value as RawNode[];
+    }
 
     return [value as RawNode];
 };
 
 const childOf = (node: RawNode | undefined, tag: string): RawNode | undefined => {
-    if (node === undefined) return undefined;
+    if (node === undefined) {
+        return undefined;
+    }
 
     const value = node[tag];
 
-    if (value === undefined) return undefined;
+    if (value === undefined) {
+        return undefined;
+    }
 
     if (Array.isArray(value)) {
         return value.length === 0 ? undefined : (value[0] as RawNode);
@@ -126,13 +142,19 @@ const docTextFromObject = (value: object): string | undefined => {
 };
 
 const docOf = (node: RawNode | undefined): string | undefined => {
-    if (node === undefined) return undefined;
+    if (node === undefined) {
+        return undefined;
+    }
 
     const value = firstDocValue(node.doc);
 
-    if (typeof value === "string") return normalizeDoc(value);
+    if (typeof value === "string") {
+        return normalizeDoc(value);
+    }
 
-    if (value === null || typeof value !== "object") return undefined;
+    if (value === null || typeof value !== "object") {
+        return undefined;
+    }
 
     return docTextFromObject(value);
 };

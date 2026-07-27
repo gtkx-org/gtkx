@@ -14,7 +14,9 @@ const runPnpmPublish = (packageDir: string, tag: string): SpawnSyncReturns<strin
 };
 
 const assertPublishOutcome = (packageDir: string, result: SpawnSyncReturns<string>, output: string): void => {
-    if (result.status === 0) return;
+    if (result.status === 0) {
+        return;
+    }
 
     if (ALREADY_PUBLISHED.test(output)) {
         console.log(`${packageDir} is already published, skipping`);
@@ -30,7 +32,11 @@ const publishPackage = (packageDir: string, tag: string): void => {
     const { stdout, stderr } = result;
     process.stdout.write(stdout);
     process.stderr.write(stderr);
-    if (result.error) throw result.error;
+
+    if (result.error) {
+        throw result.error;
+    }
+
     assertPublishOutcome(packageDir, result, `${stdout}${stderr}`);
 };
 

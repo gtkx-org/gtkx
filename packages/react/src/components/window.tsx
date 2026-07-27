@@ -13,7 +13,9 @@ const createWindowComponent = (Component: ElementType): ((props: WindowComponent
         const mergedRef = useMergedRef(ref, setWindow);
 
         useLayoutEffect(() => {
-            if (!window) return;
+            if (!window) {
+                return;
+            }
 
             window.present();
 

@@ -30,22 +30,31 @@ const REACT_SURFACE = await readBuiltinElements(REACT_SUBEXPORTS, GI_STORE_DIR);
 type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
 
 const visitEach = <T>(items: Iterable<T>, visitor: (item: T) => void): void => {
-    for (const item of items) visitor(item);
+    for (const item of items) {
+        visitor(item);
+    }
 };
 
 type UnresolvedWalker = { target: Library; seen: Set<string>; unresolved: Set<string> };
 
 const recordUnresolved = (walker: UnresolvedWalker, ref: TypeId): void => {
     const name = walker.target.nameOf(ref);
-    if (name !== undefined) walker.unresolved.add(`${name.namespaceName}.${name.typeName}`);
+
+    if (name !== undefined) {
+        walker.unresolved.add(`${name.namespaceName}.${name.typeName}`);
+    }
 };
 
 const visitTypeRef = (walker: UnresolvedWalker, ref: TypeId | undefined): void => {
-    if (ref === undefined) return;
+    if (ref === undefined) {
+        return;
+    }
 
     const key = `${ref.nsId}:${ref.id}`;
 
-    if (walker.seen.has(key)) return;
+    if (walker.seen.has(key)) {
+        return;
+    }
 
     walker.seen.add(key);
     const type = walker.target.typeOf(ref);
@@ -79,24 +88,43 @@ const visitContainedRefs = (walker: UnresolvedWalker, type: GirType): void => {
 };
 
 const visitCallable = (walker: UnresolvedWalker, callable: WalkedCallable): void => {
-    for (const parameter of callable.parameters) visitTypeRef(walker, parameter.type);
+    for (const parameter of callable.parameters) {
+        visitTypeRef(walker, parameter.type);
+    }
+
     visitTypeRef(walker, callable.returnValue.type);
 };
 
 const visitFunction = (walker: UnresolvedWalker, fn: GirFunction): void => {
-    if (fn.instance !== undefined) visitTypeRef(walker, fn.instance.type);
+    if (fn.instance !== undefined) {
+        visitTypeRef(walker, fn.instance.type);
+    }
+
     visitCallable(walker, fn);
 };
 
 const visitClass = (walker: UnresolvedWalker, klass: GirClass): void => {
-    for (const fn of [...klass.methods, ...klass.constructors, ...klass.functions]) visitFunction(walker, fn);
-    for (const property of klass.properties) visitTypeRef(walker, property.type);
-    for (const signal of klass.signals) visitCallable(walker, signal);
+    for (const fn of [...klass.methods, ...klass.constructors, ...klass.functions]) {
+        visitFunction(walker, fn);
+    }
+
+    for (const property of klass.properties) {
+        visitTypeRef(walker, property.type);
+    }
+
+    for (const signal of klass.signals) {
+        visitCallable(walker, signal);
+    }
 };
 
 const visitRecord = (walker: UnresolvedWalker, record: GirRecord): void => {
-    for (const fn of [...record.methods, ...record.constructors, ...record.functions]) visitFunction(walker, fn);
-    for (const field of record.fields) visitTypeRef(walker, field.type);
+    for (const fn of [...record.methods, ...record.constructors, ...record.functions]) {
+        visitFunction(walker, fn);
+    }
+
+    for (const field of record.fields) {
+        visitTypeRef(walker, field.type);
+    }
 };
 
 const visitNamespace = (walker: UnresolvedWalker, namespace: GirNamespace): void => {
@@ -110,7 +138,10 @@ const visitNamespace = (walker: UnresolvedWalker, namespace: GirNamespace): void
 
 const collectUnresolvedTypeNames = (target: Library): string[] => {
     const walker: UnresolvedWalker = { target, seen: new Set<string>(), unresolved: new Set<string>() };
-    for (const namespace of target.namespaces.values()) visitNamespace(walker, namespace);
+
+    for (const namespace of target.namespaces.values()) {
+        visitNamespace(walker, namespace);
+    }
 
     return [...walker.unresolved];
 };
@@ -640,7 +671,9 @@ const hasContainerProps = (glibName: string | undefined): boolean =>
     glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
 
 const interfacePropsNameOf = (iface: ResolvedQualifiedInterface): string | undefined => {
-    if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) return undefined;
+    if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) {
+        return undefined;
+    }
 
     const glib = glibNameOf(iface.klass);
 
@@ -650,13 +683,19 @@ const interfacePropsNameOf = (iface: ResolvedQualifiedInterface): string | undef
 const addInterfacePropsNames = (widget: GlibNamedClass, names: Set<string>): void => {
     for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
         const name = interfacePropsNameOf(iface);
-        if (name !== undefined) names.add(name);
+
+        if (name !== undefined) {
+            names.add(name);
+        }
     }
 };
 
 const interfacePropsNames = (): Set<string> => {
     const names: Set<string> = new Set();
-    for (const widget of collectIntrinsicElementClasses(library)) addInterfacePropsNames(widget, names);
+
+    for (const widget of collectIntrinsicElementClasses(library)) {
+        addInterfacePropsNames(widget, names);
+    }
 
     return names;
 };

@@ -18,7 +18,10 @@ function pickBy<T extends Record<string, unknown>>(
 
     for (const key of Object.keys(obj) as (keyof T)[]) {
         const value = obj[key];
-        if (shouldPick(value, key)) result[key] = value;
+
+        if (shouldPick(value, key)) {
+            result[key] = value;
+        }
     }
 
     return result;

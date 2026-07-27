@@ -132,9 +132,16 @@ const invalidType = (source: string): Error => new Error(`Invalid GVariant type 
 
 const parsePair = (source: string, start: number): [VariantTypeNode, VariantTypeNode, number] => {
     const [key, keyEnd] = parseNode(source, start);
-    if (key.kind !== "basic" || key.code === "v") throw invalidType(source);
+
+    if (key.kind !== "basic" || key.code === "v") {
+        throw invalidType(source);
+    }
+
     const [value, valueEnd] = parseNode(source, keyEnd);
-    if (source[valueEnd] !== "}") throw invalidType(source);
+
+    if (source[valueEnd] !== "}") {
+        throw invalidType(source);
+    }
 
     return [key, value, valueEnd + 1];
 };
@@ -162,7 +169,10 @@ function parseTupleNode(source: string, start: number): [VariantTypeNode, number
     let position = start;
 
     while (source[position] !== ")") {
-        if (position >= source.length) throw invalidType(source);
+        if (position >= source.length) {
+            throw invalidType(source);
+        }
+
         const [item, end] = parseNode(source, position);
         items.push(item);
         position = end;
@@ -179,12 +189,20 @@ function parseEntryNode(source: string, start: number): [VariantTypeNode, number
 
 const parseNode = (source: string, start: number): [VariantTypeNode, number] => {
     const code = source[start];
-    if (code === undefined) throw invalidType(source);
+
+    if (code === undefined) {
+        throw invalidType(source);
+    }
+
     const container = CONTAINER_PARSERS[code];
 
-    if (container !== undefined) return container(source, start + 1);
+    if (container !== undefined) {
+        return container(source, start + 1);
+    }
 
-    if (isBasicCode(code)) return [{ kind: "basic", code }, start + 1];
+    if (isBasicCode(code)) {
+        return [{ kind: "basic", code }, start + 1];
+    }
 
     throw invalidType(source);
 };
@@ -192,10 +210,16 @@ const parseNode = (source: string, start: number): [VariantTypeNode, number] => 
 const parseVariantType = (typeString: string): VariantTypeNode => {
     const cached = parsedTypes.get(typeString);
 
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+        return cached;
+    }
 
     const [node, end] = parseNode(typeString, 0);
-    if (end !== typeString.length) throw invalidType(typeString);
+
+    if (end !== typeString.length) {
+        throw invalidType(typeString);
+    }
+
     parsedTypes.set(typeString, node);
 
     return node;
@@ -223,7 +247,9 @@ const unpackDict = (
 ): Record<string, unknown> | Map<unknown, unknown> => {
     const entries = unpackChildren(variant, (entry) => unpackPair(node.key, node.value, entry)) as [unknown, unknown][];
 
-    if (!isStringKeyed(node.key)) return new Map(entries);
+    if (!isStringKeyed(node.key)) {
+        return new Map(entries);
+    }
 
     const stringEntries: [string, unknown][] = entries.map(([key, value]) => [key as string, value]);
 

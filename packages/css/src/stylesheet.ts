@@ -10,7 +10,9 @@ class StyleSheet {
     private updateScheduled = false;
 
     private ensureProvider(): Gtk.CssProvider {
-        if (this.provider) return this.provider;
+        if (this.provider) {
+            return this.provider;
+        }
 
         const provider = registerProviderForDefaultDisplay();
         this.provider = provider;
@@ -20,7 +22,9 @@ class StyleSheet {
     }
 
     private scheduleUpdate(): void {
-        if (this.updateScheduled) return;
+        if (this.updateScheduled) {
+            return;
+        }
 
         this.updateScheduled = true;
 

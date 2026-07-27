@@ -32,7 +32,10 @@ const untrackListener = (instance: object, signal: string, handler: SignalHandle
     const bySignal = listenerTable.get(instance);
     const byHandler = bySignal?.get(signal);
     byHandler?.delete(handler);
-    if (byHandler?.size === 0) bySignal?.delete(signal);
+
+    if (byHandler?.size === 0) {
+        bySignal?.delete(signal);
+    }
 };
 
 /**

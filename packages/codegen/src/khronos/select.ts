@@ -18,7 +18,9 @@ const blockApplies = (block: GlInterfaceBlock, selection: GlSelection): boolean 
 
 const addMissing = (target: Map<string, string>, names: string[], value: string): void => {
     for (const name of names) {
-        if (!target.has(name)) target.set(name, value);
+        if (!target.has(name)) {
+            target.set(name, value);
+        }
     }
 };
 
@@ -29,15 +31,23 @@ const applyRequires = (
     enums: Map<string, string>,
 ): void => {
     for (const block of feature.requires) {
-        if (!blockApplies(block, selection)) continue;
+        if (!blockApplies(block, selection)) {
+            continue;
+        }
+
         addMissing(commands, block.commands, feature.name);
         addMissing(enums, block.enums, feature.name);
     }
 };
 
 const removeBlock = (block: GlInterfaceBlock, commands: Map<string, string>, enums: Map<string, string>): void => {
-    for (const name of block.commands) commands.delete(name);
-    for (const name of block.enums) enums.delete(name);
+    for (const name of block.commands) {
+        commands.delete(name);
+    }
+
+    for (const name of block.enums) {
+        enums.delete(name);
+    }
 };
 
 const applyRemoves = (
@@ -47,7 +57,10 @@ const applyRemoves = (
     enums: Map<string, string>,
 ): void => {
     for (const block of feature.removes) {
-        if (!blockApplies(block, selection)) continue;
+        if (!blockApplies(block, selection)) {
+            continue;
+        }
+
         removeBlock(block, commands, enums);
     }
 };
@@ -59,8 +72,14 @@ const selectSubset = (registry: GlRegistry, selection: GlSelection): GlSubset =>
 
     const commands: Map<string, string> = new Map();
     const enums: Map<string, string> = new Map();
-    for (const feature of features) applyRequires(feature, selection, commands, enums);
-    for (const feature of features) applyRemoves(feature, selection, commands, enums);
+
+    for (const feature of features) {
+        applyRequires(feature, selection, commands, enums);
+    }
+
+    for (const feature of features) {
+        applyRemoves(feature, selection, commands, enums);
+    }
 
     return { commands, enums };
 };

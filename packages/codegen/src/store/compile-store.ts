@@ -30,7 +30,10 @@ const writeEnvReference = (storeDir: string): (() => void) => {
 
 const compileStore = (params: CompileStoreParams): void => {
     const fileNames = params.files.map((file) => file.fileName);
-    const removeEnvReference = params.configEnv === true ? writeEnvReference(params.storeDir) : () => {};
+
+    const removeEnvReference = params.configEnv === true
+        ? writeEnvReference(params.storeDir)
+        : () => {};
 
     try {
         compileProject({

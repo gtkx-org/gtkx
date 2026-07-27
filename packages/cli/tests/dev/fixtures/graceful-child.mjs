@@ -5,7 +5,9 @@ let exited = false;
 const interruptedCode = () => (firstSignal === "SIGINT" ? 130 : 143);
 
 const finish = (graceful) => {
-    if (exited) return;
+    if (exited) {
+        return;
+    }
 
     exited = true;
     process.exit(graceful ? 0 : interruptedCode());
@@ -36,6 +38,9 @@ const handle = (signal) => {
     finish(false);
 };
 
-for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(signal, () => handle(signal));
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+    process.on(signal, () => handle(signal));
+}
+
 setInterval(() => {}, 1 << 30);
 process.stdout.write("CHILD_READY\n");

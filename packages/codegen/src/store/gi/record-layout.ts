@@ -40,7 +40,9 @@ const computeRecordFieldSlots = (
 };
 
 const bitMask = (width: number): number => {
-    if (width >= 32) return 0xFF_FF_FF_FF;
+    if (width >= 32) {
+        return 0xFF_FF_FF_FF;
+    }
 
     return (1 << width) - 1;
 };
@@ -67,7 +69,9 @@ const layoutOfType = (
 ): FieldLayout => {
     const type = context.library.typeOf(ref);
 
-    if (type === undefined) return POINTER_LAYOUT;
+    if (type === undefined) {
+        return POINTER_LAYOUT;
+    }
 
     switch (type.kind) {
         case "primitive": {
@@ -101,7 +105,9 @@ const arrayLayout = (
     ref: Extract<GirType, { kind: "carray" }>,
     visited: Set<string>,
 ): FieldLayout => {
-    if (ref.fixedSize === undefined) return POINTER_LAYOUT;
+    if (ref.fixedSize === undefined) {
+        return POINTER_LAYOUT;
+    }
 
     const elementLayout = layoutOfType(context, ref.element, ref.elementCType, visited);
 
@@ -113,15 +119,21 @@ const layoutOfRecord = (
     resolved: Extract<EntityType, { kind: "record" }>,
     visited: Set<string>,
 ): FieldLayout => {
-    if (resolved.value.cType?.endsWith("*") === true) return POINTER_LAYOUT;
+    if (resolved.value.cType?.endsWith("*") === true) {
+        return POINTER_LAYOUT;
+    }
 
     const key = `${resolved.namespace.name}.${resolved.value.name}`;
 
-    if (visited.has(key)) return POINTER_LAYOUT;
+    if (visited.has(key)) {
+        return POINTER_LAYOUT;
+    }
 
     const cached = recordLayoutCache.get(key);
 
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+        return cached;
+    }
 
     const nextVisited = new Set(visited);
     nextVisited.add(key);
@@ -129,7 +141,9 @@ const layoutOfRecord = (
     const inputs: FieldLayoutInput[] = Array.from(resolved.value.fields, (field) =>
         fieldLayoutInput(context, field, nextVisited));
 
-    if (inputs.length === 0) return POINTER_LAYOUT;
+    if (inputs.length === 0) {
+        return POINTER_LAYOUT;
+    }
 
     const { size } = computeFieldSlots(inputs, resolved.value.isUnion);
     const align = Math.max(1, ...inputs.map((input) => input.layout.align));
@@ -146,7 +160,9 @@ const resolveAliasLayout = (
 ): FieldLayout => {
     const ref = resolved.value.target;
 
-    if (ref === undefined) return POINTER_LAYOUT;
+    if (ref === undefined) {
+        return POINTER_LAYOUT;
+    }
 
     return layoutOfType(context, ref, resolved.value.targetCType, visited);
 };

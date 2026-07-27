@@ -46,7 +46,10 @@ const renderTypesModule = (groupAliases: Map<string, string>): string => {
     const seen: Set<string> = new Set();
 
     for (const scalar of GL_SCALARS.values()) {
-        if (seen.has(scalar.tsAlias)) continue;
+        if (seen.has(scalar.tsAlias)) {
+            continue;
+        }
+
         seen.add(scalar.tsAlias);
 
         builder.appendDeclaration(
@@ -67,19 +70,26 @@ const renderTypesModule = (groupAliases: Map<string, string>): string => {
 
 const appendTypeImports = (builder: ModuleBuilder, usedTypes: Set<string>): void => {
     for (const alias of sortStrings(usedTypes)) {
-        if (TS_PRIMITIVES.has(alias)) continue;
+        if (TS_PRIMITIVES.has(alias)) {
+            continue;
+        }
+
         builder.imports.addNamed("./types.js", alias, true);
     }
 };
 
 const appendCommandBindings = (builder: ModuleBuilder, commands: RenderedCommand[]): void => {
     for (const command of commands) {
-        if (command.binding !== undefined) builder.appendBinding(command.binding, command.binding);
+        if (command.binding !== undefined) {
+            builder.appendBinding(command.binding, command.binding);
+        }
     }
 };
 
 const appendCommandDeclarations = (builder: ModuleBuilder, commands: RenderedCommand[]): void => {
-    for (const command of commands) builder.appendDeclaration(command.declaration);
+    for (const command of commands) {
+        builder.appendDeclaration(command.declaration);
+    }
 };
 
 const renderCommandsModule = (

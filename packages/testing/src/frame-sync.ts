@@ -6,7 +6,9 @@ const once = (callback: () => void): (() => void) => {
     let called = false;
 
     return () => {
-        if (called) return;
+        if (called) {
+            return;
+        }
 
         called = true;
         callback();
@@ -22,7 +24,9 @@ const runWhenSized = (widget: Gtk.Widget, finish: () => void): void => {
     }, CLOCK_STALL_FALLBACK_MS);
 
     tickId = widget.addTickCallback(() => {
-        if (widget.getWidth() === 0) return true;
+        if (widget.getWidth() === 0) {
+            return true;
+        }
 
         clearTimeout(fallback);
         finish();

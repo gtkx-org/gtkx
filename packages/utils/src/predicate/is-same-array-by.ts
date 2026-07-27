@@ -11,7 +11,9 @@
  * isSameArrayBy([{ id: 1 }], [{ id: 1 }], (x, y) => x.id === y.id); // true
  */
 function isSameArrayBy<T>(a: T[], b: T[], eq: (x: T, y: T) => boolean): boolean {
-    if (a.length !== b.length) return false;
+    if (a.length !== b.length) {
+        return false;
+    }
 
     return a.every((item, index) => eq(item, b[index] as T));
 }

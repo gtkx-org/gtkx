@@ -66,9 +66,13 @@ const isMultiline = (node: TSESTree.Node): boolean => node.loc.start.line !== no
 const isEmpty = (node: TSESTree.Node): boolean => node.type === AST_NODE_TYPES.EmptyStatement;
 
 const returnsFrom = (node: TSESTree.Node): boolean => {
-    if (node.type === AST_NODE_TYPES.ReturnStatement) return true;
+    if (node.type === AST_NODE_TYPES.ReturnStatement) {
+        return true;
+    }
 
-    if (node.type !== AST_NODE_TYPES.IfStatement) return false;
+    if (node.type !== AST_NODE_TYPES.IfStatement) {
+        return false;
+    }
 
     return returnsFrom(node.consequent) || (node.alternate !== null && returnsFrom(node.alternate));
 };
@@ -103,7 +107,11 @@ const pairsOf = (statements: TSESTree.Node[], source: SourceCode, sectioned: boo
 
     for (const [index, next] of statements.entries()) {
         const previous = statements[index - 1];
-        if (previous === undefined || isEmpty(previous) || isEmpty(next)) continue;
+
+        if (previous === undefined || isEmpty(previous) || isEmpty(next)) {
+            continue;
+        }
+
         pairs.push(pairOf(previous, next, source, sectioned));
     }
 
@@ -127,17 +135,25 @@ const needsPadding = (pair: Pair): boolean =>
     !pair.contiguous && (pair.boundary || isPadded(pair.previous) || isPadded(pair.next));
 
 const reasonOf = (pair: Pair): string => {
-    if (pair.boundary) return `${String(sectionOf(pair.next))} section`;
+    if (pair.boundary) {
+        return `${String(sectionOf(pair.next))} section`;
+    }
 
-    if (returnsFrom(pair.next) || returnsFrom(pair.previous)) return "return statement";
+    if (returnsFrom(pair.next) || returnsFrom(pair.previous)) {
+        return "return statement";
+    }
 
     return "multiline statement";
 };
 
 const violationOf = (pair: Pair, wants: number): Violation => {
-    if (wants === 0) return { messageId: "unexpectedPadding", data: {} };
+    if (wants === 0) {
+        return { messageId: "unexpectedPadding", data: {} };
+    }
 
-    if (pair.blankLines === 0) return { messageId: "missingPadding", data: { reason: reasonOf(pair) } };
+    if (pair.blankLines === 0) {
+        return { messageId: "missingPadding", data: { reason: reasonOf(pair) } };
+    }
 
     return { messageId: "extraPadding", data: { count: pair.blankLines } };
 };
@@ -145,11 +161,15 @@ const violationOf = (pair: Pair, wants: number): Violation => {
 const report = (context: TSESLint.RuleContext<MessageIds, []>, pair: Pair): void => {
     const { previous, next, anchor, blankLines } = pair;
 
-    if (anchor.loc.start.line <= previous.loc.end.line) return;
+    if (anchor.loc.start.line <= previous.loc.end.line) {
+        return;
+    }
 
     const wants = needsPadding(pair) ? 1 : 0;
 
-    if (blankLines === wants) return;
+    if (blankLines === wants) {
+        return;
+    }
 
     const loc = context.sourceCode.getFirstToken(next)?.loc ?? next.loc;
     const violation = violationOf(pair, wants);

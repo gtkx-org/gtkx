@@ -15,7 +15,9 @@ process.env.GSETTINGS_SCHEMA_DIR = existing ? `${fixturesDir}:${existing}` : fix
 process.env.GSETTINGS_BACKEND = "memory";
 
 const collectGarbage = (): void => {
-    if (globalThis.gc) globalThis.gc();
+    if (globalThis.gc) {
+        globalThis.gc();
+    }
 };
 
 afterEach(collectGarbage);

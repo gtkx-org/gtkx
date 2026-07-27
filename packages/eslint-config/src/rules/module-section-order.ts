@@ -48,7 +48,10 @@ const misplaced = (program: TSESTree.Program): Misplacement[] => {
 
     for (const statement of program.body) {
         const section = sectionOf(statement);
-        if (section === undefined) continue;
+
+        if (section === undefined) {
+            continue;
+        }
 
         if (blocks(furthest, section)) {
             found.push({ statement, section, blocker: furthest });

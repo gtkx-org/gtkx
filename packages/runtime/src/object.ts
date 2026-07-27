@@ -46,9 +46,17 @@ function newObjectWithProperties(gtype: bigint, props: Record<string, unknown>):
 
     for (const name in props) {
         const entry: unknown = props[name];
-        if (!Array.isArray(entry)) continue;
+
+        if (!Array.isArray(entry)) {
+            continue;
+        }
+
         const [descriptor, value] = entry as [Descriptor, unknown];
-        if (value === undefined) continue;
+
+        if (value === undefined) {
+            continue;
+        }
+
         names.push(name);
         values.push(toValue(descriptor, value));
     }

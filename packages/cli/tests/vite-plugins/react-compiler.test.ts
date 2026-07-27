@@ -16,7 +16,9 @@ type PluginHooks = {
 };
 
 const hookOf = <K extends keyof PluginHooks>(hook: unknown, name: K): PluginHooks[K] => {
-    if (typeof hook !== "function") throw new Error(`${name} must be a function hook`);
+    if (typeof hook !== "function") {
+        throw new TypeError(`${name} must be a function hook`);
+    }
 
     return hook as PluginHooks[K];
 };

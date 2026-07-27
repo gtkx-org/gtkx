@@ -60,13 +60,19 @@ const appendCandidateExport = (
 ): void => {
     const { targetNamespace, library, virtualNames, components } = options;
 
-    if (candidate.namespace.name !== targetNamespace.name) return;
+    if (candidate.namespace.name !== targetNamespace.name) {
+        return;
+    }
 
-    if (virtualNames.has(candidate.glibName)) return;
+    if (virtualNames.has(candidate.glibName)) {
+        return;
+    }
 
     const line = renderCandidateExport(candidate, library, collector.imports, components);
 
-    if (line === null) return;
+    if (line === null) {
+        return;
+    }
 
     collector.exportLines.push(line);
     collector.exportedNames.add(candidate.glibName);
@@ -105,7 +111,10 @@ const renderCandidateExport = (
     const component = resolveElementComponent(ancestry, components);
     imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
-    if (component !== undefined) imports.addNamed(component.module, component.export, false);
+
+    if (component !== undefined) {
+        imports.addNamed(component.module, component.export, false);
+    }
 
     return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, component)}`;
 };
@@ -118,7 +127,9 @@ const resolveElementComponent = (
     for (const name of ancestry) {
         const found = components[name];
 
-        if (found !== undefined) return found;
+        if (found !== undefined) {
+            return found;
+        }
     }
 
     return undefined;

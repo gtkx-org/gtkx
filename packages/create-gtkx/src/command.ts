@@ -68,7 +68,9 @@ const scaffoldCommand = defineCommand({
 });
 
 const parsePackageManager = (value: string | undefined): PackageManager | undefined => {
-    if (value === undefined) return undefined;
+    if (value === undefined) {
+        return undefined;
+    }
 
     if (!isKnownPackageManager(value)) {
         throw new Error(`Unknown package manager "${value}". Expected one of: ${PACKAGE_MANAGER_FLAG_DESCRIPTION}.`);

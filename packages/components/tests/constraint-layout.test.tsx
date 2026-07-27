@@ -21,7 +21,10 @@ const S = Gtk.ConstraintStrength;
 
 const requireWidget = <T,>(ref: RefObject<T | null>): T => {
     const widget = ref.current;
-    if (!widget) throw new Error("expected widget");
+
+    if (!widget) {
+        throw new Error("expected widget");
+    }
 
     return widget;
 };

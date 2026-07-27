@@ -107,7 +107,11 @@ describe("explicit top-level parenting", () => {
 
         expect(dialogRef.current).not.toBeNull();
         const root = dialogRef.current?.getRoot();
-        if (!(root instanceof Gtk.Window)) throw new Error("expected the presented dialog's root to be a window");
+
+        if (!(root instanceof Gtk.Window)) {
+            throw new TypeError("expected the presented dialog's root to be a window");
+        }
+
         expect(root.getTransientFor()).toBe(parentRef.current);
     });
 });

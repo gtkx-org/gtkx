@@ -22,7 +22,9 @@ type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; s
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
     const object = nodeObject(node);
 
-    if (object === null) return null;
+    if (object === null) {
+        return null;
+    }
 
     return { node, object, adopted: null, slot, behavior: null, attached: false };
 };
@@ -50,7 +52,9 @@ const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementB
 };
 
 const applyLazyProps = (entry: PlacedChild): void => {
-    if (entry.node.kind !== LAZY_KIND || entry.adopted === null) return;
+    if (entry.node.kind !== LAZY_KIND || entry.adopted === null) {
+        return;
+    }
 
     applyAdoptedProps(lazyTarget(entry.node, entry.adopted), {}, entry.node.props);
     entry.node.adopted = entry.adopted;
@@ -75,12 +79,16 @@ const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
 const tryAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
     const attach = behavior.attach;
 
-    if (attach === undefined) return false;
+    if (attach === undefined) {
+        return false;
+    }
 
     const context = contextFor(ctx.parent, behavior);
     const claim = attach(ctx.parent.object, ctx.entry.object, placeInfo(ctx.entry, ctx.index, ctx.sibling, context));
 
-    if (claim === undefined) return false;
+    if (claim === undefined) {
+        return false;
+    }
 
     ctx.entry.behavior = behavior;
     adoptedFrom(ctx.parent, ctx.entry, behavior, claim);
@@ -94,10 +102,14 @@ const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sib
     const ctx: AttachContext = { parent, entry, index, sibling };
 
     for (const behavior of typeInfoOf(parent.typeName).behaviors) {
-        if (tryAttach(ctx, behavior)) return;
+        if (tryAttach(ctx, behavior)) {
+            return;
+        }
     }
 
-    if (entry.slot !== DEFAULT_SLOT) setObjectSlot(parent, entry);
+    if (entry.slot !== DEFAULT_SLOT) {
+        setObjectSlot(parent, entry);
+    }
 };
 
 const detachInfo = (entry: PlacedChild, context: unknown): DetachInfo => ({
@@ -108,13 +120,17 @@ const detachInfo = (entry: PlacedChild, context: unknown): DetachInfo => ({
 });
 
 const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
-    if (!entry.attached) return;
+    if (!entry.attached) {
+        return;
+    }
 
     entry.attached = false;
     const behavior = entry.behavior;
 
     if (behavior === null) {
-        if (entry.slot !== DEFAULT_SLOT) Reflect.set(parent.object, entry.slot, null);
+        if (entry.slot !== DEFAULT_SLOT) {
+            Reflect.set(parent.object, entry.slot, null);
+        }
 
         return;
     }
@@ -123,7 +139,9 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
 };
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
-    for (const entry of entries) detachEntry(parent, entry);
+    for (const entry of entries) {
+        detachEntry(parent, entry);
+    }
 
     for (const [index, entry] of entries.entries()) {
         entry.behavior = null;
@@ -145,7 +163,10 @@ const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[
 
     const insertedBeforeEnd = index < entries.length - 1;
     const cannotReorderInPlace = entry.behavior !== null && entry.behavior.reorder === undefined;
-    if (insertedBeforeEnd && cannotReorderInPlace) rebuild(parent, entries);
+
+    if (insertedBeforeEnd && cannotReorderInPlace) {
+        rebuild(parent, entries);
+    }
 };
 
 const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[], index: number): void => {
@@ -170,7 +191,9 @@ const resolveEntry = (
     slot: string,
     node: PlaceableNode,
 ): PlacedChild | null => {
-    if (existing >= 0) return entries[existing] ?? null;
+    if (existing >= 0) {
+        return entries[existing] ?? null;
+    }
 
     return createEntry(slot, node);
 };
@@ -185,15 +208,24 @@ const placeChild = (
     const existing = entries.findIndex((entry) => entry.node === node);
     const entry = resolveEntry(entries, existing, slot, node);
 
-    if (entry === null) return;
+    if (entry === null) {
+        return;
+    }
 
     const isMove = existing !== -1;
-    if (isMove) entries.splice(existing, 1);
+
+    if (isMove) {
+        entries.splice(existing, 1);
+    }
+
     const index = positionOf(entries, before);
     entries.splice(index, 0, entry);
 
-    if (isMove) moveEntry(parent, entry, entries, index);
-    else placeNew(parent, entry, entries, index);
+    if (isMove) {
+        moveEntry(parent, entry, entries, index);
+    } else {
+        placeNew(parent, entry, entries, index);
+    }
 
     markFlush(parent);
 };
@@ -201,14 +233,22 @@ const placeChild = (
 const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): void => {
     const entries = parent.placements.get(slot);
 
-    if (entries === undefined) return;
+    if (entries === undefined) {
+        return;
+    }
 
     const index = entries.findIndex((entry) => entry.node === node);
 
-    if (index === -1) return;
+    if (index === -1) {
+        return;
+    }
 
     const [entry] = entries.splice(index, 1);
-    if (entry !== undefined) detachEntry(parent, entry);
+
+    if (entry !== undefined) {
+        detachEntry(parent, entry);
+    }
+
     markFlush(parent);
 };
 

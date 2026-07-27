@@ -14,13 +14,21 @@ const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
     context.namespace.name === "GLib" && record.glibGetType === "g_error_get_type";
 
 const generateRecord = (context: ModuleContext, record: GirRecord): void => {
-    if (!record.introspectable) return;
+    if (!record.introspectable) {
+        return;
+    }
 
-    if (record.isVtable) return;
+    if (record.isVtable) {
+        return;
+    }
 
-    if (record.name.length === 0) return;
+    if (record.name.length === 0) {
+        return;
+    }
 
-    if (isClassStructRecord(context.library, context.namespace.name, record)) return;
+    if (isClassStructRecord(context.library, context.namespace.name, record)) {
+        return;
+    }
 
     const className = record.name;
     const extendsError = isGErrorRecord(context, record);
@@ -65,7 +73,10 @@ const renderRecordMembers = (
 
     for (const slot of slots) {
         const block = renderRecordFieldAccessor(context, slot, claimedNames, record.fields);
-        if (block !== undefined) members.push(block);
+
+        if (block !== undefined) {
+            members.push(block);
+        }
     }
 
     if (extendsError) {

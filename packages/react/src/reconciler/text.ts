@@ -19,9 +19,13 @@ const TEXT_CONTENT_KINDS: Set<string> = new Set(["label", "buffer", "tag"]);
 const charLength = (text: string): number => text[Symbol.iterator]().toArray().length;
 
 const contentTextLength = (node: ContentChild): number => {
-    if (node.kind === TEXT_KIND) return charLength(node.text);
+    if (node.kind === TEXT_KIND) {
+        return charLength(node.text);
+    }
 
-    if (node.contentKind === "tag") return node.content.reduce((sum, child) => sum + contentTextLength(child), 0);
+    if (node.contentKind === "tag") {
+        return node.content.reduce((sum, child) => sum + contentTextLength(child), 0);
+    }
 
     return node.contentKind === "anchor" ? 1 : 0;
 };
@@ -30,9 +34,13 @@ const isTagElement = (node: ContentChild): node is ElementNode =>
     node.kind === ELEMENT_KIND && node.contentKind === "tag";
 
 const stepOffset = (node: ContentChild, target: TextNode, offset: number): OffsetResult => {
-    if (node === target) return { found: true, offset };
+    if (node === target) {
+        return { found: true, offset };
+    }
 
-    if (isTagElement(node)) return offsetOf(node.content, target, offset);
+    if (isTagElement(node)) {
+        return offsetOf(node.content, target, offset);
+    }
 
     return { found: false, offset: offset + contentTextLength(node) };
 };
@@ -43,7 +51,9 @@ const offsetOf = (nodes: ContentChild[], target: TextNode, start: number): Offse
     for (const node of nodes) {
         const step = stepOffset(node, target, offset);
 
-        if (step.found) return step;
+        if (step.found) {
+            return step;
+        }
 
         offset = step.offset;
     }
@@ -56,7 +66,10 @@ const enclosingTagNodes = (node: TextNode): ElementNode[] => {
     let current: ParentNode | null = node.parent;
 
     while (current !== null && current.kind === ELEMENT_KIND) {
-        if (current.contentKind === "tag") nodes.push(current);
+        if (current.contentKind === "tag") {
+            nodes.push(current);
+        }
+
         current = current.parent;
     }
 
@@ -82,7 +95,9 @@ const rootHostOf = (node: ElementNode): ElementNode | null => {
     let current: ElementNode | null = node;
 
     while (current !== null) {
-        if (isRootHost(current)) return current;
+        if (isRootHost(current)) {
+            return current;
+        }
 
         current = parentElement(current);
     }
@@ -92,7 +107,10 @@ const rootHostOf = (node: ElementNode): ElementNode | null => {
 
 const markTextDirty = (host: ElementNode): void => {
     const root = rootHostOf(host);
-    if (root !== null) dirtyHosts.add(root);
+
+    if (root !== null) {
+        dirtyHosts.add(root);
+    }
 };
 
 const enclosingHost = (node: TextNode): ElementNode | null => mapElementParent(node.parent, rootHostOf);
@@ -100,7 +118,10 @@ const enclosingHost = (node: TextNode): ElementNode | null => mapElementParent(n
 const addContent = (host: ElementNode, child: ContentChild, before: ContentChild | null): void => {
     const content = host.content;
     const existing = content.indexOf(child);
-    if (existing !== -1) content.splice(existing, 1);
+
+    if (existing !== -1) {
+        content.splice(existing, 1);
+    }
 
     content.splice(
         indexBeforeOrEnd(content, before, (item, target) => item === target),
@@ -114,12 +135,18 @@ const addContent = (host: ElementNode, child: ContentChild, before: ContentChild
 
 const removeContent = (host: ElementNode, child: ContentChild): void => {
     const index = host.content.indexOf(child);
-    if (index !== -1) host.content.splice(index, 1);
+
+    if (index !== -1) {
+        host.content.splice(index, 1);
+    }
+
     markTextDirty(host);
 };
 
 const validateContentMix = (node: ElementNode, props: Props): void => {
-    if (node.content.length === 0) return;
+    if (node.content.length === 0) {
+        return;
+    }
 
     if (node.contentKind === "label" && props.label !== undefined) {
         throw new Error("<GtkLabel> cannot mix a `label` prop with text children; use one or the other");
@@ -132,22 +159,36 @@ const validateContentMix = (node: ElementNode, props: Props): void => {
 
 const detachTag = (tag: Gtk.TextTag, table: Gtk.TextTagTable, name: string | null): void => {
     const previous = tagTables.get(tag);
-    if (previous !== undefined && previous !== table) previous.remove(tag);
 
-    if (name === null) return;
+    if (previous !== undefined && previous !== table) {
+        previous.remove(tag);
+    }
+
+    if (name === null) {
+        return;
+    }
 
     const existing = table.lookup(name);
-    if (existing !== null && existing !== tag) table.remove(existing);
+
+    if (existing !== null && existing !== tag) {
+        table.remove(existing);
+    }
 };
 
 const ensureTag = (table: Gtk.TextTagTable, node: ElementNode): void => {
     const tag = node.object;
 
-    if (!(tag instanceof Gtk.TextTag) || tagTables.get(tag) === table) return;
+    if (!(tag instanceof Gtk.TextTag) || tagTables.get(tag) === table) {
+        return;
+    }
 
     const name = typeof node.props.name === "string" ? node.props.name : null;
     detachTag(tag, table, name);
-    if (name === null || table.lookup(name) !== tag) table.add(tag);
+
+    if (name === null || table.lookup(name) !== tag) {
+        table.add(tag);
+    }
+
     tagTables.set(tag, table);
 };
 
@@ -172,54 +213,78 @@ const insertAnchor = (build: BufferBuild, node: ElementNode): void => {
 };
 
 const insertElement = (build: BufferBuild, node: ElementNode): void => {
-    if (node.contentKind === "tag") insertTag(build, node);
-    else if (node.contentKind === "anchor") insertAnchor(build, node);
-    else build.marks.push({ node, offset: build.buffer.getCharCount() });
+    if (node.contentKind === "tag") {
+        insertTag(build, node);
+    } else if (node.contentKind === "anchor") {
+        insertAnchor(build, node);
+    } else {
+        build.marks.push({ node, offset: build.buffer.getCharCount() });
+    }
 };
 
 const insertContent = (build: BufferBuild, nodes: ContentChild[]): void => {
     for (const child of nodes) {
-        if (child.kind === TEXT_KIND) build.buffer.insert(build.buffer.getEndIter(), child.text, -1);
-        else insertElement(build, child);
+        if (child.kind === TEXT_KIND) {
+            build.buffer.insert(build.buffer.getEndIter(), child.text, -1);
+        } else {
+            insertElement(build, child);
+        }
     }
 };
 
 const placeMark = (buffer: Gtk.TextBuffer, node: ElementNode, offset: number): void => {
     const mark = node.object;
 
-    if (!(mark instanceof Gtk.TextMark)) return;
+    if (!(mark instanceof Gtk.TextMark)) {
+        return;
+    }
 
     const iter = buffer.getIterAtOffset(offset);
 
-    if (mark.getBuffer() === null) buffer.addMark(mark, iter);
-    else buffer.moveMark(mark, iter);
+    if (mark.getBuffer() === null) {
+        buffer.addMark(mark, iter);
+    } else {
+        buffer.moveMark(mark, iter);
+    }
 };
 
 const rebuildBuffer = (node: ElementNode): void => {
     const buffer = node.object;
 
-    if (node.props.text !== undefined || !(buffer instanceof Gtk.TextBuffer)) return;
+    if (node.props.text !== undefined || !(buffer instanceof Gtk.TextBuffer)) {
+        return;
+    }
 
     buffer.setText("", -1);
     const build: BufferBuild = { buffer, view: node.bufferView, marks: [] };
     insertContent(build, node.content);
-    for (const mark of build.marks) placeMark(buffer, mark.node, mark.offset);
+
+    for (const mark of build.marks) {
+        placeMark(buffer, mark.node, mark.offset);
+    }
 };
 
 const rebuildLabel = (node: ElementNode): void => {
-    if (node.props.label !== undefined) return;
+    if (node.props.label !== undefined) {
+        return;
+    }
 
     const label = node.object;
 
-    if (!(label instanceof Gtk.Label)) return;
+    if (!(label instanceof Gtk.Label)) {
+        return;
+    }
 
     label.setLabel(node.content.map((child) => (child.kind === TEXT_KIND ? child.text : "")).join(""));
 };
 
 const flushTextHosts = (): void => {
     drain(dirtyHosts, (host) => {
-        if (host.contentKind === "label") rebuildLabel(host);
-        else if (host.contentKind === "buffer") rebuildBuffer(host);
+        if (host.contentKind === "label") {
+            rebuildLabel(host);
+        } else if (host.contentKind === "buffer") {
+            rebuildBuffer(host);
+        }
     });
 };
 
@@ -231,18 +296,25 @@ const applyEnclosingTags = (
 ): void => {
     for (const tagNode of enclosingTagNodes(node)) {
         ensureTag(buffer.getTagTable(), tagNode);
-        if (tagNode.object instanceof Gtk.TextTag) buffer.applyTag(tagNode.object, startIter, endIter);
+
+        if (tagNode.object instanceof Gtk.TextTag) {
+            buffer.applyTag(tagNode.object, startIter, endIter);
+        }
     }
 };
 
 const surgicalTextUpdate = (host: ElementNode, node: TextNode, oldText: string, newText: string): boolean => {
     const buffer = host.object;
 
-    if (host.contentKind !== "buffer" || !(buffer instanceof Gtk.TextBuffer)) return false;
+    if (host.contentKind !== "buffer" || !(buffer instanceof Gtk.TextBuffer)) {
+        return false;
+    }
 
     const located = offsetOf(host.content, node, 0);
 
-    if (!located.found) return false;
+    if (!located.found) {
+        return false;
+    }
 
     const start = located.offset;
     buffer.delete(buffer.getIterAtOffset(start), buffer.getIterAtOffset(start + charLength(oldText)));

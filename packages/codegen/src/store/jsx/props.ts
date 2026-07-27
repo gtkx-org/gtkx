@@ -83,7 +83,10 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
     }
 
     const settable = isConstructableProperty(property);
-    if (settable) state.propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
+
+    if (settable) {
+        state.propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
+    }
 
     state.propLines.push(
         `${settable ? "" : doc}onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
@@ -91,11 +94,15 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
 };
 
 const acceptCollectorProperty = (state: PropCollectorState, property: GirProperty): void => {
-    if (!property.introspectable) return;
+    if (!property.introspectable) {
+        return;
+    }
 
     const jsName = toCamelIdentifier(property.name);
 
-    if (state.seen.has(jsName)) return;
+    if (state.seen.has(jsName)) {
+        return;
+    }
 
     state.seen.add(jsName);
     appendPropertyLines(state, property, jsName);
@@ -104,7 +111,9 @@ const acceptCollectorProperty = (state: PropCollectorState, property: GirPropert
 const acceptCollectorSignal = (state: PropCollectorState, signal: GirCallable): void => {
     const handlerName = signalHandlerName(signal.name);
 
-    if (state.seen.has(handlerName)) return;
+    if (state.seen.has(handlerName)) {
+        return;
+    }
 
     state.seen.add(handlerName);
     const signature = renderSignalHandler({ types: state.types, signal, selfType: "Self" });
@@ -152,8 +161,14 @@ const buildElementPropsEntries = (options: IntrinsicElementPropsOptions): Intrin
 const buildInterfacePropsEntries = (options: InterfacePropsOptions): IntrinsicElementPropsEntries => {
     const { library, iface, namespace } = options;
     const collector = createPropEntryCollector({ library, klass: iface, namespace });
-    for (const property of iface.properties) collector.acceptProperty(property);
-    for (const signal of iface.signals) collector.acceptSignal(signal);
+
+    for (const property of iface.properties) {
+        collector.acceptProperty(property);
+    }
+
+    for (const signal of iface.signals) {
+        collector.acceptSignal(signal);
+    }
 
     return { propLines: collector.propLines, imports: collector.imports, objectPropNames: collector.objectPropNames };
 };
@@ -162,8 +177,13 @@ const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => 
     const { library, klass, namespace, isIntrinsicElementAncestor, acceptProperty, acceptSignal } = walk;
 
     const visitMembers = (memberClass: GirClass): void => {
-        for (const property of memberClass.properties) acceptProperty(property);
-        for (const signal of memberClass.signals) acceptSignal(signal);
+        for (const property of memberClass.properties) {
+            acceptProperty(property);
+        }
+
+        for (const signal of memberClass.signals) {
+            acceptSignal(signal);
+        }
     };
 
     const ancestry = { library, namespace };
@@ -172,21 +192,31 @@ const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => 
 };
 
 const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boolean => {
-    if (ref === undefined) return false;
+    if (ref === undefined) {
+        return false;
+    }
 
     const resolved = library.typeOf(ref);
 
-    if (resolved?.kind === "interface") return true;
+    if (resolved?.kind === "interface") {
+        return true;
+    }
 
-    if (resolved?.kind !== "class") return false;
+    if (resolved?.kind !== "class") {
+        return false;
+    }
 
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
 
 const isObjectProp = (owner: IntrinsicElementScope, property: GirProperty, jsName: string): boolean => {
-    if (!property.writable || property.constructOnly) return false;
+    if (!property.writable || property.constructOnly) {
+        return false;
+    }
 
-    if (!resolvesToGObjectType(owner.library, property.type)) return false;
+    if (!resolvesToGObjectType(owner.library, property.type)) {
+        return false;
+    }
 
     if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {
         return false;

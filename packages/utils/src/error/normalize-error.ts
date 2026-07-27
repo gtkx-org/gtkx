@@ -12,7 +12,9 @@ import { errorMessage } from "./error-message.js";
  * normalizeError("boom"); // Error: boom
  */
 function normalizeError(error: unknown): Error {
-    if (Error.isError(error)) return error;
+    if (Error.isError(error)) {
+        return error;
+    }
 
     return Object.assign(new Error(errorMessage(error)), isErrorLike(error) ? error : {});
 }

@@ -6,7 +6,10 @@ import { createRef, useLayoutEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const adjustCommittedLabel = (label: Gtk.Label | null): void => {
-    if (!label) throw new Error("expected the committed label ref");
+    if (!label) {
+        throw new Error("expected the committed label ref");
+    }
+
     label.setLabel(`${label.getLabel()}-adjusted`);
 };
 

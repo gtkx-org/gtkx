@@ -35,12 +35,16 @@ function* ancestorChain(library: Library, klass: GirClass, namespaceName: string
     while (current !== undefined) {
         const key = `${current.namespaceName}.${current.klass.name}`;
 
-        if (visited.has(key)) return;
+        if (visited.has(key)) {
+            return;
+        }
 
         visited.add(key);
         yield current;
 
-        if (current.klass.parent === undefined) return;
+        if (current.klass.parent === undefined) {
+            return;
+        }
 
         current = resolveClassOrInterface(library, current.namespaceName, current.klass.parent);
     }

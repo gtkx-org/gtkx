@@ -237,7 +237,9 @@ const renderTwoItemListBox = async (selectionMode?: Gtk.SelectionMode): Promise<
 };
 
 const selectAll = (widget: Gtk.Widget): void => {
-    if (widget instanceof Gtk.Editable) widget.selectRegion(0, -1);
+    if (widget instanceof Gtk.Editable) {
+        widget.selectRegion(0, -1);
+    }
 };
 
 describe("userEvent clipboard", () => {

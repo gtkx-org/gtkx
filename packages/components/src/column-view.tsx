@@ -50,16 +50,22 @@ const columnById = (view: Gtk.ColumnView, id: string): Gtk.ColumnViewColumn | nu
     for (let index = 0; index < columns.getNItems(); index++) {
         const column = columns.getItem(index);
 
-        if (column instanceof Gtk.ColumnViewColumn && column.getId() === id) return column;
+        if (column instanceof Gtk.ColumnViewColumn && column.getId() === id) {
+            return column;
+        }
     }
 
     return null;
 };
 
 const sortTargetFor = (view: Gtk.ColumnView | null, sortColumn: string | null | undefined): SortTarget | null => {
-    if (view === null || sortColumn === undefined) return null;
+    if (view === null || sortColumn === undefined) {
+        return null;
+    }
 
-    if (sortColumn === null) return { view, column: null };
+    if (sortColumn === null) {
+        return { view, column: null };
+    }
 
     const column = columnById(view, sortColumn);
 
@@ -86,7 +92,9 @@ const emitSortChanged = (
     sorting: { current: boolean },
     sort: SortProps,
 ): void => {
-    if (sorter === null || sorting.current) return;
+    if (sorter === null || sorting.current) {
+        return;
+    }
 
     sort.onSortChanged?.(sorter.getPrimarySortColumn()?.getId() ?? null, sorter.getPrimarySortOrder());
 };
@@ -99,7 +107,9 @@ const syncSort = (
 ): void => {
     const target = sortTargetFor(view, sortColumn);
 
-    if (target === null) return;
+    if (target === null) {
+        return;
+    }
 
     applySort(sorting, target.view, target.column, sortOrder);
 };
@@ -142,7 +152,9 @@ const columnItem = (
 ): ReactNode => {
     const column = record.slot === null ? undefined : byId.get(record.slot);
 
-    if (column === undefined) return null;
+    if (column === undefined) {
+        return null;
+    }
 
     const args = renderItemArgs(record, options);
 

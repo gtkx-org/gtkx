@@ -10,7 +10,9 @@ class ModuleBuilder {
 
     appendBinding(code: string, name?: string): void {
         if (name !== undefined) {
-            if (this.bindingNames.has(name)) return;
+            if (this.bindingNames.has(name)) {
+                return;
+            }
 
             this.bindingNames.add(name);
         }
@@ -21,7 +23,9 @@ class ModuleBuilder {
     hoistDescriptor(expression: string): string {
         const existing = this.hoistedDescriptors.get(expression);
 
-        if (existing !== undefined) return existing;
+        if (existing !== undefined) {
+            return existing;
+        }
 
         const name = `_desc${this.hoistedDescriptors.size}`;
         this.hoistedDescriptors.set(expression, name);
@@ -41,10 +45,22 @@ class ModuleBuilder {
     toSource(): string {
         const sections: string[] = [];
         const importsBlock = this.imports.toSource();
-        if (importsBlock.length > 0) sections.push(importsBlock.trimEnd());
-        if (this.declarations.length > 0) sections.push(this.declarations.join("\n\n"));
-        if (this.bindings.length > 0) sections.push(this.bindings.join("\n\n"));
-        if (this.registrations.length > 0) sections.push(this.registrations.join("\n\n"));
+
+        if (importsBlock.length > 0) {
+            sections.push(importsBlock.trimEnd());
+        }
+
+        if (this.declarations.length > 0) {
+            sections.push(this.declarations.join("\n\n"));
+        }
+
+        if (this.bindings.length > 0) {
+            sections.push(this.bindings.join("\n\n"));
+        }
+
+        if (this.registrations.length > 0) {
+            sections.push(this.registrations.join("\n\n"));
+        }
 
         return `${sections.join("\n\n")}\n`;
     }

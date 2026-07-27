@@ -38,7 +38,9 @@ const makeSuggestion = (queryName: Method, variant: Variant, argsText: string): 
 const roleSuggestion = (widget: Gtk.Widget, variant: Variant): Suggestion | undefined => {
     const role = widget.getAccessibleRole();
 
-    if (role === Gtk.AccessibleRole.NONE || role === Gtk.AccessibleRole.GENERIC) return undefined;
+    if (role === Gtk.AccessibleRole.NONE || role === Gtk.AccessibleRole.GENERIC) {
+        return undefined;
+    }
 
     const roleText = `Gtk.AccessibleRole.${formatRole(role).toUpperCase()}`;
     const name = getWidgetAccessibleName(widget);
@@ -51,7 +53,9 @@ const roleSuggestion = (widget: Gtk.Widget, variant: Variant): Suggestion | unde
 };
 
 const textSuggestion = (queryName: Method, variant: Variant, value: string | null): Suggestion | undefined => {
-    if (value === null) return undefined;
+    if (value === null) {
+        return undefined;
+    }
 
     return makeSuggestion(queryName, variant, `'${value}'`);
 };
@@ -87,7 +91,9 @@ const getSuggestedQuery = (
     for (const candidate of priority) {
         const suggestion = builders[candidate]();
 
-        if (suggestion) return suggestion;
+        if (suggestion) {
+            return suggestion;
+        }
     }
 
     return undefined;

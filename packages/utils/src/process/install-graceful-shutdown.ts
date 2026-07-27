@@ -37,7 +37,9 @@ const clearTimers = (state: ShutdownState): void => {
 };
 
 const finish = (state: ShutdownState, signal: NodeJS.Signals, graceful: boolean): void => {
-    if (state.exited) return;
+    if (state.exited) {
+        return;
+    }
 
     state.exited = true;
     clearTimers(state);
@@ -88,7 +90,9 @@ const handle = (state: ShutdownState, signal: NodeJS.Signals): void => {
         return;
     }
 
-    if (state.coalescing) return;
+    if (state.coalescing) {
+        return;
+    }
 
     state.options.onForce?.();
     finish(state, signal, false);

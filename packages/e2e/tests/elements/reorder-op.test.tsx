@@ -13,7 +13,10 @@ const carouselLabels = (carousel: Adw.Carousel): string[] => {
 
     for (let index = 0; index < carousel.getNPages(); index += 1) {
         const page = carousel.getNthPage(index);
-        if (page instanceof Gtk.Label) labels.push(page.getText());
+
+        if (page instanceof Gtk.Label) {
+            labels.push(page.getText());
+        }
     }
 
     return labels;

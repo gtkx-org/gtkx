@@ -51,7 +51,10 @@ const rowTexts = (container: Gtk.ListView | null): (string | null)[] =>
 
 const listRowByName = (name: string): Gtk.TreeListRow => {
     const row = expanderByName(name).getListRow();
-    if (!row) throw new Error("Expected row to exist");
+
+    if (!row) {
+        throw new Error("Expected row to exist");
+    }
 
     return row;
 };
@@ -794,7 +797,11 @@ describe("render - ListView (tree) (23)", () => {
             const expander = expanderByName("Parent");
             const child = expander.getChild();
             expect(child).toBeInstanceOf(Gtk.Label);
-            if (!(child instanceof Gtk.Label)) throw new Error("Expected the expander child to be a label");
+
+            if (!(child instanceof Gtk.Label)) {
+                throw new TypeError("Expected the expander child to be a label");
+            }
+
             expect(getWidgetNodeText(child)).toBe("Parent");
             expectNoBoxBetween(child, ref.current);
         });
@@ -862,7 +869,11 @@ describe("render - ListView (tree) (26)", () => {
             await waitFor(() => {
                 const model = ref.current.getModel();
                 expect(model).toBeInstanceOf(Gtk.SingleSelection);
-                if (!(model instanceof Gtk.SingleSelection)) throw new Error("Expected a single selection model");
+
+                if (!(model instanceof Gtk.SingleSelection)) {
+                    throw new TypeError("Expected a single selection model");
+                }
+
                 expect(model.isSelected(2)).toBe(true);
                 expect(model.getSelection().getSize()).toBe(1n);
             });

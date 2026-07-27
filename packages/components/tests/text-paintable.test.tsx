@@ -13,7 +13,9 @@ const usePaintable = (icon = "image-x-generic-symbolic"): Gtk.IconPaintable | nu
     return useMemo(() => {
         const display = Gdk.Display.getDefault();
 
-        if (!display) return null;
+        if (!display) {
+            return null;
+        }
 
         const theme = Gtk.IconTheme.getForDisplay(display);
 
@@ -58,7 +60,9 @@ const countPaintables = (buffer: Gtk.TextBuffer): number => {
     let count = 0;
 
     do {
-        if (iter.getPaintable()) count++;
+        if (iter.getPaintable()) {
+            count++;
+        }
     } while (iter.forwardChar());
 
     return count;
@@ -68,7 +72,10 @@ type InsertedCall = { buffer: Gtk.TextBuffer; mark: Gtk.TextMark };
 
 const requireCall = (calls: InsertedCall[], index: number): InsertedCall => {
     const call = calls[index];
-    if (!call) throw new Error(`Expected an onInserted call at index ${index}`);
+
+    if (!call) {
+        throw new Error(`Expected an onInserted call at index ${index}`);
+    }
 
     return call;
 };

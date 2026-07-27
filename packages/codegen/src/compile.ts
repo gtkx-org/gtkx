@@ -59,7 +59,9 @@ const codegenModules = (): string => {
 const linkToolingModules = (projectDir: string): (() => void) => {
     const link = join(projectDir, "node_modules");
 
-    if (existsSync(link)) return () => {};
+    if (existsSync(link)) {
+        return () => {};
+    }
 
     symlinkSync(codegenModules(), link, "junction");
 
@@ -95,15 +97,21 @@ const isProjectFile = (rel: string): boolean =>
 const parseDiagnosticLine = (raw: string, projectDir: string): ProjectDiagnostic | undefined => {
     const match = DIAGNOSTIC_LINE.exec(raw);
 
-    if (match === null) return undefined;
+    if (match === null) {
+        return undefined;
+    }
 
     const [, filePart, line, column, code, message] = match;
 
-    if (filePart === undefined || line === undefined || column === undefined || code === undefined) return undefined;
+    if (filePart === undefined || line === undefined || column === undefined || code === undefined) {
+        return undefined;
+    }
 
     const file = resolve(projectDir, filePart);
 
-    if (!isProjectFile(relative(projectDir, file))) return undefined;
+    if (!isProjectFile(relative(projectDir, file))) {
+        return undefined;
+    }
 
     return { file, line, column, code, message: (message ?? "").trim() };
 };
@@ -113,7 +121,10 @@ const parseDiagnostics = (output: string, projectDir: string): ProjectDiagnostic
 
     for (const raw of output.split(/\r?\n/)) {
         const diagnostic = parseDiagnosticLine(raw, projectDir);
-        if (diagnostic !== undefined) diagnostics.push(diagnostic);
+
+        if (diagnostic !== undefined) {
+            diagnostics.push(diagnostic);
+        }
     }
 
     return diagnostics;

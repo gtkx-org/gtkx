@@ -14,7 +14,11 @@ const interfaceEntries = (context: ModuleContext, klass: GirClass): string[] => 
 
     for (const { owner, property } of collectInterfaceProperties(context, klass)) {
         const accessor = resolveOwnerAccessor(context, property, owner.methods);
-        if (!accessor?.hasGetter) continue;
+
+        if (!accessor?.hasGetter) {
+            continue;
+        }
+
         entries.push(propertyEntry(accessor));
     }
 

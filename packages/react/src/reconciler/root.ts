@@ -115,7 +115,9 @@ const createRoot = (container: Container = rootElement): Root => {
 
 /** Unmounts every active render root and returns `true`. */
 const quit = (): true => {
-    for (const container of activeRoots) unmountContainer(container);
+    for (const container of activeRoots) {
+        unmountContainer(container);
+    }
 
     return true;
 };

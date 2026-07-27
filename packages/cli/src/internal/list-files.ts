@@ -7,7 +7,9 @@ type ListedFile = {
 };
 
 const listFilesRecursive = (dir: string, predicate?: (name: string) => boolean): ListedFile[] => {
-    if (!existsSync(dir)) return [];
+    if (!existsSync(dir)) {
+        return [];
+    }
 
     return readdirSync(dir, { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile() && (predicate === undefined || predicate(entry.name)))

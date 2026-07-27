@@ -24,7 +24,9 @@ const renderRecordConstructorPropsInterface = (
 ): string => {
     const head = `export interface ${className}ConstructorProps`;
 
-    if (isOpaque(record)) return renderBracedOrEmpty(head, "");
+    if (isOpaque(record)) {
+        return renderBracedOrEmpty(head, "");
+    }
 
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
@@ -50,7 +52,9 @@ const renderFieldWrites = (context: ModuleContext, slots: RecordFieldSlot[]): st
     const statements: string[] = [];
 
     for (const entry of slots) {
-        if (isWritableFieldSlot(context, entry)) statements.push(renderFieldWrite(context, entry));
+        if (isWritableFieldSlot(context, entry)) {
+            statements.push(renderFieldWrite(context, entry));
+        }
     }
 
     return statements;
@@ -64,11 +68,15 @@ const renderRecordConstructor = (
 ): string => {
     const superCall = extendsError ? ["super();"] : [];
 
-    if (isOpaque(record)) return renderOpaqueConstructor(className, superCall);
+    if (isOpaque(record)) {
+        return renderOpaqueConstructor(className, superCall);
+    }
 
     const { slots, size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
-    if (size === 0) return renderEmptyConstructor(className, extendsError);
+    if (size === 0) {
+        return renderEmptyConstructor(className, extendsError);
+    }
 
     context.addRuntimeImport("alloc");
     context.addRuntimeImport("setHandle");

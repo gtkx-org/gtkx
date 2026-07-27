@@ -56,7 +56,11 @@ describe("render - layoutManager prop lifecycle", () => {
         const boxRef = createRef<Gtk.Box>();
         const { rerender } = await render(<SpacedBox boxRef={boxRef} spacing={4} />);
         const box = boxRef.current;
-        if (box === null) throw new Error("expected the box ref to be assigned");
+
+        if (box === null) {
+            throw new Error("expected the box ref to be assigned");
+        }
+
         expect((box.getLayoutManager() as Gtk.BoxLayout).getSpacing()).toBe(4);
         await rerender(<SpacedBox boxRef={boxRef} spacing={20} />);
         expect((box.getLayoutManager() as Gtk.BoxLayout).getSpacing()).toBe(20);

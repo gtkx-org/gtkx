@@ -68,11 +68,15 @@ function createGtkxVersion(): string {
 function publishableName(entry: string): string | undefined {
     const manifestPath = join(PACKAGES_DIR, entry, "package.json");
 
-    if (!existsSync(manifestPath)) return undefined;
+    if (!existsSync(manifestPath)) {
+        return undefined;
+    }
 
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
 
-    if (manifest.private === true) return undefined;
+    if (manifest.private === true) {
+        return undefined;
+    }
 
     return typeof manifest.name === "string" ? manifest.name : undefined;
 }
@@ -169,7 +173,10 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
         "--vitest",
     ];
 
-    if (!variant.typescript) scaffoldArgs.push("--no-typescript");
+    if (!variant.typescript) {
+        scaffoldArgs.push("--no-typescript");
+    }
+
     await runAsync("npm", scaffoldArgs, { cwd: consumerRoot, env });
     const appDir = join(consumerRoot, variant.appName);
     await runAsync("npm", ["run", "build"], { cwd: appDir, env });

@@ -78,7 +78,9 @@ const glibLabel = (context: ElementPageContext, glibName: string): string => {
 const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): string[] => {
     const ancestors = [...ancestorChain(context.library, entry.klass, entry.namespace.name)].slice(1).toReversed();
 
-    if (ancestors.length === 0) return [];
+    if (ancestors.length === 0) {
+        return [];
+    }
 
     const parts = ancestors.map((ancestor) => {
         const glib = glibNameOf(ancestor.klass);
@@ -127,20 +129,36 @@ const propertyEntry = (
     const baseType = renderDocsType(context.library, property.type, false);
     const type = object ? `${baseType} | ReactElement` : baseType;
     const meta: string[] = [`\`${type}\``];
-    if (property.defaultValue !== undefined) meta.push(`default \`${docsDefaultValue(property.defaultValue)}\``);
-    if (property.constructOnly) meta.push("construct-only");
-    if (!isConstructableProperty(property)) meta.push(`read-only, observe with \`onNotify${upperFirst(jsName)}\``);
-    if (owner.origin !== undefined) meta.push(`from \`${owner.origin}\``);
+
+    if (property.defaultValue !== undefined) {
+        meta.push(`default \`${docsDefaultValue(property.defaultValue)}\``);
+    }
+
+    if (property.constructOnly) {
+        meta.push("construct-only");
+    }
+
+    if (!isConstructableProperty(property)) {
+        meta.push(`read-only, observe with \`onNotify${upperFirst(jsName)}\``);
+    }
+
+    if (owner.origin !== undefined) {
+        meta.push(`from \`${owner.origin}\``);
+    }
 
     return { name: jsName, meta: meta.join(" · "), doc: docMarkdown(property.doc) };
 };
 
 const propJsName = (property: GirProperty, seen: Set<string>): string | undefined => {
-    if (!property.introspectable) return undefined;
+    if (!property.introspectable) {
+        return undefined;
+    }
 
     const jsName = toCamelIdentifier(property.name);
 
-    if (seen.has(jsName)) return undefined;
+    if (seen.has(jsName)) {
+        return undefined;
+    }
 
     seen.add(jsName);
 
@@ -152,7 +170,10 @@ const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen:
 
     for (const property of owner.klass.properties) {
         const jsName = propJsName(property, seen);
-        if (jsName !== undefined) entries.push(propertyEntry(context, owner, property, jsName));
+
+        if (jsName !== undefined) {
+            entries.push(propertyEntry(context, owner, property, jsName));
+        }
     }
 
     return entries;
@@ -178,7 +199,9 @@ const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfTy
         "Props inherited from ancestor elements are documented on their own pages.",
     ].join(" ");
 
-    if (entries.length === 0) return ["## Props", intro];
+    if (entries.length === 0) {
+        return ["## Props", intro];
+    }
 
     const sorted = sortStringsBy(entries, (item) => item.name);
 
@@ -195,7 +218,11 @@ const ownerSignalEntries = (
 
     for (const signal of owner.klass.signals) {
         const name = signalHandlerName(signal.name);
-        if (seen.has(name)) continue;
+
+        if (seen.has(name)) {
+            continue;
+        }
+
         seen.add(name);
 
         entries.push({
@@ -217,7 +244,9 @@ const signalsSection = (entry: GlibNamedClass, context: ElementPageContext, self
         entries.push(...ownerSignalEntries(context, owner, selfType, seen));
     }
 
-    if (entries.length === 0) return [];
+    if (entries.length === 0) {
+        return [];
+    }
 
     return ["## Signals", ...originSignatureBlocks(entries)];
 };

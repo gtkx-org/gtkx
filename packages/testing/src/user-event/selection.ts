@@ -47,7 +47,9 @@ const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void =>
 
     const [selection] = valueArray;
 
-    if (selection === undefined) return;
+    if (selection === undefined) {
+        return;
+    }
 
     if (widget instanceof Gtk.DropDown) {
         widget.setSelected(selection);
@@ -68,7 +70,11 @@ const unselectListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => 
 const applyListBoxRows = (listBox: Gtk.ListBox, valueArray: number[], apply: ListBoxRowAction): void => {
     for (const value of valueArray) {
         const row = listBox.getRowAtIndex(value);
-        if (!row) continue;
+
+        if (!row) {
+            continue;
+        }
+
         apply(listBox, row);
     }
 };

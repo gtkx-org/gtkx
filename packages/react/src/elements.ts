@@ -216,7 +216,9 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     ),
                 ],
                 remove: (layout, _item, constraints) => {
-                    for (const constraint of constraints) layout.removeConstraint(constraint);
+                    for (const constraint of constraints) {
+                        layout.removeConstraint(constraint);
+                    }
                 },
             }),
         ],
@@ -325,7 +327,10 @@ function layoutChild(parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | nu
 
 const buildMenu = (items: MenuItem[]): Gio.Menu => {
     const menu = Gio.Menu.new();
-    for (const item of items) appendMenuItem(menu, item);
+
+    for (const item of items) {
+        appendMenuItem(menu, item);
+    }
 
     return menu;
 };

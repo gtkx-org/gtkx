@@ -60,7 +60,10 @@ const resolveDirectInterfaces = (
 
     for (const implementName of klass.implements) {
         const iface = resolveImplementedInterface(context, implementName, defaultNamespace);
-        if (iface !== undefined) interfaces.push(iface);
+
+        if (iface !== undefined) {
+            interfaces.push(iface);
+        }
     }
 
     return interfaces;
@@ -69,9 +72,13 @@ const resolveDirectInterfaces = (
 const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
     const resolved = context.library.resolveType(context.namespace.name, name);
 
-    if (resolved === undefined) return undefined;
+    if (resolved === undefined) {
+        return undefined;
+    }
 
-    if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
+    if (resolved.kind !== "interface" && resolved.kind !== "class") {
+        return undefined;
+    }
 
     return context.qualify(resolved.namespace.name, pascalCase(resolved.value.name));
 };
@@ -90,7 +97,10 @@ const forEachAncestor = (
             continue;
         }
 
-        if (stop(ancestor.klass)) break;
+        if (stop(ancestor.klass)) {
+            break;
+        }
+
         visit(ancestor, resolveDirectInterfaces(context, ancestor.klass, ancestor.namespaceName));
     }
 };
@@ -100,7 +110,9 @@ const visitInterfaceProperties = (
     visit: (owner: GirClass, property: GirProperty) => void,
 ): void => {
     for (const iface of interfaces) {
-        for (const property of iface.klass.properties) visit(iface.klass, property);
+        for (const property of iface.klass.properties) {
+            visit(iface.klass, property);
+        }
     }
 };
 
@@ -110,14 +122,21 @@ const forEachInheritedProperty = (
     visit: (owner: GirClass, property: GirProperty) => void,
 ): void => {
     forEachAncestor(context, klass, (ancestor, interfaces) => {
-        for (const property of ancestor.klass.properties) visit(ancestor.klass, property);
+        for (const property of ancestor.klass.properties) {
+            visit(ancestor.klass, property);
+        }
+
         visitInterfaceProperties(interfaces, visit);
     });
 };
 
 const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const seen: Set<string> = new Set();
-    for (const property of klass.properties) seen.add(toCamelIdentifier(property.name));
+
+    for (const property of klass.properties) {
+        seen.add(toCamelIdentifier(property.name));
+    }
+
     forEachInheritedProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
 
     return seen;
@@ -128,7 +147,11 @@ const collectNewInterfaceProperties = (iface: ResolvedAncestor, seen: Set<string
 
     for (const property of iface.klass.properties) {
         const name = toCamelIdentifier(property.name);
-        if (seen.has(name)) continue;
+
+        if (seen.has(name)) {
+            continue;
+        }
+
         seen.add(name);
         result.push({ owner: iface.klass, property });
     }
@@ -154,7 +177,10 @@ const recordAncestorSignatures = (
 ): void => {
     for (const method of klass.methods) {
         const name = camelCase(method.name);
-        if (!method.introspectable || signatures.has(name)) continue;
+
+        if (!method.introspectable || signatures.has(name)) {
+            continue;
+        }
 
         signatures.set(name, {
             returnType: renderTsType(context, method.returnValue.type, method.returnValue.nullable),
@@ -175,12 +201,16 @@ const mergeOmissionName = (
     method: GirFunction,
     ancestors: Map<string, MethodSignature>,
 ): string | undefined => {
-    if (!method.introspectable) return undefined;
+    if (!method.introspectable) {
+        return undefined;
+    }
 
     const name = camelCase(method.name);
     const ancestor = ancestors.get(name);
 
-    if (ancestor === undefined) return undefined;
+    if (ancestor === undefined) {
+        return undefined;
+    }
 
     const returnType = renderTsType(context, method.returnValue.type, method.returnValue.nullable);
     const arity = inputParameters(context.library, method).length;
@@ -198,7 +228,10 @@ const collectInterfaceMergeOmissions = (
 
     for (const method of iface.klass.methods) {
         const name = mergeOmissionName(context, method, ancestors);
-        if (name !== undefined) omissions.push(name);
+
+        if (name !== undefined) {
+            omissions.push(name);
+        }
     }
 
     return omissions;
@@ -210,10 +243,15 @@ const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass):
     const record = (owner: GirClass, property: GirProperty): void => {
         const jsName = toCamelIdentifier(property.name);
 
-        if (types.has(jsName)) return;
+        if (types.has(jsName)) {
+            return;
+        }
 
         const tsType = resolveAccessorType(context, property, owner.methods);
-        if (tsType !== undefined) types.set(jsName, tsType);
+
+        if (tsType !== undefined) {
+            types.set(jsName, tsType);
+        }
     };
 
     forEachInheritedProperty(context, klass, record);
@@ -233,7 +271,10 @@ const collectInheritedMethods = (context: ModuleContext, klass: GirClass): Inher
 
     forEachAncestor(context, klass, (ancestor, interfaces) => {
         absorbInheritedMethods(context, ancestor, accumulator);
-        for (const iface of interfaces) absorbInheritedMethods(context, iface, accumulator);
+
+        for (const iface of interfaces) {
+            absorbInheritedMethods(context, iface, accumulator);
+        }
     });
 
     return accumulator;
@@ -247,9 +288,16 @@ const absorbInheritedMethods = (
     const { returnTypes, definitions } = accumulator;
 
     for (const method of resolved.klass.methods) {
-        if (!method.introspectable) continue;
+        if (!method.introspectable) {
+            continue;
+        }
+
         const name = camelCase(method.name);
-        if (returnTypes.has(name)) continue;
+
+        if (returnTypes.has(name)) {
+            continue;
+        }
+
         definitions.set(name, { method, namespaceName: resolved.namespaceName });
         returnTypes.set(name, renderTsType(context, method.returnValue.type, method.returnValue.nullable));
     }
@@ -259,7 +307,9 @@ const inheritedMatch = (inherited: InheritedMethods, name: string): InheritedMat
     const inheritedReturn = inherited.returnTypes.get(name);
     const inheritedMethod = inherited.definitions.get(name);
 
-    if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
+    if (inheritedReturn === undefined || inheritedMethod === undefined) {
+        return undefined;
+    }
 
     return { inheritedReturn, inheritedMethod };
 };
@@ -287,15 +337,21 @@ const conflictRename = (
     inherited: InheritedMethods,
     className: string,
 ): string | undefined => {
-    if (!callable.introspectable) return undefined;
+    if (!callable.introspectable) {
+        return undefined;
+    }
 
     const name = methodExportName(callable);
 
-    if (RESERVED_SIGNAL_MEMBERS.has(name)) return conflictingMethodName(className, callable.name);
+    if (RESERVED_SIGNAL_MEMBERS.has(name)) {
+        return conflictingMethodName(className, callable.name);
+    }
 
     const match = inheritedMatch(inherited, name);
 
-    if (match === undefined) return undefined;
+    if (match === undefined) {
+        return undefined;
+    }
 
     const conflicts = methodsConflict({ context, callable, ...match });
 
@@ -343,11 +399,15 @@ const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inhe
 };
 
 const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string | undefined => {
-    if (ref === undefined) return undefined;
+    if (ref === undefined) {
+        return undefined;
+    }
 
     const resolved = context.library.typeOf(ref);
 
-    if (resolved?.kind !== "enum") return undefined;
+    if (resolved?.kind !== "enum") {
+        return undefined;
+    }
 
     return `${resolved.namespace.name}.${resolved.value.name}`;
 };

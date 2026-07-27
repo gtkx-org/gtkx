@@ -31,17 +31,25 @@ const giStoreLinksResolve = (giStoreDir: string): boolean =>
     existsSync(join(giStoreDir, "node_modules", "@gtkx", "gi", "package.json"));
 
 const giStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
-    if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) return true;
+    if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
+        return true;
+    }
 
-    if (!giStoreLinksResolve(store.giStoreDir)) return true;
+    if (!giStoreLinksResolve(store.giStoreDir)) {
+        return true;
+    }
 
     return libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)));
 };
 
 const reactStoreStale = (store: CodegenStore): boolean => {
-    if (store.react === null) return false;
+    if (store.react === null) {
+        return false;
+    }
 
-    if (!existsSync(store.jsxLinkDir)) return true;
+    if (!existsSync(store.jsxLinkDir)) {
+        return true;
+    }
 
     return REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)));
 };

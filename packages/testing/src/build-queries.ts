@@ -59,7 +59,9 @@ const maybeThrowSuggestion = (options: {
     const { container, match, queryName, variant, suggest } = options;
     const shouldSuggest = suggest ?? getConfig().throwSuggestions;
 
-    if (!shouldSuggest) return;
+    if (!shouldSuggest) {
+        return;
+    }
 
     const suggestion = getSuggestedQuery(match, variant);
 
@@ -77,7 +79,9 @@ const reRunForDiagnostics = <Args extends unknown[]>(
     try {
         query(container, ...args);
     } catch (error) {
-        if (error instanceof Error) return error;
+        if (error instanceof Error) {
+            return error;
+        }
     }
 
     return fallback;
@@ -108,7 +112,10 @@ const singleFrom =
     ): SingleQuery<Args> =>
         (container, ...args) => {
             const matches = allQuery(container, ...args);
-            if (matches.length > 1) throw getMultipleError(container, matches, ...args);
+
+            if (matches.length > 1) {
+                throw getMultipleError(container, matches, ...args);
+            }
 
             return matches[0] ?? null;
         };
@@ -120,7 +127,10 @@ const allOrThrow =
     ): QueryAllBy<Args> =>
         (container, ...args) => {
             const matches = allQuery(container, ...args);
-            if (matches.length === 0) throw getMissingError(container, ...args);
+
+            if (matches.length === 0) {
+                throw getMissingError(container, ...args);
+            }
 
             return matches;
         };
@@ -160,7 +170,10 @@ const requireSingle =
     <Args extends unknown[]>(query: SingleQuery<Args>, getMissingError: MissingErrorBuilder<Args>) =>
         (container: Container, ...args: Args): Gtk.Widget => {
             const match = query(container, ...args);
-            if (match === null) throw getMissingError(container, ...args);
+
+            if (match === null) {
+                throw getMissingError(container, ...args);
+            }
 
             return match;
         };

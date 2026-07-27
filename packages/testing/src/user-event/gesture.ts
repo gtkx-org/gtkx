@@ -41,7 +41,9 @@ type SavedDragState = {
 };
 
 const buildDropValue = (content: DropContent): GObject.Value => {
-    if (content instanceof GObject.Value) return content;
+    if (content instanceof GObject.Value) {
+        return content;
+    }
 
     if (typeof content === "string") {
         return GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(content));
@@ -77,11 +79,17 @@ const longPress = (widget: Gtk.Widget, x = 0, y = 0): Promise<void> =>
 const restoreDragState = (saved: SavedDragState): void => {
     const { instance } = saved;
 
-    if (saved.ownsStartPoint) instance.getStartPoint = saved.previousStartPoint;
-    else delete instance.getStartPoint;
+    if (saved.ownsStartPoint) {
+        instance.getStartPoint = saved.previousStartPoint;
+    } else {
+        delete instance.getStartPoint;
+    }
 
-    if (saved.ownsOffset) instance.getOffset = saved.previousOffset;
-    else delete instance.getOffset;
+    if (saved.ownsOffset) {
+        instance.getOffset = saved.previousOffset;
+    } else {
+        delete instance.getOffset;
+    }
 };
 
 const patchDragState = (controller: Gtk.GestureDrag, start: DragOffset, offset: () => DragOffset): (() => void) => {
@@ -126,12 +134,16 @@ const runDragSequence = (controllers: Gtk.GestureDrag[], start: DragOffset, upda
 
         emitToControllers(controllers, "drag-end", current.x, current.y);
     } finally {
-        for (const restore of restores) restore();
+        for (const restore of restores) {
+            restore();
+        }
     }
 };
 
 const resolveDragUpdates = (dx: number, dy: number, options: DragOptions): DragOffset[] => {
-    if (options.offsets) return [...options.offsets, { x: dx, y: dy }];
+    if (options.offsets) {
+        return [...options.offsets, { x: dx, y: dy }];
+    }
 
     const steps = Math.max(1, Math.floor(options.steps ?? 2));
     const updates: DragOffset[] = [];

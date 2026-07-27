@@ -50,7 +50,9 @@ const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => 
 };
 
 const forceKillChild = (child: SupervisedChild | null): boolean => {
-    if (!child?.pid || child.exitCode !== null || child.killed) return false;
+    if (!child?.pid || child.exitCode !== null || child.killed) {
+        return false;
+    }
 
     try {
         return process.kill(child.pid, "SIGKILL");
@@ -70,7 +72,9 @@ const captureShutdownExit = (state: SupervisorState, code: number | null, signal
 const handleChildExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
     state.child = null;
 
-    if (state.restarting) return;
+    if (state.restarting) {
+        return;
+    }
 
     if (state.shuttingDown) {
         captureShutdownExit(state, code, signal);
@@ -99,7 +103,9 @@ const isRestartBlocked = (state: SupervisorState): boolean => state.restarting |
 const relaunchAfterExit = (state: SupervisorState): void => {
     state.restarting = false;
 
-    if (state.shuttingDown) return;
+    if (state.shuttingDown) {
+        return;
+    }
 
     info("Restarting dev runner...");
     launch(state);
@@ -108,7 +114,9 @@ const relaunchAfterExit = (state: SupervisorState): void => {
 const restart = async (state: SupervisorState): Promise<void> => {
     const watch = state.watch;
 
-    if (watch === undefined || isRestartBlocked(state)) return;
+    if (watch === undefined || isRestartBlocked(state)) {
+        return;
+    }
 
     state.restarting = true;
     info("gtkx.config.ts changed; regenerating bindings...");
@@ -142,12 +150,17 @@ const restart = async (state: SupervisorState): Promise<void> => {
 };
 
 const scheduleRestart = (state: SupervisorState, timer: DebounceTimer): void => {
-    if (timer.handle !== null) clearTimeout(timer.handle);
+    if (timer.handle !== null) {
+        clearTimeout(timer.handle);
+    }
+
     timer.handle = setTimeout(() => void restart(state), CONFIG_DEBOUNCE_MS);
 };
 
 const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: string | Buffer | null): boolean => {
-    if (filename === null || state.shuttingDown) return false;
+    if (filename === null || state.shuttingDown) {
+        return false;
+    }
 
     return names.has(basename(filename.toString()));
 };
@@ -172,7 +185,9 @@ const watchConfigDirectory = (
     timer: DebounceTimer,
 ): void => {
     const watcher = watchFs(directory, (_event, filename) => {
-        if (isWatchedChange(state, names, filename)) scheduleRestart(state, timer);
+        if (isWatchedChange(state, names, filename)) {
+            scheduleRestart(state, timer);
+        }
     });
 
     watcher.on("error", () => {});
@@ -182,7 +197,9 @@ const watchConfigDirectory = (
 const installConfigWatchers = (state: SupervisorState): void => {
     const watch = state.watch;
 
-    if (watch === undefined || watch.paths.length === 0) return;
+    if (watch === undefined || watch.paths.length === 0) {
+        return;
+    }
 
     const timer: DebounceTimer = { handle: null };
 
@@ -192,7 +209,9 @@ const installConfigWatchers = (state: SupervisorState): void => {
 };
 
 const closeWatchers = (state: SupervisorState): void => {
-    for (const watcher of state.watchers) watcher.close();
+    for (const watcher of state.watchers) {
+        watcher.close();
+    }
 };
 
 const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promise<void> =>

@@ -16,7 +16,9 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 const copyStackTrace = (target: Error, source: Error): void => {
     const { stack } = source;
 
-    if (stack === undefined) return;
+    if (stack === undefined) {
+        return;
+    }
 
     const index = stack.indexOf(source.message);
 
@@ -86,7 +88,9 @@ const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): P
             const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
             const result = await pollUntilSuccess(callback, timeout, interval);
 
-            if (result.status === "resolved") return result.value;
+            if (result.status === "resolved") {
+                return result.value;
+            }
 
             throw buildTimeoutError(timeout, result.lastError, stackTraceError, onTimeout);
         }),
@@ -97,7 +101,9 @@ const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget =>
     typeof elementOrCallback === "function" ? elementOrCallback() : elementOrCallback;
 
 const isWidgetRemoved = (widget: Gtk.Widget | null): boolean => {
-    if (widget === null) return true;
+    if (widget === null) {
+        return true;
+    }
 
     try {
         return widget.getRoot() === null;
@@ -138,7 +144,9 @@ const waitForElementToBeRemoved = (
 
     return waitFor(
         () => {
-            if (!isTargetRemoved(getTarget(elementOrCallback))) throw ELEMENT_NOT_REMOVED;
+            if (!isTargetRemoved(getTarget(elementOrCallback))) {
+                throw ELEMENT_NOT_REMOVED;
+            }
         },
         { ...options, stackTraceError },
     );

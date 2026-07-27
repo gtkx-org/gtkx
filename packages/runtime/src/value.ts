@@ -193,7 +193,9 @@ const newBoxedValue = (
 function getBoxedValue(value: ExternalObject<Handle>): object | null {
     const type = getValueType(value);
 
-    if (typeFundamental(type) !== TYPE_BOXED) return null;
+    if (typeFundamental(type) !== TYPE_BOXED) {
+        return null;
+    }
 
     const cls = getWrapperClass(type);
     const boxed = dupBoxedBind(getBoxedTypeName(type))(value) as ExternalObject<Handle> | null;
@@ -222,7 +224,9 @@ const resolveValueType = (descriptor: Descriptor): ValueType => {
 
     const plain = PLAIN_VALUE_TYPES[descriptor.kind];
 
-    if (plain !== undefined) return plain;
+    if (plain !== undefined) {
+        return plain;
+    }
 
     switch (descriptor.kind) {
         case "enum":
@@ -284,13 +288,17 @@ const resolveValueGetter = (fundamental: bigint): ValueGetter | undefined =>
 const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
     const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
 
-    if (!isHandleKind) return toNative(descriptor, value);
+    if (!isHandleKind) {
+        return toNative(descriptor, value);
+    }
 
     return value == null ? null : getHandle(value);
 };
 
 const resolveValueGType = (descriptor: Descriptor, nativeValue: unknown): bigint => {
-    if (descriptor.kind !== "object") return resolveDescriptorType(descriptor);
+    if (descriptor.kind !== "object") {
+        return resolveDescriptorType(descriptor);
+    }
 
     return nativeValue == null ? TYPE_OBJECT : getType(nativeValue as ExternalObject<Handle>);
 };
@@ -307,7 +315,9 @@ function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle>
 function fromValue(value: ExternalObject<Handle>): unknown {
     const type = getValueType(value);
 
-    if (type === getStrvType()) return strvValueType.get(value);
+    if (type === getStrvType()) {
+        return strvValueType.get(value);
+    }
 
     const get = resolveValueGetter(typeFundamental(type));
 
@@ -328,7 +338,11 @@ function outValueForDescriptor(
 ): { value: ExternalObject<Handle>; read: () => unknown } {
     const storage = alloc(8);
     write(storage, uint64T, 0, 0);
-    if (initial !== undefined) write(storage, descriptor, 0, initial);
+
+    if (initial !== undefined) {
+        write(storage, descriptor, 0, initial);
+    }
+
     const value = newTypedValue(TYPE_POINTER);
     pointerValueType.set(value, storage);
 

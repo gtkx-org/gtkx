@@ -10,7 +10,9 @@ type Target = {
 };
 
 const detachOf = (result: ReturnType<ReturnType<typeof useMergedRef<Target>>>): (() => void) => {
-    if (typeof result !== "function") throw new Error("expected the merged ref to return a cleanup");
+    if (typeof result !== "function") {
+        throw new TypeError("expected the merged ref to return a cleanup");
+    }
 
     return result;
 };

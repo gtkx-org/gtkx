@@ -12,7 +12,9 @@ function gtkxSettingsWorkerEnv(): Plugin {
             const root = config.root ?? process.cwd();
             const dir = stageAndCompileProjectSchemas(root, resolveDataDir(root));
 
-            if (dir === null) return;
+            if (dir === null) {
+                return;
+            }
 
             process.env.GTKX_DEV_SCHEMA_DIR = dir;
 

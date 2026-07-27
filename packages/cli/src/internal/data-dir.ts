@@ -13,16 +13,22 @@ const conditionTarget = (conditions: Record<string, unknown>): string | null => 
     for (const condition of CONDITION_PRIORITY) {
         const value = conditions[condition];
 
-        if (typeof value === "string") return value;
+        if (typeof value === "string") {
+            return value;
+        }
     }
 
     return null;
 };
 
 const targetString = (entry: unknown): string | null => {
-    if (typeof entry === "string") return entry;
+    if (typeof entry === "string") {
+        return entry;
+    }
 
-    if (isConditionMap(entry)) return conditionTarget(entry);
+    if (isConditionMap(entry)) {
+        return conditionTarget(entry);
+    }
 
     return null;
 };
@@ -42,15 +48,21 @@ const resolveDataDir = (root: string): string | null => {
         return null;
     }
 
-    if (!isConditionMap(manifest)) return null;
+    if (!isConditionMap(manifest)) {
+        return null;
+    }
 
     const imports = manifest.imports;
 
-    if (!isConditionMap(imports)) return null;
+    if (!isConditionMap(imports)) {
+        return null;
+    }
 
     const target = targetString(imports[DATA_IMPORT_KEY]);
 
-    if (target === null) return null;
+    if (target === null) {
+        return null;
+    }
 
     return directoryFromTarget(target);
 };

@@ -125,9 +125,13 @@ const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
         throw new Error("No windows available for screenshot");
     }
 
-    if (selector === undefined) return firstToplevelWindow(windows);
+    if (selector === undefined) {
+        return firstToplevelWindow(windows);
+    }
 
-    if (typeof selector === "number") return windowAtIndex(windows, selector);
+    if (typeof selector === "number") {
+        return windowAtIndex(windows, selector);
+    }
 
     return windowByTitle(windows, selector);
 };

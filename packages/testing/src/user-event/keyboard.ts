@@ -105,12 +105,20 @@ const parseCharAt = (input: string, i: number): ParseStep => {
 const parseBraceAt = (input: string, i: number): ParseStep | null => {
     const endBrace = input.indexOf("}", i);
 
-    if (endBrace === -1) return null;
+    if (endBrace === -1) {
+        return null;
+    }
 
     const { keyval, press, release } = parseKeyToken(input.slice(i + 1, endBrace));
     const actions: KeyAction[] = [];
-    if (press) actions.push({ keyval, press: true });
-    if (release) actions.push({ keyval, press: false });
+
+    if (press) {
+        actions.push({ keyval, press: true });
+    }
+
+    if (release) {
+        actions.push({ keyval, press: false });
+    }
 
     return { actions, next: endBrace + 1 };
 };
@@ -124,7 +132,11 @@ const parseKeyboardInput = (input: string): KeyAction[] => {
 
     while (i < input.length) {
         const step = parseStepAt(input, i);
-        if (step === null) break;
+
+        if (step === null) {
+            break;
+        }
+
         actions.push(...step.actions);
         i = step.next;
     }
@@ -135,7 +147,9 @@ const parseKeyboardInput = (input: string): KeyAction[] => {
 const updateModifierState = (state: UserEventState, action: KeyAction): void => {
     const mask = MODIFIER_KEYVAL_TO_MASK[action.keyval];
 
-    if (!mask) return;
+    if (!mask) {
+        return;
+    }
 
     if (action.press) {
         state.modifierState |= mask;
@@ -169,11 +183,15 @@ const tryActivateShortcut = (
     keyval: number,
     modifiers: Gdk.ModifierType,
 ): boolean => {
-    if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) return false;
+    if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) {
+        return false;
+    }
 
     const action = shortcut.getAction();
 
-    if (action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus") return false;
+    if (action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus") {
+        return false;
+    }
 
     return action?.activate(0 as Gtk.ShortcutActionFlags, widget, shortcut.getArguments()) ?? false;
 };
@@ -188,9 +206,14 @@ const activateMatchingShortcut = (
 
     for (let j = 0; j < count; j++) {
         const shortcut = controller.getItem(j);
-        if (!(shortcut instanceof Gtk.Shortcut)) continue;
 
-        if (tryActivateShortcut(shortcut, widget, keyval, modifiers)) return true;
+        if (!(shortcut instanceof Gtk.Shortcut)) {
+            continue;
+        }
+
+        if (tryActivateShortcut(shortcut, widget, keyval, modifiers)) {
+            return true;
+        }
     }
 
     return false;
@@ -216,10 +239,14 @@ const dispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers
 const dispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
     const delegate = getEditableDelegate(widget);
 
-    if (delegate && dispatchShortcutsOnWidget(delegate, keyval, modifiers)) return true;
+    if (delegate && dispatchShortcutsOnWidget(delegate, keyval, modifiers)) {
+        return true;
+    }
 
     for (let current: Gtk.Widget | null = widget; current; current = current.getParent()) {
-        if (dispatchShortcutsOnWidget(current, keyval, modifiers)) return true;
+        if (dispatchShortcutsOnWidget(current, keyval, modifiers)) {
+            return true;
+        }
     }
 
     return false;

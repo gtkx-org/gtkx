@@ -44,7 +44,9 @@ const requestRestart = async (server: DevServer, deps: DevRunnerDeps): Promise<n
 const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedPath: string): Promise<void> => {
     const module = server.moduleGraph.getModuleById(changedPath);
 
-    if (!module) return;
+    if (!module) {
+        return;
+    }
 
     deps.log(`File changed: ${changedPath}`);
     const loadedExports = module.ssrModule;
@@ -80,7 +82,9 @@ const createShutdownController = (server: DevServer, deps: DevRunnerDeps): Shutd
     return {
         isShuttingDown: () => shuttingDown,
         shutdown: async (quitApplication: () => void): Promise<void> => {
-            if (shuttingDown) return;
+            if (shuttingDown) {
+                return;
+            }
 
             shuttingDown = true;
             quitApplication();
@@ -101,7 +105,9 @@ const reloadChangedFile = async (server: DevServer, deps: DevRunnerDeps, changed
 const onFileChange =
     (server: DevServer, deps: DevRunnerDeps, controller: ShutdownController): ((changedPath: string) => void) =>
         (changedPath) => {
-            if (controller.isShuttingDown()) return;
+            if (controller.isShuttingDown()) {
+                return;
+            }
 
             void reloadChangedFile(server, deps, changedPath);
         };
@@ -109,7 +115,9 @@ const onFileChange =
 const onShutdownSignal =
     (deps: DevRunnerDeps, controller: ShutdownController): (() => Promise<void>) =>
         async () => {
-            if (controller.isShuttingDown()) return;
+            if (controller.isShuttingDown()) {
+                return;
+            }
 
             deps.log("Received shutdown signal - stopping dev runner...");
             await controller.shutdown(() => deps.quitDefaultApplication());
@@ -130,7 +138,9 @@ const closeAndExit = async (deps: DevRunnerDeps, controller: ShutdownController)
 const onApplicationShutdown =
     (deps: DevRunnerDeps, refreshTracker: RefreshTracker, controller: ShutdownController): (() => void) =>
         () => {
-            if (controller.isShuttingDown()) return;
+            if (controller.isShuttingDown()) {
+                return;
+            }
 
             if (refreshTracker.isRefreshing()) {
                 deps.log("Application unmounted during Fast Refresh - restarting dev runner...");

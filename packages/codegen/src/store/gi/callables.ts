@@ -97,19 +97,29 @@ const renderBinding = (
     context: ModuleContext,
     callable: GirFunction,
 ): { text: string; cIdentifier: string } | undefined => {
-    if (!callable.introspectable) return undefined;
+    if (!callable.introspectable) {
+        return undefined;
+    }
 
-    if (callable.shadowedBy !== undefined) return undefined;
+    if (callable.shadowedBy !== undefined) {
+        return undefined;
+    }
 
     const cIdentifier = callable.cIdentifier;
 
-    if (cIdentifier === undefined) return undefined;
+    if (cIdentifier === undefined) {
+        return undefined;
+    }
 
-    if (callableReferencesClassStruct(context, callable)) return undefined;
+    if (callableReferencesClassStruct(context, callable)) {
+        return undefined;
+    }
 
     const expression = renderFnExpression(context, callable);
 
-    if (expression === undefined) return undefined;
+    if (expression === undefined) {
+        return undefined;
+    }
 
     return { text: `const ${toCamelIdentifier(cIdentifier)} = ${expression};`, cIdentifier };
 };
@@ -119,7 +129,10 @@ const generateBindings = (context: ModuleContext, callables: Callables): void =>
 
     for (const callable of all) {
         const binding = renderBinding(context, callable);
-        if (binding !== undefined) context.module.appendBinding(binding.text, binding.cIdentifier);
+
+        if (binding !== undefined) {
+            context.module.appendBinding(binding.text, binding.cIdentifier);
+        }
     }
 };
 
@@ -128,15 +141,21 @@ const resolveCallableMember = (
     callable: GirFunction,
     resolveName: (callable: GirFunction) => string | undefined,
 ): { cIdentifier: string; name: string } | undefined => {
-    if (!isEmittableCallable(context, callable)) return undefined;
+    if (!isEmittableCallable(context, callable)) {
+        return undefined;
+    }
 
     const cIdentifier = callable.cIdentifier;
 
-    if (cIdentifier === undefined) return undefined;
+    if (cIdentifier === undefined) {
+        return undefined;
+    }
 
     const name = resolveName(callable);
 
-    if (name === undefined || name === "constructor") return undefined;
+    if (name === undefined || name === "constructor") {
+        return undefined;
+    }
 
     return { cIdentifier, name };
 };
@@ -147,7 +166,9 @@ const runtimeOverrideMember = (
     doc: string,
     allow: boolean | undefined,
 ): string | undefined => {
-    if (allow !== true) return undefined;
+    if (allow !== true) {
+        return undefined;
+    }
 
     const override = renderRuntimeOverride(callable, name);
 
@@ -161,13 +182,17 @@ const renderCallableMember = (
 ): string | undefined => {
     const resolved = resolveCallableMember(context, callable, options.resolveName);
 
-    if (resolved === undefined) return undefined;
+    if (resolved === undefined) {
+        return undefined;
+    }
 
     const { cIdentifier, name } = resolved;
     const doc = renderJsDoc(callable.doc);
     const override = runtimeOverrideMember(callable, name, doc, options.allowRuntimeOverride);
 
-    if (override !== undefined) return override;
+    if (override !== undefined) {
+        return override;
+    }
 
     const signature = renderMethodSignature(context, callable);
     const returnType = options.returnTypeOverride ?? renderMethodReturnType(context, callable);
@@ -194,7 +219,9 @@ const renderStaticEntry = (
     if (finishFn !== undefined) {
         const name = options.resolveName(callable);
 
-        if (name === undefined || name === "constructor") return undefined;
+        if (name === undefined || name === "constructor") {
+            return undefined;
+        }
 
         return renderPromisifiedCallable(context, callable, finishFn, {
             name,
@@ -227,15 +254,21 @@ const resolveInstanceMember = (
     scope: InstanceScope,
     nameOverride?: string,
 ): ResolvedInstanceMember | undefined => {
-    if (!isEmittableCallable(context, callable)) return undefined;
+    if (!isEmittableCallable(context, callable)) {
+        return undefined;
+    }
 
     const name = nameOverride ?? methodExportName(callable);
 
-    if (name === "constructor") return undefined;
+    if (name === "constructor") {
+        return undefined;
+    }
 
     const finishFn = matchFinishFunction(context, callable, scope);
 
-    if (finishFn !== undefined && !isEmittableCallable(context, finishFn)) return undefined;
+    if (finishFn !== undefined && !isEmittableCallable(context, finishFn)) {
+        return undefined;
+    }
 
     return { name, finishFn };
 };
@@ -284,11 +317,15 @@ const matchStaticFinishFunction = (
     callable: GirFunction,
     siblings: GirFunction[],
 ): GirFunction | undefined => {
-    if (!isEmittableCallable(context, callable)) return undefined;
+    if (!isEmittableCallable(context, callable)) {
+        return undefined;
+    }
 
     const finishFn = matchAsyncFinish(context.library, callable, siblings);
 
-    if (finishFn === undefined || !isEmittableCallable(context, finishFn)) return undefined;
+    if (finishFn === undefined || !isEmittableCallable(context, finishFn)) {
+        return undefined;
+    }
 
     return finishFn;
 };
@@ -301,7 +338,9 @@ const renderPromisifiedCallable = (
 ): string | undefined => {
     const cIdentifier = callable.cIdentifier;
 
-    if (cIdentifier === undefined) return undefined;
+    if (cIdentifier === undefined) {
+        return undefined;
+    }
 
     const { signature, returnType } = renderPromisifiedSignature(context, callable, finishFn);
 
@@ -320,7 +359,10 @@ const renderPromisifiedCallable = (
 
 const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {
     const map: Map<string, GirFunction> = new Map();
-    for (const callable of methods) map.set(callable.name, callable);
+
+    for (const callable of methods) {
+        map.set(callable.name, callable);
+    }
 
     return map;
 };
@@ -335,7 +377,9 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
 const constructorMemberName = (girName: string): string | undefined => {
     const camel = camelCase(girName);
 
-    if (camel === "constructor") return undefined;
+    if (camel === "constructor") {
+        return undefined;
+    }
 
     return camel;
 };
@@ -345,11 +389,15 @@ const renderStaticSignature = (
     callable: GirFunction,
     options?: { returnTypeOverride?: string | undefined; siblings?: GirFunction[] | undefined },
 ): { name: string; signature: string } | undefined => {
-    if (!isEmittableCallable(context, callable)) return undefined;
+    if (!isEmittableCallable(context, callable)) {
+        return undefined;
+    }
 
     const name = constructorMemberName(callable.name);
 
-    if (name === undefined) return undefined;
+    if (name === undefined) {
+        return undefined;
+    }
 
     const finishFn =
         options?.siblings === undefined ? undefined : matchStaticFinishFunction(context, callable, options.siblings);
@@ -367,9 +415,15 @@ const classConstructorMemberNames = (context: ModuleContext, callables: Callable
     const names: string[] = [];
 
     for (const callable of callables.constructors) {
-        if (!isEmittableCallable(context, callable)) continue;
+        if (!isEmittableCallable(context, callable)) {
+            continue;
+        }
+
         const member = constructorMemberName(callable.name);
-        if (member !== undefined) names.push(member);
+
+        if (member !== undefined) {
+            names.push(member);
+        }
     }
 
     return names;
@@ -385,7 +439,10 @@ const collectStaticEntries = (
 
     for (const callable of group) {
         const block = renderStaticEntry(context, callable, siblings, options);
-        if (block !== undefined) blocks.push(block);
+
+        if (block !== undefined) {
+            blocks.push(block);
+        }
     }
 
     return blocks;
@@ -416,7 +473,11 @@ const renderPlainInstanceMethods = (
 
     for (const callable of methods) {
         const block = renderInstanceMethod(context, callable);
-        if (block === undefined) continue;
+
+        if (block === undefined) {
+            continue;
+        }
+
         blocks.push(block);
         claimedNames.add(methodExportName(callable));
     }

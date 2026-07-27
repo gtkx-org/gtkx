@@ -1,5 +1,7 @@
 const indent = (block: string, level: number): string => {
-    if (level <= 0) return block;
+    if (level <= 0) {
+        return block;
+    }
 
     const prefix = " ".repeat(4).repeat(level);
 
@@ -21,7 +23,9 @@ const joinArgs = (parts: (string | undefined)[]): string =>
     parts.filter((part): part is string => part !== undefined).join(", ");
 
 const arrayLiteral = (elements: string[]): string => {
-    if (elements.length === 0) return "[]";
+    if (elements.length === 0) {
+        return "[]";
+    }
 
     const lines = elements.map((element) => `    ${element},`);
 

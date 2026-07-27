@@ -127,7 +127,9 @@ function textMatcher(
         const actual = read(widget);
         const context: TextMatcherContext = { isNot: this.isNot, matcherName, widget, actual };
 
-        if (expected === undefined) return nonEmptyResult(context);
+        if (expected === undefined) {
+            return nonEmptyResult(context);
+        }
 
         return matchedResult(context, expected, actual !== null && matchesText(actual, expected, mode));
     };
@@ -186,11 +188,15 @@ const globalExpect = (): ExpectExtend | null => {
 
 /** Registers the widget matchers on the global `expect`, when one is available. Safe to call more than once. */
 const registerMatchers = (): void => {
-    if (registered) return;
+    if (registered) {
+        return;
+    }
 
     const expect = globalExpect();
 
-    if (!expect) return;
+    if (!expect) {
+        return;
+    }
 
     expect.extend(matchers);
     registered = true;

@@ -16,7 +16,11 @@ const buildMenubar = (entries: { label: string; items: { label: string; action: 
 
     for (const entry of entries) {
         const submenu = Gio.Menu.new();
-        for (const item of entry.items) submenu.append(item.label, item.action);
+
+        for (const item of entry.items) {
+            submenu.append(item.label, item.action);
+        }
+
         menubar.appendSubmenu(entry.label, submenu);
     }
 
@@ -44,7 +48,9 @@ const renderApp = async (menubar: Gio.MenuModel | null): Promise<Gtk.Application
         container: rootElement,
     });
 
-    if (!ref.current) throw new Error("Expected application instance");
+    if (!ref.current) {
+        throw new Error("Expected application instance");
+    }
 
     return ref.current;
 };

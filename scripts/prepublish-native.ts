@@ -19,7 +19,11 @@ for (const platform of readdirSync(npmDir)) {
     const platformDir = join(npmDir, platform);
     const binary = `native.${platform}.node`;
     const source = join(artifactsDir, binary);
-    if (!existsSync(source)) continue;
+
+    if (!existsSync(source)) {
+        continue;
+    }
+
     copyFileSync(source, join(platformDir, binary));
     const platformManifest = JSON.parse(readFileSync(join(platformDir, "package.json"), "utf8")) as PackageManifest;
 

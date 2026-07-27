@@ -5,9 +5,13 @@ function isErrorLike(value: unknown): value is { message: string } {
 }
 
 function readStream(value: unknown): string {
-    if (typeof value === "string") return value;
+    if (typeof value === "string") {
+        return value;
+    }
 
-    if (value instanceof Uint8Array || Buffer.isBuffer(value)) return value.toString();
+    if (value instanceof Uint8Array || Buffer.isBuffer(value)) {
+        return value.toString();
+    }
 
     return "";
 }

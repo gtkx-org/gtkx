@@ -47,7 +47,10 @@ const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string
 
 const paramIndexByName = (command: GlCommand, name: string): number => {
     const index = command.params.findIndex((param) => param.name === name);
-    if (index === -1) throw new Error(`Command ${command.name} has no parameter named ${name}`);
+
+    if (index === -1) {
+        throw new Error(`Command ${command.name} has no parameter named ${name}`);
+    }
 
     return index;
 };
@@ -68,7 +71,10 @@ const inArg = (name: string, tsType: string, descriptor: string): InArg => ({
 const buildInArg = (options: BuildArgOptions, name: string, track: (alias: string) => string): InArg => {
     const { command, index, plan } = options;
     const param = command.params[index];
-    if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
+
+    if (param === undefined) {
+        throw new Error(`Parameter index ${index} out of range on ${command.name}`);
+    }
 
     switch (plan.kind) {
         case "scalar": {
@@ -109,7 +115,11 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
 const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string): OutArg => {
     const { command, index, plan, outIndex } = options;
     const param = command.params[index];
-    if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${command.name}`);
+
+    if (param === undefined) {
+        throw new Error(`Parameter index ${index} out of range on ${command.name}`);
+    }
+
     const cellName = `out${outIndex}`;
     const cell: OutArgCell = { out: true, cellName, paramIndex: index };
 
@@ -179,7 +189,10 @@ const planArgs = (
 
     for (const [index, paramPlan] of plan.params.entries()) {
         const param = plan.command.params[index];
-        if (param === undefined) throw new Error(`Parameter index ${index} out of range on ${plan.command.name}`);
+
+        if (param === undefined) {
+            throw new Error(`Parameter index ${index} out of range on ${plan.command.name}`);
+        }
 
         const options: BuildArgOptions = {
             command: plan.command,
@@ -201,9 +214,13 @@ const scalarPrefixArg = (
 ): InArg | undefined => {
     const { paramPlan, param } = paramPairAt(plan, index);
 
-    if (param === undefined) return undefined;
+    if (param === undefined) {
+        return undefined;
+    }
 
-    if (paramPlan?.kind !== "scalar") return undefined;
+    if (paramPlan?.kind !== "scalar") {
+        return undefined;
+    }
 
     return buildInArg(
         { command: plan.command, index, plan: paramPlan, outIndex: 0 },
@@ -219,7 +236,9 @@ const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Set<strin
     for (let index = 0; index < plan.params.length - 2; index++) {
         const arg = scalarPrefixArg(plan, index, track);
 
-        if (arg === undefined) return undefined;
+        if (arg === undefined) {
+            return undefined;
+        }
 
         prefix.push(arg);
     }

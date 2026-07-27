@@ -70,7 +70,10 @@ beforeAll(async () => {
     const glReady = await new Promise<boolean>((resolve) => {
         glArea.on("realize", () => {
             glArea.makeCurrent();
-            if (glArea.getError()) resolve(false);
+
+            if (glArea.getError()) {
+                resolve(false);
+            }
         });
 
         glArea.on("render", () => {

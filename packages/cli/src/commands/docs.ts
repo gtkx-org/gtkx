@@ -79,7 +79,9 @@ const docs = defineCommand({
 const resolveDocsProps = async (cwd: string): Promise<ElementProps> => {
     const giStoreDir = join(cwd, "node_modules", ".gtkx", "gi");
 
-    if (!existsSync(giStoreDir)) return {};
+    if (!existsSync(giStoreDir)) {
+        return {};
+    }
 
     const { props } = await readBuiltinElements(resolveReactSubexports(cwd), giStoreDir);
 

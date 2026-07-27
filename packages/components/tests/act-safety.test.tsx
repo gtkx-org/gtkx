@@ -50,7 +50,11 @@ describe("act safety", () => {
     it("expands and collapses a tree row without an act warning", async () => {
         await renderListView(tree, { estimatedItemHeight: 48 });
         const row = expandableExpanders()[0]?.getListRow();
-        if (!row) throw new Error("expected an expandable tree row");
+
+        if (!row) {
+            throw new Error("expected an expandable tree row");
+        }
+
         await act(() => row.setExpanded(true));
         await screen.findAllByText("Alpha");
         await act(() => row.setExpanded(false));

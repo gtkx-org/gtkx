@@ -18,9 +18,13 @@ const SCHEMA_SUFFIX = ".gschema.xml";
 const STAGED_NAME_LENGTH = 16;
 
 const prependSchemaDir = (dir: string, existing: string | undefined): string => {
-    if (existing === undefined || existing.length === 0) return dir;
+    if (existing === undefined || existing.length === 0) {
+        return dir;
+    }
 
-    if (existing.split(":").includes(dir)) return existing;
+    if (existing.split(":").includes(dir)) {
+        return existing;
+    }
 
     return `${dir}:${existing}`;
 };
@@ -67,14 +71,22 @@ const findSchemaFiles = (dataDir: string): string[] => {
 };
 
 const stageAndCompileProjectSchemas = (root: string, dataDir: string | null): string | null => {
-    if (dataDir === null) return null;
+    if (dataDir === null) {
+        return null;
+    }
 
     const schemaFiles = findSchemaFiles(join(root, dataDir));
 
-    if (schemaFiles.length === 0) return null;
+    if (schemaFiles.length === 0) {
+        return null;
+    }
 
     const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
-    for (const filePath of schemaFiles) stageSchema(dir, filePath);
+
+    for (const filePath of schemaFiles) {
+        stageSchema(dir, filePath);
+    }
+
     compileSchemas(dir);
     process.once("exit", () => removeTempDir(dir));
 
@@ -89,7 +101,10 @@ const parseSchemaFileOrWarn = (filePath: string, dataDirAbs: string): ParsedSche
     try {
         return parseSchemaXml(readFileSync(filePath, "utf8"), specifier);
     } catch (error) {
-        if (!(error instanceof SchemaParseError)) throw error;
+        if (!(error instanceof SchemaParseError)) {
+            throw error;
+        }
+
         warn(`Skipping ${filePath} in schema type generation: ${error.message}`);
 
         return null;
@@ -101,7 +116,10 @@ const parseProjectSchemas = (schemaFiles: string[], dataDirAbs: string): ParsedS
 
     for (const filePath of schemaFiles) {
         const result = parseSchemaFileOrWarn(filePath, dataDirAbs);
-        if (result !== null) parsed.push(result);
+
+        if (result !== null) {
+            parsed.push(result);
+        }
     }
 
     return parsed;
@@ -116,7 +134,9 @@ const readFileOrNull = (path: string): string | null => {
 };
 
 const writeIfChanged = (path: string, content: string): boolean => {
-    if (readFileOrNull(path) === content) return false;
+    if (readFileOrNull(path) === content) {
+        return false;
+    }
 
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, content);

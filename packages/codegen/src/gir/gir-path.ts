@@ -48,7 +48,9 @@ const resolvePkgConfig = (): string | undefined => {
 const queryPkgConfigGirDir = (): string | undefined => {
     const pkgConfig = resolvePkgConfig();
 
-    if (pkgConfig === undefined) return undefined;
+    if (pkgConfig === undefined) {
+        return undefined;
+    }
 
     try {
         const output = execFileSync(pkgConfig, ["--variable=girdir", "gobject-introspection-1.0"], {
@@ -60,7 +62,9 @@ const queryPkgConfigGirDir = (): string | undefined => {
 
         return trimmed.length > 0 ? trimmed : undefined;
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+            return;
+        }
 
         throw pkgConfigGirDirError(error);
     }

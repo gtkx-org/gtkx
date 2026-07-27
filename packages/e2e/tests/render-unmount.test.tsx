@@ -22,7 +22,11 @@ describe("Root.unmount", () => {
         );
 
         const app = appRef.current;
-        if (!app) throw new Error("application was not captured");
+
+        if (!app) {
+            throw new Error("application was not captured");
+        }
+
         const shutdownHandler = vi.fn();
         app.on("shutdown", shutdownHandler);
         await unmount();

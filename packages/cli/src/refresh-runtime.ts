@@ -34,7 +34,9 @@ const isComponentExport = (key: string, value: unknown): boolean =>
 
 const everyExportIsComponent = (moduleExports: Record<string, unknown>): boolean => {
     for (const key in moduleExports) {
-        if (!isComponentExport(key, moduleExports[key])) return false;
+        if (!isComponentExport(key, moduleExports[key])) {
+            return false;
+        }
     }
 
     return true;

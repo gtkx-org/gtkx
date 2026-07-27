@@ -14,7 +14,10 @@ const uniqueAppId = (): string => `org.gtkx.popovermenutest${nextAppId++}`;
 
 const buildMenu = (items: { label: string; action: string }[]): Gio.Menu => {
     const menu = Gio.Menu.new();
-    for (const item of items) menu.append(item.label, item.action);
+
+    for (const item of items) {
+        menu.append(item.label, item.action);
+    }
 
     return menu;
 };
@@ -86,7 +89,12 @@ describe("render - PopoverMenu actions", () => {
                 <GtkApplication applicationId={appId} flags={APP_FLAGS}>
                     <GtkApplicationWindow
                         ref={windowRef}
-                        actions={enabled && <GSimpleAction name="toggle" onActivate={() => {}} />}
+                        actions={enabled && (
+                            <GSimpleAction
+                                name="toggle"
+                                onActivate={() => {}}
+                            />
+                        )}
                     />
                 </GtkApplication>
             );

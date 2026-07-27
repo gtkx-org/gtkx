@@ -79,7 +79,10 @@ const selectedIdsOf = (selection: Gtk.SelectionModel, model: CollectionModel): s
 
     for (let index = 0; index < size; index++) {
         const id = model.idAt(bitset.getNth(index));
-        if (id !== null) ids.push(id);
+
+        if (id !== null) {
+            ids.push(id);
+        }
     }
 
     return ids;
@@ -88,22 +91,33 @@ const selectedIdsOf = (selection: Gtk.SelectionModel, model: CollectionModel): s
 const applySingleSelection = (selection: Gtk.SingleSelection, positions: number[]): void => {
     const [first] = positions;
 
-    if (first === undefined) selection.unselectAll();
-    else selection.selectItem(first, true);
+    if (first === undefined) {
+        selection.unselectAll();
+    } else {
+        selection.selectItem(first, true);
+    }
 };
 
 const applyMultiSelection = (selection: Gtk.SelectionModel, positions: number[]): void => {
     const selected = Gtk.Bitset.newEmpty();
-    for (const position of positions) selected.add(position);
+
+    for (const position of positions) {
+        selected.add(position);
+    }
+
     selection.setSelection(selected, Gtk.Bitset.newRange(0, selection.getNItems()));
 };
 
 const applySelection = (selection: Gtk.SelectionModel, model: CollectionModel, ids: string[]): void => {
-    if (selection instanceof Gtk.NoSelection) return;
+    if (selection instanceof Gtk.NoSelection) {
+        return;
+    }
 
     const positions = model.positionsOf(ids);
 
-    if (ids.length > 0 && positions.length === 0) return;
+    if (ids.length > 0 && positions.length === 0) {
+        return;
+    }
 
     if (selection instanceof Gtk.SingleSelection) {
         applySingleSelection(selection, positions);
@@ -124,7 +138,11 @@ const eachRow = (
 ): void => {
     for (let position = 0; position < tree.getNItems(); position++) {
         const row = tree.getRow(position);
-        if (row === null) continue;
+
+        if (row === null) {
+            continue;
+        }
+
         visit(row, rowId(model, row.getItem()));
     }
 };
@@ -132,13 +150,17 @@ const eachRow = (
 const reportSelection = (report: SelectionReport): void => {
     const { selection, model, cells } = report;
 
-    if (selection === null) return;
+    if (selection === null) {
+        return;
+    }
 
     const ids = selectedIdsOf(selection, model);
     const key = ids.join(" ");
     const last = lastSelections.get(cells);
 
-    if (last?.selection === selection && last.key === key) return;
+    if (last?.selection === selection && last.key === key) {
+        return;
+    }
 
     lastSelections.set(cells, { selection, key });
     report.onSelectionChanged?.(ids);
@@ -147,26 +169,36 @@ const reportSelection = (report: SelectionReport): void => {
 const reportExpansion = (report: ExpansionReport): void => {
     const tree = report.model.treeModel;
 
-    if (tree === null) return;
+    if (tree === null) {
+        return;
+    }
 
     const ids: string[] = [];
 
     eachRow(tree, report.model, (row, id) => {
-        if (id !== null && row.getExpanded()) ids.push(id);
+        if (id !== null && row.getExpanded()) {
+            ids.push(id);
+        }
     });
 
     const key = ids.join(" ");
 
-    if (report.last.current === key) return;
+    if (report.last.current === key) {
+        return;
+    }
 
     report.last.current = key;
     report.onExpandedChange?.(ids);
 };
 
 const selectionElement = (mode: Gtk.SelectionMode | null | undefined, props: SelectionElementProps): ReactElement => {
-    if (mode === Gtk.SelectionMode.MULTIPLE) return <GtkMultiSelection {...props} />;
+    if (mode === Gtk.SelectionMode.MULTIPLE) {
+        return <GtkMultiSelection {...props} />;
+    }
 
-    if (mode === Gtk.SelectionMode.NONE) return <GtkNoSelection {...props} />;
+    if (mode === Gtk.SelectionMode.NONE) {
+        return <GtkNoSelection {...props} />;
+    }
 
     return <GtkSingleSelection {...props} autoselect={false} canUnselect />;
 };
@@ -186,7 +218,10 @@ const applyExpansion = (tree: Gtk.TreeListModel, model: CollectionModel, expande
 
     eachRow(tree, model, (row, id) => {
         const desired = id !== null && wanted.has(id);
-        if (row.isExpandable() && row.getExpanded() !== desired) row.setExpanded(desired);
+
+        if (row.isExpandable() && row.getExpanded() !== desired) {
+            row.setExpanded(desired);
+        }
     });
 };
 
@@ -211,7 +246,9 @@ const runControlledExpansion = (
 ): void => {
     const tree = model.treeModel;
 
-    if (tree === null || expandedIds == null) return;
+    if (tree === null || expandedIds == null) {
+        return;
+    }
 
     expanding.current = true;
 
@@ -230,7 +267,9 @@ const useControlledExpansion = (sync: ExpansionSync): void => {
     const expanding = useRef(false);
 
     const report = useEffectEvent((): void => {
-        if (expanding.current) return;
+        if (expanding.current) {
+            return;
+        }
 
         reportExpansion({ model, last: lastExpansion, onExpandedChange });
     });
@@ -238,7 +277,9 @@ const useControlledExpansion = (sync: ExpansionSync): void => {
     useLayoutEffect(() => {
         const tree = model.treeModel;
 
-        if (tree === null) return;
+        if (tree === null) {
+            return;
+        }
 
         return watchExpansion(tree, cells, report);
     }, [model, cells]);
@@ -256,9 +297,14 @@ const useControlledSelection = (sync: SelectionSync): void => {
     });
 
     useLayoutEffect(() => {
-        if (selection === null) return;
+        if (selection === null) {
+            return;
+        }
 
-        if (selectedIds != null) applySelection(selection, model, selectedIds);
+        if (selectedIds != null) {
+            applySelection(selection, model, selectedIds);
+        }
+
         report();
     }, [selection, model, selectedIds, items, sections]);
 };

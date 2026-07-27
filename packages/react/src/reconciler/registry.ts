@@ -76,9 +76,17 @@ const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, prep
         entry.behaviors = mergeBehaviors(entry, added.behaviors as ElementBehavior[], prepend);
     }
 
-    if (added.lazy === true) entry.lazy = true;
-    if (added.component !== undefined) entry.component = added.component;
-    if (added.props !== undefined) entry.props = added.props;
+    if (added.lazy === true) {
+        entry.lazy = true;
+    }
+
+    if (added.component !== undefined) {
+        entry.component = added.component;
+    }
+
+    if (added.props !== undefined) {
+        entry.props = added.props;
+    }
 
     return entry;
 };
@@ -92,7 +100,9 @@ const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>>[]): R
     const merged: Record<string, ElementConfig> = {};
 
     for (const map of maps) {
-        for (const [type, config] of Object.entries(map)) merged[type] = mergeConfigEntry(merged[type] ?? {}, config);
+        for (const [type, config] of Object.entries(map)) {
+            merged[type] = mergeConfigEntry(merged[type] ?? {}, config);
+        }
     }
 
     return merged;

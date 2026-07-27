@@ -81,8 +81,11 @@ describe("Logger debug resolution from the environment", () => {
     const original = process.env.GTKX_DEBUG;
 
     afterEach(() => {
-        if (original === undefined) delete process.env.GTKX_DEBUG;
-        else process.env.GTKX_DEBUG = original;
+        if (original === undefined) {
+            delete process.env.GTKX_DEBUG;
+        } else {
+            process.env.GTKX_DEBUG = original;
+        }
     });
 
     it("enables debug for every namespace when GTKX_DEBUG=1", () => {

@@ -19,19 +19,36 @@ import { describe, expect, it, vi } from "vitest";
 const REUSE_APP_ID = "org.gtkx.tutorial-reuse";
 
 const headerStart = (buttonRef: Ref<Gtk.Button | null>, detail: boolean): ReactElement => {
-    if (detail) return <GtkButton ref={buttonRef} iconName="go-previous-symbolic" onClicked={() => {}} />;
+    if (detail) {
+        return (
+            <GtkButton
+                ref={buttonRef}
+                iconName="go-previous-symbolic"
+                onClicked={() => {}}
+            />
+        );
+    }
 
     return (
         <>
             <GtkButton ref={buttonRef} iconName="list-add-symbolic" actionName="win.new" />
-            <GtkButton iconName="system-search-symbolic" onClicked={() => {}} />
+            <GtkButton
+                iconName="system-search-symbolic"
+                onClicked={() => {}}
+            />
         </>
     );
 };
 
 const ReuseShell = ({ buttonRef, detail }: { buttonRef: Ref<Gtk.Button | null>; detail: boolean }) => (
     <AdwApplication applicationId={REUSE_APP_ID} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-        <AdwApplicationWindow actions={<GSimpleAction name="new" onActivate={() => {}} />}>
+        <AdwApplicationWindow actions={(
+            <GSimpleAction
+                name="new"
+                onActivate={() => {}}
+            />
+        )}
+        >
             <AdwToolbarView topBar={<AdwHeaderBar start={headerStart(buttonRef, detail)} />}>
                 <GtkLabel>Body</GtkLabel>
             </AdwToolbarView>
@@ -58,7 +75,11 @@ describe("tutorial regressions", () => {
         );
 
         const app = appRef.current;
-        if (!app) throw new Error("application was not captured");
+
+        if (!app) {
+            throw new Error("application was not captured");
+        }
+
         const shutdownHandler = vi.fn();
         app.on("shutdown", shutdownHandler);
         windowRef.current?.emit("close-request");
@@ -90,7 +111,11 @@ describe("tutorial regressions", () => {
         );
 
         expect(buttonRef.current?.getSensitive()).toBe(true);
-        if (buttonRef.current) await userEvent.click(buttonRef.current);
+
+        if (buttonRef.current) {
+            await userEvent.click(buttonRef.current);
+        }
+
         expect(onBack).toHaveBeenCalledTimes(1);
     });
 

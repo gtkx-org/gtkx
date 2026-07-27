@@ -15,7 +15,9 @@ type FilterMode = "all" | "active" | "inactive";
 
 function filterableIds(filter: FilterMode): string[] {
     return FILTERABLE_ITEMS.filter((item) => {
-        if (filter === "all") return true;
+        if (filter === "all") {
+            return true;
+        }
 
         return filter === "active" ? item.active : !item.active;
     }).map((item) => item.id);

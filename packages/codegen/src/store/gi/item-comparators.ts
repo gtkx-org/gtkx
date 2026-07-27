@@ -26,7 +26,9 @@ const qualifiedName = (context: ModuleContext, ref: TypeId): string | undefined 
 const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
     const resolved = context.library.typeOf(ref);
 
-    if (resolved?.kind !== "class") return false;
+    if (resolved?.kind !== "class") {
+        return false;
+    }
 
     return resolved.value.implements.some((interfaceName) => {
         const iface = resolveInterface(context.library, resolved.namespace.name, interfaceName);
@@ -38,17 +40,23 @@ const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
 const comparesObjectItems = (context: ModuleContext, fn: GirFunction): boolean => {
     const ownerRef = fn.instance?.type ?? fn.returnValue.type;
 
-    if (ownerRef === undefined) return false;
+    if (ownerRef === undefined) {
+        return false;
+    }
 
     const owner = qualifiedName(context, ownerRef);
 
-    if (owner !== undefined && OBJECT_ITEM_COMPARATOR_OWNERS.has(owner)) return true;
+    if (owner !== undefined && OBJECT_ITEM_COMPARATOR_OWNERS.has(owner)) {
+        return true;
+    }
 
     return implementsListModel(context, ownerRef);
 };
 
 const isItemPointer = (context: ModuleContext, ref: TypeId | undefined): boolean => {
-    if (ref === undefined) return false;
+    if (ref === undefined) {
+        return false;
+    }
 
     const resolved = context.library.typeOf(ref);
 
@@ -60,15 +68,21 @@ const itemComparatorCallback = (
     fn: GirFunction,
     parameter: GirParameter,
 ): GirCallback | undefined => {
-    if (parameter.type === undefined) return undefined;
+    if (parameter.type === undefined) {
+        return undefined;
+    }
 
     const resolved = context.library.typeOf(parameter.type);
 
-    if (resolved?.kind !== "callback") return undefined;
+    if (resolved?.kind !== "callback") {
+        return undefined;
+    }
 
     const name = qualifiedName(context, parameter.type);
 
-    if (name === undefined || !COMPARATOR_CALLBACK_TYPES.has(name)) return undefined;
+    if (name === undefined || !COMPARATOR_CALLBACK_TYPES.has(name)) {
+        return undefined;
+    }
 
     return comparesObjectItems(context, fn) ? resolved.value : undefined;
 };
@@ -80,13 +94,17 @@ const itemComparatorArgDescriptors = (
 ): Map<number, string> | undefined => {
     const callback = itemComparatorCallback(context, fn, parameter);
 
-    if (callback === undefined) return undefined;
+    if (callback === undefined) {
+        return undefined;
+    }
 
     const overrides: Map<number, string> = new Map();
     const items = inputParameters(context.library, callbackAsFunction(callback));
 
     for (const { parameter: item, index } of items) {
-        if (isItemPointer(context, item.type)) overrides.set(index, tObject("borrowed"));
+        if (isItemPointer(context, item.type)) {
+            overrides.set(index, tObject("borrowed"));
+        }
     }
 
     return overrides.size > 0 ? overrides : undefined;
@@ -99,7 +117,9 @@ const itemComparatorTsType = (
 ): string | undefined => {
     const callback = itemComparatorCallback(context, fn, parameter);
 
-    if (callback === undefined) return undefined;
+    if (callback === undefined) {
+        return undefined;
+    }
 
     const itemType = `${context.qualify("GObject", "Object")} | null`;
 

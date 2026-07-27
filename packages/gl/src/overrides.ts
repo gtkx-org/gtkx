@@ -55,7 +55,9 @@ const MAX_WAIT_CHUNK_NS = 1_000_000_000;
 const readInfoLog = (symbol: string, id: GLuint, query: LengthQuery): string => {
     const length = query(id, INFO_LOG_LENGTH);
 
-    if (length <= 0) return "";
+    if (length <= 0) {
+        return "";
+    }
 
     const written = { value: 0 };
     const log = { value: "" };
@@ -119,9 +121,13 @@ function debugMessageCallback(callback: DebugMessageCallback | null): void {
 }
 
 const settledSyncStatus = (status: SyncStatus): SyncStatus | null => {
-    if (status === ALREADY_SIGNALED || status === CONDITION_SATISFIED) return status;
+    if (status === ALREADY_SIGNALED || status === CONDITION_SATISFIED) {
+        return status;
+    }
 
-    if (status !== TIMEOUT_EXPIRED) return status;
+    if (status !== TIMEOUT_EXPIRED) {
+        return status;
+    }
 
     return null;
 };
@@ -142,11 +148,15 @@ function clientWaitSyncLoop(sync: GLsync, flags: SyncObjectMask, timeoutNs: numb
         const chunk = Math.min(remaining, MAX_WAIT_CHUNK_NS);
         const settled = settledSyncStatus(clientWaitSync(sync, currentFlags, chunk));
 
-        if (settled !== null) return settled;
+        if (settled !== null) {
+            return settled;
+        }
 
         remaining -= chunk;
 
-        if (remaining <= 0) return TIMEOUT_EXPIRED;
+        if (remaining <= 0) {
+            return TIMEOUT_EXPIRED;
+        }
 
         currentFlags = 0;
     }

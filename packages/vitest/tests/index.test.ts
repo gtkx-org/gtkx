@@ -20,7 +20,9 @@ type WorkerConfig = {
 type ConfigHook = (config: InputConfig) => WorkerConfig;
 
 const unwrap = <Fn extends (...args: never[]) => unknown>(hook: Fn | { handler: Fn } | undefined): Fn => {
-    if (hook === undefined) throw new Error("plugin hook is missing");
+    if (hook === undefined) {
+        throw new Error("plugin hook is missing");
+    }
 
     return typeof hook === "function" ? hook : hook.handler;
 };

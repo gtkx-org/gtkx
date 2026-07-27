@@ -47,7 +47,10 @@ function lastResponse(connections: FakeAppConnections): Response | undefined {
 
 function lastOutgoingRequest(conn: TestConnection): Request {
     const line = conn.socket.lines.at(-1);
-    if (!line) throw new Error("No outgoing request captured");
+
+    if (!line) {
+        throw new Error("No outgoing request captured");
+    }
 
     return JSON.parse(line) as Request;
 }

@@ -28,8 +28,11 @@ const startNotificationService = async (busAddress: string): Promise<() => void>
 
     await new Promise<void>((resolve, reject) => {
         bus.requestName(NOTIFICATIONS_NAME, 0, (error) => {
-            if (error) reject(error);
-            else resolve();
+            if (error) {
+                reject(error);
+            } else {
+                resolve();
+            }
         });
     });
 

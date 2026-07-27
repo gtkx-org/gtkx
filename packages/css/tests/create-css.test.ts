@@ -22,7 +22,10 @@ const declElement = (value: string): Element => ({
 const soleClassName = (result: string[]): string => {
     expect(result).toHaveLength(1);
     const [merged] = result;
-    if (typeof merged !== "string") throw new Error("cx should merge into one class");
+
+    if (typeof merged !== "string") {
+        throw new TypeError("cx should merge into one class");
+    }
 
     return merged;
 };

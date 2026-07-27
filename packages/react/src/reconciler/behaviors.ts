@@ -58,7 +58,9 @@ const slotAttach =
         attach: SlotHooks<P, C>["attach"],
     ): NonNullable<ElementBehavior["attach"]> =>
         (object, child, info) => {
-            if (info.slot !== slotName || !matches(child)) return;
+            if (info.slot !== slotName || !matches(child)) {
+                return;
+            }
 
             return attach(object as P, child as C, info) ?? true;
         };
@@ -73,15 +75,19 @@ const slot = <P extends GObject.Object, C extends GObject.Object>(
     const { attach, detach, reorder, resolve } = hooks;
     const behavior: ElementBehavior = { attach: slotAttach(slotName, matches, attach) };
 
-    if (reorder !== undefined)
+    if (reorder !== undefined) {
         behavior.reorder = (object, child, info) => reorder(object as P, child as C, info) ?? true;
+    }
 
-    if (detach !== undefined)
+    if (detach !== undefined) {
         behavior.detach = (object, child, info) => {
             detach(object as P, child as C, info);
         };
+    }
 
-    if (resolve !== undefined) behavior.resolve = (object, child) => resolve(object as P, child as C);
+    if (resolve !== undefined) {
+        behavior.resolve = (object, child) => resolve(object as P, child as C);
+    }
 
     return behavior;
 };
@@ -92,7 +98,9 @@ const value = <P extends GObject.Object, V>(
     apply: ValueApply<P, V>,
 ): ElementBehavior<P> => ({
     update: (object, prev, next) => {
-        if (!Object.is(prev[prop], next[prop]) && next[prop] !== undefined) apply(object as P, next[prop] as V);
+        if (!Object.is(prev[prop], next[prop]) && next[prop] !== undefined) {
+            apply(object as P, next[prop] as V);
+        }
 
         return [prop];
     },
@@ -111,9 +119,13 @@ const teardownList = <P extends GObject.Object, I, H>(
 
     const remove = hooks.remove;
 
-    if (remove === undefined) return;
+    if (remove === undefined) {
+        return;
+    }
 
-    for (const entry of entries) remove(object, entry.item as I, entry.handle as H);
+    for (const entry of entries) {
+        remove(object, entry.item as I, entry.handle as H);
+    }
 };
 
 /**
@@ -134,7 +146,9 @@ const list = <P extends GObject.Object, I, H = void>(
             const raw = next[prop];
             const items: unknown[] = Array.isArray(raw) ? raw : [];
 
-            if (isDeepEqual(state.snapshot, items)) return [prop];
+            if (isDeepEqual(state.snapshot, items)) {
+                return [prop];
+            }
 
             teardownList(object as P, state.entries, hooks);
             state.entries = items.map((item) => ({ item, handle: add?.(object as P, item as I) }));
@@ -153,9 +167,13 @@ const flushDeferred = <P extends GObject.Object, V>(
 ): void => {
     const state = context as DeferredState;
 
-    if (!state.present || Object.is(state.applied, state.desired)) return;
+    if (!state.present || Object.is(state.applied, state.desired)) {
+        return;
+    }
 
-    if (canApply !== undefined && !canApply(object as P, state.desired as V)) return;
+    if (canApply !== undefined && !canApply(object as P, state.desired as V)) {
+        return;
+    }
 
     Reflect.set(object, prop, state.desired);
     state.applied = state.desired;
@@ -229,11 +247,15 @@ const wrappedRow = <W extends Gtk.Widget>(
     rows: RowCache,
     child: Gtk.Widget,
 ): Gtk.Widget => {
-    if (child instanceof Wrapper) return child;
+    if (child instanceof Wrapper) {
+        return child;
+    }
 
     const existing = rows.get(child);
 
-    if (existing !== undefined) return existing;
+    if (existing !== undefined) {
+        return existing;
+    }
 
     const wrapper = new Wrapper({});
     setChild(wrapper, child);
@@ -249,7 +271,10 @@ const removeWrappedRow = (
     rows: RowCache,
 ): void => {
     const row = child instanceof Wrapper ? child : rows.get(child);
-    if (row !== undefined) parent.remove(row);
+
+    if (row !== undefined) {
+        parent.remove(row);
+    }
 };
 
 /** Behavior for an index-placed container that wraps each child in `Wrapper` before adding it. */

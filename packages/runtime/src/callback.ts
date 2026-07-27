@@ -48,7 +48,10 @@ const collectRefArg = (
     inputs: unknown[],
     outParams: OutParam[],
 ): void => {
-    if (descriptor.inout === true) inputs.push((wrappedValue as { value: unknown }).value);
+    if (descriptor.inout === true) {
+        inputs.push((wrappedValue as { value: unknown }).value);
+    }
+
     outParams.push({ value: wrappedValue, descriptor });
 };
 
@@ -108,7 +111,9 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, plan.start);
     const result = plan.fn.apply(thisArg, inputs);
 
-    if (outParams.length === 0) return toNative(returnDescriptor, result);
+    if (outParams.length === 0) {
+        return toNative(returnDescriptor, result);
+    }
 
     const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", outParams.length);
     writeOutParams(outParams, outValues);
@@ -119,7 +124,9 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
 const effectiveTypesOf = (spec: CallbackSpec): Descriptor[] => {
     const { userDataIndex } = spec;
 
-    if (userDataIndex === undefined) return spec.argDescriptors;
+    if (userDataIndex === undefined) {
+        return spec.argDescriptors;
+    }
 
     return spec.argDescriptors.filter((_, i) => i !== userDataIndex);
 };

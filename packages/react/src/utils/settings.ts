@@ -53,7 +53,11 @@ const resolveSettingAccessor = <K extends SettingsSchemaKeys, P extends keyof K>
     key: P & string,
 ): ResolvedSettingAccessor<K, P> => {
     const kind = schema.keys[key];
-    if (kind === undefined) throw new Error(`Key "${key}" is not defined in schema "${schema.id}"`);
+
+    if (kind === undefined) {
+        throw new Error(`Key "${key}" is not defined in schema "${schema.id}"`);
+    }
+
     const accessor = (ACCESSORS[kind] ?? defaultAccessor(kind)) as SettingAccessor<SettingValue<K, P>>;
 
     return {

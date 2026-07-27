@@ -33,7 +33,11 @@ const signalHandlerName = (signalName: string): string => `on${upperFirst(toCame
 function* classesWithGlibNameIn(namespace: GirNamespace): IterableIterator<GlibNamedClass> {
     for (const klass of namespace.classes) {
         const glibName = glibNameOf(klass);
-        if (glibName === undefined) continue;
+
+        if (glibName === undefined) {
+            continue;
+        }
+
         yield { glibName, klass, namespace };
     }
 }
@@ -47,11 +51,15 @@ function* iterateClassesWithGlibName(library: Library): IterableIterator<GlibNam
 function collectImplementedInterface(state: InterfaceVisitState, name: string, fromNamespace: GirNamespace): void {
     const resolved = state.library.resolveType(fromNamespace.name, name);
 
-    if (resolved?.kind !== "interface") return;
+    if (resolved?.kind !== "interface") {
+        return;
+    }
 
     const key = `${resolved.namespace.name}.${resolved.value.name}`;
 
-    if (state.visited.has(key)) return;
+    if (state.visited.has(key)) {
+        return;
+    }
 
     state.visited.add(key);
     state.result.push({ klass: resolved.value, namespace: resolved.namespace });
@@ -59,7 +67,9 @@ function collectImplementedInterface(state: InterfaceVisitState, name: string, f
 }
 
 function visitImplementedInterfaces(state: InterfaceVisitState, names: string[], fromNamespace: GirNamespace): void {
-    for (const name of names) collectImplementedInterface(state, name, fromNamespace);
+    for (const name of names) {
+        collectImplementedInterface(state, name, fromNamespace);
+    }
 }
 
 const implementedInterfaces = (
@@ -94,11 +104,15 @@ const isCollectibleInterface = (
 const parentImplementedInterfaceKeys = (klass: GirClass, namespace: GirNamespace, library: Library): Set<string> => {
     const keys: Set<string> = new Set();
 
-    if (klass.parent === undefined) return keys;
+    if (klass.parent === undefined) {
+        return keys;
+    }
 
     const resolvedParent = library.resolveType(namespace.name, klass.parent);
 
-    if (resolvedParent?.kind !== "class") return keys;
+    if (resolvedParent?.kind !== "class") {
+        return keys;
+    }
 
     for (const iface of implementedInterfaces(resolvedParent.value, resolvedParent.namespace, library)) {
         keys.add(qualifiedInterfaceKey(iface));
@@ -128,7 +142,11 @@ const collectInterfacePropsFromElement = (element: GlibNamedClass, collector: In
 
     for (const iface of implementedInterfaces(element.klass, element.namespace, library)) {
         const key = qualifiedInterfaceKey(iface);
-        if (seen.has(key)) continue;
+
+        if (seen.has(key)) {
+            continue;
+        }
+
         seen.add(key);
 
         if (isCollectibleInterface(iface, targetNamespaceName, hasContainerProps)) {
@@ -151,7 +169,9 @@ const collectInterfacePropsClasses = (
         result: [],
     };
 
-    for (const element of intrinsicElements) collectInterfacePropsFromElement(element, collector);
+    for (const element of intrinsicElements) {
+        collectInterfacePropsFromElement(element, collector);
+    }
 
     return sortStringsBy(collector.result, qualifiedInterfaceKey);
 };
@@ -161,7 +181,10 @@ const ancestorGlibNames = (klass: GirClass, namespace: GirNamespace, library: Li
 
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {
         const glibName = glibNameOf(ancestor);
-        if (glibName !== undefined) names.push(glibName);
+
+        if (glibName !== undefined) {
+            names.push(glibName);
+        }
     }
 
     return names;
@@ -176,7 +199,9 @@ const someAncestor = (
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {
         const glibName = glibNameOf(ancestor) ?? "";
 
-        if (predicate(ancestor, glibName)) return true;
+        if (predicate(ancestor, glibName)) {
+            return true;
+        }
     }
 
     return false;
@@ -205,8 +230,15 @@ const collectIntrinsicElementClasses = (library: Library): GlibNamedClass[] => {
 
     for (const candidate of iterateClassesWithGlibName(library)) {
         const { glibName, klass, namespace } = candidate;
-        if (!isIntrinsicElementClass(klass, namespace, library)) continue;
-        if (seen.has(glibName)) continue;
+
+        if (!isIntrinsicElementClass(klass, namespace, library)) {
+            continue;
+        }
+
+        if (seen.has(glibName)) {
+            continue;
+        }
+
         seen.add(glibName);
         entries.push(candidate);
     }

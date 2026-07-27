@@ -119,27 +119,39 @@ const enumLiteral = (token: GlEnum): string | undefined => {
         return undefined;
     }
 
-    if (value > MAX_SAFE) return undefined;
+    if (value > MAX_SAFE) {
+        return undefined;
+    }
 
-    if (/^0[xX]/.test(text)) return `0x${text.slice(2).toLowerCase()}`;
+    if (/^0[xX]/.test(text)) {
+        return `0x${text.slice(2).toLowerCase()}`;
+    }
 
     return text;
 };
 
 const groupAliasValue = (existing: string | undefined, scalarAlias: string): string => {
-    if (scalarAlias === "GLbitfield") return "GLbitfield";
+    if (scalarAlias === "GLbitfield") {
+        return "GLbitfield";
+    }
 
     return existing ?? "GLenum";
 };
 
 const mergeGroupAlias = (aliases: Map<string, string>, scalar: GlScalar, group: string | undefined): void => {
-    if (group === undefined) return;
+    if (group === undefined) {
+        return;
+    }
 
-    if (scalar.groupBearing !== true) return;
+    if (scalar.groupBearing !== true) {
+        return;
+    }
 
     const existing = aliases.get(group);
 
-    if (existing === "GLbitfield") return;
+    if (existing === "GLbitfield") {
+        return;
+    }
 
     aliases.set(group, groupAliasValue(existing, scalar.tsAlias));
 };
@@ -150,7 +162,9 @@ const isGroupBearingParam = (paramPlan: ParamPlan): paramPlan is GroupBearingPar
 const considerParamGroup = (aliases: Map<string, string>, plan: OkPlan, index: number): void => {
     const { paramPlan, param } = paramPairAt(plan, index);
 
-    if (paramPlan === undefined || param === undefined) return;
+    if (paramPlan === undefined || param === undefined) {
+        return;
+    }
 
     if (isGroupBearingParam(paramPlan)) {
         mergeGroupAlias(aliases, paramPlan.scalar, param.group);
@@ -158,7 +172,9 @@ const considerParamGroup = (aliases: Map<string, string>, plan: OkPlan, index: n
 };
 
 const collectPlanGroups = (aliases: Map<string, string>, plan: OkPlan): void => {
-    for (let index = 0; index < plan.params.length; index++) considerParamGroup(aliases, plan, index);
+    for (let index = 0; index < plan.params.length; index++) {
+        considerParamGroup(aliases, plan, index);
+    }
 
     if (plan.returnPlan.kind === "scalar") {
         mergeGroupAlias(aliases, plan.returnPlan.scalar, plan.command.returnGroup);
@@ -167,20 +183,30 @@ const collectPlanGroups = (aliases: Map<string, string>, plan: OkPlan): void => 
 
 const collectGroupAliases = (plans: OkPlan[]): Map<string, string> => {
     const aliases: Map<string, string> = new Map();
-    for (const plan of plans) collectPlanGroups(aliases, plan);
+
+    for (const plan of plans) {
+        collectPlanGroups(aliases, plan);
+    }
 
     return aliases;
 };
 
 const planSelectedCommand = (registry: ReturnType<typeof loadGlRegistry>, name: string): OkPlan | GlExclusion => {
     const command = registry.commands.get(name);
-    if (command === undefined) throw new Error(`Selected command ${name} is not defined in the registry`);
 
-    if (OVERRIDE_OWNED.has(name)) return { command: name, reason: "override-owned" };
+    if (command === undefined) {
+        throw new Error(`Selected command ${name} is not defined in the registry`);
+    }
+
+    if (OVERRIDE_OWNED.has(name)) {
+        return { command: name, reason: "override-owned" };
+    }
 
     const plan = planCommand(command, PLAN_POLICY);
 
-    if (!plan.ok) return { command: name, reason: plan.reason };
+    if (!plan.ok) {
+        return { command: name, reason: plan.reason };
+    }
 
     return plan;
 };
@@ -215,7 +241,11 @@ const buildEnumRows = (registry: ReturnType<typeof loadGlRegistry>, enumNames: M
     for (const [name, feature] of sortedEnums) {
         const token = resolveEnum(registry, name);
         const literal = enumLiteral(token);
-        if (literal === undefined) continue;
+
+        if (literal === undefined) {
+            continue;
+        }
+
         enumRows.push({ token, exportName: enumExportName(name), literal, feature });
     }
 
@@ -239,9 +269,18 @@ const assertExportNamesDisjoint = (
     overrideExports: Set<string>,
 ): void => {
     const exportNames: Map<string, string> = new Map();
-    for (const command of rendered) claimExportName(exportNames, command.exportName, "command");
-    for (const singular of singulars) claimExportName(exportNames, singular.exportName, "derived singular");
-    for (const row of enumRows) claimExportName(exportNames, row.exportName, "enum constant");
+
+    for (const command of rendered) {
+        claimExportName(exportNames, command.exportName, "command");
+    }
+
+    for (const singular of singulars) {
+        claimExportName(exportNames, singular.exportName, "derived singular");
+    }
+
+    for (const row of enumRows) {
+        claimExportName(exportNames, row.exportName, "enum constant");
+    }
 
     const overrideCollisions = exportNames
         .keys()
@@ -268,7 +307,10 @@ const generateGlModules = (options: GlGenerationOptions): GlGenerationResult => 
         const feature = planFeatures.get(plan.command.name) ?? "unknown feature";
         rendered.push(renderCommand(plan, feature, usedTypes));
         const singular = deriveGenSingular(plan, feature, usedTypes) ?? deriveDeleteSingular(plan, feature, usedTypes);
-        if (singular !== undefined) singulars.push(singular);
+
+        if (singular !== undefined) {
+            singulars.push(singular);
+        }
     }
 
     const enumRows = buildEnumRows(registry, subset.enums);

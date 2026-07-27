@@ -38,7 +38,9 @@ const emitIcons = (ctx: PluginContext, icons: ListedFile[]): void => {
         ctx.emitFile({ type: "asset", fileName: join(ICONS_DIR, rel), source: readFileSync(absPath) });
     }
 
-    if (icons.length > 0) info(`Copied ${icons.length} icon(s) into ${ICONS_DIR}/`);
+    if (icons.length > 0) {
+        info(`Copied ${icons.length} icon(s) into ${ICONS_DIR}/`);
+    }
 };
 
 function gtkxIcons(): Plugin {
@@ -56,7 +58,9 @@ function gtkxIcons(): Plugin {
         },
 
         outputOptions(options) {
-            if (findIconFiles(state.iconsDir).length === 0) return;
+            if (findIconFiles(state.iconsDir).length === 0) {
+                return;
+            }
 
             return prependBanner(options, XDG_ENV_BANNER);
         },

@@ -6,7 +6,9 @@ const pressPointOf = (widget: Gtk.Widget): { x: number; y: number } => {
     const width = widget.getWidth();
     const height = widget.getHeight();
 
-    if (width > 0 && height > 0) return { x: width / 2, y: height / 2 };
+    if (width > 0 && height > 0) {
+        return { x: width / 2, y: height / 2 };
+    }
 
     return { x: 0, y: 0 };
 };
@@ -50,7 +52,9 @@ const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
 };
 
 const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
-    if (widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL) return false;
+    if (widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
+        return false;
+    }
 
     let activated = false;
 
@@ -76,10 +80,15 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
         return;
     }
 
-    if (await tryActivate(widget)) return;
+    if (await tryActivate(widget)) {
+        return;
+    }
 
     const target = findClickableAncestor(widget);
-    if (target) await emitClickSequence(widget, target, 1);
+
+    if (target) {
+        await emitClickSequence(widget, target, 1);
+    }
 };
 
 const dblClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, widget, 2);

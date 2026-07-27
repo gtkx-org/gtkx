@@ -35,7 +35,9 @@ const resolveScrollAdjustments = (widget: Gtk.Widget): ScrollAdjustments | null 
 };
 
 const applyScrollDelta = (adjustment: Gtk.Adjustment | null, delta: number): void => {
-    if (!adjustment || delta === 0) return;
+    if (!adjustment || delta === 0) {
+        return;
+    }
 
     adjustment.setValue(adjustment.getValue() + delta);
 };

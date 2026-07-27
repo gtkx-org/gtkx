@@ -481,7 +481,11 @@ describe("render - ContainerProp (14)", () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const { rerender } = await render(<SwapKeyedApp headerBarRef={headerBarRef} showBack={false} />);
             const headerBar = headerBarRef.current;
-            if (headerBar === null) throw new Error("expected the header bar to be mounted");
+
+            if (headerBar === null) {
+                throw new Error("expected the header bar to be mounted");
+            }
+
             const buttonCount = (): number => within(headerBar).getAllByRole(Gtk.AccessibleRole.BUTTON).length;
             const initialCount = buttonCount();
             await rerender(<SwapKeyedApp headerBarRef={headerBarRef} showBack={true} />);

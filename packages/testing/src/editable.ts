@@ -12,7 +12,9 @@ const isEditable = (widget: unknown): widget is EditableTarget =>
     widget instanceof Gtk.Editable || widget instanceof Gtk.TextView;
 
 const getEditableDelegate = (widget: Gtk.Widget): Gtk.Widget | null => {
-    if (!(widget instanceof Gtk.Editable)) return null;
+    if (!(widget instanceof Gtk.Editable)) {
+        return null;
+    }
 
     return widget.getDelegate();
 };

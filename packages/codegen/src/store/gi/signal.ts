@@ -47,11 +47,15 @@ const SIGNALS_SUFFIX = "Signals";
 const SIGNAL_EMIT_SUFFIX = "SignalEmit";
 
 const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] => {
-    if (klass.glibGetType === undefined) return [];
+    if (klass.glibGetType === undefined) {
+        return [];
+    }
 
     const signals = collectClassSignals(context, klass);
 
-    if (signals.length === 0) return [];
+    if (signals.length === 0) {
+        return [];
+    }
 
     const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
     context.addRuntimeImport("connectSignal");
@@ -137,22 +141,30 @@ const signalMapParentRefs = (
 ): string[] => {
     const parentRef = parentCompanionRef(context, klass, suffix);
 
-    if (parentRef !== undefined) return [parentRef];
+    if (parentRef !== undefined) {
+        return [parentRef];
+    }
 
-    if (!parentlessExtendsObject) return [];
+    if (!parentlessExtendsObject) {
+        return [];
+    }
 
     const prerequisiteRefs = klass.prerequisites
         .map((name) => resolvePrerequisiteReference(context, name))
         .filter((entry): entry is string => entry !== undefined)
         .map((entry) => `${entry}${suffix}`);
 
-    if (prerequisiteRefs.length > 0) return prerequisiteRefs;
+    if (prerequisiteRefs.length > 0) {
+        return prerequisiteRefs;
+    }
 
     return [gobjectObjectMapRef(context, suffix)];
 };
 
 const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => {
-    if (context.namespace.name === "GObject") return `Object${suffix}`;
+    if (context.namespace.name === "GObject") {
+        return `Object${suffix}`;
+    }
 
     return `${context.addCrossNamespaceImport("GObject")}.Object${suffix}`;
 };
@@ -334,8 +346,14 @@ const forEachInterfaceSignal = (
 ): void => {
     for (const implementName of klass.implements) {
         const iface = resolveImplementedInterface(context, implementName);
-        if (iface === undefined) continue;
-        for (const signal of iface.klass.signals) consider(signal);
+
+        if (iface === undefined) {
+            continue;
+        }
+
+        for (const signal of iface.klass.signals) {
+            consider(signal);
+        }
     }
 };
 
@@ -347,20 +365,27 @@ const collectClassSignals = (context: ModuleContext, klass: GirClass): GirCallab
     const consider = (signal: GirCallable): void => {
         const name = camelCase(signal.name);
 
-        if (inheritedNames.has(name) || seen.has(name)) return;
+        if (inheritedNames.has(name) || seen.has(name)) {
+            return;
+        }
 
         seen.add(name);
         result.push(signal);
     };
 
-    for (const signal of klass.signals) consider(signal);
+    for (const signal of klass.signals) {
+        consider(signal);
+    }
+
     forEachInterfaceSignal(context, klass, consider);
 
     return result;
 };
 
 const addMemberNames = (target: Set<string>, source: GirClass, select: (source: GirClass) => NamedMember[]): void => {
-    for (const member of select(source)) target.add(camelCase(member.name));
+    for (const member of select(source)) {
+        target.add(camelCase(member.name));
+    }
 };
 
 const collectInheritedMemberNames = (
@@ -372,7 +397,10 @@ const collectInheritedMemberNames = (
 
     forEachAncestor(context, klass, (ancestor, interfaces) => {
         addMemberNames(names, ancestor.klass, select);
-        for (const iface of interfaces) addMemberNames(names, iface.klass, select);
+
+        for (const iface of interfaces) {
+            addMemberNames(names, iface.klass, select);
+        }
     });
 
     return names;
@@ -389,14 +417,21 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): string[]
     const consider = (property: GirProperty): void => {
         const name = camelCase(property.name);
 
-        if (inherited.has(name) || seen.has(name)) return;
+        if (inherited.has(name) || seen.has(name)) {
+            return;
+        }
 
         seen.add(name);
         result.push(property.name);
     };
 
-    for (const property of klass.properties) consider(property);
-    for (const { property } of collectInterfaceProperties(context, klass)) consider(property);
+    for (const property of klass.properties) {
+        consider(property);
+    }
+
+    for (const { property } of collectInterfaceProperties(context, klass)) {
+        consider(property);
+    }
 
     return result;
 };

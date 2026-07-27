@@ -11,7 +11,9 @@ import { readStream } from "./error-like.js";
  * formatChildProcessError({ stderr: "boom" }); // "boom"
  */
 function formatChildProcessError(error: unknown): string | undefined {
-    if (!isRecord(error)) return undefined;
+    if (!isRecord(error)) {
+        return undefined;
+    }
 
     const { stderr, stdout } = error;
     const details = [readStream(stderr), readStream(stdout)].filter(Boolean).join("\n").trim();

@@ -13,7 +13,9 @@ type TransformResult = { code: string; map?: unknown } | null | undefined;
 type TransformFn = (code: string, id: string, options?: { ssr?: boolean }) => Promise<TransformResult>;
 
 const normalizeResult = (result: Awaited<ReturnType<TransformHook>>): TransformResult => {
-    if (!result || typeof result === "string" || typeof result.code !== "string") return undefined;
+    if (!result || typeof result === "string" || typeof result.code !== "string") {
+        return undefined;
+    }
 
     return { code: result.code, map: result.map };
 };

@@ -81,9 +81,13 @@ const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName
 };
 
 const transferOwnership = (transfer: ParameterTransfer): Ownership => {
-    if (transfer === "full") return "full";
+    if (transfer === "full") {
+        return "full";
+    }
 
-    if (transfer === "container") return "full";
+    if (transfer === "container") {
+        return "full";
+    }
 
     return "borrowed";
 };
@@ -92,7 +96,9 @@ const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =
     transfer === "container" ? "none" : transfer;
 
 const isVoidRef = (library: Library, ref: TypeId | undefined): boolean => {
-    if (ref === undefined) return true;
+    if (ref === undefined) {
+        return true;
+    }
 
     const type = library.typeOf(ref);
 
@@ -111,13 +117,17 @@ const renderDescriptor = (
     transfer: ParameterTransfer = "none",
     options: RenderDescriptorOptions = {},
 ): string => {
-    if (ref === undefined) return tVoid;
+    if (ref === undefined) {
+        return tVoid;
+    }
 
     const { argIndexOffset = 0 } = options;
     const ownership = transferOwnership(transfer);
     const type = context.library.typeOf(ref);
 
-    if (type === undefined) return tObject(ownership);
+    if (type === undefined) {
+        return tObject(ownership);
+    }
 
     switch (type.kind) {
         case "primitive": {
@@ -138,7 +148,9 @@ const renderDescriptor = (
             return arrayExpression(context, type, transfer, argIndexOffset);
         }
         case "list": {
-            if (type.flavor === "gbytearray") return tByteArray(ownership);
+            if (type.flavor === "gbytearray") {
+                return tByteArray(ownership);
+            }
 
             const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), {
                 argIndexOffset,
@@ -157,11 +169,15 @@ const renderDescriptor = (
 };
 
 const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): GirCallback | undefined => {
-    if (ref === undefined) return undefined;
+    if (ref === undefined) {
+        return undefined;
+    }
 
     const type = context.library.typeOf(ref);
 
-    if (type?.kind !== "callback") return undefined;
+    if (type?.kind !== "callback") {
+        return undefined;
+    }
 
     return type.value;
 };
@@ -184,7 +200,9 @@ const isScalarType = (library: Library, type: GirType): boolean => {
 };
 
 const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
-    if (ref === undefined) return false;
+    if (ref === undefined) {
+        return false;
+    }
 
     const type = library.typeOf(ref);
 
@@ -216,7 +234,9 @@ const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
     let userDataIndex: number | undefined;
 
     for (const [index, parameter] of parameters.entries()) {
-        if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;
+        if (parameter.name === "user_data" || parameter.name === "data") {
+            userDataIndex = index;
+        }
     }
 
     return userDataIndex;
@@ -224,9 +244,18 @@ const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
 
 const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number | undefined): string | undefined => {
     const options: string[] = [];
-    if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
-    if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
-    if (owningParameter.scope !== undefined) options.push(`scope: ${sourceStringLiteral(owningParameter.scope)}`);
+
+    if (owningParameter.destroyIndex !== undefined) {
+        options.push("hasDestroy: true");
+    }
+
+    if (userDataIndex !== undefined) {
+        options.push(`userDataIndex: ${userDataIndex}`);
+    }
+
+    if (owningParameter.scope !== undefined) {
+        options.push(`scope: ${sourceStringLiteral(owningParameter.scope)}`);
+    }
 
     return options.length > 0 ? `{ ${options.join(", ")} }` : undefined;
 };
@@ -239,7 +268,9 @@ const renderCallbackType = (
 ): string | undefined => {
     const callback = resolveCallbackType(context, ref);
 
-    if (callback === undefined) return undefined;
+    if (callback === undefined) {
+        return undefined;
+    }
 
     const argTypes = callback.parameters.map(
         (parameter, index) => argOverrides?.get(index) ?? renderParamDescriptor(context, parameter, parameter.type),
@@ -257,13 +288,21 @@ const renderCallbackType = (
 };
 
 const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership): string => {
-    if (category === "void") return tVoid;
+    if (category === "void") {
+        return tVoid;
+    }
 
-    if (category === "string") return tString(ownership);
+    if (category === "string") {
+        return tString(ownership);
+    }
 
-    if (category === "pointer") return tUint64;
+    if (category === "pointer") {
+        return tUint64;
+    }
 
-    if (category === "gtype") return tGtype;
+    if (category === "gtype") {
+        return tGtype;
+    }
 
     return tScalar(category satisfies ScalarDescriptorName);
 };
@@ -303,7 +342,9 @@ const isClassOrInterface = (type: GirType | undefined): type is Extract<EntityTy
 const fundamentalOf = (node: Extract<EntityType, { kind: "class" | "interface" }>): AncestorFundamental | undefined => {
     const cls = node.value;
 
-    if (!cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) return undefined;
+    if (!cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
+        return undefined;
+    }
 
     return {
         lib: node.namespace.sharedLibrary ?? "",
@@ -318,18 +359,26 @@ const walkFundamental = (
     current: GirType | undefined,
     seen: Set<string>,
 ): AncestorFundamental | undefined => {
-    if (!isClassOrInterface(current)) return undefined;
+    if (!isClassOrInterface(current)) {
+        return undefined;
+    }
 
     const key = `${current.namespace.name}.${current.value.name}`;
 
-    if (seen.has(key)) return undefined;
+    if (seen.has(key)) {
+        return undefined;
+    }
 
     seen.add(key);
     const fundamental = fundamentalOf(current);
 
-    if (fundamental !== undefined) return fundamental;
+    if (fundamental !== undefined) {
+        return fundamental;
+    }
 
-    if (current.value.parent === undefined) return undefined;
+    if (current.value.parent === undefined) {
+        return undefined;
+    }
 
     const parent = context.library.resolveType(current.namespace.name, current.value.parent);
 
@@ -353,15 +402,23 @@ const classSelfDescriptor = (
 const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): string => {
     const ref = instance.type;
 
-    if (ref === undefined) return tObject("borrowed");
+    if (ref === undefined) {
+        return tObject("borrowed");
+    }
 
     const type = context.library.typeOf(ref);
 
-    if (type === undefined) return tObject("borrowed");
+    if (type === undefined) {
+        return tObject("borrowed");
+    }
 
-    if (isClassOrInterface(type)) return classSelfDescriptor(context, type);
+    if (isClassOrInterface(type)) {
+        return classSelfDescriptor(context, type);
+    }
 
-    if (type.kind === "record") return recordExpression(context, type, transferOwnership(instance.transferOwnership));
+    if (type.kind === "record") {
+        return recordExpression(context, type, transferOwnership(instance.transferOwnership));
+    }
 
     return tObject("borrowed");
 };
@@ -374,7 +431,9 @@ const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; u
 const recordNeedsFallbackClass = (record: ResolvedRecord): boolean => {
     const { refFunc, unrefFunc } = recordRefPair(record);
 
-    if (refFunc !== undefined && unrefFunc !== undefined) return record.glibTypeName === undefined;
+    if (refFunc !== undefined && unrefFunc !== undefined) {
+        return record.glibTypeName === undefined;
+    }
 
     return record.glibGetType === undefined;
 };
@@ -465,7 +524,9 @@ const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string
     const getter = resolved.value.glibGetType;
     const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
 
-    if (getter === undefined || getter === "") return rawEnumDescriptor(signed);
+    if (getter === undefined || getter === "") {
+        return rawEnumDescriptor(signed);
+    }
 
     const lib = resolved.namespace.sharedLibrary ?? "";
 
@@ -519,7 +580,9 @@ const arrayExpression = (
 };
 
 const recordInlineSize = (context: ModuleContext, record: ResolvedRecord): number | undefined => {
-    if (record.opaque || record.disguised || record.fields.length === 0) return undefined;
+    if (record.opaque || record.disguised || record.fields.length === 0) {
+        return undefined;
+    }
 
     const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
@@ -531,13 +594,19 @@ const inlineElementSize = (
     element: TypeId | undefined,
     elementCType: string | undefined,
 ): number | undefined => {
-    if (element === undefined) return undefined;
+    if (element === undefined) {
+        return undefined;
+    }
 
-    if (elementCType?.includes("*")) return undefined;
+    if (elementCType?.includes("*")) {
+        return undefined;
+    }
 
     const type = context.library.typeOf(element);
 
-    if (type?.kind !== "record") return undefined;
+    if (type?.kind !== "record") {
+        return undefined;
+    }
 
     return recordInlineSize(context, type.value);
 };

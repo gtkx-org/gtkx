@@ -22,7 +22,9 @@ function enumNamesByValue(enumObject: Record<string, string | number>): Map<numb
 const formatRole = (role: Gtk.AccessibleRole): string => {
     const name = ROLE_NAMES_BY_VALUE.get(role);
 
-    if (!name) return String(role);
+    if (!name) {
+        return String(role);
+    }
 
     return name.toLowerCase();
 };

@@ -16,9 +16,13 @@ const setTestingModuleLoader = (next: TestingModuleLoader | null): void => {
 };
 
 const loadTestingModule = async (): Promise<TestingModule> => {
-    if (testingModule) return testingModule;
+    if (testingModule) {
+        return testingModule;
+    }
 
-    if (testingLoadError) throw testingLoadError;
+    if (testingLoadError) {
+        throw testingLoadError;
+    }
 
     try {
         testingModule = await loader();

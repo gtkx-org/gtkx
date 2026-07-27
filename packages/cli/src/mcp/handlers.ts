@@ -116,7 +116,9 @@ const extractSignalArg = (arg: unknown): unknown => {
 };
 
 const resolveRole = (value: string | number): Gtk.AccessibleRole | undefined => {
-    if (typeof value === "number") return value;
+    if (typeof value === "number") {
+        return value;
+    }
 
     const resolved = Gtk.AccessibleRole[value.toUpperCase() as keyof typeof Gtk.AccessibleRole];
 

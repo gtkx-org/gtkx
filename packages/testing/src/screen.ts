@@ -4,7 +4,9 @@ const NO_RENDER_MESSAGE = "No render has been performed: call render() before us
 
 const defaultScreen: RenderResult = new Proxy({} as RenderResult, {
     get: (_target, property) => {
-        if (property === "baseElement" || property === "container") return throwNoRender();
+        if (property === "baseElement" || property === "container") {
+            return throwNoRender();
+        }
 
         return throwNoRender;
     },

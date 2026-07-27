@@ -39,7 +39,10 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
 
     const config = result.config;
     const found = result.configFile !== undefined && existsSync(resolve(cwd, result.configFile));
-    if (found) validateConfig(config);
+
+    if (found) {
+        validateConfig(config);
+    }
 
     return {
         config,

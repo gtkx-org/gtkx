@@ -36,7 +36,11 @@ const buildAncestry = (name: string): string[] => {
 
     while (type !== TYPE_INVALID) {
         addAncestor(names, seen, typeName(type));
-        for (const iface of typeInterfaces(type)) addAncestor(names, seen, typeName(iface));
+
+        for (const iface of typeInterfaces(type)) {
+            addAncestor(names, seen, typeName(iface));
+        }
+
         type = typeParent(type);
     }
 
@@ -47,7 +51,10 @@ const ancestryOf = (name: string): string[] => getOrInsert(ancestryCache, name, 
 
 const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
     const items = source ?? [];
-    for (const item of items) target.add(item);
+
+    for (const item of items) {
+        target.add(item);
+    }
 };
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
@@ -59,13 +66,21 @@ const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
 };
 
 const applyBehaviorFlags = (info: TypeInfo, behavior: ElementBehavior): void => {
-    if (behavior.flush !== undefined) info.hasFlush = true;
-    if (behavior.mount !== undefined) info.hasMount = true;
+    if (behavior.flush !== undefined) {
+        info.hasFlush = true;
+    }
+
+    if (behavior.mount !== undefined) {
+        info.hasMount = true;
+    }
+
     addAll(info.deferred, deferredProps(behavior));
 };
 
 const resolveBehaviorFlags = (info: TypeInfo): void => {
-    for (const behavior of info.behaviors) applyBehaviorFlags(info, behavior);
+    for (const behavior of info.behaviors) {
+        applyBehaviorFlags(info, behavior);
+    }
 };
 
 const buildTypeInfo = (name: string): TypeInfo => {
@@ -85,10 +100,16 @@ const buildTypeInfo = (name: string): TypeInfo => {
         defaults: {},
     };
 
-    for (const ancestor of chain) accumulateAncestor(info, ancestor);
+    for (const ancestor of chain) {
+        accumulateAncestor(info, ancestor);
+    }
+
     resolveBehaviorFlags(info);
     info.lazy = chain.some((ancestor) => ELEMENTS[ancestor]?.lazy === true);
-    for (const ancestor of chain.toReversed()) Object.assign(info.defaults, DEFAULT_PROPS[ancestor] ?? {});
+
+    for (const ancestor of chain.toReversed()) {
+        Object.assign(info.defaults, DEFAULT_PROPS[ancestor] ?? {});
+    }
 
     return info;
 };

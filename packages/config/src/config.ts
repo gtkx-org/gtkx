@@ -58,7 +58,9 @@ const PANIC_THRESHOLD_SET: Set<string> = new Set(PANIC_THRESHOLDS);
 const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((ctx) => {
     const value = ctx.value;
 
-    if (value === LIBRARIES_WILDCARD) return;
+    if (value === LIBRARIES_WILDCARD) {
+        return;
+    }
 
     if (!Array.isArray(value) || value.length === 0) {
         ctx.issues.push(rawIssue(value, [], `must be "${LIBRARIES_WILDCARD}", a non-empty string array, or omitted`));
@@ -89,7 +91,9 @@ const applicationIdSchema = z.custom<string>().check((ctx) => {
 const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ctx) => {
     const value = ctx.value;
 
-    if (typeof value === "boolean") return;
+    if (typeof value === "boolean") {
+        return;
+    }
 
     if (!isRecord(value)) {
         ctx.issues.push(rawIssue(value, [], "must be a boolean or an options object"));
@@ -174,7 +178,9 @@ const configSchema = z.object({
 const defineConfig: DefineConfig<Config> = createDefineConfig<Config>();
 
 const libraryEntryIssues = (value: unknown[], index: number, entry: unknown): ReturnType<typeof rawIssue>[] => {
-    if (typeof entry === "string" && GIR_LIBRARY_PATTERN.test(entry)) return [];
+    if (typeof entry === "string" && GIR_LIBRARY_PATTERN.test(entry)) {
+        return [];
+    }
 
     if (entry === LIBRARIES_WILDCARD) {
         const message = `to generate every library, set \`libraries: "${LIBRARIES_WILDCARD}"\` as a bare string, not an array entry`;
@@ -196,7 +202,9 @@ const isValidApplicationId = (applicationId: string): boolean => {
 };
 
 const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): ResolvedReactCompilerOptions | null => {
-    if (setting === false) return null;
+    if (setting === false) {
+        return null;
+    }
 
     const overrides = setting === undefined || setting === true ? {} : setting;
 
@@ -208,7 +216,10 @@ const isValidReactCompilerOption = (value: unknown, allowed: Set<string>): boole
 
 const validateConfig = (config: Config): void => {
     const result = configSchema.safeParse(config);
-    if (!result.success) throw configError(result.error);
+
+    if (!result.success) {
+        throw configError(result.error);
+    }
 };
 
 /**
@@ -219,7 +230,9 @@ const validateConfig = (config: Config): void => {
 const mergeConfig = (base: Config, override: Config): Config => defu(override, base);
 
 const resolveElementsModule = (behaviors: string | undefined, root: string | undefined): string | null => {
-    if (behaviors === undefined) return null;
+    if (behaviors === undefined) {
+        return null;
+    }
 
     return root === undefined ? behaviors : resolve(root, behaviors);
 };

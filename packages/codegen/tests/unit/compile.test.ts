@@ -12,7 +12,10 @@ describe("compileStore", () => {
     let dir: string | undefined;
 
     afterEach(() => {
-        if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
+        if (dir !== undefined) {
+            rmSync(dir, { recursive: true, force: true });
+        }
+
         dir = undefined;
     });
 
@@ -85,7 +88,10 @@ describe("compileProject", () => {
     let dir: string | undefined;
 
     afterEach(() => {
-        if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
+        if (dir !== undefined) {
+            rmSync(dir, { recursive: true, force: true });
+        }
+
         dir = undefined;
     });
 

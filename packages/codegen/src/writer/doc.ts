@@ -3,11 +3,15 @@ import { gtkDocToMarkdown } from "./gtk-doc.js";
 const escapeCommentTerminators = (doc: string): string => doc.replaceAll("*/", String.raw`*\/`);
 
 const renderJsDoc = (doc: string | undefined): string => {
-    if (doc === undefined || doc.length === 0) return "";
+    if (doc === undefined || doc.length === 0) {
+        return "";
+    }
 
     const lines = escapeCommentTerminators(gtkDocToMarkdown(doc)).split("\n");
 
-    if (lines.length === 1) return `/** ${lines[0]} */\n`;
+    if (lines.length === 1) {
+        return `/** ${lines[0]} */\n`;
+    }
 
     const body = lines.map((line) => (line.length === 0 ? " *" : ` * ${line}`)).join("\n");
 

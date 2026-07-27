@@ -39,7 +39,11 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
 
     const { rerender } = await render(<Harness />);
     const row = ref.current;
-    if (!row) throw new Error("expected ref");
+
+    if (!row) {
+        throw new Error("expected ref");
+    }
+
     afterMount?.(row);
     await act(() => fireFirst(row));
     const callsBefore = handler.mock.calls.length;
@@ -74,7 +78,11 @@ describe("render - SpinRow (1)", () => {
         );
 
         const row = ref.current;
-        if (!row) throw new Error("expected ref");
+
+        if (!row) {
+            throw new Error("expected ref");
+        }
+
         installAdjustment(row, 0, 10, 1);
         await act(() => row.setValue(7));
         expect(onValueChanged).toHaveBeenCalled();

@@ -25,7 +25,10 @@ const stackChildOrder = (stack: Gtk.Stack): string[] => {
     let child = stack.getFirstChild();
 
     while (child !== null) {
-        if (child instanceof GtkEnums.Label) names.push(child.getLabel());
+        if (child instanceof GtkEnums.Label) {
+            names.push(child.getLabel());
+        }
+
         child = child.getNextSibling();
     }
 

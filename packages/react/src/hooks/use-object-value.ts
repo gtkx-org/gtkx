@@ -19,7 +19,9 @@ function useObjectValue<T extends GObject.Object, V>(
 
     const subscribe = useCallback(
         (onStoreChange: () => void): (() => void) => {
-            if (resolved === null) return () => {};
+            if (resolved === null) {
+                return () => {};
+            }
 
             const handler: SignalHandler = () => {
                 cacheRef.current = null;

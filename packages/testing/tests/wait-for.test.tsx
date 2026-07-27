@@ -16,7 +16,9 @@ const createDynamicComponent = (removableContent: ReactNode) => () => {
 };
 
 const assertReady = (ready: boolean): void => {
-    if (!ready) throw new Error("Not ready");
+    if (!ready) {
+        throw new Error("Not ready");
+    }
 };
 
 const elementIfAttached = (element: Gtk.Widget): Gtk.Widget | null => {
@@ -177,7 +179,10 @@ describe("waitForElementToBeRemoved widget", () => {
 
         element.getRoot = () => {
             const root = originalGetRoot();
-            if (root === null) throw new Error("Widget destroyed");
+
+            if (root === null) {
+                throw new Error("Widget destroyed");
+            }
 
             return root;
         };

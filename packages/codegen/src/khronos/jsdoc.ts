@@ -31,12 +31,23 @@ const formatPrototype = (command: GlCommand): string => {
 const inParamDocLine = (command: GlCommand, arg: InArg): string => {
     const param = command.params.find((candidate) => toCamelIdentifier(candidate.name) === arg.name);
 
-    if (param === undefined) return ` * @param ${arg.name}`;
+    if (param === undefined) {
+        return ` * @param ${arg.name}`;
+    }
 
     const notes: string[] = [`\`${param.cType}\``];
-    if (param.group !== undefined) notes.push(`group \`${param.group}\``);
-    if (param.len !== undefined) notes.push(`length \`${param.len}\``);
-    if (param.objectClass !== undefined) notes.push(`object class \`${param.objectClass}\``);
+
+    if (param.group !== undefined) {
+        notes.push(`group \`${param.group}\``);
+    }
+
+    if (param.len !== undefined) {
+        notes.push(`length \`${param.len}\``);
+    }
+
+    if (param.objectClass !== undefined) {
+        notes.push(`object class \`${param.objectClass}\``);
+    }
 
     return ` * @param ${arg.name} - ${notes.join(", ")}`;
 };
@@ -53,12 +64,22 @@ const outMember = (command: GlCommand, out: OutArg): string => {
 
 const returnsDocLine = (command: GlCommand, returnPlan: ReturnPlan, outs: OutArg[]): string | undefined => {
     const members: string[] = [];
-    if (returnPlan.kind !== "void") members.push(`\`${command.returnCType}\``);
-    for (const out of outs) members.push(outMember(command, out));
 
-    if (members.length === 0) return undefined;
+    if (returnPlan.kind !== "void") {
+        members.push(`\`${command.returnCType}\``);
+    }
 
-    if (members.length === 1) return ` * @returns ${members[0]}`;
+    for (const out of outs) {
+        members.push(outMember(command, out));
+    }
+
+    if (members.length === 0) {
+        return undefined;
+    }
+
+    if (members.length === 1) {
+        return ` * @returns ${members[0]}`;
+    }
 
     return ` * @returns Tuple of ${members.join(", ")}`;
 };

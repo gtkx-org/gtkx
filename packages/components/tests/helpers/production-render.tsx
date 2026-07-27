@@ -24,7 +24,10 @@ const render = async (element: ReactNode): Promise<ProductionRenderResult> => {
 };
 
 const cleanup = async (): Promise<void> => {
-    for (const root of activeRoots) root.unmount();
+    for (const root of activeRoots) {
+        root.unmount();
+    }
+
     activeRoots.clear();
     await settle();
 };

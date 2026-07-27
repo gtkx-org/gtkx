@@ -65,7 +65,9 @@ const getSignalBaseName = (signal: string): string => {
 function getQuarkForSignalDetail(signal: string): number {
     const detailIndex = signal.indexOf("::");
 
-    if (detailIndex === -1) return 0;
+    if (detailIndex === -1) {
+        return 0;
+    }
 
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
@@ -109,10 +111,14 @@ function blockMatchedSignalHandlers(instance: object, signal: string): void {
 }
 
 const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: () => unknown } => {
-    if (!isOutputArg(arg)) return { value: toValue(arg.type, arg.value) };
+    if (!isOutputArg(arg)) {
+        return { value: toValue(arg.type, arg.value) };
+    }
 
     if (isCallerAllocatedArg(arg)) {
-        if (isInoutArg(arg)) return { value: inoutValueForBoxedDescriptor(arg.type, arg.value as object) };
+        if (isInoutArg(arg)) {
+            return { value: inoutValueForBoxedDescriptor(arg.type, arg.value as object) };
+        }
 
         const value = outValueForBoxedDescriptor(arg.type, arg.value as object);
 
@@ -139,7 +145,10 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returnDes
     for (const arg of args) {
         const { value, read } = createEmitValue(arg);
         values.push(value);
-        if (read) reads.push(read);
+
+        if (read) {
+            reads.push(read);
+        }
     }
 
     if (returnDescriptor !== undefined) {

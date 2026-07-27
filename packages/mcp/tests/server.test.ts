@@ -136,7 +136,11 @@ function registerTools(appRouter: AppRouterStub): RegisteredTool[] {
     resetMainMocks();
     createMcpServer({ version: "test" });
     const instance = appRouterInstances.at(-1);
-    if (!instance) throw new Error("AppRouter was not created");
+
+    if (!instance) {
+        throw new Error("AppRouter was not created");
+    }
+
     Object.assign(instance, appRouter);
 
     return registerToolMock.mock.calls.map(([name, config, handler]) => ({
@@ -148,7 +152,10 @@ function registerTools(appRouter: AppRouterStub): RegisteredTool[] {
 
 function getTool(appRouter: AppRouterStub, name: string): RegisteredTool {
     const tool = registerTools(appRouter).find((t) => t.name === name);
-    if (!tool) throw new Error(`Tool not found: ${name}`);
+
+    if (!tool) {
+        throw new Error(`Tool not found: ${name}`);
+    }
 
     return tool;
 }
@@ -419,7 +426,9 @@ function setupMainMocks(): MainSetup {
 
 function pruneListeners<T>(current: T[], previous: T[], remove: (listener: T) => void): void {
     for (const listener of current) {
-        if (!previous.includes(listener)) remove(listener);
+        if (!previous.includes(listener)) {
+            remove(listener);
+        }
     }
 }
 
@@ -469,7 +478,11 @@ describe("main — error logging", () => {
     it("logs broken-pipe-style socket errors only when the code is not EPIPE/ECONNRESET", async () => {
         await main();
         const registry = connectionRegistryInstances[0];
-        if (!registry) throw new Error("Registry not created");
+
+        if (!registry) {
+            throw new Error("Registry not created");
+        }
+
         registry.emit("error", Object.assign(new Error("pipe gone"), { code: "EPIPE" }));
         registry.emit("error", Object.assign(new Error("conn gone"), { code: "ECONNRESET" }));
         registry.emit("error", Object.assign(new Error("real boom"), { code: "EACCES" }));
@@ -482,7 +495,11 @@ describe("main — error logging", () => {
     it("logs an entry when an app registers and unregisters", async () => {
         await main();
         const appRouter = appRouterInstances[0];
-        if (!appRouter) throw new Error("AppRouter not registered");
+
+        if (!appRouter) {
+            throw new Error("AppRouter not registered");
+        }
+
         appRouter.emit("appRegistered", { applicationId: "app-a", pid: 42 });
         appRouter.emit("appUnregistered", "app-a");
         const messages = collectErrorMessages(getSetup());

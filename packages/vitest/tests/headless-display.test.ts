@@ -69,17 +69,24 @@ const restoreTrackedEnv = (saved: Record<string, string | undefined>): void => {
     for (const key of trackedEnvKeys) {
         const value = saved[key];
 
-        if (value === undefined) Reflect.deleteProperty(process.env, key);
-        else process.env[key] = value;
+        if (value === undefined) {
+            Reflect.deleteProperty(process.env, key);
+        } else {
+            process.env[key] = value;
+        }
     }
 };
 
 const runTeardowns = (teardowns: (() => void)[]): void => {
-    for (const teardown of teardowns) teardown();
+    for (const teardown of teardowns) {
+        teardown();
+    }
 };
 
 const killChildren = (children: ChildProcess[]): void => {
-    for (const child of children) child.kill("SIGKILL");
+    for (const child of children) {
+        child.kill("SIGKILL");
+    }
 };
 
 const fulfillSockets = (compositor: Compositor): void => {

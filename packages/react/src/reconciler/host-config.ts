@@ -56,14 +56,18 @@ const hostConfig = {
     createTextInstance: (text: string): TextNode => createTextNode(text),
     appendInitialChild: (parent: Instance, child: AnyNode): void => attachChild(parent, child, null),
     finalizeInitialChildren: (instance: Instance, _type: string, props: Props): boolean => {
-        if (instance.kind !== ELEMENT_KIND) return false;
+        if (instance.kind !== ELEMENT_KIND) {
+            return false;
+        }
 
         validateContentMix(instance, props);
 
         return typeInfoOf(instance.typeName).hasMount;
     },
     commitMount: (instance: Instance): void => {
-        if (instance.kind === ELEMENT_KIND) mountBehaviors(instance);
+        if (instance.kind === ELEMENT_KIND) {
+            mountBehaviors(instance);
+        }
     },
     shouldSetTextContent: (): boolean => false,
     getRootHostContext: (): Record<string, never> => HOST_CONTEXT,
@@ -91,11 +95,15 @@ const hostConfig = {
     commitTextUpdate: (textInstance: TextNode, oldText: string, newText: string): void => {
         textInstance.text = newText;
         const host = enclosingHost(textInstance);
-        if (host !== null && !surgicalTextUpdate(host, textInstance, oldText, newText)) markTextDirty(host);
+
+        if (host !== null && !surgicalTextUpdate(host, textInstance, oldText, newText)) {
+            markTextDirty(host);
+        }
     },
     commitUpdate: (instance: Instance, _type: string, prevProps: Props, nextProps: Props): void => {
-        if (instance.kind === ELEMENT_KIND) applyElementProps(instance, prevProps, nextProps);
-        else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
+        if (instance.kind === ELEMENT_KIND) {
+            applyElementProps(instance, prevProps, nextProps);
+        } else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
             applyAdoptedProps(lazyTarget(instance, instance.adopted), prevProps, nextProps);
             instance.props = nextProps;
         }
@@ -141,23 +149,33 @@ const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unkn
     ReactReconciler(hostConfig);
 
 const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
-    if (!isRootElement(container)) attachChild(containerNodeFor(container), child, before);
+    if (!isRootElement(container)) {
+        attachChild(containerNodeFor(container), child, before);
+    }
 };
 
 const detachFromContainer = (container: Container, child: AnyNode): void => {
-    if (!isRootElement(container)) detachChild(containerNodeFor(container), child);
+    if (!isRootElement(container)) {
+        detachChild(containerNodeFor(container), child);
+    }
 };
 
 const publicInstanceOf = (instance: Instance): object => {
-    if (instance.kind === ELEMENT_KIND) return instance.object;
+    if (instance.kind === ELEMENT_KIND) {
+        return instance.object;
+    }
 
-    if (instance.kind === LAZY_KIND) return instance.adopted ?? instance;
+    if (instance.kind === LAZY_KIND) {
+        return instance.adopted ?? instance;
+    }
 
     return instance;
 };
 
 const setWidgetVisible = (instance: Instance, visible: boolean): void => {
-    if (instance.kind === ELEMENT_KIND && instance.object instanceof Gtk.Widget) instance.object.setVisible(visible);
+    if (instance.kind === ELEMENT_KIND && instance.object instanceof Gtk.Widget) {
+        instance.object.setVisible(visible);
+    }
 };
 
 const runDiscrete: Dispatch = (fn) => {
@@ -174,7 +192,10 @@ const runDiscrete: Dispatch = (fn) => {
 
 const adoptContainer = (container: GObject.Object): ElementNode => {
     const name = typeName(getInstanceType(container));
-    if (name === null) throw new Error("Cannot adopt a container whose GType has no registered name");
+
+    if (name === null) {
+        throw new Error("Cannot adopt a container whose GType has no registered name");
+    }
 
     return createElementNode(name, container, runDiscrete, null);
 };
@@ -183,7 +204,9 @@ const containerNodeFor = (container: GObject.Object): ElementNode =>
     getOrInsert(containerNodes, container, adoptContainer);
 
 const createNode = (type: string, props: Props): Instance => {
-    if (type === Prop) return createPropNode(props.propName as string);
+    if (type === Prop) {
+        return createPropNode(props.propName as string);
+    }
 
     const node = resolveElementNode(type, props, runDiscrete);
 

@@ -184,9 +184,13 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
 };
 
 const cachedDocsResult = (options: DocsOptions, manifestPath: string): DocsResult | undefined => {
-    if (options.force === true || !isGiStoreFresh(options.outDir, options.libraries)) return undefined;
+    if (options.force === true || !isGiStoreFresh(options.outDir, options.libraries)) {
+        return undefined;
+    }
 
-    if (!existsSync(manifestPath)) return undefined;
+    if (!existsSync(manifestPath)) {
+        return undefined;
+    }
 
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as DocsManifest;
 
@@ -207,7 +211,9 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
     const cached = cachedDocsResult(options, manifestPath);
 
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+        return cached;
+    }
 
     const library = Library.load(options.libraries, options.girPath);
     const { pages, namespaces } = generatePages(options, basePath, library);

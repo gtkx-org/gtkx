@@ -131,15 +131,21 @@ const resolveHeadlessOptions = (provided: Partial<HeadlessOptions>): HeadlessOpt
 
 const applyEnv = (snapshot: EnvSnapshot, values: Record<string, string>): void => {
     for (const [name, value] of Object.entries(values)) {
-        if (!Object.hasOwn(snapshot, name)) snapshot[name] = process.env[name];
+        if (!Object.hasOwn(snapshot, name)) {
+            snapshot[name] = process.env[name];
+        }
+
         process.env[name] = value;
     }
 };
 
 const restoreEnv = (snapshot: EnvSnapshot): void => {
     for (const [name, previous] of Object.entries(snapshot)) {
-        if (previous === undefined) Reflect.deleteProperty(process.env, name);
-        else process.env[name] = previous;
+        if (previous === undefined) {
+            Reflect.deleteProperty(process.env, name);
+        } else {
+            process.env[name] = previous;
+        }
     }
 };
 
@@ -164,9 +170,16 @@ const isCompositorId = (value: string): value is CompositorId => Object.hasOwn(c
 const readHeadlessOptions = (params: URLSearchParams): Partial<HeadlessOptions> => {
     const options: Partial<HeadlessOptions> = {};
     const size = params.get("size");
-    if (size !== null) options.size = size;
+
+    if (size !== null) {
+        options.size = size;
+    }
+
     const compositor = params.get("compositor");
-    if (compositor !== null && isCompositorId(compositor)) options.compositor = compositor;
+
+    if (compositor !== null && isCompositorId(compositor)) {
+        options.compositor = compositor;
+    }
 
     return options;
 };
@@ -210,7 +223,10 @@ const captureStderr = (child: ChildProcess | undefined): StderrCapture => {
         stop: () => {
             stderr?.removeAllListeners("data");
             stderr?.resume();
-            if (stderr instanceof Socket) stderr.unref();
+
+            if (stderr instanceof Socket) {
+                stderr.unref();
+            }
         },
     };
 };
@@ -229,22 +245,31 @@ const exitedMessage = (label: string, path: string, code: number | null, signal:
     `${label} exited (code ${code ?? "null"}, signal ${signal ?? "null"}) before ${path} appeared`;
 
 const runCleanups = (cleanups: (() => void)[]): void => {
-    for (const cleanup of cleanups) cleanup();
+    for (const cleanup of cleanups) {
+        cleanup();
+    }
+
     cleanups.length = 0;
 };
 
 const pollForPath = (path: string, onFound: () => void): NodeJS.Timeout =>
     setInterval(() => {
-        if (existsSync(path)) onFound();
+        if (existsSync(path)) {
+            onFound();
+        }
     }, 50);
 
 const stderrSuffix = (child: ChildProcess | undefined, stderr: StderrCapture): string =>
     child ? `\n${stderr.read()}` : "";
 
 const listenForAbort = (signal: AbortSignal | undefined, onAbort: () => void, cleanups: (() => void)[]): boolean => {
-    if (signal === undefined) return false;
+    if (signal === undefined) {
+        return false;
+    }
 
-    if (signal.aborted) return true;
+    if (signal.aborted) {
+        return true;
+    }
 
     signal.addEventListener("abort", onAbort);
 
@@ -292,8 +317,13 @@ const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void =
         clearTimeout(timer);
     });
 
-    if (child) cleanups.push(trackChild(child, { exit: onExit, error: onError }));
-    if (listenForAbort(signal, onAbort, cleanups)) onAbort();
+    if (child) {
+        cleanups.push(trackChild(child, { exit: onExit, error: onError }));
+    }
+
+    if (listenForAbort(signal, onAbort, cleanups)) {
+        onAbort();
+    }
 };
 
 const waitForSocket = (path: string, options: WaitForSocketOptions): Promise<void> =>
@@ -320,7 +350,9 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): string[]
 };
 
 const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: string[]): void => {
-    if (child.exitCode === null && child.signalCode === null) return;
+    if (child.exitCode === null && child.signalCode === null) {
+        return;
+    }
 
     process.stderr.write(
         `[gtkx] headless compositor died before teardown (code ${child.exitCode ?? "null"}, ` +
@@ -337,7 +369,9 @@ const makeTeardown = (
     let torndown = false;
 
     return (): void => {
-        if (torndown) return;
+        if (torndown) {
+            return;
+        }
 
         torndown = true;
         reportUnexpectedCompositorExit(compositor, capturedStderr);
@@ -394,7 +428,10 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
 
         return makeTeardown(compositor.child, capturedStderr, stopNotifications, removeRuntime);
     } catch (error) {
-        for (const child of spawned) child.kill("SIGKILL");
+        for (const child of spawned) {
+            child.kill("SIGKILL");
+        }
+
         removeRuntime();
         throw error;
     }

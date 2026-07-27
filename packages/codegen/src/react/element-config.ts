@@ -19,7 +19,9 @@ const presentNamespaceDirs = (giStoreDir: string): Set<string> => {
     const entries = readdirSync(giStoreDir, { withFileTypes: true });
 
     for (const entry of entries) {
-        if (entry.isDirectory()) dirs.add(entry.name);
+        if (entry.isDirectory()) {
+            dirs.add(entry.name);
+        }
     }
 
     return dirs;
@@ -31,7 +33,9 @@ const presentNamespaceDirs = (giStoreDir: string): Set<string> => {
  */
 const configEntrypoints = (reactSubexports: string[], present: Set<string>): string[] =>
     reactSubexports.filter((sub) => {
-        if (sub === CONFIG_ENTRYPOINT) return true;
+        if (sub === CONFIG_ENTRYPOINT) {
+            return true;
+        }
 
         return sub.endsWith(CONFIG_SUFFIX) && present.has(sub.slice(0, sub.length - CONFIG_SUFFIX.length));
     });
@@ -47,9 +51,17 @@ const importBuiltinElements = async (entrypoint: string): Promise<Record<string,
 };
 
 const applyBuiltinElement = (target: BuiltinElements, type: string, config: BuiltinElement): void => {
-    if (config.component !== undefined) target.components[type] = config.component;
-    if (config.props !== undefined) target.props[type] = config.props;
-    if (config.lazy === true) target.lazyElements.push(type);
+    if (config.component !== undefined) {
+        target.components[type] = config.component;
+    }
+
+    if (config.props !== undefined) {
+        target.props[type] = config.props;
+    }
+
+    if (config.lazy === true) {
+        target.lazyElements.push(type);
+    }
 };
 
 /**

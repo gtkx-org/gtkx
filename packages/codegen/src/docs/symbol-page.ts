@@ -123,7 +123,9 @@ const qualifiedClassName = (namespaceName: string, className: string): string =>
 const elementNote = (entry: GiSymbolBase & { klass: GirClass }, options: SymbolPageOptions): string[] => {
     const glibName = options.elementNameFor(entry.namespace.name, entry.klass.name);
 
-    if (glibName === undefined) return [];
+    if (glibName === undefined) {
+        return [];
+    }
 
     return [
         `Also available as the \`${glibName}\` JSX element from \`@gtkx/jsx/${namespaceDirectory(entry.namespace)}\`; the \`${glibName}\` element page documents the JSX props.`,
@@ -137,7 +139,9 @@ const hierarchySection = (entry: GiSymbolBase & { klass: GirClass }, library: Li
         qualifiedClassName(iface.namespace.name, iface.klass.name),
     );
 
-    if (ancestors.length === 0 && interfaces.length === 0) return [];
+    if (ancestors.length === 0 && interfaces.length === 0) {
+        return [];
+    }
 
     const lines = ["## Hierarchy"];
 
@@ -166,7 +170,9 @@ const prerequisitesLine = (entry: GiSymbolBase & { klass: GirClass }, library: L
         return `\`${qualifiedClassName(resolved.namespace.name, resolved.value.name)}\``;
     });
 
-    if (names.length === 0) return [];
+    if (names.length === 0) {
+        return [];
+    }
 
     return [`Requires ${names.join(", ")}.`];
 };
@@ -180,7 +186,9 @@ const staticSection = (options: StaticSectionOptions): string[] => {
             siblings: options.siblings,
         });
 
-        if (signature === undefined) continue;
+        if (signature === undefined) {
+            continue;
+        }
 
         rendered.push({
             name: signature.name,
@@ -188,7 +196,9 @@ const staticSection = (options: StaticSectionOptions): string[] => {
         });
     }
 
-    if (rendered.length === 0) return [];
+    if (rendered.length === 0) {
+        return [];
+    }
 
     return [options.title, options.intro, ...sortStringsBy(rendered, (item) => item.name).map((item) => item.block)];
 };
@@ -218,7 +228,11 @@ const interfaceMethodNames = (library: Library, owner: MemberOwner): string[] =>
     for (const callable of methods) {
         const rename = reservedSignalMemberRename(className, callable);
         const rendered = renderInstanceMethodSignature(context, { ...callable, doc: undefined }, scope, rename);
-        if (rendered === undefined) continue;
+
+        if (rendered === undefined) {
+            continue;
+        }
+
         names.push(rename ?? methodExportName(callable));
     }
 
@@ -245,13 +259,24 @@ const propertyAccessorSetup = (
 
 const propertyMeta = (property: GirProperty, accessor: ResolvedAccessor, origin: string | undefined): string => {
     const meta: string[] = [`\`${accessor.tsType}\``];
-    if (property.defaultValue !== undefined) meta.push(`default \`${docsDefaultValue(property.defaultValue)}\``);
-    if (property.constructOnly) meta.push("construct-only");
 
-    if (!accessor.writable) meta.push("read-only");
-    else if (!accessor.hasGetter) meta.push("write-only");
+    if (property.defaultValue !== undefined) {
+        meta.push(`default \`${docsDefaultValue(property.defaultValue)}\``);
+    }
 
-    if (origin !== undefined) meta.push(`from \`${origin}\``);
+    if (property.constructOnly) {
+        meta.push("construct-only");
+    }
+
+    if (!accessor.writable) {
+        meta.push("read-only");
+    } else if (!accessor.hasGetter) {
+        meta.push("write-only");
+    }
+
+    if (origin !== undefined) {
+        meta.push(`from \`${origin}\``);
+    }
 
     return meta.join(" · ");
 };
@@ -270,7 +295,10 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
             methodByName: setup.methodByName,
         });
 
-        if (accessor === undefined || seen.has(accessor.jsName)) continue;
+        if (accessor === undefined || seen.has(accessor.jsName)) {
+            continue;
+        }
+
         seen.add(accessor.jsName);
 
         entries.push({
@@ -296,7 +324,9 @@ const propertiesSection = (
         entries.push(...ownerPropertyEntries(owner, setup, seen));
     }
 
-    if (entries.length === 0) return [];
+    if (entries.length === 0) {
+        return [];
+    }
 
     const intro = "Properties are read and written as instance fields; changes can be observed with `connect(\"notify::<property-name>\", handler)`. Properties inherited from ancestors are documented on their own pages.";
 
@@ -307,7 +337,10 @@ const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<stri
     const entries: SignalDocEntry[] = [];
 
     for (const signal of owner.klass.signals) {
-        if (seen.has(signal.name)) continue;
+        if (seen.has(signal.name)) {
+            continue;
+        }
+
         seen.add(signal.name);
 
         entries.push({
@@ -329,7 +362,9 @@ const signalsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Libr
         entries.push(...ownerSignalEntries(owner, library, seen));
     }
 
-    if (entries.length === 0) return [];
+    if (entries.length === 0) {
+        return [];
+    }
 
     const intro = "Connect with `instance.connect(\"<signal>\", handler)` or `instance.on(\"<signal>\", handler)`. Signals inherited from ancestors are documented on their own pages.";
 
@@ -410,7 +445,11 @@ const recordInstanceEntries = (context: ModuleContext, record: GirRecord): Signa
 
     for (const callable of dedupeCallables(record.methods)) {
         const rendered = renderStaticSignature(context, callable);
-        if (rendered === undefined) continue;
+
+        if (rendered === undefined) {
+            continue;
+        }
+
         entries.push({ name: rendered.name, signature: rendered.signature, doc: docMarkdown(callable.doc) });
     }
 
@@ -457,11 +496,17 @@ const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: 
 
     for (const slot of slots) {
         const field = resolveRecordFieldEntry(context, slot, claimedNames);
-        if (field === undefined) continue;
+
+        if (field === undefined) {
+            continue;
+        }
+
         entries.push({ name: field.jsName, meta: fieldMeta(field), doc: docMarkdown(field.doc) });
     }
 
-    if (entries.length === 0) return [];
+    if (entries.length === 0) {
+        return [];
+    }
 
     return ["## Fields", ...sortedMetaBlocks(entries)];
 };

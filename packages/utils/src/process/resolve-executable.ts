@@ -17,7 +17,9 @@ const findOnPath = (command: string): string | undefined => {
     for (const directory of searchPaths) {
         const candidate = join(directory, command);
 
-        if (isExecutable(candidate)) return candidate;
+        if (isExecutable(candidate)) {
+            return candidate;
+        }
     }
 
     return undefined;
@@ -35,12 +37,19 @@ const findOnPath = (command: string): string | undefined => {
  * resolveExecutable("weston"); // "/usr/bin/weston"
  */
 function resolveExecutable(command: string): string {
-    if (isAbsolute(command)) return command;
+    if (isAbsolute(command)) {
+        return command;
+    }
 
-    if (command.includes("/")) return resolve(command);
+    if (command.includes("/")) {
+        return resolve(command);
+    }
 
     const found = findOnPath(command);
-    if (found === undefined) throw new Error(`Cannot find the "${command}" executable on PATH`);
+
+    if (found === undefined) {
+        throw new Error(`Cannot find the "${command}" executable on PATH`);
+    }
 
     return found;
 }

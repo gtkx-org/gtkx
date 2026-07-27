@@ -42,7 +42,11 @@ const drainLines = (buffer: string, lines: string[]): string => {
     while (idx !== -1) {
         const line = remaining.slice(0, idx);
         remaining = remaining.slice(idx + 1);
-        if (line.trim()) lines.push(line);
+
+        if (line.trim()) {
+            lines.push(line);
+        }
+
         idx = remaining.indexOf("\n");
     }
 

@@ -423,7 +423,9 @@ const showcasePeople: ShowcasePerson[] = [
 ];
 
 const sortShowcasePeople = (sortColumn: ShowcaseSortColumn, sortOrder: Gtk.SortType): ShowcasePerson[] => {
-    if (!sortColumn) return showcasePeople;
+    if (!sortColumn) {
+        return showcasePeople;
+    }
 
     return showcasePeople.toSorted((a, b) => {
         const av = a[sortColumn];

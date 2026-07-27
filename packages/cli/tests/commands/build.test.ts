@@ -26,7 +26,11 @@ describe("build", () => {
         expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true, mode: "production" });
         expect(buildMock).toHaveBeenCalledOnce();
         const buildCall = buildMock.mock.calls[0];
-        if (!buildCall) throw new Error("build was not invoked");
+
+        if (!buildCall) {
+            throw new Error("build was not invoked");
+        }
+
         const buildArgs = buildCall[0];
         expect(buildArgs.entry).toMatch(/src\/index\.tsx$/);
         expect(buildArgs.assetBase).toBeUndefined();
@@ -35,7 +39,11 @@ describe("build", () => {
     it("forwards a custom entry and asset-base flag", async () => {
         await runCommand(build, { rawArgs: ["src/main.tsx", "--asset-base", "../share/myapp"] });
         const buildCall = buildMock.mock.calls[0];
-        if (!buildCall) throw new Error("build was not invoked");
+
+        if (!buildCall) {
+            throw new Error("build was not invoked");
+        }
+
         const buildArgs = buildCall[0];
         expect(buildArgs.entry).toMatch(/src\/main\.tsx$/);
         expect(buildArgs.assetBase).toBe("../share/myapp");

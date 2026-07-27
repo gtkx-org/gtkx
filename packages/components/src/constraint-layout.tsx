@@ -61,10 +61,15 @@ const ConstraintLayout: ConstraintLayoutComponent = Object.assign(ConstraintLayo
 const typeNameOfWidget = (widget: Gtk.Widget): string => GObject.typeName(widget._type_) ?? "";
 
 const addNamedGuide = (guide: GObject.Object | null, targets: Targets): void => {
-    if (!(guide instanceof Gtk.ConstraintGuide)) return;
+    if (!(guide instanceof Gtk.ConstraintGuide)) {
+        return;
+    }
 
     const name = guide.getName();
-    if (name !== null && name !== "") targets.set(name, guide);
+
+    if (name !== null && name !== "") {
+        targets.set(name, guide);
+    }
 };
 
 const addNamedGuides = (layout: Gtk.ConstraintLayout, targets: Targets): void => {
@@ -80,7 +85,11 @@ const addNamedChildren = (layout: Gtk.ConstraintLayout, targets: Targets): void 
 
     while (child !== null) {
         const name = child.getName();
-        if (name !== "" && name !== typeNameOfWidget(child) && !targets.has(name)) targets.set(name, child);
+
+        if (name !== "" && name !== typeNameOfWidget(child) && !targets.has(name)) {
+            targets.set(name, child);
+        }
+
         child = child.getNextSibling();
     }
 };
@@ -101,11 +110,15 @@ const resolveTarget = (
     role: "target" | "source",
     targets: Targets,
 ): Gtk.ConstraintTarget | null => {
-    if (id === undefined || id === "super") return null;
+    if (id === undefined || id === "super") {
+        return null;
+    }
 
     const target = targets.get(id);
 
-    if (target !== undefined) return target;
+    if (target !== undefined) {
+        return target;
+    }
 
     throw new Error(
         `<ConstraintLayout.Constraint> references unknown id '${id}'. ` +
@@ -149,7 +162,9 @@ const elementsOf = <K extends Declaration["kind"]>(
     const elements: ReactElement[] = [];
 
     for (const [key, entry] of declarations) {
-        if (entry.declaration.kind === kind) elements.push(build(key, entry as EntryOf<K>));
+        if (entry.declaration.kind === kind) {
+            elements.push(build(key, entry as EntryOf<K>));
+        }
     }
 
     return elements;
@@ -159,7 +174,10 @@ const vflBlocks = (declarations: Declarations, targets: Targets): VflConstraints
     const blocks: VflConstraints[] = [];
 
     for (const { declaration } of declarations.values()) {
-        if (declaration.kind !== "vfl") continue;
+        if (declaration.kind !== "vfl") {
+            continue;
+        }
+
         const { lines, hspacing, vspacing } = declaration.props;
         blocks.push({ lines, hspacing: hspacing ?? 0, vspacing: vspacing ?? 0, views: targets });
     }
@@ -169,7 +187,11 @@ const vflBlocks = (declarations: Declarations, targets: Targets): VflConstraints
 
 const useDeclaration = (declaration: Declaration): null => {
     const registry = useContext(ConstraintContext);
-    if (registry === null) throw new Error(ORPHAN_MESSAGE);
+
+    if (registry === null) {
+        throw new Error(ORPHAN_MESSAGE);
+    }
+
     const key = useId();
     const signature = JSON.stringify(declaration);
     const currentDeclaration = useEffectEvent((): Declaration => declaration);
@@ -214,11 +236,15 @@ const useRegistry = (setDeclarations: (update: (previous: Declarations) => Decla
     );
 
 const nextTargets = (current: Targets | null, layout: Gtk.ConstraintLayout | null): Targets | null => {
-    if (layout === null) return null;
+    if (layout === null) {
+        return null;
+    }
 
     const next = readTargets(layout);
 
-    if (current !== null && sameTargets(current, next)) return null;
+    if (current !== null && sameTargets(current, next)) {
+        return null;
+    }
 
     return next;
 };
@@ -239,10 +265,15 @@ const createTargetsStore = (): TargetsStore => {
         sync: (layout) => {
             const next = nextTargets(current, layout);
 
-            if (next === null) return;
+            if (next === null) {
+                return;
+            }
 
             current = next;
-            for (const listener of listeners) listener();
+
+            for (const listener of listeners) {
+                listener();
+            }
         },
     };
 };

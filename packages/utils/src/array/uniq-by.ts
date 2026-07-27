@@ -19,7 +19,11 @@ function uniqBy<T>(arr: T[], mapper: (item: T, index: number, array: T[]) => unk
 
     for (const item of arr) {
         const key = mapper(item, index, arr);
-        if (!seen.has(key)) seen.set(key, item);
+
+        if (!seen.has(key)) {
+            seen.set(key, item);
+        }
+
         index++;
     }
 

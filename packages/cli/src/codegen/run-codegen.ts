@@ -172,7 +172,9 @@ const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> =
 const syncSchemaEnv = (cwd: string): void => {
     const dataDir = resolveDataDir(cwd);
 
-    if (dataDir === null) return;
+    if (dataDir === null) {
+        return;
+    }
 
     emitSchemaEnv(cwd, dataDir);
 };
@@ -186,7 +188,9 @@ const resolveInputsOrNull = (cwd: string, config: Config): CodegenInputs | null 
 };
 
 const maybeAnnounceStale = (announce: boolean | undefined, inputs: CodegenInputs | null): void => {
-    if (!announce) return;
+    if (!announce) {
+        return;
+    }
 
     if (inputs === null || isCodegenStale(inputs)) {
         info("generated bindings missing; running codegen...");
@@ -194,7 +198,9 @@ const maybeAnnounceStale = (announce: boolean | undefined, inputs: CodegenInputs
 };
 
 const runOptionsFor = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCodegenOptions => {
-    if (inputs === null) return { cwd: root, mode, resolved };
+    if (inputs === null) {
+        return { cwd: root, mode, resolved };
+    }
 
     return { cwd: root, mode, inputs, resolved };
 };
@@ -235,7 +241,9 @@ const resolveConfigWatch = async (
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
     const { configFile, root } = await loadConfig(cwd, { mode });
 
-    if (configFile === undefined) return undefined;
+    if (configFile === undefined) {
+        return undefined;
+    }
 
     return {
         paths: [resolve(root, configFile)],

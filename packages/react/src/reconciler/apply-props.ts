@@ -20,10 +20,13 @@ const flushDirty: Set<ElementNode> = new Set();
 const isHandlerName = (name: string): boolean => /^on[A-Z]/.test(name);
 
 const signalForProp = (info: TypeInfo, name: string): string => {
-    if (name === NOTIFY_PREFIX) return "notify";
+    if (name === NOTIFY_PREFIX) {
+        return "notify";
+    }
 
-    if (name.startsWith(NOTIFY_PREFIX) && name.length > NOTIFY_PREFIX.length)
+    if (name.startsWith(NOTIFY_PREFIX) && name.length > NOTIFY_PREFIX.length) {
         return `notify::${kebabCase(name.slice(NOTIFY_PREFIX.length))}`;
+    }
 
     return info.signals[name] ?? kebabCase(name.slice(HANDLER_PREFIX.length));
 };
@@ -35,16 +38,23 @@ const skipValueName = (name: string, info: TypeInfo, consumed: Set<string>): boo
     isReservedName(name, info) || consumed.has(name);
 
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
-    if (Object.hasOwn(info.defaults, name)) Reflect.set(object, name, info.defaults[name]);
+    if (Object.hasOwn(info.defaults, name)) {
+        Reflect.set(object, name, info.defaults[name]);
+    }
 };
 
 const setOrReset = (object: GObject.Object, info: TypeInfo, name: string, value: unknown): void => {
-    if (value === undefined) resetPlain(object, info, name);
-    else Reflect.set(object, name, value);
+    if (value === undefined) {
+        resetPlain(object, info, name);
+    } else {
+        Reflect.set(object, name, value);
+    }
 };
 
 const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
-    if (buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) === text) return;
+    if (buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) === text) {
+        return;
+    }
 
     buffer.beginIrreversibleAction();
     buffer.setText(text, -1);
@@ -66,65 +76,95 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void =
     }
 
     const isInitialNull = value === null && prevValue === undefined;
-    if (!isInitialNull) setOrReset(node.object, info, name, value);
+
+    if (!isInitialNull) {
+        setOrReset(node.object, info, name, value);
+    }
 };
 
 const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void): void => {
     const names = new Set([...Object.keys(prev), ...Object.keys(next)]);
-    for (const name of names) visit(name);
+
+    for (const name of names) {
+        visit(name);
+    }
 };
 
 const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior): void => {
-    if (behavior.update === undefined) return;
+    if (behavior.update === undefined) {
+        return;
+    }
 
     const result = behavior.update(ctx.node.object, ctx.prev, ctx.next, contextFor(ctx.node, behavior));
 
-    if (result === undefined) return;
+    if (result === undefined) {
+        return;
+    }
 
-    for (const name of result) ctx.consumed.add(name);
+    for (const name of result) {
+        ctx.consumed.add(name);
+    }
 };
 
 const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, prev: Props, next: Props): Set<string> => {
     const consumed: Set<string> = new Set();
     const ctx: BehaviorUpdateContext = { node, prev, next, consumed };
-    for (const behavior of info.behaviors) collectConsumed(ctx, behavior);
+
+    for (const behavior of info.behaviors) {
+        collectConsumed(ctx, behavior);
+    }
 
     return consumed;
 };
 
 const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange, consumed: Set<string>): void => {
     eachChangedName(change.prev, change.next, (name) => {
-        if (skipValueName(name, info, consumed) || Object.is(change.prev[name], change.next[name])) return;
+        if (skipValueName(name, info, consumed) || Object.is(change.prev[name], change.next[name])) {
+            return;
+        }
 
         applyEntry(node, info, { name, value: change.next[name], prevValue: change.prev[name] });
     });
 };
 
 const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: Props, next: Props): void => {
-    if (prev.actionName === undefined || next.actionName !== undefined) return;
+    if (prev.actionName === undefined || next.actionName !== undefined) {
+        return;
+    }
 
     const desired = "sensitive" in next ? next.sensitive : info.defaults.sensitive;
-    if (typeof desired === "boolean") Reflect.set(node.object, "sensitive", desired);
+
+    if (typeof desired === "boolean") {
+        Reflect.set(node.object, "sensitive", desired);
+    }
 };
 
 const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: Props): void => {
     eachChangedName(prev, next, (name) => {
-        if (!isHandlerName(name)) return;
+        if (!isHandlerName(name)) {
+            return;
+        }
 
         const value = next[name];
 
-        if (typeof value === "function")
+        if (typeof value === "function") {
             connectHandler(target, name, signalForProp(info, name), value as SignalHandler);
-        else disconnectHandler(target, name);
+        } else {
+            disconnectHandler(target, name);
+        }
     });
 };
 
 const markFlush = (node: ElementNode): void => {
-    if (typeInfoOf(node.typeName).hasFlush) flushDirty.add(node);
+    if (typeInfoOf(node.typeName).hasFlush) {
+        flushDirty.add(node);
+    }
 };
 
 const eachBehavior = (node: ElementNode, visit: (behavior: ElementBehavior, context: unknown) => void): void => {
-    for (const behavior of typeInfoOf(node.typeName).behaviors) visit(behavior, contextFor(node, behavior));
+    for (const behavior of typeInfoOf(node.typeName).behaviors) {
+        visit(behavior, contextFor(node, behavior));
+    }
 };
 
 const flushBehaviors = (): void => {
@@ -132,7 +172,9 @@ const flushBehaviors = (): void => {
 };
 
 const mountBehaviors = (node: ElementNode): void => {
-    if (!typeInfoOf(node.typeName).hasMount) return;
+    if (!typeInfoOf(node.typeName).hasMount) {
+        return;
+    }
 
     eachBehavior(node, (behavior, context) => behavior.mount?.(node.object, context));
 };
@@ -142,7 +184,9 @@ const unmountBehaviors = (node: ElementNode): void => {
 };
 
 const applyAccessible = (object: GObject.Object, prev: Props, next: Props): void => {
-    if (object instanceof Gtk.Widget) applyAccessibleProps(object, prev, next);
+    if (object instanceof Gtk.Widget) {
+        applyAccessibleProps(object, prev, next);
+    }
 };
 
 const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
@@ -163,7 +207,9 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
     const info = typeInfoOf(typeName);
 
     eachChangedName(prev, next, (name) => {
-        if (skipAdoptedName(info, name) || Object.is(prev[name], next[name])) return;
+        if (skipAdoptedName(info, name) || Object.is(prev[name], next[name])) {
+            return;
+        }
 
         setOrReset(object, info, name, next[name]);
     });

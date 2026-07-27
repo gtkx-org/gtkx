@@ -19,11 +19,15 @@ import {
 } from "./method.js";
 
 const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
-    if (fn.cIdentifier === undefined) return undefined;
+    if (fn.cIdentifier === undefined) {
+        return undefined;
+    }
 
     const library = context.namespace.sharedLibrary;
 
-    if (library === undefined) return undefined;
+    if (library === undefined) {
+        return undefined;
+    }
 
     context.addRuntimeImport("t");
     const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
@@ -40,15 +44,21 @@ const namespaceFunctionEmittable = (context: ModuleContext, fn: GirFunction): bo
     !hasCallerAllocatedArrayLength(context.library, fn);
 
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
-    if (!namespaceFunctionEmittable(context, fn)) return;
+    if (!namespaceFunctionEmittable(context, fn)) {
+        return;
+    }
 
     const expression = renderFnExpression(context, fn);
 
-    if (expression === undefined) return;
+    if (expression === undefined) {
+        return;
+    }
 
     const cIdentifier = fn.cIdentifier;
 
-    if (cIdentifier === undefined) return;
+    if (cIdentifier === undefined) {
+        return;
+    }
 
     const bindingName = toCamelIdentifier(cIdentifier);
     context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
@@ -128,7 +138,10 @@ const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, ex
 
 const generateNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {
     for (const fn of namespace.functions) {
-        if (!isBootstrapFunction(fn) || fn.cIdentifier === undefined) continue;
+        if (!isBootstrapFunction(fn) || fn.cIdentifier === undefined) {
+            continue;
+        }
+
         const exportName = namespaceFunctionExportName(fn.cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
         appendBootstrapRegistration(context, fn, exportName);
     }

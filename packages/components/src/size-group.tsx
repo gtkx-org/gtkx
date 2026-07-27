@@ -26,7 +26,10 @@ const SizeGroup: SizeGroupComponent = Object.assign(SizeGroupRoot, { Child: Size
 
 const useRegister = (): Register => {
     const register = useContext(SizeGroupContext);
-    if (register === null) throw new Error("<SizeGroup.Child> must be a child of <SizeGroup>");
+
+    if (register === null) {
+        throw new Error("<SizeGroup.Child> must be a child of <SizeGroup>");
+    }
 
     return register;
 };
@@ -50,7 +53,9 @@ function SizeGroupRoot(props: SizeGroupProps): ReactNode {
 
     const register = useCallback<Register>(
         (widget) => {
-            if (widget === null) return;
+            if (widget === null) {
+                return;
+            }
 
             setWidgets((previous) => addWidget(previous, widget));
 

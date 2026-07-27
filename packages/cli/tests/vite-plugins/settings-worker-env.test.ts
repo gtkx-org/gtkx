@@ -32,16 +32,24 @@ const writeProject = (root: string, options: { dataDir: string | null; schema: b
     const imports = options.dataDir === null ? {} : { imports: { "#data/*": `./${options.dataDir}/*` } };
     writeFileSync(join(root, "package.json"), JSON.stringify({ name: "worker-env-fixture", ...imports }));
 
-    if (options.dataDir === null) return;
+    if (options.dataDir === null) {
+        return;
+    }
 
     const dataDir = join(root, options.dataDir);
     mkdirSync(dataDir, { recursive: true });
-    if (options.schema) writeFileSync(join(dataDir, "com.example.worker.gschema.xml"), SCHEMA_XML);
+
+    if (options.schema) {
+        writeFileSync(join(dataDir, "com.example.worker.gschema.xml"), SCHEMA_XML);
+    }
 };
 
 const restoreEnv = (name: string, previous: string | undefined): void => {
-    if (previous === undefined) Reflect.deleteProperty(process.env, name);
-    else process.env[name] = previous;
+    if (previous === undefined) {
+        Reflect.deleteProperty(process.env, name);
+    } else {
+        process.env[name] = previous;
+    }
 };
 
 const callConfig = (root: string): ReturnType<ConfigHook> => {

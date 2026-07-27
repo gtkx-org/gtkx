@@ -35,7 +35,10 @@ function overrideExportNames(path: string): Set<string> {
 
     for (const match of source.matchAll(EXPORT_PATTERN)) {
         const name = match[1];
-        if (name !== undefined) names.add(name);
+
+        if (name !== undefined) {
+            names.add(name);
+        }
     }
 
     return names;

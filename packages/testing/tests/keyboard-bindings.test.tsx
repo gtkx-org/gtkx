@@ -6,17 +6,24 @@ import { describe, expect, it } from "vitest";
 import { render, screen, userEvent } from "../src/index.js";
 
 const setupLabelItem = (listItem: GObject.Object): void => {
-    if (!(listItem instanceof Gtk.ListItem)) return;
+    if (!(listItem instanceof Gtk.ListItem)) {
+        return;
+    }
 
     listItem.setChild(new Gtk.Label());
 };
 
 const bindLabelItem = (listItem: GObject.Object): void => {
-    if (!(listItem instanceof Gtk.ListItem)) return;
+    if (!(listItem instanceof Gtk.ListItem)) {
+        return;
+    }
 
     const label = listItem.getChild();
     const item = listItem.getItem();
-    if (label instanceof Gtk.Label && item instanceof Gtk.StringObject) label.setLabel(item.getString());
+
+    if (label instanceof Gtk.Label && item instanceof Gtk.StringObject) {
+        label.setLabel(item.getString());
+    }
 };
 
 const stringLabelFactory = (): Gtk.SignalListItemFactory => {

@@ -62,7 +62,11 @@ describe("ListView sections", () => {
         const ref = createRef<Gtk.ListView>();
         await renderSectioned(ref);
         const [headerLabel] = await screen.findAllByText("Section One");
-        if (headerLabel === undefined || ref.current === null) throw new Error("Expected the header to render");
+
+        if (headerLabel === undefined || ref.current === null) {
+            throw new Error("Expected the header to render");
+        }
+
         expectNoBoxBetween(headerLabel, ref.current);
     });
 });

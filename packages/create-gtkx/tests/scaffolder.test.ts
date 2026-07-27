@@ -61,7 +61,10 @@ beforeAll(async () => {
     const entries = realFs.readdirSync(TEMPLATES_DIR, { recursive: true, withFileTypes: true });
 
     for (const entry of entries) {
-        if (!entry.isFile()) continue;
+        if (!entry.isFile()) {
+            continue;
+        }
+
         const absolute = join(entry.parentPath, entry.name);
         templateFiles[absolute] = realFs.readFileSync(absolute, "utf8");
     }

@@ -110,7 +110,10 @@ const generateJsxNamespace = (
     const targetDirectory = namespaceDirectory(targetNamespace);
     const imports = new ImportsBuilder();
     imports.addSideEffect(`@gtkx/gi/${targetDirectory}`);
-    if (reactSubexports.includes(targetDirectory)) imports.addSideEffect(`@gtkx/react/${targetDirectory}`);
+
+    if (reactSubexports.includes(targetDirectory)) {
+        imports.addSideEffect(`@gtkx/react/${targetDirectory}`);
+    }
 
     const elementComponents = generateElementComponentsSection(targetNamespace, library, {
         imports,
@@ -129,7 +132,11 @@ const generateJsxNamespace = (
     });
 
     const body = [imports.toSource().trimEnd(), "", jsxSection];
-    if (elementComponents.source.length > 0) body.push("", elementComponents.source);
+
+    if (elementComponents.source.length > 0) {
+        body.push("", elementComponents.source);
+    }
+
     const count = elementComponents.exportedNames.size + intrinsicCount;
 
     return { source: `${body.join("\n")}\n`, count };

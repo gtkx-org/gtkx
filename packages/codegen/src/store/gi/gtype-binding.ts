@@ -13,9 +13,13 @@ const gtypeTsType = (context: ModuleContext): string =>
 const gtypeMemberDeclaration = (context: ModuleContext): string => `declare _type_: ${gtypeTsType(context)};`;
 
 const renderInternGtype = (context: ModuleContext, typeName: string | undefined): string | undefined => {
-    if (typeName === undefined) return undefined;
+    if (typeName === undefined) {
+        return undefined;
+    }
 
-    if (context.namespace.name !== "GObject") context.addRuntimeImport("typeFromName");
+    if (context.namespace.name !== "GObject") {
+        context.addRuntimeImport("typeFromName");
+    }
 
     return `typeFromName(${sourceStringLiteral(typeName)})`;
 };

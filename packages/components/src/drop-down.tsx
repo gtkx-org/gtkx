@@ -48,7 +48,9 @@ const defaultItemContent = (value: unknown): ReactNode =>
 const itemContent = (record: CellRecord, model: CollectionModel, props: DropDownRuntimeProps): ReactNode => {
     const args = renderItemArgs(record, { collection: model });
 
-    if (args === null) return null;
+    if (args === null) {
+        return null;
+    }
 
     const listRenderer = record.slot === "list" ? (props.renderListItem ?? props.renderItem) : null;
     const render = (listRenderer ?? props.renderItem);
@@ -84,7 +86,9 @@ const updateKnownSelection = (
 const reportKnownSelection = (tracker: KnownSelection, id: string | null): void => {
     const { known, onSelectionChanged } = tracker;
 
-    if (id === null || id === known.current) return;
+    if (id === null || id === known.current) {
+        return;
+    }
 
     known.current = id;
     onSelectionChanged?.(id);
@@ -97,7 +101,9 @@ const reportSelectedNotify = (
 ): void => {
     const { widget, model } = options;
 
-    if (widget === null || applying.current) return;
+    if (widget === null || applying.current) {
+        return;
+    }
 
     reportKnownSelection(tracker, model.idAt(widget.getSelected()));
 };
@@ -142,7 +148,9 @@ const useDropDownSelection = (options: SelectionOptions): void => {
     });
 
     useLayoutEffect(() => {
-        if (widget === null) return;
+        if (widget === null) {
+            return;
+        }
 
         applyUpdate();
         cells.refresh();

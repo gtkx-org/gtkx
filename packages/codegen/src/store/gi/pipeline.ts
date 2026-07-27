@@ -76,11 +76,17 @@ const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
 };
 
 const visitClass = (state: TopologicalState, klass: GirClass): void => {
-    if (state.placed.has(klass) || state.visiting.has(klass)) return;
+    if (state.placed.has(klass) || state.visiting.has(klass)) {
+        return;
+    }
 
     state.visiting.add(klass);
     const parent = sameNamespaceParent(klass, state.namespaceName, state.byLocalName);
-    if (parent !== undefined) visitClass(state, parent);
+
+    if (parent !== undefined) {
+        visitClass(state, parent);
+    }
+
     state.visiting.delete(klass);
     state.placed.add(klass);
     state.result.push(klass);
@@ -88,7 +94,10 @@ const visitClass = (state: TopologicalState, klass: GirClass): void => {
 
 const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirClass[] => {
     const byLocalName: Map<string, GirClass> = new Map();
-    for (const klass of classes) byLocalName.set(klass.name, klass);
+
+    for (const klass of classes) {
+        byLocalName.set(klass.name, klass);
+    }
 
     const state: TopologicalState = {
         namespaceName,
@@ -98,7 +107,9 @@ const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirC
         result: [],
     };
 
-    for (const klass of classes) visitClass(state, klass);
+    for (const klass of classes) {
+        visitClass(state, klass);
+    }
 
     return state.result;
 };
@@ -108,11 +119,15 @@ const sameNamespaceParent = (
     namespaceName: string,
     byLocalName: Map<string, GirClass>,
 ): GirClass | undefined => {
-    if (klass.parent === undefined) return undefined;
+    if (klass.parent === undefined) {
+        return undefined;
+    }
 
     const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
 
-    if (parentNamespace !== undefined && parentNamespace !== namespaceName) return undefined;
+    if (parentNamespace !== undefined && parentNamespace !== namespaceName) {
+        return undefined;
+    }
 
     return byLocalName.get(typeName);
 };

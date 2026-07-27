@@ -5,7 +5,9 @@ import { renderJsDoc } from "../../writer/doc.js";
 import { indent } from "../../writer/emit.js";
 
 const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
-    if (!enumeration.introspectable) return;
+    if (!enumeration.introspectable) {
+        return;
+    }
 
     const name = enumeration.name;
     const memberKeys = enumeration.members.map((member) => enumMemberKey(member.name));

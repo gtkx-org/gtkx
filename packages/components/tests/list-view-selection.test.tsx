@@ -209,7 +209,10 @@ function SidebarTree({
                 selectedIds={selectedId ? [selectedId] : []}
                 onSelectionChanged={(ids: string[]) => {
                     const id = ids[0];
-                    if (id) onSelect(id);
+
+                    if (id) {
+                        onSelect(id);
+                    }
                 }}
                 renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
             />

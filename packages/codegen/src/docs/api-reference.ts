@@ -83,7 +83,9 @@ const KIND_SECTION_TITLES: Record<ApiSymbolKind, string> = {
 const DEFAULT_SEARCH_LIMIT = 20;
 
 const compareNames = (a: string, b: string): number => {
-    if (a < b) return -1;
+    if (a < b) {
+        return -1;
+    }
 
     return a > b ? 1 : 0;
 };
@@ -95,11 +97,15 @@ const functionEntry = (
     docsContext: ReturnType<typeof docsSignatureContext>,
     fn: GirFunction,
 ): GiSymbolEntry | undefined => {
-    if (!isEmittableCallable(docsContext, fn)) return undefined;
+    if (!isEmittableCallable(docsContext, fn)) {
+        return undefined;
+    }
 
     const cIdentifier = fn.cIdentifier;
 
-    if (cIdentifier === undefined) return undefined;
+    if (cIdentifier === undefined) {
+        return undefined;
+    }
 
     const name = namespaceFunctionExportName(cIdentifier, fn.name, namespace.cSymbolPrefixes);
 
@@ -107,7 +113,9 @@ const functionEntry = (
 };
 
 const classEntry = (namespace: GirNamespace, klass: GirClass): GiSymbolEntry | undefined => {
-    if (!klass.introspectable || klass.name.length === 0) return undefined;
+    if (!klass.introspectable || klass.name.length === 0) {
+        return undefined;
+    }
 
     const kind = klass.isInterface ? "interface" : "class";
 
@@ -119,16 +127,23 @@ const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
 
     for (const klass of [...namespace.classes, ...namespace.interfaces]) {
         const entry = classEntry(namespace, klass);
-        if (entry !== undefined) entries.push(entry);
+
+        if (entry !== undefined) {
+            entries.push(entry);
+        }
     }
 
     return entries;
 };
 
 const recordEntry = (library: Library, namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
-    if (!record.introspectable || record.isVtable || record.name.length === 0) return undefined;
+    if (!record.introspectable || record.isVtable || record.name.length === 0) {
+        return undefined;
+    }
 
-    if (isClassStructRecord(library, namespace.name, record)) return undefined;
+    if (isClassStructRecord(library, namespace.name, record)) {
+        return undefined;
+    }
 
     return { kind: "record", namespace, name: record.name, doc: record.doc, record };
 };
@@ -138,7 +153,10 @@ const recordEntries = (library: Library, namespace: GirNamespace): GiSymbolEntry
 
     for (const record of namespace.records) {
         const entry = recordEntry(library, namespace, record);
-        if (entry !== undefined) entries.push(entry);
+
+        if (entry !== undefined) {
+            entries.push(entry);
+        }
     }
 
     return entries;
@@ -180,7 +198,9 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
 ];
 
 const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, qualified: boolean): SymbolEntry[] => {
-    if (candidates.length <= 1) return candidates;
+    if (candidates.length <= 1) {
+        return candidates;
+    }
 
     const exact = candidates.filter(
         (entry) => (qualified ? `${entry.namespace.name}.${entry.name}` : entry.name) === trimmed,
@@ -194,9 +214,13 @@ const matchesSearchFilters = (
     namespaceFilter: string | undefined,
     kinds: ApiSymbolKind[] | undefined,
 ): boolean => {
-    if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) return false;
+    if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) {
+        return false;
+    }
 
-    if (kinds !== undefined && !kinds.includes(entry.kind)) return false;
+    if (kinds !== undefined && !kinds.includes(entry.kind)) {
+        return false;
+    }
 
     return true;
 };
@@ -207,11 +231,15 @@ const scoredEntryFor = (
     namespaceFilter: string | undefined,
     kinds: ApiSymbolKind[] | undefined,
 ): ScoredEntry | undefined => {
-    if (!matchesSearchFilters(entry, namespaceFilter, kinds)) return undefined;
+    if (!matchesSearchFilters(entry, namespaceFilter, kinds)) {
+        return undefined;
+    }
 
     const score = searchScore(entry, query);
 
-    if (score === 0) return undefined;
+    if (score === 0) {
+        return undefined;
+    }
 
     return { score, entry };
 };
@@ -227,11 +255,17 @@ const searchScore = (entry: SymbolEntry, query: string): number => {
     const name = entry.name.toLowerCase();
     const qualified = `${entry.namespace.name.toLowerCase()}.${name}`;
 
-    if (name === query || qualified === query) return 3;
+    if (name === query || qualified === query) {
+        return 3;
+    }
 
-    if (name.startsWith(query)) return 2;
+    if (name.startsWith(query)) {
+        return 2;
+    }
 
-    if (name.includes(query) || qualified.includes(query)) return 1;
+    if (name.includes(query) || qualified.includes(query)) {
+        return 1;
+    }
 
     return 0;
 };
@@ -300,13 +334,18 @@ class ApiReference {
     }
 
     private indexFunctions(namespace: GirNamespace): void {
-        if (namespace.sharedLibrary === undefined) return;
+        if (namespace.sharedLibrary === undefined) {
+            return;
+        }
 
         const docsContext = docsSignatureContext(namespace, this.library);
 
         for (const fn of dedupeCallables(namespace.functions)) {
             const entry = functionEntry(namespace, docsContext, fn);
-            if (entry !== undefined) this.add(entry);
+
+            if (entry !== undefined) {
+                this.add(entry);
+            }
         }
     }
 
@@ -327,7 +366,9 @@ class ApiReference {
     }
 
     private renderPage(entry: SymbolEntry): string {
-        if (entry.kind === "element") return renderElementPage(entry.element, this.elementContext);
+        if (entry.kind === "element") {
+            return renderElementPage(entry.element, this.elementContext);
+        }
 
         return renderSymbolPage(entry, this.symbolPageOptions());
     }
@@ -336,7 +377,9 @@ class ApiReference {
         const lower = name.toLowerCase();
 
         for (const namespace of this.library.namespaces.values()) {
-            if (namespace.name.toLowerCase() === lower) return namespace;
+            if (namespace.name.toLowerCase() === lower) {
+                return namespace;
+            }
         }
 
         return undefined;
@@ -346,7 +389,10 @@ class ApiReference {
         const qualified = trimmed.includes(".");
         const map = qualified ? this.byQualified : this.byName;
         let candidates = map.get(trimmed.toLowerCase()) ?? [];
-        if (kind !== undefined) candidates = candidates.filter((entry) => entry.kind === kind);
+
+        if (kind !== undefined) {
+            candidates = candidates.filter((entry) => entry.kind === kind);
+        }
 
         return narrowToExactMatches(candidates, trimmed, qualified);
     }
@@ -360,7 +406,10 @@ class ApiReference {
 
         for (const entry of this.entries) {
             const item = scoredEntryFor(entry, query, namespaceFilter, kinds);
-            if (item !== undefined) scored.push(item);
+
+            if (item !== undefined) {
+                scored.push(item);
+            }
         }
 
         return scored;
@@ -373,12 +422,16 @@ class ApiReference {
     lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
         const trimmed = query.trim();
 
-        if (trimmed.length === 0) return { outcome: "notFound" };
+        if (trimmed.length === 0) {
+            return { outcome: "notFound" };
+        }
 
         const candidates = this.lookupCandidates(trimmed, kind);
         const entry = candidates[0];
 
-        if (entry === undefined) return { outcome: "notFound" };
+        if (entry === undefined) {
+            return { outcome: "notFound" };
+        }
 
         if (candidates.length > 1) {
             return { outcome: "ambiguous", candidates: candidates.map((candidate) => this.toApiSymbol(candidate)) };
@@ -390,7 +443,9 @@ class ApiReference {
     search(options: ApiSearchOptions): ApiSymbol[] {
         const query = options.query.trim().toLowerCase();
 
-        if (query.length === 0) return [];
+        if (query.length === 0) {
+            return [];
+        }
 
         const limit = Math.max(1, Math.floor(options.limit ?? DEFAULT_SEARCH_LIMIT));
         const namespaceFilter = options.namespace?.toLowerCase();
@@ -414,7 +469,9 @@ class ApiReference {
     symbolNames(namespaceName: string): string[] {
         const namespace = this.findNamespace(namespaceName);
 
-        if (namespace === undefined) return [];
+        if (namespace === undefined) {
+            return [];
+        }
 
         const entries = this.byNamespace.get(namespace.name) ?? [];
 
@@ -445,7 +502,9 @@ class ApiReference {
     namespaceOverview(name: string): string | undefined {
         const namespace = this.findNamespace(name);
 
-        if (namespace === undefined) return undefined;
+        if (namespace === undefined) {
+            return undefined;
+        }
 
         const entries = this.byNamespace.get(namespace.name) ?? [];
         const directory = namespaceDirectory(namespace);
@@ -458,7 +517,10 @@ class ApiReference {
 
         for (const kind of API_SYMBOL_KINDS) {
             const names = entries.filter((entry) => entry.kind === kind).map((entry) => entry.name);
-            if (names.length === 0) continue;
+
+            if (names.length === 0) {
+                continue;
+            }
 
             lines.push(
                 "",

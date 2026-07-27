@@ -91,13 +91,17 @@ const addRecord = (state: CellsState, record: Omit<CellRecord, "key">): void => 
 };
 
 const removeRecord = (state: CellsState, cell: GObject.Object): void => {
-    if (state.records.delete(cell)) state.refresh();
+    if (state.records.delete(cell)) {
+        state.refresh();
+    }
 };
 
 const bindItem = (state: CellsState, slot: string | null, cell: Gtk.ListItem): void => {
     const bound = cell.getItem();
 
-    if (bound === null) return;
+    if (bound === null) {
+        return;
+    }
 
     let holder = bound;
     let row: Gtk.TreeListRow | null = null;
@@ -105,22 +109,31 @@ const bindItem = (state: CellsState, slot: string | null, cell: Gtk.ListItem): v
     if (bound instanceof Gtk.TreeListRow) {
         const inner = bound.getItem();
 
-        if (inner === null) return;
+        if (inner === null) {
+            return;
+        }
 
         row = bound;
         holder = inner;
     }
 
-    if (cell.getChild() === null) cell.setChild(placeholder(state.size()));
+    if (cell.getChild() === null) {
+        cell.setChild(placeholder(state.size()));
+    }
+
     addRecord(state, { kind: "item", cell, holder, row, slot, position: () => cell.getPosition() });
 };
 
 const itemHandlers = (state: CellsState, slot: string | null): FactoryHandlers => ({
     onSetup: (cell) => {
-        if (cell instanceof Gtk.ListItem) cell.setChild(placeholder(state.size()));
+        if (cell instanceof Gtk.ListItem) {
+            cell.setChild(placeholder(state.size()));
+        }
     },
     onBind: (cell) => {
-        if (cell instanceof Gtk.ListItem) bindItem(state, slot, cell);
+        if (cell instanceof Gtk.ListItem) {
+            bindItem(state, slot, cell);
+        }
     },
     onUnbind: (cell) => removeRecord(state, cell),
     onTeardown: (cell) => removeRecord(state, cell),
@@ -129,9 +142,13 @@ const itemHandlers = (state: CellsState, slot: string | null): FactoryHandlers =
 const bindHeader = (state: CellsState, header: Gtk.ListHeader): void => {
     const holder = header.getItem();
 
-    if (holder === null) return;
+    if (holder === null) {
+        return;
+    }
 
-    if (header.getChild() === null) header.setChild(placeholder(state.size()));
+    if (header.getChild() === null) {
+        header.setChild(placeholder(state.size()));
+    }
 
     addRecord(state, {
         kind: "header",
@@ -145,10 +162,14 @@ const bindHeader = (state: CellsState, header: Gtk.ListHeader): void => {
 
 const headerHandlers = (state: CellsState): FactoryHandlers => ({
     onSetup: (header) => {
-        if (header instanceof Gtk.ListHeader) header.setChild(placeholder(state.size()));
+        if (header instanceof Gtk.ListHeader) {
+            header.setChild(placeholder(state.size()));
+        }
     },
     onBind: (header) => {
-        if (header instanceof Gtk.ListHeader) bindHeader(state, header);
+        if (header instanceof Gtk.ListHeader) {
+            bindHeader(state, header);
+        }
     },
     onUnbind: (header) => removeRecord(state, header),
     onTeardown: (header) => removeRecord(state, header),
@@ -216,7 +237,9 @@ const applyRowArgs = (
 ): void => {
     args.depth = row.getDepth();
 
-    if (!row.isExpandable()) return;
+    if (!row.isExpandable()) {
+        return;
+    }
 
     args.isExpanded = expandedIds == null ? row.getExpanded() : expandedIds.includes(id);
 };
@@ -224,10 +247,15 @@ const applyRowArgs = (
 const renderItemArgs = (record: CellRecord, options: ItemArgsOptions): RenderItemArgs<unknown> | null => {
     const entry = options.collection.entryOf(record.holder);
 
-    if (entry === undefined) return null;
+    if (entry === undefined) {
+        return null;
+    }
 
     const args: RenderItemArgs<unknown> = { item: entry.item.value, index: record.position() };
-    if (record.row !== null) applyRowArgs(args, record.row, entry.id, options.expandedIds);
+
+    if (record.row !== null) {
+        applyRowArgs(args, record.row, entry.id, options.expandedIds);
+    }
 
     return args;
 };
@@ -236,7 +264,9 @@ const headerRenderer = (
     collection: CollectionModel,
     renderHeader: HeaderRenderer<never> | null | undefined,
 ): ((record: CellRecord) => ReactNode) => {
-    if (renderHeader == null) return () => null;
+    if (renderHeader == null) {
+        return () => null;
+    }
 
     const render = renderHeader as HeaderRenderer<unknown>;
 

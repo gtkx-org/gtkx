@@ -50,7 +50,10 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     },
     quitDefaultApplication: () => {
         const application = Gio.Application.getDefault();
-        if (application) quitApplication(application);
+
+        if (application) {
+            quitApplication(application);
+        }
     },
     performRefresh,
     isRefreshBoundary,

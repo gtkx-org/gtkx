@@ -69,10 +69,14 @@ function resolveParentType(klass: AnyClass): bigint {
 function ownInstanceMethodNames(klass: AnyClass): string[] {
     const proto = (klass as { prototype?: object }).prototype;
 
-    if (!proto) return [];
+    if (!proto) {
+        return [];
+    }
 
     return Object.getOwnPropertyNames(proto).filter((name) => {
-        if (name === "constructor") return false;
+        if (name === "constructor") {
+            return false;
+        }
 
         return typeof (proto as Record<string, unknown>)[name] === "function";
     });
@@ -84,15 +88,21 @@ function buildDiscoveredVfunc<K extends "class" | "interface">(
     resolveDescriptor: (methodName: string) => VfuncDescriptor<K> | undefined,
     skip: Set<string> | undefined,
 ): DiscoveredVfunc<K> | undefined {
-    if (skip?.has(methodName)) return undefined;
+    if (skip?.has(methodName)) {
+        return undefined;
+    }
 
     const descriptor = resolveDescriptor(methodName);
 
-    if (!descriptor) return undefined;
+    if (!descriptor) {
+        return undefined;
+    }
 
     const fn = proto[methodName];
 
-    if (!fn) return undefined;
+    if (!fn) {
+        return undefined;
+    }
 
     return {
         ...descriptor,
@@ -111,7 +121,10 @@ function collectDiscoveredVfuncs<K extends "class" | "interface">(
 
     for (const methodName of ownInstanceMethodNames(klass)) {
         const discovered = buildDiscoveredVfunc(proto, methodName, resolveDescriptor, skip);
-        if (discovered) result.push(discovered);
+
+        if (discovered) {
+            result.push(discovered);
+        }
     }
 
     return result;
@@ -164,7 +177,9 @@ function discoverInterfaceVfuncs(
 ): DiscoveredInterfaceVfunc[] {
     const vfuncRegistry = getInterfaceVfuncRegistry(interfaceGtype);
 
-    if (!vfuncRegistry) return [];
+    if (!vfuncRegistry) {
+        return [];
+    }
 
     return collectDiscoveredVfuncs(
         klass,
@@ -199,7 +214,10 @@ function toNativeOptions(
     }
 
     const options: NativeRegisterClassOptions = {};
-    if (hasClassVfuncs) options.vfuncs = [...classVfuncs];
+
+    if (hasClassVfuncs) {
+        options.vfuncs = [...classVfuncs];
+    }
 
     if (hasInterfaces) {
         options.interfaces = interfaceBindings.map((binding) => ({

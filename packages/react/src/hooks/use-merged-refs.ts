@@ -17,14 +17,20 @@ function assignRef<T>(ref: PossibleRef<T>, value: T): RefCleanup<T> {
 
 function collectCleanup<T>(cleanupMap: CleanupMap<T>, ref: PossibleRef<T>, node: T | null): void {
     const cleanup = assignRef(ref, node);
-    if (cleanup) cleanupMap.set(ref, cleanup);
+
+    if (cleanup) {
+        cleanupMap.set(ref, cleanup);
+    }
 }
 
 function cleanupRef<T>(cleanupMap: CleanupMap<T>, ref: PossibleRef<T>): void {
     const cleanup = cleanupMap.get(ref);
 
-    if (cleanup && typeof cleanup === "function") cleanup();
-    else assignRef(ref, null);
+    if (cleanup && typeof cleanup === "function") {
+        cleanup();
+    } else {
+        assignRef(ref, null);
+    }
 }
 
 function applyRefs<T>(cleanupMap: CleanupMap<T>, refs: PossibleRef<T>[], node: T | null): RefCleanup<T> {
@@ -32,7 +38,9 @@ function applyRefs<T>(cleanupMap: CleanupMap<T>, refs: PossibleRef<T>[], node: T
         collectCleanup(cleanupMap, ref, node);
     }
 
-    if (cleanupMap.size === 0) return;
+    if (cleanupMap.size === 0) {
+        return;
+    }
 
     return () => {
         for (const ref of refs) {

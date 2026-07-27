@@ -31,7 +31,9 @@ const layoutOfPrimitive = (category: PrimitiveCategory): FieldLayout => {
 };
 
 const roundUp = (value: number, multiple: number): number => {
-    if (multiple <= 1) return value;
+    if (multiple <= 1) {
+        return value;
+    }
 
     const remainder = value % multiple;
 
@@ -90,7 +92,10 @@ const pushBitfield = (input: {
 
 const processStructField = (state: StructLayoutState, slots: FieldSlot[], field: FieldLayoutInput): void => {
     const align = Math.max(1, field.layout.align);
-    if (align > state.maxAlign) state.maxAlign = align;
+
+    if (align > state.maxAlign) {
+        state.maxAlign = align;
+    }
 
     if (field.bits === undefined) {
         pushPlainField(state, slots, field, align);

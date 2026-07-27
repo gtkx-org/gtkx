@@ -42,11 +42,19 @@ const buildGirIndex = (library: Library): GirIndex => {
 };
 
 const chainOf = (context: GirIndex, entry: GirTypeEntry): GirClass[] => {
-    if (entry.isInterface) return [entry.klass];
+    if (entry.isInterface) {
+        return [entry.klass];
+    }
 
     const chain: GirClass[] = [];
-    for (const { klass } of ancestorChain(context.library, entry.klass, entry.namespace.name)) chain.push(klass);
-    for (const iface of implementedInterfaces(entry.klass, entry.namespace, context.library)) chain.push(iface.klass);
+
+    for (const { klass } of ancestorChain(context.library, entry.klass, entry.namespace.name)) {
+        chain.push(klass);
+    }
+
+    for (const iface of implementedInterfaces(entry.klass, entry.namespace, context.library)) {
+        chain.push(iface.klass);
+    }
 
     return chain;
 };

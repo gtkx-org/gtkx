@@ -25,28 +25,40 @@ class ModuleContext {
     }
 
     addGObjectBootstrapImports(): void {
-        if (this.namespace.name === "GObject") return;
+        if (this.namespace.name === "GObject") {
+            return;
+        }
 
-        if (this.namespace.name === "GLib") return;
+        if (this.namespace.name === "GLib") {
+            return;
+        }
 
         this.module.imports.addSideEffect("../gobject/overrides/object.js");
         this.module.imports.addSideEffect("../gobject/overrides/value.js");
     }
 
     addCrossNamespaceImport(namespaceName: string): string {
-        if (namespaceName === this.namespace.name) return namespaceName;
+        if (namespaceName === this.namespace.name) {
+            return namespaceName;
+        }
 
         const directory = namespaceName.toLowerCase();
         const isFoundational = directory === "gobject" || directory === "glib";
         const path = isFoundational ? `../${directory}/${directory}.js` : `../${directory}/index.js`;
-        if (!isFoundational) this.module.imports.addSideEffect(path);
+
+        if (!isFoundational) {
+            this.module.imports.addSideEffect(path);
+        }
+
         this.module.imports.addNamespace(path, namespaceName);
 
         return namespaceName;
     }
 
     qualify(namespaceName: string, typeName: string): string {
-        if (namespaceName === this.namespace.name) return typeName;
+        if (namespaceName === this.namespace.name) {
+            return typeName;
+        }
 
         return `${this.addCrossNamespaceImport(namespaceName)}.${typeName}`;
     }

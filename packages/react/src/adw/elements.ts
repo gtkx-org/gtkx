@@ -219,10 +219,14 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             slot<Adw.TabView, Gtk.Widget>("children", "GtkWidget", {
                 attach: (view, child, info) => view.insert(child, info.index),
                 reorder: (view, _child, info) => {
-                    if (info.adopted instanceof Adw.TabPage) view.reorderPage(info.adopted, info.index);
+                    if (info.adopted instanceof Adw.TabPage) {
+                        view.reorderPage(info.adopted, info.index);
+                    }
                 },
                 detach: (view, _child, info) => {
-                    if (info.adopted instanceof Adw.TabPage) view.closePage(info.adopted);
+                    if (info.adopted instanceof Adw.TabPage) {
+                        view.closePage(info.adopted);
+                    }
                 },
                 resolve: (view, child) => view.getPage(child),
             }),
@@ -319,7 +323,9 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                         dialog.setResponseAppearance(response.id, response.appearance);
                     }
 
-                    if (response.enabled !== undefined) dialog.setResponseEnabled(response.id, response.enabled);
+                    if (response.enabled !== undefined) {
+                        dialog.setResponseEnabled(response.id, response.enabled);
+                    }
                 },
                 remove: (dialog, response) => dialog.removeResponse(response.id),
             }),

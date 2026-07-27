@@ -41,8 +41,11 @@ const partitionTokens = (tokens: string[], registered: RegisteredCache): TokenPa
     for (const token of tokens) {
         const styles = registered[token];
 
-        if (styles === undefined) rawClasses.push(token);
-        else registeredStyles.push(styles);
+        if (styles === undefined) {
+            rawClasses.push(token);
+        } else {
+            registeredStyles.push(styles);
+        }
     }
 
     return { rawClasses, registeredStyles };
@@ -62,7 +65,9 @@ const runStylis = (sheet: StyleSheet, input: string): void => {
 };
 
 const markNewStyle = (state: CssState, serialized: SerializedStyles): boolean => {
-    if (state.inserted.has(serialized.name)) return false;
+    if (state.inserted.has(serialized.name)) {
+        return false;
+    }
 
     state.inserted.add(serialized.name);
 
@@ -70,7 +75,9 @@ const markNewStyle = (state: CssState, serialized: SerializedStyles): boolean =>
 };
 
 const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
-    if (!markNewStyle(state, serialized)) return;
+    if (!markNewStyle(state, serialized)) {
+        return;
+    }
 
     const className = classNameFor(serialized);
     runStylis(state.sheet, `.${className}{${serialized.styles}}`);
@@ -78,7 +85,9 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
 };
 
 const insertWithoutScoping = (state: CssState, serialized: SerializedStyles): void => {
-    if (!markNewStyle(state, serialized)) return;
+    if (!markNewStyle(state, serialized)) {
+        return;
+    }
 
     runStylis(state.sheet, serialized.styles);
 };
@@ -94,7 +103,9 @@ const cxClassNames = (state: CssState, classNames: CxToken[]): string[] => {
     const tokens = classNames.filter(isNonEmptyString);
     const { rawClasses, registeredStyles } = partitionTokens(tokens, state.registered);
 
-    if (registeredStyles.length < 2) return tokens;
+    if (registeredStyles.length < 2) {
+        return tokens;
+    }
 
     return [...rawClasses, cssClassName(state, [registeredStyles.join("")])];
 };

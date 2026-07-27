@@ -27,7 +27,9 @@ import { describe, expect, it, type Mock, vi } from "vitest";
 const render = (element: ReactNode) => baseRender(element);
 
 const labelCount = (container: Gtk.Widget | null): number => {
-    if (container === null) throw new Error("expected a mounted container");
+    if (container === null) {
+        throw new Error("expected a mounted container");
+    }
 
     return within(container).getAllByRole(Gtk.AccessibleRole.LABEL).length;
 };

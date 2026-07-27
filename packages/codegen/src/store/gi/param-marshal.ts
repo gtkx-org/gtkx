@@ -4,7 +4,9 @@ import type { ModuleContext } from "../../writer/context.js";
 import { type GirParameter, isInoutParameter } from "../../gir/parameter.js";
 
 const passesHandleInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
-    if (parameter.direction !== "out" && parameter.direction !== "inout") return false;
+    if (parameter.direction !== "out" && parameter.direction !== "inout") {
+        return false;
+    }
 
     return (
         (parameter.callerAllocates || parameter.direction === "inout") &&
@@ -16,7 +18,9 @@ const passesHandleInPlace = (context: ModuleContext, parameter: GirParameter): b
 const underlyingType = (context: ModuleContext, ref: TypeId): GirType | undefined => {
     const type = context.library.typeOf(ref);
 
-    if (type?.kind !== "alias") return type;
+    if (type?.kind !== "alias") {
+        return type;
+    }
 
     return type.value.target === undefined ? undefined : underlyingType(context, type.value.target);
 };
@@ -39,7 +43,9 @@ const isRecordInout = (context: ModuleContext, parameter: GirParameter): boolean
 const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean => {
     const type = context.library.typeOf(ref);
 
-    if (type === undefined) return true;
+    if (type === undefined) {
+        return true;
+    }
 
     switch (type.kind) {
         case "class":

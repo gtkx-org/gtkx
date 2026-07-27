@@ -41,11 +41,15 @@ const cognitiveComplexity = ESLintUtils.RuleCreator.withoutDocs<Options, Message
     defaultOptions: [{ max: 15 }],
     create(context, [{ max }]) {
         const check = (node: TSESTree.Node): void => {
-            if (hasEnclosingFunction(node)) return;
+            if (hasEnclosingFunction(node)) {
+                return;
+            }
 
             const complexity = childrenComplexity(node, 0, context.sourceCode.visitorKeys);
 
-            if (complexity <= max) return;
+            if (complexity <= max) {
+                return;
+            }
 
             context.report({
                 node: nameNodeOf(node),
@@ -69,7 +73,9 @@ const hasEnclosingFunction = (node: TSESTree.Node): boolean => {
     let current: TSESTree.Node | undefined = node.parent;
 
     while (current) {
-        if (FUNCTION_TYPES.has(current.type)) return true;
+        if (FUNCTION_TYPES.has(current.type)) {
+            return true;
+        }
 
         current = current.parent;
     }
@@ -83,11 +89,17 @@ const declaratorName = (parent: TSESTree.VariableDeclarator): TSESTree.Node | un
     parent.id.type === AST_NODE_TYPES.Identifier ? parent.id : undefined;
 
 const parentName = (parent: TSESTree.Node | undefined): TSESTree.Node | undefined => {
-    if (parent === undefined) return undefined;
+    if (parent === undefined) {
+        return undefined;
+    }
 
-    if (isKeyedParent(parent)) return parent.computed ? undefined : parent.key;
+    if (isKeyedParent(parent)) {
+        return parent.computed ? undefined : parent.key;
+    }
 
-    if (parent.type === AST_NODE_TYPES.VariableDeclarator) return declaratorName(parent);
+    if (parent.type === AST_NODE_TYPES.VariableDeclarator) {
+        return declaratorName(parent);
+    }
 
     return undefined;
 };
@@ -103,14 +115,20 @@ const ownName = (node: TSESTree.Node): TSESTree.Node | undefined => {
 const nameNodeOf = (node: TSESTree.Node): TSESTree.Node => parentName(node.parent) ?? ownName(node) ?? node;
 
 const nodesIn = (value: unknown): TSESTree.Node[] => {
-    if (isNode(value)) return [value];
+    if (isNode(value)) {
+        return [value];
+    }
 
-    if (!Array.isArray(value)) return [];
+    if (!Array.isArray(value)) {
+        return [];
+    }
 
     const nodes: TSESTree.Node[] = [];
 
     for (const item of value) {
-        if (isNode(item)) nodes.push(item);
+        if (isNode(item)) {
+            nodes.push(item);
+        }
     }
 
     return nodes;
@@ -119,14 +137,20 @@ const nodesIn = (value: unknown): TSESTree.Node[] => {
 const childNodesOf = (node: TSESTree.Node, keys: VisitorKeys): TSESTree.Node[] => {
     const nodeKeys = keys[node.type] ?? [];
     const children: TSESTree.Node[] = [];
-    for (const key of nodeKeys) children.push(...nodesIn(Reflect.get(node, key)));
+
+    for (const key of nodeKeys) {
+        children.push(...nodesIn(Reflect.get(node, key)));
+    }
 
     return children;
 };
 
 const sumOf = <T>(items: T[], score: (item: T) => number): number => {
     let total = 0;
-    for (const item of items) total += score(item);
+
+    for (const item of items) {
+        total += score(item);
+    }
 
     return total;
 };
@@ -176,7 +200,9 @@ const ifComplexity = (node: TSESTree.IfStatement, nesting: number, keys: Visitor
 const loopChildComplexity = (node: TSESTree.Node, key: string, nesting: number, keys: VisitorKeys): number => {
     const child: unknown = Reflect.get(node, key);
 
-    if (!isNode(child)) return 0;
+    if (!isNode(child)) {
+        return 0;
+    }
 
     return complexityAt(child, key === "body" ? nesting + 1 : nesting, keys);
 };
@@ -184,7 +210,10 @@ const loopChildComplexity = (node: TSESTree.Node, key: string, nesting: number, 
 const loopComplexity = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): number => {
     const nodeKeys = keys[node.type] ?? [];
     let total = 1 + nesting;
-    for (const key of nodeKeys) total += loopChildComplexity(node, key, nesting, keys);
+
+    for (const key of nodeKeys) {
+        total += loopChildComplexity(node, key, nesting, keys);
+    }
 
     return total;
 };

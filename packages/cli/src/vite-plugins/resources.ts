@@ -112,7 +112,9 @@ const entriesSignature = (state: PluginState): string => sortStrings(state.entri
 const compileDevBundle = (state: PluginState): void => {
     ensureStagingDir(state);
 
-    if (state.entries.size === 0) return;
+    if (state.entries.size === 0) {
+        return;
+    }
 
     compileBundle(state, state.devBundlePath);
     state.compiledSignature = entriesSignature(state);
@@ -123,17 +125,24 @@ const isRefreshHook = (value: unknown): value is () => void => typeof value === 
 const reregisterDevBundle = async (state: PluginState): Promise<void> => {
     const server = state.server;
 
-    if (!server) return;
+    if (!server) {
+        return;
+    }
 
     const mod = await server.ssrLoadModule(VIRTUAL_INIT);
     const refresh: unknown = mod[REFRESH_EXPORT];
-    if (isRefreshHook(refresh)) refresh();
+
+    if (isRefreshHook(refresh)) {
+        refresh();
+    }
 };
 
 const scanDataAssets = (dataDir: string): ListedFile[] => listFilesRecursive(dataDir, (name) => ASSET_RE.test(name));
 
 const primeDevBundle = (state: PluginState): void => {
-    if (state.dataDir === null) return;
+    if (state.dataDir === null) {
+        return;
+    }
 
     for (const { absPath, rel } of scanDataAssets(state.dataDir)) {
         registerEntry(state, absPath, rel);
@@ -151,7 +160,9 @@ const registerDevAsset = (state: PluginState): void => {
 const registerEntry = (state: PluginState, absPath: string, rel: string): ResourceEntry => {
     const existing = state.entries.get(absPath);
 
-    if (existing) return existing;
+    if (existing) {
+        return existing;
+    }
 
     const resourcePath = `${state.prefix}/${rel}`;
 
@@ -172,7 +183,9 @@ const isTrackedSource = (state: PluginState, file: string): boolean => state.sou
 const dataAssetSource = (source: string): string | null => {
     const clean = stripQuery(source);
 
-    if (!clean.startsWith(DATA_PREFIX) || !ASSET_PATH_RE.test(clean)) return null;
+    if (!clean.startsWith(DATA_PREFIX) || !ASSET_PATH_RE.test(clean)) {
+        return null;
+    }
 
     return clean;
 };
@@ -181,13 +194,17 @@ const resolvedAssetId = (
     resolved: { id: string; external: boolean | string } | null,
     clean: string,
 ): string | undefined => {
-    if (!resolved || resolved.external) return undefined;
+    if (!resolved || resolved.external) {
+        return undefined;
+    }
 
     return toVirtualId(resolved.id) + REL_SEPARATOR + clean.slice(DATA_PREFIX.length);
 };
 
 const loadInitModule = (state: PluginState): string => {
-    if (!state.isBuild) ensureStagingDir(state);
+    if (!state.isBuild) {
+        ensureStagingDir(state);
+    }
 
     return renderInitModule({ isBuild: state.isBuild, devBundlePath: state.devBundlePath });
 };
@@ -216,7 +233,9 @@ const emitBuildBundle = (
     ctx: { emitFile: (asset: { type: "asset"; fileName: string; source: Buffer }) => string },
     state: PluginState,
 ): void => {
-    if (!state.isBuild || state.entries.size === 0) return;
+    if (!state.isBuild || state.entries.size === 0) {
+        return;
+    }
 
     const compiled = withStagingDir("resources-out", (outDir) => compileBundle(state, join(outDir, BUNDLE_FILENAME)));
     ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
@@ -243,7 +262,9 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
 };
 
 const refreshTrackedSource = async (state: PluginState, file: string): Promise<void> => {
-    if (!isTrackedSource(state, file)) return;
+    if (!isTrackedSource(state, file)) {
+        return;
+    }
 
     try {
         await refreshDevRegistration(state);
@@ -266,16 +287,22 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
 const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
     state.isBuild = config.command === "build";
 
-    if (state.isBuild) return;
+    if (state.isBuild) {
+        return;
+    }
 
     const relativeDataDir = resolveDataDir(config.root);
     state.dataDir = relativeDataDir === null ? null : join(config.root, relativeDataDir);
 };
 
 const loadResourceModule = (state: PluginState, id: string): string | undefined => {
-    if (id === VIRTUAL_INIT) return loadInitModule(state);
+    if (id === VIRTUAL_INIT) {
+        return loadInitModule(state);
+    }
 
-    if (!isVirtual(id)) return undefined;
+    if (!isVirtual(id)) {
+        return undefined;
+    }
 
     return loadAssetModule(state, id);
 };
@@ -311,11 +338,15 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin 
         },
 
         async resolveId(source, importer, opts) {
-            if (source === VIRTUAL_INIT) return VIRTUAL_INIT;
+            if (source === VIRTUAL_INIT) {
+                return VIRTUAL_INIT;
+            }
 
             const clean = dataAssetSource(source);
 
-            if (clean === null) return;
+            if (clean === null) {
+                return;
+            }
 
             const resolved = await this.resolve(clean, importer, { ...opts, skipSelf: true });
 

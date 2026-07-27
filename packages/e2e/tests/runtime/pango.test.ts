@@ -13,7 +13,9 @@ describe("Pango.GlyphString.glyphs", () => {
         expect(first).toBeDefined();
         expect(second).toBeDefined();
 
-        if (!first || !second) return;
+        if (!first || !second) {
+            return;
+        }
 
         first.glyph = 65;
         first.geometry = { width: 1024, xOffset: 8, yOffset: -4 };

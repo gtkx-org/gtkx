@@ -19,7 +19,9 @@ const rowTitles = (group: Adw.PreferencesGroup): string[] => {
     const titles: string[] = [];
 
     for (const widget of walk(group)) {
-        if (widget instanceof Adw.PreferencesRow) titles.push(widget.getTitle());
+        if (widget instanceof Adw.PreferencesRow) {
+            titles.push(widget.getTitle());
+        }
     }
 
     return titles;

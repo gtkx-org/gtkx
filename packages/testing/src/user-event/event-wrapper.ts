@@ -12,21 +12,31 @@ const actionableHop = (): Promise<void> => new Promise((resolve) => setTimeout(r
 const displayDeliversActivation = (window: Gtk.Window): boolean => window.getDisplay().getDefaultSeat() !== null;
 
 const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): string | null => {
-    if (root.getAllocatedWidth() === 0) return WINDOW_NOT_ALLOCATED;
+    if (root.getAllocatedWidth() === 0) {
+        return WINDOW_NOT_ALLOCATED;
+    }
 
-    if (!widget.getMapped()) return NOT_MAPPED;
+    if (!widget.getMapped()) {
+        return NOT_MAPPED;
+    }
 
-    if (displayDeliversActivation(root) && !root.isActive()) return WINDOW_NOT_ACTIVE;
+    if (displayDeliversActivation(root) && !root.isActive()) {
+        return WINDOW_NOT_ACTIVE;
+    }
 
     return null;
 };
 
 const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
-    if (!widget.isSensitive()) return NOT_SENSITIVE;
+    if (!widget.isSensitive()) {
+        return NOT_SENSITIVE;
+    }
 
     const root = widget.getRoot();
 
-    if (!(root instanceof Gtk.Window) || !root.getVisible()) return null;
+    if (!(root instanceof Gtk.Window) || !root.getVisible()) {
+        return null;
+    }
 
     return findWindowActionabilityFailure(widget, root);
 };

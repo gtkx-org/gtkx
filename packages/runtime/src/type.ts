@@ -153,7 +153,9 @@ const resolveType = (sharedLibrary: string, typeFnName: string): bigint => {
     const key = `${sharedLibrary}:${typeFnName}`;
     const cached = resolvedTypeCache.get(key);
 
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+        return cached;
+    }
 
     const gtype = nativeResolveType(sharedLibrary, typeFnName);
     resolvedTypeCache.set(key, gtype);
@@ -179,24 +181,32 @@ const resolveFundamentalType = (descriptor: FundamentalDescriptor): bigint => {
     if (descriptor.typeName) {
         const gtype = typeFromName(descriptor.typeName);
 
-        if (gtype !== TYPE_INVALID) return gtype;
+        if (gtype !== TYPE_INVALID) {
+            return gtype;
+        }
     }
 
     throw new Error("Cannot resolve gtype for fundamental type without a typeName");
 };
 
 function resolveArrayType(descriptor: ArrayDescriptor): bigint {
-    if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") return getStrvType();
+    if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") {
+        return getStrvType();
+    }
 
     throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
 }
 
 function resolveDescriptorType(descriptor: Descriptor): bigint {
-    if (descriptor.kind === "biguint64" && "type" in descriptor) return TYPE_GTYPE;
+    if (descriptor.kind === "biguint64" && "type" in descriptor) {
+        return TYPE_GTYPE;
+    }
 
     const plain = PLAIN_DESCRIPTOR_TYPES[descriptor.kind];
 
-    if (plain !== undefined) return plain;
+    if (plain !== undefined) {
+        return plain;
+    }
 
     switch (descriptor.kind) {
         case "enum":

@@ -29,7 +29,9 @@ const distTagForVersion = (version: string): string => {
     const core = version.split("+", 1)[0] ?? "";
     const dashIndex = core.indexOf("-");
 
-    if (dashIndex === -1) return "latest";
+    if (dashIndex === -1) {
+        return "latest";
+    }
 
     const identifier = core.slice(dashIndex + 1).split(".", 1)[0] ?? "";
 
@@ -42,7 +44,10 @@ const stripExportsSource = (entry: Record<string, ExportsField>): Record<string,
     const result: Record<string, ExportsField> = {};
 
     for (const [key, value] of Object.entries(entry)) {
-        if (key === "source") continue;
+        if (key === "source") {
+            continue;
+        }
+
         result[key] = typeof value === "string" ? value : stripExportsSource(value);
     }
 
@@ -61,21 +66,29 @@ const stripDevArtifacts = (manifest: PackageManifest): PackageManifest => {
 };
 
 const exportsContainSource = (entry: ExportsField): boolean => {
-    if (typeof entry === "string") return false;
+    if (typeof entry === "string") {
+        return false;
+    }
 
     return Object.entries(entry).some(([key, value]) => key === "source" || exportsContainSource(value));
 };
 
 const collectExportTargets = (entry: ExportsField): string[] => {
-    if (typeof entry === "string") return entry.startsWith("./") ? [entry] : [];
+    if (typeof entry === "string") {
+        return entry.startsWith("./") ? [entry] : [];
+    }
 
     return Object.values(entry).flatMap((value) => collectExportTargets(value));
 };
 
 const binTargets = (bin: PackageManifest["bin"]): string[] => {
-    if (bin === undefined) return [];
+    if (bin === undefined) {
+        return [];
+    }
 
-    if (typeof bin === "string") return [bin];
+    if (typeof bin === "string") {
+        return [bin];
+    }
 
     return Object.values(bin);
 };
@@ -84,14 +97,22 @@ const normalizePath = (path: string): string => path.replace(/^\.\//, "").replac
 
 const requiredFileViolations = (files: Set<string>): string[] => {
     const violations: string[] = [];
-    if (!files.has("README.md")) violations.push("missing README.md");
-    if (!files.has("package.json")) violations.push("missing package.json");
+
+    if (!files.has("README.md")) {
+        violations.push("missing README.md");
+    }
+
+    if (!files.has("package.json")) {
+        violations.push("missing package.json");
+    }
 
     return violations;
 };
 
 const shippedEntryViolation = (entry: string): string | undefined => {
-    if (entry.endsWith(".tsbuildinfo")) return `ships build artifact ${entry}`;
+    if (entry.endsWith(".tsbuildinfo")) {
+        return `ships build artifact ${entry}`;
+    }
 
     if (entry.endsWith(".ts") && !entry.endsWith(".d.ts") && !isDevSource(entry) && !entry.includes("templates/")) {
         return `ships TypeScript source ${entry}`;
@@ -139,12 +160,16 @@ const sourceViolation = (options: {
 }): string | undefined => {
     const { parsed, source, index, mapPath, files } = options;
 
-    if (typeof parsed.sourcesContent?.[index] === "string") return undefined;
+    if (typeof parsed.sourcesContent?.[index] === "string") {
+        return undefined;
+    }
 
     const sourceRoot = parsed.sourceRoot ?? "";
     const resolved = posix.normalize(posix.join(posix.dirname(mapPath), sourceRoot, source));
 
-    if (files.has(resolved)) return undefined;
+    if (files.has(resolved)) {
+        return undefined;
+    }
 
     return `source map ${mapPath} references missing source ${source}`;
 };
@@ -152,7 +177,9 @@ const sourceViolation = (options: {
 const mapSourceViolations = (mapPath: string, content: string, files: Set<string>): string[] => {
     const parsed = parseSourceMap(content);
 
-    if (parsed === undefined) return [`source map ${mapPath} is not valid JSON`];
+    if (parsed === undefined) {
+        return [`source map ${mapPath} is not valid JSON`];
+    }
 
     return (parsed.sources ?? [])
         .map((source, index) => sourceViolation({ parsed, source, index, mapPath, files }))

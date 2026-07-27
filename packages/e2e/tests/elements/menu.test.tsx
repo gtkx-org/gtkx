@@ -10,7 +10,9 @@ import { describe, expect, it } from "vitest";
 const itemLabel = (model: Gio.MenuModel, index: number): string | null => {
     const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_LABEL, null);
 
-    if (!variant) return null;
+    if (!variant) {
+        return null;
+    }
 
     const [text] = variant.dupString();
 
@@ -20,7 +22,9 @@ const itemLabel = (model: Gio.MenuModel, index: number): string | null => {
 const itemAction = (model: Gio.MenuModel, index: number): string | null => {
     const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_ACTION, null);
 
-    if (!variant) return null;
+    if (!variant) {
+        return null;
+    }
 
     const [text] = variant.dupString();
 
@@ -35,13 +39,18 @@ const submenuAt = (model: Gio.MenuModel, index: number): Gio.MenuModel | null =>
 
 const requireModel = (menu: Gtk.PopoverMenu | Gtk.PopoverMenuBar | null): Gio.MenuModel => {
     const model = menu?.getMenuModel();
-    if (!model) throw new Error("Expected menu model");
+
+    if (!model) {
+        throw new Error("Expected menu model");
+    }
 
     return model;
 };
 
 const requireLink = (model: Gio.MenuModel | null): Gio.MenuModel => {
-    if (!model) throw new Error("Expected linked menu model");
+    if (!model) {
+        throw new Error("Expected linked menu model");
+    }
 
     return model;
 };
@@ -243,7 +252,10 @@ const NESTED_SUBMENU_ITEMS: MenuItem[] = [
 
 const GrowingSubmenuApp = ({ menuRef, extra }: { menuRef: MenuRef; extra: boolean }) => {
     const submenu: MenuItem[] = [{ label: "Cut", action: "win.cut" }];
-    if (extra) submenu.push({ label: "Copy", action: "win.copy" });
+
+    if (extra) {
+        submenu.push({ label: "Copy", action: "win.copy" });
+    }
 
     return <SingleEntryApp menuRef={menuRef} entry={{ label: "Edit", submenu }} />;
 };

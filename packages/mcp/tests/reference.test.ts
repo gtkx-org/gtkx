@@ -56,7 +56,9 @@ const fakeReference: FakeReference = {
             return { outcome: "page", symbol: buttonSymbol, markdown: "BUTTON PAGE" };
         }
 
-        if (query === "HeaderBar") return { outcome: "ambiguous", candidates: headerBarCandidates };
+        if (query === "HeaderBar") {
+            return { outcome: "ambiguous", candidates: headerBarCandidates };
+        }
 
         return { outcome: "notFound" };
     },
@@ -66,14 +68,20 @@ const provider: ReferenceProvider = { get: async () => fakeReference };
 
 const getTool = (name: string): Tool => {
     const tool = buildReferenceTools(provider).find((candidate) => candidate.name === name);
-    if (!tool) throw new Error(`Tool not found: ${name}`);
+
+    if (!tool) {
+        throw new Error(`Tool not found: ${name}`);
+    }
 
     return tool;
 };
 
 const textOf = (result: { content: { type: string }[] }): string => {
     const first = result.content[0];
-    if (first?.type !== "text") throw new Error("Expected text content");
+
+    if (first?.type !== "text") {
+        throw new Error("Expected text content");
+    }
 
     return (first as { type: "text"; text: string }).text;
 };
@@ -189,7 +197,11 @@ describe("gtkx_search_api", () => {
         const search = vi.fn(() => [buttonSymbol]);
         const filtering: ReferenceProvider = { get: async () => ({ ...fakeReference, search }) };
         const tool = buildReferenceTools(filtering).find((candidate) => candidate.name === "gtkx_search_api");
-        if (!tool) throw new Error("Tool not found");
+
+        if (!tool) {
+            throw new Error("Tool not found");
+        }
+
         await tool.handler({ query: "button", namespace: "Gtk", kind: "class", limit: 5 });
         expect(search).toHaveBeenCalledWith({ query: "button", namespace: "Gtk", kinds: ["class"], limit: 5 });
     });
@@ -251,7 +263,10 @@ const registerAllWith = (source: ReferenceProvider): RegisteredResource[] => {
 
 const findResource = (registered: RegisteredResource[], name: string): RegisteredResource => {
     const resource = registered.find((candidate) => candidate.name === name);
-    if (!resource) throw new Error(`Resource not found: ${name}`);
+
+    if (!resource) {
+        throw new Error(`Resource not found: ${name}`);
+    }
 
     return resource;
 };
@@ -260,27 +275,38 @@ const getResource = (name: string): RegisteredResource => findResource(registerA
 
 const getListCallback = (template: ResourceTemplate) => {
     const listCallback = template.listCallback;
-    if (!listCallback) throw new Error("Expected a list callback");
+
+    if (!listCallback) {
+        throw new Error("Expected a list callback");
+    }
 
     return listCallback;
 };
 
 const getTemplate = (resource: RegisteredResource): ResourceTemplate => {
-    if (!(resource.uriOrTemplate instanceof ResourceTemplate)) throw new Error("Expected a ResourceTemplate");
+    if (!(resource.uriOrTemplate instanceof ResourceTemplate)) {
+        throw new TypeError("Expected a ResourceTemplate");
+    }
 
     return resource.uriOrTemplate;
 };
 
 const getCompleter = (template: ResourceTemplate, variable: string) => {
     const completer = template.completeCallback(variable);
-    if (!completer) throw new Error(`No completer for ${variable}`);
+
+    if (!completer) {
+        throw new Error(`No completer for ${variable}`);
+    }
 
     return completer;
 };
 
 const resourceText = (result: ReadResourceResult): string => {
     const first = result.contents[0];
-    if (first === undefined || !("text" in first)) throw new Error("Expected text contents");
+
+    if (first === undefined || !("text" in first)) {
+        throw new Error("Expected text contents");
+    }
 
     return first.text;
 };

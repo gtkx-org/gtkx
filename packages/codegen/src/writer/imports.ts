@@ -32,13 +32,18 @@ class ImportsBuilder {
         }
 
         const parts: string[] = [];
-        if (namespaceImport !== undefined) parts.push(`* as ${namespaceImport.alias}`);
+
+        if (namespaceImport !== undefined) {
+            parts.push(`* as ${namespaceImport.alias}`);
+        }
 
         if (namedNames !== undefined && namedNames.size > 0) {
             parts.push(`{ ${formatNamedNames(namedNames).join(", ")} }`);
         }
 
-        if (parts.length === 0) return undefined;
+        if (parts.length === 0) {
+            return undefined;
+        }
 
         return `import ${parts.join(", ")} from ${sourceStringLiteral(specifier)};`;
     }
@@ -72,7 +77,10 @@ class ImportsBuilder {
 
         for (const specifier of sortStrings(specifiers)) {
             const line = this.specifierLine(specifier);
-            if (line !== undefined) lines.push(line);
+
+            if (line !== undefined) {
+                lines.push(line);
+            }
         }
 
         return lines.length === 0 ? "" : `${lines.join("\n")}\n`;

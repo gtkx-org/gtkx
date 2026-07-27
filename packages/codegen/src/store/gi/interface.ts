@@ -54,9 +54,13 @@ type PropertyMemberOptions = {
 };
 
 const generateInterface = (context: ModuleContext, iface: GirClass): void => {
-    if (!iface.introspectable) return;
+    if (!iface.introspectable) {
+        return;
+    }
 
-    if (iface.name.length === 0) return;
+    if (iface.name.length === 0) {
+        return;
+    }
 
     const className = pascalCase(iface.name);
 
@@ -92,7 +96,9 @@ const interfaceTypeExtends = (context: ModuleContext, iface: GirClass): string =
         .map((name) => resolvePrerequisiteReference(context, name))
         .filter((entry): entry is string => entry !== undefined);
 
-    if (refs.length > 0) return refs.join(", ");
+    if (refs.length > 0) {
+        return refs.join(", ");
+    }
 
     return context.qualify("GObject", "Object");
 };
@@ -118,7 +124,11 @@ const collectMethodMembers = (options: MethodMemberOptions): string[] => {
     for (const callable of callables.methods) {
         const rename = reservedSignalMemberRename(className, callable);
         const block = renderers.renderMethod(context, callable, scope, rename);
-        if (block === undefined) continue;
+
+        if (block === undefined) {
+            continue;
+        }
+
         members.push(block);
         claimedNames.add(rename ?? methodExportName(callable));
     }
@@ -132,7 +142,10 @@ const collectPropertyMembers = (options: PropertyMemberOptions): string[] => {
 
     for (const property of iface.properties) {
         const block = renderers.renderProperty({ context, property, claimedNames, methodByName: scope.methodByName });
-        if (block !== undefined) members.push(block);
+
+        if (block !== undefined) {
+            members.push(block);
+        }
     }
 
     return members;
@@ -166,7 +179,11 @@ const renderInterfaceClass = (
     gtypeExpr: string | undefined,
 ): string => {
     const members: string[] = [];
-    if (gtypeExpr !== undefined) members.push(renderInterfaceHasInstance(context, className, gtypeExpr));
+
+    if (gtypeExpr !== undefined) {
+        members.push(renderInterfaceHasInstance(context, className, gtypeExpr));
+    }
+
     members.push(...renderStaticHead(context, callables, className));
 
     return renderBracedOrEmpty(`export abstract class ${className}`, members.join("\n\n"));

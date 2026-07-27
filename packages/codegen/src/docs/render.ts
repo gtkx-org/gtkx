@@ -70,9 +70,13 @@ const stripDocMedia = (markdown: string): string =>
         .replaceAll(/<img[^>]*>/g, "");
 
 const demoteLine = (line: string, inFence: boolean): { text: string; inFence: boolean } => {
-    if (FENCE_LINE.test(line)) return { text: line, inFence: !inFence };
+    if (FENCE_LINE.test(line)) {
+        return { text: line, inFence: !inFence };
+    }
 
-    if (inFence) return { text: line, inFence };
+    if (inFence) {
+        return { text: line, inFence };
+    }
 
     return { text: HEADING_LINE.test(line) ? `#${line}` : line, inFence };
 };
@@ -105,7 +109,9 @@ const stripMarkdown = (markdown: string): string =>
 const firstSentence = (doc: string | undefined): string => {
     const text = stripMarkdown(docMarkdown(doc));
 
-    if (text.length === 0) return "";
+    if (text.length === 0) {
+        return "";
+    }
 
     const match = /^.*?[.!?](?=\s|$)/.exec(text);
     const sentence = match?.[0] ?? text;
@@ -120,7 +126,9 @@ const elementSlug = (className: string): string =>
         .toLowerCase();
 
 const implementsLine = (names: string[]): string[] => {
-    if (names.length === 0) return [];
+    if (names.length === 0) {
+        return [];
+    }
 
     const quotedNames = names.map((name) => `\`${name}\``).join(", ");
 
@@ -132,7 +140,10 @@ const joinSections = (sections: string[]): string =>
 
 const metaBlock = (name: string, meta: string, doc: string): string => {
     const lines = [`### \`${name}\``, "", meta];
-    if (doc.length > 0) lines.push("", doc);
+
+    if (doc.length > 0) {
+        lines.push("", doc);
+    }
 
     return lines.join("\n");
 };
@@ -141,7 +152,9 @@ const signatureBlock = (name: string, signature: string, notes: string[]): strin
     const lines = [`### \`${name}\``, "", `\`\`\`ts\n${signature}\n\`\`\``];
 
     for (const note of notes) {
-        if (note.length > 0) lines.push("", note);
+        if (note.length > 0) {
+            lines.push("", note);
+        }
     }
 
     return lines.join("\n");
@@ -205,7 +218,9 @@ const instanceMethodEntries = (
             nameOverride,
         );
 
-        if (rendered === undefined) continue;
+        if (rendered === undefined) {
+            continue;
+        }
 
         entries.push({
             name: nameOverride ?? methodExportName(method),

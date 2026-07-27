@@ -34,7 +34,9 @@ const connectSettler = (callbacks: ConnectCallbacks): ConnectSettler => {
     let settled = false;
 
     const settle = (notify: () => void): void => {
-        if (settled) return;
+        if (settled) {
+            return;
+        }
 
         settled = true;
         notify();
@@ -124,7 +126,9 @@ class McpClient {
     }
 
     private scheduleReconnect(): void {
-        if (this.reconnectTimer || this.isStopping) return;
+        if (this.reconnectTimer || this.isStopping) {
+            return;
+        }
 
         this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null;
@@ -152,7 +156,9 @@ class McpClient {
         const { id, method, params } = request;
         const connection = this.connection;
 
-        if (!connection) return;
+        if (!connection) {
+            return;
+        }
 
         try {
             const defaultApp = Gio.Application.getDefault();

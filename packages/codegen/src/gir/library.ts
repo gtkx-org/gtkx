@@ -41,7 +41,9 @@ const locateGirFile = (identifier: string, girPath: string[]): string => {
     for (const directory of girPath) {
         const candidate = join(directory, filename);
 
-        if (existsSync(candidate)) return candidate;
+        if (existsSync(candidate)) {
+            return candidate;
+        }
     }
 
     const tried = girPath.map((directory) => join(directory, filename)).join(", ");
@@ -86,7 +88,9 @@ class Library {
     private ensureNsId(name: string): number {
         const existing = this.nsIdByName.get(name);
 
-        if (existing !== undefined) return existing;
+        if (existing !== undefined) {
+            return existing;
+        }
 
         const nsId = this.typeTables.length;
         this.typeTables[nsId] = { types: [], names: [], index: new Map() };
@@ -133,7 +137,10 @@ class Library {
         const id = typeTable.types.length;
         typeTable.types.push(slot.type);
         typeTable.names.push(slot.displayName);
-        if (slot.indexKey !== undefined) typeTable.index.set(slot.indexKey, id);
+
+        if (slot.indexKey !== undefined) {
+            typeTable.index.set(slot.indexKey, id);
+        }
 
         return id;
     }
@@ -142,7 +149,9 @@ class Library {
         const typeTable = this.typeTableOf(nsId);
         const existing = typeTable.index.get(name);
 
-        if (existing !== undefined) return existing;
+        if (existing !== undefined) {
+            return existing;
+        }
 
         return this.insertIntoTypeTable(typeTable, { type, indexKey: name, displayName: name });
     }
@@ -199,7 +208,9 @@ class Library {
         const typeTable = this.typeTableOf(INTERNAL_NS_ID);
         const existing = typeTable.index.get(key);
 
-        if (existing !== undefined) return { nsId: INTERNAL_NS_ID, id: existing };
+        if (existing !== undefined) {
+            return { nsId: INTERNAL_NS_ID, id: existing };
+        }
 
         const id = this.insertIntoTypeTable(typeTable, { type, indexKey: key });
 
@@ -213,18 +224,26 @@ class Library {
 
     private addClassDeclarations(shell: GirNamespace): void {
         const nsId = shell.id;
-        for (const value of shell.classes) this.addType(nsId, value.name, { kind: "class", namespace: shell, value });
+
+        for (const value of shell.classes) {
+            this.addType(nsId, value.name, { kind: "class", namespace: shell, value });
+        }
 
         for (const value of shell.interfaces) {
             this.addType(nsId, value.name, { kind: "interface", namespace: shell, value });
         }
 
-        for (const value of shell.records) this.addType(nsId, value.name, { kind: "record", namespace: shell, value });
+        for (const value of shell.records) {
+            this.addType(nsId, value.name, { kind: "record", namespace: shell, value });
+        }
     }
 
     private addValueDeclarations(shell: GirNamespace): void {
         const nsId = shell.id;
-        for (const value of shell.enums) this.addType(nsId, value.name, { kind: "enum", namespace: shell, value });
+
+        for (const value of shell.enums) {
+            this.addType(nsId, value.name, { kind: "enum", namespace: shell, value });
+        }
 
         for (const value of shell.callbacks) {
             this.addType(nsId, value.name, { kind: "callback", namespace: shell, value });
@@ -246,7 +265,9 @@ class Library {
         const { identifier, girPath, seen, queue, girFiles, discovered } = input;
         const namespaceName = identifier.split("-", 1)[0] ?? identifier;
 
-        if (seen.has(namespaceName)) return;
+        if (seen.has(namespaceName)) {
+            return;
+        }
 
         seen.add(namespaceName);
         const path = locateGirFile(identifier, girPath);
@@ -296,7 +317,9 @@ class Library {
         const typeName = this.typeTables[tid.nsId]?.names[tid.id];
         const namespaceName = this.nsNameById[tid.nsId];
 
-        if (typeName === undefined || namespaceName === undefined) return undefined;
+        if (typeName === undefined || namespaceName === undefined) {
+            return undefined;
+        }
 
         return { namespaceName, typeName };
     }
@@ -304,16 +327,22 @@ class Library {
     resolveType(currentNamespaceName: string, name: string): GirType | undefined {
         const currentNsId = this.nsIdByName.get(currentNamespaceName);
 
-        if (currentNsId === undefined) return undefined;
+        if (currentNsId === undefined) {
+            return undefined;
+        }
 
         const [namespaceName, localName] = splitOptionalNamespace(name);
         const targetNsId = namespaceName === undefined ? currentNsId : this.nsIdByName.get(namespaceName);
 
-        if (targetNsId === undefined) return undefined;
+        if (targetNsId === undefined) {
+            return undefined;
+        }
 
         const id = this.typeTableOf(targetNsId).index.get(localName);
 
-        if (id === undefined) return undefined;
+        if (id === undefined) {
+            return undefined;
+        }
 
         return this.typeTableOf(targetNsId).types[id];
     }

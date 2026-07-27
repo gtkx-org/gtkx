@@ -50,7 +50,9 @@ const namedDeclarationName = (declaration: Exclude<Declaration, TSESTree.Variabl
 };
 
 const namesOf = (declaration: Declaration): string[] => {
-    if (declaration.type === AST_NODE_TYPES.VariableDeclaration) return variableNames(declaration);
+    if (declaration.type === AST_NODE_TYPES.VariableDeclaration) {
+        return variableNames(declaration);
+    }
 
     const name = namedDeclarationName(declaration);
 

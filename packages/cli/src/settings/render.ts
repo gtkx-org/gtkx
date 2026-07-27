@@ -16,9 +16,13 @@ const toJsStringLiteral = (value: string): string =>
 const exportNameFor = (schemaId: string): string => schemaId.replaceAll(".", "_");
 
 const runtimeKindForKey = (key: ParsedKey): string => {
-    if (key.enumId !== null) return ENUM_KIND;
+    if (key.enumId !== null) {
+        return ENUM_KIND;
+    }
 
-    if (key.flagsId !== null) return FLAGS_KIND;
+    if (key.flagsId !== null) {
+        return FLAGS_KIND;
+    }
 
     return key.variantType ?? "";
 };
@@ -129,7 +133,10 @@ const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): strin
     const exportNames: string[] = [];
 
     for (const [index, schema] of file.schemas.entries()) {
-        if (index > 0) lines.push("");
+        if (index > 0) {
+            lines.push("");
+        }
+
         const interfaceName = interfaceNameFor(schema.id, usedNames);
         lines.push(...renderKeysType(interfaceName, schema), "", ...renderSchemaConst(schema, interfaceName));
         exportNames.push(exportNameFor(schema.id));

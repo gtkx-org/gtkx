@@ -51,7 +51,10 @@ type DocsContext = Parameters<DocsRun>[0];
 
 const run = (overrides: DocsArgs): Promise<unknown> => {
     const handler = docs.run;
-    if (!handler) throw new Error("docs command has no run handler");
+
+    if (!handler) {
+        throw new Error("docs command has no run handler");
+    }
 
     const args = {
         out: "docs/reference",

@@ -131,13 +131,21 @@ const compareBySort = (
 
 const expectCellsAreDirectChildLabels = (view: Gtk.ColumnView, expectedCount: number): void => {
     const [firstRow] = dataRows(view);
-    if (firstRow === undefined) throw new Error("Expected a data row to render");
+
+    if (firstRow === undefined) {
+        throw new Error("Expected a data row to render");
+    }
+
     const cells = within(firstRow).getAllByRole(Gtk.AccessibleRole.GRID_CELL);
     expect(cells).toHaveLength(expectedCount);
 
     for (const cell of cells) {
         const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
-        if (label === undefined) throw new Error("Expected the cell to contain a label");
+
+        if (label === undefined) {
+            throw new Error("Expected the cell to contain a label");
+        }
+
         expect(cell.getFirstChild()).toBe(label);
         expectNoBoxBetween(label, view);
     }
@@ -174,7 +182,9 @@ function SortableColumnView({
     }, []);
 
     const sortedEmployees = useMemo(() => {
-        if (!sortColumn) return employees;
+        if (!sortColumn) {
+            return employees;
+        }
 
         return employees.toSorted((a, b) => compareBySort(a, b, sortColumn, sortOrder));
     }, [employees, sortColumn, sortOrder]);
@@ -589,7 +599,9 @@ describe("render - ColumnView (13)", () => {
             ];
 
             const sortBy = (sortColumn: SortColumn, sortOrder: Gtk.SortType): Item[] => {
-                if (!sortColumn) return items;
+                if (!sortColumn) {
+                    return items;
+                }
 
                 return items.toSorted((a, b) => compareBySort(a, b, sortColumn, sortOrder));
             };
@@ -757,7 +769,10 @@ const renderEmptyCells = async (estimatedItemHeight?: number): Promise<Gtk.Colum
     );
 
     const columnView = ref.current;
-    if (columnView === null) throw new Error("Expected ColumnView to render");
+
+    if (columnView === null) {
+        throw new Error("Expected ColumnView to render");
+    }
 
     return columnView;
 };
@@ -767,7 +782,10 @@ describe("render - ColumnView (estimated item size)", () => {
         const columnView = await renderEmptyCells(48);
         const sized = collectBoxSizeRequests(columnView).filter(([, height]) => height === 48);
         expect(sized).toHaveLength(estimatedSizeItems.length);
-        for (const [width] of sized) expect(width).toBe(-1);
+
+        for (const [width] of sized) {
+            expect(width).toBe(-1);
+        }
     });
 
     it("leaves data-row cells unsized when estimatedItemHeight is absent", async () => {

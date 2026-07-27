@@ -28,11 +28,15 @@ const RUNTIME_OVERRIDES: Map<string, RuntimeOverride> = new Map([
 ]);
 
 const renderRuntimeOverride = (callable: GirFunction, memberName: string): string | undefined => {
-    if (callable.cIdentifier === undefined) return undefined;
+    if (callable.cIdentifier === undefined) {
+        return undefined;
+    }
 
     const override = RUNTIME_OVERRIDES.get(callable.cIdentifier);
 
-    if (override === undefined) return undefined;
+    if (override === undefined) {
+        return undefined;
+    }
 
     const generics = override.generics ?? "";
 

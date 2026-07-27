@@ -11,7 +11,9 @@ const isFunctionInitializer = (node: TSESTree.Expression | null | undefined): bo
     node?.type === AST_NODE_TYPES.ArrowFunctionExpression || node?.type === AST_NODE_TYPES.FunctionExpression;
 
 const variableSection = (node: TSESTree.VariableDeclaration): Section => {
-    if (node.kind !== "const") return "constants";
+    if (node.kind !== "const") {
+        return "constants";
+    }
 
     return node.declarations.every((declaration) => isFunctionInitializer(declaration.init))
         ? "functions"

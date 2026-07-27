@@ -60,9 +60,13 @@ type AppendInstanceMethodsOptions = {
 };
 
 const generateClass = (context: ModuleContext, klass: GirClass): void => {
-    if (!klass.introspectable) return;
+    if (!klass.introspectable) {
+        return;
+    }
 
-    if (klass.name.length === 0) return;
+    if (klass.name.length === 0) {
+        return;
+    }
 
     const className = pascalCase(klass.name);
 
@@ -111,7 +115,9 @@ const appendInterfaceMerge = (
     className: string,
     implemented: ImplementedRef[],
 ): void => {
-    if (implemented.length === 0) return;
+    if (implemented.length === 0) {
+        return;
+    }
 
     const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
     context.module.appendDeclaration(`export interface ${className} extends ${mergeRefs.join(", ")} {}`);
@@ -126,7 +132,11 @@ const renderClassMembers = (
     const className = pascalCase(klass.name);
     const members: string[] = [gtypeMemberDeclaration(context)];
     const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
-    if (constructorBlock !== undefined) members.push(constructorBlock);
+
+    if (constructorBlock !== undefined) {
+        members.push(constructorBlock);
+    }
+
     const claimedNames: Set<string> = new Set();
     members.push(...renderStaticHead(context, callables, className));
     const inherited = collectInheritedMethods(context, klass);
@@ -156,7 +166,10 @@ const renderClassMembers = (
             inheritedType,
         });
 
-        if (accessor === undefined) continue;
+        if (accessor === undefined) {
+            continue;
+        }
+
         accessors.push(accessor);
         members.push(renderResolvedPropertyAccessor(context, property, accessor));
     }
@@ -172,14 +185,20 @@ const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
     for (const callable of methods) {
         const rename = conflictRename(context, callable, inherited, className);
         const block = renderClassInstanceMember(context, callable, scope, rename);
-        if (block === undefined) continue;
+
+        if (block === undefined) {
+            continue;
+        }
+
         members.push(block);
         claimedNames.add(rename ?? methodExportName(callable));
     }
 };
 
 const appendInstallMixins = (context: ModuleContext, className: string, implemented: ImplementedRef[]): void => {
-    if (implemented.length === 0) return;
+    if (implemented.length === 0) {
+        return;
+    }
 
     context.addRuntimeImport("installMixins");
     const makers = implemented.map((ref) => ref.makerRef).join(", ");
@@ -199,18 +218,25 @@ const appendClassRegistrations = (context: ModuleContext, klass: GirClass, class
 const addAncestorInterfaceKeys = (context: ModuleContext, ancestor: ResolvedAncestor, keys: Set<string>): void => {
     for (const name of ancestor.klass.implements) {
         const resolved = context.library.resolveType(ancestor.namespaceName, name);
-        if (resolved?.kind === "interface") keys.add(`${resolved.namespace.name}.${resolved.value.name}`);
+
+        if (resolved?.kind === "interface") {
+            keys.add(`${resolved.namespace.name}.${resolved.value.name}`);
+        }
     }
 };
 
 const inheritedInterfaceKeys = (context: ModuleContext, klass: GirClass): Set<string> => {
     const keys: Set<string> = new Set();
 
-    if (klass.parent === undefined) return keys;
+    if (klass.parent === undefined) {
+        return keys;
+    }
 
     const parent = context.library.resolveType(context.namespace.name, klass.parent);
 
-    if (parent?.kind !== "class") return keys;
+    if (parent?.kind !== "class") {
+        return keys;
+    }
 
     for (const ancestor of ancestorChain(context.library, parent.value, parent.namespace.name)) {
         addAncestorInterfaceKeys(context, ancestor, keys);
@@ -225,7 +251,9 @@ const interfaceMergeRef = (context: ModuleContext, klass: GirClass, ref: Impleme
         namespaceName: ref.interfaceNamespace,
     });
 
-    if (omissions.length === 0) return ref.typeRef;
+    if (omissions.length === 0) {
+        return ref.typeRef;
+    }
 
     const keys = omissions.map((name) => JSON.stringify(name)).join(" | ");
 
@@ -239,9 +267,13 @@ const implementedRefFor = (
 ): ImplementedRef | undefined => {
     const resolved = context.library.resolveType(context.namespace.name, name);
 
-    if (resolved?.kind !== "interface") return undefined;
+    if (resolved?.kind !== "interface") {
+        return undefined;
+    }
 
-    if (inherited.has(`${resolved.namespace.name}.${resolved.value.name}`)) return undefined;
+    if (inherited.has(`${resolved.namespace.name}.${resolved.value.name}`)) {
+        return undefined;
+    }
 
     const pascal = pascalCase(resolved.value.name);
 
@@ -259,7 +291,10 @@ const resolveImplementedRefs = (context: ModuleContext, klass: GirClass): Implem
 
     for (const name of klass.implements) {
         const ref = implementedRefFor(context, name, inherited);
-        if (ref !== undefined) refs.push(ref);
+
+        if (ref !== undefined) {
+            refs.push(ref);
+        }
     }
 
     return refs;
@@ -270,11 +305,15 @@ const renderExtendsClause = (
     parentExpression: string | undefined,
     callables: Callables,
 ): string => {
-    if (parentExpression === undefined) return "";
+    if (parentExpression === undefined) {
+        return "";
+    }
 
     const constructorNames = classConstructorMemberNames(context, callables);
 
-    if (constructorNames.length === 0) return ` extends ${parentExpression}`;
+    if (constructorNames.length === 0) {
+        return ` extends ${parentExpression}`;
+    }
 
     context.addRuntimeTypeImport("StaticBase");
     const omitted = constructorNames.map((name) => JSON.stringify(name)).join(" | ");
@@ -283,7 +322,9 @@ const renderExtendsClause = (
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
-    if (klass.parent === undefined) return undefined;
+    if (klass.parent === undefined) {
+        return undefined;
+    }
 
     const [namespace, typeName] = splitOptionalNamespace(klass.parent);
 

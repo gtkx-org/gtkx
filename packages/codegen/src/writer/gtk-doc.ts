@@ -29,7 +29,10 @@ const renderLink = (kind: string, target: string): string => {
 
 const trimTrailingNewlines = (value: string): string => {
     let end = value.length;
-    while (end > 0 && value[end - 1] === "\n") end -= 1;
+
+    while (end > 0 && value[end - 1] === "\n") {
+        end -= 1;
+    }
 
     return value.slice(0, end);
 };
@@ -49,9 +52,17 @@ const protectCodeBlocks = (raw: string, protect: (value: string) => string): str
 
     while (cursor < raw.length) {
         const open = raw.indexOf(CODE_BLOCK_OPEN, cursor);
-        if (open === -1) break;
+
+        if (open === -1) {
+            break;
+        }
+
         const close = raw.indexOf(CODE_BLOCK_CLOSE, open + CODE_BLOCK_OPEN.length);
-        if (close === -1) break;
+
+        if (close === -1) {
+            break;
+        }
+
         result += raw.slice(cursor, open);
         result += protect(renderCodeFence(raw.slice(open + CODE_BLOCK_OPEN.length, close)));
         cursor = close + CODE_BLOCK_CLOSE.length;

@@ -5,7 +5,9 @@ import { useEffectEvent, useLayoutEffect, useState } from "react";
 import type { TextPaintableProps } from "./types.js";
 
 const deleteEmbeddedPaintable = (buffer: Gtk.TextBuffer, position: Gtk.TextIter): void => {
-    if (position.getPaintable() === null) return;
+    if (position.getPaintable() === null) {
+        return;
+    }
 
     const after = position.copy();
     after.forwardChar();
@@ -14,7 +16,10 @@ const deleteEmbeddedPaintable = (buffer: Gtk.TextBuffer, position: Gtk.TextIter)
 
 const removeEmbeddedPaintable = (mark: Gtk.TextMark): void => {
     const owner = mark.getBuffer();
-    if (owner !== null) deleteEmbeddedPaintable(owner, owner.getIterAtMark(mark));
+
+    if (owner !== null) {
+        deleteEmbeddedPaintable(owner, owner.getIterAtMark(mark));
+    }
 };
 
 /**
@@ -31,11 +36,15 @@ function TextPaintable(props: TextPaintableProps): ReactNode {
     });
 
     useLayoutEffect(() => {
-        if (mark === null) return;
+        if (mark === null) {
+            return;
+        }
 
         const buffer = mark.getBuffer();
 
-        if (buffer === null) return;
+        if (buffer === null) {
+            return;
+        }
 
         buffer.insertPaintable(buffer.getIterAtMark(mark), paintable);
         notifyInserted(buffer, mark);

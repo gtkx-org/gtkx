@@ -11,21 +11,31 @@ const elementRefOf = (node: RawNode, context: ParseContext): TypeId => {
 };
 
 const typeRefFromNode = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
-    if (parent === undefined) return undefined;
+    if (parent === undefined) {
+        return undefined;
+    }
 
-    if (childOf(parent, "varargs") !== undefined) return context.addVarargs();
+    if (childOf(parent, "varargs") !== undefined) {
+        return context.addVarargs();
+    }
 
     const arrayNode = childOf(parent, "array");
 
-    if (arrayNode !== undefined) return arrayTypeRefFromNode(arrayNode, context);
+    if (arrayNode !== undefined) {
+        return arrayTypeRefFromNode(arrayNode, context);
+    }
 
     const typeNode = childOf(parent, "type");
 
-    if (typeNode !== undefined) return typeRefFromTypeNode(typeNode, context);
+    if (typeNode !== undefined) {
+        return typeRefFromTypeNode(typeNode, context);
+    }
 
     const callback = childOf(parent, "callback");
 
-    if (callback !== undefined) return context.addAnonymousCallback(callback);
+    if (callback !== undefined) {
+        return context.addAnonymousCallback(callback);
+    }
 
     return undefined;
 };
@@ -50,11 +60,15 @@ const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId =
         return context.addContainer({ kind: "list", flavor: listFlavor, element: elementRefOf(typeNode, context) });
     }
 
-    if (name === "GLib.HashTable") return hashTableRefFromNode(typeNode, context);
+    if (name === "GLib.HashTable") {
+        return hashTableRefFromNode(typeNode, context);
+    }
 
     const primitive = primitiveCategory(name);
 
-    if (primitive !== undefined) return context.addPrimitive(primitive);
+    if (primitive !== undefined) {
+        return context.addPrimitive(primitive);
+    }
 
     return context.findType(name);
 };
@@ -86,7 +100,9 @@ const pointerFallback = (context: ParseContext): TypeId => context.addPrimitive(
 const splitOptionalNamespace = (name: string): [string | undefined, string] => {
     const dot = name.indexOf(".");
 
-    if (dot === -1) return [undefined, name];
+    if (dot === -1) {
+        return [undefined, name];
+    }
 
     return [name.slice(0, dot), name.slice(dot + 1)];
 };

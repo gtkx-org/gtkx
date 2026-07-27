@@ -25,8 +25,11 @@ describe("prepareDevIconDir", () => {
     afterEach(() => {
         rmSync(projectDir, { recursive: true, force: true });
 
-        if (savedXdgDataDirs === undefined) delete process.env.XDG_DATA_DIRS;
-        else process.env.XDG_DATA_DIRS = savedXdgDataDirs;
+        if (savedXdgDataDirs === undefined) {
+            delete process.env.XDG_DATA_DIRS;
+        } else {
+            process.env.XDG_DATA_DIRS = savedXdgDataDirs;
+        }
     });
 
     it("returns null and leaves the environment alone without an icons directory", () => {

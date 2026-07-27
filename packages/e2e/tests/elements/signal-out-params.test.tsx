@@ -66,7 +66,11 @@ const renderSnippetView = async (spec: string, initialText?: string): Promise<Sn
     await render(<GtkSourceView ref={viewRef} />);
     const view = viewRef.current as GtkSource.View;
     const buffer = view.getBuffer() as GtkSource.Buffer;
-    if (initialText !== undefined) buffer.setText(initialText, -1);
+
+    if (initialText !== undefined) {
+        buffer.setText(initialText, -1);
+    }
+
     const snippet = GtkSource.Snippet.new(null, null);
     const chunk = GtkSource.SnippetChunk.new();
     chunk.setSpec(spec);
@@ -252,7 +256,11 @@ describe("signal connect()/emit() - notify::<property> detailed signal", () => {
         });
 
         const pspec = capturedPspec;
-        if (pspec === undefined) throw new Error("expected the notify handler to capture a ParamSpec");
+
+        if (pspec === undefined) {
+            throw new Error("expected the notify handler to capture a ParamSpec");
+        }
+
         const onLabelEmit = vi.fn();
         const onOtherEmit = vi.fn();
         label.connect("notify::label", onLabelEmit);

@@ -26,13 +26,21 @@ const isInputParameter = (options: {
 }): boolean => {
     const { parameter, index, lengthIndices, closureIndices } = options;
 
-    if (parameter.isVarargs) return false;
+    if (parameter.isVarargs) {
+        return false;
+    }
 
-    if (isOutParameter(parameter)) return false;
+    if (isOutParameter(parameter)) {
+        return false;
+    }
 
-    if (isCallerAllocatedOut(parameter)) return false;
+    if (isCallerAllocatedOut(parameter)) {
+        return false;
+    }
 
-    if (lengthIndices.has(index)) return false;
+    if (lengthIndices.has(index)) {
+        return false;
+    }
 
     return !closureIndices.has(index);
 };
@@ -55,8 +63,13 @@ const closureAndDestroyIndices = (fn: GirFunction): Set<number> => {
     const indices: Set<number> = new Set();
 
     for (const parameter of fn.parameters) {
-        if (parameter.closureIndex !== undefined) indices.add(parameter.closureIndex);
-        if (parameter.destroyIndex !== undefined) indices.add(parameter.destroyIndex);
+        if (parameter.closureIndex !== undefined) {
+            indices.add(parameter.closureIndex);
+        }
+
+        if (parameter.destroyIndex !== undefined) {
+            indices.add(parameter.destroyIndex);
+        }
     }
 
     return indices;
@@ -71,7 +84,9 @@ const arrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
 const carrayLengthIndex = (library: Library, ref: TypeId | undefined): number | undefined => {
     const type = ref === undefined ? undefined : library.typeOf(ref);
 
-    if (type?.kind !== "carray") return undefined;
+    if (type?.kind !== "carray") {
+        return undefined;
+    }
 
     return type.lengthParameterIndex;
 };
@@ -81,7 +96,10 @@ const arrayLengthSources = (library: Library, fn: GirFunction): Map<number, numb
 
     for (const [index, parameter] of fn.parameters.entries()) {
         const lengthIndex = carrayLengthIndex(library, parameter.type);
-        if (lengthIndex !== undefined) map.set(lengthIndex, index);
+
+        if (lengthIndex !== undefined) {
+            map.set(lengthIndex, index);
+        }
     }
 
     return map;
@@ -91,7 +109,9 @@ const hasCallerAllocatedArrayLength = (library: Library, fn: GirFunction): boole
     for (const arrayIndex of arrayLengthSources(library, fn).values()) {
         const array = fn.parameters[arrayIndex];
 
-        if (array !== undefined && isCallerAllocatedOut(array)) return true;
+        if (array !== undefined && isCallerAllocatedOut(array)) {
+            return true;
+        }
     }
 
     return false;
@@ -100,24 +120,33 @@ const hasCallerAllocatedArrayLength = (library: Library, fn: GirFunction): boole
 const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     const returnType = fn.returnValue.type === undefined ? undefined : library.typeOf(fn.returnValue.type);
 
-    if (returnType?.kind !== "carray") return new Set();
+    if (returnType?.kind !== "carray") {
+        return new Set();
+    }
 
     const lengthIndex = returnType.lengthParameterIndex;
 
-    if (lengthIndex === undefined) return new Set();
+    if (lengthIndex === undefined) {
+        return new Set();
+    }
 
     return new Set([lengthIndex]);
 };
 
 const foldedLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     const indices: Set<number> = new Set(arrayLengthSources(library, fn).keys());
-    for (const index of returnArrayLengthIndices(library, fn)) indices.add(index);
+
+    for (const index of returnArrayLengthIndices(library, fn)) {
+        indices.add(index);
+    }
 
     return indices;
 };
 
 const parameterIdentifier = (parameter: GirParameter, index: number): string => {
-    if (parameter.name.length === 0) return `arg${index}`;
+    if (parameter.name.length === 0) {
+        return `arg${index}`;
+    }
 
     return toCamelIdentifier(parameter.name);
 };
@@ -135,11 +164,15 @@ const renderHandlerParameters = (
         );
 
 const foldOutParamShape = (primary: string | undefined, outTypes: string[]): string => {
-    if (primary !== undefined) return `[${primary}, ${outTypes.join(", ")}]`;
+    if (primary !== undefined) {
+        return `[${primary}, ${outTypes.join(", ")}]`;
+    }
 
     const [single, ...rest] = outTypes;
 
-    if (single !== undefined && rest.length === 0) return single;
+    if (single !== undefined && rest.length === 0) {
+        return single;
+    }
 
     return `[${outTypes.join(", ")}]`;
 };
@@ -151,17 +184,25 @@ const isHandlerOutParameter = (options: {
 }): boolean => {
     const { library, parameter, includeCallerAllocated } = options;
 
-    if (parameter.isVarargs) return false;
+    if (parameter.isVarargs) {
+        return false;
+    }
 
-    if (isOutParameter(parameter)) return true;
+    if (isOutParameter(parameter)) {
+        return true;
+    }
 
-    if (isCellInout(library, parameter)) return true;
+    if (isCellInout(library, parameter)) {
+        return true;
+    }
 
     return includeCallerAllocated && isCallerAllocatedOut(parameter);
 };
 
 const scalarResultType = (primary: string | undefined, optOut: boolean): string => {
-    if (primary === undefined) return "void";
+    if (primary === undefined) {
+        return "void";
+    }
 
     return optOut ? `${primary} | undefined` : primary;
 };
@@ -177,7 +218,9 @@ const renderHandlerResultType = (options: HandlerResultOptions): string => {
         .filter((parameter) => isHandlerOutParameter({ library, parameter, includeCallerAllocated }))
         .map((parameter) => renderType(parameter.type, false));
 
-    if (outTypes.length === 0) return scalarResultType(primary, optOut);
+    if (outTypes.length === 0) {
+        return scalarResultType(primary, optOut);
+    }
 
     return foldOutParamShape(primary, outTypes);
 };

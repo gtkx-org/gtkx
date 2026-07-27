@@ -9,7 +9,10 @@ const ToastContext = createContext<OverlayRef | null>(null);
 
 const useOverlayRef = (): OverlayRef => {
     const overlayRef = useContext(ToastContext);
-    if (overlayRef === null) throw new Error("useToast and useToastOverlay must be used within a ToastProvider");
+
+    if (overlayRef === null) {
+        throw new Error("useToast and useToastOverlay must be used within a ToastProvider");
+    }
 
     return overlayRef;
 };
@@ -17,8 +20,14 @@ const useOverlayRef = (): OverlayRef => {
 const buildToast = (options: ToastOptions): Adw.Toast => {
     const { onButtonClicked, onDismissed, ...props } = options;
     const toast = new Adw.Toast(props);
-    if (onButtonClicked != null) toast.on("button-clicked", onButtonClicked);
-    if (onDismissed != null) toast.on("dismissed", onDismissed);
+
+    if (onButtonClicked != null) {
+        toast.on("button-clicked", onButtonClicked);
+    }
+
+    if (onDismissed != null) {
+        toast.on("dismissed", onDismissed);
+    }
 
     return toast;
 };

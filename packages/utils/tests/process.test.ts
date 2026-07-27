@@ -47,7 +47,9 @@ const restoreSignalListeners = (sig: (typeof HANDLED_SIGNALS)[number], snap: Sna
 };
 
 const restoreListeners = (snap: Snapshot): void => {
-    for (const sig of HANDLED_SIGNALS) restoreSignalListeners(sig, snap);
+    for (const sig of HANDLED_SIGNALS) {
+        restoreSignalListeners(sig, snap);
+    }
 };
 
 type ShutdownFixture = {

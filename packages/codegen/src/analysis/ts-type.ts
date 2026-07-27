@@ -49,12 +49,16 @@ const renderEntityType = (
 ): string => renderNamedType(target, type, willEmitEntity(library, type) ? name : undefined);
 
 const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
-    if (ref === undefined) return "void";
+    if (ref === undefined) {
+        return "void";
+    }
 
     const type = library.typeOf(ref);
     const name = library.nameOf(ref);
 
-    if (type === undefined) return renderNamedType(target, undefined, name);
+    if (type === undefined) {
+        return renderNamedType(target, undefined, name);
+    }
 
     switch (type.kind) {
         case "primitive": {
@@ -91,7 +95,9 @@ const renderContainerType = (
         return target.containerStyle === "record" ? `Record<${key}, ${value}>` : `Map<${key}, ${value}>`;
     }
 
-    if (type.kind === "list" && type.flavor === "gbytearray" && target.byteArrayAsNumber) return "number[]";
+    if (type.kind === "list" && type.flavor === "gbytearray" && target.byteArrayAsNumber) {
+        return "number[]";
+    }
 
     return `${renderBaseTypeFor(library, target, type.element)}[]`;
 };
@@ -101,7 +107,9 @@ const renderNamedType = (
     resolved: GirType | undefined,
     name: ReferenceName | undefined,
 ): string => {
-    if (name === undefined) return resolved?.kind === "callback" ? target.callbackType : "unknown";
+    if (name === undefined) {
+        return resolved?.kind === "callback" ? target.callbackType : "unknown";
+    }
 
     return target.renderNamed(resolved, name);
 };

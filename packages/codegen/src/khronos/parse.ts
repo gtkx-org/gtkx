@@ -16,7 +16,9 @@ const parseRegistryFile = (path: string): OrderedNode[] => {
     const documentNodes = PARSER.parse(xml) as OrderedNode[];
 
     for (const node of documentNodes) {
-        if (nodeTag(node) === "registry") return nodeChildren(node);
+        if (nodeTag(node) === "registry") {
+            return nodeChildren(node);
+        }
     }
 
     throw new Error(`No <registry> root element found in ${path}`);
@@ -24,7 +26,9 @@ const parseRegistryFile = (path: string): OrderedNode[] => {
 
 const nodeTag = (node: OrderedNode): string => {
     for (const key of Object.keys(node)) {
-        if (key !== ATTRIBUTES_KEY && key !== TEXT_KEY) return key;
+        if (key !== ATTRIBUTES_KEY && key !== TEXT_KEY) {
+            return key;
+        }
     }
 
     return TEXT_KEY;
@@ -33,7 +37,9 @@ const nodeTag = (node: OrderedNode): string => {
 const nodeChildren = (node: OrderedNode): OrderedNode[] => {
     const tag = nodeTag(node);
 
-    if (tag === TEXT_KEY) return [];
+    if (tag === TEXT_KEY) {
+        return [];
+    }
 
     const children = node[tag];
 
@@ -43,7 +49,9 @@ const nodeChildren = (node: OrderedNode): OrderedNode[] => {
 const nodeAttr = (node: OrderedNode, name: string): string | undefined => {
     const attributes = node[ATTRIBUTES_KEY];
 
-    if (typeof attributes !== "object" || attributes === null) return undefined;
+    if (typeof attributes !== "object" || attributes === null) {
+        return undefined;
+    }
 
     const value = (attributes as Record<string, unknown>)[`@_${name}`];
 

@@ -26,7 +26,9 @@ const fundamentalFromNative = (descriptor: FundamentalDescriptor, value: unknown
             );
 
 const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): unknown => {
-    if (value === null) return null;
+    if (value === null) {
+        return null;
+    }
 
     const entries = value as [unknown, unknown][];
 
@@ -87,7 +89,9 @@ function toNative(descriptor: Descriptor, value: unknown): unknown {
             return collectionToNative(descriptor, value);
         }
         case "hashtable": {
-            if (value == null) return null;
+            if (value == null) {
+                return null;
+            }
 
             return [...(value as Map<unknown, unknown>)].map(([key, val]): [unknown, unknown] => [
                 toNative(descriptor.keyDescriptor, key),

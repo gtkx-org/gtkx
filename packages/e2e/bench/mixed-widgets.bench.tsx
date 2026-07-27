@@ -26,7 +26,13 @@ const ROW = (i: number): ReactNode => {
 
     switch (i % 14) {
         case 0: {
-            return <GtkButton key={key} label={`b-${i}`} onClicked={() => {}} />;
+            return (
+                <GtkButton
+                    key={key}
+                    label={`b-${i}`}
+                    onClicked={() => {}}
+                />
+            );
         }
         case 1: {
             return <GtkLabel key={key}>{`l-${i}`}</GtkLabel>;

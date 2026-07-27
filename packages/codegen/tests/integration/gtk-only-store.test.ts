@@ -57,7 +57,10 @@ const storeOptions = () => ({
 const walkEmittedFiles = (directory: string, collected: string[]): void => {
     for (const entry of readdirSync(directory)) {
         const path = join(directory, entry);
-        if (entry === "node_modules") continue;
+
+        if (entry === "node_modules") {
+            continue;
+        }
 
         if (statSync(path).isDirectory()) {
             walkEmittedFiles(path, collected);

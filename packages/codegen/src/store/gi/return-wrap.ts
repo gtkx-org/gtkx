@@ -15,11 +15,15 @@ const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["gtype", "bigint64", 
 const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): string => {
     const { ref, nullable, valueExpression } = options;
 
-    if (ref === undefined) return valueExpression;
+    if (ref === undefined) {
+        return valueExpression;
+    }
 
     const type = context.library.typeOf(ref);
 
-    if (type === undefined) return wrapValue(context, ref, valueExpression);
+    if (type === undefined) {
+        return wrapValue(context, ref, valueExpression);
+    }
 
     switch (type.kind) {
         case "primitive": {
@@ -67,13 +71,21 @@ const wrapStringPrimitive = (nullable: boolean, valueExpression: string): string
     `(${valueExpression} as ${nullable ? "string | null" : "string"})`;
 
 const wrapPrimitive = (category: PrimitiveCategory, nullable: boolean, valueExpression: string): string => {
-    if (category === "void") return valueExpression;
+    if (category === "void") {
+        return valueExpression;
+    }
 
-    if (category === "string") return wrapStringPrimitive(nullable, valueExpression);
+    if (category === "string") {
+        return wrapStringPrimitive(nullable, valueExpression);
+    }
 
-    if (category === "boolean") return `Boolean(${valueExpression})`;
+    if (category === "boolean") {
+        return `Boolean(${valueExpression})`;
+    }
 
-    if (BIGINT_CATEGORIES.has(category)) return `(${valueExpression} as bigint)`;
+    if (BIGINT_CATEGORIES.has(category)) {
+        return `(${valueExpression} as bigint)`;
+    }
 
     return `(${valueExpression} as number)`;
 };

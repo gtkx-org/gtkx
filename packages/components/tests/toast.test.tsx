@@ -41,7 +41,9 @@ const renderToastHost = async (): Promise<{ handles: Handles; overlayRef: RefObj
         </ToastProvider>,
     );
 
-    if (captured.handles === null) throw new Error("probe did not capture the toast controllers");
+    if (captured.handles === null) {
+        throw new Error("probe did not capture the toast controllers");
+    }
 
     return { handles: captured.handles, overlayRef };
 };

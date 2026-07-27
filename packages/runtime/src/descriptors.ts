@@ -115,11 +115,25 @@ const flagsT = (sharedLibrary: string, typeFnName: string, signed: boolean): Fla
 });
 
 const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void => {
-    if (options.sharedLibrary !== undefined) result.sharedLibrary = options.sharedLibrary;
-    if (options.getTypeFnName !== undefined) result.getTypeFnName = options.getTypeFnName;
-    if (options.freeFnName !== undefined) result.freeFnName = options.freeFnName;
-    if (options.callerAllocated) result.callerAllocated = true;
-    if (options.size !== undefined) result.size = options.size;
+    if (options.sharedLibrary !== undefined) {
+        result.sharedLibrary = options.sharedLibrary;
+    }
+
+    if (options.getTypeFnName !== undefined) {
+        result.getTypeFnName = options.getTypeFnName;
+    }
+
+    if (options.freeFnName !== undefined) {
+        result.freeFnName = options.freeFnName;
+    }
+
+    if (options.callerAllocated) {
+        result.callerAllocated = true;
+    }
+
+    if (options.size !== undefined) {
+        result.size = options.size;
+    }
 };
 
 const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor => {
@@ -136,9 +150,18 @@ const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor =
 
 const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructDescriptor => {
     const result: StructDescriptor = { kind: "struct", ownership };
-    if (options.size !== undefined) result.size = options.size;
-    if (options.wrapperClass !== undefined) result.wrapperClass = options.wrapperClass;
-    if (options.callerAllocated) result.callerAllocated = true;
+
+    if (options.size !== undefined) {
+        result.size = options.size;
+    }
+
+    if (options.wrapperClass !== undefined) {
+        result.wrapperClass = options.wrapperClass;
+    }
+
+    if (options.callerAllocated) {
+        result.callerAllocated = true;
+    }
 
     return result;
 };
@@ -151,8 +174,14 @@ const fundamentalT = (
 ): FundamentalDescriptor => {
     const ownership = options.ownership ?? "borrowed";
     const result: FundamentalDescriptor = { kind: "fundamental", ownership, sharedLibrary, refFnName, unrefFnName };
-    if (options.typeName !== undefined) result.typeName = options.typeName;
-    if (options.wrapperClass !== undefined) result.wrapperClass = options.wrapperClass;
+
+    if (options.typeName !== undefined) {
+        result.typeName = options.typeName;
+    }
+
+    if (options.wrapperClass !== undefined) {
+        result.wrapperClass = options.wrapperClass;
+    }
 
     return result;
 };
@@ -164,9 +193,18 @@ const arrayT = (
     options?: ArrayOptions,
 ): ArrayDescriptor => {
     const result: ArrayDescriptor = { kind: "array", itemDescriptor, arrayKind, ownership };
-    if (options?.elementSize !== undefined) result.elementSize = options.elementSize;
-    if (options?.sizeParamIndex !== undefined) result.sizeParamIndex = options.sizeParamIndex;
-    if (options?.fixedSize !== undefined) result.fixedSize = options.fixedSize;
+
+    if (options?.elementSize !== undefined) {
+        result.elementSize = options.elementSize;
+    }
+
+    if (options?.sizeParamIndex !== undefined) {
+        result.sizeParamIndex = options.sizeParamIndex;
+    }
+
+    if (options?.fixedSize !== undefined) {
+        result.fixedSize = options.fixedSize;
+    }
 
     return result;
 };
@@ -210,9 +248,18 @@ const callbackT = (
     options?: CallbackOptions,
 ): CallbackDescriptor => {
     const result: CallbackDescriptor = { kind: "callback", argDescriptors, returnDescriptor };
-    if (options?.hasDestroy !== undefined) result.hasDestroy = options.hasDestroy;
-    if (options?.userDataIndex !== undefined) result.userDataIndex = options.userDataIndex;
-    if (options?.scope !== undefined) result.scope = options.scope;
+
+    if (options?.hasDestroy !== undefined) {
+        result.hasDestroy = options.hasDestroy;
+    }
+
+    if (options?.userDataIndex !== undefined) {
+        result.userDataIndex = options.userDataIndex;
+    }
+
+    if (options?.scope !== undefined) {
+        result.scope = options.scope;
+    }
 
     return result;
 };

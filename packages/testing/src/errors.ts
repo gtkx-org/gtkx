@@ -42,10 +42,22 @@ const formatTextMatcher = (text: Matcher): string => {
 
 const formatByRoleValue = (value: ByRoleValue): string => {
     const parts: string[] = [];
-    if (value.now !== undefined) parts.push(`now=${value.now}`);
-    if (value.min !== undefined) parts.push(`min=${value.min}`);
-    if (value.max !== undefined) parts.push(`max=${value.max}`);
-    if (value.text !== undefined) parts.push(`text ${formatTextMatcher(value.text)}`);
+
+    if (value.now !== undefined) {
+        parts.push(`now=${value.now}`);
+    }
+
+    if (value.min !== undefined) {
+        parts.push(`min=${value.min}`);
+    }
+
+    if (value.max !== undefined) {
+        parts.push(`max=${value.max}`);
+    }
+
+    if (value.text !== undefined) {
+        parts.push(`text ${formatTextMatcher(value.text)}`);
+    }
 
     return parts.join(", ");
 };
@@ -55,7 +67,10 @@ const roleOptionParts = (options: ByRoleOptions): string[] => {
 
     for (const formatter of roleOptionFormatters) {
         const part = formatter(options);
-        if (part !== null) parts.push(part);
+
+        if (part !== null) {
+            parts.push(part);
+        }
     }
 
     return parts;
@@ -63,7 +78,10 @@ const roleOptionParts = (options: ByRoleOptions): string[] => {
 
 const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptions): string => {
     const parts = [`role '${formatRole(role).toUpperCase()}'`];
-    if (options) parts.push(...roleOptionParts(options));
+
+    if (options) {
+        parts.push(...roleOptionParts(options));
+    }
 
     return parts.join(" and ");
 };

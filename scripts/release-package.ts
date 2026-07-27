@@ -8,7 +8,11 @@ const findRepoRoot = (start: string): string => {
 
     while (!existsSync(join(dir, "pnpm-workspace.yaml"))) {
         const parent = dirname(dir);
-        if (parent === dir) throw new Error("Could not locate the monorepo root (pnpm-workspace.yaml)");
+
+        if (parent === dir) {
+            throw new Error("Could not locate the monorepo root (pnpm-workspace.yaml)");
+        }
+
         dir = parent;
     }
 

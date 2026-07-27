@@ -36,7 +36,9 @@ const invokeHandler = (
 
 const wrapHandler = (target: SignalTarget, record: HandlerRecord, notifyProperty: string | null): SignalHandler =>
     (...args: unknown[]): unknown => {
-        if (record.blockable && isSuppressed()) return undefined;
+        if (record.blockable && isSuppressed()) {
+            return undefined;
+        }
 
         return target.dispatch(() => invokeHandler(target, record, notifyProperty, args));
     };
@@ -50,7 +52,10 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
         return;
     }
 
-    if (existing !== undefined) target.object.off(existing.signal, existing.wrapped);
+    if (existing !== undefined) {
+        target.object.off(existing.signal, existing.wrapped);
+    }
+
     const blockable = isBlockableSignal(typeInfoOf(target.typeName), signal);
     const notifyProperty = notifyPropertyOf(signal);
     const record: HandlerRecord = { signal, handler, wrapped: () => undefined, blockable };
@@ -62,7 +67,9 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
 const disconnectHandler = (target: SignalTarget, prop: string): void => {
     const record = target.handlers.get(prop);
 
-    if (record === undefined) return;
+    if (record === undefined) {
+        return;
+    }
 
     target.object.off(record.signal, record.wrapped);
     target.handlers.delete(prop);

@@ -9,11 +9,15 @@ type Captured = { widget: Gtk.Widget | null };
 const capturing =
     (held: Captured) =>
         (widget: Gtk.Widget | null): void => {
-            if (widget) held.widget = widget;
+            if (widget) {
+                held.widget = widget;
+            }
         };
 
 const visibilityOf = (held: Captured): boolean => {
-    if (!held.widget) throw new Error("widget was never captured");
+    if (!held.widget) {
+        throw new Error("widget was never captured");
+    }
 
     return held.widget.getVisible();
 };
