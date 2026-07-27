@@ -48,6 +48,12 @@ cd gtkx
 pnpm install
 ```
 
+Installing runs a `postinstall` step that compiles `@gtkx/config`, `@gtkx/utils` and `@gtkx/vitest`. Nx builds its
+project graph before it can run any task, and the `@nx/vitest` plugin evaluates every `vitest.config.ts` while doing
+so. Those configs import `@gtkx/vitest`, and Vite resolves it through `exports.default` to `dist/` — the `source`
+condition the rest of the workspace relies on does not apply while Vite is loading a config file. Compiling that
+three-package chain up front is what keeps the graph resolvable on a fresh clone.
+
 3. **Build all packages:**
 
 ```bash

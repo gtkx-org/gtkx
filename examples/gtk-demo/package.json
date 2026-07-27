@@ -10,9 +10,9 @@
     },
     "scripts": {
         "build": "gtkx build",
+        "coverage": "vitest run --coverage",
         "dev": "gtkx dev",
-        "start": "node dist/bundle.js",
-        "coverage": "vitest run --coverage"
+        "start": "node dist/bundle.js"
     },
     "dependencies": {
         "@gtkx/components": "workspace:*",
@@ -67,6 +67,26 @@
             "start": {
                 "cache": false,
                 "continuous": true
+            },
+            "test": {
+                "command": "vitest run",
+                "options": {
+                    "cwd": "{projectRoot}"
+                },
+                "cache": true,
+                "inputs": [
+                    "default",
+                    "^production"
+                ],
+                "outputs": [
+                    "{projectRoot}/coverage"
+                ],
+                "dependsOn": [
+                    "codegen",
+                    "@gtkx/cli:build",
+                    "@gtkx/testing:build",
+                    "@gtkx/vitest:build"
+                ]
             }
         }
     }

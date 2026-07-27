@@ -38,7 +38,8 @@
         },
         {
             "plugin": "@nx/vitest",
-            "options": { "testTargetName": "test" }
+            "options": { "testTargetName": "test" },
+            "exclude": ["examples/gtk-demo/*"]
         }
     ],
     "targetDefaults": {
@@ -59,8 +60,10 @@
             ]
         },
         "test": {
+            "parallelism": false,
             "dependsOn": [
                 "gtkx:codegen",
+                "@gtkx/vitest:build",
                 "@gtkx/cli:build",
                 "@gtkx/components:build",
                 "@gtkx/css:build",

@@ -12,6 +12,7 @@
         "codegen": "nx run-many -t codegen",
         "coverage": "nx run-many -t coverage",
         "lint": "nx run-many -t lint lint:rust lint:knip",
+        "postinstall": "tsc -b --force packages/vitest/tsconfig.lib.json",
         "release": "nx run-many -t release",
         "release-e2e": "tsx ./scripts/release-e2e.ts",
         "test": "nx run-many -t test",
@@ -50,6 +51,7 @@
                 "cache": true,
                 "dependsOn": [
                     "codegen",
+                    "@gtkx/vitest:build",
                     "@gtkx/cli:build",
                     "@gtkx/components:build",
                     "@gtkx/css:build",
@@ -85,7 +87,8 @@
                 "command": "vitest run --project scripts",
                 "cache": true,
                 "dependsOn": [
-                    "codegen"
+                    "codegen",
+                    "@gtkx/vitest:build"
                 ],
                 "inputs": [
                     "{workspaceRoot}/scripts/**/*",
