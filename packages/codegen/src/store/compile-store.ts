@@ -15,7 +15,6 @@ const EMIT_OPTIONS = {
     removeComments: false,
     sourceMap: false,
     declarationMap: false,
-    noEmitOnError: true,
     rootDir: ".",
     outDir: ".",
 };

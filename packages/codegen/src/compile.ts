@@ -1,8 +1,7 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 type SourceModule = {
     fileName: string;
@@ -14,12 +13,7 @@ type CompileProjectParams = {
     fileNames: string[];
     compilerOptions: Record<string, unknown>;
     label: string;
-    paths?: Record<string, string[]>;
 };
-
-type ProjectDiagnostic = { file: string; line: string; column: string; code: string; message: string };
-
-const require = createRequire(import.meta.url);
 
 const BASE_COMPILER_OPTIONS = {
     module: "esnext",
@@ -41,12 +35,16 @@ const BASE_COMPILER_OPTIONS = {
     types: ["node"],
 };
 
-const DIAGNOSTIC_LINE = /^(.+?)\((\d+),(\d+)\): error TS(\d+): (.*)$/;
-
 const CHECK_OPTIONS = {
     declaration: true,
     isolatedDeclarations: true,
     noEmit: true,
+};
+
+const FORMAT_HOST: ts.FormatDiagnosticsHost = {
+    getCanonicalFileName: (fileName) => fileName,
+    getCurrentDirectory: () => ts.sys.getCurrentDirectory(),
+    getNewLine: () => "\n",
 };
 
 /** `@gtkx/codegen`'s own `node_modules`, which has `@types/node` plus the `@gtkx/*` deps the store typecheck needs. */
@@ -70,108 +68,88 @@ const linkToolingModules = (projectDir: string): (() => void) => {
     };
 };
 
-const tscBin = (): string => join(dirname(require.resolve("typescript/package.json")), "bin", "tsc");
-
-const runTsc = (tsconfigPath: string, cwd: string): { code: number; output: string } => {
-    try {
-        execFileSync(process.execPath, [tscBin(), "--pretty", "false", "-p", tsconfigPath], {
-            cwd,
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-            maxBuffer: 64 * 1024 * 1024,
-        });
-
-        return { code: 0, output: "" };
-    } catch (error) {
-        const {
-            status,
-            stdout = "",
-            stderr = "",
-        } = error as { status?: number | null; stdout?: string; stderr?: string };
-
-        return { code: typeof status === "number" ? status : 1, output: `${stdout}\n${stderr}` };
-    }
-};
-
 const isProjectFile = (rel: string): boolean =>
     !rel.startsWith("..") && !isAbsolute(rel) && !rel.split(/[/\\]/).includes("node_modules");
 
-const parseDiagnosticLine = (raw: string, projectDir: string): ProjectDiagnostic | undefined => {
-    const match = DIAGNOSTIC_LINE.exec(raw);
+const projectDiagnosticLine = (diagnostic: ts.Diagnostic, projectDir: string): string | undefined => {
+    const { file, start } = diagnostic;
 
-    if (match === null) {
+    if (file === undefined || start === undefined) {
         return undefined;
     }
 
-    const [, filePart, line, column, code, message] = match;
+    const filePath = relative(projectDir, file.fileName);
 
-    if (filePart === undefined || line === undefined || column === undefined || code === undefined) {
+    if (!isProjectFile(filePath)) {
         return undefined;
     }
 
-    const file = resolve(projectDir, filePart);
+    const { line, character } = file.getLineAndCharacterOfPosition(start);
+    const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
 
-    if (!isProjectFile(relative(projectDir, file))) {
-        return undefined;
-    }
-
-    return { file, line, column, code, message: (message ?? "").trim() };
+    return `${filePath}:${String(line + 1)}:${String(character + 1)} - ${message} (TS${String(diagnostic.code)})`;
 };
 
-const parseDiagnostics = (output: string, projectDir: string): ProjectDiagnostic[] => {
-    const diagnostics: ProjectDiagnostic[] = [];
+const projectDiagnosticLines = (diagnostics: ts.Diagnostic[], projectDir: string): string[] => {
+    const lines: string[] = [];
 
-    for (const raw of output.split(/\r?\n/)) {
-        const diagnostic = parseDiagnosticLine(raw, projectDir);
+    for (const diagnostic of diagnostics) {
+        const line = projectDiagnosticLine(diagnostic, projectDir);
 
-        if (diagnostic !== undefined) {
-            diagnostics.push(diagnostic);
+        if (line !== undefined) {
+            lines.push(line);
         }
     }
 
-    return diagnostics;
+    return lines;
 };
 
-const formatDiagnostics = (label: string, projectDir: string, diagnostics: ProjectDiagnostic[]): string => {
-    const messages = diagnostics.map((diagnostic) => {
-        const location = `${relative(projectDir, diagnostic.file)}:${diagnostic.line}:${diagnostic.column}`;
+const diagnosticError = (label: string, projectDir: string, diagnostics: ts.Diagnostic[]): Error => {
+    const lines = projectDiagnosticLines(diagnostics, projectDir);
 
-        return `${location} - ${diagnostic.message} (TS${diagnostic.code})`;
+    if (lines.length > 0) {
+        return new Error(`Type checking ${label} found ${String(lines.length)} error(s):\n${lines.join("\n")}`);
+    }
+
+    return new Error(`Type checking ${label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
+};
+
+const runProgram = (params: CompileProjectParams): ts.Diagnostic[] => {
+    const parsed = ts.parseJsonConfigFileContent(
+        {
+            compilerOptions: { ...BASE_COMPILER_OPTIONS, ...params.compilerOptions },
+            files: params.fileNames.map((name) => `./${name}`),
+        },
+        ts.sys,
+        params.projectDir,
+    );
+
+    const program = ts.createProgram({
+        rootNames: parsed.fileNames,
+        options: parsed.options,
+        configFileParsingDiagnostics: parsed.errors,
     });
 
-    return `Type checking ${label} found ${String(diagnostics.length)} error(s):\n${messages.join("\n")}`;
+    const diagnostics = ts.getPreEmitDiagnostics(program);
+
+    if (diagnostics.length > 0) {
+        return [...diagnostics];
+    }
+
+    return [...program.emit().diagnostics];
 };
 
 const compileProject = (params: CompileProjectParams): void => {
-    const tsconfigPath = join(params.projectDir, "tsconfig.json");
     const unlinkToolingModules = linkToolingModules(params.projectDir);
 
     try {
-        writeFileSync(
-            tsconfigPath,
-            JSON.stringify({
-                compilerOptions: {
-                    ...BASE_COMPILER_OPTIONS,
-                    ...params.compilerOptions,
-                    ...(params.paths !== undefined && { paths: params.paths }),
-                },
-                files: params.fileNames.map((name) => `./${name}`),
-            }),
-        );
-
-        const { code, output } = runTsc(tsconfigPath, params.projectDir);
-        const diagnostics = parseDiagnostics(output, params.projectDir);
+        const diagnostics = runProgram(params);
 
         if (diagnostics.length > 0) {
-            throw new Error(formatDiagnostics(params.label, params.projectDir, diagnostics));
-        }
-
-        if (code !== 0) {
-            throw new Error(`Type checking ${params.label} failed:\n${output.trim()}`);
+            throw diagnosticError(params.label, params.projectDir, diagnostics);
         }
     } finally {
         unlinkToolingModules();
-        rmSync(tsconfigPath, { force: true });
     }
 };
 

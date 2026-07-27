@@ -22,7 +22,7 @@ catalog:
   '@vitest/coverage-v8': ^4.1.10
   ejs: ^6.0.1
   react: ^19.2.7
-  typescript: ^7.0.2
+  typescript: ^6.0.3
   vite: ^8.1.5
   vitest: ^4.1.10
   zod: ^4.4.3
@@ -35,12 +35,6 @@ packageExtensions:
   '@emotion/utils':
     dependencies:
       '@emotion/sheet': ^1.4.0
-  eslint-plugin-perfectionist:
-    peerDependencies:
-      typescript: "*"
-  eslint-plugin-sonarjs:
-    peerDependencies:
-      typescript: "*"
 
 overrides:
   vite: ^8.1.5
