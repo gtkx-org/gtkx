@@ -87,6 +87,13 @@
                     "@gtkx/testing:build",
                     "@gtkx/vitest:build"
                 ]
+            },
+            "lint": {
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/gl:codegen",
+                    "codegen"
+                ]
             }
         }
     }

@@ -8,8 +8,6 @@ packages:
 minimumReleaseAge: 0
 trustPolicy: no-downgrade
 
-# Nx orders and gates every task, so pnpm re-verifying the tree before each
-# `pnpm run` is redundant and races with tasks writing into node_modules.
 verifyDepsBeforeRun: false
 
 publicHoistPattern:

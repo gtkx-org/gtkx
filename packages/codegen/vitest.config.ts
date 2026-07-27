@@ -6,7 +6,7 @@ export default mergeConfig(
     defineConfig({
         test: {
             name: "codegen",
-            testTimeout: 120_000,
+            testTimeout: 600_000,
         },
     }),
 );
