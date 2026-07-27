@@ -4,14 +4,27 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect } from "vitest";
 import type { Request } from "../src/protocol/schemas.js";
-import type { ProtocolConnection } from "../src/transport.js";
+import type { ConnectionRequestEvent, ProtocolConnection } from "../src/transport.js";
 import { ConnectionRegistry } from "../src/connection-registry.js";
 import { SocketServer } from "../src/socket-server.js";
+
+type SocketServerContext = {
+    tmpDir: string;
+    socketPath: string;
+    server: SocketServer;
+    registry: ConnectionRegistry;
+};
+
+const socketCtx = {} as SocketServerContext;
 
 const connectClient = (path: string): Promise<net.Socket> =>
     new Promise((resolve, reject) => {
         const socket = net.createConnection(path);
-        socket.once("connect", () => resolve(socket));
+
+        socket.once("connect", () => {
+            resolve(socket);
+        });
+
         socket.once("error", reject);
     });
 
@@ -24,7 +37,9 @@ const tryConnect = (path: string): Promise<Error | null> =>
             resolve(null);
         });
 
-        socket.once("error", (error) => resolve(error));
+        socket.once("error", (error) => {
+            resolve(error);
+        });
     });
 
 const collectLines = (socket: net.Socket): { lines: string[]; promise: Promise<void> } => {
@@ -43,7 +58,9 @@ const collectLines = (socket: net.Socket): { lines: string[]; promise: Promise<v
             }
         });
 
-        socket.on("close", () => resolve());
+        socket.on("close", () => {
+            resolve();
+        });
     });
 
     return { lines, promise };
@@ -61,15 +78,6 @@ const waitForConnection = (registry: ConnectionRegistry): Promise<ProtocolConnec
             return connection;
         };
     });
-
-type SocketServerContext = {
-    tmpDir: string;
-    socketPath: string;
-    server: SocketServer;
-    registry: ConnectionRegistry;
-};
-
-const socketCtx = {} as SocketServerContext;
 
 function setupSocketServer(): void {
     beforeEach(() => {
@@ -93,7 +101,13 @@ const startWithClient = async (): Promise<net.Socket> => {
 
 const nextRequest = (registry: ConnectionRegistry): Promise<Request> =>
     new Promise((resolve) => {
-        registry.once("request", (_conn, req) => resolve(req));
+        registry.addEventListener(
+            "request",
+            (event) => {
+                resolve((event as ConnectionRequestEvent).detail.request);
+            },
+            { once: true },
+        );
     });
 
 const collectFirstFrame = async <T>(client: net.Socket, act: () => void): Promise<T> => {

@@ -1,6 +1,5 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
@@ -18,9 +17,19 @@ type LoadHook = (
     id: string,
 ) => string | undefined | null;
 
+type ConfigHook = (config: { root?: string }) => void;
+
+type EnvPluginInit = {
+    dataDir: string;
+    plugin: ReturnType<typeof gtkxSettings>;
+    envPath: string;
+};
+
 const hasGlibCompileSchemas = (): boolean => {
     try {
-        execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+        execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], {
+            stdio: ["ignore", "ignore", "ignore"],
+        });
 
         return true;
     } catch {
@@ -43,6 +52,98 @@ const callResolveIdSettings = async (
 
     return (plugin.resolveId as ResolveIdHook).call({ resolve }, source);
 };
+
+const firstSchemaDir = (): string => (process.env.GSETTINGS_SCHEMA_DIR ?? "").split(":", 1)[0] ?? "";
+
+const setupSchemaDirEnv = (): void => {
+    let prevSchemaDir: string | undefined;
+
+    beforeEach(() => {
+        prevSchemaDir = process.env.GSETTINGS_SCHEMA_DIR;
+        delete process.env.GSETTINGS_SCHEMA_DIR;
+    });
+
+    afterEach(() => {
+        if (prevSchemaDir === undefined) {
+            delete process.env.GSETTINGS_SCHEMA_DIR;
+        } else {
+            process.env.GSETTINGS_SCHEMA_DIR = prevSchemaDir;
+        }
+    });
+};
+
+const writeSchema = (tmp: string, fileName: string, schemaId: string): string => {
+    const schemaPath = join(tmp, fileName);
+
+    writeFileSync(
+        schemaPath,
+        `<?xml version="1.0"?>
+<schemalist>
+    <schema id="${schemaId}" path="/${schemaId.replaceAll(".", "/")}/">
+        <key name="x" type="b"><default>false</default></key>
+    </schema>
+</schemalist>`,
+    );
+
+    return schemaPath;
+};
+
+const setupDataDir = (tmp: string): string => {
+    writeFileSync(join(tmp, "package.json"), JSON.stringify({ imports: { "#data/*": "./data/*" } }));
+    const dataDir = join(tmp, "data");
+    mkdirSync(dataDir, { recursive: true });
+
+    return dataDir;
+};
+
+const initSchemaEnvPlugin = (tmp: string, seedSchemas?: (dataDir: string) => void): EnvPluginInit => {
+    const dataDir = setupDataDir(tmp);
+    seedSchemas?.(dataDir);
+    const plugin = gtkxSettings();
+    (plugin.config as ConfigHook).call(plugin, { root: tmp });
+    (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmp });
+    const envPath = join(tmp, "node_modules", ".gtkx", "env.d.ts");
+
+    return { dataDir, plugin, envPath };
+};
+
+const settingsVirtualId = (schemaPath: string): string => `\0gtkx-settings:${schemaPath}`;
+
+const loadSchemaInServeMode = (schemaPath: string): { plugin: ReturnType<typeof gtkxSettings>; virtualId: string } => {
+    const plugin = gtkxSettings();
+    (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+    const virtualId = settingsVirtualId(schemaPath);
+    (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
+
+    return { plugin, virtualId };
+};
+
+class FakeEmitter {
+    #listeners: Map<string, { listener: (...args: unknown[]) => void; isOnce: boolean }[]> = new Map();
+
+    #register(event: string, listener: (...args: unknown[]) => void, isOnce: boolean): void {
+        const entries = this.#listeners.get(event) ?? [];
+        entries.push({ listener, isOnce });
+        this.#listeners.set(event, entries);
+    }
+
+    on(event: string, listener: (...args: unknown[]) => void): void {
+        this.#register(event, listener, false);
+    }
+
+    once(event: string, listener: (...args: unknown[]) => void): void {
+        this.#register(event, listener, true);
+    }
+
+    emit(event: string, ...args: unknown[]): void {
+        const entries = this.#listeners.get(event) ?? [];
+        this.#listeners.set(event, entries.filter((entry) => !entry.isOnce));
+
+        for (const entry of entries) {
+            entry.listener(...args);
+        }
+    }
+}
 
 describe("gtkxSettings (plugin shape and init)", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {
@@ -209,79 +310,6 @@ describe("gtkxSettings (buildEnd)", () => {
     });
 });
 
-const firstSchemaDir = (): string => (process.env.GSETTINGS_SCHEMA_DIR ?? "").split(":", 1)[0] ?? "";
-
-const setupSchemaDirEnv = (): void => {
-    let prevSchemaDir: string | undefined;
-
-    beforeEach(() => {
-        prevSchemaDir = process.env.GSETTINGS_SCHEMA_DIR;
-        delete process.env.GSETTINGS_SCHEMA_DIR;
-    });
-
-    afterEach(() => {
-        if (prevSchemaDir === undefined) {
-            delete process.env.GSETTINGS_SCHEMA_DIR;
-        } else {
-            process.env.GSETTINGS_SCHEMA_DIR = prevSchemaDir;
-        }
-    });
-};
-
-const writeSchema = (tmp: string, fileName: string, schemaId: string): string => {
-    const schemaPath = join(tmp, fileName);
-
-    writeFileSync(
-        schemaPath,
-        `<?xml version="1.0"?>
-<schemalist>
-    <schema id="${schemaId}" path="/${schemaId.replaceAll(".", "/")}/">
-        <key name="x" type="b"><default>false</default></key>
-    </schema>
-</schemalist>`,
-    );
-
-    return schemaPath;
-};
-
-type ConfigHook = (config: { root?: string }) => void;
-
-const setupDataDir = (tmp: string): string => {
-    writeFileSync(join(tmp, "package.json"), JSON.stringify({ imports: { "#data/*": "./data/*" } }));
-    const dataDir = join(tmp, "data");
-    mkdirSync(dataDir, { recursive: true });
-
-    return dataDir;
-};
-
-type EnvPluginInit = {
-    dataDir: string;
-    plugin: ReturnType<typeof gtkxSettings>;
-    envPath: string;
-};
-
-const initSchemaEnvPlugin = (tmp: string, seedSchemas?: (dataDir: string) => void): EnvPluginInit => {
-    const dataDir = setupDataDir(tmp);
-    seedSchemas?.(dataDir);
-    const plugin = gtkxSettings();
-    (plugin.config as ConfigHook).call(plugin, { root: tmp });
-    (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmp });
-    const envPath = join(tmp, "node_modules", ".gtkx", "env.d.ts");
-
-    return { dataDir, plugin, envPath };
-};
-
-const settingsVirtualId = (schemaPath: string): string => `\0gtkx-settings:${schemaPath}`;
-
-const loadSchemaInServeMode = (schemaPath: string): { plugin: ReturnType<typeof gtkxSettings>; virtualId: string } => {
-    const plugin = gtkxSettings();
-    (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-    const virtualId = settingsVirtualId(schemaPath);
-    (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
-
-    return { plugin, virtualId };
-};
-
 describe("gtkxSettings (dev-mode load: fresh schema dir)", () => {
     setupSchemaDirEnv();
 
@@ -342,7 +370,7 @@ describe("gtkxSettings (handleHotUpdate: untracked)", () => {
                 getModuleById: vi.fn(),
                 invalidateModule: vi.fn(),
             },
-            watcher: new EventEmitter(),
+            watcher: new FakeEmitter(),
         };
 
         const result = (plugin.handleHotUpdate as HandleHotUpdateHook).call(plugin, {
@@ -420,8 +448,8 @@ describe("gtkxSettings (configureServer)", () => {
             const { plugin } = loadSchemaInServeMode(schemaPath);
             const schemaDir = firstSchemaDir();
             expect(existsSync(schemaDir)).toBe(true);
-            const httpServer = new EventEmitter();
-            const watcher = new EventEmitter();
+            const httpServer = new FakeEmitter();
+            const watcher = new FakeEmitter();
             (plugin.configureServer as (server: unknown) => void).call(plugin, { httpServer, watcher });
             httpServer.emit("close");
             expect(existsSync(schemaDir)).toBe(false);
@@ -457,7 +485,7 @@ describe("gtkxSettings (schema env emission)", () => {
             const { dataDir, plugin, envPath } = initSchemaEnvPlugin(tmp);
             expect(readFileSync(envPath, "utf8")).not.toContain("declare module");
             const schemaPath = writeSchema(dataDir, "com.example.added.gschema.xml", "com.example.added");
-            const watcher = new EventEmitter();
+            const watcher = new FakeEmitter();
             (plugin.configureServer as (server: unknown) => void).call(plugin, { httpServer: null, watcher });
             watcher.emit("add", schemaPath);
             expect(readFileSync(envPath, "utf8")).toContain("declare module \"#data/com.example.added.gschema.xml\" {");
@@ -479,7 +507,7 @@ describe("gtkxSettings (handleHotUpdate: tracked orphan)", () => {
 
                 const server = {
                     moduleGraph: {
-                        getModuleById: vi.fn(() => undefined),
+                        getModuleById: vi.fn((): undefined => undefined),
                         invalidateModule: vi.fn(),
                     },
                 };

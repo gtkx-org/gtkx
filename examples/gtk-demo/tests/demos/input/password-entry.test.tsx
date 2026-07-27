@@ -7,6 +7,7 @@ import { renderDemo } from "../../test-utils.js";
 const findPasswordFields = async (): Promise<{ password: Gtk.PasswordEntry; confirm: Gtk.PasswordEntry }> => {
     const password = (await screen.findByName("password-entry")) as Gtk.PasswordEntry;
     const confirm = (await screen.findByName("confirm-entry")) as Gtk.PasswordEntry;
+
     return { password, confirm };
 };
 
@@ -14,29 +15,48 @@ const findDoneButton = async (): Promise<Gtk.Button> =>
     (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Done" })) as Gtk.Button;
 
 const findInnerText = (widget: Gtk.Widget): Gtk.Text | null => {
-    if (widget instanceof Gtk.Text) return widget;
+    if (widget instanceof Gtk.Text) {
+        return widget;
+    }
+
     for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
         const found = findInnerText(child);
-        if (found) return found;
+
+        if (found) {
+            return found;
+        }
     }
+
     return null;
 };
 
 const findPeekImage = (widget: Gtk.Widget): Gtk.Image | null => {
-    if (widget instanceof Gtk.Image && widget.getIconName() === "view-reveal-symbolic") return widget;
+    if (widget instanceof Gtk.Image && widget.getIconName() === "view-reveal-symbolic") {
+        return widget;
+    }
+
     for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
         const found = findPeekImage(child);
-        if (found) return found;
+
+        if (found) {
+            return found;
+        }
     }
+
     return null;
 };
 
-const gestureOf = (widget: Gtk.Widget): Gtk.GestureClick | null => {
+const findClickGesture = (widget: Gtk.Widget): Gtk.GestureClick | null => {
     const controllers = widget.observeControllers();
+
     for (let i = 0; i < controllers.getNItems(); i++) {
         const controller = controllers.getItem(i);
-        if (controller instanceof Gtk.GestureClick) return controller;
+
+        if (controller instanceof Gtk.GestureClick) {
+            return controller;
+        }
     }
+
     return null;
 };
 
@@ -64,25 +84,26 @@ describe("passwordEntryDemo form behavior", () => {
         await renderDemo(passwordEntryDemo);
         const { password } = await findPasswordFields();
         await userEvent.type(password, "s3cret");
-
         const innerText = findInnerText(password);
         const peek = findPeekImage(password);
         expect(innerText).not.toBeNull();
         expect(peek).not.toBeNull();
-        const gesture = gestureOf(peek as Gtk.Image);
+        const gesture = findClickGesture(peek as Gtk.Image);
         expect(gesture).not.toBeNull();
-
         expect((innerText as Gtk.Text).getVisibility()).toBe(false);
         await fireEvent(gesture as Gtk.GestureClick, "pressed", 1, 0, 0);
         await fireEvent(gesture as Gtk.GestureClick, "released", 1, 0, 0);
         expect((innerText as Gtk.Text).getVisibility()).toBe(true);
     });
+});
 
+describe("passwordEntryDemo done button", () => {
     it("enables the Done button when both password fields match", async () => {
         await renderDemo(passwordEntryDemo);
         const { password, confirm } = await findPasswordFields();
         await userEvent.type(password, "hunter2");
         await userEvent.type(confirm, "hunter2");
+
         await waitFor(async () => {
             const button = await findDoneButton();
             expect(button.getSensitive()).toBe(true);
@@ -94,6 +115,7 @@ describe("passwordEntryDemo form behavior", () => {
         const { password, confirm } = await findPasswordFields();
         await userEvent.type(password, "hunter2");
         await userEvent.type(confirm, "different");
+
         await waitFor(async () => {
             const button = await findDoneButton();
             expect(button.getSensitive()).toBe(false);
@@ -106,13 +128,19 @@ describe("passwordEntryDemo form behavior", () => {
         const { password, confirm } = await findPasswordFields();
         await userEvent.type(password, "abc");
         await userEvent.type(confirm, "abc");
+
         const button = await waitFor(async () => {
             const candidate = await findDoneButton();
             expect(candidate.getSensitive()).toBe(true);
+
             return candidate;
         });
+
         await userEvent.click(button);
-        await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+        await waitFor(() => {
+            expect(onClose).toHaveBeenCalled();
+        });
     });
 });
 

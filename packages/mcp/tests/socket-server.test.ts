@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Request, Response } from "../src/protocol/schemas.js";
-import type { ProtocolConnection } from "../src/transport.js";
+import type { ConnectionErrorEvent, ConnectionEvent, ProtocolConnection } from "../src/transport.js";
 import { ConnectionRegistry } from "../src/connection-registry.js";
 import { SocketServer } from "../src/socket-server.js";
 import {
@@ -37,6 +37,7 @@ describe("SocketServer lifecycle", () => {
         await socketCtx.server.start();
         await socketCtx.server.start();
         const client = await connectClient(socketCtx.socketPath);
+        expect(client.readyState).toBe("open");
         client.destroy();
     });
 
@@ -48,6 +49,7 @@ describe("SocketServer lifecycle", () => {
         writeFileSync(socketCtx.socketPath, "");
         await socketCtx.server.start();
         const client = await connectClient(socketCtx.socketPath);
+        expect(client.readyState).toBe("open");
         client.destroy();
     });
 
@@ -72,7 +74,13 @@ describe("SocketServer connections", () => {
         expect(connection.id).toBeTruthy();
 
         const disconnectionPromise: Promise<ProtocolConnection> = new Promise((resolve) => {
-            registry.once("disconnection", (conn) => resolve(conn));
+            registry.addEventListener(
+                "disconnection",
+                (event) => {
+                    resolve((event as ConnectionEvent).detail);
+                },
+                { once: true },
+            );
         });
 
         client.end();
@@ -163,7 +171,13 @@ describe("SocketServer errors", () => {
         const bad = new SocketServer(badRegistry, join(socketCtx.tmpDir, "no-such-dir", "test.sock"));
 
         const errorReceived: Promise<Error> = new Promise((resolve) => {
-            badRegistry.once("error", (err) => resolve(err));
+            badRegistry.addEventListener(
+                "error",
+                (event) => {
+                    resolve((event as ConnectionErrorEvent).detail);
+                },
+                { once: true },
+            );
         });
 
         await expect(bad.start()).rejects.toThrow();

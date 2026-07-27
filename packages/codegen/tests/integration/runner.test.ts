@@ -8,10 +8,6 @@ const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-test-"));
 
-afterAll(() => {
-    rmSync(workDir, { recursive: true, force: true });
-});
-
 const giOptions = (name: string) => {
     const root = join(workDir, name);
 
@@ -25,7 +21,7 @@ const giOptions = (name: string) => {
     };
 };
 
-describe("runCodegen", () => {
+const registerStoreWriteTests = (): void => {
     it("writes the gi store with raw modules, barrels, a package.json and the visible alias", async () => {
         const { gi } = giOptions("gi-only");
 
@@ -68,7 +64,9 @@ describe("runCodegen", () => {
         expect(readFileSync(join(jsx.storeDir, "metadata.js"), "utf8").length).toBeGreaterThan(0);
         expect(existsSync(jsx.linkDir)).toBe(true);
     });
+};
 
+const registerFreshnessTests = (): void => {
     it("skips regeneration when the store fingerprint is still fresh", async () => {
         const { gi } = giOptions("rerun");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
@@ -102,4 +100,13 @@ describe("runCodegen", () => {
         const rerun = await runCodegen(options);
         expect(rerun.regenerated).toBe(true);
     });
+};
+
+afterAll(() => {
+    rmSync(workDir, { recursive: true, force: true });
+});
+
+describe("runCodegen", () => {
+    registerStoreWriteTests();
+    registerFreshnessTests();
 });

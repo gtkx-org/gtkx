@@ -4,12 +4,6 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, runCodegen } from "../../src/codegen/run-codegen.js";
 
-vi.mock("@gtkx/codegen", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@gtkx/codegen")>()),
-    runCodegen: (options: { force?: boolean }) =>
-        Promise.resolve({ regenerated: options.force === true, namespaces: 1, intrinsicElements: 0, duration: 1 }),
-}));
-
 const writeFingerprint = (cwd: string, libraries: string[] = ["Gtk-4.0"]) => {
     writeFileSync(
         join(cwd, "node_modules", ".gtkx", "gi", ".codegen-fingerprint.json"),
@@ -83,6 +77,12 @@ const announceLogs = async (cwd: string): Promise<string> => {
         stderrSpy.mockRestore();
     }
 };
+
+vi.mock("@gtkx/codegen", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@gtkx/codegen")>()),
+    runCodegen: (options: { force?: boolean }) =>
+        Promise.resolve({ regenerated: options.force === true, namespaces: 1, intrinsicElements: 0, duration: 1 }),
+}));
 
 describe("runCodegen", () => {
     let cwd: string;

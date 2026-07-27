@@ -26,11 +26,9 @@ const drawPageHeader = ({
     cr.setSourceRgb(0, 0, 0);
     cr.setLineWidth(1);
     cr.stroke();
-
     const headerLayout = context.createPangoLayout();
     headerLayout.setFontDescription(Pango.FontDescription.fromString("sans 14"));
     headerLayout.setText("printing.tsx", -1);
-
     let [, logicalRect] = headerLayout.getPixelExtents();
     let textWidth = logicalRect.width;
     let textHeight = logicalRect.height;
@@ -45,8 +43,7 @@ const drawPageHeader = ({
 
     cr.moveTo((width - textWidth) / 2, (HEADER_HEIGHT - textHeight) / 2);
     PangoCairo.showLayout(cr, headerLayout);
-
-    const pageStr = `${pageNr + 1}/${numPages}`;
+    const pageStr = `${String(pageNr + 1)}/${String(numPages)}`;
     headerLayout.setText(pageStr, -1);
     headerLayout.setWidth(-1);
     [, logicalRect] = headerLayout.getPixelExtents();
@@ -71,10 +68,9 @@ const drawPageBody = ({
     const bodyDesc = Pango.FontDescription.fromString("monospace");
     bodyDesc.setSize(FONT_SIZE * Pango.SCALE);
     bodyLayout.setFontDescription(bodyDesc);
-
     cr.moveTo(0, HEADER_HEIGHT + HEADER_GAP);
-
     const startLine = pageNr * linesPerPage;
+
     for (let i = 0; i < linesPerPage && startLine + i < lines.length; i++) {
         bodyLayout.setText(lines[startLine + i] ?? "", -1);
         PangoCairo.showLayout(cr, bodyLayout);
@@ -82,20 +78,17 @@ const drawPageBody = ({
     }
 };
 
-export const configurePrintOperation = (source: string): Gtk.PrintOperation => {
+const configurePrintOperation = (source: string): Gtk.PrintOperation => {
     const lines = source.split("\n");
     const numLines = lines.length;
-
     const printOp = new Gtk.PrintOperation();
     printOp.setAllowAsync(true);
     printOp.setUseFullPage(false);
     printOp.setUnit(Gtk.Unit.POINTS);
     printOp.setEmbedPageSetup(true);
-
     const settings = new Gtk.PrintSettings();
     settings.set(Gtk.PRINT_SETTINGS_OUTPUT_BASENAME, "gtk-demo");
     printOp.setPrintSettings(settings);
-
     let linesPerPage = 0;
     let numPages = 0;
 
@@ -115,3 +108,5 @@ export const configurePrintOperation = (source: string): Gtk.PrintOperation => {
 
     return printOp;
 };
+
+export { configurePrintOperation };

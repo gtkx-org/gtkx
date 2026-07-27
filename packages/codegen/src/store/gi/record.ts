@@ -31,7 +31,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     }
 
     const className = record.name;
-    const extendsError = isGErrorRecord(context, record);
+    const isErrorSubclass = isGErrorRecord(context, record);
 
     const callables: Callables = {
         constructors: dedupeCallables(record.constructors),
@@ -42,7 +42,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     generateBindings(context, callables);
     const members = renderRecordMembers(context, record, className, callables);
     const body = indentMembers(members);
-    const heritage = extendsError ? " extends globalThis.Error" : "";
+    const heritage = isErrorSubclass ? " extends globalThis.Error" : "";
     context.module.appendDeclaration(`${renderJsDoc(record.doc)}export class ${className}${heritage} {\n${body}\n}`);
     context.module.appendDeclaration(renderRecordConstructorPropsInterface(context, record, className));
     const gtypeExpr = renderSourceGtype(context, record);
@@ -59,7 +59,7 @@ const renderRecordMembers = (
     className: string,
     callables: Callables,
 ): string[] => {
-    const extendsError = isGErrorRecord(context, record);
+    const isErrorSubclass = isGErrorRecord(context, record);
 
     const { members, claimedNames } = renderPlainTypeMembers({
         context,
@@ -68,7 +68,7 @@ const renderRecordMembers = (
         hasGtype: record.glibGetType !== undefined,
     });
 
-    members.unshift(renderRecordConstructor(context, record, className, extendsError));
+    members.unshift(renderRecordConstructor(context, record, className, isErrorSubclass));
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
     for (const slot of slots) {
@@ -79,7 +79,7 @@ const renderRecordMembers = (
         }
     }
 
-    if (extendsError) {
+    if (isErrorSubclass) {
         members.push('get name(): string {\n    return "GLib.Error";\n}');
     }
 

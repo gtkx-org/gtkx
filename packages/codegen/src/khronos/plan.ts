@@ -88,7 +88,7 @@ const CALLBACK_BASES: Set<string> = new Set(["GLDEBUGPROC", "GLDEBUGPROCARB", "G
 
 const parseCType = (cType: string): ParsedCType => {
     const pointers = (cType.match(/\*/g) ?? []).length;
-    const constData = /(^|\s)const(\s|\*)/.test(` ${cType} `) && pointers > 0;
+    const isConstData = /(^|\s)const(\s|\*)/.test(` ${cType} `) && pointers > 0;
 
     const base = cType
         .replaceAll("*", " ")
@@ -96,7 +96,7 @@ const parseCType = (cType: string): ParsedCType => {
         .filter((token) => token.length > 0 && token !== "const" && token !== "struct")
         .join(" ");
 
-    return { base, pointers, constData };
+    return { base, pointers, constData: isConstData };
 };
 
 const isCompsize = (len: string): boolean => len.includes("COMPSIZE(");

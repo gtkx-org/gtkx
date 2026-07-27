@@ -20,6 +20,10 @@ const invokeCallback = (...args: unknown[]): void => {
     );
 };
 
+const throwOnFinish = (failure: Error) => (): never => {
+    throw failure;
+};
+
 const getRejection = async (promise: Promise<unknown>): Promise<unknown> => {
     try {
         await promise;
@@ -63,28 +67,12 @@ describe("promisify", () => {
     it("rejects with the error thrown by the finish callable", () => {
         const failure = new Error("boom");
 
-        return expect(
-            promisify(
-                invokeCallback,
-                () => {
-                    throw failure;
-                },
-                undefined,
-            ),
-        ).rejects.toBe(failure);
+        return expect(promisify(invokeCallback, throwOnFinish(failure), undefined)).rejects.toBe(failure);
     });
 
     it("attaches the creation call-site as the rejected error's cause", async () => {
-        const rejection = await getRejection(
-            promisify(
-                invokeCallback,
-                () => {
-                    throw new Error("boom");
-                },
-                undefined,
-            ),
-        );
-
+        const failure = new Error("boom");
+        const rejection = await getRejection(promisify(invokeCallback, throwOnFinish(failure), undefined));
         expect(rejection).toBeInstanceOf(Error);
         const cause = (rejection as Error).cause;
         expect(cause).toBeInstanceOf(Error);
@@ -97,8 +85,8 @@ describe("generated promisified bindings", () => {
     it("resolves an instance async method against its annotated static finish", async () => {
         const pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, false, 8, 2, 2);
         const stream = Gio.MemoryOutputStream.newResizable();
-        const saved = await pixbuf.saveToStreamvAsync(stream, "png", null, null);
-        expect(saved).toBe(true);
+        const isSaved = await pixbuf.saveToStreamvAsync(stream, "png", null, null);
+        expect(isSaved).toBe(true);
         expect(stream.getDataSize()).toBeGreaterThan(0);
     });
 
@@ -107,8 +95,8 @@ describe("generated promisified bindings", () => {
         const secondOutput = Gio.MemoryOutputStream.newResizable();
         const first = Gio.SimpleIOStream.new(Gio.MemoryInputStream.newFromData([1, 2, 3, 4], null), firstOutput);
         const second = Gio.SimpleIOStream.new(Gio.MemoryInputStream.newFromData([5, 6], null), secondOutput);
-        const spliced = await first.spliceAsync(second, Gio.IOStreamSpliceFlags.NONE, 0);
-        expect(spliced).toBe(true);
+        const isSpliced = await first.spliceAsync(second, Gio.IOStreamSpliceFlags.NONE, 0);
+        expect(isSpliced).toBe(true);
         expect(secondOutput.getDataSize()).toBe(4);
         expect(firstOutput.getDataSize()).toBe(2);
     });

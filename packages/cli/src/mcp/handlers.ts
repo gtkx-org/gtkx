@@ -125,8 +125,6 @@ const resolveRole = (value: string | number): Gtk.AccessibleRole | undefined => 
     return typeof resolved === "number" ? resolved : undefined;
 };
 
-// A query with no matches is a normal result, not an error; the underlying find* helpers
-// throw (with a full tree diagnostic) when nothing is found, so treat that as an empty match.
 const matchesOrEmpty = async (find: () => Promise<Gtk.Widget[]>): Promise<Gtk.Widget[]> => {
     try {
         return await find();
@@ -148,7 +146,8 @@ async function handleQuery(
 
             if (roleValue === undefined) {
                 throw invalidRequestError(
-                    `Unknown accessible role "${params.value}"; use the lowercase role shown in the widget tree, e.g. "button", "list", "list_item", or "checkbox".`,
+                    `Unknown accessible role "${String(params.value)}"; use the lowercase role shown in the ` +
+                    "widget tree, e.g. \"button\", \"list\", \"list_item\", or \"checkbox\".",
                 );
             }
 
@@ -169,9 +168,6 @@ async function handleQuery(
         }
     }
 
-    // Query results are match summaries, not trees: serialize each match shallowly (no
-    // descendants) so a container-role match doesn't dump its whole subtree. Use
-    // widget.getProps on an id to expand one.
     return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.getOrCreateId(widget), testing, 0)) };
 }
 

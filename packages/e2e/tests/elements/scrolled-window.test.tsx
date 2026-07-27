@@ -8,6 +8,14 @@ const getPolicy = (scrolledWindow: Gtk.ScrolledWindow): [Gtk.PolicyType, Gtk.Pol
     return scrolledWindow.getPolicy();
 };
 
+function App({ text }: { text: string }) {
+    return (
+        <GtkScrolledWindow>
+            <GtkLabel>{text}</GtkLabel>
+        </GtkScrolledWindow>
+    );
+}
+
 describe("render - ScrolledWindow (1)", () => {
     it("creates ScrolledWindow widget", async () => {
         const ref = createRef<Gtk.ScrolledWindow>();
@@ -115,14 +123,6 @@ describe("render - ScrolledWindow (3)", () => {
         expect(screen.getByText("Scrollable Content")).toBeDefined();
     });
 });
-
-function App({ text }: { text: string }) {
-    return (
-        <GtkScrolledWindow>
-            <GtkLabel>{text}</GtkLabel>
-        </GtkScrolledWindow>
-    );
-}
 
 describe("render - ScrolledWindow (4)", () => {
     it("works with Box as child", async () => {

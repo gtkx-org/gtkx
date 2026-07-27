@@ -17,8 +17,15 @@
     "packageOptions": {
         "entryPoints": ["dist/index.d.ts"],
         "tsconfig": "../../website/tsconfig.typedoc.json",
-        "skipErrorChecking": true,
         "readme": "none"
+    },
+    "treatWarningsAsErrors": true,
+    "validation": {
+        "notExported": true,
+        "invalidLink": true,
+        "rewrittenLink": true,
+        "notDocumented": true,
+        "unusedMergeModuleWith": true
     },
     "sanitizeComments": true,
     "out": "reference",

@@ -28,6 +28,67 @@ const expandableExpanders = (): Gtk.TreeExpander[] =>
         .filter((widget): widget is Gtk.TreeExpander => widget instanceof Gtk.TreeExpander)
         .filter((widget) => widget.getListRow()?.isExpandable() ?? false);
 
+const expectNoActWarning = (errorSpy: MockInstance<typeof console.error>): void => {
+    const isWarned = errorSpy.mock.calls.some((args: unknown[]) =>
+        args.some((arg) => typeof arg === "string" && arg.includes("not wrapped in act")),
+    );
+
+    expect(isWarned).toBe(false);
+};
+
+const expectTreeToggleHasNoActWarning = async (errorSpy: MockInstance<typeof console.error>): Promise<void> => {
+    await renderListView(tree, { estimatedItemHeight: 48 });
+    const row = expandableExpanders()[0]?.getListRow();
+
+    if (!row) {
+        throw new Error("expected an expandable tree row");
+    }
+
+    await act(() => {
+        row.setExpanded(true);
+    });
+
+    await screen.findAllByText("Alpha");
+
+    await act(() => {
+        row.setExpanded(false);
+    });
+
+    expectNoActWarning(errorSpy);
+};
+
+const expectMultiSelectionHasNoActWarning = async (errorSpy: MockInstance<typeof console.error>): Promise<void> => {
+    const onSelectionChanged = vi.fn();
+
+    const { ref } = await renderListView(
+        [
+            { id: "1", value: { name: "First" } },
+            { id: "2", value: { name: "Second" } },
+        ],
+        { selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged },
+    );
+
+    await userEvent.selectOptions(ref.current, [0, 1]);
+    expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
+    expectNoActWarning(errorSpy);
+};
+
+const expectDropdownSelectionHasNoActWarning = async (
+    errorSpy: MockInstance<typeof console.error>,
+): Promise<void> => {
+    const onSelectionChanged = vi.fn();
+
+    await render(
+        <DropDown onSelectionChanged={onSelectionChanged} items={valueItems(["Option 1", "Option 2", "Option 3"])} />,
+    );
+
+    await screen.findAllByText("Option 1");
+    await userEvent.selectOptions(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX), [2]);
+    await screen.findAllByText("Option 3");
+    expect(onSelectionChanged).toHaveBeenCalledWith("3");
+    expectNoActWarning(errorSpy);
+};
+
 describe("act safety", () => {
     let errorSpy: MockInstance<typeof console.error>;
 
@@ -39,58 +100,15 @@ describe("act safety", () => {
         errorSpy.mockRestore();
     });
 
-    const assertNoActWarning = (): void => {
-        const warned = errorSpy.mock.calls.some((args: unknown[]) =>
-            args.some((arg) => typeof arg === "string" && arg.includes("not wrapped in act")),
-        );
-
-        expect(warned).toBe(false);
-    };
-
     it("expands and collapses a tree row without an act warning", async () => {
-        await renderListView(tree, { estimatedItemHeight: 48 });
-        const row = expandableExpanders()[0]?.getListRow();
-
-        if (!row) {
-            throw new Error("expected an expandable tree row");
-        }
-
-        await act(() => row.setExpanded(true));
-        await screen.findAllByText("Alpha");
-        await act(() => row.setExpanded(false));
-        assertNoActWarning();
+        await expectTreeToggleHasNoActWarning(errorSpy);
     });
 
     it("changes a multi-selection without an act warning", async () => {
-        const onSelectionChanged = vi.fn();
-
-        const { ref } = await renderListView(
-            [
-                { id: "1", value: { name: "First" } },
-                { id: "2", value: { name: "Second" } },
-            ],
-            { selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged },
-        );
-
-        await userEvent.selectOptions(ref.current, [0, 1]);
-        expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
-        assertNoActWarning();
+        await expectMultiSelectionHasNoActWarning(errorSpy);
     });
 
     it("changes a dropdown selection without an act warning", async () => {
-        const onSelectionChanged = vi.fn();
-
-        await render(
-            <DropDown
-                onSelectionChanged={onSelectionChanged}
-                items={valueItems(["Option 1", "Option 2", "Option 3"])}
-            />,
-        );
-
-        await screen.findAllByText("Option 1");
-        await userEvent.selectOptions(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX), [2]);
-        await screen.findAllByText("Option 3");
-        expect(onSelectionChanged).toHaveBeenCalledWith("3");
-        assertNoActWarning();
+        await expectDropdownSelectionHasNoActWarning(errorSpy);
     });
 });

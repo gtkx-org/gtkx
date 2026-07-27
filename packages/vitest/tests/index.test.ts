@@ -59,7 +59,12 @@ describe("gtkx vitest plugin", () => {
     it("inlines the gtkx source packages except the native addon", () => {
         const result = callConfig(gtkx(), {});
         const inline = result.test?.server?.deps?.inline ?? [];
-        expect(inline.map((pattern) => pattern.source)).toEqual([String.raw`@gtkx\/(?!native)`, String.raw`[/\\]\.gtkx[/\\]`]);
+
+        expect(inline.map((pattern) => pattern.source)).toEqual([
+            String.raw`@gtkx\/(?!native)`,
+            String.raw`[/\\]\.gtkx[/\\]`,
+        ]);
+
         expect(inline.map((pattern) => pattern.flags)).toEqual(["", ""]);
     });
 

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createModuleRegistration, isRefreshBoundary, performRefresh } from "../src/refresh-runtime.js";
 
+const ES_MODULE_FLAG = "__esModule";
+
 const NullComponent = () => null;
 
 const lowercaseHelper = function lowercaseHelper() {
     return 1;
 };
-
-const ES_MODULE_FLAG = "__esModule";
 
 const esModuleExports = (exports: Record<string, unknown>): Record<string, unknown> => ({
     [ES_MODULE_FLAG]: true,
@@ -23,7 +23,10 @@ describe("createModuleRegistration", () => {
 
     it("registers components without throwing", () => {
         const reg = createModuleRegistration("mod-2");
-        expect(() => reg.$RefreshReg$(NullComponent, "Component")).not.toThrow();
+
+        expect(() => {
+            reg.$RefreshReg$(NullComponent, "Component");
+        }).not.toThrow();
     });
 
     it("exposes a $RefreshSig$ signature factory function", () => {
@@ -83,6 +86,8 @@ describe("isRefreshBoundary", () => {
 
 describe("performRefresh", () => {
     it("does not throw when invoked", () => {
-        expect(() => performRefresh()).not.toThrow();
+        expect(() => {
+            performRefresh();
+        }).not.toThrow();
     });
 });

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { build } from "../src/builder.js";
 
 type ViteConfigSnapshot = {
     plugins: ({ name?: string } | null)[];
@@ -15,17 +16,11 @@ type ViteConfigSnapshot = {
     ssr: { noExternal: boolean };
 };
 
+const APP_VERSION_DEFINE = "__APP_VERSION__";
+
 const { viteBuildMock } = vi.hoisted(() => ({
-    viteBuildMock: vi.fn<(config: ViteConfigSnapshot) => Promise<void>>(async () => {}),
+    viteBuildMock: vi.fn<(config: ViteConfigSnapshot) => Promise<void>>(() => Promise.resolve()),
 }));
-
-vi.mock("vite", async (importActual) => {
-    const actual = await importActual<typeof import("vite")>();
-
-    return { ...actual, build: viteBuildMock };
-});
-
-import { build } from "../src/builder.js";
 
 function getViteConfig(): ViteConfigSnapshot {
     const call = viteBuildMock.mock.calls[0];
@@ -37,8 +32,6 @@ function getViteConfig(): ViteConfigSnapshot {
     return call[0];
 }
 
-const APP_VERSION_DEFINE = "__APP_VERSION__";
-
 const resetBuildMocks = (): void => {
     viteBuildMock.mockClear();
 };
@@ -46,6 +39,12 @@ const resetBuildMocks = (): void => {
 const restoreSpies = (): void => {
     vi.restoreAllMocks();
 };
+
+vi.mock("vite", async (importActual) => {
+    const actual = await importActual<typeof import("vite")>();
+
+    return { ...actual, build: viteBuildMock };
+});
 
 describe("build (core config)", () => {
     beforeEach(resetBuildMocks);

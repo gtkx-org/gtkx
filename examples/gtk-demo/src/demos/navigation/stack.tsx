@@ -6,7 +6,19 @@ import demoIconUri from "#data/icons/org.gtk.Demo4.svg";
 import type { Demo } from "../types.js";
 import sourceCode from "./stack.tsx?raw";
 
-const StackDemo = () => {
+const stackDemo: Demo = {
+    id: "stack",
+    title: "Stack",
+    description:
+        "GtkStack is a container that shows a single child at a time, with nice transitions when the visible child " +
+        "changes.\n\nGtkStackSwitcher adds buttons to control which child is visible.",
+    keywords: [],
+    component: StackDemo,
+    sourceCode,
+    resizable: false,
+};
+
+function StackDemo() {
     const demoIcon = Gio.FileIcon.new(Gio.fileNewForUri(demoIconUri));
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
@@ -26,15 +38,6 @@ const StackDemo = () => {
             </GtkStack>
         </GtkBox>
     );
-};
+}
 
-export const stackDemo: Demo = {
-    id: "stack",
-    title: "Stack",
-    description:
-        "GtkStack is a container that shows a single child at a time, with nice transitions when the visible child changes.\n\nGtkStackSwitcher adds buttons to control which child is visible.",
-    keywords: [],
-    component: StackDemo,
-    sourceCode,
-    resizable: false,
-};
+export { stackDemo };

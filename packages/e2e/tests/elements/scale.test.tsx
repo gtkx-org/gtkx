@@ -5,14 +5,6 @@ import { describe, expect, it } from "vitest";
 
 type ScaleMark = { value: number; position: Gtk.PositionType; markup?: string | null };
 
-const ScaleWithMarks = ({ marks }: { marks?: ScaleMark[] }) => (
-    <GtkScale adjustment={<GtkAdjustment value={0} lower={0} upper={100} />} marks={marks} />
-);
-
-const expectDefaultRange = (): void => {
-    expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 0, min: 0, max: 100 } })).toBeTruthy();
-};
-
 const MIN_MAX_MARKS = [
     { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Min" },
     { value: 100, position: Gtk.PositionType.BOTTOM, markup: "Max" },
@@ -23,6 +15,14 @@ const MIN_MID_MAX_MARKS = [
     { value: 50, position: Gtk.PositionType.BOTTOM, markup: "Mid" },
     { value: 100, position: Gtk.PositionType.BOTTOM, markup: "Max" },
 ];
+
+const ScaleWithMarks = ({ marks }: { marks?: ScaleMark[] }) => (
+    <GtkScale adjustment={<GtkAdjustment value={0} lower={0} upper={100} />} marks={marks} />
+);
+
+const expectDefaultRange = (): void => {
+    expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 0, min: 0, max: 100 } })).toBeTruthy();
+};
 
 const expectMarksTransition = async (initialMarks: ScaleMark[], updatedMarks: ScaleMark[]): Promise<void> => {
     const { rerender } = await render(<ScaleWithMarks marks={initialMarks} />);

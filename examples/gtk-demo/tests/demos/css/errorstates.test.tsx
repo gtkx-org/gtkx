@@ -5,6 +5,20 @@ import { describe, expect, it, vi } from "vitest";
 import { errorstatesDemo } from "../../../src/demos/css/errorstates.js";
 import { renderDemo } from "../../test-utils.js";
 
+type DetailEntries = {
+    detailsEntry: Gtk.Entry;
+    moreDetailsEntry: Gtk.Entry;
+};
+
+const renderAndFlagMoreDetails = async (): Promise<DetailEntries> => {
+    await renderDemo(errorstatesDemo);
+    const detailsEntry = (await screen.findByLabelText("_Details")) as Gtk.Entry;
+    const moreDetailsEntry = screen.getByLabelText("More D_etails") as Gtk.Entry;
+    await userEvent.type(moreDetailsEntry, "filled in");
+
+    return { detailsEntry, moreDetailsEntry };
+};
+
 describe("errorstatesDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(errorstatesDemo.id).toBe("errorstates");
@@ -28,14 +42,6 @@ describe("errorstatesDemo metadata", () => {
 });
 
 describe("errorstatesDemo entries", () => {
-    const renderAndFlagMoreDetails = async (): Promise<{ detailsEntry: Gtk.Entry; moreDetailsEntry: Gtk.Entry }> => {
-        await renderDemo(errorstatesDemo);
-        const detailsEntry = (await screen.findByLabelText("_Details")) as Gtk.Entry;
-        const moreDetailsEntry = screen.getByLabelText("More D_etails") as Gtk.Entry;
-        await userEvent.type(moreDetailsEntry, "filled in");
-        return { detailsEntry, moreDetailsEntry };
-    };
-
     it("flags the more-details entry as invalid when filled while details is empty", async () => {
         const { moreDetailsEntry } = await renderAndFlagMoreDetails();
         expect(moreDetailsEntry.hasCssClass("error")).toBe(true);
@@ -59,9 +65,11 @@ describe("errorstatesDemo switch and scale", () => {
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
         expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.FALSE);
         await userEvent.click(sw);
+
         const errorLabel = (await screen.findByRole(Gtk.AccessibleRole.LABEL, {
             name: "Level too low",
         })) as Gtk.Label;
+
         expect(errorLabel.hasCssClass("error")).toBe(true);
         expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.TRUE);
         expect(getWidgetErrorMessage(sw)).toEqual([errorLabel]);
@@ -73,9 +81,11 @@ describe("errorstatesDemo switch and scale", () => {
         sw.grabFocus();
         await userEvent.keyboard(sw, "{Control>}m{/Control}");
         expect(sw.getActive()).toBe(true);
+
         const errorLabel = (await screen.findByRole(Gtk.AccessibleRole.LABEL, {
             name: "Level too low",
         })) as Gtk.Label;
+
         expect(errorLabel.hasCssClass("error")).toBe(true);
         expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.TRUE);
     });

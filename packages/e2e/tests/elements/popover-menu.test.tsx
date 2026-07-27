@@ -6,11 +6,10 @@ import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { createAppIdFactory } from "../helpers/unique-name.js";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-let nextAppId = 0;
-
-const uniqueAppId = (): string => `org.gtkx.popovermenutest${nextAppId++}`;
+const uniqueAppId = createAppIdFactory("org.gtkx.popovermenutest");
 
 const buildMenu = (items: { label: string; action: string }[]): Gio.Menu => {
     const menu = Gio.Menu.new();
@@ -90,10 +89,7 @@ describe("render - PopoverMenu actions", () => {
                     <GtkApplicationWindow
                         ref={windowRef}
                         actions={enabled && (
-                            <GSimpleAction
-                                name="toggle"
-                                onActivate={() => {}}
-                            />
+                            <GSimpleAction name="toggle" onActivate={vi.fn()} />
                         )}
                     />
                 </GtkApplication>

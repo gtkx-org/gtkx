@@ -21,9 +21,9 @@ pub enum ViewKind {
 }
 
 impl TryFrom<sys::napi_typedarray_type> for ViewKind {
-    type Error = napi::Error;
+    type Error = Error;
 
-    fn try_from(raw: sys::napi_typedarray_type) -> napi::Result<Self> {
+    fn try_from(raw: sys::napi_typedarray_type) -> Result<Self> {
         match raw {
             sys::TypedarrayType::int8_array => Ok(Self::Int8),
             sys::TypedarrayType::uint8_array => Ok(Self::Uint8),
@@ -36,8 +36,8 @@ impl TryFrom<sys::napi_typedarray_type> for ViewKind {
             sys::TypedarrayType::float64_array => Ok(Self::Float64),
             sys::TypedarrayType::bigint64_array => Ok(Self::BigInt64),
             sys::TypedarrayType::biguint64_array => Ok(Self::BigUint64),
-            other => Err(napi::Error::new(
-                napi::Status::InvalidArg,
+            other => Err(Error::new(
+                Status::InvalidArg,
                 format!("Unsupported typed-array type tag: {other}"),
             )),
         }
@@ -45,6 +45,7 @@ impl TryFrom<sys::napi_typedarray_type> for ViewKind {
 }
 
 impl ViewKind {
+    #[must_use]
     pub fn element_size(self) -> usize {
         match self {
             Self::Int8 | Self::Uint8 | Self::Uint8Clamped | Self::DataView => 1,
@@ -84,7 +85,7 @@ pub struct TypedView {
 }
 
 impl TypedView {
-    pub fn from_unknown(env: &Env, value: Unknown<'_>) -> napi::Result<Option<Self>> {
+    pub fn from_unknown(env: &Env, value: Unknown<'_>) -> Result<Option<Self>> {
         if value.is_typedarray()? {
             Ok(Some(Self::from_typed_array(env, &value)?))
         } else if value.is_dataview()? {
@@ -94,23 +95,27 @@ impl TypedView {
         }
     }
 
+    #[must_use]
     pub fn ptr(&self) -> *mut c_void {
         self.ptr
     }
 
+    #[must_use]
     pub fn byte_length(&self) -> usize {
         self.byte_length
     }
 
+    #[must_use]
     pub fn length(&self) -> usize {
         self.length
     }
 
+    #[must_use]
     pub fn kind(&self) -> ViewKind {
         self.kind
     }
 
-    fn from_typed_array(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
+    fn from_typed_array(env: &Env, value: &Unknown<'_>) -> Result<Self> {
         let mut raw_kind: sys::napi_typedarray_type = sys::TypedarrayType::int8_array;
         let mut length = 0usize;
         let mut data = std::ptr::null_mut();
@@ -120,11 +125,11 @@ impl TypedView {
             sys::napi_get_typedarray_info(
                 env.raw(),
                 value.raw(),
-                &mut raw_kind,
-                &mut length,
-                &mut data,
-                &mut array_buffer,
-                &mut byte_offset,
+                &raw mut raw_kind,
+                &raw mut length,
+                &raw mut data,
+                &raw mut array_buffer,
+                &raw mut byte_offset,
             )
         };
         check_status!(status, "Failed to read typed-array info")?;
@@ -138,7 +143,7 @@ impl TypedView {
         })
     }
 
-    fn from_data_view(env: &Env, value: &Unknown<'_>) -> napi::Result<Self> {
+    fn from_data_view(env: &Env, value: &Unknown<'_>) -> Result<Self> {
         let mut byte_length = 0usize;
         let mut data = std::ptr::null_mut();
         let mut array_buffer = std::ptr::null_mut();
@@ -147,10 +152,10 @@ impl TypedView {
             sys::napi_get_dataview_info(
                 env.raw(),
                 value.raw(),
-                &mut byte_length,
-                &mut data,
-                &mut array_buffer,
-                &mut byte_offset,
+                &raw mut byte_length,
+                &raw mut data,
+                &raw mut array_buffer,
+                &raw mut byte_offset,
             )
         };
         check_status!(status, "Failed to read DataView info")?;
@@ -163,13 +168,14 @@ impl TypedView {
         })
     }
 
-    fn reject_if_shared(env: &Env, buffer: sys::napi_value) -> napi::Result<()> {
+    fn reject_if_shared(env: &Env, buffer: sys::napi_value) -> Result<()> {
         let mut is_array_buffer = false;
-        let status = unsafe { sys::napi_is_arraybuffer(env.raw(), buffer, &mut is_array_buffer) };
+        let status =
+            unsafe { sys::napi_is_arraybuffer(env.raw(), buffer, &raw mut is_array_buffer) };
         check_status!(status, "Failed to inspect a view's backing buffer")?;
         if !is_array_buffer {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
+            return Err(Error::new(
+                Status::InvalidArg,
                 "SharedArrayBuffer-backed views cannot cross the FFI boundary",
             ));
         }

@@ -4,10 +4,10 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
 import {
-    omitsPrimaryReturn,
     renderCallbackType,
     renderDescriptor,
     renderSelfDescriptor,
+    shouldOmitPrimaryReturn,
 } from "../../analysis/descriptor-render.js";
 import {
     arrayLengthSources,
@@ -20,7 +20,7 @@ import {
 import { renderTsType } from "../../analysis/ts-type.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
-import { isCollectibleCallerOut, isHandlePassing, passesHandleInPlace } from "./param-marshal.js";
+import { isCollectibleCallerOut, isHandlePassedInPlace, isHandlePassing } from "./param-marshal.js";
 
 type PromisifiedStep = { sawOptional: boolean; expression: string | undefined };
 
@@ -77,30 +77,30 @@ const parameterAnnotation = (context: ModuleContext, fn: GirFunction, parameter:
 const isParameterOptional = (parameter: GirParameter, isOptionalExtra: (parameter: GirParameter) => boolean): boolean =>
     parameter.optional || isOptionalExtra(parameter);
 
-const formatParameterPart = (name: string, annotation: string, optional: boolean): string =>
-    optional ? `${name}?: ${annotation}` : `${name}: ${annotation}`;
+const formatParameterPart = (name: string, annotation: string, isOptional: boolean): string =>
+    isOptional ? `${name}?: ${annotation}` : `${name}: ${annotation}`;
 
 const renderInputParameters = (
     context: ModuleContext,
     fn: GirFunction,
-    skip: (parameter: GirParameter) => boolean,
+    shouldSkip: (parameter: GirParameter) => boolean,
     isOptionalExtra: (parameter: GirParameter) => boolean,
 ): string => {
     const parts: string[] = [];
-    let sawOptional = false;
+    let isSawOptional = false;
 
     for (const { parameter, index } of inputParameters(context.library, fn)) {
-        if (skip(parameter)) {
+        if (shouldSkip(parameter)) {
             continue;
         }
 
         const name = parameterIdentifier(parameter, index);
 
         if (isParameterOptional(parameter, isOptionalExtra)) {
-            sawOptional = true;
+            isSawOptional = true;
         }
 
-        parts.push(formatParameterPart(name, parameterAnnotation(context, fn, parameter), sawOptional));
+        parts.push(formatParameterPart(name, parameterAnnotation(context, fn, parameter), isSawOptional));
     }
 
     return parts.join(", ");
@@ -115,7 +115,7 @@ const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string
     const folded = foldedLengthIndices(context.library, fn);
     const outs = fn.parameters.filter((p, index) => isReturnedOutParameter(context, p) && !folded.has(index));
 
-    const primary = omitsPrimaryReturn(context.library, fn.returnValue)
+    const primary = shouldOmitPrimaryReturn(context.library, fn.returnValue)
         ? undefined
         : renderTsType(context, fn.returnValue.type, fn.returnValue.nullable);
 
@@ -142,22 +142,26 @@ const classifyPromisifiedParameter = (
         return { sawOptional: true, expression: undefined };
     }
 
-    if (skipPromisifiedParameter(promisify, parameter, index)) {
+    if (shouldSkipPromisifiedParameter(promisify, parameter, index)) {
         return { sawOptional: state.sawOptional, expression: undefined };
     }
 
-    const sawOptional = state.sawOptional || parameter.optional;
+    const isSawOptional = state.sawOptional || parameter.optional;
 
-    return { sawOptional, expression: promisifiedArgument(promisify, parameter, index, sawOptional) };
+    return { sawOptional: isSawOptional, expression: promisifiedArgument(promisify, parameter, index, isSawOptional) };
 };
 
 const collectPromisifiedArguments = (promisify: PromisifyContext, cancellableIndex: number): string[] => {
     const expressions: string[] = [];
-    let sawOptional = false;
+    let isSawOptional = false;
 
     for (const [index, parameter] of promisify.asyncFn.parameters.entries()) {
-        const step = classifyPromisifiedParameter(promisify, parameter, index, { cancellableIndex, sawOptional });
-        sawOptional = step.sawOptional;
+        const step = classifyPromisifiedParameter(promisify, parameter, index, {
+            cancellableIndex,
+            sawOptional: isSawOptional,
+        });
+
+        isSawOptional = step.sawOptional;
 
         if (step.expression !== undefined) {
             expressions.push(step.expression);
@@ -212,7 +216,7 @@ const finishCallExpression = (asyncFn: GirFunction, finishFn: GirFunction, owner
         ? `${ownerName}.${methodExportName(finishFn)}.bind(${ownerName})`
         : `this.${methodExportName(finishFn)}.bind(this)`;
 
-const skipPromisifiedParameter = (promisify: PromisifyContext, parameter: GirParameter, index: number): boolean =>
+const shouldSkipPromisifiedParameter = (promisify: PromisifyContext, parameter: GirParameter, index: number): boolean =>
     isCallbackParameter(promisify.context, parameter) ||
     promisify.closureIndices.has(index) ||
     (isOutParameter(parameter) && !isCallerAllocatedOut(parameter));
@@ -221,7 +225,7 @@ const promisifiedArgument = (
     promisify: PromisifyContext,
     parameter: GirParameter,
     index: number,
-    sawOptional: boolean,
+    hasSeenOptional: boolean,
 ): string => {
     const { context, asyncFn, lengthSources } = promisify;
     const sourceIndex = lengthSources.get(index);
@@ -231,7 +235,7 @@ const promisifiedArgument = (
         return arrayLengthArgument(source, sourceIndex);
     }
 
-    return parameterCallExpression(context, parameter, index, sawOptional);
+    return parameterCallExpression(context, parameter, index, hasSeenOptional);
 };
 
 const findCancellableIndex = (context: ModuleContext, parameters: GirParameter[]): number =>
@@ -413,13 +417,16 @@ const planOutParam = (
     context: ModuleContext,
     parameter: GirParameter,
     instanceOffset: number,
-    consumed: boolean,
+    isConsumed: boolean,
 ): CallArgPlan => {
     const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
         argIndexOffset: instanceOffset,
     });
 
-    return { paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", consumed }), inputExpr: undefined };
+    return {
+        paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", consumed: isConsumed }),
+        inputExpr: undefined,
+    };
 };
 
 const constructibleName = (
@@ -471,7 +478,7 @@ const planInoutParam = (
 ): CallArgPlan => {
     const { index, instanceOffset, consumed, lengthSource } = options;
 
-    if (passesHandleInPlace(context, parameter)) {
+    if (isHandlePassedInPlace(context, parameter)) {
         const descriptor = renderDescriptor(context, parameter.type, "none", { argIndexOffset: instanceOffset });
 
         return {
@@ -518,8 +525,8 @@ const planInParam = (
     };
 };
 
-const handleArgument = (context: ModuleContext, name: string, nullable: boolean): string => {
-    if (nullable) {
+const handleArgument = (context: ModuleContext, name: string, isNullable: boolean): string => {
+    if (isNullable) {
         context.addRuntimeImport("tryGetHandle");
 
         return `tryGetHandle(${name})`;
@@ -540,19 +547,19 @@ const hashtableArgument = (context: ModuleContext, valueRef: TypeId, name: strin
     return `${name} ? globalThis.Array.from(${name}) : null`;
 };
 
-const mapHandleExpression = (name: string, nullable: boolean): string =>
-    nullable ? `${name}?.map((item) => getHandle(item))` : `${name}.map((item) => getHandle(item))`;
+const mapHandleExpression = (name: string, isNullable: boolean): string =>
+    isNullable ? `${name}?.map((item) => getHandle(item))` : `${name}.map((item) => getHandle(item))`;
 
 const collectionArgument = (
     context: ModuleContext,
     type: GirType | undefined,
     name: string,
-    nullable: boolean,
+    isNullable: boolean,
 ): string | undefined => {
     if ((type?.kind === "carray" || type?.kind === "list") && isHandlePassing(context, type.element)) {
         context.addRuntimeImport("getHandle");
 
-        return mapHandleExpression(name, nullable);
+        return mapHandleExpression(name, isNullable);
     }
 
     if (type?.kind === "hashtable") {
@@ -566,7 +573,7 @@ const parameterCallExpression = (
     context: ModuleContext,
     parameter: GirParameter,
     index: number,
-    forceNullable = false,
+    isForcedNullable = false,
 ): string => {
     const name = parameterIdentifier(parameter, index);
     const ref = parameter.type;
@@ -575,15 +582,15 @@ const parameterCallExpression = (
         return name;
     }
 
-    const nullable = parameter.nullable || parameter.optional || forceNullable;
+    const isNullable = parameter.nullable || parameter.optional || isForcedNullable;
 
     if (isHandlePassing(context, ref)) {
-        return handleArgument(context, name, nullable);
+        return handleArgument(context, name, isNullable);
     }
 
     const type = context.library.typeFor(ref);
 
-    return collectionArgument(context, type, name, nullable) ?? name;
+    return collectionArgument(context, type, name, isNullable) ?? name;
 };
 
 export {

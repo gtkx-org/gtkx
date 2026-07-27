@@ -32,6 +32,9 @@ allowBuilds:
   esbuild: true
 
 packageExtensions:
+  '@emotion/utils':
+    dependencies:
+      '@emotion/sheet': ^1.4.0
   eslint-plugin-perfectionist:
     peerDependencies:
       typescript: "*"

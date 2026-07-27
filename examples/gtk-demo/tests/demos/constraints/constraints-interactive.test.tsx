@@ -3,21 +3,26 @@ import { userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsInteractiveDemo } from "../../../src/demos/constraints/constraints-interactive.js";
 import { renderDemo } from "../../test-utils.js";
-import { expectChildButtonLabels, findChildButtons, findContainerLayout } from "./constraint-helpers.js";
+import {
+    CHILD_BUTTON_LABELS,
+    collectConstraints,
+    findChildButtons,
+    findContainerLayout,
+    findLabelledChildButtons,
+} from "./constraint-helpers.js";
 
-const findDividerLeftConstant = (layout: Gtk.ConstraintLayout): number | null => {
-    const observer = layout.observeConstraints();
-    for (let i = 0; i < observer.getNItems(); i++) {
-        const item = observer.getItem(i);
-        if (!(item instanceof Gtk.Constraint)) continue;
-        if (item.getTargetAttribute() !== Gtk.ConstraintAttribute.LEFT) continue;
-        const target = item.getTarget();
-        if (target instanceof Gtk.ConstraintGuide && target.getName() === "divider") {
-            return item.getConstant();
-        }
+const isDividerLeftConstraint = (constraint: Gtk.Constraint): boolean => {
+    if (constraint.getTargetAttribute() !== Gtk.ConstraintAttribute.LEFT) {
+        return false;
     }
-    return null;
+
+    const target = constraint.getTarget();
+
+    return target instanceof Gtk.ConstraintGuide && target.getName() === "divider";
 };
+
+const findDividerLeftConstant = (layout: Gtk.ConstraintLayout): number | null =>
+    collectConstraints(layout).find((constraint) => isDividerLeftConstraint(constraint))?.getConstant() ?? null;
 
 describe("constraintsInteractiveDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -34,7 +39,8 @@ describe("constraintsInteractiveDemo metadata", () => {
 describe("constraintsInteractiveDemo content", () => {
     it("renders three button children with the expected labels", async () => {
         await renderDemo(constraintsInteractiveDemo);
-        await expectChildButtonLabels();
+        const buttons = await findLabelledChildButtons();
+        expect(buttons.map((button) => button.getLabel())).toEqual(CHILD_BUTTON_LABELS);
     });
 });
 
@@ -43,17 +49,17 @@ describe("constraintsInteractiveDemo dragging", () => {
         await renderDemo(constraintsInteractiveDemo);
         const { box, layout } = await findContainerLayout();
         expect(findDividerLeftConstant(layout)).toBeNull();
-
         await userEvent.drag(box, 30, 0);
 
-        await waitFor(() => expect(findDividerLeftConstant(layout)).not.toBeNull());
+        await waitFor(() => {
+            expect(findDividerLeftConstant(layout)).not.toBeNull();
+        });
     });
 
     it("re-solves the layout against the dragged divider position", async () => {
         await renderDemo(constraintsInteractiveDemo);
         const { box, layout } = await findContainerLayout();
         const { button1 } = await findChildButtons();
-
         await userEvent.drag(box, 130, 0);
 
         await waitFor(() => {

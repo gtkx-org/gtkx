@@ -5,6 +5,7 @@ import { Activity, type ReactNode, Suspense, use } from "react";
 import { describe, expect, it } from "vitest";
 
 type Captured = { widget: Gtk.Widget | null };
+type DeferredPromise = { promise: Promise<string>; resolve: () => void };
 
 const capturing =
     (held: Captured) =>
@@ -14,7 +15,7 @@ const capturing =
             }
         };
 
-const getVisibility = (held: Captured): boolean => {
+const isWidgetVisible = (held: Captured): boolean => {
     if (!held.widget) {
         throw new Error("widget was never captured");
     }
@@ -22,18 +23,18 @@ const getVisibility = (held: Captured): boolean => {
     return held.widget.getVisible();
 };
 
-type DeferredPromise = { promise: Promise<string>; resolve: () => void };
-
 const createDeferred = (): DeferredPromise => {
     const { promise, resolve } = Promise.withResolvers<string>();
 
-    return { promise, resolve: () => resolve("loaded") };
+    return { promise, resolve: () => {
+        resolve("loaded");
+    } };
 };
 
-const activityTree = (mode: "visible" | "hidden", held: Captured, visible = true): ReactNode => (
+const activityTree = (mode: "visible" | "hidden", held: Captured, isVisible = true): ReactNode => (
     <GtkBox>
         <Activity mode={mode}>
-            <GtkLabel ref={capturing(held)} visible={visible}>
+            <GtkLabel ref={capturing(held)} visible={isVisible}>
                 Panel
             </GtkLabel>
         </Activity>
@@ -46,21 +47,21 @@ describe("visibility", () => {
     it("hides and restores a mounted subtree with Activity", async () => {
         const held: Captured = { widget: null };
         const { rerender } = await render(activityTree("visible", held));
-        expect(getVisibility(held)).toBe(true);
+        expect(isWidgetVisible(held)).toBe(true);
         await rerender(activityTree("hidden", held));
-        expect(getVisibility(held)).toBe(false);
+        expect(isWidgetVisible(held)).toBe(false);
         await rerender(activityTree("visible", held));
-        expect(getVisibility(held)).toBe(true);
+        expect(isWidgetVisible(held)).toBe(true);
     });
 
     it("keeps an explicitly invisible widget hidden across an unhide cycle", async () => {
         const held: Captured = { widget: null };
         const { rerender } = await render(hiddenPanelTree("visible", held));
-        expect(getVisibility(held)).toBe(false);
+        expect(isWidgetVisible(held)).toBe(false);
         await rerender(hiddenPanelTree("hidden", held));
-        expect(getVisibility(held)).toBe(false);
+        expect(isWidgetVisible(held)).toBe(false);
         await rerender(hiddenPanelTree("visible", held));
-        expect(getVisibility(held)).toBe(false);
+        expect(isWidgetVisible(held)).toBe(false);
     });
 
     it("hides and restores a subtree that suspends after mount", async () => {
@@ -68,25 +69,25 @@ describe("visibility", () => {
         const held: Captured = { widget: null };
         const Deferred = (): ReactNode => <GtkLabel>{use(deferred.promise)}</GtkLabel>;
 
-        const tree = (pending: boolean): ReactNode => (
+        const tree = (isPending: boolean): ReactNode => (
             <GtkBox>
                 <Suspense fallback={<GtkLabel>Loading</GtkLabel>}>
                     <GtkLabel ref={capturing(held)}>Content</GtkLabel>
-                    {pending ? <Deferred /> : null}
+                    {isPending ? <Deferred /> : null}
                 </Suspense>
             </GtkBox>
         );
 
         const { rerender } = await render(tree(false));
-        expect(getVisibility(held)).toBe(true);
+        expect(isWidgetVisible(held)).toBe(true);
         await rerender(tree(true));
-        expect(getVisibility(held)).toBe(false);
+        expect(isWidgetVisible(held)).toBe(false);
 
         await act(async () => {
             deferred.resolve();
             await deferred.promise;
         });
 
-        expect(getVisibility(held)).toBe(true);
+        expect(isWidgetVisible(held)).toBe(true);
     });
 });

@@ -2,7 +2,7 @@ import { indexBeforeOrEnd, remove } from "@gtkx/utils";
 import type { AnyNode, ContentChild, ElementNode, LazyNode, ParentNode, PlaceableNode, PropNode } from "./node.js";
 import { DEFAULT_SLOT, ELEMENT_KIND, LAZY_KIND, nodeObject, PROP_KIND, TEXT_KIND } from "./node.js";
 import { placeChild, unplaceChild } from "./placement.js";
-import { acceptsText, addContent, removeContent, textRestrictionError } from "./text.js";
+import { addContent, canAcceptText, removeContent, textRestrictionError } from "./text.js";
 
 const asPlaceable = (node: AnyNode | null): PlaceableNode | null =>
     node !== null && (node.kind === ELEMENT_KIND || node.kind === LAZY_KIND) ? node : null;
@@ -25,7 +25,7 @@ const asContentChild = (node: AnyNode | null): ContentChild | null =>
     node !== null && (node.kind === TEXT_KIND || node.kind === ELEMENT_KIND) ? node : null;
 
 const attachToContentHost = (parent: ElementNode, child: AnyNode, before: AnyNode | null): void => {
-    if (child.kind === TEXT_KIND && !acceptsText(parent)) {
+    if (child.kind === TEXT_KIND && !canAcceptText(parent)) {
         throw textRestrictionError(child.text);
     }
 

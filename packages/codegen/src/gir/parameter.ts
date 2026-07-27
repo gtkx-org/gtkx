@@ -1,5 +1,15 @@
 import type { ParseContext, TypeId } from "./type-id.js";
-import { attr, attrBool, getChild, getChildren, getDoc, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
+import {
+    attr,
+    getChild,
+    getChildren,
+    getDoc,
+    intAttr,
+    isAttrTrue,
+    nameAttr,
+    parseEnumAttr,
+    type RawNode,
+} from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 type ParameterDirection = "in" | "out" | "inout";
@@ -41,16 +51,16 @@ const SCOPES: Set<CallbackScope> = new Set(["call", "notified", "async", "foreve
 const transferOwnership = (node: RawNode): ParameterTransfer =>
     parseEnumAttr(attr(node, "transfer-ownership"), TRANSFERS, "none", "transfer-ownership");
 
-const nullableAttr = (node: RawNode): boolean => attrBool(node, "nullable") || attrBool(node, "allow-none");
+const hasNullableAttr = (node: RawNode): boolean => isAttrTrue(node, "nullable") || isAttrTrue(node, "allow-none");
 
 const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => ({
     name: nameAttr(node),
     type: typeRefFromNode(node, context),
     direction: parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction"),
     transferOwnership: transferOwnership(node),
-    nullable: nullableAttr(node),
-    optional: attrBool(node, "optional"),
-    callerAllocates: attrBool(node, "caller-allocates"),
+    nullable: hasNullableAttr(node),
+    optional: isAttrTrue(node, "optional"),
+    callerAllocates: isAttrTrue(node, "caller-allocates"),
     scope: parseEnumAttr(attr(node, "scope"), SCOPES, undefined, "scope"),
     closureIndex: intAttr(node, "closure"),
     destroyIndex: intAttr(node, "destroy"),
@@ -73,8 +83,8 @@ const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): 
     return {
         type: typeRefFromNode(node, context),
         transferOwnership: transferOwnership(node),
-        nullable: nullableAttr(node),
-        skip: attrBool(node, "skip"),
+        nullable: hasNullableAttr(node),
+        skip: isAttrTrue(node, "skip"),
     };
 };
 

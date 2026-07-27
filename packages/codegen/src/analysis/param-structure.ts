@@ -3,7 +3,7 @@ import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { TypeId } from "../gir/type-id.js";
 import { type GirCallable, type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
-import { isCellInout, omitsPrimaryReturn } from "./descriptor-render.js";
+import { isCellInout, shouldOmitPrimaryReturn } from "./descriptor-render.js";
 
 type InputParameter = {
     parameter: GirParameter;
@@ -13,7 +13,7 @@ type InputParameter = {
 type HandlerResultOptions = {
     library: Library;
     signal: GirCallable;
-    renderType: (ref: TypeId | undefined, nullable: boolean) => string;
+    renderType: (ref: TypeId | undefined, isNullable: boolean) => string;
     includeCallerAllocated: boolean;
     optOut: boolean;
 };
@@ -145,7 +145,7 @@ const foldedLengthIndices = (library: Library, fn: GirFunction): Set<number> => 
 
 const parameterIdentifier = (parameter: GirParameter, index: number): string => {
     if (parameter.name.length === 0) {
-        return `arg${index}`;
+        return `arg${String(index)}`;
     }
 
     return toCamelIdentifier(parameter.name);
@@ -153,11 +153,11 @@ const parameterIdentifier = (parameter: GirParameter, index: number): string => 
 
 const renderHandlerParameters = (
     parameters: GirParameter[],
-    renderType: (ref: TypeId | undefined, nullable: boolean) => string,
-    additionalExclude: (parameter: GirParameter) => boolean = () => false,
+    renderType: (ref: TypeId | undefined, isNullable: boolean) => string,
+    shouldExclude: (parameter: GirParameter) => boolean = () => false,
 ): string[] =>
     parameters
-        .filter((parameter) => !parameter.isVarargs && !isOutParameter(parameter) && !additionalExclude(parameter))
+        .filter((parameter) => !parameter.isVarargs && !isOutParameter(parameter) && !shouldExclude(parameter))
         .map(
             (parameter, index) =>
                 `${parameterIdentifier(parameter, index)}: ${renderType(parameter.type, parameter.nullable)}`,
@@ -199,18 +199,18 @@ const isHandlerOutParameter = (options: {
     return includeCallerAllocated && isCallerAllocatedOut(parameter);
 };
 
-const scalarResultType = (primary: string | undefined, optOut: boolean): string => {
+const scalarResultType = (primary: string | undefined, isOptOut: boolean): string => {
     if (primary === undefined) {
         return "void";
     }
 
-    return optOut ? `${primary} | undefined` : primary;
+    return isOptOut ? `${primary} | undefined` : primary;
 };
 
 const renderHandlerResultType = (options: HandlerResultOptions): string => {
     const { library, signal, renderType, includeCallerAllocated, optOut } = options;
 
-    const primary = omitsPrimaryReturn(library, signal.returnValue)
+    const primary = shouldOmitPrimaryReturn(library, signal.returnValue)
         ? undefined
         : renderType(signal.returnValue.type, signal.returnValue.nullable);
 

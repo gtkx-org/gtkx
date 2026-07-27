@@ -5,16 +5,17 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareDevIconDir } from "../../src/dev/icon-dir.js";
 
 const DATA_DIR = "data";
+const ICON_REL = join(DATA_DIR, "icons", "hicolor", "scalable", "apps", "com.example.app.svg");
+
+const writeIcon = (projectDir: string, relPath: string): void => {
+    const full = join(projectDir, relPath);
+    mkdirSync(join(full, ".."), { recursive: true });
+    writeFileSync(full, "<svg/>");
+};
 
 describe("prepareDevIconDir", () => {
     let projectDir: string;
     let savedXdgDataDirs: string | undefined;
-
-    const writeIcon = (relPath: string): void => {
-        const full = join(projectDir, relPath);
-        mkdirSync(join(full, ".."), { recursive: true });
-        writeFileSync(full, "<svg/>");
-    };
 
     beforeEach(() => {
         projectDir = mkdtempSync(join(tmpdir(), "gtkx-icon-dir-test-"));
@@ -45,21 +46,21 @@ describe("prepareDevIconDir", () => {
     });
 
     it("exports the data directory with the spec default appended when XDG_DATA_DIRS is unset", () => {
-        writeIcon(join(DATA_DIR, "icons", "hicolor", "scalable", "apps", "com.example.app.svg"));
+        writeIcon(projectDir, ICON_REL);
         const dir = prepareDevIconDir(projectDir, DATA_DIR);
         expect(dir).toBe(join(projectDir, DATA_DIR));
-        expect(process.env.XDG_DATA_DIRS).toBe(`${dir}:/usr/local/share:/usr/share`);
+        expect(process.env.XDG_DATA_DIRS).toBe(`${String(dir)}:/usr/local/share:/usr/share`);
     });
 
     it("prepends to an existing XDG_DATA_DIRS", () => {
-        writeIcon(join(DATA_DIR, "icons", "hicolor", "scalable", "apps", "com.example.app.svg"));
+        writeIcon(projectDir, ICON_REL);
         process.env.XDG_DATA_DIRS = "/app/share:/usr/share";
         const dir = prepareDevIconDir(projectDir, DATA_DIR);
-        expect(process.env.XDG_DATA_DIRS).toBe(`${dir}:/app/share:/usr/share`);
+        expect(process.env.XDG_DATA_DIRS).toBe(`${String(dir)}:/app/share:/usr/share`);
     });
 
     it("does not duplicate an already exported data directory", () => {
-        writeIcon(join(DATA_DIR, "icons", "hicolor", "scalable", "apps", "com.example.app.svg"));
+        writeIcon(projectDir, ICON_REL);
         const first = prepareDevIconDir(projectDir, DATA_DIR);
         const before = process.env.XDG_DATA_DIRS;
         const second = prepareDevIconDir(projectDir, DATA_DIR);

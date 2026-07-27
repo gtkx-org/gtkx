@@ -10,8 +10,12 @@ const renderAssetUrl = (
     }
 
     if (assetBase) {
+        const executableDir = "require(\"path\").dirname(process.execPath)";
+
         return {
-            runtime: `require("path").join(require("path").dirname(process.execPath),${JSON.stringify(assetBase)},${JSON.stringify(filename)})`,
+            runtime:
+                `require("path").join(${executableDir},` +
+                `${JSON.stringify(assetBase)},${JSON.stringify(filename)})`,
         };
     }
 

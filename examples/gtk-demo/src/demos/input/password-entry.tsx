@@ -14,38 +14,63 @@ type PasswordEntryContextValue = {
 
 const PasswordEntryContext = createContext<PasswordEntryContextValue | null>(null);
 
-const usePasswordEntryContext = (): PasswordEntryContextValue => {
-    const ctx = useContext(PasswordEntryContext);
-    if (!ctx) throw new Error("PasswordEntryContext is missing");
-    return ctx;
+const passwordEntryDemo: Demo = {
+    id: "password-entry",
+    title: "Entry/Password Entry",
+    description:
+        "GtkPasswordEntry provides common functionality of entries that are used to enter passwords " +
+        "and other secrets.\n\nIt will display a warning if CapsLock is on, and it can optionally " +
+        "provide a way to see the text.",
+    keywords: [],
+    component: PasswordEntryDemo,
+    titlebar: PasswordEntryTitlebar,
+    provider: PasswordEntryProvider,
+    sourceCode,
+    windowTitle: "Choose a Password",
+    resizable: false,
+    deletable: false,
 };
 
-const PasswordEntryProvider = ({ children }: DemoProviderProps) => {
+function usePasswordEntryContext(): PasswordEntryContextValue {
+    const ctx = useContext(PasswordEntryContext);
+
+    if (!ctx) {
+        throw new Error("PasswordEntryContext is missing");
+    }
+
+    return ctx;
+}
+
+function PasswordEntryProvider({ children }: DemoProviderProps) {
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
-
-    const passwordsMatch = password.length > 0 && password === confirm;
+    const isPasswordsMatch = password.length > 0 && password === confirm;
 
     const handlePasswordNotify = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
-        if (pspec.getName() === "text") setPassword(self.getText());
+        if (pspec.getName() === "text") {
+            setPassword(self.getText());
+        }
     };
 
     const handleConfirmNotify = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
-        if (pspec.getName() === "text") setConfirm(self.getText());
+        if (pspec.getName() === "text") {
+            setConfirm(self.getText());
+        }
     };
 
     const value = {
-        passwordsMatch,
+        passwordsMatch: isPasswordsMatch,
         handlePasswordNotify,
         handleConfirmNotify,
     };
 
     return <PasswordEntryContext.Provider value={value}>{children}</PasswordEntryContext.Provider>;
-};
+}
 
-const PasswordEntryTitlebar = ({ onClose }: DemoProps) => {
+function PasswordEntryTitlebar({ onClose }: DemoProps) {
     const { passwordsMatch } = usePasswordEntryContext();
     const { setDefaultWidget } = useDemo();
+
     return (
         <GtkHeaderBar
             name="password-entry-header"
@@ -62,9 +87,9 @@ const PasswordEntryTitlebar = ({ onClose }: DemoProps) => {
             )}
         />
     );
-};
+}
 
-const PasswordEntryDemo = () => {
+function PasswordEntryDemo() {
     const { handlePasswordNotify, handleConfirmNotify } = usePasswordEntryContext();
 
     return (
@@ -94,19 +119,6 @@ const PasswordEntryDemo = () => {
             />
         </GtkBox>
     );
-};
+}
 
-export const passwordEntryDemo: Demo = {
-    id: "password-entry",
-    title: "Entry/Password Entry",
-    description:
-        "GtkPasswordEntry provides common functionality of entries that are used to enter passwords and other secrets.\n\nIt will display a warning if CapsLock is on, and it can optionally provide a way to see the text.",
-    keywords: [],
-    component: PasswordEntryDemo,
-    titlebar: PasswordEntryTitlebar,
-    provider: PasswordEntryProvider,
-    sourceCode,
-    windowTitle: "Choose a Password",
-    resizable: false,
-    deletable: false,
-};
+export { passwordEntryDemo };

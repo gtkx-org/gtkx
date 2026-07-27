@@ -59,10 +59,10 @@ unsafe extern "C" fn fd_source_check(source: *mut glib::ffi::GSource) -> glib::f
     let storage = unsafe { &*source.cast::<FdSourceStorage>() };
     let mut pfd = glib::ffi::GPollFD {
         fd: storage.fd,
-        events: storage.events as u16,
+        events: (storage.events & 0xFFFF) as u16,
         revents: 0,
     };
-    let ready = unsafe { glib::ffi::g_poll(&mut pfd, 1, 0) } > 0
+    let ready = unsafe { glib::ffi::g_poll(&raw mut pfd, 1, 0) } > 0
         && u32::from(pfd.revents) & storage.events != 0;
     glib::ffi::gboolean::from(ready)
 }
@@ -95,7 +95,7 @@ impl FdWatch {
         unsafe {
             let source = glib::ffi::g_source_new(
                 std::ptr::from_ref(&FD_SOURCE_FUNCS).cast_mut(),
-                size_of::<FdSourceStorage>() as u32,
+                u32::try_from(size_of::<FdSourceStorage>()).expect("source storage fits in guint"),
             );
             (*source.cast::<FdSourceStorage>()).fd = fd;
             (*source.cast::<FdSourceStorage>()).events = events;
@@ -147,6 +147,26 @@ fn assert_immediate_wakeup_armed() {
         last_segment.last().map(String::as_str),
         Some("uv_timer_start(0)")
     );
+}
+
+fn assert_rejected_poll_handle_recorded(fd: c_int) {
+    let rejected = uv_mock::snapshots()
+        .into_iter()
+        .find(|handle| handle.fd == Some(fd))
+        .expect("the rejected handle should be recorded");
+    assert!(rejected.init_failed);
+    assert!(rejected.freed);
+    assert_eq!(rejected.close_calls, 0);
+    assert!(rejected.poll_events.is_none());
+}
+
+fn assert_poller_closed_and_freed(id: usize) {
+    let dropped = uv_mock::snapshots()
+        .into_iter()
+        .find(|handle| handle.id == id)
+        .expect("the dropped poller record should remain");
+    assert_eq!(dropped.close_calls, 1);
+    assert!(dropped.freed);
 }
 
 fn poll_init_calls_for(fd: c_int) -> usize {
@@ -376,7 +396,7 @@ fn arm_timer_parks_when_idle_and_follows_finite_timeouts() {
         assert!(uv_mock::tick());
         assert!(uv_mock::armed_timeout().is_none());
 
-        let long = glib::timeout_add_local(Duration::from_secs(60), || glib::ControlFlow::Continue);
+        let long = glib::timeout_add_local(Duration::from_mins(1), || glib::ControlFlow::Continue);
         assert!(uv_mock::tick());
         let t1 = uv_mock::armed_timeout().expect("a finite timeout should arm the timer");
         assert!(t1 > 0);
@@ -473,7 +493,7 @@ fn hup_only_watch_gets_a_disconnect_poller_and_dispatches_on_writer_close() {
 #[test]
 fn timer_arm_failure_is_reported_without_crashing() {
     run_installed(|| {
-        let long = glib::timeout_add_local(Duration::from_secs(60), || glib::ControlFlow::Continue);
+        let long = glib::timeout_add_local(Duration::from_mins(1), || glib::ControlFlow::Continue);
         let fatal_before = napi_mock::count("napi_fatal_exception");
 
         uv_mock::set_fail_timer_start(true);
@@ -547,14 +567,7 @@ fn rejected_poll_fd_degrades_to_immediate_wakeup_and_recovers() {
         assert!(uv_mock::poller_snapshot(fd).is_none());
         assert_eq!(uv_mock::armed_timeout(), Some(0));
         assert_eq!(poll_init_calls_for(fd), 1);
-        let rejected = uv_mock::snapshots()
-            .into_iter()
-            .find(|handle| handle.fd == Some(fd))
-            .expect("the rejected handle should be recorded");
-        assert!(rejected.init_failed);
-        assert!(rejected.freed);
-        assert_eq!(rejected.close_calls, 0);
-        assert!(rejected.poll_events.is_none());
+        assert_rejected_poll_handle_recorded(fd);
 
         assert!(uv_mock::tick());
         assert_eq!(poll_init_calls_for(fd), 2);
@@ -571,12 +584,7 @@ fn rejected_poll_fd_degrades_to_immediate_wakeup_and_recovers() {
         assert!(uv_mock::tick());
         assert!(uv_mock::poller_snapshot(fd).is_none());
         assert_eq!(uv_mock::armed_timeout(), Some(0));
-        let dropped = uv_mock::snapshots()
-            .into_iter()
-            .find(|handle| handle.id == adopted_id)
-            .expect("the dropped poller record should remain");
-        assert_eq!(dropped.close_calls, 1);
-        assert!(dropped.freed);
+        assert_poller_closed_and_freed(adopted_id);
 
         uv_mock::set_fail_poll_start(fd, false);
         assert!(uv_mock::tick());

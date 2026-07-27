@@ -6,6 +6,12 @@ import { Component, createContext, type ReactNode, useContext, useLayoutEffect }
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, type Container, queryAllByRole, render, type WrapperComponent } from "../src/index.js";
 
+const NON_UNIQUE = Gio.ApplicationFlags.NON_UNIQUE;
+
+const Thrower = (): ReactNode => {
+    throw new Error("boom");
+};
+
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
     static getDerivedStateFromError(): { hasError: boolean } {
         return { hasError: true };
@@ -17,12 +23,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
         return this.state.hasError ? <GtkLabel>error</GtkLabel> : this.props.children;
     }
 }
-
-const Thrower = (): ReactNode => {
-    throw new Error("boom");
-};
-
-const NON_UNIQUE = Gio.ApplicationFlags.NON_UNIQUE;
 
 describe("render basics", () => {
     it("renders a simple element", async () => {

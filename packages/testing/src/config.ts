@@ -31,7 +31,7 @@ const defaultConfig: Config = {
     actionabilityTimeout: 500,
 };
 
-let currentConfig: Config = { ...defaultConfig };
+const currentConfig: Config = { ...defaultConfig };
 
 function defaultGetElementError(message: string): Error {
     return new GtkxElementError(message);
@@ -52,7 +52,7 @@ const getConfig = (): Config => {
  */
 const configure = (newConfig: Partial<Config> | ConfigFn): void => {
     const updates = typeof newConfig === "function" ? newConfig(currentConfig) : newConfig;
-    currentConfig = { ...currentConfig, ...updates };
+    Object.assign(currentConfig, updates);
 };
 
 class GtkxElementError extends Error {

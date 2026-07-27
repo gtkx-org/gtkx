@@ -17,7 +17,7 @@ pub fn install(env: Env) -> napi::Result<()> {
 
     unsafe {
         let mut resource: sys::napi_value = std::ptr::null_mut();
-        if sys::napi_create_object(raw, &mut resource) != sys::Status::napi_ok {
+        if sys::napi_create_object(raw, &raw mut resource) != sys::Status::napi_ok {
             return Err(napi::Error::new(
                 Status::GenericFailure,
                 "Failed to create the dispatch resource object",
@@ -26,14 +26,14 @@ pub fn install(env: Env) -> napi::Result<()> {
 
         let name = c"gtkx:dispatch";
         let mut resource_name: sys::napi_value = std::ptr::null_mut();
-        sys::napi_create_string_utf8(raw, name.as_ptr(), 13, &mut resource_name);
+        sys::napi_create_string_utf8(raw, name.as_ptr(), 13, &raw mut resource_name);
 
         let mut async_context: sys::napi_async_context = std::ptr::null_mut();
-        sys::napi_async_init(raw, resource, resource_name, &mut async_context);
+        sys::napi_async_init(raw, resource, resource_name, &raw mut async_context);
         ASYNC_CONTEXT.set(async_context);
 
         let mut resource_ref: sys::napi_ref = std::ptr::null_mut();
-        sys::napi_create_reference(raw, resource, 1, &mut resource_ref);
+        sys::napi_create_reference(raw, resource, 1, &raw mut resource_ref);
         RESOURCE_REF.set(resource_ref);
     }
 
@@ -53,6 +53,7 @@ pub fn try_env() -> Option<Env> {
     }
 }
 
+#[must_use]
 pub fn env() -> Env {
     try_env().expect(
         "the Node environment was accessed from a thread it is not installed on; \
@@ -76,17 +77,17 @@ pub fn run_dispatch_scope(dispatch: impl FnOnce()) {
 
     unsafe {
         let mut handle_scope: sys::napi_handle_scope = std::ptr::null_mut();
-        sys::napi_open_handle_scope(raw, &mut handle_scope);
+        sys::napi_open_handle_scope(raw, &raw mut handle_scope);
 
         let mut resource: sys::napi_value = std::ptr::null_mut();
-        sys::napi_get_reference_value(raw, RESOURCE_REF.with(Cell::get), &mut resource);
+        sys::napi_get_reference_value(raw, RESOURCE_REF.with(Cell::get), &raw mut resource);
 
         let mut callback_scope: sys::napi_callback_scope = std::ptr::null_mut();
         let callback_open = sys::napi_open_callback_scope(
             raw,
             resource,
             ASYNC_CONTEXT.with(Cell::get),
-            &mut callback_scope,
+            &raw mut callback_scope,
         ) == sys::Status::napi_ok;
 
         dispatch();
@@ -103,11 +104,12 @@ pub fn run_dispatch_scope(dispatch: impl FnOnce()) {
 fn report_pending_exception(raw: sys::napi_env) {
     unsafe {
         let mut pending = false;
-        if sys::napi_is_exception_pending(raw, &mut pending) != sys::Status::napi_ok || !pending {
+        if sys::napi_is_exception_pending(raw, &raw mut pending) != sys::Status::napi_ok || !pending
+        {
             return;
         }
         let mut exception: sys::napi_value = std::ptr::null_mut();
-        if sys::napi_get_and_clear_last_exception(raw, &mut exception) != sys::Status::napi_ok {
+        if sys::napi_get_and_clear_last_exception(raw, &raw mut exception) != sys::Status::napi_ok {
             return;
         }
         sys::napi_fatal_exception(raw, exception);
@@ -137,7 +139,7 @@ mod tests {
                     is_installed_on_current_thread(),
                     try_env().is_none(),
                     std::panic::catch_unwind(|| {
-                        env();
+                        let _ = env();
                     })
                     .is_err(),
                 )

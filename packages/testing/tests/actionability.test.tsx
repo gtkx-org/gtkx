@@ -22,13 +22,19 @@ import {
     GtkStackPage,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { createRef } from "react";
+import { createRef, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { configure, getConfig, render, screen, userEvent } from "../src/index.js";
 import { renderDragAndDropPair } from "./event-render-setup.js";
 
 const initialConfig = { ...getConfig() };
 const NOT_SENSITIVE_PATTERN = /did not become actionable within 60ms because it is not sensitive/;
+
+const INSENSITIVE_BUTTON_ACTIONS: [string, (button: Gtk.Widget) => Promise<unknown>][] = [
+    ["click", (button) => userEvent.click(button)],
+    ["dblClick", (button) => userEvent.dblClick(button)],
+    ["pointer input", (button) => userEvent.pointer(button, "click")],
+];
 
 const setupShortTimeout = (): void => {
     beforeEach(() => {
@@ -40,22 +46,39 @@ const setupShortTimeout = (): void => {
     });
 };
 
-const expectRejectsOnInsensitiveButton = async (action: (button: Gtk.Widget) => Promise<unknown>): Promise<void> => {
+const renderInsensitiveButton = async () => {
     const handleClick = vi.fn();
     await render(<GtkButton label="Disabled" sensitive={false} onClicked={handleClick} />);
     const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Disabled" });
-    await expect(action(button)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
-    expect(handleClick).not.toHaveBeenCalled();
+
+    return { button, handleClick };
+};
+
+const renderInsensitiveGesturedLabel = async (
+    name: string,
+    label: string,
+    gesture: ReactNode,
+): Promise<Gtk.Widget> => {
+    await render(
+        <GtkLabel name={name} sensitive={false} controllers={gesture}>
+            {label}
+        </GtkLabel>,
+    );
+
+    return screen.findByName(name);
 };
 
 describe("userEvent actionability - insensitive click targets", () => {
     setupShortTimeout();
 
-    it("rejects click on an insensitive button without emitting clicked", () =>
-        expectRejectsOnInsensitiveButton((button) => userEvent.click(button)));
-
-    it("rejects dblClick on an insensitive button without emitting clicked", () =>
-        expectRejectsOnInsensitiveButton((button) => userEvent.dblClick(button)));
+    it.each(INSENSITIVE_BUTTON_ACTIONS)(
+        "rejects %s on an insensitive button without emitting clicked",
+        async (_label, action) => {
+            const { button, handleClick } = await renderInsensitiveButton();
+            await expect(action(button)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
+            expect(handleClick).not.toHaveBeenCalled();
+        },
+    );
 
     it("rejects click on an insensitive switch without toggling it", async () => {
         await render(<GtkSwitch sensitive={false} />);
@@ -84,9 +107,6 @@ describe("userEvent actionability - insensitive click targets", () => {
         await expect(userEvent.click(button)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
         expect(handleClick).not.toHaveBeenCalled();
     });
-
-    it("rejects pointer input on an insensitive button without emitting clicked", () =>
-        expectRejectsOnInsensitiveButton((button) => userEvent.pointer(button, "click")));
 });
 
 describe("userEvent actionability - insensitive text targets", () => {
@@ -203,8 +223,11 @@ describe("userEvent actionability - insensitive keyboard targets", () => {
         expect(onActivate).not.toHaveBeenCalled();
     });
 
-    it("rejects tab on an insensitive button", () =>
-        expectRejectsOnInsensitiveButton((button) => userEvent.tab(button)));
+    it("rejects tab on an insensitive button", async () => {
+        const { button, handleClick } = await renderInsensitiveButton();
+        await expect(userEvent.tab(button)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
+        expect(handleClick).not.toHaveBeenCalled();
+    });
 });
 
 describe("userEvent actionability - insensitive gesture targets", () => {
@@ -212,46 +235,24 @@ describe("userEvent actionability - insensitive gesture targets", () => {
 
     it("rejects hover on an insensitive widget without emitting enter", async () => {
         const handleEnter = vi.fn();
-
-        await render(
-            <GtkLabel name="hovered" sensitive={false} controllers={<GtkEventControllerMotion onEnter={handleEnter} />}>
-                Hover me
-            </GtkLabel>,
-        );
-
-        const label = await screen.findByName("hovered");
+        const gesture = <GtkEventControllerMotion onEnter={handleEnter} />;
+        const label = await renderInsensitiveGesturedLabel("hovered", "Hover me", gesture);
         await expect(userEvent.hover(label)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
         expect(handleEnter).not.toHaveBeenCalled();
     });
 
     it("rejects longPress on an insensitive widget without emitting pressed", async () => {
         const handlePressed = vi.fn();
-
-        await render(
-            <GtkLabel
-                name="long-pressed"
-                sensitive={false}
-                controllers={<GtkGestureLongPress onPressed={handlePressed} />}
-            >
-                Long press me
-            </GtkLabel>,
-        );
-
-        const label = await screen.findByName("long-pressed");
+        const gesture = <GtkGestureLongPress onPressed={handlePressed} />;
+        const label = await renderInsensitiveGesturedLabel("long-pressed", "Long press me", gesture);
         await expect(userEvent.longPress(label)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
         expect(handlePressed).not.toHaveBeenCalled();
     });
 
     it("rejects drag on an insensitive widget without emitting drag signals", async () => {
         const handleDragBegin = vi.fn();
-
-        await render(
-            <GtkLabel name="dragged" sensitive={false} controllers={<GtkGestureDrag onDragBegin={handleDragBegin} />}>
-                Drag me
-            </GtkLabel>,
-        );
-
-        const label = await screen.findByName("dragged");
+        const gesture = <GtkGestureDrag onDragBegin={handleDragBegin} />;
+        const label = await renderInsensitiveGesturedLabel("dragged", "Drag me", gesture);
         await expect(userEvent.drag(label, 10, 10)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
         expect(handleDragBegin).not.toHaveBeenCalled();
     });
@@ -259,19 +260,11 @@ describe("userEvent actionability - insensitive gesture targets", () => {
     it("rejects drop on an insensitive target without invoking onDrop", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
 
-        await render(
-            <GtkLabel
-                name="drop-zone"
-                sensitive={false}
-                controllers={
-                    <GtkDropTarget types={[GObject.TYPE_STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
-                }
-            >
-                Drop here
-            </GtkLabel>,
+        const gesture = (
+            <GtkDropTarget types={[GObject.TYPE_STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
         );
 
-        const target = await screen.findByName("drop-zone");
+        const target = await renderInsensitiveGesturedLabel("drop-zone", "Drop here", gesture);
         await expect(userEvent.drop(target, "payload")).rejects.toThrow(NOT_SENSITIVE_PATTERN);
         expect(handleDrop).not.toHaveBeenCalled();
     });

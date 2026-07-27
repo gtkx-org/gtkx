@@ -2,11 +2,11 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkDrawingArea } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-const noopDraw: Gtk.DrawingAreaDrawFunc = () => {};
-const drawFunc1: Gtk.DrawingAreaDrawFunc = () => {};
-const drawFunc2: Gtk.DrawingAreaDrawFunc = () => {};
+const noopDraw = vi.fn<Gtk.DrawingAreaDrawFunc>();
+const drawFunc1 = vi.fn<Gtk.DrawingAreaDrawFunc>();
+const drawFunc2 = vi.fn<Gtk.DrawingAreaDrawFunc>();
 
 const expectDefaultContentSize = async (drawFunc: Gtk.DrawingAreaDrawFunc | undefined) => {
     const ref = createRef<Gtk.DrawingArea>();

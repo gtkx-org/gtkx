@@ -1,4 +1,5 @@
 import { defineCommand } from "citty";
+import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./package-managers.js";
 import { scaffold } from "./scaffolder.js";
 
@@ -56,7 +57,8 @@ const scaffoldCommand = defineCommand({
         "no-interactive": {
             type: "boolean",
             description:
-                "Run without prompts, using the default for every option not passed on the command line (same as --yes)",
+                "Run without prompts, using the default for every option not passed on the command line " +
+                "(same as --yes)",
         },
         overwrite: {
             type: "boolean",
@@ -79,18 +81,37 @@ const parsePackageManager = (value: string | undefined): PackageManager | undefi
     return value;
 };
 
-const runCreate = async (args: CreateCommandArgs): Promise<void> => {
-    const interactive = args["no-interactive"] || args.yes ? false : process.stdin.isTTY;
+const settleScaffoldFailure = (error: unknown): void => {
+    if (error instanceof OperationCanceledError) {
+        return;
+    }
 
-    await scaffold({
-        name: args.name,
-        applicationId: args["application-id"],
-        packageManager: parsePackageManager(args["package-manager"]),
-        typescript: args.typescript,
-        includeTesting: args.vitest,
-        interactive,
-        overwrite: args.overwrite,
-    });
+    if (error instanceof ScaffoldAbortedError) {
+        process.exitCode = 1;
+
+        return;
+    }
+
+    throw error;
+};
+
+const runCreate = async (args: CreateCommandArgs): Promise<void> => {
+    const isInteractive = args["no-interactive"] || args.yes ? false : process.stdin.isTTY;
+    const packageManager = parsePackageManager(args["package-manager"]);
+
+    try {
+        await scaffold({
+            name: args.name,
+            applicationId: args["application-id"],
+            packageManager,
+            typescript: args.typescript,
+            includeTesting: args.vitest,
+            interactive: isInteractive,
+            overwrite: args.overwrite,
+        });
+    } catch (error) {
+        settleScaffoldFailure(error);
+    }
 };
 
 export { scaffoldCommand, runCreate, type CreateCommandArgs };

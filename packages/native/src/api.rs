@@ -22,8 +22,22 @@ pub(crate) fn native_result<T>(context: &str, result: anyhow::Result<T>) -> napi
     })
 }
 
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+pub(crate) fn byte_count_from_f64(value: f64, label: &str) -> napi::Result<usize> {
+    const MAX_EXACT_INTEGER: f64 = 9_007_199_254_740_992.0;
+
+    if value.fract() != 0.0 || !(0.0..=MAX_EXACT_INTEGER).contains(&value) {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("{label} must be a whole byte count in 0..=2^53, got {value}"),
+        ));
+    }
+
+    Ok(value as usize)
+}
+
 pub(crate) fn type_from_bigint(
-    value: napi::bindgen_prelude::BigInt,
+    value: &napi::bindgen_prelude::BigInt,
     label: &str,
 ) -> napi::Result<glib::Type> {
     use glib::translate::FromGlib as _;
@@ -35,7 +49,13 @@ pub(crate) fn type_from_bigint(
             format!("{label} type exceeds the 64-bit type range"),
         ));
     }
-    let type_ = unsafe { glib::Type::from_glib(type_value as glib::ffi::GType) };
+    let Ok(gtype) = glib::ffi::GType::try_from(type_value) else {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("{label} type exceeds the platform type range"),
+        ));
+    };
+    let type_ = unsafe { glib::Type::from_glib(gtype) };
     if !type_.is_valid() {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
@@ -56,11 +76,11 @@ mod tests {
     #[test]
     fn type_from_bigint_accepts_a_valid_type() {
         let value = BigInt::from(glib::Object::static_type().into_glib() as u64);
-        assert!(type_from_bigint(value, "test:").is_ok());
+        assert!(type_from_bigint(&value, "test:").is_ok());
     }
 
     #[test]
     fn type_from_bigint_rejects_zero() {
-        assert!(type_from_bigint(BigInt::from(0u64), "test:").is_err());
+        assert!(type_from_bigint(&BigInt::from(0u64), "test:").is_err());
     }
 }

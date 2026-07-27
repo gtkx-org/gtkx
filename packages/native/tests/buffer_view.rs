@@ -62,15 +62,15 @@ fn view_over<'e>(env: &'e Env, data: &mut [u8], length: usize, kind: ViewKind) -
         env,
         helpers::napi_mock::fake_typed_array(
             napi_tag(kind),
-            data.as_mut_ptr() as *mut c_void,
+            data.as_mut_ptr().cast::<c_void>(),
             length,
             0,
         ),
     )
 }
 
-fn encode_view(codec: ArrayCodec, env: &Env, view: Unknown<'_>) -> anyhow::Result<Stash> {
-    codec.encode(env, view)
+fn encode_view(codec: &ArrayCodec, env: Env, view: Unknown<'_>) -> anyhow::Result<Stash> {
+    codec.encode(&env, view)
 }
 
 fn with_view<F>(bytes: usize, length: usize, kind: ViewKind, body: F)
@@ -89,11 +89,11 @@ fn assert_passthrough(item: Codec, view_kind: ViewKind) {
     helpers::run(|| {
         let env = helpers::fake_env();
         let mut data = vec![0u8; 4 * view_kind.element_size()];
-        let expected_ptr = data.as_mut_ptr() as *mut c_void;
+        let expected_ptr = data.as_mut_ptr().cast::<c_void>();
         let view = view_over(&env, &mut data, 4, view_kind);
         let encoded = encode_view(
-            array_of(item, ArrayKind::Array, Ownership::Borrowed),
-            &env,
+            &array_of(item, ArrayKind::Array, Ownership::Borrowed),
+            env,
             view,
         )
         .expect("matching view should encode");
@@ -145,7 +145,7 @@ fn buffer_view_exposes_its_fields() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let mut data = vec![0u8; 8];
-        let expected_ptr = data.as_mut_ptr() as *mut c_void;
+        let expected_ptr = data.as_mut_ptr().cast::<c_void>();
         let value = view_over(&env, &mut data, 2, ViewKind::Float32);
         let view = TypedView::from_unknown(&env, value)
             .expect("typed-array info should be readable")
@@ -187,8 +187,8 @@ fn assert_view_rejected(item: Codec, view_kind: ViewKind) {
         let mut data = vec![0u8; 4 * view_kind.element_size()];
         let view = view_over(&env, &mut data, 4, view_kind);
         let err = encode_view(
-            array_of(item, ArrayKind::Array, Ownership::Borrowed),
-            &env,
+            &array_of(item, ArrayKind::Array, Ownership::Borrowed),
+            env,
             view,
         )
         .expect_err("a mismatched view must fail to supply array elements");
@@ -221,12 +221,12 @@ fn array_encode_accepts_views_for_enum_flags_storage() {
 fn array_encode_rejects_views_for_transfer_full_arrays() {
     with_view(4, 4, ViewKind::Uint8, |env, view| {
         let err = encode_view(
-            array_of(
+            &array_of(
                 Codec::Integer(IntegerCodec::U8),
                 ArrayKind::Array,
                 Ownership::Full,
             ),
-            env,
+            *env,
             view,
         )
         .expect_err("transfer-full arrays must fail to encode");
@@ -234,13 +234,13 @@ fn array_encode_rejects_views_for_transfer_full_arrays() {
     });
 }
 
-fn assert_int32_view_passes_through(codec: ArrayCodec, context: &str) {
+fn assert_int32_view_passes_through(codec: &ArrayCodec, context: &str) {
     helpers::run(|| {
         let env = helpers::fake_env();
         let mut data = vec![0u8; 16];
-        let expected_ptr = data.as_mut_ptr() as *mut c_void;
+        let expected_ptr = data.as_mut_ptr().cast::<c_void>();
         let view = view_over(&env, &mut data, 4, ViewKind::Int32);
-        let encoded = encode_view(codec, &env, view).expect(context);
+        let encoded = encode_view(codec, env, view).expect(context);
         assert!(matches!(encoded, Stash::Ptr(ptr) if ptr == expected_ptr));
     });
 }
@@ -248,7 +248,7 @@ fn assert_int32_view_passes_through(codec: ArrayCodec, context: &str) {
 #[test]
 fn array_encode_accepts_views_for_sized_arrays() {
     assert_int32_view_passes_through(
-        sized_array_of(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed),
+        &sized_array_of(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed),
         "sized arrays should accept views",
     );
 }
@@ -256,7 +256,7 @@ fn array_encode_accepts_views_for_sized_arrays() {
 #[test]
 fn array_encode_checks_fixed_size_views_exactly() {
     assert_int32_view_passes_through(
-        fixed_array_of(Codec::Integer(IntegerCodec::I32), 4, Ownership::Borrowed),
+        &fixed_array_of(Codec::Integer(IntegerCodec::I32), 4, Ownership::Borrowed),
         "a fixed-size match should encode",
     );
 
@@ -265,8 +265,8 @@ fn array_encode_checks_fixed_size_views_exactly() {
         let mut short = vec![0u8; 8];
         let short_view = view_over(&env, &mut short, 2, ViewKind::Int32);
         let err = encode_view(
-            fixed_array_of(Codec::Integer(IntegerCodec::I32), 4, Ownership::Borrowed),
-            &env,
+            &fixed_array_of(Codec::Integer(IntegerCodec::I32), 4, Ownership::Borrowed),
+            env,
             short_view,
         )
         .expect_err("a fixed-size mismatch must fail");

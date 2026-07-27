@@ -49,7 +49,7 @@ const ROOT_DIR = fileURLToPath(new URL("..", import.meta.url));
 const PACKAGES_DIR = join(ROOT_DIR, "packages");
 const NATIVE_DIR = join(ROOT_DIR, "packages", "native");
 const PORT = 4873;
-const HOST = `localhost:${PORT}`;
+const HOST = `localhost:${String(PORT)}`;
 const REGISTRY = `http://${HOST}/`;
 const REGISTRAR_USER = "release-e2e";
 
@@ -80,7 +80,11 @@ function runAsync(command: string, args: string[], options: RunOptions): Promise
             if (code === 0) {
                 resolve();
             } else {
-                reject(new Error(`Command failed with exit code ${code ?? "unknown"}: ${command} ${args.join(" ")}`));
+                reject(
+                    new Error(
+                        `Command failed with exit code ${String(code ?? "unknown")}: ${command} ${args.join(" ")}`,
+                    ),
+                );
             }
         });
     });
@@ -161,7 +165,7 @@ async function createUserToken(): Promise<string> {
     });
 
     if (!response.ok) {
-        throw new Error(`Failed to register Verdaccio user: HTTP ${response.status}`);
+        throw new Error(`Failed to register Verdaccio user: HTTP ${String(response.status)}`);
     }
 
     const body = (await response.json()) as UserResponse;
@@ -261,7 +265,10 @@ async function withRegistry(fn: (ctx: RegistryContext) => Promise<void>): Promis
 
         await new Promise<void>((resolve, reject) => {
             activeServer.once("error", reject);
-            activeServer.listen(PORT, () => resolve());
+
+            activeServer.listen(PORT, () => {
+                resolve();
+            });
         });
 
         await waitForRegistry();
@@ -279,7 +286,9 @@ async function withRegistry(fn: (ctx: RegistryContext) => Promise<void>): Promis
             const runningServer = server;
 
             await new Promise<void>((resolve) => {
-                runningServer.close(() => resolve());
+                runningServer.close(() => {
+                    resolve();
+                });
             });
         }
 
@@ -295,7 +304,12 @@ async function loadHeadlessDisplay(): Promise<HeadlessDisplay> {
 
 function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
     return new Promise((resolve, reject) => {
-        const child = spawn(process.execPath, ["dist/bundle.js"], { cwd: appDir, env, stdio: ["ignore", "pipe", "pipe"] });
+        const child = spawn(process.execPath, ["dist/bundle.js"], {
+            cwd: appDir,
+            env,
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+
         let output = "";
 
         const capture = (chunk: Buffer): void => {
@@ -321,7 +335,8 @@ function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv): Promise
 
             reject(
                 new Error(
-                    `Built app "node dist/bundle.js" exited early (code ${code ?? "null"}, signal ${signal ?? "null"}) before it was confirmed running:\n${output}`,
+                    `Built app "node dist/bundle.js" exited early (code ${String(code ?? "null")}, ` +
+                    `signal ${signal ?? "null"}) before it was confirmed running:\n${output}`,
                 ),
             );
         });

@@ -23,9 +23,10 @@ impl std::fmt::Debug for ClosureHandle {
 }
 
 impl ClosureHandle {
-    pub fn from_js_value<'a, V: JsValue<'a>>(env: &Env, value: &V) -> napi::Result<Self> {
+    pub fn from_js_value<'a, V: JsValue<'a>>(env: &Env, value: &V) -> Result<Self> {
         let mut raw_ref = std::ptr::null_mut();
-        let status = unsafe { sys::napi_create_reference(env.raw(), value.raw(), 1, &mut raw_ref) };
+        let status =
+            unsafe { sys::napi_create_reference(env.raw(), value.raw(), 1, &raw mut raw_ref) };
         check_status!(status, "Failed to create reference")?;
         Ok(Self(JsRef {
             raw: raw_ref,
@@ -33,10 +34,10 @@ impl ClosureHandle {
         }))
     }
 
-    pub fn get<T: FromNapiValue>(&self, env: &Env) -> napi::Result<T> {
+    pub fn get<T: FromNapiValue>(&self, env: &Env) -> Result<T> {
         let mut raw_value = std::ptr::null_mut();
         let status =
-            unsafe { sys::napi_get_reference_value(env.raw(), self.0.raw, &mut raw_value) };
+            unsafe { sys::napi_get_reference_value(env.raw(), self.0.raw, &raw mut raw_value) };
         check_status!(status, "Failed to get reference value")?;
         unsafe { T::from_napi_value(env.raw(), raw_value) }
     }

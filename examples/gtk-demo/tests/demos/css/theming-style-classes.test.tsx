@@ -29,9 +29,11 @@ describe("themingStyleClassesDemo", () => {
     it("renders the suggested and destructive action buttons with their style classes", async () => {
         await renderDemo(themingStyleClassesDemo);
         const plain = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Plain" })) as Gtk.Button;
+
         const destructive = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Destructive",
         })) as Gtk.Button;
+
         const suggested = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Suggested" })) as Gtk.Button;
         expect(plain.hasCssClass("destructive-action")).toBe(false);
         expect(plain.hasCssClass("suggested-action")).toBe(false);
@@ -44,7 +46,6 @@ describe("themingStyleClassesDemo", () => {
         const grid = (await screen.findByName("root-grid")) as Gtk.Grid;
         const linkedBox = (await screen.findByName("linked-buttons")) as Gtk.Box;
         const suggested = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Suggested" })) as Gtk.Button;
-
         expect(grid.getChildAt(0, 0)).toBe(linkedBox);
         const actionRow = grid.getChildAt(0, 1);
         expect(actionRow).not.toBeNull();

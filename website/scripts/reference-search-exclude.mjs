@@ -4,13 +4,17 @@ import { fileURLToPath } from "node:url";
 
 const referenceDir = join(dirname(fileURLToPath(import.meta.url)), "..", "reference");
 const packagesDir = join(referenceDir, "@gtkx");
-
-const walk = (dir) =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-        entry.isDirectory() ? walk(join(dir, entry.name)) : (entry.name.endsWith(".md") ? [join(dir, entry.name)] : []),
-    );
-
 const frontmatter = /^---\n[\s\S]*?\n---\n+/;
+
+const walkEntry = (dir, entry) => {
+    if (entry.isDirectory()) {
+        return walk(join(dir, entry.name));
+    }
+
+    return entry.name.endsWith(".md") ? [join(dir, entry.name)] : [];
+};
+
+const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => walkEntry(dir, entry));
 
 for (const file of walk(referenceDir)) {
     const body = readFileSync(file, "utf8").replace(frontmatter, "");

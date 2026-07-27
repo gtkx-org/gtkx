@@ -53,7 +53,8 @@ const SYMBOL_KIND = z.enum([
 ]);
 
 const SYMBOL_DESCRIPTION =
-    "Qualified symbol name (`Gtk.Button`, `Gtk.Orientation`, `GLib.idleAdd`), JSX element name (`GtkButton`), or bare symbol name when unambiguous (`Button`).";
+    "Qualified symbol name (`Gtk.Button`, `Gtk.Orientation`, `GLib.idleAdd`), JSX element name (`GtkButton`), " +
+    "or bare symbol name when unambiguous (`Button`).";
 
 const listApiShape = {
     namespace: z
@@ -96,7 +97,8 @@ const loadReference = async (root: string): Promise<LoadedReference> => {
 
     if (config.codegen === false) {
         throw new Error(
-            `codegen is disabled for the project at ${root}, so there are no generated bindings to document. Remove \`codegen: false\` from gtkx.config.ts to use the API reference.`,
+            `codegen is disabled for the project at ${root}, so there are no generated bindings to document. ` +
+            "Remove `codegen: false` from gtkx.config.ts to use the API reference.",
         );
     }
 
@@ -104,7 +106,9 @@ const loadReference = async (root: string): Promise<LoadedReference> => {
 
     if (girPath.length === 0) {
         throw new Error(
-            "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
+            "No GIR search paths available. Install gobject-introspection " +
+            "(Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), " +
+            "or set `girPath` in gtkx.config.ts.",
         );
     }
 
@@ -204,7 +208,8 @@ const listApiTool = (provider: ReferenceProvider): Tool =>
         title: "List API reference",
         kind: "readOnly",
         description:
-            "List the project's generated GTK4 bindings API (`@gtkx/gi` and `@gtkx/jsx`). Without a namespace, returns every namespace with symbol counts; with a namespace, lists all of its symbols grouped by kind.",
+            "List the project's generated GTK4 bindings API (`@gtkx/gi` and `@gtkx/jsx`). Without a namespace, " +
+            "returns every namespace with symbol counts; with a namespace, lists all of its symbols grouped by kind.",
         inputSchema: listApiShape,
         handler: async ({ namespace }) => {
             const reference = await provider.get();
@@ -234,7 +239,8 @@ const searchApiTool = (provider: ReferenceProvider): Tool =>
         title: "Search API reference",
         kind: "readOnly",
         description:
-            "Search the project's generated GTK4 bindings API by symbol name. Returns matching symbols with their namespace, kind, and a one-line summary; fetch full pages with `gtkx_get_api_docs`.",
+            "Search the project's generated GTK4 bindings API by symbol name. Returns matching symbols with " +
+            "their namespace, kind, and a one-line summary; fetch full pages with `gtkx_get_api_docs`.",
         inputSchema: searchApiShape,
         handler: async (args) => {
             const reference = await provider.get();
@@ -254,7 +260,9 @@ const getApiDocsTool = (provider: ReferenceProvider): Tool =>
         title: "Get API docs",
         kind: "readOnly",
         description:
-            "Get the full reference page for one symbol of the project's generated GTK4 bindings: JSX elements (props, signals, methods) or `@gtkx/gi` classes, interfaces, records, enums, callbacks, aliases, functions, and constants.",
+            "Get the full reference page for one symbol of the project's generated GTK4 bindings: JSX elements " +
+            "(props, signals, methods) or `@gtkx/gi` classes, interfaces, records, enums, callbacks, aliases, " +
+            "functions, and constants.",
         inputSchema: apiDocsShape,
         handler: async ({ symbol, kind }) => {
             const reference = await provider.get();
@@ -266,7 +274,8 @@ const getApiDocsTool = (provider: ReferenceProvider): Tool =>
 
             if (result.outcome === "ambiguous") {
                 return textError(
-                    `"${symbol}" matches several symbols. Pass a qualified name or a kind:\n${formatCandidates(result.candidates)}`,
+                    `"${symbol}" matches several symbols. Pass a qualified name or a kind:\n` +
+                    formatCandidates(result.candidates),
                 );
             }
 
@@ -416,7 +425,8 @@ const registerSymbolResource = (server: ResourceServer, provider: ReferenceProvi
         {
             title: "GTKX symbol reference",
             description:
-                "Reference page for one symbol of the project's generated GTK4 bindings: a JSX element or a class, interface, record, enum, callback, alias, function, or constant.",
+                "Reference page for one symbol of the project's generated GTK4 bindings: a JSX element or a " +
+                "class, interface, record, enum, callback, alias, function, or constant.",
             mimeType: "text/markdown",
         },
         (uri, variables) =>

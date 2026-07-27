@@ -1,5 +1,4 @@
 import { type InterfaceDescriptor, sessionBus } from "@homebridge/dbus-native";
-import { EventEmitter } from "node:events";
 
 const NOTIFICATIONS_NAME = "org.freedesktop.Notifications";
 const NOTIFICATIONS_PATH = "/org/freedesktop/Notifications";
@@ -39,10 +38,10 @@ const startNotificationService = async (busAddress: string): Promise<() => void>
     return () => bus.connection.stream.destroy();
 };
 
-class NotificationService extends EventEmitter {
+class NotificationService extends EventTarget {
     private lastId = 0;
 
-    CloseNotification = (): void => {};
+    CloseNotification = (): void => undefined;
 
     Notify(): number {
         this.lastId += 1;

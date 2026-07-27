@@ -1,110 +1,11 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { MockInstance } from "vitest";
-import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppRouter } from "../src/app-router.js";
 import type { AppInfo } from "../src/protocol/schemas.js";
-
-const { mcpServerInstances, registerToolMock, registerResourceMock, mcpConnectMock, mcpCloseMock } = vi.hoisted(() => {
-    const instances: { name: string; version: string }[] = [];
-
-    return {
-        mcpServerInstances: instances,
-        registerToolMock: vi.fn(),
-        registerResourceMock: vi.fn(),
-        mcpConnectMock: vi.fn(async () => undefined),
-        mcpCloseMock: vi.fn(async () => undefined),
-    };
-});
-
-vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
-    McpServer: class {
-        connect = mcpConnectMock;
-        close = mcpCloseMock;
-
-        constructor(opts: { name: string; version: string }) {
-            mcpServerInstances.push(opts);
-        }
-
-        registerTool(name: string, config: unknown, handler: unknown): void {
-            registerToolMock(name, config, handler);
-        }
-
-        registerResource(name: string, uriOrTemplate: unknown, config: unknown, handler: unknown): void {
-            registerResourceMock(name, uriOrTemplate, config, handler);
-        }
-    },
-    ResourceTemplate: class {
-        uriTemplate: unknown;
-        callbacks: unknown;
-        constructor(uriTemplate: unknown, callbacks: unknown) {
-            this.uriTemplate = uriTemplate;
-            this.callbacks = callbacks;
-        }
-    },
-}));
-
-const { stdioInstances } = vi.hoisted(() => ({ stdioInstances: [] as object[] }));
-
-vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
-    StdioServerTransport: class StdioServerTransport {
-        sessionId: string | undefined;
-
-        constructor() {
-            stdioInstances.push(this);
-        }
-    },
-}));
-
-const { socketStartMock, socketStopMock, socketServerInstances } = vi.hoisted(() => ({
-    socketStartMock: vi.fn(async () => undefined),
-    socketStopMock: vi.fn(async () => undefined),
-    socketServerInstances: [] as { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }[],
-}));
-
-vi.mock("../src/socket-server.js", () => ({
-    SocketServer: class SocketServer {
-        start = socketStartMock;
-        stop = socketStopMock;
-
-        registry: unknown;
-        path: string;
-
-        constructor(registry: unknown, path: string) {
-            this.registry = registry;
-            this.path = path;
-            socketServerInstances.push(this);
-        }
-    },
-}));
-
-const { connectionRegistryInstances } = vi.hoisted(() => ({
-    connectionRegistryInstances: [] as EventEmitter[],
-}));
-
-vi.mock("../src/connection-registry.js", () => ({
-    ConnectionRegistry: class extends EventEmitter {
-        constructor() {
-            super();
-            connectionRegistryInstances.push(this);
-        }
-    },
-}));
-
-const { appRouterInstances } = vi.hoisted(() => ({
-    appRouterInstances: [] as EventEmitter[],
-}));
-
-vi.mock("../src/app-router.js", () => ({
-    AppRouter: class extends EventEmitter {
-        constructor() {
-            super();
-            appRouterInstances.push(this);
-        }
-    },
-}));
-
+import { appRegisteredEvent, appUnregisteredEvent } from "../src/app-router.js";
 import { createMcpServer, main } from "../src/server.js";
+import { connectionErrorEvent } from "../src/transport.js";
 
 type AppRouterStub = Pick<AppRouter, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
@@ -114,12 +15,68 @@ type RegisteredTool = {
     handler: (args: never) => Promise<CallToolResult>;
 };
 
+type WidgetActionRun = {
+    sendToApp: ReturnType<typeof vi.fn>;
+    result: CallToolResult;
+};
+
+type MainSetup = {
+    errorSpy: MockInstance<typeof process.stderr.write>;
+    exitSpy: MockInstance<typeof process.exit>;
+    prevSigInt: ((signal: "SIGINT") => void)[];
+    prevSigTerm: ((signal: "SIGTERM") => void)[];
+};
+
+const { mcpServerInstances, registerToolMock, registerResourceMock, mcpConnectMock, mcpCloseMock } = vi.hoisted(() => {
+    const instances: { name: string; version: string }[] = [];
+
+    return {
+        mcpServerInstances: instances,
+        registerToolMock: vi.fn(),
+        registerResourceMock: vi.fn(),
+        mcpConnectMock: vi.fn(),
+        mcpCloseMock: vi.fn(),
+    };
+});
+
+const { stdioInstances } = vi.hoisted(() => ({ stdioInstances: [] as object[] }));
+
+const { socketStartMock, socketStopMock, socketServerInstances } = vi.hoisted(() => ({
+    socketStartMock: vi.fn(),
+    socketStopMock: vi.fn(),
+    socketServerInstances: [] as { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }[],
+}));
+
+const { connectionRegistryInstances } = vi.hoisted(() => ({
+    connectionRegistryInstances: [] as EventTarget[],
+}));
+
+const { appRouterInstances } = vi.hoisted(() => ({
+    appRouterInstances: [] as EventTarget[],
+}));
+
+const allToolNames = [
+    "gtkx_list_apps",
+    "gtkx_get_widget_tree",
+    "gtkx_query_widgets",
+    "gtkx_get_widget_props",
+    "gtkx_take_screenshot",
+    "gtkx_click",
+    "gtkx_type",
+    "gtkx_fire_event",
+    "gtkx_list_api",
+    "gtkx_search_api",
+    "gtkx_get_api_docs",
+];
+
+const allResourceNames = ["gtkx-api-reference", "gtkx-api-namespace", "gtkx-api-symbol"];
+
 function makeAppRouter(overrides: Partial<AppRouterStub> = {}): AppRouterStub {
     return {
         getApps: vi.fn(() => []),
         hasConnectedApps: vi.fn(() => false),
-        waitForApp: vi.fn(async () => ({ applicationId: "app-a", pid: 1 })),
-        sendToApp: vi.fn(async () => ({}) as never),
+        waitForApp: vi.fn(() => Promise.resolve({ applicationId: "app-a", pid: 1 })),
+        sendToApp: vi.fn(() => Promise.resolve({} as never)),
         ...overrides,
     };
 }
@@ -130,6 +87,19 @@ function makeConnectedAppRouter(apps: AppInfo[], sendToApp: AppRouterStub["sendT
         hasConnectedApps: vi.fn(() => true),
         sendToApp,
     });
+}
+
+function resetMainMocks(): void {
+    mcpServerInstances.length = 0;
+    registerToolMock.mockClear();
+    registerResourceMock.mockClear();
+    mcpConnectMock.mockClear();
+    mcpCloseMock.mockClear();
+    socketStartMock.mockClear();
+    socketStopMock.mockClear();
+    socketServerInstances.length = 0;
+    appRouterInstances.length = 0;
+    stdioInstances.length = 0;
 }
 
 function registerTools(appRouter: AppRouterStub): RegisteredTool[] {
@@ -163,7 +133,7 @@ function getTool(appRouter: AppRouterStub, name: string): RegisteredTool {
 async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "text"; text: string }> {
     const appRouter = makeAppRouter({
         hasConnectedApps: vi.fn(() => false),
-        waitForApp: vi.fn(async () => {
+        waitForApp: vi.fn(() => {
             throw thrown;
         }),
     });
@@ -174,34 +144,161 @@ async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "tex
     return result.content[0] as { type: "text"; text: string };
 }
 
-async function expectWidgetActionTool(options: {
-    tool: string;
-    payload: Record<string, unknown>;
-    method: string;
-    confirmation: string;
-}): Promise<void> {
-    const sendToApp = vi.fn(async () => undefined);
+async function runWidgetActionTool(tool: string, payload: Record<string, unknown>): Promise<WidgetActionRun> {
+    const sendToApp = vi.fn();
     const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
-    const result = await getTool(appRouter, options.tool).handler(options.payload as never);
-    expect(sendToApp).toHaveBeenCalledWith(undefined, options.method, options.payload);
-    expect(result.content[0]).toEqual({ type: "text", text: options.confirmation });
+    const result = await getTool(appRouter, tool).handler(payload as never);
+
+    return { sendToApp, result };
 }
 
-const allToolNames = [
-    "gtkx_list_apps",
-    "gtkx_get_widget_tree",
-    "gtkx_query_widgets",
-    "gtkx_get_widget_props",
-    "gtkx_take_screenshot",
-    "gtkx_click",
-    "gtkx_type",
-    "gtkx_fire_event",
-    "gtkx_list_api",
-    "gtkx_search_api",
-    "gtkx_get_api_docs",
-];
+function setupMainMocks(): MainSetup {
+    resetMainMocks();
 
-const allResourceNames = ["gtkx-api-reference", "gtkx-api-namespace", "gtkx-api-symbol"];
+    return {
+        errorSpy: vi.spyOn(process.stderr, "write").mockImplementation(() => true),
+        exitSpy: vi.spyOn(process, "exit").mockImplementation(((): void => undefined) as never),
+        prevSigInt: process.listeners("SIGINT"),
+        prevSigTerm: process.listeners("SIGTERM"),
+    };
+}
+
+function pruneListeners<T>(current: T[], previous: T[], remove: (listener: T) => void): void {
+    for (const listener of current) {
+        if (!previous.includes(listener)) {
+            remove(listener);
+        }
+    }
+}
+
+function teardownMainMocks({ errorSpy, exitSpy, prevSigInt, prevSigTerm }: MainSetup): void {
+    errorSpy.mockRestore();
+    exitSpy.mockRestore();
+    pruneListeners(process.listeners("SIGINT"), prevSigInt, (listener) => process.removeListener("SIGINT", listener));
+
+    pruneListeners(process.listeners("SIGTERM"), prevSigTerm, (listener) =>
+        process.removeListener("SIGTERM", listener),
+    );
+}
+
+function useMainSetup(): () => MainSetup {
+    let setup: MainSetup;
+
+    beforeEach(() => {
+        setup = setupMainMocks();
+    });
+
+    afterEach(() => {
+        teardownMainMocks(setup);
+    });
+
+    return () => setup;
+}
+
+function collectErrorMessages(setup: MainSetup): string[] {
+    return setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+}
+
+function requireRegistry(): EventTarget {
+    const registry = connectionRegistryInstances[0];
+
+    if (!registry) {
+        throw new Error("Registry not created");
+    }
+
+    return registry;
+}
+
+function dispatchSocketError(registry: EventTarget, message: string, code: string): void {
+    const error = Object.assign(new Error(message), { code });
+    registry.dispatchEvent(connectionErrorEvent(error));
+}
+
+function requireAppRouter(): EventTarget {
+    const appRouter = appRouterInstances[0];
+
+    if (!appRouter) {
+        throw new Error("AppRouter not registered");
+    }
+
+    return appRouter;
+}
+
+vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
+    McpServer: class {
+        connect = mcpConnectMock;
+        close = mcpCloseMock;
+
+        constructor(opts: { name: string; version: string }) {
+            mcpServerInstances.push(opts);
+        }
+
+        registerTool(name: string, config: unknown, handler: unknown): void {
+            registerToolMock(name, config, handler);
+        }
+
+        registerResource(name: string, uriOrTemplate: unknown, config: unknown, handler: unknown): void {
+            registerResourceMock(name, uriOrTemplate, config, handler);
+        }
+    },
+    ResourceTemplate: class {
+        uriTemplate: unknown;
+        callbacks: unknown;
+        constructor(uriTemplate: unknown, callbacks: unknown) {
+            this.uriTemplate = uriTemplate;
+            this.callbacks = callbacks;
+        }
+    },
+}));
+
+vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
+    StdioServerTransport: class StdioServerTransport {
+        sessionId: string | undefined;
+
+        constructor() {
+            stdioInstances.push(this);
+        }
+    },
+}));
+
+vi.mock("../src/socket-server.js", () => ({
+    SocketServer: class SocketServer {
+        start = socketStartMock;
+        stop = socketStopMock;
+
+        registry: unknown;
+        path: string;
+
+        constructor(registry: unknown, path: string) {
+            this.registry = registry;
+            this.path = path;
+            socketServerInstances.push(this);
+        }
+    },
+}));
+
+vi.mock("../src/connection-registry.js", () => ({
+    ConnectionRegistry: class extends EventTarget {
+        constructor() {
+            super();
+            connectionRegistryInstances.push(this);
+        }
+    },
+}));
+
+vi.mock("../src/app-router.js", async () => {
+    const actual = await vi.importActual<typeof import("../src/app-router.js")>("../src/app-router.js");
+
+    return {
+        ...actual,
+        AppRouter: class extends EventTarget {
+            constructor() {
+                super();
+                appRouterInstances.push(this);
+            }
+        },
+    };
+});
 
 describe("buildTools — registration", () => {
     it("registers all expected tools in order", () => {
@@ -229,9 +326,11 @@ describe("buildTools — gtkx_list_apps success", () => {
     it("returns connected apps with their windows", async () => {
         const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1 }];
 
-        const sendToApp = vi.fn(async () => ({
-            windows: [{ id: "w1", title: "Main" }],
-        }));
+        const sendToApp = vi.fn(() =>
+            Promise.resolve({
+                windows: [{ id: "w1", title: "Main" }],
+            }),
+        );
 
         const appRouter = makeConnectedAppRouter(apps, sendToApp as never);
         const result = await getTool(appRouter, "gtkx_list_apps").handler({} as never);
@@ -246,14 +345,7 @@ describe("buildTools — gtkx_list_apps success", () => {
 
     it("falls back to the original app info when getWindows fails", async () => {
         const apps: AppInfo[] = [{ applicationId: "app-a", pid: 1 }];
-
-        const appRouter = makeConnectedAppRouter(
-            apps,
-            vi.fn(async () => {
-                throw new Error("boom");
-            }),
-        );
-
+        const appRouter = makeConnectedAppRouter(apps, vi.fn(() => Promise.reject(new Error("boom"))));
         const result = await getTool(appRouter, "gtkx_list_apps").handler({} as never);
         const text = result.content[0] as { type: "text"; text: string };
         expect(JSON.parse(text.text)).toEqual(apps);
@@ -262,7 +354,7 @@ describe("buildTools — gtkx_list_apps success", () => {
 
 describe("buildTools — gtkx_list_apps waiting", () => {
     it("waits for an app when waitForApps is true and none are connected", async () => {
-        const waitForApp = vi.fn(async () => ({ applicationId: "app-a", pid: 1 }));
+        const waitForApp = vi.fn(() => Promise.resolve({ applicationId: "app-a", pid: 1 }));
 
         const appRouter = makeAppRouter({
             hasConnectedApps: vi.fn(() => false),
@@ -298,7 +390,7 @@ describe("buildTools — gtkx_list_apps waiting", () => {
 
 describe("buildTools — gtkx_get_widget_tree", () => {
     it("forwards applicationId and returns the tree string", async () => {
-        const sendToApp = vi.fn(async () => ({ tree: "TREE" }));
+        const sendToApp = vi.fn(() => Promise.resolve({ tree: "TREE" }));
         const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
         const result = await getTool(appRouter, "gtkx_get_widget_tree").handler({ applicationId: "app-a" } as never);
         expect(sendToApp).toHaveBeenCalledWith("app-a", "widget.getTree", {});
@@ -308,7 +400,7 @@ describe("buildTools — gtkx_get_widget_tree", () => {
 
 describe("buildTools — gtkx_query_widgets", () => {
     it("forwards query parameters and returns serialized result", async () => {
-        const sendToApp = vi.fn(async () => ({ widgets: [{ id: "w1" }] }));
+        const sendToApp = vi.fn(() => Promise.resolve({ widgets: [{ id: "w1" }] }));
         const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
         const result = await getTool(appRouter, "gtkx_query_widgets").handler({
@@ -331,7 +423,7 @@ describe("buildTools — gtkx_query_widgets", () => {
 
 describe("buildTools — gtkx_get_widget_props", () => {
     it("returns props serialized as JSON", async () => {
-        const sendToApp = vi.fn(async () => ({ label: "Click me" }));
+        const sendToApp = vi.fn(() => Promise.resolve({ label: "Click me" }));
         const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
         const result = await getTool(appRouter, "gtkx_get_widget_props").handler({
@@ -347,40 +439,34 @@ describe("buildTools — gtkx_get_widget_props", () => {
 
 describe("buildTools — gtkx_click", () => {
     it("sends a widget.click and returns a confirmation message", async () => {
-        await expectWidgetActionTool({
-            tool: "gtkx_click",
-            payload: { widgetId: "w1" },
-            method: "widget.click",
-            confirmation: "Clicked",
-        });
+        const payload = { widgetId: "w1" };
+        const { sendToApp, result } = await runWidgetActionTool("gtkx_click", payload);
+        expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.click", payload);
+        expect(result.content[0]).toEqual({ type: "text", text: "Clicked" });
     });
 });
 
 describe("buildTools — gtkx_type", () => {
     it("forwards text and clear flag", async () => {
-        await expectWidgetActionTool({
-            tool: "gtkx_type",
-            payload: { widgetId: "w1", text: "hello", clear: true },
-            method: "widget.type",
-            confirmation: "Typed text",
-        });
+        const payload = { widgetId: "w1", text: "hello", clear: true };
+        const { sendToApp, result } = await runWidgetActionTool("gtkx_type", payload);
+        expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.type", payload);
+        expect(result.content[0]).toEqual({ type: "text", text: "Typed text" });
     });
 });
 
 describe("buildTools — gtkx_fire_event", () => {
     it("forwards signal name and args", async () => {
-        await expectWidgetActionTool({
-            tool: "gtkx_fire_event",
-            payload: { widgetId: "w1", signal: "clicked", args: ["arg1"] },
-            method: "widget.fireEvent",
-            confirmation: "Fired event",
-        });
+        const payload = { widgetId: "w1", signal: "clicked", args: ["arg1"] };
+        const { sendToApp, result } = await runWidgetActionTool("gtkx_fire_event", payload);
+        expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.fireEvent", payload);
+        expect(result.content[0]).toEqual({ type: "text", text: "Fired event" });
     });
 });
 
 describe("buildTools — gtkx_take_screenshot", () => {
     it("returns image content from the response", async () => {
-        const sendToApp = vi.fn(async () => ({ data: "BASE64", mimeType: "image/png" }));
+        const sendToApp = vi.fn(() => Promise.resolve({ data: "BASE64", mimeType: "image/png" }));
         const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
 
         const result = await getTool(appRouter, "gtkx_take_screenshot").handler({
@@ -392,71 +478,6 @@ describe("buildTools — gtkx_take_screenshot", () => {
         expect(result.content[0]).toEqual({ type: "image", data: "BASE64", mimeType: "image/png" });
     });
 });
-
-type MainSetup = {
-    errorSpy: MockInstance<typeof process.stderr.write>;
-    exitSpy: MockInstance<typeof process.exit>;
-    prevSigInt: ((signal: "SIGINT") => void)[];
-    prevSigTerm: ((signal: "SIGTERM") => void)[];
-};
-
-function resetMainMocks(): void {
-    mcpServerInstances.length = 0;
-    registerToolMock.mockClear();
-    registerResourceMock.mockClear();
-    mcpConnectMock.mockClear();
-    mcpCloseMock.mockClear();
-    socketStartMock.mockClear();
-    socketStopMock.mockClear();
-    socketServerInstances.length = 0;
-    appRouterInstances.length = 0;
-    stdioInstances.length = 0;
-}
-
-function setupMainMocks(): MainSetup {
-    resetMainMocks();
-
-    return {
-        errorSpy: vi.spyOn(process.stderr, "write").mockImplementation(() => true),
-        exitSpy: vi.spyOn(process, "exit").mockImplementation((() => undefined) as never),
-        prevSigInt: process.listeners("SIGINT"),
-        prevSigTerm: process.listeners("SIGTERM"),
-    };
-}
-
-function pruneListeners<T>(current: T[], previous: T[], remove: (listener: T) => void): void {
-    for (const listener of current) {
-        if (!previous.includes(listener)) {
-            remove(listener);
-        }
-    }
-}
-
-function teardownMainMocks({ errorSpy, exitSpy, prevSigInt, prevSigTerm }: MainSetup): void {
-    errorSpy.mockRestore();
-    exitSpy.mockRestore();
-    pruneListeners(process.listeners("SIGINT"), prevSigInt, (listener) => process.removeListener("SIGINT", listener));
-
-    pruneListeners(process.listeners("SIGTERM"), prevSigTerm, (listener) =>
-        process.removeListener("SIGTERM", listener),
-    );
-}
-
-function useMainSetup(): () => MainSetup {
-    let setup: MainSetup;
-
-    beforeEach(() => {
-        setup = setupMainMocks();
-    });
-
-    afterEach(() => teardownMainMocks(setup));
-
-    return () => setup;
-}
-
-function collectErrorMessages(setup: MainSetup): string[] {
-    return setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
-}
 
 describe("main — startup", () => {
     useMainSetup();
@@ -477,15 +498,10 @@ describe("main — error logging", () => {
 
     it("logs broken-pipe-style socket errors only when the code is not EPIPE/ECONNRESET", async () => {
         await main();
-        const registry = connectionRegistryInstances[0];
-
-        if (!registry) {
-            throw new Error("Registry not created");
-        }
-
-        registry.emit("error", Object.assign(new Error("pipe gone"), { code: "EPIPE" }));
-        registry.emit("error", Object.assign(new Error("conn gone"), { code: "ECONNRESET" }));
-        registry.emit("error", Object.assign(new Error("real boom"), { code: "EACCES" }));
+        const registry = requireRegistry();
+        dispatchSocketError(registry, "pipe gone", "EPIPE");
+        dispatchSocketError(registry, "conn gone", "ECONNRESET");
+        dispatchSocketError(registry, "real boom", "EACCES");
         const messages = collectErrorMessages(getSetup());
         expect(messages.filter((m: string) => m.includes("real boom"))).toHaveLength(1);
         expect(messages.some((m: string) => m.includes("pipe gone"))).toBe(false);
@@ -494,14 +510,9 @@ describe("main — error logging", () => {
 
     it("logs an entry when an app registers and unregisters", async () => {
         await main();
-        const appRouter = appRouterInstances[0];
-
-        if (!appRouter) {
-            throw new Error("AppRouter not registered");
-        }
-
-        appRouter.emit("appRegistered", { applicationId: "app-a", pid: 42 });
-        appRouter.emit("appUnregistered", "app-a");
+        const appRouter = requireAppRouter();
+        appRouter.dispatchEvent(appRegisteredEvent({ applicationId: "app-a", pid: 42 }));
+        appRouter.dispatchEvent(appUnregisteredEvent("app-a"));
         const messages = collectErrorMessages(getSetup());
         expect(messages.some((m: string) => m.includes("app registered: app-a (PID: 42)"))).toBe(true);
         expect(messages.some((m: string) => m.includes("app unregistered: app-a"))).toBe(true);

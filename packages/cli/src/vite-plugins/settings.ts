@@ -51,7 +51,11 @@ const ensureSchemaDir = (state: PluginState): string => {
 
         const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
         state.schemaDir = dir;
-        const cleanup = (): void => removeTempDir(dir);
+
+        const cleanup = (): void => {
+            removeTempDir(dir);
+        };
+
         state.cleanupProcessExit = cleanup;
         process.once("exit", cleanup);
     }
@@ -170,7 +174,7 @@ const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
         source: compiled,
     });
 
-    info(`Compiled ${state.buildSchemas.size} GSettings schema(s)`);
+    info(`Compiled ${String(state.buildSchemas.size)} GSettings schema(s)`);
 };
 
 const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDevServer): ModuleNode[] | undefined => {
@@ -200,8 +204,13 @@ const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDev
 };
 
 const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
-    server.httpServer?.once("close", () => releaseSchemaDir(state));
-    server.watcher.once("close", () => releaseSchemaDir(state));
+    server.httpServer?.once("close", () => {
+        releaseSchemaDir(state);
+    });
+
+    server.watcher.once("close", () => {
+        releaseSchemaDir(state);
+    });
 
     const refreshSchemaTypes = (file: string): void => {
         if (file.endsWith(SCHEMA_SUFFIX)) {

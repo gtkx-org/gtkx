@@ -57,7 +57,9 @@ const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]
         return `| [${entry.glibName}](${link}) | ${description} |`;
     });
 
-    const description = `Reference pages for the ${namespace.elements.length} JSX elements in the ${namespace.name} namespace.`;
+    const description =
+        `Reference pages for the ${String(namespace.elements.length)} JSX elements in ` +
+        `the ${namespace.name} namespace.`;
 
     return [
         "---",
@@ -66,7 +68,8 @@ const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]
         "",
         `# ${namespace.name} elements`,
         "",
-        `Elements in this namespace are imported from \`@gtkx/jsx/${namespace.directory}\`; the matching classes, enums, and functions are imported from \`@gtkx/gi/${namespace.directory}\`.`,
+        `Elements in this namespace are imported from \`@gtkx/jsx/${namespace.directory}\`; the matching ` +
+        `classes, enums, and functions are imported from \`@gtkx/gi/${namespace.directory}\`.`,
         "",
         "| Element | Description |",
         "| --- | --- |",
@@ -77,7 +80,7 @@ const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]
 
 const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string => {
     const rows = namespaces.map(
-        (ns) => `| [${ns.name}](${ns.link}) | \`@gtkx/jsx/${ns.directory}\` | ${ns.elements.length} |`,
+        (ns) => `| [${ns.name}](${ns.link}) | \`@gtkx/jsx/${ns.directory}\` | ${String(ns.elements.length)} |`,
     );
 
     const librariesList = libraries.map((library) => `\`${library}\``).join(", ");
@@ -89,11 +92,15 @@ const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string
         "",
         "# Element Reference",
         "",
-        `This reference documents every JSX element generated from the GObject-Introspection data for ${librariesList}, together with the namespaces they pull in. It is produced by \`gtkx docs\` using the same pipeline that generates the \`@gtkx/jsx\` and \`@gtkx/gi\` bindings, so every page matches the types your editor sees.`,
+        "This reference documents every JSX element generated from the GObject-Introspection data for " +
+        `${librariesList}, together with the namespaces they pull in. It is produced by \`gtkx docs\` ` +
+        "using the same pipeline that generates the `@gtkx/jsx` and `@gtkx/gi` bindings, so every page " +
+        "matches the types your editor sees.",
         "",
         "Each element page lists:",
         "",
-        "- **Props** derived from GObject properties, plus the element props GTKX adds (such as `children` and named slots), with types, defaults, and upstream documentation.",
+        "- **Props** derived from GObject properties, plus the element props GTKX adds (such as `children` " +
+        "and named slots), with types, defaults, and upstream documentation.",
         "- **Signals** as `on<Signal>` handler props with their exact handler signatures.",
         "- **Methods** available on the underlying instance through the `ref` prop.",
         "",

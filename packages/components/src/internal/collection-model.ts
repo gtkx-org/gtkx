@@ -55,7 +55,7 @@ const getCollectionMode = (data: CollectionData): CollectionMode => {
 
 const newStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
 
-const sameOrder = (order: GObject.Object[], next: GObject.Object[]): boolean =>
+const hasSameOrder = (order: GObject.Object[], next: GObject.Object[]): boolean =>
     order.length === next.length && next.every((holder, index) => order[index] === holder);
 
 const refreshDirty = (state: ModelState, store: Gio.ListStore, order: GObject.Object[]): void => {
@@ -67,7 +67,7 @@ const refreshDirty = (state: ModelState, store: Gio.ListStore, order: GObject.Ob
 };
 
 const syncStore = (state: ModelState, store: Gio.ListStore, order: GObject.Object[], next: GObject.Object[]): void => {
-    if (sameOrder(order, next)) {
+    if (hasSameOrder(order, next)) {
         refreshDirty(state, store, next);
 
         return;
@@ -120,7 +120,7 @@ const syncLevel = (state: ModelState, items: Item[], sectionValue: unknown): GOb
     });
 
 function syncChildren(state: ModelState, entry: CollectionEntry, children: Item[]): void {
-    const had = entry.childOrder.length > 0;
+    const isHad = entry.childOrder.length > 0;
 
     if (children.length > 0) {
         entry.childStore ??= newStore();
@@ -130,7 +130,7 @@ function syncChildren(state: ModelState, entry: CollectionEntry, children: Item[
         syncStore(state, entry.childStore, entry.childOrder, syncLevel(state, children, undefined));
     }
 
-    if (had !== (children.length > 0)) {
+    if (isHad !== (children.length > 0)) {
         state.dirty.add(entry.holder);
     }
 }
@@ -254,7 +254,9 @@ const createCollectionModel = (mode: CollectionMode): CollectionModel => {
         mode,
         model,
         treeModel,
-        update: (data) => update(state, data),
+        update: (data) => {
+            update(state, data);
+        },
         entryFor: (holder) => state.holders.get(holder),
         idAt: (position) => idAt(state, model, position),
         positionFor: (id) => {

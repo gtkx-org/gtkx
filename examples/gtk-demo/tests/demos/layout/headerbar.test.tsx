@@ -50,7 +50,8 @@ describe("headerbarDemo header content", () => {
 
     it("renders a GtkSwitch in the header bar with the 'Change something' accessible label", async () => {
         await renderDemo(headerbarDemo);
-        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something" });
+        const switchEl = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something" });
+        expect(switchEl).toBeInstanceOf(Gtk.Switch);
     });
 
     it("renders the body GtkTextView with its 'Content' accessible label", async () => {
@@ -63,15 +64,27 @@ describe("headerbarDemo header content", () => {
 describe("headerbarDemo interactions", () => {
     it("toggles the header-bar switch on activation", async () => {
         await renderDemo(headerbarDemo);
+
         const switchEl = (await screen.findByRole(Gtk.AccessibleRole.SWITCH, {
             name: "Change something",
             checked: false,
         })) as Gtk.Switch;
 
         await userEvent.click(switchEl);
-        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something", checked: true });
 
+        const checkedSwitch = await screen.findByRole(Gtk.AccessibleRole.SWITCH, {
+            name: "Change something",
+            checked: true,
+        });
+
+        expect(checkedSwitch).toBe(switchEl);
         await userEvent.click(switchEl);
-        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something", checked: false });
+
+        const uncheckedSwitch = await screen.findByRole(Gtk.AccessibleRole.SWITCH, {
+            name: "Change something",
+            checked: false,
+        });
+
+        expect(uncheckedSwitch).toBe(switchEl);
     });
 });

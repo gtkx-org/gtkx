@@ -86,12 +86,12 @@ fn assert_to_stash_storage_errors(codec: BigIntCodec, build: impl FnOnce() -> Ve
     });
 }
 
-fn assert_write_return_i64(build: impl FnOnce() -> Result<napi_value, ()>, expected: i64) {
+fn assert_write_return_i64(build: impl FnOnce() -> Result<napi_value, ()>, expected: isize) {
     helpers::run(move || {
         let env = helpers::fake_env();
         let value = build().map(|raw| napi_mock::to_unknown(&env, raw));
         let slot = helpers::write_return_into_slot(&env, &BigIntCodec::I64, &value);
-        assert_eq!(slot.addr() as i64, expected);
+        assert_eq!(slot.addr().cast_signed(), expected);
     });
 }
 
@@ -104,13 +104,13 @@ fn assert_write_return_u64(build: impl FnOnce() -> Result<napi_value, ()>, expec
     });
 }
 
-fn assert_write_value_i64(build: impl FnOnce() -> napi_value, expected: i64) {
+fn assert_write_value_i64(build: impl FnOnce() -> napi_value, expected: isize) {
     helpers::run(move || {
         let env = helpers::fake_env();
         let value = napi_mock::to_unknown(&env, build());
         let slot =
             helpers::write_value_into_slot(&env, &BigIntCodec::I64, std::ptr::null_mut(), value);
-        assert_eq!(slot.addr() as i64, expected);
+        assert_eq!(slot.addr().cast_signed(), expected);
     });
 }
 
@@ -128,7 +128,7 @@ fn assert_write_value_errors(codec: BigIntCodec, build: impl FnOnce() -> napi_va
     helpers::run(move || {
         let env = helpers::fake_env();
         let mut backing: *mut c_void = std::ptr::null_mut();
-        let slot = unsafe { Slot::new(&mut backing as *mut *mut c_void as *mut c_void) };
+        let slot = unsafe { Slot::new((&raw mut backing).cast::<c_void>()) };
         assert!(
             codec
                 .write_value_to_ptr(

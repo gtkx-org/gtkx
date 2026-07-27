@@ -10,38 +10,6 @@ import { path as gtkLogoCursorPath } from "#data/demos/media/gtk_logo_cursor.png
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./video-player.tsx?raw";
 
-const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.File) => void) => {
-    const dialog = new Gtk.FileDialog();
-    dialog.setTitle("Select a video");
-
-    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype._type_);
-
-    const allFilter = new Gtk.FileFilter();
-    allFilter.setName("All Files");
-    allFilter.addPattern("*");
-    filters.append(allFilter);
-
-    const imageFilter = new Gtk.FileFilter();
-    imageFilter.setName("Images");
-    imageFilter.addMimeType("image/*");
-    filters.append(imageFilter);
-
-    const videoFilter = new Gtk.FileFilter();
-    videoFilter.setName("Video");
-    videoFilter.addMimeType("video/*");
-    filters.append(videoFilter);
-
-    dialog.setFilters(filters);
-    dialog.setDefaultFilter(videoFilter);
-
-    try {
-        const file = await dialog.open(window, null);
-        setVideoFile(file);
-    } catch (error) {
-        if (error instanceof Error) console.error(error.message);
-    }
-};
-
 type VideoPlayerContextValue = {
     videoFile: Gio.File | null;
     fullscreened: boolean;
@@ -56,34 +24,98 @@ type VideoPlayerContextValue = {
 
 const VideoPlayerContext = createContext<VideoPlayerContextValue | null>(null);
 
+const videoPlayerDemo: Demo = {
+    id: "video-player",
+    title: "Video Player",
+    description: "This is a simple video player using just GTK widgets.",
+    keywords: ["GtkVideo", "GtkMediaStream", "GtkMediaFile", "GdkPaintable", "GtkMediaControls"],
+    component: VideoPlayerDemo,
+    titlebar: VideoPlayerTitlebar,
+    provider: VideoPlayerProvider,
+    sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 400,
+};
+
+const toggleFullscreen = (win: Gtk.Window | null) => {
+    if (!win) {
+        return;
+    }
+
+    if (win.isFullscreen()) {
+        win.unfullscreen();
+    } else {
+        win.fullscreen();
+    }
+};
+
+const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.File) => void) => {
+    const dialog = new Gtk.FileDialog();
+    dialog.setTitle("Select a video");
+    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype._type_);
+    const allFilter = new Gtk.FileFilter();
+    allFilter.setName("All Files");
+    allFilter.addPattern("*");
+    filters.append(allFilter);
+    const imageFilter = new Gtk.FileFilter();
+    imageFilter.setName("Images");
+    imageFilter.addMimeType("image/*");
+    filters.append(imageFilter);
+    const videoFilter = new Gtk.FileFilter();
+    videoFilter.setName("Video");
+    videoFilter.addMimeType("video/*");
+    filters.append(videoFilter);
+    dialog.setFilters(filters);
+    dialog.setDefaultFilter(videoFilter);
+
+    try {
+        const file = await dialog.open(window, null);
+        setVideoFile(file);
+    } catch (error) {
+        if (error instanceof Error) {
+            console.error(error.message);
+        }
+    }
+};
+
 const useVideoPlayerContext = (): VideoPlayerContextValue => {
     const ctx = useContext(VideoPlayerContext);
-    if (!ctx) throw new Error("VideoPlayerContext is missing");
+
+    if (!ctx) {
+        throw new Error("VideoPlayerContext is missing");
+    }
+
     return ctx;
 };
 
-const VideoPlayerProvider = ({ window, children }: DemoProviderProps) => {
+function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
     const [fullscreened, setFullscreened] = useState(false);
     const logoPaintable = Gdk.Texture.newFromResource(gtkLogoCursorPath);
     const bbbPaintable = Gdk.Texture.newFromResource(bbbPngPath);
 
-    useSignal(window, "notify::fullscreened", () => setFullscreened(window.current?.isFullscreen() ?? false), {
+    useSignal(window, "notify::fullscreened", () => {
+        setFullscreened(window.current?.isFullscreen() ?? false);
+    }, {
         immediate: true,
     });
 
     const handleOpen = () => {
         void openVideoDialog(window.current, setVideoFile);
     };
-    const handleLogo = () => setVideoFile(Gio.fileNewForUri(gtkLogoUri));
-    const handleBBB = () =>
+
+    const handleLogo = () => {
+        setVideoFile(Gio.fileNewForUri(gtkLogoUri));
+    };
+
+    const handleBBB = () => {
         setVideoFile(Gio.fileNewForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
+    };
+
     const handleFullscreen = () => window.current?.fullscreen();
+
     const handleToggleFullscreen = () => {
-        const win = window.current;
-        if (!win) return;
-        if (win.isFullscreen()) win.unfullscreen();
-        else win.fullscreen();
+        toggleFullscreen(window.current);
     };
 
     const value = {
@@ -99,11 +131,12 @@ const VideoPlayerProvider = ({ window, children }: DemoProviderProps) => {
     };
 
     return <VideoPlayerContext.Provider value={value}>{children}</VideoPlayerContext.Provider>;
-};
+}
 
-const VideoPlayerTitlebar = () => {
+function VideoPlayerTitlebar() {
     const { fullscreened, logoPaintable, bbbPaintable, handleOpen, handleLogo, handleBBB, handleFullscreen } =
         useVideoPlayerContext();
+
     return (
         <GtkHeaderBar
             start={(
@@ -127,10 +160,11 @@ const VideoPlayerTitlebar = () => {
             )}
         />
     );
-};
+}
 
-const VideoPlayerDemo = () => {
+function VideoPlayerDemo() {
     const { videoFile, handleToggleFullscreen } = useVideoPlayerContext();
+
     return (
         <GtkVideo
             name="video"
@@ -145,6 +179,7 @@ const VideoPlayerDemo = () => {
                             trigger={Gtk.ShortcutTrigger.parseString("F11")}
                             action={Gtk.CallbackAction.new(() => {
                                 handleToggleFullscreen();
+
                                 return true;
                             })}
                         />
@@ -153,17 +188,6 @@ const VideoPlayerDemo = () => {
             )}
         />
     );
-};
+}
 
-export const videoPlayerDemo: Demo = {
-    id: "video-player",
-    title: "Video Player",
-    description: "This is a simple video player using just GTK widgets.",
-    keywords: ["GtkVideo", "GtkMediaStream", "GtkMediaFile", "GdkPaintable", "GtkMediaControls"],
-    component: VideoPlayerDemo,
-    titlebar: VideoPlayerTitlebar,
-    provider: VideoPlayerProvider,
-    sourceCode,
-    defaultWidth: 600,
-    defaultHeight: 400,
-};
+export { videoPlayerDemo };

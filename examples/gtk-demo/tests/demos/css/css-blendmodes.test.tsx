@@ -28,10 +28,12 @@ describe("cssBlendmodesDemo metadata", () => {
 describe("cssBlendmodesDemo rendering", () => {
     it("renders the blend mode list and the Blend mode label", async () => {
         await renderDemo(cssBlendmodesDemo);
+
         for (const name of ["Normal", "Multiply", "Screen", "Color", "Hue", "Luminosity"]) {
             const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name });
             expect(row).toHaveTextContent(name);
         }
+
         await screen.findByText("Blend mode:");
     });
 
@@ -44,16 +46,13 @@ describe("cssBlendmodesDemo rendering", () => {
     it("switches between the three stack pages and shows each page's content", async () => {
         await renderDemo(cssBlendmodesDemo);
         const stack = (await screen.findByName("blend-stack")) as Gtk.Stack;
-
         expect(stack.getVisible()).toBe(true);
         expect(stack.getVisibleChildName()).toBe("page0");
         within(stack).getByText("Duck");
-
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Blends" }));
         await screen.findByText("Red");
         expect(stack.getVisibleChildName()).toBe("page1");
         within(stack).getByText("Blue");
-
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "CMYK" }));
         await screen.findByText("Cyan");
         expect(stack.getVisibleChildName()).toBe("page2");
@@ -64,7 +63,8 @@ describe("cssBlendmodesDemo rendering", () => {
 describe("cssBlendmodesDemo behavior", () => {
     it("selects the Normal row by default once the listbox is mounted", async () => {
         await renderDemo(cssBlendmodesDemo);
-        await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Normal", selected: true });
+        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Normal", selected: true });
+        expect(row).toBeSelected();
     });
 
     it("regenerates the root grid blend-mode css class when a blend row is activated", async () => {
@@ -72,11 +72,12 @@ describe("cssBlendmodesDemo behavior", () => {
         const grid = (await screen.findByName("blend-root")) as Gtk.Grid;
         const initialClasses = grid.getCssClasses();
         expect(initialClasses).toHaveLength(1);
-
         await activateRow("Multiply");
+
         await waitFor(() => {
             expect(grid.getCssClasses()).not.toEqual(initialClasses);
         });
+
         expect(grid.getCssClasses()).toHaveLength(1);
     });
 
@@ -84,15 +85,16 @@ describe("cssBlendmodesDemo behavior", () => {
         await renderDemo(cssBlendmodesDemo);
         const grid = (await screen.findByName("blend-root")) as Gtk.Grid;
         const initial = grid.getCssClasses();
-
         await activateRow("Overlay");
         let overlayClasses: string[] = initial;
+
         await waitFor(() => {
             overlayClasses = grid.getCssClasses();
             expect(overlayClasses).not.toEqual(initial);
         });
 
         await activateRow("Saturate");
+
         await waitFor(() => {
             expect(grid.getCssClasses()).not.toEqual(overlayClasses);
         });

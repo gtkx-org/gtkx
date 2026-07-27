@@ -7,6 +7,13 @@ use super::{ArrayCodec, build_js_array};
 use crate::ffi::codec::IntegerCodec;
 use crate::ffi::{StashData, StashStorage};
 
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn checked_byte(n: f64) -> anyhow::Result<u8> {
+    IntegerCodec::U8.check_range(n)?;
+
+    Ok(n as u8)
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct GByteArrayCodec;
 
@@ -14,7 +21,7 @@ impl ArrayContainer for GByteArrayCodec {
     fn encode(
         &self,
         codec: &ArrayCodec,
-        _env: &Env,
+        _env: Env,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
         let bytes: Vec<u8> = array
@@ -23,10 +30,8 @@ impl ArrayContainer for GByteArrayCodec {
             .map(|(i, &v)| match v.get_type()? {
                 ValueType::Number => {
                     let n = value::read_napi::<f64>(v)?;
-                    IntegerCodec::U8
-                        .check_range(n)
-                        .map_err(|e| anyhow::anyhow!("GByteArray element {i}: {e}"))?;
-                    Ok(n as u8)
+
+                    checked_byte(n).map_err(|e| anyhow::anyhow!("GByteArray element {i}: {e}"))
                 }
                 other => bail!("Expected a Number for GByteArray element, got {other:?}"),
             })
@@ -42,7 +47,7 @@ impl ArrayContainer for GByteArrayCodec {
             (ptr, None)
         };
 
-        let storage = StashStorage::new(ptr as *mut c_void, StashData::GByteArray(owned));
+        let storage = StashStorage::new(ptr.cast::<c_void>(), StashData::GByteArray(owned));
         Ok(finalize_container_stash(
             storage,
             should_free,
@@ -61,7 +66,7 @@ impl ArrayContainer for GByteArrayCodec {
             return build_js_array(env, Vec::new());
         };
 
-        let byte_array = ptr as *mut glib::ffi::GByteArray;
+        let byte_array = ptr.cast::<glib::ffi::GByteArray>();
         let storage_owns = matches!(stash, ffi::Stash::Storage(_));
         let adopted: Option<glib::ByteArray> = (codec.ownership.is_full() && !storage_owns)
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });

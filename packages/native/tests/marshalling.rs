@@ -28,7 +28,7 @@ fn decodes_contiguous_i32_array_from_buffer() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let buffer: Vec<i32> = vec![10, 20, 30, 40];
-        let array_codec = i32_array_codec(buffer.len() as u32);
+        let array_codec = i32_array_codec(u32::try_from(buffer.len()).expect("length fits in u32"));
 
         let items = decode_array_items(&env, &array_codec, buffer.as_ptr());
 
@@ -63,7 +63,7 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
         let mut buffer: Vec<f32> = vec![1.0, 2.0, 3.0];
         let raw = napi_mock::fake_typed_array(
             sys::TypedarrayType::float32_array,
-            buffer.as_mut_ptr() as *mut c_void,
+            buffer.as_mut_ptr().cast::<c_void>(),
             buffer.len(),
             0,
         );
@@ -72,10 +72,10 @@ fn buffer_view_array_passthrough_shares_the_backing_store() {
 
         let encoded = array_codec.encode(&env, view).expect("view encode");
         let ptr = encoded_ptr(&encoded);
-        assert_eq!(ptr, buffer.as_mut_ptr() as *mut c_void);
+        assert_eq!(ptr, buffer.as_mut_ptr().cast::<c_void>());
 
         unsafe { *ptr.cast::<f32>().add(1) = 9.5 };
-        assert_eq!(buffer[1], 9.5);
+        assert!((buffer[1] - 9.5).abs() < f32::EPSILON);
     });
 }
 
@@ -86,7 +86,7 @@ fn buffer_view_passthrough_reads_and_writes_the_backing_store() {
         let mut buffer: Vec<u8> = vec![10, 20, 30];
         let raw = napi_mock::fake_typed_array(
             sys::TypedarrayType::uint8_array,
-            buffer.as_mut_ptr() as *mut c_void,
+            buffer.as_mut_ptr().cast::<c_void>(),
             buffer.len(),
             0,
         );
@@ -94,7 +94,7 @@ fn buffer_view_passthrough_reads_and_writes_the_backing_store() {
 
         let encoded = BufferCodec.encode(&env, view).expect("buffer encode");
         let ptr = encoded_ptr(&encoded);
-        assert_eq!(ptr, buffer.as_mut_ptr() as *mut c_void);
+        assert_eq!(ptr, buffer.as_mut_ptr().cast::<c_void>());
 
         unsafe {
             assert_eq!(*ptr.cast::<u8>(), 10);

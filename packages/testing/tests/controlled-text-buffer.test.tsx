@@ -26,7 +26,9 @@ const ControlledNotes = ({ initial }: { initial: string }): ReactNode => {
                 <GtkTextBuffer
                     enableUndo
                     text={notes}
-                    onChanged={(buffer) => setNotes(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false))}
+                    onChanged={(buffer) => {
+                        setNotes(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false));
+                    }}
                 />
             )}
         />

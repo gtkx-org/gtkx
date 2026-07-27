@@ -89,8 +89,8 @@ fn drop_without_unref_fn_does_not_crash() {
     assert_eq!(unsafe { param_spec_refcount(ptr) }, ref_after_extra);
 
     unsafe {
-        glib::gobject_ffi::g_param_spec_unref(ptr as *mut _);
-        glib::gobject_ffi::g_param_spec_unref(ptr as *mut _);
+        glib::gobject_ffi::g_param_spec_unref(ptr.cast());
+        glib::gobject_ffi::g_param_spec_unref(ptr.cast());
     };
 }
 

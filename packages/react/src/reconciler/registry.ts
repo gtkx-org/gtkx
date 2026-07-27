@@ -57,23 +57,26 @@ type ElementConfig<T extends GObject.Object = GObject.Object> = {
     props?: ModuleExport;
 };
 
-/** Every registered element config, keyed by GLib type name. Adwaita entries appear once `@gtkx/react/adw` is loaded. */
+/**
+ * Every registered element config, keyed by GLib type name. Adwaita entries appear once `@gtkx/react/adw`
+ * is loaded.
+ */
 const ELEMENTS: Record<string, ElementConfig> = {};
 
 /** Props a behavior applies after construction; the constructor is never given them. */
 const deferredProps = (behavior: ElementBehavior): string[] => behavior.deferred ?? [];
 
-const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], prepend: boolean): ElementBehavior[] => {
+const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], isPrepended: boolean): ElementBehavior[] => {
     const baseBehaviors = base.behaviors ?? [];
 
-    return prepend ? [...added, ...baseBehaviors] : [...baseBehaviors, ...added];
+    return isPrepended ? [...added, ...baseBehaviors] : [...baseBehaviors, ...added];
 };
 
-const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, prepend = false): ElementConfig => {
+const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, isPrepended = false): ElementConfig => {
     const entry: ElementConfig = { ...base };
 
     if (added.behaviors !== undefined) {
-        entry.behaviors = mergeBehaviors(entry, added.behaviors as ElementBehavior[], prepend);
+        entry.behaviors = mergeBehaviors(entry, added.behaviors as ElementBehavior[], isPrepended);
     }
 
     if (added.lazy === true) {

@@ -673,18 +673,44 @@ const COLORS = [
     "YellowGreen",
 ];
 
-let parsedColors: Map<string, Gdk.RGBA> | undefined;
-function getParsedColors() {
-    if (!parsedColors) {
-        parsedColors = new Map<string, Gdk.RGBA>();
-        for (const name of COLORS) {
-            const rgba = new Gdk.RGBA();
-            if (rgba.parse(name)) {
-                parsedColors.set(name, rgba);
-            }
+const PARSED_COLORS: Map<string, Gdk.RGBA> = new Map();
+
+const flowboxDemo: Demo = {
+    id: "flowbox",
+    title: "Flow Box",
+    description:
+        "GtkFlowBox allows flexible and responsive grids which reflow as needed and support sorting " +
+        "and filtering. The children of a GtkFlowBox are regular widgets" +
+        "\n\nThe dataset used here has 665 colors.",
+    keywords: [],
+    component: FlowBoxDemo,
+    sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 600,
+};
+
+function parseColor(name: string): Gdk.RGBA | null {
+    const rgba = new Gdk.RGBA();
+
+    return rgba.parse(name) ? rgba : null;
+}
+
+function fillParsedColors(): void {
+    for (const name of COLORS) {
+        const rgba = parseColor(name);
+
+        if (rgba) {
+            PARSED_COLORS.set(name, rgba);
         }
     }
-    return parsedColors;
+}
+
+function getParsedColors() {
+    if (PARSED_COLORS.size === 0) {
+        fillParsedColors();
+    }
+
+    return PARSED_COLORS;
 }
 
 function drawColor(cr: Context, _width: number, _height: number, rgba: Gdk.RGBA): void {
@@ -692,9 +718,20 @@ function drawColor(cr: Context, _width: number, _height: number, rgba: Gdk.RGBA)
     cr.paint();
 }
 
-const FlowBoxDemo = () => {
+function createColorDrawFunc(rgba: Gdk.RGBA | undefined): Gtk.DrawingAreaDrawFunc | undefined {
+    if (!rgba) {
+        return undefined;
+    }
+
+    return (_self, cr, width, height) => {
+        drawColor(cr, width, height, rgba);
+    };
+}
+
+function FlowBoxDemo() {
     const colorItems = COLORS.map((color) => {
         const rgba = getParsedColors().get(color);
+
         return { color, rgba };
     });
 
@@ -711,23 +748,13 @@ const FlowBoxDemo = () => {
                         <GtkDrawingArea
                             contentWidth={24}
                             contentHeight={24}
-                            drawFunc={rgba ? (_self, cr, w, h) => drawColor(cr, w, h, rgba) : undefined}
+                            drawFunc={createColorDrawFunc(rgba)}
                         />
                     </GtkButton>
                 ))}
             </GtkFlowBox>
         </GtkScrolledWindow>
     );
-};
+}
 
-export const flowboxDemo: Demo = {
-    id: "flowbox",
-    title: "Flow Box",
-    description:
-        "GtkFlowBox allows flexible and responsive grids which reflow as needed and support sorting and filtering. The children of a GtkFlowBox are regular widgets\n\nThe dataset used here has 665 colors.",
-    keywords: [],
-    component: FlowBoxDemo,
-    sourceCode,
-    defaultWidth: 400,
-    defaultHeight: 600,
-};
+export { flowboxDemo };

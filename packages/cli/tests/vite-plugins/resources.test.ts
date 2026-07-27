@@ -1,6 +1,5 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { EventEmitter } from "node:events";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -21,9 +20,25 @@ type ConfigHook = (config: { root?: string }) => Promise<{ assetsInclude: RegExp
 type ConfigResolvedHook = (config: { command: "build" | "serve"; root: string }) => void;
 type ResourcesPlugin = ReturnType<typeof gtkxResources>;
 
+type FakeServer = {
+    watcher: FakeEmitter;
+    ssrLoadModule: ReturnType<typeof vi.fn>;
+};
+
+type WatcherHarness = {
+    assetPath: string;
+    server: FakeServer;
+    refresh: ReturnType<typeof vi.fn>;
+};
+
+const TINY_PNG = Buffer.from([0x89, 0x50, 0x4E, 0x47]);
+const tmpDir = { path: "" };
+
 const hasGlibCompileResources = (): boolean => {
     try {
-        execFileSync(resolveExecutable("glib-compile-resources"), ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+        execFileSync(resolveExecutable("glib-compile-resources"), ["--version"], {
+            stdio: ["ignore", "ignore", "ignore"],
+        });
 
         return true;
     } catch {
@@ -31,9 +46,7 @@ const hasGlibCompileResources = (): boolean => {
     }
 };
 
-let tmpDir: string;
-
-const dataAssetPath = (...segments: string[]): string => join(tmpDir, "data", ...segments);
+const dataAssetPath = (...segments: string[]): string => join(tmpDir.path, "data", ...segments);
 
 const writeDataAsset = (relPath: string, bytes: Buffer): string => {
     const full = dataAssetPath(relPath);
@@ -62,13 +75,54 @@ const initPlugin = async (
 
 const setupTmpDir = (): void => {
     beforeEach(() => {
-        tmpDir = mkdtempSync(join(tmpdir(), "gtkx-resources-test-"));
+        tmpDir.path = mkdtempSync(join(tmpdir(), "gtkx-resources-test-"));
     });
 
     afterEach(() => {
-        rmSync(tmpDir, { recursive: true, force: true });
+        rmSync(tmpDir.path, { recursive: true, force: true });
     });
 };
+
+const createFakeServer = (refresh: ReturnType<typeof vi.fn>): FakeServer => ({
+    watcher: new FakeEmitter(),
+    ssrLoadModule: vi.fn(() => Promise.resolve({ [REFRESH_EXPORT]: refresh })),
+});
+
+const waitTicks = async (n = 2): Promise<void> => {
+    for (let i = 0; i < n; i++) {
+        await new Promise((resolve) => setImmediate(resolve));
+    }
+};
+
+const setupTrackedAssetServer = async (assetName: string): Promise<WatcherHarness> => {
+    const plugin = gtkxResources();
+    await initPlugin(plugin, "serve", tmpDir.path);
+    const assetPath = writeDataAsset(assetName, TINY_PNG);
+    (plugin.load as LoadHook)(virtualAssetId(assetPath, assetName));
+    const refresh = vi.fn();
+    const server = createFakeServer(refresh);
+    (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+
+    return { assetPath, server, refresh };
+};
+
+class FakeEmitter {
+    #listeners: Map<string, ((...args: unknown[]) => void)[]> = new Map();
+
+    on(event: string, listener: (...args: unknown[]) => void): void {
+        const entries = this.#listeners.get(event) ?? [];
+        entries.push(listener);
+        this.#listeners.set(event, entries);
+    }
+
+    emit(event: string, ...args: unknown[]): void {
+        const listeners = this.#listeners.get(event) ?? [];
+
+        for (const listener of listeners) {
+            listener(...args);
+        }
+    }
+}
 
 describe("gtkxResources (plugin shape)", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {
@@ -171,7 +225,7 @@ describe("gtkxResources (init module)", () => {
 
     it("renders the build-mode init module with resourceLoad bootstrap", async () => {
         const plugin = gtkxResources();
-        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
+        await initPlugin(plugin, "build", tmpDir.path, "org.gtk.Demo4");
         const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
         expect(out).toContain("resourceLoad");
         expect(out).toContain("resourcesRegister");
@@ -184,7 +238,7 @@ describe("gtkxResources (init module)", () => {
         "renders the dev-mode init module with refresh-capable resourceLoad",
         async () => {
             const plugin = gtkxResources();
-            await initPlugin(plugin, "serve", tmpDir, "org.gtk.Demo4");
+            await initPlugin(plugin, "serve", tmpDir.path, "org.gtk.Demo4");
             const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4E, 0x47]));
             (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
             const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
@@ -201,7 +255,7 @@ describe("gtkxResources (resource prefix)", () => {
 
     it("derives the resource prefix from the configured applicationId", async () => {
         const plugin = gtkxResources();
-        await initPlugin(plugin, "build", tmpDir);
+        await initPlugin(plugin, "build", tmpDir.path);
         const assetPath = dataAssetPath("icons", "foo.svg");
         const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "icons/foo.svg")) as string;
         expect(out).toContain("export const path = \"/org/gtkx/app/icons/foo.svg\";");
@@ -213,13 +267,13 @@ describe("gtkxResources (asset load)", () => {
 
     it("returns undefined for non-virtual ids", async () => {
         const plugin = gtkxResources();
-        await initPlugin(plugin, "build", tmpDir);
+        await initPlugin(plugin, "build", tmpDir.path);
         expect((plugin.load as LoadHook)("/abs/path/foo.ts")).toBeUndefined();
     });
 
     it("rewrites a #data asset import to a resource URI under the app prefix", async () => {
         const plugin = gtkxResources();
-        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
+        await initPlugin(plugin, "build", tmpDir.path, "org.gtk.Demo4");
         const assetPath = dataAssetPath("icons", "foo.svg");
         const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "icons/foo.svg")) as string;
         expect(out).toContain(String.raw`import { ensureRegistered } from "\u0000gtkx-resources-init";`);
@@ -230,7 +284,7 @@ describe("gtkxResources (asset load)", () => {
 
     it("lands a top-level #data asset at the resource base path", async () => {
         const plugin = gtkxResources();
-        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
+        await initPlugin(plugin, "build", tmpDir.path, "org.gtk.Demo4");
         const assetPath = dataAssetPath("style.css");
         const out = (plugin.load as LoadHook)(virtualAssetId(assetPath, "style.css")) as string;
         expect(out).toContain("export const path = \"/org/gtk/Demo4/style.css\";");
@@ -242,54 +296,18 @@ describe("gtkxResources (buildEnd)", () => {
 
     it("is a no-op when no assets were imported", async () => {
         const plugin = gtkxResources();
-        await initPlugin(plugin, "build", tmpDir);
+        await initPlugin(plugin, "build", tmpDir.path);
         expectBuildEndIsNoop(plugin.buildEnd as BuildEndHook);
     });
 
     it.skipIf(!hasGlibCompileResources())("compiles tracked assets into a single .gresource and emits it", async () => {
         const plugin = gtkxResources();
-        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
+        await initPlugin(plugin, "build", tmpDir.path, "org.gtk.Demo4");
         const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]));
         (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
         expectBuildEndEmitsAsset(plugin.buildEnd as BuildEndHook, BUNDLE_FILENAME);
     });
 });
-
-type FakeServer = {
-    watcher: EventEmitter;
-    ssrLoadModule: ReturnType<typeof vi.fn>;
-};
-
-const createFakeServer = (refresh: ReturnType<typeof vi.fn>): FakeServer => ({
-    watcher: new EventEmitter(),
-    ssrLoadModule: vi.fn(async () => ({ [REFRESH_EXPORT]: refresh })),
-});
-
-const waitTicks = async (n = 2): Promise<void> => {
-    for (let i = 0; i < n; i++) {
-        await new Promise((resolve) => setImmediate(resolve));
-    }
-};
-
-const TINY_PNG = Buffer.from([0x89, 0x50, 0x4E, 0x47]);
-
-type WatcherHarness = {
-    assetPath: string;
-    server: FakeServer;
-    refresh: ReturnType<typeof vi.fn>;
-};
-
-const setupTrackedAssetServer = async (assetName: string): Promise<WatcherHarness> => {
-    const plugin = gtkxResources();
-    await initPlugin(plugin, "serve", tmpDir);
-    const assetPath = writeDataAsset(assetName, TINY_PNG);
-    (plugin.load as LoadHook)(virtualAssetId(assetPath, assetName));
-    const refresh = vi.fn();
-    const server = createFakeServer(refresh);
-    (plugin.configureServer as ConfigureServerHook).call(plugin, server);
-
-    return { assetPath, server, refresh };
-};
 
 describe("gtkxResources (watcher: change event)", () => {
     setupTmpDir();
@@ -325,7 +343,7 @@ describe("gtkxResources (watcher: untracked event)", () => {
 
     it("ignores file events for untracked paths", async () => {
         const plugin = gtkxResources();
-        await initPlugin(plugin, "serve", tmpDir);
+        await initPlugin(plugin, "serve", tmpDir.path);
         const refresh = vi.fn();
         const server = createFakeServer(refresh);
         (plugin.configureServer as ConfigureServerHook).call(plugin, server);
@@ -342,16 +360,14 @@ describe("gtkxResources (watcher: refresh failure)", () => {
 
     it.skipIf(!hasGlibCompileResources())("logs and swallows refresh errors so the watcher keeps running", async () => {
         const plugin = gtkxResources();
-        await initPlugin(plugin, "serve", tmpDir);
+        await initPlugin(plugin, "serve", tmpDir.path);
         const assetPath = writeDataAsset("broken.png", TINY_PNG);
         (plugin.load as LoadHook)(virtualAssetId(assetPath, "broken.png"));
-        const watcher = new EventEmitter();
+        const watcher = new FakeEmitter();
 
         const server = {
             watcher,
-            ssrLoadModule: vi.fn(async () => {
-                throw new Error("ssr boom");
-            }),
+            ssrLoadModule: vi.fn(() => Promise.reject(new Error("ssr boom"))),
         };
 
         const errSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);

@@ -43,8 +43,8 @@ const renderOpaqueConstructor = (className: string, superCall: string[]): string
     return renderBlock("constructor()", [...superCall, `throw new globalThis.Error(${message});`].join("\n"));
 };
 
-const renderEmptyConstructor = (className: string, extendsError: boolean): string =>
-    extendsError
+const renderEmptyConstructor = (className: string, isErrorSubclass: boolean): string =>
+    isErrorSubclass
         ? renderBlock(`constructor(props: ${className}ConstructorProps = {})`, "super();")
         : `constructor(props: ${className}ConstructorProps = {}) {}`;
 
@@ -64,9 +64,9 @@ const renderRecordConstructor = (
     context: ModuleContext,
     record: GirRecord,
     className: string,
-    extendsError = false,
+    isErrorSubclass = false,
 ): string => {
-    const superCall = extendsError ? ["super();"] : [];
+    const superCall = isErrorSubclass ? ["super();"] : [];
 
     if (isOpaque(record)) {
         return renderOpaqueConstructor(className, superCall);
@@ -75,7 +75,7 @@ const renderRecordConstructor = (
     const { slots, size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
     if (size === 0) {
-        return renderEmptyConstructor(className, extendsError);
+        return renderEmptyConstructor(className, isErrorSubclass);
     }
 
     context.addRuntimeImport("alloc");

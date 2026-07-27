@@ -4,16 +4,21 @@ import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import nodeEditorSvgUri from "#data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
-import { findOpenButton, renderDemo, renderDemoAndExpectOpenButton } from "../../test-utils.js";
+import { findOpenButton, renderDemo } from "../../test-utils.js";
 
 const renderAndFindPicture = async (): Promise<Gtk.Picture> => {
     await renderDemo(paintableSvgDemo);
+
     return (await screen.findByName("picture")) as Gtk.Picture;
 };
 
 const renderAndFindSvgPicture = async (): Promise<{ picture: Gtk.Picture; svg: Gtk.Svg }> => {
     const picture = await renderAndFindPicture();
-    await waitFor(() => expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg));
+
+    await waitFor(() => {
+        expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg);
+    });
+
     return { picture, svg: picture.getPaintable() as Gtk.Svg };
 };
 
@@ -34,7 +39,10 @@ describe("paintableSvgDemo metadata", () => {
 
 describe("paintableSvgDemo rendering", () => {
     it("renders the Open button in the header bar", async () => {
-        await renderDemoAndExpectOpenButton(paintableSvgDemo);
+        await renderDemo(paintableSvgDemo);
+        const openButton = await findOpenButton();
+        expect(openButton).toBeInstanceOf(Gtk.Button);
+        expect(openButton.getUseUnderline()).toBe(true);
     });
 
     it("renders a GtkPicture displaying the SVG paintable", async () => {
@@ -51,7 +59,10 @@ describe("paintableSvgDemo rendering", () => {
     });
 
     it("loads the bundled SVG and attaches it to the picture", async () => {
-        await renderAndFindSvgPicture();
+        const { picture, svg } = await renderAndFindSvgPicture();
+        expect(picture.getPaintable()).toBe(svg);
+        expect(svg.getIntrinsicWidth()).toBeGreaterThan(0);
+        expect(svg.getIntrinsicHeight()).toBeGreaterThan(0);
     });
 });
 
@@ -59,28 +70,40 @@ describe("paintableSvgDemo open dialog", () => {
     it("invokes the file picker and replaces the picture's paintable when a new file is chosen", async () => {
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockResolvedValue(Gio.fileNewForUri(nodeEditorSvgUri));
+
         try {
             const { picture } = await renderAndFindSvgPicture();
             const initial = picture.getPaintable();
             const openButton = await findOpenButton();
             await userEvent.click(openButton);
-            await waitFor(() => expect(openSpy).toHaveBeenCalled());
-            await waitFor(() => expect(picture.getPaintable()).not.toBe(initial));
+
+            await waitFor(() => {
+                expect(openSpy).toHaveBeenCalled();
+            });
+
+            await waitFor(() => {
+                expect(picture.getPaintable()).not.toBe(initial);
+            });
         } finally {
             openSpy.mockRestore();
         }
     });
 
     it("logs an error and leaves the picture unchanged when the file picker is dismissed", async () => {
-        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockRejectedValue(new Error("dismissed"));
+
         try {
             const { picture } = await renderAndFindSvgPicture();
             const initial = picture.getPaintable();
             const openButton = await findOpenButton();
             await userEvent.click(openButton);
-            await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("dismissed"));
+
+            await waitFor(() => {
+                expect(errorSpy).toHaveBeenCalledWith("dismissed");
+            });
+
             expect(picture.getPaintable()).toBe(initial);
         } finally {
             openSpy.mockRestore();
@@ -94,13 +117,19 @@ describe("paintableSvgDemo gesture", () => {
         const { picture, svg } = await renderAndFindSvgPicture();
         const initialState = svg.getState();
         await userEvent.pointer(picture, "[MouseLeft]");
-        await waitFor(() => expect(svg.getState()).not.toBe(initialState));
+
+        await waitFor(() => {
+            expect(svg.getState()).not.toBe(initialState);
+        });
     });
 
     it("wraps the SVG state from 63 back to 0 when the picture is pressed at the upper bound", async () => {
         const { picture, svg } = await renderAndFindSvgPicture();
         svg.setState(63);
         await userEvent.pointer(picture, "[MouseLeft]");
-        await waitFor(() => expect(svg.getState()).toBe(0));
+
+        await waitFor(() => {
+            expect(svg.getState()).toBe(0);
+        });
     });
 });

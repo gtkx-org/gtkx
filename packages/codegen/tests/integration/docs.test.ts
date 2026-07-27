@@ -1,34 +1,25 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type DocsResult, writeDocs } from "../../src/index.js";
+import { afterAll, describe, expect, it } from "vitest";
+import { writeDocs } from "../../src/index.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-docs-test-"));
-
-afterAll(() => {
-    rmSync(workDir, { recursive: true, force: true });
-});
+const defaultOutDir = join(workDir, "default");
+const defaultResult = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir });
 
 const page = (outDir: string, path: string): string => readFileSync(join(outDir, path), "utf8");
 
-describe("writeDocs", () => {
-    const outDir = join(workDir, "default");
-    let result: DocsResult;
-
-    beforeAll(() => {
-        result = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir });
-    });
-
+const registerNamespaceIndexTests = (): void => {
     it("generates namespaces with Gtk first and one link per element", () => {
-        expect(result.regenerated).toBe(true);
-        const names = result.namespaces.map((namespace) => namespace.name);
+        expect(defaultResult.regenerated).toBe(true);
+        const names = defaultResult.namespaces.map((namespace) => namespace.name);
         expect(names[0]).toBe("Gtk");
         expect(names).toContain("Gio");
         expect(names).toContain("GObject");
-        const gtk = result.namespaces[0];
+        const gtk = defaultResult.namespaces[0];
         expect(gtk?.directory).toBe("gtk");
         expect(gtk?.link).toBe("/reference/gtk/");
         expect(gtk?.elements.length).toBeGreaterThan(200);
@@ -37,21 +28,23 @@ describe("writeDocs", () => {
     });
 
     it("writes the root index with a namespace table", () => {
-        const root = page(outDir, "index.md");
+        const root = page(defaultOutDir, "index.md");
         expect(root).toContain("# Element Reference");
         expect(root).toContain("`gtkx docs`");
         expect(root).toContain("| [Gtk](/reference/gtk/) | `@gtkx/jsx/gtk` |");
     });
 
     it("writes a namespace index listing elements with descriptions", () => {
-        const index = page(outDir, join("gtk", "index.md"));
+        const index = page(defaultOutDir, join("gtk", "index.md"));
         expect(index).toContain("# Gtk elements");
         expect(index).toContain("`@gtkx/jsx/gtk`");
         expect(index).toContain("[GtkButton](/reference/gtk/button)");
     });
+};
 
+const registerElementPageTests = (): void => {
     it("renders the element page skeleton: frontmatter, title, import, hierarchy", () => {
-        const button = page(outDir, join("gtk", "button.md"));
+        const button = page(defaultOutDir, join("gtk", "button.md"));
         expect(button.startsWith("---\ndescription:")).toBe(true);
         expect(button).toContain("# GtkButton");
         expect(button).toContain('import { GtkButton } from "@gtkx/jsx/gtk";');
@@ -63,13 +56,13 @@ describe("writeDocs", () => {
     });
 
     it("omits the hierarchy for classes without ancestors", () => {
-        const object = page(outDir, join("gobject", "object.md"));
+        const object = page(defaultOutDir, join("gobject", "object.md"));
         expect(object).toContain("# GObject");
         expect(object).not.toContain("## Hierarchy");
     });
 
     it("renders props with camelCase names, mapped defaults, and interface provenance", () => {
-        const button = page(outDir, join("gtk", "button.md"));
+        const button = page(defaultOutDir, join("gtk", "button.md"));
         expect(button).toContain("### `label`");
         expect(button).toContain("default `null`");
         expect(button).toContain("### `hasFrame`");
@@ -79,25 +72,27 @@ describe("writeDocs", () => {
     });
 
     it("marks construct-only and read-only props", () => {
-        const widget = page(outDir, join("gtk", "widget.md"));
+        const widget = page(defaultOutDir, join("gtk", "widget.md"));
         expect(widget).toContain("### `cssName`");
         expect(widget).toContain("construct-only");
         expect(widget).toContain("read-only, observe with `onNotify");
     });
+};
 
+const registerSignalAndMethodTests = (): void => {
     it("renders signal handler props with exact signatures", () => {
-        const button = page(outDir, join("gtk", "button.md"));
+        const button = page(defaultOutDir, join("gtk", "button.md"));
         expect(button).toContain("## Signals");
         expect(button).toContain("### `onClicked`");
         expect(button).toContain("(self: Gtk.Button) => void");
     });
 
     it("renders methods including promisified async pairs", () => {
-        const button = page(outDir, join("gtk", "button.md"));
+        const button = page(defaultOutDir, join("gtk", "button.md"));
         expect(button).toContain("## Methods");
         expect(button).toContain("### `setLabel`");
         expect(button).toContain("setLabel(label: string): void");
-        const fileDialog = page(outDir, join("gtk", "file-dialog.md"));
+        const fileDialog = page(defaultOutDir, join("gtk", "file-dialog.md"));
 
         expect(fileDialog).toContain(
             "open(parent: Gtk.Window | null, cancellable?: Gio.Cancellable | null): Promise<Gio.File>",
@@ -105,20 +100,30 @@ describe("writeDocs", () => {
     });
 
     it("demotes upstream doc headings and strips media markup", () => {
-        const button = page(outDir, join("gtk", "button.md"));
+        const button = page(defaultOutDir, join("gtk", "button.md"));
         expect(button).toContain("## CSS nodes");
         expect(button).not.toContain("<picture");
         expect(button).not.toContain("<img");
     });
 
     it("skips regeneration while fresh and honors force", () => {
-        const fresh = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir });
+        const fresh = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir });
         expect(fresh.regenerated).toBe(false);
-        expect(fresh.namespaces).toEqual(result.namespaces);
-        const forced = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir, force: true });
+        expect(fresh.namespaces).toEqual(defaultResult.namespaces);
+        const forced = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir, force: true });
         expect(forced.regenerated).toBe(true);
-        expect(forced.namespaces).toEqual(result.namespaces);
+        expect(forced.namespaces).toEqual(defaultResult.namespaces);
     });
+};
+
+afterAll(() => {
+    rmSync(workDir, { recursive: true, force: true });
+});
+
+describe("writeDocs", () => {
+    registerNamespaceIndexTests();
+    registerElementPageTests();
+    registerSignalAndMethodTests();
 });
 
 describe("writeDocs with a custom base path", () => {

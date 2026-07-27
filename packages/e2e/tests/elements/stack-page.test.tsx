@@ -1,95 +1,85 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { ComponentProps, RefObject } from "react";
 import { GtkLabel, GtkStack, GtkStackPage } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
 
-describe("render - StackPage", () => {
+type StackPageProps = ComponentProps<typeof GtkStackPage>;
+
+const renderSinglePage = async (props: StackPageProps): Promise<Gtk.Stack> => {
+    const stackRef = createRef<Gtk.Stack>();
+
+    await render(
+        <GtkStack ref={stackRef}>
+            <GtkStackPage {...props}>
+                <GtkLabel>Content</GtkLabel>
+            </GtkStackPage>
+        </GtkStack>,
+    );
+
+    return stackRef.current as Gtk.Stack;
+};
+
+const pageNamed = (stack: Gtk.Stack | null, name: string): Gtk.StackPage | undefined =>
+    stack?.getPage(stack.getChildByName(name) as Gtk.Widget);
+
+const buildNamedPages = (stackRef: RefObject<Gtk.Stack | null>) => (pages: string[]) => (
+    <GtkStack ref={stackRef}>
+        {pages.map((name) => (
+            <GtkStackPage key={name} name={name}>
+                <GtkLabel>{name}</GtkLabel>
+            </GtkStackPage>
+        ))}
+    </GtkStack>
+);
+
+const buildTitledPages = (stackRef: RefObject<Gtk.Stack | null>) => (pages: { key: string; title: string }[]) => (
+    <GtkStack ref={stackRef}>
+        {pages.map((page) => (
+            <GtkStackPage key={page.key} name={page.key} title={page.title}>
+                <GtkLabel>{page.key}</GtkLabel>
+            </GtkStackPage>
+        ))}
+    </GtkStack>
+);
+
+describe("render - StackPage (1)", () => {
     it("adds named page to Stack", async () => {
-        const stackRef = createRef<Gtk.Stack>();
-
-        await render(
-            <GtkStack ref={stackRef}>
-                <GtkStackPage name="test-page">
-                    <GtkLabel>Content</GtkLabel>
-                </GtkStackPage>
-            </GtkStack>,
-        );
-
-        expect(stackRef.current?.getChildByName("test-page")).not.toBeNull();
+        const stack = await renderSinglePage({ name: "test-page" });
+        expect(stack.getChildByName("test-page")).not.toBeNull();
     });
 
     it("sets page title", async () => {
-        const stackRef = createRef<Gtk.Stack>();
-
-        await render(
-            <GtkStack ref={stackRef}>
-                <GtkStackPage name="titled" title="Page Title">
-                    <GtkLabel>Content</GtkLabel>
-                </GtkStackPage>
-            </GtkStack>,
-        );
-
-        const child = stackRef.current?.getChildByName("titled");
-        const page = stackRef.current?.getPage(child as Gtk.Widget);
-        expect(page?.getTitle()).toBe("Page Title");
+        const stack = await renderSinglePage({ name: "titled", title: "Page Title" });
+        expect(pageNamed(stack, "titled")?.getTitle()).toBe("Page Title");
     });
 
     it("sets page icon", async () => {
-        const stackRef = createRef<Gtk.Stack>();
-
-        await render(
-            <GtkStack ref={stackRef}>
-                <GtkStackPage name="iconic" iconName="dialog-information">
-                    <GtkLabel>Content</GtkLabel>
-                </GtkStackPage>
-            </GtkStack>,
-        );
-
-        const child = stackRef.current?.getChildByName("iconic");
-        const page = stackRef.current?.getPage(child as Gtk.Widget);
-        expect(page?.getIconName()).toBe("dialog-information");
+        const stack = await renderSinglePage({ name: "iconic", iconName: "dialog-information" });
+        expect(pageNamed(stack, "iconic")?.getIconName()).toBe("dialog-information");
     });
 
     it("removes page from Stack", async () => {
         const stackRef = createRef<Gtk.Stack>();
-
-        const buildStack = (pages: string[]) => (
-            <GtkStack ref={stackRef}>
-                {pages.map((name) => (
-                    <GtkStackPage key={name} name={name}>
-                        <GtkLabel>{name}</GtkLabel>
-                    </GtkStackPage>
-                ))}
-            </GtkStack>
-        );
-
-        const { rerender } = await renderChildren(["a", "b"], buildStack);
+        const { rerender } = await renderChildren(["a", "b"], buildNamedPages(stackRef));
         expect(stackRef.current?.getChildByName("b")).not.toBeNull();
         await rerender(["a"]);
         expect(stackRef.current?.getChildByName("b")).toBeNull();
     });
+});
 
+describe("render - StackPage (2)", () => {
     it("keeps updated page props after a reorder-triggered rebuild", async () => {
         const stackRef = createRef<Gtk.Stack>();
-
-        const build = (pages: { key: string; title: string }[]) => (
-            <GtkStack ref={stackRef}>
-                {pages.map((page) => (
-                    <GtkStackPage key={page.key} name={page.key} title={page.title}>
-                        <GtkLabel>{page.key}</GtkLabel>
-                    </GtkStackPage>
-                ))}
-            </GtkStack>
-        );
 
         const { rerender } = await renderChildren(
             [
                 { key: "a", title: "A1" },
                 { key: "b", title: "B1" },
             ],
-            build,
+            buildTitledPages(stackRef),
         );
 
         await rerender([
@@ -103,32 +93,21 @@ describe("render - StackPage", () => {
             { key: "b", title: "B1" },
         ]);
 
-        const child = stackRef.current?.getChildByName("a");
-        const page = stackRef.current?.getPage(child as Gtk.Widget);
-        expect(page?.getTitle()).toBe("A2");
+        expect(pageNamed(stackRef.current, "a")?.getTitle()).toBe("A2");
     });
 
     it("connects a notify handler on the page object", async () => {
-        const stackRef = createRef<Gtk.Stack>();
         const seen: unknown[] = [];
 
-        await render(
-            <GtkStack ref={stackRef}>
-                <GtkStackPage
-                    name="p"
-                    title="First"
-                    onNotifyTitle={(value) => {
-                        seen.push(value);
-                    }}
-                >
-                    <GtkLabel>Content</GtkLabel>
-                </GtkStackPage>
-            </GtkStack>,
-        );
+        const stack = await renderSinglePage({
+            name: "p",
+            title: "First",
+            onNotifyTitle: (value) => {
+                seen.push(value);
+            },
+        });
 
-        const child = stackRef.current?.getChildByName("p");
-        const page = stackRef.current?.getPage(child as Gtk.Widget);
-        page?.setTitle("Second");
+        pageNamed(stack, "p")?.setTitle("Second");
         expect(seen).toEqual(["Second"]);
     });
 });

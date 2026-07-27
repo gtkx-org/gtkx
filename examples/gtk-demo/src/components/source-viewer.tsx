@@ -4,7 +4,7 @@ import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { GtkSourceBuffer, GtkSourceView } from "@gtkx/jsx/gtksource";
 import { useDemo } from "../context/demo-context.js";
 
-export const SourceViewer = () => {
+const SourceViewer = () => {
     const { currentDemo } = useDemo();
 
     const handleRef = (view: GtkSource.View | null) => {
@@ -52,3 +52,5 @@ export const SourceViewer = () => {
         </GtkScrolledWindow>
     );
 };
+
+export { SourceViewer };

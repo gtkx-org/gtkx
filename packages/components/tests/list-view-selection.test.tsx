@@ -7,12 +7,30 @@ import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { allExpandableIds, renderListView } from "./helpers/list-fixtures.js";
 
+type SidebarItem = {
+    id: string;
+    name: string;
+    children?: SidebarItem[];
+};
+
 const TWO_ITEMS = [
     { id: "1", value: { name: "First" } },
     { id: "2", value: { name: "Second" } },
 ];
 
 const THREE_ITEMS = [...TWO_ITEMS, { id: "3", value: { name: "Third" } }];
+
+const sidebarData: SidebarItem[] = [
+    { id: "intro", name: "Introduction" },
+    ...Array.from({ length: 20 }, (_, gi) => ({
+        id: `cat-${String(gi)}`,
+        name: `Category ${String(gi)}`,
+        children: Array.from({ length: 5 }, (_, ci) => ({
+            id: `cat-${String(gi)}-demo-${String(ci)}`,
+            name: `Cat ${String(gi)} Demo ${String(ci)}`,
+        })),
+    })),
+];
 
 const expectSelectionChangedOnFirstRowClick = async (): Promise<void> => {
     const onSelectionChanged = vi.fn();
@@ -26,154 +44,6 @@ const expectUnselectKeepsRow = async (): Promise<void> => {
     await rerender([{ id: "1", value: { name: "First" } }], { selected: [] });
     expect(screen.queryAllByText("First")).toHaveLength(1);
 };
-
-describe("render - ListView - selection (1)", () => {
-    describe("single (1)", () => {
-        it("sets selected item via selected prop", async () => {
-            await renderListView(TWO_ITEMS, { selected: ["2"] });
-            expect(screen.queryAllByText("Second")).toHaveLength(1);
-        });
-
-        it("calls onSelectionChanged when selection changes", expectSelectionChangedOnFirstRowClick);
-
-        it("selects correct item after scrolling to bottom of large list", async () => {
-            const onSelectionChanged = vi.fn();
-
-            const items = Array.from({ length: 100 }, (_, i) => ({
-                id: `item-${i}`,
-                value: { name: `Item ${i}` },
-            }));
-
-            const { ref } = await renderListView(items, { onSelectionChanged });
-            const listView = ref.current;
-            listView.scrollTo(99, Gtk.ListScrollFlags.NONE, null);
-            await userEvent.selectOptions(listView, 99);
-            expect(onSelectionChanged).toHaveBeenCalledWith(["item-99"]);
-        });
-    });
-});
-
-describe("render - ListView - selection (2)", () => {
-    describe("single (2)", () => {
-        it("handles unselect (empty selection)", expectUnselectKeepsRow);
-    });
-});
-
-describe("render - ListView - selection (3)", () => {
-    describe("multiple", () => {
-        it("enables multi-select with selectionMode", async () => {
-            await renderListView(TWO_ITEMS, { selectionMode: Gtk.SelectionMode.MULTIPLE });
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-            expect(screen.queryAllByText("Second")).toHaveLength(1);
-        });
-
-        it("sets multiple selected items", async () => {
-            await renderListView(THREE_ITEMS, {
-                selectionMode: Gtk.SelectionMode.MULTIPLE,
-                selected: ["1", "3"],
-            });
-
-            expect(screen.queryAllByText("First")).toHaveLength(1);
-            expect(screen.queryAllByText("Third")).toHaveLength(1);
-        });
-
-        it("calls onSelectionChanged with array of ids", async () => {
-            const onSelectionChanged = vi.fn();
-
-            const { ref } = await renderListView(TWO_ITEMS, {
-                selectionMode: Gtk.SelectionMode.MULTIPLE,
-                onSelectionChanged,
-            });
-
-            await userEvent.selectOptions(ref.current, [0, 1]);
-            expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
-        });
-    });
-});
-
-describe("render - ListView - selection (4)", () => {
-    describe("tree - single (1)", () => {
-        it("sets selected item via selected prop", async () => {
-            const onSelectionChanged = vi.fn();
-            await renderListView(TWO_ITEMS, { selected: ["2"], onSelectionChanged });
-            expect(onSelectionChanged).toHaveBeenCalledWith(["2"]);
-        });
-
-        it("sets initial selection on first render", async () => {
-            const onSelectionChanged = vi.fn();
-
-            await renderListView(
-                [
-                    { id: "first", value: { name: "First" } },
-                    { id: "second", value: { name: "Second" } },
-                    { id: "third", value: { name: "Third" } },
-                ],
-                { selected: ["first"], onSelectionChanged },
-            );
-
-            expect(onSelectionChanged).toHaveBeenCalledWith(["first"]);
-        });
-
-        it("calls onSelectionChanged when selection changes", expectSelectionChangedOnFirstRowClick);
-    });
-});
-
-describe("render - ListView - selection (5)", () => {
-    describe("tree - single (2)", () => {
-        it("handles unselect (empty selection)", expectUnselectKeepsRow);
-
-        it("selects correct child item after scrolling to bottom of expanded tree", async () => {
-            const onSelectionChanged = vi.fn();
-
-            const groups = Array.from({ length: 20 }, (_, gi) => ({
-                id: `group-${gi}`,
-                name: `Group ${gi}`,
-                children: Array.from({ length: 5 }, (_, ci) => ({
-                    id: `group-${gi}-child-${ci}`,
-                    name: `Group ${gi} Child ${ci}`,
-                })),
-            }));
-
-            const { ref } = await renderListView(
-                groups.map((group) => ({
-                    id: group.id,
-                    value: { name: group.name },
-                    children: group.children.map((child) => ({
-                        id: child.id,
-                        value: { name: child.name },
-                        hideExpander: true,
-                    })),
-                })),
-                { expandAll: true, onSelectionChanged },
-            );
-
-            const listView = ref.current;
-            const model = listView.getModel() as Gio.ListModel;
-            const lastPosition = model.getNItems() - 1;
-            listView.scrollTo(lastPosition, Gtk.ListScrollFlags.NONE, null);
-            await userEvent.selectOptions(listView, lastPosition);
-            expect(onSelectionChanged).toHaveBeenCalledWith(["group-19-child-4"]);
-        });
-    });
-});
-
-type SidebarItem = {
-    id: string;
-    name: string;
-    children?: SidebarItem[];
-};
-
-const sidebarData: SidebarItem[] = [
-    { id: "intro", name: "Introduction" },
-    ...Array.from({ length: 20 }, (_, gi) => ({
-        id: `cat-${gi}`,
-        name: `Category ${gi}`,
-        children: Array.from({ length: 5 }, (_, ci) => ({
-            id: `cat-${gi}-demo-${ci}`,
-            name: `Cat ${gi} Demo ${ci}`,
-        })),
-    })),
-];
 
 const toSidebarListItems = (items: SidebarItem[]) =>
     items.map((item) => ({
@@ -239,6 +109,144 @@ function SidebarApp({
         </GtkBox>
     );
 }
+
+describe("render - ListView - selection (1)", () => {
+    describe("single (1)", () => {
+        it("sets selected item via selected prop", async () => {
+            await renderListView(TWO_ITEMS, { selected: ["2"] });
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
+        });
+
+        it("calls onSelectionChanged when selection changes", async () => {
+            await expectSelectionChangedOnFirstRowClick();
+        });
+
+        it("selects correct item after scrolling to bottom of large list", async () => {
+            const onSelectionChanged = vi.fn();
+
+            const items = Array.from({ length: 100 }, (_, i) => ({
+                id: `item-${String(i)}`,
+                value: { name: `Item ${String(i)}` },
+            }));
+
+            const { ref } = await renderListView(items, { onSelectionChanged });
+            const listView = ref.current;
+            listView.scrollTo(99, Gtk.ListScrollFlags.NONE, null);
+            await userEvent.selectOptions(listView, 99);
+            expect(onSelectionChanged).toHaveBeenCalledWith(["item-99"]);
+        });
+    });
+});
+
+describe("render - ListView - selection (2)", () => {
+    describe("single (2)", () => {
+        it("handles unselect (empty selection)", async () => {
+            await expectUnselectKeepsRow();
+        });
+    });
+});
+
+describe("render - ListView - selection (3)", () => {
+    describe("multiple", () => {
+        it("enables multi-select with selectionMode", async () => {
+            await renderListView(TWO_ITEMS, { selectionMode: Gtk.SelectionMode.MULTIPLE });
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Second")).toHaveLength(1);
+        });
+
+        it("sets multiple selected items", async () => {
+            await renderListView(THREE_ITEMS, {
+                selectionMode: Gtk.SelectionMode.MULTIPLE,
+                selected: ["1", "3"],
+            });
+
+            expect(screen.queryAllByText("First")).toHaveLength(1);
+            expect(screen.queryAllByText("Third")).toHaveLength(1);
+        });
+
+        it("calls onSelectionChanged with array of ids", async () => {
+            const onSelectionChanged = vi.fn();
+
+            const { ref } = await renderListView(TWO_ITEMS, {
+                selectionMode: Gtk.SelectionMode.MULTIPLE,
+                onSelectionChanged,
+            });
+
+            await userEvent.selectOptions(ref.current, [0, 1]);
+            expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
+        });
+    });
+});
+
+describe("render - ListView - selection (4)", () => {
+    describe("tree - single (1)", () => {
+        it("sets selected item via selected prop", async () => {
+            const onSelectionChanged = vi.fn();
+            await renderListView(TWO_ITEMS, { selected: ["2"], onSelectionChanged });
+            expect(onSelectionChanged).toHaveBeenCalledWith(["2"]);
+        });
+
+        it("sets initial selection on first render", async () => {
+            const onSelectionChanged = vi.fn();
+
+            await renderListView(
+                [
+                    { id: "first", value: { name: "First" } },
+                    { id: "second", value: { name: "Second" } },
+                    { id: "third", value: { name: "Third" } },
+                ],
+                { selected: ["first"], onSelectionChanged },
+            );
+
+            expect(onSelectionChanged).toHaveBeenCalledWith(["first"]);
+        });
+
+        it("calls onSelectionChanged when selection changes", async () => {
+            await expectSelectionChangedOnFirstRowClick();
+        });
+    });
+});
+
+describe("render - ListView - selection (5)", () => {
+    describe("tree - single (2)", () => {
+        it("handles unselect (empty selection)", async () => {
+            await expectUnselectKeepsRow();
+        });
+
+        it("selects correct child item after scrolling to bottom of expanded tree", async () => {
+            const onSelectionChanged = vi.fn();
+
+            const groups = Array.from({ length: 20 }, (_, gi) => ({
+                id: `group-${String(gi)}`,
+                name: `Group ${String(gi)}`,
+                children: Array.from({ length: 5 }, (_, ci) => ({
+                    id: `group-${String(gi)}-child-${String(ci)}`,
+                    name: `Group ${String(gi)} Child ${String(ci)}`,
+                })),
+            }));
+
+            const { ref } = await renderListView(
+                groups.map((group) => ({
+                    id: group.id,
+                    value: { name: group.name },
+                    children: group.children.map((child) => ({
+                        id: child.id,
+                        value: { name: child.name },
+                        hideExpander: true,
+                    })),
+                })),
+                { expandAll: true, onSelectionChanged },
+            );
+
+            const listView = ref.current;
+            const model = listView.getModel() as Gio.ListModel;
+            const lastPosition = model.getNItems() - 1;
+            listView.scrollTo(lastPosition, Gtk.ListScrollFlags.NONE, null);
+            await userEvent.selectOptions(listView, lastPosition);
+            expect(onSelectionChanged).toHaveBeenCalledWith(["group-19-child-4"]);
+        });
+    });
+});
 
 describe("render - ListView - selection (6) > tree - single (3)", () => {
     it("preserves tree state and scroll position when selecting after scrolling down", async () => {

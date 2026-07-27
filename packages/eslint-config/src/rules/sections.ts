@@ -5,6 +5,18 @@ type Section = "imports" | "types" | "constants" | "functions" | "classes" | "si
 const ORDER: Section[] = ["imports", "types", "constants", "functions", "classes", "side effects", "exports"];
 const CONTIGUOUS: Set<Section> = new Set<Section>(["imports", "exports"]);
 
+const SECTION_BY_TYPE: Partial<Record<AST_NODE_TYPES, Section>> = {
+    [AST_NODE_TYPES.ClassDeclaration]: "classes",
+    [AST_NODE_TYPES.ExportAllDeclaration]: "exports",
+    [AST_NODE_TYPES.ExpressionStatement]: "side effects",
+    [AST_NODE_TYPES.FunctionDeclaration]: "functions",
+    [AST_NODE_TYPES.ImportDeclaration]: "imports",
+    [AST_NODE_TYPES.TSDeclareFunction]: "functions",
+    [AST_NODE_TYPES.TSEnumDeclaration]: "types",
+    [AST_NODE_TYPES.TSInterfaceDeclaration]: "types",
+    [AST_NODE_TYPES.TSTypeAliasDeclaration]: "types",
+};
+
 const rankFor = (section: Section): number => ORDER.indexOf(section);
 
 const isFunctionInitializer = (node: TSESTree.Expression | null | undefined): boolean =>
@@ -21,38 +33,15 @@ const variableSection = (node: TSESTree.VariableDeclaration): Section => {
 };
 
 const getSection = (node: TSESTree.Node): Section | undefined => {
-    switch (node.type) {
-        case AST_NODE_TYPES.ImportDeclaration: {
-            return "imports";
-        }
-        case AST_NODE_TYPES.TSTypeAliasDeclaration:
-        case AST_NODE_TYPES.TSInterfaceDeclaration:
-        case AST_NODE_TYPES.TSEnumDeclaration: {
-            return "types";
-        }
-        case AST_NODE_TYPES.VariableDeclaration: {
-            return variableSection(node);
-        }
-        case AST_NODE_TYPES.FunctionDeclaration:
-        case AST_NODE_TYPES.TSDeclareFunction: {
-            return "functions";
-        }
-        case AST_NODE_TYPES.ClassDeclaration: {
-            return "classes";
-        }
-        case AST_NODE_TYPES.ExpressionStatement: {
-            return "side effects";
-        }
-        case AST_NODE_TYPES.ExportAllDeclaration: {
-            return "exports";
-        }
-        case AST_NODE_TYPES.ExportNamedDeclaration: {
-            return node.declaration === null ? "exports" : getSection(node.declaration);
-        }
-        default: {
-            return undefined;
-        }
+    if (node.type === AST_NODE_TYPES.VariableDeclaration) {
+        return variableSection(node);
     }
+
+    if (node.type === AST_NODE_TYPES.ExportNamedDeclaration) {
+        return node.declaration === null ? "exports" : getSection(node.declaration);
+    }
+
+    return SECTION_BY_TYPE[node.type];
 };
 
 export { ORDER, CONTIGUOUS, rankFor, getSection, type Section };

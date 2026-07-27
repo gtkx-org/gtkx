@@ -12,6 +12,14 @@ type TransformOptions = Parameters<TransformHook>[2];
 type TransformResult = { code: string; map?: unknown } | null | undefined;
 type TransformFn = (code: string, id: string, options?: { ssr?: boolean }) => Promise<TransformResult>;
 
+type RuntimeTransformFn = (
+    code: string,
+    id: string,
+    options?: { ssr?: boolean },
+) => { code: string; map: null } | undefined;
+
+const runtimeTransform = gtkxRefreshRuntime().transform as RuntimeTransformFn;
+
 const normalizeResult = (result: Awaited<ReturnType<TransformHook>>): TransformResult => {
     if (!result || typeof result === "string" || typeof result.code !== "string") {
         return undefined;
@@ -77,14 +85,6 @@ describe("gtkxSwcRefresh", () => {
         expect(typeof result?.code).toBe("string");
     });
 });
-
-type RuntimeTransformFn = (
-    code: string,
-    id: string,
-    options?: { ssr?: boolean },
-) => { code: string; map: null } | undefined;
-
-const runtimeTransform = gtkxRefreshRuntime().transform as RuntimeTransformFn;
 
 describe("gtkxRefreshRuntime (plugin shape)", () => {
     it("returns plugin with correct name", () => {

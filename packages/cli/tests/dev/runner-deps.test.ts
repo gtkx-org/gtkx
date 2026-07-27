@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { defaultDevRunnerDeps } from "../../src/dev/runner-deps.js";
 
 const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(
@@ -9,12 +10,12 @@ const hoisted = vi.hoisted(() => ({
     ),
     quitApplication: vi.fn(),
     installGracefulShutdown: vi.fn(),
-    startMcpClient: vi.fn(async () => undefined),
+    startMcpClient: vi.fn(() => Promise.resolve()),
     stopMcpClient: vi.fn(),
     setTestingModuleLoader: vi.fn(),
     performRefresh: vi.fn(),
     isRefreshBoundary: vi.fn(() => false),
-    createServer: vi.fn(async () => ({})),
+    createServer: vi.fn(() => Promise.resolve({})),
 }));
 
 vi.mock("@gtkx/gi/gio", () => ({
@@ -48,8 +49,6 @@ vi.mock("../../src/refresh-runtime.js", () => ({
     performRefresh: hoisted.performRefresh,
 }));
 
-import { defaultDevRunnerDeps } from "../../src/dev/runner-deps.js";
-
 beforeEach(() => {
     hoisted.getDefault.mockReset();
 });
@@ -65,7 +64,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
 
     it("installs an app-graph testing-module loader before starting the MCP client", async () => {
         const deps = defaultDevRunnerDeps();
-        const loadAppModule = vi.fn(async () => ({}));
+        const loadAppModule = vi.fn(() => Promise.resolve({}));
         await deps.startMcpClient("com.example.app", loadAppModule);
         expect(hoisted.setTestingModuleLoader).toHaveBeenCalledTimes(1);
         expect(hoisted.startMcpClient).toHaveBeenCalledWith("com.example.app");
@@ -86,7 +85,10 @@ describe("defaultDevRunnerDeps (wiring)", () => {
     it("does nothing when no application is registered", () => {
         const deps = defaultDevRunnerDeps();
         hoisted.getDefault.mockReturnValueOnce(null);
-        expect(() => deps.watchApplicationShutdown(vi.fn())).not.toThrow();
+
+        expect(() => {
+            deps.watchApplicationShutdown(vi.fn());
+        }).not.toThrow();
     });
 });
 
@@ -197,7 +199,7 @@ describe("defaultDevRunnerDeps (log and exit)", () => {
 
     it("delegates exit to process.exit with the given code", () => {
         const deps = defaultDevRunnerDeps();
-        const spy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        const spy = vi.spyOn(process, "exit").mockImplementation(((): void => undefined) as never);
 
         try {
             deps.exit(7);

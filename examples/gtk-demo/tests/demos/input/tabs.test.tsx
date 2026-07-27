@@ -33,7 +33,6 @@ describe("tabsDemo", () => {
         expect(tabs).not.toBeNull();
         const tabArray = tabs as Pango.TabArray;
         expect(tabArray.getSize()).toBe(3);
-
         const [align0] = tabArray.getTab(0);
         const [align1] = tabArray.getTab(1);
         const [align2] = tabArray.getTab(2);
@@ -41,19 +40,19 @@ describe("tabsDemo", () => {
         expect(align1).toBe(Pango.TabAlign.DECIMAL);
         expect(align2).toBe(Pango.TabAlign.RIGHT);
     });
+});
 
+describe("tabsDemo text view", () => {
     it("places the tabs at positions 0, 150 and 290 with '.' as the decimal point", async () => {
         await renderDemo(tabsDemo);
         const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
         const tabs = textView.getTabs() as Pango.TabArray;
-
         const [, pos0] = tabs.getTab(0);
         const [, pos1] = tabs.getTab(1);
         const [, pos2] = tabs.getTab(2);
         expect(pos0).toBe(0);
         expect(pos1).toBe(150);
         expect(pos2).toBe(290);
-
         expect(tabs.getDecimalPoint(1)).toBe(".");
     });
 

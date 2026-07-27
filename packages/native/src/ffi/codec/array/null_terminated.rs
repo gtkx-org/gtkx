@@ -36,7 +36,7 @@ fn build_strv(array: &[Unknown<'_>]) -> anyhow::Result<glib::StrV> {
 }
 
 fn leak_container_to_callee(ptrs: &[*mut c_void]) -> *mut c_void {
-    unsafe { glib::ffi::g_memdup2(ptrs.as_ptr().cast::<c_void>(), std::mem::size_of_val(ptrs)) }
+    unsafe { glib::ffi::g_memdup2(ptrs.as_ptr().cast::<c_void>(), size_of_val(ptrs)) }
 }
 
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ impl ArrayContainer for NullTerminatedArrayCodec {
     fn encode(
         &self,
         codec: &ArrayCodec,
-        env: &Env,
+        env: Env,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
         codec.encode_zero_terminated_items(env, &NullTerminatedArrayEncoder, array)
@@ -81,7 +81,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
             }
             (Ownership::Full, true) => {
                 let strv = build_strv(array)?;
-                let container = strv.into_raw() as *mut c_void;
+                let container = strv.into_raw().cast::<c_void>();
                 Ok(full_transfer_stash(container, ffi::ReleaseKind::StrFreeV))
             }
             (Ownership::Full, false) => {
@@ -98,7 +98,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
             (Ownership::Borrowed, true) => {
                 let mut ptrs = dup_strings_to_glib(array)?;
                 ptrs.push(std::ptr::null_mut());
-                let ptr = ptrs.as_mut_ptr() as *mut c_void;
+                let ptr = ptrs.as_mut_ptr().cast::<c_void>();
                 Ok(ffi::Stash::Storage(
                     StashStorage::new(ptr, StashData::StringArray(Vec::new(), ptrs))
                         .with_pending_transfer(ptr, ffi::ReleaseKind::StringElements),
@@ -118,7 +118,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
 
         let should_free = ownership.is_borrowed();
         let storage = if should_free {
-            let ptr = ptrs.as_mut_ptr() as *mut c_void;
+            let ptr = ptrs.as_mut_ptr().cast::<c_void>();
             StashStorage::new(ptr, StashData::ObjectArray(handles, ptrs))
         } else {
             let container = leak_container_to_callee(&ptrs);
@@ -217,9 +217,9 @@ impl ArrayCodec {
 
         if self.ownership.is_full() {
             let strv = if items_full {
-                unsafe { glib::StrV::from_glib_full(ptr as *mut *mut c_char) }
+                unsafe { glib::StrV::from_glib_full(ptr.cast::<*mut c_char>()) }
             } else {
-                unsafe { glib::StrV::from_glib_container(ptr as *mut *const c_char) }
+                unsafe { glib::StrV::from_glib_container(ptr.cast::<*const c_char>()) }
             };
             gstring_ptrs_to_unknowns(env, &strv)
         } else {

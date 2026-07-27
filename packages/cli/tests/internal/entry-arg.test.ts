@@ -16,7 +16,9 @@ describe("resolveEntry", () => {
         rmSync(cwd, { recursive: true, force: true });
     });
 
-    const seed = (relativePath: string): void => writeFileSync(join(cwd, relativePath), "");
+    const seed = (relativePath: string): void => {
+        writeFileSync(join(cwd, relativePath), "");
+    };
 
     it("resolves an explicitly supplied entry against the cwd", () => {
         const { entry } = resolveEntry({ entry: "src/main.jsx", cwd });

@@ -22,23 +22,51 @@ import type { Demo } from "../types.js";
 import { lookupIconPaintable } from "../icon-paintable.js";
 import sourceCode from "./textview.tsx?raw";
 
+type ImagesSectionProps = {
+    iconPaintable: Gtk.IconPaintable | null;
+    nuclearPaintable: Gdk.Texture;
+};
+
+type PrimaryTextViewProps = {
+    textView1Ref: RefObject<Gtk.TextView | null>;
+    setSharedBuffer: (buffer: Gtk.TextBuffer | null) => void;
+    iconPaintable: Gtk.IconPaintable | null;
+    nuclearPaintable: Gdk.Texture;
+    onClickMe: () => void;
+};
+
+type SecondaryTextViewProps = {
+    textView2Ref: RefObject<Gtk.TextView | null>;
+    sharedBuffer: Gtk.TextBuffer | null;
+};
+
 const SCALE_XX_SMALL = 0.5787037037037;
 const SCALE_X_LARGE = 1.44;
-
 const headingProps = { weight: Pango.Weight.BOLD, size: 15 * Pango.SCALE } as const;
+
+const textviewDemo: Demo = {
+    id: "textview",
+    title: "Text View/Multiple Views",
+    description:
+        "The GtkTextView widget displays a GtkTextBuffer. One GtkTextBuffer can be displayed by " +
+        "multiple GtkTextViews. This demo has two views displaying a single buffer, and shows off " +
+        "the widget's text formatting features.",
+    keywords: [],
+    component: TextViewDemo,
+    sourceCode,
+    defaultWidth: 450,
+    defaultHeight: 450,
+};
 
 function createNuclearTexture(): Gdk.Texture {
     const size = 32;
     const surface = ImageSurface.create(Format.ARGB32, size, size);
     const cr = Context.create(surface);
-
     const cx = size / 2;
     const cy = size / 2;
     const r = size / 2 - 2;
-
     cr.setLineWidth(1.5);
     cr.setSourceRgba(0, 0, 0, 1);
-
     cr.arc(cx, cy, r * 0.15, 0, 2 * Math.PI);
     cr.fill();
 
@@ -63,25 +91,39 @@ function createNuclearTexture(): Gdk.Texture {
     builder.setHeight(size);
     builder.setStride(stride);
     builder.setFormat(Gdk.MemoryFormat.B8G8R8A8_PREMULTIPLIED);
+
     return builder.build();
 }
 
 function findChildAnchors(buffer: Gtk.TextBuffer): Gtk.TextChildAnchor[] {
     const anchors: Gtk.TextChildAnchor[] = [];
     const iter = buffer.getStartIter();
+
     do {
         const anchor = iter.getChildAnchor();
-        if (anchor) anchors.push(anchor);
+
+        if (anchor) {
+            anchors.push(anchor);
+        }
     } while (iter.forwardChar());
+
     return anchors;
+}
+
+function attachButtonClone(view: Gtk.TextView, anchor: Gtk.TextChildAnchor, onClickMe?: () => void) {
+    const btn = new Gtk.Button();
+    btn.setLabel("Click Me");
+
+    if (onClickMe) {
+        btn.on("clicked", onClickMe);
+    }
+
+    view.addChildAtAnchor(btn, anchor);
 }
 
 function attachWidgetClones(view: Gtk.TextView, anchors: Gtk.TextChildAnchor[], onClickMe?: () => void) {
     if (anchors[0]) {
-        const btn = new Gtk.Button();
-        btn.setLabel("Click Me");
-        if (onClickMe) btn.on("clicked", onClickMe);
-        view.addChildAtAnchor(btn, anchors[0]);
+        attachButtonClone(view, anchors[0], onClickMe);
     }
 
     if (anchors[1]) {
@@ -104,23 +146,23 @@ function attachWidgetClones(view: Gtk.TextView, anchors: Gtk.TextChildAnchor[], 
 }
 
 function recursiveAttachView(depth: number, view: Gtk.TextView, anchor: Gtk.TextChildAnchor) {
-    if (depth > 4) return;
+    if (depth > 4) {
+        return;
+    }
 
     const childView = new Gtk.TextView();
     childView.setBuffer(view.getBuffer());
     childView.setSizeRequest(260 - 20 * depth, -1);
-
     const frame = new Gtk.Frame();
     frame.setChild(childView);
-
     view.addChildAtAnchor(frame, anchor);
-
     recursiveAttachView(depth + 1, childView, anchor);
 }
 
 function handleEasterEgg(parentWindow: Gtk.Window | null, windowRef: RefObject<Gtk.Window | null>) {
     if (windowRef.current) {
         windowRef.current.present();
+
         return;
     }
 
@@ -129,13 +171,10 @@ function handleEasterEgg(parentWindow: Gtk.Window | null, windowRef: RefObject<G
     buffer.insert(iter, "This buffer is shared by a set of nested text views.\n Nested view:\n", -1);
     const anchor = buffer.createChildAnchor(iter);
     buffer.insert(iter, "\nDon't do this in production applications, please.\n", -1);
-
     const view = new Gtk.TextView();
     view.setBuffer(buffer);
     view.setWrapMode(Gtk.WrapMode.WORD);
-
     recursiveAttachView(0, view, anchor);
-
     const win = new Gtk.Window();
     windowRef.current = win;
 
@@ -146,7 +185,8 @@ function handleEasterEgg(parentWindow: Gtk.Window | null, windowRef: RefObject<G
 
     win.on("close-request", () => {
         windowRef.current = null;
-        return false;
+
+        return Gdk.EVENT_PROPAGATE;
     });
 
     const sw = new Gtk.ScrolledWindow();
@@ -159,7 +199,8 @@ function handleEasterEgg(parentWindow: Gtk.Window | null, windowRef: RefObject<G
 const TextViewIntroSection = () => (
     <>
         {
-            "The text widget can display text with all kinds of nifty attributes. It also supports multiple views of the same buffer; this demo is showing the same buffer in two places.\n\n"
+            "The text widget can display text with all kinds of nifty attributes. It also supports " +
+            "multiple views of the same buffer; this demo is showing the same buffer in two places.\n\n"
         }
     </>
 );
@@ -248,11 +289,6 @@ const TextViewUnderlineRiseSection = () => (
     </>
 );
 
-type ImagesSectionProps = {
-    iconPaintable: Gtk.IconPaintable | null;
-    nuclearPaintable: Gdk.Texture;
-};
-
 const TextViewImagesSection = ({ iconPaintable, nuclearPaintable }: ImagesSectionProps) => (
     <>
         <GtkTextTag name="heading-images" {...headingProps}>
@@ -285,7 +321,9 @@ const TextViewSpacingSection = () => (
         {"\n"}
         <GtkTextTag name="wide_margins_3" leftMargin={50} rightMargin={50}>
             <GtkTextTag name="double_spaced" pixelsInsideWrap={10}>
-                You can also adjust the amount of space between wrapped lines; this line has extra space between each wrapped line in the same paragraph. To show off wrapping, some filler text: the quick brown fox jumped over the lazy dog. Blah blah blah blah blah blah blah blah blah.
+                You can also adjust the amount of space between wrapped lines; this line has extra space
+                between each wrapped line in the same paragraph. To show off wrapping, some filler text:
+                the quick brown fox jumped over the lazy dog. Blah blah blah blah blah blah blah blah blah.
             </GtkTextTag>
         </GtkTextTag>
         {"\nAlso note that those lines have extra-wide margins.\n\n"}
@@ -310,11 +348,16 @@ const TextViewWrappingSection = () => (
             {"Wrapping. "}
         </GtkTextTag>
         <GtkTextTag name="word_wrap" wrapMode={Gtk.WrapMode.WORD}>
-            This line (and most of the others in this buffer) is word-wrapped, using the proper Unicode algorithm. Word wrap should work in all scripts and languages that GTK supports. Let's make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah
+            This line (and most of the others in this buffer) is word-wrapped, using the proper Unicode
+            algorithm. Word wrap should work in all scripts and languages that GTK supports. Let's make
+            this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah
+            blah blah blah blah
         </GtkTextTag>
         {"\n\n"}
         <GtkTextTag name="char_wrap" wrapMode={Gtk.WrapMode.CHAR}>
-            This line has character-based wrapping, and can wrap between any two character glyphs. Let's make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah
+            This line has character-based wrapping, and can wrap between any two character glyphs. Let's
+            make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah
+            blah blah blah blah blah
         </GtkTextTag>
         {"\n\n"}
         <GtkTextTag name="no_wrap" wrapMode={Gtk.WrapMode.NONE}>
@@ -339,7 +382,9 @@ const TextViewJustificationSection = () => (
         </GtkTextTag>
         {"\n\n"}
         <GtkTextTag name="wide_margins" leftMargin={50} rightMargin={50}>
-            This line has big wide margins. Text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text.
+            This line has big wide margins. Text text text text text text text text text text text text
+            text text text text text text text text text text text text text text text text text text
+            text text text text text.
         </GtkTextTag>
         {"\n\n"}
     </>
@@ -351,7 +396,13 @@ const TextViewInternationalSection = () => (
             {"Internationalization. "}
         </GtkTextTag>
         {
-            " You can put all sorts of Unicode text in the buffer.\n\nGerman (Deutsch Süd) Grüß Gott\nGreek (Ελληνικά) Γειά σας\nHebrew שלום\nJapanese (日本語)\n\nThe widget properly handles bidirectional text, word wrapping, DOS/UNIX/Unicode paragraph separators, grapheme boundaries, and so on using the Pango internationalization framework.\n"
+            " You can put all sorts of Unicode text in the buffer.\n\n" +
+            "German (Deutsch Süd) Grüß Gott\n" +
+            "Greek (Ελληνικά) Γειά σας\n" +
+            "Hebrew שלום\n" +
+            "Japanese (日本語)\n\n" +
+            "The widget properly handles bidirectional text, word wrapping, DOS/UNIX/Unicode paragraph " +
+            "separators, grapheme boundaries, and so on using the Pango internationalization framework.\n"
         }
         {"Here's a word-wrapped quote in a right-to-left language:\n"}
         <GtkTextTag
@@ -362,7 +413,9 @@ const TextViewInternationalSection = () => (
             leftMargin={20}
             rightMargin={20}
         >
-            وقد بدأ ثلاث من أكثر المؤسسات تقدما في شبكة اكسيون برامجها كمنظمات لا تسعى للربح، ثم تحولت في السنوات الخمس الماضية إلى مؤسسات مالية منظمة، وباتت جزءا من النظام المالي في بلدانها، ولكنها تتخصص في خدمة قطاع المشروعات الصغيرة. وأحد أكثر هذه المؤسسات نجاحا هو «بانكوسول» في بوليفيا.
+            وقد بدأ ثلاث من أكثر المؤسسات تقدما في شبكة اكسيون برامجها كمنظمات لا تسعى للربح، ثم تحولت في
+            السنوات الخمس الماضية إلى مؤسسات مالية منظمة، وباتت جزءا من النظام المالي في بلدانها، ولكنها
+            تتخصص في خدمة قطاع المشروعات الصغيرة. وأحد أكثر هذه المؤسسات نجاحا هو «بانكوسول» في بوليفيا.
         </GtkTextTag>
     </>
 );
@@ -397,117 +450,122 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
                 <GtkEntry widthChars={10} />
             </GtkTextChildAnchor>
             {
-                ".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, for example: invisible/hidden text, tab stops, application-drawn areas on the sides of the widget for displaying breakpoints and such..."
+                ".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, " +
+                "for example: invisible/hidden text, tab stops, application-drawn areas on the sides " +
+                "of the widget for displaying breakpoints and such..."
             }
         </>
     );
 };
 
-type PrimaryTextViewProps = {
-    textView1Ref: RefObject<Gtk.TextView | null>;
-    setSharedBuffer: (buffer: Gtk.TextBuffer | null) => void;
-    iconPaintable: Gtk.IconPaintable | null;
-    nuclearPaintable: Gdk.Texture;
-    onClickMe: () => void;
-};
-
-const renderPrimaryTextView = ({
+function PrimaryTextView({
     textView1Ref,
     setSharedBuffer,
     iconPaintable,
     nuclearPaintable,
     onClickMe,
-}: PrimaryTextViewProps) => (
-    <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-        <GtkTextView
-            ref={textView1Ref}
-            name="text-view-1"
-            wrapMode={Gtk.WrapMode.WORD}
-            buffer={(
-                <GtkTextBuffer ref={setSharedBuffer}>
-                    <TextViewIntroSection />
-                    <TextViewFontStylesSection />
-                    <TextViewColorsSection />
-                    <TextViewUnderlineRiseSection />
-                    <TextViewImagesSection iconPaintable={iconPaintable} nuclearPaintable={nuclearPaintable} />
-                    <TextViewSpacingSection />
-                    <TextViewEditabilitySection />
-                    <TextViewWrappingSection />
-                    <TextViewJustificationSection />
-                    <TextViewInternationalSection />
-                    <TextViewWidgetsSection onClickMe={onClickMe} />
-                </GtkTextBuffer>
+}: PrimaryTextViewProps) {
+    return (
+        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+            <GtkTextView
+                ref={textView1Ref}
+                name="text-view-1"
+                wrapMode={Gtk.WrapMode.WORD}
+                buffer={(
+                    <GtkTextBuffer ref={setSharedBuffer}>
+                        <TextViewIntroSection />
+                        <TextViewFontStylesSection />
+                        <TextViewColorsSection />
+                        <TextViewUnderlineRiseSection />
+                        <TextViewImagesSection iconPaintable={iconPaintable} nuclearPaintable={nuclearPaintable} />
+                        <TextViewSpacingSection />
+                        <TextViewEditabilitySection />
+                        <TextViewWrappingSection />
+                        <TextViewJustificationSection />
+                        <TextViewInternationalSection />
+                        <TextViewWidgetsSection onClickMe={onClickMe} />
+                    </GtkTextBuffer>
+                )}
+            />
+        </GtkScrolledWindow>
+    );
+}
+
+function SecondaryTextView({ textView2Ref, sharedBuffer }: SecondaryTextViewProps) {
+    return (
+        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+            {sharedBuffer && (
+                <GtkTextView ref={textView2Ref} name="text-view-2" wrapMode={Gtk.WrapMode.WORD} buffer={sharedBuffer} />
             )}
-        />
-    </GtkScrolledWindow>
-);
+        </GtkScrolledWindow>
+    );
+}
 
-const renderSecondaryTextView = (textView2Ref: RefObject<Gtk.TextView | null>, sharedBuffer: Gtk.TextBuffer | null) => (
-    <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-        {sharedBuffer && (
-            <GtkTextView ref={textView2Ref} name="text-view-2" wrapMode={Gtk.WrapMode.WORD} buffer={sharedBuffer} />
-        )}
-    </GtkScrolledWindow>
-);
+function destroyEasterEggWindow(windowRef: RefObject<Gtk.Window | null>) {
+    if (!windowRef.current) {
+        return;
+    }
 
-const TextViewDemo = () => {
+    windowRef.current.destroy();
+    windowRef.current = null;
+}
+
+function attachSecondaryWidgets(
+    textView: Gtk.TextView | null,
+    sharedBuffer: Gtk.TextBuffer | null,
+    parentWindow: Gtk.Window | null,
+    easterEggWindowRef: RefObject<Gtk.Window | null>,
+) {
+    if (!textView || !sharedBuffer) {
+        return;
+    }
+
+    const anchors = findChildAnchors(sharedBuffer);
+
+    attachWidgetClones(textView, anchors, () => {
+        handleEasterEgg(parentWindow, easterEggWindowRef);
+    });
+
+    return () => {
+        destroyEasterEggWindow(easterEggWindowRef);
+    };
+}
+
+function TextViewDemo() {
     const parentWindow = useParentWindow();
     const textView1Ref = useRef<Gtk.TextView | null>(null);
     const textView2Ref = useRef<Gtk.TextView | null>(null);
     const easterEggWindowRef = useRef<Gtk.Window | null>(null);
     const [sharedBuffer, setSharedBuffer] = useState<Gtk.TextBuffer | null>(null);
+    const [iconPaintable] = useState(() => lookupIconPaintable("drive-harddisk", 32));
+    const [nuclearPaintable] = useState(createNuclearTexture);
 
     const handleClickMe = () => {
         handleEasterEgg(parentWindow, easterEggWindowRef);
     };
 
-    const [iconPaintable] = useState(() => lookupIconPaintable("drive-harddisk", 32));
-    const [nuclearPaintable] = useState(createNuclearTexture);
-
-    useLayoutEffect(() => {
-        const tv2 = textView2Ref.current;
-        if (!tv2 || !sharedBuffer) return;
-
-        const anchors = findChildAnchors(sharedBuffer);
-        attachWidgetClones(tv2, anchors, () => {
-            handleEasterEgg(parentWindow, easterEggWindowRef);
-        });
-
-        return () => {
-            if (!easterEggWindowRef.current) {
-                return;
-            }
-
-            easterEggWindowRef.current.destroy();
-            easterEggWindowRef.current = null;
-        };
-    }, [sharedBuffer, parentWindow]);
+    useLayoutEffect(
+        () => attachSecondaryWidgets(textView2Ref.current, sharedBuffer, parentWindow, easterEggWindowRef),
+        [sharedBuffer, parentWindow],
+    );
 
     return (
         <GtkPaned
             orientation={Gtk.Orientation.VERTICAL}
             resizeStartChild={false}
             resizeEndChild
-            startChild={renderPrimaryTextView({
-                textView1Ref,
-                setSharedBuffer,
-                iconPaintable,
-                nuclearPaintable,
-                onClickMe: handleClickMe,
-            })}
-            endChild={renderSecondaryTextView(textView2Ref, sharedBuffer)}
+            startChild={(
+                <PrimaryTextView
+                    textView1Ref={textView1Ref}
+                    setSharedBuffer={setSharedBuffer}
+                    iconPaintable={iconPaintable}
+                    nuclearPaintable={nuclearPaintable}
+                    onClickMe={handleClickMe}
+                />
+            )}
+            endChild={<SecondaryTextView textView2Ref={textView2Ref} sharedBuffer={sharedBuffer} />}
         />
     );
-};
+}
 
-export const textviewDemo: Demo = {
-    id: "textview",
-    title: "Text View/Multiple Views",
-    description:
-        "The GtkTextView widget displays a GtkTextBuffer. One GtkTextBuffer can be displayed by multiple GtkTextViews. This demo has two views displaying a single buffer, and shows off the widget's text formatting features.",
-    keywords: [],
-    component: TextViewDemo,
-    sourceCode,
-    defaultWidth: 450,
-    defaultHeight: 450,
-};
+export { textviewDemo };

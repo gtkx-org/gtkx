@@ -3,16 +3,15 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GtkEnums from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, GtkStack } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement, useApplication } from "@gtkx/react";
-import { render, screen, within } from "@gtkx/testing";
+import { render, screen, waitFor, within } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";
 import { describe, expect, it } from "vitest";
+import { createAppIdFactory } from "./helpers/unique-name.js";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-let nextAppId = 0;
+const uniqueAppId = createAppIdFactory("org.gtkx.portaltest");
 
-const uniqueAppId = (): string => `org.gtkx.portaltest${nextAppId++}`;
-
-const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: string }) => {
+const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: string | undefined }) => {
     const app = useApplication();
 
     return <>{createPortal(children, app, portalKey)}</>;
@@ -58,23 +57,43 @@ const renderPortalIntoBox = async (
     return boxRef.current as Gtk.Box;
 };
 
+const renderPortalWindow = (title: string, portalKey?: string) =>
+    render(
+        <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
+            <Portal portalKey={portalKey}>
+                <GtkApplicationWindow title={title} />
+            </Portal>
+        </GtkApplication>,
+        { container: rootElement },
+    );
+
+function OptionalPortal({ showPortal }: { showPortal: boolean }) {
+    const app = useApplication();
+
+    return <>{showPortal && createPortal(<GtkApplicationWindow title="Portal" />, app)}</>;
+}
+
+function TitledPortal({ title }: { title: string }) {
+    const app = useApplication();
+
+    return <>{createPortal(<GtkApplicationWindow title={title} />, app)}</>;
+}
+
 describe("createPortal (1)", () => {
     it("renders children at root level when no container specified", async () => {
-        await render(
-            <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
-                <Portal>
-                    <GtkApplicationWindow title="Portal Window" />
-                </Portal>
-            </GtkApplication>,
-            { container: rootElement },
-        );
+        await renderPortalWindow("Portal Window");
 
-        await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "Portal Window", hidden: true });
+        const portalWindow = await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, {
+            name: "Portal Window",
+            hidden: true,
+        });
+
+        expect(portalWindow).toBeDefined();
     });
 
     it("renders children into a specific container widget", async () => {
         const box = await renderPortalIntoBox((target) => createPortal(<GtkLabel>In Portal</GtkLabel>, target));
-        within(box).getByText("In Portal");
+        expect(within(box).getByText("In Portal")).toBeDefined();
     });
 
     it("keeps a portal child in place when sibling JSX children reorder", async () => {
@@ -103,30 +122,16 @@ describe("createPortal (1)", () => {
     });
 
     it("preserves key when provided", async () => {
-        await render(
-            <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
-                <Portal portalKey="my-key">
-                    <GtkApplicationWindow title="Keyed Window" />
-                </Portal>
-            </GtkApplication>,
-            { container: rootElement },
-        );
+        await renderPortalWindow("Keyed Window", "my-key");
 
-        await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "Keyed Window", hidden: true });
+        const keyedWindow = await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, {
+            name: "Keyed Window",
+            hidden: true,
+        });
+
+        expect(keyedWindow).toBeDefined();
     });
 });
-
-function OptionalPortal({ showPortal }: { showPortal: boolean }) {
-    const app = useApplication();
-
-    return <>{showPortal && createPortal(<GtkApplicationWindow title="Portal" />, app)}</>;
-}
-
-function TitledPortal({ title }: { title: string }) {
-    const app = useApplication();
-
-    return <>{createPortal(<GtkApplicationWindow title={title} />, app)}</>;
-}
 
 describe("createPortal (2)", () => {
     it("unmounts portal children when portal is removed", async () => {
@@ -139,13 +144,17 @@ describe("createPortal (2)", () => {
             { container: rootElement },
         );
 
-        await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "Portal", hidden: true });
+        expect(await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "Portal", hidden: true })).toBeDefined();
 
         await rerender(
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
                 <OptionalPortal showPortal={false} />
             </GtkApplication>,
         );
+
+        await waitFor(() => {
+            expect(screen.queryByRole(GtkEnums.AccessibleRole.WINDOW, { name: "Portal", hidden: true })).toBeNull();
+        });
     });
 
     it("updates portal children when props change", async () => {
@@ -158,7 +167,7 @@ describe("createPortal (2)", () => {
             { container: rootElement },
         );
 
-        await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "First", hidden: true });
+        expect(await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "First", hidden: true })).toBeDefined();
 
         await rerender(
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
@@ -166,7 +175,7 @@ describe("createPortal (2)", () => {
             </GtkApplication>,
         );
 
-        await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "Second", hidden: true });
+        expect(await screen.findByRole(GtkEnums.AccessibleRole.WINDOW, { name: "Second", hidden: true })).toBeDefined();
     });
 });
 
@@ -180,8 +189,8 @@ describe("createPortal (3)", () => {
         ));
 
         const queries = within(box);
-        queries.getByText("First");
-        queries.getByText("Second");
+        expect(queries.getByText("First")).toBeDefined();
+        expect(queries.getByText("Second")).toBeDefined();
     });
 
     it("handles portal to nested container", async () => {
@@ -194,6 +203,6 @@ describe("createPortal (3)", () => {
             ),
         );
 
-        within(innerBox).getByRole(GtkEnums.AccessibleRole.BUTTON, { name: "Nested" });
+        expect(within(innerBox).getByRole(GtkEnums.AccessibleRole.BUTTON, { name: "Nested" })).toBeDefined();
     });
 });

@@ -54,11 +54,11 @@ const childMatcher =
 const slotAttach =
     <P extends GObject.Object, C extends GObject.Object>(
         slotName: string,
-        matches: (child: GObject.Object) => boolean,
+        isMatch: (child: GObject.Object) => boolean,
         attach: SlotHooks<P, C>["attach"],
     ): NonNullable<ElementBehavior["attach"]> =>
         (object, child, info) => {
-            if (info.slot !== slotName || !matches(child)) {
+            if (info.slot !== slotName || !isMatch(child)) {
                 return;
             }
 
@@ -99,7 +99,7 @@ const value = <P extends GObject.Object, V>(
 ): ElementBehavior<P> => ({
     update: (object, prev, next) => {
         if (!Object.is(prev[prop], next[prop]) && next[prop] !== undefined) {
-            apply(object as P, next[prop] as V);
+            apply(object, next[prop] as V);
         }
 
         return [prop];
@@ -150,8 +150,8 @@ const list = <P extends GObject.Object, I, H = void>(
                 return [prop];
             }
 
-            teardownList(object as P, state.entries, hooks);
-            state.entries = items.map((item) => ({ item, handle: add?.(object as P, item as I) }));
+            teardownList(object, state.entries, hooks);
+            state.entries = items.map((item) => ({ item, handle: add?.(object, item as I) }));
             state.snapshot = structuredClone(items);
 
             return [prop];
@@ -193,7 +193,9 @@ const deferred = <P extends GObject.Object, V>(
 
         return [prop];
     },
-    flush: (object, context) => flushDeferred(object, context, prop, canApply),
+    flush: (object, context) => {
+        flushDeferred(object, context, prop, canApply);
+    },
 });
 
 /** Builds a behavior for a text prop kept in controlled-input sync: set when provided, never reset. */
@@ -205,8 +207,12 @@ const controlledText = (prop: string): ElementBehavior =>
 /** Behavior for a container that installs its single child with `setChild`. */
 const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", "GtkWidget", {
-        attach: (parent, child) => parent.setChild(child),
-        detach: (parent) => parent.setChild(null),
+        attach: (parent, child) => {
+            parent.setChild(child);
+        },
+        detach: (parent) => {
+            parent.setChild(null);
+        },
     });
 
 /** Behavior for a container that installs its single child with `setContent`. */
@@ -214,16 +220,24 @@ const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widget = Gt
     childType = "GtkWidget",
 ): ElementBehavior<P> =>
     slot<P, C>("children", childType, {
-        attach: (parent, child) => parent.setContent(child),
-        detach: (parent) => parent.setContent(null),
+        attach: (parent, child) => {
+            parent.setContent(child);
+        },
+        detach: (parent) => {
+            parent.setContent(null);
+        },
     });
 
 /** Behavior for a `GtkBox`-style container that orders children by sibling. */
 const boxSlot = <P extends BoxLike>(): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", "GtkWidget", {
         attach: (box, child, info) => box.insertChildAfter(child, info.sibling as Gtk.Widget | null),
-        detach: (box, child) => box.remove(child),
-        reorder: (box, child, info) => box.reorderChildAfter(child, info.sibling as Gtk.Widget | null),
+        detach: (box, child) => {
+            box.remove(child);
+        },
+        reorder: (box, child, info) => {
+            box.reorderChildAfter(child, info.sibling as Gtk.Widget | null);
+        },
     });
 
 /** Behavior for a container whose children are added and removed by a pair of methods. */
@@ -285,7 +299,9 @@ const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedInserter>(
     ...slot<P, Gtk.Widget>("children", "GtkWidget", {
         attach: (parent, child, info) =>
             parent.insert(wrappedRow(Wrapper, setChild, info.context as RowCache, child), info.index),
-        detach: (parent, child, info) => removeWrappedRow(Wrapper, parent, child, info.context as RowCache),
+        detach: (parent, child, info) => {
+            removeWrappedRow(Wrapper, parent, child, info.context as RowCache);
+        },
     }),
     createContext: (): RowCache => new WeakMap(),
 });

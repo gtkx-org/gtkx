@@ -4,12 +4,6 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
-class ValueObject extends GObject.Object {
-    value = 0;
-}
-
-registerClass(ValueObject, { typeName: "GtkxTestItemComparatorValueObject" });
-
 const valueObject = (value: number): ValueObject => {
     const object = new ValueObject();
     object.value = value;
@@ -42,6 +36,12 @@ const storeValues = (model: Gio.ListModel): number[] => {
 
     return values;
 };
+
+class ValueObject extends GObject.Object {
+    value = 0;
+}
+
+registerClass(ValueObject, { typeName: "GtkxTestItemComparatorValueObject" });
 
 describe("GObject item comparators", () => {
     it("passes item wrappers to a ListStore sort comparator", () => {

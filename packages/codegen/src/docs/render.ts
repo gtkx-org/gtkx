@@ -69,25 +69,25 @@ const stripDocMedia = (markdown: string): string =>
         .replaceAll(/<video[\s\S]*?(?:<\/video>|\/>)/g, "")
         .replaceAll(/<img[^>]*>/g, "");
 
-const demoteLine = (line: string, inFence: boolean): { text: string; inFence: boolean } => {
+const demoteLine = (line: string, isInFence: boolean): { text: string; inFence: boolean } => {
     if (FENCE_LINE.test(line)) {
-        return { text: line, inFence: !inFence };
+        return { text: line, inFence: !isInFence };
     }
 
-    if (inFence) {
-        return { text: line, inFence };
+    if (isInFence) {
+        return { text: line, inFence: isInFence };
     }
 
-    return { text: HEADING_LINE.test(line) ? `#${line}` : line, inFence };
+    return { text: HEADING_LINE.test(line) ? `#${line}` : line, inFence: isInFence };
 };
 
 const demoteHeadings = (markdown: string): string => {
-    let inFence = false;
+    let isInFence = false;
     const lines: string[] = [];
 
     for (const line of markdown.split("\n")) {
-        const result = demoteLine(line, inFence);
-        inFence = result.inFence;
+        const result = demoteLine(line, isInFence);
+        isInFence = result.inFence;
         lines.push(result.text);
     }
 
@@ -163,7 +163,7 @@ const signatureBlock = (name: string, signature: string, notes: string[]): strin
 const namespaceOrder = (name: string): string => {
     const index = LEADING_NAMESPACES.indexOf(name);
 
-    return index === -1 ? `1${name}` : `0${index}`;
+    return index === -1 ? `1${name}` : `0${String(index)}`;
 };
 
 const docsSignatureContext = (namespace: GirNamespace, library: Library): ModuleContext =>

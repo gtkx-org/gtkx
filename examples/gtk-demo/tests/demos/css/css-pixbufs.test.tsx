@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cssPixbufsDemo } from "../../../src/demos/css/css-pixbufs.js";
-import { bufferHasTag, renderDemo } from "../../test-utils.js";
+import { hasBufferTag, renderDemo } from "../../test-utils.js";
 
 describe("cssPixbufsDemo", () => {
     it("exposes the expected metadata", () => {
@@ -40,14 +40,19 @@ describe("cssPixbufsDemo", () => {
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         expect(window.hasCssClass("demo")).toBe(true);
     });
+});
 
+describe("cssPixbufsDemo css provider", () => {
     it("loads the default keyframe CSS into a CssProvider when the editor mounts", async () => {
         const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+
         try {
             await renderDemo(cssPixbufsDemo);
+
             const defaultLoad = loadSpy.mock.calls.find(
                 ([css]) => typeof css === "string" && css.includes("@keyframes move-the-image"),
             );
+
             expect(defaultLoad, "expected the default pixbufs CSS to be loaded via loadFromString").toBeDefined();
         } finally {
             loadSpy.mockRestore();
@@ -56,16 +61,19 @@ describe("cssPixbufsDemo", () => {
 
     it("re-applies the CssProvider when the user edits the buffer", async () => {
         const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+
         try {
             await renderDemo(cssPixbufsDemo);
             const textView = (await screen.findByName("text-view")) as Gtk.TextView;
             loadSpy.mockClear();
             await userEvent.clear(textView);
             await userEvent.type(textView, "window { background-color: cyan; }");
+
             await waitFor(() => {
                 const userLoad = loadSpy.mock.calls.find(
                     ([css]) => typeof css === "string" && css.includes("background-color: cyan"),
                 );
+
                 expect(userLoad, "expected the buffer edit to be loaded into a CssProvider").toBeDefined();
             });
         } finally {
@@ -78,13 +86,16 @@ describe("cssPixbufsDemo", () => {
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: this-is-not-a-valid-color; }");
+
         await waitFor(() => {
-            expect(bufferHasTag(textView, "error")).toBe(true);
+            expect(hasBufferTag(textView, "error")).toBe(true);
         });
+
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: red; }");
+
         await waitFor(() => {
-            expect(bufferHasTag(textView, "error")).toBe(false);
+            expect(hasBufferTag(textView, "error")).toBe(false);
         });
     });
 });

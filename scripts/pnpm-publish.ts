@@ -5,8 +5,9 @@ const ALREADY_PUBLISHED = /cannot publish over|EPUBLISHCONFLICT|previously publi
 
 const runPnpmPublish = (packageDir: string, tag: string): SpawnSyncReturns<string> => {
     const provenance = process.env.NPM_CONFIG_PROVENANCE === "true" ? ["--provenance"] : [];
+    const args = ["publish", "--access", "public", "--no-git-checks", ...provenance, "--tag", tag];
 
-    return spawnSync(resolveExecutable("pnpm"), ["publish", "--access", "public", "--no-git-checks", ...provenance, "--tag", tag], {
+    return spawnSync(resolveExecutable("pnpm"), args, {
         cwd: packageDir,
         stdio: ["inherit", "pipe", "pipe"],
         encoding: "utf8",
@@ -24,7 +25,7 @@ const assertPublishOutcome = (packageDir: string, result: SpawnSyncReturns<strin
         return;
     }
 
-    throw new Error(`pnpm publish failed with exit code ${result.status ?? "unknown"}`);
+    throw new Error(`pnpm publish failed with exit code ${String(result.status ?? "unknown")}`);
 };
 
 const publishPackage = (packageDir: string, tag: string): void => {

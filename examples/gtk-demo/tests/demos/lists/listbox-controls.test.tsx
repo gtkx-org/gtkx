@@ -36,12 +36,12 @@ describe("listboxControlsDemo Group 1 structure", () => {
 
     it("renders the switch initially inactive", async () => {
         await renderDemo(listboxControlsDemo);
-        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: false });
+        expect(await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: false })).not.toBeChecked();
     });
 
     it("renders the check button initially active", async () => {
         await renderDemo(listboxControlsDemo);
-        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
+        expect(await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true })).toBeChecked();
     });
 
     it("renders the click-here icon initially hidden via opacity", async () => {
@@ -56,14 +56,14 @@ describe("listboxControlsDemo direct toggles", () => {
         await renderDemo(listboxControlsDemo);
         const sw = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: false });
         await userEvent.click(sw);
-        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: true });
+        expect(await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: true })).toBe(sw);
     });
 
     it("toggles the check button when clicked", async () => {
         await renderDemo(listboxControlsDemo);
         const check = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
         await userEvent.click(check);
-        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
+        expect(await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false })).toBe(check);
     });
 });
 
@@ -80,14 +80,14 @@ describe("listboxControlsDemo row activation", () => {
         await renderDemo(listboxControlsDemo);
         const switchRow = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Switch/ });
         await userEvent.click(switchRow);
-        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: true });
+        expect(await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: true })).toBeChecked();
     });
 
     it("activating the check row toggles the check button off", async () => {
         await renderDemo(listboxControlsDemo);
         const checkRow = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Check/ });
         await userEvent.click(checkRow);
-        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
+        expect(await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false })).not.toBeChecked();
     });
 });
 
@@ -102,8 +102,11 @@ describe("listboxControlsDemo Group 2 controls", () => {
 
     it("seeds the scale and spin button with the expected starting value", async () => {
         await renderDemo(listboxControlsDemo);
-        await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50 } });
-        screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 50 } });
+        expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50 } })).toBeInstanceOf(Gtk.Scale);
+
+        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 50 } })).toBeInstanceOf(
+            Gtk.SpinButton,
+        );
     });
 
     it("increments the scale value when an arrow key is pressed", async () => {
@@ -111,17 +114,19 @@ describe("listboxControlsDemo Group 2 controls", () => {
         const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50 } })) as Gtk.Scale;
         scale.grabFocus();
         await userEvent.keyboard(scale, "{ArrowUp}");
-        await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 51 } });
+        expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 51 } })).toBe(scale);
     });
 
     it("increments the spin button value when the up arrow is pressed", async () => {
         await renderDemo(listboxControlsDemo);
+
         const spin = (await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, {
             value: { now: 50 },
         })) as Gtk.SpinButton;
+
         spin.grabFocus();
         await userEvent.keyboard(spin, "{ArrowUp}");
-        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 51 } });
+        expect(await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 51 } })).toBe(spin);
     });
 
     it("updates the dropdown selection when a choice is picked", async () => {

@@ -5,11 +5,10 @@ import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+import { createAppIdFactory } from "../helpers/unique-name.js";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-let nextAppId = 0;
-
-const uniqueAppId = (): string => `org.gtkx.applicationtest${nextAppId++}`;
+const uniqueAppId = createAppIdFactory("org.gtkx.applicationtest");
 
 const buildMenubar = (entries: { label: string; items: { label: string; action: string }[] }[]): Gio.Menu => {
     const menubar = Gio.Menu.new();

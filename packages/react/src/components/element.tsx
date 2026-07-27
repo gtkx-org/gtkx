@@ -5,11 +5,11 @@ import type { Props } from "../reconciler/registry.js";
 /** The intrinsic element that carries an object-valued prop's element into its parent's named property. */
 const Prop = "gtkx:prop";
 
-const containsElement = (value: unknown): boolean =>
-    isValidElement(value) || (Array.isArray(value) && value.some((item: unknown) => containsElement(item)));
+const hasElement = (value: unknown): boolean =>
+    isValidElement(value) || (Array.isArray(value) && value.some((item: unknown) => hasElement(item)));
 
 const routeProp = (key: string, value: unknown, hostProps: Props, propChildren: ReactNode[]): void => {
-    if (key !== "ref" && containsElement(value)) {
+    if (key !== "ref" && hasElement(value)) {
         propChildren.push(
             createElement(Prop, { propName: key, key: `${Prop}:${key}` }, value as ReactNode),
         );

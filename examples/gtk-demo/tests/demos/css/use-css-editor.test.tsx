@@ -8,23 +8,21 @@ type HostProps = {
     defaultCss: string;
 };
 
+const DEFAULT_CSS = "window { color: red; }";
+
 const Host = ({ defaultCss }: HostProps) => {
-    const editor = useCssEditor(defaultCss);
+    const { textViewRef, onChanged } = useCssEditor(defaultCss);
 
     return (
         <GtkScrolledWindow>
-            <GtkTextView
-                ref={editor.textViewRef}
-                buffer={<GtkTextBuffer onChanged={editor.onChanged}>{defaultCss}</GtkTextBuffer>}
-            />
+            <GtkTextView ref={textViewRef} buffer={<GtkTextBuffer onChanged={onChanged}>{defaultCss}</GtkTextBuffer>} />
         </GtkScrolledWindow>
     );
 };
 
-const DEFAULT_CSS = "window { color: red; }";
-
 const renderHost = async (defaultCss: string): Promise<Gtk.TextView> => {
     await render(<Host defaultCss={defaultCss} />);
+
     return (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
 };
 

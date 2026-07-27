@@ -1,8 +1,9 @@
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { path as animatedSvgPath } from "#data/demos/drawing/animated.gpa";
 import { path as gtkLogoSvgPath } from "#data/demos/drawing/gtk-logo.svg";
 import { path as statefulSvgPath } from "#data/demos/drawing/stateful.gpa";
@@ -11,38 +12,44 @@ import gtkLogoWebmUri from "#data/demos/media/gtk-logo.webm";
 import type { Demo } from "../types.js";
 import sourceCode from "./images.tsx?raw";
 
-let symbolicIcon: Gio.ThemedIcon | undefined;
-function getSymbolicIcon() {
-    if (!symbolicIcon) {
-        symbolicIcon = Gio.ThemedIcon.newWithDefaultFallbacks("battery-level-10-charging-symbolic");
-    }
-    return symbolicIcon;
-}
+const imagesDemo: Demo = {
+    id: "images",
+    title: "Images",
+    description:
+        "GtkImage and GtkPicture are used to display an image; the image can be in a number of formats.\n\n" +
+        "GtkImage is the widget used to display icons or images that should be sized and styled like an icon, " +
+        "while GtkPicture is used for images that should be displayed as-is.\n\n" +
+        "This demo code shows some of the more obscure cases, in the simple case a call to " +
+        "gtk_picture_new_for_file() or gtk_image_new_from_icon_name() is all you need.",
+    keywords: ["GdkPaintable", "GtkWidgetPaintable"],
+    component: ImagesDemo,
+    sourceCode,
+};
 
 const loadSvgPaintable = (resourcePath: string): Gtk.Svg => {
     const bytes = Gio.resourcesLookupData(resourcePath, Gio.ResourceLookupFlags.NONE);
     const svg = Gtk.Svg.newFromBytes(bytes);
     svg.play();
     svg.setState(0);
+
     return svg;
 };
 
-function useGifPaintable() {
-    const [gifPaintable, setGifPaintable] = useState<Gtk.MediaFile | null>(null);
-    useEffect(() => {
-        try {
-            const mediaFile = Gtk.MediaFile.newForResource(floppybuddyGifPath);
-            mediaFile.setLoop(true);
-            mediaFile.play();
-            setGifPaintable(mediaFile);
-        } catch (error) {
-            const dialog = new Gtk.AlertDialog();
-            dialog.setMessage(`Failure loading GIF '${floppybuddyGifPath}': ${error}`);
-            dialog.show(null);
-        }
-    }, []);
-    return gifPaintable;
-}
+const createGifPaintable = (): Gtk.MediaFile | null => {
+    try {
+        const mediaFile = Gtk.MediaFile.newForResource(floppybuddyGifPath);
+        mediaFile.setLoop(true);
+        mediaFile.play();
+
+        return mediaFile;
+    } catch (error) {
+        const dialog = new Gtk.AlertDialog();
+        dialog.setMessage(`Failure loading GIF '${floppybuddyGifPath}': ${String(error)}`);
+        dialog.show(null);
+
+        return null;
+    }
+};
 
 const ImagesPanel = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
@@ -52,6 +59,17 @@ const ImagesPanel = ({ title, children }: { title: string; children: React.React
         </GtkFrame>
     </GtkBox>
 );
+
+const SymbolicIconPanel = () => {
+    const [symbolicIcon] = useState(() =>
+        Gio.ThemedIcon.newWithDefaultFallbacks("battery-level-10-charging-symbolic"));
+
+    return (
+        <ImagesPanel title="Symbolic themed icon">
+            <GtkImage gicon={symbolicIcon} iconSize={Gtk.IconSize.LARGE} />
+        </ImagesPanel>
+    );
+};
 
 const StatefulIconPanel = () => {
     const [svg] = useState(() => loadSvgPaintable(statefulSvgPath));
@@ -68,7 +86,8 @@ const StatefulIconPanel = () => {
                 onStateSet={(value) => {
                     setState(value);
                     svg.setState(value ? 1 : 0);
-                    return true;
+
+                    return Gdk.EVENT_STOP;
                 }}
             />
         </GtkBox>
@@ -85,21 +104,55 @@ const PathAnimationPanel = () => {
     );
 };
 
-const ImagesDemo = () => {
-    const parentWindow = useParentWindow();
-    const [widgetPaintable, setWidgetPaintable] = useState<Gtk.WidgetPaintable | null>(null);
-    const gifPaintable = useGifPaintable();
-    const [insensitive, setInsensitive] = useState(false);
+const ResourcesColumn = ({ gifPaintable }: { gifPaintable: Gtk.MediaFile | null }) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+        <ImagesPanel title="Image from a resource">
+            <GtkImage resource={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
+        </ImagesPanel>
+        <ImagesPanel title="Animation from a resource">
+            <GtkPicture
+                name="gif-picture"
+                paintable={gifPaintable}
+                canShrink
+                widthRequest={150}
+                heightRequest={150}
+            />
+        </ImagesPanel>
+        <SymbolicIconPanel />
+    </GtkBox>
+);
+
+const VideoColumn = ({ widgetPaintable }: { widgetPaintable: Gtk.WidgetPaintable | null }) => {
     const videoFile = Gio.fileNewForUri(gtkLogoWebmUri);
 
-    useEffect(() => {
-        if (!parentWindow) {
-            return;
-        }
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+            <ImagesPanel title="Displaying video">
+                <GtkVideo name="logo-video" autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
+            </ImagesPanel>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel cssClasses={["heading"]}>GtkWidgetPaintable</GtkLabel>
+                <GtkPicture
+                    name="widget-paintable-picture"
+                    paintable={widgetPaintable}
+                    widthRequest={100}
+                    heightRequest={100}
+                    canShrink
+                    valign={Gtk.Align.START}
+                />
+            </GtkBox>
+        </GtkBox>
+    );
+};
 
-        const paintable = Gtk.WidgetPaintable.new(parentWindow);
-        setWidgetPaintable(paintable);
-    }, [parentWindow]);
+function ImagesDemo() {
+    const parentWindow = useParentWindow();
+    const [gifPaintable] = useState(createGifPaintable);
+    const [insensitive, setInsensitive] = useState(false);
+
+    const widgetPaintable = useMemo(() => (parentWindow ? Gtk.WidgetPaintable.new(parentWindow) : null), [
+        parentWindow,
+    ]);
 
     return (
         <GtkBox
@@ -111,50 +164,12 @@ const ImagesDemo = () => {
             marginBottom={16}
         >
             <GtkBox name="image-strip" spacing={16} sensitive={!insensitive}>
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <ImagesPanel title="Image from a resource">
-                        <GtkImage resource={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
-                    </ImagesPanel>
-                    <ImagesPanel title="Animation from a resource">
-                        <GtkPicture
-                            name="gif-picture"
-                            paintable={gifPaintable}
-                            canShrink
-                            widthRequest={150}
-                            heightRequest={150}
-                        />
-                    </ImagesPanel>
-                    <ImagesPanel title="Symbolic themed icon">
-                        <GtkImage gicon={getSymbolicIcon()} iconSize={Gtk.IconSize.LARGE} />
-                    </ImagesPanel>
-                </GtkBox>
+                <ResourcesColumn gifPaintable={gifPaintable} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <StatefulIconPanel />
                     <PathAnimationPanel />
                 </GtkBox>
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <ImagesPanel title="Displaying video">
-                        <GtkVideo
-                            name="logo-video"
-                            autoplay
-                            loop
-                            widthRequest={200}
-                            heightRequest={150}
-                            file={videoFile}
-                        />
-                    </ImagesPanel>
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkLabel cssClasses={["heading"]}>GtkWidgetPaintable</GtkLabel>
-                        <GtkPicture
-                            name="widget-paintable-picture"
-                            paintable={widgetPaintable}
-                            widthRequest={100}
-                            heightRequest={100}
-                            canShrink
-                            valign={Gtk.Align.START}
-                        />
-                    </GtkBox>
-                </GtkBox>
+                <VideoColumn widgetPaintable={widgetPaintable} />
             </GtkBox>
 
             <GtkToggleButton
@@ -164,18 +179,12 @@ const ImagesDemo = () => {
                 valign={Gtk.Align.END}
                 hexpand
                 vexpand
-                onToggled={(btn) => setInsensitive(btn.getActive())}
+                onToggled={(btn) => {
+                    setInsensitive(btn.getActive());
+                }}
             />
         </GtkBox>
     );
-};
+}
 
-export const imagesDemo: Demo = {
-    id: "images",
-    title: "Images",
-    description:
-        "GtkImage and GtkPicture are used to display an image; the image can be in a number of formats.\n\nGtkImage is the widget used to display icons or images that should be sized and styled like an icon, while GtkPicture is used for images that should be displayed as-is.\n\nThis demo code shows some of the more obscure cases, in the simple case a call to gtk_picture_new_for_file() or gtk_image_new_from_icon_name() is all you need.",
-    keywords: ["GdkPaintable", "GtkWidgetPaintable"],
-    component: ImagesDemo,
-    sourceCode,
-};
+export { imagesDemo };

@@ -5,7 +5,7 @@ import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
-import { callableReferencesClassStruct } from "./class-struct-record.js";
+import { hasClassStructReference } from "./class-struct-record.js";
 import { renderFnExpression } from "./function.js";
 import { gtypeMemberDeclaration } from "./gtype-binding.js";
 import {
@@ -111,7 +111,7 @@ const renderBinding = (
         return undefined;
     }
 
-    if (callableReferencesClassStruct(context, callable)) {
+    if (hasClassStructReference(context, callable)) {
         return undefined;
     }
 
@@ -371,7 +371,7 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
     callable.introspectable &&
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
-    !callableReferencesClassStruct(context, callable) &&
+    !hasClassStructReference(context, callable) &&
     !hasCallerAllocatedArrayLength(context.library, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {

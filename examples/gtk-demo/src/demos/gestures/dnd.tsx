@@ -31,21 +31,80 @@ import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import sourceCode from "./dnd.tsx?raw";
 
-const buildRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
-    const rectangle = new Gdk.Rectangle();
-    rectangle.x = x;
-    rectangle.y = y;
-    rectangle.width = width;
-    rectangle.height = height;
-    return rectangle;
+type ItemStyle = { type: "default" } | { type: "rgba"; cssColor: string } | { type: "cssClass"; className: string };
+type SetItems = React.Dispatch<React.SetStateAction<CanvasItem[]>>;
+type DndState = ReturnType<typeof useDndState>;
+type DndRefs = ReturnType<typeof useDndRefs>;
+
+type CanvasItem = {
+    id: string;
+    label: string;
+    style: ItemStyle;
+    x: number;
+    y: number;
+    angle: number;
+    angleDelta: number;
+};
+
+type ContextMenuState = {
+    x: number;
+    y: number;
+    itemId: string | null;
+};
+
+type EditState = {
+    itemId: string;
+};
+
+type DndHandlerArgs = {
+    items: CanvasItem[];
+    setItems: SetItems;
+    contextMenu: ContextMenuState | null;
+    setContextMenu: (m: ContextMenuState | null) => void;
+    setEditState: (e: EditState | null) => void;
+    setTrashHovering: (isHovering: boolean) => void;
+    refs: DndRefs;
+};
+
+type ContextMenuActionArgs = {
+    setItems: SetItems;
+    contextMenu: ContextMenuState | null;
+    setContextMenu: (m: ContextMenuState | null) => void;
+    refs: DndRefs;
+};
+
+type ContextMenuEditArgs = {
+    contextMenu: ContextMenuState | null;
+    setEditState: (e: EditState | null) => void;
+    refs: DndRefs;
+};
+
+type CanvasDropArgs = {
+    setItems: SetItems;
+    refs: DndRefs;
+    value: GObject.Value;
+    x: number;
+    y: number;
+};
+
+type DndCanvasControllersProps = {
+    dnd: DndState;
+    gestureRef: React.RefObject<Gtk.GestureClick | null>;
+    onPressed: (nPress: number, x: number, y: number) => void;
+    onReleased: (nPress: number, x: number, y: number) => void;
+};
+
+type DndTrashZoneProps = {
+    boxRef: React.RefObject<Gtk.Box | null>;
+    trashHovering: boolean;
+    setTrashHovering: (isHovering: boolean) => void;
+    onTrashDrop: (value: GObject.Value) => boolean;
 };
 
 const itemStyle = css`
     padding: 10px;
     margin: 1px;
 `;
-
-const defaultItemStyle = "frame";
 
 const swatchStyle = css`
     min-width: 48px;
@@ -83,6 +142,12 @@ const rainbow3Style = css`
     }
 `;
 
+const coloredItemStyle = css`
+    &, &:hover, &:active {
+        color: black;
+    }
+`;
+
 const SWATCH_COLORS = [
     "red",
     "green",
@@ -108,46 +173,97 @@ const SWATCH_COLORS = [
     "wheat",
 ];
 
+const defaultItemStyle = "frame";
 const ITEM_SIZE = 40;
-
-type ItemStyle = { type: "default" } | { type: "rgba"; cssColor: string } | { type: "cssClass"; className: string };
-
-type CanvasItem = {
-    id: string;
-    label: string;
-    style: ItemStyle;
-    x: number;
-    y: number;
-    angle: number;
-    angleDelta: number;
-};
-
 const gdkRgbaType = Gdk.RGBA.prototype._type_;
+const INITIAL_ITEM_COUNT = 4;
+const takeNextItemNumber = createItemNumberGenerator(INITIAL_ITEM_COUNT + 1);
 
-type ContextMenuState = {
-    x: number;
-    y: number;
-    itemId: string | null;
+const dndDemo: Demo = {
+    id: "dnd",
+    title: "Drag-and-Drop",
+    description:
+        "This demo shows dragging colors and widgets. The items in this demo can be moved, recolored and " +
+        "rotated.\n\nThe demo also has an example for creating a menu-like popover without using a menu model.",
+    keywords: ["dnd", "menu", "popover", "gesture"],
+    component: DndDemo,
+    sourceCode,
+    defaultWidth: 640,
+    defaultHeight: 480,
 };
 
-type EditState = {
-    itemId: string;
+function createItemNumberGenerator(start: number) {
+    let next = start;
+
+    return () => {
+        const current = next;
+        next++;
+
+        return current;
+    };
+}
+
+const buildRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
+    const rectangle = new Gdk.Rectangle();
+    rectangle.x = x;
+    rectangle.y = y;
+    rectangle.width = width;
+    rectangle.height = height;
+
+    return rectangle;
 };
+
+const updateItem = (items: CanvasItem[], itemId: string, patch: Partial<CanvasItem>): CanvasItem[] =>
+    items.map((item) => (item.id === itemId ? { ...item, ...patch } : item));
+
+const rotateItemToFinalAngle = (items: CanvasItem[], itemId: string): CanvasItem[] =>
+    items.map((item) => (item.id === itemId ? { ...item, angle: item.angle + item.angleDelta, angleDelta: 0 } : item));
+
+const moveItemToFront = (items: CanvasItem[], itemId: string): CanvasItem[] => {
+    const idx = items.findIndex((i) => i.id === itemId);
+
+    if (idx === -1 || idx === items.length - 1) {
+        return items;
+    }
+
+    const item = items[idx];
+
+    if (!item) {
+        return items;
+    }
+
+    return [...items.slice(0, idx), ...items.slice(idx + 1), item];
+};
+
+const findItemAt = (items: CanvasItem[], refs: DndRefs, clickX: number, clickY: number): CanvasItem | undefined =>
+    items.find((item) => {
+        const r = refs.itemRadii.current.get(item.id) ?? ITEM_SIZE;
+        const size = 2 * r;
+
+        return clickX >= item.x && clickX <= item.x + size && clickY >= item.y && clickY <= item.y + size;
+    });
 
 function createRotationTransform(halfW: number, halfH: number, angle: number): Gsk.Transform | undefined {
-    if (angle === 0) return undefined;
+    if (angle === 0) {
+        return undefined;
+    }
 
     const center = new Graphene.Point();
     center.init(halfW, halfH);
     const offset = new Graphene.Point();
     offset.init(-halfW, -halfH);
-
     let t: Gsk.Transform | undefined = Gsk.Transform.new();
     t = t.translate(center) ?? undefined;
     t = t?.rotate(angle) ?? undefined;
     t = t?.translate(offset) ?? undefined;
+
     return t;
 }
+
+const createContentProvider = (itemId: string) =>
+    Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => {
+        v.setString(itemId);
+    }));
 
 function ColorSwatch({ color }: { color: string }) {
     const dynamicStyle = css`
@@ -157,7 +273,10 @@ function ColorSwatch({ color }: { color: string }) {
     const createColorProvider = () => {
         const rgba = new Gdk.RGBA();
         rgba.parse(color);
-        return Gdk.ContentProvider.newForValue(GObject.buildValue(gdkRgbaType, (v) => v.setBoxed(rgba)));
+
+        return Gdk.ContentProvider.newForValue(GObject.buildValue(gdkRgbaType, (v) => {
+            v.setBoxed(rgba);
+        }));
     };
 
     return (
@@ -171,7 +290,9 @@ function ColorSwatch({ color }: { color: string }) {
 
 function CssPatternSwatch({ id, cssClass }: { id: string; cssClass: string }) {
     const createClassProvider = () => {
-        return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(cssClass)));
+        return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => {
+            v.setString(cssClass);
+        }));
     };
 
     return (
@@ -183,19 +304,15 @@ function CssPatternSwatch({ id, cssClass }: { id: string; cssClass: string }) {
     );
 }
 
-const coloredItemStyle = css`
-    &, &:hover, &:active {
-        color: black;
-    }
-`;
-
 function getItemStyleClass(style: ItemStyle): string[] {
     if (style.type === "default") {
         return [defaultItemStyle];
     }
+
     if (style.type === "cssClass") {
         return [style.className, coloredItemStyle];
     }
+
     return [
         css`
             &, &:hover, &:active {
@@ -207,19 +324,74 @@ function getItemStyleClass(style: ItemStyle): string[] {
     ];
 }
 
-function themeIsDark(): boolean {
+function isDarkTheme(): boolean {
     const envTheme = process.env.GTK_THEME;
+
     if (envTheme != null) {
         return envTheme.endsWith(":dark") || envTheme.endsWith("-dark");
     }
+
     const settings = Gtk.Settings.getDefault();
-    if (!settings) return false;
+
+    if (!settings) {
+        return false;
+    }
+
     const themeName = settings.gtkThemeName;
+
     return themeName.endsWith("-dark") || themeName.endsWith(":dark");
 }
 
 function initialItemStyle(): ItemStyle {
-    return { type: "rgba", cssColor: themeIsDark() ? "blue" : "yellow" };
+    return { type: "rgba", cssColor: isDarkTheme() ? "blue" : "yellow" };
+}
+
+const createInitialItems = (): CanvasItem[] => {
+    const style = initialItemStyle();
+    const items: CanvasItem[] = [];
+    let x = 40;
+    let y = 40;
+
+    for (let i = 1; i <= INITIAL_ITEM_COUNT; i++) {
+        items.push({ id: String(i), label: `Item ${String(i)}`, style, x, y, angle: 0, angleDelta: 0 });
+        x += 150;
+        y += 100;
+    }
+
+    return items;
+};
+
+function useDndRefs() {
+    const contextMenuRef = useRef<Gtk.Popover | null>(null);
+    const entryRef = useRef<Gtk.Entry | null>(null);
+    const buttonRefs = useRef<Map<string, Gtk.Widget>>(new Map());
+    const itemHalves = useRef<Map<string, { halfW: number; halfH: number }>>(new Map());
+    const itemRadii = useRef<Map<string, number>>(new Map());
+    const dragHotspotRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+    const setDragHotspot = (x: number, y: number) => {
+        dragHotspotRef.current = { x, y };
+    };
+
+    const setContextMenuNode = (node: Gtk.Popover | null) => {
+        contextMenuRef.current = node;
+    };
+
+    const setEntryNode = (node: Gtk.Entry | null) => {
+        entryRef.current = node;
+    };
+
+    return {
+        contextMenuRef,
+        entryRef,
+        buttonRefs,
+        itemHalves,
+        itemRadii,
+        dragHotspotRef,
+        setDragHotspot,
+        setContextMenuNode,
+        setEntryNode,
+    };
 }
 
 function useDndState() {
@@ -228,8 +400,8 @@ function useDndState() {
     const [editState, setEditState] = useState<EditState | null>(null);
     const [trashHovering, setTrashHovering] = useState(false);
     const trashVisibility = useImperativeDragVisibility<Gtk.Box>();
-
     const refs = useDndRefs();
+
     const handlers = useDndHandlers({
         items,
         setItems,
@@ -258,54 +430,37 @@ function useDndState() {
     };
 }
 
-type DndState = ReturnType<typeof useDndState>;
+const measureItemBounds = (items: CanvasItem[], refs: DndRefs) => {
+    for (const item of items) {
+        const button = refs.buttonRefs.current.get(item.id);
 
-const INITIAL_ITEM_COUNT = 4;
-let nextItemNumber = INITIAL_ITEM_COUNT + 1;
+        if (!button) {
+            continue;
+        }
 
-const createInitialItems = (): CanvasItem[] => {
-    const style = initialItemStyle();
-    const items: CanvasItem[] = [];
-    let x = 40;
-    let y = 40;
-    for (let i = 1; i <= INITIAL_ITEM_COUNT; i++) {
-        items.push({ id: String(i), label: `Item ${i}`, style, x, y, angle: 0, angleDelta: 0 });
-        x += 150;
-        y += 100;
+        const [ok, bounds] = button.computeBounds(button);
+
+        if (!ok) {
+            continue;
+        }
+
+        const halfW = bounds.getWidth() / 2;
+        const halfH = bounds.getHeight() / 2;
+        refs.itemHalves.current.set(item.id, { halfW, halfH });
+        refs.itemRadii.current.set(item.id, Math.hypot(halfW, halfH));
     }
-    return items;
 };
-
-function useDndRefs() {
-    const contextMenuRef = useRef<Gtk.Popover | null>(null);
-    const entryRef = useRef<Gtk.Entry | null>(null);
-    const buttonRefs = useRef<Map<string, Gtk.Widget>>(new Map());
-    const itemHalves = useRef<Map<string, { halfW: number; halfH: number }>>(new Map());
-    const itemRadii = useRef<Map<string, number>>(new Map());
-    const dragHotspotRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-    return { contextMenuRef, entryRef, buttonRefs, itemHalves, itemRadii, dragHotspotRef };
-}
-
-type DndRefs = ReturnType<typeof useDndRefs>;
 
 function useItemBoundsObserver(items: CanvasItem[], refs: DndRefs) {
     useEffect(() => {
-        for (const item of items) {
-            const button = refs.buttonRefs.current.get(item.id);
-            if (!button) continue;
-            const [ok, bounds] = button.computeBounds(button);
-            if (!ok) continue;
-            const halfW = bounds.getWidth() / 2;
-            const halfH = bounds.getHeight() / 2;
-            refs.itemHalves.current.set(item.id, { halfW, halfH });
-            refs.itemRadii.current.set(item.id, Math.hypot(halfW, halfH));
-        }
+        measureItemBounds(items, refs);
     }, [items, refs]);
 }
 
 function useEntryFocusEffect(editState: EditState | null, entryRef: React.RefObject<Gtk.Entry | null>) {
     useEffect(() => {
         const entry = entryRef.current;
+
         if (entry && editState) {
             entry.grabFocusWithoutSelecting();
             entry.setPosition(-1);
@@ -313,20 +468,11 @@ function useEntryFocusEffect(editState: EditState | null, entryRef: React.RefObj
     }, [editState, entryRef]);
 }
 
-type DndHandlerArgs = {
-    items: CanvasItem[];
-    setItems: React.Dispatch<React.SetStateAction<CanvasItem[]>>;
-    contextMenu: ContextMenuState | null;
-    setContextMenu: (m: ContextMenuState | null) => void;
-    setEditState: (e: EditState | null) => void;
-    setTrashHovering: (v: boolean) => void;
-    refs: DndRefs;
-};
-
 function useDndHandlers(args: DndHandlerArgs) {
     const itemHandlers = useItemHandlers(args);
     const contextMenuHandlers = useContextMenuHandlers(args);
     const dropHandlers = useDropHandlers(args);
+
     return { ...itemHandlers, ...contextMenuHandlers, ...dropHandlers };
 }
 
@@ -334,23 +480,24 @@ function useItemHandlers(args: DndHandlerArgs) {
     const editHandlers = useItemEditHandlers(args);
     const rotateHandlers = useItemRotateHandlers(args);
     const dragHandlers = useItemDragHandlers(args);
+
     return { ...editHandlers, ...rotateHandlers, ...dragHandlers };
 }
 
 function useItemEditHandlers(args: DndHandlerArgs) {
     const { setItems } = args;
 
-    const createContentProvider = (itemId: string) =>
-        Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(itemId)));
-
-    const toggleEditing = (itemId: string) =>
+    const toggleEditing = (itemId: string) => {
         args.setEditState(args.contextMenu?.itemId === itemId ? null : { itemId });
+    };
 
-    const updateItemLabel = (itemId: string, label: string) =>
-        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, label } : item)));
+    const updateItemLabel = (itemId: string, label: string) => {
+        setItems((prev) => updateItem(prev, itemId, { label }));
+    };
 
-    const updateItemAngle = (itemId: string, angle: number) =>
-        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angle } : item)));
+    const updateItemAngle = (itemId: string, angle: number) => {
+        setItems((prev) => updateItem(prev, itemId, { angle }));
+    };
 
     return { createContentProvider, toggleEditing, updateItemLabel, updateItemAngle };
 }
@@ -358,179 +505,243 @@ function useItemEditHandlers(args: DndHandlerArgs) {
 function useItemRotateHandlers(args: DndHandlerArgs) {
     const { setItems } = args;
 
-    const updateItemAngleDelta = (itemId: string, angleDeltaDeg: number) =>
-        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angleDelta: angleDeltaDeg } : item)));
+    const updateItemAngleDelta = (itemId: string, angleDeltaDeg: number) => {
+        setItems((prev) => updateItem(prev, itemId, { angleDelta: angleDeltaDeg }));
+    };
 
-    const handleRotateAngleChanged = (itemId: string) => (_angle: number, angleDelta: number) =>
+    const handleRotateAngleChanged = (itemId: string) => (_angle: number, angleDelta: number) => {
         updateItemAngleDelta(itemId, (angleDelta * 180) / Math.PI);
+    };
 
-    const handleRotateEnd = (itemId: string) =>
-        setItems((prev) =>
-            prev.map((item) =>
-                item.id === itemId ? { ...item, angle: item.angle + item.angleDelta, angleDelta: 0 } : item,
-            ),
-        );
+    const handleRotateEnd = (itemId: string) => {
+        setItems((prev) => rotateItemToFinalAngle(prev, itemId));
+    };
 
     return { handleRotateAngleChanged, handleRotateEnd };
 }
 
+const applyDragIcon = (
+    button: Gtk.Widget | undefined,
+    hotspot: { x: number; y: number },
+    source: Gtk.DragSource,
+) => {
+    if (!button) {
+        return;
+    }
+
+    const paintable = Gtk.WidgetPaintable.new(button);
+    source.setIcon(paintable, Math.round(hotspot.x), Math.round(hotspot.y));
+};
+
 function useItemDragHandlers(args: DndHandlerArgs) {
     const { setItems, refs } = args;
 
-    const bringToFront = (itemId: string) =>
-        setItems((prev) => {
-            const idx = prev.findIndex((i) => i.id === itemId);
-            if (idx === -1 || idx === prev.length - 1) return prev;
-            const item = prev[idx];
-            if (!item) return prev;
-            return [...prev.slice(0, idx), ...prev.slice(idx + 1), item];
-        });
+    const bringToFront = (itemId: string) => {
+        setItems((prev) => moveItemToFront(prev, itemId));
+    };
 
     const setDragIcon = (itemId: string, source: Gtk.DragSource) => {
-        const button = refs.buttonRefs.current.get(itemId);
-        if (!button) return;
-        const paintable = Gtk.WidgetPaintable.new(button);
-        const { x, y } = refs.dragHotspotRef.current;
-        source.setIcon(paintable, Math.round(x), Math.round(y));
+        applyDragIcon(refs.buttonRefs.current.get(itemId), refs.dragHotspotRef.current, source);
     };
 
     return { bringToFront, setDragIcon };
 }
 
+const addItemAtContextMenu = ({ setItems, contextMenu, setContextMenu, refs }: ContextMenuActionArgs) => {
+    if (!contextMenu) {
+        return;
+    }
+
+    const number = takeNextItemNumber();
+    const id = String(number);
+    const label = `Item ${String(number)}`;
+
+    setItems((prev) => [
+        ...prev,
+        { id, label, style: initialItemStyle(), x: contextMenu.x, y: contextMenu.y, angle: 0, angleDelta: 0 },
+    ]);
+
+    refs.contextMenuRef.current?.popdown();
+    setContextMenu(null);
+};
+
+const editItemAtContextMenu = ({ contextMenu, setEditState, refs }: ContextMenuEditArgs) => {
+    if (!contextMenu?.itemId) {
+        return;
+    }
+
+    setEditState({ itemId: contextMenu.itemId });
+    refs.contextMenuRef.current?.popdown();
+};
+
+const deleteItemAtContextMenu = ({ setItems, contextMenu, setContextMenu, refs }: ContextMenuActionArgs) => {
+    const itemId = contextMenu?.itemId;
+
+    if (!itemId) {
+        return;
+    }
+
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
+    refs.contextMenuRef.current?.popdown();
+    setContextMenu(null);
+};
+
 function useContextMenuHandlers(args: DndHandlerArgs) {
     const { items, setItems, contextMenu, setContextMenu, setEditState, refs } = args;
 
     const handleContextMenu = (clickX: number, clickY: number) => {
-        const hitItem = items.find((item) => {
-            const r = refs.itemRadii.current.get(item.id) ?? ITEM_SIZE;
-            const size = 2 * r;
-            return clickX >= item.x && clickX <= item.x + size && clickY >= item.y && clickY <= item.y + size;
-        });
+        const hitItem = findItemAt(items, refs, clickX, clickY);
         setContextMenu({ x: clickX, y: clickY, itemId: hitItem?.id ?? null });
         setTimeout(() => refs.contextMenuRef.current?.popup(), 0);
     };
 
     const handleAddItem = () => {
-        if (!contextMenu) return;
-        const id = String(nextItemNumber);
-        const label = `Item ${nextItemNumber}`;
-        nextItemNumber++;
-        setItems((prev) => [
-            ...prev,
-            { id, label, style: initialItemStyle(), x: contextMenu.x, y: contextMenu.y, angle: 0, angleDelta: 0 },
-        ]);
-        refs.contextMenuRef.current?.popdown();
-        setContextMenu(null);
+        addItemAtContextMenu({ setItems, contextMenu, setContextMenu, refs });
     };
 
     const handleEditItem = () => {
-        if (!contextMenu?.itemId) return;
-        setEditState({ itemId: contextMenu.itemId });
-        refs.contextMenuRef.current?.popdown();
+        editItemAtContextMenu({ contextMenu, setEditState, refs });
     };
 
     const handleDeleteItem = () => {
-        if (!contextMenu?.itemId) return;
-        setItems((prev) => prev.filter((item) => item.id !== contextMenu.itemId));
-        refs.contextMenuRef.current?.popdown();
-        setContextMenu(null);
+        deleteItemAtContextMenu({ setItems, contextMenu, setContextMenu, refs });
     };
 
     return { handleContextMenu, handleAddItem, handleEditItem, handleDeleteItem };
 }
 
+const didApplyCanvasDrop = ({ setItems, refs, value, x, y }: CanvasDropArgs): boolean => {
+    const itemId = value.getString();
+
+    if (itemId) {
+        const r = refs.itemRadii.current.get(itemId) ?? 0;
+        setItems((prev) => updateItem(prev, itemId, { x: x - r, y: y - r }));
+    }
+
+    return true;
+};
+
+const didApplyTrashDrop = (
+    setItems: SetItems,
+    setTrashHovering: (isHovering: boolean) => void,
+    value: GObject.Value,
+): boolean => {
+    const itemId = value.getString();
+
+    if (itemId) {
+        setItems((prev) => prev.filter((item) => item.id !== itemId));
+    }
+
+    setTrashHovering(false);
+
+    return true;
+};
+
+const itemStyleFromValue = (value: GObject.Value): ItemStyle | null => {
+    const rgba = value.getBoxed<Gdk.RGBA>();
+
+    if (rgba instanceof Gdk.RGBA) {
+        return { type: "rgba", cssColor: rgba.toString() };
+    }
+
+    const className = value.getString();
+
+    if (className) {
+        return { type: "cssClass", className };
+    }
+
+    return null;
+};
+
+const didApplyItemColorDrop = (setItems: SetItems, itemId: string, value: GObject.Value): boolean => {
+    const style = itemStyleFromValue(value);
+
+    if (style) {
+        setItems((prev) => updateItem(prev, itemId, { style }));
+    }
+
+    return true;
+};
+
 function useDropHandlers(args: DndHandlerArgs) {
     const { setItems, setTrashHovering, refs } = args;
 
-    const handleCanvasDrop = (value: GObject.Value, x: number, y: number) => {
-        const itemId = value.getString();
-        if (itemId) {
-            const r = refs.itemRadii.current.get(itemId) ?? 0;
-            setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, x: x - r, y: y - r } : item)));
-        }
-        return true;
-    };
+    const didHandleCanvasDrop = (value: GObject.Value, x: number, y: number) =>
+        didApplyCanvasDrop({ setItems, refs, value, x, y });
 
-    const handleTrashDrop = (value: GObject.Value) => {
-        const itemId = value.getString();
-        if (itemId) setItems((prev) => prev.filter((item) => item.id !== itemId));
-        setTrashHovering(false);
-        return true;
-    };
+    const didHandleTrashDrop = (value: GObject.Value) => didApplyTrashDrop(setItems, setTrashHovering, value);
 
-    const handleItemColorDrop = (itemId: string, value: GObject.Value) => {
-        const rgba = value.getBoxed<Gdk.RGBA>();
-        if (rgba instanceof Gdk.RGBA) {
-            const cssColor = rgba.toString();
-            setItems((prev) =>
-                prev.map((item) => (item.id === itemId ? { ...item, style: { type: "rgba", cssColor } } : item)),
-            );
-            return true;
-        }
-        const className = value.getString();
-        if (className) {
-            setItems((prev) =>
-                prev.map((item) => (item.id === itemId ? { ...item, style: { type: "cssClass", className } } : item)),
-            );
-        }
-        return true;
-    };
+    const didHandleItemColorDrop = (itemId: string, value: GObject.Value) =>
+        didApplyItemColorDrop(setItems, itemId, value);
 
-    return { handleCanvasDrop, handleTrashDrop, handleItemColorDrop };
+    return { didHandleCanvasDrop, didHandleTrashDrop, didHandleItemColorDrop };
 }
 
-const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
+const DndItemControllers = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
     const { refs, handlers, trashVisibility } = dnd;
+
+    return (
+        <>
+            <GtkGestureClick
+                onReleased={() => {
+                    handlers.bringToFront(item.id);
+                    handlers.toggleEditing(item.id);
+                }}
+            />
+            <GtkDragSource
+                onPrepare={(x: number, y: number) => {
+                    refs.setDragHotspot(x, y);
+
+                    return handlers.createContentProvider(item.id);
+                }}
+                onDragBegin={(_drag, source) => {
+                    handlers.setDragIcon(item.id, source);
+                    handlers.bringToFront(item.id);
+                    refs.buttonRefs.current.get(item.id)?.setOpacity(0.3);
+                    trashVisibility.show();
+                }}
+                onDragEnd={() => {
+                    refs.buttonRefs.current.get(item.id)?.setOpacity(1);
+                    trashVisibility.hide();
+                }}
+                actions={Gdk.DragAction.MOVE}
+            />
+            <GtkDropTarget
+                types={[gdkRgbaType, GObject.TYPE_STRING]}
+                actions={Gdk.DragAction.COPY}
+                onMotion={() => Gdk.DragAction.COPY}
+                onDrop={(value: GObject.Value) => handlers.didHandleItemColorDrop(item.id, value)}
+            />
+            <GtkGestureRotate
+                onAngleChanged={handlers.handleRotateAngleChanged(item.id)}
+                onEnd={() => {
+                    handlers.handleRotateEnd(item.id);
+                }}
+            />
+        </>
+    );
+};
+
+const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
+    const { refs } = dnd;
     const halfW = refs.itemHalves.current.get(item.id)?.halfW ?? ITEM_SIZE / 2;
     const halfH = refs.itemHalves.current.get(item.id)?.halfH ?? ITEM_SIZE / 2;
+
     return (
         <GtkFixedLayoutChild
             transform={at(item.x, item.y, createRotationTransform(halfW, halfH, item.angle + item.angleDelta))}
         >
             <GtkLabel
                 ref={(node) => {
-                    if (node) refs.buttonRefs.current.set(item.id, node);
-                    else refs.buttonRefs.current.delete(item.id);
+                    if (node) {
+                        refs.buttonRefs.current.set(item.id, node);
+                    } else {
+                        refs.buttonRefs.current.delete(item.id);
+                    }
                 }}
                 name={`item${item.id}`}
                 cssClasses={cx(itemStyle, ...getItemStyleClass(item.style))}
-                controllers={(
-                    <>
-                        <GtkGestureClick
-                            onReleased={() => {
-                                handlers.bringToFront(item.id);
-                                handlers.toggleEditing(item.id);
-                            }}
-                        />
-                        <GtkDragSource
-                            onPrepare={(x: number, y: number) => {
-                                refs.dragHotspotRef.current = { x, y };
-                                return handlers.createContentProvider(item.id);
-                            }}
-                            onDragBegin={(_drag, source) => {
-                                handlers.setDragIcon(item.id, source);
-                                handlers.bringToFront(item.id);
-                                refs.buttonRefs.current.get(item.id)?.setOpacity(0.3);
-                                trashVisibility.show();
-                            }}
-                            onDragEnd={() => {
-                                refs.buttonRefs.current.get(item.id)?.setOpacity(1);
-                                trashVisibility.hide();
-                            }}
-                            actions={Gdk.DragAction.MOVE}
-                        />
-                        <GtkDropTarget
-                            types={[gdkRgbaType, GObject.TYPE_STRING]}
-                            actions={Gdk.DragAction.COPY}
-                            onMotion={() => Gdk.DragAction.COPY}
-                            onDrop={(value: GObject.Value) => handlers.handleItemColorDrop(item.id, value)}
-                        />
-                        <GtkGestureRotate
-                            onAngleChanged={handlers.handleRotateAngleChanged(item.id)}
-                            onEnd={() => handlers.handleRotateEnd(item.id)}
-                        />
-                    </>
-                )}
+                controllers={<DndItemControllers item={item} dnd={dnd} />}
             >
                 {item.label}
             </GtkLabel>
@@ -540,14 +751,19 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
 
 const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
     const { refs, contextMenu, setContextMenu, handlers } = dnd;
+
     return (
         <GtkPopover
             name="context-menu"
-            ref={refs.contextMenuRef}
+            ref={(node) => {
+                refs.setContextMenuNode(node);
+            }}
             hasArrow={false}
             pointingTo={contextMenu ? buildRectangle(contextMenu.x, contextMenu.y, 1, 1) : undefined}
             autohide
-            onClosed={() => setContextMenu(null)}
+            onClosed={() => {
+                setContextMenu(null);
+            }}
         >
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                 <GtkButton label="New" cssClasses={["flat"]} onClicked={handlers.handleAddItem} />
@@ -573,20 +789,29 @@ const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
 const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: CanvasItem }) => {
     const { refs, handlers, setEditState } = dnd;
     const halfH = refs.itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2;
+
     return (
         <GtkFixedLayoutChild transform={at(editingItem.x, editingItem.y + 2 * halfH)}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkEntry
-                    ref={refs.entryRef}
+                    ref={(node) => {
+                        refs.setEntryNode(node);
+                    }}
                     text={editingItem.label}
-                    onChanged={(entry) => handlers.updateItemLabel(editingItem.id, entry.getText())}
+                    onChanged={(entry) => {
+                        handlers.updateItemLabel(editingItem.id, entry.getText());
+                    }}
                     widthChars={12}
-                    onActivate={() => setEditState(null)}
+                    onActivate={() => {
+                        setEditState(null);
+                    }}
                 />
                 <GtkScale
                     orientation={Gtk.Orientation.HORIZONTAL}
                     adjustment={<GtkAdjustment value={editingItem.angle % 360} lower={0} upper={360} />}
-                    onValueChanged={(scale) => handlers.updateItemAngle(editingItem.id, scale.getValue())}
+                    onValueChanged={(scale) => {
+                        handlers.updateItemAngle(editingItem.id, scale.getValue());
+                    }}
                     drawValue={false}
                 />
             </GtkBox>
@@ -594,24 +819,22 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
     );
 };
 
-type DndTrashZoneProps = {
-    boxRef: React.RefObject<Gtk.Box | null>;
-    trashHovering: boolean;
-    setTrashHovering: (v: boolean) => void;
-    handleTrashDrop: (value: GObject.Value) => boolean;
-};
-
 const loadTrashPaintable = (): Gtk.Svg => {
     const bytes = Gio.resourcesLookupData(trashSvgPath, Gio.ResourceLookupFlags.NONE);
+
     return Gtk.Svg.newFromBytes(bytes);
 };
 
-const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop }: DndTrashZoneProps) => {
+const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, onTrashDrop }: DndTrashZoneProps) => {
     const [svg] = useState(loadTrashPaintable);
 
     const attachFrameClockAndPlay = (image: Gtk.Widget) => {
         const frameClock = image.getFrameClock();
-        if (frameClock) svg.setFrameClock(frameClock);
+
+        if (frameClock) {
+            svg.setFrameClock(frameClock);
+        }
+
         svg.setState(0);
         svg.play();
     };
@@ -636,6 +859,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
                             setTrashHovering(true);
                             svg.setState(1);
                             svg.play();
+
                             return Gdk.DragAction.MOVE;
                         }}
                         onLeave={() => {
@@ -646,7 +870,8 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
                         onDrop={(value: GObject.Value) => {
                             svg.setState(0);
                             svg.play();
-                            return handleTrashDrop(value);
+
+                            return onTrashDrop(value);
                         }}
                     />
                 )}
@@ -674,11 +899,23 @@ const DndSwatchPalette = () => (
     </GtkScrolledWindow>
 );
 
-const DndDemo = () => {
+const DndCanvasControllers = ({ dnd, gestureRef, onPressed, onReleased }: DndCanvasControllersProps) => (
+    <>
+        <GtkDropTarget
+            types={[GObject.TYPE_STRING]}
+            actions={Gdk.DragAction.MOVE}
+            onMotion={() => Gdk.DragAction.MOVE}
+            onDrop={(value: GObject.Value, dropX: number, dropY: number) =>
+                dnd.handlers.didHandleCanvasDrop(value, dropX, dropY)}
+        />
+        <GtkGestureClick ref={gestureRef} button={0} onPressed={onPressed} onReleased={onReleased} />
+    </>
+);
+
+function DndDemo() {
     const dnd = useDndState();
     useItemBoundsObserver(dnd.items, dnd.refs);
     useEntryFocusEffect(dnd.editState, dnd.refs.entryRef);
-
     const contextMenuGesture = useContextMenuGesture({ onContextMenu: dnd.handlers.handleContextMenu });
 
     return (
@@ -689,21 +926,12 @@ const DndDemo = () => {
                 vexpand
                 cssClasses={[css`min-height: 400px;`]}
                 controllers={(
-                    <>
-                        <GtkDropTarget
-                            types={[GObject.TYPE_STRING]}
-                            actions={Gdk.DragAction.MOVE}
-                            onMotion={() => Gdk.DragAction.MOVE}
-                            onDrop={(value: GObject.Value, dropX: number, dropY: number) =>
-                                dnd.handlers.handleCanvasDrop(value, dropX, dropY)}
-                        />
-                        <GtkGestureClick
-                            ref={contextMenuGesture.ref}
-                            button={0}
-                            onPressed={contextMenuGesture.onPressed}
-                            onReleased={contextMenuGesture.onReleased}
-                        />
-                    </>
+                    <DndCanvasControllers
+                        dnd={dnd}
+                        gestureRef={contextMenuGesture.ref}
+                        onPressed={contextMenuGesture.onPressed}
+                        onReleased={contextMenuGesture.onReleased}
+                    />
                 )}
             >
                 {dnd.items.map((item) => (
@@ -716,7 +944,7 @@ const DndDemo = () => {
                     boxRef={dnd.trashVisibility.ref}
                     trashHovering={dnd.trashHovering}
                     setTrashHovering={dnd.setTrashHovering}
-                    handleTrashDrop={dnd.handlers.handleTrashDrop}
+                    onTrashDrop={dnd.handlers.didHandleTrashDrop}
                 />
             </GtkFixed>
 
@@ -725,16 +953,6 @@ const DndDemo = () => {
             <DndSwatchPalette />
         </GtkBox>
     );
-};
+}
 
-export const dndDemo: Demo = {
-    id: "dnd",
-    title: "Drag-and-Drop",
-    description:
-        "This demo shows dragging colors and widgets. The items in this demo can be moved, recolored and rotated.\n\nThe demo also has an example for creating a menu-like popover without using a menu model.",
-    keywords: ["dnd", "menu", "popover", "gesture"],
-    component: DndDemo,
-    sourceCode,
-    defaultWidth: 640,
-    defaultHeight: 480,
-};
+export { dndDemo };

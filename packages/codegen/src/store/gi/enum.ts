@@ -10,27 +10,26 @@ const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
     }
 
     const name = enumeration.name;
-    const memberKeys = enumeration.members.map((member) => enumMemberKey(member.name));
+    const members = enumeration.members.map((member) => ({ ...member, key: enumMemberKey(member.name) }));
 
     if (enumeration.errorDomain !== undefined) {
-        const memberEntries = enumeration.members.map((member, index) => `${memberKeys[index]}: ${member.value}`);
-        const typeFields = memberKeys.map((key) => `${key}: number`).join("; ");
+        const memberEntries = members.map((member) => `${member.key}: ${member.value}`);
+        const typeFields = members.map((member) => `${member.key}: number`).join("; ");
         context.addRuntimeImport("createErrorDomain");
         context.addRuntimeImport("ErrorDomain");
         const quarkExpression = renderQuarkExpression(context, enumeration.errorDomain);
         context.module.appendDeclaration(`${renderJsDoc(enumeration.doc)}export type ${name} = number;`);
 
         context.module.appendDeclaration(
-            `export const ${name}: ErrorDomain<{ ${typeFields} }> = createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
+            `export const ${name}: ErrorDomain<{ ${typeFields} }> = ` +
+            `createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
         );
 
         return;
     }
 
-    if (enumeration.members.some((member) => member.doc !== undefined)) {
-        const memberBlocks = enumeration.members.map(
-            (member, index) => `${renderJsDoc(member.doc)}${memberKeys[index]} = ${member.value},`,
-        );
+    if (members.some((member) => member.doc !== undefined)) {
+        const memberBlocks = members.map((member) => `${renderJsDoc(member.doc)}${member.key} = ${member.value},`);
 
         context.module.appendDeclaration(
             `${renderJsDoc(enumeration.doc)}export enum ${name} {\n${indent(memberBlocks.join("\n"), 1)}\n}`,
@@ -39,7 +38,7 @@ const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
         return;
     }
 
-    const memberDeclarations = enumeration.members.map((member, index) => `${memberKeys[index]} = ${member.value}`);
+    const memberDeclarations = members.map((member) => `${member.key} = ${member.value}`);
 
     context.module.appendDeclaration(
         `${renderJsDoc(enumeration.doc)}export enum ${name} { ${memberDeclarations.join(", ")} }`,

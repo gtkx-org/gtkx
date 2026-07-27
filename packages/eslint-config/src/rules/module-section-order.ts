@@ -10,11 +10,14 @@ const moduleSectionOrder = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
         type: "suggestion",
         docs: {
             description:
-                "Enforce a single top-level layout per module: imports, types, constants, functions, classes, side effects, exports",
+                "Enforce a single top-level layout per module: imports, types, constants, functions, classes, " +
+                "side effects, exports",
         },
         messages: {
             outOfOrder:
-                "Move this to the {{section}} section: it belongs above the {{blocker}} on line {{line}}. Modules read top to bottom as imports, types, constants, functions, classes, side effects, exports.",
+                "Move this to the {{section}} section: it belongs above the {{blocker}} on line {{line}}. " +
+                "Modules read top to bottom as imports, types, constants, functions, classes, side effects, " +
+                "exports.",
         },
         schema: [],
     },
@@ -34,7 +37,7 @@ const moduleSectionOrder = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
     },
 });
 
-const blocks = (furthest: Placement | undefined, section: Section): furthest is Placement =>
+const isBlocked = (furthest: Placement | undefined, section: Section): furthest is Placement =>
     furthest !== undefined && rankFor(section) < rankFor(furthest.section);
 
 const advanced = (furthest: Placement | undefined, section: Section, line: number): Placement =>
@@ -53,7 +56,7 @@ const misplaced = (program: TSESTree.Program): Misplacement[] => {
             continue;
         }
 
-        if (blocks(furthest, section)) {
+        if (isBlocked(furthest, section)) {
             found.push({ statement, section, blocker: furthest });
             continue;
         }

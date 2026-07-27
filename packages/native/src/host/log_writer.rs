@@ -6,7 +6,7 @@ use super::error_reporter;
 
 static INSTALLED: OnceLock<()> = OnceLock::new();
 
-pub fn install() {
+pub(crate) fn install() {
     INSTALLED.get_or_init(|| {
         glib::log_set_writer_func(write_log);
     });

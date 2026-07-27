@@ -4,7 +4,7 @@ import { GtkAdjustment, GtkButton, GtkCheckButton, GtkEntry, GtkLabel, GtkScale,
 import { describe, expect, it } from "vitest";
 import { render, screen } from "../src/index.js";
 
-describe("jest-dom-style matchers", () => {
+describe("jest-dom-style text matchers", () => {
     it("toHaveTextContent matches a label's visible text", async () => {
         await render(<GtkLabel>Hello world</GtkLabel>);
         const label = await screen.findByText("Hello world");
@@ -28,7 +28,9 @@ describe("jest-dom-style matchers", () => {
         expect(entry).toHavePlaceholderText("type here");
         expect(entry).not.toHaveDisplayValue("other");
     });
+});
 
+describe("jest-dom-style state and value matchers", () => {
     it("toBeChecked reflects a check button's active state", async () => {
         await render(<GtkCheckButton label="Accept" active={true} />);
         const check = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Accept" });
@@ -71,6 +73,9 @@ describe("jest-dom-style matchers", () => {
     it("throws for a boolean state matcher on a widget without that state", async () => {
         await render(<GtkLabel>plain</GtkLabel>);
         const label = await screen.findByText("plain");
-        expect(() => expect(label).toBeChecked()).toThrow(/does not expose a checked state/);
+
+        expect(() => {
+            expect(label).toBeChecked();
+        }).toThrow(/does not expose a checked state/);
     });
 });

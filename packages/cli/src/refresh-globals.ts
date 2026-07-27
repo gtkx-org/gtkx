@@ -5,6 +5,6 @@ const identity = (type: unknown): unknown => type;
 RefreshRuntime.injectIntoGlobalHook(globalThis);
 
 Object.assign(globalThis, {
-    $RefreshReg$: () => {},
+    $RefreshReg$: (): void => undefined,
     $RefreshSig$: () => identity,
 });

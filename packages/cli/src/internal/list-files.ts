@@ -6,13 +6,13 @@ type ListedFile = {
     rel: string;
 };
 
-const listFilesRecursive = (dir: string, predicate?: (name: string) => boolean): ListedFile[] => {
+const listFilesRecursive = (dir: string, shouldInclude?: (name: string) => boolean): ListedFile[] => {
     if (!existsSync(dir)) {
         return [];
     }
 
     return readdirSync(dir, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && (predicate === undefined || predicate(entry.name)))
+        .filter((entry) => entry.isFile() && (shouldInclude === undefined || shouldInclude(entry.name)))
         .map((entry) => {
             const absPath = join(entry.parentPath, entry.name);
 

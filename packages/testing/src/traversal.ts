@@ -68,11 +68,11 @@ const traverse = function* (container: Container): Generator<Gtk.Widget> {
     }
 };
 
-const findAll = (container: Container, predicate: (node: Gtk.Widget) => boolean): Gtk.Widget[] => {
+const findAll = (container: Container, isMatch: (node: Gtk.Widget) => boolean): Gtk.Widget[] => {
     const results: Gtk.Widget[] = [];
 
     for (const node of traverse(container)) {
-        if (predicate(node)) {
+        if (isMatch(node)) {
             results.push(node);
         }
     }

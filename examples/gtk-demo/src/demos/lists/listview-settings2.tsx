@@ -32,11 +32,68 @@ type SchemaKeys = {
     keys: KeyItem[];
 };
 
-const loadKeyItem = (schemaId: string, schema: Gio.SettingsSchema, settings: Gio.Settings, name: string): KeyItem => {
+type KeysState = React.RefObject<Map<string, string>>;
+
+type SchemaKeysListViewProps = {
+    filteredSchemaKeys: SchemaKeys[];
+    keysState: KeysState;
+    onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
+};
+
+type Settings2ContextValue = {
+    searchMode: boolean;
+    setSearchMode: (isEnabled: boolean) => void;
+    setSearchText: (text: string) => void;
+    filteredSchemaKeys: SchemaKeys[];
+    keysState: KeysState;
+    handleSearchChanged: (entry: Gtk.SearchEntry) => void;
+    handleStopSearch: () => void;
+    handleValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
+};
+
+const revertingEntries: WeakSet<Gtk.Entry> = new WeakSet();
+
+const getAllSchemaKeys = (() => {
+    let cache: SchemaKeys[] | undefined;
+
+    return (): SchemaKeys[] => {
+        cache ??= loadAllSchemaKeys();
+
+        return cache;
+    };
+})();
+
+const Settings2Context = createContext<Settings2ContextValue | null>(null);
+
+const listviewSettings2Demo: Demo = {
+    id: "listview-settings2",
+    title: "Lists/Alternative Settings",
+    description:
+        "This demo shows an alternative settings viewer for GSettings.\n\nIt demonstrates how to implement " +
+        "support for sections with GtkListView.\n\nIt also shows how to quickly flatten a large tree of items " +
+        "into a list that can be filtered to find the items one is looking for.",
+    keywords: ["GtkListHeaderFactory", "GtkSectionModel"],
+    component: ListViewSettings2Demo,
+    titlebar: ListViewSettings2Titlebar,
+    provider: ListViewSettings2Provider,
+    sourceCode,
+    windowTitle: "Settings",
+    defaultWidth: 640,
+    defaultHeight: 480,
+};
+
+function logError(error: unknown) {
+    if (error instanceof Error) {
+        console.error(error.message);
+    }
+}
+
+function loadKeyItem(schemaId: string, schema: Gio.SettingsSchema, settings: Gio.Settings, name: string): KeyItem {
     try {
         const variant = settings.getValue(name);
         const valueStr = variant.print(false);
         const schemaKey = schema.getKey(name);
+
         return {
             id: `${schemaId}/${name}`,
             name,
@@ -48,7 +105,8 @@ const loadKeyItem = (schemaId: string, schema: Gio.SettingsSchema, settings: Gio
             valueType: schemaKey.getValueType().dupString(),
         };
     } catch (error) {
-        if (error instanceof Error) console.error(error.message);
+        logError(error);
+
         return {
             id: `${schemaId}/${name}`,
             name,
@@ -60,33 +118,50 @@ const loadKeyItem = (schemaId: string, schema: Gio.SettingsSchema, settings: Gio
             valueType: "",
         };
     }
-};
+}
 
-const loadSchemaKeysFor = (source: Gio.SettingsSchemaSource, schemaId: string): KeyItem[] | null => {
+function loadSchemaKeysFor(source: Gio.SettingsSchemaSource, schemaId: string): KeyItem[] | null {
     try {
         const schema = source.lookup(schemaId, true);
-        if (!schema) return null;
+
+        if (!schema) {
+            return null;
+        }
 
         const settings = Gio.Settings.new(schemaId);
         const keys = schema.listKeys().map((name) => loadKeyItem(schemaId, schema, settings, name));
         keys.sort((a, b) => a.name.localeCompare(b.name));
+
         return keys;
     } catch (error) {
-        if (error instanceof Error) console.error(error.message);
+        logError(error);
+
         return null;
     }
-};
+}
+
+function compareSchemaIds(a: string, b: string): number {
+    if (a === b) {
+        return 0;
+    }
+
+    return a < b ? -1 : 1;
+}
 
 function loadAllSchemaKeys(): SchemaKeys[] {
     const source = Gio.SettingsSchemaSource.getDefault();
-    if (!source) return [];
+
+    if (!source) {
+        return [];
+    }
 
     const [nonRelocatable] = source.listSchemas(true);
-    const schemaIds = [...nonRelocatable].sort();
+    const schemaIds = nonRelocatable.toSorted(compareSchemaIds);
     const result: SchemaKeys[] = [];
 
     for (const schemaId of schemaIds) {
         const schemaKeys = loadSchemaKeysFor(source, schemaId);
+
         if (schemaKeys && schemaKeys.length > 0) {
             result.push({ schemaId, keys: schemaKeys });
         }
@@ -95,75 +170,90 @@ function loadAllSchemaKeys(): SchemaKeys[] {
     return result;
 }
 
-let allSchemaKeys: SchemaKeys[] | undefined;
-function getAllSchemaKeys() {
-    if (!allSchemaKeys) {
-        allSchemaKeys = loadAllSchemaKeys();
-    }
-    return allSchemaKeys;
-}
-
 function getSearchString(key: KeyItem): string {
     return `${key.name} ${key.summary} ${key.schemaId}`.toLowerCase();
 }
 
-const filterSchemaKeys = (searchText: string): SchemaKeys[] => {
-    if (!searchText) return getAllSchemaKeys();
+function matchSchemaKeys(schema: SchemaKeys, searchText: string): SchemaKeys | null {
+    const matchingKeys = schema.keys.filter((key) => getSearchString(key).includes(searchText));
+
+    if (matchingKeys.length === 0) {
+        return null;
+    }
+
+    return { schemaId: schema.schemaId, keys: matchingKeys };
+}
+
+function filterSchemaKeys(searchText: string): SchemaKeys[] {
+    if (!searchText) {
+        return getAllSchemaKeys();
+    }
+
     return getAllSchemaKeys()
-        .map((schema) => {
-            const matchingKeys = schema.keys.filter((k) => getSearchString(k).includes(searchText));
-            if (matchingKeys.length === 0) return null;
-            return { schemaId: schema.schemaId, keys: matchingKeys };
-        })
-        .filter((s): s is SchemaKeys => s !== null);
-};
+        .map((schema) => matchSchemaKeys(schema, searchText))
+        .filter((schema): schema is SchemaKeys => schema !== null);
+}
 
-const revertingEntries = new WeakSet<Gtk.Entry>();
-
-const revertEntry = (entry: Gtk.Entry, key: KeyItem, keysState: React.RefObject<Map<string, string>>) => {
+function revertEntry(entry: Gtk.Entry, key: KeyItem, keysState: KeysState) {
     entry.errorBell();
     revertingEntries.add(entry);
+
     try {
         entry.setText(keysState.current.get(key.id) ?? key.value);
     } finally {
         revertingEntries.delete(entry);
     }
-};
+}
 
-const validateAgainstSchema = (variant: GLib.Variant, key: KeyItem): boolean => {
+function isWithinSchemaRange(variant: GLib.Variant, key: KeyItem): boolean {
     const source = Gio.SettingsSchemaSource.getDefault();
-    if (!source) return true;
-    const schema = source.lookup(key.schemaId, true);
-    if (!schema) return true;
-    const schemaKey = schema.getKey(key.name);
-    return schemaKey.rangeCheck(variant);
-};
 
-const commitSettingValue = (key: KeyItem, entry: Gtk.Entry, keysState: React.RefObject<Map<string, string>>) => {
-    if (revertingEntries.has(entry)) return;
-    const text = entry.getText();
-    if (!key.valueType) return;
+    if (!source) {
+        return true;
+    }
+
+    const schema = source.lookup(key.schemaId, true);
+
+    if (!schema) {
+        return true;
+    }
+
+    const schemaKey = schema.getKey(key.name);
+
+    return schemaKey.rangeCheck(variant);
+}
+
+function applySettingValue(key: KeyItem, entry: Gtk.Entry, keysState: KeysState) {
+    const variantType = GLib.VariantType.new(key.valueType);
+    const variant = GLib.variantParse(variantType, entry.getText(), null, null);
+
+    if (!isWithinSchemaRange(variant, key)) {
+        revertEntry(entry, key, keysState);
+
+        return;
+    }
+
+    const settings = Gio.Settings.new(key.schemaId);
+    settings.setValue(key.name, variant);
+    keysState.current.set(key.id, variant.print(false));
+}
+
+function commitSettingValue(key: KeyItem, entry: Gtk.Entry, keysState: KeysState) {
+    if (revertingEntries.has(entry) || !key.valueType) {
+        return;
+    }
+
     try {
-        const variantType = GLib.VariantType.new(key.valueType);
-        const variant = GLib.variantParse(variantType, text, null, null);
-        if (!validateAgainstSchema(variant, key)) {
-            revertEntry(entry, key, keysState);
-            return;
-        }
-        const settings = Gio.Settings.new(key.schemaId);
-        settings.setValue(key.name, variant);
-        keysState.current.set(key.id, variant.print(false));
+        applySettingValue(key, entry, keysState);
     } catch (error) {
-        if (error instanceof Error) console.error(error.message);
+        logError(error);
         revertEntry(entry, key, keysState);
     }
-};
+}
 
-type SchemaKeysListViewProps = {
-    filteredSchemaKeys: SchemaKeys[];
-    keysState: React.RefObject<Map<string, string>>;
-    onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
-};
+function renderSchemaHeader({ section: schemaId }: { section: string }) {
+    return <GtkLabel xalign={0}>{schemaId}</GtkLabel>;
+}
 
 const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: SchemaKeysListViewProps) => (
     <GtkScrolledWindow name="scrolled">
@@ -183,11 +273,13 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
                         text={keysState.current.get(key.id) ?? key.value}
                         halign={Gtk.Align.END}
                         hexpand
-                        onChanged={(entry: Gtk.Entry) => onValueEdit(key, entry)}
+                        onChanged={(entry: Gtk.Entry) => {
+                            onValueEdit(key, entry);
+                        }}
                     />
                 </GtkBox>
             )}
-            renderHeader={({ section: schemaId }: { section: string }) => <GtkLabel xalign={0}>{schemaId}</GtkLabel>}
+            renderHeader={renderSchemaHeader}
             sections={filteredSchemaKeys.map((schema) => ({
                 id: schema.schemaId,
                 value: schema.schemaId,
@@ -197,37 +289,34 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
     </GtkScrolledWindow>
 );
 
-type Settings2ContextValue = {
-    searchMode: boolean;
-    setSearchMode: (value: boolean) => void;
-    setSearchText: (value: string) => void;
-    filteredSchemaKeys: SchemaKeys[];
-    keysState: React.RefObject<Map<string, string>>;
-    handleSearchChanged: (entry: Gtk.SearchEntry) => void;
-    handleStopSearch: () => void;
-    handleValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
-};
-
-const Settings2Context = createContext<Settings2ContextValue | null>(null);
-
-const useSettings2Context = (): Settings2ContextValue => {
+function useSettings2Context(): Settings2ContextValue {
     const ctx = useContext(Settings2Context);
-    if (!ctx) throw new Error("Settings2Context is missing");
-    return ctx;
-};
 
-const ListViewSettings2Provider = ({ children }: DemoProviderProps) => {
+    if (!ctx) {
+        throw new Error("Settings2Context is missing");
+    }
+
+    return ctx;
+}
+
+function ListViewSettings2Provider({ children }: DemoProviderProps) {
     const [searchText, setSearchText] = useState("");
     const [searchMode, setSearchMode] = useState(false);
     const keysState = useRef(new Map<string, string>());
 
-    const handleSearchChanged = (entry: Gtk.SearchEntry) => setSearchText(entry.getText().toLowerCase());
+    const handleSearchChanged = (entry: Gtk.SearchEntry) => {
+        setSearchText(entry.getText().toLowerCase());
+    };
 
-    const handleStopSearch = () => setSearchText("");
+    const handleStopSearch = () => {
+        setSearchText("");
+    };
 
     const filteredSchemaKeys = filterSchemaKeys(searchText);
 
-    const handleValueEdit = (key: KeyItem, entry: Gtk.Entry) => commitSettingValue(key, entry, keysState);
+    const handleValueEdit = (key: KeyItem, entry: Gtk.Entry) => {
+        commitSettingValue(key, entry, keysState);
+    };
 
     const value = {
         searchMode,
@@ -241,10 +330,11 @@ const ListViewSettings2Provider = ({ children }: DemoProviderProps) => {
     };
 
     return <Settings2Context.Provider value={value}>{children}</Settings2Context.Provider>;
-};
+}
 
-const ListViewSettings2Titlebar = () => {
+function ListViewSettings2Titlebar() {
     const { searchMode, setSearchMode, setSearchText } = useSettings2Context();
+
     return (
         <GtkHeaderBar
             end={(
@@ -260,11 +350,12 @@ const ListViewSettings2Titlebar = () => {
             )}
         />
     );
-};
+}
 
-const ListViewSettings2Demo = () => {
+function ListViewSettings2Demo() {
     const { searchMode, filteredSchemaKeys, keysState, handleSearchChanged, handleStopSearch, handleValueEdit } =
         useSettings2Context();
+
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkSearchBar name="search-bar" searchModeEnabled={searchMode}>
@@ -281,19 +372,6 @@ const ListViewSettings2Demo = () => {
             />
         </GtkBox>
     );
-};
+}
 
-export const listviewSettings2Demo: Demo = {
-    id: "listview-settings2",
-    title: "Lists/Alternative Settings",
-    description:
-        "This demo shows an alternative settings viewer for GSettings.\n\nIt demonstrates how to implement support for sections with GtkListView.\n\nIt also shows how to quickly flatten a large tree of items into a list that can be filtered to find the items one is looking for.",
-    keywords: ["GtkListHeaderFactory", "GtkSectionModel"],
-    component: ListViewSettings2Demo,
-    titlebar: ListViewSettings2Titlebar,
-    provider: ListViewSettings2Provider,
-    sourceCode,
-    windowTitle: "Settings",
-    defaultWidth: 640,
-    defaultHeight: 480,
-};
+export { listviewSettings2Demo };

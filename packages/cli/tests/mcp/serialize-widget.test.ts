@@ -13,15 +13,18 @@ const testing: WidgetFormatting = {
     },
 };
 
+const nextId = createNextId();
+
 const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget({ type: "GtkLabel", ...overrides });
 
-let counter = 0;
+function createNextId(): () => string {
+    let counter = 0;
 
-const nextId = (): string => String(counter++);
+    return () => String(counter++);
+}
 
 describe("serializeWidget", () => {
     it("returns the wire shape with the registered id, lowercase role, and child trees", () => {
-        counter = 0;
         const child = makeWidget({ type: "GtkButton", getAccessibleRole: () => 1, getLabel: () => "OK" });
 
         const root = makeWidget({

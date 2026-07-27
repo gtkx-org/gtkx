@@ -6,10 +6,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
 import { renderDemo } from "../../test-utils.js";
 
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
+const originalCwd = process.cwd();
+
 const waitForPopulatedModel = async (grid: Gtk.GridView): Promise<number> =>
     waitFor(() => {
         const count = (grid.getModel() as Gtk.SelectionModel).getNItems();
         expect(count).toBeGreaterThan(0);
+
         return count;
     });
 
@@ -18,13 +22,15 @@ const orderedNames = (grid: Gtk.GridView): string[] =>
         .getAllByRole(Gtk.AccessibleRole.LABEL)
         .map((label) => (label as Gtk.Label).getText());
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
+beforeAll(() => {
+    process.chdir(repoRoot);
+});
 
-describe("listviewFilebrowserDemo", () => {
-    const originalCwd = process.cwd();
-    beforeAll(() => process.chdir(repoRoot));
-    afterAll(() => process.chdir(originalCwd));
+afterAll(() => {
+    process.chdir(originalCwd);
+});
 
+describe("listviewFilebrowserDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewFilebrowserDemo.id).toBe("listview-filebrowser");
         expect(listviewFilebrowserDemo.title).toBe("Lists/File browser");
@@ -35,7 +41,9 @@ describe("listviewFilebrowserDemo", () => {
         expect(listviewFilebrowserDemo.defaultHeight).toBe(400);
         expect(listviewFilebrowserDemo.component).toBeTypeOf("function");
     });
+});
 
+describe("listviewFilebrowserDemo header bar", () => {
     it("installs a header bar with the up-button and view-switcher packed into it", async () => {
         await renderDemo(listviewFilebrowserDemo);
         const header = (await screen.findByName("filebrowser-header")) as Gtk.HeaderBar;
@@ -56,7 +64,9 @@ describe("listviewFilebrowserDemo", () => {
         const switcher = (await screen.findByName("view-switcher")) as Gtk.ListView;
         expect(within(switcher).getAllByRole(Gtk.AccessibleRole.IMG)).toHaveLength(3);
     });
+});
 
+describe("listviewFilebrowserDemo file grid", () => {
     it("renders the file grid view inside the scrolled window with the working directory listed", async () => {
         await renderDemo(listviewFilebrowserDemo);
         const sw = (await screen.findByName("files-scrolled")) as Gtk.ScrolledWindow;
@@ -70,9 +80,9 @@ describe("listviewFilebrowserDemo", () => {
         await renderDemo(listviewFilebrowserDemo);
         const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
         await waitForPopulatedModel(grid);
-        await within(grid).findByText("package.json");
-        within(grid).getByText("examples");
-        within(grid).getByText("packages");
+        expect(await within(grid).findByText("package.json")).toBeInstanceOf(Gtk.Label);
+        expect(within(grid).getByText("examples")).toBeInstanceOf(Gtk.Label);
+        expect(within(grid).getByText("packages")).toBeInstanceOf(Gtk.Label);
     });
 
     it("sorts directories before files, alphabetically within each group", async () => {
@@ -83,7 +93,9 @@ describe("listviewFilebrowserDemo", () => {
         expect(names.indexOf("examples")).toBeLessThan(names.indexOf("packages"));
         expect(names.indexOf("packages")).toBeLessThan(names.indexOf("package.json"));
     });
+});
 
+describe("listviewFilebrowserDemo view modes", () => {
     it("starts in list view orientation (horizontal)", async () => {
         await renderDemo(listviewFilebrowserDemo);
         const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
@@ -95,7 +107,11 @@ describe("listviewFilebrowserDemo", () => {
         const switcher = (await screen.findByName("view-switcher")) as Gtk.ListView;
         await userEvent.selectOptions(switcher, 1);
         const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
-        await waitFor(() => expect(grid.getOrientation()).toBe(Gtk.Orientation.VERTICAL));
+
+        await waitFor(() => {
+            expect(grid.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        });
+
         expect((switcher.getModel() as Gtk.SingleSelection).getSelected()).toBe(1);
         const label = (await within(grid).findByText("examples")) as Gtk.Label;
         expect(label.getWrap()).toBe(true);
@@ -112,7 +128,9 @@ describe("listviewFilebrowserDemo", () => {
         expect(within(grid).getAllByText("folder").length).toBeGreaterThan(0);
         expect(within(grid).getAllByText("inode/directory").length).toBeGreaterThan(0);
     });
+});
 
+describe("listviewFilebrowserDemo navigation", () => {
     it("navigates to the parent directory when the up button is clicked", async () => {
         await renderDemo(listviewFilebrowserDemo);
         const grid = (await screen.findByName("files-grid")) as Gtk.GridView;

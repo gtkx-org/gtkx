@@ -17,10 +17,11 @@ const { observed, skipped } = collect(runSuite());
 
 function runSuite(): VitestReport {
     const root = join(import.meta.dirname, "..");
-    const reportPath = join(tmpdir(), `gtkx-spec-report-${process.pid}.json`);
+    const reportPath = join(tmpdir(), `gtkx-spec-report-${String(process.pid)}.json`);
+    const args = ["vitest", "run", "--project", PROJECT, "--reporter=json", `--outputFile=${reportPath}`];
 
     try {
-        execFileSync(resolveExecutable("npx"), ["vitest", "run", "--project", PROJECT, "--reporter=json", `--outputFile=${reportPath}`], {
+        execFileSync(resolveExecutable("npx"), args, {
             cwd: root,
             encoding: "utf8",
             stdio: "ignore",
@@ -80,7 +81,8 @@ const record = (observed: Baseline): void => {
     const sorted = Object.fromEntries(Object.entries(observed).toSorted(([a], [b]) => a.localeCompare(b)));
     writeFileSync(BASELINE_PATH, `${JSON.stringify(sorted, null, 4)}\n`);
     const red = Object.values(sorted).filter((status) => status === "red").length;
-    process.stdout.write(`Recorded ${Object.keys(sorted).length} specs (${red} red) to ${BASELINE_PATH}\n`);
+    const total = Object.keys(sorted).length;
+    process.stdout.write(`Recorded ${String(total)} specs (${String(red)} red) to ${BASELINE_PATH}\n`);
 };
 
 const collectFailures = (observed: Baseline, skipped: string[], baseline: Baseline): string[] => {
@@ -124,7 +126,15 @@ const reportFailures = (failures: string[]): void => {
         "After implementing a behavior, re-record with: pnpm spec:record\n",
     );
 
-    process.exit(1);
+    process.exitCode = 1;
+};
+
+const reportBaselineHolds = (observed: Baseline, fixedCount: number): void => {
+    const total = Object.keys(observed).length;
+
+    process.stdout.write(
+        `Baseline holds: ${String(total)} specs, ${String(fixedCount)} newly green, none removed or skipped.\n`,
+    );
 };
 
 const check = (observed: Baseline, skipped: string[]): void => {
@@ -134,11 +144,9 @@ const check = (observed: Baseline, skipped: string[]): void => {
 
     if (failures.length > 0) {
         reportFailures(failures);
+    } else {
+        reportBaselineHolds(observed, fixedCount);
     }
-
-    process.stdout.write(
-        `Baseline holds: ${Object.keys(observed).length} specs, ${fixedCount} newly green, none removed or skipped.\n`,
-    );
 };
 
 if (process.argv.includes("--record")) {

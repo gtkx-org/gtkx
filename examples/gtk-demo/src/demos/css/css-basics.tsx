@@ -35,7 +35,21 @@ window.demo {
 
 const WINDOW_CLASSES = ["demo"];
 
-const CssBasicsDemo = () => {
+const cssBasicsDemo: Demo = {
+    id: "css-basics",
+    title: "Theming/CSS Basics",
+    description:
+        "GTK themes are written using CSS. Every widget is build of multiple items that you can style very " +
+        "similarly to a regular website.",
+    keywords: [],
+    component: CssBasicsDemo,
+    sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 300,
+    windowCssClasses: WINDOW_CLASSES,
+};
+
+function CssBasicsDemo() {
     const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
@@ -47,17 +61,6 @@ const CssBasicsDemo = () => {
             />
         </GtkScrolledWindow>
     );
-};
+}
 
-export const cssBasicsDemo: Demo = {
-    id: "css-basics",
-    title: "Theming/CSS Basics",
-    description:
-        "GTK themes are written using CSS. Every widget is build of multiple items that you can style very similarly to a regular website.",
-    keywords: [],
-    component: CssBasicsDemo,
-    sourceCode,
-    defaultWidth: 400,
-    defaultHeight: 300,
-    windowCssClasses: WINDOW_CLASSES,
-};
+export { cssBasicsDemo };

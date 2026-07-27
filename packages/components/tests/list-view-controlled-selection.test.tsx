@@ -19,8 +19,13 @@ function SelectScreen({ listRef }: { listRef: RefObject<Gtk.ListView | null> }) 
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkLabel>{`${selectedIds.length} selected`}</GtkLabel>
-            <GtkButton label="Select All" onClicked={() => setSelectedIds(visible.map((task) => task.id))} />
+            <GtkLabel>{`${String(selectedIds.length)} selected`}</GtkLabel>
+            <GtkButton
+                label="Select All"
+                onClicked={() => {
+                    setSelectedIds(visible.map((task) => task.id));
+                }}
+            />
             <GtkScrolledWindow vexpand minContentHeight={300}>
                 <ListView<Task>
                     ref={listRef}

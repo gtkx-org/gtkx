@@ -65,12 +65,12 @@ const stripDevArtifacts = (manifest: PackageManifest): PackageManifest => {
     return stripped;
 };
 
-const exportsContainSource = (entry: ExportsField): boolean => {
+const hasSourceCondition = (entry: ExportsField): boolean => {
     if (typeof entry === "string") {
         return false;
     }
 
-    return Object.entries(entry).some(([key, value]) => key === "source" || exportsContainSource(value));
+    return Object.entries(entry).some(([key, value]) => key === "source" || hasSourceCondition(value));
 };
 
 const collectExportTargets = (entry: ExportsField): string[] => {
@@ -122,7 +122,7 @@ const shippedEntryViolation = (entry: string): string | undefined => {
 };
 
 const manifestViolations = (manifest: PackageManifest): string[] => {
-    if (manifest.exports !== undefined && exportsContainSource(manifest.exports)) {
+    if (manifest.exports !== undefined && hasSourceCondition(manifest.exports)) {
         return ['package.json "exports" still declares a "source" condition'];
     }
 
@@ -208,7 +208,7 @@ const assertPublishedShape = ({ name, entries, manifest, maps }: PublishedPackag
 export {
     distTagForVersion,
     stripDevArtifacts,
-    exportsContainSource,
+    hasSourceCondition,
     collectExportTargets,
     assertPublishedShape,
     type ExportsField,

@@ -21,7 +21,7 @@ impl ArrayContainer for ListArrayCodec {
     fn encode(
         &self,
         codec: &ArrayCodec,
-        env: &Env,
+        env: Env,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
         codec.encode_items(env, &ListEncoder(self.ops), array)

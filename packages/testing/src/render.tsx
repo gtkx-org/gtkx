@@ -30,8 +30,12 @@ type ResolvedContainer = {
     window: Gtk.Window | null;
 };
 
-let lastRenderError: Error | null = null;
-let errorHandlerInstalled = false;
+type ReconcilerErrorState = {
+    lastError: Error | null;
+    isHandlerInstalled: boolean;
+};
+
+const reconcilerErrors: ReconcilerErrorState = { lastError: null, isHandlerInstalled: false };
 const activeRenders: Set<ActiveRender> = new Set();
 const HARNESS_WINDOW_WIDTH = 800;
 const HARNESS_WINDOW_HEIGHT = 600;
@@ -46,9 +50,9 @@ const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> =
         root.update(element);
     });
 
-    if (lastRenderError) {
-        const captured = lastRenderError;
-        lastRenderError = null;
+    if (reconcilerErrors.lastError) {
+        const captured = reconcilerErrors.lastError;
+        reconcilerErrors.lastError = null;
         throw captured;
     }
 };
@@ -71,16 +75,16 @@ const disposeAllActiveRenders = async (): Promise<void> => {
 };
 
 const handleError = (error: unknown): void => {
-    lastRenderError = error instanceof Error ? error : new Error(String(error));
+    reconcilerErrors.lastError = error instanceof Error ? error : new Error(String(error));
 };
 
 const installErrorHandler = (): void => {
-    if (errorHandlerInstalled) {
+    if (reconcilerErrors.isHandlerInstalled) {
         return;
     }
 
     setReconcilerErrorHandler(handleError);
-    errorHandlerInstalled = true;
+    reconcilerErrors.isHandlerInstalled = true;
 };
 
 const resolveContainer = (container: RenderOptions["container"]): ResolvedContainer => {
@@ -139,11 +143,11 @@ const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | und
     },
 });
 
-const applyEnableAnimations = (enabled: boolean): void => {
+const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
     const settings = Gtk.Settings.getDefault();
 
     if (settings) {
-        settings.gtkEnableAnimations = enabled;
+        settings.gtkEnableAnimations = areAnimationsEnabled;
     }
 };
 

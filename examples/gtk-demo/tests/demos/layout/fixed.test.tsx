@@ -9,9 +9,11 @@ const FACE_SIZE = 200;
 
 const findCubeFaces = async (): Promise<Gtk.Frame[]> => {
     const faces: Gtk.Frame[] = [];
+
     for (const name of FACE_NAMES) {
         faces.push((await screen.findByName(`cube-face-${name}`)) as Gtk.Frame);
     }
+
     return faces;
 };
 
@@ -62,6 +64,7 @@ describe("fixedDemo cube faces", () => {
         await renderDemo(fixedDemo);
         const faces = await findCubeFaces();
         expect(faces).toHaveLength(FACE_NAMES.length);
+
         for (const [i, face] of faces.entries()) {
             expect(face.getCssClasses()).toContain(FACE_NAMES[i]);
         }
@@ -70,6 +73,7 @@ describe("fixedDemo cube faces", () => {
     it("sizes each cube-face frame to the FACE_SIZE constant of 200 pixels", async () => {
         await renderDemo(fixedDemo);
         const faces = await findCubeFaces();
+
         for (const face of faces) {
             const [width, height] = face.getSizeRequest();
             expect(width).toBe(FACE_SIZE);
@@ -81,11 +85,14 @@ describe("fixedDemo cube faces", () => {
         await renderDemo(fixedDemo);
         const inner = (await screen.findByName("inner-fixed")) as Gtk.Fixed;
         const faces = await findCubeFaces();
+
         const transformStrings = faces.map((face) => {
             const transform = inner.getChildTransform(face);
             expect(transform).not.toBeNull();
+
             return transform?.toString();
         });
+
         expect(new Set(transformStrings).size).toBe(FACE_NAMES.length);
     });
 });

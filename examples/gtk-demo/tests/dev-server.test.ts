@@ -7,16 +7,18 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 const cliBin = join(dirname(require.resolve("@gtkx/cli/package.json")), "bin", "gtkx.js");
-
 const BOOT_TIMEOUT_MS = 90_000;
 const MOUNTED = /Connected application ID|HMR enabled/;
 const PIPELINE_ERROR = /\[gtkx(?::[^\]]+)?\] (?:Fatal:|error |warn )|\[vite\][^\n]*\bError\b|\bERR_[A-Z_]+\b/;
 
 const killTree = (child: ChildProcess): void => {
-    if (child.pid === undefined) return;
+    if (child.pid === undefined) {
+        return;
+    }
+
     try {
         process.kill(-child.pid, "SIGKILL");
-    } catch {}
+    } catch { /* The process group is already gone, which is what killTree wants anyway. */ }
 };
 
 describe("gtkx dev", () => {
@@ -31,23 +33,33 @@ describe("gtkx dev", () => {
             });
 
             let transcript = "";
-            const booted = new Promise<void>((resolve, reject) => {
+
+            const booted: Promise<void> = new Promise((resolve, reject) => {
                 const observe = (chunk: Buffer): void => {
                     transcript += chunk.toString();
-                    if (PIPELINE_ERROR.test(transcript)) reject(new Error(transcript));
-                    else if (MOUNTED.test(transcript)) resolve();
+
+                    if (PIPELINE_ERROR.test(transcript)) {
+                        reject(new Error(transcript));
+                    } else if (MOUNTED.test(transcript)) {
+                        resolve();
+                    }
                 };
+
                 child.stdout.on("data", observe);
                 child.stderr.on("data", observe);
                 child.once("error", reject);
-                child.once("exit", (code, signal) =>
-                    reject(new Error(`dev exited before mounting (code=${code} signal=${signal})\n${transcript}`)),
-                );
+
+                child.once("exit", (code, signal) => {
+                    const reason = `dev exited before mounting (code=${String(code)} signal=${String(signal)})`;
+                    reject(new Error(`${reason}\n${transcript}`));
+                });
             });
 
-            const timeout = new Promise<never>((_, reject) => {
+            const timeout: Promise<never> = new Promise((_resolve, reject) => {
                 setTimeout(
-                    () => reject(new Error(`dev did not mount within ${BOOT_TIMEOUT_MS}ms\n${transcript}`)),
+                    () => {
+                        reject(new Error(`dev did not mount within ${String(BOOT_TIMEOUT_MS)}ms\n${transcript}`));
+                    },
                     BOOT_TIMEOUT_MS,
                 );
             });

@@ -32,7 +32,7 @@ function createModuleRegistration(moduleId: string): {
 const isComponentExport = (key: string, value: unknown): boolean =>
     key === "__esModule" || RefreshRuntime.isLikelyComponentType(value);
 
-const everyExportIsComponent = (moduleExports: Record<string, unknown>): boolean => {
+const areAllExportsComponents = (moduleExports: Record<string, unknown>): boolean => {
     for (const key in moduleExports) {
         if (!isComponentExport(key, moduleExports[key])) {
             return false;
@@ -47,7 +47,7 @@ function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
         return true;
     }
 
-    if (!everyExportIsComponent(moduleExports)) {
+    if (!areAllExportsComponents(moduleExports)) {
         return false;
     }
 

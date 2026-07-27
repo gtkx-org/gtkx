@@ -16,18 +16,28 @@ type DemoContextValue = {
     setDefaultWidget: (widget: Gtk.Widget | null) => void;
 };
 
+type DemoTreeProviderProps = {
+    demos: Demo[];
+    children: ReactNode;
+};
+
+type DemoCategories = Map<string, TreeItem[]>;
+
 const DemoContext = createContext<DemoContextValue | null>(null);
 
-export const useDemo = () => {
+const useDemo = () => {
     const context = useContext(DemoContext);
+
     if (!context) {
         throw new Error("useDemo must be used within a DemoProvider");
     }
+
     return context;
 };
 
-export function parseTitle(title: string): { category: string | null; displayTitle: string } {
+function parseTitle(title: string): { category: string | null; displayTitle: string } {
     const spacedSlash = title.indexOf(" / ");
+
     if (spacedSlash !== -1) {
         return {
             category: title.slice(0, spacedSlash).trim(),
@@ -36,6 +46,7 @@ export function parseTitle(title: string): { category: string | null; displayTit
     }
 
     const slashIndex = title.indexOf("/");
+
     if (slashIndex !== -1) {
         return {
             category: title.slice(0, slashIndex).trim(),
@@ -46,35 +57,54 @@ export function parseTitle(title: string): { category: string | null; displayTit
     return { category: null, displayTitle: title };
 }
 
-function buildTree(demos: Demo[]): TreeItem[] {
-    const categories = new Map<string, TreeItem[]>();
+function pushIntoCategory(categories: DemoCategories, category: string, item: TreeItem): void {
+    const items = categories.get(category);
+
+    if (items) {
+        items.push(item);
+
+        return;
+    }
+
+    categories.set(category, [item]);
+}
+
+function groupDemos(demos: Demo[]): { topLevel: TreeItem[]; categories: DemoCategories } {
+    const categories: DemoCategories = new Map();
     const topLevel: TreeItem[] = [];
 
     for (const demo of demos) {
         const { category, displayTitle } = parseTitle(demo.title);
+        const item: TreeItem = { type: "demo", demo, displayTitle };
+
         if (category === null) {
-            topLevel.push({ type: "demo", demo, displayTitle });
+            topLevel.push(item);
         } else {
-            let items = categories.get(category);
-            if (!items) {
-                items = [];
-                categories.set(category, items);
-            }
-            items.push({ type: "demo", demo, displayTitle });
+            pushIntoCategory(categories, category, item);
         }
     }
 
+    return { topLevel, categories };
+}
+
+function treeItemTitle(item: TreeItem): string {
+    return item.type === "category" ? item.title : item.displayTitle;
+}
+
+function compareTreeItems(a: TreeItem, b: TreeItem): number {
+    return treeItemTitle(a).localeCompare(treeItemTitle(b));
+}
+
+function buildTree(demos: Demo[]): TreeItem[] {
+    const { topLevel, categories } = groupDemos(demos);
     const intro = topLevel.shift();
     const result: TreeItem[] = [...topLevel];
+
     for (const [title, children] of categories) {
         result.push({ type: "category", title, children });
     }
 
-    result.sort((a, b) => {
-        const titleA = a.type === "category" ? a.title : a.displayTitle;
-        const titleB = b.type === "category" ? b.title : b.displayTitle;
-        return titleA.localeCompare(titleB);
-    });
+    result.sort(compareTreeItems);
 
     if (intro) {
         result.unshift(intro);
@@ -83,57 +113,72 @@ function buildTree(demos: Demo[]): TreeItem[] {
     return result;
 }
 
+function isMatchingDemo(demo: Demo, lowerQuery: string): boolean {
+    return (
+        demo.title.toLowerCase().includes(lowerQuery) ||
+        demo.description.toLowerCase().includes(lowerQuery) ||
+        demo.keywords.some((keyword) => keyword.toLowerCase().includes(lowerQuery))
+    );
+}
+
+function filterTreeItem(item: TreeItem, query: string, lowerQuery: string): TreeItem | null {
+    if (item.type === "demo") {
+        return isMatchingDemo(item.demo, lowerQuery) ? item : null;
+    }
+
+    const filteredChildren = filterTree(item.children, query);
+
+    if (filteredChildren.length === 0) {
+        return null;
+    }
+
+    return { type: "category", title: item.title, children: filteredChildren };
+}
+
 function filterTree(items: TreeItem[], query: string): TreeItem[] {
     const lowerQuery = query.toLowerCase();
     const result: TreeItem[] = [];
 
     for (const item of items) {
-        if (item.type === "demo") {
-            const demo = item.demo;
-            const matches =
-                demo.title.toLowerCase().includes(lowerQuery) ||
-                demo.description.toLowerCase().includes(lowerQuery) ||
-                demo.keywords.some((kw) => kw.toLowerCase().includes(lowerQuery));
-            if (matches) {
-                result.push(item);
-            }
-        } else {
-            const filteredChildren = filterTree(item.children, query);
-            if (filteredChildren.length > 0) {
-                result.push({ type: "category", title: item.title, children: filteredChildren });
-            }
+        const filtered = filterTreeItem(item, query, lowerQuery);
+
+        if (filtered) {
+            result.push(filtered);
         }
     }
 
     return result;
 }
 
-type DemoTreeProviderProps = {
-    demos: Demo[];
-    children: ReactNode;
-};
-
 const findFirstDemoInItem = (item: TreeItem): Demo | null => {
-    if (item.type === "demo") return item.demo;
-    for (const child of item.children) {
-        if (child.type === "demo") return child.demo;
+    if (item.type === "demo") {
+        return item.demo;
     }
+
+    for (const child of item.children) {
+        if (child.type === "demo") {
+            return child.demo;
+        }
+    }
+
     return null;
 };
 
 const findFirstDemo = (treeItems: TreeItem[]): Demo | null => {
     for (const item of treeItems) {
         const demo = findFirstDemoInItem(item);
-        if (demo) return demo;
+
+        if (demo) {
+            return demo;
+        }
     }
+
     return null;
 };
 
-export const DemoProvider = ({ demos, children }: DemoTreeProviderProps) => {
+const DemoProvider = ({ demos, children }: DemoTreeProviderProps) => {
     const treeItems = buildTree(demos);
-
     const firstDemo = findFirstDemo(treeItems);
-
     const [currentDemo, setCurrentDemoState] = useState<Demo | null>(firstDemo);
     const [searchQuery, setSearchQuery] = useState("");
     const [windowTitle, setWindowTitle] = useState<string | null>(null);
@@ -163,3 +208,5 @@ export const DemoProvider = ({ demos, children }: DemoTreeProviderProps) => {
 
     return <DemoContext.Provider value={contextValue}>{children}</DemoContext.Provider>;
 };
+
+export { DemoProvider, parseTitle, useDemo };

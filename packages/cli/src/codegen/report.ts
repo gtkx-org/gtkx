@@ -18,7 +18,8 @@ const formatCodegenResult = (result: RunCodegenResult, totalMs: number): string[
     }
 
     details.push(
-        `${result.namespaces} namespaces, ${result.intrinsicElements} intrinsic elements in ${result.duration}ms (total ${totalMs}ms)`,
+        `${String(result.namespaces)} namespaces, ${String(result.intrinsicElements)} intrinsic elements ` +
+        `in ${String(result.duration)}ms (total ${String(totalMs)}ms)`,
     );
 
     return details.map((detail) => PREFIX + detail);

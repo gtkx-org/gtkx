@@ -37,6 +37,7 @@ describe("drawingAreaDemo rendering", () => {
         await renderDemo(drawingAreaDemo);
         const knockoutFrame = (await screen.findByName("knockout-frame")) as Gtk.Frame;
         const scribbleFrame = (await screen.findByName("scribble-frame")) as Gtk.Frame;
+
         for (const frame of [knockoutFrame, scribbleFrame]) {
             const area = within(frame).getByRole(Gtk.AccessibleRole.IMG) as Gtk.DrawingArea;
             expect(area.getContentWidth()).toBe(100);
@@ -48,21 +49,26 @@ describe("drawingAreaDemo rendering", () => {
         await renderDemo(drawingAreaDemo);
         const knockoutFrame = (await screen.findByName("knockout-frame")) as Gtk.Frame;
         const scribbleFrame = (await screen.findByName("scribble-frame")) as Gtk.Frame;
+
         for (const frame of [knockoutFrame, scribbleFrame]) {
             expect(frame.getVexpand()).toBe(true);
         }
+
         expect(within(knockoutFrame).getByName("knockout-area")).toBeInstanceOf(Gtk.DrawingArea);
         expect(within(scribbleFrame).getByName("scribble-area")).toBeInstanceOf(Gtk.DrawingArea);
     });
 });
 
 describe("drawingAreaDemo gestures", () => {
-    it("paints the brush once per drag phase (begin, update, end) after the scribble surface is initialised", async () => {
-        await renderDemo(drawingAreaDemo);
-        const scribble = (await screen.findByName("scribble-area")) as Gtk.DrawingArea;
-        await fireEvent(scribble, "resize", 100, 100);
-        const queueDraw = vi.spyOn(scribble, "queueDraw");
-        await userEvent.drag(scribble, 5, 5, { startX: 10, startY: 10, steps: 1 });
-        expect(queueDraw).toHaveBeenCalledTimes(3);
-    });
+    it(
+        "paints the brush once per drag phase (begin, update, end) after the scribble surface is initialised",
+        async () => {
+            await renderDemo(drawingAreaDemo);
+            const scribble = (await screen.findByName("scribble-area")) as Gtk.DrawingArea;
+            await fireEvent(scribble, "resize", 100, 100);
+            const queueDraw = vi.spyOn(scribble, "queueDraw");
+            await userEvent.drag(scribble, 5, 5, { startX: 10, startY: 10, steps: 1 });
+            expect(queueDraw).toHaveBeenCalledTimes(3);
+        },
+    );
 });

@@ -15,22 +15,6 @@ type PluginHooks = {
     configResolved: ConfigResolvedFn;
 };
 
-const getHook = <K extends keyof PluginHooks>(hook: unknown, name: K): PluginHooks[K] => {
-    if (typeof hook !== "function") {
-        throw new TypeError(`${name} must be a function hook`);
-    }
-
-    return hook as PluginHooks[K];
-};
-
-const getTransform = (plugin: ReturnType<typeof gtkxReactCompiler>): TransformFn =>
-    getHook(plugin.transform, "transform");
-
-const getConfig = (plugin: ReturnType<typeof gtkxReactCompiler>): ConfigFn => getHook(plugin.config, "config");
-
-const getConfigResolved = (plugin: ReturnType<typeof gtkxReactCompiler>): ConfigResolvedFn =>
-    getHook(plugin.configResolved, "configResolved");
-
 const HOOK = `import { useState } from "react";
 export function useCounter(initial: number) {
     const [count, setCount] = useState(initial);
@@ -60,14 +44,32 @@ export function useCounter(initial) {
 }
 `;
 
+const getHook = <K extends keyof PluginHooks>(hook: unknown, name: K): PluginHooks[K] => {
+    if (typeof hook !== "function") {
+        throw new TypeError(`${name} must be a function hook`);
+    }
+
+    return hook as PluginHooks[K];
+};
+
+const getTransform = (plugin: ReturnType<typeof gtkxReactCompiler>): TransformFn =>
+    getHook(plugin.transform, "transform");
+
+const getConfig = (plugin: ReturnType<typeof gtkxReactCompiler>): ConfigFn => getHook(plugin.config, "config");
+
+const getConfigResolved = (plugin: ReturnType<typeof gtkxReactCompiler>): ConfigResolvedFn =>
+    getHook(plugin.configResolved, "configResolved");
+
 const enabledPlugin = async (): Promise<ReturnType<typeof gtkxReactCompiler>> => {
-    const plugin = gtkxReactCompiler(async () => ({
-        applicationId: "org.gtk.Test",
-        reactCompiler: { target: "19" },
-        userEventSignals: {},
-        elements: null,
-        lazyElements: [],
-    }));
+    const plugin = gtkxReactCompiler(() =>
+        Promise.resolve({
+            applicationId: "org.gtk.Test",
+            reactCompiler: { target: "19" },
+            userEventSignals: {},
+            elements: null,
+            lazyElements: [],
+        }),
+    );
 
     await getConfig(plugin)({});
 
@@ -77,10 +79,10 @@ const enabledPlugin = async (): Promise<ReturnType<typeof gtkxReactCompiler>> =>
 const transformWithEnabledPlugin = async (code: string, id: string): Promise<TransformResult> =>
     getTransform(await enabledPlugin())(code, id);
 
-const transformForProjectConfig = async (cwd: string, reactCompiler: boolean): Promise<TransformFn> => {
+const transformForProjectConfig = async (cwd: string, isCompilerEnabled: boolean): Promise<TransformFn> => {
     writeFileSync(
         join(cwd, "gtkx.config.ts"),
-        `export default { applicationId: "org.gtk.Test", reactCompiler: ${reactCompiler} };\n`,
+        `export default { applicationId: "org.gtk.Test", reactCompiler: ${String(isCompilerEnabled)} };\n`,
     );
 
     const plugin = gtkxReactCompiler();
@@ -90,13 +92,15 @@ const transformForProjectConfig = async (cwd: string, reactCompiler: boolean): P
     return getTransform(plugin);
 };
 
-describe("gtkxReactCompiler", () => {
+describe("gtkxReactCompiler (plugin shape)", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {
         const plugin = gtkxReactCompiler();
         expect(plugin.name).toBe("gtkx:react-compiler");
         expect(plugin.enforce).toBe("pre");
     });
+});
 
+describe("gtkxReactCompiler (compilation)", () => {
     it("compiles a project source file, injecting the memo cache and compiler runtime", async () => {
         const result = await transformWithEnabledPlugin(COMPONENT, "/proj/src/counter.tsx");
         expect(result).toBeDefined();
@@ -109,11 +113,6 @@ describe("gtkxReactCompiler", () => {
         const result = await transformWithEnabledPlugin(COMPONENT, "/proj/src/counter.tsx");
         expect(result?.code).not.toContain(": { label: string }");
         expect(result?.code).toContain("<button");
-    });
-
-    it("skips files without a script extension", async () => {
-        const transform = getTransform(gtkxReactCompiler());
-        await expect(transform("body { color: red; }", "/proj/src/styles.css")).resolves.toBeUndefined();
     });
 
     it("compiles a .jsx source file, injecting the memo cache and compiler runtime", async () => {
@@ -137,6 +136,20 @@ describe("gtkxReactCompiler", () => {
         expect(result?.code).toContain("<button");
     });
 
+    it("compiles .ts source files, not only .tsx", async () => {
+        const result = await transformWithEnabledPlugin(HOOK, "/proj/src/use-counter.ts");
+        expect(result).toBeDefined();
+        expect(result?.code).not.toContain(": number");
+        expect(result?.code).toContain('from "react/compiler-runtime"');
+    });
+});
+
+describe("gtkxReactCompiler (skipped inputs)", () => {
+    it("skips files without a script extension", async () => {
+        const transform = getTransform(gtkxReactCompiler());
+        await expect(transform("body { color: red; }", "/proj/src/styles.css")).resolves.toBeUndefined();
+    });
+
     it("skips files in node_modules", async () => {
         const transform = getTransform(gtkxReactCompiler());
         await expect(transform(COMPONENT, "/proj/node_modules/lib/counter.tsx")).resolves.toBeUndefined();
@@ -148,13 +161,6 @@ describe("gtkxReactCompiler", () => {
         const transform = getTransform(plugin);
         await expect(transform(COMPONENT, "/elsewhere/src/counter.tsx")).resolves.toBeUndefined();
         await expect(transform(COMPONENT, "/proj/src/counter.tsx")).resolves.toBeDefined();
-    });
-
-    it("compiles .ts source files, not only .tsx", async () => {
-        const result = await transformWithEnabledPlugin(HOOK, "/proj/src/use-counter.ts");
-        expect(result).toBeDefined();
-        expect(result?.code).not.toContain(": number");
-        expect(result?.code).toContain('from "react/compiler-runtime"');
     });
 
     it("skips query-suffixed ids such as ?raw asset-text imports", async () => {

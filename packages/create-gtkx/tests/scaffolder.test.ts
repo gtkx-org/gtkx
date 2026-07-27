@@ -1,29 +1,104 @@
 import { vol } from "memfs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+import { addDependency, detectPackageManager } from "nypm";
+import { x } from "tinyexec";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { type CreateOptions, scaffold } from "../src/scaffolder.js";
+
+type ScaffoldedManifest = { name?: string; scripts: Record<string, string | undefined> };
 
 const clack = vi.hoisted(() => ({
     intro: vi.fn(),
     note: vi.fn(),
     cancel: vi.fn(),
     log: { info: vi.fn(), error: vi.fn() },
-    spinner: vi.fn(() => ({ start: () => undefined, stop: () => undefined })),
-    text: vi.fn(async () => ""),
-    select: vi.fn(async (opts: { initialValue?: unknown }) => opts.initialValue),
-    confirm: vi.fn(async () => true),
+    spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
+    text: vi.fn(() => Promise.resolve("")),
+    select: vi.fn((opts: { initialValue?: unknown }) => Promise.resolve(opts.initialValue)),
+    confirm: vi.fn(() => Promise.resolve(true)),
     isCancel: vi.fn((value: unknown) => value === "__CANCEL__"),
 }));
+
+const addDependencyMock = vi.mocked(addDependency);
+const detectMock = vi.mocked(detectPackageManager);
+const xMock = vi.mocked(x);
+const TEST_DIR = "/test-workspace";
+const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
+const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
+const templateFiles: Record<string, string> = {};
+
+function readJson(path: string): ScaffoldedManifest {
+    return JSON.parse(read(path)) as ScaffoldedManifest;
+}
+
+function pin(name: string): string {
+    return name.startsWith("@gtkx/") ? `${name}@^${SELF_VERSION}` : name;
+}
+
+function defaultOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
+    return {
+        name: "test-app",
+        applicationId: "org.test.app",
+        packageManager: "pnpm",
+        includeTesting: false,
+        ...overrides,
+    };
+}
+
+function run(overrides: Partial<CreateOptions> = {}): Promise<void> {
+    return scaffold(defaultOptions(overrides));
+}
+
+function runNonInteractive(overrides: Partial<CreateOptions> = {}): Promise<void> {
+    return scaffold(defaultOptions({ interactive: false, ...overrides }));
+}
+
+function read(path: string): string {
+    return vol.readFileSync(path, "utf8") as string;
+}
+
+function lastNote(): string {
+    return String(clack.note.mock.calls.at(-1)?.[0] ?? "");
+}
+
+function lastError(): string {
+    return String(clack.log.error.mock.calls.at(-1)?.[0] ?? "");
+}
+
+function partialOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
+    return {
+        applicationId: "org.test.app",
+        includeTesting: false,
+        interactive: true,
+        ...overrides,
+    };
+}
+
+async function captureInitialValue(detectedName: string | undefined): Promise<unknown> {
+    detectMock.mockResolvedValueOnce(detectedName === undefined ? undefined : ({ name: detectedName } as never));
+    let initialValue: unknown;
+
+    clack.select.mockImplementationOnce((opts) => {
+        initialValue = opts.initialValue;
+
+        return Promise.resolve(opts.initialValue);
+    });
+
+    await scaffold(partialOptions({ name: "test-app" }));
+
+    return initialValue;
+}
 
 vi.mock("@clack/prompts", () => clack);
 
 vi.mock("nypm", () => ({
-    addDependency: vi.fn(async () => undefined),
-    detectPackageManager: vi.fn(async () => ({ name: "pnpm" })),
+    addDependency: vi.fn(),
+    detectPackageManager: vi.fn(() => Promise.resolve({ name: "pnpm" })),
 }));
 
 vi.mock("tinyexec", () => ({
-    x: vi.fn(async () => undefined),
+    x: vi.fn(),
 }));
 
 vi.mock("node:fs", async () => {
@@ -32,29 +107,7 @@ vi.mock("node:fs", async () => {
     return { ...memfs.fs, default: memfs.fs };
 });
 
-import { addDependency, detectPackageManager } from "nypm";
-import { x } from "tinyexec";
-import { type CreateOptions, scaffold } from "../src/scaffolder.js";
-
-const addDependencyMock = vi.mocked(addDependency);
-const detectMock = vi.mocked(detectPackageManager);
-const xMock = vi.mocked(x);
-const TEST_DIR = "/test-workspace";
-const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
-const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
-
-type ScaffoldedManifest = { name?: string; scripts: Record<string, string | undefined> };
-
-const readJson = (path: string): ScaffoldedManifest => JSON.parse(read(path)) as ScaffoldedManifest;
-const pin = (name: string): string => (name.startsWith("@gtkx/") ? `${name}@^${SELF_VERSION}` : name);
-
 vi.spyOn(process, "cwd").mockReturnValue(TEST_DIR);
-
-const exitSpy = vi
-    .spyOn(process, "exit")
-    .mockImplementation((() => {}) as (code?: string | number | null) => never);
-
-const templateFiles: Record<string, string> = {};
 
 beforeAll(async () => {
     const realFs = await vi.importActual<typeof import("node:fs")>("node:fs");
@@ -72,9 +125,9 @@ beforeAll(async () => {
 
 beforeEach(() => {
     vi.clearAllMocks();
-    clack.spinner.mockImplementation(() => ({ start: () => undefined, stop: () => undefined }));
+    clack.spinner.mockImplementation(() => ({ start: vi.fn(), stop: vi.fn() }));
     clack.text.mockResolvedValue("");
-    clack.select.mockImplementation(async (opts) => opts.initialValue);
+    clack.select.mockImplementation((opts) => Promise.resolve(opts.initialValue));
     clack.confirm.mockResolvedValue(true);
     clack.isCancel.mockReturnValue(false);
     addDependencyMock.mockResolvedValue(undefined as never);
@@ -84,18 +137,6 @@ beforeEach(() => {
     vol.fromJSON(templateFiles);
     vol.mkdirSync(TEST_DIR, { recursive: true });
 });
-
-const defaultOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions => ({
-    name: "test-app",
-    applicationId: "org.test.app",
-    packageManager: "pnpm",
-    includeTesting: false,
-    ...overrides,
-});
-
-const run = (overrides: Partial<CreateOptions> = {}): Promise<void> => scaffold(defaultOptions(overrides));
-const read = (path: string): string => vol.readFileSync(path, "utf8") as string;
-const lastNote = (): string => String(clack.note.mock.calls.at(-1)?.[0] ?? "");
 
 describe("scaffold (directory structure)", () => {
     it("creates the src and tests directories when includeTesting=true", async () => {
@@ -259,11 +300,10 @@ describe("scaffold (dependency installation)", () => {
 
     it("aborts with a non-zero exit and a manual install command when installation fails", async () => {
         addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
-        await run({ packageManager: "npm" });
+        await expect(run({ packageManager: "npm" })).rejects.toThrow(/Failed to install dependencies/);
         expect(clack.log.error.mock.calls.some(([m]) => String(m).includes("install failed"))).toBe(true);
         expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("cd test-app"))).toBe(true);
         expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("npm install"))).toBe(true);
-        expect(exitSpy).toHaveBeenCalledWith(1);
     });
 });
 
@@ -315,35 +355,12 @@ describe("scaffold (next steps)", () => {
     });
 });
 
-const partialOptions = (overrides: Partial<CreateOptions> = {}): CreateOptions => ({
-    applicationId: "org.test.app",
-    includeTesting: false,
-    interactive: true,
-    ...overrides,
-});
-
-const captureInitialValue = async (detectedName: string | undefined): Promise<unknown> => {
-    detectMock.mockResolvedValueOnce(detectedName === undefined ? undefined : ({ name: detectedName } as never));
-    let initialValue: unknown;
-
-    clack.select.mockImplementationOnce(async (opts) => {
-        initialValue = opts.initialValue;
-
-        return opts.initialValue;
-    });
-
-    await scaffold(partialOptions({ name: "test-app" }));
-
-    return initialValue;
-};
-
 describe("scaffold (prompting)", () => {
-    it("cancels the operation and exits when the user cancels a prompt", async () => {
+    it("cancels the operation and aborts when the user cancels a prompt", async () => {
         clack.text.mockResolvedValueOnce("__CANCEL__");
         clack.isCancel.mockImplementationOnce((value) => value === "__CANCEL__");
-        await scaffold(partialOptions({ packageManager: "pnpm" }));
+        await expect(scaffold(partialOptions({ packageManager: "pnpm" }))).rejects.toThrow(/Operation canceled/);
         expect(clack.cancel).toHaveBeenCalledWith("Operation canceled");
-        expect(exitSpy).toHaveBeenCalledWith(0);
     });
 
     it("uses a detected supported package manager as the prompt initial value", async () => {
@@ -359,76 +376,31 @@ describe("scaffold (prompting)", () => {
     });
 });
 
-const lastError = (): string => String(clack.log.error.mock.calls.at(-1)?.[0] ?? "");
-
 describe("scaffold (non-interactive and overwrite)", () => {
     it("rejects a flag-supplied name with an invalid format", async () => {
-        await scaffold({
-            name: "Invalid_Name",
-            applicationId: "org.test.app",
-            packageManager: "pnpm",
-            includeTesting: false,
-            interactive: false,
-        });
-
-        expect(exitSpy).toHaveBeenCalledWith(1);
+        await expect(runNonInteractive({ name: "Invalid_Name" })).rejects.toThrow(/lowercase letters/);
         expect(lastError()).toContain("lowercase letters");
     });
 
     it("rejects a flag-supplied name whose directory is non-empty without overwrite", async () => {
         vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
         vol.writeFileSync(`${TEST_DIR}/test-app/keep.txt`, "keep");
-
-        await scaffold({
-            name: "test-app",
-            applicationId: "org.test.app",
-            packageManager: "pnpm",
-            includeTesting: false,
-            interactive: false,
-        });
-
-        expect(exitSpy).toHaveBeenCalledWith(1);
+        await expect(runNonInteractive()).rejects.toThrow(/is not empty/);
         expect(lastError()).toContain("is not empty");
     });
 
     it("proceeds without prompting when the target directory exists but is empty", async () => {
         vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
-
-        await scaffold({
-            name: "test-app",
-            applicationId: "org.test.app",
-            packageManager: "pnpm",
-            includeTesting: false,
-            interactive: false,
-        });
-
-        expect(exitSpy).not.toHaveBeenCalled();
+        await runNonInteractive();
+        expect(clack.log.error).not.toHaveBeenCalled();
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
     });
 
     it("proceeds when the target directory contains only a .git folder and preserves it", async () => {
         vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
         vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
-
-        await scaffold({
-            name: "test-app",
-            applicationId: "org.test.app",
-            packageManager: "pnpm",
-            includeTesting: false,
-            interactive: false,
-        });
-
-        expect(exitSpy).not.toHaveBeenCalled();
-        expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
-        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
-    });
-
-    it("preserves .git while clearing other files when --overwrite is set", async () => {
-        vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
-        vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
-        vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
-        await run({ overwrite: true });
-        expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
+        await runNonInteractive();
+        expect(clack.log.error).not.toHaveBeenCalled();
         expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
     });
@@ -445,6 +417,18 @@ describe("scaffold (non-interactive and overwrite)", () => {
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
         expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "pnpm" });
     });
+});
+
+describe("scaffold (overwrite)", () => {
+    it("preserves .git while clearing other files when --overwrite is set", async () => {
+        vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
+        vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
+        vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
+        await run({ overwrite: true });
+        expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
+    });
 
     it("empties an existing directory when --overwrite is set", async () => {
         vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
@@ -457,28 +441,14 @@ describe("scaffold (non-interactive and overwrite)", () => {
 
 describe("scaffold (directory target)", () => {
     it("scaffolds into a nested path and derives the package name from its basename", async () => {
-        await scaffold({
-            name: "apps/my-app",
-            applicationId: "org.test.app",
-            packageManager: "pnpm",
-            includeTesting: false,
-            interactive: false,
-        });
-
+        await runNonInteractive({ name: "apps/my-app" });
         expect(vol.existsSync(`${TEST_DIR}/apps/my-app/src/index.tsx`)).toBe(true);
         const pkg = readJson(`${TEST_DIR}/apps/my-app/package.json`);
         expect(pkg.name).toBe("my-app");
     });
 
     it("scaffolds into the current directory when the target is '.'", async () => {
-        await scaffold({
-            name: ".",
-            applicationId: "org.test.app",
-            packageManager: "pnpm",
-            includeTesting: false,
-            interactive: false,
-        });
-
+        await runNonInteractive({ name: "." });
         expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(true);
         const pkg = readJson(`${TEST_DIR}/package.json`);
         expect(pkg.name).toBe("test-workspace");

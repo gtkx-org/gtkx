@@ -120,14 +120,14 @@ const propertyEntry = (
     property: GirProperty,
     jsName: string,
 ): PropEntry => {
-    const object = isObjectProp(
+    const isObject = isObjectProp(
         { library: context.library, klass: owner.klass, namespace: owner.namespace },
         property,
         jsName,
     );
 
     const baseType = renderDocsType(context.library, property.type, false);
-    const type = object ? `${baseType} | ReactElement` : baseType;
+    const type = isObject ? `${baseType} | ReactElement` : baseType;
     const meta: string[] = [`\`${type}\``];
 
     if (property.defaultValue !== undefined) {
@@ -195,7 +195,8 @@ const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfTy
 
     const intro = [
         `\`ref\` receives the \`${selfType}\` instance.`,
-        "Every mutable property also has an `onNotify<Prop>` handler prop called with the new value when the property changes.",
+        "Every mutable property also has an `onNotify<Prop>` handler prop called with the new value " +
+        "when the property changes.",
         "Props inherited from ancestor elements are documented on their own pages.",
     ].join(" ");
 
@@ -253,7 +254,11 @@ const signalsSection = (entry: GlibNamedClass, context: ElementPageContext, self
 
 const methodsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
     const entries = classMethodEntries(context.library, entry.namespace, entry.klass);
-    const intro = `Methods are called on the \`${selfType}\` instance, obtained with the \`ref\` prop or imported from \`@gtkx/gi/${namespaceDirectory(entry.namespace)}\`. Methods inherited from ancestors are documented on their own pages.`;
+    const importPath = `@gtkx/gi/${namespaceDirectory(entry.namespace)}`;
+
+    const intro =
+        `Methods are called on the \`${selfType}\` instance, obtained with the \`ref\` prop or ` +
+        `imported from \`${importPath}\`. Methods inherited from ancestors are documented on their own pages.`;
 
     return methodsSectionBlocks(entries, intro);
 };

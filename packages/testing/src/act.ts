@@ -42,9 +42,9 @@ const restoreAfter = async <T>(result: PromiseLike<T>, previous: boolean | undef
     }
 };
 
-const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseLike<T>): Promise<T> => {
+const runWithActEnvironment = <T>(isForced: boolean, fn: () => T | PromiseLike<T>): Promise<T> => {
     const previousActEnvironment = getIsReactActEnvironment();
-    setIsReactActEnvironment(forced);
+    setIsReactActEnvironment(isForced);
 
     try {
         const result: T | PromiseLike<T> = fn();

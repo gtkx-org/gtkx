@@ -5,23 +5,36 @@ import { describe, expect, it, vi } from "vitest";
 import { cursorsDemo } from "../../../src/demos/gestures/cursors.js";
 import { renderDemo } from "../../test-utils.js";
 
+const collectFrames = (widget: Gtk.Widget | null, frames: Gtk.Frame[]): void => {
+    if (!widget) {
+        return;
+    }
+
+    if (widget instanceof Gtk.Frame) {
+        frames.push(widget);
+    }
+
+    for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
+        collectFrames(child, frames);
+    }
+};
+
 const rowFramesFor = async (name: string): Promise<Gtk.Frame[]> => {
-    const label = (await screen.findByText(name));
+    const label = await screen.findByText(name);
     let row: Gtk.Widget | null = label;
-    while (row && !(row instanceof Gtk.ListBoxRow)) row = row.getParent();
+
+    while (row && !(row instanceof Gtk.ListBoxRow)) {
+        row = row.getParent();
+    }
+
     const frames: Gtk.Frame[] = [];
-    const walk = (widget: Gtk.Widget | null): void => {
-        if (!widget) return;
-        if (widget instanceof Gtk.Frame) frames.push(widget);
-        let child = widget.getFirstChild();
-        while (child) {
-            walk(child);
-            child = child.getNextSibling();
-        }
-    };
-    walk(row);
+    collectFrames(row, frames);
+
     return frames;
 };
+
+const getSelectionModes = (listBoxes: Gtk.Widget[]): Gtk.SelectionMode[] =>
+    listBoxes.map((listBox) => (listBox as Gtk.ListBox).getSelectionMode());
 
 describe("cursorsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -50,21 +63,15 @@ describe("cursorsDemo list structure", () => {
         await renderDemo(cursorsDemo);
         const listBoxes = await screen.findAllByRole(Gtk.AccessibleRole.LIST);
         expect(listBoxes).toHaveLength(6);
-        for (const lb of listBoxes) {
-            expect(lb).toBeInstanceOf(Gtk.ListBox);
-            if (lb instanceof Gtk.ListBox) {
-                expect(lb.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
-            }
-        }
+        expect(listBoxes.every((listBox) => listBox instanceof Gtk.ListBox)).toBe(true);
+        expect(getSelectionModes(listBoxes)).toEqual(listBoxes.map(() => Gtk.SelectionMode.NONE));
     });
 
     it("renders 38 non-activatable list rows in total", async () => {
         await renderDemo(cursorsDemo);
         const rows = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
         expect(rows).toHaveLength(38);
-        for (const row of rows) {
-            expect((row as Gtk.ListBoxRow).getActivatable()).toBe(false);
-        }
+        expect(rows.some((row) => (row as Gtk.ListBoxRow).getActivatable())).toBe(false);
     });
 });
 
@@ -73,21 +80,17 @@ describe("cursorsDemo cursor assignments and tooltips", () => {
         await renderDemo(cursorsDemo);
         const frames = await rowFramesFor("pointer");
         expect(frames).toHaveLength(4);
-
         const cursors = frames.map((f) => f.getCursor());
+
         for (const cursor of cursors) {
             expect(cursor).toBeInstanceOf(Gdk.Cursor);
         }
 
-        // named cursor
         expect(cursors[0]?.getName()).toBe("pointer");
         expect(cursors[0]?.getFallback()).toBeNull();
-        // image cursor (no name)
         expect(cursors[1]?.getName()).toBeNull();
-        // named cursor with an image fallback
         expect(cursors[2]?.getName()).toBe("pointer");
         expect(cursors[2]?.getFallback()?.getName()).toBeNull();
-        // image cursor falling back to the named cursor
         expect(cursors[3]?.getName()).toBeNull();
         expect(cursors[3]?.getFallback()?.getName()).toBe("pointer");
 
@@ -108,11 +111,9 @@ describe("cursorsDemo cursor assignments and tooltips", () => {
         await renderDemo(cursorsDemo);
         const frames = await rowFramesFor("gtk-logo");
         expect(frames).toHaveLength(4);
-
         const cursors = frames.map((f) => f.getCursor());
         expect(cursors[0]?.getName()).toBe("gtk-logo");
         expect(cursors[1]?.getName()).toBeNull();
-        // both trailing variants are image cursors falling back to the "default" cursor
         expect(cursors[2]?.getName()).toBeNull();
         expect(cursors[2]?.getFallback()?.getName()).toBe("default");
         expect(cursors[3]?.getName()).toBeNull();
@@ -132,6 +133,7 @@ describe("cursorsDemo previews", () => {
         await renderDemo(cursorsDemo);
         const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG);
         expect(images).toHaveLength(38);
+
         for (const preview of images) {
             expect((preview as Gtk.Image).getPaintable()).toBeInstanceOf(Gdk.Texture);
         }
@@ -141,11 +143,14 @@ describe("cursorsDemo previews", () => {
 describe("cursorsDemo css registration", () => {
     it("adds exactly one cursors CssProvider at user priority for the default display", async () => {
         const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
+
         try {
             await renderDemo(cursorsDemo);
+
             const userPriorityCalls = addSpy.mock.calls.filter(
-                ([, , priority]) => priority === Gtk.STYLE_PROVIDER_PRIORITY_USER,
+                (call) => call[2] === Gtk.STYLE_PROVIDER_PRIORITY_USER,
             );
+
             expect(userPriorityCalls).toHaveLength(1);
             expect(userPriorityCalls[0]?.[1]).toBeInstanceOf(Gtk.CssProvider);
         } finally {

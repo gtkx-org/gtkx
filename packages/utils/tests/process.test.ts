@@ -3,30 +3,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exitCodeForSignal, installGracefulShutdown } from "../src/process/index.js";
 
 type SignalListener = (signal: NodeJS.Signals) => void;
-
-describe("exitCodeForSignal", () => {
-    it("returns 0 when no signal", () => {
-        expect(exitCodeForSignal(null)).toBe(0);
-    });
-
-    it("returns 130 for SIGINT", () => {
-        expect(exitCodeForSignal("SIGINT")).toBe(130);
-    });
-
-    it("returns 143 for SIGTERM", () => {
-        expect(exitCodeForSignal("SIGTERM")).toBe(143);
-    });
-
-    it("returns 143 for any other signal", () => {
-        expect(exitCodeForSignal("SIGHUP")).toBe(143);
-    });
-});
+type Snapshot = Record<(typeof HANDLED_SIGNALS)[number], SignalListener[]>;
+type Deferred = { promise: Promise<void>; resolve: () => void };
+type ShutdownFixture = { exitSpy: MockInstance<typeof process.exit> };
 
 const HANDLED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 
 const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+const neverSettles = (): Promise<void> => new Promise<void>((): void => undefined);
 
-type Snapshot = Record<(typeof HANDLED_SIGNALS)[number], SignalListener[]>;
+const createDeferred = (): Deferred => {
+    const deferred = {} as Deferred;
+
+    deferred.promise = new Promise<void>((resolve) => {
+        deferred.resolve = resolve;
+    });
+
+    return deferred;
+};
 
 const snapshotListeners = (): Snapshot => {
     const snap = {} as Snapshot;
@@ -52,16 +46,12 @@ const restoreListeners = (snap: Snapshot): void => {
     }
 };
 
-type ShutdownFixture = {
-    exitSpy: MockInstance<typeof process.exit>;
-};
-
 const installFixture = (): ShutdownFixture => {
     const fixture = {} as ShutdownFixture;
     let snap: Snapshot;
 
     beforeEach(() => {
-        fixture.exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        fixture.exitSpy = vi.spyOn(process, "exit").mockImplementation(vi.fn() as never);
         snap = snapshotListeners();
     });
 
@@ -76,48 +66,64 @@ const installFixture = (): ShutdownFixture => {
 
 const installNeverSettlingShutdown = (options: { forceKillAfterMs: number; coalesceWindowMs?: number }) => {
     vi.useFakeTimers();
-    const onSignal = vi.fn().mockReturnValue(new Promise<void>(() => {}));
+    const onSignal = vi.fn().mockReturnValue(neverSettles());
     const onForce = vi.fn();
     installGracefulShutdown({ onSignal, onForce, ...options });
 
     return { onSignal, onForce };
 };
 
+describe("exitCodeForSignal", () => {
+    it("returns 0 when no signal", () => {
+        expect(exitCodeForSignal(null)).toBe(0);
+    });
+
+    it("returns 130 for SIGINT", () => {
+        expect(exitCodeForSignal("SIGINT")).toBe(130);
+    });
+
+    it("returns 143 for SIGTERM", () => {
+        expect(exitCodeForSignal("SIGTERM")).toBe(143);
+    });
+
+    it("returns 143 for any other signal", () => {
+        expect(exitCodeForSignal("SIGHUP")).toBe(143);
+    });
+});
+
 describe("installGracefulShutdown — clean shutdown exits 0", () => {
     const fixture = installFixture();
 
-    const expectCleanShutdownExit = async (signal: (typeof HANDLED_SIGNALS)[number]): Promise<void> => {
+    it.each(["SIGINT", "SIGHUP"] as const)("calls onSignal then exits 0 after a clean shutdown on %s", async (
+        signal,
+    ) => {
         const onSignal = vi.fn();
         installGracefulShutdown({ onSignal });
         process.emit(signal, signal);
         await flush();
         expect(onSignal).toHaveBeenCalledWith(signal);
         expect(fixture.exitSpy).toHaveBeenCalledWith(0);
-    };
-
-    it("calls onSignal then exits 0 after a clean shutdown on SIGINT", () => expectCleanShutdownExit("SIGINT"));
-    it("exits 0 after a clean shutdown on SIGHUP", () => expectCleanShutdownExit("SIGHUP"));
+    });
 });
-
-let resolveSignal: () => void = () => {};
 
 describe("installGracefulShutdown — async + force-kill behavior", () => {
     const fixture = installFixture();
 
     it("awaits an async onSignal before exiting", async () => {
-        const onSignal = vi.fn().mockReturnValue(new Promise<void>((resolve) => (resolveSignal = resolve)));
+        const gate = createDeferred();
+        const onSignal = vi.fn().mockReturnValue(gate.promise);
         installGracefulShutdown({ onSignal });
         process.emit("SIGTERM", "SIGTERM");
         await flush();
         expect(onSignal).toHaveBeenCalled();
         expect(fixture.exitSpy).not.toHaveBeenCalled();
-        resolveSignal();
+        gate.resolve();
         await flush();
         expect(fixture.exitSpy).toHaveBeenCalledWith(0);
     });
 
     it("coalesces a duplicate delivery of the same signal within the window", async () => {
-        const onSignal = vi.fn().mockReturnValue(new Promise<void>(() => {}));
+        const onSignal = vi.fn().mockReturnValue(neverSettles());
         const onForce = vi.fn();
         installGracefulShutdown({ onSignal, onForce, forceKillAfterMs: 0, coalesceWindowMs: 500 });
         process.emit("SIGINT", "SIGINT");
@@ -178,7 +184,7 @@ describe("installGracefulShutdown — overrides", () => {
 
     it("uses exitCode override when provided", async () => {
         installGracefulShutdown({
-            onSignal: () => undefined,
+            onSignal: vi.fn(),
             exitCode: () => 7,
         });
 
@@ -187,21 +193,21 @@ describe("installGracefulShutdown — overrides", () => {
         expect(fixture.exitSpy).toHaveBeenCalledWith(7);
     });
 
-    it("reports graceful=true to the override after a clean shutdown", async () => {
+    it("reports isGraceful=true to the override after a clean shutdown", async () => {
         const exitCode = vi.fn(() => 0);
-        installGracefulShutdown({ onSignal: () => undefined, exitCode });
+        installGracefulShutdown({ onSignal: vi.fn(), exitCode });
         process.emit("SIGINT", "SIGINT");
         await flush();
         expect(exitCode).toHaveBeenCalledWith("SIGINT", true);
     });
 
-    it("reports graceful=false to the override when a deliberate second signal forces exit", async () => {
+    it("reports isGraceful=false to the override when a deliberate second signal forces exit", async () => {
         vi.useFakeTimers();
         const exitCode = vi.fn(() => 0);
 
         installGracefulShutdown({
-            onSignal: () => new Promise<void>(() => {}),
-            onForce: () => undefined,
+            onSignal: neverSettles,
+            onForce: vi.fn(),
             forceKillAfterMs: 0,
             coalesceWindowMs: 500,
             exitCode,

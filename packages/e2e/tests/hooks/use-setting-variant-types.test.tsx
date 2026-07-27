@@ -4,8 +4,6 @@ import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { expectSettingRoundTrip, resetSettingsKey } from "../helpers/settings.js";
 
-const SCHEMA_ID = "com.gtkx.test.useSetting";
-
 type VariantSchemaKeys = {
     payload: "ay";
     metadata: "a{ss}";
@@ -23,6 +21,10 @@ type VariantSchemaKeys = {
     "bus-signature": "g";
     pair: "{ss}";
 };
+
+type Value<P extends keyof VariantSchemaKeys> = SettingValue<VariantSchemaKeys, P>;
+
+const SCHEMA_ID = "com.gtkx.test.useSetting";
 
 const SCHEMA: SettingsSchema<VariantSchemaKeys> = {
     id: SCHEMA_ID,
@@ -45,8 +47,6 @@ const SCHEMA: SettingsSchema<VariantSchemaKeys> = {
         pair: "{ss}",
     },
 };
-
-type Value<P extends keyof VariantSchemaKeys> = SettingValue<VariantSchemaKeys, P>;
 
 describe("useSetting (variant types: arrays)", () => {
     it("reads and writes byte arrays as number arrays", async () => {
@@ -90,7 +90,10 @@ describe("useSetting (variant types: dictionaries)", () => {
         resetSettingsKey(SCHEMA_ID, "extras");
         const { result } = await renderHook(() => useSetting(SCHEMA, "extras"));
         expect(result.current[0]).toEqual({});
-        await act(() => result.current[1]({ name: GLib.Variant.newString("x"), size: GLib.Variant.newInt32(5) }));
+
+        await act(() => {
+            result.current[1]({ name: GLib.Variant.newString("x"), size: GLib.Variant.newInt32(5) });
+        });
 
         await waitFor(() => {
             expect(Object.keys(result.current[0]).toSorted((a, b) => a.localeCompare(b))).toEqual(["name", "size"]);
@@ -107,13 +110,18 @@ describe("useSetting (variant types: maybe and variant)", () => {
         resetSettingsKey(SCHEMA_ID, "opt-limit");
         const { result } = await renderHook(() => useSetting(SCHEMA, "opt-limit"));
         expect(result.current[0]).toBeNull();
-        await act(() => result.current[1](5));
+
+        await act(() => {
+            result.current[1](5);
+        });
 
         await waitFor(() => {
             expect(result.current[0]).toBe(5);
         });
 
-        await act(() => result.current[1](null));
+        await act(() => {
+            result.current[1](null);
+        });
 
         await waitFor(() => {
             expect(result.current[0]).toBeNull();
@@ -125,7 +133,10 @@ describe("useSetting (variant types: maybe and variant)", () => {
         resetSettingsKey(SCHEMA_ID, "wrapped");
         const { result } = await renderHook(() => useSetting(SCHEMA, "wrapped"));
         expect(result.current[0].getString()[0]).toBe("hello");
-        await act(() => result.current[1](GLib.Variant.newInt32(7)));
+
+        await act(() => {
+            result.current[1](GLib.Variant.newInt32(7));
+        });
 
         await waitFor(() => {
             expect(result.current[0].getInt32()).toBe(7);
@@ -184,8 +195,14 @@ describe("useSetting (variant types: invalid input)", () => {
         resetSettingsKey(SCHEMA_ID, "bus-signature");
         const paths = await renderHook(() => useSetting(SCHEMA, "bus-path"));
         const signatures = await renderHook(() => useSetting(SCHEMA, "bus-signature"));
-        expect(() => paths.result.current[1]("not a path")).toThrow('"not a path" is not a valid GVariant object path');
-        expect(() => signatures.result.current[1]("nope")).toThrow('"nope" is not a valid GVariant type signature');
+
+        expect(() => {
+            paths.result.current[1]("not a path");
+        }).toThrow('"not a path" is not a valid GVariant object path');
+
+        expect(() => {
+            signatures.result.current[1]("nope");
+        }).toThrow('"nope" is not a valid GVariant type signature');
     });
 
     it("rejects schema kinds that are not valid GVariant type strings", async () => {

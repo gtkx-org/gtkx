@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -23,7 +24,115 @@ const expectPositionAt = (fixed: Gtk.Fixed, widget: Gtk.Widget, x: number, y: nu
         expect(fixed.getChildPosition(widget)).toEqual([x, y]);
     });
 
-describe("render - GtkGridLayoutChild", () => {
+const countParentNotifications = (widget: Gtk.Widget): (() => number) => {
+    let notifications = 0;
+
+    widget.connect("notify::parent", () => {
+        notifications += 1;
+    });
+
+    return () => notifications;
+};
+
+function MovableCellApp({ gridRef, column }: { gridRef: RefObject<Gtk.Grid | null>; column: number }) {
+    return (
+        <GtkGrid ref={gridRef}>
+            <GtkGridLayoutChild column={column} row={0}>
+                <GtkLabel>movable</GtkLabel>
+            </GtkGridLayoutChild>
+        </GtkGrid>
+    );
+}
+
+function OptionalCellApp({ gridRef, show }: { gridRef: RefObject<Gtk.Grid | null>; show: boolean }) {
+    return (
+        <GtkGrid ref={gridRef}>
+            {show && (
+                <GtkGridLayoutChild column={0} row={0}>
+                    <GtkLabel>A</GtkLabel>
+                </GtkGridLayoutChild>
+            )}
+        </GtkGrid>
+    );
+}
+
+function AnchoredApp({ fixedRef, x, y }: { fixedRef: RefObject<Gtk.Fixed | null>; x: number; y: number }) {
+    return (
+        <GtkFixed ref={fixedRef}>
+            <GtkFixedLayoutChild transform={translate(x, y)}>
+                <GtkLabel>anchored</GtkLabel>
+            </GtkFixedLayoutChild>
+        </GtkFixed>
+    );
+}
+
+function ResetTransformApp({
+    fixedRef,
+    transform,
+}: {
+    fixedRef: RefObject<Gtk.Fixed | null>;
+    transform: Gsk.Transform | null;
+}) {
+    return (
+        <GtkFixed ref={fixedRef}>
+            <GtkFixedLayoutChild transform={transform}>
+                <GtkLabel>reset</GtkLabel>
+            </GtkFixedLayoutChild>
+        </GtkFixed>
+    );
+}
+
+function ClippedOverlayApp({ overlayRef, clip }: { overlayRef: RefObject<Gtk.Overlay | null>; clip: boolean }) {
+    return (
+        <GtkOverlay
+            ref={overlayRef}
+            overlays={[
+                <GtkOverlayLayoutChild key="a" clipOverlay={clip}>
+                    <GtkButton label="Clipped" />
+                </GtkOverlayLayoutChild>,
+            ]}
+        >
+            <GtkLabel>Main</GtkLabel>
+        </GtkOverlay>
+    );
+}
+
+function TransientOverlayApp({ labelRef, show }: { labelRef: RefObject<Gtk.Label | null>; show: boolean }) {
+    return (
+        <GtkOverlay
+            overlays={
+                show && (
+                    <GtkOverlayLayoutChild>
+                        <GtkButton label="Transient" />
+                    </GtkOverlayLayoutChild>
+                )
+            }
+        >
+            <GtkLabel ref={labelRef}>Main</GtkLabel>
+        </GtkOverlay>
+    );
+}
+
+function RemovableOverlayApp({ overlayRef, show }: { overlayRef: RefObject<Gtk.Overlay | null>; show: boolean }) {
+    return (
+        <GtkOverlay
+            ref={overlayRef}
+            overlays={
+                show
+                    ? [
+                            <GtkOverlayLayoutChild key="a">
+                                <GtkButton label="Removable" />
+                            </GtkOverlayLayoutChild>,
+                        ]
+                    : []
+            }
+        >
+            <GtkLabel>Main</GtkLabel>
+        </GtkOverlay>
+    );
+}
+
+describe("render - GtkGridLayoutChild (1)", () => {
     it("attaches children at their cells", async () => {
         const gridRef = createRef<Gtk.Grid>();
 
@@ -60,32 +169,18 @@ describe("render - GtkGridLayoutChild", () => {
         expect(label.getLabel()).toBe("wide");
         expect(grid.getChildAt(1, 1)).toBe(label);
     });
+});
 
+describe("render - GtkGridLayoutChild (2)", () => {
     it("moves a child in place when its cell changes", async () => {
         const gridRef = createRef<Gtk.Grid>();
-
-        function App({ column }: { column: number }) {
-            return (
-                <GtkGrid ref={gridRef}>
-                    <GtkGridLayoutChild column={column} row={0}>
-                        <GtkLabel>movable</GtkLabel>
-                    </GtkGridLayoutChild>
-                </GtkGrid>
-            );
-        }
-
-        const { rerender } = await render(<App column={0} />);
+        const { rerender } = await render(<MovableCellApp gridRef={gridRef} column={0} />);
         const label = gridRef.current?.getChildAt(0, 0) as Gtk.Widget;
-        let parentNotifications = 0;
-
-        label.connect("notify::parent", () => {
-            parentNotifications += 1;
-        });
-
-        await rerender(<App column={2} />);
+        const parentNotifications = countParentNotifications(label);
+        await rerender(<MovableCellApp gridRef={gridRef} column={2} />);
         expect(gridRef.current?.getChildAt(0, 0)).toBeNull();
         expect(gridRef.current?.getChildAt(2, 0)).toBe(label);
-        expect(parentNotifications).toBe(0);
+        expect(parentNotifications()).toBe(0);
     });
 
     it("exposes the real Gtk.GridLayoutChild through ref", async () => {
@@ -107,22 +202,9 @@ describe("render - GtkGridLayoutChild", () => {
 
     it("removes a child when it unmounts", async () => {
         const gridRef = createRef<Gtk.Grid>();
-
-        function App({ show }: { show: boolean }) {
-            return (
-                <GtkGrid ref={gridRef}>
-                    {show && (
-                        <GtkGridLayoutChild column={0} row={0}>
-                            <GtkLabel>A</GtkLabel>
-                        </GtkGridLayoutChild>
-                    )}
-                </GtkGrid>
-            );
-        }
-
-        const { rerender } = await render(<App show={true} />);
+        const { rerender } = await render(<OptionalCellApp gridRef={gridRef} show={true} />);
         expect(gridRef.current?.getChildAt(0, 0)).not.toBeNull();
-        await rerender(<App show={false} />);
+        await rerender(<OptionalCellApp gridRef={gridRef} show={false} />);
         expect(gridRef.current?.getChildAt(0, 0)).toBeNull();
     });
 });
@@ -144,50 +226,23 @@ describe("render - GtkFixedLayoutChild", () => {
 
     it("repositions in place without reparenting the child", async () => {
         const fixedRef = createRef<Gtk.Fixed>();
-
-        function App({ x, y }: { x: number; y: number }) {
-            return (
-                <GtkFixed ref={fixedRef}>
-                    <GtkFixedLayoutChild transform={translate(x, y)}>
-                        <GtkLabel>anchored</GtkLabel>
-                    </GtkFixedLayoutChild>
-                </GtkFixed>
-            );
-        }
-
-        const { rerender } = await render(<App x={0} y={0} />);
+        const { rerender } = await render(<AnchoredApp fixedRef={fixedRef} x={0} y={0} />);
         const fixed = fixedRef.current as Gtk.Fixed;
         const label = screen.getByText("anchored");
-        let parentNotifications = 0;
-
-        label.connect("notify::parent", () => {
-            parentNotifications += 1;
-        });
-
-        await rerender(<App x={30} y={40} />);
+        const parentNotifications = countParentNotifications(label);
+        await rerender(<AnchoredApp fixedRef={fixedRef} x={30} y={40} />);
         await expectPositionAt(fixed, label, 30, 40);
-        expect(parentNotifications).toBe(0);
+        expect(parentNotifications()).toBe(0);
         expect(label.getParent()).toBe(fixed);
     });
 
     it("clears the transform when the prop is removed", async () => {
         const fixedRef = createRef<Gtk.Fixed>();
-
-        function App({ transform }: { transform: Gsk.Transform | null }) {
-            return (
-                <GtkFixed ref={fixedRef}>
-                    <GtkFixedLayoutChild transform={transform}>
-                        <GtkLabel>reset</GtkLabel>
-                    </GtkFixedLayoutChild>
-                </GtkFixed>
-            );
-        }
-
-        const { rerender } = await render(<App transform={translate(15, 25)} />);
+        const { rerender } = await render(<ResetTransformApp fixedRef={fixedRef} transform={translate(15, 25)} />);
         const fixed = fixedRef.current as Gtk.Fixed;
         const label = screen.getByText("reset");
         await expectPositionAt(fixed, label, 15, 25);
-        await rerender(<App transform={null} />);
+        await rerender(<ResetTransformApp fixedRef={fixedRef} transform={null} />);
 
         await waitFor(() => {
             expect(fixed.getChildTransform(label)).toBeNull();
@@ -197,7 +252,7 @@ describe("render - GtkFixedLayoutChild", () => {
     });
 });
 
-describe("render - GtkOverlayLayoutChild", () => {
+describe("render - GtkOverlayLayoutChild (1)", () => {
     it("keeps the main child and stacks overlays on top", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
         const mainRef = createRef<Gtk.Label>();
@@ -224,85 +279,34 @@ describe("render - GtkOverlayLayoutChild", () => {
 
     it("toggles clipOverlay in place", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
-
-        function App({ clip }: { clip: boolean }) {
-            return (
-                <GtkOverlay
-                    ref={overlayRef}
-                    overlays={[
-                        <GtkOverlayLayoutChild key="a" clipOverlay={clip}>
-                            <GtkButton label="Clipped" />
-                        </GtkOverlayLayoutChild>,
-                    ]}
-                >
-                    <GtkLabel>Main</GtkLabel>
-                </GtkOverlay>
-            );
-        }
-
-        const { rerender } = await render(<App clip={false} />);
+        const { rerender } = await render(<ClippedOverlayApp overlayRef={overlayRef} clip={false} />);
         const overlay = overlayRef.current as Gtk.Overlay;
         const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Clipped" });
         const addOverlay = vi.spyOn(overlay, "addOverlay");
         expect(overlay.getClipOverlay(button)).toBe(false);
-        await rerender(<App clip={true} />);
+        await rerender(<ClippedOverlayApp overlayRef={overlayRef} clip={true} />);
         expect(overlay.getClipOverlay(button)).toBe(true);
         expect(addOverlay).not.toHaveBeenCalled();
     });
+});
 
+describe("render - GtkOverlayLayoutChild (2)", () => {
     it("keeps the main child mounted when an overlay appears and disappears", async () => {
         const labelRef = createRef<Gtk.Label>();
-
-        function App({ show }: { show: boolean }) {
-            return (
-                <GtkOverlay
-                    overlays={
-                        show && (
-                            <GtkOverlayLayoutChild>
-                                <GtkButton label="Transient" />
-                            </GtkOverlayLayoutChild>
-                        )
-                    }
-                >
-                    <GtkLabel ref={labelRef}>Main</GtkLabel>
-                </GtkOverlay>
-            );
-        }
-
-        const { rerender } = await render(<App show={false} />);
+        const { rerender } = await render(<TransientOverlayApp labelRef={labelRef} show={false} />);
         const label = labelRef.current;
         expect(label).not.toBeNull();
-        await rerender(<App show={true} />);
+        await rerender(<TransientOverlayApp labelRef={labelRef} show={true} />);
         expect(labelRef.current).toBe(label);
-        await rerender(<App show={false} />);
+        await rerender(<TransientOverlayApp labelRef={labelRef} show={false} />);
         expect(labelRef.current).toBe(label);
     });
 
     it("removes an overlay when it unmounts", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
-
-        function App({ show }: { show: boolean }) {
-            return (
-                <GtkOverlay
-                    ref={overlayRef}
-                    overlays={
-                        show
-                            ? [
-                                    <GtkOverlayLayoutChild key="a">
-                                        <GtkButton label="Removable" />
-                                    </GtkOverlayLayoutChild>,
-                                ]
-                            : []
-                    }
-                >
-                    <GtkLabel>Main</GtkLabel>
-                </GtkOverlay>
-            );
-        }
-
-        const { rerender } = await render(<App show={true} />);
+        const { rerender } = await render(<RemovableOverlayApp overlayRef={overlayRef} show={true} />);
         expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Removable" })).not.toBeNull();
-        await rerender(<App show={false} />);
+        await rerender(<RemovableOverlayApp overlayRef={overlayRef} show={false} />);
         expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Removable" })).toBeNull();
     });
 });

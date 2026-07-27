@@ -15,7 +15,12 @@ function App({ items }: { items: Item<string>[] }) {
 describe("ListView performance", () => {
     it("filters 10k items to 2 in under 4s", async () => {
         const n = 10_000;
-        const items: Item<string>[] = Array.from({ length: n }, (_, i) => ({ id: `w-${i}`, value: `w-${i}` }));
+
+        const items: Item<string>[] = Array.from({ length: n }, (_, i) => ({
+            id: `w-${String(i)}`,
+            value: `w-${String(i)}`,
+        }));
+
         const few = items.slice(0, 2);
         const { rerender } = await render(<App items={items} />);
         const start = performance.now();

@@ -39,13 +39,14 @@ const renderRuntimeModule = (file: ParsedSchemaFile): string => {
     const lines: string[] = [];
 
     for (const [index, schema] of file.schemas.entries()) {
-        const keysName = `keys_${index}`;
+        const keysName = `keys_${String(index)}`;
         const id = toJsStringLiteral(schema.id);
         lines.push(`const ${keysName} = ${getRuntimeKeys(schema)};`);
 
         if (schema.path === null) {
             lines.push(
-                `export const ${getExportName(schema.id)} = { id: ${id}, keys: ${keysName}, at: (path) => ({ id: ${id}, path, keys: ${keysName} }) };`,
+                `export const ${getExportName(schema.id)} = { id: ${id}, keys: ${keysName}, ` +
+                `at: (path) => ({ id: ${id}, path, keys: ${keysName} }) };`,
             );
         } else {
             lines.push(`export const ${getExportName(schema.id)} = { id: ${id}, path: null, keys: ${keysName} };`);
@@ -74,7 +75,7 @@ const allocateInterfaceName = (schemaId: string, usedNames: Set<string>): string
     let suffix = 2;
 
     while (usedNames.has(name)) {
-        name = `${base}${suffix}`;
+        name = `${base}${String(suffix)}`;
         suffix += 1;
     }
 
@@ -142,8 +143,10 @@ const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): strin
         exportNames.push(getExportName(schema.id));
     }
 
-    if (exportNames.length > 0) {
-        lines.push("", `    export { ${exportNames.join(", ")} };`, `    export default ${exportNames[0]};`);
+    const [firstExport] = exportNames;
+
+    if (firstExport !== undefined) {
+        lines.push("", `    export { ${exportNames.join(", ")} };`, `    export default ${firstExport};`);
     }
 
     lines.push("}");

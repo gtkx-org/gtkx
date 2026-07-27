@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { createRoot, type Root } from "@gtkx/react";
 
-const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
-
-const activeRoots: Set<Root> = new Set();
-
 type ProductionRenderResult = {
     rerender: (element: ReactNode) => Promise<void>;
 };
+
+const activeRoots: Set<Root> = new Set();
+
+const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 const render = async (element: ReactNode): Promise<ProductionRenderResult> => {
     const root = createRoot();

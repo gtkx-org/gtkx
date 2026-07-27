@@ -1,18 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
+import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
+import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
 
 const { listToplevels } = vi.hoisted(() => ({
     listToplevels: vi.fn(() => [] as unknown[]),
 }));
 
+const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget({ type: "GtkLabel", ...overrides });
+
 vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: { BUTTON: 1, LABEL: 2 } as Record<string, number>,
     Window: { listToplevels },
 }));
-
-import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
-import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
-
-const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget({ type: "GtkLabel", ...overrides });
 
 describe("WidgetRegistry.getOrCreateId", () => {
     it("assigns stable, distinct ids to distinct widgets", () => {

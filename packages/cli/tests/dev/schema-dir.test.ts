@@ -71,7 +71,7 @@ describe("prepareDevSchemaDir", () => {
         writeSchema(join(DATA_DIR, "com.example.schemaenv.gschema.xml"));
         process.env.GSETTINGS_SCHEMA_DIR = "/usr/share/glib-2.0/schemas";
         const dir = prepareDevSchemaDir(projectDir, DATA_DIR);
-        expect(process.env.GSETTINGS_SCHEMA_DIR).toBe(`${dir}:/usr/share/glib-2.0/schemas`);
+        expect(process.env.GSETTINGS_SCHEMA_DIR).toBe(`${String(dir)}:/usr/share/glib-2.0/schemas`);
     });
 
     it("ignores schemas outside the data directory", () => {

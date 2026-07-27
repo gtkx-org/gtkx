@@ -3,7 +3,8 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const DEFAULT_ENTRY_BASE = "src/index";
-const DEFAULT_ENTRY_EXTENSIONS = [".tsx", ".jsx", ".ts", ".js"];
+const DEFAULT_ENTRY_EXTENSION = ".tsx";
+const DEFAULT_ENTRY_EXTENSIONS = [DEFAULT_ENTRY_EXTENSION, ".jsx", ".ts", ".js"];
 const DEFAULT_ENTRY = `${DEFAULT_ENTRY_BASE}{${DEFAULT_ENTRY_EXTENSIONS.join(",")}}`;
 
 const cwdArg: { cwd: StringArgDef } = {
@@ -33,7 +34,7 @@ const resolveDefaultEntry = (cwd: string): string => {
         }
     }
 
-    return resolve(cwd, `${DEFAULT_ENTRY_BASE}${DEFAULT_ENTRY_EXTENSIONS[0]}`);
+    return resolve(cwd, `${DEFAULT_ENTRY_BASE}${DEFAULT_ENTRY_EXTENSION}`);
 };
 
 const resolveEntry = (args: { entry?: string; cwd?: string }): { cwd: string; entry: string } => {

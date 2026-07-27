@@ -3,13 +3,6 @@ import type { ProcessEventMap } from "node:process";
 import { EventEmitter } from "node:events";
 import { watch as watchFs } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
-
-vi.mock("node:fs", async (importActual) => {
-    const actual = await importActual<typeof import("node:fs")>();
-
-    return { ...actual, watch: vi.fn() };
-});
-
 import {
     type ForkRunner,
     RESTART_EXIT_CODE,
@@ -17,35 +10,23 @@ import {
     type SupervisedChild,
 } from "../../src/dev/supervisor.js";
 
-const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+type ExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
+type WatchedSignal = "SIGINT" | "SIGTERM" | "SIGHUP";
+type SignalListener<S extends WatchedSignal> = (...args: ProcessEventMap[S]) => void;
 
+type SupervisorContext = {
+    stderrSpy: MockInstance<typeof process.stderr.write>;
+    exitSpy: MockInstance<typeof process.exit>;
+    prevSigInt: SignalListener<"SIGINT">[] | undefined;
+    prevSigTerm: SignalListener<"SIGTERM">[] | undefined;
+    prevSigHup: SignalListener<"SIGHUP">[] | undefined;
+};
+
+const TEST_CWD = "/proj";
+const forkMock = vi.fn<ForkRunner>();
 const watchMock = vi.mocked(watchFs);
 
-type FakeChild = SupervisedChild &
-    EventEmitter & {
-        killed: boolean;
-        pid: number | undefined;
-        exitCode: number | null;
-        kill: ReturnType<typeof vi.fn<(signal?: number | NodeJS.Signals) => boolean>>;
-    };
-
-function createFakeChild(): FakeChild {
-    const child: FakeChild = Object.assign(new EventEmitter(), {
-        killed: false,
-        pid: undefined as number | undefined,
-        exitCode: null as number | null,
-        kill: vi.fn<(signal?: number | NodeJS.Signals) => boolean>(() => {
-            child.killed = true;
-
-            return true;
-        }),
-    });
-
-    return child;
-}
-
-const forkMock = vi.fn<ForkRunner>();
-const TEST_CWD = "/proj";
+const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 const superviseUntilExit = async (
     entry: string,
@@ -65,7 +46,7 @@ const startWithForkMock = (entry: string, watch?: Parameters<typeof runDevSuperv
 };
 
 function queueChild(): FakeChild {
-    const child = createFakeChild();
+    const child = new FakeChild();
     forkMock.mockReturnValueOnce(child);
 
     return child;
@@ -73,7 +54,7 @@ function queueChild(): FakeChild {
 
 function createFakeWatcher(): FSWatcher {
     const watcher: FSWatcher = Object.assign(new EventEmitter(), {
-        close: (): void => {},
+        close: (): void => undefined,
         ref: (): FSWatcher => watcher,
         unref: (): FSWatcher => watcher,
     });
@@ -81,28 +62,21 @@ function createFakeWatcher(): FSWatcher {
     return watcher;
 }
 
-let fire: () => void = () => {};
-
 function captureConfigWatcher(): { fireConfigChange: () => void } {
+    let fire: (() => void) | null = null;
+
     watchMock.mockImplementationOnce((_path, listener) => {
-        fire = () => listener("change", "gtkx.config.ts");
+        fire = () => {
+            listener("change", "gtkx.config.ts");
+        };
 
         return createFakeWatcher();
     });
 
-    return { fireConfigChange: () => fire() };
+    return { fireConfigChange: () => {
+        fire?.();
+    } };
 }
-
-type WatchedSignal = "SIGINT" | "SIGTERM" | "SIGHUP";
-type SignalListener<S extends WatchedSignal> = (...args: ProcessEventMap[S]) => void;
-
-type SupervisorContext = {
-    stderrSpy: MockInstance<typeof process.stderr.write>;
-    exitSpy: MockInstance<typeof process.exit>;
-    prevSigInt: SignalListener<"SIGINT">[] | undefined;
-    prevSigTerm: SignalListener<"SIGTERM">[] | undefined;
-    prevSigHup: SignalListener<"SIGHUP">[] | undefined;
-};
 
 const cleanupSignalListeners = <S extends WatchedSignal>(name: S, previous: SignalListener<S>[] | undefined): void => {
     const current = process.listeners(name);
@@ -120,7 +94,7 @@ const setupSupervisorCtx = (): SupervisorContext => {
     beforeEach(() => {
         vi.clearAllMocks();
         ctx.stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-        ctx.exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        ctx.exitSpy = vi.spyOn(process, "exit").mockImplementation(((): void => undefined) as never);
         ctx.prevSigInt = process.listeners("SIGINT");
         ctx.prevSigTerm = process.listeners("SIGTERM");
         ctx.prevSigHup = process.listeners("SIGHUP");
@@ -145,6 +119,59 @@ const startSupervisor = async (entry = "/abs/src/main.tsx"): Promise<FakeChild> 
 
     return child;
 };
+
+const startWithWatch = async (
+    regenerate: () => Promise<void>,
+): Promise<{ child: FakeChild; fireConfigChange: () => void }> => {
+    const child = queueChild();
+    const { fireConfigChange } = captureConfigWatcher();
+
+    startWithForkMock("/proj/src/index.tsx", {
+        paths: ["/proj/gtkx.config.ts"],
+        regenerate,
+    });
+
+    await Promise.resolve();
+
+    return { child, fireConfigChange };
+};
+
+class FakeChild implements SupervisedChild {
+    #exitListeners: ExitListener[] = [];
+    #onceExitListeners: ExitListener[] = [];
+    killed = false;
+    pid: number | undefined = undefined;
+    exitCode: number | null = null;
+
+    kill = vi.fn<(signal?: number | NodeJS.Signals) => boolean>((): boolean => {
+        this.killed = true;
+
+        return true;
+    });
+
+    on(_event: "exit", listener: ExitListener): void {
+        this.#exitListeners.push(listener);
+    }
+
+    once(_event: "exit", listener: ExitListener): void {
+        this.#onceExitListeners.push(listener);
+    }
+
+    emit(_event: "exit", code: number | null, signal: NodeJS.Signals | null): void {
+        const pending = [...this.#exitListeners, ...this.#onceExitListeners];
+        this.#onceExitListeners.length = 0;
+
+        for (const listener of pending) {
+            listener(code, signal);
+        }
+    }
+}
+
+vi.mock("node:fs", async (importActual) => {
+    const actual = await importActual<typeof import("node:fs")>();
+
+    return { ...actual, watch: vi.fn() };
+});
 
 describe("runDevSupervisor (startup)", () => {
     setupSupervisorCtx();
@@ -307,27 +334,11 @@ describe("runDevSupervisor (signal forwarding — force kill)", () => {
     });
 });
 
-const startWithWatch = async (
-    regenerate: () => Promise<void>,
-): Promise<{ child: FakeChild; fireConfigChange: () => void }> => {
-    const child = queueChild();
-    const { fireConfigChange } = captureConfigWatcher();
-
-    startWithForkMock("/proj/src/index.tsx", {
-        paths: ["/proj/gtkx.config.ts"],
-        regenerate,
-    });
-
-    await Promise.resolve();
-
-    return { child, fireConfigChange };
-};
-
 describe("runDevSupervisor (config watch)", () => {
     const ctx = setupSupervisorCtx();
 
     it("regenerates and restarts the runner when the config changes", async () => {
-        const regenerate = vi.fn(async () => {});
+        const regenerate = vi.fn(() => Promise.resolve());
         const { child, fireConfigChange } = await startWithWatch(regenerate);
         queueChild();
         fireConfigChange();
@@ -341,10 +352,7 @@ describe("runDevSupervisor (config watch)", () => {
     });
 
     it("keeps the current runner when regeneration fails", async () => {
-        const regenerate = vi.fn(async () => {
-            throw new Error("bad config");
-        });
-
+        const regenerate = vi.fn(() => Promise.reject(new Error("bad config")));
         const { child, fireConfigChange } = await startWithWatch(regenerate);
         fireConfigChange();
         await new Promise((resolve) => setTimeout(resolve, 250));

@@ -18,7 +18,20 @@ const pages = [
     "Page 9",
 ];
 
-const SidebarDemo = () => {
+const sidebarDemo: Demo = {
+    id: "sidebar",
+    title: "Stack Sidebar",
+    description:
+        "GtkStackSidebar provides an automatic sidebar widget to control navigation of a GtkStack object. This " +
+        "widget automatically updates its content based on what is presently available in the GtkStack object, and " +
+        'using the "title" child property to set the display labels.',
+    keywords: [],
+    component: SidebarDemo,
+    titlebar: SidebarTitlebar,
+    sourceCode,
+};
+
+function SidebarDemo() {
     const demoIcon = Gio.FileIcon.new(Gio.fileNewForUri(demoIconUri));
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
@@ -46,17 +59,10 @@ const SidebarDemo = () => {
             </GtkStack>
         </GtkBox>
     );
-};
+}
 
-const SidebarTitlebar = () => <GtkHeaderBar />;
+function SidebarTitlebar() {
+    return <GtkHeaderBar />;
+}
 
-export const sidebarDemo: Demo = {
-    id: "sidebar",
-    title: "Stack Sidebar",
-    description:
-        'GtkStackSidebar provides an automatic sidebar widget to control navigation of a GtkStack object. This widget automatically updates its content based on what is presently available in the GtkStack object, and using the "title" child property to set the display labels.',
-    keywords: [],
-    component: SidebarDemo,
-    titlebar: SidebarTitlebar,
-    sourceCode,
-};
+export { sidebarDemo };

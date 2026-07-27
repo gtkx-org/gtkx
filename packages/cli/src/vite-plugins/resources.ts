@@ -239,7 +239,7 @@ const emitBuildBundle = (
 
     const compiled = withStagingDir("resources-out", (outDir) => compileBundle(state, join(outDir, BUNDLE_FILENAME)));
     ctx.emitFile({ type: "asset", fileName: BUNDLE_FILENAME, source: compiled });
-    info(`Compiled ${state.entries.size} resource(s) into ${BUNDLE_FILENAME}`);
+    info(`Compiled ${String(state.entries.size)} resource(s) into ${BUNDLE_FILENAME}`);
 };
 
 const refreshDevRegistration = async (state: PluginState): Promise<void> => {

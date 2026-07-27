@@ -1,4 +1,4 @@
-const objectKeysEqual = (
+const areObjectKeysEqual = (
     a: Record<string, unknown>,
     b: Record<string, unknown>,
     isValueEqual: (a: unknown, b: unknown) => boolean,
@@ -12,4 +12,4 @@ const objectKeysEqual = (
     return keysA.every((key) => Object.hasOwn(b, key) && isValueEqual(a[key], b[key]));
 };
 
-export { objectKeysEqual };
+export { areObjectKeysEqual };

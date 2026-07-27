@@ -21,21 +21,87 @@ import {
 } from "@gtkx/jsx/gtk";
 import { createPortal, quit, rootElement, useParentWindow } from "@gtkx/react";
 import * as path from "node:path/posix";
-import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentType, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
+import type { Demo as DemoDefinition, DemoProviderProps } from "./demos/types.js";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
 
+type DemoWindowProps = {
+    onClose: () => void;
+};
+
+type DemoWindowSizing = {
+    defaultWidth: number;
+    defaultHeight: number;
+    resizable: boolean;
+    deletable: boolean;
+};
+
+type ShortcutsDialogProps = {
+    onClose: () => void;
+};
+
+type AppHeaderBarProps = {
+    hasDemo: boolean;
+    searchMode: boolean;
+    onRun: () => void;
+    onSearchToggle: (isActive: boolean) => void;
+};
+
+type AppShortcutsProps = {
+    onSearchToggle: () => void;
+    onKeyboardShortcuts: () => void;
+    onNotebookNext: () => void;
+    onNotebookPrev: () => void;
+};
+
+type AppNotebookProps = {
+    page: number;
+    onSwitchPage: (page: number) => void;
+};
+
+type AboutDialogProps = {
+    onClose: () => void;
+};
+
+type MainWindowBodyProps = {
+    searchMode: boolean;
+    notebookPage: number;
+    onSearchToggle: () => void;
+    onKeyboardShortcuts: () => void;
+    onNotebookPageChange: (page: number) => void;
+    onSearchChanged: (query: string) => void;
+};
+
+type MainWindowActionsProps = {
+    onKeyboardShortcuts: () => void;
+    onShowAbout: () => void;
+};
+
+type MainWindowChrome = ReturnType<typeof useMainWindowChrome>;
+
+type MainWindowContentProps = {
+    chrome: MainWindowChrome;
+    demoWindows: number[];
+    onCloseWindow: (id: number) => void;
+    onSearchChanged: (query: string) => void;
+};
+
 const applicationIconName = path.basename(logoResourcePath, path.extname(logoResourcePath));
 const iconResourceDir = path.dirname(logoResourcePath);
-const displaysWithIconPath = new WeakSet<Gdk.Display>();
+const displaysWithIconPath: WeakSet<Gdk.Display> = new WeakSet();
 
 const useApplicationIcon = (): void => {
     useEffect(() => {
         const display = Gdk.Display.getDefault();
-        if (!display || displaysWithIconPath.has(display)) return;
+
+        if (!display || displaysWithIconPath.has(display)) {
+            return;
+        }
+
         Gtk.IconTheme.getForDisplay(display).addResourcePath(iconResourceDir);
         displaysWithIconPath.add(display);
     }, []);
@@ -72,9 +138,22 @@ const InfoTab = () => {
     );
 };
 
-type DemoWindowProps = {
-    onClose: () => void;
-};
+const PassthroughProvider: ComponentType<DemoProviderProps> = ({ children }) => children;
+
+function demoWindowTitle(demo: DemoDefinition, windowTitle: string | null): string {
+    const { displayTitle } = parseTitle(demo.title);
+
+    return windowTitle ?? demo.windowTitle ?? displayTitle;
+}
+
+function demoWindowSizing(demo: DemoDefinition): DemoWindowSizing {
+    return {
+        defaultWidth: demo.defaultWidth ?? -1,
+        defaultHeight: demo.defaultHeight ?? -1,
+        resizable: demo.resizable ?? true,
+        deletable: demo.deletable ?? true,
+    };
+}
 
 const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const { currentDemo, windowTitle, defaultWidget } = useDemo();
@@ -82,12 +161,13 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const windowRef = useRef<Gtk.Window>(null);
     const hostWindowRef = useMemo<RefObject<Gtk.Window | null>>(() => ({ current: hostWindow }), [hostWindow]);
 
-    if (!currentDemo?.component || !hostWindow) return null;
+    if (!hostWindow || !currentDemo?.component) {
+        return null;
+    }
 
     const DemoComponent = currentDemo.component;
     const DemoTitlebar = currentDemo.titlebar;
-    const DemoStateProvider = currentDemo.provider ?? (({ children }) => children);
-    const { displayTitle } = parseTitle(currentDemo.title);
+    const DemoStateProvider = currentDemo.provider ?? PassthroughProvider;
 
     if (currentDemo.dialogOnly) {
         return (
@@ -98,6 +178,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     }
 
     const titlebar = DemoTitlebar ? <DemoTitlebar onClose={onClose} window={windowRef} /> : undefined;
+    const sizing = demoWindowSizing(currentDemo);
 
     return (
         <DemoStateProvider window={windowRef} onClose={onClose}>
@@ -106,17 +187,18 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
                     ref={windowRef}
                     name="demo-window"
                     transientFor={hostWindow}
-                    title={windowTitle ?? currentDemo.windowTitle ?? displayTitle}
-                    defaultWidth={currentDemo.defaultWidth ?? -1}
-                    defaultHeight={currentDemo.defaultHeight ?? -1}
-                    resizable={currentDemo.resizable ?? true}
-                    deletable={currentDemo.deletable ?? true}
+                    title={demoWindowTitle(currentDemo, windowTitle)}
+                    defaultWidth={sizing.defaultWidth}
+                    defaultHeight={sizing.defaultHeight}
+                    resizable={sizing.resizable}
+                    deletable={sizing.deletable}
                     cssClasses={currentDemo.windowCssClasses}
                     defaultWidget={defaultWidget}
                     titlebar={titlebar}
                     onCloseRequest={() => {
                         onClose();
-                        return true;
+
+                        return Gdk.EVENT_STOP;
                     }}
                 >
                     <DemoComponent onClose={onClose} window={windowRef} />
@@ -125,10 +207,6 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
             )}
         </DemoStateProvider>
     );
-};
-
-type ShortcutsDialogProps = {
-    onClose: () => void;
 };
 
 const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
@@ -144,13 +222,6 @@ const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
         </AdwShortcutsSection>
     </AdwShortcutsDialog>
 );
-
-type AppHeaderBarProps = {
-    hasDemo: boolean;
-    searchMode: boolean;
-    onRun: () => void;
-    onSearchToggle: (value: boolean) => void;
-};
 
 const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderBarProps) => (
     <GtkHeaderBar
@@ -168,7 +239,9 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                     tooltipText="Search"
                     iconName="edit-find-symbolic"
                     active={searchMode}
-                    onToggled={(btn: Gtk.ToggleButton) => onSearchToggle(btn.getActive())}
+                    onToggled={(btn: Gtk.ToggleButton) => {
+                        onSearchToggle(btn.getActive());
+                    }}
                     valign={Gtk.Align.CENTER}
                     focusOnClick={false}
                 />
@@ -198,18 +271,12 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
     />
 );
 
-type AppShortcutsProps = {
-    onSearchToggle: () => void;
-    onKeyboardShortcuts: () => void;
-    onNotebookNext: () => void;
-    onNotebookPrev: () => void;
-};
-
 const shortcut = (accelerator: string, run: () => void) => (
     <GtkShortcut
         trigger={Gtk.ShortcutTrigger.parseString(accelerator)}
         action={Gtk.CallbackAction.new(() => {
             run();
+
             return true;
         })}
     />
@@ -221,7 +288,9 @@ const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onN
         shortcuts={(
             <>
                 {shortcut("<Control>f", onSearchToggle)}
-                {shortcut("<Control><Shift>i", () => Gtk.Window.setInteractiveDebugging(true))}
+                {shortcut("<Control><Shift>i", () => {
+                    Gtk.Window.setInteractiveDebugging(true);
+                })}
                 {shortcut("<Control>question", onKeyboardShortcuts)}
                 {shortcut("<Control>Page_Down", onNotebookNext)}
                 {shortcut("<Control>Page_Up", onNotebookPrev)}
@@ -230,16 +299,13 @@ const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onN
     />
 );
 
-type AppNotebookProps = {
-    page: number;
-    onSwitchPage: (page: number) => void;
-};
-
 const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
     <GtkNotebook
         name="notebook"
         page={page}
-        onSwitchPage={(_page, pageNum) => onSwitchPage(pageNum)}
+        onSwitchPage={(_page, pageNum) => {
+            onSwitchPage(pageNum);
+        }}
         vexpand
         hexpand
         scrollable
@@ -256,10 +322,6 @@ const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
         </GtkNotebookPage>
     </GtkNotebook>
 );
-
-type AboutDialogProps = {
-    onClose: () => void;
-};
 
 const AboutDialog = ({ onClose }: AboutDialogProps) => (
     <AdwAboutDialog
@@ -292,14 +354,41 @@ const useDemoWindows = () => {
     return { demoWindows, openWindow, closeWindow };
 };
 
-type MainWindowBodyProps = {
-    searchMode: boolean;
-    notebookPage: number;
-    onSearchToggle: () => void;
-    onKeyboardShortcuts: () => void;
-    onNotebookPageChange: (page: number) => void;
-    onSearchChanged: (query: string) => void;
-};
+function useMainWindowChrome() {
+    const [searchMode, setSearchMode] = useState(false);
+    const [notebookPage, setNotebookPage] = useState(0);
+    const [showAbout, setShowAbout] = useState(false);
+    const [showShortcuts, setShowShortcuts] = useState(false);
+
+    return {
+        searchMode,
+        setSearchMode,
+        notebookPage,
+        setNotebookPage,
+        showAbout,
+        showShortcuts,
+
+        toggleSearch: () => {
+            setSearchMode((prev) => !prev);
+        },
+
+        openAbout: () => {
+            setShowAbout(true);
+        },
+
+        closeAbout: () => {
+            setShowAbout(false);
+        },
+
+        openShortcuts: () => {
+            setShowShortcuts(true);
+        },
+
+        closeShortcuts: () => {
+            setShowShortcuts(false);
+        },
+    };
+}
 
 const MainWindowBody = ({
     searchMode,
@@ -317,8 +406,12 @@ const MainWindowBody = ({
             <AppShortcuts
                 onSearchToggle={onSearchToggle}
                 onKeyboardShortcuts={onKeyboardShortcuts}
-                onNotebookNext={() => onNotebookPageChange(Math.min(notebookPage + 1, 1))}
-                onNotebookPrev={() => onNotebookPageChange(Math.max(notebookPage - 1, 0))}
+                onNotebookNext={() => {
+                    onNotebookPageChange(Math.min(notebookPage + 1, 1));
+                }}
+                onNotebookPrev={() => {
+                    onNotebookPageChange(Math.max(notebookPage - 1, 0));
+                }}
             />
         )}
     >
@@ -327,36 +420,54 @@ const MainWindowBody = ({
     </GtkBox>
 );
 
-type MainWindowActionsProps = {
-    onKeyboardShortcuts: () => void;
-    onShowAbout: () => void;
-};
-
 const renderMainWindowActions = ({ onKeyboardShortcuts, onShowAbout }: MainWindowActionsProps) => (
     <>
-        <GSimpleAction name="inspector" onActivate={() => Gtk.Window.setInteractiveDebugging(true)} />
+        <GSimpleAction
+            name="inspector"
+            onActivate={() => {
+                Gtk.Window.setInteractiveDebugging(true);
+            }}
+        />
         <GSimpleAction name="shortcuts" onActivate={onKeyboardShortcuts} />
         <GSimpleAction name="about" onActivate={onShowAbout} />
     </>
 );
 
+const MainWindowContent = ({ chrome, demoWindows, onCloseWindow, onSearchChanged }: MainWindowContentProps) => (
+    <>
+        <MainWindowBody
+            searchMode={chrome.searchMode}
+            notebookPage={chrome.notebookPage}
+            onSearchToggle={chrome.toggleSearch}
+            onKeyboardShortcuts={chrome.openShortcuts}
+            onNotebookPageChange={chrome.setNotebookPage}
+            onSearchChanged={onSearchChanged}
+        />
+        {demoWindows.map((id) => (
+            <DemoWindow
+                key={id}
+                onClose={() => {
+                    onCloseWindow(id);
+                }}
+            />
+        ))}
+        {chrome.showAbout && <AboutDialog onClose={chrome.closeAbout} />}
+        {chrome.showShortcuts && <ShortcutsDialog onClose={chrome.closeShortcuts} />}
+    </>
+);
+
 const MainWindow = () => {
     const { currentDemo, setSearchQuery } = useDemo();
-    const [searchMode, setSearchMode] = useState(false);
-    const [showAbout, setShowAbout] = useState(false);
-    const [showShortcuts, setShowShortcuts] = useState(false);
-    const [notebookPage, setNotebookPage] = useState(0);
+    const chrome = useMainWindowChrome();
     const { demoWindows, openWindow, closeWindow } = useDemoWindows();
-
     const windowTitle = currentDemo ? parseTitle(currentDemo.title).displayTitle : "GTK Demo";
 
     const handleRun = () => {
-        if (!currentDemo) return;
-        openWindow();
-    };
+        if (!currentDemo) {
+            return;
+        }
 
-    const handleKeyboardShortcuts = () => {
-        setShowShortcuts(true);
+        openWindow();
     };
 
     return (
@@ -368,35 +479,28 @@ const MainWindow = () => {
             titlebar={(
                 <AppHeaderBar
                     hasDemo={!!currentDemo?.component}
-                    searchMode={searchMode}
+                    searchMode={chrome.searchMode}
                     onRun={handleRun}
-                    onSearchToggle={setSearchMode}
+                    onSearchToggle={chrome.setSearchMode}
                 />
             )}
             onCloseRequest={quit}
             actions={renderMainWindowActions({
-                onKeyboardShortcuts: handleKeyboardShortcuts,
-                onShowAbout: () => setShowAbout(true),
+                onKeyboardShortcuts: chrome.openShortcuts,
+                onShowAbout: chrome.openAbout,
             })}
         >
-            <MainWindowBody
-                searchMode={searchMode}
-                notebookPage={notebookPage}
-                onSearchToggle={() => setSearchMode((prev) => !prev)}
-                onKeyboardShortcuts={handleKeyboardShortcuts}
-                onNotebookPageChange={setNotebookPage}
+            <MainWindowContent
+                chrome={chrome}
+                demoWindows={demoWindows}
+                onCloseWindow={closeWindow}
                 onSearchChanged={setSearchQuery}
             />
-            {demoWindows.map((id) => (
-                <DemoWindow key={id} onClose={() => closeWindow(id)} />
-            ))}
-            {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
-            {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
         </GtkApplicationWindow>
     );
 };
 
-export const Demo = () => {
+const Demo = () => {
     useApplicationIcon();
 
     return (
@@ -406,7 +510,7 @@ export const Demo = () => {
     );
 };
 
-export const App = () => (
+const App = () => (
     <GtkApplication
         flags={Gio.ApplicationFlags.NON_UNIQUE}
         actionAccels={[
@@ -417,3 +521,5 @@ export const App = () => (
         <Demo />
     </GtkApplication>
 );
+
+export { App, Demo };

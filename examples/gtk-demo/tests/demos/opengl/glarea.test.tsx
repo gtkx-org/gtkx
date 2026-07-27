@@ -25,18 +25,24 @@ describe("glareaDemo", () => {
 
     it("renders three axis sliders and an enabled Quit button", async () => {
         await renderDemo(glareaDemo);
+
         const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, {
             value: { min: 0, max: 360 },
         })) as Gtk.Scale[];
+
         expect(scales).toHaveLength(3);
+
         for (const scale of scales) {
             expect(scale.getAdjustment().getStepIncrement()).toBe(1);
             expect(scale.getDrawValue()).toBe(false);
         }
+
         const quit = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit" })) as Gtk.Button;
         expect(quit.getSensitive()).toBe(true);
     });
+});
 
+describe("glareaDemo interaction", () => {
     it("queues a re-render of the GL area when each axis slider's value changes", async () => {
         await renderDemo(glareaDemo);
         const glArea = (await screen.findByName("gl-area")) as Gtk.GLArea;
@@ -46,7 +52,10 @@ describe("glareaDemo", () => {
         for (const scale of scales) {
             scale.grabFocus();
             await userEvent.keyboard(scale, "{PageUp}");
-            await waitFor(() => expect(scale).toHaveValue(12));
+
+            await waitFor(() => {
+                expect(scale).toHaveValue(12);
+            });
         }
 
         expect(queueRenderSpy).toHaveBeenCalledTimes(3);
@@ -58,7 +67,10 @@ describe("glareaDemo", () => {
         await screen.findByRole(Gtk.AccessibleRole.WINDOW);
         const quit = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit" })) as Gtk.Button;
         await userEvent.click(quit);
-        await waitFor(() => expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW)).toBeNull());
+
+        await waitFor(() => {
+            expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW)).toBeNull();
+        });
     });
 
     it("labels the axis sliders with X / Y / Z legends", async () => {

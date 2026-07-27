@@ -1,13 +1,5 @@
-import { RuleTester } from "@typescript-eslint/rule-tester";
-import { afterAll, describe, it } from "vitest";
 import { moduleSectionOrder } from "../src/rules/module-section-order.js";
-
-RuleTester.afterAll = afterAll;
-RuleTester.describe = describe;
-RuleTester.it = it;
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester();
+import { createRuleTester } from "./rule-tester.js";
 
 const ordered = `
 import { join } from "node:path";
@@ -34,6 +26,8 @@ warm({ root: DEFAULT_ROOT });
 
 export { Loader, resolveRoot };
 `;
+
+const ruleTester = createRuleTester();
 
 ruleTester.run("module-section-order", moduleSectionOrder, {
     valid: [

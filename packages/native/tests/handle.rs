@@ -177,7 +177,7 @@ fn take_owned_consumes_the_object_once() {
 fn take_owned_on_a_borrowed_handle_returns_none() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();
-        let handle = Handle::from_glib_borrow(obj.as_ptr() as *mut c_void);
+        let handle = Handle::from_glib_borrow(obj.as_ptr().cast::<c_void>());
 
         assert!(handle.take_owned().is_none());
     });
@@ -216,12 +216,35 @@ fn decoded_gobject_handle_reports_nonzero_size_hint() {
     });
 }
 
-fn wrapped_gobject_owned_by_worker() -> (usize, napi::sys::napi_ref) {
+struct WrappedGobject {
+    ptr: usize,
+    napi_ref: napi::sys::napi_ref,
+    binding: Rc<wrapper::WrapperHandle>,
+    generation: u64,
+}
+
+fn wrapped_gobject_owned_by_worker() -> WrappedGobject {
     let (obj, obj_ptr, _) = helpers::fresh_gobject();
     let napi_ref = napi_mock::fake_reference();
-    let (_binding, _generation) = unsafe { wrapper::install(obj_ptr, napi_ref.cast()) };
+    let (binding, generation) = unsafe { wrapper::install(obj_ptr, napi_ref.cast()) };
     std::mem::forget(obj);
-    (obj_ptr as usize, napi_ref)
+    WrappedGobject {
+        ptr: obj_ptr as usize,
+        napi_ref,
+        binding,
+        generation,
+    }
+}
+
+fn release_wrapper(wrapped: WrappedGobject) {
+    let napi_ref = wrapped.napi_ref;
+    wrapper::schedule_cleanup(
+        Some(wrapped.binding),
+        wrapped.generation,
+        wrapped.ptr,
+        napi_ref.cast(),
+    );
+    pump_default_context_until(|| napi_mock::reference_is_deleted(napi_ref));
 }
 
 #[test]
@@ -229,20 +252,28 @@ fn main_thread_toggle_notifications_apply_synchronously() {
     helpers::run(|| {
         let (obj, obj_ptr, _) = helpers::fresh_gobject();
         let napi_ref = napi_mock::fake_reference();
-        let (_binding, _generation) = unsafe { wrapper::install(obj_ptr, napi_ref.cast()) };
+        let (binding, generation) = unsafe { wrapper::install(obj_ptr, napi_ref.cast()) };
 
         let unref_baseline = napi_mock::count("napi_reference_unref");
         drop(obj);
 
         assert_eq!(napi_mock::count("napi_reference_unref"), unref_baseline + 1);
         assert_eq!(napi_mock::reference_count(napi_ref), Some(0));
+
+        release_wrapper(WrappedGobject {
+            ptr: obj_ptr as usize,
+            napi_ref,
+            binding,
+            generation,
+        });
     });
 }
 
 #[test]
 fn off_thread_toggle_notifications_marshal_to_the_install_thread() {
     helpers::run(|| {
-        let (raw, napi_ref) = wrapped_gobject_owned_by_worker();
+        let wrapped = wrapped_gobject_owned_by_worker();
+        let (raw, napi_ref) = (wrapped.ptr, wrapped.napi_ref);
 
         let unref_baseline = napi_mock::count("napi_reference_unref");
         std::thread::spawn(move || unsafe {
@@ -268,13 +299,17 @@ fn off_thread_toggle_notifications_marshal_to_the_install_thread() {
         pump_default_context_until(|| napi_mock::count("napi_reference_ref") > ref_baseline);
         assert_eq!(napi_mock::count("napi_reference_ref"), ref_baseline + 1);
         assert_eq!(napi_mock::reference_count(napi_ref), Some(1));
+
+        release_wrapper(wrapped);
+        unsafe { glib::gobject_ffi::g_object_unref(raw as *mut glib::gobject_ffi::GObject) };
     });
 }
 
 #[test]
 fn queued_toggle_resyncs_converge_to_the_final_reference_state() {
     helpers::run(|| {
-        let (raw, napi_ref) = wrapped_gobject_owned_by_worker();
+        let wrapped = wrapped_gobject_owned_by_worker();
+        let (raw, napi_ref) = (wrapped.ptr, wrapped.napi_ref);
 
         std::thread::spawn(move || unsafe {
             let gobject = raw as *mut glib::gobject_ffi::GObject;
@@ -291,5 +326,7 @@ fn queued_toggle_resyncs_converge_to_the_final_reference_state() {
         assert_eq!(napi_mock::reference_count(napi_ref), Some(0));
         assert_eq!(napi_mock::count("napi_reference_unref"), 1);
         assert_eq!(napi_mock::count("napi_reference_ref"), 0);
+
+        release_wrapper(wrapped);
     });
 }

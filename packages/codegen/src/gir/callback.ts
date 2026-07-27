@@ -1,7 +1,7 @@
 import type { GirFunction } from "./function.js";
 import type { ParseContext } from "./type-id.js";
 import { type GirCallable, parseCallable } from "./parameter.js";
-import { attrBool, type RawNode } from "./parse.js";
+import { isAttrTrue, type RawNode } from "./parse.js";
 
 type GirCallback = GirCallable & {
     introspectable: boolean;
@@ -9,7 +9,7 @@ type GirCallback = GirCallable & {
 
 const callbackFromNode = (node: RawNode, context: ParseContext): GirCallback => ({
     ...parseCallable(node, context),
-    introspectable: attrBool(node, "introspectable", true),
+    introspectable: isAttrTrue(node, "introspectable", true),
 });
 
 const callbackAsFunction = (callback: GirCallback): GirFunction => ({

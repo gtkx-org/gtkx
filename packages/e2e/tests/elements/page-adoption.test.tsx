@@ -1,8 +1,27 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { RefObject } from "react";
 import { GtkLabel, GtkNotebook, GtkNotebookPage, GtkStack, GtkStackPage } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+
+function ReorderablePageApp({
+    notebookRef,
+    contentRef,
+    reorderable,
+}: {
+    notebookRef: RefObject<Gtk.Notebook | null>;
+    contentRef: RefObject<Gtk.Label | null>;
+    reorderable: boolean;
+}) {
+    return (
+        <GtkNotebook ref={notebookRef}>
+            <GtkNotebookPage tabLabel="Page" reorderable={reorderable}>
+                <GtkLabel ref={contentRef}>Content</GtkLabel>
+            </GtkNotebookPage>
+        </GtkNotebook>
+    );
+}
 
 describe("render - page adoption > NotebookPage", () => {
     it("exposes the real Gtk.NotebookPage through ref", async () => {
@@ -45,20 +64,17 @@ describe("render - page adoption > NotebookPage", () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
 
-        function App({ reorderable }: { reorderable: boolean }) {
-            return (
-                <GtkNotebook ref={notebookRef}>
-                    <GtkNotebookPage tabLabel="Page" reorderable={reorderable}>
-                        <GtkLabel ref={contentRef}>Content</GtkLabel>
-                    </GtkNotebookPage>
-                </GtkNotebook>
-            );
-        }
+        const { rerender } = await render(
+            <ReorderablePageApp notebookRef={notebookRef} contentRef={contentRef} reorderable={true} />,
+        );
 
-        const { rerender } = await render(<App reorderable={true} />);
         let page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(page?.reorderable).toBe(true);
-        await rerender(<App reorderable={false} />);
+
+        await rerender(
+            <ReorderablePageApp notebookRef={notebookRef} contentRef={contentRef} reorderable={false} />,
+        );
+
         page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(page?.reorderable).toBe(false);
     });

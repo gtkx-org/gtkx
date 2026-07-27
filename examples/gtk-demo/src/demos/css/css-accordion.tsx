@@ -5,7 +5,18 @@ import { useCssResource } from "../../use-css-resource.js";
 import accordionCss from "./css-accordion.css?raw";
 import sourceCode from "./css-accordion.tsx?raw";
 
-const CssAccordionDemo = () => {
+const cssAccordionDemo: Demo = {
+    id: "css-accordion",
+    title: "Theming/CSS Accordion",
+    description: "A simple accordion demo written using CSS transitions and multiple backgrounds",
+    keywords: [],
+    component: CssAccordionDemo,
+    sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 300,
+};
+
+function CssAccordionDemo() {
     useCssResource(accordionCss, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     return (
@@ -26,15 +37,6 @@ const CssAccordionDemo = () => {
             </GtkBox>
         </GtkFrame>
     );
-};
+}
 
-export const cssAccordionDemo: Demo = {
-    id: "css-accordion",
-    title: "Theming/CSS Accordion",
-    description: "A simple accordion demo written using CSS transitions and multiple backgrounds",
-    keywords: [],
-    component: CssAccordionDemo,
-    sourceCode,
-    defaultWidth: 600,
-    defaultHeight: 300,
-};
+export { cssAccordionDemo };

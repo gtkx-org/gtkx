@@ -136,7 +136,9 @@ function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
 
         if (descriptor && UNSUPPORTED_CONSTRUCT_VFUNCS.has(methodName)) {
             throw new Error(
-                `registerClass: overriding the GObject construct-time vtable slot '${methodName}' is not supported; run construct-time initialization in the subclass constructor, after super(...), instead`,
+                `registerClass: overriding the GObject construct-time vtable slot '${methodName}' is not ` +
+                "supported; run construct-time initialization in the subclass constructor, after " +
+                "super(...), instead",
             );
         }
 

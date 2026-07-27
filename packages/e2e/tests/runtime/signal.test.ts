@@ -2,8 +2,6 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it, vi } from "vitest";
 import "@gtkx/gi/gobject";
 
-const emissionResult = (emit: () => void): unknown => emit();
-
 describe("emitSignal — basic dispatch", () => {
     it("emits a void signal with no arguments and invokes connected handlers", () => {
         const button = new Gtk.Button();
@@ -23,9 +21,9 @@ describe("emitSignal — basic dispatch", () => {
 
     it("returns undefined from any signal emission", () => {
         const button = new Gtk.Button();
-        button.on("clicked", () => {});
-        const result = emissionResult(() => button.emit("clicked"));
-        expect(result).toBeUndefined();
+        button.on("clicked", vi.fn());
+        const emitClicked: (signal: "clicked") => unknown = button.emit.bind(button);
+        expect(emitClicked("clicked")).toBeUndefined();
     });
 });
 

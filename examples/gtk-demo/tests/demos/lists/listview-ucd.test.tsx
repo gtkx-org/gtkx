@@ -4,18 +4,26 @@ import { describe, expect, it, vi } from "vitest";
 import { listviewUcdDemo } from "../../../src/demos/lists/listview-ucd.js";
 import { renderDemo } from "../../test-utils.js";
 
-vi.setConfig({ testTimeout: 30_000 });
-
 const codepointCells = (): Gtk.Inscription[] =>
     screen.queryAllByText(/^0x[0-9a-f]{4,6}$/).map((widget) => widget as Gtk.Inscription);
 
 const firstCodepointText = (): string => {
     const [cell] = codepointCells();
-    if (!cell) throw new Error("expected at least one codepoint cell");
+
+    if (!cell) {
+        throw new Error("expected at least one codepoint cell");
+    }
+
     const text = cell.getText();
-    if (text === null) throw new Error("codepoint cell has no text");
+
+    if (text === null) {
+        throw new Error("codepoint cell has no text");
+    }
+
     return text;
 };
+
+vi.setConfig({ testTimeout: 30_000 });
 
 describe("listviewUcdDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -42,6 +50,7 @@ describe("listviewUcdDemo column view", () => {
         const headers = await screen.findAllByRole(Gtk.AccessibleRole.COLUMN_HEADER);
         const expectedTitles = ["Codepoint", "Char", "Name", "Type", "Break Type", "Combining Class"];
         expect(headers).toHaveLength(expectedTitles.length);
+
         for (const [i, title] of expectedTitles.entries()) {
             expect(headers[i]).toHaveAccessibleName(title);
         }
@@ -59,8 +68,7 @@ describe("listviewUcdDemo column view", () => {
     it("renders the glyph for a printable character in the Char column", async () => {
         await renderDemo(listviewUcdDemo);
         await screen.findByName("column-view");
-        // 0x0021 '!' lives in the initial COMMON ("No script") viewport and is printable
-        await screen.findByText("!");
+        expect(await screen.findByText("!")).toHaveTextContent("!");
     });
 });
 
@@ -74,7 +82,11 @@ describe("listviewUcdDemo selection", () => {
         const expectedChar = String.fromCodePoint(Number.parseInt(firstCodepoint, 16));
         cv.grabFocus();
         await userEvent.keyboard(cv, "{ArrowDown}{Enter}");
-        await waitFor(() => expect(preview.getLabel().length).toBeGreaterThan(0));
+
+        await waitFor(() => {
+            expect(preview.getLabel().length).toBeGreaterThan(0);
+        });
+
         expect(preview.getLabel()).toBe(expectedChar);
     });
 });

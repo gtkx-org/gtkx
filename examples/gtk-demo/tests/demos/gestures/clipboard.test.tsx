@@ -3,9 +3,13 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, screenshot, userEvent, waitFor } from "@gtkx/testing";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { clipboardDemo } from "../../../src/demos/gestures/clipboard.js";
 import { makeFileValue, makeIntValue, makeRgbaValue, makeStringValue, renderDemo } from "../../test-utils.js";
+
+const TEMP_DIR = tmpdir();
 
 const findButtonByLabel = async (label: string): Promise<Gtk.Button> =>
     (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label })) as Gtk.Button;
@@ -15,10 +19,15 @@ const findController = <T extends Gtk.EventController>(
     type: new (...args: never[]) => T,
 ): T | null => {
     const list = widget.observeControllers();
+
     for (let i = 0; i < list.getNItems(); i++) {
         const item = list.getItem(i);
-        if (item instanceof type) return item;
+
+        if (item instanceof type) {
+            return item;
+        }
     }
+
     return null;
 };
 
@@ -31,6 +40,7 @@ const switchSourceType = async (type: "Text" | "Color" | "Image" | "File" | "Fol
 const getDefaultClipboard = (): Gdk.Clipboard => {
     const clipboard = Gdk.Display.getDefault()?.getClipboard();
     expect(clipboard).toBeInstanceOf(Gdk.Clipboard);
+
     return clipboard as Gdk.Clipboard;
 };
 
@@ -39,7 +49,10 @@ const populateClipboardString = async (text: string): Promise<void> => {
     const value = new GObject.Value();
     value.init(GObject.TYPE_STRING);
     value.setString(text);
-    await act(() => clipboard.set(value));
+
+    await act(() => {
+        clipboard.set(value);
+    });
 };
 
 const populateClipboardRgba = async (): Promise<void> => {
@@ -52,7 +65,10 @@ const populateClipboardRgba = async (): Promise<void> => {
     const value = new GObject.Value();
     value.init(GObject.typeFromName("GdkRGBA"));
     value.setBoxed(rgba);
-    await act(() => clipboard.set(value));
+
+    await act(() => {
+        clipboard.set(value);
+    });
 };
 
 const populateClipboardFile = async (): Promise<void> => {
@@ -61,17 +77,17 @@ const populateClipboardFile = async (): Promise<void> => {
     const value = new GObject.Value();
     value.init(GObject.typeFromName("GFile"));
     value.setObject(file);
-    await act(() => clipboard.set(value));
+
+    await act(() => {
+        clipboard.set(value);
+    });
 };
 
-const copyImageAndExpectPaintable = async (): Promise<void> => {
+const copyImageSource = async (): Promise<void> => {
     await renderDemo(clipboardDemo);
     await switchSourceType("Image");
     const copyButton = await findButtonByLabel("_Copy");
     await userEvent.click(copyButton);
-    await waitFor(() => {
-        expect(getDefaultClipboard().getFormats().containGtype(GObject.typeFromName("GdkPaintable"))).toBe(true);
-    });
 };
 
 const getPasteStack = async (): Promise<Gtk.Stack> => (await screen.findByName("paste-stack")) as Gtk.Stack;
@@ -82,6 +98,7 @@ const buildRgba = (r: number, g: number, b: number, a: number): Gdk.RGBA => {
     rgba.green = g;
     rgba.blue = b;
     rgba.alpha = a;
+
     return rgba;
 };
 
@@ -90,15 +107,59 @@ const makePaintableValue = (): GObject.Value => {
     const value = new GObject.Value();
     value.init(GObject.typeFromName("GdkPaintable"));
     value.setObject(paintable);
+
     return value;
 };
 
 const pasteAndAssertType = async (assertType: (label: Gtk.Label) => void): Promise<void> => {
     const pasteButton = await findButtonByLabel("_Paste");
-    await waitFor(() => expect(pasteButton.getSensitive()).toBe(true));
+
+    await waitFor(() => {
+        expect(pasteButton.getSensitive()).toBe(true);
+    });
+
     await userEvent.click(pasteButton);
     const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
-    await waitFor(() => assertType(label));
+
+    await waitFor(() => {
+        assertType(label);
+    });
+};
+
+const runWithFileDialog = async <T,>(
+    method: "open" | "selectFolder",
+    result: Gio.File | Error,
+    body: () => Promise<T>,
+): Promise<{ value: T; dialogSpy: ReturnType<typeof vi.spyOn> }> => {
+    const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, method);
+
+    if (result instanceof Error) {
+        dialogSpy.mockRejectedValue(result);
+    } else {
+        dialogSpy.mockResolvedValue(result);
+    }
+
+    try {
+        const value = await body();
+
+        return { value, dialogSpy };
+    } finally {
+        dialogSpy.mockRestore();
+    }
+};
+
+const clickSourceButtonAfterDialog = async (
+    kind: "File" | "Folder",
+    label: "File Drag Source" | "Folder Drag Source",
+): Promise<void> => {
+    await renderDemo(clipboardDemo);
+    await switchSourceType(kind);
+    const sourceButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label })) as Gtk.Button;
+
+    await act(async () => {
+        await userEvent.click(sourceButton);
+        await Promise.resolve();
+    });
 };
 
 describe("clipboardDemo metadata", () => {
@@ -115,16 +176,21 @@ describe("clipboardDemo metadata", () => {
 });
 
 describe("clipboardDemo rendering", () => {
-    it("renders the intro label, the text source entry initialised to 'Copy this!' and the Copy/Paste buttons", async () => {
-        await renderDemo(clipboardDemo);
-        expect(await screen.findByText(/^“Copy” will copy/)).toHaveTextContent(
-            "“Copy” will copy the selected data the clipboard",
-        );
-        expect(await screen.findByDisplayValue("Copy this!")).toHaveDisplayValue("Copy this!");
-        const copyButton = await findButtonByLabel("_Copy");
-        expect(copyButton.getSensitive()).toBe(true);
-        await findButtonByLabel("_Paste");
-    });
+    it(
+        "renders the intro label, the text source entry initialised to 'Copy this!' and the Copy/Paste buttons",
+        async () => {
+            await renderDemo(clipboardDemo);
+
+            expect(await screen.findByText(/^“Copy” will copy/)).toHaveTextContent(
+                "“Copy” will copy the selected data the clipboard",
+            );
+
+            expect(await screen.findByDisplayValue("Copy this!")).toHaveDisplayValue("Copy this!");
+            const copyButton = await findButtonByLabel("_Copy");
+            expect(copyButton.getSensitive()).toBe(true);
+            await findButtonByLabel("_Paste");
+        },
+    );
 
     it("renders three image toggle buttons with the rose toggle active by default", async () => {
         await renderDemo(clipboardDemo);
@@ -165,7 +231,10 @@ describe("clipboardDemo entry interactions", () => {
         const copyButton = await findButtonByLabel("_Copy");
         expect(copyButton.getSensitive()).toBe(true);
         await userEvent.clear(entry);
-        await waitFor(() => expect(copyButton.getSensitive()).toBe(false));
+
+        await waitFor(() => {
+            expect(copyButton.getSensitive()).toBe(false);
+        });
     });
 
     it("re-enables the copy button when the user types text after clearing the source", async () => {
@@ -173,9 +242,16 @@ describe("clipboardDemo entry interactions", () => {
         const entry = (await screen.findByName("source-entry")) as Gtk.Entry;
         const copyButton = await findButtonByLabel("_Copy");
         await userEvent.clear(entry);
-        await waitFor(() => expect(copyButton.getSensitive()).toBe(false));
+
+        await waitFor(() => {
+            expect(copyButton.getSensitive()).toBe(false);
+        });
+
         await userEvent.type(entry, "retyped");
-        await waitFor(() => expect(copyButton.getSensitive()).toBe(true));
+
+        await waitFor(() => {
+            expect(copyButton.getSensitive()).toBe(true);
+        });
     });
 });
 
@@ -184,33 +260,60 @@ describe("clipboardDemo source type switching", () => {
         await renderDemo(clipboardDemo);
         await switchSourceType("Color");
         const stack = (await screen.findByName("source-stack")) as Gtk.Stack;
-        await waitFor(() => expect(stack.getVisibleChildName()).toBe("Color"));
+
+        await waitFor(() => {
+            expect(stack.getVisibleChildName()).toBe("Color");
+        });
     });
 
     it("switches the source stack to the Image page when Image is selected", async () => {
         await renderDemo(clipboardDemo);
         await switchSourceType("Image");
         const stack = (await screen.findByName("source-stack")) as Gtk.Stack;
-        await waitFor(() => expect(stack.getVisibleChildName()).toBe("Image"));
+
+        await waitFor(() => {
+            expect(stack.getVisibleChildName()).toBe("Image");
+        });
     });
 
-    it("switches the source stack to the File page when File is selected and disables Copy until a file is chosen", async () => {
-        await renderDemo(clipboardDemo);
-        await switchSourceType("File");
-        const stack = (await screen.findByName("source-stack")) as Gtk.Stack;
-        await waitFor(() => expect(stack.getVisibleChildName()).toBe("File"));
-        const copyButton = await findButtonByLabel("_Copy");
-        await waitFor(() => expect(copyButton.getSensitive()).toBe(false));
-    });
+    it(
+        "switches the source stack to the File page when File is selected and disables Copy until a file is chosen",
+        async () => {
+            await renderDemo(clipboardDemo);
+            await switchSourceType("File");
+            const stack = (await screen.findByName("source-stack")) as Gtk.Stack;
 
-    it("switches the source stack to the Folder page when Folder is selected and disables Copy until a folder is chosen", async () => {
-        await renderDemo(clipboardDemo);
-        await switchSourceType("Folder");
-        const stack = (await screen.findByName("source-stack")) as Gtk.Stack;
-        await waitFor(() => expect(stack.getVisibleChildName()).toBe("Folder"));
-        const copyButton = await findButtonByLabel("_Copy");
-        await waitFor(() => expect(copyButton.getSensitive()).toBe(false));
-    });
+            await waitFor(() => {
+                expect(stack.getVisibleChildName()).toBe("File");
+            });
+
+            const copyButton = await findButtonByLabel("_Copy");
+
+            await waitFor(() => {
+                expect(copyButton.getSensitive()).toBe(false);
+            });
+        },
+    );
+
+    it(
+        "switches the source stack to the Folder page when Folder is selected " +
+        "and disables Copy until a folder is chosen",
+        async () => {
+            await renderDemo(clipboardDemo);
+            await switchSourceType("Folder");
+            const stack = (await screen.findByName("source-stack")) as Gtk.Stack;
+
+            await waitFor(() => {
+                expect(stack.getVisibleChildName()).toBe("Folder");
+            });
+
+            const copyButton = await findButtonByLabel("_Copy");
+
+            await waitFor(() => {
+                expect(copyButton.getSensitive()).toBe(false);
+            });
+        },
+    );
 });
 
 describe("clipboardDemo image source", () => {
@@ -221,6 +324,7 @@ describe("clipboardDemo image source", () => {
         const floppy = (await screen.findByName("image_floppy")) as Gtk.ToggleButton;
         expect(rose).toBePressed();
         await userEvent.click(floppy);
+
         await waitFor(() => {
             expect(floppy).toBePressed();
             expect(rose).not.toBePressed();
@@ -232,7 +336,10 @@ describe("clipboardDemo image source", () => {
         await switchSourceType("Image");
         const logo = (await screen.findByName("image_logo")) as Gtk.ToggleButton;
         await userEvent.click(logo);
-        await waitFor(() => expect(logo).toBePressed());
+
+        await waitFor(() => {
+            expect(logo).toBePressed();
+        });
     });
 });
 
@@ -242,13 +349,19 @@ describe("clipboardDemo color source", () => {
         await switchSourceType("Color");
         const colorButton = (await screen.findByName("color-button")) as Gtk.ColorDialogButton;
         const chosen = buildRgba(0.2, 0.4, 0.6, 1);
-        await act(() => colorButton.setRgba(chosen));
+
+        await act(() => {
+            colorButton.setRgba(chosen);
+        });
+
         const copyButton = await findButtonByLabel("_Copy");
         await userEvent.click(copyButton);
         const rgbaType = GObject.typeFromName("GdkRGBA");
+
         await waitFor(() => {
             expect(getDefaultClipboard().getFormats().containGtype(rgbaType)).toBe(true);
         });
+
         const value = await getDefaultClipboard().readValueAsync(rgbaType, 0, null);
         const rgba = value.getBoxed<Gdk.RGBA>();
         expect(rgba.red).toBeCloseTo(0.2, 2);
@@ -262,6 +375,7 @@ describe("clipboardDemo Copy button populates the clipboard", () => {
         await renderDemo(clipboardDemo);
         const copyButton = await findButtonByLabel("_Copy");
         await userEvent.click(copyButton);
+
         await waitFor(() => {
             expect(getDefaultClipboard().getFormats().containGtype(GObject.TYPE_STRING)).toBe(true);
         });
@@ -272,13 +386,18 @@ describe("clipboardDemo Copy button populates the clipboard", () => {
         await switchSourceType("Color");
         const copyButton = await findButtonByLabel("_Copy");
         await userEvent.click(copyButton);
+
         await waitFor(() => {
             expect(getDefaultClipboard().getFormats().containGtype(GObject.typeFromName("GdkRGBA"))).toBe(true);
         });
     });
 
     it("copies a paintable when Copy is clicked with Image source selected", async () => {
-        await copyImageAndExpectPaintable();
+        await copyImageSource();
+
+        await waitFor(() => {
+            expect(getDefaultClipboard().getFormats().containGtype(GObject.typeFromName("GdkPaintable"))).toBe(true);
+        });
     });
 });
 
@@ -286,20 +405,31 @@ describe("clipboardDemo Paste button updates pasted content", () => {
     it("shows pasted Text when the clipboard holds a string", async () => {
         await renderDemo(clipboardDemo);
         await populateClipboardString("clipboard string");
-        await pasteAndAssertType((label) => expect(label).toHaveTextContent("Text"));
+
+        await pasteAndAssertType((label) => {
+            expect(label).toHaveTextContent("Text");
+        });
     });
 
     it("shows pasted Color when the clipboard holds an RGBA value", async () => {
         await renderDemo(clipboardDemo);
         await populateClipboardRgba();
-        await pasteAndAssertType((label) => expect(label).toHaveTextContent("Color"));
+
+        await pasteAndAssertType((label) => {
+            expect(label).toHaveTextContent("Color");
+        });
     });
 
     it("shows the pasted File type and renders the resolved path when the clipboard holds a GFile", async () => {
         await renderDemo(clipboardDemo);
         await populateClipboardFile();
-        await pasteAndAssertType((label) => expect(label).toHaveTextContent("File"));
+
+        await pasteAndAssertType((label) => {
+            expect(label).toHaveTextContent("File");
+        });
+
         const pasteStack = await getPasteStack();
+
         await waitFor(() => {
             expect(pasteStack.getVisibleChildName()).toBe("File");
             expect(pasteStack.getVisibleChild()).toHaveTextContent("/tmp");
@@ -309,8 +439,13 @@ describe("clipboardDemo Paste button updates pasted content", () => {
     it("renders the pasted string on the paste-stack Text page when a string is pasted", async () => {
         await renderDemo(clipboardDemo);
         await populateClipboardString("hello pasted world");
-        await pasteAndAssertType((label) => expect(label).toHaveTextContent("Text"));
+
+        await pasteAndAssertType((label) => {
+            expect(label).toHaveTextContent("Text");
+        });
+
         const pasteStack = await getPasteStack();
+
         await waitFor(() => {
             expect(pasteStack.getVisibleChildName()).toBe("Text");
             expect(pasteStack.getVisibleChild()).toHaveTextContent("hello pasted world");
@@ -324,7 +459,10 @@ describe("clipboardDemo paste-box drop handler", () => {
         const pasteBox = (await screen.findByName("paste-box")) as Gtk.Box;
         await userEvent.drop(pasteBox, makeStringValue("dropped text"));
         const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
-        await waitFor(() => expect(label).toHaveTextContent("Text"));
+
+        await waitFor(() => {
+            expect(label).toHaveTextContent("Text");
+        });
     });
 
     it("updates the pasted content label to 'Color' when an RGBA is dropped", async () => {
@@ -332,7 +470,10 @@ describe("clipboardDemo paste-box drop handler", () => {
         const pasteBox = (await screen.findByName("paste-box")) as Gtk.Box;
         await userEvent.drop(pasteBox, makeRgbaValue(0.5, 0.2, 0.8, 1));
         const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
-        await waitFor(() => expect(label).toHaveTextContent("Color"));
+
+        await waitFor(() => {
+            expect(label).toHaveTextContent("Color");
+        });
     });
 
     it("updates the pasted content label to 'File' when a GFile is dropped", async () => {
@@ -340,7 +481,10 @@ describe("clipboardDemo paste-box drop handler", () => {
         const pasteBox = (await screen.findByName("paste-box")) as Gtk.Box;
         await userEvent.drop(pasteBox, makeFileValue("/tmp"));
         const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
-        await waitFor(() => expect(label).toHaveTextContent("File"));
+
+        await waitFor(() => {
+            expect(label).toHaveTextContent("File");
+        });
     });
 });
 
@@ -351,7 +495,10 @@ describe("clipboardDemo drag sources", () => {
         const pasteBox = (await screen.findByName("paste-box")) as Gtk.Box;
         await userEvent.dragAndDrop(entry, pasteBox, makeStringValue("Copy this!"));
         const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
-        await waitFor(() => expect(label).toHaveTextContent("Text"));
+
+        await waitFor(() => {
+            expect(label).toHaveTextContent("Text");
+        });
     });
 
     it("registers a drag source on the color button by exposing its color via userEvent", async () => {
@@ -361,7 +508,10 @@ describe("clipboardDemo drag sources", () => {
         const pasteBox = (await screen.findByName("paste-box")) as Gtk.Box;
         await userEvent.dragAndDrop(colorButton, pasteBox, makeRgbaValue(0.5, 0.5, 0.5, 1));
         const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
-        await waitFor(() => expect(label).toHaveTextContent("Color"));
+
+        await waitFor(() => {
+            expect(label).toHaveTextContent("Color");
+        });
     });
 });
 
@@ -371,41 +521,66 @@ describe("clipboardDemo paste content rendering", () => {
         const pasteBox = (await screen.findByName("paste-box")) as Gtk.Box;
         await userEvent.drop(pasteBox, makeRgbaValue(0.9, 0.1, 0.5, 1));
         const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
-        await waitFor(() => expect(label).toHaveTextContent("Color"));
+
+        await waitFor(() => {
+            expect(label).toHaveTextContent("Color");
+        });
+
         const pasteStack = await getPasteStack();
-        await waitFor(() => expect(pasteStack.getVisibleChildName()).toBe("Color"));
+
+        await waitFor(() => {
+            expect(pasteStack.getVisibleChildName()).toBe("Color");
+        });
+
         expect(pasteStack.getVisibleChild()).toBeInstanceOf(Gtk.DrawingArea);
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        await act(() => window.setVisible(true));
+
+        await act(() => {
+            window.setVisible(true);
+        });
+
         await screenshot(window);
     });
 
-    it("renders the pasted image on the paste-stack Image page when a paintable is dropped on the paste box", async () => {
-        await renderDemo(clipboardDemo);
-        const pasteBox = (await screen.findByName("paste-box")) as Gtk.Box;
-        await userEvent.drop(pasteBox, makePaintableValue());
-        const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
-        await waitFor(() => expect(label).toHaveTextContent("Image"));
-        const pasteStack = await getPasteStack();
-        await waitFor(() => {
-            expect(pasteStack.getVisibleChildName()).toBe("Image");
-            expect(pasteStack.getVisibleChild()).toBeInstanceOf(Gtk.Image);
-        });
-    });
+    it(
+        "renders the pasted image on the paste-stack Image page when a paintable is dropped on the paste box",
+        async () => {
+            await renderDemo(clipboardDemo);
+            const pasteBox = (await screen.findByName("paste-box")) as Gtk.Box;
+            await userEvent.drop(pasteBox, makePaintableValue());
+            const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
+
+            await waitFor(() => {
+                expect(label).toHaveTextContent("Image");
+            });
+
+            const pasteStack = await getPasteStack();
+
+            await waitFor(() => {
+                expect(pasteStack.getVisibleChildName()).toBe("Image");
+                expect(pasteStack.getVisibleChild()).toBeInstanceOf(Gtk.Image);
+            });
+        },
+    );
 });
 
 describe("clipboardDemo invalid image path", () => {
     it("logs the texture error when copying an image source whose resource fails to load", async () => {
         await renderDemo(clipboardDemo);
         await switchSourceType("Image");
-        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
+
         const textureSpy = vi.spyOn(Gdk.Texture, "newFromResource").mockImplementation(() => {
             throw new Error("resource not found");
         });
+
         try {
             const copyButton = await findButtonByLabel("_Copy");
             await userEvent.click(copyButton);
-            await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("resource not found"));
+
+            await waitFor(() => {
+                expect(errorSpy).toHaveBeenCalledWith("resource not found");
+            });
         } finally {
             textureSpy.mockRestore();
             errorSpy.mockRestore();
@@ -419,45 +594,22 @@ describe("clipboardDemo paste after copy round-trip", () => {
         await switchSourceType("Image");
         const copyButton = await findButtonByLabel("_Copy");
         await userEvent.click(copyButton);
-        await pasteAndAssertType((label) => expect(label).toHaveTextContent("Image"));
+
+        await pasteAndAssertType((label) => {
+            expect(label).toHaveTextContent("Image");
+        });
     });
 });
 
-const runWithFileDialog = async <T,>(
-    method: "open" | "selectFolder",
-    result: Gio.File | Error,
-    body: () => Promise<T>,
-): Promise<{ value: T; dialogSpy: ReturnType<typeof vi.spyOn> }> => {
-    const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, method);
-    if (result instanceof Error) dialogSpy.mockRejectedValue(result);
-    else dialogSpy.mockResolvedValue(result);
-    try {
-        const value = await body();
-        return { value, dialogSpy };
-    } finally {
-        dialogSpy.mockRestore();
-    }
-};
-
-const clickSourceButtonAfterDialog = async (
-    kind: "File" | "Folder",
-    label: "File Drag Source" | "Folder Drag Source",
-): Promise<void> => {
-    await renderDemo(clipboardDemo);
-    await switchSourceType(kind);
-    const sourceButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label })) as Gtk.Button;
-    await act(async () => {
-        await userEvent.click(sourceButton);
-        await Promise.resolve();
-    });
-};
-
 describe("clipboardDemo file source selection", () => {
     it("opens a Gtk.FileDialog and updates the source file when the File button is clicked", async () => {
-        await runWithFileDialog("open", Gio.fileNewForPath("/tmp/fake-file.txt"), async () => {
+        await runWithFileDialog("open", Gio.fileNewForPath(join(TEMP_DIR, "fake-file.txt")), async () => {
             await clickSourceButtonAfterDialog("File", "File Drag Source");
             const copyButton = await findButtonByLabel("_Copy");
-            await waitFor(() => expect(copyButton.getSensitive()).toBe(true));
+
+            await waitFor(() => {
+                expect(copyButton.getSensitive()).toBe(true);
+            });
         });
     });
 
@@ -465,28 +617,42 @@ describe("clipboardDemo file source selection", () => {
         await runWithFileDialog("selectFolder", Gio.fileNewForPath("/tmp"), async () => {
             await clickSourceButtonAfterDialog("Folder", "Folder Drag Source");
             const copyButton = await findButtonByLabel("_Copy");
-            await waitFor(() => expect(copyButton.getSensitive()).toBe(true));
+
+            await waitFor(() => {
+                expect(copyButton.getSensitive()).toBe(true);
+            });
         });
     });
 
     it("logs an error when the File dialog rejects", async () => {
-        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
+
         try {
             await runWithFileDialog("open", new Error("dialog cancelled"), async () => {
                 await clickSourceButtonAfterDialog("File", "File Drag Source");
-                await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("dialog cancelled"));
+
+                await waitFor(() => {
+                    expect(errorSpy).toHaveBeenCalledWith("dialog cancelled");
+                });
             });
         } finally {
             errorSpy.mockRestore();
         }
     });
+});
 
+describe("clipboardDemo file source copying", () => {
     it("copies a file to the clipboard after the file dialog selects a file", async () => {
-        await runWithFileDialog("open", Gio.fileNewForPath("/tmp/some-file.txt"), async () => {
+        await runWithFileDialog("open", Gio.fileNewForPath(join(TEMP_DIR, "some-file.txt")), async () => {
             await clickSourceButtonAfterDialog("File", "File Drag Source");
             const copyButton = await findButtonByLabel("_Copy");
-            await waitFor(() => expect(copyButton.getSensitive()).toBe(true));
+
+            await waitFor(() => {
+                expect(copyButton.getSensitive()).toBe(true);
+            });
+
             await userEvent.click(copyButton);
+
             await waitFor(() => {
                 expect(getDefaultClipboard().getFormats().containGtype(GObject.typeFromName("GFile"))).toBe(true);
             });
@@ -497,8 +663,13 @@ describe("clipboardDemo file source selection", () => {
         await runWithFileDialog("selectFolder", Gio.fileNewForPath("/tmp"), async () => {
             await clickSourceButtonAfterDialog("Folder", "Folder Drag Source");
             const copyButton = await findButtonByLabel("_Copy");
-            await waitFor(() => expect(copyButton.getSensitive()).toBe(true));
+
+            await waitFor(() => {
+                expect(copyButton.getSensitive()).toBe(true);
+            });
+
             await userEvent.click(copyButton);
+
             await waitFor(() => {
                 expect(getDefaultClipboard().getFormats().containGtype(GObject.typeFromName("GFile"))).toBe(true);
             });
@@ -512,7 +683,11 @@ describe("clipboardDemo image and file drag sources", () => {
         await switchSourceType("Image");
         const floppy = (await screen.findByName("image_floppy")) as Gtk.ToggleButton;
         await userEvent.click(floppy);
-        await waitFor(() => expect(floppy).toBePressed());
+
+        await waitFor(() => {
+            expect(floppy).toBePressed();
+        });
+
         const dragSource = findController(floppy, Gtk.DragSource);
         expect(dragSource).toBeInstanceOf(Gtk.DragSource);
         const provider = dragSource?.emit("prepare", 0, 0) as Gdk.ContentProvider | null;
@@ -521,11 +696,13 @@ describe("clipboardDemo image and file drag sources", () => {
     });
 
     it("exposes a GFile content provider from the File source drag source after a file is chosen", async () => {
-        await runWithFileDialog("open", Gio.fileNewForPath("/tmp/dragged.txt"), async () => {
+        await runWithFileDialog("open", Gio.fileNewForPath(join(TEMP_DIR, "dragged.txt")), async () => {
             await clickSourceButtonAfterDialog("File", "File Drag Source");
+
             const sourceButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
                 name: "File Drag Source",
             })) as Gtk.Button;
+
             const dragSource = findController(sourceButton, Gtk.DragSource);
             expect(dragSource).toBeInstanceOf(Gtk.DragSource);
             const provider = dragSource?.emit("prepare", 0, 0) as Gdk.ContentProvider | null;
@@ -541,7 +718,10 @@ describe("clipboardDemo paste-box drop with object types", () => {
         const pasteBox = (await screen.findByName("paste-box")) as Gtk.Box;
         await userEvent.drop(pasteBox, makeFileValue("/etc"));
         const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
-        await waitFor(() => expect(label).toHaveTextContent("File"));
+
+        await waitFor(() => {
+            expect(label).toHaveTextContent("File");
+        });
     });
 
     it("returns false from the drop handler when the dropped value is unrecognized", async () => {

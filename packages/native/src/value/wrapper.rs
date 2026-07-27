@@ -42,13 +42,20 @@ fn apply_wrapper_level(handle: &WrapperHandle, napi_ref: sys::napi_ref, strong: 
     let mut count: u32 = 0;
     unsafe {
         if strong {
-            sys::napi_reference_ref(node_env::env().raw(), napi_ref, &mut count);
+            sys::napi_reference_ref(node_env::env().raw(), napi_ref, &raw mut count);
         } else {
-            sys::napi_reference_unref(node_env::env().raw(), napi_ref, &mut count);
+            sys::napi_reference_unref(node_env::env().raw(), napi_ref, &raw mut count);
         }
     }
 }
 
+/// # Safety
+///
+/// `gobject` must be a non-null pointer to a live `GObject` that the caller holds a strong
+/// reference to for the duration of the call. It must be called on the thread `install` ran on:
+/// the handle stored in the object's qdata is an `Rc` and is not safe to reach from any other
+/// thread. The returned `napi_ref` is null when no wrapper is installed, and otherwise stays valid
+/// only until `schedule_cleanup` deletes it.
 pub unsafe fn wrapper_ref(gobject: *mut glib::gobject_ffi::GObject) -> sys::napi_ref {
     match unsafe { handle_qdata(gobject) } {
         Some(nn) => unsafe { nn.as_ref() }.napi_ref.get(),
@@ -56,6 +63,11 @@ pub unsafe fn wrapper_ref(gobject: *mut glib::gobject_ffi::GObject) -> sys::napi
     }
 }
 
+/// # Safety
+///
+/// `gobject` must be a non-null pointer to a live `GObject` that the caller holds a strong
+/// reference to for the duration of the call, and the call must happen on the thread `install` ran
+/// on, because the qdata it inspects holds a non-`Send` `Rc`.
 pub unsafe fn has_wrapper(gobject: *mut glib::gobject_ffi::GObject) -> bool {
     unsafe { handle_qdata(gobject) }.is_some()
 }
@@ -64,6 +76,15 @@ fn delete_reference(napi_ref: sys::napi_ref) {
     unsafe { sys::napi_delete_reference(node_env::env().raw(), napi_ref) };
 }
 
+/// # Safety
+///
+/// `gobject` must be a non-null pointer to a live `GObject`, and the caller must hold a strong
+/// reference to it across the call, as `g_object_add_toggle_ref` requires. `napi_ref` must be a
+/// live reference created in the Node environment installed on the current thread, with one
+/// reference count handed over to the wrapper: the caller must not delete it, `schedule_cleanup`
+/// does. The call must happen on the thread the Node environment is installed on, since it stores a
+/// non-`Send` `Rc` in the object's qdata and registers a toggle reference whose notify callback
+/// resyncs against this thread.
 pub unsafe fn install(
     gobject: *mut glib::gobject_ffi::GObject,
     napi_ref: sys::napi_ref,
@@ -98,7 +119,7 @@ pub unsafe fn install(
     }
 }
 
-pub(crate) fn schedule_cleanup(
+pub fn schedule_cleanup(
     handle: Option<Rc<WrapperHandle>>,
     generation: u64,
     gobject_ptr: usize,
@@ -178,6 +199,16 @@ mod tests {
 
     use test_support::napi_mock;
 
+    fn release_wrapper(handle: &Rc<WrapperHandle>, gobject: *mut glib::gobject_ffi::GObject) {
+        schedule_cleanup(
+            Some(Rc::clone(handle)),
+            handle.generation.get(),
+            gobject as usize,
+            handle.napi_ref.get(),
+        );
+        test_support::pump_default_context_until(|| !unsafe { has_wrapper(gobject) });
+    }
+
     #[test]
     fn wrapper_ref_and_has_wrapper_are_empty_without_a_handle() {
         node_env::run_installed(|| {
@@ -193,10 +224,11 @@ mod tests {
         node_env::run_installed(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
-            let (_handle, generation) = unsafe { install(obj_ptr, napi_ref) };
+            let (handle, generation) = unsafe { install(obj_ptr, napi_ref) };
             assert_eq!(generation, 1);
             assert_eq!(unsafe { wrapper_ref(obj_ptr) }, napi_ref);
             assert!(unsafe { has_wrapper(obj_ptr) });
+            release_wrapper(&handle, obj_ptr);
             drop(obj);
         });
     }
@@ -208,10 +240,11 @@ mod tests {
             let first_ref = napi_mock::fake_reference();
             let second_ref = napi_mock::fake_reference();
             let (_first, first_generation) = unsafe { install(obj_ptr, first_ref) };
-            let (_second, second_generation) = unsafe { install(obj_ptr, second_ref) };
+            let (second, second_generation) = unsafe { install(obj_ptr, second_ref) };
             assert_eq!(first_generation, 1);
             assert_eq!(second_generation, 2);
             assert_eq!(unsafe { wrapper_ref(obj_ptr) }, second_ref);
+            release_wrapper(&second, obj_ptr);
             drop(obj);
         });
     }
@@ -222,9 +255,10 @@ mod tests {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let napi_ref = napi_mock::fake_reference();
             let (handle, _) = unsafe { install(obj_ptr, napi_ref) };
-            schedule_cleanup(Some(handle), 999, obj_ptr as usize, napi_ref);
+            schedule_cleanup(Some(Rc::clone(&handle)), 999, obj_ptr as usize, napi_ref);
             test_support::pump_default_context_until(|| false);
             assert!(unsafe { has_wrapper(obj_ptr) });
+            release_wrapper(&handle, obj_ptr);
             drop(obj);
         });
     }

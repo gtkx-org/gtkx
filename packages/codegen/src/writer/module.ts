@@ -27,7 +27,7 @@ class ModuleBuilder {
             return existing;
         }
 
-        const name = `_desc${this.hoistedDescriptors.size}`;
+        const name = `_desc${String(this.hoistedDescriptors.size)}`;
         this.hoistedDescriptors.set(expression, name);
         this.appendBinding(`const ${name} = ${expression};`, name);
 

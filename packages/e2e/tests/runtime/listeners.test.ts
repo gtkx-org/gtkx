@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 type ClickedHandler = () => void;
 type RegisterClicked = (button: Gtk.Button, handler: ClickedHandler) => GObject;
 
+const chainingHandler = vi.fn();
+const disconnectedHandler = vi.fn();
+
 const expectRemovableHandlerNeverFires = (register: RegisterClicked): void => {
     const button = new Gtk.Button();
     const handler = vi.fn();
@@ -13,16 +16,12 @@ const expectRemovableHandlerNeverFires = (register: RegisterClicked): void => {
     expect(handler).not.toHaveBeenCalled();
 };
 
-const handler = (): void => {};
-
 const expectRegisterReturnsButton = (register: RegisterClicked): void => {
     const button = new Gtk.Button();
-    const result = register(button, handler);
+    const result = register(button, chainingHandler);
     expect(result).toBe(button);
-    button.off("clicked", handler);
+    button.off("clicked", chainingHandler);
 };
-
-const handler2 = (): void => {};
 
 describe("on/off", () => {
     it("registers and removes handlers via callback identity", () => {
@@ -35,9 +34,9 @@ describe("on/off", () => {
 
     it("off() after the handler was already disconnected is a no-op", () => {
         const button = new Gtk.Button();
-        button.on("clicked", handler2);
-        button.off("clicked", handler2);
-        expect(() => button.off("clicked", handler2)).not.toThrow();
+        button.on("clicked", disconnectedHandler);
+        button.off("clicked", disconnectedHandler);
+        expect(() => button.off("clicked", disconnectedHandler)).not.toThrow();
     });
 });
 
@@ -54,10 +53,13 @@ describe("once", () => {
 describe("disconnect", () => {
     it("disconnects a handler by ID", () => {
         const button = new Gtk.Button();
-        const handlerId = button.connect("clicked", () => {});
+        const handlerId = button.connect("clicked", vi.fn());
         expect(typeof handlerId).toBe("number");
         expect(handlerId).toBeGreaterThan(0);
-        expect(() => button.disconnect(handlerId)).not.toThrow();
+
+        expect(() => {
+            button.disconnect(handlerId);
+        }).not.toThrow();
     });
 });
 

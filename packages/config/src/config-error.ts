@@ -7,18 +7,18 @@ const CONFIG_PREFIX = "gtkx.config.ts:";
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 
-const rawIssue = (input: unknown, path: IssuePath, message: string, standalone = false) => ({
+const rawIssue = (input: unknown, path: IssuePath, message: string, isStandalone = false) => ({
     code: "custom" as const,
     input,
     path,
     message,
     continue: true as const,
-    ...(standalone && { params: { standalone: true } }),
+    ...(isStandalone && { params: { standalone: true } }),
 });
 
 const appendSegment = (path: string, segment: PropertyKey): string => {
     if (typeof segment === "number") {
-        return `${path}[${segment}]`;
+        return `${path}[${String(segment)}]`;
     }
 
     return path === "" ? String(segment) : `${path}.${String(segment)}`;

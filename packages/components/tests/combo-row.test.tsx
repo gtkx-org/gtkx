@@ -18,6 +18,41 @@ const ComboProbe = ({ selectedId, comboRef }: { selectedId: string; comboRef: Re
     </GtkListBox>
 );
 
+const SectionedComboProbe = ({ comboRef }: { comboRef: Ref<Adw.ComboRow> }): ReactNode => (
+    <GtkListBox>
+        <DropDown
+            component={AdwComboRow}
+            ref={comboRef}
+            title="Sort Order"
+            sections={[
+                {
+                    id: "ascending",
+                    value: "Ascending",
+                    data: [
+                        { id: "title", value: "By title" },
+                        { id: "date", value: "By date" },
+                    ],
+                },
+            ]}
+            selectedId="title"
+            renderHeader={({ section: value }: { section: string }) => <GtkLabel>{value}</GtkLabel>}
+        />
+    </GtkListBox>
+);
+
+const TemplatedComboProbe = ({ comboRef }: { comboRef: Ref<Adw.ComboRow> }): ReactNode => (
+    <GtkListBox>
+        <DropDown
+            component={AdwComboRow}
+            ref={comboRef}
+            title="Sort Order"
+            items={items}
+            selectedId="date"
+            renderItem={({ item: value }) => <GtkLabel>{`Sorted ${value.toLowerCase()}`}</GtkLabel>}
+        />
+    </GtkListBox>
+);
+
 describe("render - AdwComboRow", () => {
     it("applies selectedId to the model selection", async () => {
         const ref = createRef<Adw.ComboRow>();
@@ -45,49 +80,14 @@ describe("render - AdwComboRow", () => {
 
     it("renders a section header through the header factory, not as a popup item", async () => {
         const ref = createRef<Adw.ComboRow>();
-
-        await render(
-            <GtkListBox>
-                <DropDown
-                    component={AdwComboRow}
-                    ref={ref}
-                    title="Sort Order"
-                    sections={[
-                        {
-                            id: "ascending",
-                            value: "Ascending",
-                            data: [
-                                { id: "title", value: "By title" },
-                                { id: "date", value: "By date" },
-                            ],
-                        },
-                    ]}
-                    selectedId="title"
-                    renderHeader={({ section: value }: { section: string }) => <GtkLabel>{value}</GtkLabel>}
-                />
-            </GtkListBox>,
-        );
-
+        await render(<SectionedComboProbe comboRef={ref} />);
         await screen.findAllByText("By title");
         expect(screen.queryAllByText("Ascending")).toHaveLength(1);
     });
 
     it("renders custom item templates", async () => {
         const ref = createRef<Adw.ComboRow>();
-
-        await render(
-            <GtkListBox>
-                <DropDown
-                    component={AdwComboRow}
-                    ref={ref}
-                    title="Sort Order"
-                    items={items}
-                    selectedId="date"
-                    renderItem={({ item: value }) => <GtkLabel>{`Sorted ${value.toLowerCase()}`}</GtkLabel>}
-                />
-            </GtkListBox>,
-        );
-
+        await render(<TemplatedComboProbe comboRef={ref} />);
         const matches = await screen.findAllByText("Sorted by date");
         expect(matches.length).toBeGreaterThanOrEqual(1);
     });

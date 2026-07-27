@@ -81,7 +81,8 @@ const applicationIdSchema = z.custom<string>().check((ctx) => {
             rawIssue(
                 value,
                 [],
-                `invalid \`applicationId\` "${value}", must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
+                `invalid \`applicationId\` "${value}", must satisfy g_application_id_is_valid ` +
+                '(e.g. "org.example.MyApp")',
                 true,
             ),
         );
@@ -108,7 +109,8 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
             rawIssue(
                 value,
                 [],
-                `invalid \`reactCompiler.compilationMode\` "${String(compilationMode)}", must be one of ${COMPILATION_MODES.join(", ")}`,
+                `invalid \`reactCompiler.compilationMode\` "${String(compilationMode)}", ` +
+                `must be one of ${COMPILATION_MODES.join(", ")}`,
                 true,
             ),
         );
@@ -121,7 +123,8 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
             rawIssue(
                 value,
                 [],
-                `invalid \`reactCompiler.panicThreshold\` "${String(panicThreshold)}", must be one of ${PANIC_THRESHOLDS.join(", ")}`,
+                `invalid \`reactCompiler.panicThreshold\` "${String(panicThreshold)}", ` +
+                `must be one of ${PANIC_THRESHOLDS.join(", ")}`,
                 true,
             ),
         );
@@ -183,12 +186,16 @@ const libraryEntryIssues = (value: unknown[], index: number, entry: unknown): Re
     }
 
     if (entry === LIBRARIES_WILDCARD) {
-        const message = `to generate every library, set \`libraries: "${LIBRARIES_WILDCARD}"\` as a bare string, not an array entry`;
+        const message =
+            `to generate every library, set \`libraries: "${LIBRARIES_WILDCARD}"\` as a bare string, ` +
+            "not an array entry";
 
         return [rawIssue(value, [index], message, true)];
     }
 
-    const message = `invalid library identifier "${String(entry)}", must be of the form "Name-Version" (e.g. "Gtk-4.0")`;
+    const message =
+        `invalid library identifier "${String(entry)}", must be of the form "Name-Version" ` +
+        '(e.g. "Gtk-4.0")';
 
     return [rawIssue(value, [index], message, true)];
 };

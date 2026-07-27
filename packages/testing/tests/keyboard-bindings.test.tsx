@@ -47,16 +47,31 @@ const caretOffset = (view: Gtk.TextView): number => {
     return buffer.getIterAtMark(buffer.getInsert()).getOffset();
 };
 
+async function renderFocusedScale() {
+    await render(
+        <GtkScale
+            adjustment={<GtkAdjustment value={20} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
+        />,
+    );
+
+    const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
+    scale.grabFocus();
+
+    return scale;
+}
+
+async function renderFocusedTextView() {
+    await render(<GtkTextView />);
+    const view = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
+    view.getBuffer().setEnableUndo(true);
+    view.grabFocus();
+
+    return view;
+}
+
 describe("keyboard drives real widget key bindings", () => {
     it("moves a Gtk.Scale via arrow, page, home and end keys", async () => {
-        await render(
-            <GtkScale
-                adjustment={<GtkAdjustment value={20} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
-            />,
-        );
-
-        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
-        scale.grabFocus();
+        const scale = await renderFocusedScale();
         await userEvent.keyboard(scale, "{ArrowUp}");
         expect(scale.getValue()).toBe(21);
         await userEvent.keyboard(scale, "{PageUp}");
@@ -68,10 +83,7 @@ describe("keyboard drives real widget key bindings", () => {
     });
 
     it("moves the TextView caret and undoes typing via keyboard", async () => {
-        await render(<GtkTextView />);
-        const view = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
-        view.getBuffer().setEnableUndo(true);
-        view.grabFocus();
+        const view = await renderFocusedTextView();
         await userEvent.type(view, "hello");
         expect(bufferText(view)).toBe("hello");
         expect(caretOffset(view)).toBe(5);

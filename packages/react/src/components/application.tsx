@@ -16,7 +16,7 @@ const POST_ACTIVATE_PROPS = new Set(["menubar"]);
 
 const useApplicationLifecycle = (
     application: Gtk.Application | null,
-    setActivated: (value: boolean) => void,
+    setActivated: (isActivated: boolean) => void,
 ): void => {
     useLayoutEffect(() => {
         if (!application) {

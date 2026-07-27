@@ -8,15 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listviewWordsDemo } from "../../../src/demos/lists/listview-words.js";
 import { renderDemo } from "../../test-utils.js";
 
-let tempDir: string;
-
-beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "listview-words-"));
-});
-
-afterEach(() => {
-    rmSync(tempDir, { recursive: true, force: true });
-});
+const tempDirRef = { path: "" };
 
 async function renderDemoAndClickOpen() {
     await renderDemo(listviewWordsDemo);
@@ -25,10 +17,19 @@ async function renderDemoAndClickOpen() {
 }
 
 const wordsFile = (words: string[]): string => {
-    const wordsPath = join(tempDir, "words.txt");
+    const wordsPath = join(tempDirRef.path, "words.txt");
     writeFileSync(wordsPath, words.join("\n"));
+
     return wordsPath;
 };
+
+beforeEach(() => {
+    tempDirRef.path = mkdtempSync(join(tmpdir(), "listview-words-"));
+});
+
+afterEach(() => {
+    rmSync(tempDirRef.path, { recursive: true, force: true });
+});
 
 describe("listviewWordsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -52,7 +53,8 @@ describe("listviewWordsDemo layout", () => {
 
     it("renders a GtkSearchEntry with the configured placeholder", async () => {
         await renderDemo(listviewWordsDemo);
-        await screen.findByPlaceholderText("Search words...");
+        const entry = await screen.findByPlaceholderText("Search words...");
+        expect(entry).toHavePlaceholderText("Search words...");
     });
 
     it("renders a GtkListView with NONE selection", async () => {
@@ -69,7 +71,8 @@ describe("listviewWordsDemo layout", () => {
 
     it("updates the host window title to reflect the line count", async () => {
         await renderDemo(listviewWordsDemo);
-        await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: /\d+ lines$/ });
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: /^\d+ lines$/ });
+        expect(window).toHaveAccessibleName(/^\d+ lines$/);
     });
 });
 
@@ -85,29 +88,44 @@ describe("listviewWordsDemo search interactions", () => {
         const dialogSpy = vi
             .spyOn(Gtk.FileDialog.prototype, "open")
             .mockResolvedValue(Gio.fileNewForPath(wordsFile(["alpha", "beta", "gamma", "delta"])));
+
         try {
             await renderDemoAndClickOpen();
             const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-            await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(4));
+
+            await waitFor(() => {
+                expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(4);
+            });
+
             for (const word of ["alpha", "beta", "gamma", "delta"]) {
                 await screen.findByText(word);
             }
+
             const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
             await userEvent.type(entry, "gamma");
-            await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(1));
+
+            await waitFor(() => {
+                expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(1);
+            });
+
             await screen.findByText("gamma");
             expect(screen.queryByText("alpha")).toBeNull();
         } finally {
             dialogSpy.mockRestore();
         }
     });
+});
 
+describe("listviewWordsDemo search filtering", () => {
     it("filters the list view to zero matches when the search text matches nothing", async () => {
         await renderDemo(listviewWordsDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
         await userEvent.type(entry, "qqqzzz");
-        await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(0));
+
+        await waitFor(() => {
+            expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(0);
+        });
     });
 
     it("clears the search entry when cleared", async () => {
@@ -124,11 +142,14 @@ describe("listviewWordsDemo search interactions", () => {
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
         const initial = (lv.getModel() as Gtk.SelectionModel).getNItems();
         await userEvent.type(entry, "z");
+
         await waitFor(() => {
             const filteredCount = (lv.getModel() as Gtk.SelectionModel).getNItems();
             expect(filteredCount).toBeLessThanOrEqual(initial);
         });
+
         await userEvent.clear(entry);
+
         await waitFor(() => {
             const restored = (lv.getModel() as Gtk.SelectionModel).getNItems();
             expect(restored).toBe(initial);
@@ -140,27 +161,46 @@ describe("listviewWordsDemo Open button", () => {
     it("loads words and re-titles the window to the new line count", async () => {
         const file = Gio.fileNewForPath(wordsFile(["alpha", "beta", "gamma", "delta"]));
         const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(file);
+
         try {
             await renderDemoAndClickOpen();
-            await waitFor(() => expect(dialogSpy).toHaveBeenCalled());
+
+            await waitFor(() => {
+                expect(dialogSpy).toHaveBeenCalled();
+            });
+
             const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-            await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(4));
+
+            await waitFor(() => {
+                expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(4);
+            });
+
             await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "4 lines" });
             const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
             await userEvent.type(entry, "gamma");
-            await waitFor(() => expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(1));
+
+            await waitFor(() => {
+                expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(1);
+            });
+
             await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "1 lines" });
         } finally {
             dialogSpy.mockRestore();
         }
     });
+});
 
+describe("listviewWordsDemo Open button failures", () => {
     it("logs an error when the file dialog rejects", async () => {
-        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
         const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockRejectedValue(new Error("user cancelled"));
+
         try {
             await renderDemoAndClickOpen();
-            await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("user cancelled"));
+
+            await waitFor(() => {
+                expect(errorSpy).toHaveBeenCalledWith("user cancelled");
+            });
         } finally {
             dialogSpy.mockRestore();
             errorSpy.mockRestore();
@@ -168,13 +208,18 @@ describe("listviewWordsDemo Open button", () => {
     });
 
     it("shows an alert dialog when the selected file cannot be read", async () => {
-        const missingFile = Gio.fileNewForPath(join(tempDir, "does-not-exist.txt"));
+        const missingFile = Gio.fileNewForPath(join(tempDirRef.path, "does-not-exist.txt"));
         const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(missingFile);
-        const alertShowSpy = vi.spyOn(Gtk.AlertDialog.prototype, "show").mockImplementation(() => {});
+        const alertShowSpy = vi.spyOn(Gtk.AlertDialog.prototype, "show").mockImplementation((): void => undefined);
         const setMessageSpy = vi.spyOn(Gtk.AlertDialog.prototype, "setMessage");
+
         try {
             await renderDemoAndClickOpen();
-            await waitFor(() => expect(alertShowSpy).toHaveBeenCalled());
+
+            await waitFor(() => {
+                expect(alertShowSpy).toHaveBeenCalled();
+            });
+
             expect(setMessageSpy).toHaveBeenCalledWith(expect.stringMatching(/Failure reading words/));
         } finally {
             dialogSpy.mockRestore();

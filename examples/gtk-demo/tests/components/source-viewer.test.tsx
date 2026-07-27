@@ -1,3 +1,4 @@
+import * as GtkSource from "@gtkx/gi/gtksource";
 import { act, render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import type { Demo } from "../../src/demos/types.js";
@@ -10,16 +11,20 @@ const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction
 
 const renderWithSelectedDemo = async (demos: Demo[], selected: Demo): Promise<void> => {
     let demoApi: DemoApi | undefined;
+
     const Probe = (): null => {
         demoApi = useDemo();
+
         return null;
     };
+
     await render(
         <DemoProvider demos={demos}>
             <SourceViewer />
             <Probe />
         </DemoProvider>,
     );
+
     await act(() => {
         demoApi?.setCurrentDemo(selected);
     });
@@ -32,6 +37,7 @@ describe("SourceViewer", () => {
                 <SourceViewer />
             </DemoProvider>,
         );
+
         await screen.findByText("No source");
         expect(screen.queryByName("source-view")).toBeNull();
     });
@@ -44,6 +50,7 @@ describe("SourceViewer", () => {
             keywords: [],
             component: () => null,
         };
+
         await renderWithSelectedDemo([intro, withoutSource], withoutSource);
         await screen.findByText("No source");
         expect(screen.queryByName("source-view")).toBeNull();
@@ -51,6 +58,7 @@ describe("SourceViewer", () => {
 
     it("renders a GtkSourceView and copies the sourceCode into its buffer", async () => {
         const sourceCode = "const x = 1;\nconst y = 2;\n";
+
         const withSource: Demo = {
             id: "with-source",
             title: "With Source",
@@ -59,7 +67,10 @@ describe("SourceViewer", () => {
             component: () => null,
             sourceCode,
         };
+
         await renderWithSelectedDemo([intro, withSource], withSource);
-        await screen.findByDisplayValue(sourceCode);
+        const view = await screen.findByDisplayValue(sourceCode);
+        expect(view).toBeInstanceOf(GtkSource.View);
+        expect(screen.queryByName("source-view")).toBe(view);
     });
 });

@@ -128,7 +128,9 @@ const elementNote = (entry: GiSymbolBase & { klass: GirClass }, options: SymbolP
     }
 
     return [
-        `Also available as the \`${glibName}\` JSX element from \`@gtkx/jsx/${namespaceDirectory(entry.namespace)}\`; the \`${glibName}\` element page documents the JSX props.`,
+        `Also available as the \`${glibName}\` JSX element from ` +
+        `\`@gtkx/jsx/${namespaceDirectory(entry.namespace)}\`; the \`${glibName}\` element page ` +
+        "documents the JSX props.",
     ];
 };
 
@@ -242,10 +244,10 @@ const interfaceMethodNames = (library: Library, owner: MemberOwner): string[] =>
 const propertyAccessorSetup = (
     owner: MemberOwner,
     library: Library,
-    useClassRenames: boolean,
+    isUseClassRenames: boolean,
 ): PropertyAccessorSetup => {
     const claimedNames = new Set(
-        useClassRenames
+        isUseClassRenames
             ? classMethodEntries(library, owner.namespace, owner.klass).map((item) => item.name)
             : interfaceMethodNames(library, owner),
     );
@@ -319,8 +321,8 @@ const propertiesSection = (
     const entries: MetaDocEntry[] = [];
 
     for (const [index, owner] of memberOwners(entry, library).entries()) {
-        const useClassRenames = index === 0 && entry.kind === "class";
-        const setup = propertyAccessorSetup(owner, library, useClassRenames);
+        const isUseClassRenames = index === 0 && entry.kind === "class";
+        const setup = propertyAccessorSetup(owner, library, isUseClassRenames);
         entries.push(...ownerPropertyEntries(owner, setup, seen));
     }
 
@@ -328,7 +330,10 @@ const propertiesSection = (
         return [];
     }
 
-    const intro = "Properties are read and written as instance fields; changes can be observed with `connect(\"notify::<property-name>\", handler)`. Properties inherited from ancestors are documented on their own pages.";
+    const intro =
+        "Properties are read and written as instance fields; changes can be observed with " +
+        "`connect(\"notify::<property-name>\", handler)`. Properties inherited from ancestors are " +
+        "documented on their own pages.";
 
     return ["## Properties", intro, ...sortedMetaBlocks(entries)];
 };
@@ -366,7 +371,9 @@ const signalsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Libr
         return [];
     }
 
-    const intro = "Connect with `instance.connect(\"<signal>\", handler)` or `instance.on(\"<signal>\", handler)`. Signals inherited from ancestors are documented on their own pages.";
+    const intro =
+        "Connect with `instance.connect(\"<signal>\", handler)` or `instance.on(\"<signal>\", handler)`. " +
+        "Signals inherited from ancestors are documented on their own pages.";
 
     return ["## Signals", intro, ...originSignatureBlocks(entries)];
 };
@@ -525,7 +532,8 @@ const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }):
     const usage =
         enumeration.errorDomain === undefined
             ? `Members are accessed as \`${qualified}.<member>\`.`
-            : `Members are error codes for the \`${enumeration.errorDomain}\` GError domain, accessed as \`${qualified}.<member>\`.`;
+            : `Members are error codes for the \`${enumeration.errorDomain}\` GError domain, ` +
+                `accessed as \`${qualified}.<member>\`.`;
 
     const table = ["| Member | Value | Description |", "| --- | --- | --- |", ...rows].join("\n");
 
@@ -535,7 +543,8 @@ const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }):
 const callbackPage = (entry: GiSymbolBase & { kind: "callback"; callback: GirCallback }, library: Library): string => {
     const docsContext = docsSignatureContext(entry.namespace, library);
     const fn = callbackAsFunction(entry.callback);
-    const signature = `type ${entry.name} = (${renderMethodSignature(docsContext, fn)}) => ${renderMethodReturnType(docsContext, fn)}`;
+    const parameters = renderMethodSignature(docsContext, fn);
+    const signature = `type ${entry.name} = (${parameters}) => ${renderMethodReturnType(docsContext, fn)}`;
 
     return joinSections([...pageHeader(entry, "callback"), "## Signature", `\`\`\`ts\n${signature}\n\`\`\``]);
 };

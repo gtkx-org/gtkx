@@ -52,9 +52,12 @@ for (const exclusion of report.exclusions) {
     exclusionCounts.set(exclusion.reason, (exclusionCounts.get(exclusion.reason) ?? 0) + 1);
 }
 
-log.info(`khronos codegen: ${report.selection.api} ${report.selection.version} ${report.selection.profile}`);
+log.info(
+    `khronos codegen: ${report.selection.api} ${String(report.selection.version)} ` +
+    report.selection.profile,
+);
 
 log.info(
-    `commands: ${report.selectedCommands} selected, ${report.emittedCommands} emitted, ` +
-    `${report.derivedSingulars} derived singulars, ${report.exclusions.length} excluded`,
+    `commands: ${String(report.selectedCommands)} selected, ${String(report.emittedCommands)} emitted, ` +
+    `${String(report.derivedSingulars)} derived singulars, ${String(report.exclusions.length)} excluded`,
 );

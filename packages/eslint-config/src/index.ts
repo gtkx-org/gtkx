@@ -22,16 +22,16 @@ const CORE_SOURCES = ["packages/*/src/**/*.{ts,tsx}"];
 const ADW_SOURCES = ["packages/react/src/adw/**", "packages/components/src/adw/**"];
 
 const ADW_CORE_MESSAGE =
-    "Adwaita must stay out of the core graph. Put Adwaita-dependent code under a dedicated adw subpath (packages/react/src/adw or packages/components/src/adw) and reach it from the generated adw module.";
+    "Adwaita must stay out of the core graph. Put Adwaita-dependent code under a dedicated adw subpath " +
+    "(packages/react/src/adw or packages/components/src/adw) and reach it from the generated adw module.";
 
 const ADW_ENTRYPOINT_MESSAGE =
-    "Only the ./adw entrypoint may reference the Adwaita bindings, so projects that do not declare Adw-1 still typecheck.";
+    "Only the ./adw entrypoint may reference the Adwaita bindings, so projects that do not declare Adw-1 " +
+    "still typecheck.";
 
 const IGNORES = [
-    "examples/**",
-    "website/**",
     "**/*.vue",
-    "packages/create-gtkx/src/templates/**",
+    "examples/tutorial/**",
     "packages/native/npm/**",
     "packages/native/target/**",
     "packages/native/artifacts/**",
@@ -43,7 +43,7 @@ const IGNORES = [
 ];
 
 const NAMING_CONVENTION = [
-    { selector: "default", format: ["camelCase"], leadingUnderscore: "allow", trailingUnderscore: "allow" },
+    { selector: "default", format: ["camelCase"], leadingUnderscore: "allow" },
     { selector: "import", format: ["camelCase", "PascalCase"] },
     { selector: "variable", format: ["camelCase", "PascalCase", "UPPER_CASE"], leadingUnderscore: "allow" },
     { selector: "function", format: ["camelCase", "PascalCase"] },
@@ -83,17 +83,7 @@ const SOURCE_EXTENDS = [
 ];
 
 const SOURCE_RULES: Linter.RulesRecord = {
-    "@stylistic/max-len": [
-        "error",
-        {
-            code: 120,
-            ignoreComments: true,
-            ignoreUrls: true,
-            ignoreStrings: true,
-            ignoreTemplateLiterals: true,
-            ignoreRegExpLiterals: true,
-        },
-    ],
+    "@stylistic/max-len": ["error", { code: 120 }],
     "@stylistic/comma-dangle": [
         "error",
         {
@@ -110,19 +100,19 @@ const SOURCE_RULES: Linter.RulesRecord = {
         },
     ],
     "@stylistic/curly-newline": ["error", { minElements: 1 }],
-    "@stylistic/jsx-curly-brace-presence": ["error", { props: "never", children: "ignore" }],
+    "@stylistic/jsx-curly-brace-presence": ["error", { props: "never", children: "never" }],
     "@stylistic/quotes": ["error", "double", { avoidEscape: true, allowTemplateLiterals: "never" }],
-    "@stylistic/jsx-one-expression-per-line": "off",
     "@stylistic/operator-linebreak": ["error", "after", { overrides: { "?": "before", ":": "before" } }],
     "@typescript-eslint/array-type": ["error", { default: "array" }],
     "@typescript-eslint/consistent-generic-constructors": ["error", "type-annotation"],
     "@typescript-eslint/consistent-type-definitions": ["error", "type"],
     "@typescript-eslint/naming-convention": ["error", ...NAMING_CONVENTION],
-    "@typescript-eslint/no-confusing-void-expression": ["error", { ignoreArrowShorthand: true }],
-    "@typescript-eslint/no-empty-function": ["error", { allow: ["arrowFunctions"] }],
-    "@typescript-eslint/no-unnecessary-type-assertion": "off",
     "@typescript-eslint/non-nullable-type-assertion-style": "off",
-    "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
+    "@typescript-eslint/restrict-template-expressions": [
+        "error",
+        { allowAny: false, allowBoolean: false, allowNullish: false, allowNumber: false, allowRegExp: false },
+    ],
+    "@typescript-eslint/switch-exhaustiveness-check": "error",
     curly: ["error", "all"],
     "gtkx/accessor-naming": "error",
     "gtkx/cognitive-complexity": ["error", { max: 5 }],
@@ -131,6 +121,10 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "gtkx/statement-padding": "error",
     "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
     "max-params": ["error", { max: 4 }],
+    "perfectionist/sort-exports": [
+        "error",
+        { type: "natural", order: "asc", ignoreCase: true, newlinesBetween: "ignore" },
+    ],
     "perfectionist/sort-imports": [
         "error",
         { type: "natural", order: "asc", ignoreCase: true, newlinesBetween: "ignore" },
@@ -138,27 +132,15 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "perfectionist/sort-named-imports": ["error", { type: "natural", order: "asc", ignoreCase: true }],
     "sonarjs/cognitive-complexity": "off",
     "sonarjs/prefer-read-only-props": "off",
-    "unicorn/consistent-boolean-name": "off",
     "unicorn/filename-case": ["error", { case: "kebabCase" }],
     "unicorn/import-style": ["error", { styles: { path: { default: false, named: true } } }],
     "unicorn/name-replacements": "off",
-    "unicorn/no-array-splice": "off",
     "unicorn/no-null": "off",
-    "unicorn/no-this-outside-of-class": "off",
-    "unicorn/no-useless-undefined": ["error", { checkArrowFunctionBody: false }],
-    "unicorn/prefer-https": "off",
-    "unicorn/no-process-exit": "off",
-    "unicorn/no-top-level-assignment-in-function": "off",
-    "unicorn/prefer-event-target": "off",
 };
 
 const TEST_RULES: Linter.RulesRecord = {
-    "@typescript-eslint/require-await": "off",
     "@typescript-eslint/unbound-method": "off",
-    "gtkx/module-section-order": "off",
-    "max-lines-per-function": "off",
-    "sonarjs/assertions-in-tests": "off",
-    "vitest/expect-expect": "off",
+    "vitest/expect-expect": ["error", { assertFunctionNames: ["expect", "assert", "expect*"] }],
     "vitest/unbound-method": "error",
 };
 
@@ -184,18 +166,30 @@ const config = (root: string): FlatConfig[] => [
         plugins: { gtkx, perfectionist },
         rules: SOURCE_RULES,
     },
-    {
-        files: ["packages/gl/**/*.{ts,tsx}", "packages/react/src/hooks/use-bind-setting.ts"],
-        rules: { "max-params": "off" },
-    },
     { files: CORE_SOURCES, ignores: ADW_SOURCES, rules: restrictAdwImports(ADW_CORE_MESSAGE, []) },
     {
         files: ["packages/react/src/**/*.{ts,tsx}", "packages/components/src/**/*.{ts,tsx}"],
         ignores: ADW_SOURCES,
         rules: restrictAdwImports(ADW_ENTRYPOINT_MESSAGE, ["@gtkx/react/adw"]),
     },
+    {
+        files: ["packages/cli/src/vite-plugins/**/*.ts"],
+        rules: { "unicorn/no-this-outside-of-class": "off" },
+    },
+    {
+        files: ["packages/cli/src/**/*.ts", "packages/utils/src/process/**/*.ts"],
+        rules: { "unicorn/no-process-exit": "off" },
+    },
+    {
+        files: ["packages/runtime/src/type.ts"],
+        rules: { "unicorn/consistent-boolean-name": "off" },
+    },
     ...scopeTo(TESTS, [vitest.configs.recommended]),
     { files: TESTS, rules: TEST_RULES },
+    {
+        files: ["packages/cli/tests/dev/supervisor.test.ts"],
+        rules: { "unicorn/prefer-event-target": "off" },
+    },
     { files: ["**/*.d.ts"], rules: { "@typescript-eslint/consistent-type-definitions": "off" } },
     ...scopeTo(JS_SOURCES, [tseslint.configs.disableTypeChecked]),
     { files: JS_SOURCES },

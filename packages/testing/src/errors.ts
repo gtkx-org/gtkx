@@ -15,18 +15,18 @@ type QueryDescriptor =
 
 const roleOptionFormatters: ((options: ByRoleOptions) => string | null)[] = [
     (o) => (o.name ? `name ${formatTextMatcher(o.name)}` : null),
-    (o) => (o.checked === undefined ? null : `checked=${o.checked}`),
-    (o) => (o.pressed === undefined ? null : `pressed=${o.pressed}`),
-    (o) => (o.selected === undefined ? null : `selected=${o.selected}`),
-    (o) => (o.expanded === undefined ? null : `expanded=${o.expanded}`),
-    (o) => (o.level === undefined ? null : `level=${o.level}`),
-    (o) => (o.busy === undefined ? null : `busy=${o.busy}`),
+    (o) => (o.checked === undefined ? null : `checked=${String(o.checked)}`),
+    (o) => (o.pressed === undefined ? null : `pressed=${String(o.pressed)}`),
+    (o) => (o.selected === undefined ? null : `selected=${String(o.selected)}`),
+    (o) => (o.expanded === undefined ? null : `expanded=${String(o.expanded)}`),
+    (o) => (o.level === undefined ? null : `level=${String(o.level)}`),
+    (o) => (o.busy === undefined ? null : `busy=${String(o.busy)}`),
     (o) => (o.description ? `description ${formatTextMatcher(o.description)}` : null),
     (o) => (o.value ? `value ${formatByRoleValue(o.value)}` : null),
-    (o) => (o.hidden === undefined ? null : `hidden=${o.hidden}`),
+    (o) => (o.hidden === undefined ? null : `hidden=${String(o.hidden)}`),
 ];
 
-let expensiveErrorDiagnosticsDisabled = false;
+const expensiveErrorDiagnostics = { isDisabled: false };
 
 const formatTextMatcher = (text: Matcher): string => {
     if (typeof text === "function") {
@@ -37,22 +37,22 @@ const formatTextMatcher = (text: Matcher): string => {
         return text.toString();
     }
 
-    return `'${text}'`;
+    return `'${String(text)}'`;
 };
 
 const formatByRoleValue = (value: ByRoleValue): string => {
     const parts: string[] = [];
 
     if (value.now !== undefined) {
-        parts.push(`now=${value.now}`);
+        parts.push(`now=${String(value.now)}`);
     }
 
     if (value.min !== undefined) {
-        parts.push(`min=${value.min}`);
+        parts.push(`min=${String(value.min)}`);
     }
 
     if (value.max !== undefined) {
-        parts.push(`max=${value.max}`);
+        parts.push(`max=${String(value.max)}`);
     }
 
     if (value.text !== undefined) {
@@ -110,20 +110,20 @@ const formatQueryDescription = (descriptor: QueryDescriptor): string => {
 };
 
 const runWithExpensiveErrorDiagnosticsDisabled = <T>(callback: () => T): T => {
-    const previous = expensiveErrorDiagnosticsDisabled;
-    expensiveErrorDiagnosticsDisabled = true;
+    const isPrevious = expensiveErrorDiagnostics.isDisabled;
+    expensiveErrorDiagnostics.isDisabled = true;
 
     try {
         return callback();
     } finally {
-        expensiveErrorDiagnosticsDisabled = previous;
+        expensiveErrorDiagnostics.isDisabled = isPrevious;
     }
 };
 
 const buildElementError = (container: Container, headLines: string[]): Error => {
     const config = getConfig();
 
-    const lines = expensiveErrorDiagnosticsDisabled
+    const lines = expensiveErrorDiagnostics.isDisabled
         ? headLines
         : [...headLines, "", prettyWidget(container, { highlight: false })];
 
@@ -134,7 +134,7 @@ const notFoundError = (container: Container, descriptor: QueryDescriptor): Error
     const description = formatQueryDescription(descriptor);
     const headLines = [`Unable to find an element with ${description}`];
 
-    if (!expensiveErrorDiagnosticsDisabled && descriptor.queryType === "role") {
+    if (!expensiveErrorDiagnostics.isDisabled && descriptor.queryType === "role") {
         headLines.push("", "Here are the accessible roles:", "", prettyRoles(container));
     }
 
@@ -154,12 +154,12 @@ const multipleFoundError = (container: Container, descriptor: QueryDescriptor, m
     const description = formatQueryDescription(descriptor);
 
     const headLines = [
-        `Found ${matches.length} elements with ${description}, but expected only one`,
+        `Found ${String(matches.length)} elements with ${description}, but expected only one`,
         "",
         allByVariantHint(descriptor),
     ];
 
-    if (!expensiveErrorDiagnosticsDisabled) {
+    if (!expensiveErrorDiagnostics.isDisabled) {
         const renderedMatches = matches.map((widget) => prettyWidget(widget, { highlight: false }));
         headLines.push("", "Here are the matching elements:", "", ...renderedMatches);
     }
@@ -175,7 +175,7 @@ const suggestionError = (suggestion: string, container: Container): Error => {
 };
 
 const timeoutError = (timeout: number, lastError: Error | null): Error => {
-    const baseMessage = `Timed out after ${timeout}ms`;
+    const baseMessage = `Timed out after ${String(timeout)}ms`;
     const message = lastError ? `${baseMessage}.\n\n${lastError.message}` : baseMessage;
 
     return getConfig().getElementError(message);

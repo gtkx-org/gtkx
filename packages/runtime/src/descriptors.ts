@@ -86,8 +86,8 @@ const stringT = (ownership: Ownership = "borrowed", length?: number): StringDesc
 
 const objectT = (ownership: Ownership = "borrowed"): ObjectDescriptor => ({ kind: "object", ownership });
 
-const refT = (innerDescriptor: Descriptor, inout = false): RefDescriptor =>
-    inout ? { kind: "ref", innerDescriptor, inout: true } : { kind: "ref", innerDescriptor };
+const refT = (innerDescriptor: Descriptor, isInout = false): RefDescriptor =>
+    isInout ? { kind: "ref", innerDescriptor, inout: true } : { kind: "ref", innerDescriptor };
 
 const hashTableT = (
     keyDescriptor: Descriptor,
@@ -100,18 +100,18 @@ const hashTableT = (
     ownership,
 });
 
-const enumT = (sharedLibrary: string, typeFnName: string, signed: boolean): EnumDescriptor => ({
+const enumT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): EnumDescriptor => ({
     kind: "enum",
     sharedLibrary,
     getTypeFnName: typeFnName,
-    signed,
+    signed: isSigned,
 });
 
-const flagsT = (sharedLibrary: string, typeFnName: string, signed: boolean): FlagsDescriptor => ({
+const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): FlagsDescriptor => ({
     kind: "flags",
     sharedLibrary,
     getTypeFnName: typeFnName,
-    signed,
+    signed: isSigned,
 });
 
 const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void => {

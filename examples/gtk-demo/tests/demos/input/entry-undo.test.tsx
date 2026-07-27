@@ -32,13 +32,14 @@ describe("entryUndoDemo", () => {
         const nested = within(box).getByRole(Gtk.AccessibleRole.TEXT_BOX);
         expect(nested).toBe(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX));
     });
+});
 
+describe("entryUndoDemo undo and redo", () => {
     it("undoes the typed text when Control+z is dispatched to the entry", async () => {
         await renderDemo(entryUndoDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.type(entry, "hello");
         expect(screen.getByDisplayValue("hello")).toBe(entry);
-
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
         expect(screen.queryByDisplayValue("hello")).toBeNull();
     });
@@ -48,10 +49,8 @@ describe("entryUndoDemo", () => {
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.type(entry, "redo me");
         expect(screen.getByDisplayValue("redo me")).toBe(entry);
-
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
         expect(screen.queryByDisplayValue("redo me")).toBeNull();
-
         await userEvent.keyboard(entry, "{Control>}{Shift>}z{/Shift}{/Control}");
         expect(screen.getByDisplayValue("redo me")).toBe(entry);
     });
@@ -61,10 +60,8 @@ describe("entryUndoDemo", () => {
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.type(entry, "control y redo");
         expect(screen.getByDisplayValue("control y redo")).toBe(entry);
-
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
         expect(screen.queryByDisplayValue("control y redo")).toBeNull();
-
         await userEvent.keyboard(entry, "{Control>}y{/Control}");
         expect(screen.getByDisplayValue("control y redo")).toBe(entry);
     });

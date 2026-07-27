@@ -2,9 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const installGracefulShutdown = vi.hoisted(() => vi.fn());
 
-vi.mock("@gtkx/utils", () => ({ installGracefulShutdown }));
-
-const { headlessShutdownInstalled, setHeadlessShutdownInstalled, setHeadlessTeardown } = await import(
+const { isHeadlessShutdownInstalled, setHeadlessShutdownInstalled, setHeadlessTeardown } = await import(
     "../src/headless-globals.js",
 );
 
@@ -14,6 +12,8 @@ const resetGlobals = (): void => {
     setHeadlessTeardown(undefined);
     setHeadlessShutdownInstalled(undefined);
 };
+
+vi.mock("@gtkx/utils", () => ({ installGracefulShutdown }));
 
 describe("installHeadlessShutdown", () => {
     beforeEach(() => {
@@ -34,7 +34,7 @@ describe("installHeadlessShutdown", () => {
         installHeadlessShutdown();
         expect(installGracefulShutdown).toHaveBeenCalledTimes(1);
         expect(installGracefulShutdown).toHaveBeenCalledWith({ onSignal: teardown });
-        expect(headlessShutdownInstalled()).toBe(true);
+        expect(isHeadlessShutdownInstalled()).toBe(true);
     });
 
     it("installs the handlers only once per process", () => {

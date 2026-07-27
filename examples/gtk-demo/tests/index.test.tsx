@@ -7,6 +7,7 @@ describe("application entry-point", () => {
         await act(async () => {
             await import("../src/index.js");
         });
+
         const demoApp = Gtk.Application.getDefault();
         expect(demoApp).toBeInstanceOf(Gtk.Application);
         expect(demoApp?.getApplicationId()).toBe("org.gtkx.gtk-demo");

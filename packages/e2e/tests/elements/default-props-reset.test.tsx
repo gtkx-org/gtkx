@@ -3,8 +3,10 @@ import * as GLib from "@gtkx/gi/glib";
 import * as Pango from "@gtkx/gi/pango";
 import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { type ComponentProps, createRef } from "react";
 import { describe, expect, it } from "vitest";
+
+type LabelProps = ComponentProps<typeof GtkLabel>;
 
 const captureCriticals = async (domain: string, run: () => Promise<void>): Promise<string[]> => {
     const messages: string[] = [];
@@ -22,47 +24,48 @@ const captureCriticals = async (domain: string, run: () => Promise<void>): Promi
     return messages;
 };
 
+const readLabelPropAcrossReset = async <T,>(props: LabelProps, read: (label: Gtk.Label) => T): Promise<[T, T]> => {
+    const ref = createRef<Gtk.Label>();
+
+    const { rerender } = await render(
+        <GtkLabel ref={ref} {...props}>
+            x
+        </GtkLabel>,
+    );
+
+    const mounted = ref.current;
+
+    if (mounted === null) {
+        throw new Error("expected the label to be mounted");
+    }
+
+    const before = read(mounted);
+    await rerender(<GtkLabel ref={ref}>x</GtkLabel>);
+
+    return [before, read(mounted)];
+};
+
 describe("default-props reset on removal", () => {
     it("resets a boolean property to its GIR default when the prop is removed", async () => {
-        const ref = createRef<Gtk.Label>();
-
-        const { rerender } = await render(
-            <GtkLabel ref={ref} selectable={true}>
-                x
-            </GtkLabel>,
-        );
-
-        expect(ref.current?.selectable).toBe(true);
-        await rerender(<GtkLabel ref={ref}>x</GtkLabel>);
-        expect(ref.current?.selectable).toBe(false);
+        const [before, after] = await readLabelPropAcrossReset({ selectable: true }, (label) => label.selectable);
+        expect(before).toBe(true);
+        expect(after).toBe(false);
     });
 
     it("resets an enum property to its GIR default", async () => {
-        const ref = createRef<Gtk.Label>();
-
-        const { rerender } = await render(
-            <GtkLabel ref={ref} ellipsize={Pango.EllipsizeMode.END}>
-                x
-            </GtkLabel>,
+        const [before, after] = await readLabelPropAcrossReset(
+            { ellipsize: Pango.EllipsizeMode.END },
+            (label) => label.ellipsize,
         );
 
-        expect(ref.current?.ellipsize).toBe(Pango.EllipsizeMode.END);
-        await rerender(<GtkLabel ref={ref}>x</GtkLabel>);
-        expect(ref.current?.ellipsize).toBe(Pango.EllipsizeMode.NONE);
+        expect(before).toBe(Pango.EllipsizeMode.END);
+        expect(after).toBe(Pango.EllipsizeMode.NONE);
     });
 
     it("resets a float property to its GIR default", async () => {
-        const ref = createRef<Gtk.Label>();
-
-        const { rerender } = await render(
-            <GtkLabel ref={ref} xalign={0.9}>
-                x
-            </GtkLabel>,
-        );
-
-        expect(ref.current?.xalign).toBeCloseTo(0.9);
-        await rerender(<GtkLabel ref={ref}>x</GtkLabel>);
-        expect(ref.current?.xalign).toBeCloseTo(0.5);
+        const [before, after] = await readLabelPropAcrossReset({ xalign: 0.9 }, (label) => label.xalign);
+        expect(before).toBeCloseTo(0.9);
+        expect(after).toBeCloseTo(0.5);
     });
 
     it("leaves a property alone when its setter rejects the null default", async () => {
@@ -80,16 +83,8 @@ describe("default-props reset on removal", () => {
     });
 
     it("resets a property with no typed C accessor through the static GValue path", async () => {
-        const ref = createRef<Gtk.Label>();
-
-        const { rerender } = await render(
-            <GtkLabel ref={ref} widthRequest={200}>
-                x
-            </GtkLabel>,
-        );
-
-        expect(ref.current?.widthRequest).toBe(200);
-        await rerender(<GtkLabel ref={ref}>x</GtkLabel>);
-        expect(ref.current?.widthRequest).toBe(-1);
+        const [before, after] = await readLabelPropAcrossReset({ widthRequest: 200 }, (label) => label.widthRequest);
+        expect(before).toBe(200);
+        expect(after).toBe(-1);
     });
 });

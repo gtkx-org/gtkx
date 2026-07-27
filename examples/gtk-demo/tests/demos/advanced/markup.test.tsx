@@ -20,7 +20,9 @@ describe("markupDemo metadata", () => {
 describe("markupDemo initial state", () => {
     it("renders the 'Source' toggle that controls the visible stack page", async () => {
         await renderDemo(markupDemo);
-        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Source", checked: false });
+        const toggle = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Source", checked: false });
+        expect(toggle).toBeInstanceOf(Gtk.CheckButton);
+        expect(toggle).not.toBeChecked();
     });
 
     it("starts with the 'formatted' stack page visible", async () => {
@@ -49,31 +51,29 @@ describe("markupDemo initial state", () => {
 describe("markupDemo toggle interaction", () => {
     it("switches to the source page when the Source toggle is activated", async () => {
         await renderDemo(markupDemo);
+
         const sourceToggle = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Source",
         })) as Gtk.CheckButton;
 
         await userEvent.click(sourceToggle);
-
         const stack = (await screen.findByName("markup-stack")) as Gtk.Stack;
         expect(stack.getVisibleChildName()).toBe("source");
     });
 
     it("re-applies the markup when toggling Source back off after editing", async () => {
         await renderDemo(markupDemo);
+
         const sourceToggle = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Source",
         })) as Gtk.CheckButton;
 
         await userEvent.click(sourceToggle);
-
         const source = (await screen.findByName("source-view")) as Gtk.TextView;
         const formatted = (await screen.findByName("formatted-view")) as Gtk.TextView;
         await userEvent.clear(source);
         await userEvent.type(source, "Hello <b>World</b>");
-
         await userEvent.click(sourceToggle);
-
         const stack = (await screen.findByName("markup-stack")) as Gtk.Stack;
         expect(stack.getVisibleChildName()).toBe("formatted");
         expect(formatted).toHaveDisplayValue(/Hello/);

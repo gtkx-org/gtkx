@@ -19,10 +19,12 @@ const Counter = () => {
                 halign={Gtk.Align.CENTER}
             >
                 <GtkLabel cssClasses={["title-1"]}>Welcome to GTKX!</GtkLabel>
-                <GtkLabel cssClasses={["title-2"]}>{`Count: ${count}`}</GtkLabel>
+                <GtkLabel cssClasses={["title-2"]}>{`Count: ${String(count)}`}</GtkLabel>
                 <GtkButton
                     label="Increment"
-                    onClicked={() => setCount((c) => c + 1)}
+                    onClicked={() => {
+                        setCount((c) => c + 1);
+                    }}
                     cssClasses={["suggested-action", "pill"]}
                 />
             </GtkBox>
@@ -30,8 +32,10 @@ const Counter = () => {
     );
 };
 
-export const App = () => (
+const App = () => (
     <GtkApplication>
         <Counter />
     </GtkApplication>
 );
+
+export { App };

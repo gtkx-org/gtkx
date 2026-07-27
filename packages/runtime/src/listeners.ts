@@ -1,7 +1,7 @@
 import type { SignalHandler } from "./signal.js";
 
 type SignalConnectable = {
-    connect(signal: string, handler: SignalHandler, after?: boolean): number;
+    connect(signal: string, handler: SignalHandler, isAfter?: boolean): number;
     disconnect(handlerId: number): void;
 };
 
@@ -45,10 +45,10 @@ const untrackListener = (instance: object, signal: string, handler: SignalHandle
  * @param instance The object emitting the signal.
  * @param signal The signal name to connect to.
  * @param handler The callback invoked on each emission.
- * @param after When true, run the handler after the default handler.
+ * @param isAfter When true, run the handler after the default handler.
  */
-function onSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, after?: boolean): void {
-    const handlerId = instance.connect(signal, handler, after);
+function onSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean): void {
+    const handlerId = instance.connect(signal, handler, isAfter);
     trackListener(instance, signal, handler, handlerId);
 }
 
@@ -59,9 +59,9 @@ function onSignal(instance: SignalConnectable, signal: string, handler: SignalHa
  * @param instance The object emitting the signal.
  * @param signal The signal name to connect to.
  * @param handler The callback invoked on the first emission.
- * @param after When true, run the handler after the default handler.
+ * @param isAfter When true, run the handler after the default handler.
  */
-function onceSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, after?: boolean): void {
+function onceSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean): void {
     let handlerId = 0;
 
     const wrapped: SignalHandler = (...args) => {
@@ -72,7 +72,7 @@ function onceSignal(instance: SignalConnectable, signal: string, handler: Signal
         return handler(...args);
     };
 
-    handlerId = instance.connect(signal, wrapped, after);
+    handlerId = instance.connect(signal, wrapped, isAfter);
     trackListener(instance, signal, wrapped, handlerId);
     trackListener(instance, signal, handler, handlerId);
 }

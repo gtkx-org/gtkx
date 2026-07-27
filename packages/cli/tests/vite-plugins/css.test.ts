@@ -5,16 +5,20 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
 import { gtkxCss } from "../../src/vite-plugins/css.js";
 
-let tmpDir: string;
+type TmpDirRef = { path: string };
 
-const setupAssetsTmpDir = (): void => {
+const setupAssetsTmpDir = (): TmpDirRef => {
+    const ref: TmpDirRef = { path: "" };
+
     beforeEach(() => {
-        tmpDir = mkdtempSync(join(tmpdir(), "gtkx-assets-test-"));
+        ref.path = mkdtempSync(join(tmpdir(), "gtkx-assets-test-"));
     });
 
     afterEach(() => {
-        rmSync(tmpDir, { recursive: true, force: true });
+        rmSync(ref.path, { recursive: true, force: true });
     });
+
+    return ref;
 };
 
 const callResolveId = async (
@@ -63,11 +67,11 @@ describe("gtkxCss (resolveId)", () => {
 });
 
 describe("gtkxCss (load)", () => {
-    setupAssetsTmpDir();
+    const tmpDir = setupAssetsTmpDir();
 
     it("load injects CSS contents via injectGlobal for virtual ids", () => {
         const plugin = gtkxCss();
-        const cssPath = join(tmpDir, "style.css");
+        const cssPath = join(tmpDir.path, "style.css");
         writeFileSync(cssPath, "body { color: red; }");
         const out = (plugin.load as LoadHook)(`\0gtkx-css:${cssPath}?inject`);
         expect(out).toContain('import { injectGlobal } from "@gtkx/css";');

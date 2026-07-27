@@ -140,6 +140,13 @@ impl Stash {
         }
     }
 
+    /// # Safety
+    ///
+    /// `slot` must be non-null and point to at least as many writable bytes as the scalar
+    /// variant held by `self` occupies (1 for `U8`/`I8` up to 8 for `U64`/`I64`/`F64`), and the
+    /// caller must have exclusive access to those bytes for the duration of the call. Alignment
+    /// is not required: the write is unaligned. Nothing is written for the non-scalar variants,
+    /// which return an error instead.
     pub unsafe fn write_scalar_to_ptr(&self, slot: *mut c_void) -> anyhow::Result<()> {
         match self {
             Self::U8(value) => unsafe { slot.cast::<u8>().write_unaligned(*value) },
@@ -184,15 +191,15 @@ impl Stash {
 
     pub fn to_number(&self) -> anyhow::Result<f64> {
         match self {
-            Self::I8(value) => Ok(*value as f64),
-            Self::U8(value) => Ok(*value as f64),
-            Self::I16(value) => Ok(*value as f64),
-            Self::U16(value) => Ok(*value as f64),
-            Self::I32(value) => Ok(*value as f64),
-            Self::U32(value) => Ok(*value as f64),
+            Self::I8(value) => Ok(f64::from(*value)),
+            Self::U8(value) => Ok(f64::from(*value)),
+            Self::I16(value) => Ok(f64::from(*value)),
+            Self::U16(value) => Ok(f64::from(*value)),
+            Self::I32(value) => Ok(f64::from(*value)),
+            Self::U32(value) => Ok(f64::from(*value)),
             Self::I64(value) => crate::ffi::codec::lossless_f64(i128::from(*value), "call result"),
             Self::U64(value) => crate::ffi::codec::lossless_f64(i128::from(*value), "call result"),
-            Self::F32(value) => Ok(*value as f64),
+            Self::F32(value) => Ok(f64::from(*value)),
             Self::F64(value) => Ok(*value),
             Self::Ptr(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
                 anyhow::bail!("Expected a numeric Stash, got {self:?}")

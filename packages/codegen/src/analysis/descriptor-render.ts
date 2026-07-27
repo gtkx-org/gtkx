@@ -108,7 +108,7 @@ const isVoidRef = (library: Library, ref: TypeId | undefined): boolean => {
 const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): boolean =>
     ref !== undefined && library.typeFor(ref)?.kind === "callback" && library.nameFor(ref) === undefined;
 
-const omitsPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
+const shouldOmitPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
     isVoidRef(library, returnValue.type) || returnValue.skip;
 
 const renderDescriptor = (
@@ -193,7 +193,14 @@ const isScalarType = (library: Library, type: GirType): boolean => {
         case "alias": {
             return type.value.target !== undefined && isScalarRef(library, type.value.target);
         }
-        default: {
+        case "callback":
+        case "carray":
+        case "class":
+        case "hashtable":
+        case "interface":
+        case "list":
+        case "record":
+        case "varargs": {
             return false;
         }
     }
@@ -250,7 +257,7 @@ const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number
     }
 
     if (userDataIndex !== undefined) {
-        options.push(`userDataIndex: ${userDataIndex}`);
+        options.push(`userDataIndex: ${String(userDataIndex)}`);
     }
 
     if (owningParameter.scope !== undefined) {
@@ -339,7 +346,9 @@ const classOrInterfaceExpression = (
 const isClassOrInterface = (type: GirType | undefined): type is Extract<EntityType, { kind: "class" | "interface" }> =>
     type !== undefined && (type.kind === "class" || type.kind === "interface");
 
-const getFundamental = (node: Extract<EntityType, { kind: "class" | "interface" }>): AncestorFundamental | undefined => {
+const getFundamental = (
+    node: Extract<EntityType, { kind: "class" | "interface" }>,
+): AncestorFundamental | undefined => {
     const cls = node.value;
 
     if (!cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
@@ -428,7 +437,7 @@ const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; u
     unrefFunc: record.glibUnrefFunc ?? record.freeFunc,
 });
 
-const recordNeedsFallbackClass = (record: ResolvedRecord): boolean => {
+const requiresFallbackClass = (record: ResolvedRecord): boolean => {
     const { refFunc, unrefFunc } = recordRefPair(record);
 
     if (refFunc !== undefined && unrefFunc !== undefined) {
@@ -442,7 +451,7 @@ const structExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
     ownership: Ownership,
-    callerAllocated: boolean,
+    isCallerAllocated: boolean,
 ): string => {
     const { size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const wrapperClass = context.qualify(resolved.namespace.name, resolved.value.name);
@@ -450,7 +459,7 @@ const structExpression = (
     return tStruct(ownership, {
         size: size > 0 ? size : undefined,
         wrapperClass,
-        callerAllocated,
+        callerAllocated: isCallerAllocated,
     });
 };
 
@@ -492,12 +501,12 @@ const recordExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
     ownership: Ownership,
-    callerAllocated = false,
+    isCallerAllocated = false,
 ): string => {
     const record = resolved.value;
     const { refFunc, unrefFunc } = recordRefPair(record);
 
-    const wrapperClass = recordNeedsFallbackClass(record)
+    const wrapperClass = requiresFallbackClass(record)
         ? context.qualify(resolved.namespace.name, record.name)
         : undefined;
 
@@ -506,31 +515,31 @@ const recordExpression = (
     }
 
     if (record.glibGetType === undefined) {
-        return structExpression(context, resolved, ownership, callerAllocated);
+        return structExpression(context, resolved, ownership, isCallerAllocated);
     }
 
     return boxedRecordExpression({
         context,
         resolved,
         ownership,
-        callerAllocated,
+        callerAllocated: isCallerAllocated,
         typeFnName: record.glibGetType,
     });
 };
 
-const rawEnumDescriptor = (signed: boolean): string => (signed ? tInt32 : tUint32);
+const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tUint32);
 
 const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string => {
     const getter = resolved.value.glibGetType;
-    const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
+    const isSigned = resolved.value.members.some((member) => member.value.startsWith("-"));
 
     if (getter === undefined || getter === "") {
-        return rawEnumDescriptor(signed);
+        return rawEnumDescriptor(isSigned);
     }
 
     const lib = resolved.namespace.sharedLibrary ?? "";
 
-    return resolved.value.kind === "bitfield" ? tFlags(lib, getter, signed) : tEnum(lib, getter, signed);
+    return resolved.value.kind === "bitfield" ? tFlags(lib, getter, isSigned) : tEnum(lib, getter, isSigned);
 };
 
 const expressionForResolved = (
@@ -626,7 +635,7 @@ const aliasExpression = (
 
 export {
     isInlineCallbackRef,
-    omitsPrimaryReturn,
+    shouldOmitPrimaryReturn,
     renderDescriptor,
     isScalarRef,
     isCellInout,

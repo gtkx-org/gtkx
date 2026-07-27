@@ -25,7 +25,8 @@ const statementPadding = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
         fixable: "whitespace",
         docs: {
             description:
-                "Separate module sections, multiline statements and statements that return with one blank line, and keep adjacent single-line statements together",
+                "Separate module sections, multiline statements and statements that return with one blank line, " +
+                "and keep adjacent single-line statements together",
         },
         messages: {
             missingPadding: "Expected a blank line before this {{reason}}.",
@@ -36,8 +37,8 @@ const statementPadding = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
     },
     defaultOptions: [],
     create(context) {
-        const check = (statements: TSESTree.Node[], sectioned: boolean): void => {
-            for (const pair of getPairs(statements, context.sourceCode, sectioned)) {
+        const check = (statements: TSESTree.Node[], isSectioned: boolean): void => {
+            for (const pair of getPairs(statements, context.sourceCode, isSectioned)) {
                 report(context, pair);
             }
         };
@@ -65,7 +66,7 @@ const statementPadding = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
 const isMultiline = (node: TSESTree.Node): boolean => node.loc.start.line !== node.loc.end.line;
 const isEmpty = (node: TSESTree.Node): boolean => node.type === AST_NODE_TYPES.EmptyStatement;
 
-const returnsFrom = (node: TSESTree.Node): boolean => {
+const isReturning = (node: TSESTree.Node): boolean => {
     if (node.type === AST_NODE_TYPES.ReturnStatement) {
         return true;
     }
@@ -74,10 +75,10 @@ const returnsFrom = (node: TSESTree.Node): boolean => {
         return false;
     }
 
-    return returnsFrom(node.consequent) || (node.alternate !== null && returnsFrom(node.alternate));
+    return isReturning(node.consequent) || (node.alternate !== null && isReturning(node.alternate));
 };
 
-const isPadded = (node: TSESTree.Node): boolean => isMultiline(node) || returnsFrom(node);
+const isPadded = (node: TSESTree.Node): boolean => isMultiline(node) || isReturning(node);
 
 const getAnchor = (node: TSESTree.Node, previous: TSESTree.Node, source: SourceCode): Anchor => {
     const leading = source.getCommentsBefore(node).find((comment) => comment.loc.start.line > previous.loc.end.line);
@@ -85,24 +86,24 @@ const getAnchor = (node: TSESTree.Node, previous: TSESTree.Node, source: SourceC
     return leading ?? node;
 };
 
-const getPair = (previous: TSESTree.Node, next: TSESTree.Node, source: SourceCode, sectioned: boolean): Pair => {
+const getPair = (previous: TSESTree.Node, next: TSESTree.Node, source: SourceCode, isSectioned: boolean): Pair => {
     const anchor = getAnchor(next, previous, source);
     const previousSection = getSection(previous);
     const nextSection = getSection(next);
-    const sameSection = previousSection === nextSection;
-    const known = previousSection !== undefined && nextSection !== undefined;
+    const isSameSection = previousSection === nextSection;
+    const isKnown = previousSection !== undefined && nextSection !== undefined;
 
     return {
         previous,
         next,
         anchor,
         blankLines: anchor.loc.start.line - previous.loc.end.line - 1,
-        boundary: sectioned && known && !sameSection,
-        contiguous: sectioned && sameSection && previousSection !== undefined && CONTIGUOUS.has(previousSection),
+        boundary: isSectioned && isKnown && !isSameSection,
+        contiguous: isSectioned && isSameSection && previousSection !== undefined && CONTIGUOUS.has(previousSection),
     };
 };
 
-const getPairs = (statements: TSESTree.Node[], source: SourceCode, sectioned: boolean): Pair[] => {
+const getPairs = (statements: TSESTree.Node[], source: SourceCode, isSectioned: boolean): Pair[] => {
     const pairs: Pair[] = [];
 
     for (const [index, next] of statements.entries()) {
@@ -112,7 +113,7 @@ const getPairs = (statements: TSESTree.Node[], source: SourceCode, sectioned: bo
             continue;
         }
 
-        pairs.push(getPair(previous, next, source, sectioned));
+        pairs.push(getPair(previous, next, source, isSectioned));
     }
 
     return pairs;
@@ -131,7 +132,7 @@ const padWith = (
         return fixer.replaceTextRange([previous.range[1], anchor.range[0]], "\n".repeat(newlines) + indent);
     };
 
-const needsPadding = (pair: Pair): boolean =>
+const requiresPadding = (pair: Pair): boolean =>
     !pair.contiguous && (pair.boundary || isPadded(pair.previous) || isPadded(pair.next));
 
 const getReason = (pair: Pair): string => {
@@ -139,7 +140,7 @@ const getReason = (pair: Pair): string => {
         return `${String(getSection(pair.next))} section`;
     }
 
-    if (returnsFrom(pair.next) || returnsFrom(pair.previous)) {
+    if (isReturning(pair.next) || isReturning(pair.previous)) {
         return "return statement";
     }
 
@@ -165,7 +166,7 @@ const report = (context: TSESLint.RuleContext<MessageIds, []>, pair: Pair): void
         return;
     }
 
-    const wants = needsPadding(pair) ? 1 : 0;
+    const wants = requiresPadding(pair) ? 1 : 0;
 
     if (blankLines === wants) {
         return;

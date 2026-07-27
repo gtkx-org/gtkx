@@ -49,7 +49,7 @@ const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => 
     }
 };
 
-const forceKillChild = (child: SupervisedChild | null): boolean => {
+const didForceKillChild = (child: SupervisedChild | null): boolean => {
     if (!child?.pid || child.exitCode !== null || child.killed) {
         return false;
     }
@@ -95,7 +95,10 @@ const handleChildExit = (state: SupervisorState, code: number | null, signal: No
 const launch = (state: SupervisorState): void => {
     const child = state.fork(state.runnerPath, [state.entryPath], state.cwd);
     state.child = child;
-    child.on("exit", (code, signal) => handleChildExit(state, code, signal));
+
+    child.on("exit", (code, signal) => {
+        handleChildExit(state, code, signal);
+    });
 };
 
 const isRestartBlocked = (state: SupervisorState): boolean => state.restarting || state.shuttingDown;
@@ -145,7 +148,10 @@ const restart = async (state: SupervisorState): Promise<void> => {
         return;
     }
 
-    current.once("exit", () => relaunchAfterExit(state));
+    current.once("exit", () => {
+        relaunchAfterExit(state);
+    });
+
     forwardSignal(current, "SIGTERM");
 };
 
@@ -190,7 +196,7 @@ const watchConfigDirectory = (
         }
     });
 
-    watcher.on("error", () => {});
+    watcher.on("error", (): void => undefined);
     state.watchers.push(watcher);
 };
 
@@ -225,14 +231,17 @@ const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promi
             return;
         }
 
-        state.child.once("exit", () => resolve());
+        state.child.once("exit", () => {
+            resolve();
+        });
+
         forwardSignal(state.child, signal);
     });
 
 const installShutdown = (state: SupervisorState): void => {
     installGracefulShutdown({
         onSignal: (signal) => shutdownOnSignal(state, signal),
-        onForce: () => forceKillChild(state.child),
+        onForce: () => didForceKillChild(state.child),
         forceKillAfterMs: FORCE_KILL_TIMEOUT_MS,
         exitCode: (signal, graceful) => state.capturedChildExit ?? (graceful ? 0 : exitCodeForSignal(signal)),
     });
@@ -261,7 +270,7 @@ const runDevSupervisor = async (
     installShutdown(state);
     launch(state);
 
-    return new Promise<never>(() => {});
+    return new Promise<never>((): void => undefined);
 };
 
 export { RESTART_EXIT_CODE, defaultForkRunner, runDevSupervisor, type SupervisedChild, type ForkRunner, type DevWatch };

@@ -16,6 +16,27 @@ type UcdEntry = {
     codepointStr: string;
 };
 
+type UcdSection = {
+    script: string;
+    entries: UcdEntry[];
+};
+
+type UcdCursor = {
+    buffer: Buffer;
+    offset: number;
+};
+
+type ScriptGrouping = {
+    sections: UcdSection[];
+    script: string;
+    entries: UcdEntry[];
+};
+
+type CharacterData = {
+    sections: UcdSection[];
+    flat: UcdEntry[];
+};
+
 const UNICODE_TYPE_NAMES = [
     "Other, Control",
     "Other, Format",
@@ -155,7 +176,7 @@ const COMBINING_CLASS_NAMES: Record<number, string> = {
     255: "Invalid",
 };
 
-const SCRIPT_NAMES = new Map<number, string>([
+const SCRIPT_NAMES: Map<number, string> = new Map([
     [GLib.UnicodeScript.COMMON, "No script"],
     [GLib.UnicodeScript.INHERITED, "No script"],
     [GLib.UnicodeScript.ARABIC, "Arabic"],
@@ -315,122 +336,7 @@ const SCRIPT_NAMES = new Map<number, string>([
     [GLib.UnicodeScript.YEZIDI, "Yezidi"],
 ]);
 
-function getScriptName(value: number): string {
-    return SCRIPT_NAMES.get(value) ?? "Unknown";
-}
-
-function parseUcdData(): UcdEntry[] {
-    const bytes = Gio.resourcesLookupData(ucdDataPath, Gio.ResourceLookupFlags.NONE);
-    const data = bytes.getData();
-    if (!data) {
-        throw new Error(`UCD data resource is empty: ${ucdDataPath}`);
-    }
-    const buffer = Buffer.from(data);
-    const entries: UcdEntry[] = [];
-    let offset = 0;
-    let lastCp = -1;
-
-    while (offset + 4 <= buffer.length) {
-        const cp = buffer.readUInt32LE(offset);
-        if (cp > 0x10_FF_FF || cp < lastCp) {
-            break;
-        }
-
-        offset += 4;
-
-        let end = offset;
-        while (end < buffer.length && buffer[end] !== 0) {
-            end++;
-        }
-        if (end >= buffer.length) {
-            break;
-        }
-
-        const name = buffer.subarray(offset, end).toString("utf-8");
-        offset = end + 1;
-        const padding = (4 - (offset % 4)) % 4;
-        offset += padding;
-
-        lastCp = cp;
-
-        if (cp === 0) {
-            continue;
-        }
-
-        const char = String.fromCodePoint(cp);
-        const hex = cp.toString(16).padStart(4, "0");
-
-        entries.push({
-            codepoint: cp,
-            name,
-            char,
-            codepointStr: `0x${hex}`,
-        });
-    }
-
-    return entries;
-}
-
 const characters = parseUcdData();
-
-type UcdSection = {
-    script: string;
-    entries: UcdEntry[];
-};
-
-function groupByScript(entries: UcdEntry[]): UcdSection[] {
-    const sorted = [...entries].sort((a, b) => {
-        const sa = GLib.unicharGetScript(a.char);
-        const sb = GLib.unicharGetScript(b.char);
-        if (sa !== sb) return sa - sb;
-        return a.codepoint - b.codepoint;
-    });
-
-    const sections: UcdSection[] = [];
-    let currentScript = "";
-    let currentEntries: UcdEntry[] = [];
-
-    for (const entry of sorted) {
-        const script = getScriptName(GLib.unicharGetScript(entry.char));
-        if (script === currentScript) {
-            currentEntries.push(entry);
-        } else {
-            if (currentEntries.length > 0) {
-                sections.push({ script: currentScript, entries: currentEntries });
-            }
-            currentScript = script;
-            currentEntries = [entry];
-        }
-    }
-    if (currentEntries.length > 0) {
-        sections.push({ script: currentScript, entries: currentEntries });
-    }
-
-    return sections;
-}
-
-let cachedData: { sections: UcdSection[]; flat: UcdEntry[] } | undefined;
-
-function getCharacterData() {
-    if (!cachedData) {
-        const sections = groupByScript(characters);
-        cachedData = { sections, flat: sections.flatMap((s) => s.entries) };
-    }
-    return cachedData;
-}
-
-const renderUcdHeader = ({ section: script }: { section: string }) => (
-    <GtkLabel
-        halign={Gtk.Align.START}
-        cssClasses={["heading"]}
-        marginTop={20}
-        marginBottom={10}
-        marginStart={10}
-        marginEnd={20}
-    >
-        {script}
-    </GtkLabel>
-);
 
 const ucdCodepointColumn: Column<UcdEntry> = {
     id: "codepoint",
@@ -465,24 +371,6 @@ const ucdNameColumn: Column<UcdEntry> = {
     ),
 };
 
-function inscriptionColumn(id: string, title: string, label: (item: UcdEntry) => string): Column<UcdEntry> {
-    return {
-        id,
-        title,
-        resizable: true,
-        renderCell: ({ item }) => (
-            <GtkInscription
-                text={label(item)}
-                cssClasses={["dim-label"]}
-                xalign={0}
-                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                marginTop={4}
-                marginBottom={4}
-            />
-        ),
-    };
-}
-
 const ucdTypeColumn = inscriptionColumn(
     "type",
     "Type",
@@ -501,13 +389,204 @@ const ucdCombiningClassColumn = inscriptionColumn(
     (item) => COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.char)] ?? "Unknown",
 );
 
-const ListViewUcdDemo = () => {
+const getCharacterData = (() => {
+    let cache: CharacterData | undefined;
+
+    return (): CharacterData => {
+        cache ??= buildCharacterData();
+
+        return cache;
+    };
+})();
+
+const listviewUcdDemo: Demo = {
+    id: "listview-ucd",
+    title: "Lists/Characters",
+    description:
+        "This demo shows a multi-column representation of some parts of the Unicode Character Database, " +
+        "or UCD. It also demonstrates the use of sections with headings to group items.\n\nThe dataset used " +
+        "here has 33 796 items.",
+    keywords: [],
+    component: ListViewUcdDemo,
+    sourceCode,
+    defaultWidth: 800,
+    defaultHeight: 400,
+};
+
+function getScriptName(value: number): string {
+    return SCRIPT_NAMES.get(value) ?? "Unknown";
+}
+
+function readUcdBuffer(): Buffer {
+    const bytes = Gio.resourcesLookupData(ucdDataPath, Gio.ResourceLookupFlags.NONE);
+    const data = bytes.getData();
+
+    if (!data) {
+        throw new Error(`UCD data resource is empty: ${ucdDataPath}`);
+    }
+
+    return Buffer.from(data);
+}
+
+function nextCodepoint(cursor: UcdCursor, lastCp: number): number | null {
+    if (cursor.offset + 4 > cursor.buffer.length) {
+        return null;
+    }
+
+    const cp = cursor.buffer.readUInt32LE(cursor.offset);
+
+    if (cp > 0x10_FF_FF || cp < lastCp) {
+        return null;
+    }
+
+    cursor.offset += 4;
+
+    return cp;
+}
+
+function readName(cursor: UcdCursor): string | null {
+    let end = cursor.offset;
+
+    while (end < cursor.buffer.length && cursor.buffer[end] !== 0) {
+        end++;
+    }
+
+    if (end >= cursor.buffer.length) {
+        return null;
+    }
+
+    const name = cursor.buffer.subarray(cursor.offset, end).toString("utf8");
+    const afterName = end + 1;
+    cursor.offset = afterName + ((4 - (afterName % 4)) % 4);
+
+    return name;
+}
+
+function appendUcdEntry(entries: UcdEntry[], cp: number, name: string) {
+    if (cp === 0) {
+        return;
+    }
+
+    const hex = cp.toString(16).padStart(4, "0");
+
+    entries.push({
+        codepoint: cp,
+        name,
+        char: String.fromCodePoint(cp),
+        codepointStr: `0x${hex}`,
+    });
+}
+
+function parseUcdData(): UcdEntry[] {
+    const cursor: UcdCursor = { buffer: readUcdBuffer(), offset: 0 };
+    const entries: UcdEntry[] = [];
+    let cp = nextCodepoint(cursor, -1);
+
+    while (cp !== null) {
+        const name = readName(cursor);
+
+        if (name === null) {
+            break;
+        }
+
+        appendUcdEntry(entries, cp, name);
+        cp = nextCodepoint(cursor, cp);
+    }
+
+    return entries;
+}
+
+function compareByScript(a: UcdEntry, b: UcdEntry): number {
+    const scriptA = GLib.unicharGetScript(a.char);
+    const scriptB = GLib.unicharGetScript(b.char);
+
+    if (scriptA !== scriptB) {
+        return scriptA - scriptB;
+    }
+
+    return a.codepoint - b.codepoint;
+}
+
+function flushScriptGroup(grouping: ScriptGrouping) {
+    if (grouping.entries.length > 0) {
+        grouping.sections.push({ script: grouping.script, entries: grouping.entries });
+    }
+}
+
+function addToScriptGroup(grouping: ScriptGrouping, entry: UcdEntry) {
+    const script = getScriptName(GLib.unicharGetScript(entry.char));
+
+    if (script === grouping.script) {
+        grouping.entries.push(entry);
+
+        return;
+    }
+
+    flushScriptGroup(grouping);
+    grouping.script = script;
+    grouping.entries = [entry];
+}
+
+function groupByScript(entries: UcdEntry[]): UcdSection[] {
+    const grouping: ScriptGrouping = { sections: [], script: "", entries: [] };
+    const sorted = entries.toSorted((a, b) => compareByScript(a, b));
+
+    for (const entry of sorted) {
+        addToScriptGroup(grouping, entry);
+    }
+
+    flushScriptGroup(grouping);
+
+    return grouping.sections;
+}
+
+function buildCharacterData(): CharacterData {
+    const sections = groupByScript(characters);
+
+    return { sections, flat: sections.flatMap((section) => section.entries) };
+}
+
+function inscriptionColumn(id: string, title: string, label: (item: UcdEntry) => string): Column<UcdEntry> {
+    return {
+        id,
+        title,
+        resizable: true,
+        renderCell: ({ item }) => (
+            <GtkInscription
+                text={label(item)}
+                cssClasses={["dim-label"]}
+                xalign={0}
+                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+                marginTop={4}
+                marginBottom={4}
+            />
+        ),
+    };
+}
+
+const renderUcdHeader = ({ section: script }: { section: string }) => (
+    <GtkLabel
+        halign={Gtk.Align.START}
+        cssClasses={["heading"]}
+        marginTop={20}
+        marginBottom={10}
+        marginStart={10}
+        marginEnd={20}
+    >
+        {script}
+    </GtkLabel>
+);
+
+function ListViewUcdDemo() {
     const [selectedChar, setSelectedChar] = useState("");
     const { sections: characterSections, flat: flatSorted } = getCharacterData();
 
     const handleActivate = (position: number) => {
         const entry = flatSorted[position];
-        if (entry) setSelectedChar(entry.char);
+
+        if (entry) {
+            setSelectedChar(entry.char);
+        }
     };
 
     return (
@@ -539,16 +618,6 @@ const ListViewUcdDemo = () => {
             </GtkLabel>
         </GtkBox>
     );
-};
+}
 
-export const listviewUcdDemo: Demo = {
-    id: "listview-ucd",
-    title: "Lists/Characters",
-    description:
-        "This demo shows a multi-column representation of some parts of the Unicode Character Database, or UCD. It also demonstrates the use of sections with headings to group items.\n\nThe dataset used here has 33 796 items.",
-    keywords: [],
-    component: ListViewUcdDemo,
-    sourceCode,
-    defaultWidth: 800,
-    defaultHeight: 400,
-};
+export { listviewUcdDemo };

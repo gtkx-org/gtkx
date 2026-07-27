@@ -65,7 +65,7 @@ fn free_rgba(type_: glib::Type, ptr: *mut c_void) {
     unsafe { glib::gobject_ffi::g_boxed_free(type_.into_glib(), ptr) };
 }
 
-fn object_value_of<'e>(env: &'e Env, ptr: *mut c_void) -> Unknown<'e> {
+fn object_value_of(env: &Env, ptr: *mut c_void) -> Unknown<'_> {
     External::new(Handle::from_glib_borrow(ptr))
         .into_unknown(env)
         .expect("external into unknown should succeed")
@@ -227,8 +227,7 @@ fn ref_for_transfer_full_unresolvable_type_bails() {
     helpers::run(|| {
         let target: u64 = 7;
         let err = unsafe {
-            unresolvable_boxed(Ownership::Full)
-                .ref_for_transfer(&target as *const u64 as *mut c_void)
+            unresolvable_boxed(Ownership::Full).ref_for_transfer(&raw const target as *mut c_void)
         }
         .expect_err("a transfer-full boxed without a resolvable GType must not alias ownership");
         assert!(err.to_string().contains("GtkxUnknownBoxedType"));
@@ -244,7 +243,7 @@ fn ref_for_transfer_unresolvable_type_null_and_borrowed_pass_through() {
         assert!(null_returned.is_null());
 
         let target: u64 = 7;
-        let original = &target as *const u64 as *mut c_void;
+        let original = &raw const target as *mut c_void;
         let returned =
             unsafe { unresolvable_boxed(Ownership::Borrowed).ref_for_transfer(original) }
                 .expect("borrowed ref_for_transfer should succeed");
@@ -260,7 +259,7 @@ fn encode_full_unresolvable_type_bails() {
         let err = unresolvable_boxed(Ownership::Full)
             .encode(
                 &env,
-                object_value_of(&env, &target as *const u64 as *mut c_void),
+                object_value_of(&env, &raw const target as *mut c_void),
             )
             .map(|_| ())
             .expect_err("encoding a transfer-full boxed without a resolvable GType must fail");
@@ -429,7 +428,7 @@ fn write_return_to_pointer_full_unresolvable_type_writes_null_and_reports() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let target: u64 = 7;
-        let original = &target as *const u64 as *mut c_void;
+        let original = &raw const target as *mut c_void;
 
         let slot = write_return_into_slot(
             &env,
@@ -472,7 +471,7 @@ fn write_return_to_pointer_borrowed_unresolvable_type_writes_same_pointer() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let target: u64 = 7;
-        let original = &target as *const u64 as *mut c_void;
+        let original = &raw const target as *mut c_void;
 
         let slot = write_return_into_slot(
             &env,
@@ -519,9 +518,9 @@ fn write_value_to_pointer_falls_back_when_type_unresolvable() {
             &env,
             &unknown,
             std::ptr::null_mut(),
-            object_value_of(&env, &target as *const u64 as *mut c_void),
+            object_value_of(&env, &raw const target as *mut c_void),
         );
-        assert_eq!(slot, &target as *const u64 as *mut c_void);
+        assert_eq!(slot, &raw const target as *mut c_void);
     });
 }
 
@@ -721,13 +720,13 @@ fn struct_write_value_to_pointer_with_size_copies_into_dst() {
 
         let slot = write_value_into_slot(
             &env,
-            &struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())),
-            &mut dst as *mut u64 as *mut c_void,
-            object_value_of(&env, &src as *const u64 as *mut c_void),
+            &struct_type(Ownership::Borrowed, Some(size_of::<u64>())),
+            (&raw mut dst).cast::<c_void>(),
+            object_value_of(&env, &raw const src as *mut c_void),
         );
 
         assert_eq!(dst, src);
-        assert_eq!(slot, &mut dst as *mut u64 as *mut c_void);
+        assert_eq!(slot, (&raw mut dst).cast::<c_void>());
     });
 }
 
@@ -737,7 +736,7 @@ fn struct_write_value_to_pointer_with_size_writes_null_for_null_src() {
         let env = helpers::fake_env();
         let slot = write_value_into_slot(
             &env,
-            &struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>())),
+            &struct_type(Ownership::Borrowed, Some(size_of::<u64>())),
             7 as *mut c_void,
             object_value_of(&env, std::ptr::null_mut()),
         );
@@ -753,13 +752,12 @@ fn struct_write_value_to_pointer_with_size_bails_for_null_dst() {
         let src: u64 = 1;
         let mut slot: *mut c_void = std::ptr::null_mut();
 
-        let err = struct_type(Ownership::Borrowed, Some(std::mem::size_of::<u64>()))
-            .write_value_to_ptr(
-                &env,
-                unsafe { ffi::Slot::new(&mut slot as *mut *mut c_void as *mut c_void) },
-                object_value_of(&env, &src as *const u64 as *mut c_void),
-                SlotInit::Initialized,
-            );
+        let err = struct_type(Ownership::Borrowed, Some(size_of::<u64>())).write_value_to_ptr(
+            &env,
+            unsafe { ffi::Slot::new((&raw mut slot).cast::<c_void>()) },
+            object_value_of(&env, &raw const src as *mut c_void),
+            SlotInit::Initialized,
+        );
 
         assert!(err.is_err());
     });
@@ -795,6 +793,7 @@ mod free_fn {
     fn assert_free_fn_wrapper_aliases(
         ownership: Ownership,
         resolve: impl FnOnce(&BoxedCodec, &Env, *mut c_void) -> *mut c_void,
+        handle_takes_ownership: bool,
     ) {
         let env = helpers::fake_env();
         let ptr = unsafe { glib::ffi::g_malloc0(16) };
@@ -802,7 +801,7 @@ mod free_fn {
         let aliased = resolve(&boxed_with_free_fn(ownership), &env, ptr);
         assert_eq!(aliased, ptr);
 
-        if ownership.is_borrowed() {
+        if !handle_takes_ownership {
             unsafe { glib::ffi::g_free(ptr) };
         }
     }
@@ -823,28 +822,28 @@ mod free_fn {
     #[test]
     fn decode_full_with_free_fn_owns_pointer() {
         helpers::run(|| {
-            assert_free_fn_wrapper_aliases(Ownership::Full, decode_wrapper);
+            assert_free_fn_wrapper_aliases(Ownership::Full, decode_wrapper, true);
         });
     }
 
     #[test]
     fn decode_borrowed_with_free_fn_wraps_without_owning() {
         helpers::run(|| {
-            assert_free_fn_wrapper_aliases(Ownership::Borrowed, decode_wrapper);
+            assert_free_fn_wrapper_aliases(Ownership::Borrowed, decode_wrapper, false);
         });
     }
 
     #[test]
     fn ptr_to_value_full_with_free_fn_owns_pointer() {
         helpers::run(|| {
-            assert_free_fn_wrapper_aliases(Ownership::Full, ptr_to_value_wrapper);
+            assert_free_fn_wrapper_aliases(Ownership::Full, ptr_to_value_wrapper, false);
         });
     }
 
     #[test]
     fn ptr_to_value_borrowed_with_free_fn_wraps_without_owning() {
         helpers::run(|| {
-            assert_free_fn_wrapper_aliases(Ownership::Borrowed, ptr_to_value_wrapper);
+            assert_free_fn_wrapper_aliases(Ownership::Borrowed, ptr_to_value_wrapper, false);
         });
     }
 

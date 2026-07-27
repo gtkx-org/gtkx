@@ -20,7 +20,7 @@ function useObjectValue<T extends GObject.Object, V>(
     const subscribe = useCallback(
         (onStoreChange: () => void): (() => void) => {
             if (resolved === null) {
-                return () => {};
+                return (): void => undefined;
             }
 
             const handler: SignalHandler = () => {

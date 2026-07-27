@@ -20,7 +20,10 @@ const expectSettingRoundTrip = async <K extends SettingsSchemaKeys, P extends ke
     resetSettingsKey(schema.id, key);
     const { result } = await renderHook(() => useSetting(schema, key));
     expect(result.current[0]).toEqual(initial);
-    await act(() => result.current[1](next));
+
+    await act(() => {
+        result.current[1](next);
+    });
 
     await waitFor(() => {
         expect(result.current[0]).toEqual(next);

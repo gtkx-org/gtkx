@@ -4,14 +4,35 @@ import { describe, expect, it } from "vitest";
 import { textviewDemo } from "../../../src/demos/input/textview.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
 
+const FORMATTING_TAGS = [
+    "italic",
+    "bold",
+    "monospace",
+    "blue_foreground",
+    "red_background",
+    "strikethrough",
+    "underline",
+    "double_underline",
+    "superscript",
+    "subscript",
+    "center",
+    "right_justify",
+    "not_editable",
+    "word_wrap",
+    "char_wrap",
+    "no_wrap",
+];
+
 const findTextViews = async (): Promise<[Gtk.TextView, Gtk.TextView]> => {
     const view1 = (await screen.findByName("text-view-1")) as Gtk.TextView;
     const view2 = (await screen.findByName("text-view-2")) as Gtk.TextView;
+
     return [view1, view2];
 };
 
 const findClickMeButtons = async (): Promise<Gtk.Button[]> => {
     const widgets = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: "Click Me" });
+
     return widgets.filter((w): w is Gtk.Button => w instanceof Gtk.Button);
 };
 
@@ -26,20 +47,43 @@ const findEntries = (): Gtk.Entry[] =>
 
 const enclosingTextViewName = (widget: Gtk.Widget): string | null => {
     let cur: Gtk.Widget | null = widget;
+
     while (cur) {
-        if (cur instanceof Gtk.TextView) return cur.getName();
+        if (cur instanceof Gtk.TextView) {
+            return cur.getName();
+        }
+
         cur = cur.getParent();
     }
+
     return null;
 };
 
-const buffersOf = (view: Gtk.TextView) => view.getBuffer();
+const getBuffer = (view: Gtk.TextView): Gtk.TextBuffer => view.getBuffer();
+const getOffset = (view: Gtk.TextView, substring: string): number => readBufferText(view).indexOf(substring);
 
-const offsetOf = (view: Gtk.TextView, substring: string): number => readBufferText(view).indexOf(substring);
+const countEmbeddedContent = (buffer: Gtk.TextBuffer): { paintables: number; anchors: number } => {
+    const iter = buffer.getStartIter();
+    let paintables = 0;
+    let anchors = 0;
+
+    do {
+        if (iter.getPaintable()) {
+            paintables++;
+        }
+
+        if (iter.getChildAnchor()) {
+            anchors++;
+        }
+    } while (iter.forwardChar());
+
+    return { paintables, anchors };
+};
 
 const iterAtOffset = (buffer: Gtk.TextBuffer, offset: number): Gtk.TextIter => {
     const iter = buffer.getStartIter();
     iter.forwardChars(offset);
+
     return iter;
 };
 
@@ -53,12 +97,18 @@ const openEasterEggFromClonedButton = async (): Promise<{
     const cloned = buttons.at(-1) as Gtk.Button;
     const beforeWindows = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW);
     await userEvent.click(cloned);
+
     await waitFor(() => {
         expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBeGreaterThan(beforeWindows.length);
     });
+
     const after = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW);
     const newWindow = after.find((w): w is Gtk.Window => w instanceof Gtk.Window && !beforeWindows.includes(w));
-    if (!newWindow) throw new Error("easter-egg window not found");
+
+    if (!newWindow) {
+        throw new Error("easter-egg window not found");
+    }
+
     return { result, beforeWindows, newWindow };
 };
 
@@ -114,25 +164,9 @@ describe("textviewDemo formatting tags", () => {
     it("registers the demo's named formatting tags in the shared tag table", async () => {
         await renderDemo(textviewDemo);
         const [view1] = await findTextViews();
-        const table = buffersOf(view1).getTagTable();
-        for (const name of [
-            "italic",
-            "bold",
-            "monospace",
-            "blue_foreground",
-            "red_background",
-            "strikethrough",
-            "underline",
-            "double_underline",
-            "superscript",
-            "subscript",
-            "center",
-            "right_justify",
-            "not_editable",
-            "word_wrap",
-            "char_wrap",
-            "no_wrap",
-        ]) {
+        const table = getBuffer(view1).getTagTable();
+
+        for (const name of FORMATTING_TAGS) {
             expect(table.lookup(name)).not.toBeNull();
         }
     });
@@ -140,7 +174,7 @@ describe("textviewDemo formatting tags", () => {
     it("applies the italic, bold and monospace tags to their respective text ranges", async () => {
         await renderDemo(textviewDemo);
         const [view1] = await findTextViews();
-        const buffer = buffersOf(view1);
+        const buffer = getBuffer(view1);
         const table = buffer.getTagTable();
 
         const cases: [string, string][] = [
@@ -148,10 +182,11 @@ describe("textviewDemo formatting tags", () => {
             ["bold", "bold"],
             ["monospace", "monospace (typewriter)"],
         ];
+
         for (const [tagName, phrase] of cases) {
             const tag = table.lookup(tagName);
             expect(tag).not.toBeNull();
-            const iter = iterAtOffset(buffer, offsetOf(view1, phrase));
+            const iter = iterAtOffset(buffer, getOffset(view1, phrase));
             expect(iter.hasTag(tag as Gtk.TextTag)).toBe(true);
         }
     });
@@ -159,7 +194,7 @@ describe("textviewDemo formatting tags", () => {
     it("carries distinct per-tag wrap modes on the tagged wrapping sections", async () => {
         await renderDemo(textviewDemo);
         const [view1] = await findTextViews();
-        const table = buffersOf(view1).getTagTable();
+        const table = getBuffer(view1).getTagTable();
         expect((table.lookup("word_wrap") as Gtk.TextTag).wrapMode).toBe(Gtk.WrapMode.WORD);
         expect((table.lookup("char_wrap") as Gtk.TextTag).wrapMode).toBe(Gtk.WrapMode.CHAR);
         expect((table.lookup("no_wrap") as Gtk.TextTag).wrapMode).toBe(Gtk.WrapMode.NONE);
@@ -170,14 +205,7 @@ describe("textviewDemo embedded content", () => {
     it("embeds two paintables and four child anchors in the buffer", async () => {
         await renderDemo(textviewDemo);
         const [view1] = await findTextViews();
-        const buffer = buffersOf(view1);
-        const iter = buffer.getStartIter();
-        let paintables = 0;
-        let anchors = 0;
-        do {
-            if (iter.getPaintable()) paintables++;
-            if (iter.getChildAnchor()) anchors++;
-        } while (iter.forwardChar());
+        const { paintables, anchors } = countEmbeddedContent(getBuffer(view1));
         expect(paintables).toBe(2);
         expect(anchors).toBe(4);
     });
@@ -185,17 +213,15 @@ describe("textviewDemo embedded content", () => {
     it("rejects user edits inside the not_editable range but accepts them elsewhere", async () => {
         await renderDemo(textviewDemo);
         const [view1] = await findTextViews();
-        const buffer = buffersOf(view1);
-
+        const buffer = getBuffer(view1);
         const lockedBefore = readBufferText(view1);
-        buffer.placeCursor(iterAtOffset(buffer, offsetOf(view1, "locked down")));
+        buffer.placeCursor(iterAtOffset(buffer, getOffset(view1, "locked down")));
         await userEvent.type(view1, "X");
         expect(readBufferText(view1)).toBe(lockedBefore);
-
         const editableBefore = readBufferText(view1);
         buffer.placeCursor(buffer.getStartIter());
         await userEvent.type(view1, "Z");
-        expect(readBufferText(view1).length).toBe(editableBefore.length + 1);
+        expect(readBufferText(view1)).toHaveLength(editableBefore.length + 1);
         expect(readBufferText(view1).startsWith("Z")).toBe(true);
     });
 });
@@ -204,7 +230,7 @@ describe("textviewDemo cloned widgets", () => {
     it("attaches exactly one Click Me button to each text view", async () => {
         await renderDemo(textviewDemo);
         const buttons = await findClickMeButtons();
-        expect(buttons.length).toBe(2);
+        expect(buttons).toHaveLength(2);
         expect(enclosingTextViewName(buttons[0] as Gtk.Button)).toBe("text-view-1");
         expect(enclosingTextViewName(buttons.at(-1) as Gtk.Button)).toBe("text-view-2");
     });
@@ -262,6 +288,7 @@ describe("textviewDemo easter egg", () => {
         const source = buttons[0] as Gtk.Button;
         const beforeWindows = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length;
         await userEvent.click(source);
+
         await waitFor(() => {
             expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBeGreaterThan(beforeWindows);
         });
@@ -275,11 +302,14 @@ describe("textviewDemo easter egg", () => {
 
     it("nests multiple text views inside the easter-egg window sharing one buffer", async () => {
         const { newWindow } = await openEasterEggFromClonedButton();
+
         const nested = within(newWindow)
             .queryAllByRole(Gtk.AccessibleRole.TEXT_BOX)
             .filter((w): w is Gtk.TextView => w instanceof Gtk.TextView);
+
         expect(nested.length).toBeGreaterThan(1);
         const sharedBuffer = nested[0]?.getBuffer();
+
         for (const view of nested) {
             expect(view.getBuffer()).toBe(sharedBuffer);
         }
@@ -291,8 +321,9 @@ describe("textviewDemo easter egg", () => {
         const cloned = buttons.at(-1) as Gtk.Button;
         const beforeCount = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length;
         await userEvent.dblClick(cloned);
+
         await waitFor(() => {
-            expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBe(beforeCount + 1);
+            expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW)).toHaveLength(beforeCount + 1);
         });
     });
 

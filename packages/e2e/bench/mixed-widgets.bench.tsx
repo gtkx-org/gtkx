@@ -19,65 +19,39 @@ import {
 import { bench, describe } from "vitest";
 import { cleanup, render } from "../tests/helpers/production-render.js";
 
+type RowRenderer = (i: number, key: string) => ReactNode;
+
 const SIZES = [98, 392];
 
-const ROW = (i: number): ReactNode => {
-    const key = String(i);
+const ROW_RENDERERS: RowRenderer[] = [
+    (_i, key) => <GtkButton key={key} label={`b-${key}`} onClicked={(): void => undefined} />,
+    (_i, key) => <GtkLabel key={key}>{`l-${key}`}</GtkLabel>,
+    (i, key) => <GtkToggleButton key={key} label={`t-${key}`} active={i % 2 === 0} />,
+    (i, key) => <GtkCheckButton key={key} label={`c-${key}`} active={i % 3 === 0} />,
+    (i, key) => <GtkSwitch key={key} active={i % 2 === 0} />,
+    (_i, key) => <GtkEntry key={key} text={`e-${key}`} />,
+    (_i, key) => <GtkImage key={key} iconName="dialog-information" />,
+    (i, key) => <GtkSpinner key={key} spinning={i % 2 === 0} />,
+    (i, key) => <GtkProgressBar key={key} fraction={(i % 100) / 100} />,
+    (i, key) => <GtkLevelBar key={key} value={(i % 10) / 10} />,
+    (_i, key) => <GtkScale key={key} />,
+    (_i, key) => <GtkSeparator key={key} />,
+    (_i, key) => <GtkFrame key={key} label={`f-${key}`} />,
+    (_i, key) => (
+        <GtkBox key={key}>
+            <GtkLabel>{`nested-${key}`}</GtkLabel>
+        </GtkBox>
+    ),
+];
 
-    switch (i % 14) {
-        case 0: {
-            return (
-                <GtkButton
-                    key={key}
-                    label={`b-${i}`}
-                    onClicked={() => {}}
-                />
-            );
-        }
-        case 1: {
-            return <GtkLabel key={key}>{`l-${i}`}</GtkLabel>;
-        }
-        case 2: {
-            return <GtkToggleButton key={key} label={`t-${i}`} active={i % 2 === 0} />;
-        }
-        case 3: {
-            return <GtkCheckButton key={key} label={`c-${i}`} active={i % 3 === 0} />;
-        }
-        case 4: {
-            return <GtkSwitch key={key} active={i % 2 === 0} />;
-        }
-        case 5: {
-            return <GtkEntry key={key} text={`e-${i}`} />;
-        }
-        case 6: {
-            return <GtkImage key={key} iconName="dialog-information" />;
-        }
-        case 7: {
-            return <GtkSpinner key={key} spinning={i % 2 === 0} />;
-        }
-        case 8: {
-            return <GtkProgressBar key={key} fraction={(i % 100) / 100} />;
-        }
-        case 9: {
-            return <GtkLevelBar key={key} value={(i % 10) / 10} />;
-        }
-        case 10: {
-            return <GtkScale key={key} />;
-        }
-        case 11: {
-            return <GtkSeparator key={key} />;
-        }
-        case 12: {
-            return <GtkFrame key={key} label={`f-${i}`} />;
-        }
-        default: {
-            return (
-                <GtkBox key={key}>
-                    <GtkLabel>{`nested-${i}`}</GtkLabel>
-                </GtkBox>
-            );
-        }
+const ROW = (i: number): ReactNode => {
+    const renderer = ROW_RENDERERS[i % ROW_RENDERERS.length];
+
+    if (renderer === undefined) {
+        throw new Error(`No row renderer for index ${String(i)}`);
     }
+
+    return renderer(i, String(i));
 };
 
 const drawMixed = (n: number, salt: string): ReactNode => (
@@ -88,7 +62,7 @@ const drawMixed = (n: number, salt: string): ReactNode => (
 
 describe("mixed-widget mount", () => {
     for (const n of SIZES) {
-        bench(`mount ${n} mixed-class widgets`, async () => {
+        bench(`mount ${String(n)} mixed-class widgets`, async () => {
             await render(drawMixed(n, "a"));
             await cleanup();
         });
@@ -97,7 +71,7 @@ describe("mixed-widget mount", () => {
 
 describe("mixed-widget prop update", () => {
     for (const n of SIZES) {
-        bench(`update one prop across ${n} mixed-class widgets`, async () => {
+        bench(`update one prop across ${String(n)} mixed-class widgets`, async () => {
             await render(drawMixed(n, "a"));
 
             for (let k = 0; k < 3; k++) {

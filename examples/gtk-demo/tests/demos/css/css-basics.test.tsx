@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssBasicsDemo } from "../../../src/demos/css/css-basics.js";
-import { bufferHasTag, renderDemo } from "../../test-utils.js";
+import { hasBufferTag, renderDemo } from "../../test-utils.js";
 
 describe("cssBasicsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -50,10 +50,12 @@ describe("cssBasicsDemo behavior", () => {
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: this-is-not-a-valid-color; }");
+
         await waitFor(() => {
-            expect(bufferHasTag(textView, "error")).toBe(true);
+            expect(hasBufferTag(textView, "error")).toBe(true);
         });
-        expect(bufferHasTag(textView, "warning")).toBe(false);
+
+        expect(hasBufferTag(textView, "warning")).toBe(false);
     });
 
     it("marks warning-level CSS with the warning tag rather than the error tag", async () => {
@@ -61,10 +63,12 @@ describe("cssBasicsDemo behavior", () => {
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: green }");
+
         await waitFor(() => {
-            expect(bufferHasTag(textView, "warning")).toBe(true);
+            expect(hasBufferTag(textView, "warning")).toBe(true);
         });
-        expect(bufferHasTag(textView, "error")).toBe(false);
+
+        expect(hasBufferTag(textView, "error")).toBe(false);
     });
 
     it("clears a previously applied error tag once the CSS becomes valid again", async () => {
@@ -72,14 +76,18 @@ describe("cssBasicsDemo behavior", () => {
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: this-is-not-a-valid-color; }");
+
         await waitFor(() => {
-            expect(bufferHasTag(textView, "error")).toBe(true);
+            expect(hasBufferTag(textView, "error")).toBe(true);
         });
+
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: red; }");
+
         await waitFor(() => {
-            expect(bufferHasTag(textView, "error")).toBe(false);
+            expect(hasBufferTag(textView, "error")).toBe(false);
         });
-        expect(bufferHasTag(textView, "warning")).toBe(false);
+
+        expect(hasBufferTag(textView, "warning")).toBe(false);
     });
 });

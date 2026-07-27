@@ -29,7 +29,7 @@ impl Encoder for StructCodec {
                     "Cannot transfer ownership of struct: its size is unknown, so no copy can be made for the callee"
                 );
             };
-            Ok(unsafe { glib::ffi::g_memdup2(ptr as *const c_void, size) })
+            Ok(unsafe { glib::ffi::g_memdup2(ptr.cast_const(), size) })
         })
     }
 }
@@ -38,7 +38,7 @@ impl StructCodec {
     fn borrow_or_copy(&self, ptr: *mut c_void) -> Handle {
         self.size.map_or_else(
             || Handle::from_glib_borrow(ptr),
-            |size| Handle::Struct(unsafe { glib::ffi::g_memdup2(ptr as *const c_void, size) }),
+            |size| Handle::Struct(unsafe { glib::ffi::g_memdup2(ptr.cast_const(), size) }),
         )
     }
 }
@@ -84,7 +84,7 @@ impl PtrWriter for StructCodec {
             }
             if !init.is_initialized() {
                 let out_ptr = if self.ownership.is_full() {
-                    unsafe { glib::ffi::g_memdup2(src_ptr as *const c_void, size) }
+                    unsafe { glib::ffi::g_memdup2(src_ptr.cast_const(), size) }
                 } else {
                     src_ptr
                 };
@@ -96,7 +96,7 @@ impl PtrWriter for StructCodec {
                 bail!("Struct field write into null pointer slot")
             }
             unsafe {
-                std::ptr::copy_nonoverlapping(src_ptr as *const u8, dest_ptr as *mut u8, size);
+                std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), dest_ptr.cast::<u8>(), size);
             }
             return Ok(());
         }

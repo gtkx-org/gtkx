@@ -13,6 +13,7 @@ import {
 } from "./node.js";
 
 type WidgetConstructor = new (props: Props) => GObject.Object;
+type ContentType = { kind: ContentKind; type: bigint };
 
 const CONTENT_TYPE_NAMES: { kind: ContentKind; name: string }[] = [
     { kind: "label", name: "GtkLabel" },
@@ -21,12 +22,20 @@ const CONTENT_TYPE_NAMES: { kind: ContentKind; name: string }[] = [
     { kind: "anchor", name: "GtkTextChildAnchor" },
 ];
 
-let contentTypes: { kind: ContentKind; type: bigint }[] | null = null;
+const getContentTypes = createContentTypeCache();
+
+function createContentTypeCache(): () => ContentType[] {
+    let cached: ContentType[] | null = null;
+
+    return () => {
+        cached ??= CONTENT_TYPE_NAMES.map((entry) => ({ kind: entry.kind, type: typeFromName(entry.name) }));
+
+        return cached;
+    };
+}
 
 const resolveContentKind = (type: bigint): ContentKind | null => {
-    contentTypes ??= CONTENT_TYPE_NAMES.map((entry) => ({ kind: entry.kind, type: typeFromName(entry.name) }));
-
-    for (const entry of contentTypes) {
+    for (const entry of getContentTypes()) {
         if (entry.type !== TYPE_INVALID && typeIsA(type, entry.type)) {
             return entry.kind;
         }

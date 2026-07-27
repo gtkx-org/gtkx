@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::native_result;
+use crate::api::{byte_count_from_f64, native_result};
 use crate::ffi::codec::{Codec, Decoder as _, ReadSource};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
@@ -25,11 +25,10 @@ pub fn read<'env>(
     handle: &External<Handle>,
     field_descriptor: Descriptor,
     offset: f64,
-) -> napi::Result<Unknown<'env>> {
-    let field_ptr = handle
-        .as_ptr()
-        .wrapping_byte_add(offset as usize)
-        .cast_const();
+) -> Result<Unknown<'env>> {
+    let offset = byte_count_from_f64(offset, "field read: offset")?;
+
+    let field_ptr = handle.as_ptr().wrapping_byte_add(offset).cast_const();
     let field_codec = field_descriptor.into_codec()?;
     native_result("field read", read_field(env, field_ptr, &field_codec))
 }
@@ -44,10 +43,10 @@ mod tests {
     fn reads_an_integer_field() {
         test_support::run(|| {
             let env = napi_mock::fake_env();
-            let raw: i32 = 42;
+            let slot: i32 = 42;
             let value = read_field(
                 &env,
-                (&raw as *const i32).cast(),
+                (&raw const slot).cast(),
                 &Codec::Integer(IntegerCodec::I32),
             )
             .expect("read should succeed");
@@ -59,10 +58,10 @@ mod tests {
     fn reads_a_float_field() {
         test_support::run(|| {
             let env = napi_mock::fake_env();
-            let raw: f64 = 2.5;
+            let slot: f64 = 2.5;
             let value = read_field(
                 &env,
-                (&raw as *const f64).cast(),
+                (&raw const slot).cast(),
                 &Codec::Float(FloatCodec::F64),
             )
             .expect("read should succeed");

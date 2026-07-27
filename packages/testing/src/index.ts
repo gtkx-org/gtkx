@@ -48,8 +48,8 @@ export {
     queryByRole,
     queryByText,
 } from "./queries.js";
-export { cleanup, render } from "./render.js";
 export { renderHook } from "./render-hook.js";
+export { cleanup, render } from "./render.js";
 export { formatRole, getRoles, logRoles, prettyRoles } from "./role-helpers.js";
 export { screen } from "./screen.js";
 export { captureAndSaveScreenshot, logScreenshotPath, screenshot } from "./screenshot.js";

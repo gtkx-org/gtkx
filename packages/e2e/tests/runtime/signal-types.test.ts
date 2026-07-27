@@ -31,8 +31,8 @@ describe("generated signal types", () => {
 
     it("types emit() arguments and result per signal off the emit map", () => {
         const button = new Gtk.Button();
-        const emitClicked = (): unknown => button.emit("clicked");
-        expect(emitClicked()).toBeUndefined();
+        const emitClicked: (signal: "clicked") => unknown = button.emit.bind(button);
+        expect(emitClicked("clicked")).toBeUndefined();
 
         const emitSignatures: [
             Expect<Equal<ReturnType<typeof button.emit<"clicked">>, void>>,

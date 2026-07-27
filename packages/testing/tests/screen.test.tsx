@@ -4,6 +4,12 @@ import { rootElement } from "@gtkx/react";
 import { describe, expect, it } from "vitest";
 import { captureAndSaveScreenshot, cleanup, render, screen } from "../src/index.js";
 
+const decodePngSize = (base64Data: string): { width: number; height: number } => {
+    const bytes = Buffer.from(base64Data, "base64");
+
+    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+};
+
 describe("screen binding", () => {
     it("routes queries through the global toplevel scope", async () => {
         await render(
@@ -50,12 +56,6 @@ describe("screen screenshot capture", () => {
         await expect(screen.screenshot(99)).rejects.toThrow(/Window at index 99 not found/);
     });
 });
-
-const decodePngSize = (base64Data: string): { width: number; height: number } => {
-    const bytes = Buffer.from(base64Data, "base64");
-
-    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
-};
 
 describe("screen screenshot scale", () => {
     it("supersamples the capture by the requested factor", async () => {

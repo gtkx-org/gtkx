@@ -9,7 +9,9 @@ async function activateGridMode(): Promise<Gtk.ToggleButton> {
     const gridToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
         name: "Grid",
     })) as Gtk.ToggleButton;
+
     await userEvent.click(gridToggle);
+
     return gridToggle;
 }
 
@@ -17,11 +19,14 @@ async function toggleExtentsAndGridOverlays(): Promise<{ extents: Gtk.CheckButto
     const extents = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
         name: "Show _Extents",
     })) as Gtk.CheckButton;
+
     const grid = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
         name: "Show _Grid",
     })) as Gtk.CheckButton;
+
     await userEvent.click(extents);
     await userEvent.click(grid);
+
     return { extents, grid };
 }
 
@@ -56,12 +61,15 @@ describe("fontRenderingDemo titlebar wiring", () => {
 describe("fontRenderingDemo header toggles", () => {
     it("starts in text mode with the Text toggle active", async () => {
         await renderDemo(fontRenderingDemo);
+
         const textToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Text",
         })) as Gtk.ToggleButton;
+
         const gridToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Grid",
         })) as Gtk.ToggleButton;
+
         expect(textToggle).toBePressed();
         expect(gridToggle).not.toBePressed();
     });
@@ -76,9 +84,11 @@ describe("fontRenderingDemo header toggles", () => {
         await renderDemo(fontRenderingDemo);
         const gridToggle = await activateGridMode();
         expect(gridToggle).toBePressed();
+
         const textToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Text",
         })) as Gtk.ToggleButton;
+
         await userEvent.click(textToggle);
         expect(textToggle).toBePressed();
         expect(gridToggle).not.toBePressed();
@@ -88,39 +98,45 @@ describe("fontRenderingDemo header toggles", () => {
 describe("fontRenderingDemo overlay checks", () => {
     it("renders pixel and outline overlay checkboxes with correct defaults", async () => {
         await renderDemo(fontRenderingDemo);
+
         const showPixels = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Show _Pixels",
         })) as Gtk.CheckButton;
+
         const showOutline = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Show _Outline",
         })) as Gtk.CheckButton;
+
         expect(showPixels).toBeChecked();
         expect(showOutline).not.toBeChecked();
     });
 
     it("toggles the show-pixels overlay state", async () => {
         await renderDemo(fontRenderingDemo);
+
         const showPixels = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Show _Pixels",
         })) as Gtk.CheckButton;
+
         await userEvent.click(showPixels);
         expect(showPixels).not.toBeChecked();
     });
 
     it("toggles antialias and hint-metrics checks", async () => {
         await renderDemo(fontRenderingDemo);
+
         const antialias = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "_Antialias",
         })) as Gtk.CheckButton;
+
         const hintMetrics = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Hint _Metrics",
         })) as Gtk.CheckButton;
+
         expect(antialias).toBeChecked();
         expect(hintMetrics).not.toBeChecked();
-
         await userEvent.click(antialias);
         await userEvent.click(hintMetrics);
-
         expect(antialias).not.toBeChecked();
         expect(hintMetrics).toBeChecked();
     });
@@ -150,7 +166,10 @@ describe("fontRenderingDemo zoom buttons", () => {
         const drawingArea = (await screen.findByName("image")) as Gtk.DrawingArea;
         const before = drawingArea.getContentWidth();
         await fireEvent(zoomIn, "clicked");
-        await waitFor(() => expect(drawingArea.getContentWidth()).toBeGreaterThan(before));
+
+        await waitFor(() => {
+            expect(drawingArea.getContentWidth()).toBeGreaterThan(before);
+        });
     });
 
     it("shrinks the drawing-area content width when zooming out", async () => {
@@ -159,7 +178,10 @@ describe("fontRenderingDemo zoom buttons", () => {
         const drawingArea = (await screen.findByName("image")) as Gtk.DrawingArea;
         const before = drawingArea.getContentWidth();
         await fireEvent(zoomOut, "clicked");
-        await waitFor(() => expect(drawingArea.getContentWidth()).toBeLessThan(before));
+
+        await waitFor(() => {
+            expect(drawingArea.getContentWidth()).toBeLessThan(before);
+        });
     });
 });
 
@@ -205,8 +227,14 @@ describe("fontRenderingDemo font selection", () => {
         const drawingArea = (await screen.findByName("image")) as Gtk.DrawingArea;
         const before = drawingArea.getContentHeight();
         const fontButton = (await screen.findByName("font-button")) as Gtk.FontDialogButton;
-        await act(() => fontButton.setFontDesc(Pango.FontDescription.fromString("Sans 48")));
-        await waitFor(() => expect(drawingArea.getContentHeight()).toBeGreaterThan(before));
+
+        await act(() => {
+            fontButton.setFontDesc(Pango.FontDescription.fromString("Sans 48"));
+        });
+
+        await waitFor(() => {
+            expect(drawingArea.getContentHeight()).toBeGreaterThan(before);
+        });
     });
 });
 
@@ -227,15 +255,27 @@ describe("fontRenderingDemo zoom limits", () => {
     it("desensitizes the zoom-in button once the max scale of 32 is reached", async () => {
         await renderDemo(fontRenderingDemo);
         const zoomIn = (await screen.findByName("up_button")) as Gtk.Button;
-        for (let i = 0; i < 30; i++) await fireEvent(zoomIn, "clicked");
-        await waitFor(() => expect(zoomIn.getSensitive()).toBe(false));
+
+        for (let i = 0; i < 30; i++) {
+            await fireEvent(zoomIn, "clicked");
+        }
+
+        await waitFor(() => {
+            expect(zoomIn.getSensitive()).toBe(false);
+        });
     });
 
     it("desensitizes the zoom-out button once the min scale of 1 is reached", async () => {
         await renderDemo(fontRenderingDemo);
         const zoomOut = (await screen.findByName("down_button")) as Gtk.Button;
-        for (let i = 0; i < 10; i++) await fireEvent(zoomOut, "clicked");
-        await waitFor(() => expect(zoomOut.getSensitive()).toBe(false));
+
+        for (let i = 0; i < 10; i++) {
+            await fireEvent(zoomOut, "clicked");
+        }
+
+        await waitFor(() => {
+            expect(zoomOut.getSensitive()).toBe(false);
+        });
     });
 });
 
@@ -246,7 +286,10 @@ describe("fontRenderingDemo keyboard zoom shortcuts", () => {
         const before = drawingArea.getContentWidth();
         drawingArea.grabFocus();
         await userEvent.keyboard(drawingArea, "{Control>}+{/Control}");
-        await waitFor(() => expect(drawingArea.getContentWidth()).toBeGreaterThan(before));
+
+        await waitFor(() => {
+            expect(drawingArea.getContentWidth()).toBeGreaterThan(before);
+        });
     });
 
     it("zooms out via the Ctrl+minus shortcut", async () => {
@@ -255,16 +298,21 @@ describe("fontRenderingDemo keyboard zoom shortcuts", () => {
         const before = drawingArea.getContentWidth();
         drawingArea.grabFocus();
         await userEvent.keyboard(drawingArea, "{Control>}-{/Control}");
-        await waitFor(() => expect(drawingArea.getContentWidth()).toBeLessThan(before));
+
+        await waitFor(() => {
+            expect(drawingArea.getContentWidth()).toBeLessThan(before);
+        });
     });
 });
 
 describe("fontRenderingDemo overlay animation", () => {
     it("checks the Show Outline overlay when toggled on", async () => {
         const result = await renderDemo(fontRenderingDemo);
+
         const showOutline = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Show _Outline",
         })) as Gtk.CheckButton;
+
         await userEvent.click(showOutline);
         expect(showOutline).toBeChecked();
         await result.unmount();
@@ -272,9 +320,11 @@ describe("fontRenderingDemo overlay animation", () => {
 
     it("unchecks the Show Pixels overlay when toggled off", async () => {
         const result = await renderDemo(fontRenderingDemo);
+
         const showPixels = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Show _Pixels",
         })) as Gtk.CheckButton;
+
         await userEvent.click(showPixels);
         expect(showPixels).not.toBeChecked();
         await result.unmount();
@@ -285,7 +335,11 @@ describe("fontRenderingDemo paint callback", () => {
     it("has a non-zero measured content size in text mode", async () => {
         await renderDemo(fontRenderingDemo);
         const drawingArea = (await screen.findByName("image")) as Gtk.DrawingArea;
-        await act(() => drawingArea.queueDraw());
+
+        await act(() => {
+            drawingArea.queueDraw();
+        });
+
         expect(drawingArea.getContentWidth()).toBeGreaterThan(0);
         expect(drawingArea.getContentHeight()).toBeGreaterThan(0);
     });
@@ -295,9 +349,12 @@ describe("fontRenderingDemo paint callback", () => {
         const drawingArea = (await screen.findByName("image")) as Gtk.DrawingArea;
         const textSize: [number, number] = [drawingArea.getContentWidth(), drawingArea.getContentHeight()];
         await activateGridMode();
-        await waitFor(() =>
-            expect([drawingArea.getContentWidth(), drawingArea.getContentHeight()]).not.toEqual(textSize),
+
+        await waitFor(() => {
+            expect([drawingArea.getContentWidth(), drawingArea.getContentHeight()]).not.toEqual(textSize);
+        },
         );
+
         expect(drawingArea.getContentWidth()).toBeGreaterThan(0);
         expect(drawingArea.getContentHeight()).toBeGreaterThan(0);
     });
@@ -306,7 +363,11 @@ describe("fontRenderingDemo paint callback", () => {
         await renderDemo(fontRenderingDemo);
         const { extents, grid } = await toggleExtentsAndGridOverlays();
         const drawingArea = (await screen.findByName("image")) as Gtk.DrawingArea;
-        await act(() => drawingArea.queueDraw());
+
+        await act(() => {
+            drawingArea.queueDraw();
+        });
+
         expect(extents).toBeChecked();
         expect(grid).toBeChecked();
     });

@@ -135,8 +135,12 @@ const itemHandlers = (state: CellsState, slot: string | null): FactoryHandlers =
             bindItem(state, slot, cell);
         }
     },
-    onUnbind: (cell) => removeRecord(state, cell),
-    onTeardown: (cell) => removeRecord(state, cell),
+    onUnbind: (cell) => {
+        removeRecord(state, cell);
+    },
+    onTeardown: (cell) => {
+        removeRecord(state, cell);
+    },
 });
 
 const bindHeader = (state: CellsState, header: Gtk.ListHeader): void => {
@@ -171,8 +175,12 @@ const headerHandlers = (state: CellsState): FactoryHandlers => ({
             bindHeader(state, header);
         }
     },
-    onUnbind: (header) => removeRecord(state, header),
-    onTeardown: (header) => removeRecord(state, header),
+    onUnbind: (header) => {
+        removeRecord(state, header);
+    },
+    onTeardown: (header) => {
+        removeRecord(state, header);
+    },
 });
 
 const createCells = (state: CellsState): Cells => {
@@ -199,7 +207,7 @@ const createCells = (state: CellsState): Cells => {
                     createPortal(
                         expanded(record, renderers[record.kind](record), collection),
                         record.cell,
-                        `gtkx-cell-${record.key}`,
+                        `gtkx-cell-${String(record.key)}`,
                     ),
                 )
                 .toArray(),

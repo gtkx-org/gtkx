@@ -15,7 +15,10 @@ type Variant = "get" | "getAll" | "query" | "queryAll" | "find" | "findAll";
 /** The query family a suggestion targets. */
 type Method = "Role" | "LabelText" | "PlaceholderText" | "Text" | "DisplayValue" | "Name";
 
-/** A suggested query for reaching a widget, including its family, variant, method name, and a `toString` that renders the full call. */
+/**
+ * A suggested query for reaching a widget, including its family, variant, method name, and a
+ * `toString` that renders the full call.
+ */
 type Suggestion = {
     queryName: Method;
     /** The full query function name, such as `getByRole`. */
@@ -61,7 +64,8 @@ const textSuggestion = (queryName: Method, variant: Variant, value: string | nul
 };
 
 /**
- * Computes the recommended query for reaching the given widget, preferring role, then label text, placeholder text, text, display value, and name.
+ * Computes the recommended query for reaching the given widget, preferring role, then label text,
+ * placeholder text, text, display value, and name.
  * @param widget Widget to build a suggestion for.
  * @param variant Query variant the suggestion should use.
  * @param method Restrict the suggestion to a specific query family instead of choosing by priority.

@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import { parseSchemaXml } from "../../src/settings/parser.js";
 import { renderEnvModule, renderRuntimeModule } from "../../src/settings/render.js";
 
-const parse = (xml: string, fileName = "test.gschema.xml") => parseSchemaXml(xml, fileName);
-
 const FIXED_SCHEMA = `<schemalist>
     <schema id="com.example.app" path="/com/example/app/">
         <key name="enabled" type="b"><default>false</default></key>
@@ -37,6 +35,8 @@ const ENUM_SCHEMA = `<schemalist>
     </schema>
 </schemalist>`;
 
+const parse = (xml: string, fileName = "test.gschema.xml") => parseSchemaXml(xml, fileName);
+
 describe("renderRuntimeModule", () => {
     it("renders fixed-path schemas as refs with a null path and a default export", () => {
         const code = renderRuntimeModule(parse(FIXED_SCHEMA));
@@ -49,7 +49,8 @@ describe("renderRuntimeModule", () => {
         const code = renderRuntimeModule(parse(RELOCATABLE_SCHEMA));
 
         expect(code).toContain(
-            "export const com_example_profile = { id: \"com.example.profile\", keys: keys_0, at: (path) => ({ id: \"com.example.profile\", path, keys: keys_0 }) };",
+            "export const com_example_profile = { id: \"com.example.profile\", keys: keys_0, " +
+            "at: (path) => ({ id: \"com.example.profile\", path, keys: keys_0 }) };",
         );
     });
 
@@ -120,12 +121,14 @@ describe("renderEnvModule (edge cases)", () => {
 
     it("disambiguates key type names that normalize to the same identifier", () => {
         const first = parse(
-            "<schemalist><schema id=\"com.example.app\" path=\"/a/\"><key name=\"x\" type=\"b\"><default>false</default></key></schema></schemalist>",
+            "<schemalist><schema id=\"com.example.app\" path=\"/a/\">" +
+            "<key name=\"x\" type=\"b\"><default>false</default></key></schema></schemalist>",
             "a.gschema.xml",
         );
 
         const second = parse(
-            "<schemalist><schema id=\"com.example-app\" path=\"/b/\"><key name=\"y\" type=\"b\"><default>false</default></key></schema></schemalist>",
+            "<schemalist><schema id=\"com.example-app\" path=\"/b/\">" +
+            "<key name=\"y\" type=\"b\"><default>false</default></key></schema></schemalist>",
             "b.gschema.xml",
         );
 

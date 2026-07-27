@@ -46,7 +46,8 @@ function runCapture(command: string, args: string[]): Promise<string> {
             } else {
                 reject(
                     new Error(
-                        `Command failed with exit code ${code ?? "unknown"}: ${command} ${args.join(" ")}\n${stderr}`,
+                        `Command failed with exit code ${String(code ?? "unknown")}: ` +
+                        `${command} ${args.join(" ")}\n${stderr}`,
                     ),
                 );
             }
@@ -91,7 +92,7 @@ async function tarballUrl(name: string): Promise<string> {
     const response = await fetch(`${REGISTRY}${name}`);
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch packument for ${name}: HTTP ${response.status}`);
+        throw new Error(`Failed to fetch packument for ${name}: HTTP ${String(response.status)}`);
     }
 
     const packument = (await response.json()) as Packument;
@@ -117,7 +118,7 @@ async function inspectTarball(
     const response = await fetch(await tarballUrl(name));
 
     if (!response.ok) {
-        throw new Error(`Failed to download the tarball for ${name}: HTTP ${response.status}`);
+        throw new Error(`Failed to download the tarball for ${name}: HTTP ${String(response.status)}`);
     }
 
     const tarballPath = join(inspectDir, "package.tgz");
@@ -155,7 +156,7 @@ async function verifyPublishedShapes(inspectDir: string): Promise<void> {
         assertPublishedShape({ name, entries, manifest, maps });
     }
 
-    console.log(`release-e2e: verified the published shape of ${names.length} packages`);
+    console.log(`release-e2e: verified the published shape of ${String(names.length)} packages`);
 }
 
 async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, variant: ConsumerVariant): Promise<void> {

@@ -90,6 +90,7 @@ fn drain_default_context() {
     while context.iteration(false) {}
 }
 
+#[allow(clippy::unnecessary_box_returns)]
 fn void_closure(env: &Env, js_fn: sys::napi_value, oneshot: bool) -> Box<ClosureState> {
     ClosureState::boxed(
         js_fn_handle(env, js_fn),
@@ -217,6 +218,7 @@ fn the_user_data_argument_is_not_passed_to_js() {
     });
 }
 
+#[allow(clippy::unnecessary_box_returns)]
 fn ref_i32_closure(env: &Env, js_fn: sys::napi_value, inout: bool) -> Box<ClosureState> {
     let ref_codec = RefCodec::new(Codec::Integer(IntegerCodec::I32), inout)
         .expect("Integer is a valid Ref inner");
@@ -250,7 +252,7 @@ fn ref_inout_parameters_are_seeded_and_flushed() {
         let call: unsafe extern "C" fn(*mut i32) = unsafe { std::mem::transmute(state.code_ptr) };
 
         let mut backing: i32 = 41;
-        unsafe { call(&mut backing) };
+        unsafe { call(&raw mut backing) };
 
         let seeds = seeded.borrow();
         assert_eq!(seeds.len(), 1);
@@ -270,7 +272,7 @@ fn ref_pure_out_parameters_are_seeded_null_and_flushed_without_reading_the_slot(
         let call: unsafe extern "C" fn(*mut i32) = unsafe { std::mem::transmute(state.code_ptr) };
 
         let mut backing: i32 = 41;
-        unsafe { call(&mut backing) };
+        unsafe { call(&raw mut backing) };
 
         let seeds = seeded.borrow();
         assert_eq!(seeds.len(), 1);

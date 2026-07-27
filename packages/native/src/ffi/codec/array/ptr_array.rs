@@ -16,7 +16,7 @@ impl ArrayContainer for GPtrArrayCodec {
             return super::build_js_array(env, Vec::new());
         };
 
-        let ptr_array = ptr as *mut glib::ffi::GPtrArray;
+        let ptr_array = ptr.cast::<glib::ffi::GPtrArray>();
         let len = unsafe { (*ptr_array).len as usize };
         let pdata = unsafe { (*ptr_array).pdata };
         let items = (0..len).map(move |i| unsafe { *pdata.add(i) });

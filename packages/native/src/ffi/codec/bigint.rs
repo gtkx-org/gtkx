@@ -11,14 +11,16 @@ pub enum BigIntCodec {
     U64,
 }
 
-impl BigIntCodec {
-    fn ffi_codec(self) -> IntegerCodec {
+impl IntegerBacked for BigIntCodec {
+    fn ffi_codec(&self) -> IntegerCodec {
         match self {
             Self::I64 => IntegerCodec::I64,
             Self::U64 => IntegerCodec::U64,
         }
     }
+}
 
+impl BigIntCodec {
     fn name(self) -> &'static str {
         match self {
             Self::I64 => "bigint64",
@@ -43,6 +45,10 @@ impl BigIntCodec {
                 }
                 Ok(int)
             }
+            // The guard rejects every non-integral, non-finite or beyond-2^53 value first, so
+            // what reaches the conversion is a whole number f64 holds exactly and i128 covers
+            // with room to spare.
+            #[allow(clippy::cast_possible_truncation)]
             ValueType::Number => {
                 let n = value::read_napi::<f64>(value)?;
                 if !n.is_finite()
@@ -88,10 +94,17 @@ impl BigIntCodec {
         }
     }
 
+    #[must_use]
     pub fn byte_size(self) -> usize {
         self.ffi_codec().byte_size()
     }
 
+    /// # Safety
+    ///
+    /// `ptr` must point at `len * self.byte_size()` initialized, readable bytes that stay valid
+    /// for the whole call. Alignment is not required: every element is read with
+    /// `read_unaligned`.
+    #[must_use]
     pub unsafe fn read_slice(self, ptr: *const u8, len: usize) -> Vec<i128> {
         (0..len)
             .map(|i| unsafe { self.read_i128(ptr.add(i * self.byte_size())) })
@@ -128,7 +141,7 @@ impl BigIntCodec {
     }
 }
 
-pub fn bigint_to_unknown<'e>(env: &'e Env, value: i128) -> anyhow::Result<Unknown<'e>> {
+pub(super) fn bigint_to_unknown(env: &Env, value: i128) -> anyhow::Result<Unknown<'_>> {
     Ok(BigInt::from(value).into_unknown(env)?)
 }
 

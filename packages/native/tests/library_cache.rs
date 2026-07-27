@@ -1,13 +1,15 @@
 use test_support as helpers;
 
+use gtk4::glib;
+
 use native::ffi::library_cache::FfiCache;
 
 #[test]
 fn ffi_cache_default_is_empty() {
     helpers::run(|| {
-        FfiCache::with(|state| {
-            assert!(state.libs.is_empty());
-        });
+        let cache = FfiCache::default();
+
+        assert!(cache.libs.is_empty());
     });
 }
 
@@ -28,13 +30,13 @@ fn get_library_caches_loaded_libraries() {
             let lib1_ptr = state
                 .library("libglib-2.0.so.0")
                 .ok()
-                .map(|l| l as *const _);
+                .map(std::ptr::from_ref);
 
             let _ = state.library("libglib-2.0.so.0");
             let lib2_ptr = state
                 .library("libglib-2.0.so.0")
                 .ok()
-                .map(|l| l as *const _);
+                .map(std::ptr::from_ref);
 
             assert_eq!(lib1_ptr, lib2_ptr);
         });
@@ -85,7 +87,7 @@ fn resolve_type_resolves_known_get_type_function() {
             FfiCache::with(|state| state.resolve_type("libgtk-4.so.1", "gtk_widget_get_type"));
 
         let type_ = type_.expect("gtk_widget_get_type should resolve");
-        assert_ne!(type_, gtk4::glib::Type::INVALID);
+        assert_ne!(type_, glib::Type::INVALID);
     });
 }
 
@@ -100,7 +102,7 @@ fn resolve_type_caches_repeated_resolutions() {
                 .resolve_type("libgtk-4.so.1", "gtk_button_get_type")
                 .expect("cached resolution should succeed");
 
-            assert_ne!(first, gtk4::glib::Type::INVALID);
+            assert_ne!(first, glib::Type::INVALID);
             assert_eq!(first, second);
         });
     });
@@ -114,7 +116,7 @@ fn resolve_type_optional_resolves_known_get_type_function() {
         });
 
         let type_ = type_.expect("resolving a present symbol should succeed");
-        assert_ne!(type_, gtk4::glib::Type::INVALID);
+        assert_ne!(type_, glib::Type::INVALID);
     });
 }
 
@@ -126,7 +128,7 @@ fn resolve_type_optional_returns_invalid_for_missing_symbol() {
         });
 
         let type_ = type_.expect("a missing symbol must not error, only yield INVALID");
-        assert_eq!(type_, gtk4::glib::Type::INVALID);
+        assert_eq!(type_, glib::Type::INVALID);
     });
 }
 

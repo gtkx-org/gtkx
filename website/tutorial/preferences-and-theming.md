@@ -114,8 +114,8 @@ export const Window = () => {
     // ...
     const windowRef = useRef<Adw.ApplicationWindow | null>(null);
 
-    useBindSetting(schema, "window-width", windowRef, "defaultWidth");
-    useBindSetting(schema, "window-height", windowRef, "defaultHeight");
+    useBindSetting({ schema, key: "window-width", object: windowRef, property: "defaultWidth" });
+    useBindSetting({ schema, key: "window-height", object: windowRef, property: "defaultHeight" });
 
     return (
         <AdwApplicationWindow

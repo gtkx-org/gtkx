@@ -98,15 +98,16 @@ const namingLabelText = (widget: Gtk.Widget): string | null => {
     return widget instanceof Gtk.Label && widget.getUseUnderline() ? stripMnemonic(text) : text;
 };
 
-const isNamingLabelRole = (role: Gtk.AccessibleRole, includePresentation: boolean): boolean =>
-    role === Gtk.AccessibleRole.LABEL || (includePresentation && role === Gtk.AccessibleRole.PRESENTATION);
+const isNamingLabelRole = (role: Gtk.AccessibleRole, shouldIncludePresentation: boolean): boolean =>
+    role === Gtk.AccessibleRole.LABEL ||
+    (shouldIncludePresentation && role === Gtk.AccessibleRole.PRESENTATION);
 
 const collectLabels = (widget: Gtk.Widget): string[] => {
-    const includePresentation = widget.getAccessibleRole() === Gtk.AccessibleRole.MENU_ITEM;
+    const isIncludePresentation = widget.getAccessibleRole() === Gtk.AccessibleRole.MENU_ITEM;
     const labels: string[] = [];
 
     for (const descendant of descendants(widget)) {
-        if (!isNamingLabelRole(descendant.getAccessibleRole(), includePresentation)) {
+        if (!isNamingLabelRole(descendant.getAccessibleRole(), isIncludePresentation)) {
             continue;
         }
 
@@ -241,7 +242,7 @@ const getWidgetLevel = (widget: Gtk.Widget): number | null => {
 const getWidgetInvalidState = (widget: Gtk.Widget): Gtk.AccessibleInvalidState | null => {
     const value = readAccessibleNumber(widget, "accessibleInvalid");
 
-    return value === null ? null : (value as Gtk.AccessibleInvalidState);
+    return value ?? null;
 };
 
 const getWidgetErrorMessage = (widget: Gtk.Widget): Gtk.Widget[] | null =>

@@ -9,7 +9,7 @@ const MNEMONIC_LABELS = ["_Foreground", "_Background", "_Dashing", "_Line ends"]
 const naturalWidths = (dropdowns: Gtk.Widget[]): number[] =>
     dropdowns.map((d) => d.measure(Gtk.Orientation.HORIZONTAL, -1)[1]);
 
-const allEqual = (values: number[]): boolean => values.every((v) => v === values[0]);
+const areAllEqual = (values: number[]): boolean => values.every((v) => v === values[0]);
 
 describe("sizegroupDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -38,13 +38,18 @@ describe("sizegroupDemo frames and labels", () => {
         expect(dropdowns).toHaveLength(4);
     });
 
-    it("renders the underline-mnemonic labels '_Foreground', '_Background', '_Dashing', '_Line ends' linked to their dropdowns", async () => {
-        await renderDemo(sizegroupDemo);
-        for (const text of MNEMONIC_LABELS) {
-            const target = await screen.findByLabelText(text);
-            expect(target).toBeInstanceOf(Gtk.DropDown);
-        }
-    });
+    it(
+        "renders the underline-mnemonic labels '_Foreground', '_Background', '_Dashing', '_Line ends' " +
+        "linked to their dropdowns",
+        async () => {
+            await renderDemo(sizegroupDemo);
+
+            for (const text of MNEMONIC_LABELS) {
+                const target = await screen.findByLabelText(text);
+                expect(target).toBeInstanceOf(Gtk.DropDown);
+            }
+        },
+    );
 });
 
 describe("sizegroupDemo check button", () => {
@@ -54,7 +59,7 @@ describe("sizegroupDemo check button", () => {
         const dropdowns = await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
         const widths = naturalWidths(dropdowns);
         expect(widths.every((w) => w > 0)).toBe(true);
-        expect(allEqual(widths)).toBe(true);
+        expect(areAllEqual(widths)).toBe(true);
     });
 
     it("labels the check button '_Enable grouping'", async () => {
@@ -67,22 +72,21 @@ describe("sizegroupDemo check button", () => {
         await renderDemo(sizegroupDemo);
         const dropdowns = await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
         const groupedWidths = naturalWidths(dropdowns);
-        expect(allEqual(groupedWidths)).toBe(true);
+        expect(areAllEqual(groupedWidths)).toBe(true);
 
         const check = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "_Enable grouping",
             checked: true,
         });
+
         await userEvent.click(check);
         await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: false });
-
         const ungroupedWidths = naturalWidths(dropdowns);
-        expect(allEqual(ungroupedWidths)).toBe(false);
+        expect(areAllEqual(ungroupedWidths)).toBe(false);
         expect(Math.max(...ungroupedWidths)).toBe(groupedWidths[0]);
-
         await userEvent.click(check);
         await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: true });
-        expect(allEqual(naturalWidths(dropdowns))).toBe(true);
+        expect(areAllEqual(naturalWidths(dropdowns))).toBe(true);
     });
 });
 
@@ -91,6 +95,7 @@ describe("sizegroupDemo dropdowns", () => {
         await renderDemo(sizegroupDemo);
         const dropdowns = await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
         expect(dropdowns).toHaveLength(4);
+
         for (const dropdown of dropdowns) {
             expect((dropdown as Gtk.DropDown).getSelected()).toBe(0);
         }

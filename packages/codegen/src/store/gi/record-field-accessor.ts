@@ -9,7 +9,7 @@ import { tStruct } from "../../analysis/descriptor.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock } from "../../writer/emit.js";
-import { refIsClassStruct } from "./class-struct-record.js";
+import { isClassStructRef } from "./class-struct-record.js";
 import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
 
@@ -95,26 +95,26 @@ const isEmittableField = (context: ModuleContext, field: GirField): field is Gir
     !field.private &&
     field.type !== undefined &&
     !isInlineCallbackRef(context.library, field.type) &&
-    !refIsClassStruct(context, field.type);
+    !isClassStructRef(context, field.type);
 
 const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): string => {
     const { descriptor, slot, targetExpr, valueExpr } = spec;
     context.addRuntimeImport("write");
 
     if (slot.bitWidth === undefined) {
-        return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${valueExpr});`;
+        return `write(${targetExpr}, ${descriptor}, ${String(slot.byteOffset)}, ${valueExpr});`;
     }
 
     context.addRuntimeImport("read");
 
     const merged = mergeBitfield(
-        `(read(${targetExpr}, ${descriptor}, ${slot.byteOffset}) as number)`,
+        `(read(${targetExpr}, ${descriptor}, ${String(slot.byteOffset)}) as number)`,
         valueExpr,
         bitMask(slot.bitWidth),
         slot.bitOffset ?? 0,
     );
 
-    return `write(${targetExpr}, ${descriptor}, ${slot.byteOffset}, ${merged});`;
+    return `write(${targetExpr}, ${descriptor}, ${String(slot.byteOffset)}, ${merged});`;
 };
 
 const admitField = (
@@ -338,7 +338,7 @@ const visitInlineStructFields = (
 };
 
 const elementAccessExpr = (descriptor: string, offset: number): string =>
-    `read(__array, ${descriptor}, __base + ${offset})`;
+    `read(__array, ${descriptor}, __base + ${String(offset)})`;
 
 const renderElementReadEntry = (context: ModuleContext, visit: InlineFieldVisit): string => {
     const { jsName, descriptor, offset, slot, type } = visit;
@@ -350,7 +350,7 @@ const renderElementReadEntry = (context: ModuleContext, visit: InlineFieldVisit)
 
     const shift = slot.bitOffset ?? 0;
 
-    return `${jsName}: (((${access} as number) >>> ${shift}) & ${bitMask(slot.bitWidth)})`;
+    return `${jsName}: (((${access} as number) >>> ${String(shift)}) & ${String(bitMask(slot.bitWidth))})`;
 };
 
 const renderElementReadObject = (context: ModuleContext, fields: GirField[], baseOffset: number): string => {
@@ -373,7 +373,7 @@ const renderElementWriteStatement = (visit: InlineFieldVisit, valuePath: string)
     const valueExpr = `${valuePath}.${jsName}`;
 
     if (slot.bitWidth === undefined) {
-        return `write(__array, ${descriptor}, __base + ${offset}, ${valueExpr});`;
+        return `write(__array, ${descriptor}, __base + ${String(offset)}, ${valueExpr});`;
     }
 
     const merged = mergeBitfield(
@@ -383,7 +383,7 @@ const renderElementWriteStatement = (visit: InlineFieldVisit, valuePath: string)
         slot.bitOffset ?? 0,
     );
 
-    return `write(__array, ${descriptor}, __base + ${offset}, ${merged});`;
+    return `write(__array, ${descriptor}, __base + ${String(offset)}, ${merged});`;
 };
 
 const appendElementWriteStatements = (context: ModuleContext, options: ElementWriteOptions): void => {
@@ -407,10 +407,11 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
 const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => {
     const { context, jsName, tsType, elementDescriptor, offset, lengthExpr, elementSize, elementFields } = options;
     const element = renderElementReadObject(context, elementFields, 0);
-    const loop = [`const __base = __index * ${elementSize};`, `__result.push(${element});`].join("\n");
+    const loop = [`const __base = __index * ${String(elementSize)};`, `__result.push(${element});`].join("\n");
+    const handleType = "ReturnType<typeof getHandle>";
 
     const body = [
-        `const __array = read(getHandle(this), ${elementDescriptor}, ${offset}) as ReturnType<typeof getHandle>;`,
+        `const __array = read(getHandle(this), ${elementDescriptor}, ${String(offset)}) as ${handleType};`,
         `const __result: ${tsType} = [];`,
         `for (let __index = 0; __index < ${lengthExpr}; __index++) {`,
         indent(loop, 1),
@@ -432,15 +433,15 @@ const structArraySetterStatements = (context: ModuleContext, options: StructArra
         out: writes,
     });
 
-    const loop = [`const __base = __index * ${elementSize};`, ...writes].join("\n");
+    const loop = [`const __base = __index * ${String(elementSize)};`, ...writes].join("\n");
 
     return [
         `const __descriptor = ${elementDescriptor};`,
-        `const __array = read(getHandle(this), __descriptor, ${offset}) as ReturnType<typeof getHandle>;`,
+        `const __array = read(getHandle(this), __descriptor, ${String(offset)}) as ReturnType<typeof getHandle>;`,
         "for (const [__index, __element] of __value.entries()) {",
         indent(loop, 1),
         "}",
-        `write(getHandle(this), __descriptor, ${offset}, __array);`,
+        `write(getHandle(this), __descriptor, ${String(offset)}, __array);`,
     ].join("\n");
 };
 
@@ -537,7 +538,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
         jsName,
         tsType: renderTsType(context, fieldType, false),
         elementDescriptor: tStruct("borrowed", {
-            size: `${lengthExpr} * ${elementSize}`,
+            size: `${lengthExpr} * ${String(elementSize)}`,
             wrapperClass: undefined,
             callerAllocated: false,
         }),
@@ -567,7 +568,7 @@ const getterBlock = (options: AccessorOptions): string => {
     context.addRuntimeImport("getHandle");
 
     if (slot.bitWidth === undefined) {
-        const valueExpression = `read(getHandle(this), ${descriptor}, ${slot.byteOffset})`;
+        const valueExpression = `read(getHandle(this), ${descriptor}, ${String(slot.byteOffset)})`;
 
         const wrapped = wrapReturnValue(context, {
             ref: fieldType,
@@ -582,7 +583,8 @@ const getterBlock = (options: AccessorOptions): string => {
 
     const mask = bitMask(slot.bitWidth);
     const shift = slot.bitOffset ?? 0;
-    const body = `const __unit = read(getHandle(this), ${descriptor}, ${slot.byteOffset}) as number;\nreturn (((__unit >>> ${shift}) & ${mask}) >>> 0) as ${tsType};`;
+    const readUnit = `const __unit = read(getHandle(this), ${descriptor}, ${String(slot.byteOffset)}) as number;`;
+    const body = `${readUnit}\nreturn (((__unit >>> ${String(shift)}) & ${String(mask)}) >>> 0) as ${tsType};`;
 
     return renderBlock(`get ${jsName}(): ${tsType}`, body);
 };

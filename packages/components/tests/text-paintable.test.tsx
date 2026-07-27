@@ -6,6 +6,13 @@ import { render, screen } from "@gtkx/testing";
 import { createRef, type ReactElement, type ReactNode, type Ref, type RefObject, useMemo } from "react";
 import { describe, expect, it } from "vitest";
 
+type InsertedCall = { buffer: Gtk.TextBuffer; mark: Gtk.TextMark };
+
+type ReplaceableFixture = {
+    calls: InsertedCall[];
+    rerender: (icon: string, isShown: boolean) => Promise<void>;
+};
+
 const getTextBuffer = (ref: RefObject<Gtk.TextView | null>): Gtk.TextBuffer =>
     ref.current?.getBuffer() as Gtk.TextBuffer;
 
@@ -68,40 +75,25 @@ const countPaintables = (buffer: Gtk.TextBuffer): number => {
     return count;
 };
 
-type InsertedCall = { buffer: Gtk.TextBuffer; mark: Gtk.TextMark };
-
 const requireCall = (calls: InsertedCall[], index: number): InsertedCall => {
     const call = calls[index];
 
     if (!call) {
-        throw new Error(`Expected an onInserted call at index ${index}`);
+        throw new Error(`Expected an onInserted call at index ${String(index)}`);
     }
 
     return call;
 };
 
-const buildReplaceable =
-    (viewRef: Ref<Gtk.TextView | null>, calls: InsertedCall[]) =>
-        (icon: string, show: boolean): ReactNode => (
-            <ReplaceableHarness
-                viewRef={viewRef}
-                icon={icon}
-                show={show}
-                onInserted={(buffer, mark) => {
-                    calls.push({ buffer, mark });
-                }}
-            />
-        );
-
 const ReplaceableHarness = ({
     viewRef,
     icon,
-    show,
+    isShown,
     onInserted,
 }: {
     viewRef: Ref<Gtk.TextView | null>;
     icon: string;
-    show: boolean;
+    isShown: boolean;
     onInserted: (buffer: Gtk.TextBuffer, mark: Gtk.TextMark) => void;
 }) => {
     const paintable = usePaintable(icon);
@@ -112,12 +104,38 @@ const ReplaceableHarness = ({
             buffer={(
                 <GtkTextBuffer>
                     {"before "}
-                    {show && paintable ? <TextPaintable paintable={paintable} onInserted={onInserted} /> : null}
+                    {isShown && paintable ? <TextPaintable paintable={paintable} onInserted={onInserted} /> : null}
                     {" after"}
                 </GtkTextBuffer>
             )}
         />
     );
+};
+
+const buildReplaceable =
+    (viewRef: Ref<Gtk.TextView | null>, calls: InsertedCall[]) =>
+        (icon: string, isShown: boolean): ReactNode => (
+            <ReplaceableHarness
+                viewRef={viewRef}
+                icon={icon}
+                isShown={isShown}
+                onInserted={(buffer, mark) => {
+                    calls.push({ buffer, mark });
+                }}
+            />
+        );
+
+const renderReplaceable = async (viewRef: Ref<Gtk.TextView | null>): Promise<ReplaceableFixture> => {
+    const calls: InsertedCall[] = [];
+    const build = buildReplaceable(viewRef, calls);
+    const { rerender } = await render(build("image-x-generic-symbolic", true));
+
+    return {
+        calls,
+        rerender: async (icon, isShown) => {
+            await rerender(build(icon, isShown));
+        },
+    };
 };
 
 describe("render - TextPaintable", () => {
@@ -144,9 +162,7 @@ describe("render - TextPaintable", () => {
     });
 
     it("fires onInserted with the buffer and a mark positioned at the paintable", async () => {
-        const calls: InsertedCall[] = [];
-        const build = buildReplaceable(createRef<Gtk.TextView>(), calls);
-        await render(build("image-x-generic-symbolic", true));
+        const { calls } = await renderReplaceable(createRef<Gtk.TextView>());
         expect(calls).toHaveLength(1);
         const call = requireCall(calls, 0);
         expect(call.mark.getLeftGravity()).toBe(true);
@@ -155,12 +171,10 @@ describe("render - TextPaintable", () => {
 
     it("replaces the embedded paintable when the paintable prop changes", async () => {
         const viewRef = createRef<Gtk.TextView>();
-        const calls: InsertedCall[] = [];
-        const build = buildReplaceable(viewRef, calls);
-        const { rerender } = await render(build("image-x-generic-symbolic", true));
+        const { calls, rerender } = await renderReplaceable(viewRef);
         expect(calls).toHaveLength(1);
         expect(countPaintables(getTextBuffer(viewRef))).toBe(1);
-        await rerender(build("folder-symbolic", true));
+        await rerender("folder-symbolic", true);
         expect(calls).toHaveLength(2);
         expect(countPaintables(getTextBuffer(viewRef))).toBe(1);
         const call = requireCall(calls, 1);
@@ -169,10 +183,9 @@ describe("render - TextPaintable", () => {
 
     it("deletes exactly the paintable on unmount, preserving surrounding text", async () => {
         const viewRef = createRef<Gtk.TextView>();
-        const build = buildReplaceable(viewRef, []);
-        const { rerender } = await render(build("image-x-generic-symbolic", true));
+        const { rerender } = await renderReplaceable(viewRef);
         expect(countPaintables(getTextBuffer(viewRef))).toBe(1);
-        await rerender(build("image-x-generic-symbolic", false));
+        await rerender("image-x-generic-symbolic", false);
         const buffer = getTextBuffer(viewRef);
         expect(countPaintables(buffer)).toBe(0);
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("before  after");

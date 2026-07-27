@@ -17,7 +17,7 @@ const WEATHER_ICON_NAMES = new Set([
     "weather-storm-symbolic",
 ]);
 
-describe("listviewWeatherDemo", () => {
+describe("listviewWeatherDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewWeatherDemo.id).toBe("listview-weather");
         expect(listviewWeatherDemo.title).toBe("Lists/Weather");
@@ -28,7 +28,9 @@ describe("listviewWeatherDemo", () => {
         expect(listviewWeatherDemo.defaultHeight).toBe(400);
         expect(listviewWeatherDemo.component).toBeTypeOf("function");
     });
+});
 
+describe("listviewWeatherDemo list view", () => {
     it("renders a horizontal GtkListView with separators and no selection", async () => {
         await renderDemo(listviewWeatherDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
@@ -58,7 +60,9 @@ describe("listviewWeatherDemo", () => {
         const model = lv.getModel() as Gtk.SelectionModel;
         expect(model.getNItems()).toBe(EXPECTED_ITEM_COUNT);
     });
+});
 
+describe("listviewWeatherDemo cell content", () => {
     it("wraps the list view inside the named scrolled window", async () => {
         await renderDemo(listviewWeatherDemo);
         const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
@@ -71,6 +75,7 @@ describe("listviewWeatherDemo", () => {
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
         const images = within(lv).getAllByRole(Gtk.AccessibleRole.IMG) as Gtk.Image[];
         expect(images.length).toBeGreaterThan(0);
+
         for (const image of images) {
             expect(image.getIconSize()).toBe(Gtk.IconSize.LARGE);
             expect(WEATHER_ICON_NAMES.has(image.getIconName() ?? "")).toBe(true);

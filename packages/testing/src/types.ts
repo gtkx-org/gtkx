@@ -4,7 +4,10 @@ import type { ComponentType, ErrorInfo, ReactNode } from "react";
 import type { PrettyWidgetOptions } from "./pretty-widget.js";
 import type { Container } from "./traversal.js";
 
-/** A custom matcher predicate: given a candidate widget's normalized text content and the widget itself, returns whether it matches. */
+/**
+ * A custom matcher predicate: given a candidate widget's normalized text content and the widget
+ * itself, returns whether it matches.
+ */
 type MatcherFunction = (content: string, widget: Gtk.Widget) => boolean;
 /** A value used to match widget text: a string or number, a regular expression, or a custom {@link MatcherFunction}. */
 type Matcher = string | number | RegExp | MatcherFunction;
@@ -85,7 +88,10 @@ type BoundQuery<Q extends Query> = Q extends (container: Container, ...args: inf
 
 type BoundCustomQueries<Q extends QueryMap> = { [K in keyof Q]: BoundQuery<Q[K]> };
 
-/** Options for {@link render}: the container and base element to mount into, an optional wrapper, React behavior toggles, error callbacks, and custom queries to bind. */
+/**
+ * Options for {@link render}: the container and base element to mount into, an optional wrapper,
+ * React behavior toggles, error callbacks, and custom queries to bind.
+ */
 type RenderOptions<Q extends QueryMap = Record<never, never>> = {
     container?: Gtk.Widget | RootElement | undefined;
     /** Root of the subtree that bound queries search. */
@@ -123,10 +129,16 @@ type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
     scale?: number;
 };
 
-/** Selects the window to screenshot by index, or by title (exact string or regular expression); undefined targets the default window. */
+/**
+ * Selects the window to screenshot by index, or by title (exact string or regular expression);
+ * undefined targets the default window.
+ */
 type WindowSelector = number | string | RegExp | undefined;
 
-/** Options for {@link renderHook}: an optional wrapper and the initial props (required unless the props type permits undefined). */
+/**
+ * Options for {@link renderHook}: an optional wrapper and the initial props (required unless the
+ * props type permits undefined).
+ */
 type RenderHookOptions<Props> = {
     wrapper?: WrapperComponent;
 } & (undefined extends Props
@@ -137,7 +149,10 @@ type RenderHookOptions<Props> = {
             initialProps: Props;
         });
 
-/** The result of {@link renderHook}: the latest hook return value plus functions to rerender with new props and to unmount. */
+/**
+ * The result of {@link renderHook}: the latest hook return value plus functions to rerender with new
+ * props and to unmount.
+ */
 type RenderHookResult<Result, Props> = {
     /** Holds the most recent value returned by the hook under `current`. */
     result: { current: Result };

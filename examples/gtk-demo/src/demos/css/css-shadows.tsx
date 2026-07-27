@@ -51,7 +51,19 @@ window.demo button:active {
 
 const WINDOW_CLASSES = ["demo", "background"];
 
-const CssShadowsDemo = () => {
+const cssShadowsDemo: Demo = {
+    id: "css-shadows",
+    title: "Theming/Shadows",
+    description: "This demo shows how to use CSS shadows.",
+    keywords: [],
+    component: CssShadowsDemo,
+    sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 300,
+    windowCssClasses: WINDOW_CLASSES,
+};
+
+function CssShadowsDemo() {
     const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
@@ -77,16 +89,6 @@ const CssShadowsDemo = () => {
             )}
         />
     );
-};
+}
 
-export const cssShadowsDemo: Demo = {
-    id: "css-shadows",
-    title: "Theming/Shadows",
-    description: "This demo shows how to use CSS shadows.",
-    keywords: [],
-    component: CssShadowsDemo,
-    sourceCode,
-    defaultWidth: 400,
-    defaultHeight: 300,
-    windowCssClasses: WINDOW_CLASSES,
-};
+export { cssShadowsDemo };

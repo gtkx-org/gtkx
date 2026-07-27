@@ -21,7 +21,7 @@ const getHookHandler = <T>(hook: T | { handler: T } | undefined | null, name: st
     return hook;
 };
 
-const makeLoader = (): ConfigLoader => vi.fn(async () => resolveConfig({ applicationId: "org.gtk.Test" }));
+const makeLoader = (): ConfigLoader => vi.fn(() => Promise.resolve(resolveConfig({ applicationId: "org.gtk.Test" })));
 
 const resolveId = (plugin: Plugin, id: string): string | undefined => {
     const hook = getHookHandler<ResolveIdHook>(plugin.resolveId, "resolveId");
@@ -42,7 +42,7 @@ const applyConfig = async (plugin: Plugin, root: string): Promise<void> => {
     await hook({ root }, { command: "serve", mode: "development" });
 };
 
-const loadConfig: ConfigLoader = async () => resolveConfig({ applicationId: "org.gtk.Demo4" });
+const loadConfig: ConfigLoader = () => Promise.resolve(resolveConfig({ applicationId: "org.gtk.Demo4" }));
 
 describe("createConfigPlugin", () => {
     it("resolves the public virtual id to the internal resolved id", () => {

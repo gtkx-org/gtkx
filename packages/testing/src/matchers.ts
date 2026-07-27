@@ -15,15 +15,10 @@ import {
 /** The expected value for a text matcher: an exact string or a regular expression. */
 type TextExpectation = string | RegExp;
 type MatcherResult = { pass: boolean; message: () => string };
-
-type MatcherContext = {
-    isNot: boolean;
-};
-
-type TextMatcher = (this: MatcherContext, received: unknown, expected?: TextExpectation) => MatcherResult;
-type StateMatcher = (this: MatcherContext, received: unknown) => MatcherResult;
-type ValueMatcher = (this: MatcherContext, received: unknown, expected: number) => MatcherResult;
-type TextMatcherContext = { isNot: boolean; matcherName: string; widget: Gtk.Widget; actual: string | null };
+type TextMatcher = (received: unknown, expected?: TextExpectation) => MatcherResult;
+type StateMatcher = (received: unknown) => MatcherResult;
+type ValueMatcher = (received: unknown, expected: number) => MatcherResult;
+type TextMatcherContext = { matcherName: string; widget: Gtk.Widget; actual: string | null };
 
 type MatcherImplementations = {
     toHaveDisplayValue: TextMatcher;
@@ -73,7 +68,7 @@ const matchers: MatcherImplementations = {
     toHaveValue,
 };
 
-let registered = false;
+const registration = { isRegistered: false };
 
 const asWidget = (received: unknown, matcherName: string): Gtk.Widget => {
     if (!(received instanceof Gtk.Widget)) {
@@ -90,7 +85,7 @@ const describeWidget = (widget: Gtk.Widget): string => {
     return name === null ? `<${role}>` : `<${role} name=${JSON.stringify(name)}>`;
 };
 
-const matchesText = (actual: string, expected: TextExpectation, mode: "exact" | "substring"): boolean => {
+const isTextMatch = (actual: string, expected: TextExpectation, mode: "exact" | "substring"): boolean => {
     if (expected instanceof RegExp) {
         expected.lastIndex = 0;
 
@@ -103,17 +98,23 @@ const matchesText = (actual: string, expected: TextExpectation, mode: "exact" | 
 const describeExpected = (expected: TextExpectation): string =>
     expected instanceof RegExp ? String(expected) : JSON.stringify(expected);
 
-const nonEmptyResult = ({ isNot, matcherName, widget, actual }: TextMatcherContext): MatcherResult => ({
-    pass: actual !== null && actual !== "",
-    message: () =>
-        `expected widget ${isNot ? "not " : ""}to have a non-empty value for ${matcherName}, ` +
-        `but got ${JSON.stringify(actual)}\n${describeWidget(widget)}`,
-});
+const negationPrefix = (isPass: boolean): string => (isPass ? "not " : "");
 
-const matchedResult = (context: TextMatcherContext, expected: TextExpectation, pass: boolean): MatcherResult => ({
-    pass,
+const nonEmptyResult = ({ matcherName, widget, actual }: TextMatcherContext): MatcherResult => {
+    const isPass = actual !== null && actual !== "";
+
+    return {
+        pass: isPass,
+        message: () =>
+            `expected widget ${negationPrefix(isPass)}to have a non-empty value for ${matcherName}, ` +
+            `but got ${JSON.stringify(actual)}\n${describeWidget(widget)}`,
+    };
+};
+
+const matchedResult = (context: TextMatcherContext, expected: TextExpectation, isPass: boolean): MatcherResult => ({
+    pass: isPass,
     message: () =>
-        `expected widget ${context.isNot ? "not " : ""}${context.matcherName} ${describeExpected(expected)}, ` +
+        `expected widget ${negationPrefix(isPass)}${context.matcherName} ${describeExpected(expected)}, ` +
         `but received ${JSON.stringify(context.actual)}\n${describeWidget(context.widget)}`,
 });
 
@@ -122,16 +123,16 @@ function textMatcher(
     read: (widget: Gtk.Widget) => string | null,
     mode: "exact" | "substring",
 ): TextMatcher {
-    return function (this: MatcherContext, received: unknown, expected?: TextExpectation): MatcherResult {
+    return (received: unknown, expected?: TextExpectation): MatcherResult => {
         const widget = asWidget(received, matcherName);
         const actual = read(widget);
-        const context: TextMatcherContext = { isNot: this.isNot, matcherName, widget, actual };
+        const context: TextMatcherContext = { matcherName, widget, actual };
 
         if (expected === undefined) {
             return nonEmptyResult(context);
         }
 
-        return matchedResult(context, expected, actual !== null && matchesText(actual, expected, mode));
+        return matchedResult(context, expected, actual !== null && isTextMatch(actual, expected, mode));
     };
 }
 
@@ -140,7 +141,7 @@ function booleanStateMatcher(
     stateName: string,
     read: (widget: Gtk.Widget) => boolean | null,
 ): StateMatcher {
-    return function (this: MatcherContext, received: unknown): MatcherResult {
+    return (received: unknown): MatcherResult => {
         const widget = asWidget(received, matcherName);
         const state = read(widget);
 
@@ -153,12 +154,13 @@ function booleanStateMatcher(
 
         return {
             pass: state,
-            message: () => `expected widget ${this.isNot ? "not " : ""}to be ${stateName}\n${describeWidget(widget)}`,
+            message: () =>
+                `expected widget ${negationPrefix(state)}to be ${stateName}\n${describeWidget(widget)}`,
         };
     };
 }
 
-function toHaveValue(this: MatcherContext, received: unknown, expected: number): MatcherResult {
+function toHaveValue(received: unknown, expected: number): MatcherResult {
     const widget = asWidget(received, "toHaveValue");
     const actual = getWidgetValue(widget).now;
 
@@ -169,10 +171,13 @@ function toHaveValue(this: MatcherContext, received: unknown, expected: number):
         );
     }
 
+    const isPass = actual === expected;
+
     return {
-        pass: actual === expected,
+        pass: isPass,
         message: () =>
-            `expected widget ${this.isNot ? "not " : ""}to have value ${expected}, but received ${actual}\n${describeWidget(widget)}`,
+            `expected widget ${negationPrefix(isPass)}to have value ${String(expected)}, ` +
+            `but received ${String(actual)}\n${describeWidget(widget)}`,
     };
 }
 
@@ -188,7 +193,7 @@ const globalExpect = (): ExpectExtend | null => {
 
 /** Registers the widget matchers on the global `expect`, when one is available. Safe to call more than once. */
 const registerMatchers = (): void => {
-    if (registered) {
+    if (registration.isRegistered) {
         return;
     }
 
@@ -199,7 +204,7 @@ const registerMatchers = (): void => {
     }
 
     expect.extend(matchers);
-    registered = true;
+    registration.isRegistered = true;
 };
 
 declare module "@vitest/expect" {

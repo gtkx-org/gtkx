@@ -21,22 +21,29 @@ import {
 } from "./generated/enums.js";
 
 type LengthQuery = (id: GLuint, pname: GLenum) => GLint;
+type DebugCallbackArgs = [GLenum, GLenum, GLuint, GLenum, number, string];
+
+/**
+ * A debug message reported by the GL driver.
+ */
+type DebugMessage = {
+    /** The origin of the message (API, window system, shader compiler, and so on). */
+    source: DebugSource;
+    /** The category of the message (error, deprecated behavior, performance, and so on). */
+    type: DebugType;
+    /** The driver-assigned identifier of the message. */
+    id: GLuint;
+    /** The severity level of the message. */
+    severity: DebugSeverity;
+    /** The human-readable message text. */
+    message: string;
+};
 
 /**
  * Callback invoked for each GL debug message reported by the driver.
- * @param source The origin of the message (API, window system, shader compiler, and so on).
- * @param type The category of the message (error, deprecated behavior, performance, and so on).
- * @param id The driver-assigned identifier of the message.
- * @param severity The severity level of the message.
- * @param message The human-readable message text.
+ * @param message The message reported by the driver.
  */
-type DebugMessageCallback = (
-    source: DebugSource,
-    type: DebugType,
-    id: GLuint,
-    severity: DebugSeverity,
-    message: string,
-) => void;
+type DebugMessageCallback = (message: DebugMessage) => void;
 
 const glDebugMessageCallbackBinding = t.bind(
     LIB,
@@ -114,10 +121,10 @@ function debugMessageCallback(callback: DebugMessageCallback | null): void {
     enable(DEBUG_OUTPUT);
     enable(DEBUG_OUTPUT_SYNCHRONOUS);
 
-    glDebugMessageCallbackBinding(
-        (source: GLenum, type: GLenum, id: GLuint, severity: GLenum, _length: number, message: string) =>
-            callback(source, type, id, severity, message),
-    );
+    glDebugMessageCallbackBinding((...args: DebugCallbackArgs) => {
+        const [source, type, id, severity, , message] = args;
+        callback({ source, type, id, severity, message });
+    });
 }
 
 const settledSyncStatus = (status: SyncStatus): SyncStatus | null => {
@@ -168,5 +175,6 @@ export {
     getProgramPipelineInfoLog,
     debugMessageCallback,
     clientWaitSyncLoop,
+    type DebugMessage,
     type DebugMessageCallback,
 };

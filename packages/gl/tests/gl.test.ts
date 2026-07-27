@@ -67,7 +67,7 @@ beforeAll(async () => {
     glArea.setAllowedApis(Gdk.GLAPI.GL);
     window.setChild(glArea);
 
-    const glReady = await new Promise<boolean>((resolve) => {
+    const isGlReady = await new Promise<boolean>((resolve) => {
         glArea.on("realize", () => {
             glArea.makeCurrent();
 
@@ -79,13 +79,13 @@ beforeAll(async () => {
         glArea.on("render", () => {
             resolve(true);
 
-            return true;
+            return Gdk.EVENT_STOP;
         });
 
         window.present();
     });
 
-    if (!glReady) {
+    if (!isGlReady) {
         throw new Error("GLArea could not provide a desktop GL context; the GL contract suite cannot run");
     }
 
@@ -437,7 +437,7 @@ describe("debug output", () => {
     it("delivers inserted messages to the synchronous callback", () => {
         const received: string[] = [];
 
-        gl.debugMessageCallback((_source, _type, _id, _severity, message) => {
+        gl.debugMessageCallback(({ message }) => {
             received.push(message);
         });
 

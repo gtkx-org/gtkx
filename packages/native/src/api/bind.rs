@@ -23,11 +23,11 @@ pub fn bind(
     symbol_name: String,
     arg_descriptors: Vec<Descriptor>,
     return_descriptor: Descriptor,
-) -> napi::Result<External<CallDescriptor>> {
+) -> Result<External<CallDescriptor>> {
     let arg_codecs = arg_descriptors
         .into_iter()
         .map(Descriptor::into_codec)
-        .collect::<napi::Result<Vec<_>>>()?;
+        .collect::<Result<Vec<_>>>()?;
     let return_codec = return_descriptor.into_codec()?;
     Ok(External::new(CallDescriptor {
         library_name: shared_library,

@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { type RefProp, useProperty } from "@gtkx/react";
@@ -15,22 +16,28 @@ function deref<T>(ref: { current: T | null }): T {
     return value;
 }
 
+const renderMountedLabel = async (props: ComponentProps<typeof GtkLabel>): Promise<Gtk.Label> => {
+    const ref = createRef<Gtk.Label>();
+    await render(<GtkLabel ref={ref} {...props} />);
+
+    return deref(ref);
+};
+
 describe("useProperty", () => {
     it("reads the initial property value", async () => {
-        const ref = createRef<Gtk.Label>();
-        await render(<GtkLabel ref={ref} label="Hello" />);
-        const label = deref(ref);
+        const label = await renderMountedLabel({ label: "Hello" });
         const { result } = await renderHook(() => useProperty(label, "label"));
         expect(result.current).toBe("Hello");
     });
 
     it("updates when the property changes externally", async () => {
-        const ref = createRef<Gtk.Label>();
-        await render(<GtkLabel ref={ref} label="Before" />);
-        const label = deref(ref);
+        const label = await renderMountedLabel({ label: "Before" });
         const { result } = await renderHook(() => useProperty(label, "label"));
         expect(result.current).toBe("Before");
-        await act(() => label.setLabel("After"));
+
+        await act(() => {
+            label.setLabel("After");
+        });
 
         await waitFor(() => {
             expect(result.current).toBe("After");
@@ -38,26 +45,19 @@ describe("useProperty", () => {
     });
 
     it("reads boolean properties", async () => {
-        const ref = createRef<Gtk.Label>();
-
-        await render(
-            <GtkLabel ref={ref} visible={true}>
-                Test
-            </GtkLabel>,
-        );
-
-        const label = deref(ref);
+        const label = await renderMountedLabel({ visible: true, children: "Test" });
         const { result } = await renderHook(() => useProperty(label, "visible"));
         expect(result.current).toBe(true);
     });
 
     it("derives the notify detail from a multi-word property name", async () => {
-        const ref = createRef<Gtk.Label>();
-        await render(<GtkLabel ref={ref} label="Test" />);
-        const label = deref(ref);
+        const label = await renderMountedLabel({ label: "Test" });
         const { result } = await renderHook(() => useProperty(label, "maxWidthChars"));
         expect(result.current).toBe(-1);
-        await act(() => label.setMaxWidthChars(12));
+
+        await act(() => {
+            label.setMaxWidthChars(12);
+        });
 
         await waitFor(() => {
             expect(result.current).toBe(12);
@@ -65,13 +65,15 @@ describe("useProperty", () => {
     });
 
     it("cleans up signal on unmount", async () => {
-        const ref = createRef<Gtk.Label>();
-        await render(<GtkLabel ref={ref} label="Test" />);
-        const label = deref(ref);
+        const label = await renderMountedLabel({ label: "Test" });
         const { result, unmount } = await renderHook(() => useProperty(label, "label"));
         expect(result.current).toBe("Test");
         await unmount();
-        await act(() => label.setLabel("Changed"));
+
+        await act(() => {
+            label.setLabel("Changed");
+        });
+
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(result.current).toBe("Test");
     });
@@ -83,7 +85,10 @@ describe("useProperty (targets)", () => {
         const ref: { current: Gtk.Label | null } = { current: label };
         const { result } = await renderHook(() => useProperty(ref, "label"));
         expect(result.current).toBe("Hello");
-        await act(() => label.setLabel("After"));
+
+        await act(() => {
+            label.setLabel("After");
+        });
 
         await waitFor(() => {
             expect(result.current).toBe("After");
@@ -120,7 +125,11 @@ describe("useProperty (targets)", () => {
         expect(result.current).toBe("First");
         await rerender({ object: second });
         expect(result.current).toBe("Second");
-        await act(() => first.setLabel("Stale"));
+
+        await act(() => {
+            first.setLabel("Stale");
+        });
+
         expect(result.current).toBe("Second");
     });
 });

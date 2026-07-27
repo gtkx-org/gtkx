@@ -227,11 +227,11 @@ import schema from "#data/com.gtkx.tutorial.gschema.xml";
 const [sortOrder, setSortOrder] = useSetting(schema, "sort-order");
 ```
 
-**`useBindSetting(schema, key, object, property, flags?)`** goes one step further and binds a setting directly to a GObject property with `Gio.Settings.bind`, using `Gio.SettingsBindFlags.DEFAULT` unless you pass flags. No renders are involved: GLib keeps the two in sync natively while the object is mounted. The Tasks app persists its window geometry this way:
+**`useBindSetting({ schema, key, object, property, flags? })`** goes one step further and binds a setting directly to a GObject property with `Gio.Settings.bind`, using `Gio.SettingsBindFlags.DEFAULT` unless you pass flags. No renders are involved: GLib keeps the two in sync natively while the object is mounted. The Tasks app persists its window geometry this way:
 
 ```ts
-useBindSetting(schema, "window-width", windowRef, "defaultWidth");
-useBindSetting(schema, "window-height", windowRef, "defaultHeight");
+useBindSetting({ schema, key: "window-width", object: windowRef, property: "defaultWidth" });
+useBindSetting({ schema, key: "window-height", object: windowRef, property: "defaultHeight" });
 ```
 
 **`useSignal(object, signal, handler, options?)`** connects a handler to any GObject signal for the component's lifetime, reconnecting if the object changes and keeping the latest handler without re-subscribing. Signal names are typed from the bindings, including detailed forms like `"notify::label"`. The handler receives the signal's own arguments and nothing else: unlike a JSX `on*` prop, it is not passed the emitting object, which you already hold. Options are `after` (run after the default handler) and `immediate` (invoke once right after connecting, useful for syncing initial state):

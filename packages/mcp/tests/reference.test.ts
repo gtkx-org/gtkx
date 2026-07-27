@@ -5,24 +5,6 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const { loadApiReferenceMock, loadConfigMock, resolveGirPathMock, resolveLibrariesMock } = vi.hoisted(() => ({
-    loadApiReferenceMock: vi.fn(),
-    loadConfigMock: vi.fn(),
-    resolveGirPathMock: vi.fn(() => ["/usr/share/gir-1.0"]),
-    resolveLibrariesMock: vi.fn(() => ["Gtk-4.0"]),
-}));
-
-vi.mock("@gtkx/codegen", () => ({
-    loadApiReference: loadApiReferenceMock,
-    resolveGirPath: resolveGirPathMock,
-    resolveLibraries: resolveLibrariesMock,
-}));
-
-vi.mock("@gtkx/config", () => ({
-    loadConfig: loadConfigMock,
-}));
-
 import type { Tool } from "../src/tool.js";
 import {
     buildReferenceTools,
@@ -32,14 +14,29 @@ import {
     registerReferenceResources,
 } from "../src/reference.js";
 
+type FakeReference = ReferenceApi & Pick<ApiReference, "girFiles">;
+type ReadCallback = (uri: URL, variables?: Record<string, string | string[]>) => Promise<ReadResourceResult>;
+
+type RegisteredResource = {
+    name: string;
+    uriOrTemplate: string | ResourceTemplate;
+    config: { mimeType?: string };
+    read: ReadCallback;
+};
+
+const { loadApiReferenceMock, loadConfigMock, resolveGirPathMock, resolveLibrariesMock } = vi.hoisted(() => ({
+    loadApiReferenceMock: vi.fn(),
+    loadConfigMock: vi.fn(),
+    resolveGirPathMock: vi.fn(() => ["/usr/share/gir-1.0"]),
+    resolveLibrariesMock: vi.fn(() => ["Gtk-4.0"]),
+}));
+
 const buttonSymbol: ApiSymbol = { namespace: "Gtk", name: "Button", kind: "class", summary: "A button." };
 
 const headerBarCandidates: ApiSymbol[] = [
     { namespace: "Gtk", name: "HeaderBar", kind: "class", summary: "A titlebar." },
     { namespace: "Adw", name: "HeaderBar", kind: "class", summary: "A title bar widget." },
 ];
-
-type FakeReference = ReferenceApi & Pick<ApiReference, "girFiles">;
 
 const fakeReference: FakeReference = {
     girFiles: [],
@@ -51,22 +48,24 @@ const fakeReference: FakeReference = {
     ],
     symbolNames: (name) => (name === "Gtk" ? ["Button", "GtkButton", "Orientation"] : []),
     search: (options) => (options.query === "nothing" ? [] : [buttonSymbol]),
-    lookup: (query): ApiLookupResult => {
-        if (query === "Gtk.Button" || query === "Button") {
-            return { outcome: "page", symbol: buttonSymbol, markdown: "BUTTON PAGE" };
-        }
-
-        if (query === "HeaderBar") {
-            return { outcome: "ambiguous", candidates: headerBarCandidates };
-        }
-
-        return { outcome: "notFound" };
-    },
+    lookup: (query): ApiLookupResult => lookupFake(query),
 };
 
-const provider: ReferenceProvider = { get: async () => fakeReference };
+const provider: ReferenceProvider = { get: () => Promise.resolve(fakeReference) };
 
-const getTool = (name: string): Tool => {
+function lookupFake(query: string): ApiLookupResult {
+    if (query === "Gtk.Button" || query === "Button") {
+        return { outcome: "page", symbol: buttonSymbol, markdown: "BUTTON PAGE" };
+    }
+
+    if (query === "HeaderBar") {
+        return { outcome: "ambiguous", candidates: headerBarCandidates };
+    }
+
+    return { outcome: "notFound" };
+}
+
+function getTool(name: string): Tool {
     const tool = buildReferenceTools(provider).find((candidate) => candidate.name === name);
 
     if (!tool) {
@@ -74,9 +73,9 @@ const getTool = (name: string): Tool => {
     }
 
     return tool;
-};
+}
 
-const getText = (result: { content: { type: string }[] }): string => {
+function getText(result: { content: { type: string }[] }): string {
     const first = result.content[0];
 
     if (first?.type !== "text") {
@@ -84,16 +83,123 @@ const getText = (result: { content: { type: string }[] }): string => {
     }
 
     return (first as { type: "text"; text: string }).text;
-};
+}
 
-describe("createReferenceProvider", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+function stubLoadedReference(reference: FakeReference = fakeReference): void {
+    loadConfigMock.mockResolvedValue({ config: {} });
+    loadApiReferenceMock.mockReturnValue(reference);
+}
 
+async function withFrozenClock(run: (setNow: (now: number) => void) => Promise<void>): Promise<void> {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
+
+    try {
+        await run((now) => {
+            nowSpy.mockReturnValue(now);
+        });
+    } finally {
+        nowSpy.mockRestore();
+    }
+}
+
+async function withGirFile(run: (girFile: string, setNow: (now: number) => void) => Promise<void>): Promise<void> {
+    const dir = mkdtempSync(join(tmpdir(), "gtkx-reference-"));
+
+    try {
+        await withFrozenClock((setNow) => run(join(dir, "Gtk-4.0.gir"), setNow));
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+}
+
+function registerAllWith(source: ReferenceProvider): RegisteredResource[] {
+    const registered: RegisteredResource[] = [];
+
+    const server = {
+        registerResource: ((
+            name: string,
+            uriOrTemplate: string | ResourceTemplate,
+            config: { mimeType?: string },
+            read: ReadCallback,
+        ) => {
+            registered.push({ name, uriOrTemplate, config, read });
+        }) as never,
+    };
+
+    registerReferenceResources(server, source);
+
+    return registered;
+}
+
+function findResource(registered: RegisteredResource[], name: string): RegisteredResource {
+    const resource = registered.find((candidate) => candidate.name === name);
+
+    if (!resource) {
+        throw new Error(`Resource not found: ${name}`);
+    }
+
+    return resource;
+}
+
+function getResource(name: string): RegisteredResource {
+    return findResource(registerAllWith(provider), name);
+}
+
+function getListCallback(template: ResourceTemplate) {
+    const listCallback = template.listCallback;
+
+    if (!listCallback) {
+        throw new Error("Expected a list callback");
+    }
+
+    return listCallback;
+}
+
+function getTemplate(resource: RegisteredResource): ResourceTemplate {
+    if (!(resource.uriOrTemplate instanceof ResourceTemplate)) {
+        throw new TypeError("Expected a ResourceTemplate");
+    }
+
+    return resource.uriOrTemplate;
+}
+
+function getCompleter(template: ResourceTemplate, variable: string) {
+    const completer = template.completeCallback(variable);
+
+    if (!completer) {
+        throw new Error(`No completer for ${variable}`);
+    }
+
+    return completer;
+}
+
+function resourceText(result: ReadResourceResult): string {
+    const first = result.contents[0];
+
+    if (first === undefined || !("text" in first)) {
+        throw new Error("Expected text contents");
+    }
+
+    return first.text;
+}
+
+vi.mock("@gtkx/codegen", () => ({
+    loadApiReference: loadApiReferenceMock,
+    resolveGirPath: resolveGirPathMock,
+    resolveLibraries: resolveLibrariesMock,
+}));
+
+vi.mock("@gtkx/config", () => ({
+    loadConfig: loadConfigMock,
+}));
+
+beforeEach(() => {
+    vi.clearAllMocks();
+});
+
+describe("createReferenceProvider — caching", () => {
     it("loads the reference once per project root and caches it", async () => {
-        loadConfigMock.mockResolvedValue({ config: {} });
-        loadApiReferenceMock.mockReturnValue(fakeReference);
+        stubLoadedReference();
         const cached = createReferenceProvider(() => "/project");
         await cached.get();
         await cached.get();
@@ -107,8 +213,7 @@ describe("createReferenceProvider", () => {
     });
 
     it("loads separately when the resolved root changes", async () => {
-        loadConfigMock.mockResolvedValue({ config: {} });
-        loadApiReferenceMock.mockReturnValue(fakeReference);
+        stubLoadedReference();
         const roots = ["/one", "/two"];
         const changing = createReferenceProvider(() => roots.shift() ?? "/two");
         await changing.get();
@@ -117,24 +222,23 @@ describe("createReferenceProvider", () => {
         expect(loadConfigMock).toHaveBeenNthCalledWith(1, "/one");
         expect(loadConfigMock).toHaveBeenNthCalledWith(2, "/two");
     });
+});
 
+describe("createReferenceProvider — failures and reloads", () => {
     it("rejects when codegen is disabled and retries after the backoff window", async () => {
         loadConfigMock.mockResolvedValueOnce({ config: { codegen: false } });
         loadConfigMock.mockResolvedValueOnce({ config: {} });
         loadApiReferenceMock.mockReturnValue(fakeReference);
-        const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
 
-        try {
+        await withFrozenClock(async (setNow) => {
             const failing = createReferenceProvider(() => "/project");
             await expect(failing.get()).rejects.toThrow(/codegen is disabled/);
             await expect(failing.get()).rejects.toThrow(/codegen is disabled/);
             expect(loadConfigMock).toHaveBeenCalledTimes(1);
-            nowSpy.mockReturnValue(10_000);
+            setNow(10_000);
             await expect(failing.get()).resolves.toBe(fakeReference);
             expect(loadConfigMock).toHaveBeenCalledTimes(2);
-        } finally {
-            nowSpy.mockRestore();
-        }
+        });
     });
 
     it("rejects when no GIR search paths are available", async () => {
@@ -145,26 +249,18 @@ describe("createReferenceProvider", () => {
     });
 
     it("reloads when a watched GIR file changes, throttling freshness checks", async () => {
-        loadConfigMock.mockResolvedValue({ config: {} });
-        const dir = mkdtempSync(join(tmpdir(), "gtkx-reference-"));
-        const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
-
-        try {
-            const girFile = join(dir, "Gtk-4.0.gir");
+        await withGirFile(async (girFile, setNow) => {
             writeFileSync(girFile, "before");
-            loadApiReferenceMock.mockReturnValue({ ...fakeReference, girFiles: [girFile] });
+            stubLoadedReference({ ...fakeReference, girFiles: [girFile] });
             const watching = createReferenceProvider(() => "/project");
             await watching.get();
             writeFileSync(girFile, "after-with-different-size");
             await watching.get();
             expect(loadApiReferenceMock).toHaveBeenCalledTimes(1);
-            nowSpy.mockReturnValue(10_000);
+            setNow(10_000);
             await watching.get();
             expect(loadApiReferenceMock).toHaveBeenCalledTimes(2);
-        } finally {
-            nowSpy.mockRestore();
-            rmSync(dir, { recursive: true, force: true });
-        }
+        });
     });
 });
 
@@ -195,7 +291,7 @@ describe("gtkx_search_api", () => {
 
     it("forwards namespace, kind, and limit filters", async () => {
         const search = vi.fn(() => [buttonSymbol]);
-        const filtering: ReferenceProvider = { get: async () => ({ ...fakeReference, search }) };
+        const filtering: ReferenceProvider = { get: () => Promise.resolve({ ...fakeReference, search }) };
         const tool = buildReferenceTools(filtering).find((candidate) => candidate.name === "gtkx_search_api");
 
         if (!tool) {
@@ -233,85 +329,7 @@ describe("gtkx_get_api_docs", () => {
     });
 });
 
-type ReadCallback = (uri: URL, variables?: Record<string, string | string[]>) => Promise<ReadResourceResult>;
-
-type RegisteredResource = {
-    name: string;
-    uriOrTemplate: string | ResourceTemplate;
-    config: { mimeType?: string };
-    read: ReadCallback;
-};
-
-const registerAllWith = (source: ReferenceProvider): RegisteredResource[] => {
-    const registered: RegisteredResource[] = [];
-
-    const server = {
-        registerResource: ((
-            name: string,
-            uriOrTemplate: string | ResourceTemplate,
-            config: { mimeType?: string },
-            read: ReadCallback,
-        ) => {
-            registered.push({ name, uriOrTemplate, config, read });
-        }) as never,
-    };
-
-    registerReferenceResources(server, source);
-
-    return registered;
-};
-
-const findResource = (registered: RegisteredResource[], name: string): RegisteredResource => {
-    const resource = registered.find((candidate) => candidate.name === name);
-
-    if (!resource) {
-        throw new Error(`Resource not found: ${name}`);
-    }
-
-    return resource;
-};
-
-const getResource = (name: string): RegisteredResource => findResource(registerAllWith(provider), name);
-
-const getListCallback = (template: ResourceTemplate) => {
-    const listCallback = template.listCallback;
-
-    if (!listCallback) {
-        throw new Error("Expected a list callback");
-    }
-
-    return listCallback;
-};
-
-const getTemplate = (resource: RegisteredResource): ResourceTemplate => {
-    if (!(resource.uriOrTemplate instanceof ResourceTemplate)) {
-        throw new TypeError("Expected a ResourceTemplate");
-    }
-
-    return resource.uriOrTemplate;
-};
-
-const getCompleter = (template: ResourceTemplate, variable: string) => {
-    const completer = template.completeCallback(variable);
-
-    if (!completer) {
-        throw new Error(`No completer for ${variable}`);
-    }
-
-    return completer;
-};
-
-const resourceText = (result: ReadResourceResult): string => {
-    const first = result.contents[0];
-
-    if (first === undefined || !("text" in first)) {
-        throw new Error("Expected text contents");
-    }
-
-    return first.text;
-};
-
-describe("registerReferenceResources", () => {
+describe("registerReferenceResources — index and namespaces", () => {
     it("serves the index resource at a fixed URI", async () => {
         const resource = getResource("gtkx-api-reference");
         expect(resource.uriOrTemplate).toBe("gtkx://reference/index");
@@ -338,12 +356,7 @@ describe("registerReferenceResources", () => {
     });
 
     it("degrades gracefully when the reference cannot load", async () => {
-        const failing: ReferenceProvider = {
-            get: async () => {
-                throw new Error("codegen is disabled");
-            },
-        };
-
+        const failing: ReferenceProvider = { get: () => Promise.reject(new Error("codegen is disabled")) };
         const namespaceResource = findResource(registerAllWith(failing), "gtkx-api-namespace");
         const template = getTemplate(namespaceResource);
         await expect(getListCallback(template)({} as never)).resolves.toEqual({ resources: [] });
@@ -353,7 +366,9 @@ describe("registerReferenceResources", () => {
             /codegen is disabled/,
         );
     });
+});
 
+describe("registerReferenceResources — symbols", () => {
     it("serves symbol pages and completes namespaces and symbols", async () => {
         const resource = getResource("gtkx-api-symbol");
         const template = getTemplate(resource);

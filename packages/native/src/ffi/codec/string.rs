@@ -32,7 +32,7 @@ impl Encoder for StringCodec {
             return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
         };
         if self.ownership.is_full() {
-            let glib_ptr = str_to_glib_full(&s)? as *mut c_void;
+            let glib_ptr = str_to_glib_full(&s)?.cast::<c_void>();
             Ok(full_transfer_stash(glib_ptr, ffi::ReleaseKind::GFree))
         } else {
             let cstring = CString::new(s.as_bytes())?;
@@ -74,7 +74,7 @@ impl PtrWriter for StringCodec {
                 .ok()
                 .flatten()
                 .and_then(|s| str_to_glib_full(&s).ok())
-                .map_or(std::ptr::null_mut(), |p| p as *mut c_void),
+                .map_or(std::ptr::null_mut(), <*mut c_char>::cast::<c_void>),
             Err(()) => std::ptr::null_mut(),
         };
         unsafe { ret.store(ptr) };

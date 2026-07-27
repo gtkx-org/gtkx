@@ -54,36 +54,38 @@ impl PendingTransfer {
             match self.release {
                 ReleaseKind::GFree => glib::ffi::g_free(self.ptr),
                 ReleaseKind::ObjectUnref => {
-                    glib::gobject_ffi::g_object_unref(self.ptr as *mut glib::gobject_ffi::GObject);
+                    glib::gobject_ffi::g_object_unref(
+                        self.ptr.cast::<glib::gobject_ffi::GObject>(),
+                    );
                 }
                 ReleaseKind::BoxedFree(type_) => {
                     glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
                 }
                 ReleaseKind::Fundamental(unref) => unref(self.ptr),
                 ReleaseKind::StrFreeV => {
-                    glib::ffi::g_strfreev(self.ptr as *mut *mut std::ffi::c_char);
+                    glib::ffi::g_strfreev(self.ptr.cast::<*mut std::ffi::c_char>());
                 }
                 ReleaseKind::StringElements => {
-                    let mut slot = self.ptr as *mut *mut std::ffi::c_char;
+                    let mut slot = self.ptr.cast::<*mut std::ffi::c_char>();
                     while !(*slot).is_null() {
                         glib::ffi::g_free((*slot).cast());
                         slot = slot.add(1);
                     }
                 }
                 ReleaseKind::HashTableUnref => {
-                    glib::ffi::g_hash_table_unref(self.ptr as *mut glib::ffi::GHashTable);
+                    glib::ffi::g_hash_table_unref(self.ptr.cast::<glib::ffi::GHashTable>());
                 }
                 ReleaseKind::GArrayUnref => {
-                    glib::ffi::g_array_unref(self.ptr as *mut glib::ffi::GArray);
+                    glib::ffi::g_array_unref(self.ptr.cast::<glib::ffi::GArray>());
                 }
                 ReleaseKind::GByteArrayUnref => {
-                    glib::ffi::g_byte_array_unref(self.ptr as *mut glib::ffi::GByteArray);
+                    glib::ffi::g_byte_array_unref(self.ptr.cast::<glib::ffi::GByteArray>());
                 }
                 ReleaseKind::GListFree => {
-                    glib::ffi::g_list_free(self.ptr as *mut glib::ffi::GList);
+                    glib::ffi::g_list_free(self.ptr.cast::<glib::ffi::GList>());
                 }
                 ReleaseKind::GSListFree => {
-                    glib::ffi::g_slist_free(self.ptr as *mut glib::ffi::GSList);
+                    glib::ffi::g_slist_free(self.ptr.cast::<glib::ffi::GSList>());
                 }
             }
         }
@@ -106,11 +108,11 @@ pub struct ListOps {
 }
 
 unsafe fn glist_prepend(list: *mut c_void, data: *mut c_void) -> *mut c_void {
-    unsafe { glib::ffi::g_list_prepend(list as *mut glib::ffi::GList, data).cast() }
+    unsafe { glib::ffi::g_list_prepend(list.cast::<glib::ffi::GList>(), data).cast() }
 }
 
 unsafe fn glist_node(node: *mut c_void) -> ListNode {
-    let node = node as *mut glib::ffi::GList;
+    let node = node.cast::<glib::ffi::GList>();
     unsafe {
         ListNode {
             data: (*node).data,
@@ -120,12 +122,12 @@ unsafe fn glist_node(node: *mut c_void) -> ListNode {
 }
 
 unsafe fn glist_free(list: *mut c_void) {
-    unsafe { glib::ffi::g_list_free(list as *mut glib::ffi::GList) };
+    unsafe { glib::ffi::g_list_free(list.cast::<glib::ffi::GList>()) };
 }
 
 unsafe fn glist_free_full(list: *mut c_void) {
     unsafe {
-        glib::ffi::g_list_free_full(list as *mut glib::ffi::GList, Some(glib::ffi::g_free));
+        glib::ffi::g_list_free_full(list.cast::<glib::ffi::GList>(), Some(glib::ffi::g_free));
     }
 }
 
@@ -139,11 +141,11 @@ pub static GLIST_OPS: ListOps = ListOps {
 };
 
 unsafe fn gslist_prepend(list: *mut c_void, data: *mut c_void) -> *mut c_void {
-    unsafe { glib::ffi::g_slist_prepend(list as *mut glib::ffi::GSList, data).cast() }
+    unsafe { glib::ffi::g_slist_prepend(list.cast::<glib::ffi::GSList>(), data).cast() }
 }
 
 unsafe fn gslist_node(node: *mut c_void) -> ListNode {
-    let node = node as *mut glib::ffi::GSList;
+    let node = node.cast::<glib::ffi::GSList>();
     unsafe {
         ListNode {
             data: (*node).data,
@@ -153,12 +155,12 @@ unsafe fn gslist_node(node: *mut c_void) -> ListNode {
 }
 
 unsafe fn gslist_free(list: *mut c_void) {
-    unsafe { glib::ffi::g_slist_free(list as *mut glib::ffi::GSList) };
+    unsafe { glib::ffi::g_slist_free(list.cast::<glib::ffi::GSList>()) };
 }
 
 unsafe fn gslist_free_full(list: *mut c_void) {
     unsafe {
-        glib::ffi::g_slist_free_full(list as *mut glib::ffi::GSList, Some(glib::ffi::g_free));
+        glib::ffi::g_slist_free_full(list.cast::<glib::ffi::GSList>(), Some(glib::ffi::g_free));
     }
 }
 
@@ -240,6 +242,7 @@ impl StashStorage {
         Self::new(ptr, StashData::Unit)
     }
 
+    #[must_use]
     pub fn with_pending_transfer(self, ptr: *mut c_void, release: ReleaseKind) -> Self {
         let mut transfers = self.pending_transfer.take();
         transfers.push(PendingTransfer { ptr, release });
@@ -247,6 +250,7 @@ impl StashStorage {
         self
     }
 
+    #[must_use]
     pub fn with_pending_transfers(self, transfers: Vec<PendingTransfer>) -> Self {
         let mut existing = self.pending_transfer.take();
         existing.extend(transfers);
@@ -274,7 +278,7 @@ impl StashStorage {
 
     pub fn byte_len(&self) -> Option<usize> {
         match &self.data {
-            StashData::U8Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::U8Vec(v) | StashData::Buffer(v) => Some(size_of_val(v.as_slice())),
             StashData::I8Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::U16Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::I16Vec(v) => Some(size_of_val(v.as_slice())),
@@ -284,7 +288,6 @@ impl StashStorage {
             StashData::I64Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::F32Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::F64Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::Buffer(v) => Some(size_of_val(v.as_slice())),
             StashData::Unit
             | StashData::StringArray(_, _)
             | StashData::ObjectArray(_, _)
@@ -316,8 +319,8 @@ impl Drop for StashStorage {
             StashData::HashTable => {
                 if !self.ptr.is_null() {
                     unsafe {
-                        glib::ffi::g_hash_table_unref(self.ptr as *mut glib::ffi::GHashTable)
-                    };
+                        glib::ffi::g_hash_table_unref(self.ptr.cast::<glib::ffi::GHashTable>());
+                    }
                 }
             }
             StashData::List(data) => {
@@ -359,7 +362,7 @@ macro_rules! impl_stash_storage_from_vec {
         $(
             impl From<Vec<$descriptor>> for StashStorage {
                 fn from(mut vec: Vec<$descriptor>) -> Self {
-                    let ptr = vec.as_mut_ptr() as *mut c_void;
+                    let ptr = vec.as_mut_ptr().cast::<c_void>();
                     Self::new(ptr, StashData::$vec_variant(vec))
                 }
             }

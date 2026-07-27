@@ -9,11 +9,13 @@ async function findVerticalColumnSeparator() {
     const sep = (await screen.findByName("column-separator")) as Gtk.Separator;
     expect(sep).toBeInstanceOf(Gtk.Separator);
     expect(sep.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+
     return sep;
 }
 
 function rowLabelText(row: Gtk.Widget): string {
     const label = within(row).getAllByText(/.+/)[0] as Gtk.Label;
+
     return label.getText();
 }
 
@@ -22,6 +24,7 @@ async function findDropDowns() {
     const combos = screen.getAllByRole(Gtk.AccessibleRole.COMBO_BOX) as Gtk.DropDown[];
     const [times, timesSectioned, fontsByOrder, devices] = combos;
     expect(fontsByOrder).toBe(fonts);
+
     return {
         times: times as Gtk.DropDown,
         timesSectioned: timesSectioned as Gtk.DropDown,
@@ -57,19 +60,21 @@ describe("listviewSelectionsDemo layout", () => {
 
     it("renders a vertical separator between the two columns", async () => {
         await renderDemo(listviewSelectionsDemo);
-        await findVerticalColumnSeparator();
+        const separator = await findVerticalColumnSeparator();
+        expect(separator.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
     });
 });
 
 describe("listviewSelectionsDemo controls", () => {
     it("renders the Enable Search check button initially inactive", async () => {
         await renderDemo(listviewSelectionsDemo);
-        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Enable search", checked: false });
+        const check = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Enable search", checked: false });
+        expect(check).not.toBeChecked();
     });
 
     it("renders a GtkSpinButton synced with the font index", async () => {
         await renderDemo(listviewSelectionsDemo);
-        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 0 } });
+        expect(await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 0 } })).toHaveValue(0);
     });
 
     it("checks the Enable Search button and enables search on the fonts dropdown when toggled", async () => {
@@ -101,7 +106,7 @@ describe("listviewSelectionsDemo controls", () => {
         const spin = (await screen.findByName("font-spin")) as Gtk.SpinButton;
         spin.grabFocus();
         await userEvent.keyboard(spin, "{ArrowUp}{ArrowUp}");
-        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 2 } });
+        expect(await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 2 } })).toHaveValue(2);
     });
 });
 
@@ -111,9 +116,13 @@ describe("listviewSelectionsDemo dropdown selections", () => {
         const { times } = await findDropDowns();
         expect(times.getSelected()).toBe(0);
         await userEvent.selectOptions(times, 2);
-        await waitFor(() => expect(times.getSelected()).toBe(2));
-        expect(within(times).getAllByText("5 minutes").length).toBe(2);
-        expect(within(times).getAllByText("1 minute").length).toBe(1);
+
+        await waitFor(() => {
+            expect(times.getSelected()).toBe(2);
+        });
+
+        expect(within(times).getAllByText("5 minutes")).toHaveLength(2);
+        expect(within(times).getAllByText("1 minute")).toHaveLength(1);
     });
 
     it("updates the sectioned Times dropdown selection across the minutes section", async () => {
@@ -121,8 +130,12 @@ describe("listviewSelectionsDemo dropdown selections", () => {
         const { timesSectioned } = await findDropDowns();
         expect(timesSectioned.getSelected()).toBe(0);
         await userEvent.selectOptions(timesSectioned, 5);
-        await waitFor(() => expect(timesSectioned.getSelected()).toBe(5));
-        expect(within(timesSectioned).getAllByText("20 minutes").length).toBe(2);
+
+        await waitFor(() => {
+            expect(timesSectioned.getSelected()).toBe(5);
+        });
+
+        expect(within(timesSectioned).getAllByText("20 minutes")).toHaveLength(2);
     });
 
     it("updates the Devices dropdown selection and its displayed device", async () => {
@@ -130,8 +143,12 @@ describe("listviewSelectionsDemo dropdown selections", () => {
         const { devices } = await findDropDowns();
         expect(devices.getSelected()).toBe(0);
         await userEvent.selectOptions(devices, 1);
-        await waitFor(() => expect(devices.getSelected()).toBe(1));
-        expect(within(devices).getAllByText("Headphones").length).toBe(2);
+
+        await waitFor(() => {
+            expect(devices.getSelected()).toBe(1);
+        });
+
+        expect(within(devices).getAllByText("Headphones")).toHaveLength(2);
     });
 
     it("syncs the font spin value when a font is chosen from the fonts dropdown", async () => {
@@ -140,7 +157,11 @@ describe("listviewSelectionsDemo dropdown selections", () => {
         const spin = (await screen.findByName("font-spin")) as Gtk.SpinButton;
         expect(spin.getValue()).toBe(0);
         await userEvent.selectOptions(fonts, 3);
-        await waitFor(() => expect(fonts.getSelected()).toBe(3));
+
+        await waitFor(() => {
+            expect(fonts.getSelected()).toBe(3);
+        });
+
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 3 } });
     });
 });
@@ -151,9 +172,13 @@ describe("listviewSelectionsDemo suggestion popover", () => {
         const entry = (await screen.findByName("words-entry")) as Gtk.Entry;
         await userEvent.type(entry, "gnom");
         const popover = (await screen.findByName("words-entry-popover")) as Gtk.Popover;
-        await waitFor(() => expect(popover.getVisible()).toBe(true));
+
+        await waitFor(() => {
+            expect(popover.getVisible()).toBe(true);
+        });
+
         const rows = screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM);
-        expect(rows.length).toBe(3);
+        expect(rows).toHaveLength(3);
         expect(rowLabelText(rows[0] as Gtk.Widget)).toBe("GNOME");
     });
 
@@ -175,13 +200,18 @@ describe("listviewSelectionsDemo suggestion popover", () => {
         const selected = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true });
         expect(rowLabelText(selected)).toBe("totem pole");
     });
+});
 
+describe("listviewSelectionsDemo suggestion acceptance", () => {
     it("writes the selected suggestion into the entry when Enter is pressed", async () => {
         await renderDemo(listviewSelectionsDemo);
         const entry = (await screen.findByName("words-entry")) as Gtk.Entry;
         await userEvent.type(entry, "GNOM");
         await userEvent.keyboard(entry, "{ArrowDown}{Enter}");
-        await waitFor(() => expect(entry).toHaveDisplayValue("GNOME"));
+
+        await waitFor(() => {
+            expect(entry).toHaveDisplayValue("GNOME");
+        });
     });
 
     it("writes a suggestion into the entry when its row is clicked", async () => {
@@ -190,7 +220,10 @@ describe("listviewSelectionsDemo suggestion popover", () => {
         await userEvent.type(entry, "gnom");
         const rows = screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM);
         await userEvent.click(rows[1] as Gtk.Widget);
-        await waitFor(() => expect(entry).toHaveDisplayValue("gnominious"));
+
+        await waitFor(() => {
+            expect(entry).toHaveDisplayValue("gnominious");
+        });
     });
 
     it("hides the suggestion popover when Escape is pressed", async () => {
@@ -198,18 +231,30 @@ describe("listviewSelectionsDemo suggestion popover", () => {
         const entry = (await screen.findByName("words-entry")) as Gtk.Entry;
         await userEvent.type(entry, "tot");
         const popover = (await screen.findByName("words-entry-popover")) as Gtk.Popover;
-        await waitFor(() => expect(popover.getVisible()).toBe(true));
-        await userEvent.keyboard(entry, "{Escape}");
-        await waitFor(() => expect(popover.getVisible()).toBe(false));
-    });
 
+        await waitFor(() => {
+            expect(popover.getVisible()).toBe(true);
+        });
+
+        await userEvent.keyboard(entry, "{Escape}");
+
+        await waitFor(() => {
+            expect(popover.getVisible()).toBe(false);
+        });
+    });
+});
+
+describe("listviewSelectionsDemo suggestion clearing", () => {
     it("clears the suggestion list when the entry is cleared after typing", async () => {
         await renderDemo(listviewSelectionsDemo);
         const entry = (await screen.findByName("words-entry")) as Gtk.Entry;
         await userEvent.type(entry, "ttt");
         await userEvent.clear(entry);
         expect(entry).toHaveDisplayValue("");
-        await waitFor(() => expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM)).toBeNull());
+
+        await waitFor(() => {
+            expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM)).toBeNull();
+        });
     });
 
     it("ignores Down arrow keypress when there are no current suggestions", async () => {
@@ -226,7 +271,10 @@ describe("listviewSelectionsDemo second suggestion entry", () => {
         const entry = (await screen.findByPlaceholderText("Destination")) as Gtk.Entry;
         await userEvent.type(entry, "mock");
         await userEvent.keyboard(entry, "{ArrowDown}{Enter}");
-        await waitFor(() => expect(entry).toHaveDisplayValue("app-mockups"));
+
+        await waitFor(() => {
+            expect(entry).toHaveDisplayValue("app-mockups");
+        });
     });
 });
 
@@ -244,13 +292,18 @@ describe("listviewSelectionsDemo directory suggestion entry", () => {
         const menuButton = (await screen.findByName("directory-menu-button")) as Gtk.MenuButton;
         const popover = menuButton.getPopover() as Gtk.Popover;
         popover.popup();
+
         const target = readdirSync(process.cwd()).includes("package.json")
             ? "package.json"
-            : (readdirSync(process.cwd()).sort()[0] as string);
+            : (readdirSync(process.cwd()).toSorted((a, b) => a.localeCompare(b))[0] as string);
+
         const label = within(popover).getByText(target);
         const button = label.getParent() as Gtk.Button;
         await userEvent.click(button);
-        await waitFor(() => expect(entry).toHaveDisplayValue(target));
+
+        await waitFor(() => {
+            expect(entry).toHaveDisplayValue(target);
+        });
     });
 });
 
@@ -263,14 +316,19 @@ describe("listviewSelectionsDemo font spin button", () => {
         spin.grabFocus();
         await userEvent.keyboard(spin, "{ArrowUp}");
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 1 } });
-        await waitFor(() => expect(fonts.getSelected()).toBe(1));
+
+        await waitFor(() => {
+            expect(fonts.getSelected()).toBe(1);
+        });
     });
 
     it("ignores spin button values out of range", async () => {
         await renderDemo(listviewSelectionsDemo);
         const spin = (await screen.findByName("font-spin")) as Gtk.SpinButton;
+        const fonts = (await screen.findByName("fonts-dropdown")) as Gtk.DropDown;
         spin.grabFocus();
         await userEvent.keyboard(spin, "{ArrowDown}");
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: -1 } });
+        expect(fonts.getSelected()).toBe(0);
     });
 });

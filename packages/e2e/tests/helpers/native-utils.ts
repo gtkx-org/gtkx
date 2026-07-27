@@ -1,5 +1,12 @@
 import { bind, type Descriptor, type ExternalObject, type Handle, call as nativeCall, read } from "@gtkx/native";
 
+const GOBJECT_REF_COUNT_OFFSET = 8;
+const GTK_LIB = "libgtk-4.so.1";
+const GOBJECT_LIB = "libgobject-2.0.so.0";
+const BIGUINT64 = { kind: "biguint64" as const };
+const STRING_BORROWED = { kind: "string" as const, ownership: "borrowed" as const };
+const UINT32_DESCRIPTOR: Descriptor = { kind: "uint32" };
+
 function callArgs(
     sharedLibrary: string,
     symbol: string,
@@ -19,12 +26,6 @@ function callArgs(
     );
 }
 
-const GOBJECT_REF_COUNT_OFFSET = 8;
-const GTK_LIB = "libgtk-4.so.1";
-const GOBJECT_LIB = "libgobject-2.0.so.0";
-const BIGUINT64 = { kind: "biguint64" as const };
-const STRING_BORROWED = { kind: "string" as const, ownership: "borrowed" as const };
-
 const typeFromName = (name: string): bigint =>
     callArgs(GOBJECT_LIB, "g_type_from_name", [{ type: STRING_BORROWED, value: name }], BIGUINT64) as bigint;
 
@@ -35,8 +36,6 @@ function forceGC(): void {
 
     globalThis.gc();
 }
-
-const UINT32_DESCRIPTOR: Descriptor = { kind: "uint32" };
 
 function getRefCount(handle: ExternalObject<Handle>): number {
     return read(handle, UINT32_DESCRIPTOR, GOBJECT_REF_COUNT_OFFSET) as number;

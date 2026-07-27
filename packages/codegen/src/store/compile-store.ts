@@ -25,7 +25,9 @@ const ENV_REFERENCE_FILE = "__gtkx-env__.d.ts";
 const writeEnvReference = (storeDir: string): (() => void) => {
     writeFileSync(join(storeDir, ENV_REFERENCE_FILE), "/// <reference types=\"@gtkx/config/env\" />\n");
 
-    return () => rmSync(join(storeDir, ENV_REFERENCE_FILE), { force: true });
+    return () => {
+        rmSync(join(storeDir, ENV_REFERENCE_FILE), { force: true });
+    };
 };
 
 const compileStore = (params: CompileStoreParams): void => {
@@ -33,7 +35,7 @@ const compileStore = (params: CompileStoreParams): void => {
 
     const removeEnvReference = params.configEnv === true
         ? writeEnvReference(params.storeDir)
-        : () => {};
+        : (): void => undefined;
 
     try {
         compileProject({

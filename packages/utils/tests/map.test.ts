@@ -23,7 +23,7 @@ describe("getOrInsert", () => {
 
     it("caches a computed undefined value instead of recomputing it", () => {
         const map: Map<string, number | undefined> = new Map();
-        const factory = vi.fn(() => undefined);
+        const factory = vi.fn((): undefined => undefined);
         expect(getOrInsert(map, "a", factory)).toBeUndefined();
         expect(getOrInsert(map, "a", factory)).toBeUndefined();
         expect(factory).toHaveBeenCalledTimes(1);

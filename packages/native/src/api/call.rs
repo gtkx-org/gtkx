@@ -34,7 +34,7 @@ fn execute_call<'e>(
         })
         .collect::<anyhow::Result<Vec<ffi::Stash>>>()?;
 
-    let mut ffi_args: Vec<libffi::Arg> = Vec::with_capacity(stashes.len() + 1);
+    let mut ffi_args: Vec<libffi::Arg<'_>> = Vec::with_capacity(stashes.len() + 1);
     for stash in &stashes {
         stash.append_libffi_args(&mut ffi_args);
     }
@@ -118,18 +118,18 @@ fn write_ref_updates(
 pub fn call<'env>(
     env: &'env Env,
     descriptor: &External<CallDescriptor>,
-    values: Array,
-) -> napi::Result<Unknown<'env>> {
+    values: Array<'_>,
+) -> Result<Unknown<'env>> {
     let mut parsed_values: Vec<Unknown<'env>> = Vec::with_capacity(values.len() as usize);
     for i in 0..values.len() {
         let item: Unknown<'env> = values
             .get(i)?
-            .ok_or_else(|| napi::Error::new(napi::Status::GenericFailure, "missing argument"))?;
+            .ok_or_else(|| Error::new(Status::GenericFailure, "missing argument"))?;
         parsed_values.push(item);
     }
     if parsed_values.len() != descriptor.arg_codecs.len() {
-        return Err(napi::Error::new(
-            napi::Status::InvalidArg,
+        return Err(Error::new(
+            Status::InvalidArg,
             format!(
                 "{}: expected {} arguments, received {}",
                 descriptor.symbol_name,

@@ -23,7 +23,7 @@ const qualifiedName = (context: ModuleContext, ref: TypeId): string | undefined 
     return name === undefined ? undefined : `${name.namespaceName}.${name.typeName}`;
 };
 
-const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
+const isListModelImplementor = (context: ModuleContext, ref: TypeId): boolean => {
     const resolved = context.library.typeFor(ref);
 
     if (resolved?.kind !== "class") {
@@ -37,7 +37,7 @@ const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
     });
 };
 
-const comparesObjectItems = (context: ModuleContext, fn: GirFunction): boolean => {
+const isObjectItemComparator = (context: ModuleContext, fn: GirFunction): boolean => {
     const ownerRef = fn.instance?.type ?? fn.returnValue.type;
 
     if (ownerRef === undefined) {
@@ -50,7 +50,7 @@ const comparesObjectItems = (context: ModuleContext, fn: GirFunction): boolean =
         return true;
     }
 
-    return implementsListModel(context, ownerRef);
+    return isListModelImplementor(context, ownerRef);
 };
 
 const isItemPointer = (context: ModuleContext, ref: TypeId | undefined): boolean => {
@@ -84,7 +84,7 @@ const itemComparatorCallback = (
         return undefined;
     }
 
-    return comparesObjectItems(context, fn) ? resolved.value : undefined;
+    return isObjectItemComparator(context, fn) ? resolved.value : undefined;
 };
 
 const itemComparatorArgDescriptors = (

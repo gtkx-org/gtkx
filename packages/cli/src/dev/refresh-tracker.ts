@@ -4,21 +4,21 @@ type RefreshTracker = {
 };
 
 const createRefreshTracker = (performRefresh: () => void): RefreshTracker => {
-    let refreshing = false;
+    let isRefreshing = false;
 
     return {
         performRefresh: () => {
-            refreshing = true;
+            isRefreshing = true;
 
             try {
                 performRefresh();
             } finally {
                 setTimeout(() => {
-                    refreshing = false;
+                    isRefreshing = false;
                 }, 0);
             }
         },
-        isRefreshing: () => refreshing,
+        isRefreshing: () => isRefreshing,
     };
 };
 

@@ -102,7 +102,7 @@ const computeJsxFingerprint = (input: JsxFingerprintInput, intrinsicElementCount
     intrinsicElementCount,
 });
 
-const isJsxStoreFresh = (
+const jsxStoreFreshness = (
     jsxStoreDir: string,
     input: JsxFingerprintInput,
 ): { fresh: boolean; intrinsicElementCount: number } => {
@@ -130,7 +130,7 @@ export {
     computeGiFingerprint,
     isGiStoreFresh,
     computeJsxFingerprint,
-    isJsxStoreFresh,
+    jsxStoreFreshness,
     type GiFingerprint,
     type JsxFingerprintInput,
     type JsxFingerprint,

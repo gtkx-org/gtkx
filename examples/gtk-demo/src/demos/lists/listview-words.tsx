@@ -13,137 +13,229 @@ import {
 } from "@gtkx/jsx/gtk";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
-import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
+import { createContext, type RefObject, useContext, useEffect, useRef, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import { useDemo } from "../../context/demo-context.js";
 import sourceCode from "./listview-words.tsx?raw";
-
-const DICT_FILE = "/usr/share/dict/words";
-
-const LOREM_IPSUM =
-    "lorem ipsum dolor sit amet consectetur adipisci elit sed eiusmod tempor incidunt labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi consequat";
-
-const FILTER_CHUNK_SIZE = 50_000;
-
-function loadInitialWords(): string[] {
-    if (existsSync(DICT_FILE)) {
-        try {
-            return readFileSync(DICT_FILE, "utf-8")
-                .split("\n")
-                .map((w) => w.trim())
-                .filter((w) => w.length > 0);
-        } catch (error) {
-            if (error instanceof Error) console.error(error.message);
-        }
-    }
-    return LOREM_IPSUM.split(" ");
-}
-
-const initialWords = loadInitialWords();
-
-const loadWordsFromFile = async (
-    filePath: string,
-    setWords: (words: string[]) => void,
-    setSearchText: (text: string) => void,
-) => {
-    try {
-        const text = await readFile(filePath, "utf-8");
-        const wordList = text
-            .split("\n")
-            .map((w) => w.trim())
-            .filter((w) => w.length > 0);
-        setWords(wordList);
-        setSearchText("");
-    } catch (error) {
-        const dialog = new Gtk.AlertDialog();
-        dialog.setMessage(`Failure reading words from '${filePath}': ${error}`);
-        dialog.show(null);
-    }
-};
 
 type FilterState = {
     canceled: boolean;
 };
 
-const runFilterStep = ({
-    ctx,
-    words,
-    lower,
-    result,
-    offset,
-    setFilterProgress,
-    setFilteredWords,
-}: {
+type FilterStep = {
     ctx: FilterState;
     words: string[];
     lower: string;
     result: string[];
     offset: number;
-    setFilterProgress: (n: number) => void;
-    setFilteredWords: (w: string[]) => void;
-}) => {
-    if (ctx.canceled) return;
-
-    const end = Math.min(offset + FILTER_CHUNK_SIZE, words.length);
-    for (let i = offset; i < end; i++) {
-        const w = words[i];
-        if (w?.toLowerCase().includes(lower)) result.push(w);
-    }
-    const newOffset = end;
-    const progress = words.length > 0 ? newOffset / words.length : 1;
-    setFilterProgress(progress);
-    setFilteredWords([...result]);
-
-    if (newOffset < words.length) {
-        setTimeout(
-            () =>
-                runFilterStep({
-                    ctx,
-                    words,
-                    lower,
-                    result,
-                    offset: newOffset,
-                    setFilterProgress,
-                    setFilteredWords,
-                }),
-            0,
-        );
-    }
+    onChunk: (matched: string[], progress: number) => void;
 };
 
+type FilterResult = {
+    search: string;
+    words: string[];
+    progress: number;
+};
+
+type WordsContextValue = {
+    searchText: string;
+    setSearchText: (value: string) => void;
+    filteredWords: string[];
+    filterProgress: number;
+    handleOpen: () => void;
+};
+
+type WordsListProps = {
+    filteredWords: string[];
+    filterProgress: number;
+};
+
+const DICT_FILE = "/usr/share/dict/words";
+
+const LOREM_IPSUM =
+    "lorem ipsum dolor sit amet consectetur adipisci elit sed eiusmod tempor incidunt labore et dolore " +
+    "magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquid ex ea " +
+    "commodi consequat";
+
+const FILTER_CHUNK_SIZE = 50_000;
+const initialWords = loadInitialWords();
+const WordsContext = createContext<WordsContextValue | null>(null);
+
+const listviewWordsDemo: Demo = {
+    id: "listview-words",
+    title: "Lists/Words",
+    description:
+        "This demo shows filtering a long list - of words.\n\nYou should have the file " +
+        "`/usr/share/dict/words` installed for this demo to work.",
+    keywords: ["GtkListView", "GtkFilterListModel", "GtkInscription"],
+    component: ListViewWordsDemo,
+    titlebar: ListViewWordsTitlebar,
+    provider: ListViewWordsProvider,
+    sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 600,
+};
+
+function logError(error: unknown) {
+    if (error instanceof Error) {
+        console.error(error.message);
+    }
+}
+
+function splitWords(text: string): string[] {
+    return text
+        .split("\n")
+        .map((word) => word.trim())
+        .filter((word) => word.length > 0);
+}
+
+function readDictionaryWords(): string[] | null {
+    try {
+        return splitWords(readFileSync(DICT_FILE, "utf8"));
+    } catch (error) {
+        logError(error);
+
+        return null;
+    }
+}
+
+function loadInitialWords(): string[] {
+    const words = existsSync(DICT_FILE) ? readDictionaryWords() : null;
+
+    return words ?? LOREM_IPSUM.split(" ");
+}
+
+async function loadWordsFromFile(
+    filePath: string,
+    setWords: (words: string[]) => void,
+    setSearchText: (text: string) => void,
+) {
+    try {
+        const text = await readFile(filePath, "utf8");
+        setWords(splitWords(text));
+        setSearchText("");
+    } catch (error) {
+        const dialog = new Gtk.AlertDialog();
+        dialog.setMessage(`Failure reading words from '${filePath}': ${String(error)}`);
+        dialog.show(null);
+    }
+}
+
+async function openWordsFile(
+    window: RefObject<Gtk.Window | null>,
+    loadFile: (filePath: string) => Promise<void>,
+) {
+    const dialog = new Gtk.FileDialog();
+    dialog.setTitle("Open file");
+
+    try {
+        const file = await dialog.open(window.current, null);
+        const path = file.getPath();
+
+        if (path) {
+            await loadFile(path);
+        }
+    } catch (error) {
+        logError(error);
+    }
+}
+
+function collectMatches(step: FilterStep, end: number) {
+    for (let index = step.offset; index < end; index++) {
+        const word = step.words[index];
+
+        if (word?.toLowerCase().includes(step.lower)) {
+            step.result.push(word);
+        }
+    }
+}
+
+function runFilterStep(step: FilterStep) {
+    if (step.ctx.canceled) {
+        return;
+    }
+
+    const total = step.words.length;
+    const end = Math.min(step.offset + FILTER_CHUNK_SIZE, total);
+    collectMatches(step, end);
+    step.onChunk([...step.result], total > 0 ? end / total : 1);
+
+    if (end < total) {
+        setTimeout(() => {
+            runFilterStep({ ...step, offset: end });
+        }, 0);
+    }
+}
+
+function selectFilteredWords(words: string[], searchText: string, result: FilterResult | null) {
+    if (searchText === "") {
+        return { filteredWords: words, filterProgress: 1 };
+    }
+
+    if (result?.search !== searchText) {
+        return { filteredWords: words, filterProgress: 0 };
+    }
+
+    return { filteredWords: result.words, filterProgress: result.progress };
+}
+
 function useFilteredWords(words: string[], searchText: string) {
-    const [filteredWords, setFilteredWords] = useState(initialWords);
-    const [filterProgress, setFilterProgress] = useState(1);
+    const [result, setResult] = useState<FilterResult | null>(null);
     const filterRef = useRef<FilterState>({ canceled: false });
 
     useEffect(() => {
         filterRef.current.canceled = true;
-        const ctx = { canceled: false };
-        filterRef.current = ctx;
 
         if (searchText === "") {
-            setFilteredWords(words);
-            setFilterProgress(1);
             return;
         }
 
-        const lower = searchText.toLowerCase();
-        const result: string[] = [];
-        setFilterProgress(0);
-        setTimeout(
-            () => runFilterStep({ ctx, words, lower, result, offset: 0, setFilterProgress, setFilteredWords }),
-            0,
-        );
+        const ctx: FilterState = { canceled: false };
+        filterRef.current = ctx;
+
+        setTimeout(() => {
+            runFilterStep({
+                ctx,
+                words,
+                lower: searchText.toLowerCase(),
+                result: [],
+                offset: 0,
+                onChunk: (matched, progress) => {
+                    setResult({ search: searchText, words: matched, progress });
+                },
+            });
+        }, 0);
 
         return () => {
             ctx.canceled = true;
         };
     }, [words, searchText]);
 
-    return { filteredWords, filterProgress };
+    return selectFilteredWords(words, searchText, result);
 }
 
-const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[]; filterProgress: number }) => (
+function useWordsContext(): WordsContextValue {
+    const ctx = useContext(WordsContext);
+
+    if (!ctx) {
+        throw new Error("WordsContext is missing");
+    }
+
+    return ctx;
+}
+
+function renderWord({ item: word }: { item: string }) {
+    return (
+        <GtkInscription
+            text={word}
+            xalign={0}
+            natChars={20}
+            textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+        />
+    );
+}
+
+const WordsList = ({ filteredWords, filterProgress }: WordsListProps) => (
     <GtkOverlay
         vexpand
         hexpand
@@ -168,55 +260,19 @@ const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[];
                 estimatedItemHeight={32}
                 selectionMode={Gtk.SelectionMode.NONE}
                 items={filteredWords.map((word) => ({ id: word, value: word }))}
-                renderItem={({ item: word }: { item: string }) => (
-                    <GtkInscription
-                        text={word}
-                        xalign={0}
-                        natChars={20}
-                        textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                    />
-                )}
+                renderItem={renderWord}
             />
         </GtkScrolledWindow>
     </GtkOverlay>
 );
 
-type WordsContextValue = {
-    searchText: string;
-    setSearchText: (value: string) => void;
-    filteredWords: string[];
-    filterProgress: number;
-    handleOpen: () => void;
-};
-
-const WordsContext = createContext<WordsContextValue | null>(null);
-
-const useWordsContext = (): WordsContextValue => {
-    const ctx = useContext(WordsContext);
-    if (!ctx) throw new Error("WordsContext is missing");
-    return ctx;
-};
-
-const ListViewWordsProvider = ({ window, children }: DemoProviderProps) => {
+function ListViewWordsProvider({ window, children }: DemoProviderProps) {
     const [words, setWords] = useState(initialWords);
     const [searchText, setSearchText] = useState("");
     const { filteredWords, filterProgress } = useFilteredWords(words, searchText);
 
-    const loadFile = (filePath: string) => loadWordsFromFile(filePath, setWords, setSearchText);
-
     const handleOpen = () => {
-        const run = async () => {
-            const dialog = new Gtk.FileDialog();
-            dialog.setTitle("Open file");
-            try {
-                const file = await dialog.open(window.current, null);
-                const path = file.getPath();
-                if (path) await loadFile(path);
-            } catch (error) {
-                if (error instanceof Error) console.error(error.message);
-            }
-        };
-        void run();
+        void openWordsFile(window, (filePath) => loadWordsFromFile(filePath, setWords, setSearchText));
     };
 
     const value = {
@@ -228,20 +284,24 @@ const ListViewWordsProvider = ({ window, children }: DemoProviderProps) => {
     };
 
     return <WordsContext.Provider value={value}>{children}</WordsContext.Provider>;
-};
+}
 
-const ListViewWordsTitlebar = () => {
+function ListViewWordsTitlebar() {
     const { handleOpen } = useWordsContext();
-    return <GtkHeaderBar start={<GtkButton label="_Open" useUnderline onClicked={handleOpen} />} />;
-};
 
-const ListViewWordsDemo = (_: DemoProps) => {
+    return <GtkHeaderBar start={<GtkButton label="_Open" useUnderline onClicked={handleOpen} />} />;
+}
+
+function ListViewWordsDemo() {
     const { searchText, setSearchText, filteredWords, filterProgress } = useWordsContext();
     const { setWindowTitle } = useDemo();
 
     useEffect(() => {
-        setWindowTitle(`${filteredWords.length} lines`);
-        return () => setWindowTitle(null);
+        setWindowTitle(`${String(filteredWords.length)} lines`);
+
+        return () => {
+            setWindowTitle(null);
+        };
     }, [filteredWords.length, setWindowTitle]);
 
     return (
@@ -250,24 +310,14 @@ const ListViewWordsDemo = (_: DemoProps) => {
                 name="search-entry"
                 text={searchText}
                 placeholderText="Search words..."
-                onSearchChanged={(entry: Gtk.SearchEntry) => setSearchText(entry.getText())}
+                onSearchChanged={(entry: Gtk.SearchEntry) => {
+                    setSearchText(entry.getText());
+                }}
                 hexpand
             />
             <WordsList filteredWords={filteredWords} filterProgress={filterProgress} />
         </GtkBox>
     );
-};
+}
 
-export const listviewWordsDemo: Demo = {
-    id: "listview-words",
-    title: "Lists/Words",
-    description:
-        "This demo shows filtering a long list - of words.\n\nYou should have the file `/usr/share/dict/words` installed for this demo to work.",
-    keywords: ["GtkListView", "GtkFilterListModel", "GtkInscription"],
-    component: ListViewWordsDemo,
-    titlebar: ListViewWordsTitlebar,
-    provider: ListViewWordsProvider,
-    sourceCode,
-    defaultWidth: 400,
-    defaultHeight: 600,
-};
+export { listviewWordsDemo };

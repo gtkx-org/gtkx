@@ -11,14 +11,6 @@ type RenderedClickButton = {
     button: Gtk.Widget;
 };
 
-async function renderClickButton(label = "Click me"): Promise<RenderedClickButton> {
-    const handleClick = vi.fn();
-    await render(<GtkButton label={label} onClicked={handleClick} />);
-    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
-
-    return { handleClick, button };
-}
-
 type DragAndDropPairOptions = {
     onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"];
     sourceSensitive?: boolean;
@@ -29,6 +21,14 @@ type RenderedDragAndDropPair = {
     source: Gtk.Widget;
     target: Gtk.Widget;
 };
+
+async function renderClickButton(label = "Click me"): Promise<RenderedClickButton> {
+    const handleClick = vi.fn();
+    await render(<GtkButton label={label} onClicked={handleClick} />);
+    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
+
+    return { handleClick, button };
+}
 
 async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<RenderedDragAndDropPair> {
     await render(

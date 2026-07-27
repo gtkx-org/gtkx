@@ -1,5 +1,5 @@
 import { toCamelIdentifier } from "@gtkx/utils";
-import type { GlCommand } from "./model.js";
+import type { GlCommand, GlParam } from "./model.js";
 import type { CommandPlan, GlScalar, ParamPlan } from "./plan.js";
 import {
     tArray,
@@ -32,6 +32,15 @@ type OutArg = {
 
 type PlannedArg = InArg | OutArg;
 type OutArgCell = Pick<OutArg, "out" | "cellName" | "paramIndex">;
+type OutArgFields = Pick<OutArg, "seed" | "tsType" | "descriptor">;
+
+type OutArgFieldsOptions = {
+    command: GlCommand;
+    plan: ParamPlan;
+    param: GlParam;
+    cellName: string;
+    track: (alias: string) => string;
+};
 
 type BuildArgOptions = {
     command: GlCommand;
@@ -73,7 +82,7 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
     const param = command.params[index];
 
     if (param === undefined) {
-        throw new Error(`Parameter index ${index} out of range on ${command.name}`);
+        throw new Error(`Parameter index ${String(index)} out of range on ${command.name}`);
     }
 
     switch (plan.kind) {
@@ -106,27 +115,21 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
         case "byte-offset-array": {
             return inArg(name, `${track("GLintptr")}[]`, tArray(tUint64));
         }
-        default: {
+        case "ref-array-out":
+        case "ref-fixed-out":
+        case "ref-out":
+        case "string-out": {
             throw new Error(`Plan kind ${plan.kind} is not an input parameter`);
         }
     }
 };
 
-const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string): OutArg => {
-    const { command, index, plan, outIndex } = options;
-    const param = command.params[index];
-
-    if (param === undefined) {
-        throw new Error(`Parameter index ${index} out of range on ${command.name}`);
-    }
-
-    const cellName = `out${outIndex}`;
-    const cell: OutArgCell = { out: true, cellName, paramIndex: index };
+const outArgFields = (options: OutArgFieldsOptions): OutArgFields => {
+    const { command, plan, param, cellName, track } = options;
 
     switch (plan.kind) {
         case "ref-out": {
             return {
-                ...cell,
                 seed: `const ${cellName} = { value: 0 };`,
                 tsType: track(scalarAliasOrGroup(plan.scalar, param.group)),
                 descriptor: tRef(plan.scalar.descriptor),
@@ -137,7 +140,6 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
             const lenIdentifier = toCamelIdentifier(plan.lenParamName);
 
             return {
-                ...cell,
                 seed: `const ${cellName} = { value: new Array<number>(${lenIdentifier}).fill(0) };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
                 descriptor: tRef(tSizedArray(plan.scalar.descriptor, sizeIndex)),
@@ -145,24 +147,44 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
         }
         case "ref-fixed-out": {
             return {
-                ...cell,
-                seed: `const ${cellName} = { value: new Array<number>(${plan.length}).fill(0) };`,
+                seed: `const ${cellName} = { value: new Array<number>(${String(plan.length)}).fill(0) };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
                 descriptor: tRef(tFixedArray(plan.scalar.descriptor, plan.length)),
             };
         }
         case "string-out": {
             return {
-                ...cell,
                 seed: `const ${cellName} = { value: "" };`,
                 tsType: "string",
                 descriptor: tRef(tString("borrowed", toCamelIdentifier(plan.lenParamName))),
             };
         }
-        default: {
+        case "array-in":
+        case "boolean":
+        case "buffer":
+        case "byte-offset":
+        case "byte-offset-array":
+        case "scalar":
+        case "string-array-in":
+        case "string-in":
+        case "sync": {
             throw new Error(`Plan kind ${plan.kind} is not an output parameter`);
         }
     }
+};
+
+const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string): OutArg => {
+    const { command, index, plan, outIndex } = options;
+    const param = command.params[index];
+
+    if (param === undefined) {
+        throw new Error(`Parameter index ${String(index)} out of range on ${command.name}`);
+    }
+
+    const cellName = `out${String(outIndex)}`;
+    const cell: OutArgCell = { out: true, cellName, paramIndex: index };
+
+    return { ...cell, ...outArgFields({ command, plan, param, cellName, track }) };
 };
 
 const isOutPlan = (plan: ParamPlan): boolean => OUT_PLAN_KINDS.has(plan.kind);
@@ -191,7 +213,7 @@ const planArgs = (
         const param = plan.command.params[index];
 
         if (param === undefined) {
-            throw new Error(`Parameter index ${index} out of range on ${plan.command.name}`);
+            throw new Error(`Parameter index ${String(index)} out of range on ${plan.command.name}`);
         }
 
         const options: BuildArgOptions = {

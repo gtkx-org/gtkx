@@ -1,7 +1,7 @@
 import type { ParseContext } from "./type-id.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { type GirCallable, parseCallable } from "./parameter.js";
-import { attr, attrBool, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, nameAttr, type RawNode } from "./parse.js";
+import { attr, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, isAttrTrue, nameAttr, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
 
 type GirClass = {
@@ -36,9 +36,9 @@ const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContex
     glibTypeStruct: attr(node, "glib:type-struct"),
     glibRefFunc: attr(node, "glib:ref-func"),
     glibUnrefFunc: attr(node, "glib:unref-func"),
-    fundamental: attrBool(node, "glib:fundamental"),
+    fundamental: isAttrTrue(node, "glib:fundamental"),
     isInterface,
-    introspectable: attrBool(node, "introspectable", true),
+    introspectable: isAttrTrue(node, "introspectable", true),
     implements: getChildren(node, "implements")
         .map((implement) => attr(implement, "name"))
         .filter((name): name is string => name !== undefined),

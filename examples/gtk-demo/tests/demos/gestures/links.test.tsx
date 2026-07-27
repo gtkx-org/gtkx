@@ -32,8 +32,8 @@ describe("linksDemo", () => {
         const label = (await screen.findByName("links-label")) as Gtk.Label;
         const markup = label.getLabel();
         expect(markup).toMatch(/href="keynav"/);
-        expect(markup).toMatch(/href="http:\/\/en\.wikipedia\.org\/wiki\/Text"/);
-        expect(markup).toMatch(/href="http:\/\/www\.flathub\.org\/"/);
+        expect(markup).toMatch(/href="https:\/\/en\.wikipedia\.org\/wiki\/Text"/);
+        expect(markup).toMatch(/href="https:\/\/www\.flathub\.org\/"/);
     });
 });
 
@@ -44,9 +44,10 @@ describe("linksDemo activate-link handler", () => {
         const choose = vi.spyOn(Adw.AlertDialog.prototype, "choose").mockResolvedValue("ok");
         const setHeading = vi.spyOn(Adw.AlertDialog.prototype, "setHeading");
         const setBody = vi.spyOn(Adw.AlertDialog.prototype, "setBody");
+
         try {
-            const handled = label.emit("activate-link", "keynav");
-            expect(handled).toBe(true);
+            const isHandled = label.emit("activate-link", "keynav");
+            expect(isHandled).toBe(true);
             expect(choose).toHaveBeenCalledTimes(1);
             expect(choose.mock.calls[0]?.[0]).toBeInstanceOf(Gtk.Window);
             expect(setHeading).toHaveBeenCalledWith("Keyboard navigation");
@@ -62,17 +63,17 @@ describe("linksDemo activate-link handler", () => {
         await renderDemo(linksDemo);
         const label = (await screen.findByName("links-label")) as Gtk.Label;
         const choose = vi.spyOn(Adw.AlertDialog.prototype, "choose").mockResolvedValue("ok");
-        // The demo handler returns false for non-keynav URIs, so emission would otherwise
-        // reach the built-in gtk_show_uri default handler; intercept it after the demo's
-        // handler ran to observe that no custom dialog was built.
-        let reachedDefault = false;
+        let isReachedDefault = false;
+
         const stop = label.connect("activate-link", () => {
-            reachedDefault = true;
+            isReachedDefault = true;
+
             return true;
         });
+
         try {
-            label.emit("activate-link", "http://www.flathub.org/");
-            expect(reachedDefault).toBe(true);
+            label.emit("activate-link", "https://www.flathub.org/");
+            expect(isReachedDefault).toBe(true);
             expect(choose).not.toHaveBeenCalled();
         } finally {
             label.disconnect(stop);

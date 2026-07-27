@@ -34,6 +34,105 @@ import type { Demo, DemoProviderProps } from "../types.js";
 import { buildRgba } from "../../build-rgba.js";
 import sourceCode from "./font-features.tsx?raw";
 
+type FeatureGroup = {
+    title: string;
+    type: "check" | "radio";
+    tags: string[];
+};
+
+type FeatureState = "inconsistent" | "active" | "inactive";
+type ViewMode = "plain" | "waterfall" | "edit";
+
+type PreviewSelection = {
+    start: number;
+    end: number;
+};
+
+type NumberBounds = {
+    min: number;
+    max: number;
+};
+
+type FontFeaturesState = ReturnType<typeof useFontFeaturesState>;
+type FontFeaturesStyles = ReturnType<typeof useFontFeaturesStyles>;
+type FontFeaturesHandlers = ReturnType<typeof useFontFeaturesHandlers>;
+
+type PreviewStyleArgs = {
+    fontDesc: Pango.FontDescription | null;
+    size: number;
+    fgColor: Gdk.RGBA;
+    letterSpacing: number;
+    lineHeight: number;
+};
+
+type EditStyleArgs = {
+    fontDesc: Pango.FontDescription | null;
+    size: number;
+    fontFeaturesString: string;
+    fgColor: Gdk.RGBA;
+    letterSpacing: number;
+};
+
+type WaterfallStyleArgs = {
+    fontDesc: Pango.FontDescription | null;
+    wfSize: number;
+    fontFeaturesString: string;
+    fgColor: Gdk.RGBA;
+    letterSpacing: number;
+};
+
+type SliderEntryRowProps = {
+    row: number;
+    label: string;
+    entryName: string;
+    value: number;
+    lower: number;
+    upper: number;
+    stepIncrement: number;
+    pageIncrement: number;
+    onValueChanged: (value: number) => void;
+    displayText: string;
+    onEntryActivate: (entry: Gtk.Entry) => void;
+    sensitive?: boolean;
+};
+
+type ColorRowProps = {
+    row: number;
+    label: string;
+    name: string;
+    rgba: Gdk.RGBA;
+    onChanged: (value: Gdk.RGBA | null) => void;
+};
+
+type FeatureGroupBoxProps = {
+    group: FeatureGroup;
+    checkStates: Map<string, FeatureState>;
+    radioStates: Map<string, string>;
+    onToggleCheck: (tag: string) => void;
+    onResetToInconsistent: (tag: string) => void;
+    onSelectRadio: (groupTitle: string, tag: string) => void;
+};
+
+type FontFeaturesPreviewProps = {
+    state: FontFeaturesState;
+    styles: FontFeaturesStyles;
+    handlers: FontFeaturesHandlers;
+    stackPage: string;
+    previewAttributes: Pango.AttrList | null;
+};
+
+type FontFeaturesPreviewLabelProps = {
+    state: FontFeaturesState;
+    styles: FontFeaturesStyles;
+    attributes: Pango.AttrList | null;
+};
+
+type FontFeaturesContextValue = {
+    state: FontFeaturesState;
+    styles: FontFeaturesStyles;
+    handlers: FontFeaturesHandlers;
+};
+
 const FEATURE_DISPLAY_NAMES: Record<string, string> = {
     kern: "Kerning",
     liga: "Standard Ligatures",
@@ -98,12 +197,6 @@ const FEATURE_DISPLAY_NAMES: Record<string, string> = {
     rtbd: "Right Bounds",
     numr: "Numerators",
     dnom: "Denominators",
-};
-
-type FeatureGroup = {
-    title: string;
-    type: "check" | "radio";
-    tags: string[];
 };
 
 const FEATURE_GROUPS: FeatureGroup[] = [
@@ -208,87 +301,126 @@ const FEATURE_GROUPS: FeatureGroup[] = [
     { title: "Optical Bounds", type: "check", tags: ["opbd", "lfbd", "rtbd"] },
 ];
 
-type FeatureState = "inconsistent" | "active" | "inactive";
-
 const SS_RE = /^ss(\d{2})$/;
 const CV_RE = /^cv(\d{2})$/;
+const WATERFALL_SIZES = [7, 8, 9, 10, 12, 14, 16, 20, 24, 30, 40, 50, 60, 70, 90];
+const ALPHABET_SAMPLES = ["abcdefghijklmnopqrstuvwxzy", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "0123456789", "!@#$%^&*/?;"];
+const SIZE_BOUNDS: NumberBounds = { min: 7, max: 100 };
+const LETTER_SPACING_BOUNDS: NumberBounds = { min: -1024, max: 8192 };
+const LINE_HEIGHT_BOUNDS: NumberBounds = { min: 0.75, max: 2.5 };
+
+const ENGLISH_PARAGRAPH =
+    "Grumpy wizards make toxic brew for the evil Queen and Jack. " +
+    "A quick movement of the enemy will jeopardize six gunboats. " +
+    "The job of waxing linoleum frequently peeves chintzy kids. " +
+    "My girl wove six dozen plaid jackets before she quit. " +
+    "Twelve ziggurats quickly jumped a finch box.";
+
+const RUSSIAN_PARAGRAPH =
+    "Разъяренный чтец эгоистично бьёт пятью жердями шустрого фехтовальщика. " +
+    "Наш банк вчера же выплатил Ф.Я. Эйхгольду комиссию за ценные вещи. " +
+    "Эх, чужак, общий съём цен шляп (юфть) – вдрызг! " +
+    "В чащах юга жил бы цитрус? Да, но фальшивый экземпляр!";
+
+const GREEK_PARAGRAPH = "Τάχιστη αλώπηξ βαφής ψημένη γη, δρασκελίζει υπέρ νωθρού κυνός";
+const PARAGRAPH_SAMPLES = [ENGLISH_PARAGRAPH, RUSSIAN_PARAGRAPH, GREEK_PARAGRAPH];
+const INITIAL_PREVIEW_TEXT = PARAGRAPH_SAMPLES.join("\n\n");
+const UTF8_ENCODER = new TextEncoder();
+const FontFeaturesContext = createContext<FontFeaturesContextValue | null>(null);
+
+const fontFeaturesDemo: Demo = {
+    id: "font-features",
+    title: "Pango/Font Explorer",
+    description:
+        "This example demonstrates support for OpenType font features with Pango attributes. " +
+        "The attributes can be used manually or via Pango markup.\n\n" +
+        "It can also be used to explore available features in OpenType fonts and their effect.\n\n" +
+        "If the selected font supports OpenType font variations, " +
+        "then the axes are also offered for customization.",
+    keywords: [],
+    component: FontFeaturesDemo,
+    titlebar: FontFeaturesTitlebar,
+    provider: FontFeaturesProvider,
+    sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 500,
+};
+
+const buildNumberedFeatureName = (tag: string, pattern: RegExp, label: string): string | null => {
+    const match = pattern.exec(tag);
+
+    if (!match) {
+        return null;
+    }
+
+    return `${label} ${String(Number(match[1] ?? "0"))}`;
+};
 
 const getFeatureDisplayName = (tag: string): string => {
-    if (tag === "xxxx") return "Default";
-    const ssMatch = SS_RE.exec(tag);
-    if (ssMatch) return `Stylistic Set ${Number.parseInt(ssMatch[1] ?? "0", 10)}`;
-    const cvMatch = CV_RE.exec(tag);
-    if (cvMatch) return `Character Variant ${Number.parseInt(cvMatch[1] ?? "0", 10)}`;
-    return FEATURE_DISPLAY_NAMES[tag] ?? tag;
+    if (tag === "xxxx") {
+        return "Default";
+    }
+
+    const stylisticSet = buildNumberedFeatureName(tag, SS_RE, "Stylistic Set");
+
+    if (stylisticSet !== null) {
+        return stylisticSet;
+    }
+
+    const characterVariant = buildNumberedFeatureName(tag, CV_RE, "Character Variant");
+
+    return characterVariant ?? FEATURE_DISPLAY_NAMES[tag] ?? tag;
 };
 
 const buildRadioFeaturePart = (group: { title: string }, radioStates: Map<string, string>): string | null => {
     const selected = radioStates.get(group.title) ?? "xxxx";
+
     return selected === "xxxx" ? null : `"${selected}" 1`;
 };
 
-const buildCheckFeatureParts = (group: { tags: string[] }, checkStates: Map<string, FeatureState>): string[] => {
-    const parts: string[] = [];
-    for (const tag of group.tags) {
-        const state = checkStates.get(tag) ?? "inconsistent";
-        if (state === "inconsistent") continue;
-        parts.push(`"${tag}" ${state === "active" ? "1" : "0"}`);
+const buildCheckFeaturePart = (tag: string, checkStates: Map<string, FeatureState>): string | null => {
+    const state = checkStates.get(tag) ?? "inconsistent";
+
+    if (state === "inconsistent") {
+        return null;
     }
-    return parts;
+
+    return `"${tag}" ${state === "active" ? "1" : "0"}`;
 };
 
-const WATERFALL_SIZES = [7, 8, 9, 10, 12, 14, 16, 20, 24, 30, 40, 50, 60, 70, 90];
-
-const ALPHABET_SAMPLES = ["abcdefghijklmnopqrstuvwxzy", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "0123456789", "!@#$%^&*/?;"];
-
-const INITIAL_PREVIEW_TEXT = [
-    "Grumpy wizards make toxic brew for the evil Queen and Jack. A quick movement of the enemy will jeopardize six gunboats. The job of waxing linoleum frequently peeves chintzy kids. My girl wove six dozen plaid jackets before she quit. Twelve ziggurats quickly jumped a finch box.",
-    "Разъяренный чтец эгоистично бьёт пятью жердями шустрого фехтовальщика. Наш банк вчера же выплатил Ф.Я. Эйхгольду комиссию за ценные вещи. Эх, чужак, общий съём цен шляп (юфть) – вдрызг! В чащах юга жил бы цитрус? Да, но фальшивый экземпляр!",
-    "Τάχιστη αλώπηξ βαφής ψημένη γη, δρασκελίζει υπέρ νωθρού κυνός",
-].join("\n\n");
-
-const PARAGRAPH_SAMPLES = [
-    "Grumpy wizards make toxic brew for the evil Queen and Jack. A quick movement of the enemy will jeopardize six gunboats. The job of waxing linoleum frequently peeves chintzy kids. My girl wove six dozen plaid jackets before she quit. Twelve ziggurats quickly jumped a finch box.",
-    "\u{420}\u{430}\u{437}\u{44A}\u{44F}\u{440}\u{435}\u{43D}\u{43D}\u{44B}\u{439} \u{447}\u{442}\u{435}\u{446} \u{44D}\u{433}\u{43E}\u{438}\u{441}\u{442}\u{438}\u{447}\u{43D}\u{43E} \u{431}\u{44C}\u{451}\u{442} \u{43F}\u{44F}\u{442}\u{44C}\u{44E} \u{436}\u{435}\u{440}\u{434}\u{44F}\u{43C}\u{438} \u{448}\u{443}\u{441}\u{442}\u{440}\u{43E}\u{433}\u{43E} \u{444}\u{435}\u{445}\u{442}\u{43E}\u{432}\u{430}\u{43B}\u{44C}\u{449}\u{438}\u{43A}\u{430}. \u{41D}\u{430}\u{448} \u{431}\u{430}\u{43D}\u{43A} \u{432}\u{447}\u{435}\u{440}\u{430} \u{436}\u{435} \u{432}\u{44B}\u{43F}\u{43B}\u{430}\u{442}\u{438}\u{43B} \u{424}.\u{42F}. \u{42D}\u{439}\u{445}\u{433}\u{43E}\u{43B}\u{44C}\u{434}\u{443} \u{43A}\u{43E}\u{43C}\u{438}\u{441}\u{441}\u{438}\u{44E} \u{437}\u{430} \u{446}\u{435}\u{43D}\u{43D}\u{44B}\u{435} \u{432}\u{435}\u{449}\u{438}. \u{42D}\u{445}, \u{447}\u{443}\u{436}\u{430}\u{43A}, \u{43E}\u{431}\u{449}\u{438}\u{439} \u{441}\u{44A}\u{451}\u{43C} \u{446}\u{435}\u{43D} \u{448}\u{43B}\u{44F}\u{43F} (\u{44E}\u{444}\u{442}\u{44C}) \u{2013} \u{432}\u{434}\u{440}\u{44B}\u{437}\u{433}! \u{412} \u{447}\u{430}\u{449}\u{430}\u{445} \u{44E}\u{433}\u{430} \u{436}\u{438}\u{43B} \u{431}\u{44B} \u{446}\u{438}\u{442}\u{440}\u{443}\u{441}? \u{414}\u{430}, \u{43D}\u{43E} \u{444}\u{430}\u{43B}\u{44C}\u{448}\u{438}\u{432}\u{44B}\u{439} \u{44D}\u{43A}\u{437}\u{435}\u{43C}\u{43F}\u{43B}\u{44F}\u{440}!",
-    "\u{3A4}\u{3AC}\u{3C7}\u{3B9}\u{3C3}\u{3C4}\u{3B7} \u{3B1}\u{3BB}\u{3CE}\u{3C0}\u{3B7}\u{3BE} \u{3B2}\u{3B1}\u{3C6}\u{3AE}\u{3C2} \u{3C8}\u{3B7}\u{3BC}\u{3AD}\u{3BD}\u{3B7} \u{3B3}\u{3B7}, \u{3B4}\u{3C1}\u{3B1}\u{3C3}\u{3BA}\u{3B5}\u{3BB}\u{3AF}\u{3B6}\u{3B5}\u{3B9} \u{3C5}\u{3C0}\u{3AD}\u{3C1} \u{3BD}\u{3C9}\u{3B8}\u{3C1}\u{3BF}\u{3CD} \u{3BA}\u{3C5}\u{3BD}\u{3CC}\u{3C2}",
-];
-
-type ViewMode = "plain" | "waterfall" | "edit";
-
-type PreviewSelection = {
-    start: number;
-    end: number;
-};
+const buildCheckFeatureParts = (group: { tags: string[] }, checkStates: Map<string, FeatureState>): string[] =>
+    group.tags
+        .map((tag) => buildCheckFeaturePart(tag, checkStates))
+        .filter((part): part is string => part !== null);
 
 const createDefaultFgColor = () => buildRgba(0, 0, 0, 1);
 const createDefaultBgColor = () => buildRgba(1, 1, 1, 1);
 const createDefaultFontDesc = () => Pango.FontDescription.fromString("Sans 14");
 
+const collectCheckTags = (): string[] =>
+    FEATURE_GROUPS.filter((group) => group.type === "check").flatMap((group) => group.tags);
+
 const createInitialCheckStates = (): Map<string, FeatureState> => {
-    const states = new Map<string, FeatureState>();
-    for (const group of FEATURE_GROUPS) {
-        if (group.type === "check") {
-            for (const tag of group.tags) {
-                states.set(tag, "inconsistent");
-            }
-        }
+    const states: Map<string, FeatureState> = new Map();
+
+    for (const tag of collectCheckTags()) {
+        states.set(tag, "inconsistent");
     }
+
     return states;
 };
 
 const createInitialRadioStates = (): Map<string, string> => {
-    const states = new Map<string, string>();
+    const states: Map<string, string> = new Map();
+
     for (const group of FEATURE_GROUPS) {
         if (group.type === "radio") {
             states.set(group.title, "xxxx");
         }
     }
+
     return states;
 };
-
-type FontFeaturesState = ReturnType<typeof useFontFeaturesState>;
-type FontFeaturesStyles = ReturnType<typeof useFontFeaturesStyles>;
-type FontFeaturesHandlers = ReturnType<typeof useFontFeaturesHandlers>;
 
 function useFontFeaturesState() {
     const [fontDesc, setFontDesc] = useState<Pango.FontDescription | null>(createDefaultFontDesc);
@@ -341,16 +473,23 @@ function useFontFeaturesState() {
     };
 }
 
-const buildFontFeaturesString = (checkStates: Map<string, FeatureState>, radioStates: Map<string, string>) => {
-    const parts: string[] = [];
-    for (const group of FEATURE_GROUPS) {
-        if (group.type === "radio") {
-            const part = buildRadioFeaturePart(group, radioStates);
-            if (part !== null) parts.push(part);
-        } else {
-            parts.push(...buildCheckFeatureParts(group, checkStates));
-        }
+const buildGroupFeatureParts = (
+    group: FeatureGroup,
+    checkStates: Map<string, FeatureState>,
+    radioStates: Map<string, string>,
+): string[] => {
+    if (group.type === "check") {
+        return buildCheckFeatureParts(group, checkStates);
     }
+
+    const part = buildRadioFeaturePart(group, radioStates);
+
+    return part === null ? [] : [part];
+};
+
+const buildFontFeaturesString = (checkStates: Map<string, FeatureState>, radioStates: Map<string, string>) => {
+    const parts = FEATURE_GROUPS.flatMap((group) => buildGroupFeatureParts(group, checkStates, radioStates));
+
     return parts.join(", ") || "normal";
 };
 
@@ -362,6 +501,7 @@ const rgbColor = (color: Gdk.RGBA) => ({
 
 const buildBgStyle = (bgColor: Gdk.RGBA) => {
     const { r, g, b } = rgbColor(bgColor);
+
     return css`
         scrolledwindow& {
             background-color: rgb(${r}, ${g}, ${b});
@@ -369,17 +509,10 @@ const buildBgStyle = (bgColor: Gdk.RGBA) => {
     `;
 };
 
-type PreviewStyleArgs = {
-    fontDesc: Pango.FontDescription | null;
-    size: number;
-    fgColor: Gdk.RGBA;
-    letterSpacing: number;
-    lineHeight: number;
-};
-
 const buildPreviewStyle = ({ fontDesc, size, fgColor, letterSpacing, lineHeight }: PreviewStyleArgs) => {
     const fontFamily = fontDesc?.getFamily() ?? "Sans";
     const { r, g, b } = rgbColor(fgColor);
+
     return css`
         label& {
             font-family: "${fontFamily}";
@@ -392,17 +525,10 @@ const buildPreviewStyle = ({ fontDesc, size, fgColor, letterSpacing, lineHeight 
     `;
 };
 
-type EditStyleArgs = {
-    fontDesc: Pango.FontDescription | null;
-    size: number;
-    fontFeaturesString: string;
-    fgColor: Gdk.RGBA;
-    letterSpacing: number;
-};
-
 const buildEditStyle = ({ fontDesc, size, fontFeaturesString, fgColor, letterSpacing }: EditStyleArgs) => {
     const fontFamily = fontDesc?.getFamily() ?? "Sans";
     const { r, g, b } = rgbColor(fgColor);
+
     return css`
         textview& {
             font-family: "${fontFamily}";
@@ -414,17 +540,10 @@ const buildEditStyle = ({ fontDesc, size, fontFeaturesString, fgColor, letterSpa
     `;
 };
 
-type WaterfallStyleArgs = {
-    fontDesc: Pango.FontDescription | null;
-    wfSize: number;
-    fontFeaturesString: string;
-    fgColor: Gdk.RGBA;
-    letterSpacing: number;
-};
-
 const buildWaterfallStyle = ({ fontDesc, wfSize, fontFeaturesString, fgColor, letterSpacing }: WaterfallStyleArgs) => {
     const fontFamily = fontDesc?.getFamily() ?? "Sans";
     const { r, g, b } = rgbColor(fgColor);
+
     return css`
         label& {
             font-family: "${fontFamily}";
@@ -438,25 +557,23 @@ const buildWaterfallStyle = ({ fontDesc, wfSize, fontFeaturesString, fgColor, le
 
 function useFontFeaturesStyles(state: ReturnType<typeof useFontFeaturesState>) {
     const { fontDesc, fgColor, bgColor, size, letterSpacing, lineHeight, checkStates, radioStates } = state;
-
     const fontFeaturesString = buildFontFeaturesString(checkStates, radioStates);
-
     const bgStyle = buildBgStyle(bgColor);
-
     const previewStyle = buildPreviewStyle({ fontDesc, size, fgColor, letterSpacing, lineHeight });
-
     const editStyle = buildEditStyle({ fontDesc, size, fontFeaturesString, fgColor, letterSpacing });
 
     const createWaterfallStyle = (wfSize: number) =>
         buildWaterfallStyle({ fontDesc, wfSize, fontFeaturesString, fgColor, letterSpacing });
 
     const pangoFontFeaturesString = (() => {
-        if (fontFeaturesString === "normal") return null;
+        if (fontFeaturesString === "normal") {
+            return null;
+        }
+
         return fontFeaturesString.replaceAll('"', "").replaceAll(" 1", "=1").replaceAll(" 0", "=0");
     })();
 
     const settingsText = pangoFontFeaturesString ?? "";
-
     const descriptionText = fontDesc?.toString() ?? "Sans 14";
 
     return {
@@ -471,34 +588,26 @@ function useFontFeaturesStyles(state: ReturnType<typeof useFontFeaturesState>) {
     };
 }
 
+const mapWith = <T,>(entries: Map<string, T>, key: string, value: T): Map<string, T> => {
+    const next = new Map(entries);
+    next.set(key, value);
+
+    return next;
+};
+
 function useFeatureHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     const { setCheckStates, setRadioStates, previewLabelRef } = state;
 
     const toggleCheck = (tag: string) => {
-        setCheckStates((prev) => {
-            const next = new Map(prev);
-            const current = next.get(tag) ?? "inconsistent";
-            if (current === "inconsistent") next.set(tag, "active");
-            else if (current === "active") next.set(tag, "inactive");
-            else next.set(tag, "active");
-            return next;
-        });
+        setCheckStates((prev) => mapWith(prev, tag, prev.get(tag) === "active" ? "inactive" : "active"));
     };
 
     const resetToInconsistent = (tag: string) => {
-        setCheckStates((prev) => {
-            const next = new Map(prev);
-            next.set(tag, "inconsistent");
-            return next;
-        });
+        setCheckStates((prev) => mapWith(prev, tag, "inconsistent"));
     };
 
     const selectRadio = (groupTitle: string, tag: string) => {
-        setRadioStates((prev) => {
-            const next = new Map(prev);
-            next.set(groupTitle, tag);
-            return next;
-        });
+        setRadioStates((prev) => mapWith(prev, groupTitle, tag));
     };
 
     const resetFeatures = () => {
@@ -535,7 +644,10 @@ function useSampleHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     const updatePreviewText = (text: string) => {
         setPreviewText(text);
         const tv = editTextViewRef.current;
-        if (tv) tv.getBuffer().setText(text, -1);
+
+        if (tv) {
+            tv.getBuffer().setText(text, -1);
+        }
     };
 
     const handleAlphabet = () => {
@@ -553,28 +665,28 @@ function useSampleHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     return { handleAlphabet, handleParagraph };
 }
 
+const applyEntryNumber = (entry: Gtk.Entry, bounds: NumberBounds, apply: (value: number) => void) => {
+    const text = entry.getText().trim();
+    const value = text === "" ? NaN : Number(text);
+
+    if (Number.isFinite(value) && value >= bounds.min && value <= bounds.max) {
+        apply(value);
+    }
+};
+
 function useEntryHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     const { setSize, setLetterSpacing, setLineHeight } = state;
 
     const handleSizeEntry = (entry: Gtk.Entry) => {
-        const val = Number.parseFloat(entry.getText());
-        if (Number.isFinite(val) && val >= 7 && val <= 100) {
-            setSize(val);
-        }
+        applyEntryNumber(entry, SIZE_BOUNDS, setSize);
     };
 
     const handleLetterspacingEntry = (entry: Gtk.Entry) => {
-        const val = Number.parseFloat(entry.getText());
-        if (Number.isFinite(val) && val >= -1024 && val <= 8192) {
-            setLetterSpacing(val);
-        }
+        applyEntryNumber(entry, LETTER_SPACING_BOUNDS, setLetterSpacing);
     };
 
     const handleLineHeightEntry = (entry: Gtk.Entry) => {
-        const val = Number.parseFloat(entry.getText());
-        if (Number.isFinite(val) && val >= 0.75 && val <= 2.5) {
-            setLineHeight(val);
-        }
+        applyEntryNumber(entry, LINE_HEIGHT_BOUNDS, setLineHeight);
     };
 
     return { handleSizeEntry, handleLetterspacingEntry, handleLineHeightEntry };
@@ -585,6 +697,7 @@ function useFontFeaturesHandlers(state: ReturnType<typeof useFontFeaturesState>)
     const colorHandlers = useColorHandlers(state);
     const sampleHandlers = useSampleHandlers(state);
     const entryHandlers = useEntryHandlers(state);
+
     const resetAll = () => {
         colorHandlers.resetBasic();
         featureHandlers.resetFeatures();
@@ -599,16 +712,35 @@ function useFontFeaturesHandlers(state: ReturnType<typeof useFontFeaturesState>)
     };
 }
 
-const UTF8_ENCODER = new TextEncoder();
+const charOffsetToByteOffset = (text: string, charOffset: number): number => {
+    let byteOffset = 0;
+    let charCount = 0;
 
-const charOffsetToByteOffset = (text: string, charOffset: number): number =>
-    UTF8_ENCODER.encode([...text].slice(0, charOffset).join("")).length;
+    for (const char of text) {
+        if (charCount >= charOffset) {
+            break;
+        }
+
+        byteOffset += UTF8_ENCODER.encode(char).length;
+        charCount += 1;
+    }
+
+    return byteOffset;
+};
 
 const readPreviewSelection = (label: Gtk.Label | null): PreviewSelection | null => {
-    if (!label) return null;
+    if (!label) {
+        return null;
+    }
+
     const [hasSelection, selectionStart, selectionEnd] = label.getSelectionBounds();
-    if (!hasSelection) return null;
+
+    if (!hasSelection) {
+        return null;
+    }
+
     const text = label.getText();
+
     return {
         start: charOffsetToByteOffset(text, selectionStart),
         end: charOffsetToByteOffset(text, selectionEnd),
@@ -633,28 +765,39 @@ function usePreviewAttributes(
     previewSelection: PreviewSelection | null,
 ): Pango.AttrList | null {
     return (() => {
-        if (!pangoFontFeaturesString) return null;
+        if (!pangoFontFeaturesString) {
+            return null;
+        }
+
         const attrList = Pango.AttrList.new();
         const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
         attr.startIndex = previewSelection?.start ?? 0;
         attr.endIndex = previewSelection?.end ?? 0xFF_FF_FF_FF;
         attrList.insert(attr);
+
         return attrList;
     })();
 }
 
 const FontFeaturesFontButton = ({ state }: { state: FontFeaturesState }) => {
     const { fontDesc, setFontDesc, setSize } = state;
+
     return (
         <GtkFontDialogButton
             name="font-button"
             fontDesc={fontDesc ?? undefined}
             dialog={<GtkFontDialog />}
             onNotifyFontDesc={(desc) => {
-                if (!desc) return;
+                if (!desc) {
+                    return;
+                }
+
                 setFontDesc(desc);
                 const newSize = desc.getSize() / Pango.SCALE;
-                if (newSize > 0) setSize(newSize);
+
+                if (newSize > 0) {
+                    setSize(newSize);
+                }
             }}
             receivesDefault
             level={Gtk.FontLevel.FACE}
@@ -665,6 +808,7 @@ const FontFeaturesFontButton = ({ state }: { state: FontFeaturesState }) => {
 const FontFeaturesGrid = ({ state, handlers }: { state: FontFeaturesState; handlers: FontFeaturesHandlers }) => {
     const { size, letterSpacing, lineHeight, viewMode } = state;
     const { setSize, setLetterSpacing, setLineHeight } = state;
+
     return (
         <GtkGrid columnSpacing={10} rowSpacing={10}>
             <SliderEntryRow
@@ -713,39 +857,58 @@ const FontFeaturesGrid = ({ state, handlers }: { state: FontFeaturesState; handl
     );
 };
 
+const applyRgba = (value: Gdk.RGBA | null, apply: (color: Gdk.RGBA) => void) => {
+    if (value) {
+        apply(value);
+    }
+};
+
+const ColorRow = ({ row, label, name, rgba, onChanged }: ColorRowProps) => (
+    <>
+        <GtkGridLayoutChild column={0} row={row}>
+            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
+                {label}
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <GtkGridLayoutChild column={1} row={row}>
+            <GtkColorDialogButton
+                name={name}
+                rgba={rgba}
+                dialog={<GtkColorDialog />}
+                onNotifyRgba={onChanged}
+                valign={Gtk.Align.BASELINE}
+            />
+        </GtkGridLayoutChild>
+    </>
+);
+
 const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; handlers: FontFeaturesHandlers }) => {
     const { fgColor, setFgColor, bgColor, setBgColor } = state;
+
+    const handleForegroundChanged = (value: Gdk.RGBA | null) => {
+        applyRgba(value, setFgColor);
+    };
+
+    const handleBackgroundChanged = (value: Gdk.RGBA | null) => {
+        applyRgba(value, setBgColor);
+    };
+
     return (
         <>
-            <GtkGridLayoutChild column={0} row={3}>
-                <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
-                    Foreground
-                </GtkLabel>
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={1} row={3}>
-                <GtkColorDialogButton
-                    name="foreground-color"
-                    rgba={fgColor}
-                    dialog={<GtkColorDialog />}
-                    onNotifyRgba={(value) => value && setFgColor(value)}
-                    valign={Gtk.Align.BASELINE}
-                />
-            </GtkGridLayoutChild>
-
-            <GtkGridLayoutChild column={0} row={4}>
-                <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
-                    Background
-                </GtkLabel>
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={1} row={4}>
-                <GtkColorDialogButton
-                    name="background-color"
-                    rgba={bgColor}
-                    dialog={<GtkColorDialog />}
-                    onNotifyRgba={(value) => value && setBgColor(value)}
-                    valign={Gtk.Align.BASELINE}
-                />
-            </GtkGridLayoutChild>
+            <ColorRow
+                row={3}
+                label="Foreground"
+                name="foreground-color"
+                rgba={fgColor}
+                onChanged={handleForegroundChanged}
+            />
+            <ColorRow
+                row={4}
+                label="Background"
+                name="background-color"
+                rgba={bgColor}
+                onChanged={handleBackgroundChanged}
+            />
 
             <GtkGridLayoutChild column={2} row={3} rowSpan={2}>
                 <GtkButton
@@ -762,77 +925,54 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
     );
 };
 
-type SliderEntryRowProps = {
-    row: number;
-    label: string;
-    entryName: string;
-    value: number;
-    lower: number;
-    upper: number;
-    stepIncrement: number;
-    pageIncrement: number;
-    onValueChanged: (value: number) => void;
-    displayText: string;
-    onEntryActivate: (entry: Gtk.Entry) => void;
-    sensitive?: boolean;
-};
+const SliderScaleCell = (props: SliderEntryRowProps) => (
+    <GtkGridLayoutChild column={1} row={props.row}>
+        <GtkScale
+            hexpand
+            widthRequest={100}
+            valign={Gtk.Align.BASELINE}
+            adjustment={(
+                <GtkAdjustment
+                    value={props.value}
+                    lower={props.lower}
+                    upper={props.upper}
+                    stepIncrement={props.stepIncrement}
+                    pageIncrement={props.pageIncrement}
+                />
+            )}
+            onValueChanged={(scale) => {
+                props.onValueChanged(scale.getValue());
+            }}
+            sensitive={props.sensitive}
+        />
+    </GtkGridLayoutChild>
+);
 
-const SliderEntryRow = ({
-    row,
-    label,
-    entryName,
-    value,
-    lower,
-    upper,
-    stepIncrement,
-    pageIncrement,
-    onValueChanged,
-    displayText,
-    onEntryActivate,
-    sensitive,
-}: SliderEntryRowProps) => {
-    return (
-        <>
-            <GtkGridLayoutChild column={0} row={row}>
-                <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
-                    {label}
-                </GtkLabel>
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={1} row={row}>
-                <GtkScale
-                    hexpand
-                    widthRequest={100}
-                    valign={Gtk.Align.BASELINE}
-                    adjustment={(
-                        <GtkAdjustment
-                            value={value}
-                            lower={lower}
-                            upper={upper}
-                            stepIncrement={stepIncrement}
-                            pageIncrement={pageIncrement}
-                        />
-                    )}
-                    onValueChanged={(scale) => onValueChanged(scale.getValue())}
-                    sensitive={sensitive}
-                />
-            </GtkGridLayoutChild>
-            <GtkGridLayoutChild column={2} row={row}>
-                <GtkEntry
-                    name={entryName}
-                    widthChars={4}
-                    maxWidthChars={4}
-                    valign={Gtk.Align.BASELINE}
-                    text={displayText}
-                    onActivate={onEntryActivate}
-                    sensitive={sensitive}
-                />
-            </GtkGridLayoutChild>
-        </>
-    );
-};
+const SliderEntryRow = (props: SliderEntryRowProps) => (
+    <>
+        <GtkGridLayoutChild column={0} row={props.row}>
+            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
+                {props.label}
+            </GtkLabel>
+        </GtkGridLayoutChild>
+        <SliderScaleCell {...props} />
+        <GtkGridLayoutChild column={2} row={props.row}>
+            <GtkEntry
+                name={props.entryName}
+                widthChars={4}
+                maxWidthChars={4}
+                valign={Gtk.Align.BASELINE}
+                text={props.displayText}
+                onActivate={props.onEntryActivate}
+                sensitive={props.sensitive}
+            />
+        </GtkGridLayoutChild>
+    </>
+);
 
 const FontFeaturesExpander = ({ state, handlers }: { state: FontFeaturesState; handlers: FontFeaturesHandlers }) => {
     const { checkStates, radioStates } = state;
+
     return (
         <GtkExpander
             name="features-expander"
@@ -874,15 +1014,6 @@ const FontFeaturesSidebar = ({ state, handlers }: { state: FontFeaturesState; ha
     </GtkBox>
 );
 
-type FeatureGroupBoxProps = {
-    group: FeatureGroup;
-    checkStates: Map<string, FeatureState>;
-    radioStates: Map<string, string>;
-    onToggleCheck: (tag: string) => void;
-    onResetToInconsistent: (tag: string) => void;
-    onSelectRadio: (groupTitle: string, tag: string) => void;
-};
-
 const FeatureGroupBox = ({
     group,
     checkStates,
@@ -901,7 +1032,9 @@ const FeatureGroupBox = ({
                         key={tag}
                         label={getFeatureDisplayName(tag)}
                         active={(radioStates.get(group.title) ?? "xxxx") === tag}
-                        onToggled={() => onSelectRadio(group.title, tag)}
+                        onToggled={() => {
+                            onSelectRadio(group.title, tag);
+                        }}
                     />
                 ))
             : group.tags.map((tag) => (
@@ -910,26 +1043,21 @@ const FeatureGroupBox = ({
                         label={getFeatureDisplayName(tag)}
                         active={checkStates.get(tag) === "active"}
                         inconsistent={checkStates.get(tag) === "inconsistent"}
-                        onToggled={() => onToggleCheck(tag)}
-                        controllers={<GtkGestureClick button={3} onPressed={() => onResetToInconsistent(tag)} />}
+                        onToggled={() => {
+                            onToggleCheck(tag);
+                        }}
+                        controllers={(
+                            <GtkGestureClick
+                                button={3}
+                                onPressed={() => {
+                                    onResetToInconsistent(tag);
+                                }}
+                            />
+                        )}
                     />
                 ))}
     </GtkBox>
 );
-
-type FontFeaturesPreviewProps = {
-    state: FontFeaturesState;
-    styles: FontFeaturesStyles;
-    handlers: FontFeaturesHandlers;
-    stackPage: string;
-    previewAttributes: Pango.AttrList | null;
-};
-
-type FontFeaturesPreviewLabelProps = {
-    state: FontFeaturesState;
-    styles: FontFeaturesStyles;
-    attributes: Pango.AttrList | null;
-};
 
 const FontFeaturesPreviewLabel = ({ state, styles, attributes }: FontFeaturesPreviewLabelProps) => {
     const { previewText, previewLabelRef, viewMode } = state;
@@ -998,15 +1126,21 @@ const FontFeaturesPreviewSettingsRow = ({
     </GtkBox>
 );
 
+const setViewModeWhenActive = (btn: Gtk.ToggleButton, mode: ViewMode, setViewMode: (mode: ViewMode) => void) => {
+    if (btn.getActive()) {
+        setViewMode(mode);
+    }
+};
+
 function useViewModeToggleHandlers(state: FontFeaturesState) {
     const { previewText, setViewMode, savedTextRef } = state;
 
     const handlePlainToggled = (btn: Gtk.ToggleButton) => {
-        if (btn.getActive()) setViewMode("plain");
+        setViewModeWhenActive(btn, "plain", setViewMode);
     };
 
     const handleWaterfallToggled = (btn: Gtk.ToggleButton) => {
-        if (btn.getActive()) setViewMode("waterfall");
+        setViewModeWhenActive(btn, "waterfall", setViewMode);
     };
 
     const handleEditToggled = (btn: Gtk.ToggleButton) => {
@@ -1021,6 +1155,21 @@ function useViewModeToggleHandlers(state: FontFeaturesState) {
     return { handlePlainToggled, handleWaterfallToggled, handleEditToggled };
 }
 
+const FontFeaturesDescriptionLabel = ({ text }: { text: string }) => (
+    <GtkLabel
+        wrap
+        wrapMode={Pango.WrapMode.CHAR}
+        xalign={0}
+        valign={Gtk.Align.END}
+        widthChars={50}
+        maxWidthChars={50}
+        hexpand
+        cssClasses={["monospace"]}
+    >
+        {text}
+    </GtkLabel>
+);
+
 const FontFeaturesPreviewControlsRow = ({
     state,
     styles,
@@ -1034,18 +1183,7 @@ const FontFeaturesPreviewControlsRow = ({
 
     return (
         <GtkBox spacing={10}>
-            <GtkLabel
-                wrap
-                wrapMode={Pango.WrapMode.CHAR}
-                xalign={0}
-                valign={Gtk.Align.END}
-                widthChars={50}
-                maxWidthChars={50}
-                hexpand
-                cssClasses={["monospace"]}
-            >
-                {styles.descriptionText}
-            </GtkLabel>
+            <FontFeaturesDescriptionLabel text={styles.descriptionText} />
             <GtkBox cssClasses={["linked"]} valign={Gtk.Align.END}>
                 <GtkToggleButton
                     ref={setPlainToggle}
@@ -1078,72 +1216,117 @@ const FontFeaturesPreviewControlsRow = ({
     );
 };
 
-const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttributes }: FontFeaturesPreviewProps) => (
-    <GtkBox
-        orientation={Gtk.Orientation.VERTICAL}
-        hexpand
-        vexpand
-        marginStart={20}
-        marginEnd={20}
-        marginTop={20}
-        marginBottom={20}
-        spacing={20}
-    >
-        <GtkScrolledWindow
-            ref={state.editScrolledWindowRef}
+const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttributes }: FontFeaturesPreviewProps) => {
+    const { editScrolledWindowRef, editTextViewRef } = state;
+
+    return (
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            hexpand
             vexpand
-            propagateNaturalHeight
-            cssClasses={[styles.bgStyle]}
+            marginStart={20}
+            marginEnd={20}
+            marginTop={20}
+            marginBottom={20}
+            spacing={20}
         >
-            <GtkStack name="stack" visibleChildName={stackPage}>
-                <GtkStackPage name="label">
-                    <FontFeaturesPreviewLabel state={state} styles={styles} attributes={previewAttributes} />
-                </GtkStackPage>
-                <GtkStackPage name="entry">
-                    <GtkTextView
-                        name="edit_textview"
-                        ref={state.editTextViewRef}
-                        cssClasses={[styles.editStyle]}
-                        wrapMode={Gtk.WrapMode.WORD}
-                        valign={Gtk.Align.FILL}
-                    />
-                </GtkStackPage>
-            </GtkStack>
-        </GtkScrolledWindow>
+            <GtkScrolledWindow ref={editScrolledWindowRef} vexpand propagateNaturalHeight cssClasses={[styles.bgStyle]}>
+                <GtkStack name="stack" visibleChildName={stackPage}>
+                    <GtkStackPage name="label">
+                        <FontFeaturesPreviewLabel state={state} styles={styles} attributes={previewAttributes} />
+                    </GtkStackPage>
+                    <GtkStackPage name="entry">
+                        <GtkTextView
+                            name="edit_textview"
+                            ref={editTextViewRef}
+                            cssClasses={[styles.editStyle]}
+                            wrapMode={Gtk.WrapMode.WORD}
+                            valign={Gtk.Align.FILL}
+                        />
+                    </GtkStackPage>
+                </GtkStack>
+            </GtkScrolledWindow>
 
-        <FontFeaturesPreviewSettingsRow styles={styles} handlers={handlers} />
-        <FontFeaturesPreviewControlsRow state={state} styles={styles} />
-    </GtkBox>
-);
-
-type FontFeaturesContextValue = {
-    state: FontFeaturesState;
-    styles: FontFeaturesStyles;
-    handlers: FontFeaturesHandlers;
+            <FontFeaturesPreviewSettingsRow styles={styles} handlers={handlers} />
+            <FontFeaturesPreviewControlsRow state={state} styles={styles} />
+        </GtkBox>
+    );
 };
-
-const FontFeaturesContext = createContext<FontFeaturesContextValue | null>(null);
 
 const useFontFeatures = (): FontFeaturesContextValue => {
     const ctx = useContext(FontFeaturesContext);
-    if (!ctx) throw new Error("useFontFeatures must be used inside a FontFeaturesProvider");
+
+    if (!ctx) {
+        throw new Error("useFontFeatures must be used inside a FontFeaturesProvider");
+    }
+
     return ctx;
 };
 
-const FontFeaturesProvider = ({ children }: DemoProviderProps) => {
+function useEditViewFocus(state: FontFeaturesState) {
+    const { viewMode, editTextViewRef, editScrolledWindowRef } = state;
+
+    useLayoutEffect(() => {
+        if (viewMode !== "edit") {
+            return;
+        }
+
+        const tv = editTextViewRef.current;
+
+        if (!tv) {
+            return;
+        }
+
+        editScrolledWindowRef.current?.getVadjustment().setValue(0);
+        tv.grabFocus();
+    }, [viewMode, editTextViewRef, editScrolledWindowRef]);
+}
+
+const createEscapeAction = (state: FontFeaturesState) =>
+    Gtk.CallbackAction.new(() => {
+        if (state.viewMode !== "edit") {
+            return false;
+        }
+
+        const tv = state.editTextViewRef.current;
+
+        if (tv) {
+            const buffer = tv.getBuffer();
+            buffer.setText(state.savedTextRef.current, -1);
+        }
+
+        state.setPreviewText(state.savedTextRef.current);
+        state.setViewMode("plain");
+
+        return true;
+    });
+
+const FontFeaturesEscapeController = ({ state }: { state: FontFeaturesState }) => (
+    <GtkShortcutController
+        scope={Gtk.ShortcutScope.MANAGED}
+        shortcuts={(
+            <GtkShortcut trigger={Gtk.ShortcutTrigger.parseString("Escape")} action={createEscapeAction(state)} />
+        )}
+    />
+);
+
+function FontFeaturesProvider({ children }: DemoProviderProps) {
     const state = useFontFeaturesState();
     const styles = useFontFeaturesStyles(state);
     const handlers = useFontFeaturesHandlers(state);
+
     const value = {
         state,
         styles,
         handlers,
     };
-    return <FontFeaturesContext.Provider value={value}>{children}</FontFeaturesContext.Provider>;
-};
 
-const FontFeaturesTitlebar = () => {
+    return <FontFeaturesContext.Provider value={value}>{children}</FontFeaturesContext.Provider>;
+}
+
+function FontFeaturesTitlebar() {
     const { handlers } = useFontFeatures();
+
     return (
         <GtkHeaderBar
             name="font-features-header"
@@ -1157,49 +1340,18 @@ const FontFeaturesTitlebar = () => {
             )}
         />
     );
-};
+}
 
-const FontFeaturesDemo = () => {
+function FontFeaturesDemo() {
     const { state, styles, handlers } = useFontFeatures();
-
+    const { containerRef } = state;
     usePreviewSelectionTracking(state.previewLabelRef, state.setPreviewSelection);
+    useEditViewFocus(state);
     const previewAttributes = usePreviewAttributes(styles.pangoFontFeaturesString, state.previewSelection);
-
     const stackPage = state.viewMode === "edit" ? "entry" : "label";
 
-    useLayoutEffect(() => {
-        if (state.viewMode !== "edit") return;
-        const tv = state.editTextViewRef.current;
-        if (!tv) return;
-        state.editScrolledWindowRef.current?.getVadjustment().setValue(0);
-        tv.grabFocus();
-    }, [state.viewMode, state.editTextViewRef, state.editScrolledWindowRef]);
-
     return (
-        <GtkBox
-            ref={state.containerRef}
-            controllers={(
-                <GtkShortcutController
-                    scope={Gtk.ShortcutScope.MANAGED}
-                    shortcuts={(
-                        <GtkShortcut
-                            trigger={Gtk.ShortcutTrigger.parseString("Escape")}
-                            action={Gtk.CallbackAction.new(() => {
-                                if (state.viewMode !== "edit") return false;
-                                const tv = state.editTextViewRef.current;
-                                if (tv) {
-                                    const buffer = tv.getBuffer();
-                                    buffer.setText(state.savedTextRef.current, -1);
-                                }
-                                state.setPreviewText(state.savedTextRef.current);
-                                state.setViewMode("plain");
-                                return true;
-                            })}
-                        />
-                    )}
-                />
-            )}
-        >
+        <GtkBox ref={containerRef} controllers={<FontFeaturesEscapeController state={state} />}>
             <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <GtkViewport cssClasses={["view"]}>
                     <FontFeaturesSidebar state={state} handlers={handlers} />
@@ -1215,18 +1367,6 @@ const FontFeaturesDemo = () => {
             />
         </GtkBox>
     );
-};
+}
 
-export const fontFeaturesDemo: Demo = {
-    id: "font-features",
-    title: "Pango/Font Explorer",
-    description:
-        "This example demonstrates support for OpenType font features with Pango attributes. The attributes can be used manually or via Pango markup.\n\nIt can also be used to explore available features in OpenType fonts and their effect.\n\nIf the selected font supports OpenType font variations, then the axes are also offered for customization.",
-    keywords: [],
-    component: FontFeaturesDemo,
-    titlebar: FontFeaturesTitlebar,
-    provider: FontFeaturesProvider,
-    sourceCode,
-    defaultWidth: 600,
-    defaultHeight: 500,
-};
+export { fontFeaturesDemo };

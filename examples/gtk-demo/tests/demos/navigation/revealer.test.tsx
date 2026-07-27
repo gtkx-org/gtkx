@@ -18,19 +18,37 @@ const REVEALER_CELLS: { column: number; row: number }[] = [
     { column: 0, row: 2 },
 ];
 
+const EXPECTED_TRANSITIONS = [
+    Gtk.RevealerTransitionType.CROSSFADE,
+    Gtk.RevealerTransitionType.SLIDE_UP,
+    Gtk.RevealerTransitionType.SLIDE_RIGHT,
+    Gtk.RevealerTransitionType.NONE,
+    Gtk.RevealerTransitionType.SLIDE_LEFT,
+    Gtk.RevealerTransitionType.SLIDE_UP,
+    Gtk.RevealerTransitionType.SLIDE_RIGHT,
+    Gtk.RevealerTransitionType.NONE,
+    Gtk.RevealerTransitionType.SLIDE_LEFT,
+];
+
 const findAllRevealers = async (): Promise<Gtk.Revealer[]> => {
     const revealers: Gtk.Revealer[] = [];
+
     for (let i = 0; i < REVEALER_COUNT; i++) {
-        revealers.push((await screen.findByName(`revealer-${i}`)) as Gtk.Revealer);
+        revealers.push((await screen.findByName(`revealer-${String(i)}`)) as Gtk.Revealer);
     }
+
     return revealers;
 };
 
 const collectGridRevealers = (grid: Gtk.Grid): Gtk.Revealer[] => {
     const revealers: Gtk.Revealer[] = [];
+
     for (let child = grid.getFirstChild(); child; child = child.getNextSibling()) {
-        if (child instanceof Gtk.Revealer) revealers.push(child);
+        if (child instanceof Gtk.Revealer) {
+            revealers.push(child);
+        }
     }
+
     return revealers;
 };
 
@@ -52,48 +70,31 @@ describe("revealerDemo structure", () => {
         const grid = (await screen.findByName("revealer-grid")) as Gtk.Grid;
         const revealers = collectGridRevealers(grid);
         expect(revealers).toHaveLength(REVEALER_COUNT);
-        for (const r of revealers) {
-            expect(r.getRevealChild()).toBe(false);
-            expect(r.getTransitionDuration()).toBe(2000);
-        }
+        expect(revealers.some((revealer) => revealer.getRevealChild())).toBe(false);
+        expect(revealers.every((revealer) => revealer.getTransitionDuration() === 2000)).toBe(true);
     });
 
     it("configures each revealer with the expected transition type", async () => {
         await renderDemo(revealerDemo);
         const revealers = await findAllRevealers();
-        const expectedTransitions = [
-            Gtk.RevealerTransitionType.CROSSFADE,
-            Gtk.RevealerTransitionType.SLIDE_UP,
-            Gtk.RevealerTransitionType.SLIDE_RIGHT,
-            Gtk.RevealerTransitionType.NONE,
-            Gtk.RevealerTransitionType.SLIDE_LEFT,
-            Gtk.RevealerTransitionType.SLIDE_UP,
-            Gtk.RevealerTransitionType.SLIDE_RIGHT,
-            Gtk.RevealerTransitionType.NONE,
-            Gtk.RevealerTransitionType.SLIDE_LEFT,
-        ];
-        for (const [i, r] of revealers.entries()) {
-            expect(r.getTransitionType()).toBe(expectedTransitions[i]);
-        }
+        expect(revealers.map((revealer) => revealer.getTransitionType())).toEqual(EXPECTED_TRANSITIONS);
     });
 
     it("places each revealer's child as a GtkImage with the cool-face icon", async () => {
         await renderDemo(revealerDemo);
         const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG);
         expect(images).toHaveLength(REVEALER_COUNT);
-        for (const image of images) {
-            expect(image).toBeInstanceOf(Gtk.Image);
-            expect((image as Gtk.Image).getIconName()).toBe("face-cool-symbolic");
-        }
+        expect(images.every((image) => image instanceof Gtk.Image)).toBe(true);
+        const iconNames = images.map((image) => (image as Gtk.Image).getIconName());
+        expect(iconNames.every((name) => name === "face-cool-symbolic")).toBe(true);
     });
 
     it("places each revealer at its configured grid cell forming the cross layout", async () => {
         await renderDemo(revealerDemo);
         const grid = (await screen.findByName("revealer-grid")) as Gtk.Grid;
         const revealers = await findAllRevealers();
-        for (const [index, cell] of REVEALER_CELLS.entries()) {
-            expect(grid.getChildAt(cell.column, cell.row)).toBe(revealers[index]);
-        }
+        const placed = REVEALER_CELLS.map((cell) => grid.getChildAt(cell.column, cell.row));
+        expect(placed).toEqual(revealers);
     });
 });
 
@@ -101,6 +102,7 @@ describe("revealerDemo reveal sequence", () => {
     beforeEach(() => {
         vi.useFakeTimers({ shouldAdvanceTime: true });
     });
+
     afterEach(() => {
         vi.useRealTimers();
     });
@@ -108,9 +110,11 @@ describe("revealerDemo reveal sequence", () => {
     it("reveals every revealer after nine timer ticks", async () => {
         await renderDemo(revealerDemo);
         const revealers = await findAllRevealers();
+
         await act(async () => {
             await vi.advanceTimersByTimeAsync(690 * 9);
         });
+
         await waitFor(() => {
             expect(revealers.every((r) => r.getRevealChild())).toBe(true);
         });

@@ -21,9 +21,9 @@ describe("panesDemo metadata", () => {
 describe("panesDemo content", () => {
     it("renders the 'Hi there', 'Hello' and 'Goodbye' labels", async () => {
         await renderDemo(panesDemo);
-        await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Hi there" });
-        await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Hello" });
-        await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Goodbye" });
+        expect(await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Hi there" })).toHaveTextContent("Hi there");
+        expect(await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Hello" })).toHaveTextContent("Hello");
+        expect(await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Goodbye" })).toHaveTextContent("Goodbye");
     });
 });
 
@@ -50,6 +50,7 @@ describe("panesDemo structure", () => {
         await renderDemo(panesDemo);
         const outerPaned = (await screen.findByName("panes-outer")) as Gtk.Paned;
         const innerPaned = (await screen.findByName("panes-inner")) as Gtk.Paned;
+
         for (const paned of [innerPaned, outerPaned]) {
             expect(paned.getShrinkStartChild()).toBe(false);
             expect(paned.getShrinkEndChild()).toBe(false);

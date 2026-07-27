@@ -24,12 +24,12 @@ type ArgSpec = {
     isOutParam: boolean;
 };
 
-const buildNativeArgTypes = (args: Arg[], throws: boolean): Descriptor[] => {
+const buildNativeArgTypes = (args: Arg[], canThrow: boolean): Descriptor[] => {
     const nativeArgTypes = args.map((argSpec) =>
         argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );
 
-    if (throws) {
+    if (canThrow) {
         nativeArgTypes.push(
             refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_error_get_type" })),
         );
@@ -43,15 +43,15 @@ const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
 
     return args.map((arg) => {
         const isRef = isRefArg(arg);
-        const consumesInput = !isRef || isInoutArg(arg);
+        const isConsumesInput = !isRef || isInoutArg(arg);
         const isOutParam = isOutputArg(arg) && arg.consumed !== true;
 
         return {
             arg,
             isRef,
             isCallerAllocated: isCallerAllocatedArg(arg),
-            consumesInput,
-            inputIndex: consumesInput ? inputCursor++ : -1,
+            consumesInput: isConsumesInput,
+            inputIndex: isConsumesInput ? inputCursor++ : -1,
             isOutParam,
         };
     });
@@ -63,8 +63,8 @@ const resolveCallerAllocated = (inputs: unknown[], inputIndex: number): unknown 
     return wrapper == null ? wrapper : getHandle(wrapper);
 };
 
-const buildRefValue = (consumesInput: boolean, inputs: unknown[], inputIndex: number): Ref => ({
-    value: consumesInput ? inputs[inputIndex] : null,
+const buildRefValue = (isInputConsumed: boolean, inputs: unknown[], inputIndex: number): Ref => ({
+    value: isInputConsumed ? inputs[inputIndex] : null,
 });
 
 const buildNativeValue = (spec: ArgSpec, inputs: unknown[]): unknown => {

@@ -13,10 +13,10 @@ pub struct RefCodec {
 }
 
 impl RefCodec {
-    pub fn new(inner_codec: Codec, inout: bool) -> napi::Result<Self> {
+    pub fn new(inner_codec: Codec, inout: bool) -> Result<Self> {
         if !Self::supports_inner(&inner_codec) {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
+            return Err(Error::new(
+                Status::InvalidArg,
                 format!("'{inner_codec}' cannot be used as a Ref inner codec"),
             ));
         }
@@ -26,6 +26,7 @@ impl RefCodec {
         })
     }
 
+    #[must_use]
     pub fn supports_inner(inner: &Codec) -> bool {
         match inner {
             Codec::Callback(_) | Codec::Void(_) | Codec::Buffer(_) | Codec::Ref(_) => false,
@@ -50,7 +51,7 @@ impl RefCodec {
             ValueType::Null | ValueType::Undefined => Ok(None),
             ValueType::Object => {
                 let obj = Object::from_raw(env.raw(), value.raw());
-                Ok(Some(obj.get_named_property::<Unknown>("value")?))
+                Ok(Some(obj.get_named_property::<Unknown<'_>>("value")?))
             }
             _ => bail_expected!("a Ref", "ref"),
         }
@@ -119,7 +120,7 @@ impl Encoder for RefCodec {
                     buffer[..copy_len].copy_from_slice(&bytes[..copy_len]);
                 }
 
-                let ptr = buffer.as_mut_ptr() as *mut c_void;
+                let ptr = buffer.as_mut_ptr().cast::<c_void>();
                 Ok(ffi::Stash::Storage(StashStorage::new(
                     ptr,
                     StashData::Buffer(buffer),
@@ -149,7 +150,7 @@ impl Decoder for RefCodec {
                 storage
             }
             ReadSource::Slot(ptr, _context) => {
-                let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+                let inner_ptr = unsafe { *ptr.cast::<*mut c_void>() };
                 if inner_ptr.is_null() {
                     return Ok(value::js_null(env)?);
                 }
@@ -233,7 +234,7 @@ impl PtrWriter for RefCodec {}
 impl RefCodec {
     fn null_ptr_stash() -> ffi::Stash {
         let mut slot: Vec<*mut c_void> = vec![std::ptr::null_mut()];
-        let ptr = slot.as_mut_ptr() as *mut c_void;
+        let ptr = slot.as_mut_ptr().cast::<c_void>();
         ffi::Stash::Storage(StashStorage::new(ptr, StashData::PtrSlot(slot)))
     }
 

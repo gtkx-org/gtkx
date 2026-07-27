@@ -36,17 +36,27 @@ const childSetter = childSetterSlot<AdwChildSetter>();
 const contentSetter = contentSetterSlot<AdwContentSetter>();
 
 const breakpoints = slot<BreakpointHost, Adw.Breakpoint>("breakpoints", "AdwBreakpoint", {
-    attach: (host, breakpoint) => host.addBreakpoint(breakpoint),
+    attach: (host, breakpoint) => {
+        host.addBreakpoint(breakpoint);
+    },
 });
 
 const prefixSuffix = [
     slot<PrefixSuffixRow, Gtk.Widget>("prefix", "GtkWidget", {
-        attach: (row, child) => row.addPrefix(child),
-        detach: (row, child) => row.remove(child),
+        attach: (row, child) => {
+            row.addPrefix(child);
+        },
+        detach: (row, child) => {
+            row.remove(child);
+        },
     }),
     slot<PrefixSuffixRow, Gtk.Widget>("suffix", "GtkWidget", {
-        attach: (row, child) => row.addSuffix(child),
-        detach: (row, child) => row.remove(child),
+        attach: (row, child) => {
+            row.addSuffix(child);
+        },
+        detach: (row, child) => {
+            row.remove(child);
+        },
     }),
 ];
 
@@ -166,17 +176,27 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwCarousel: {
         behaviors: [
             slot<Adw.Carousel, Gtk.Widget>("children", "GtkWidget", {
-                attach: (carousel, child, info) => carousel.insert(child, info.index),
-                detach: (carousel, child) => carousel.remove(child),
-                reorder: (carousel, child, info) => carousel.reorder(child, info.index),
+                attach: (carousel, child, info) => {
+                    carousel.insert(child, info.index);
+                },
+                detach: (carousel, child) => {
+                    carousel.remove(child);
+                },
+                reorder: (carousel, child, info) => {
+                    carousel.reorder(child, info.index);
+                },
             }),
         ],
     },
     AdwPreferencesPage: {
         behaviors: [
             slot<Adw.PreferencesPage, Adw.PreferencesGroup>("children", "AdwPreferencesGroup", {
-                attach: (page, group, info) => page.insert(group, info.index),
-                detach: (page, group) => page.remove(group),
+                attach: (page, group, info) => {
+                    page.insert(group, info.index);
+                },
+                detach: (page, group) => {
+                    page.remove(group);
+                },
             }),
         ],
     },
@@ -262,38 +282,58 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             contentSetterSlot<Adw.ToolbarView>(),
             slot<Adw.ToolbarView, Gtk.Widget>("topBar", "GtkWidget", {
-                attach: (view, child) => view.addTopBar(child),
-                detach: (view, child) => view.remove(child),
+                attach: (view, child) => {
+                    view.addTopBar(child);
+                },
+                detach: (view, child) => {
+                    view.remove(child);
+                },
             }),
             slot<Adw.ToolbarView, Gtk.Widget>("bottomBar", "GtkWidget", {
-                attach: (view, child) => view.addBottomBar(child),
-                detach: (view, child) => view.remove(child),
+                attach: (view, child) => {
+                    view.addBottomBar(child);
+                },
+                detach: (view, child) => {
+                    view.remove(child);
+                },
             }),
         ],
     },
     AdwHeaderBar: {
         behaviors: [
             slot<Adw.HeaderBar, Gtk.Widget>("start", "GtkWidget", {
-                attach: (bar, child) => bar.packStart(child),
-                detach: (bar, child) => bar.remove(child),
+                attach: (bar, child) => {
+                    bar.packStart(child);
+                },
+                detach: (bar, child) => {
+                    bar.remove(child);
+                },
             }),
             slot<Adw.HeaderBar, Gtk.Widget>("end", "GtkWidget", {
-                attach: (bar, child) => bar.packEnd(child),
-                detach: (bar, child) => bar.remove(child),
+                attach: (bar, child) => {
+                    bar.packEnd(child);
+                },
+                detach: (bar, child) => {
+                    bar.remove(child);
+                },
             }),
         ],
     },
     AdwShortcutsDialog: {
         behaviors: [
             slot<Adw.ShortcutsDialog, Adw.ShortcutsSection>("children", "AdwShortcutsSection", {
-                attach: (dialog, section) => dialog.add(section),
+                attach: (dialog, section) => {
+                    dialog.add(section);
+                },
             }),
         ],
     },
     AdwShortcutsSection: {
         behaviors: [
             slot<Adw.ShortcutsSection, Adw.ShortcutsItem>("children", "AdwShortcutsItem", {
-                attach: (section, item) => section.add(item),
+                attach: (section, item) => {
+                    section.add(item);
+                },
             }),
         ],
     },
@@ -327,7 +367,9 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                         dialog.setResponseEnabled(response.id, response.enabled);
                     }
                 },
-                remove: (dialog, response) => dialog.removeResponse(response.id),
+                remove: (dialog, response) => {
+                    dialog.removeResponse(response.id);
+                },
             }),
         ],
     },

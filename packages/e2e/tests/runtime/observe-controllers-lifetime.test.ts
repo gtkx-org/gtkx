@@ -8,7 +8,7 @@ function touchControllers(button: Gtk.Button): void {
     button.observeControllers().getNItems();
 }
 
-const cycleControllers = async (button: Gtk.Button, iterations: number): Promise<void> => {
+const expectControllerCyclesStayValid = async (button: Gtk.Button, iterations: number): Promise<void> => {
     for (let index = 0; index < iterations; index++) {
         touchControllers(button);
         await drain();
@@ -26,18 +26,22 @@ describe("observeControllers wrapper lifetime", () => {
         expect(first.getNItems()).toBeGreaterThanOrEqual(0);
     });
 
-    it("reproduces: re-acquiring the cached model after its wrapper is collected must not read a freed object", async () => {
-        const button = new Gtk.Button();
-        button.addController(new Gtk.GestureClick());
-        await cycleControllers(button, 150);
-    }, 30_000);
+    it(
+        "reproduces: re-acquiring the cached model after a wrapper is collected must not read a freed object",
+        async () => {
+            const button = new Gtk.Button();
+            button.addController(new Gtk.GestureClick());
+            await expectControllerCyclesStayValid(button, 150);
+        },
+        30_000,
+    );
 
     it("survives a burst of rebinds whose cleanups are left pending together", async () => {
         const button = new Gtk.Button();
         button.addController(new Gtk.GestureClick());
 
         for (let round = 0; round < 40; round++) {
-            await cycleControllers(button, 5);
+            await expectControllerCyclesStayValid(button, 5);
             await drain();
             expect(button.observeControllers().getNItems()).toBeGreaterThanOrEqual(0);
         }

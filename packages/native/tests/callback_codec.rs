@@ -61,7 +61,7 @@ fn invoke_through_cif(codec: &CallbackCodec) -> Invocation {
     codec.append_ffi_arg_types(&mut types);
     let arity = types.len();
 
-    let mut args: Vec<libffi::Arg> = Vec::new();
+    let mut args: Vec<libffi::Arg<'_>> = Vec::new();
     encoded.append_libffi_args(&mut args);
     assert_eq!(args.len(), arity);
 
@@ -196,7 +196,7 @@ fn encode_null_without_destroy_builds_callback() {
         assert_null_callback(
             &env,
             &callback_type(false),
-            helpers::napi_mock::to_unknown(&env, helpers::napi_mock::fake_null()),
+            napi_mock::to_unknown(&env, napi_mock::fake_null()),
             None,
         );
     });
@@ -209,7 +209,7 @@ fn encode_null_with_destroy_builds_callback_with_destroy_slot() {
         assert_null_callback(
             &env,
             &callback_type(true),
-            helpers::napi_mock::to_unknown(&env, helpers::napi_mock::fake_undefined()),
+            napi_mock::to_unknown(&env, napi_mock::fake_undefined()),
             Some(std::ptr::null_mut()),
         );
     });

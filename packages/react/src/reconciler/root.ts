@@ -1,4 +1,5 @@
 import type { ErrorInfo, ReactNode } from "react";
+import * as Gdk from "@gtkx/gi/gdk";
 import { ConcurrentRoot } from "react-reconciler/constants.js";
 import { type Container, reconciler } from "./host-config.js";
 import { rootElement } from "./root-element.js";
@@ -25,9 +26,26 @@ type Root = {
     unmount: () => void;
 };
 
+type ErrorHandler = (error: unknown) => void;
+type ErrorHandlerSlot = { get: () => ErrorHandler | null; set: (handler: ErrorHandler) => ErrorHandler | null };
+
 declare const opaqueRoot: unique symbol;
-let errorHandler: ((error: unknown) => void) | null = null;
 const activeRoots: Set<OpaqueRoot> = new Set();
+const errorHandlerSlot = createErrorHandlerSlot();
+
+function createErrorHandlerSlot(): ErrorHandlerSlot {
+    let current: ErrorHandler | null = null;
+
+    return {
+        get: () => current,
+        set: (handler) => {
+            const previous = current;
+            current = handler;
+
+            return previous;
+        },
+    };
+}
 
 /**
  * Installs a process-wide handler for errors thrown while rendering or applying an update.
@@ -35,12 +53,7 @@ const activeRoots: Set<OpaqueRoot> = new Set();
  * @param handler The handler to install.
  * @returns The previously installed handler, or null.
  */
-const setReconcilerErrorHandler = (handler: (error: unknown) => void): ((error: unknown) => void) | null => {
-    const previous = errorHandler;
-    errorHandler = handler;
-
-    return previous;
-};
+const setReconcilerErrorHandler = (handler: ErrorHandler): ErrorHandler | null => errorHandlerSlot.set(handler);
 
 const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks): OpaqueRoot => {
     const container = reconciler.createContainer(
@@ -51,17 +64,17 @@ const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks):
         null,
         "",
         (error, info) => {
-            errorHandler?.(error);
+            errorHandlerSlot.get()?.(error);
             callbacks.onUncaughtError?.(error, info);
         },
         (error, info) => {
-            errorHandler?.(error);
+            errorHandlerSlot.get()?.(error);
             callbacks.onCaughtError?.(error, info);
         },
         (error, info) => {
             callbacks.onRecoverableError?.(error, info);
         },
-        () => {},
+        (): void => undefined,
     ) as OpaqueRoot;
 
     activeRoots.add(container);
@@ -109,17 +122,19 @@ const createRoot = (container: Container = rootElement): Root => {
         render: (element) => {
             reconciler.updateContainer(element, opaque, null, null);
         },
-        unmount: () => unmountContainer(opaque),
+        unmount: () => {
+            unmountContainer(opaque);
+        },
     };
 };
 
-/** Unmounts every active render root and returns `true`. */
-const quit = (): true => {
+/** Unmounts every active render root and stops the originating signal from propagating further. */
+const quit = (): typeof Gdk.EVENT_STOP => {
     for (const container of activeRoots) {
         unmountContainer(container);
     }
 
-    return true;
+    return Gdk.EVENT_STOP;
 };
 
 /**

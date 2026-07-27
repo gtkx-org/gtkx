@@ -4,7 +4,17 @@ import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinner.tsx?raw";
 
-const SpinnerDemo = () => {
+const spinnerDemo: Demo = {
+    id: "spinner",
+    title: "Spinner",
+    description: "GtkSpinner allows to show that background activity is on-going.",
+    keywords: ["gtkspinner"],
+    component: SpinnerDemo,
+    sourceCode,
+    resizable: false,
+};
+
+function SpinnerDemo() {
     const [spinning, setSpinning] = useState(true);
 
     return (
@@ -26,18 +36,20 @@ const SpinnerDemo = () => {
                 <GtkEntry />
             </GtkBox>
 
-            <GtkButton label="Play" onClicked={() => setSpinning(true)} />
-            <GtkButton label="Stop" onClicked={() => setSpinning(false)} />
+            <GtkButton
+                label="Play"
+                onClicked={() => {
+                    setSpinning(true);
+                }}
+            />
+            <GtkButton
+                label="Stop"
+                onClicked={() => {
+                    setSpinning(false);
+                }}
+            />
         </GtkBox>
     );
-};
+}
 
-export const spinnerDemo: Demo = {
-    id: "spinner",
-    title: "Spinner",
-    description: "GtkSpinner allows to show that background activity is on-going.",
-    keywords: ["gtkspinner"],
-    component: SpinnerDemo,
-    sourceCode,
-    resizable: false,
-};
+export { spinnerDemo };

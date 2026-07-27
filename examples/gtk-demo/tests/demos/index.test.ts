@@ -26,6 +26,7 @@ describe("demos catalog", () => {
         const categories = new Set(
             demos.map((d) => parseTitle(d.title).category).filter((c): c is string => c !== null),
         );
+
         for (const expected of [
             "Benchmark",
             "Constraints",

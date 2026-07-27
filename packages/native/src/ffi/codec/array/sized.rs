@@ -40,10 +40,17 @@ impl ArrayContainer for SizedArrayCodec {
 }
 
 impl ArrayCodec {
+    // 2^53 is the largest integer an f64 holds exactly and is far below `usize::MAX` on the 64-bit
+    // Linux targets this crate builds for, so a size that passes the guard converts without
+    // saturating; a fractional size keeps truncating toward zero, as a C length would.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn validated_size(size: f64, param_index: usize) -> anyhow::Result<usize> {
-        if size < 0.0 || !size.is_finite() {
+        const MAX_EXACT_INTEGER: f64 = 9_007_199_254_740_992.0;
+
+        if !(0.0..=MAX_EXACT_INTEGER).contains(&size) {
             bail!("Array size parameter at index {param_index} has invalid value: {size}");
         }
+
         Ok(size as usize)
     }
 
@@ -86,10 +93,7 @@ impl ArrayCodec {
         }
 
         bail!(
-            "Could not extract size from parameter at index {}: expected Ref<Integer> or Integer, got type {:?} with ffi value {:?}",
-            size_param_index,
-            arg_codec,
-            ffi_arg
+            "Could not extract size from parameter at index {size_param_index}: expected Ref<Integer> or Integer, got type {arg_codec:?} with ffi value {ffi_arg:?}"
         );
     }
 

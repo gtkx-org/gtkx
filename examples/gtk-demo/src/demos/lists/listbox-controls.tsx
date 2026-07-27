@@ -1,4 +1,5 @@
 import { DropDown, SizeGroup } from "@gtkx/components";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAdjustment,
@@ -23,17 +24,68 @@ type LabeledRowProps = {
     labelText: string;
     useUnderline?: boolean;
     activatable?: boolean;
-    mnemonicWidget?: Gtk.Widget | null;
     children: ReactNode;
 };
 
-const LabeledRow = ({ labelText, useUnderline, activatable, mnemonicWidget, children }: LabeledRowProps) => (
+type SwitchRowProps = {
+    switchRef: React.RefObject<Gtk.Switch | null>;
+    switchActive: boolean;
+    setSwitchActive: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+type CheckRowProps = {
+    checkRef: React.RefObject<Gtk.CheckButton | null>;
+    checkActive: boolean;
+    setCheckActive: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+type ClickHereRowProps = {
+    imageRef: React.RefObject<Gtk.Image | null>;
+    imageOpacity: number;
+};
+
+type RowToggles = {
+    switchRef: React.RefObject<Gtk.Switch | null>;
+    checkRef: React.RefObject<Gtk.CheckButton | null>;
+    imageRef: React.RefObject<Gtk.Image | null>;
+    setSwitchActive: React.Dispatch<React.SetStateAction<boolean>>;
+    setCheckActive: React.Dispatch<React.SetStateAction<boolean>>;
+    setImageOpacity: React.Dispatch<React.SetStateAction<number>>;
+};
+
+const listboxControlsDemo: Demo = {
+    id: "listbox-controls",
+    title: "List Box/Controls",
+    description:
+        "GtkListBox is well-suited for creating “button strips” — lists of controls for use in preference " +
+        "dialogs or settings panels. To create this style of list, use the .rich-list style class.",
+    keywords: [],
+    component: ListBoxControlsDemo,
+    sourceCode,
+    defaultHeight: 400,
+    windowTitle: "List Box — Controls",
+};
+
+function nextOpacity(opacity: number) {
+    return opacity === 0 ? 1 : 0;
+}
+
+function activateRow(row: Gtk.ListBoxRow, toggles: RowToggles) {
+    if (toggles.switchRef.current?.isAncestor(row)) {
+        toggles.setSwitchActive((previous) => !previous);
+    } else if (toggles.checkRef.current?.isAncestor(row)) {
+        toggles.setCheckActive((previous) => !previous);
+    } else if (toggles.imageRef.current?.isAncestor(row)) {
+        toggles.setImageOpacity(nextOpacity);
+    }
+}
+
+const LabeledRow = ({ labelText, useUnderline, activatable, children }: LabeledRowProps) => (
     <GtkListBoxRow selectable={false} activatable={activatable}>
         <GtkBox>
             <SizeGroup.Child
                 component={GtkLabel}
                 useUnderline={useUnderline}
-                mnemonicWidget={mnemonicWidget ?? null}
                 xalign={0}
                 halign={Gtk.Align.START}
                 valign={Gtk.Align.CENTER}
@@ -46,75 +98,81 @@ const LabeledRow = ({ labelText, useUnderline, activatable, mnemonicWidget, chil
     </GtkListBoxRow>
 );
 
-type Group1ListProps = {
-    switchRef: React.RefObject<Gtk.Switch | null>;
-    checkRef: React.RefObject<Gtk.CheckButton | null>;
-    imageRef: React.RefObject<Gtk.Image | null>;
-    switchActive: boolean;
-    setSwitchActive: React.Dispatch<React.SetStateAction<boolean>>;
-    checkActive: boolean;
-    setCheckActive: React.Dispatch<React.SetStateAction<boolean>>;
-    imageOpacity: number;
-    onRowActivated: (row: Gtk.ListBoxRow) => void;
-};
+const SwitchRow = ({ switchRef, switchActive, setSwitchActive }: SwitchRowProps) => (
+    <LabeledRow labelText="Switch">
+        <GtkSwitch
+            name="switch"
+            ref={switchRef}
+            halign={Gtk.Align.END}
+            valign={Gtk.Align.CENTER}
+            active={switchActive}
+            onStateSet={() => {
+                setSwitchActive((previous) => !previous);
 
-const Group1List = ({
-    switchRef,
-    checkRef,
-    imageRef,
-    switchActive,
-    setSwitchActive,
-    checkActive,
-    setCheckActive,
-    imageOpacity,
-    onRowActivated,
-}: Group1ListProps) => (
-    <GtkListBox
-        name="group-1-list"
-        selectionMode={Gtk.SelectionMode.NONE}
-        cssClasses={["rich-list", "boxed-list"]}
-        onRowActivated={onRowActivated}
-    >
-        <LabeledRow labelText="Switch" mnemonicWidget={switchRef.current}>
-            <GtkSwitch
-                name="switch"
-                ref={switchRef}
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.CENTER}
-                active={switchActive}
-                onStateSet={() => {
-                    setSwitchActive((prev) => !prev);
-                    return true;
-                }}
-            />
-        </LabeledRow>
-        <LabeledRow labelText="Check" mnemonicWidget={checkRef.current}>
-            <GtkCheckButton
-                name="check"
-                ref={checkRef}
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.CENTER}
-                marginStart={10}
-                marginEnd={10}
-                active={checkActive}
-                onToggled={() => setCheckActive((prev) => !prev)}
-            />
-        </LabeledRow>
-        <LabeledRow labelText="Click here!" mnemonicWidget={imageRef.current}>
-            <GtkImage
-                name="click-here-image"
-                ref={imageRef}
-                iconName="object-select-symbolic"
-                halign={Gtk.Align.END}
-                valign={Gtk.Align.CENTER}
-                marginStart={10}
-                marginEnd={10}
-                opacity={imageOpacity}
-                accessibleRole={Gtk.AccessibleRole.STATUS}
-            />
-        </LabeledRow>
-    </GtkListBox>
+                return Gdk.EVENT_STOP;
+            }}
+        />
+    </LabeledRow>
 );
+
+const CheckRow = ({ checkRef, checkActive, setCheckActive }: CheckRowProps) => (
+    <LabeledRow labelText="Check">
+        <GtkCheckButton
+            name="check"
+            ref={checkRef}
+            halign={Gtk.Align.END}
+            valign={Gtk.Align.CENTER}
+            marginStart={10}
+            marginEnd={10}
+            active={checkActive}
+            onToggled={() => {
+                setCheckActive((previous) => !previous);
+            }}
+        />
+    </LabeledRow>
+);
+
+const ClickHereRow = ({ imageRef, imageOpacity }: ClickHereRowProps) => (
+    <LabeledRow labelText="Click here!">
+        <GtkImage
+            name="click-here-image"
+            ref={imageRef}
+            iconName="object-select-symbolic"
+            halign={Gtk.Align.END}
+            valign={Gtk.Align.CENTER}
+            marginStart={10}
+            marginEnd={10}
+            opacity={imageOpacity}
+            accessibleRole={Gtk.AccessibleRole.STATUS}
+        />
+    </LabeledRow>
+);
+
+function Group1List() {
+    const [switchActive, setSwitchActive] = useState(false);
+    const [checkActive, setCheckActive] = useState(true);
+    const [imageOpacity, setImageOpacity] = useState(0);
+    const switchRef = useRef<Gtk.Switch | null>(null);
+    const checkRef = useRef<Gtk.CheckButton | null>(null);
+    const imageRef = useRef<Gtk.Image | null>(null);
+
+    const handleRowActivated = (row: Gtk.ListBoxRow) => {
+        activateRow(row, { switchRef, checkRef, imageRef, setSwitchActive, setCheckActive, setImageOpacity });
+    };
+
+    return (
+        <GtkListBox
+            name="group-1-list"
+            selectionMode={Gtk.SelectionMode.NONE}
+            cssClasses={["rich-list", "boxed-list"]}
+            onRowActivated={handleRowActivated}
+        >
+            <SwitchRow switchRef={switchRef} switchActive={switchActive} setSwitchActive={setSwitchActive} />
+            <CheckRow checkRef={checkRef} checkActive={checkActive} setCheckActive={setCheckActive} />
+            <ClickHereRow imageRef={imageRef} imageOpacity={imageOpacity} />
+        </GtkListBox>
+    );
+}
 
 const valueAdjustment = () => <GtkAdjustment value={50} upper={100} stepIncrement={1} pageIncrement={10} />;
 
@@ -159,24 +217,7 @@ const Group2List = () => {
     );
 };
 
-const ListBoxControlsDemo = () => {
-    const [switchActive, setSwitchActive] = useState(false);
-    const [checkActive, setCheckActive] = useState(true);
-    const [imageOpacity, setImageOpacity] = useState(0);
-
-    const switchRef = useRef<Gtk.Switch | null>(null);
-    const checkRef = useRef<Gtk.CheckButton | null>(null);
-    const imageRef = useRef<Gtk.Image | null>(null);
-
-    const handleRowActivated = (row: Gtk.ListBoxRow) => {
-        const sw = switchRef.current;
-        const chk = checkRef.current;
-        const img = imageRef.current;
-        if (sw?.isAncestor(row)) setSwitchActive((prev) => !prev);
-        else if (chk?.isAncestor(row)) setCheckActive((prev) => !prev);
-        else if (img?.isAncestor(row)) setImageOpacity((prev) => (prev === 0 ? 1 : 0));
-    };
-
+function ListBoxControlsDemo() {
     return (
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} minContentHeight={200} vexpand>
             <GtkViewport scrollToFocus>
@@ -191,17 +232,7 @@ const ListBoxControlsDemo = () => {
                         <GtkLabel xalign={0} marginBottom={10} cssClasses={["title-2"]}>
                             Group 1
                         </GtkLabel>
-                        <Group1List
-                            switchRef={switchRef}
-                            checkRef={checkRef}
-                            imageRef={imageRef}
-                            switchActive={switchActive}
-                            setSwitchActive={setSwitchActive}
-                            checkActive={checkActive}
-                            setCheckActive={setCheckActive}
-                            imageOpacity={imageOpacity}
-                            onRowActivated={handleRowActivated}
-                        />
+                        <Group1List />
 
                         <GtkLabel xalign={0} marginTop={30} marginBottom={10} cssClasses={["title-2"]}>
                             Group 2
@@ -212,16 +243,6 @@ const ListBoxControlsDemo = () => {
             </GtkViewport>
         </GtkScrolledWindow>
     );
-};
+}
 
-export const listboxControlsDemo: Demo = {
-    id: "listbox-controls",
-    title: "List Box/Controls",
-    description:
-        "GtkListBox is well-suited for creating “button strips” — lists of controls for use in preference dialogs or settings panels. To create this style of list, use the .rich-list style class.",
-    keywords: [],
-    component: ListBoxControlsDemo,
-    sourceCode,
-    defaultHeight: 400,
-    windowTitle: "List Box — Controls",
-};
+export { listboxControlsDemo };

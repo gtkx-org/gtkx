@@ -31,8 +31,8 @@ fn full() -> ObjectCodec {
     }
 }
 
-fn object_unknown<'e>(env: &'e Env, ptr: *mut glib::gobject_ffi::GObject) -> Unknown<'e> {
-    External::new(Handle::from_glib_borrow(ptr as *mut c_void))
+fn object_unknown(env: &Env, ptr: *mut glib::gobject_ffi::GObject) -> Unknown<'_> {
+    External::new(Handle::from_glib_borrow(ptr.cast::<c_void>()))
         .into_unknown(env)
         .expect("wrapping handle should succeed")
 }
@@ -68,7 +68,7 @@ fn encode_full_transfer_adds_exactly_one_ref() {
         let ffi::Stash::Storage(storage) = &encoded else {
             panic!("expected Storage ffi value");
         };
-        assert_eq!(storage.ptr(), obj_ptr as *mut c_void);
+        assert_eq!(storage.ptr(), obj_ptr.cast::<c_void>());
 
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
@@ -113,11 +113,11 @@ fn ref_for_transfer_full_adds_one_ref() {
     helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
-        let returned = unsafe { full().ref_for_transfer(obj_ptr as *mut c_void) }
+        let returned = unsafe { full().ref_for_transfer(obj_ptr.cast::<c_void>()) }
             .expect("ref_for_transfer should succeed");
 
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before + 1);
-        assert_eq!(returned, obj_ptr as *mut c_void);
+        assert_eq!(returned, obj_ptr.cast::<c_void>());
 
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
@@ -129,11 +129,11 @@ fn ref_for_transfer_borrowed_keeps_refcount() {
     helpers::run(|| {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
-        let returned = unsafe { borrowed().ref_for_transfer(obj_ptr as *mut c_void) }
+        let returned = unsafe { borrowed().ref_for_transfer(obj_ptr.cast::<c_void>()) }
             .expect("ref_for_transfer should succeed");
 
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
-        assert_eq!(returned, obj_ptr as *mut c_void);
+        assert_eq!(returned, obj_ptr.cast::<c_void>());
     });
 }
 
@@ -153,7 +153,7 @@ fn decode_borrowed_adds_exactly_one_ref() {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let decoded = borrowed()
-            .decode(&env, &ffi::Stash::Ptr(obj_ptr as *mut c_void))
+            .decode(&env, &ffi::Stash::Ptr(obj_ptr.cast::<c_void>()))
             .expect("borrowed decode should succeed");
 
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before + 1);
@@ -171,7 +171,7 @@ fn decode_full_transfer_keeps_refcount_net_of_wrapper() {
         let before = unsafe { get_gobject_refcount(obj_ptr) };
 
         let decoded = full()
-            .decode(&env, &ffi::Stash::Ptr(obj_ptr as *mut c_void))
+            .decode(&env, &ffi::Stash::Ptr(obj_ptr.cast::<c_void>()))
             .expect("full decode should succeed");
 
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
@@ -194,7 +194,7 @@ fn decode_floating_object_is_sunk() {
         let before = unsafe { get_gobject_refcount(obj_ptr) };
 
         let decoded = full()
-            .decode(&env, &ffi::Stash::Ptr(obj_ptr as *mut c_void))
+            .decode(&env, &ffi::Stash::Ptr(obj_ptr.cast::<c_void>()))
             .expect("floating decode should succeed");
 
         assert!(!unsafe { glib::gobject_ffi::g_object_is_floating(obj_ptr) != 0 });
@@ -217,7 +217,7 @@ fn ptr_to_value_wraps_borrowed_object() {
         let (_obj, obj_ptr, before) = fresh_gobject();
 
         let value =
-            unsafe { borrowed().read(&env, ReadSource::Value(obj_ptr as *mut c_void, "ctx")) }
+            unsafe { borrowed().read(&env, ReadSource::Value(obj_ptr.cast::<c_void>(), "ctx")) }
                 .expect("ptr_to_value should succeed");
 
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before + 1);
@@ -238,7 +238,7 @@ fn read_from_pointer_dereferences_and_wraps() {
         let env = helpers::fake_env();
         let (_obj, obj_ptr, _) = fresh_gobject();
 
-        let value = unsafe { read_slot(&env, &borrowed(), obj_ptr as *mut c_void) }
+        let value = unsafe { read_slot(&env, &borrowed(), obj_ptr.cast::<c_void>()) }
             .expect("read_from_pointer should succeed");
         assert_is_object(&value);
     });
@@ -252,7 +252,7 @@ fn write_return_to_pointer_full_transfer_writes_referenced_pointer() {
 
         let slot = write_return_into_slot(&env, &full(), &Ok(object_unknown(&env, obj_ptr)));
 
-        assert_eq!(slot, obj_ptr as *mut c_void);
+        assert_eq!(slot, obj_ptr.cast::<c_void>());
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before + 1);
         unsafe { glib::gobject_ffi::g_object_unref(obj_ptr) };
     });
@@ -266,7 +266,7 @@ fn write_return_to_pointer_borrowed_keeps_refcount() {
 
         let slot = write_return_into_slot(&env, &borrowed(), &Ok(object_unknown(&env, obj_ptr)));
 
-        assert_eq!(slot, obj_ptr as *mut c_void);
+        assert_eq!(slot, obj_ptr.cast::<c_void>());
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
     });
 }
@@ -291,7 +291,7 @@ fn write_value_to_pointer_borrowed_stores_without_refcount_changes() {
             object_unknown(&env, obj_ptr),
         );
 
-        assert_eq!(slot, obj_ptr as *mut c_void);
+        assert_eq!(slot, obj_ptr.cast::<c_void>());
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
     });
 }
@@ -306,11 +306,11 @@ fn write_value_to_pointer_borrowed_leaves_previous_object_untouched() {
         let slot = helpers::write_value_into_slot(
             &env,
             &borrowed(),
-            old_ptr as *mut c_void,
+            old_ptr.cast::<c_void>(),
             object_unknown(&env, new_ptr),
         );
 
-        assert_eq!(slot, new_ptr as *mut c_void);
+        assert_eq!(slot, new_ptr.cast::<c_void>());
         assert_eq!(unsafe { get_gobject_refcount(new_ptr) }, new_before);
         assert_eq!(unsafe { get_gobject_refcount(old_ptr) }, old_before);
     });
@@ -330,11 +330,11 @@ fn write_value_to_pointer_full_refs_new_and_unrefs_previous_object() {
         let slot = helpers::write_value_into_slot(
             &env,
             &full(),
-            old_ptr as *mut c_void,
+            old_ptr.cast::<c_void>(),
             object_unknown(&env, new_ptr),
         );
 
-        assert_eq!(slot, new_ptr as *mut c_void);
+        assert_eq!(slot, new_ptr.cast::<c_void>());
         assert_eq!(unsafe { get_gobject_refcount(new_ptr) }, new_before + 1);
         assert_eq!(unsafe { get_gobject_refcount(old_ptr) }, old_before - 1);
 
@@ -354,7 +354,7 @@ fn write_value_to_pointer_full_null_releases_previous_object() {
         let slot = helpers::write_value_into_slot(
             &env,
             &full(),
-            obj_ptr as *mut c_void,
+            obj_ptr.cast::<c_void>(),
             napi_mock::to_unknown(&env, napi_mock::fake_null()),
         );
 

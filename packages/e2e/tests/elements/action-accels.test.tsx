@@ -3,18 +3,12 @@ import * as Gio from "@gtkx/gi/gio";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-
-type ActionAccel = { detailedActionName: string; accels: string[] };
-
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createAppIdFactory } from "../helpers/unique-name.js";
 
-const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-let nextAppId = 0;
-
-const uniqueAppId = (): string => `org.gtkx.actionaccelstest${nextAppId++}`;
-const noop = () => {};
+type ActionAccel = { detailedActionName: string; accels: string[] };
 
 type AccelsAppProps = {
     appRef: RefObject<Gtk.Application | null>;
@@ -23,6 +17,11 @@ type AccelsAppProps = {
     windowActions?: ReactNode;
     appActions?: ReactNode;
 };
+
+const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
+const uniqueAppId = createAppIdFactory("org.gtkx.actionaccelstest");
+const noop = vi.fn();
+const newWindowAction = <GSimpleAction name="new" onActivate={noop} />;
 
 const AccelsApp = ({ appRef, appId, actionAccels, windowActions, appActions }: AccelsAppProps): ReactNode => (
     <GtkApplication
@@ -38,25 +37,19 @@ const AccelsApp = ({ appRef, appId, actionAccels, windowActions, appActions }: A
 
 const renderAccels = (props: AccelsAppProps) => render(<AccelsApp {...props} />, { container: rootElement });
 
-const newWindowAction = <GSimpleAction name="new" onActivate={noop} />;
-
-const renderWinNewAccels = async (appRef: RefObject<Gtk.Application | null>, appId: string) => {
-    const rendered = await renderAccels({
+const renderWinNewAccels = (appRef: RefObject<Gtk.Application | null>, appId: string) =>
+    renderAccels({
         appRef,
         appId,
         actionAccels: [{ detailedActionName: "win.new", accels: ["<Control>n"] }],
         windowActions: newWindowAction,
     });
 
-    expect(appRef.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
-
-    return rendered;
-};
-
 describe("GtkApplication actionAccels", () => {
     it("binds window-scoped accels from the actionAccels prop", async () => {
         const ref = createRef<Gtk.Application>();
         await renderWinNewAccels(ref, uniqueAppId());
+        expect(ref.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
     });
 
     it("binds application-scoped accels with multiple accelerators", async () => {
@@ -76,6 +69,7 @@ describe("GtkApplication actionAccels", () => {
         const ref = createRef<Gtk.Application>();
         const appId = uniqueAppId();
         const { rerender } = await renderWinNewAccels(ref, appId);
+        expect(ref.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
         await rerender(<AccelsApp appRef={ref} appId={appId} actionAccels={[]} windowActions={newWindowAction} />);
         expect(ref.current?.getAccelsForAction("win.new")).toEqual([]);
     });

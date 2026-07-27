@@ -31,6 +31,7 @@ describe("shortcutTriggersDemo rendering", () => {
         await renderDemo(shortcutTriggersDemo);
         const rows = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
         expect(rows).toHaveLength(2);
+
         for (const row of rows) {
             expect(row).toBeInstanceOf(Gtk.ListBoxRow);
         }
@@ -48,7 +49,8 @@ describe("shortcutTriggersDemo rendering", () => {
 
 describe("shortcutTriggersDemo activation handlers", () => {
     it("logs the Ctrl-G activation message when the Ctrl-G shortcut fires", async () => {
-        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+        const logSpy = vi.spyOn(console, "log").mockImplementation((): void => undefined);
+
         try {
             await renderDemo(shortcutTriggersDemo);
             const label = (await screen.findByName("label-ctrl-g")) as Gtk.Label;
@@ -60,7 +62,8 @@ describe("shortcutTriggersDemo activation handlers", () => {
     });
 
     it("logs the Press-X activation message when the X shortcut fires", async () => {
-        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+        const logSpy = vi.spyOn(console, "log").mockImplementation((): void => undefined);
+
         try {
             await renderDemo(shortcutTriggersDemo);
             const label = (await screen.findByName("label-x")) as Gtk.Label;

@@ -13,7 +13,8 @@ const bytesToBase64 = (bytes: number[]): string => {
 };
 
 const describeWidgetState = (widget: Gtk.Widget): string =>
-    `realized=${widget.getRealized()} mapped=${widget.getMapped()} visible=${widget.getVisible()}`;
+    `realized=${String(widget.getRealized())} mapped=${String(widget.getMapped())} ` +
+    `visible=${String(widget.getVisible())}`;
 
 const captureSnapshot = (widget: Gtk.Widget, scale: number): ScreenshotResult => {
     const paintable = new Gtk.WidgetPaintable({ widget });
@@ -68,7 +69,7 @@ const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Prom
     const scale = options?.scale ?? 1;
 
     if (!Number.isFinite(scale) || scale <= 0) {
-        throw new Error(`Screenshot scale must be a positive number, got ${scale}`);
+        throw new Error(`Screenshot scale must be a positive number, got ${String(scale)}`);
     }
 
     return waitFor(() => captureSnapshot(widget, scale), {
@@ -91,7 +92,7 @@ const windowAtIndex = (windows: Gtk.Widget[], index: number): Gtk.Window => {
     const indexed = windows[index];
 
     if (!(indexed instanceof Gtk.Window)) {
-        throw new TypeError(`Window at index ${index} not found`);
+        throw new TypeError(`Window at index ${String(index)} not found`);
     }
 
     return indexed;
@@ -99,7 +100,7 @@ const windowAtIndex = (windows: Gtk.Widget[], index: number): Gtk.Window => {
 
 const isWindow = (widget: Gtk.Widget): widget is Gtk.Window => widget instanceof Gtk.Window;
 
-const titleMatches = (window: Gtk.Window, selector: string | RegExp): boolean => {
+const hasMatchingTitle = (window: Gtk.Window, selector: string | RegExp): boolean => {
     const title = window.getTitle() ?? "";
 
     return selector instanceof RegExp ? selector.test(title) : title.includes(selector);
@@ -109,7 +110,7 @@ const describeTitleSelector = (selector: string | RegExp): string =>
     selector instanceof RegExp ? selector.toString() : `"${selector}"`;
 
 const windowByTitle = (windows: Gtk.Widget[], selector: string | RegExp): Gtk.Window => {
-    const found = windows.filter(isWindow).find((window) => titleMatches(window, selector));
+    const found = windows.filter(isWindow).find((window) => hasMatchingTitle(window, selector));
 
     if (!found) {
         throw new Error(`No window found with title matching ${describeTitleSelector(selector)}`);
@@ -143,7 +144,7 @@ const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
         mkdirSync(dir, { recursive: true });
     }
 
-    const filepath = join(dir, `${Date.now()}-screenshot.png`);
+    const filepath = join(dir, `${String(Date.now())}-screenshot.png`);
     writeFileSync(filepath, Buffer.from(result.data, "base64"));
 
     return filepath;

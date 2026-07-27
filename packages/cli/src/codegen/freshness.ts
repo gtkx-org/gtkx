@@ -27,22 +27,22 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
     return join(giStoreDir, namespace, "index.js");
 };
 
-const giStoreLinksResolve = (giStoreDir: string): boolean =>
+const canResolveGiStoreLinks = (giStoreDir: string): boolean =>
     existsSync(join(giStoreDir, "node_modules", "@gtkx", "gi", "package.json"));
 
-const giStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
+const isGiStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
     if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
         return true;
     }
 
-    if (!giStoreLinksResolve(store.giStoreDir)) {
+    if (!canResolveGiStoreLinks(store.giStoreDir)) {
         return true;
     }
 
     return libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)));
 };
 
-const reactStoreStale = (store: CodegenStore): boolean => {
+const isReactStoreStale = (store: CodegenStore): boolean => {
     if (store.react === null) {
         return false;
     }
@@ -56,7 +56,7 @@ const reactStoreStale = (store: CodegenStore): boolean => {
 
 const isCodegenStale = (inputs: CodegenInputs): boolean => {
     try {
-        return giStoreStale(inputs.store, inputs.libraries) || reactStoreStale(inputs.store);
+        return isGiStoreStale(inputs.store, inputs.libraries) || isReactStoreStale(inputs.store);
     } catch {
         return true;
     }

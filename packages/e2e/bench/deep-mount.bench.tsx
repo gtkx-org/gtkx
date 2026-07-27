@@ -10,7 +10,7 @@ const nestBoxes = (depth: number): ReactNode =>
 
 describe("deep mount", () => {
     for (const depth of DEPTHS) {
-        bench(`mount a chain of ${depth} nested boxes`, async () => {
+        bench(`mount a chain of ${String(depth)} nested boxes`, async () => {
             await render(nestBoxes(depth));
             await cleanup();
         });

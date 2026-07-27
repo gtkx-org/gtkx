@@ -1,5 +1,5 @@
 import type * as Adw from "@gtkx/gi/adw";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
@@ -8,11 +8,10 @@ import { rootElement } from "@gtkx/react";
 import { render as baseRender, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { createAppIdFactory } from "../helpers/unique-name.js";
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
-let nextAppId = 0;
-
-const uniqueAppId = (): string => `org.gtkx.windowtest${nextAppId++}`;
+const uniqueAppId = createAppIdFactory("org.gtkx.windowtest");
 
 const render = (element: ReactNode, appId: string = uniqueAppId()) =>
     baseRender(
@@ -29,6 +28,34 @@ const renderAdw = (element: ReactNode, appId: string = uniqueAppId()) =>
         </AdwApplication>,
         { container: rootElement },
     );
+
+function SwappedChildApp({
+    windowRef,
+    firstRef,
+    secondRef,
+    first,
+}: {
+    windowRef: RefObject<Gtk.ApplicationWindow | null>;
+    firstRef: RefObject<Gtk.Label | null>;
+    secondRef: RefObject<Gtk.Label | null>;
+    first: boolean;
+}) {
+    return (
+        <GtkApplicationWindow ref={windowRef}>
+            {first
+                ? (
+                        <GtkLabel ref={firstRef} key="first">
+                            First
+                        </GtkLabel>
+                    )
+                : (
+                        <GtkLabel ref={secondRef} key="second">
+                            Second
+                        </GtkLabel>
+                    )}
+        </GtkApplicationWindow>
+    );
+}
 
 describe("render - Window (1)", () => {
     describe("creation", () => {
@@ -145,30 +172,21 @@ describe("render - Window (4)", () => {
             const label2Ref = createRef<Gtk.Label>();
             const appId = uniqueAppId();
 
-            function App({ first }: { first: boolean }) {
-                return (
-                    <GtkApplicationWindow ref={windowRef}>
-                        {first
-                            ? (
-                                    <GtkLabel ref={label1Ref} key="first">
-                                        First
-                                    </GtkLabel>
-                                )
-                            : (
-                                    <GtkLabel ref={label2Ref} key="second">
-                                        Second
-                                    </GtkLabel>
-                                )}
-                    </GtkApplicationWindow>
-                );
-            }
+            const { rerender } = await render(
+                <SwappedChildApp windowRef={windowRef} firstRef={label1Ref} secondRef={label2Ref} first={true} />,
+                appId,
+            );
 
-            const { rerender } = await render(<App first={true} />, appId);
             expect(windowRef.current?.getChild()).toBe(label1Ref.current);
 
             await rerender(
                 <GtkApplication applicationId={appId} flags={APP_FLAGS}>
-                    <App first={false} />
+                    <SwappedChildApp
+                        windowRef={windowRef}
+                        firstRef={label1Ref}
+                        secondRef={label2Ref}
+                        first={false}
+                    />
                 </GtkApplication>,
             );
 

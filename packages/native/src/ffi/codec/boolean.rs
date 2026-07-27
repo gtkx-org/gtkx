@@ -9,7 +9,7 @@ const FFI_CODEC: IntegerCodec = IntegerCodec::I32;
 #[derive(Debug, Clone, Copy)]
 pub struct BooleanCodec;
 
-impl BooleanCodec {
+impl IntegerBacked for BooleanCodec {
     fn ffi_codec(&self) -> IntegerCodec {
         FFI_CODEC
     }
@@ -39,7 +39,7 @@ impl Decoder for BooleanCodec {
                 _ => anyhow::bail!("Expected a boolean ffi::Stash, got {stash:?}"),
             },
             ReadSource::Value(ptr, _context) => ptr as isize != 0,
-            ReadSource::Slot(ptr, _context) => unsafe { (ptr as *const i32).read_unaligned() != 0 },
+            ReadSource::Slot(ptr, _context) => unsafe { ptr.cast::<i32>().read_unaligned() != 0 },
         };
         Ok(b.into_unknown(env)?)
     }
@@ -68,7 +68,7 @@ impl PtrWriter for BooleanCodec {
         _init: SlotInit,
     ) -> anyhow::Result<()> {
         let b = read_bool(value)?;
-        unsafe { (slot.as_ptr() as *mut i32).write_unaligned(b.into_glib()) };
+        unsafe { slot.as_ptr().cast::<i32>().write_unaligned(b.into_glib()) };
         Ok(())
     }
 }

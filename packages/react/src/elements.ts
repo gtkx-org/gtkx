@@ -60,8 +60,12 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkWidget: {
         behaviors: [
             slot<Gtk.Widget, Gtk.Popover>("children", "GtkPopover", {
-                attach: (parent, popover) => popover.setParent(parent),
-                detach: (_parent, popover) => popover.unparent(),
+                attach: (parent, popover) => {
+                    popover.setParent(parent);
+                },
+                detach: (_parent, popover) => {
+                    popover.unparent();
+                },
             }),
             addRemoveSlot<Gtk.EventController, Gtk.Widget>(
                 "controllers",
@@ -74,14 +78,20 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 },
             ),
             slot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", "GtkLayoutManager", {
-                attach: (widget, manager) => widget.setLayoutManager(manager),
-                detach: (widget) => widget.setLayoutManager(null),
+                attach: (widget, manager) => {
+                    widget.setLayoutManager(manager);
+                },
+                detach: (widget) => {
+                    widget.setLayoutManager(null);
+                },
             }),
             slot<Gtk.Widget, Gio.ActionGroup>("actionGroups", "GActionGroup", {
-                attach: (widget, group, info) =>
-                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", group),
-                detach: (widget, _group, info) =>
-                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", null),
+                attach: (widget, group, info) => {
+                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", group);
+                },
+                detach: (widget, _group, info) => {
+                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", null);
+                },
             }),
         ],
     },
@@ -106,8 +116,12 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             childSetterSlot<Gtk.Overlay>(),
             slot<Gtk.Overlay, Gtk.Widget>("overlays", "GtkWidget", {
-                attach: (overlay, child) => overlay.addOverlay(child),
-                detach: (overlay, child) => overlay.removeOverlay(child),
+                attach: (overlay, child) => {
+                    overlay.addOverlay(child);
+                },
+                detach: (overlay, child) => {
+                    overlay.removeOverlay(child);
+                },
                 resolve: layoutChild,
             }),
         ],
@@ -129,40 +143,60 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkTextView: {
         behaviors: [
             slot<Gtk.TextView, Gtk.TextBuffer>("children", "GtkTextBuffer", {
-                attach: (view, buffer) => view.setBuffer(buffer),
-                detach: (view) => view.setBuffer(null),
+                attach: (view, buffer) => {
+                    view.setBuffer(buffer);
+                },
+                detach: (view) => {
+                    view.setBuffer(null);
+                },
             }),
         ],
     },
     GActionMap: {
         behaviors: [
             slot<Gio.ActionMap, Gio.Action>("actions", "GAction", {
-                attach: (map, action) => map.addAction(action),
-                detach: (map, _action, info) => map.removeAction((info.props.name as string | null) ?? ""),
+                attach: (map, action) => {
+                    map.addAction(action);
+                },
+                detach: (map, _action, info) => {
+                    map.removeAction((info.props.name as string | null) ?? "");
+                },
             }),
         ],
     },
     GMenu: {
         behaviors: [
             list<Gio.Menu, MenuItem>("items", {
-                clear: (menu) => menu.removeAll(),
-                add: (menu, item) => appendMenuItem(menu, item),
+                clear: (menu) => {
+                    menu.removeAll();
+                },
+                add: (menu, item) => {
+                    appendMenuItem(menu, item);
+                },
             }),
         ],
     },
     GtkColumnView: {
         behaviors: [
             slot<Gtk.ColumnView, Gtk.ColumnViewColumn>("children", "GtkColumnViewColumn", {
-                attach: (view, column, info) => view.insertColumn(info.index, column),
-                detach: (view, column) => view.removeColumn(column),
+                attach: (view, column, info) => {
+                    view.insertColumn(info.index, column);
+                },
+                detach: (view, column) => {
+                    view.removeColumn(column);
+                },
             }),
         ],
     },
     GtkGrid: {
         behaviors: [
             slot<Gtk.Grid, Gtk.Widget>("children", "GtkWidget", {
-                attach: (grid, child) => grid.attach(child, 0, 0, 1, 1),
-                detach: (grid, child) => grid.remove(child),
+                attach: (grid, child) => {
+                    grid.attach(child, 0, 0, 1, 1);
+                },
+                detach: (grid, child) => {
+                    grid.remove(child);
+                },
                 resolve: layoutChild,
             }),
         ],
@@ -170,8 +204,12 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkFixed: {
         behaviors: [
             slot<Gtk.Fixed, Gtk.Widget>("children", "GtkWidget", {
-                attach: (fixed, child) => fixed.put(child, 0, 0),
-                detach: (fixed, child) => fixed.remove(child),
+                attach: (fixed, child) => {
+                    fixed.put(child, 0, 0);
+                },
+                detach: (fixed, child) => {
+                    fixed.remove(child);
+                },
                 resolve: layoutChild,
             }),
         ],
@@ -179,8 +217,12 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkSizeGroup: {
         behaviors: [
             list<Gtk.SizeGroup, Gtk.Widget>("widgets", {
-                add: (group, widget) => group.addWidget(widget),
-                remove: (group, widget) => group.removeWidget(widget),
+                add: (group, widget) => {
+                    group.addWidget(widget);
+                },
+                remove: (group, widget) => {
+                    group.removeWidget(widget);
+                },
             }),
         ],
     },
@@ -239,8 +281,12 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             slot<Gtk.Notebook, Gtk.Widget>("children", "GtkWidget", {
                 attach: (notebook, child, info) => notebook.insertPage(child, null, info.index),
-                reorder: (notebook, child, info) => notebook.reorderChild(child, info.index),
-                detach: (notebook, child) => notebook.detachTab(child),
+                reorder: (notebook, child, info) => {
+                    notebook.reorderChild(child, info.index);
+                },
+                detach: (notebook, child) => {
+                    notebook.detachTab(child);
+                },
                 resolve: (notebook, child) => notebook.getPage(child),
             }),
         ],
@@ -258,39 +304,57 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 },
             ),
             list<Gtk.Application, ActionAccel>("actionAccels", {
-                add: (application, item) => application.setAccelsForAction(item.detailedActionName, item.accels),
-                remove: (application, item) => application.setAccelsForAction(item.detailedActionName, []),
+                add: (application, item) => {
+                    application.setAccelsForAction(item.detailedActionName, item.accels);
+                },
+                remove: (application, item) => {
+                    application.setAccelsForAction(item.detailedActionName, []);
+                },
             }),
         ],
     },
     GtkAboutDialog: {
         behaviors: [
             list<Gtk.AboutDialog, CreditSection>("creditSections", {
-                add: (dialog, section) => dialog.addCreditSection(section.sectionName, section.people),
+                add: (dialog, section) => {
+                    dialog.addCreditSection(section.sectionName, section.people);
+                },
             }),
         ],
     },
     GtkScale: {
         behaviors: [
             list<Gtk.Scale, ScaleMark>("marks", {
-                add: (scale, mark) => scale.addMark(mark.value ?? 0, mark.position, mark.markup ?? null),
-                clear: (scale) => scale.clearMarks(),
+                add: (scale, mark) => {
+                    scale.addMark(mark.value ?? 0, mark.position, mark.markup ?? null);
+                },
+                clear: (scale) => {
+                    scale.clearMarks();
+                },
             }),
         ],
     },
     GtkCalendar: {
         behaviors: [
             list<Gtk.Calendar, number>("markedDays", {
-                add: (calendar, day) => calendar.markDay(day),
-                clear: (calendar) => calendar.clearMarks(),
+                add: (calendar, day) => {
+                    calendar.markDay(day);
+                },
+                clear: (calendar) => {
+                    calendar.clearMarks();
+                },
             }),
         ],
     },
     GtkLevelBar: {
         behaviors: [
             list<Gtk.LevelBar, LevelBarOffset>("offsets", {
-                add: (bar, offset) => bar.addOffsetValue(offset.name, offset.value ?? 0),
-                remove: (bar, offset) => bar.removeOffsetValue(offset.name),
+                add: (bar, offset) => {
+                    bar.addOffsetValue(offset.name, offset.value ?? 0);
+                },
+                remove: (bar, offset) => {
+                    bar.removeOffsetValue(offset.name);
+                },
             }),
         ],
     },

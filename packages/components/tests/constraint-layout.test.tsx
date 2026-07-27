@@ -1,3 +1,4 @@
+import type { ReactElement, ReactNode } from "react";
 import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
@@ -19,6 +20,27 @@ const A = Gtk.ConstraintAttribute;
 const R = Gtk.ConstraintRelation;
 const S = Gtk.ConstraintStrength;
 
+const abButtons: ReactElement = (
+    <>
+        <NamedButton id="a" label="A" />
+        <NamedButton id="b" label="B" />
+    </>
+);
+
+const aLabelAndSuperLabel: ReactElement = (
+    <>
+        <NamedLabel id="a" label="A" />
+        <GtkLabel name="super">Super</GtkLabel>
+    </>
+);
+
+const unnamedAndNamedButtons: ReactElement = (
+    <>
+        <GtkButton label="unnamed" />
+        <GtkButton name="named" label="named" />
+    </>
+);
+
 const requireWidget = <T,>(ref: RefObject<T | null>): T => {
     const widget = ref.current;
 
@@ -28,6 +50,122 @@ const requireWidget = <T,>(ref: RefObject<T | null>): T => {
 
     return widget;
 };
+
+const widthConstraintBox = (target: string, children?: ReactNode): ReactElement => (
+    <GtkBox
+        layoutManager={(
+            <ConstraintLayout>
+                <ConstraintLayout.Constraint target={target} targetAttribute={A.WIDTH} constant={100} />
+            </ConstraintLayout>
+        )}
+    >
+        {children}
+    </GtkBox>
+);
+
+const startConstraintLayout = (constant: number): ReactElement => (
+    <ConstraintLayout>
+        <ConstraintLayout.Constraint
+            target="a"
+            targetAttribute={A.START}
+            sourceAttribute={A.START}
+            constant={constant}
+        />
+    </ConstraintLayout>
+);
+
+const vflBox = (boxRef: RefObject<Gtk.Box | null>, lines: string[], children: ReactNode): ReactElement => (
+    <GtkBox
+        ref={boxRef}
+        layoutManager={(
+            <ConstraintLayout>
+                <ConstraintLayout.Vfl lines={lines} />
+            </ConstraintLayout>
+        )}
+    >
+        {children}
+    </GtkBox>
+);
+
+function GuideBox({ boxRef, isShown }: { boxRef: RefObject<Gtk.Box | null>; isShown: boolean }) {
+    return (
+        <GtkBox
+            ref={boxRef}
+            layoutManager={<ConstraintLayout>{isShown && <ConstraintLayout.Guide id="g" />}</ConstraintLayout>}
+        />
+    );
+}
+
+function ConstantBox({ boxRef, constant }: { boxRef: RefObject<Gtk.Box | null>; constant: number }) {
+    return (
+        <GtkBox
+            ref={boxRef}
+            layoutManager={(
+                <ConstraintLayout>
+                    <ConstraintLayout.Constraint
+                        target="a"
+                        targetAttribute={A.LEFT}
+                        sourceAttribute={A.LEFT}
+                        constant={constant}
+                    />
+                </ConstraintLayout>
+            )}
+        >
+            <NamedButton id="a" label="A" />
+        </GtkBox>
+    );
+}
+
+function ToggledConstraintBox({ boxRef, isShown }: { boxRef: RefObject<Gtk.Box | null>; isShown: boolean }) {
+    return (
+        <GtkBox
+            ref={boxRef}
+            layoutManager={(
+                <ConstraintLayout>
+                    {isShown && (
+                        <ConstraintLayout.Constraint
+                            target="a"
+                            targetAttribute={A.LEFT}
+                            sourceAttribute={A.LEFT}
+                            constant={5}
+                        />
+                    )}
+                </ConstraintLayout>
+            )}
+        >
+            <NamedButton id="a" label="A" />
+        </GtkBox>
+    );
+}
+
+function RenamedTargetBox({ boxRef, id }: { boxRef: RefObject<Gtk.Box | null>; id: string }) {
+    return (
+        <GtkBox
+            ref={boxRef}
+            layoutManager={(
+                <ConstraintLayout>
+                    <ConstraintLayout.Constraint
+                        target={id}
+                        targetAttribute={A.LEFT}
+                        sourceAttribute={A.LEFT}
+                        constant={1}
+                    />
+                </ConstraintLayout>
+            )}
+        >
+            <NamedLabel id={id} label="L" />
+        </GtkBox>
+    );
+}
+
+function ConditionalNamedBox({ boxRef, isShown }: { boxRef: RefObject<Gtk.Box | null>; isShown: boolean }) {
+    return (
+        <GtkBox ref={boxRef} layoutManager={<ConstraintLayout />}>
+            <NamedLabel id="persist" label="P" />
+            {isShown && <NamedLabel id="cond" label="C" />}
+        </GtkBox>
+    );
+}
 
 describe("render - GtkConstraintLayout attach", () => {
     it("attaches a ConstraintLayout to the host widget", async () => {
@@ -80,56 +218,22 @@ describe("render - name-based target resolution (b)", () => {
     });
 
     it("ignores an unnamed child rather than matching its widget type name", async () => {
-        await expect(
-            render(
-                <GtkBox
-                    layoutManager={(
-                        <ConstraintLayout>
-                            <ConstraintLayout.Constraint target="GtkButton" targetAttribute={A.WIDTH} constant={100} />
-                        </ConstraintLayout>
-                    )}
-                >
-                    <GtkButton label="unnamed" />
-                    <GtkButton name="named" label="named" />
-                </GtkBox>,
-            ),
-        ).rejects.toThrow(/unknown id 'GtkButton'/);
+        const box = widthConstraintBox("GtkButton", unnamedAndNamedButtons);
+        await expect(render(box)).rejects.toThrow(/unknown id 'GtkButton'/);
     });
+});
 
+describe("render - name-based target resolution (c)", () => {
     it("scopes resolution to each layout's own children", async () => {
         const firstRef = createRef<Gtk.Box>();
         const secondRef = createRef<Gtk.Box>();
 
         await render(
             <GtkBox>
-                <GtkBox
-                    ref={firstRef}
-                    layoutManager={(
-                        <ConstraintLayout>
-                            <ConstraintLayout.Constraint
-                                target="a"
-                                targetAttribute={A.START}
-                                sourceAttribute={A.START}
-                                constant={1}
-                            />
-                        </ConstraintLayout>
-                    )}
-                >
+                <GtkBox ref={firstRef} layoutManager={startConstraintLayout(1)}>
                     <GtkLabel name="a">first</GtkLabel>
                 </GtkBox>
-                <GtkBox
-                    ref={secondRef}
-                    layoutManager={(
-                        <ConstraintLayout>
-                            <ConstraintLayout.Constraint
-                                target="a"
-                                targetAttribute={A.START}
-                                sourceAttribute={A.START}
-                                constant={2}
-                            />
-                        </ConstraintLayout>
-                    )}
-                >
+                <GtkBox ref={secondRef} layoutManager={startConstraintLayout(2)}>
                     <GtkLabel name="a">second</GtkLabel>
                 </GtkBox>
             </GtkBox>,
@@ -153,7 +257,9 @@ describe("render - name-based target resolution (b)", () => {
         expect(c.getSource()).toBeNull();
         expect(c.getConstant()).toBe(8);
     });
+});
 
+describe("render - name-based target resolution (d)", () => {
     it("treats `super` as the host even when a child is named `super`", async () => {
         const boxRef = createRef<Gtk.Box>();
 
@@ -165,10 +271,7 @@ describe("render - name-based target resolution (b)", () => {
                 source="super"
                 sourceAttribute={A.START}
             />,
-            <>
-                <NamedLabel id="a" label="A" />
-                <GtkLabel name="super">Super</GtkLabel>
-            </>,
+            aLabelAndSuperLabel,
         );
 
         const c = onlyConstraint(boxRef);
@@ -177,17 +280,7 @@ describe("render - name-based target resolution (b)", () => {
     });
 
     it("throws a clear error when a Constraint references an unknown id", async () => {
-        await expect(
-            render(
-                <GtkBox
-                    layoutManager={(
-                        <ConstraintLayout>
-                            <ConstraintLayout.Constraint target="ghost" targetAttribute={A.WIDTH} constant={100} />
-                        </ConstraintLayout>
-                    )}
-                />,
-            ),
-        ).rejects.toThrow(/unknown id 'ghost'/);
+        await expect(render(widthConstraintBox("ghost"))).rejects.toThrow(/unknown id 'ghost'/);
     });
 });
 
@@ -253,20 +346,10 @@ describe("render - GtkConstraintLayout.Guide (references)", () => {
 
     it("removes the guide from the layout when unmounted", async () => {
         const boxRef = createRef<Gtk.Box>();
-
-        function App({ show }: { show: boolean }) {
-            return (
-                <GtkBox
-                    ref={boxRef}
-                    layoutManager={<ConstraintLayout>{show && <ConstraintLayout.Guide id="g" />}</ConstraintLayout>}
-                />
-            );
-        }
-
-        const { rerender } = await render(<App show={true} />);
+        const { rerender } = await render(<GuideBox boxRef={boxRef} isShown={true} />);
         let layout = layoutFrom(boxRef);
         expect(collectGuides(layout)).toHaveLength(1);
-        await rerender(<App show={false} />);
+        await rerender(<GuideBox boxRef={boxRef} isShown={false} />);
         layout = layoutFrom(boxRef);
         expect(collectGuides(layout)).toHaveLength(0);
     });
@@ -275,33 +358,12 @@ describe("render - GtkConstraintLayout.Guide (references)", () => {
 describe("render - GtkConstraintLayout.Constraint updates", () => {
     it("recreates the constraint when a prop changes (constant value)", async () => {
         const boxRef = createRef<Gtk.Box>();
-
-        function App({ constant }: { constant: number }) {
-            return (
-                <GtkBox
-                    ref={boxRef}
-                    layoutManager={(
-                        <ConstraintLayout>
-                            <ConstraintLayout.Constraint
-                                target="a"
-                                targetAttribute={A.LEFT}
-                                sourceAttribute={A.LEFT}
-                                constant={constant}
-                            />
-                        </ConstraintLayout>
-                    )}
-                >
-                    <NamedButton id="a" label="A" />
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App constant={10} />);
+        const { rerender } = await render(<ConstantBox boxRef={boxRef} constant={10} />);
         let layout = layoutFrom(boxRef);
         let constraints = collectConstraints(layout);
         expect(constraints).toHaveLength(1);
         expect((constraints[0] as Gtk.Constraint).getConstant()).toBe(10);
-        await rerender(<App constant={50} />);
+        await rerender(<ConstantBox boxRef={boxRef} constant={50} />);
         layout = layoutFrom(boxRef);
         constraints = collectConstraints(layout);
         expect(constraints).toHaveLength(1);
@@ -312,33 +374,10 @@ describe("render - GtkConstraintLayout.Constraint updates", () => {
 describe("render - GtkConstraintLayout.Constraint removal", () => {
     it("removes the constraint when the named widget is unmounted", async () => {
         const boxRef = createRef<Gtk.Box>();
-
-        function App({ show }: { show: boolean }) {
-            return (
-                <GtkBox
-                    ref={boxRef}
-                    layoutManager={(
-                        <ConstraintLayout>
-                            {show && (
-                                <ConstraintLayout.Constraint
-                                    target="a"
-                                    targetAttribute={A.LEFT}
-                                    sourceAttribute={A.LEFT}
-                                    constant={5}
-                                />
-                            )}
-                        </ConstraintLayout>
-                    )}
-                >
-                    <NamedButton id="a" label="A" />
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App show={true} />);
+        const { rerender } = await render(<ToggledConstraintBox boxRef={boxRef} isShown={true} />);
         let layout = layoutFrom(boxRef);
         expect(collectConstraints(layout)).toHaveLength(1);
-        await rerender(<App show={false} />);
+        await rerender(<ToggledConstraintBox boxRef={boxRef} isShown={false} />);
         layout = layoutFrom(boxRef);
         expect(collectConstraints(layout)).toHaveLength(0);
     });
@@ -388,49 +427,18 @@ describe("render - GtkConstraintLayout.Constraint props", () => {
 describe("render - name-based target lifecycle", () => {
     it("follows the widget when its name changes", async () => {
         const boxRef = createRef<Gtk.Box>();
-
-        function App({ id }: { id: string }) {
-            return (
-                <GtkBox
-                    ref={boxRef}
-                    layoutManager={(
-                        <ConstraintLayout>
-                            <ConstraintLayout.Constraint
-                                target={id}
-                                targetAttribute={A.LEFT}
-                                sourceAttribute={A.LEFT}
-                                constant={1}
-                            />
-                        </ConstraintLayout>
-                    )}
-                >
-                    <NamedLabel id={id} label="L" />
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App id="first" />);
+        const { rerender } = await render(<RenamedTargetBox boxRef={boxRef} id="first" />);
         expect(firstConstraint(boxRef).getTarget()).toBe(screen.getByName("first"));
-        await rerender(<App id="second" />);
+        await rerender(<RenamedTargetBox boxRef={boxRef} id="second" />);
         expect(firstConstraint(boxRef).getTarget()).toBe(screen.getByName("second"));
     });
 
     it("unmounts the wrapper cleanly when conditionally removed", async () => {
         const boxRef = createRef<Gtk.Box>();
-
-        function App({ show }: { show: boolean }) {
-            return (
-                <GtkBox ref={boxRef} layoutManager={<ConstraintLayout />}>
-                    <NamedLabel id="persist" label="P" />
-                    {show && <NamedLabel id="cond" label="C" />}
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App show={true} />);
+        const { rerender } = await render(<ConditionalNamedBox boxRef={boxRef} isShown={true} />);
         expect(within(requireWidget(boxRef)).getByName("persist")).toBeTruthy();
         expect(within(requireWidget(boxRef)).getByName("cond")).toBeTruthy();
-        await rerender(<App show={false} />);
+        await rerender(<ConditionalNamedBox boxRef={boxRef} isShown={false} />);
         expect(within(requireWidget(boxRef)).getByName("persist")).toBeTruthy();
         expect(within(requireWidget(boxRef)).queryByName("cond")).toBeNull();
     });
@@ -457,10 +465,7 @@ describe("render - GtkConstraintLayout.Vfl", () => {
                 hspacing={8}
                 vspacing={8}
             />,
-            <>
-                <NamedButton id="a" label="A" />
-                <NamedButton id="b" label="B" />
-            </>,
+            abButtons,
         );
 
         const layout = layoutFrom(boxRef);
@@ -477,10 +482,7 @@ describe("render - GtkConstraintLayout.Vfl", () => {
                 <ConstraintLayout.Guide id="g" minWidth={20} natWidth={20} maxWidth={20} />
                 <ConstraintLayout.Vfl lines={["H:|-[a]-[g]-[b]-|", "V:|-[a]-|", "V:|-[b]-|"]} hspacing={8} />
             </>,
-            <>
-                <NamedButton id="a" label="A" />
-                <NamedButton id="b" label="B" />
-            </>,
+            abButtons,
         );
 
         const layout = layoutFrom(boxRef);
@@ -489,45 +491,20 @@ describe("render - GtkConstraintLayout.Vfl", () => {
 
     it("re-parses VFL when the lines prop changes", async () => {
         const boxRef = createRef<Gtk.Box>();
-
-        function App({ lines }: { lines: string[] }) {
-            return (
-                <GtkBox
-                    ref={boxRef}
-                    layoutManager={(
-                        <ConstraintLayout>
-                            <ConstraintLayout.Vfl lines={lines} />
-                        </ConstraintLayout>
-                    )}
-                >
-                    <NamedButton id="a" label="A" />
-                </GtkBox>
-            );
-        }
-
-        const { rerender } = await render(<App lines={["H:|-[a]-|"]} />);
+        const button = <NamedButton id="a" label="A" />;
+        const { rerender } = await render(vflBox(boxRef, ["H:|-[a]-|"], button));
         let layout = layoutFrom(boxRef);
         const initialCount = collectConstraints(layout).length;
         expect(initialCount).toBeGreaterThan(0);
-        await rerender(<App lines={["H:|-[a]-|", "V:|-[a]-|"]} />);
+        await rerender(vflBox(boxRef, ["H:|-[a]-|", "V:|-[a]-|"], button));
         layout = layoutFrom(boxRef);
         const updatedCount = collectConstraints(layout).length;
         expect(updatedCount).toBeGreaterThan(initialCount);
     });
 
     it("rejects when the VFL description references an unknown view", async () => {
-        await expect(
-            render(
-                <GtkBox
-                    layoutManager={(
-                        <ConstraintLayout>
-                            <ConstraintLayout.Vfl lines={["H:|-[ghost]-|"]} />
-                        </ConstraintLayout>
-                    )}
-                >
-                    <NamedButton id="a" label="A" />
-                </GtkBox>,
-            ),
-        ).rejects.toThrow();
+        const boxRef = createRef<Gtk.Box>();
+        const box = vflBox(boxRef, ["H:|-[ghost]-|"], <NamedButton id="a" label="A" />);
+        await expect(render(box)).rejects.toThrow();
     });
 });

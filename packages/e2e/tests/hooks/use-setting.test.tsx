@@ -4,9 +4,6 @@ import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { expectSettingRoundTrip, resetSettingsKey } from "../helpers/settings.js";
 
-const SCHEMA_ID = "com.gtkx.test.useSetting";
-const PROFILE_SCHEMA_ID = "com.gtkx.test.useSetting.profile";
-
 type TestSchemaKeys = {
     enabled: "b";
     count: "i";
@@ -20,6 +17,9 @@ type TestSchemaKeys = {
     "big-signed": "x";
     "big-unsigned": "t";
 };
+
+const SCHEMA_ID = "com.gtkx.test.useSetting";
+const PROFILE_SCHEMA_ID = "com.gtkx.test.useSetting.profile";
 
 const TYPED_SCHEMA: SettingsSchema<TestSchemaKeys> = {
     id: SCHEMA_ID,
@@ -106,7 +106,10 @@ describe("useSetting (typed refs: scalars)", () => {
         expectTypeOf(result.current[0]).toEqualTypeOf<number>();
         expectTypeOf(result.current[1]).toEqualTypeOf<(value: number) => void>();
         expect(result.current[0]).toBe(0);
-        await act(() => result.current[1](5));
+
+        await act(() => {
+            result.current[1](5);
+        });
 
         await waitFor(() => {
             expect(result.current[0]).toBe(5);
@@ -119,7 +122,13 @@ describe("useSetting (typed refs: scalars)", () => {
 
     it("reads and writes int64 keys as bigints across the full range", async () => {
         expectTypeOf<SettingValue<TestSchemaKeys, "big-signed">>().toEqualTypeOf<bigint>();
-        await expectSettingRoundTrip(TYPED_SCHEMA, "big-signed", -9_223_372_036_854_775_808n, 9_223_372_036_854_775_807n);
+
+        await expectSettingRoundTrip(
+            TYPED_SCHEMA,
+            "big-signed",
+            -9_223_372_036_854_775_808n,
+            9_223_372_036_854_775_807n,
+        );
     });
 
     it("reads and writes uint64 keys as bigints across the full range", async () => {
@@ -134,7 +143,10 @@ describe("useSetting (typed refs: enums and choices)", () => {
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "wrap-mode"));
         expectTypeOf(result.current[0]).toEqualTypeOf<number>();
         expect(result.current[0]).toBe(0);
-        await act(() => result.current[1](1));
+
+        await act(() => {
+            result.current[1](1);
+        });
 
         await waitFor(() => {
             expect(result.current[0]).toBe(1);
@@ -146,7 +158,10 @@ describe("useSetting (typed refs: enums and choices)", () => {
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "theme"));
         expectTypeOf(result.current[0]).toEqualTypeOf<string>();
         expect(result.current[0]).toBe("default");
-        await act(() => result.current[1]("dark"));
+
+        await act(() => {
+            result.current[1]("dark");
+        });
 
         await waitFor(() => {
             expect(result.current[0]).toBe("dark");
@@ -160,7 +175,10 @@ describe("useSetting (typed refs: tuples)", () => {
         const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "window-size"));
         expectTypeOf(result.current[0]).toEqualTypeOf<[number, number]>();
         expect(result.current[0]).toEqual([800, 600]);
-        await act(() => result.current[1]([1024, 768]));
+
+        await act(() => {
+            result.current[1]([1024, 768]);
+        });
 
         await waitFor(() => {
             expect(result.current[0]).toEqual([1024, 768]);
@@ -178,7 +196,9 @@ describe("useSetting (typed refs: relocatable paths)", () => {
             b: useSetting(profileAt(pathB), "title"),
         }));
 
-        await act(() => result.current.a[1]("alpha"));
+        await act(() => {
+            result.current.a[1]("alpha");
+        });
 
         await waitFor(() => {
             expect(result.current.a[0]).toBe("alpha");

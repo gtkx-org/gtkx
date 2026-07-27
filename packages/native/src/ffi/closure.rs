@@ -42,7 +42,7 @@ fn call_js_function<'e>(
     js_args: &[Unknown<'e>],
 ) -> Result<Unknown<'e>, CallbackError> {
     let raw_args: Vec<_> = js_args.iter().map(JsValue::raw).collect();
-    let function: Function<CallbackArgs, Unknown> = callback.get(env).map_err(|e| {
+    let function: Function<'_, CallbackArgs, Unknown<'_>> = callback.get(env).map_err(|e| {
         CallbackError::Infrastructure(anyhow::anyhow!("retrieving callback function: {e}"))
     })?;
     function
@@ -62,6 +62,7 @@ pub struct ClosureData {
 }
 
 impl ClosureData {
+    #[must_use]
     pub fn new(
         js_fn: ClosureHandle,
         arg_codecs: Vec<Codec>,
@@ -122,6 +123,7 @@ impl Drop for ClosureState {
 }
 
 impl ClosureState {
+    #[must_use]
     pub fn data_ref(&self) -> &ClosureData {
         unsafe { &*self.data }
     }
@@ -148,6 +150,7 @@ impl ClosureState {
         }
     }
 
+    #[must_use]
     pub fn boxed(
         js_fn: ClosureHandle,
         arg_codecs: Vec<Codec>,
@@ -161,10 +164,19 @@ impl ClosureState {
 }
 
 impl ClosureState {
+    /// # Safety
+    ///
+    /// `user_data` must be a pointer obtained from `Box::into_raw` on a `Box<ClosureState>` (which
+    /// is what `ClosureState::boxed` produces) and must still be live. This takes ownership of that
+    /// box and frees it, along with the `ClosureData` and the libffi closure it owns, so the caller
+    /// must not use `user_data`, the closure's code pointer, or any trampoline installed from it
+    /// afterwards, and must invoke this at most once per pointer. When called off the thread the
+    /// Node environment was installed on, the drop is deferred onto that thread, so the pointer
+    /// must stay valid until it runs.
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         guard_ffi_boundary("callback destroy notify", || {
             if node_env::is_installed_on_current_thread() {
-                drop(unsafe { Box::from_raw(user_data as *mut Self) });
+                drop(unsafe { Box::from_raw(user_data.cast::<Self>()) });
                 return;
             }
 
@@ -204,7 +216,7 @@ impl ClosureData {
 
             let arg_ptr = unsafe { *args.add(i) };
             if let Codec::Ref(ref_codec) = codec {
-                let inner_ptr = unsafe { *(arg_ptr as *const *mut c_void) };
+                let inner_ptr = unsafe { *arg_ptr.cast::<*mut c_void>() };
                 let seed = if ref_codec.inout {
                     seed_ref(env, inner_ptr, &ref_codec.inner_codec)?
                 } else {
@@ -413,7 +425,7 @@ fn flush_refs(env: &Env, ref_slots: &[RefSlot<'_>]) {
 
 fn read_ref_value<'e>(env: &'e Env, ref_obj: Unknown<'e>) -> Option<Unknown<'e>> {
     let obj = Object::from_raw(env.raw(), ref_obj.raw());
-    obj.get_named_property::<Unknown>("value").ok()
+    obj.get_named_property::<Unknown<'_>>("value").ok()
 }
 
 unsafe extern "C" fn closure_entry(
@@ -424,7 +436,7 @@ unsafe extern "C" fn closure_entry(
 ) {
     *result = 0;
     let state_ptr = guard_ffi_boundary("callback entry", || unsafe {
-        data.handle_call(args, result as *mut u64 as *mut c_void)
+        data.handle_call(args, (&raw mut *result).cast::<c_void>())
     })
     .flatten();
     if let Some(ptr) = state_ptr {

@@ -1,42 +1,73 @@
 type TestingModule = typeof import("@gtkx/testing");
 type TestingModuleLoader = () => Promise<TestingModule>;
 
-let loader: TestingModuleLoader = defaultLoader;
-let testingModule: TestingModule | null = null;
-let testingLoadError: Error | null = null;
+type TestingModuleCache = {
+    setLoader: (next: TestingModuleLoader | null) => void;
+    load: () => Promise<TestingModule>;
+};
+
+type TestingModuleState = {
+    loader: TestingModuleLoader;
+    testingModule: TestingModule | null;
+    testingLoadError: Error | null;
+};
+
+const { setLoader: setTestingModuleLoader, load: loadTestingModule } = createTestingModuleCache();
 
 function defaultLoader(): Promise<TestingModule> {
     return import("@gtkx/testing");
 }
 
-const setTestingModuleLoader = (next: TestingModuleLoader | null): void => {
-    loader = next ?? defaultLoader;
-    testingModule = null;
-    testingLoadError = null;
-};
+function missingTestingPackageError(cause: unknown): Error {
+    return new Error(
+        "@gtkx/testing is not installed, install it to enable MCP widget interactions: " +
+        `pnpm add -D @gtkx/testing (import failed: ${String(cause)})`,
+        { cause },
+    );
+}
 
-const loadTestingModule = async (): Promise<TestingModule> => {
-    if (testingModule) {
-        return testingModule;
-    }
+function replaceLoader(state: TestingModuleState, next: TestingModuleLoader | null): void {
+    state.loader = next ?? defaultLoader;
+    state.testingModule = null;
+    state.testingLoadError = null;
+}
 
-    if (testingLoadError) {
-        throw testingLoadError;
-    }
-
+async function importTestingModule(state: TestingModuleState): Promise<TestingModule> {
     try {
-        testingModule = await loader();
+        state.testingModule = await state.loader();
 
-        return testingModule;
+        return state.testingModule;
     } catch (error) {
-        testingLoadError = new Error(
-            "@gtkx/testing is not installed, install it to enable MCP widget interactions: " +
-            `pnpm add -D @gtkx/testing (import failed: ${String(error)})`,
-            { cause: error },
-        );
-
-        throw testingLoadError;
+        state.testingLoadError = missingTestingPackageError(error);
+        throw state.testingLoadError;
     }
-};
+}
+
+function loadCachedTestingModule(state: TestingModuleState): Promise<TestingModule> {
+    if (state.testingModule) {
+        return Promise.resolve(state.testingModule);
+    }
+
+    if (state.testingLoadError) {
+        return Promise.reject(state.testingLoadError);
+    }
+
+    return importTestingModule(state);
+}
+
+function createTestingModuleCache(): TestingModuleCache {
+    const state: TestingModuleState = {
+        loader: defaultLoader,
+        testingModule: null,
+        testingLoadError: null,
+    };
+
+    return {
+        setLoader: (next: TestingModuleLoader | null): void => {
+            replaceLoader(state, next);
+        },
+        load: (): Promise<TestingModule> => loadCachedTestingModule(state),
+    };
+}
 
 export { setTestingModuleLoader, loadTestingModule, type TestingModule, type TestingModuleLoader };

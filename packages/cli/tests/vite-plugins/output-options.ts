@@ -1,6 +1,8 @@
 import type { Plugin } from "vite";
 import { expect, vi } from "vitest";
 
+type BannerFunction = (chunk: Record<string, unknown>) => string | Promise<string>;
+
 const callOutputOptions = (
     plugin: Plugin,
     options: Record<string, unknown>,
@@ -14,8 +16,6 @@ const callOutputOptions = (
 
     return (Reflect.apply(handler, {}, [options]) ?? undefined) as Record<string, unknown> | undefined;
 };
-
-type BannerFunction = (chunk: Record<string, unknown>) => string | Promise<string>;
 
 const callBannerFunction = async (
     result: Record<string, unknown> | undefined,

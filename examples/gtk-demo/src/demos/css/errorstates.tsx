@@ -1,3 +1,4 @@
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwDialog, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import {
@@ -14,6 +15,75 @@ import {
 import { type ReactNode, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
+
+type ErrorStatesState = ReturnType<typeof useErrorStatesState>;
+
+type ValidateDetailsArgs = {
+    detailsEntry: Gtk.Entry | null;
+    moreDetailsEntry: Gtk.Entry | null;
+    setMoreDetailsError: (hasError: boolean) => void;
+};
+
+type LevelStateArgs = {
+    modeSwitch: Gtk.Switch;
+    value: number;
+    setShowError: (hasError: boolean) => void;
+};
+
+type ModeStateArgs = {
+    shouldEnable: boolean;
+    sw: Gtk.Switch;
+    levelScale: Gtk.Scale | null;
+    setShowError: (hasError: boolean) => void;
+};
+
+type FieldLabelProps = {
+    row: number;
+    target: Gtk.Widget | null;
+    children: ReactNode;
+};
+
+type EntryRowProps = {
+    detailsEntry: Gtk.Entry | null;
+    setDetailsEntry: (e: Gtk.Entry | null) => void;
+    onChange: () => void;
+};
+
+type MoreDetailsRowProps = {
+    moreDetailsEntry: Gtk.Entry | null;
+    setMoreDetailsEntry: (e: Gtk.Entry | null) => void;
+    moreDetailsError: boolean;
+    onChange: () => void;
+};
+
+type LevelScaleProps = {
+    levelScale: Gtk.Scale | null;
+    setLevelScale: (s: Gtk.Scale | null) => void;
+    onValueChanged: (value: number) => void;
+};
+
+type ModeErrorLabelProps = {
+    setErrorLabel: (l: Gtk.Label | null) => void;
+};
+
+type ModeSwitchRowProps = {
+    state: ErrorStatesState;
+    onStateSet: (shouldEnable: boolean, sw: Gtk.Switch) => boolean;
+};
+
+const errorstatesDemo: Demo = {
+    id: "errorstates",
+    title: "Error States",
+    description:
+        "GtkLabel and GtkEntry can indicate errors if you set the .error style class on them.\n\n" +
+        "This examples shows how this can be used in a dialog for input validation.\n\n" +
+        "It also shows how pass callbacks and objects to GtkBuilder with GtkBuilderScope and " +
+        "gtk_builder_expose_object().",
+    keywords: [],
+    component: ErrorstatesDemo,
+    sourceCode,
+    dialogOnly: true,
+};
 
 function useErrorStatesState() {
     const [showError, setShowError] = useState(false);
@@ -42,51 +112,60 @@ function useErrorStatesState() {
     };
 }
 
-type ErrorStatesState = ReturnType<typeof useErrorStatesState>;
+const validateMoreDetails = ({ detailsEntry, moreDetailsEntry, setMoreDetailsError }: ValidateDetailsArgs) => {
+    const detailsText = detailsEntry?.getText() ?? "";
+    const moreDetailsText = moreDetailsEntry?.getText() ?? "";
+    setMoreDetailsError(moreDetailsText.length > 0 && detailsText.length === 0);
+};
+
+const syncModeStateForLevel = ({ modeSwitch, value, setShowError }: LevelStateArgs) => {
+    const isActive = modeSwitch.getActive();
+    const isSwitchState = modeSwitch.getState();
+
+    if (isActive && !isSwitchState && value > 50) {
+        setShowError(false);
+        modeSwitch.setState(true);
+    } else if (isSwitchState && value <= 50) {
+        modeSwitch.setState(false);
+    }
+};
+
+const applyModeState = ({ shouldEnable, sw, levelScale, setShowError }: ModeStateArgs) => {
+    if (!shouldEnable || (levelScale && levelScale.getValue() > 50)) {
+        setShowError(false);
+        sw.setState(shouldEnable);
+    } else {
+        setShowError(true);
+    }
+};
 
 function useErrorStatesHandlers(state: ErrorStatesState) {
     const { detailsEntry, moreDetailsEntry, modeSwitch, levelScale, setMoreDetailsError, setShowError } = state;
 
-    const validateMoreDetails = () => {
-        const detailsText = detailsEntry?.getText() ?? "";
-        const moreDetailsText = moreDetailsEntry?.getText() ?? "";
-        setMoreDetailsError(moreDetailsText.length > 0 && detailsText.length === 0);
+    const handleDetailsChange = () => {
+        validateMoreDetails({ detailsEntry, moreDetailsEntry, setMoreDetailsError });
     };
 
-    const handleDetailsChange = () => validateMoreDetails();
-    const handleMoreDetailsChange = () => validateMoreDetails();
-
-    const handleLevelChange = (_value: number) => {
-        if (!modeSwitch || !levelScale) return;
-        const active = modeSwitch.getActive();
-        const switchState = modeSwitch.getState();
-        const value = levelScale.getValue();
-        if (active && !switchState && value > 50) {
-            setShowError(false);
-            modeSwitch.setState(true);
-        } else if (switchState && value <= 50) {
-            modeSwitch.setState(false);
-        }
+    const handleMoreDetailsChange = () => {
+        validateMoreDetails({ detailsEntry, moreDetailsEntry, setMoreDetailsError });
     };
 
-    const handleModeStateSet = (switchState: boolean, sw: Gtk.Switch) => {
-        if (!switchState || (levelScale && levelScale.getValue() > 50)) {
-            setShowError(false);
-            sw.setState(switchState);
-        } else {
-            setShowError(true);
+    const handleLevelChange = (value: number) => {
+        if (!modeSwitch || !levelScale) {
+            return;
         }
-        return true;
+
+        syncModeStateForLevel({ modeSwitch, value, setShowError });
+    };
+
+    const handleModeStateSet = (shouldEnable: boolean, sw: Gtk.Switch) => {
+        applyModeState({ shouldEnable, sw, levelScale, setShowError });
+
+        return Gdk.EVENT_STOP;
     };
 
     return { handleDetailsChange, handleMoreDetailsChange, handleLevelChange, handleModeStateSet };
 }
-
-type FieldLabelProps = {
-    row: number;
-    target: Gtk.Widget | null;
-    children: ReactNode;
-};
 
 const FieldLabel = ({ row, target, children }: FieldLabelProps) => (
     <GtkGridLayoutChild column={0} row={row}>
@@ -101,12 +180,6 @@ const FieldLabel = ({ row, target, children }: FieldLabelProps) => (
         </GtkLabel>
     </GtkGridLayoutChild>
 );
-
-type EntryRowProps = {
-    detailsEntry: Gtk.Entry | null;
-    setDetailsEntry: (e: Gtk.Entry | null) => void;
-    onChange: () => void;
-};
 
 const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowProps) => (
     <>
@@ -124,13 +197,6 @@ const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowPr
         </GtkGridLayoutChild>
     </>
 );
-
-type MoreDetailsRowProps = {
-    moreDetailsEntry: Gtk.Entry | null;
-    setMoreDetailsEntry: (e: Gtk.Entry | null) => void;
-    moreDetailsError: boolean;
-    onChange: () => void;
-};
 
 const MoreDetailsEntryRow = ({
     moreDetailsEntry,
@@ -159,12 +225,6 @@ const MoreDetailsEntryRow = ({
     </>
 );
 
-type LevelScaleProps = {
-    levelScale: Gtk.Scale | null;
-    setLevelScale: (s: Gtk.Scale | null) => void;
-    onValueChanged: (value: number) => void;
-};
-
 const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScaleProps) => (
     <>
         <FieldLabel row={2} target={levelScale}>
@@ -179,19 +239,32 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
                 valign={Gtk.Align.BASELINE}
                 drawValue={false}
                 adjustment={<GtkAdjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
-                onValueChanged={(scale) => onValueChanged(scale.getValue())}
+                onValueChanged={(scale) => {
+                    onValueChanged(scale.getValue());
+                }}
             />
         </GtkGridLayoutChild>
     </>
 );
 
-type ModeSwitchRowProps = {
-    state: ErrorStatesState;
-    onStateSet: (state: boolean, sw: Gtk.Switch) => boolean;
-};
+const ModeErrorLabel = ({ setErrorLabel }: ModeErrorLabelProps) => (
+    <GtkGridLayoutChild column={2} row={3}>
+        <GtkLabel
+            ref={(node) => {
+                setErrorLabel(node);
+            }}
+            halign={Gtk.Align.START}
+            valign={Gtk.Align.BASELINE}
+            cssClasses={["error"]}
+        >
+            Level too low
+        </GtkLabel>
+    </GtkGridLayoutChild>
+);
 
 const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
     const { modeSwitch, setModeSwitch, showError, errorLabel, setErrorLabel } = state;
+
     return (
         <>
             <FieldLabel row={3} target={modeSwitch}>
@@ -216,6 +289,7 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                                     trigger={Gtk.ShortcutTrigger.parseString("<Control>m")}
                                     action={Gtk.CallbackAction.new(() => {
                                         modeSwitch?.activate();
+
                                         return true;
                                     })}
                                 />
@@ -224,25 +298,12 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                     )}
                 />
             </GtkGridLayoutChild>
-            {showError && (
-                <GtkGridLayoutChild column={2} row={3}>
-                    <GtkLabel
-                        ref={(node) => {
-                            setErrorLabel(node);
-                        }}
-                        halign={Gtk.Align.START}
-                        valign={Gtk.Align.BASELINE}
-                        cssClasses={["error"]}
-                    >
-                        Level too low
-                    </GtkLabel>
-                </GtkGridLayoutChild>
-            )}
+            {showError && <ModeErrorLabel setErrorLabel={setErrorLabel} />}
         </>
     );
 };
 
-const ErrorstatesDemo = ({ onClose }: DemoProps) => {
+function ErrorstatesDemo({ onClose }: DemoProps) {
     const state = useErrorStatesState();
     const handlers = useErrorStatesHandlers(state);
 
@@ -278,15 +339,6 @@ const ErrorstatesDemo = ({ onClose }: DemoProps) => {
             </AdwToolbarView>
         </AdwDialog>
     );
-};
+}
 
-export const errorstatesDemo: Demo = {
-    id: "errorstates",
-    title: "Error States",
-    description:
-        "GtkLabel and GtkEntry can indicate errors if you set the .error style class on them.\n\nThis examples shows how this can be used in a dialog for input validation.\n\nIt also shows how pass callbacks and objects to GtkBuilder with GtkBuilderScope and gtk_builder_expose_object().",
-    keywords: [],
-    component: ErrorstatesDemo,
-    sourceCode,
-    dialogOnly: true,
-};
+export { errorstatesDemo };

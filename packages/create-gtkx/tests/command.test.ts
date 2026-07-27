@@ -1,25 +1,19 @@
 import { runCommand } from "citty";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("../src/scaffolder.js", () => ({
-    scaffold: vi.fn(async () => undefined),
-}));
-
-import { type CreateCommandArgs, runCreate, scaffoldCommand } from "../src/command.js";
+import { runCreate, scaffoldCommand } from "../src/command.js";
 import { scaffold } from "../src/scaffolder.js";
 
 const scaffoldMock = vi.mocked(scaffold);
 
-const expectRejection = async (overrides: CreateCommandArgs, message: RegExp): Promise<void> => {
-    await expect(runCreate(overrides)).rejects.toThrow(message);
-    expect(scaffoldMock).not.toHaveBeenCalled();
-};
+vi.mock("../src/scaffolder.js", () => ({
+    scaffold: vi.fn(),
+}));
 
-describe("runCreate", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+beforeEach(() => {
+    vi.clearAllMocks();
+});
 
+describe("runCreate — delegation", () => {
     it("normalizes the raw arguments and delegates to scaffold", async () => {
         await runCreate({
             name: "my-app",
@@ -52,7 +46,9 @@ describe("runCreate", () => {
             }),
         );
     });
+});
 
+describe("runCreate — flag mapping", () => {
     it("maps --no-typescript to typescript: false", async () => {
         await runCreate({ name: "my-app", typescript: false });
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: false }));
@@ -79,7 +75,8 @@ describe("runCreate", () => {
     });
 
     it("rejects an unknown package manager before scaffolding", async () => {
-        await expectRejection({ "package-manager": "bun" }, /Unknown package manager "bun"/);
+        await expect(runCreate({ "package-manager": "bun" })).rejects.toThrow(/Unknown package manager "bun"/);
+        expect(scaffoldMock).not.toHaveBeenCalled();
     });
 });
 

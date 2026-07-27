@@ -178,7 +178,7 @@ fn ref_decode_unsupported_inner_errors() {
         let ref_codec = RefCodec::new(Codec::BigInt(BigIntCodec::I64), false)
             .expect("BigInt is a valid Ref inner");
         let mut backing: u64 = 0;
-        let ptr = &mut backing as *mut u64 as *mut c_void;
+        let ptr = (&raw mut backing).cast::<c_void>();
         let stash = ffi::Stash::Storage(StashStorage::new(ptr, StashData::Unit));
         assert!(ref_codec.decode(&env, &stash).is_err());
     });

@@ -50,6 +50,12 @@ const expectSingleItemValueUpdate = async (): Promise<void> => {
     expect(screen.queryAllByText("Initial")).toHaveLength(0);
 };
 
+const createItems = (a: number, b: number, c: number) => [
+    { id: "1", value: { count: a } },
+    { id: "2", value: { count: b } },
+    { id: "3", value: { count: c } },
+];
+
 describe("render - ListView (1)", () => {
     describe("GtkListView", () => {
         it("creates ListView widget", async () => {
@@ -237,12 +243,6 @@ describe("render - ListView (6)", () => {
         });
     });
 });
-
-const createItems = (a: number, b: number, c: number) => [
-    { id: "1", value: { count: a } },
-    { id: "2", value: { count: b } },
-    { id: "3", value: { count: c } },
-];
 
 describe("render - ListView (7)", () => {
     describe("item reordering (4)", () => {

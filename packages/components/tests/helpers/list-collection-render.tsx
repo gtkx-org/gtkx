@@ -6,6 +6,25 @@ import { expect, vi } from "vitest";
 import { filterableIds } from "./filterable-items.js";
 import { type FixtureInput, type NamedValue, renderListView } from "./list-fixtures.js";
 
+type CollectionView = {
+    texts: () => string[];
+    rerender: (items: FixtureInput<NamedValue>) => Promise<void>;
+};
+
+type RenderCollectionView = (items: FixtureInput<NamedValue>) => Promise<CollectionView>;
+type NamedRow = { id: string; value: NamedValue };
+type CounterRow = { id: string; value: { name: string; count: number } };
+
+const RAPID_REORDER_ORDERS: string[][] = [
+    ["A", "B", "C"],
+    ["C", "A", "B"],
+    ["B", "C", "A"],
+    ["A", "B", "C"],
+];
+
+const COUNTER_BASELINE_TEXTS: string[] = ["Counter A: 0", "Counter B: 0", "Counter C: 0"];
+const COUNTER_SINGLE_UPDATE_TEXTS: string[] = ["Counter A: 0", "Counter B: 5", "Counter C: 0"];
+
 const expectAllVisibleOnce = (...texts: string[]): void => {
     for (const text of texts) {
         expect(screen.queryAllByText(text)).toHaveLength(1);
@@ -34,32 +53,15 @@ const expectRenderItemFunctionUpdate = async (): Promise<void> => {
     expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
 };
 
-type CollectionView = {
-    texts: () => string[];
-    rerender: (items: FixtureInput<NamedValue>) => Promise<void>;
-};
-
-type RenderCollectionView = (items: FixtureInput<NamedValue>) => Promise<CollectionView>;
-type NamedRow = { id: string; value: NamedValue };
-
 const namedRows = (entries: [string, string][]): NamedRow[] =>
     entries.map(([id, name]) => ({ id, value: { name } }));
-
-type CounterRow = { id: string; value: { name: string; count: number } };
 
 const counterRows = (entries: [string, string, number][]): CounterRow[] =>
     entries.map(([id, name, count]) => ({ id, value: { name, count } }));
 
 const renderCounterCell = ({ item }: RenderItemArgs<{ name: string; count: number }>): ReactNode => (
-    <GtkLabel>{`${item.name}: ${item.count}`}</GtkLabel>
+    <GtkLabel>{`${item.name}: ${String(item.count)}`}</GtkLabel>
 );
-
-const RAPID_REORDER_ORDERS: string[][] = [
-    ["A", "B", "C"],
-    ["C", "A", "B"],
-    ["B", "C", "A"],
-    ["A", "B", "C"],
-];
 
 const counterBaselineRows = (): CounterRow[] =>
     counterRows([
@@ -74,9 +76,6 @@ const counterSingleUpdateRows = (): CounterRow[] =>
         ["2", "Counter B", 5],
         ["3", "Counter C", 0],
     ]);
-
-const COUNTER_BASELINE_TEXTS: string[] = ["Counter A: 0", "Counter B: 0", "Counter C: 0"];
-const COUNTER_SINGLE_UPDATE_TEXTS: string[] = ["Counter A: 0", "Counter B: 5", "Counter C: 0"];
 
 const expectInitialOrder = async (renderView: RenderCollectionView, order: string[]): Promise<void> => {
     const view = await renderView(order);

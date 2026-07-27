@@ -9,6 +9,10 @@ import {
     isShallowEqual,
 } from "../src/predicate/index.js";
 
+const failIfCompared = (): never => {
+    throw new Error("should not be called");
+};
+
 describe("isSameArray", () => {
     it("is true for equal-length, element-wise strictly-equal arrays", () => {
         expect(isSameArray([1, 2, 3], [1, 2, 3])).toBe(true);
@@ -21,10 +25,6 @@ describe("isSameArray", () => {
     });
 });
 
-const eq = (): boolean => {
-    throw new Error("should not be called");
-};
-
 describe("isSameArrayBy", () => {
     it("compares elements with the given comparator", () => {
         expect(isSameArrayBy([{ id: 1 }], [{ id: 1 }], (x, y) => x.id === y.id)).toBe(true);
@@ -32,7 +32,7 @@ describe("isSameArrayBy", () => {
     });
 
     it("short-circuits on length mismatch without calling the comparator", () => {
-        expect(isSameArrayBy([1], [1, 2], eq)).toBe(false);
+        expect(isSameArrayBy([1], [1, 2], failIfCompared)).toBe(false);
     });
 });
 

@@ -16,11 +16,6 @@ const PEER_PACKAGES: [string, string][] = [
 ];
 
 const workDir = mkdtempSync(join(tmpdir(), "gtkx-gtk-only-"));
-
-afterAll(() => {
-    rmSync(workDir, { recursive: true, force: true });
-});
-
 const projectModules = join(workDir, "node_modules");
 
 const isolateProject = (): void => {
@@ -77,6 +72,10 @@ const emittedFiles = (root: string): string[] => {
 
     return collected;
 };
+
+afterAll(() => {
+    rmSync(workDir, { recursive: true, force: true });
+});
 
 describe("a project that declares Gtk-4.0 without Adw-1", () => {
     const { gi, jsx } = storeOptions();

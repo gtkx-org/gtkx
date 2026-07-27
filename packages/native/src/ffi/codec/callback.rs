@@ -68,7 +68,7 @@ impl Encoder for CallbackCodec {
 
         match self.scope {
             CallbackScope::Call => {
-                let state_ptr = &*state as *const ClosureState as *mut c_void;
+                let state_ptr = (&raw const *state).cast::<c_void>().cast_mut();
                 Ok(ffi::Stash::Callback(ffi::CallbackValue::new(
                     fn_ptr,
                     state_ptr,

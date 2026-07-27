@@ -64,7 +64,7 @@ const runStylis = (sheet: StyleSheet, input: string): void => {
     );
 };
 
-const markNewStyle = (state: CssState, serialized: SerializedStyles): boolean => {
+const didMarkNewStyle = (state: CssState, serialized: SerializedStyles): boolean => {
     if (state.inserted.has(serialized.name)) {
         return false;
     }
@@ -75,7 +75,7 @@ const markNewStyle = (state: CssState, serialized: SerializedStyles): boolean =>
 };
 
 const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
-    if (!markNewStyle(state, serialized)) {
+    if (!didMarkNewStyle(state, serialized)) {
         return;
     }
 
@@ -85,7 +85,7 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
 };
 
 const insertWithoutScoping = (state: CssState, serialized: SerializedStyles): void => {
-    if (!markNewStyle(state, serialized)) {
+    if (!didMarkNewStyle(state, serialized)) {
         return;
     }
 
@@ -116,7 +116,9 @@ const createCss = (): Css => {
     return {
         css: (...args) => cssClassName(state, args),
         cx: (...classNames) => cxClassNames(state, classNames),
-        injectGlobal: (...args) => insertWithoutScoping(state, serializeStyles(args, state.registered)),
+        injectGlobal: (...args) => {
+            insertWithoutScoping(state, serializeStyles(args, state.registered));
+        },
     };
 };
 

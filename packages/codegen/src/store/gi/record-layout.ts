@@ -47,8 +47,15 @@ const bitMask = (width: number): number => {
     return (1 << width) - 1;
 };
 
-const mergeBitfield = (readExpr: string, valueExpr: string, mask: number, shift: number): string =>
-    `((${readExpr} & ~(${mask} << ${shift})) | ((Number(${valueExpr}) & ${mask}) << ${shift})) >>> 0`;
+const mergeBitfield = (readExpr: string, valueExpr: string, mask: number, shift: number): string => {
+    const maskExpr = String(mask);
+    const shiftExpr = String(shift);
+
+    return (
+        `((${readExpr} & ~(${maskExpr} << ${shiftExpr})) | ` +
+        `((Number(${valueExpr}) & ${maskExpr}) << ${shiftExpr})) >>> 0`
+    );
+};
 
 const fieldLayoutInput = (context: ModuleContext, field: GirField, visited: Set<string>): FieldLayoutInput => {
     if (field.type === undefined) {

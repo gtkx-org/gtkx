@@ -8,6 +8,11 @@ import { getBufferText, getTextBuffer } from "../helpers/buffer-text.js";
 import { renderChildren } from "../helpers/render-children.js";
 import { expectNoBufferChangedOnReconcile } from "../helpers/text-buffer-view-render.js";
 
+type RenderedTextBuffer<P> = {
+    buffer: Gtk.TextBuffer;
+    rerender: (props: P) => Promise<void>;
+};
+
 const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number): boolean => {
     const tagTable = buffer.getTagTable();
     const tag = tagTable.lookup(tagName);
@@ -19,11 +24,6 @@ const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number)
     const iter = buffer.getIterAtOffset(offset);
 
     return iter.hasTag(tag);
-};
-
-type RenderedTextBuffer<P> = {
-    buffer: Gtk.TextBuffer;
-    rerender: (props: P) => Promise<void>;
 };
 
 const renderTextBuffer = async <P,>(
@@ -91,16 +91,58 @@ const buildTaggedTextView = (ref: RefObject<Gtk.TextView | null>) => (items: str
 
 const buildToggleContent =
     (name: string, tagText: string) =>
-        (showTag: boolean): ReactNode => (
+        (hasTag: boolean): ReactNode => (
             <>
                 Start
-                {showTag && (
+                {hasTag && (
                     <GtkTextTag name={name} foreground="green">
                         {tagText}
                     </GtkTextTag>
                 )}
                 End
             </>
+        );
+
+const buildAnchorView = (hasAnchor: boolean) => (
+    <GtkTextView
+        buffer={(
+            <GtkTextBuffer>
+                Start
+                {hasAnchor && (
+                    <GtkTextChildAnchor>
+                        <GtkButton label="Embedded" />
+                    </GtkTextChildAnchor>
+                )}
+                End
+            </GtkTextBuffer>
+        )}
+    />
+);
+
+const buildMarkedView = (viewRef: RefObject<Gtk.TextView | null>, markRef: RefObject<Gtk.TextMark | null>) => (
+    <GtkTextView
+        ref={viewRef}
+        buffer={(
+            <GtkTextBuffer>
+                AB
+                <GtkTextMark ref={markRef} />
+                CD
+            </GtkTextBuffer>
+        )}
+    />
+);
+
+const buildReorderableMarkView =
+    (viewRef: RefObject<Gtk.TextView | null>, markRef: RefObject<Gtk.TextMark | null>) =>
+        (order: string[]) => (
+            <GtkTextView
+                ref={viewRef}
+                buffer={(
+                    <GtkTextBuffer>
+                        {order.map((item) => buildMarkOrTag(item, markRef))}
+                    </GtkTextBuffer>
+                )}
+            />
         );
 
 describe("render - TextView (1)", () => {
@@ -305,10 +347,10 @@ describe("render - TextView (6)", () => {
 describe("render - TextView (7)", () => {
     describe("dynamic updates (2)", () => {
         it("renders conditional text segments", async () => {
-            await renderTextBuffer(true, (showMiddle: boolean) => (
+            await renderTextBuffer(true, (hasMiddle: boolean) => (
                 <>
                     Start
-                    {showMiddle && " Middle"}
+                    {hasMiddle && " Middle"}
                     {" "}
                     End
                 </>
@@ -461,22 +503,6 @@ describe("render - TextView (12)", () => {
     });
 });
 
-const buildView = (showAnchor: boolean) => (
-    <GtkTextView
-        buffer={(
-            <GtkTextBuffer>
-                Start
-                {showAnchor && (
-                    <GtkTextChildAnchor>
-                        <GtkButton label="Embedded" />
-                    </GtkTextChildAnchor>
-                )}
-                End
-            </GtkTextBuffer>
-        )}
-    />
-);
-
 describe("render - TextView (13)", () => {
     describe("content model", () => {
         it("throws when a buffer mixes a text prop with content children", async () => {
@@ -488,20 +514,7 @@ describe("render - TextView (13)", () => {
         it("places a GtkTextMark at its position in the content", async () => {
             const markRef = createRef<Gtk.TextMark>();
             const viewRef = createRef<Gtk.TextView>();
-
-            await render(
-                <GtkTextView
-                    ref={viewRef}
-                    buffer={(
-                        <GtkTextBuffer>
-                            AB
-                            <GtkTextMark ref={markRef} />
-                            CD
-                        </GtkTextBuffer>
-                    )}
-                />,
-            );
-
+            await render(buildMarkedView(viewRef, markRef));
             const buffer = getTextBuffer(viewRef);
             expect(getBufferText(buffer)).toBe("ABCD");
             const mark = requireMark(markRef);
@@ -512,18 +525,7 @@ describe("render - TextView (13)", () => {
         it("keeps a GtkTextMark in place when keyed siblings reorder", async () => {
             const markRef = createRef<Gtk.TextMark>();
             const viewRef = createRef<Gtk.TextView>();
-
-            const buildView = (order: string[]) => (
-                <GtkTextView
-                    ref={viewRef}
-                    buffer={(
-                        <GtkTextBuffer>
-                            {order.map((item) => buildMarkOrTag(item, markRef))}
-                        </GtkTextBuffer>
-                    )}
-                />
-            );
-
+            const buildView = buildReorderableMarkView(viewRef, markRef);
             const { rerender } = await render(buildView(["A", "M", "B"]));
             const buffer = getTextBuffer(viewRef);
             expect(getBufferText(buffer)).toBe("AAABBB");
@@ -534,9 +536,9 @@ describe("render - TextView (13)", () => {
         });
 
         it("removes the embedded widget when its anchor unmounts", async () => {
-            const { rerender } = await render(buildView(true));
+            const { rerender } = await render(buildAnchorView(true));
             expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON)).toBeDefined();
-            await rerender(buildView(false));
+            await rerender(buildAnchorView(false));
             expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON)).toBeNull();
             expect(screen.getByDisplayValue("StartEnd")).toBeDefined();
         });

@@ -3,7 +3,7 @@ import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { type GirParameter, isInoutParameter } from "../../gir/parameter.js";
 
-const passesHandleInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
+const isHandlePassedInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.direction !== "out" && parameter.direction !== "inout") {
         return false;
     }
@@ -56,10 +56,16 @@ const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean => {
         case "alias": {
             return type.value.target !== undefined && isHandlePassing(context, type.value.target);
         }
-        default: {
+        case "callback":
+        case "carray":
+        case "enum":
+        case "hashtable":
+        case "list":
+        case "primitive":
+        case "varargs": {
             return false;
         }
     }
 };
 
-export { passesHandleInPlace, isCollectibleCallerOut, isRecordCallerOut, isRecordInout, isHandlePassing };
+export { isHandlePassedInPlace, isCollectibleCallerOut, isRecordCallerOut, isRecordInout, isHandlePassing };

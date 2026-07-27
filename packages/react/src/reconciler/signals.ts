@@ -3,26 +3,39 @@ import { camelCase } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
+type SuppressionCounter = {
+    beginSuppression: () => void;
+    endSuppression: () => void;
+    isSuppressed: () => boolean;
+};
+
 const NOTIFY_DETAIL_PREFIX = "notify::";
-let suppressionDepth = 0;
+const suppressionCounter: SuppressionCounter = createSuppressionCounter();
+const beginSuppression: () => void = suppressionCounter.beginSuppression;
+const endSuppression: () => void = suppressionCounter.endSuppression;
+const isSuppressed: () => boolean = suppressionCounter.isSuppressed;
+
+function createSuppressionCounter(): SuppressionCounter {
+    let depth = 0;
+
+    return {
+        beginSuppression: () => {
+            depth += 1;
+        },
+        endSuppression: () => {
+            queueMicrotask(() => {
+                depth -= 1;
+            });
+        },
+        isSuppressed: () => depth > 0,
+    };
+}
 
 const getNotifyProperty = (signal: string): string | null =>
     signal.startsWith(NOTIFY_DETAIL_PREFIX) ? camelCase(signal.slice(NOTIFY_DETAIL_PREFIX.length)) : null;
 
 const isBlockableSignal = (info: TypeInfo, signal: string): boolean =>
     info.userEventSignals.has(getSignalBaseName(signal));
-
-const beginSuppression = (): void => {
-    suppressionDepth += 1;
-};
-
-const endSuppression = (): void => {
-    queueMicrotask(() => {
-        suppressionDepth -= 1;
-    });
-};
-
-const isSuppressed = (): boolean => suppressionDepth > 0;
 
 const invokeHandler = (
     target: SignalTarget,
@@ -56,9 +69,9 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
         target.object.off(existing.signal, existing.wrapped);
     }
 
-    const blockable = isBlockableSignal(typeInfoFor(target.typeName), signal);
+    const isBlockable = isBlockableSignal(typeInfoFor(target.typeName), signal);
     const notifyProperty = getNotifyProperty(signal);
-    const record: HandlerRecord = { signal, handler, wrapped: () => undefined, blockable };
+    const record: HandlerRecord = { signal, handler, wrapped: (): undefined => undefined, blockable: isBlockable };
     record.wrapped = wrapHandler(target, record, notifyProperty);
     target.object.on(signal, record.wrapped);
     target.handlers.set(prop, record);

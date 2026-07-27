@@ -1,4 +1,3 @@
-import EventEmitter from "node:events";
 import {
     appNotFoundError,
     connectionWriteFailedError,
@@ -8,12 +7,16 @@ import {
     type ProtocolError,
 } from "./protocol/errors.js";
 import { type AppInfo, RegisterParamsSchema, type Request, type Response } from "./protocol/schemas.js";
-import { type AppConnections, ConnectionClosedError, type ProtocolConnection } from "./transport.js";
+import {
+    type AppConnections,
+    ConnectionClosedError,
+    type ConnectionEvent,
+    type ConnectionRequestEvent,
+    type ProtocolConnection,
+} from "./transport.js";
 
-type AppRouterEventMap = {
-    appRegistered: [AppInfo];
-    appUnregistered: [string];
-};
+type AppRegisteredEvent = CustomEvent<AppInfo>;
+type AppUnregisteredEvent = CustomEvent<string>;
 
 type RegisteredApp = {
     info: AppInfo;
@@ -22,7 +25,15 @@ type RegisteredApp = {
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
-class AppRouter extends EventEmitter<AppRouterEventMap> {
+function appRegisteredEvent(info: AppInfo): AppRegisteredEvent {
+    return new CustomEvent("appRegistered", { detail: info });
+}
+
+function appUnregisteredEvent(applicationId: string): AppUnregisteredEvent {
+    return new CustomEvent("appUnregistered", { detail: applicationId });
+}
+
+class AppRouter extends EventTarget {
     private static defaultWaitTimeout = 10_000;
 
     private apps: Map<string, RegisteredApp> = new Map();
@@ -38,12 +49,13 @@ class AppRouter extends EventEmitter<AppRouterEventMap> {
         this.connections = connections;
         this.requestTimeout = options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
 
-        this.connections.on("request", (connection, request) => {
+        this.connections.addEventListener("request", (event) => {
+            const { connection, request } = (event as ConnectionRequestEvent).detail;
             this.handleRequest(connection, request);
         });
 
-        this.connections.on("disconnection", (connection) => {
-            this.removeApp(connection);
+        this.connections.addEventListener("disconnection", (event) => {
+            this.removeApp((event as ConnectionEvent).detail);
         });
     }
 
@@ -91,7 +103,7 @@ class AppRouter extends EventEmitter<AppRouterEventMap> {
         this.apps.set(params.applicationId, { info: appInfo, connection });
         this.connectionToApp.set(connection.id, params.applicationId);
         this.acknowledge(connection, request);
-        this.emit("appRegistered", appInfo);
+        this.dispatchEvent(appRegisteredEvent(appInfo));
     }
 
     private handleUnregister(connection: ProtocolConnection, request: Request): void {
@@ -128,7 +140,7 @@ class AppRouter extends EventEmitter<AppRouterEventMap> {
         }
 
         this.apps.delete(applicationId);
-        this.emit("appUnregistered", applicationId);
+        this.dispatchEvent(appUnregisteredEvent(applicationId));
     }
 
     getApps(): AppInfo[] {
@@ -158,23 +170,23 @@ class AppRouter extends EventEmitter<AppRouterEventMap> {
 
         return new Promise((resolve, reject) => {
             const timeoutId = setTimeout(() => {
-                this.off("appRegistered", onRegister);
+                this.removeEventListener("appRegistered", onRegister);
 
                 reject(
                     new Error(
-                        `Timeout waiting for app registration after ${timeout}ms. ` +
+                        `Timeout waiting for app registration after ${String(timeout)}ms. ` +
                         "Make sure your GTKX app is running with 'gtkx dev'.",
                     ),
                 );
             }, timeout);
 
-            const onRegister = (appInfo: AppInfo) => {
+            const onRegister = (event: Event): void => {
                 clearTimeout(timeoutId);
-                this.off("appRegistered", onRegister);
-                resolve(appInfo);
+                this.removeEventListener("appRegistered", onRegister);
+                resolve((event as AppRegisteredEvent).detail);
             };
 
-            this.on("appRegistered", onRegister);
+            this.addEventListener("appRegistered", onRegister);
         });
     }
 
@@ -194,4 +206,4 @@ class AppRouter extends EventEmitter<AppRouterEventMap> {
     }
 }
 
-export { AppRouter };
+export { AppRouter, appRegisteredEvent, appUnregisteredEvent, type AppRegisteredEvent, type AppUnregisteredEvent };

@@ -4,19 +4,15 @@ import { waitFor } from "@gtkx/testing";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { configurePrintOperation } from "../../../src/demos/dialogs/print-operation.js";
 import { printingDemo } from "../../../src/demos/dialogs/printing.js";
 import { renderDemo } from "../../test-utils.js";
 
-let tempDir: string;
-
-beforeAll(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "gtkx-print-"));
-});
+const TEMP_DIR = mkdtempSync(join(tmpdir(), "gtkx-print-"));
 
 afterAll(() => {
-    rmSync(tempDir, { recursive: true, force: true });
+    rmSync(TEMP_DIR, { recursive: true, force: true });
 });
 
 describe("printingDemo metadata", () => {
@@ -58,22 +54,30 @@ describe("configurePrintOperation", () => {
         const printOp = configurePrintOperation("one\ntwo\nthree");
         const done = vi.fn();
         printOp.on("done", done);
-        printOp.setExportFilename(join(tempDir, "single-count.pdf"));
+        printOp.setExportFilename(join(TEMP_DIR, "single-count.pdf"));
         printOp.run(Gtk.PrintOperationAction.EXPORT, null);
-        await waitFor(() => expect(done).toHaveBeenCalled());
+
+        await waitFor(() => {
+            expect(done).toHaveBeenCalled();
+        });
+
         expect(printOp.nPages).toBe(1);
         expect(printOp.getNPagesToPrint()).toBe(1);
     });
 
     it("renders exactly one page for a short source via draw-page", async () => {
         const printOp = configurePrintOperation("one\ntwo\nthree");
-        const drawPage = vi.fn();
+        const drawPage = vi.fn<(context: Gtk.PrintContext, pageNr: number) => void>();
         const done = vi.fn();
         printOp.on("draw-page", drawPage);
         printOp.on("done", done);
-        printOp.setExportFilename(join(tempDir, "single-draw.pdf"));
+        printOp.setExportFilename(join(TEMP_DIR, "single-draw.pdf"));
         printOp.run(Gtk.PrintOperationAction.EXPORT, null);
-        await waitFor(() => expect(done).toHaveBeenCalled());
+
+        await waitFor(() => {
+            expect(done).toHaveBeenCalled();
+        });
+
         expect(drawPage).toHaveBeenCalledTimes(1);
         expect(drawPage.mock.calls[0]?.[1]).toBe(0);
     });
@@ -86,34 +90,42 @@ describe("configurePrintOperation", () => {
 
 describe("configurePrintOperation export", () => {
     it("splits an 80-line source across multiple pages, drawing each once with an incrementing pageNr", async () => {
-        const source = Array.from({ length: 80 }, (_, i) => `line ${i + 1}`).join("\n");
+        const source = Array.from({ length: 80 }, (_, i) => `line ${String(i + 1)}`).join("\n");
         const printOp = configurePrintOperation(source);
         const beginPrint = vi.fn();
-        const drawPage = vi.fn();
+        const drawPage = vi.fn<(context: Gtk.PrintContext, pageNr: number) => void>();
         const done = vi.fn();
         printOp.on("begin-print", beginPrint);
         printOp.on("draw-page", drawPage);
         printOp.on("done", done);
-        printOp.setExportFilename(join(tempDir, "out.pdf"));
+        printOp.setExportFilename(join(TEMP_DIR, "out.pdf"));
         printOp.run(Gtk.PrintOperationAction.EXPORT, null);
-        await waitFor(() => expect(done).toHaveBeenCalled());
+
+        await waitFor(() => {
+            expect(done).toHaveBeenCalled();
+        });
+
         expect(beginPrint).toHaveBeenCalledTimes(1);
         expect(printOp.nPages).toBeGreaterThan(1);
         const pageNrs = drawPage.mock.calls.map((call) => call[1]);
-        expect(pageNrs.length).toBe(printOp.nPages);
+        expect(pageNrs).toHaveLength(printOp.nPages);
         expect(pageNrs).toEqual(Array.from({ length: pageNrs.length }, (_, i) => i));
     });
 
     it("renders a very long single-page body as one page via draw-page", async () => {
         const longLine = "x".repeat(20_000);
         const printOp = configurePrintOperation(`${longLine}\n${longLine}`);
-        const drawPage = vi.fn();
+        const drawPage = vi.fn<(context: Gtk.PrintContext, pageNr: number) => void>();
         const done = vi.fn();
         printOp.on("draw-page", drawPage);
         printOp.on("done", done);
-        printOp.setExportFilename(join(tempDir, "out-wide.pdf"));
+        printOp.setExportFilename(join(TEMP_DIR, "out-wide.pdf"));
         printOp.run(Gtk.PrintOperationAction.EXPORT, null);
-        await waitFor(() => expect(done).toHaveBeenCalled());
+
+        await waitFor(() => {
+            expect(done).toHaveBeenCalled();
+        });
+
         expect(drawPage).toHaveBeenCalledTimes(1);
         expect(printOp.nPages).toBe(1);
     });
@@ -121,19 +133,25 @@ describe("configurePrintOperation export", () => {
 
 describe("PrintingDemo component", () => {
     it("runs the operation in PRINT_DIALOG mode and invokes onClose when the done signal fires", async () => {
-        const printSpy = vi.spyOn(Gtk.PrintOperation.prototype, "run").mockImplementation(function mockedRun(
-            this: Gtk.PrintOperation,
-        ) {
-            this.emit("done", Gtk.PrintOperationResult.APPLY);
-            return Gtk.PrintOperationResult.APPLY;
-        });
+        const printSpy = vi
+            .spyOn(Gtk.PrintOperation.prototype, "run")
+            .mockReturnValue(Gtk.PrintOperationResult.APPLY);
+
         const onClose = vi.fn();
+
         try {
             await renderDemo(printingDemo, { onClose });
-            await waitFor(() =>
-                expect(printSpy).toHaveBeenCalledWith(Gtk.PrintOperationAction.PRINT_DIALOG, expect.anything()),
-            );
-            await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+            await waitFor(() => {
+                expect(printSpy).toHaveBeenCalledWith(Gtk.PrintOperationAction.PRINT_DIALOG, expect.anything());
+            });
+
+            const printOp = printSpy.mock.contexts[0] as Gtk.PrintOperation;
+            printOp.emit("done", Gtk.PrintOperationResult.APPLY);
+
+            await waitFor(() => {
+                expect(onClose).toHaveBeenCalledTimes(1);
+            });
         } finally {
             printSpy.mockRestore();
         }
@@ -143,18 +161,23 @@ describe("PrintingDemo component", () => {
         const printSpy = vi.spyOn(Gtk.PrintOperation.prototype, "run").mockImplementation(() => {
             throw new Error("print backend unavailable");
         });
-        let presentedHeading: string | undefined;
-        const presentSpy = vi.spyOn(Adw.AlertDialog.prototype, "present").mockImplementation(function mockedPresent(
-            this: Adw.AlertDialog,
-        ) {
-            presentedHeading = this.getHeading() ?? undefined;
-        });
+
+        const presentSpy = vi.spyOn(Adw.AlertDialog.prototype, "present").mockImplementation((): void => undefined);
         const onClose = vi.fn();
+
         try {
             await renderDemo(printingDemo, { onClose });
-            await waitFor(() => expect(presentSpy).toHaveBeenCalled());
-            expect(presentedHeading).toContain("print backend unavailable");
-            await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+            await waitFor(() => {
+                expect(presentSpy).toHaveBeenCalled();
+            });
+
+            const dialog = presentSpy.mock.contexts[0] as Adw.AlertDialog;
+            expect(dialog.getHeading()).toContain("print backend unavailable");
+
+            await waitFor(() => {
+                expect(onClose).toHaveBeenCalled();
+            });
         } finally {
             presentSpy.mockRestore();
             printSpy.mockRestore();

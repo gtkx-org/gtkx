@@ -3,29 +3,50 @@ import type { ArrayDescriptor, FundamentalDescriptor, HashTableDescriptor, Struc
 import { getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
 import { resolveDescriptorType } from "./type.js";
 
-const mapCollection = (
+type MarshalledKind = "object" | "struct" | "boxed" | "fundamental" | "array" | "hashtable";
+type MarshalledDescriptor = Extract<Descriptor, { kind: MarshalledKind }>;
+
+const MARSHALLED_KINDS: Set<Descriptor["kind"]> = new Set<MarshalledKind>([
+    "object",
+    "struct",
+    "boxed",
+    "fundamental",
+    "array",
+    "hashtable",
+]);
+
+function isMarshalledDescriptor(descriptor: Descriptor): descriptor is MarshalledDescriptor {
+    return MARSHALLED_KINDS.has(descriptor.kind);
+}
+
+function mapCollection(
     descriptor: ArrayDescriptor,
     value: unknown,
     convert: (itemDescriptor: Descriptor, item: unknown) => unknown,
-): unknown[] => (value as unknown[]).map((item) => convert(descriptor.itemDescriptor, item));
+): unknown[] {
+    return (value as unknown[]).map((item) => convert(descriptor.itemDescriptor, item));
+}
 
-const collectionFromNative = (descriptor: ArrayDescriptor, value: unknown): unknown =>
-    value === null ? null : mapCollection(descriptor, value, fromNative);
+function collectionFromNative(descriptor: ArrayDescriptor, value: unknown): unknown {
+    return value === null ? null : mapCollection(descriptor, value, fromNative);
+}
 
-const boxedFromNative = (descriptor: Descriptor, value: unknown): unknown =>
-    value == null
+function boxedFromNative(descriptor: Descriptor, value: unknown): unknown {
+    return value == null
         ? null
         : wrapHandle(value as ExternalObject<Handle>, getWrapperClass(resolveDescriptorType(descriptor)));
+}
 
-const fundamentalFromNative = (descriptor: FundamentalDescriptor, value: unknown): unknown =>
-    value == null
+function fundamentalFromNative(descriptor: FundamentalDescriptor, value: unknown): unknown {
+    return value == null
         ? null
         : wrapHandle(
                 value as ExternalObject<Handle>,
                 descriptor.wrapperClass ?? getWrapperClass(resolveDescriptorType(descriptor)),
             );
+}
 
-const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): unknown => {
+function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): unknown {
     if (value === null) {
         return null;
     }
@@ -38,7 +59,7 @@ const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): u
             fromNative(descriptor.valueDescriptor, val),
         ]),
     );
-};
+}
 
 /**
  * Converts a raw value returned from native code into its JavaScript form,
@@ -49,6 +70,10 @@ const hashTableFromNative = (descriptor: HashTableDescriptor, value: unknown): u
  * @param value The raw native value to convert.
  */
 function fromNative(descriptor: Descriptor, value: unknown): unknown {
+    if (!isMarshalledDescriptor(descriptor)) {
+        return value;
+    }
+
     switch (descriptor.kind) {
         case "object": {
             return wrapHandle(value as ExternalObject<Handle> | null);
@@ -68,16 +93,29 @@ function fromNative(descriptor: Descriptor, value: unknown): unknown {
         case "hashtable": {
             return hashTableFromNative(descriptor, value);
         }
-        default: {
-            return value;
-        }
     }
 }
 
-const collectionToNative = (descriptor: ArrayDescriptor, value: unknown): unknown =>
-    value == null ? null : mapCollection(descriptor, value, toNative);
+function collectionToNative(descriptor: ArrayDescriptor, value: unknown): unknown {
+    return value == null ? null : mapCollection(descriptor, value, toNative);
+}
+
+function hashTableToNative(descriptor: HashTableDescriptor, value: unknown): unknown {
+    if (value == null) {
+        return null;
+    }
+
+    return [...(value as Map<unknown, unknown>)].map(([key, val]): [unknown, unknown] => [
+        toNative(descriptor.keyDescriptor, key),
+        toNative(descriptor.valueDescriptor, val),
+    ]);
+}
 
 function toNative(descriptor: Descriptor, value: unknown): unknown {
+    if (!isMarshalledDescriptor(descriptor)) {
+        return value;
+    }
+
     switch (descriptor.kind) {
         case "object":
         case "struct":
@@ -89,17 +127,7 @@ function toNative(descriptor: Descriptor, value: unknown): unknown {
             return collectionToNative(descriptor, value);
         }
         case "hashtable": {
-            if (value == null) {
-                return null;
-            }
-
-            return [...(value as Map<unknown, unknown>)].map(([key, val]): [unknown, unknown] => [
-                toNative(descriptor.keyDescriptor, key),
-                toNative(descriptor.valueDescriptor, val),
-            ]);
-        }
-        default: {
-            return value;
+            return hashTableToNative(descriptor, value);
         }
     }
 }

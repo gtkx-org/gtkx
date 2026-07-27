@@ -197,19 +197,19 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
     })),
 ];
 
-const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, qualified: boolean): SymbolEntry[] => {
+const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, isQualified: boolean): SymbolEntry[] => {
     if (candidates.length <= 1) {
         return candidates;
     }
 
     const exact = candidates.filter(
-        (entry) => (qualified ? `${entry.namespace.name}.${entry.name}` : entry.name) === trimmed,
+        (entry) => (isQualified ? `${entry.namespace.name}.${entry.name}` : entry.name) === trimmed,
     );
 
     return exact.length > 0 ? exact : candidates;
 };
 
-const matchesSearchFilters = (
+const isSearchFilterMatch = (
     entry: SymbolEntry,
     namespaceFilter: string | undefined,
     kinds: ApiSymbolKind[] | undefined,
@@ -231,7 +231,7 @@ const getScoredEntry = (
     namespaceFilter: string | undefined,
     kinds: ApiSymbolKind[] | undefined,
 ): ScoredEntry | undefined => {
-    if (!matchesSearchFilters(entry, namespaceFilter, kinds)) {
+    if (!isSearchFilterMatch(entry, namespaceFilter, kinds)) {
         return undefined;
     }
 
@@ -283,7 +283,7 @@ class ApiReference {
     constructor(options: ApiReferenceOptions) {
         this.libraries = options.libraries;
         this.library = Library.load(options.libraries, options.girPath);
-        this.elementContext = createElementPageContext(this.library, () => undefined);
+        this.elementContext = createElementPageContext(this.library, (): string | undefined => undefined);
         this.buildIndex();
     }
 
@@ -386,15 +386,15 @@ class ApiReference {
     }
 
     private lookupCandidates(trimmed: string, kind: ApiSymbolKind | undefined): SymbolEntry[] {
-        const qualified = trimmed.includes(".");
-        const map = qualified ? this.byQualified : this.byName;
+        const isQualified = trimmed.includes(".");
+        const map = isQualified ? this.byQualified : this.byName;
         let candidates = map.get(trimmed.toLowerCase()) ?? [];
 
         if (kind !== undefined) {
             candidates = candidates.filter((entry) => entry.kind === kind);
         }
 
-        return narrowToExactMatches(candidates, trimmed, qualified);
+        return narrowToExactMatches(candidates, trimmed, isQualified);
     }
 
     private scoreEntries(
@@ -480,7 +480,9 @@ class ApiReference {
 
     overview(): string {
         const rows = this.namespaces().map(
-            (summary) => `| ${summary.name} | \`${summary.importPath}\` | ${summary.symbols} | ${summary.elements} |`,
+            (summary) =>
+                `| ${summary.name} | \`${summary.importPath}\` | ${String(summary.symbols)} | ` +
+                `${String(summary.elements)} |`,
         );
 
         const librariesList = this.libraries.map((library) => `\`${library}\``).join(", ");
@@ -488,9 +490,13 @@ class ApiReference {
         return [
             "# API Reference",
             "",
-            `Generated bindings for ${librariesList} and the namespaces they pull in. Classes, interfaces, records, enums, callbacks, aliases, functions, and constants are imported from \`@gtkx/gi/<namespace>\`; JSX elements are imported from \`@gtkx/jsx/<namespace>\`.`,
+            `Generated bindings for ${librariesList} and the namespaces they pull in. Classes, interfaces, ` +
+            "records, enums, callbacks, aliases, functions, and constants are imported from " +
+            "`@gtkx/gi/<namespace>`; JSX elements are imported from `@gtkx/jsx/<namespace>`.",
             "",
-            "Every symbol has a reference page addressed by its qualified name (for example `Gtk.Button`, `Gtk.Orientation`, `GLib.idleAdd`) and every JSX element by its element name (for example `GtkButton`).",
+            "Every symbol has a reference page addressed by its qualified name (for example `Gtk.Button`, " +
+            "`Gtk.Orientation`, `GLib.idleAdd`) and every JSX element by its element name " +
+            "(for example `GtkButton`).",
             "",
             "| Namespace | Import | Symbols | JSX elements |",
             "| --- | --- | --- | --- |",
@@ -524,7 +530,7 @@ class ApiReference {
 
             lines.push(
                 "",
-                `## ${KIND_SECTION_TITLES[kind]} (${names.length})`,
+                `## ${KIND_SECTION_TITLES[kind]} (${String(names.length)})`,
                 "",
                 sortStrings(names)
                     .map((symbolName) => `\`${symbolName}\``)

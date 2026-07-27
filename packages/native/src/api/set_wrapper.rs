@@ -29,10 +29,10 @@ unsafe extern "C" fn on_wrapper_finalize(
     );
 }
 
-/// Attaches the JavaScript `wrapper` object to the handle's GObject and registers a finalizer
+/// Attaches the JavaScript `wrapper` object to the handle's `GObject` and registers a finalizer
 /// that releases it when the wrapper is garbage collected.
 #[napi(catch_unwind)]
-pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> napi::Result<()> {
+pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> Result<()> {
     let gobject_ptr = handle.as_ptr() as usize;
 
     let data = Box::into_raw(Box::new(FinalizeData {
@@ -50,20 +50,20 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
             data.cast::<c_void>(),
             Some(on_wrapper_finalize),
             std::ptr::null_mut(),
-            &mut raw_ref,
+            &raw mut raw_ref,
         )
     };
     if status != sys::Status::napi_ok {
         drop(unsafe { Box::from_raw(data) });
-        return Err(napi::Error::new(
-            napi::Status::GenericFailure,
+        return Err(Error::new(
+            Status::GenericFailure,
             "failed to add wrapper finalizer",
         ));
     }
     unsafe { (*data).napi_ref = raw_ref };
 
     let mut ref_count: u32 = 0;
-    unsafe { sys::napi_reference_ref(env.raw(), raw_ref, &mut ref_count) };
+    unsafe { sys::napi_reference_ref(env.raw(), raw_ref, &raw mut ref_count) };
     let owned = handle.take_owned();
     let (wrapper_handle, generation) = unsafe { wrapper::install(gobject_ptr as *mut _, raw_ref) };
     drop(owned);

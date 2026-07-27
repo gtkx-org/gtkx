@@ -12,7 +12,7 @@ import {
     giNamespaceAlias,
     type GlibNamedClass,
     type HasContainerProps,
-    interfaceHasPropsBody,
+    hasInterfacePropsBody,
     newlyImplementedInterfaces,
     type ResolvedQualifiedInterface,
 } from "./intrinsic-elements.js";
@@ -109,7 +109,7 @@ const generateJsxSection = (
     addReactBuiltin(imports, "ReactNode");
     addReactBuiltin(imports, "Ref");
     const interfaceResult = renderInterfacePropBlocks(library, targetNamespace.name, options);
-    let needsReactElement = interfaceResult.needsReactElement;
+    let isNeedsReactElement = interfaceResult.needsReactElement;
     const propBlocks: string[] = [...interfaceResult.blocks];
 
     const blockContext: RenderPropBlockContext = {
@@ -124,13 +124,13 @@ const generateJsxSection = (
         const { block, objectPropNames } = renderPropBlock(library, entry, blockContext);
 
         if (objectPropNames.length > 0) {
-            needsReactElement = true;
+            isNeedsReactElement = true;
         }
 
         propBlocks.push(block);
     }
 
-    if (needsReactElement) {
+    if (isNeedsReactElement) {
         addReactBuiltin(imports, "ReactElement");
     }
 
@@ -156,7 +156,7 @@ const renderInterfacePropBlocks = (
     const { imports, intrinsicElements } = options;
     const context: InterfaceBlockContext = { library, targetNamespaceName, imports, hasContainerProps };
     const blocks: string[] = [];
-    let needsReactElement = false;
+    let isNeedsReactElement = false;
 
     for (const iface of collectInterfacePropsClasses(
         library,
@@ -164,20 +164,22 @@ const renderInterfacePropBlocks = (
         targetNamespaceName,
         hasContainerProps,
     )) {
-        if (getGlibName(iface.klass) === undefined) {
+        const glibName = getGlibName(iface.klass);
+
+        if (glibName === undefined) {
             continue;
         }
 
-        const { block, objectPropNames } = renderInterfacePropsBlock(iface, context);
+        const { block, objectPropNames } = renderInterfacePropsBlock(iface, glibName, context);
 
         if (objectPropNames.length > 0) {
-            needsReactElement = true;
+            isNeedsReactElement = true;
         }
 
         blocks.push(block);
     }
 
-    return { blocks, needsReactElement, hasContainerProps };
+    return { blocks, needsReactElement: isNeedsReactElement, hasContainerProps };
 };
 
 const registerCrossNsProps = (
@@ -222,7 +224,7 @@ const prerequisiteExtendRef = (
         return undefined;
     }
 
-    if (!interfaceHasPropsBody(resolved.value, hasContainerProps)) {
+    if (!hasInterfacePropsBody(resolved.value, hasContainerProps)) {
         return undefined;
     }
 
@@ -245,10 +247,10 @@ const interfacePrerequisiteExtends = (iface: ResolvedQualifiedInterface, context
 
 const renderInterfacePropsBlock = (
     iface: ResolvedQualifiedInterface,
+    glib: string,
     context: InterfaceBlockContext,
 ): { block: string; objectPropNames: string[] } => {
     const { library, imports } = context;
-    const glib = getGlibName(iface.klass);
 
     const {
         propLines,
@@ -266,7 +268,7 @@ const renderInterfacePropsBlock = (
 
     const ownerLines = dedupePropLines(propLines);
     const prerequisiteExtends = interfacePrerequisiteExtends(iface, context);
-    const declared = glib === undefined ? undefined : elementPropTypeFor(glib);
+    const declared = elementPropTypeFor(glib);
 
     if (declared !== undefined) {
         const alias = `${declared.export}Base`;
@@ -282,11 +284,8 @@ const renderInterfacePropsBlock = (
     const extendsClause = prerequisiteExtends.length === 0 ? "" : ` extends ${prerequisiteExtends.join(", ")}`;
     addGiNamespace(imports, iface.namespace.name, giNamespaceAlias(iface.namespace.name));
     const selfDefault = `${giNamespaceAlias(iface.namespace.name)}.${iface.klass.name}`;
-
-    const block = `${renderJsDoc(iface.klass.doc)}${renderBlock(
-        `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`,
-        ownerLines.join("\n"),
-    )}`;
+    const signature = `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`;
+    const block = `${renderJsDoc(iface.klass.doc)}${renderBlock(signature, ownerLines.join("\n"))}`;
 
     return { block, objectPropNames };
 };

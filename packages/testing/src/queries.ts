@@ -121,48 +121,90 @@ const builtinQueries: BuiltinQueries = {
     ...displayValueQueries,
 };
 
-/** Returns the single widget with a matching accessible role and options, or null when none match. Throws when more than one matches. */
+/**
+ * Returns the single widget with a matching accessible role and options, or null when none match.
+ * Throws when more than one matches.
+ */
 const queryByRole: BuiltinQueries["queryByRole"] = roleQueries.queryByRole;
 /** Returns every widget with a matching accessible role and options. Throws when none match. */
 const getAllByRole: BuiltinQueries["getAllByRole"] = roleQueries.getAllByRole;
-/** Returns the single widget with a matching accessible role and options. Throws when none or more than one matches. */
+/**
+ * Returns the single widget with a matching accessible role and options.
+ * Throws when none or more than one matches.
+ */
 const getByRole: BuiltinQueries["getByRole"] = roleQueries.getByRole;
-/** Waits for and returns every widget with a matching accessible role and options, retrying until at least one appears or the timeout elapses. */
+/**
+ * Waits for and returns every widget with a matching accessible role and options, retrying until at
+ * least one appears or the timeout elapses.
+ */
 const findAllByRole: BuiltinQueries["findAllByRole"] = roleQueries.findAllByRole;
-/** Waits for and returns the single widget with a matching accessible role and options, retrying until it appears or the timeout elapses. Rejects when none or more than one matches. */
+/**
+ * Waits for and returns the single widget with a matching accessible role and options, retrying
+ * until it appears or the timeout elapses. Rejects when none or more than one matches.
+ */
 const findByRole: BuiltinQueries["findByRole"] = roleQueries.findByRole;
-/** Returns the single widget with matching associated label text, or null when none match. Throws when more than one matches. */
+/**
+ * Returns the single widget with matching associated label text, or null when none match.
+ * Throws when more than one matches.
+ */
 const queryByLabelText: BuiltinQueries["queryByLabelText"] = labelTextQueries.queryByLabelText;
 /** Returns every widget with matching associated label text. Throws when none match. */
 const getAllByLabelText: BuiltinQueries["getAllByLabelText"] = labelTextQueries.getAllByLabelText;
 /** Returns the single widget with matching associated label text. Throws when none or more than one matches. */
 const getByLabelText: BuiltinQueries["getByLabelText"] = labelTextQueries.getByLabelText;
-/** Waits for and returns every widget with matching associated label text, retrying until at least one appears or the timeout elapses. */
+/**
+ * Waits for and returns every widget with matching associated label text, retrying until at least
+ * one appears or the timeout elapses.
+ */
 const findAllByLabelText: BuiltinQueries["findAllByLabelText"] = labelTextQueries.findAllByLabelText;
-/** Waits for and returns the single widget with matching associated label text, retrying until it appears or the timeout elapses. Rejects when none or more than one matches. */
+/**
+ * Waits for and returns the single widget with matching associated label text, retrying until it
+ * appears or the timeout elapses. Rejects when none or more than one matches.
+ */
 const findByLabelText: BuiltinQueries["findByLabelText"] = labelTextQueries.findByLabelText;
-/** Returns the single widget with matching rendered text content, or null when none match. Throws when more than one matches. */
+/**
+ * Returns the single widget with matching rendered text content, or null when none match.
+ * Throws when more than one matches.
+ */
 const queryByText: BuiltinQueries["queryByText"] = textQueries.queryByText;
 /** Returns every widget with matching rendered text content. Throws when none match. */
 const getAllByText: BuiltinQueries["getAllByText"] = textQueries.getAllByText;
 /** Returns the single widget with matching rendered text content. Throws when none or more than one matches. */
 const getByText: BuiltinQueries["getByText"] = textQueries.getByText;
-/** Waits for and returns every widget with matching rendered text content, retrying until at least one appears or the timeout elapses. */
+/**
+ * Waits for and returns every widget with matching rendered text content, retrying until at least
+ * one appears or the timeout elapses.
+ */
 const findAllByText: BuiltinQueries["findAllByText"] = textQueries.findAllByText;
-/** Waits for and returns the single widget with matching rendered text content, retrying until it appears or the timeout elapses. Rejects when none or more than one matches. */
+/**
+ * Waits for and returns the single widget with matching rendered text content, retrying until it
+ * appears or the timeout elapses. Rejects when none or more than one matches.
+ */
 const findByText: BuiltinQueries["findByText"] = textQueries.findByText;
-/** Returns the single widget with a matching widget name, or null when none match. Throws when more than one matches. */
+/**
+ * Returns the single widget with a matching widget name, or null when none match.
+ * Throws when more than one matches.
+ */
 const queryByName: BuiltinQueries["queryByName"] = nameQueries.queryByName;
 /** Returns every widget with a matching widget name. Throws when none match. */
 const getAllByName: BuiltinQueries["getAllByName"] = nameQueries.getAllByName;
 /** Returns the single widget with a matching widget name. Throws when none or more than one matches. */
 const getByName: BuiltinQueries["getByName"] = nameQueries.getByName;
-/** Waits for and returns every widget with a matching widget name, retrying until at least one appears or the timeout elapses. */
+/**
+ * Waits for and returns every widget with a matching widget name, retrying until at least one
+ * appears or the timeout elapses.
+ */
 const findAllByName: BuiltinQueries["findAllByName"] = nameQueries.findAllByName;
-/** Waits for and returns the single widget with a matching widget name, retrying until it appears or the timeout elapses. Rejects when none or more than one matches. */
+/**
+ * Waits for and returns the single widget with a matching widget name, retrying until it appears or
+ * the timeout elapses. Rejects when none or more than one matches.
+ */
 const findByName: BuiltinQueries["findByName"] = nameQueries.findByName;
 
-/** Returns the single widget with matching placeholder text, or null when none match. Throws when more than one matches. */
+/**
+ * Returns the single widget with matching placeholder text, or null when none match.
+ * Throws when more than one matches.
+ */
 const queryByPlaceholderText: BuiltinQueries["queryByPlaceholderText"] =
     placeholderTextQueries.queryByPlaceholderText;
 
@@ -173,27 +215,43 @@ const getAllByPlaceholderText: BuiltinQueries["getAllByPlaceholderText"] =
 /** Returns the single widget with matching placeholder text. Throws when none or more than one matches. */
 const getByPlaceholderText: BuiltinQueries["getByPlaceholderText"] = placeholderTextQueries.getByPlaceholderText;
 
-/** Waits for and returns every widget with matching placeholder text, retrying until at least one appears or the timeout elapses. */
+/**
+ * Waits for and returns every widget with matching placeholder text, retrying until at least one
+ * appears or the timeout elapses.
+ */
 const findAllByPlaceholderText: BuiltinQueries["findAllByPlaceholderText"] =
     placeholderTextQueries.findAllByPlaceholderText;
 
-/** Waits for and returns the single widget with matching placeholder text, retrying until it appears or the timeout elapses. Rejects when none or more than one matches. */
+/**
+ * Waits for and returns the single widget with matching placeholder text, retrying until it appears
+ * or the timeout elapses. Rejects when none or more than one matches.
+ */
 const findByPlaceholderText: BuiltinQueries["findByPlaceholderText"] =
     placeholderTextQueries.findByPlaceholderText;
 
-/** Returns the single widget with a matching display value, or null when none match. Throws when more than one matches. */
+/**
+ * Returns the single widget with a matching display value, or null when none match.
+ * Throws when more than one matches.
+ */
 const queryByDisplayValue: BuiltinQueries["queryByDisplayValue"] = displayValueQueries.queryByDisplayValue;
 /** Returns every widget with a matching display value. Throws when none match. */
 const getAllByDisplayValue: BuiltinQueries["getAllByDisplayValue"] = displayValueQueries.getAllByDisplayValue;
 /** Returns the single widget with a matching display value. Throws when none or more than one matches. */
 const getByDisplayValue: BuiltinQueries["getByDisplayValue"] = displayValueQueries.getByDisplayValue;
-/** Waits for and returns every widget with a matching display value, retrying until at least one appears or the timeout elapses. */
+/**
+ * Waits for and returns every widget with a matching display value, retrying until at least one
+ * appears or the timeout elapses.
+ */
 const findAllByDisplayValue: BuiltinQueries["findAllByDisplayValue"] = displayValueQueries.findAllByDisplayValue;
-/** Waits for and returns the single widget with a matching display value, retrying until it appears or the timeout elapses. Rejects when none or more than one matches. */
+/**
+ * Waits for and returns the single widget with a matching display value, retrying until it appears
+ * or the timeout elapses. Rejects when none or more than one matches.
+ */
 const findByDisplayValue: BuiltinQueries["findByDisplayValue"] = displayValueQueries.findByDisplayValue;
 
 /**
- * Builds the default text normalizer, which optionally trims surrounding whitespace and collapses runs of whitespace into single spaces.
+ * Builds the default text normalizer, which optionally trims surrounding whitespace and collapses
+ * runs of whitespace into single spaces.
  * @param options Toggles for trimming and whitespace collapsing.
  * @returns A function that normalizes a string for comparison against a matcher.
  */
@@ -240,7 +298,12 @@ const normalizeText = (text: string, options?: MatcherOptions): string => {
     return normalizer(text);
 };
 
-const matchText = (actual: string | null, expected: Matcher, widget: Gtk.Widget, options?: MatcherOptions): boolean => {
+const isTextMatch = (
+    actual: string | null,
+    expected: Matcher,
+    widget: Gtk.Widget,
+    options?: MatcherOptions,
+): boolean => {
     if (actual === null) {
         return false;
     }
@@ -258,27 +321,27 @@ const matchText = (actual: string | null, expected: Matcher, widget: Gtk.Widget,
     }
 
     const normalizedExpected = normalizeText(String(expected), options);
-    const exact = options?.exact ?? true;
+    const isExact = options?.exact ?? true;
 
-    return exact
+    return isExact
         ? normalizedActual === normalizedExpected
         : normalizedActual.toLowerCase().includes(normalizedExpected.toLowerCase());
 };
 
-const matchAccessibleName = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
+const hasMatchingAccessibleName = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
     if (options.name === undefined) {
         return true;
     }
 
     const text = getWidgetAccessibleName(widget);
 
-    return matchText(text, options.name, widget, options);
+    return isTextMatch(text, options.name, widget, options);
 };
 
-const numericValueMatches = (expected: number | undefined, actual: number | null): boolean =>
+const isNumericValueMatch = (expected: number | undefined, actual: number | null): boolean =>
     expected === undefined || actual === expected;
 
-const matchAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, options: ByRoleOptions): boolean => {
+const hasMatchingAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, options: ByRoleOptions): boolean => {
     const actual = getWidgetValue(widget);
 
     const numericChecks: [number | undefined, number | null][] = [
@@ -288,15 +351,15 @@ const matchAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, options: B
     ];
 
     for (const [expected, current] of numericChecks) {
-        if (!numericValueMatches(expected, current)) {
+        if (!isNumericValueMatch(expected, current)) {
             return false;
         }
     }
 
-    return value.text === undefined || matchText(actual.text, value.text, widget, options);
+    return value.text === undefined || isTextMatch(actual.text, value.text, widget, options);
 };
 
-const matchBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
+const hasMatchingBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
     const stateChecks: [boolean | undefined, () => boolean | null][] = [
         [options.checked, () => getWidgetCheckedState(widget)],
         [options.pressed, () => getWidgetPressedState(widget)],
@@ -314,27 +377,28 @@ const matchBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean
     return true;
 };
 
-const matchLevelState = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
+const hasMatchingLevelState = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
     options.level === undefined || getWidgetLevel(widget) === options.level;
 
-const matchDescriptionState = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
-    options.description === undefined || matchText(getWidgetDescription(widget), options.description, widget, options);
+const hasMatchingDescriptionState = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
+    options.description === undefined ||
+    isTextMatch(getWidgetDescription(widget), options.description, widget, options);
 
-const matchValueState = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
-    options.value === undefined || matchAccessibleValue(widget, options.value, options);
+const hasMatchingValueState = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
+    options.value === undefined || hasMatchingAccessibleValue(widget, options.value, options);
 
-const matchAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
-    matchBooleanStates(widget, options) &&
-    matchLevelState(widget, options) &&
-    matchDescriptionState(widget, options) &&
-    matchValueState(widget, options);
+const hasMatchingAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean =>
+    hasMatchingBooleanStates(widget, options) &&
+    hasMatchingLevelState(widget, options) &&
+    hasMatchingDescriptionState(widget, options) &&
+    hasMatchingValueState(widget, options);
 
-const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
+const hasMatchingByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
     if (!options) {
         return true;
     }
 
-    return matchAccessibleName(widget, options) && matchAccessibleStates(widget, options);
+    return hasMatchingAccessibleName(widget, options) && hasMatchingAccessibleStates(widget, options);
 };
 
 function nameQueryFamily<Suffix extends string, Args extends unknown[]>(
@@ -376,7 +440,7 @@ function queryAllByRole(
             return false;
         }
 
-        return matchByRoleOptions(widget, options);
+        return hasMatchingByRoleOptions(widget, options);
     });
 }
 
@@ -391,7 +455,7 @@ const collectMnemonicMatch = (
 
     const labelText = widget.getLabel();
 
-    if (!labelText || !matchText(labelText, text, widget, options)) {
+    if (!labelText || !isTextMatch(labelText, text, widget, options)) {
         return null;
     }
 
@@ -412,19 +476,20 @@ const collectLabelMatches = (
 
     const ownLabel = getWidgetOwnLabel(widget);
 
-    if (ownLabel !== null && matchText(ownLabel, text, widget, options)) {
+    if (ownLabel !== null && isTextMatch(ownLabel, text, widget, options)) {
         results.add(widget);
     }
 
     const labelledByText = getWidgetLabelledByText(widget);
 
-    if (labelledByText !== null && matchText(labelledByText, text, widget, options)) {
+    if (labelledByText !== null && isTextMatch(labelledByText, text, widget, options)) {
         results.add(widget);
     }
 };
 
 /**
- * Finds every widget associated with a label whose text matches: a Gtk.Label mnemonic target, the widget's own accessible label, or its labelled-by relation.
+ * Finds every widget associated with a label whose text matches: a Gtk.Label mnemonic target, the
+ * widget's own accessible label, or its labelled-by relation.
  * @param container Widget subtree to search.
  * @param text Matcher for the label text.
  * @param options Text matching options.
@@ -448,7 +513,7 @@ function queryAllByLabelText(container: Container, text: Matcher, options?: Matc
  * @returns Every matching widget, or an empty array when none match.
  */
 function queryAllByText(container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] {
-    return findAll(container, (widget) => matchText(getWidgetLabelText(widget), text, widget, options));
+    return findAll(container, (widget) => isTextMatch(getWidgetLabelText(widget), text, widget, options));
 }
 
 /**
@@ -459,7 +524,7 @@ function queryAllByText(container: Container, text: Matcher, options?: MatcherOp
  * @returns Every matching widget, or an empty array when none match.
  */
 function queryAllByName(container: Container, name: Matcher, options?: MatcherOptions): Gtk.Widget[] {
-    return findAll(container, (widget) => matchText(getWidgetName(widget), name, widget, options));
+    return findAll(container, (widget) => isTextMatch(getWidgetName(widget), name, widget, options));
 }
 
 /**
@@ -474,7 +539,7 @@ function queryAllByPlaceholderText(
     text: Matcher,
     options?: MatcherOptions,
 ): Gtk.Widget[] {
-    return findAll(container, (widget) => matchText(getWidgetPlaceholderText(widget), text, widget, options));
+    return findAll(container, (widget) => isTextMatch(getWidgetPlaceholderText(widget), text, widget, options));
 }
 
 /**
@@ -485,7 +550,7 @@ function queryAllByPlaceholderText(
  * @returns Every matching widget, or an empty array when none match.
  */
 function queryAllByDisplayValue(container: Container, value: Matcher, options?: MatcherOptions): Gtk.Widget[] {
-    return findAll(container, (widget) => matchText(getWidgetDisplayValue(widget), value, widget, options));
+    return findAll(container, (widget) => isTextMatch(getWidgetDisplayValue(widget), value, widget, options));
 }
 
 export {

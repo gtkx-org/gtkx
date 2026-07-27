@@ -102,7 +102,7 @@ const readTargets = (layout: Gtk.ConstraintLayout): Targets => {
     return targets;
 };
 
-const sameTargets = (previous: Targets, next: Targets): boolean =>
+const hasSameTargets = (previous: Targets, next: Targets): boolean =>
     previous.size === next.size && [...previous].every(([name, target]) => next.get(name) === target);
 
 const resolveTarget = (
@@ -200,7 +200,9 @@ const useDeclaration = (declaration: Declaration): null => {
         registry.set(key, { signature, declaration: currentDeclaration() });
     }, [registry, key, signature]);
 
-    useLayoutEffect(() => () => registry.remove(key), [registry, key]);
+    useLayoutEffect(() => () => {
+        registry.remove(key);
+    }, [registry, key]);
 
     return null;
 };
@@ -242,7 +244,7 @@ const nextTargets = (current: Targets | null, layout: Gtk.ConstraintLayout | nul
 
     const next = readTargets(layout);
 
-    if (current !== null && sameTargets(current, next)) {
+    if (current !== null && hasSameTargets(current, next)) {
         return null;
     }
 

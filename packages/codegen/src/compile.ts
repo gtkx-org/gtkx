@@ -60,12 +60,14 @@ const linkToolingModules = (projectDir: string): (() => void) => {
     const link = join(projectDir, "node_modules");
 
     if (existsSync(link)) {
-        return () => {};
+        return (): void => undefined;
     }
 
     symlinkSync(codegenModules(), link, "junction");
 
-    return () => rmSync(link, { force: true });
+    return () => {
+        rmSync(link, { force: true });
+    };
 };
 
 const tscBin = (): string => join(dirname(require.resolve("typescript/package.json")), "bin", "tsc");
@@ -131,12 +133,13 @@ const parseDiagnostics = (output: string, projectDir: string): ProjectDiagnostic
 };
 
 const formatDiagnostics = (label: string, projectDir: string, diagnostics: ProjectDiagnostic[]): string => {
-    const messages = diagnostics.map(
-        (diagnostic) =>
-            `${relative(projectDir, diagnostic.file)}:${diagnostic.line}:${diagnostic.column} - ${diagnostic.message} (TS${diagnostic.code})`,
-    );
+    const messages = diagnostics.map((diagnostic) => {
+        const location = `${relative(projectDir, diagnostic.file)}:${diagnostic.line}:${diagnostic.column}`;
 
-    return `Type checking ${label} found ${diagnostics.length} error(s):\n${messages.join("\n")}`;
+        return `${location} - ${diagnostic.message} (TS${diagnostic.code})`;
+    });
+
+    return `Type checking ${label} found ${String(diagnostics.length)} error(s):\n${messages.join("\n")}`;
 };
 
 const compileProject = (params: CompileProjectParams): void => {

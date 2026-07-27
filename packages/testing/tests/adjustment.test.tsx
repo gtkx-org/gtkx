@@ -41,7 +41,11 @@ describe("userEvent.scroll", () => {
         const sw = ref.current;
         expect(sw).not.toBeNull();
         const vadjustment = (sw as Gtk.ScrolledWindow).getVadjustment();
-        await waitFor(() => expect(vadjustment.getUpper()).toBeGreaterThan(vadjustment.getPageSize()));
+
+        await waitFor(() => {
+            expect(vadjustment.getUpper()).toBeGreaterThan(vadjustment.getPageSize());
+        });
+
         await userEvent.scroll(sw as Gtk.ScrolledWindow, { y: 100 });
         expect(vadjustment.getValue()).toBe(100);
         await userEvent.scroll(await screen.findByText("top"), { y: 50 });

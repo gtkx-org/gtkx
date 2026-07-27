@@ -81,7 +81,10 @@ describe("render - toast (useToast / useToastOverlay)", () => {
         const onDismissed = vi.fn();
         const toast = handles.toast.show({ title: "Bye", onDismissed });
         handles.toast.dismiss(toast);
-        await waitFor(() => expect(onDismissed).toHaveBeenCalledTimes(1));
+
+        await waitFor(() => {
+            expect(onDismissed).toHaveBeenCalledTimes(1);
+        });
     });
 
     it("dismisses every toast through dismissAll", async () => {

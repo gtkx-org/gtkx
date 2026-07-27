@@ -199,14 +199,14 @@ fn read_from_pointer_decodes_codepoint_and_replaces_invalid() {
         let env = test_support::fake_env();
 
         let valid_slot: u32 = 'M' as u32;
-        let valid_ptr = &valid_slot as *const u32 as *const c_void;
+        let valid_ptr = (&raw const valid_slot).cast::<c_void>();
         let read =
             unsafe { Decoder::read(&UnicharCodec, &env, ReadSource::Slot(valid_ptr, "ctx")) }
                 .unwrap();
         assert_eq!(napi_mock::read_string(read.raw()), Some("M".to_owned()));
 
         let invalid_slot: u32 = 0x0011_0000;
-        let invalid_ptr = &invalid_slot as *const u32 as *const c_void;
+        let invalid_ptr = (&raw const invalid_slot).cast::<c_void>();
         let read_invalid =
             unsafe { Decoder::read(&UnicharCodec, &env, ReadSource::Slot(invalid_ptr, "ctx")) }
                 .unwrap();
@@ -223,7 +223,7 @@ fn write_return_to_pointer_writes_string_number_and_default() {
         let env = test_support::fake_env();
 
         let mut slot: u64 = 9;
-        let ret = &mut slot as *mut u64 as *mut c_void;
+        let ret = (&raw mut slot).cast::<c_void>();
 
         PtrWriter::write_return_to_ptr(
             &UnicharCodec,

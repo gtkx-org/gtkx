@@ -83,7 +83,7 @@ const introDemo: Demo = {
     keywords: [],
 };
 
-export const demos: Demo[] = [
+const demos: Demo[] = [
     introDemo,
     clipboardDemo,
     constraintsDemo,
@@ -155,3 +155,5 @@ export const demos: Demo[] = [
     themingStyleClassesDemo,
     videoPlayerDemo,
 ];
+
+export { demos };

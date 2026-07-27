@@ -6,10 +6,9 @@ import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { act, render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { createAppIdFactory } from "../helpers/unique-name.js";
 
-let nextAppId = 0;
-
-const uniqueAppId = (): string => `org.gtkx.dialogtest${nextAppId++}`;
+const uniqueAppId = createAppIdFactory("org.gtkx.dialogtest");
 
 const requireDialog = (ref: RefObject<Adw.AlertDialog | null>): Adw.AlertDialog => {
     const dialog = ref.current;

@@ -89,6 +89,6 @@ describe("overlayDecorativeDemo scale behavior", () => {
 describe("overlayDecorativeDemo text content", () => {
     it("renders the concatenated 'Dear diary...' text inside the text view buffer", async () => {
         await renderDemo(overlayDecorativeDemo);
-        await screen.findByDisplayValue(/Dear diary\.\.\./);
+        expect(await screen.findByDisplayValue(/Dear diary\.\.\./)).toBeInstanceOf(Gtk.TextView);
     });
 });

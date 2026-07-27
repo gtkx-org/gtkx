@@ -49,19 +49,27 @@ impl Boxed {
     }
 
     pub(crate) unsafe fn boxed_copy(type_: glib::Type, ptr: *mut c_void) -> *mut c_void {
-        unsafe { glib::gobject_ffi::g_boxed_copy(type_.into_glib(), ptr as *const _) }
+        unsafe { glib::gobject_ffi::g_boxed_copy(type_.into_glib(), ptr.cast_const()) }
     }
 
+    /// # Safety
+    ///
+    /// `type_` must be a registered `GBoxed` type and `ptr` must be a non-null pointer to a live
+    /// value of exactly that type, valid for the duration of the call: this copies through
+    /// `g_boxed_copy`, which dereferences it. The copy is owned by the returned `Boxed` and freed
+    /// with `g_boxed_free` on drop, so the caller keeps ownership of `ptr` itself.
     pub unsafe fn from_glib_none(type_: glib::Type, ptr: *mut c_void) -> Self {
         let cloned_ptr = unsafe { Self::boxed_copy(type_, ptr) };
         Self::from_glib_full(type_, cloned_ptr)
     }
 
     #[inline]
+    #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
         self.ptr
     }
 
+    #[must_use]
     pub fn type_(&self) -> Option<glib::Type> {
         self.type_
     }

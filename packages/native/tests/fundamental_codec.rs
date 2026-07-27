@@ -23,7 +23,7 @@ fn release_param_spec_refs(ptr: *mut c_void, count: u32) {
     }
 }
 
-fn object_value<'e>(env: &'e Env, pspec: *mut c_void) -> Unknown<'e> {
+fn object_value(env: &Env, pspec: *mut c_void) -> Unknown<'_> {
     External::new(Handle::from_glib_borrow(pspec))
         .into_unknown(env)
         .expect("into_unknown should succeed")

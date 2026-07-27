@@ -56,7 +56,7 @@ const outMember = (command: GlCommand, out: OutArg): string => {
     const param = command.params[out.paramIndex];
 
     if (param === undefined) {
-        throw new Error(`Output parameter index ${out.paramIndex} out of range on ${command.name}`);
+        throw new Error(`Output parameter index ${String(out.paramIndex)} out of range on ${command.name}`);
     }
 
     return `\`${param.name}\` (\`${param.cType}\`)`;
@@ -77,8 +77,10 @@ const returnsDocLine = (command: GlCommand, returnPlan: ReturnPlan, outs: OutArg
         return undefined;
     }
 
-    if (members.length === 1) {
-        return ` * @returns ${members[0]}`;
+    const [single] = members;
+
+    if (single !== undefined && members.length === 1) {
+        return ` * @returns ${single}`;
     }
 
     return ` * @returns Tuple of ${members.join(", ")}`;

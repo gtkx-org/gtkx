@@ -15,27 +15,72 @@ import {
     collectIntrinsicElementClasses,
     getGlibName,
     type GlibNamedClass,
+    hasInterfacePropsBody,
     implementedInterfaces,
-    interfaceHasPropsBody,
     type ResolvedQualifiedInterface,
 } from "../../src/store/jsx/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/jsx/pipeline.js";
 import { giModules, library } from "../helpers/library.js";
 
+type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
+type UnresolvedWalker = { target: Library; seen: Set<string>; unresolved: Set<string> };
+
 const GI_STORE_DIR = fileURLToPath(new URL("../../../../node_modules/.gtkx/gi", import.meta.url));
 const REACT_SUBEXPORTS = ["config", "adw", "adw/config", "internal"];
 /** The @gtkx/react element config, read from the linked package the same way codegen threads it into the pipeline. */
 const REACT_SURFACE = await readBuiltinElements(REACT_SUBEXPORTS, GI_STORE_DIR);
+const reactPipeline = generateJsxFiles(library, REACT_SURFACE);
 
-type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
+const BUS_GET_SIGNATURE =
+    "export function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection> {";
+
+const BUS_GET_PROMISIFY_CALL = "return promisify(gBusGet, busGetFinish, cancellable, busType);";
+
+const DBUS_CONNECTION_NEW_SIGNATURE =
+    "static new(stream: IOStream, guid: string | null, flags: DBusConnectionFlags, " +
+    "observer: DBusAuthObserver | null, cancellable?: Cancellable | null): Promise<DBusConnection> {";
+
+const DBUS_CONNECTION_NEW_PROMISIFY_CALL =
+    "return promisify(gDbusConnectionNew, this.newFinish.bind(this), cancellable, " +
+    "getHandle(stream), guid, flags, tryGetHandle(observer));";
+
+const SHOW_URI_FULL_CALLBACK_SIGNATURE =
+    "export function showUriFull(parent: Window | null, uri: string, timestamp: number, " +
+    "cancellable: Gio.Cancellable | null, callback: Gio.AsyncReadyCallback | null): void {";
+
+const SHOW_URI_FULL_PROMISE_SIGNATURE =
+    "export function showUriFull(parent: Window | null, uri: string, timestamp: number, " +
+    "cancellable?: Gio.Cancellable | null): Promise";
+
+const FILE_COPY_SIGNATURE =
+    "copy(destination: File, flags: FileCopyFlags, cancellable: Cancellable | null, " +
+    "progressCallback: FileProgressCallback | null): boolean;";
+
+const FILE_COPY_PROMISE_SIGNATURE =
+    "copy(destination: File, flags: FileCopyFlags, cancellable?: Cancellable | null): Promise";
+
+const DBUS_OBJECT_MANAGER_CLIENT_NEW_SIGNATURE =
+    "static new(connection: DBusConnection, flags: DBusObjectManagerClientFlags, name: string, " +
+    "objectPath: string, getProxyTypeFunc: DBusProxyTypeFunc | null, cancellable: Cancellable | null, " +
+    "callback: AsyncReadyCallback | null): void {";
+
+const PIXBUF_NEW_FROM_STREAM_AT_SCALE_SIGNATURE =
+    "static newFromStreamAtScaleAsync(stream: Gio.InputStream, width: number, height: number, " +
+    "preserveAspectRatio: boolean, cancellable?: Gio.Cancellable | null): Promise<Pixbuf | null>";
+
+const PIXBUF_SAVE_TO_STREAMV_SIGNATURE =
+    "saveToStreamvAsync(stream: Gio.OutputStream, type: string, optionKeys: string[] | null, " +
+    "optionValues: string[] | null, cancellable?: Gio.Cancellable | null): Promise<boolean>";
+
+const IO_STREAM_SPLICE_SIGNATURE =
+    "spliceAsync(stream2: IOStream, flags: IOStreamSpliceFlags, ioPriority: number, " +
+    "cancellable?: Cancellable | null): Promise<boolean>";
 
 const visitEach = <T>(items: Iterable<T>, visitor: (item: T) => void): void => {
     for (const item of items) {
         visitor(item);
     }
 };
-
-type UnresolvedWalker = { target: Library; seen: Set<string>; unresolved: Set<string> };
 
 const recordUnresolved = (walker: UnresolvedWalker, ref: TypeId): void => {
     const name = walker.target.nameFor(ref);
@@ -50,7 +95,7 @@ const visitTypeRef = (walker: UnresolvedWalker, ref: TypeId | undefined): void =
         return;
     }
 
-    const key = `${ref.nsId}:${ref.id}`;
+    const key = `${String(ref.nsId)}:${String(ref.id)}`;
 
     if (walker.seen.has(key)) {
         return;
@@ -82,6 +127,15 @@ const visitContainedRefs = (walker: UnresolvedWalker, type: GirType): void => {
         }
         case "callback": {
             visitCallable(walker, type.value);
+            break;
+        }
+        case "alias":
+        case "class":
+        case "enum":
+        case "interface":
+        case "primitive":
+        case "record":
+        case "varargs": {
             break;
         }
     }
@@ -128,12 +182,29 @@ const visitRecord = (walker: UnresolvedWalker, record: GirRecord): void => {
 };
 
 const visitNamespace = (walker: UnresolvedWalker, namespace: GirNamespace): void => {
-    visitEach([...namespace.classes, ...namespace.interfaces], (klass) => visitClass(walker, klass));
-    visitEach(namespace.records, (record) => visitRecord(walker, record));
-    visitEach(namespace.callbacks, (callable) => visitCallable(walker, callable));
-    visitEach(namespace.functions, (fn) => visitFunction(walker, fn));
-    visitEach(namespace.constants, (constant) => visitTypeRef(walker, constant.type));
-    visitEach(namespace.aliases, (alias) => visitTypeRef(walker, alias.target));
+    visitEach([...namespace.classes, ...namespace.interfaces], (klass) => {
+        visitClass(walker, klass);
+    });
+
+    visitEach(namespace.records, (record) => {
+        visitRecord(walker, record);
+    });
+
+    visitEach(namespace.callbacks, (callable) => {
+        visitCallable(walker, callable);
+    });
+
+    visitEach(namespace.functions, (fn) => {
+        visitFunction(walker, fn);
+    });
+
+    visitEach(namespace.constants, (constant) => {
+        visitTypeRef(walker, constant.type);
+    });
+
+    visitEach(namespace.aliases, (alias) => {
+        visitTypeRef(walker, alias.target);
+    });
 };
 
 const collectUnresolvedTypeNames = (target: Library): string[] => {
@@ -146,8 +217,6 @@ const collectUnresolvedTypeNames = (target: Library): string[] => {
     return [...walker.unresolved];
 };
 
-const reactPipeline = generateJsxFiles(library, REACT_SURFACE);
-
 const getSource = (files: typeof reactPipeline, directory: string): string =>
     files.namespaces.find((entry) => entry.directory === directory)?.source ?? "";
 
@@ -156,6 +225,142 @@ const giSource = (directory: string): string =>
 
 const namespaceNamed = (name: string): GirNamespace | undefined =>
     library.namespaces.values().find((namespace) => namespace.name === name);
+
+const gioSource = (): string => giSource("gio");
+
+const interfaceBody = (jsxSource: string, glibName: string): string => {
+    const block = jsxSource.slice(jsxSource.indexOf(`export interface ${glibName}Props`));
+
+    return block.slice(0, block.indexOf("\n}"));
+};
+
+const defaultPropsBody = (metadata: string, glibName: string): string => {
+    const table = metadata.slice(metadata.indexOf("export const DEFAULT_PROPS"));
+    const block = table.slice(table.indexOf(`"${glibName}": {`));
+
+    return block.slice(0, block.indexOf("\n    }"));
+};
+
+const jsxSources = (): string[] => generateJsxFiles(library, REACT_SURFACE).namespaces.map((entry) => entry.source);
+
+const hasContainerProps = (glibName: string | undefined): boolean =>
+    glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
+
+const getInterfacePropsName = (iface: ResolvedQualifiedInterface): string | undefined => {
+    if (!hasInterfacePropsBody(iface.klass, hasContainerProps)) {
+        return undefined;
+    }
+
+    const glib = getGlibName(iface.klass);
+
+    return glib === undefined ? undefined : `${glib}Props`;
+};
+
+const addInterfacePropsNames = (widget: GlibNamedClass, names: Set<string>): void => {
+    for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
+        const name = getInterfacePropsName(iface);
+
+        if (name !== undefined) {
+            names.add(name);
+        }
+    }
+};
+
+const interfacePropsNames = (): Set<string> => {
+    const names: Set<string> = new Set();
+
+    for (const widget of collectIntrinsicElementClasses(library)) {
+        addInterfacePropsNames(widget, names);
+    }
+
+    return names;
+};
+
+const matchAll = (sources: string[], pattern: RegExp): string[] =>
+    sources.flatMap((source) =>
+        source
+            .matchAll(pattern)
+            .map((match) => match[1] ?? "")
+            .toArray(),
+    );
+
+const stripDocComments = (source: string): string => source.replaceAll(/\/\*\*[\s\S]*?\*\//g, "");
+
+const moduleSource = (directory: string): string => {
+    const found = giModules.find((entry) => entry.directory === directory);
+    expect(found, `expected generated module for ${directory}`).toBeDefined();
+
+    return stripDocComments(found?.source ?? "");
+};
+
+const registerModuleLevelPromisifyTests = (): void => {
+    it("promisifies a module-level async function against its finish sibling", () => {
+        const source = gioSource();
+        expect(source).toContain(BUS_GET_SIGNATURE);
+        expect(source).toContain(BUS_GET_PROMISIFY_CALL);
+        expect(source).toContain("export function busGetFinish(res: AsyncResult): DBusConnection {");
+    });
+
+    it("promisifies a static async constructor against its static finish", () => {
+        const source = gioSource();
+        expect(source).toContain(DBUS_CONNECTION_NEW_SIGNATURE);
+        expect(source).toContain(DBUS_CONNECTION_NEW_PROMISIFY_CALL);
+        expect(source).toContain("static newFinish(res: AsyncResult): DBusConnection {");
+    });
+
+    it("parses the glib:finish-func annotation into the function model", () => {
+        const gio = namespaceNamed("Gio");
+        const busGet = gio?.functions.find((fn) => fn.name === "bus_get");
+        expect(busGet?.finishFunc).toBe("bus_get_finish");
+    });
+};
+
+const registerUnpromisifiedTests = (): void => {
+    it("leaves a function callback-based when its finish needs more than the async result", () => {
+        const source = giSource("gtk");
+        expect(source).toContain(SHOW_URI_FULL_CALLBACK_SIGNATURE);
+        expect(source).not.toContain(SHOW_URI_FULL_PROMISE_SIGNATURE);
+    });
+
+    it("does not promisify a synchronous method that only carries a progress callback", () => {
+        const source = gioSource();
+        expect(source).toContain(FILE_COPY_SIGNATURE);
+        expect(source).not.toContain(FILE_COPY_PROMISE_SIGNATURE);
+    });
+
+    it("does not promisify a static async op that also takes a non-async callback", () => {
+        expect(gioSource()).toContain(DBUS_OBJECT_MANAGER_CLIENT_NEW_SIGNATURE);
+    });
+};
+
+const registerAnnotatedFinishTests = (): void => {
+    it("pairs through the annotation when the finish name breaks the naming convention", () => {
+        const gio = namespaceNamed("Gio");
+        const methods = gio?.interfaces.find((candidate) => candidate.name === "File")?.methods ?? [];
+        const asyncFn = methods.find((method) => method.name === "replace_contents_bytes_async");
+
+        const finishFn =
+            asyncFn === undefined
+                ? undefined
+                : matchAsyncFinish(library, { ...asyncFn, finishFunc: "replace_contents_finish" }, methods);
+
+        expect(finishFn?.name).toBe("replace_contents_finish");
+    });
+
+    it("pairs through an annotation that holds the finish C identifier", () => {
+        expect(giSource("gdkpixbuf")).toContain(PIXBUF_NEW_FROM_STREAM_AT_SCALE_SIGNATURE);
+    });
+
+    it("promisifies an instance async method against its annotated static finish", () => {
+        const gdkpixbuf = giSource("gdkpixbuf");
+        expect(gdkpixbuf).toContain(PIXBUF_SAVE_TO_STREAMV_SIGNATURE);
+        expect(gdkpixbuf).toContain("Pixbuf.saveToStreamFinish.bind(Pixbuf)");
+    });
+
+    it("promisifies an instance async method against its name-matched static finish", () => {
+        expect(gioSource()).toContain(IO_STREAM_SPLICE_SIGNATURE);
+    });
+};
 
 describe("codegen gi pipeline", () => {
     it("resolves the transitive dependency closure of Gtk and Adw", () => {
@@ -220,110 +425,10 @@ describe("codegen return-value convention", () => {
     });
 });
 
-const gioSource = (): string => giSource("gio");
-
 describe("codegen async promisification", () => {
-    it("promisifies a module-level async function against its finish sibling", () => {
-        const source = gioSource();
-
-        expect(source).toContain(
-            "export function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection> {",
-        );
-
-        expect(source).toContain("return promisify(gBusGet, busGetFinish, cancellable, busType);");
-        expect(source).toContain("export function busGetFinish(res: AsyncResult): DBusConnection {");
-    });
-
-    it("promisifies a static async constructor against its static finish", () => {
-        const source = gioSource();
-
-        expect(source).toContain(
-            "static new(stream: IOStream, guid: string | null, flags: DBusConnectionFlags, observer: DBusAuthObserver | null, cancellable?: Cancellable | null): Promise<DBusConnection> {",
-        );
-
-        expect(source).toContain(
-            "return promisify(gDbusConnectionNew, this.newFinish.bind(this), cancellable, getHandle(stream), guid, flags, tryGetHandle(observer));",
-        );
-
-        expect(source).toContain("static newFinish(res: AsyncResult): DBusConnection {");
-    });
-
-    it("leaves a function callback-based when its finish needs more than the async result", () => {
-        const source = giSource("gtk");
-
-        expect(source).toContain(
-            "export function showUriFull(parent: Window | null, uri: string, timestamp: number, cancellable: Gio.Cancellable | null, callback: Gio.AsyncReadyCallback | null): void {",
-        );
-
-        expect(source).not.toContain(
-            "export function showUriFull(parent: Window | null, uri: string, timestamp: number, cancellable?: Gio.Cancellable | null): Promise",
-        );
-    });
-
-    it("does not promisify a synchronous method that only carries a progress callback", () => {
-        const source = gioSource();
-
-        expect(source).toContain(
-            "copy(destination: File, flags: FileCopyFlags, cancellable: Cancellable | null, progressCallback: FileProgressCallback | null): boolean;",
-        );
-
-        expect(source).not.toContain(
-            "copy(destination: File, flags: FileCopyFlags, cancellable?: Cancellable | null): Promise",
-        );
-    });
-
-    it("does not promisify a static async op that also takes a non-async callback", () => {
-        const source = gioSource();
-
-        expect(source).toContain(
-            "static new(connection: DBusConnection, flags: DBusObjectManagerClientFlags, name: string, objectPath: string, getProxyTypeFunc: DBusProxyTypeFunc | null, cancellable: Cancellable | null, callback: AsyncReadyCallback | null): void {",
-        );
-    });
-
-    it("parses the glib:finish-func annotation into the function model", () => {
-        const gio = namespaceNamed("Gio");
-        const busGet = gio?.functions.find((fn) => fn.name === "bus_get");
-        expect(busGet?.finishFunc).toBe("bus_get_finish");
-    });
-
-    it("pairs through the annotation when the finish name breaks the naming convention", () => {
-        const gio = namespaceNamed("Gio");
-        const methods = gio?.interfaces.find((candidate) => candidate.name === "File")?.methods ?? [];
-        const asyncFn = methods.find((method) => method.name === "replace_contents_bytes_async");
-
-        const finishFn =
-            asyncFn === undefined
-                ? undefined
-                : matchAsyncFinish(library, { ...asyncFn, finishFunc: "replace_contents_finish" }, methods);
-
-        expect(finishFn?.name).toBe("replace_contents_finish");
-    });
-
-    it("pairs through an annotation that holds the finish C identifier", () => {
-        const gdkpixbuf = giSource("gdkpixbuf");
-
-        expect(gdkpixbuf).toContain(
-            "static newFromStreamAtScaleAsync(stream: Gio.InputStream, width: number, height: number, preserveAspectRatio: boolean, cancellable?: Gio.Cancellable | null): Promise<Pixbuf | null>",
-        );
-    });
-
-    it("promisifies an instance async method against its annotated static finish", () => {
-        const gdkpixbuf = giSource("gdkpixbuf");
-
-        expect(gdkpixbuf).toContain(
-            "saveToStreamvAsync(stream: Gio.OutputStream, type: string, optionKeys: string[] | null, optionValues: string[] | null, cancellable?: Gio.Cancellable | null): Promise<boolean>",
-        );
-
-        expect(gdkpixbuf).toContain("Pixbuf.saveToStreamFinish.bind(Pixbuf)");
-    });
-
-    it("promisifies an instance async method against its name-matched static finish", () => {
-        const source = gioSource();
-
-        expect(source).toContain(
-            "spliceAsync(stream2: IOStream, flags: IOStreamSpliceFlags, ioPriority: number, cancellable?: Cancellable | null): Promise<boolean>",
-        );
-    });
+    registerModuleLevelPromisifyTests();
+    registerUnpromisifiedTests();
+    registerAnnotatedFinishTests();
 });
 
 describe("codegen notify detail signals", () => {
@@ -399,11 +504,13 @@ describe("codegen GObject item comparators", () => {
         );
 
         expect(source).toContain(
-            `findWithEqualFunc(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`,
+            `findWithEqualFunc(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): ` +
+            "[boolean, number]",
         );
 
         expect(source).toContain(
-            `findWithEqualFuncFull(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): [boolean, number]`,
+            `findWithEqualFuncFull(item: GObject.Object | null, equalFunc: ${itemComparatorSignature} => boolean): ` +
+            "[boolean, number]",
         );
 
         expect(source).toContain(`${itemComparatorArgs}, { userDataIndex: 2, scope: "call" })`);
@@ -458,7 +565,8 @@ describe("codegen React pipeline", () => {
         const gtk = getSource(reactPipeline, "gtk");
 
         expect(gtk).toContain(
-            'export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createElementComponent("GtkNotebookPage");',
+            "export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = " +
+            'createElementComponent("GtkNotebookPage");',
         );
 
         expect(gtk).toContain('createElementComponent("GtkStackPage")');
@@ -481,7 +589,8 @@ describe("codegen configurable element components", () => {
         expect(overridden).toContain('import { withButton } from "@example/wrappers";');
 
         expect(overridden).toContain(
-            'export const GtkButton: (props: GtkButtonProps) => ReactNode = withButton(createElementComponent("GtkButton"));',
+            "export const GtkButton: (props: GtkButtonProps) => ReactNode = " +
+            'withButton(createElementComponent("GtkButton"));',
         );
     });
 
@@ -563,12 +672,6 @@ describe("codegen widget-slot props", () => {
     });
 });
 
-const interfaceBody = (jsxSource: string, glibName: string): string => {
-    const block = jsxSource.slice(jsxSource.indexOf(`export interface ${glibName}Props`));
-
-    return block.slice(0, block.indexOf("\n}"));
-};
-
 describe("codegen applied element props", () => {
     it("extends the hand-declared props interface for a value prop host", () => {
         const gtk = getSource(reactPipeline, "gtk");
@@ -612,13 +715,6 @@ describe("codegen read-only props", () => {
         expect(widgetBody).toContain("onNotifyOpacity?:");
     });
 });
-
-const defaultPropsBody = (metadata: string, glibName: string): string => {
-    const table = metadata.slice(metadata.indexOf("export const DEFAULT_PROPS"));
-    const block = table.slice(table.indexOf(`"${glibName}": {`));
-
-    return block.slice(0, block.indexOf("\n    }"));
-};
 
 describe("codegen runtime tables", () => {
     it("omits a null default when the property setter rejects null", () => {
@@ -664,58 +760,6 @@ describe("Library.resolveType", () => {
         expect(unexpected).toEqual([]);
     });
 });
-
-const jsxSources = (): string[] => generateJsxFiles(library, REACT_SURFACE).namespaces.map((entry) => entry.source);
-
-const hasContainerProps = (glibName: string | undefined): boolean =>
-    glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
-
-const getInterfacePropsName = (iface: ResolvedQualifiedInterface): string | undefined => {
-    if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) {
-        return undefined;
-    }
-
-    const glib = getGlibName(iface.klass);
-
-    return glib === undefined ? undefined : `${glib}Props`;
-};
-
-const addInterfacePropsNames = (widget: GlibNamedClass, names: Set<string>): void => {
-    for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
-        const name = getInterfacePropsName(iface);
-
-        if (name !== undefined) {
-            names.add(name);
-        }
-    }
-};
-
-const interfacePropsNames = (): Set<string> => {
-    const names: Set<string> = new Set();
-
-    for (const widget of collectIntrinsicElementClasses(library)) {
-        addInterfacePropsNames(widget, names);
-    }
-
-    return names;
-};
-
-const matchAll = (sources: string[], pattern: RegExp): string[] =>
-    sources.flatMap((source) =>
-        source
-            .matchAll(pattern)
-            .map((match) => match[1] ?? "")
-            .toArray(),
-    );
-
-const stripDocComments = (source: string): string => source.replaceAll(/\/\*\*[\s\S]*?\*\//g, "");
-
-const moduleSource = (directory: string): string => {
-    const found = giModules.find((entry) => entry.directory === directory);
-    expect(found, `expected generated module for ${directory}`).toBeDefined();
-
-    return stripDocComments(found?.source ?? "");
-};
 
 describe("identifier naming convention", () => {
     it("exports aliases under their GIR name, never the C-prefixed c:type", () => {

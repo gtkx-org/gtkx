@@ -5,6 +5,7 @@ import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
+import { expectTextPresent } from "./helpers/text-presence.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type Row = {
@@ -44,11 +45,11 @@ describe("ListView sections", () => {
     it("renders a header per section through the header factory", async () => {
         const ref = createRef<Gtk.ListView>();
         await renderSectioned(ref);
-        await screen.findAllByText("Section One");
-        await screen.findAllByText("Section Two");
-        await screen.findAllByText("Alpha");
-        await screen.findAllByText("Beta");
-        await screen.findAllByText("Gamma");
+        await expectTextPresent("Section One");
+        await expectTextPresent("Section Two");
+        await expectTextPresent("Alpha");
+        await expectTextPresent("Beta");
+        await expectTextPresent("Gamma");
     });
 
     it("models only the children as items, never the headers", async () => {

@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { dirname, join } from "node:path";
 import { defineConfig, type HeadConfig } from "vitepress";
 import typedocSidebar from "../reference/typedoc-sidebar.json";
 
@@ -45,12 +45,9 @@ const guideSidebar = [
 ];
 
 const tutorialSidebar = [{ text: "Tutorial", collapsed: false, items: tutorialItems }];
-
 const docItems = [...guideSidebar.filter((item) => !item.link.startsWith("/reference")), ...tutorialItems];
-
-const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
-
 const isProdBuild = process.argv.includes("build");
+
 const fontPreloads: HeadConfig[] = isProdBuild
     ? ["red-hat-display", "red-hat-text", "red-hat-mono"].map(
             (family): HeadConfig => [
@@ -65,6 +62,14 @@ const fontPreloads: HeadConfig[] = isProdBuild
             ],
         )
     : [];
+
+const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
+
+const frontmatterHead = (frontmatter: Record<string, unknown>): HeadConfig[] => {
+    const existing = frontmatter.head;
+
+    return Array.isArray(existing) ? (existing as HeadConfig[]) : [];
+};
 
 export default defineConfig({
     title,
@@ -103,6 +108,7 @@ export default defineConfig({
         const pageUrl = route ? `${url}/${route}` : `${url}/`;
         const pageTitle = isHome ? pageData.title : `${pageData.title} | ${title}`;
         const pageDescription = pageData.description || description;
+
         const head: HeadConfig[] = [
             ["link", { rel: "canonical", href: pageUrl }],
             ["meta", { property: "og:url", content: pageUrl }],
@@ -111,25 +117,29 @@ export default defineConfig({
             ["meta", { name: "twitter:title", content: pageTitle }],
             ["meta", { name: "twitter:description", content: pageDescription }],
         ];
-        pageData.frontmatter.head = [...(pageData.frontmatter.head ?? []), ...head];
+
+        pageData.frontmatter.head = [...frontmatterHead(pageData.frontmatter), ...head];
     },
 
     async buildEnd(siteConfig) {
         const sources = await Promise.all(
             docItems.map(async (item) => {
                 const file = docFile(item.link);
-                const source = await readFile(path.join(siteConfig.srcDir, file), "utf-8");
-                const target = path.join(siteConfig.outDir, file);
-                await mkdir(path.dirname(target), { recursive: true });
+                const source = await readFile(join(siteConfig.srcDir, file), "utf8");
+                const target = join(siteConfig.outDir, file);
+                await mkdir(dirname(target), { recursive: true });
                 await writeFile(target, source);
+
                 return { ...item, file, source };
             }),
         );
+
         const index = sources.map((s) => `- [${s.text}](${url}/${s.file})`).join("\n");
         const header = `# ${title}\n\n> ${description}\n`;
-        await writeFile(path.join(siteConfig.outDir, "llms.txt"), `${header}\n## Documentation\n\n${index}\n`);
+        await writeFile(join(siteConfig.outDir, "llms.txt"), `${header}\n## Documentation\n\n${index}\n`);
+
         await writeFile(
-            path.join(siteConfig.outDir, "llms-full.txt"),
+            join(siteConfig.outDir, "llms-full.txt"),
             `${header}\n${sources.map((s) => s.source).join("\n\n---\n\n")}\n`,
         );
     },

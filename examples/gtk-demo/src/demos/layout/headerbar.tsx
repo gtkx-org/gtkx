@@ -2,29 +2,14 @@ import { GtkBox, GtkButton, GtkHeaderBar, GtkSwitch, GtkTextView } from "@gtkx/j
 import type { Demo } from "../types.js";
 import sourceCode from "./headerbar.tsx?raw";
 
-const HeaderBarTitlebar = () => (
-    <GtkHeaderBar
-        name="headerbar-titlebar"
-        start={(
-            <>
-                <GtkBox name="nav-box" cssClasses={["linked"]}>
-                    <GtkButton name="back-button" iconName="go-previous-symbolic" tooltipText="Back" />
-                    <GtkButton name="forward-button" iconName="go-next-symbolic" tooltipText="Forward" />
-                </GtkBox>
-                <GtkSwitch accessibleLabel="Change something" />
-            </>
-        )}
-        end={<GtkButton name="check-out-button" iconName="mail-send-receive-symbolic" tooltipText="Check out" />}
-    />
-);
-
-const HeaderBarDemo = () => <GtkTextView name="text-view" accessibleLabel="Content" />;
-
-export const headerbarDemo: Demo = {
+const headerbarDemo: Demo = {
     id: "headerbar",
     title: "Header Bar",
     description:
-        "GtkHeaderBar is a container that is suitable for implementing window titlebars. One of its features is that it can position a title centered with regard to the full width, regardless of variable-width content at the left or right.\n\nIt is commonly used with gtk_window_set_titlebar()",
+        "GtkHeaderBar is a container that is suitable for implementing window titlebars. One of its " +
+        "features is that it can position a title centered with regard to the full width, regardless " +
+        "of variable-width content at the left or right." +
+        "\n\nIt is commonly used with gtk_window_set_titlebar()",
     keywords: ["GtkWindowHandle", "GtkWindowControls"],
     component: HeaderBarDemo,
     titlebar: HeaderBarTitlebar,
@@ -33,3 +18,27 @@ export const headerbarDemo: Demo = {
     defaultHeight: 400,
     windowTitle: "Welcome to the Hotel California",
 };
+
+function HeaderBarTitlebar() {
+    return (
+        <GtkHeaderBar
+            name="headerbar-titlebar"
+            start={(
+                <>
+                    <GtkBox name="nav-box" cssClasses={["linked"]}>
+                        <GtkButton name="back-button" iconName="go-previous-symbolic" tooltipText="Back" />
+                        <GtkButton name="forward-button" iconName="go-next-symbolic" tooltipText="Forward" />
+                    </GtkBox>
+                    <GtkSwitch accessibleLabel="Change something" />
+                </>
+            )}
+            end={<GtkButton name="check-out-button" iconName="mail-send-receive-symbolic" tooltipText="Check out" />}
+        />
+    );
+}
+
+function HeaderBarDemo() {
+    return <GtkTextView name="text-view" accessibleLabel="Content" />;
+}
+
+export { headerbarDemo };

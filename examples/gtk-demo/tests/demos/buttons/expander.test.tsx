@@ -13,9 +13,11 @@ describe("expanderDemo", () => {
 
     it("renders the headline label, the details summary, and the collapsed Details expander", async () => {
         await renderDemo(expanderDemo);
+
         await screen.findByRole(Gtk.AccessibleRole.LABEL, {
             name: "Here are some more details but not the full story",
         });
+
         const expander = (await screen.findByName("expander")) as Gtk.Expander;
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: false })).toBe(expander);
         expect(expander.getExpanded()).toBe(false);
@@ -26,7 +28,11 @@ describe("expanderDemo", () => {
         const expander = (await screen.findByName("expander")) as Gtk.Expander;
         expect(expander.getExpanded()).toBe(false);
         await userEvent.click(expander);
-        await waitFor(() => expect(expander.getExpanded()).toBe(true));
+
+        await waitFor(() => {
+            expect(expander.getExpanded()).toBe(true);
+        });
+
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: true })).toBe(expander);
     });
 
@@ -47,8 +53,15 @@ describe("expanderDemo", () => {
         const expander = (await screen.findByName("expander")) as Gtk.Expander;
         window.setResizable(false);
         await userEvent.click(expander);
-        await waitFor(() => expect(window.getResizable()).toBe(true));
+
+        await waitFor(() => {
+            expect(window.getResizable()).toBe(true);
+        });
+
         await userEvent.click(expander);
-        await waitFor(() => expect(window.getResizable()).toBe(false));
+
+        await waitFor(() => {
+            expect(window.getResizable()).toBe(false);
+        });
     });
 });

@@ -24,6 +24,7 @@ describe("overlayDemo grid and labels", () => {
         const grid = await screen.findByName("number-grid");
         const buttons = within(grid).getAllByRole(Gtk.AccessibleRole.BUTTON);
         expect(buttons).toHaveLength(25);
+
         for (let i = 0; i < 25; i++) {
             expect(within(grid).getByRole(Gtk.AccessibleRole.BUTTON, { name: String(i) })).toBeTruthy();
         }
@@ -54,7 +55,10 @@ describe("overlayDemo entry behavior", () => {
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "13" });
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.click(button);
-        await waitFor(() => expect(entry).toHaveDisplayValue("13"));
+
+        await waitFor(() => {
+            expect(entry).toHaveDisplayValue("13");
+        });
     });
 
     it("propagates user-typed text into the entry", async () => {

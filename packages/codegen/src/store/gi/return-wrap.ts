@@ -41,7 +41,12 @@ const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): st
         case "alias": {
             return wrapAlias(context, type.value.target, nullable, valueExpression);
         }
-        default: {
+        case "carray":
+        case "class":
+        case "hashtable":
+        case "interface":
+        case "list":
+        case "record": {
             return wrapValue(context, ref, valueExpression);
         }
     }
@@ -55,10 +60,12 @@ const wrapCallback = (context: ModuleContext, ref: TypeId, valueExpression: stri
 const wrapAlias = (
     context: ModuleContext,
     target: TypeId | undefined,
-    nullable: boolean,
+    isNullable: boolean,
     valueExpression: string,
 ): string =>
-    target === undefined ? valueExpression : wrapReturnValue(context, { ref: target, nullable, valueExpression });
+    target === undefined
+        ? valueExpression
+        : wrapReturnValue(context, { ref: target, nullable: isNullable, valueExpression });
 
 const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
     context.addRuntimeImport("fromNative");
@@ -67,16 +74,16 @@ const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string)
     return `(fromNative(${descriptor}, ${valueExpression}) as ${renderTsType(context, ref, false)})`;
 };
 
-const wrapStringPrimitive = (nullable: boolean, valueExpression: string): string =>
-    `(${valueExpression} as ${nullable ? "string | null" : "string"})`;
+const wrapStringPrimitive = (isNullable: boolean, valueExpression: string): string =>
+    `(${valueExpression} as ${isNullable ? "string | null" : "string"})`;
 
-const wrapPrimitive = (category: PrimitiveCategory, nullable: boolean, valueExpression: string): string => {
+const wrapPrimitive = (category: PrimitiveCategory, isNullable: boolean, valueExpression: string): string => {
     if (category === "void") {
         return valueExpression;
     }
 
     if (category === "string") {
-        return wrapStringPrimitive(nullable, valueExpression);
+        return wrapStringPrimitive(isNullable, valueExpression);
     }
 
     if (category === "boolean") {

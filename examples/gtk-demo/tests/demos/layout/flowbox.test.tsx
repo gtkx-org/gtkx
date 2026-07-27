@@ -43,7 +43,11 @@ describe("flowboxDemo container", () => {
         expect(flowBox.getValign()).toBe(Gtk.Align.START);
         expect(flowBox.getMaxChildrenPerLine()).toBe(30);
         const [firstButton] = within(flowBox).getAllByRole(Gtk.AccessibleRole.BUTTON);
-        if (!firstButton) throw new Error("expected at least one flowbox button");
+
+        if (!firstButton) {
+            throw new Error("expected at least one flowbox button");
+        }
+
         await userEvent.click(firstButton);
         expect(flowBox.getSelectedChildren()).toHaveLength(0);
     });
@@ -55,6 +59,7 @@ describe("flowboxDemo children", () => {
         const flowBox = await screen.findByName("flow-box");
         const buttons = within(flowBox).getAllByRole(Gtk.AccessibleRole.BUTTON);
         expect(buttons).toHaveLength(EXPECTED_COLOR_COUNT);
+
         for (const button of buttons) {
             const swatch = (button as Gtk.Button).getChild();
             expect(swatch).toBeInstanceOf(Gtk.DrawingArea);
@@ -68,6 +73,7 @@ describe("flowboxDemo children", () => {
         const flowBox = await screen.findByName("flow-box");
         const cells = within(flowBox).getAllByRole(Gtk.AccessibleRole.GRID_CELL);
         expect(cells).toHaveLength(EXPECTED_COLOR_COUNT);
+
         for (const cell of cells) {
             expect(within(cell).getByRole(Gtk.AccessibleRole.BUTTON)).toBeInstanceOf(Gtk.Button);
         }

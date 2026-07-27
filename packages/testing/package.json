@@ -54,9 +54,14 @@
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*"
     },
+    "peerDependencies": {
+        "@types/react": "^19.2",
+        "react": "^19.2"
+    },
     "devDependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/vitest": "workspace:*",
+        "@types/react": "catalog:",
         "@vitest/expect": "^4.1.10",
         "vitest": "catalog:"
     }

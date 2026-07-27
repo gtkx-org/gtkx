@@ -130,7 +130,7 @@ fn decode_full_reads_and_frees() {
         let env = helpers::fake_env();
         let owned = unsafe { glib::ffi::g_strdup(c"owned-decode".as_ptr()) };
         let decoded = full()
-            .decode(&env, &ffi::Stash::Ptr(owned as *mut c_void))
+            .decode(&env, &ffi::Stash::Ptr(owned.cast::<c_void>()))
             .expect("full decode should succeed");
         assert_eq!(
             napi_mock::read_string(decoded.raw()).as_deref(),
@@ -255,7 +255,7 @@ fn write_over_previous_string(
     codec: &StringCodec,
     value: napi::sys::napi_value,
 ) -> (*mut c_void, *mut c_void, bool) {
-    let previous = unsafe { glib::ffi::g_strdup(c"stale".as_ptr()) } as *mut c_void;
+    let previous = unsafe { glib::ffi::g_strdup(c"stale".as_ptr()) }.cast::<c_void>();
     drain_g_freed();
     let slot = write_value_into_slot(env, codec, previous, napi_mock::to_unknown(env, value));
     let previous_freed = drain_g_freed().contains(&(previous as usize));

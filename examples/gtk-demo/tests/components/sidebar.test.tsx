@@ -1,12 +1,13 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
 import { render, renderHook, screen } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Demo } from "../../src/demos/types.js";
 import { Sidebar } from "../../src/components/sidebar.js";
 import { DemoProvider, useDemo } from "../../src/context/demo-context.js";
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
+
 const buttonDemo: Demo = {
     id: "button",
     title: "Buttons / Button",
@@ -14,12 +15,14 @@ const buttonDemo: Demo = {
     keywords: ["click"],
     component: () => null,
 };
+
 const expanderDemo: Demo = {
     id: "expander",
     title: "Buttons / Expander",
     description: "An expander",
     keywords: ["disclose"],
 };
+
 const standaloneDemo: Demo = {
     id: "stand",
     title: "Standalone",
@@ -28,7 +31,14 @@ const standaloneDemo: Demo = {
     component: () => null,
 };
 
-const noop = () => {};
+const noop = vi.fn();
+
+const ContextProbeWrapper = ({ children }: { children: ReactNode }) => (
+    <DemoProvider demos={[intro, buttonDemo, expanderDemo]}>
+        <Sidebar searchMode={false} onSearchChanged={noop} />
+        {children}
+    </DemoProvider>
+);
 
 describe("Sidebar", () => {
     it("renders the Buttons category node grouping its two child demos", async () => {
@@ -37,9 +47,12 @@ describe("Sidebar", () => {
                 <Sidebar searchMode={false} onSearchChanged={noop} />
             </DemoProvider>,
         );
-        await screen.findByText("Buttons");
-        await screen.findByText("Button");
-        await screen.findByText("Expander");
+
+        const category = await screen.findByText("Buttons");
+        const first = await screen.findByText("Button");
+        const second = await screen.findByText("Expander");
+        expect(category).not.toBe(first);
+        expect(first).not.toBe(second);
     });
 
     it("renders top-level demos by their display title", async () => {
@@ -48,8 +61,10 @@ describe("Sidebar", () => {
                 <Sidebar searchMode={false} onSearchChanged={noop} />
             </DemoProvider>,
         );
-        await screen.findByText("Standalone");
-        await screen.findByText("GTK Demo");
+
+        const standalone = await screen.findByText("Standalone");
+        const introEntry = await screen.findByText("GTK Demo");
+        expect(standalone).not.toBe(introEntry);
     });
 
     it("opens the sidebar search bar when search mode is enabled", async () => {
@@ -58,19 +73,14 @@ describe("Sidebar", () => {
                 <Sidebar searchMode={true} onSearchChanged={noop} />
             </DemoProvider>,
         );
+
         const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
         expect(searchBar.getSearchMode()).toBe(true);
         await screen.findByText("Buttons");
     });
 
     it("exposes the current demo via the context", async () => {
-        const Wrapper = ({ children }: { children: ReactNode }) => (
-            <DemoProvider demos={[intro, buttonDemo, expanderDemo]}>
-                <Sidebar searchMode={false} onSearchChanged={noop} />
-                {children}
-            </DemoProvider>
-        );
-        const { result } = await renderHook(() => useDemo(), { wrapper: Wrapper });
+        const { result } = await renderHook(() => useDemo(), { wrapper: ContextProbeWrapper });
         expect(result.current.currentDemo?.id).toBe("intro");
     });
 });

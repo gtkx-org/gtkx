@@ -11,7 +11,11 @@ const isSelectable = (widget: Gtk.Widget): boolean => {
     return SELECTABLE_ROLES.has(widget.getAccessibleRole());
 };
 
-const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: number[], exclusive: boolean): void => {
+const selectListViewItems = (
+    selectionModel: Gtk.SelectionModel,
+    positions: number[],
+    isExclusive: boolean,
+): void => {
     if (positions.length === 0) {
         selectionModel.unselectRange(0, selectionModel.getNItems());
 
@@ -20,7 +24,7 @@ const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: numb
 
     const [first] = positions;
 
-    if (exclusive && first !== undefined && positions.length === 1) {
+    if (isExclusive && first !== undefined && positions.length === 1) {
         selectionModel.selectItem(first, true);
 
         return;

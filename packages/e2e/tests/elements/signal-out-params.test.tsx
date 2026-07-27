@@ -8,6 +8,13 @@ import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { type ComponentProps, createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+type SnippetView = {
+    view: GtkSource.View;
+    buffer: GtkSource.Buffer;
+    snippet: GtkSource.Snippet;
+    location: Gtk.TextIter;
+};
+
 const FALSE = 0;
 const GTK_INPUT_ERROR = -1;
 
@@ -23,7 +30,10 @@ const renderSpinButton = async (onInput?: ComponentProps<typeof GtkSpinButton>["
 const setTextAndUpdate = async (spin: Gtk.SpinButton, text: string): Promise<void> => {
     await userEvent.clear(spin);
     await userEvent.type(spin, text);
-    await act(() => spin.update());
+
+    await act(() => {
+        spin.update();
+    });
 };
 
 const renderText = async (): Promise<Gtk.Text> => {
@@ -52,13 +62,6 @@ const renderOverlayWithChild = async (mainLabel: string): Promise<Gtk.Overlay> =
     });
 
     return overlay;
-};
-
-type SnippetView = {
-    view: GtkSource.View;
-    buffer: GtkSource.Buffer;
-    snippet: GtkSource.Snippet;
-    location: Gtk.TextIter;
 };
 
 const renderSnippetView = async (spec: string, initialText?: string): Promise<SnippetView> => {
@@ -91,12 +94,14 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
 
         await setTextAndUpdate(spin, "value: 042");
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 42 } });
+        expect(spin.getValue()).toBe(42);
     });
 
     it("falls back to GTK's default parsing when the handler returns the not-handled primary", async () => {
         const spin = await renderSpinButton(() => [FALSE, 0]);
         await setTextAndUpdate(spin, "55");
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 55 } });
+        expect(spin.getValue()).toBe(55);
     });
 
     it("round-trips the tuple out-value through a direct FFI connect", async () => {
@@ -104,6 +109,7 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
         spin.connect("input", () => [1, 256]);
         await setTextAndUpdate(spin, "anything");
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 256 } });
+        expect(spin.getValue()).toBe(256);
     });
 });
 

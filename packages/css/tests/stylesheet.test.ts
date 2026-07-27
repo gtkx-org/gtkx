@@ -26,7 +26,11 @@ describe("StyleSheet", () => {
         try {
             const stylesheet = new StyleSheet();
             stylesheet.insert(".bad { not-a-real-property: 1; }");
-            await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+            await new Promise<void>((resolve) => {
+                queueMicrotask(resolve);
+            });
+
             expect(warn).toHaveBeenCalledWith(expect.stringContaining("[gtkx:css]"));
             expect(warn).toHaveBeenCalledWith(expect.stringContaining("GTK4 rejected CSS"));
         } finally {

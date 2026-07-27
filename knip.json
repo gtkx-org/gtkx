@@ -3,7 +3,6 @@
     "ignoreExportsUsedInFile": true,
     "ignore": ["packages/native/index.js"],
     "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$"],
-    "ignoreBinaries": ["espeak-ng"],
     "workspaces": {
         ".": {
             "entry": ["gtkx.config.ts", "gtkx.config.base.ts", "scripts/**/*.ts"],

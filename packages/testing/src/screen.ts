@@ -12,14 +12,14 @@ const defaultScreen: RenderResult = new Proxy({} as RenderResult, {
     },
 });
 
-let activeScreen: RenderResult = defaultScreen;
+const activeScreen: { current: RenderResult } = { current: defaultScreen };
 
 /**
  * Queries and debug utilities bound to the most recent render, scoped to the
  * current toplevel windows. Accessing it before any render throws.
  */
 const screen: Screen = new Proxy({} as Screen, {
-    get: (_target, property): unknown => Reflect.get(activeScreen, property),
+    get: (_target, property): unknown => Reflect.get(activeScreen.current, property),
 });
 
 const throwNoRender = (): never => {
@@ -27,11 +27,11 @@ const throwNoRender = (): never => {
 };
 
 const setScreen = (result: RenderResult): void => {
-    activeScreen = result;
+    activeScreen.current = result;
 };
 
 const clearScreen = (): void => {
-    activeScreen = defaultScreen;
+    activeScreen.current = defaultScreen;
 };
 
 export { screen, setScreen, clearScreen };

@@ -18,7 +18,11 @@ const ScaleWithAdjustment = ({
     <GtkScale
         ref={scaleRef}
         adjustment={<GtkAdjustment {...config} />}
-        onValueChanged={onValueChanged ? (scale) => onValueChanged(scale.getValue()) : undefined}
+        onValueChanged={onValueChanged
+            ? (scale) => {
+                    onValueChanged(scale.getValue());
+                }
+            : undefined}
     />
 );
 

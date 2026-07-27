@@ -14,7 +14,7 @@ pub struct NestedDescriptor(pub Box<Descriptor>);
 type Descriptors = Vec<Descriptor>;
 
 impl FromNapiValue for NestedDescriptor {
-    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> napi::Result<Self> {
+    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
         Ok(Self(Box::new(unsafe {
             Descriptor::from_napi_value(env, napi_val)?
         })))
@@ -117,13 +117,13 @@ pub enum Descriptor {
 }
 
 impl NestedDescriptor {
-    fn into_codec(self) -> napi::Result<Box<Codec>> {
+    fn into_codec(self) -> Result<Box<Codec>> {
         Ok(Box::new((*self.0).into_codec()?))
     }
 }
 
 impl Descriptor {
-    pub fn into_codec(self) -> napi::Result<Codec> {
+    pub fn into_codec(self) -> Result<Codec> {
         Ok(match self {
             Self::Int8 => Codec::Integer(IntegerCodec::I8),
             Self::Uint8 => Codec::Integer(IntegerCodec::U8),
@@ -203,6 +203,12 @@ impl Descriptor {
                 ref_fn_name,
                 unref_fn_name,
             }),
+            nested => nested.into_nested_codec()?,
+        })
+    }
+
+    fn into_nested_codec(self) -> Result<Codec> {
+        Ok(match self {
             Self::Array {
                 item_descriptor,
                 array_kind,
@@ -242,7 +248,7 @@ impl Descriptor {
                     arg_codecs: arg_descriptors
                         .into_iter()
                         .map(Self::into_codec)
-                        .collect::<napi::Result<Vec<_>>>()?,
+                        .collect::<Result<Vec<_>>>()?,
                     return_codec: return_descriptor.into_codec()?,
                     has_destroy,
                     user_data_index: user_data_index.map(|n| n as usize),
@@ -256,6 +262,7 @@ impl Descriptor {
                 *inner_descriptor.into_codec()?,
                 inout.unwrap_or(false),
             )?),
+            _ => unreachable!("descriptors without nested descriptors are handled by into_codec"),
         })
     }
 

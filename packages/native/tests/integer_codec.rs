@@ -1,12 +1,12 @@
 use native::ffi;
 use native::ffi::codec::IntegerCodec;
 
-fn assert_read_ptr<T>(kind: IntegerCodec, value: T, expected: f64) {
+fn assert_read_ptr<T: Copy>(kind: IntegerCodec, value: T, expected: f64) {
     let result = unsafe { kind.read_ptr((&raw const value).cast::<u8>()) };
-    assert_eq!(result, expected);
+    assert!((result - expected).abs() < f64::EPSILON);
 }
 
-fn assert_write_ptr<T: Default + PartialEq + std::fmt::Debug>(
+fn assert_write_ptr<T: Copy + Default + PartialEq + std::fmt::Debug>(
     kind: IntegerCodec,
     value: f64,
     expected: T,

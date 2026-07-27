@@ -8,7 +8,10 @@ import { deselectOptions, selectOptions } from "./selection.js";
 import { createInitialState } from "./state.js";
 import { clear, copy, cut, paste, type } from "./text.js";
 
-/** The set of user interaction helpers exposed by {@link userEvent}, covering clicks, typing, keyboard, pointer, gestures, selection, and scrolling. */
+/**
+ * The set of user interaction helpers exposed by {@link userEvent}, covering clicks, typing,
+ * keyboard, pointer, gestures, selection, and scrolling.
+ */
 type UserEvent = {
     click: typeof click;
     dblClick: typeof dblClick;
@@ -38,7 +41,10 @@ type UserEvent = {
 
 const state = createInitialState();
 
-/** High-level helpers that drive widgets by dispatching the same events and gestures GTK4 delivers when someone clicks, types, or drags. */
+/**
+ * High-level helpers that drive widgets by dispatching the same events and gestures GTK4 delivers
+ * when someone clicks, types, or drags.
+ */
 const userEvent: UserEvent = {
     click,
     dblClick,

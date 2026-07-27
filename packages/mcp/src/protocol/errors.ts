@@ -40,7 +40,7 @@ function widgetNotFoundError(widgetId: string): ProtocolError {
 }
 
 function requestTimeoutError(timeout: number): ProtocolError {
-    return new ProtocolError(ErrorCode.REQUEST_TIMEOUT, `Request timed out after ${timeout}ms`, { timeout });
+    return new ProtocolError(ErrorCode.REQUEST_TIMEOUT, `Request timed out after ${String(timeout)}ms`, { timeout });
 }
 
 function invalidRequestError(reason: string): ProtocolError {

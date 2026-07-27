@@ -76,7 +76,7 @@ const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
     entry.attached = true;
 };
 
-const tryAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
+const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
     const attach = behavior.attach;
 
     if (attach === undefined) {
@@ -102,7 +102,7 @@ const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sib
     const ctx: AttachContext = { parent, entry, index, sibling };
 
     for (const behavior of typeInfoFor(parent.typeName).behaviors) {
-        if (tryAttach(ctx, behavior)) {
+        if (didAttach(ctx, behavior)) {
             return;
         }
     }
@@ -161,10 +161,10 @@ const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[
         return;
     }
 
-    const insertedBeforeEnd = index < entries.length - 1;
-    const cannotReorderInPlace = entry.behavior !== null && entry.behavior.reorder === undefined;
+    const isInsertedBeforeEnd = index < entries.length - 1;
+    const isCannotReorderInPlace = entry.behavior !== null && entry.behavior.reorder === undefined;
 
-    if (insertedBeforeEnd && cannotReorderInPlace) {
+    if (isInsertedBeforeEnd && isCannotReorderInPlace) {
         rebuild(parent, entries);
     }
 };

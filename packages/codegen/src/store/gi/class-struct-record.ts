@@ -31,7 +31,7 @@ const isClassStructRecord = (library: Library, namespaceName: string, record: Gi
     return TYPE_STRUCT_ROOTS.has(qualify(name.namespaceName, name.typeName));
 };
 
-const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): boolean => {
+const isClassStructRef = (context: ModuleContext, ref: TypeId | undefined): boolean => {
     if (ref === undefined) {
         return false;
     }
@@ -48,16 +48,23 @@ const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): bool
         }
         case "carray":
         case "list": {
-            return refIsClassStruct(context, type.element);
+            return isClassStructRef(context, type.element);
         }
-        default: {
+        case "alias":
+        case "callback":
+        case "class":
+        case "enum":
+        case "hashtable":
+        case "interface":
+        case "primitive":
+        case "varargs": {
             return false;
         }
     }
 };
 
-const callableReferencesClassStruct = (context: ModuleContext, fn: GirFunction): boolean =>
-    refIsClassStruct(context, fn.returnValue.type) ||
-    fn.parameters.some((parameter) => refIsClassStruct(context, parameter.type));
+const hasClassStructReference = (context: ModuleContext, fn: GirFunction): boolean =>
+    isClassStructRef(context, fn.returnValue.type) ||
+    fn.parameters.some((parameter) => isClassStructRef(context, parameter.type));
 
-export { isClassStructRecord, refIsClassStruct, callableReferencesClassStruct };
+export { isClassStructRecord, isClassStructRef, hasClassStructReference };

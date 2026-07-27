@@ -2,8 +2,8 @@ import type { Library } from "./gir/library.js";
 import {
     computeJsxFingerprint,
     FINGERPRINT_FILENAME,
-    isJsxStoreFresh,
     type JsxFingerprintInput,
+    jsxStoreFreshness,
 } from "./fingerprint.js";
 import { type ModuleExport, readBuiltinElements } from "./react/element-config.js";
 import { type JsxStoreOptions, writeJsxStore } from "./store/jsx-store.js";
@@ -45,7 +45,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
     };
 
     if (!options.force && !options.giRegenerated) {
-        const { fresh, intrinsicElementCount } = isJsxStoreFresh(options.jsx.storeDir, fingerprintInput);
+        const { fresh, intrinsicElementCount } = jsxStoreFreshness(options.jsx.storeDir, fingerprintInput);
 
         if (fresh) {
             return { regenerated: false, intrinsicElementCount };

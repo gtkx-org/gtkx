@@ -10,7 +10,7 @@ function makeItems(n: number): Item<{ name: string }>[] {
     const items: Item<{ name: string }>[] = [];
 
     for (let i = 0; i < n; i++) {
-        items.push({ id: `row-${i}`, value: { name: `row-${i}` } });
+        items.push({ id: `row-${String(i)}`, value: { name: `row-${String(i)}` } });
     }
 
     return items;
@@ -19,9 +19,9 @@ function makeItems(n: number): Item<{ name: string }>[] {
 describe("selection apply", () => {
     for (const n of SIZES) {
         const items = makeItems(n);
-        const targetId = `row-${n - 1}`;
+        const targetId = `row-${String(n - 1)}`;
 
-        bench(`multi-selection across ${n} items`, async () => {
+        bench(`multi-selection across ${String(n)} items`, async () => {
             const { rerender } = await renderListView(items, { selectionMode: Gtk.SelectionMode.MULTIPLE }, render);
 
             for (let k = 0; k < 3; k++) {

@@ -37,28 +37,23 @@ const PRIVATE_MARSHALLING_INTERNALS = [
     "inoutValueForBoxedDescriptor",
 ];
 
-const expectExported = (names: string[], reason: string): void => {
-    for (const name of names) {
-        expect(runtime, `${reason}: ${name}`).toHaveProperty(name);
-    }
-};
+const barrelNames: Set<string> = new Set(Object.keys(runtime));
 
-const expectNotExported = (names: string[], reason: string): void => {
-    for (const name of names) {
-        expect(runtime, `${reason}: ${name}`).not.toHaveProperty(name);
-    }
-};
+const absentFromBarrel = (names: string[]): string[] => names.filter((name) => !barrelNames.has(name));
+const presentInBarrel = (names: string[]): string[] => names.filter((name) => barrelNames.has(name));
 
 describe("runtime barrel", () => {
     it("exposes every helper symbol generated code depends on", () => {
-        expectExported(EXPECTED_RUNTIME_EXPORTS, "missing runtime export");
+        expect(absentFromBarrel(EXPECTED_RUNTIME_EXPORTS), "missing runtime exports").toEqual([]);
     });
 
     it("does not re-export low-level transport primitives owned by `@gtkx/native`", () => {
-        expectNotExported(NATIVE_TRANSPORT_PRIMITIVES, "unexpected native primitive re-export");
+        expect(presentInBarrel(NATIVE_TRANSPORT_PRIMITIVES), "unexpected native primitive re-exports").toEqual([]);
     });
 
     it("keeps the GValue marshalling primitives internal", () => {
-        expectNotExported(PRIVATE_MARSHALLING_INTERNALS, "marshalling internal leaked to the barrel");
+        expect(presentInBarrel(PRIVATE_MARSHALLING_INTERNALS), "marshalling internals leaked to the barrel").toEqual(
+            [],
+        );
     });
 });

@@ -56,11 +56,11 @@ const attr = (node: RawNode | undefined, name: string): string | undefined => {
     return typeof value === "string" ? value : undefined;
 };
 
-const attrBool = (node: RawNode | undefined, name: string, fallback = false): boolean => {
+const isAttrTrue = (node: RawNode | undefined, name: string, isTrueByDefault = false): boolean => {
     const value = attr(node, name);
 
     if (value === undefined) {
-        return fallback;
+        return isTrueByDefault;
     }
 
     return value === "1";
@@ -163,7 +163,7 @@ export {
     GIR_CONSTRUCTOR_TAG,
     parseGirFile,
     attr,
-    attrBool,
+    isAttrTrue,
     nameAttr,
     intAttr,
     parseEnumAttr,

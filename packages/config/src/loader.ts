@@ -38,15 +38,15 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     });
 
     const config = result.config;
-    const found = result.configFile !== undefined && existsSync(resolve(cwd, result.configFile));
+    const isFound = result.configFile !== undefined && existsSync(resolve(cwd, result.configFile));
 
-    if (found) {
+    if (isFound) {
         validateConfig(config);
     }
 
     return {
         config,
-        configFile: found ? result.configFile : undefined,
+        configFile: isFound ? result.configFile : undefined,
         root: result.cwd ?? cwd,
     };
 };

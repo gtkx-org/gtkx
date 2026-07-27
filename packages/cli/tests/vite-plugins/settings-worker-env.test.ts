@@ -8,14 +8,9 @@ import { gtkxSettingsWorkerEnv } from "../../src/vite-plugins/settings-worker-en
 
 type ConfigHook = (config: { root?: string }) => { test?: { env?: Record<string, string> } } | undefined;
 
-const hasGlibCompileSchemas = (): boolean => {
-    try {
-        execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
-
-        return true;
-    } catch {
-        return false;
-    }
+type SavedSchemaEnv = {
+    schemaDir: string | undefined;
+    runnerDir: string | undefined;
 };
 
 const SCHEMA_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -27,6 +22,18 @@ const SCHEMA_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </schema>
 </schemalist>
 `;
+
+const hasGlibCompileSchemas = (): boolean => {
+    try {
+        execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], {
+            stdio: ["ignore", "ignore", "ignore"],
+        });
+
+        return true;
+    } catch {
+        return false;
+    }
+};
 
 const writeProject = (root: string, options: { dataDir: string | null; schema: boolean }): void => {
     const imports = options.dataDir === null ? {} : { imports: { "#data/*": `./${options.dataDir}/*` } };
@@ -52,6 +59,23 @@ const restoreEnv = (name: string, previous: string | undefined): void => {
     }
 };
 
+const clearSchemaEnv = (): SavedSchemaEnv => {
+    const saved: SavedSchemaEnv = {
+        schemaDir: process.env.GSETTINGS_SCHEMA_DIR,
+        runnerDir: process.env.GTKX_DEV_SCHEMA_DIR,
+    };
+
+    delete process.env.GSETTINGS_SCHEMA_DIR;
+    delete process.env.GTKX_DEV_SCHEMA_DIR;
+
+    return saved;
+};
+
+const restoreSchemaEnv = (saved: SavedSchemaEnv): void => {
+    restoreEnv("GSETTINGS_SCHEMA_DIR", saved.schemaDir);
+    restoreEnv("GTKX_DEV_SCHEMA_DIR", saved.runnerDir);
+};
+
 const callConfig = (root: string): ReturnType<ConfigHook> => {
     const plugin = gtkxSettingsWorkerEnv();
 
@@ -60,21 +84,16 @@ const callConfig = (root: string): ReturnType<ConfigHook> => {
 
 describe("gtkxSettingsWorkerEnv", () => {
     let root: string;
-    let previousSchemaDir: string | undefined;
-    let previousRunnerDir: string | undefined;
+    let savedEnv: SavedSchemaEnv;
 
     beforeEach(() => {
         root = mkdtempSync(join(tmpdir(), "gtkx-worker-env-"));
-        previousSchemaDir = process.env.GSETTINGS_SCHEMA_DIR;
-        previousRunnerDir = process.env.GTKX_DEV_SCHEMA_DIR;
-        delete process.env.GSETTINGS_SCHEMA_DIR;
-        delete process.env.GTKX_DEV_SCHEMA_DIR;
+        savedEnv = clearSchemaEnv();
     });
 
     afterEach(() => {
         rmSync(root, { recursive: true, force: true });
-        restoreEnv("GSETTINGS_SCHEMA_DIR", previousSchemaDir);
-        restoreEnv("GTKX_DEV_SCHEMA_DIR", previousRunnerDir);
+        restoreSchemaEnv(savedEnv);
     });
 
     it("returns a plugin with the expected name and pre-enforce", () => {

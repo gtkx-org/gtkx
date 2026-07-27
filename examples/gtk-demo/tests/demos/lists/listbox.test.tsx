@@ -4,12 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import { listboxDemo } from "../../../src/demos/lists/listbox.js";
 import { renderDemo } from "../../test-utils.js";
 
-vi.setConfig({ testTimeout: 60_000 });
-
 const findListBox = async (): Promise<Gtk.ListBox> => (await screen.findByName("list-box")) as Gtk.ListBox;
 
 const findRow = async (index: number): Promise<Gtk.ListBoxRow> => {
     const listBox = await findListBox();
+
     return within(listBox).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)[index] as Gtk.ListBoxRow;
 };
 
@@ -19,6 +18,8 @@ const revealActionButtons = async (row: Gtk.ListBoxRow): Promise<void> => {
     row.setStateFlags(Gtk.StateFlags.PRELIGHT, false);
     await fireEvent(row, "state-flags-changed", Gtk.StateFlags.NORMAL);
 };
+
+vi.setConfig({ testTimeout: 60_000 });
 
 describe("listboxDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -37,6 +38,7 @@ describe("listboxDemo metadata", () => {
 describe("listboxDemo rendering", () => {
     it("renders the header label inside the demo", async () => {
         await renderDemo(listboxDemo);
+
         expect(await screen.findByText("Messages from GTK and friends")).toHaveTextContent(
             "Messages from GTK and friends",
         );
@@ -61,6 +63,7 @@ describe("listboxDemo rendering", () => {
     it("orders rows by time descending so the newest message is first", async () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
+
         expect(firstRow).toHaveTextContent(
             "@breizhodrome yeah, that's for the OpenGL support that has been added recently",
         );
@@ -84,19 +87,25 @@ describe("listboxDemo row interaction", () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
         const revealer = within(firstRow).getByName("details-revealer") as Gtk.Revealer;
-        const before = revealer.getRevealChild();
+        const isBefore = revealer.getRevealChild();
         await userEvent.click(firstRow);
-        await waitFor(() => expect(revealer.getRevealChild()).toBe(!before));
+
+        await waitFor(() => {
+            expect(revealer.getRevealChild()).toBe(!isBefore);
+        });
     });
 
     it("returns to the initial revealer state after a second activation", async () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
         const revealer = within(firstRow).getByName("details-revealer") as Gtk.Revealer;
-        const initial = revealer.getRevealChild();
+        const isInitial = revealer.getRevealChild();
         await userEvent.click(firstRow);
         await userEvent.click(firstRow);
-        await waitFor(() => expect(revealer.getRevealChild()).toBe(initial));
+
+        await waitFor(() => {
+            expect(revealer.getRevealChild()).toBe(isInitial);
+        });
     });
 });
 
@@ -107,9 +116,13 @@ describe("listboxDemo expand / hide button", () => {
         const expandButton = within(firstRow).getByName("expand-button") as Gtk.Button;
         const revealer = within(firstRow).getByName("details-revealer") as Gtk.Revealer;
         expect(expandButton.getLabel()).toBe("Expand");
-        const before = revealer.getRevealChild();
+        const isBefore = revealer.getRevealChild();
         await userEvent.click(expandButton);
-        await waitFor(() => expect(revealer.getRevealChild()).toBe(!before));
+
+        await waitFor(() => {
+            expect(revealer.getRevealChild()).toBe(!isBefore);
+        });
+
         expect(expandButton.getLabel()).toBe("Hide");
     });
 });
@@ -122,7 +135,10 @@ describe("listboxDemo row state flags", () => {
         const actionBox = replyLabel.getParent()?.getParent() as Gtk.Widget;
         expect(actionBox.getVisible()).toBe(false);
         await revealActionButtons(firstRow);
-        await waitFor(() => expect(actionBox.getVisible()).toBe(true));
+
+        await waitFor(() => {
+            expect(actionBox.getVisible()).toBe(true);
+        });
     });
 });
 
@@ -133,12 +149,20 @@ describe("listboxDemo favorite and reshare actions", () => {
         await revealActionButtons(firstRow);
         const expandButton = within(firstRow).getByName("expand-button") as Gtk.Button;
         await userEvent.click(expandButton);
-        await waitFor(() => expect(within(firstRow).getByText(/Favorites/)).toHaveTextContent("2"));
+
+        await waitFor(() => {
+            expect(within(firstRow).getByText(/Favorites/)).toHaveTextContent("2");
+        });
+
         const favoriteButton = within(firstRow).getByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Favorite",
         }) as Gtk.Button;
+
         await userEvent.click(favoriteButton);
-        await waitFor(() => expect(within(firstRow).getByText(/Favorites/)).toHaveTextContent("3"));
+
+        await waitFor(() => {
+            expect(within(firstRow).getByText(/Favorites/)).toHaveTextContent("3");
+        });
     });
 
     it("increments the reshares count shown in the details revealer when Reshare is clicked", async () => {
@@ -147,9 +171,16 @@ describe("listboxDemo favorite and reshare actions", () => {
         await revealActionButtons(firstRow);
         const expandButton = within(firstRow).getByName("expand-button") as Gtk.Button;
         await userEvent.click(expandButton);
-        await waitFor(() => expect(within(firstRow).getByText(/Reshares/)).toHaveTextContent("1"));
+
+        await waitFor(() => {
+            expect(within(firstRow).getByText(/Reshares/)).toHaveTextContent("1");
+        });
+
         const reshareButton = within(firstRow).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Reshare" }) as Gtk.Button;
         await userEvent.click(reshareButton);
-        await waitFor(() => expect(within(firstRow).getByText(/Reshares/)).toHaveTextContent("2"));
+
+        await waitFor(() => {
+            expect(within(firstRow).getByText(/Reshares/)).toHaveTextContent("2");
+        });
     });
 });

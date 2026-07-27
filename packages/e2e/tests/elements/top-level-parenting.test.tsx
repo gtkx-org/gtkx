@@ -7,10 +7,9 @@ import { createPortal, rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject, useState } from "react";
 import { describe, expect, it } from "vitest";
+import { createAppIdFactory } from "../helpers/unique-name.js";
 
-let nextAppId = 0;
-
-const uniqueAppId = (): string => `org.gtkx.topleveparentingtest${nextAppId++}`;
+const uniqueAppId = createAppIdFactory("org.gtkx.topleveparentingtest");
 
 const ParentedTree = ({
     parentRef,

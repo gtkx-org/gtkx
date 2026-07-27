@@ -69,7 +69,7 @@ const expectTwoLabelSlotMounts = async (build: (labels: ReactNode) => ReactNode)
 };
 
 const expectIndividualChildRemoval = async (
-    renderApp: (showSecond: boolean) => ReactNode,
+    renderApp: (hasSecond: boolean) => ReactNode,
     firstRef: RefObject<Gtk.Label | null>,
     secondRef: RefObject<Gtk.Label | null>,
 ) => {
@@ -80,6 +80,48 @@ const expectIndividualChildRemoval = async (
     expect(firstRef.current).not.toBeNull();
     expect(secondRef.current).toBeNull();
 };
+
+function SwapKeyedApp({
+    headerBarRef,
+    showBack,
+}: {
+    headerBarRef: RefObject<Gtk.HeaderBar | null>;
+    showBack: boolean;
+}) {
+    return (
+        <GtkHeaderBar
+            ref={headerBarRef}
+            start={(
+                <>
+                    {showBack ? <GtkButton key="back" label="Back" /> : <GtkButton key="search" label="Search" />}
+                    <GtkButton label="Delete" />
+                </>
+            )}
+        />
+    );
+}
+
+function App({ order }: { order: "ab" | "ba" }) {
+    return (
+        <GtkHeaderBar
+            start={
+                order === "ab"
+                    ? (
+                            <>
+                                <GtkButton key="a" label="A" />
+                                <GtkButton key="b" label="B" />
+                            </>
+                        )
+                    : (
+                            <>
+                                <GtkButton key="b" label="B" />
+                                <GtkButton key="a" label="A" />
+                            </>
+                        )
+            }
+        />
+    );
+}
 
 describe("render - ContainerProp (1)", () => {
     describe("AdwActionRow (prefix/suffix) (1)", () => {
@@ -117,7 +159,7 @@ describe("render - ContainerProp (2)", () => {
                             ref={rowRef}
                             title="Test Row"
                             suffix={Array.from({ length: count }, (_, i) => (
-                                <GtkLabel key={`suffix-label-${i}`} ref={labelRefs[i]}>
+                                <GtkLabel key={`suffix-label-${String(i)}`} ref={labelRefs[i]}>
                                     Label
                                     {" "}
                                     {i}
@@ -212,7 +254,7 @@ describe("render - ContainerProp (6)", () => {
             const secondRef = createRef<Gtk.Label>();
 
             await expectIndividualChildRemoval(
-                (showSecond) => (
+                (hasSecond) => (
                     <GtkListBox>
                         <AdwActionRow
                             ref={rowRef}
@@ -220,7 +262,7 @@ describe("render - ContainerProp (6)", () => {
                             prefix={(
                                 <>
                                     <GtkLabel ref={firstRef}>First</GtkLabel>
-                                    {showSecond && <GtkLabel ref={secondRef}>Second</GtkLabel>}
+                                    {hasSecond && <GtkLabel ref={secondRef}>Second</GtkLabel>}
                                 </>
                             )}
                         />
@@ -455,26 +497,6 @@ describe("render - ContainerProp (13)", () => {
     });
 });
 
-function SwapKeyedApp({
-    headerBarRef,
-    showBack,
-}: {
-    headerBarRef: RefObject<Gtk.HeaderBar | null>;
-    showBack: boolean;
-}) {
-    return (
-        <GtkHeaderBar
-            ref={headerBarRef}
-            start={(
-                <>
-                    {showBack ? <GtkButton key="back" label="Back" /> : <GtkButton key="search" label="Search" />}
-                    <GtkButton label="Delete" />
-                </>
-            )}
-        />
-    );
-}
-
 describe("render - ContainerProp (14)", () => {
     describe("GtkHeaderBar (start/end) (4)", () => {
         it("swaps keyed children in start without duplication", async () => {
@@ -495,28 +517,6 @@ describe("render - ContainerProp (14)", () => {
         });
     });
 });
-
-function App({ order }: { order: "ab" | "ba" }) {
-    return (
-        <GtkHeaderBar
-            start={
-                order === "ab"
-                    ? (
-                            <>
-                                <GtkButton key="a" label="A" />
-                                <GtkButton key="b" label="B" />
-                            </>
-                        )
-                    : (
-                            <>
-                                <GtkButton key="b" label="B" />
-                                <GtkButton key="a" label="A" />
-                            </>
-                        )
-            }
-        />
-    );
-}
 
 describe("render - ContainerProp (15)", () => {
     describe("GtkHeaderBar (start/end) (5)", () => {
@@ -539,13 +539,13 @@ describe("render - ContainerProp (16)", () => {
             const secondRef = createRef<Gtk.Label>();
 
             await expectIndividualChildRemoval(
-                (showSecond) => (
+                (hasSecond) => (
                     <GtkHeaderBar
                         ref={headerBarRef}
                         start={(
                             <>
                                 <GtkLabel ref={firstRef}>First</GtkLabel>
-                                {showSecond && <GtkLabel ref={secondRef}>Second</GtkLabel>}
+                                {hasSecond && <GtkLabel ref={secondRef}>Second</GtkLabel>}
                             </>
                         )}
                     />

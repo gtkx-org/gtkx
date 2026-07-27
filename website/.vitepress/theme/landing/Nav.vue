@@ -3,7 +3,7 @@ import { ref } from "vue";
 import Badge from "../components/Badge.vue";
 import Icon from "../components/Icon.vue";
 import IconButton from "../components/IconButton.vue";
-import { useAppearance } from "../composables/useAppearance";
+import { useAppearance } from "../composables/use-appearance";
 import { REPO_URL } from "./content";
 
 const { isDark, toggle } = useAppearance();

@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { basename, dirname, join, resolve } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
+import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { isKnownPackageManager, PACKAGE_MANAGERS, type PackageManager } from "./package-managers.js";
 import { isValidProjectName } from "./project-name.js";
 import { listTemplates, renderFile, type TemplateContext } from "./templates.js";
@@ -118,7 +119,7 @@ const getDevDependencies = ({
 const guardCancellation = <T>(value: T | symbol): T => {
     if (p.isCancel(value)) {
         p.cancel("Operation canceled");
-        process.exit(0);
+        throw new OperationCanceledError();
     }
 
     return value;
@@ -150,7 +151,7 @@ const validateApplicationIdInput = (value: string | undefined): string | undefin
 
 const fail = (message: string): never => {
     p.log.error(message);
-    process.exit(1);
+    throw new ScaffoldAbortedError(message);
 };
 
 const validateTarget = (value: string | undefined): string | undefined => {
@@ -358,10 +359,10 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
     const root = resolve(process.cwd(), target);
     await handleTargetDirectory(root, target, options);
     const packageManager = await resolvePackageManager(options);
-    const typescript = await resolveTypeScript(options);
-    const includeTesting = await resolveIncludeTesting(options);
+    const isTypescript = await resolveTypeScript(options);
+    const isIncludeTesting = await resolveIncludeTesting(options);
 
-    return { target, name, applicationId, packageManager, typescript, includeTesting };
+    return { target, name, applicationId, packageManager, typescript: isTypescript, includeTesting: isIncludeTesting };
 };
 
 const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
@@ -376,8 +377,8 @@ const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOpti
     return true;
 };
 
-const toDestinationPath = (templateRelativePath: string, typescript: boolean): string =>
-    typescript ? templateRelativePath : templateRelativePath.replace(/\.tsx$/, ".jsx").replace(/\.ts$/, ".js");
+const toDestinationPath = (templateRelativePath: string, isTypescript: boolean): string =>
+    isTypescript ? templateRelativePath : templateRelativePath.replace(/\.tsx$/, ".jsx").replace(/\.ts$/, ".js");
 
 const addTestScript = (root: string): void => {
     const packageJsonPath = join(root, PACKAGE_JSON_TEMPLATE);
@@ -439,7 +440,7 @@ const installAllDependencies = async (options: InstallAllOptions): Promise<void>
         spinner.stop("Failed to install dependencies");
         p.log.error(`Failed to install dependencies: ${errorMessage(error)}`);
         p.log.info(`Install them manually by running:\n  cd ${target}\n  ${getInstallCommand(packageManager)}`);
-        process.exit(1);
+        throw new ScaffoldAbortedError("Failed to install dependencies");
     }
 };
 

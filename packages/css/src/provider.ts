@@ -17,7 +17,9 @@ const registerProviderForDefaultDisplay = (
     if (initialDisplay) {
         attach(initialDisplay);
     } else {
-        manager.once("display-opened", (openedDisplay: Display): void => attach(openedDisplay));
+        manager.once("display-opened", (openedDisplay: Display): void => {
+            attach(openedDisplay);
+        });
     }
 
     return provider;

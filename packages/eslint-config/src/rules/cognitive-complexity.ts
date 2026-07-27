@@ -5,6 +5,41 @@ type MessageIds = "excessiveComplexity";
 type VisitorKeys = TSESLint.SourceCode.VisitorKeys;
 type KeyedParent = TSESTree.Property | TSESTree.MethodDefinition | TSESTree.PropertyDefinition;
 
+type BranchingNode =
+    | TSESTree.ArrowFunctionExpression |
+    TSESTree.BreakStatement |
+    TSESTree.CatchClause |
+    TSESTree.ConditionalExpression |
+    TSESTree.ContinueStatement |
+    TSESTree.DoWhileStatement |
+    TSESTree.ForInStatement |
+    TSESTree.ForOfStatement |
+    TSESTree.ForStatement |
+    TSESTree.FunctionDeclaration |
+    TSESTree.FunctionExpression |
+    TSESTree.IfStatement |
+    TSESTree.LogicalExpression |
+    TSESTree.SwitchStatement |
+    TSESTree.WhileStatement;
+
+const BRANCHING_TYPES: Set<string> = new Set([
+    AST_NODE_TYPES.ArrowFunctionExpression,
+    AST_NODE_TYPES.BreakStatement,
+    AST_NODE_TYPES.CatchClause,
+    AST_NODE_TYPES.ConditionalExpression,
+    AST_NODE_TYPES.ContinueStatement,
+    AST_NODE_TYPES.DoWhileStatement,
+    AST_NODE_TYPES.ForInStatement,
+    AST_NODE_TYPES.ForOfStatement,
+    AST_NODE_TYPES.ForStatement,
+    AST_NODE_TYPES.FunctionDeclaration,
+    AST_NODE_TYPES.FunctionExpression,
+    AST_NODE_TYPES.IfStatement,
+    AST_NODE_TYPES.LogicalExpression,
+    AST_NODE_TYPES.SwitchStatement,
+    AST_NODE_TYPES.WhileStatement,
+]);
+
 const FUNCTION_TYPES: Set<string> = new Set([
     AST_NODE_TYPES.ArrowFunctionExpression,
     AST_NODE_TYPES.FunctionDeclaration,
@@ -22,11 +57,13 @@ const cognitiveComplexity = ESLintUtils.RuleCreator.withoutDocs<Options, Message
         type: "suggestion",
         docs: {
             description:
-                "Disallow functions whose cognitive complexity, summed across every nested closure, exceeds a threshold",
+                "Disallow functions whose cognitive complexity, summed across every nested closure, " +
+                "exceeds a threshold",
         },
         messages: {
             excessiveComplexity:
-                "Cognitive complexity of {{complexity}} (max: {{max}}), counting every nested function. Extract the closures into named top-level functions or split this one up.",
+                "Cognitive complexity of {{complexity}} (max: {{max}}), counting every nested function. " +
+                "Extract the closures into named top-level functions or split this one up.",
         },
         schema: [
             {
@@ -225,7 +262,9 @@ const logicalComplexity = (node: TSESTree.LogicalExpression, nesting: number, ke
     1 + operandComplexity(node.left, node.operator, nesting, keys) +
     operandComplexity(node.right, node.operator, nesting, keys);
 
-const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): number => {
+const isBranching = (node: TSESTree.Node): node is BranchingNode => BRANCHING_TYPES.has(node.type);
+
+const branchingComplexity = (node: BranchingNode, nesting: number, keys: VisitorKeys): number => {
     switch (node.type) {
         case AST_NODE_TYPES.IfStatement: {
             return ifComplexity(node, nesting, keys);
@@ -264,10 +303,10 @@ const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): 
 
             return params + complexityAt(node.body, nesting + 1, keys);
         }
-        default: {
-            return childrenComplexity(node, nesting, keys);
-        }
     }
 };
+
+const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): number =>
+    isBranching(node) ? branchingComplexity(node, nesting, keys) : childrenComplexity(node, nesting, keys);
 
 export { cognitiveComplexity };

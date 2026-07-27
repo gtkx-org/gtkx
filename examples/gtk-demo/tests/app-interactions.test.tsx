@@ -7,12 +7,13 @@ import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import { Demo } from "../src/app.js";
+import { createApplicationIdFactory } from "./test-utils.js";
 
-let nextAppId = 0;
+const nextApplicationId = createApplicationIdFactory("org.gtkx.gtkdemoint");
 
 const renderDemo = () =>
     render(
-        <GtkApplication applicationId={`org.gtkx.gtkdemoint${nextAppId++}`} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+        <GtkApplication applicationId={nextApplicationId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
             <Demo />
         </GtkApplication>,
         { container: rootElement },
@@ -23,14 +24,17 @@ const selectFirstDemoWithComponent = async (): Promise<void> => {
     const selectionModel = sidebar.getModel() as Gtk.SelectionModel;
     expect(selectionModel).not.toBeNull();
     let selectedIndex: number | null = null;
+
     for (let i = 0; i < selectionModel.getNItems(); i++) {
         await userEvent.selectOptions(sidebar, i);
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
+
         if (run.getSensitive()) {
             selectedIndex = i;
             break;
         }
     }
+
     expect(selectedIndex, "no demo with a runnable component found in the sidebar").not.toBeNull();
 };
 
@@ -47,7 +51,10 @@ describe("App search toggle", () => {
         const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
         expect(searchBar.getSearchMode()).toBe(false);
         await userEvent.click(toggle);
-        await waitFor(() => expect(searchBar.getSearchMode()).toBe(true));
+
+        await waitFor(() => {
+            expect(searchBar.getSearchMode()).toBe(true);
+        });
     });
 });
 
@@ -62,12 +69,14 @@ describe("App run button", () => {
     it("opens a demo window when Run is clicked", async () => {
         await renderDemo();
         await selectFirstDemoWithComponent();
-        const beforeCount = (await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)).length;
+        const windowsBefore = await screen.findAllByRole(Gtk.AccessibleRole.WINDOW);
+        const beforeCount = windowsBefore.length;
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
         await userEvent.click(run);
+
         await waitFor(async () => {
-            const after = (await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)).length;
-            expect(after).toBeGreaterThan(beforeCount);
+            const windowsAfter = await screen.findAllByRole(Gtk.AccessibleRole.WINDOW);
+            expect(windowsAfter.length).toBeGreaterThan(beforeCount);
         });
     });
 });
@@ -76,6 +85,7 @@ describe("App about menu", () => {
     it("renders the about dialog after the About menu entry is activated", async () => {
         await renderDemo();
         await openMenuItem("About GTK Demo");
+
         await waitFor(async () => {
             const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
             expect(dialogs.length).toBeGreaterThan(0);
@@ -93,16 +103,25 @@ describe("App about menu", () => {
 describe("App notebook", () => {
     it("renders the Info and Source tabs", async () => {
         await renderDemo();
-        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Info" });
-        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Source" });
+        const infoTab = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Info" });
+        const sourceTab = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Source" });
+        expect(infoTab).toBeInstanceOf(Gtk.Widget);
+        expect(sourceTab).toBeInstanceOf(Gtk.Widget);
+        expect(sourceTab).not.toBe(infoTab);
     });
 
     it("advances the page when the notebook page is set", async () => {
         await renderDemo();
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         expect(notebook.getCurrentPage()).toBe(0);
-        await act(() => notebook.setCurrentPage(1));
-        await waitFor(() => expect(notebook.getCurrentPage()).toBe(1));
+
+        await act(() => {
+            notebook.setCurrentPage(1);
+        });
+
+        await waitFor(() => {
+            expect(notebook.getCurrentPage()).toBe(1);
+        });
     });
 });
 
@@ -110,21 +129,28 @@ describe("App keyboard shortcuts dialog", () => {
     it("opens the keyboard shortcuts dialog when the menu entry is activated", async () => {
         await renderDemo();
         await openMenuItem("Keyboard Shortcuts");
+
         await waitFor(async () => {
             const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
             expect(dialogs.length).toBeGreaterThan(0);
         });
-        expect((await screen.findAllByText("Search demos")).length).toBeGreaterThan(0);
+
+        const shortcutLabels = await screen.findAllByText("Search demos");
+        expect(shortcutLabels.length).toBeGreaterThan(0);
     });
 });
 
 describe("App inspector activation", () => {
     it("invokes Gtk.Window.setInteractiveDebugging when the inspector menu entry is activated", async () => {
-        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
+        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
+
         try {
             await renderDemo();
             await openMenuItem("Inspector");
-            await waitFor(() => expect(debugSpy).toHaveBeenCalled());
+
+            await waitFor(() => {
+                expect(debugSpy).toHaveBeenCalled();
+            });
         } finally {
             debugSpy.mockRestore();
         }
@@ -138,16 +164,23 @@ describe("App global shortcuts", () => {
         const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
         expect(searchBar.getSearchMode()).toBe(false);
         await userEvent.keyboard(body, "{Control>}f{/Control}");
-        await waitFor(() => expect(searchBar.getSearchMode()).toBe(true));
+
+        await waitFor(() => {
+            expect(searchBar.getSearchMode()).toBe(true);
+        });
     });
 
     it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is pressed", async () => {
-        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
+        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
+
         try {
             await renderDemo();
             const body = await screen.findByName("main-window-body");
             await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
-            await waitFor(() => expect(debugSpy).toHaveBeenCalledWith(true));
+
+            await waitFor(() => {
+                expect(debugSpy).toHaveBeenCalledWith(true);
+            });
         } finally {
             debugSpy.mockRestore();
         }
@@ -159,7 +192,10 @@ describe("App global shortcuts", () => {
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         expect(notebook.getCurrentPage()).toBe(0);
         await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
-        await waitFor(() => expect(notebook.getCurrentPage()).toBe(1));
+
+        await waitFor(() => {
+            expect(notebook.getCurrentPage()).toBe(1);
+        });
     });
 
     it("returns to the previous notebook page when Ctrl+Page_Up is pressed", async () => {
@@ -167,9 +203,16 @@ describe("App global shortcuts", () => {
         const body = await screen.findByName("main-window-body");
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
-        await waitFor(() => expect(notebook.getCurrentPage()).toBe(1));
+
+        await waitFor(() => {
+            expect(notebook.getCurrentPage()).toBe(1);
+        });
+
         await userEvent.keyboard(body, "{Control>}{PageUp}{/Control}");
-        await waitFor(() => expect(notebook.getCurrentPage()).toBe(0));
+
+        await waitFor(() => {
+            expect(notebook.getCurrentPage()).toBe(0);
+        });
     });
 });
 
@@ -179,6 +222,7 @@ describe("App opens demos with custom titlebars and dialog-only demos", () => {
         await selectFirstDemoWithComponent();
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
         await userEvent.click(run);
+
         await waitFor(async () => {
             const windows = await screen.findAllByRole(Gtk.AccessibleRole.WINDOW);
             expect(windows.length).toBeGreaterThan(1);

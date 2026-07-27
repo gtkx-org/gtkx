@@ -1,13 +1,7 @@
-import { RuleTester } from "@typescript-eslint/rule-tester";
-import { afterAll, describe, it } from "vitest";
 import { noInlineExports } from "../src/rules/no-inline-exports.js";
+import { createRuleTester } from "./rule-tester.js";
 
-RuleTester.afterAll = afterAll;
-RuleTester.describe = describe;
-RuleTester.it = it;
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester();
+const ruleTester = createRuleTester();
 
 ruleTester.run("no-inline-exports", noInlineExports, {
     valid: [

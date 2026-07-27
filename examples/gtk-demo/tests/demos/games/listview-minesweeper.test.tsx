@@ -8,30 +8,47 @@ const MINE = "\u{1F4A3}";
 
 const collectLabels = (widget: Gtk.Widget, out: Gtk.Label[] = []): Gtk.Label[] => {
     for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
-        if (child instanceof Gtk.Label) out.push(child);
+        if (child instanceof Gtk.Label) {
+            out.push(child);
+        }
+
         collectLabels(child, out);
     }
+
     return out;
 };
 
 const collectImages = (widget: Gtk.Widget, out: Gtk.Image[] = []): Gtk.Image[] => {
     for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
-        if (child instanceof Gtk.Image) out.push(child);
+        if (child instanceof Gtk.Image) {
+            out.push(child);
+        }
+
         collectImages(child, out);
     }
+
     return out;
 };
 
 const cellTexts = (gridView: Gtk.Widget): string[] => collectLabels(gridView).map((label) => label.getLabel());
 
 const mockMinesAt = (indices: number[]): void => {
-    const values = indices.map((index) => (index + 0.5) / 64);
+    const values = indices.map((index) => Math.floor(((index + 0.5) / 64) * 2 ** 32));
     let call = 0;
-    vi.spyOn(Math, "random").mockImplementation(() => values[call++ % values.length] ?? 0);
+
+    vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation(<T extends ArrayBufferView | null>(
+        buffer: T,
+    ): T => {
+        if (buffer instanceof Uint32Array) {
+            buffer[0] = values[call++ % values.length] ?? 0;
+        }
+
+        return buffer;
+    });
 };
 
 beforeEach(() => {
-    vi.spyOn(Gtk.MediaFile.prototype, "play").mockImplementation(() => {});
+    vi.spyOn(Gtk.MediaFile.prototype, "play").mockImplementation((): void => undefined);
 });
 
 afterEach(() => {
@@ -74,6 +91,7 @@ describe("listviewMinesweeperDemo gameplay", () => {
         const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
         gridView.grabFocus();
         await userEvent.keyboard(gridView, "{Enter}");
+
         await waitFor(() => {
             const texts = cellTexts(gridView);
             expect(texts[0]).not.toBe("?");
@@ -85,24 +103,32 @@ describe("listviewMinesweeperDemo gameplay", () => {
         await renderDemo(listviewMinesweeperDemo);
         const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
         await fireEvent(gridView, "activate", 0);
-        await waitFor(() => expect(cellTexts(gridView)[0]).not.toBe("?"));
+
+        await waitFor(() => {
+            expect(cellTexts(gridView)[0]).not.toBe("?");
+        });
 
         const newGameButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game" })) as Gtk.Button;
         await userEvent.click(newGameButton);
+
         await waitFor(() => {
             const texts = cellTexts(gridView);
             expect(texts).toHaveLength(64);
             expect(texts.every((text) => text === "?")).toBe(true);
         });
     });
+});
 
+describe("listviewMinesweeperDemo outcomes", () => {
     it("loses when a mine is activated and locks the board against further reveals", async () => {
         mockMinesAt([0, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
         await renderDemo(listviewMinesweeperDemo);
         const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
-
         await fireEvent(gridView, "activate", 0);
-        await waitFor(() => expect(cellTexts(gridView)[0]).toBe(MINE));
+
+        await waitFor(() => {
+            expect(cellTexts(gridView)[0]).toBe(MINE);
+        });
 
         await fireEvent(gridView, "activate", 1);
         await waitFor(() => Promise.resolve());

@@ -73,12 +73,12 @@ const pushBitfield = (input: {
     const { state, slots, field, align, bits } = input;
     const wordSizeBits = field.layout.size * 8;
 
-    const fits =
+    const canFit =
         state.bitfieldWordOffset !== undefined &&
         state.bitfieldWordSize === field.layout.size &&
         state.bitfieldUsedBits + bits <= wordSizeBits;
 
-    if (!fits) {
+    if (!canFit) {
         state.cursor = roundUp(state.cursor, align);
         state.bitfieldWordOffset = state.cursor;
         state.bitfieldWordSize = field.layout.size;

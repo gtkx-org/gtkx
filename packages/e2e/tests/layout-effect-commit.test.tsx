@@ -13,7 +13,7 @@ const adjustCommittedLabel = (label: Gtk.Label | null): void => {
     label.setLabel(`${label.getLabel()}-adjusted`);
 };
 
-describe("layout effects during commit", () => {
+describe("layout effects during commit (1)", () => {
     it("reads and writes a widget imperatively from a layout effect", async () => {
         const labelRef = createRef<Gtk.Label>();
 
@@ -51,7 +51,9 @@ describe("layout effects during commit", () => {
         await userEvent.click(await screen.findByText("armed"));
         expect(onClicked).toHaveBeenCalledTimes(1);
     });
+});
 
+describe("layout effects during commit (2)", () => {
     it("keeps one root's signals flowing while another root is inside its commit window", async () => {
         const containerA: RootElement = { ...rootElement };
         const containerB: RootElement = { ...rootElement };

@@ -10,7 +10,7 @@ const UNCHANGED_SUFFIXES = Array.from({ length: 10 }, () => "a");
 const drawLabels = (n: number, suffix: string): ReactNode => (
     <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
         <GtkBox>
-            {Array.from({ length: n }, (_, i) => `label-${i}`).map((name) => (
+            {Array.from({ length: n }, (_, i) => `label-${String(i)}`).map((name) => (
                 <GtkLabel key={name} label={`${name}-${suffix}`} />
             ))}
         </GtkBox>
@@ -29,12 +29,12 @@ const rerenderLabels = async (n: number, suffixes: string[]): Promise<void> => {
 
 describe("prop update", () => {
     for (const n of BENCH_SIZES) {
-        bench(`update one prop across ${n} labels`, () => rerenderLabels(n, TOGGLED_SUFFIXES));
+        bench(`update one prop across ${String(n)} labels`, () => rerenderLabels(n, TOGGLED_SUFFIXES));
     }
 });
 
 describe("no-op rerender", () => {
     for (const n of BENCH_SIZES) {
-        bench(`rerender ${n} labels with unchanged props`, () => rerenderLabels(n, UNCHANGED_SUFFIXES));
+        bench(`rerender ${String(n)} labels with unchanged props`, () => rerenderLabels(n, UNCHANGED_SUFFIXES));
     }
 });

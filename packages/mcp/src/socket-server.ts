@@ -2,8 +2,9 @@ import * as fs from "node:fs";
 import * as net from "node:net";
 import type { ConnectionRegistry } from "./connection-registry.js";
 import { DEFAULT_SOCKET_PATH } from "./protocol/schemas.js";
+import { connectionErrorEvent } from "./transport.js";
 
-const isSocketLive = (socketPath: string): Promise<boolean> =>
+const socketIsLive = (socketPath: string): Promise<boolean> =>
     new Promise((resolve) => {
         const probe = net.connect(socketPath);
 
@@ -12,7 +13,9 @@ const isSocketLive = (socketPath: string): Promise<boolean> =>
             resolve(true);
         });
 
-        probe.once("error", () => resolve(false));
+        probe.once("error", () => {
+            resolve(false);
+        });
     });
 
 const removeStaleSocket = async (socketPath: string): Promise<void> => {
@@ -20,7 +23,7 @@ const removeStaleSocket = async (socketPath: string): Promise<void> => {
         return;
     }
 
-    if (await isSocketLive(socketPath)) {
+    if (await socketIsLive(socketPath)) {
         throw new Error(
             `Another GTKX MCP server already owns ${socketPath}. ` +
             "Stop the other server (for example, the gtkx MCP server of another active session) and reconnect.",
@@ -49,18 +52,18 @@ class SocketServer {
 
         return new Promise((resolve, reject) => {
             this.server = net.createServer((socket) => this.registry.register(socket));
-            let listening = false;
+            let isListening = false;
 
             this.server.on("error", (error) => {
-                this.registry.emit("error", error);
+                this.registry.dispatchEvent(connectionErrorEvent(error));
 
-                if (!listening) {
+                if (!isListening) {
                     reject(error);
                 }
             });
 
             this.server.listen(this.socketPath, () => {
-                listening = true;
+                isListening = true;
                 resolve();
             });
         });

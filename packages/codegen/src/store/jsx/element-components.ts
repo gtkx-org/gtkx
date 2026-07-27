@@ -137,14 +137,14 @@ const resolveElementComponent = (
 
 const renderElementComponentExport = (glibName: string, component: ElementComponent | undefined): string => {
     const propsType = `${glibName}Props`;
+    const annotation = `(props: ${propsType}) => ReactNode`;
+    const factoryCall = `createElementComponent(${sourceStringLiteral(glibName)})`;
 
     if (component === undefined) {
-        return `export const ${glibName}: (props: ${propsType}) => ReactNode = createElementComponent(${sourceStringLiteral(glibName)});`;
+        return `export const ${glibName}: ${annotation} = ${factoryCall};`;
     }
 
-    const annotation = `(props: ${propsType}) => ReactNode`;
-
-    return `export const ${glibName}: ${annotation} = ${component.export}(createElementComponent(${sourceStringLiteral(glibName)}));`;
+    return `export const ${glibName}: ${annotation} = ${component.export}(${factoryCall});`;
 };
 
 export { generateElementComponentsSection, type ElementComponent, type ElementComponentOverrides };

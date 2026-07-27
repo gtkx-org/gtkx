@@ -4,25 +4,11 @@ import { describe, expect, it } from "vitest";
 import type { Demo, TreeItem } from "../../src/demos/types.js";
 import { DemoProvider, parseTitle, useDemo } from "../../src/context/demo-context.js";
 
-const buildWrapper = (demos: Demo[]) => {
-    return ({ children }: { children: ReactNode }) => <DemoProvider demos={demos}>{children}</DemoProvider>;
-};
-
-const captureContext = async (demos: Demo[]) => {
-    const { result } = await renderHook(() => useDemo(), { wrapper: buildWrapper(demos) });
-    return result.current;
-};
-
-const captureFiltered = async (demos: Demo[], query: string): Promise<TreeItem[]> => {
-    const { result } = await renderHook(() => useDemo(), { wrapper: buildWrapper(demos) });
-    await act(() => {
-        result.current.setSearchQuery(query);
-    });
-    return result.current.filteredTreeItems;
-};
+type Category = Extract<TreeItem, { type: "category" }>;
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
 const standalone: Demo = { id: "stand", title: "Standalone", description: "No category", keywords: [] };
+
 const button: Demo = {
     id: "button",
     title: "Buttons / Button",
@@ -30,18 +16,58 @@ const button: Demo = {
     keywords: ["click", "action"],
     component: () => null,
 };
+
 const expander: Demo = {
     id: "expander",
     title: "Buttons / Expander",
     description: "An expandable widget",
     keywords: ["disclosure"],
 };
+
 const fixedSlash: Demo = {
     id: "fixed",
     title: "Layout/Fixed",
     description: "Fixed layout",
     keywords: [],
 };
+
+const buildWrapper = (demos: Demo[]) => {
+    return ({ children }: { children: ReactNode }) => <DemoProvider demos={demos}>{children}</DemoProvider>;
+};
+
+const captureContext = async (demos: Demo[]) => {
+    const { result } = await renderHook(() => useDemo(), { wrapper: buildWrapper(demos) });
+
+    return result.current;
+};
+
+const captureFiltered = async (demos: Demo[], query: string): Promise<TreeItem[]> => {
+    const { result } = await renderHook(() => useDemo(), { wrapper: buildWrapper(demos) });
+
+    await act(() => {
+        result.current.setSearchQuery(query);
+    });
+
+    return result.current.filteredTreeItems;
+};
+
+const UnboundConsumer = () => {
+    useDemo();
+
+    return null;
+};
+
+const firstCategory = (items: TreeItem[]): Category | undefined =>
+    items.find((item): item is Category => item.type === "category");
+
+const findCategory = (items: TreeItem[], title: string): Category | undefined =>
+    items.find((item): item is Category => item.type === "category" && item.title === title);
+
+const childDemoIds = (category: Category | undefined): (string | null)[] | undefined =>
+    category?.children.map((child) => (child.type === "demo" ? child.demo.id : null));
+
+const treeLabels = (items: TreeItem[]): string[] =>
+    items.map((item) => (item.type === "category" ? item.title : item.displayTitle));
 
 describe("parseTitle", () => {
     it("returns category=null for a plain title", () => {
@@ -63,11 +89,6 @@ describe("useDemo", () => {
     });
 });
 
-const UnboundConsumer = () => {
-    useDemo();
-    return null;
-};
-
 describe("DemoProvider", () => {
     it("pins the intro at the top of the tree", async () => {
         const ctx = await captureContext([intro, standalone, button]);
@@ -76,27 +97,21 @@ describe("DemoProvider", () => {
 
     it("groups demos with a category under a category node", async () => {
         const ctx = await captureContext([intro, button, expander]);
-        const buttonsCategory = ctx.treeItems.find(
-            (item): item is Extract<TreeItem, { type: "category" }> => item.type === "category",
-        );
+        const buttonsCategory = firstCategory(ctx.treeItems);
         expect(buttonsCategory?.title).toBe("Buttons");
-        expect(buttonsCategory?.children.map((c) => (c.type === "demo" ? c.demo.id : null))).toEqual([
-            "button",
-            "expander",
-        ]);
+        expect(childDemoIds(buttonsCategory)).toEqual(["button", "expander"]);
     });
 
     it("recognizes bare '/' titles as categorized", async () => {
         const ctx = await captureContext([intro, fixedSlash]);
-        expect(ctx.treeItems.some((item) => item.type === "category" && item.title === "Layout")).toBe(true);
+        expect(findCategory(ctx.treeItems, "Layout")).toBeDefined();
     });
 
     it("sorts top-level demos and categories alphabetically", async () => {
         const zebra: Demo = { id: "zebra", title: "Zebra", description: "z", keywords: [] };
         const aardvark: Demo = { id: "aardvark", title: "Aardvark", description: "a", keywords: [] };
         const ctx = await captureContext([intro, zebra, aardvark, button]);
-        const labels = ctx.treeItems.map((item) => (item.type === "category" ? item.title : item.displayTitle));
-        expect(labels).toEqual(["GTK Demo", "Aardvark", "Buttons", "Zebra"]);
+        expect(treeLabels(ctx.treeItems)).toEqual(["GTK Demo", "Aardvark", "Buttons", "Zebra"]);
     });
 
     it("uses the pinned intro as the initial currentDemo", async () => {
@@ -124,25 +139,22 @@ describe("filteredTreeItems", () => {
 
     it("matches against title", async () => {
         const filtered = await captureFiltered([intro, button, expander], "Expander");
-        const category = filtered.find((item) => item.type === "category" && item.title === "Buttons") as
-            | Extract<TreeItem, { type: "category" }> |
-            undefined;
-        expect(category?.children.map((c) => (c.type === "demo" ? c.demo.id : null))).toEqual(["expander"]);
+        expect(childDemoIds(findCategory(filtered, "Buttons"))).toEqual(["expander"]);
     });
 
     it("matches against description", async () => {
         const filtered = await captureFiltered([intro, button, expander], "expandable widget");
-        expect(filtered.some((item) => item.type === "category" && item.title === "Buttons")).toBe(true);
+        expect(findCategory(filtered, "Buttons")).toBeDefined();
     });
 
     it("matches against keywords", async () => {
         const filtered = await captureFiltered([intro, button, expander], "disclosure");
-        expect(filtered.some((item) => item.type === "category" && item.title === "Buttons")).toBe(true);
+        expect(findCategory(filtered, "Buttons")).toBeDefined();
     });
 
     it("drops categories whose children no longer match", async () => {
         const filtered = await captureFiltered([intro, button, expander], "zzznevermatch");
-        expect(filtered.find((item) => item.type === "category")).toBeUndefined();
+        expect(firstCategory(filtered)).toBeUndefined();
     });
 
     it("matches top-level demos", async () => {

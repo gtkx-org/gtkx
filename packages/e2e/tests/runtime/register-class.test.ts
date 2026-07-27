@@ -4,11 +4,10 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getHandle, registerClass } from "@gtkx/runtime";
 import { resolveWrapperClass } from "@gtkx/runtime/internal";
 import { describe, expect, it } from "vitest";
-import { instanceIsA } from "./helpers.js";
+import { createTypeNameFactory } from "../helpers/unique-name.js";
+import { isInstanceOfType } from "./helpers.js";
 
-let suffix = 0;
-
-const uniqueName = (prefix: string): string => `${prefix}_${process.pid}_${++suffix}`;
+const uniqueName = createTypeNameFactory("_");
 
 describe("registerClass — registration", () => {
     it("registers a new GType derived from the parent class", () => {
@@ -90,7 +89,7 @@ describe("registerClass — vfunc dispatch", () => {
         const customGtype = typeFromName(name);
         expect(customGtype).not.toBe(0n);
         const instance = GObject.newv(customGtype, []);
-        expect(instanceIsA(getHandle(instance), typeFromName("GtkBuildable"))).toBe(true);
+        expect(isInstanceOfType(getHandle(instance), typeFromName("GtkBuildable"))).toBe(true);
         const builder = Gtk.Builder.new();
         builder.addFromString(`<interface><object class="${name}" id="customWidget"/></interface>`, -1);
         expect(parserFinishedCalls).toEqual([1]);

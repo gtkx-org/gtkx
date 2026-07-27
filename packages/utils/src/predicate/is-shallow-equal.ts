@@ -1,5 +1,5 @@
+import { areObjectKeysEqual } from "./are-object-keys-equal.js";
 import { isPlainObject } from "./is-plain-object.js";
-import { objectKeysEqual } from "./object-keys-equal.js";
 
 /**
  * Checks whether two values are shallowly equal: identical, or plain objects with the same own
@@ -23,7 +23,7 @@ function isShallowEqual(a: unknown, b: unknown): boolean {
     }
 
     if (isPlainObject(a) && isPlainObject(b)) {
-        return objectKeysEqual(a, b, isStrictEqual);
+        return areObjectKeysEqual(a, b, isStrictEqual);
     }
 
     return false;

@@ -25,6 +25,43 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
 
+type SuggestionEntryProps = {
+    words: string[];
+    placeholder: string;
+    name?: string;
+};
+
+type SuggestionEntryViewProps = {
+    name?: string | undefined;
+    placeholder: string;
+    query: string;
+    matches: string[];
+    entryRef: React.RefObject<Gtk.Entry | null>;
+    popoverRef: React.RefObject<Gtk.Popover | null>;
+    listBoxRef: React.RefObject<Gtk.ListBox | null>;
+    onChanged: (entry: Gtk.Entry) => void;
+    onKeyPressed: (keyval: number) => boolean;
+    onClosed: () => void;
+    onRowActivated: (index: number) => boolean;
+};
+
+type SuggestionState = {
+    words: string[];
+    matches: string[];
+    selected: number;
+    setQuery: (value: string) => void;
+    setSelected: (updater: (current: number) => number) => void;
+    setOpen: (isOpen: boolean) => void;
+};
+
+type Device = (typeof devices)[number];
+
+type DirEntry = {
+    path: string;
+    name: string;
+    icon: string;
+};
+
 const times = ["1 minute", "2 minutes", "5 minutes", "20 minutes"];
 
 const minutes = [
@@ -103,23 +140,61 @@ const suggestionWords = [
 
 const destinationWords = ["app-mockups", "settings-mockups", "os-mockups", "software-mockups", "mocktails"];
 
+const getFontFamilies = (() => {
+    let cache: string[] | undefined;
+
+    return (): string[] => {
+        cache ??= loadFontFamilies();
+
+        return cache;
+    };
+})();
+
+const getDirectoryEntries = (() => {
+    let cache: DirEntry[] | undefined;
+
+    return (): DirEntry[] => {
+        cache ??= loadDirectoryEntries();
+
+        return cache;
+    };
+})();
+
+const listviewSelectionsDemo: Demo = {
+    id: "listview-selections",
+    title: "Lists/Selections",
+    description:
+        "The GtkDropDown widget is a modern alternative to GtkComboBox. It uses list models instead of tree " +
+        "models, and the content is displayed using widgets instead of cell renderers.\n\nThis example also " +
+        "shows a custom widget that can replace GtkEntryCompletion or GtkComboBoxText. It is not currently " +
+        "part of GTK.",
+    keywords: ["suggestion", "completion"],
+    component: ListViewSelectionsDemo,
+    sourceCode,
+    windowTitle: "Selections",
+    resizable: false,
+};
+
+function logError(error: unknown) {
+    if (error instanceof Error) {
+        console.error(error.message);
+    }
+}
+
 function loadFontFamilies(): string[] {
     const fontMap = PangoCairo.fontMapGetDefault();
     const count = fontMap.getNItems();
     const names: string[] = [];
-    for (let i = 0; i < count; i++) {
-        const family = fontMap.getItem(i);
-        if (family instanceof Pango.FontFamily) names.push(family.getName());
-    }
-    return names.sort((a, b) => a.localeCompare(b));
-}
 
-let fontFamilies: string[] | undefined;
-function getFontFamilies() {
-    if (!fontFamilies) {
-        fontFamilies = loadFontFamilies();
+    for (let index = 0; index < count; index++) {
+        const family = fontMap.getItem(index);
+
+        if (family instanceof Pango.FontFamily) {
+            names.push(family.getName());
+        }
     }
-    return fontFamilies;
+
+    return names.toSorted((a, b) => a.localeCompare(b));
 }
 
 function escapeMarkup(text: string): string {
@@ -127,40 +202,120 @@ function escapeMarkup(text: string): string {
 }
 
 function highlightMatch(word: string, query: string): string {
-    if (query.length === 0) return escapeMarkup(word);
+    if (query.length === 0) {
+        return escapeMarkup(word);
+    }
 
     const lower = word.toLowerCase();
     const queryLower = query.toLowerCase();
     const idx = lower.indexOf(queryLower);
-    if (idx === -1) return escapeMarkup(word);
+
+    if (idx === -1) {
+        return escapeMarkup(word);
+    }
 
     const before = escapeMarkup(word.slice(0, idx));
     const match = escapeMarkup(word.slice(idx, idx + query.length));
     const after = escapeMarkup(word.slice(idx + query.length));
+
     return `${before}<b>${match}</b>${after}`;
 }
 
-const findSuggestions = (words: string[], text: string): string[] => {
-    if (text.length === 0) return [];
+function findSuggestions(words: string[], text: string): string[] {
+    if (text.length === 0) {
+        return [];
+    }
+
     const lower = text.toLowerCase();
+
     return words.filter((word) => word.toLowerCase().includes(lower)).slice(0, 10);
-};
+}
 
-type SuggestionEntryViewProps = {
-    name?: string | undefined;
-    placeholder: string;
-    query: string;
-    matches: string[];
-    entryRef: React.RefObject<Gtk.Entry | null>;
-    popoverRef: React.RefObject<Gtk.Popover | null>;
-    listBoxRef: React.RefObject<Gtk.ListBox | null>;
-    onChanged: (entry: Gtk.Entry) => void;
-    onKeyPressed: (keyval: number) => boolean;
-    onClosed: () => void;
-    onRowActivated: (index: number) => boolean;
-};
+function didAcceptSuggestion(state: SuggestionState, entry: Gtk.Entry | null, index: number): boolean {
+    const word = state.matches[index];
 
-const renderSuggestionEntry = ({
+    if (!entry || word === undefined) {
+        return false;
+    }
+
+    entry.setText(word);
+    entry.setPosition(-1);
+    state.setOpen(false);
+
+    return true;
+}
+
+function moveSuggestionSelection(state: SuggestionState, delta: number): void {
+    if (state.matches.length === 0) {
+        return;
+    }
+
+    state.setSelected((current) => (current + delta + state.matches.length) % state.matches.length);
+}
+
+function handleSuggestionChanged(state: SuggestionState, entry: Gtk.Entry): void {
+    const text = entry.getText();
+    state.setQuery(text);
+    state.setSelected(() => -1);
+    state.setOpen(findSuggestions(state.words, text).length > 0);
+}
+
+function didHandleSuggestionKey(state: SuggestionState, entry: Gtk.Entry | null, keyval: number): boolean {
+    if (state.matches.length === 0) {
+        return Gdk.EVENT_PROPAGATE;
+    }
+
+    switch (keyval) {
+        case Gdk.KEY_Down: {
+            moveSuggestionSelection(state, 1);
+
+            return Gdk.EVENT_STOP;
+        }
+        case Gdk.KEY_Up: {
+            moveSuggestionSelection(state, -1);
+
+            return Gdk.EVENT_STOP;
+        }
+        case Gdk.KEY_Return:
+        case Gdk.KEY_KP_Enter: {
+            return didAcceptSuggestion(state, entry, state.selected);
+        }
+        case Gdk.KEY_Escape: {
+            state.setOpen(false);
+
+            return Gdk.EVENT_STOP;
+        }
+        default: {
+            return Gdk.EVENT_PROPAGATE;
+        }
+    }
+}
+
+function syncPopoverVisibility(popover: Gtk.Popover | null, isOpen: boolean): void {
+    if (!popover) {
+        return;
+    }
+
+    if (isOpen) {
+        popover.popup();
+    } else {
+        popover.popdown();
+    }
+}
+
+function syncSelectedRow(listBox: Gtk.ListBox | null, selected: number): void {
+    if (!listBox || selected < 0) {
+        return;
+    }
+
+    const row = listBox.getRowAtIndex(selected);
+
+    if (row) {
+        listBox.selectRow(row);
+    }
+}
+
+const SuggestionEntryView = ({
     name,
     placeholder,
     query,
@@ -208,69 +363,7 @@ const renderSuggestionEntry = ({
     </GtkEntry>
 );
 
-type SuggestionHandlerDeps = {
-    words: string[];
-    matches: string[];
-    selected: number;
-    entryRef: React.RefObject<Gtk.Entry | null>;
-    setQuery: (value: string) => void;
-    setSelected: (updater: (current: number) => number) => void;
-    setOpen: (value: boolean) => void;
-};
-
-type SuggestionHandlers = {
-    accept: (index: number) => boolean;
-    handleChanged: (entry: Gtk.Entry) => void;
-    handleKeyPressed: (keyval: number) => boolean;
-};
-
-const createSuggestionHandlers = (deps: SuggestionHandlerDeps): SuggestionHandlers => {
-    const { words, matches, selected, entryRef, setQuery, setSelected, setOpen } = deps;
-
-    const accept = (index: number): boolean => {
-        const entry = entryRef.current;
-        const word = matches[index];
-        if (!entry || word === undefined) return false;
-        entry.setText(word);
-        entry.setPosition(-1);
-        setOpen(false);
-        return true;
-    };
-
-    const move = (delta: number): void => {
-        if (matches.length === 0) return;
-        setSelected((current) => (current + delta + matches.length) % matches.length);
-    };
-
-    const handleChanged = (entry: Gtk.Entry): void => {
-        const text = entry.getText();
-        setQuery(text);
-        setSelected(() => -1);
-        setOpen(findSuggestions(words, text).length > 0);
-    };
-
-    const handleKeyPressed = (keyval: number): boolean => {
-        if (matches.length === 0) return false;
-        if (keyval === Gdk.KEY_Down) {
-            move(1);
-            return true;
-        }
-        if (keyval === Gdk.KEY_Up) {
-            move(-1);
-            return true;
-        }
-        if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) return accept(selected);
-        if (keyval === Gdk.KEY_Escape) {
-            setOpen(false);
-            return true;
-        }
-        return false;
-    };
-
-    return { accept, handleChanged, handleKeyPressed };
-};
-
-const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeholder: string; name?: string }) => {
+const SuggestionEntry = ({ words, placeholder, name }: SuggestionEntryProps) => {
     const entryRef = useRef<Gtk.Entry | null>(null);
     const popoverRef = useRef<Gtk.Popover | null>(null);
     const listBoxRef = useRef<Gtk.ListBox | null>(null);
@@ -278,43 +371,35 @@ const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeh
     const [selected, setSelected] = useState(-1);
     const [open, setOpen] = useState(false);
     const matches = findSuggestions(words, query);
-    const { accept, handleChanged, handleKeyPressed } = createSuggestionHandlers({
-        words,
-        matches,
-        selected,
-        entryRef,
-        setQuery,
-        setSelected,
-        setOpen,
-    });
+    const state: SuggestionState = { words, matches, selected, setQuery, setSelected, setOpen };
 
     useEffect(() => {
-        const popover = popoverRef.current;
-        if (!popover) return;
-        if (open) popover.popup();
-        else popover.popdown();
+        syncPopoverVisibility(popoverRef.current, open);
     }, [open]);
 
     useEffect(() => {
-        const listBox = listBoxRef.current;
-        if (!listBox || selected < 0) return;
-        const row = listBox.getRowAtIndex(selected);
-        if (row) listBox.selectRow(row);
+        syncSelectedRow(listBoxRef.current, selected);
     }, [selected]);
 
-    return renderSuggestionEntry({
-        name,
-        placeholder,
-        query,
-        matches,
-        entryRef,
-        popoverRef,
-        listBoxRef,
-        onChanged: handleChanged,
-        onKeyPressed: handleKeyPressed,
-        onClosed: () => setOpen(false),
-        onRowActivated: accept,
-    });
+    return (
+        <SuggestionEntryView
+            name={name}
+            placeholder={placeholder}
+            query={query}
+            matches={matches}
+            entryRef={entryRef}
+            popoverRef={popoverRef}
+            listBoxRef={listBoxRef}
+            onChanged={(entry) => {
+                handleSuggestionChanged(state, entry);
+            }}
+            onKeyPressed={(keyval) => didHandleSuggestionKey(state, entryRef.current, keyval)}
+            onClosed={() => {
+                setOpen(false);
+            }}
+            onRowActivated={(index) => didAcceptSuggestion(state, entryRef.current, index)}
+        />
+    );
 };
 
 const renderSelectableTimeItem = (label: string, selectedId: string) => (
@@ -369,13 +454,13 @@ const TimesSectionedDropDown = () => {
     );
 };
 
-type Device = (typeof devices)[number];
-
 const renderDeviceRow = (label: string, renderDetails: (device: Device) => ReactNode) => {
     const device = devices.find((d) => d.id === label);
+
     if (!device) {
         return <GtkLabel>{label}</GtkLabel>;
     }
+
     return (
         <GtkBox spacing={10}>
             <GtkImage iconName={device.icon} />
@@ -414,43 +499,36 @@ const DevicesDropDown = () => {
     );
 };
 
-type DirEntry = {
-    path: string;
-    name: string;
-    icon: string;
-};
-
-function loadDirectoryEntries(): DirEntry[] {
-    const cwd = process.cwd();
+function isDirectoryPath(path: string): boolean {
     try {
-        const entries = readdirSync(cwd);
-        const results: DirEntry[] = [];
-        for (const name of entries) {
-            let isDir = false;
-            try {
-                isDir = statSync(`${cwd}/${name}`).isDirectory();
-            } catch (error) {
-                if (error instanceof Error) console.error(error.message);
-            }
-            results.push({
-                path: name,
-                name,
-                icon: isDir ? "folder-symbolic" : "text-x-generic-symbolic",
-            });
-        }
-        return results.sort((a, b) => a.name.localeCompare(b.name));
+        return statSync(path).isDirectory();
     } catch (error) {
-        if (error instanceof Error) console.error(error.message);
-        return [];
+        logError(error);
+
+        return false;
     }
 }
 
-let directoryEntries: DirEntry[] | undefined;
-function getDirectoryEntries() {
-    if (!directoryEntries) {
-        directoryEntries = loadDirectoryEntries();
+function toDirEntry(cwd: string, name: string): DirEntry {
+    return {
+        path: name,
+        name,
+        icon: isDirectoryPath(`${cwd}/${name}`) ? "folder-symbolic" : "text-x-generic-symbolic",
+    };
+}
+
+function loadDirectoryEntries(): DirEntry[] {
+    const cwd = process.cwd();
+
+    try {
+        return readdirSync(cwd)
+            .map((name) => toDirEntry(cwd, name))
+            .toSorted((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        logError(error);
+
+        return [];
     }
-    return directoryEntries;
 }
 
 const DirectorySuggestionEntry = () => {
@@ -459,7 +537,14 @@ const DirectorySuggestionEntry = () => {
 
     return (
         <GtkBox cssClasses={["linked"]}>
-            <GtkEntry name="directory-entry" text={text} hexpand onChanged={(entry) => setText(entry.getText())} />
+            <GtkEntry
+                name="directory-entry"
+                text={text}
+                hexpand
+                onChanged={(entry) => {
+                    setText(entry.getText());
+                }}
+            />
             <GtkMenuButton
                 name="directory-menu-button"
                 iconName="pan-down-symbolic"
@@ -476,7 +561,9 @@ const DirectorySuggestionEntry = () => {
                                     <GtkButton
                                         key={entry.path}
                                         cssClasses={["flat"]}
-                                        onClicked={() => setText(entry.name)}
+                                        onClicked={() => {
+                                            setText(entry.name);
+                                        }}
                                     >
                                         <GtkBox spacing={8}>
                                             <GtkImage iconName={entry.icon} />
@@ -495,86 +582,88 @@ const DirectorySuggestionEntry = () => {
     );
 };
 
-const ListViewSelectionsDemo = () => {
+function selectFontByIndex(value: number, setFontIndex: (index: number) => void): void {
+    const index = Math.round(value);
+
+    if (index >= 0 && index < getFontFamilies().length) {
+        setFontIndex(index);
+    }
+}
+
+function selectFontById(id: string, setFontIndex: (index: number) => void): void {
+    const index = getFontFamilies().indexOf(id);
+
+    if (index !== -1) {
+        setFontIndex(index);
+    }
+}
+
+const FontsSelector = () => {
     const [fontIndex, setFontIndex] = useState(0);
     const [enableFontSearch, setEnableFontSearch] = useState(false);
 
-    const handleFontSpinChanged = (val: number) => {
-        const idx = Math.round(val);
-        if (idx >= 0 && idx < getFontFamilies().length) {
-            setFontIndex(idx);
-        }
-    };
-
     return (
-        <GtkBox spacing={20} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
-                <GtkLabel cssClasses={["title-4"]}>Dropdowns</GtkLabel>
-
-                <TimesDropDown />
-
-                <TimesSectionedDropDown />
-
-                <DropDown
-                    name="fonts-dropdown"
-                    selectedId={getFontFamilies()[fontIndex] ?? ""}
-                    enableSearch={enableFontSearch}
-                    onSelectionChanged={(id) => {
-                        const idx = getFontFamilies().indexOf(id);
-                        if (idx !== -1) setFontIndex(idx);
-                    }}
-                    items={getFontFamilies().map((f) => ({ id: f, value: f }))}
-                />
-
-                <GtkSpinButton
-                    name="font-spin"
-                    halign={Gtk.Align.START}
-                    marginStart={20}
-                    adjustment={(
-                        <GtkAdjustment
-                            value={fontIndex}
-                            lower={-1}
-                            upper={getFontFamilies().length}
-                            stepIncrement={1}
-                        />
-                    )}
-                    onValueChanged={(spin) => handleFontSpinChanged(spin.getValue())}
-                />
-
-                <GtkCheckButton
-                    name="enable-search-check"
-                    label="Enable search"
-                    marginStart={20}
-                    active={enableFontSearch}
-                    onToggled={(btn) => setEnableFontSearch(btn.getActive())}
-                />
-
-                <DevicesDropDown />
-            </GtkBox>
-
-            <GtkSeparator name="column-separator" orientation={Gtk.Orientation.VERTICAL} />
-
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
-                <GtkLabel cssClasses={["title-4"]}>Suggestions</GtkLabel>
-
-                <SuggestionEntry name="words-entry" words={suggestionWords} placeholder="Words with T or G…" />
-
-                <DirectorySuggestionEntry />
-
-                <SuggestionEntry words={destinationWords} placeholder="Destination" />
-            </GtkBox>
-        </GtkBox>
+        <>
+            <DropDown
+                name="fonts-dropdown"
+                selectedId={getFontFamilies()[fontIndex] ?? ""}
+                enableSearch={enableFontSearch}
+                onSelectionChanged={(id) => {
+                    selectFontById(id, setFontIndex);
+                }}
+                items={getFontFamilies().map((f) => ({ id: f, value: f }))}
+            />
+            <GtkSpinButton
+                name="font-spin"
+                halign={Gtk.Align.START}
+                marginStart={20}
+                adjustment={(
+                    <GtkAdjustment value={fontIndex} lower={-1} upper={getFontFamilies().length} stepIncrement={1} />
+                )}
+                onValueChanged={(spin) => {
+                    selectFontByIndex(spin.getValue(), setFontIndex);
+                }}
+            />
+            <GtkCheckButton
+                name="enable-search-check"
+                label="Enable search"
+                marginStart={20}
+                active={enableFontSearch}
+                onToggled={(btn) => {
+                    setEnableFontSearch(btn.getActive());
+                }}
+            />
+        </>
     );
 };
 
-export const listviewSelectionsDemo: Demo = {
-    id: "listview-selections",
-    title: "Lists/Selections",
-    description:
-        "The GtkDropDown widget is a modern alternative to GtkComboBox. It uses list models instead of tree models, and the content is displayed using widgets instead of cell renderers.\n\nThis example also shows a custom widget that can replace GtkEntryCompletion or GtkComboBoxText. It is not currently part of GTK.",
-    keywords: ["suggestion", "completion"],
-    component: ListViewSelectionsDemo,
-    sourceCode,
-    windowTitle: "Selections",
-    resizable: false,
-};
+const DropdownsColumn = () => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
+        <GtkLabel cssClasses={["title-4"]}>Dropdowns</GtkLabel>
+        <TimesDropDown />
+        <TimesSectionedDropDown />
+        <FontsSelector />
+        <DevicesDropDown />
+    </GtkBox>
+);
+
+const SuggestionsColumn = () => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
+        <GtkLabel cssClasses={["title-4"]}>Suggestions</GtkLabel>
+        <SuggestionEntry name="words-entry" words={suggestionWords} placeholder="Words with T or G…" />
+        <DirectorySuggestionEntry />
+        <SuggestionEntry words={destinationWords} placeholder="Destination" />
+    </GtkBox>
+);
+
+function ListViewSelectionsDemo() {
+    return (
+        <GtkBox spacing={20} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
+            <DropdownsColumn />
+            <GtkSeparator name="column-separator" orientation={Gtk.Orientation.VERTICAL} />
+            <SuggestionsColumn />
+        </GtkBox>
+    );
+}
+
+export { listviewSelectionsDemo };

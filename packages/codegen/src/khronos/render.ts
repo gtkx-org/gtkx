@@ -103,7 +103,12 @@ const returnStatements = (call: string, returned: EmittedReturn, outs: OutArg[])
     const outValues = outs.map((out) => `${out.cellName}.value`);
 
     if (returned.expr === undefined) {
-        const tail = outValues.length === 1 ? `return ${outValues[0]};` : `return [${outValues.join(", ")}];`;
+        const [single] = outValues;
+
+        const tail =
+            single !== undefined && outValues.length === 1
+                ? `return ${single};`
+                : `return [${outValues.join(", ")}];`;
 
         return [`${call};`, tail];
     }
@@ -127,12 +132,12 @@ const renderCommand = (
     const jsDoc = commandJsDoc({ command, feature, ins, outs, returnPlan: plan.returnPlan });
     const seeds = outs.map((out) => out.seed);
     const bindExpression = glBind(command.name, descriptors, returned.descriptor);
-    const inline = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
-    const bindingName = inline ? "binding" : toCamelIdentifier(command.name);
+    const isInline = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
+    const bindingName = isInline ? "binding" : toCamelIdentifier(command.name);
 
     const body = [
         ...seeds,
-        ...(inline ? [`const ${bindingName} = ${bindExpression};`] : []),
+        ...(isInline ? [`const ${bindingName} = ${bindExpression};`] : []),
         ...returnStatements(`${bindingName}(${argNames})`, returned, outs),
     ]
         .map((line) => `    ${line}`)
@@ -140,7 +145,7 @@ const renderCommand = (
 
     return {
         exportName,
-        ...(!inline && { binding: `const ${bindingName} = ${bindExpression};` }),
+        ...(!isInline && { binding: `const ${bindingName} = ${bindExpression};` }),
         declaration: `${jsDoc}\nexport function ${exportName}(${signature}): ${tsReturn} {\n${body}\n}`,
     };
 };
@@ -233,7 +238,8 @@ const deriveGenSingular = (
     const jsDoc = singularCommandJsDoc(
         plan,
         feature,
-        `Returns one ${objectClass} object name via \`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
+        `Returns one ${objectClass} object name via ` +
+        `\`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
         [...prefix.map((arg) => inParamDocLine(plan.command, arg)), ` * @returns The new ${objectClass} object name`],
     );
 
@@ -315,7 +321,9 @@ const deriveDeleteSingular = (
 
     return {
         exportName,
-        declaration: `${jsDoc}\nexport function ${exportName}(name: ${scalarAlias}): void {\n    ${plan.command.name}(1, [name]);\n}`,
+        declaration:
+            `${jsDoc}\nexport function ${exportName}(name: ${scalarAlias}): void {\n` +
+            `    ${plan.command.name}(1, [name]);\n}`,
     };
 };
 

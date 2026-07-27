@@ -1,33 +1,18 @@
 import { omit } from "@gtkx/utils";
 import { describe, expect, it, vi } from "vitest";
-import { collectLogged, setupLogState } from "./log-state.js";
-
-vi.mock("../../src/codegen/run-codegen.js", () => ({
-    ensureGenerated: vi.fn(async () => true),
-    isCodegenDisabled: vi.fn(async () => false),
-    syncSchemaEnv: vi.fn(),
-    runCodegen: vi.fn(async () => ({
-        configFile: "/project/gtkx.config.ts",
-        girPath: ["/usr/share/gir-1.0"],
-        libraries: ["Gtk-4.0", "Adw-1"],
-        namespaces: 2,
-        intrinsicElements: 142,
-        duration: 250,
-    })),
-}));
-
 import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 import { codegen } from "../../src/commands/codegen.js";
-
-const runCodegenMock = vi.mocked(runCodegen);
-const ensureGeneratedMock = vi.mocked(ensureGenerated);
-const isCodegenDisabledMock = vi.mocked(isCodegenDisabled);
-const syncSchemaEnvMock = vi.mocked(syncSchemaEnv);
+import { collectLogged, setupLogState } from "./log-state.js";
 
 type CodegenArgs = { force?: boolean; cwd?: string };
 type CodegenRun = NonNullable<typeof codegen.run>;
 type CodegenContext = Parameters<CodegenRun>[0];
 type RunCodegenOptions = NonNullable<Parameters<typeof runCodegen>[0]>;
+
+const runCodegenMock = vi.mocked(runCodegen);
+const ensureGeneratedMock = vi.mocked(ensureGenerated);
+const codegenDisabledMock = vi.mocked(isCodegenDisabled);
+const syncSchemaEnvMock = vi.mocked(syncSchemaEnv);
 
 const firstRunCodegenOptions = (): RunCodegenOptions => {
     const call = runCodegenMock.mock.calls[0];
@@ -51,6 +36,22 @@ const run = (overrides: CodegenArgs): Promise<unknown> => {
     return Promise.resolve(handler({ rawArgs: [], args, cmd: codegen }));
 };
 
+vi.mock("../../src/codegen/run-codegen.js", () => ({
+    ensureGenerated: vi.fn(() => Promise.resolve(true)),
+    isCodegenDisabled: vi.fn(() => Promise.resolve(false)),
+    syncSchemaEnv: vi.fn(),
+    runCodegen: vi.fn(() =>
+        Promise.resolve({
+            configFile: "/project/gtkx.config.ts",
+            girPath: ["/usr/share/gir-1.0"],
+            libraries: ["Gtk-4.0", "Adw-1"],
+            namespaces: 2,
+            intrinsicElements: 142,
+            duration: 250,
+        }),
+    ),
+}));
+
 describe("codegen command (default — conditional)", () => {
     const state = setupLogState();
 
@@ -68,7 +69,7 @@ describe("codegen command (default — conditional)", () => {
     });
 
     it("cleans up and reports a shared store when codegen is disabled", async () => {
-        isCodegenDisabledMock.mockResolvedValueOnce(true);
+        codegenDisabledMock.mockResolvedValueOnce(true);
         await run({ force: true, cwd: "/custom/dir" });
         const options = firstRunCodegenOptions();
         expect(options.cwd).toContain("custom/dir");

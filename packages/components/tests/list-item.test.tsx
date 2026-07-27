@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { expectAllVisibleOnce } from "./helpers/list-collection-render.js";
 import { renderChildren } from "./helpers/render-children.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
+import { expectTextPresent } from "./helpers/text-presence.js";
 
 type TextItem = {
     id: string;
@@ -23,6 +24,26 @@ const buildTextListView = (items: TextItem[]) => (
 
 const buildValueDropDown = (items: string[]) => <DropDown items={items.map((item) => ({ id: item, value: item }))} />;
 const comboBox = () => screen.getByRole(Gtk.AccessibleRole.COMBO_BOX);
+
+const expectOptionAtIndex = async (index: number, text: string): Promise<void> => {
+    await userEvent.selectOptions(comboBox(), index);
+    await expectTextPresent(text);
+};
+
+function App({ value }: { value: { text: string } }) {
+    return (
+        <ScrollWrapper>
+            <ListView
+                items={[{ id: "dynamic", value }]}
+                renderItem={({ item }) => <GtkLabel>{item.text}</GtkLabel>}
+            />
+        </ScrollWrapper>
+    );
+}
+
+function App2({ value }: { value: string }) {
+    return <DropDown items={[{ id: "dynamic", value }]} />;
+}
 
 describe("render - ListItem (1)", () => {
     describe("ListItem (1)", () => {
@@ -44,17 +65,6 @@ describe("render - ListItem (1)", () => {
         });
     });
 });
-
-function App({ value }: { value: { text: string } }) {
-    return (
-        <ScrollWrapper>
-            <ListView
-                items={[{ id: "dynamic", value }]}
-                renderItem={({ item }) => <GtkLabel>{item.text}</GtkLabel>}
-            />
-        </ScrollWrapper>
-    );
-}
 
 describe("render - ListItem (2)", () => {
     describe("ListItem (2)", () => {
@@ -109,10 +119,6 @@ describe("render - ListItem (3)", () => {
     });
 });
 
-function App2({ value }: { value: string }) {
-    return <DropDown items={[{ id: "dynamic", value }]} />;
-}
-
 describe("render - ListItem (4)", () => {
     describe("ListItem in DropDown (1)", () => {
         it("renders list item in DropDown", async () => {
@@ -148,25 +154,19 @@ describe("render - ListItem (5)", () => {
                 />,
             );
 
-            await screen.findAllByText("First");
-            await userEvent.selectOptions(comboBox(), 1);
-            await screen.findAllByText("Second");
-            await userEvent.selectOptions(comboBox(), 2);
-            await screen.findAllByText("Third");
+            await expectTextPresent("First");
+            await expectOptionAtIndex(1, "Second");
+            await expectOptionAtIndex(2, "Third");
         });
 
         it("inserts item before existing item", async () => {
             const { rerender } = await renderChildren(["first", "last"], buildValueDropDown);
-            await screen.findAllByText("first");
-            await userEvent.selectOptions(comboBox(), 1);
-            await screen.findAllByText("last");
+            await expectTextPresent("first");
+            await expectOptionAtIndex(1, "last");
             await rerender(["first", "middle", "last"]);
-            await userEvent.selectOptions(comboBox(), 0);
-            await screen.findAllByText("first");
-            await userEvent.selectOptions(comboBox(), 1);
-            await screen.findAllByText("middle");
-            await userEvent.selectOptions(comboBox(), 2);
-            await screen.findAllByText("last");
+            await expectOptionAtIndex(0, "first");
+            await expectOptionAtIndex(1, "middle");
+            await expectOptionAtIndex(2, "last");
         });
     });
 });

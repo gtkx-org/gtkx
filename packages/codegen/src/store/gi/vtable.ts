@@ -161,7 +161,7 @@ const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtabl
         `kind: ${sourceStringLiteral(kind)} as const,`,
         `className: ${sourceStringLiteral(structName)},`,
         `vfuncName: ${sourceStringLiteral(field.name)},`,
-        `byteOffset: ${byteOffset},`,
+        `byteOffset: ${String(byteOffset)},`,
         `argDescriptors: [${argDescriptors}],`,
         `returnDescriptor: ${returnDescriptor},`,
     ];

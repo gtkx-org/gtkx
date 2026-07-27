@@ -107,7 +107,10 @@ const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): vo
 };
 
 const writeClipboardText = (widget: Gtk.Widget, text: string): void => {
-    const value = GObject.buildValue(GObject.TYPE_STRING, (v) => v.setString(text));
+    const value = GObject.buildValue(GObject.TYPE_STRING, (v) => {
+        v.setString(text);
+    });
+
     widget.getClipboard().set(value);
 };
 

@@ -36,7 +36,16 @@ const createTestContext = (): Context => {
     return Context.create(createTestSurface());
 };
 
-describe("Matrix", () => {
+const expectCurveEndsAt30 = (curve: (ctx: Context) => void): void => {
+    const ctx = createTestContext();
+    ctx.moveTo(0, 0);
+    curve(ctx);
+    const point = ctx.getCurrentPoint();
+    expect(point?.x).toBeCloseTo(30);
+    expect(point?.y).toBeCloseTo(30);
+};
+
+describe("Matrix (1)", () => {
     it("constructs from explicit components", () => {
         const m = new Matrix(1, 0, 0, 1, 5, 7);
         const p = m.transformPoint(0, 0);
@@ -66,7 +75,9 @@ describe("Matrix", () => {
         expect(d.dx).toBeCloseTo(2);
         expect(d.dy).toBeCloseTo(3);
     });
+});
 
+describe("Matrix (2)", () => {
     it("creates a rotation matrix", () => {
         const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
         m.rotate(Math.PI / 2);
@@ -139,22 +150,17 @@ describe("Context — path operations: basic moves and lines", () => {
     });
 });
 
-const expectCurveEndsAt30 = (curve: (ctx: Context) => void): void => {
-    const ctx = createTestContext();
-    ctx.moveTo(0, 0);
-    curve(ctx);
-    const point = ctx.getCurrentPoint();
-    expect(point?.x).toBeCloseTo(30);
-    expect(point?.y).toBeCloseTo(30);
-};
-
 describe("Context — path operations: curves and arcs", () => {
     it("draws a curve", () => {
-        expectCurveEndsAt30((ctx) => ctx.curveTo(10, 10, 20, 20, 30, 30));
+        expectCurveEndsAt30((ctx) => {
+            ctx.curveTo(10, 10, 20, 20, 30, 30);
+        });
     });
 
     it("draws a relative curve", () => {
-        expectCurveEndsAt30((ctx) => ctx.relCurveTo(10, 10, 20, 20, 30, 30));
+        expectCurveEndsAt30((ctx) => {
+            ctx.relCurveTo(10, 10, 20, 20, 30, 30);
+        });
     });
 
     it("draws an arc", () => {
@@ -925,7 +931,10 @@ describe("Surface — createContext", () => {
 describe("Surface — finish", () => {
     it("finishes a surface", () => {
         const surface = createTestSurface();
-        expect(() => surface.finish()).not.toThrow();
+
+        expect(() => {
+            surface.finish();
+        }).not.toThrow();
     });
 });
 
@@ -949,12 +958,18 @@ describe("Surface — createForRectangle", () => {
 describe("Surface — flush and markDirty", () => {
     it("flushes a surface", () => {
         const surface = createTestSurface();
-        expect(() => surface.flush()).not.toThrow();
+
+        expect(() => {
+            surface.flush();
+        }).not.toThrow();
     });
 
     it("marks a surface dirty", () => {
         const surface = createTestSurface();
-        expect(() => surface.markDirty()).not.toThrow();
+
+        expect(() => {
+            surface.markDirty();
+        }).not.toThrow();
     });
 });
 
@@ -1005,7 +1020,7 @@ describe("Surface — getReferenceCount", () => {
     });
 });
 
-describe("ImageSurface", () => {
+describe("ImageSurface (1)", () => {
     it("creates an image surface", () => {
         const surface = ImageSurface.create(Format.ARGB32, 100, 50);
         expect(surface).toBeInstanceOf(Surface);
@@ -1038,7 +1053,9 @@ describe("ImageSurface", () => {
         const surface = ImageSurface.create(Format.ARGB32, 10, 10);
         expect(surface.getStride()).toBeGreaterThanOrEqual(40);
     });
+});
 
+describe("ImageSurface (2)", () => {
     describe("getData", () => {
         it("returns data with correct length", () => {
             const surface = ImageSurface.create(Format.ARGB32, 10, 10);

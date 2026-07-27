@@ -64,22 +64,24 @@ describe("compileStore", () => {
 
 describe("checkModules", () => {
     it("passes for well-typed modules", () => {
-        expect(() =>
+        expect(() => {
             checkModules({
                 modules: [{ fileName: "ok.ts", source: "export const answer: number = 42;\n" }],
                 resolveFrom: REPO_ROOT,
                 label: "the test modules",
-            }),
+            });
+        },
         ).not.toThrow();
     });
 
     it("throws with a positioned message on a type error", () => {
-        expect(() =>
+        expect(() => {
             checkModules({
                 modules: [{ fileName: "bad.ts", source: "export const wrong: string = 42;\n" }],
                 resolveFrom: REPO_ROOT,
                 label: "the test modules",
-            }),
+            });
+        },
         ).toThrow(/bad\.ts:1:\d+ - Type 'number' is not assignable to type 'string'/);
     });
 });
@@ -100,13 +102,14 @@ describe("compileProject", () => {
         dir = projectDir;
         writeFileSync(join(projectDir, "ok.ts"), "export const answer: number = 42;\n");
 
-        expect(() =>
+        expect(() => {
             compileProject({
                 projectDir,
                 fileNames: ["ok.ts"],
                 compilerOptions: { noEmit: true, types: ["gtkx-missing-types-package"] },
                 label: "the test modules",
-            }),
+            });
+        },
         ).toThrow(/failed/);
     });
 });

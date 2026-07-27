@@ -37,11 +37,11 @@ const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
     }
 
     if (names.length === 2) {
-        return `${names[0]} or ${names[1]}`;
+        return names.join(" or ");
     }
 
     const head = names.slice(0, -1);
-    const last = names.at(-1);
+    const last = names.at(-1) ?? "";
 
     return `${head.join(", ")}, or ${last}`;
 };

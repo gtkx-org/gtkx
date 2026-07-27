@@ -87,17 +87,17 @@ const forEachAncestor = (
     context: AncestryContext,
     klass: GirClass,
     visit: (ancestor: ResolvedAncestor, interfaces: ResolvedAncestor[]) => void,
-    stop: (ancestor: GirClass) => boolean = () => false,
+    shouldStop: (ancestor: GirClass) => boolean = () => false,
 ): void => {
-    let first = true;
+    let isFirst = true;
 
     for (const ancestor of ancestorChain(context.library, klass, context.namespace.name)) {
-        if (first) {
-            first = false;
+        if (isFirst) {
+            isFirst = false;
             continue;
         }
 
-        if (stop(ancestor.klass)) {
+        if (shouldStop(ancestor.klass)) {
             break;
         }
 
@@ -191,7 +191,10 @@ const recordAncestorSignatures = (
 
 const ancestorClassMethodSignatures = (context: ModuleContext, klass: GirClass): Map<string, MethodSignature> => {
     const signatures: Map<string, MethodSignature> = new Map();
-    forEachAncestor(context, klass, (ancestor) => recordAncestorSignatures(context, ancestor.klass, signatures));
+
+    forEachAncestor(context, klass, (ancestor) => {
+        recordAncestorSignatures(context, ancestor.klass, signatures);
+    });
 
     return signatures;
 };
@@ -314,7 +317,7 @@ const inheritedMatch = (inherited: InheritedMethods, name: string): InheritedMat
     return { inheritedReturn, inheritedMethod };
 };
 
-const methodsConflict = (options: {
+const hasMethodConflict = (options: {
     context: ModuleContext;
     callable: GirFunction;
     inheritedReturn: string;
@@ -353,9 +356,9 @@ const conflictRename = (
         return undefined;
     }
 
-    const conflicts = methodsConflict({ context, callable, ...match });
+    const hasConflict = hasMethodConflict({ context, callable, ...match });
 
-    return conflicts ? conflictingMethodName(className, callable.name) : undefined;
+    return hasConflict ? conflictingMethodName(className, callable.name) : undefined;
 };
 
 const conflictingMethodName = (className: string, methodName: string): string =>
@@ -366,7 +369,7 @@ const reservedSignalMemberRename = (className: string, callable: GirFunction): s
         ? conflictingMethodName(className, callable.name)
         : undefined;
 
-const enumConflict = (
+const hasEnumConflict = (
     context: ModuleContext,
     ownRef: TypeId | undefined,
     inheritedRef: TypeId | undefined,
@@ -389,7 +392,7 @@ const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inhe
         if (
             ownParam !== undefined &&
             inheritedParam !== undefined &&
-            enumConflict(context, ownParam.parameter.type, inheritedParam.parameter.type)
+            hasEnumConflict(context, ownParam.parameter.type, inheritedParam.parameter.type)
         ) {
             return true;
         }

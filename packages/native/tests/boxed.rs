@@ -98,7 +98,11 @@ mod boxed_free_dispatch {
     unsafe extern "C" fn counting_boxed_copy(ptr: *mut c_void) -> *mut c_void {
         unsafe {
             let dest = glib::ffi::g_malloc(ALLOC_SIZE);
-            std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, ALLOC_SIZE);
+            std::ptr::copy_nonoverlapping(
+                ptr.cast_const().cast::<u8>(),
+                dest.cast::<u8>(),
+                ALLOC_SIZE,
+            );
             dest
         }
     }

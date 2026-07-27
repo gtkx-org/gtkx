@@ -39,7 +39,7 @@ const emitIcons = (ctx: PluginContext, icons: ListedFile[]): void => {
     }
 
     if (icons.length > 0) {
-        info(`Copied ${icons.length} icon(s) into ${ICONS_DIR}/`);
+        info(`Copied ${String(icons.length)} icon(s) into ${ICONS_DIR}/`);
     }
 };
 

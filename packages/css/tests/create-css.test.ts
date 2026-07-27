@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCss, type Css, removeLabel } from "../src/create-css.js";
 import { StyleSheet } from "../src/stylesheet.js";
 
-const runtimeFlag = (value: boolean): boolean => value;
+type CssFixture = { instance: Css; insertSpy: MockInstance<StyleSheet["insert"]> };
 
 const declElement = (value: string): Element => ({
     parent: null,
@@ -30,6 +30,62 @@ const soleClassName = (result: string[]): string => {
     return merged;
 };
 
+const installCssFixture = (): CssFixture => {
+    const fixture = {} as CssFixture;
+
+    beforeEach(() => {
+        fixture.insertSpy = vi.spyOn(StyleSheet.prototype, "insert");
+        fixture.instance = createCss();
+    });
+
+    afterEach(() => {
+        fixture.insertSpy.mockRestore();
+    });
+
+    return fixture;
+};
+
+const insertedRules = (fixture: CssFixture): string[] => fixture.insertSpy.mock.calls.map((call) => call[0]);
+
+const findInsertedRule = (fixture: CssFixture, selectorPrefix: string): string => {
+    const rule = insertedRules(fixture).find((candidate) => candidate.startsWith(selectorPrefix));
+
+    if (rule === undefined) {
+        throw new Error(`no inserted rule starts with '${selectorPrefix}'`);
+    }
+
+    return rule;
+};
+
+const isTruthyAtRuntime = (isValue: boolean): boolean => isValue;
+
+const injectUniqueGlobal = (instance: Css): void => {
+    instance.injectGlobal(`
+        .global-unique-test {
+            color: red;
+        }
+    `);
+};
+
+const injectWindowBackground = (instance: Css): void => {
+    instance.injectGlobal(`
+        window {
+            background: @theme_bg_color;
+        }
+    `);
+};
+
+const injectWidgetSelectors = (instance: Css): void => {
+    instance.injectGlobal(`
+        entry {
+            border: 1px solid @borders;
+        }
+        label {
+            font-weight: bold;
+        }
+    `);
+};
+
 describe("removeLabel", () => {
     it("clears a label declaration", () => {
         const element = declElement("label:btn");
@@ -46,15 +102,11 @@ describe("removeLabel", () => {
     });
 });
 
-describe("css", () => {
-    let instance: Css;
-
-    beforeEach(() => {
-        instance = createCss();
-    });
+describe("css — class name generation", () => {
+    const fixture = installCssFixture();
 
     it("creates a class name from template literal styles", () => {
-        const className = instance.css`
+        const className = fixture.instance.css`
             background: red;
         `;
 
@@ -62,7 +114,7 @@ describe("css", () => {
     });
 
     it("creates a class name from object styles", () => {
-        const className = instance.css({
+        const className = fixture.instance.css({
             padding: "12px",
             margin: "8px",
         });
@@ -71,11 +123,11 @@ describe("css", () => {
     });
 
     it("returns consistent class name for identical styles", () => {
-        const className1 = instance.css`
+        const className1 = fixture.instance.css`
             color: blue;
         `;
 
-        const className2 = instance.css`
+        const className2 = fixture.instance.css`
             color: blue;
         `;
 
@@ -83,19 +135,23 @@ describe("css", () => {
     });
 
     it("returns different class names for different styles", () => {
-        const className1 = instance.css`
+        const className1 = fixture.instance.css`
             color: red;
         `;
 
-        const className2 = instance.css`
+        const className2 = fixture.instance.css`
             color: green;
         `;
 
         expect(className1).not.toBe(className2);
     });
+});
+
+describe("css — nesting, interpolation, and composition", () => {
+    const fixture = installCssFixture();
 
     it("handles nested style rules", () => {
-        const className = instance.css`
+        const className = fixture.instance.css`
             background: white;
             &:hover {
                 background: gray;
@@ -108,7 +164,7 @@ describe("css", () => {
     it("handles interpolated values", () => {
         const color = "purple";
 
-        const className = instance.css`
+        const className = fixture.instance.css`
             background: ${color};
         `;
 
@@ -116,7 +172,7 @@ describe("css", () => {
     });
 
     it("preserves GTK named colors", () => {
-        const className = instance.css`
+        const className = fixture.instance.css`
             background: @theme_bg_color;
             color: @theme_fg_color;
         `;
@@ -125,7 +181,7 @@ describe("css", () => {
     });
 
     it("handles array of styles", () => {
-        const baseStyles = instance.css`
+        const baseStyles = fixture.instance.css`
             padding: 4px;
         `;
 
@@ -133,133 +189,105 @@ describe("css", () => {
             margin: "8px",
         };
 
-        const className = instance.css(baseStyles, additionalStyles);
+        const className = fixture.instance.css(baseStyles, additionalStyles);
         expect(className).toMatch(/^gtkx-/);
     });
 });
 
 describe("cx", () => {
-    let instance: Css;
-
-    beforeEach(() => {
-        instance = createCss();
-    });
+    const fixture = installCssFixture();
 
     it("combines multiple class names into an array", () => {
-        const result = instance.cx("class-a", "class-b", "class-c");
+        const result = fixture.instance.cx("class-a", "class-b", "class-c");
         expect(result).toEqual(["class-a", "class-b", "class-c"]);
     });
 
     it("merges multiple css outputs into a single last-wins override class", () => {
-        const insertSpy = vi.spyOn(StyleSheet.prototype, "insert");
+        const style1 = fixture.instance.css`
+            color: red;
+        `;
 
-        try {
-            const style1 = instance.css`
-                color: red;
-            `;
+        const style2 = fixture.instance.css`
+            color: blue;
+        `;
 
-            const style2 = instance.css`
-                color: blue;
-            `;
-
-            const mergedClass = soleClassName(instance.cx(style1, style2));
-            expect(mergedClass).toMatch(/^gtkx-/);
-            expect(mergedClass).not.toBe(style1);
-            expect(mergedClass).not.toBe(style2);
-            const rules = insertSpy.mock.calls.map((call) => call[0]);
-            const mergedRule = rules.find((rule) => rule.startsWith(`.${mergedClass}`));
-            expect(mergedRule).toBeDefined();
-            expect(mergedRule).toContain("color:red;");
-            expect(mergedRule).toContain("color:blue;");
-            expect(mergedRule?.lastIndexOf("color:blue")).toBeGreaterThan(mergedRule?.lastIndexOf("color:red") ?? -1);
-        } finally {
-            insertSpy.mockRestore();
-        }
+        const mergedClass = soleClassName(fixture.instance.cx(style1, style2));
+        expect(mergedClass).toMatch(/^gtkx-/);
+        expect(mergedClass).not.toBe(style1);
+        expect(mergedClass).not.toBe(style2);
+        const mergedRule = findInsertedRule(fixture, `.${mergedClass}`);
+        expect(mergedRule).toContain("color:red;");
+        expect(mergedRule).toContain("color:blue;");
+        expect(mergedRule.lastIndexOf("color:blue")).toBeGreaterThan(mergedRule.lastIndexOf("color:red"));
     });
 
     it("handles conditional composition", () => {
-        const baseStyle = "base-class";
-        const activeStyle = "active-class";
-        const isActive = runtimeFlag(true);
-        const isDisabled = runtimeFlag(false);
-        const result = instance.cx(baseStyle, isActive && activeStyle, isDisabled && "disabled-class");
+        const isActive = isTruthyAtRuntime(true);
+        const isDisabled = isTruthyAtRuntime(false);
+        const result = fixture.instance.cx("base-class", isActive && "active-class", isDisabled && "disabled-class");
         expect(result).toEqual(["base-class", "active-class"]);
     });
+});
 
-    describe("falsy filtering", () => {
-        it("filters out false values", () => {
-            const isActive = runtimeFlag(false);
-            const result = instance.cx("base", isActive && "active");
-            expect(result).toEqual(["base"]);
-        });
+describe("cx — falsy filtering", () => {
+    const fixture = installCssFixture();
 
-        it("filters out undefined values", () => {
-            const conditionalClass: string | undefined = undefined;
-            const result = instance.cx("base", conditionalClass);
-            expect(result).toEqual(["base"]);
-        });
-
-        it("filters out null values", () => {
-            const conditionalClass: string | null = null;
-            const result = instance.cx("base", conditionalClass);
-            expect(result).toEqual(["base"]);
-        });
-
-        it("filters out empty strings", () => {
-            const result = instance.cx("base", "", "other");
-            expect(result).toEqual(["base", "other"]);
-        });
+    it("filters out false values", () => {
+        const isActive = isTruthyAtRuntime(false);
+        const result = fixture.instance.cx("base", isActive && "active");
+        expect(result).toEqual(["base"]);
     });
 
-    describe("edge cases", () => {
-        it("returns empty array when given no arguments", () => {
-            const result = instance.cx();
-            expect(result).toEqual([]);
-        });
+    it("filters out undefined values", () => {
+        const conditionalClass: string | undefined = undefined;
+        const result = fixture.instance.cx("base", conditionalClass);
+        expect(result).toEqual(["base"]);
+    });
 
-        it("returns empty array when all values are falsy", () => {
-            const result = instance.cx(false, undefined, null, "");
-            expect(result).toEqual([]);
-        });
+    it("filters out null values", () => {
+        const conditionalClass: string | null = null;
+        const result = fixture.instance.cx("base", conditionalClass);
+        expect(result).toEqual(["base"]);
+    });
 
-        it("handles single class name", () => {
-            const result = instance.cx("single");
-            expect(result).toEqual(["single"]);
-        });
+    it("filters out empty strings", () => {
+        const result = fixture.instance.cx("base", "", "other");
+        expect(result).toEqual(["base", "other"]);
+    });
+});
 
-        it("handles many class names", () => {
-            const result = instance.cx("a", "b", "c", "d", "e", "f", "g");
-            expect(result).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
-        });
+describe("cx — edge cases", () => {
+    const fixture = installCssFixture();
+
+    it("returns empty array when given no arguments", () => {
+        expect(fixture.instance.cx()).toEqual([]);
+    });
+
+    it("returns empty array when all values are falsy", () => {
+        expect(fixture.instance.cx(false, undefined, null, "")).toEqual([]);
+    });
+
+    it("handles single class name", () => {
+        expect(fixture.instance.cx("single")).toEqual(["single"]);
+    });
+
+    it("handles many class names", () => {
+        expect(fixture.instance.cx("a", "b", "c", "d", "e", "f", "g")).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
     });
 });
 
 describe("injectGlobal", () => {
-    let instance: Css;
-
-    const injectDuplicate = () =>
-        instance.injectGlobal`
-            .global-unique-test {
-                color: red;
-            }
-        `;
-
-    beforeEach(() => {
-        instance = createCss();
-    });
+    const fixture = installCssFixture();
 
     it("accepts template literal styles", () => {
-        expect(() =>
-            instance.injectGlobal`
-                window {
-                    background: @theme_bg_color;
-                }
-            `).not.toThrow();
+        expect(() => {
+            injectWindowBackground(fixture.instance);
+        }).not.toThrow();
     });
 
     it("accepts object styles", () => {
         expect(() => {
-            instance.injectGlobal({
+            fixture.instance.injectGlobal({
                 button: {
                     borderRadius: "6px",
                 },
@@ -268,53 +296,34 @@ describe("injectGlobal", () => {
     });
 
     it("does not inject duplicate styles", () => {
-        expect(injectDuplicate).not.toThrow();
-        expect(injectDuplicate).not.toThrow();
+        expect(() => {
+            injectUniqueGlobal(fixture.instance);
+        }).not.toThrow();
+
+        expect(() => {
+            injectUniqueGlobal(fixture.instance);
+        }).not.toThrow();
     });
 
     it("handles GTK widget selectors", () => {
-        expect(() =>
-            instance.injectGlobal`
-                entry {
-                    border: 1px solid @borders;
-                }
-                label {
-                    font-weight: bold;
-                }
-            `).not.toThrow();
+        expect(() => {
+            injectWidgetSelectors(fixture.instance);
+        }).not.toThrow();
     });
 });
 
-describe("css — named colors and at-rule scoping", () => {
-    let instance: Css;
-    let insertSpy: MockInstance<StyleSheet["insert"]>;
-
-    beforeEach(() => {
-        insertSpy = vi.spyOn(StyleSheet.prototype, "insert");
-        instance = createCss();
-    });
-
-    afterEach(() => {
-        insertSpy.mockRestore();
-    });
-
-    function findInsertedRule(selectorPrefix: string): string {
-        const rules = insertSpy.mock.calls.map((call) => call[0]);
-        const rule = rules.find((r) => r.startsWith(selectorPrefix));
-        expect(rule).toBeDefined();
-
-        return rule ?? "";
-    }
+describe("css — GTK named colors", () => {
+    const fixture = installCssFixture();
 
     it("preserves declarations carrying GTK named colors", () => {
-        const className = instance.css`
+        const className = fixture.instance.css`
             background: @card_bg_color;
             color: alpha(@window_fg_color, 0.6);
             box-shadow: 0 0 0 1px alpha(@accent_bg_color, 0.4);
             border-radius: 12px;
         `;
 
-        const rule = findInsertedRule(`.${className}`);
+        const rule = findInsertedRule(fixture, `.${className}`);
         expect(rule).toContain("background:@card_bg_color;");
         expect(rule).toContain("color:alpha(@window_fg_color, 0.6);");
         expect(rule).toContain("box-shadow:0 0 0 1px alpha(@accent_bg_color, 0.4);");
@@ -323,7 +332,7 @@ describe("css — named colors and at-rule scoping", () => {
     });
 
     it("preserves named colors inside nested selectors", () => {
-        const className = instance.css`
+        const className = fixture.instance.css`
             background: @card_bg_color;
 
             &:hover {
@@ -331,14 +340,11 @@ describe("css — named colors and at-rule scoping", () => {
             }
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0]);
-        const hoverRule = rules.find((rule) => rule.startsWith(`.${className}:hover`));
-        expect(hoverRule).toBeDefined();
-        expect(hoverRule).toContain("background:@accent_bg_color;");
+        expect(findInsertedRule(fixture, `.${className}:hover`)).toContain("background:@accent_bg_color;");
     });
 
     it("keeps real at-rules intact alongside named colors", () => {
-        const keyframes = instance.css`
+        const keyframes = fixture.instance.css`
             color: @theme_fg_color;
             @keyframes gtkx-test-spin {
                 to {
@@ -347,38 +353,35 @@ describe("css — named colors and at-rule scoping", () => {
             }
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0]);
-        expect(rules.find((rule) => rule.startsWith(`.${keyframes}`))).toContain("color:@theme_fg_color;");
-        const keyframesRule = rules.find((rule) => rule.startsWith("@keyframes"));
-        expect(keyframesRule).toBeDefined();
-        expect(keyframesRule).toContain("color:@accent_bg_color;");
+        expect(findInsertedRule(fixture, `.${keyframes}`)).toContain("color:@theme_fg_color;");
+        expect(findInsertedRule(fixture, "@keyframes")).toContain("color:@accent_bg_color;");
     });
+});
+
+describe("css — at-rule and selector scoping", () => {
+    const fixture = installCssFixture();
 
     it("scopes @media at-rules around the generated class selector", () => {
-        const className = instance.css`
+        const className = fixture.instance.css`
             color: red;
             @media (prefers-color-scheme: dark) {
                 color: blue;
             }
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0]);
-        const mediaRule = rules.find((rule) => rule.startsWith("@media"));
-        expect(mediaRule).toBeDefined();
-        expect(mediaRule).toContain(`.${className}{color:blue;}`);
+        expect(findInsertedRule(fixture, "@media")).toContain(`.${className}{color:blue;}`);
     });
 
     it("preserves & characters inside string literals", () => {
-        const className = instance.css`
+        const className = fixture.instance.css`
             font-family: "Helvetica & Arial";
         `;
 
-        const rule = findInsertedRule(`.${className}`);
-        expect(rule).toContain('font-family:"Helvetica & Arial"');
+        expect(findInsertedRule(fixture, `.${className}`)).toContain('font-family:"Helvetica & Arial"');
     });
 
     it("compounds nested & selectors instead of producing descendant combinators", () => {
-        const className = instance.css`
+        const className = fixture.instance.css`
             &:hover {
                 &:focus {
                     color: red;
@@ -386,52 +389,52 @@ describe("css — named colors and at-rule scoping", () => {
             }
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0]);
-        const compound = rules.find((rule) => rule.includes(":hover") && rule.includes(":focus"));
+        const compound = insertedRules(fixture).find((rule) => rule.includes(":hover") && rule.includes(":focus"));
         expect(compound).toBeDefined();
         expect(compound).toMatch(new RegExp(String.raw`^\.${className}:hover:focus`));
         expect(compound).not.toMatch(/:hover\s+\..*:focus/);
     });
+});
+
+describe("css — rule shape and deduplication", () => {
+    const fixture = installCssFixture();
 
     it("strips Emotion label declarations before they reach the GTK sink", () => {
-        const className = instance.css({ label: "btn", padding: "8px" });
-        const rule = findInsertedRule(`.${className}`);
+        const className = fixture.instance.css({ label: "btn", padding: "8px" });
+        const rule = findInsertedRule(fixture, `.${className}`);
         expect(rule).toContain("padding:8px;");
         expect(rule).not.toContain("label:");
     });
 
     it("inlines a previously created class when interpolated into another css call", () => {
-        const base = instance.css({ color: "red" });
+        const base = fixture.instance.css({ color: "red" });
 
-        const composed = instance.css`
+        const composed = fixture.instance.css`
             ${base};
             padding: 8px;
         `;
 
-        const rules = insertSpy.mock.calls.map((call) => call[0]);
-        const rule = rules.find((r) => r.startsWith(`.${composed}`));
-        expect(rule).toBeDefined();
+        const rule = findInsertedRule(fixture, `.${composed}`);
         expect(rule).toContain("color:red");
         expect(rule).toContain("padding:8px");
     });
 
     it("emits the literal scoped rule for the simplest common path", () => {
-        const className = instance.css({ background: "red" });
-        const rule = findInsertedRule(`.${className}`);
-        expect(rule).toBe(`.${className}{background:red;}`);
+        const className = fixture.instance.css({ background: "red" });
+        expect(findInsertedRule(fixture, `.${className}`)).toBe(`.${className}{background:red;}`);
     });
 
     it("does not re-insert identical styles on the second css call", () => {
-        instance.css({ background: "red" });
-        const callsAfterFirst = insertSpy.mock.calls.length;
-        instance.css({ background: "red" });
-        expect(insertSpy.mock.calls).toHaveLength(callsAfterFirst);
+        fixture.instance.css({ background: "red" });
+        const callsAfterFirst = fixture.insertSpy.mock.calls.length;
+        fixture.instance.css({ background: "red" });
+        expect(fixture.insertSpy.mock.calls).toHaveLength(callsAfterFirst);
     });
 
     it("does not re-insert identical styles on the second injectGlobal call", () => {
-        instance.injectGlobal({ window: { background: "red" } });
-        const callsAfterFirst = insertSpy.mock.calls.length;
-        instance.injectGlobal({ window: { background: "red" } });
-        expect(insertSpy.mock.calls).toHaveLength(callsAfterFirst);
+        fixture.instance.injectGlobal({ window: { background: "red" } });
+        const callsAfterFirst = fixture.insertSpy.mock.calls.length;
+        fixture.instance.injectGlobal({ window: { background: "red" } });
+        expect(fixture.insertSpy.mock.calls).toHaveLength(callsAfterFirst);
     });
 });

@@ -6,8 +6,9 @@ import { describe, expect, it } from "vitest";
 import { fontFeaturesDemo } from "../../../src/demos/advanced/font-features.js";
 import { renderDemo } from "../../test-utils.js";
 
-const rgbaEquals = (rgba: Gtk.ColorDialogButton, r: number, g: number, b: number): boolean => {
-    const color = rgba.getRgba();
+const isRgbaEqual = (button: Gtk.ColorDialogButton, r: number, g: number, b: number): boolean => {
+    const color = button.getRgba();
+
     return Math.abs(color.red - r) < 1e-6 && Math.abs(color.green - g) < 1e-6 && Math.abs(color.blue - b) < 1e-6;
 };
 
@@ -22,7 +23,11 @@ const activateKerningFeature = async (): Promise<Gtk.Label> => {
     const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
     await userEvent.click(kerning);
     const settings = (await screen.findByName("settings")) as Gtk.Label;
-    await waitFor(() => expect(settings).toHaveTextContent("kern=1"));
+
+    await waitFor(() => {
+        expect(settings).toHaveTextContent("kern=1");
+    });
+
     return settings;
 };
 
@@ -107,7 +112,11 @@ describe("fontFeaturesDemo sample buttons", () => {
         const alphabetBtn = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Alphabet" })) as Gtk.Button;
         await userEvent.click(alphabetBtn);
         const label = (await screen.findByName("preview-label")) as Gtk.Label;
-        await waitFor(() => expect(label).toHaveTextContent("ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
+
+        await waitFor(() => {
+            expect(label).toHaveTextContent("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+        });
+
         expect(screen.queryByText(/Grumpy wizards/)).toBeNull();
     });
 
@@ -122,14 +131,18 @@ describe("fontFeaturesDemo sample buttons", () => {
 
 describe("fontFeaturesDemo feature toggling", () => {
     it("activates Kerning when its checkbox is toggled", async () => {
-        await activateKerningFeature();
+        const settings = await activateKerningFeature();
+        expect(settings).toHaveTextContent("kern=1");
     });
 
     it("cycles Kerning from active to explicitly-disabled on the second click (kern=0)", async () => {
         const settings = await activateKerningFeature();
         const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
         await userEvent.click(kerning);
-        await waitFor(() => expect(settings).toHaveTextContent("kern=0"));
+
+        await waitFor(() => {
+            expect(settings).toHaveTextContent("kern=0");
+        });
     });
 
     it("selects a non-default radio value to enable a feature", async () => {
@@ -138,7 +151,10 @@ describe("fontFeaturesDemo feature toggling", () => {
         const liningFigures = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Lining Figures" });
         await userEvent.click(liningFigures);
         const settings = (await screen.findByName("settings")) as Gtk.Label;
-        await waitFor(() => expect(settings).toHaveTextContent("lnum=1"));
+
+        await waitFor(() => {
+            expect(settings).toHaveTextContent("lnum=1");
+        });
     });
 });
 
@@ -152,11 +168,12 @@ describe("fontFeaturesDemo titlebar", () => {
 
     it("clicking the titlebar Reset button clears active feature settings in the body", async () => {
         const settings = await activateKerningFeature();
-
         const resetButton = (await screen.findByName("reset")) as Gtk.Button;
         await userEvent.click(resetButton);
 
-        await waitFor(() => expect(settings).not.toHaveTextContent());
+        await waitFor(() => {
+            expect(settings).not.toHaveTextContent();
+        });
     });
 });
 
@@ -176,7 +193,8 @@ describe("fontFeaturesDemo size entry", () => {
         await userEvent.clear(sizeEntry);
         await userEvent.type(sizeEntry, "9999");
         await userEvent.keyboard(sizeEntry, "{Enter}");
-        const sizeSlider = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER))[0] as Gtk.Scale;
+        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
+        const sizeSlider = sliders[0] as Gtk.Scale;
         expect(sizeSlider.getValue()).toBe(14);
     });
 });
@@ -208,7 +226,8 @@ describe("fontFeaturesDemo line-height entry", () => {
         await userEvent.clear(lineHeightEntry);
         await userEvent.type(lineHeightEntry, "0.1");
         await userEvent.keyboard(lineHeightEntry, "{Enter}");
-        const lineHeightSlider = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER))[2] as Gtk.Scale;
+        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
+        const lineHeightSlider = sliders[2] as Gtk.Scale;
         expect(lineHeightSlider.getValue()).toBe(1);
     });
 });
@@ -218,33 +237,42 @@ describe("fontFeaturesDemo color swap", () => {
         await renderDemo(fontFeaturesDemo);
         const fg = (await screen.findByName("foreground-color")) as Gtk.ColorDialogButton;
         const bg = (await screen.findByName("background-color")) as Gtk.ColorDialogButton;
-        expect(rgbaEquals(fg, 0, 0, 0)).toBe(true);
-        expect(rgbaEquals(bg, 1, 1, 1)).toBe(true);
-
+        expect(isRgbaEqual(fg, 0, 0, 0)).toBe(true);
+        expect(isRgbaEqual(bg, 1, 1, 1)).toBe(true);
         const swap = (await screen.findByName("swap-colors")) as Gtk.Button;
         await fireEvent(swap, "clicked");
 
-        await waitFor(() => expect(rgbaEquals(fg, 1, 1, 1)).toBe(true));
-        expect(rgbaEquals(bg, 0, 0, 0)).toBe(true);
+        await waitFor(() => {
+            expect(isRgbaEqual(fg, 1, 1, 1)).toBe(true);
+        });
+
+        expect(isRgbaEqual(bg, 0, 0, 0)).toBe(true);
     });
 
     it("applies a foreground color change and carries it to the background on swap", async () => {
         await renderDemo(fontFeaturesDemo);
         const fg = (await screen.findByName("foreground-color")) as Gtk.ColorDialogButton;
         const bg = (await screen.findByName("background-color")) as Gtk.ColorDialogButton;
-
         const red = new Gdk.RGBA();
         red.red = 1;
         red.green = 0;
         red.blue = 0;
         red.alpha = 1;
-        await act(() => fg.setRgba(red));
-        await waitFor(() => expect(rgbaEquals(fg, 1, 0, 0)).toBe(true));
+
+        await act(() => {
+            fg.setRgba(red);
+        });
+
+        await waitFor(() => {
+            expect(isRgbaEqual(fg, 1, 0, 0)).toBe(true);
+        });
 
         const swap = (await screen.findByName("swap-colors")) as Gtk.Button;
         await fireEvent(swap, "clicked");
 
-        await waitFor(() => expect(rgbaEquals(bg, 1, 0, 0)).toBe(true));
+        await waitFor(() => {
+            expect(isRgbaEqual(bg, 1, 0, 0)).toBe(true);
+        });
     });
 });
 
@@ -252,22 +280,37 @@ describe("fontFeaturesDemo font button", () => {
     it("derives the size from a selected font description", async () => {
         await renderDemo(fontFeaturesDemo);
         const fontButton = (await screen.findByName("font-button")) as Gtk.FontDialogButton;
-        await act(() => fontButton.setFontDesc(Pango.FontDescription.fromString("Sans 30")));
+
+        await act(() => {
+            fontButton.setFontDesc(Pango.FontDescription.fromString("Sans 30"));
+        });
+
         const sizeEntry = (await screen.findByName("size_entry")) as Gtk.Entry;
-        await waitFor(() => expect(sizeEntry).toHaveDisplayValue("30"));
+
+        await waitFor(() => {
+            expect(sizeEntry).toHaveDisplayValue("30");
+        });
     });
 });
 
 describe("fontFeaturesDemo sliders", () => {
     it("updates the size via the Size scale and reflects it in the entry", async () => {
         await renderDemo(fontFeaturesDemo);
-        const sizeSlider = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER))[0] as Gtk.Scale;
+        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
+        const sizeSlider = sliders[0] as Gtk.Scale;
         expect(sizeSlider.getValue()).toBe(14);
         sizeSlider.grabFocus();
         await userEvent.keyboard(sizeSlider, "{PageUp}");
-        await waitFor(() => expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 24 } })).toBeTruthy());
+
+        await waitFor(() => {
+            expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 24 } })).toBeTruthy();
+        });
+
         const sizeEntry = (await screen.findByName("size_entry")) as Gtk.Entry;
-        await waitFor(() => expect(sizeEntry).toHaveDisplayValue("24"));
+
+        await waitFor(() => {
+            expect(sizeEntry).toHaveDisplayValue("24");
+        });
     });
 });
 
@@ -278,13 +321,15 @@ describe("fontFeaturesDemo edit mode Escape", () => {
         await userEvent.click(editBtn);
         const stack = (await screen.findByName("stack")) as Gtk.Stack;
         expect(stack.getVisibleChildName()).toBe("entry");
-
         const textView = (await screen.findByName("edit_textview")) as Gtk.TextView;
         textView.grabFocus();
         await userEvent.type(textView, "scratch edits");
         await userEvent.keyboard(textView, "{Escape}");
 
-        await waitFor(() => expect(stack.getVisibleChildName()).toBe("label"));
+        await waitFor(() => {
+            expect(stack.getVisibleChildName()).toBe("label");
+        });
+
         const preview = (await screen.findByName("preview-label")) as Gtk.Label;
         expect(preview).toHaveTextContent("Grumpy wizards");
     });

@@ -31,7 +31,7 @@ fn struct_codec(ownership: Ownership, size: Option<usize>) -> StructCodec {
     }
 }
 
-fn handle_value_of<'e>(env: &'e Env, ptr: *mut c_void) -> Unknown<'e> {
+fn handle_value_of(env: &Env, ptr: *mut c_void) -> Unknown<'_> {
     External::new(Handle::from_glib_borrow(ptr))
         .into_unknown(env)
         .expect("external into unknown should succeed")
@@ -58,7 +58,7 @@ fn null_guarded_runs_decode_for_non_null_pointer() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let source: u64 = 0xDEAD_BEEF;
-        let ptr = &source as *const u64 as *mut c_void;
+        let ptr = &raw const source as *mut c_void;
         let decoded =
             unsafe { Decoder::read(&struct_type(), &env, ReadSource::Value(ptr, "ctx")) }.unwrap();
         assert!(napi_mock::read_external(decoded.raw()).is_some());
@@ -70,12 +70,12 @@ fn write_object_ptr_writes_object_pointer() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let target: u64 = 1;
-        let handle = Handle::from_glib_borrow(&target as *const u64 as *mut c_void);
+        let handle = Handle::from_glib_borrow(&raw const target as *mut c_void);
         let value = External::new(handle).into_unknown(&env).unwrap();
 
         let slot =
             test_support::write_value_into_slot(&env, &struct_type(), std::ptr::null_mut(), value);
-        assert_eq!(slot, &target as *const u64 as *mut c_void);
+        assert_eq!(slot, &raw const target as *mut c_void);
     });
 }
 
@@ -105,16 +105,16 @@ fn write_return_object_ptr_transfers_non_null_pointer() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let target: u64 = 2;
-        let handle = Handle::from_glib_borrow(&target as *const u64 as *mut c_void);
-        let value: Result<Unknown, ()> = Ok(External::new(handle).into_unknown(&env).unwrap());
+        let handle = Handle::from_glib_borrow(&raw const target as *mut c_void);
+        let value: Result<Unknown<'_>, ()> = Ok(External::new(handle).into_unknown(&env).unwrap());
 
-        let slot = test_support::write_return_into_slot(&env, &struct_type(), &value);
-        assert_eq!(slot, &target as *const u64 as *mut c_void);
+        let slot = write_return_into_slot(&env, &struct_type(), &value);
+        assert_eq!(slot, &raw const target as *mut c_void);
     });
 }
 
 fn encode_full_sized_copy(env: &Env, original: *mut c_void) -> ffi::Stash {
-    let encoded = struct_codec(Ownership::Full, Some(std::mem::size_of::<u64>()))
+    let encoded = struct_codec(Ownership::Full, Some(size_of::<u64>()))
         .encode(env, handle_value_of(env, original))
         .expect("full encode should succeed");
     let copy = encoded
@@ -133,7 +133,7 @@ fn encode_full_sized_frees_copy_when_call_never_happens() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let source: u64 = 0x5AFE_C0DE_5AFE_C0DE;
-        let original = &source as *const u64 as *mut c_void;
+        let original = &raw const source as *mut c_void;
 
         let encoded = encode_full_sized_copy(&env, original);
         let copy = encoded.as_ptr("struct argument").unwrap();
@@ -156,7 +156,7 @@ fn encode_full_sized_disarm_leaves_copy_for_callee() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let source: u64 = 0xFEED_FACE_FEED_FACE;
-        let original = &source as *const u64 as *mut c_void;
+        let original = &raw const source as *mut c_void;
 
         let encoded = encode_full_sized_copy(&env, original);
         let copy = encoded.as_ptr("struct argument").unwrap();
@@ -178,11 +178,11 @@ fn write_return_full_with_size_writes_a_distinct_copy() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let source: u64 = 0x1234_5678_9ABC_DEF0;
-        let original = &source as *const u64 as *mut c_void;
+        let original = &raw const source as *mut c_void;
 
         let slot = write_return_into_slot(
             &env,
-            &struct_codec(Ownership::Full, Some(std::mem::size_of::<u64>())),
+            &struct_codec(Ownership::Full, Some(size_of::<u64>())),
             &Ok(handle_value_of(&env, original)),
         );
 
@@ -201,7 +201,7 @@ fn write_return_full_without_size_writes_null_and_reports() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let target: u64 = 3;
-        let original = &target as *const u64 as *mut c_void;
+        let original = &raw const target as *mut c_void;
 
         let slot = write_return_into_slot(
             &env,
@@ -222,7 +222,7 @@ fn write_return_borrowed_writes_same_pointer_without_reporting() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let target: u64 = 6;
-        let original = &target as *const u64 as *mut c_void;
+        let original = &raw const target as *mut c_void;
 
         let slot = write_return_into_slot(
             &env,
@@ -239,9 +239,9 @@ fn write_return_borrowed_writes_same_pointer_without_reporting() {
 fn write_return_object_ptr_writes_null_for_non_object_ok() {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let value: Result<Unknown, ()> =
+        let value: Result<Unknown<'_>, ()> =
             Ok(napi_mock::to_unknown(&env, napi_mock::fake_double(3.0)));
-        let slot = test_support::write_return_into_slot(&env, &struct_type(), &value);
+        let slot = write_return_into_slot(&env, &struct_type(), &value);
         assert!(slot.is_null());
     });
 }

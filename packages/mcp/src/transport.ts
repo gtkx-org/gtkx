@@ -1,12 +1,11 @@
 import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
-import EventEmitter from "node:events";
 import { ErrorCode, invalidRequestError, isErrorCode, ProtocolError, requestTimeoutError } from "./protocol/errors.js";
 import { type Message, type Request, RequestSchema, type Response, ResponseSchema } from "./protocol/schemas.js";
 
 type ProtocolConnectionEvents = {
-    request: [Request];
-    invalid: [{ id: string; error: ProtocolError }];
+    request: Request;
+    invalid: { id: string; error: ProtocolError };
 };
 
 type PendingRequest = {
@@ -15,15 +14,25 @@ type PendingRequest = {
     timeout: NodeJS.Timeout;
 };
 
-type AppConnectionEvents = {
-    disconnection: [ProtocolConnection];
-    request: [ProtocolConnection, Request];
-    error: [Error];
-};
+type ConnectionEvent = CustomEvent<ProtocolConnection>;
+type ConnectionRequestEvent = CustomEvent<{ connection: ProtocolConnection; request: Request }>;
+type ConnectionErrorEvent = CustomEvent<Error>;
 
 type AppConnections = {
     send(connectionId: string, message: Message): void;
-} & EventEmitter<AppConnectionEvents>;
+} & EventTarget;
+
+function connectionRequestEvent(connection: ProtocolConnection, request: Request): ConnectionRequestEvent {
+    return new CustomEvent("request", { detail: { connection, request } });
+}
+
+function connectionDisconnectionEvent(connection: ProtocolConnection): ConnectionEvent {
+    return new CustomEvent("disconnection", { detail: connection });
+}
+
+function connectionErrorEvent(error: Error): ConnectionErrorEvent {
+    return new CustomEvent("error", { detail: error });
+}
 
 class ConnectionClosedError extends Error {
     constructor() {
@@ -32,7 +41,7 @@ class ConnectionClosedError extends Error {
     }
 }
 
-class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
+class ProtocolConnection extends EventTarget {
     static fromSocket(
         socket: Socket,
         options: {
@@ -41,7 +50,10 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         } = {},
     ): ProtocolConnection {
         const connection = new ProtocolConnection(socket);
-        socket.on("data", (data: Buffer) => connection.feed(data));
+
+        socket.on("data", (data: Buffer) => {
+            connection.feed(data);
+        });
 
         socket.on("close", () => {
             connection.rejectPending(new Error("Connection closed"));
@@ -66,6 +78,10 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         this.writer = writer;
     }
 
+    private notify<K extends keyof ProtocolConnectionEvents>(type: K, detail: ProtocolConnectionEvents[K]): void {
+        this.dispatchEvent(new CustomEvent(type, { detail }));
+    }
+
     private rejectWhenClosed(id: string, timeoutHandle: NodeJS.Timeout, reject: (error: Error) => void): void {
         if (this.writer.writable) {
             return;
@@ -86,7 +102,7 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
                 return false;
             }
 
-            this.emit("request", requestResult.data);
+            this.notify("request", requestResult.data);
 
             return true;
         }
@@ -108,7 +124,7 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         try {
             parsed = JSON.parse(line);
         } catch {
-            this.emit("invalid", { id: "unknown", error: invalidRequestError("Invalid JSON") });
+            this.notify("invalid", { id: "unknown", error: invalidRequestError("Invalid JSON") });
 
             return;
         }
@@ -119,7 +135,7 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
 
         const message = parsed as Record<string, unknown>;
         const id = typeof message.id === "string" ? message.id : "unknown";
-        this.emit("invalid", { id, error: invalidRequestError("Invalid message format") });
+        this.notify("invalid", { id, error: invalidRequestError("Invalid message format") });
     }
 
     private handleResponse(response: Response): void {
@@ -141,6 +157,15 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         } else {
             entry.resolve(response.result);
         }
+    }
+
+    on<K extends keyof ProtocolConnectionEvents>(
+        type: K,
+        listener: (detail: ProtocolConnectionEvents[K]) => void,
+    ): void {
+        this.addEventListener(type, (event) => {
+            listener((event as CustomEvent<ProtocolConnectionEvents[K]>).detail);
+        });
     }
 
     feed(data: Buffer | string): void {
@@ -205,8 +230,13 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
 
 export {
     ConnectionClosedError,
+    connectionDisconnectionEvent,
+    connectionErrorEvent,
+    connectionRequestEvent,
     ProtocolConnection,
     type ProtocolConnectionEvents,
-    type AppConnectionEvents,
     type AppConnections,
+    type ConnectionEvent,
+    type ConnectionErrorEvent,
+    type ConnectionRequestEvent,
 };

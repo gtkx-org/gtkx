@@ -31,6 +31,45 @@ import {
 } from "@gtkx/runtime/internal";
 import { describe, expect, it } from "vitest";
 
+const gdkRgbaFfi = {
+    kind: "boxed",
+    ownership: "borrowed",
+    typeName: "GdkRGBA",
+    sharedLibrary: "libgtk-4.so.1",
+    getTypeFnName: "gdk_rgba_get_type",
+} as const;
+
+const variantFfi = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
+    ownership: "borrowed",
+    typeName: "GVariant",
+});
+
+const strvFfi = {
+    kind: "array",
+    arrayKind: "array",
+    ownership: "borrowed",
+    itemDescriptor: { kind: "string", ownership: "borrowed" },
+} as const;
+
+const alignDescriptor = {
+    kind: "enum",
+    sharedLibrary: "libgtk-4.so.1",
+    getTypeFnName: "gtk_align_get_type",
+    signed: false,
+} as const;
+
+const bindingFlagsDescriptor = {
+    kind: "flags",
+    sharedLibrary: "libgobject-2.0.so.0",
+    getTypeFnName: "g_binding_flags_get_type",
+    signed: false,
+} as const;
+
+const paramDescriptor = t.fundamental("libgobject-2.0.so.0", "g_param_spec_ref", "g_param_spec_unref", {
+    ownership: "borrowed",
+    typeName: "GParam",
+});
+
 const callGetType = (lib: string, fn: string): Type => {
     const result = resolveType(lib, fn);
 
@@ -45,6 +84,9 @@ const gdkRgbaGtype = (): Type => callGetType("libgtk-4.so.1", "gdk_rgba_get_type
 
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
     new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red, green, blue, alpha });
+
+const gtypeOfEmpty = (ffi: Parameters<typeof newValueForDescriptor>[0]): Type =>
+    getValueType(newValueForDescriptor(ffi));
 
 describe("generated GObject.Value boxed accessors", () => {
     it("round-trips a boxed instance through setBoxed and getBoxed", () => {
@@ -306,29 +348,6 @@ describe("toValue — arrays and errors", () => {
     });
 });
 
-const gtypeOfEmpty = (ffi: Parameters<typeof newValueForDescriptor>[0]): Type =>
-    getValueType(newValueForDescriptor(ffi));
-
-const gdkRgbaFfi = {
-    kind: "boxed",
-    ownership: "borrowed",
-    typeName: "GdkRGBA",
-    sharedLibrary: "libgtk-4.so.1",
-    getTypeFnName: "gdk_rgba_get_type",
-} as const;
-
-const variantFfi = t.fundamental("libgobject-2.0.so.0,libglib-2.0.so.0", "g_variant_ref", "g_variant_unref", {
-    ownership: "borrowed",
-    typeName: "GVariant",
-});
-
-const strvFfi = {
-    kind: "array",
-    arrayKind: "array",
-    ownership: "borrowed",
-    itemDescriptor: { kind: "string", ownership: "borrowed" },
-} as const;
-
 describe("newValueForDescriptor — GType resolution from an FFI descriptor", () => {
     it("resolves primitive descriptors to their fundamental GType", () => {
         expect(gtypeOfEmpty({ kind: "boolean" })).toBe(TYPE_BOOLEAN);
@@ -380,36 +399,7 @@ describe("newValueForDescriptor — GType resolution from an FFI descriptor", ()
     });
 });
 
-describe("fromValue / toValue round-trips", () => {
-    const alignDescriptor = {
-        kind: "enum",
-        sharedLibrary: "libgtk-4.so.1",
-        getTypeFnName: "gtk_align_get_type",
-        signed: false,
-    } as const;
-
-    const bindingFlagsDescriptor = {
-        kind: "flags",
-        sharedLibrary: "libgobject-2.0.so.0",
-        getTypeFnName: "g_binding_flags_get_type",
-        signed: false,
-    } as const;
-
-    const paramDescriptor = t.fundamental("libgobject-2.0.so.0", "g_param_spec_ref", "g_param_spec_unref", {
-        ownership: "borrowed",
-        typeName: "GParam",
-    });
-
-    const variantDescriptor = t.fundamental(
-        "libgobject-2.0.so.0,libglib-2.0.so.0",
-        "g_variant_ref",
-        "g_variant_unref",
-        {
-            ownership: "borrowed",
-            typeName: "GVariant",
-        },
-    );
-
+describe("fromValue / toValue round-trips (1)", () => {
     describe("GValue boolean", () => {
         it("round-trips true and false", () => {
             expect(fromValue(toValue({ kind: "boolean" }, true))).toBe(true);
@@ -462,7 +452,9 @@ describe("fromValue / toValue round-trips", () => {
             expect(fromValue(toValue({ kind: "string", ownership: "borrowed" }, null))).toBeNull();
         });
     });
+});
 
+describe("fromValue / toValue round-trips (2)", () => {
     describe("GValue enum and flags", () => {
         it("round-trips an enum payload", () => {
             expect(fromValue(toValue(alignDescriptor, Gtk.Align.CENTER))).toBe(Gtk.Align.CENTER);
@@ -500,14 +492,14 @@ describe("fromValue / toValue round-trips", () => {
     describe("GValue variant", () => {
         it("round-trips a GLib.Variant preserving its payload", () => {
             const variant = GLib.Variant.newString("payload");
-            const extracted = fromValue(toValue(variantDescriptor, variant));
+            const extracted = fromValue(toValue(variantFfi, variant));
             expect(extracted).toBeInstanceOf(GLib.Variant);
             const [text] = (extracted as GLib.Variant).getString();
             expect(text).toBe("payload");
         });
 
         it("returns null for an unset variant", () => {
-            expect(fromValue(toValue(variantDescriptor, null))).toBeNull();
+            expect(fromValue(toValue(variantFfi, null))).toBeNull();
         });
     });
 });

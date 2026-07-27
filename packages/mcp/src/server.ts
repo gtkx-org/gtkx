@@ -3,7 +3,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createRequire } from "node:module";
 import { z } from "zod";
-import { AppRouter } from "./app-router.js";
+import type { ConnectionErrorEvent } from "./transport.js";
+import { type AppRegisteredEvent, AppRouter, type AppUnregisteredEvent } from "./app-router.js";
 import { ConnectionRegistry } from "./connection-registry.js";
 import {
     type AppInfo,
@@ -38,7 +39,9 @@ const log: Logger = createLogger("mcp");
 const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
 
 const WIDGET_ID_DESCRIPTION =
-    "Widget ID obtained from `gtkx_get_widget_tree`, `gtkx_query_widgets`, or `gtkx_get_widget_props`. IDs are scoped to a single app. An ID stays valid for as long as its widget is mounted and stops resolving once the widget is unmounted.";
+    "Widget ID obtained from `gtkx_get_widget_tree`, `gtkx_query_widgets`, or `gtkx_get_widget_props`. " +
+    "IDs are scoped to a single app. An ID stays valid for as long as its widget is mounted and stops " +
+    "resolving once the widget is unmounted.";
 
 const applicationIdShape = { applicationId: z.string().optional().describe(APPLICATION_ID_DESCRIPTION) };
 
@@ -53,7 +56,8 @@ const treeShape = {
         "Render only the subtree rooted at this widget ID (from a prior tree or query). Omit for the whole app.",
     ),
     maxDepth: treeParams.shape.maxDepth.describe(
-        "Limit how many levels deep to render; deeper descendants are summarized with a count. Combine with rootId to drill in without dumping the whole tree.",
+        "Limit how many levels deep to render; deeper descendants are summarized with a count. " +
+        "Combine with rootId to drill in without dumping the whole tree.",
     ),
 };
 
@@ -92,11 +96,13 @@ const screenshotShape = {
         "Window ID to capture. If not specified, captures the first window.",
     ),
     path: screenshotParams.shape.path.describe(
-        "Absolute path to write the PNG to on the app's machine. If set, the screenshot is saved there in addition to being returned.",
+        "Absolute path to write the PNG to on the app's machine. If set, the screenshot is saved there " +
+        "in addition to being returned.",
     ),
 };
 
-const logSocketError = (error: Error): void => {
+const logSocketError = (event: Event): void => {
+    const error = (event as ConnectionErrorEvent).detail;
     const code = (error as NodeJS.ErrnoException).code;
 
     if (code === "EPIPE" || code === "ECONNRESET") {
@@ -145,7 +151,9 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
         title: "Take screenshot",
         kind: "readOnly",
         description:
-            "Capture a screenshot of a window. Returns base64-encoded PNG image data, and optionally writes the PNG to `path` on the app's machine. You can't target widgets from a screenshot; use `gtkx_get_widget_tree` to find widget IDs for interaction.",
+            "Capture a screenshot of a window. Returns base64-encoded PNG image data, and optionally writes " +
+            "the PNG to `path` on the app's machine. You can't target widgets from a screenshot; use " +
+            "`gtkx_get_widget_tree` to find widget IDs for interaction.",
         inputSchema: screenshotShape,
         handler: async ({ applicationId, ...params }) => {
             const result = await appRouter.sendToApp<{ data: string; mimeType: string; savedPath?: string }>(
@@ -175,7 +183,9 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             title: "Widget tree",
             kind: "readOnly",
             description:
-                "Get the widget hierarchy for a connected GTKX app. Returns a tree of widgets with their IDs, types, roles, and properties. For large apps, pass `maxDepth` for a shallow overview and/or `rootId` to render just one subtree instead of the whole (possibly truncated) tree.",
+                "Get the widget hierarchy for a connected GTKX app. Returns a tree of widgets with their IDs, " +
+                "types, roles, and properties. For large apps, pass `maxDepth` for a shallow overview and/or " +
+                "`rootId` to render just one subtree instead of the whole (possibly truncated) tree.",
             inputSchema: treeShape,
             handler: async ({ applicationId, rootId, maxDepth }) => {
                 const result = await appRouter.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {
@@ -204,7 +214,9 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             title: "Get widget properties",
             kind: "readOnly",
             description:
-                "Get a fixed summary of one widget by ID: type, accessible role, name, text, sensitivity, visibility, CSS classes, and the full subtree of descendant widgets. It does not return arbitrary GObject properties.",
+                "Get a fixed summary of one widget by ID: type, accessible role, name, text, sensitivity, " +
+                "visibility, CSS classes, and the full subtree of descendant widgets. It does not return " +
+                "arbitrary GObject properties.",
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, ...params }) => {
                 const result = await appRouter.sendToApp(applicationId, "widget.getProps", params);
@@ -266,14 +278,15 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const registry = new ConnectionRegistry();
     const socketServer = new SocketServer(registry, socketPath);
     const appRouter = new AppRouter(registry);
-    registry.on("error", logSocketError);
+    registry.addEventListener("error", logSocketError);
 
-    appRouter.on("appRegistered", (appInfo) => {
-        log.info(`app registered: ${appInfo.applicationId} (PID: ${appInfo.pid})`);
+    appRouter.addEventListener("appRegistered", (event) => {
+        const appInfo = (event as AppRegisteredEvent).detail;
+        log.info(`app registered: ${appInfo.applicationId} (PID: ${String(appInfo.pid)})`);
     });
 
-    appRouter.on("appUnregistered", (applicationId) => {
-        log.info(`app unregistered: ${applicationId}`);
+    appRouter.addEventListener("appUnregistered", (event) => {
+        log.info(`app unregistered: ${(event as AppUnregisteredEvent).detail}`);
     });
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
@@ -284,27 +297,28 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     }
 
     registerReferenceResources(mcpServer, referenceProvider);
-    let stopped = false;
+    let isStopped = false;
 
-    return {
-        async start() {
-            await socketServer.start();
-            log.info(`socket server listening on ${socketPath}`);
-            const transport = new StdioServerTransport();
-            process.stdin.on("end", () => void this.stop());
-            process.stdin.on("close", () => void this.stop());
-            await mcpServer.connect(transport);
-        },
-        async stop() {
-            if (stopped) {
-                return;
-            }
+    const stop = async (): Promise<void> => {
+        if (isStopped) {
+            return;
+        }
 
-            stopped = true;
-            await socketServer.stop();
-            await mcpServer.close();
-        },
+        isStopped = true;
+        await socketServer.stop();
+        await mcpServer.close();
     };
+
+    const start = async (): Promise<void> => {
+        await socketServer.start();
+        log.info(`socket server listening on ${socketPath}`);
+        const transport = new StdioServerTransport();
+        process.stdin.on("end", () => void stop());
+        process.stdin.on("close", () => void stop());
+        await mcpServer.connect(transport);
+    };
+
+    return { start, stop };
 };
 
 async function main(): Promise<void> {

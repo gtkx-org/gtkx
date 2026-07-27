@@ -12,31 +12,79 @@ import {
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
-import { useCallback, useState } from "react";
-
+import { useState } from "react";
 import { path as gtkLogoCursorPath } from "#data/demos/buttons/gtk_logo_cursor.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
 
-const DETAILS_TEXT = `Finally, the full story with all details. And all the inside information, including error codes, etc etc. Pages of information, you might have to scroll down to read it all, or even resize the window - it works !
-A second paragraph will contain even more innuendo, just to make you scroll down or resize the window.
-Do it already!
-`;
+const DETAILS_TEXT =
+    "Finally, the full story with all details. And all the inside information, including error codes, etc etc. " +
+    "Pages of information, you might have to scroll down to read it all, or even resize the window - it works !\n" +
+    "A second paragraph will contain even more innuendo, just to make you scroll down or resize the window.\n" +
+    "Do it already!\n";
 
-const ExpanderDemo = () => {
+const expanderDemo: Demo = {
+    id: "expander",
+    title: "Expander",
+    description:
+        "GtkExpander allows to provide additional content that is initially hidden. " +
+        'This is also known as "disclosure triangle".\n\n' +
+        "This example also shows how to make the window resizable only if the expander is expanded.",
+    keywords: ["gtkexpander"],
+    component: ExpanderDemo,
+    sourceCode,
+};
+
+const applyLogoTag = (buffer: Gtk.TextBuffer, mark: Gtk.TextMark) => {
+    const start = buffer.getIterAtMark(mark);
+    const end = buffer.getIterAtMark(mark);
+    end.forwardChar();
+    buffer.applyTagByName("logo", start, end);
+};
+
+const DetailsView = ({ texture }: { texture: Gdk.Texture }) => (
+    <GtkScrolledWindow
+        minContentHeight={100}
+        hasFrame
+        hscrollbarPolicy={Gtk.PolicyType.NEVER}
+        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+        propagateNaturalHeight
+        vexpand
+    >
+        <GtkTextView
+            editable={false}
+            cursorVisible={false}
+            wrapMode={Gtk.WrapMode.WORD}
+            pixelsAboveLines={2}
+            pixelsBelowLines={2}
+            leftMargin={10}
+            rightMargin={10}
+            topMargin={10}
+            bottomMargin={10}
+            buffer={(
+                <GtkTextBuffer>
+                    {DETAILS_TEXT}
+                    <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
+                        <TextPaintable paintable={texture} onInserted={applyLogoTag} />
+                    </GtkTextTag>
+                </GtkTextBuffer>
+            )}
+        />
+    </GtkScrolledWindow>
+);
+
+function ExpanderDemo() {
     const [texture] = useState(() => Gdk.Texture.newFromResource(gtkLogoCursorPath));
     const parentWindow = useParentWindow();
 
-    const applyLogoTag = useCallback((buffer: Gtk.TextBuffer, mark: Gtk.TextMark) => {
-        const start = buffer.getIterAtMark(mark);
-        const end = buffer.getIterAtMark(mark);
-        end.forwardChar();
-        buffer.applyTagByName("logo", start, end);
-    }, []);
-
     const handleExpandedNotify = (pspec: GObject.ParamSpec, self: Gtk.Expander) => {
-        if (pspec.getName() !== "expanded") return;
-        if (parentWindow) parentWindow.setResizable(self.getExpanded());
+        if (pspec.getName() !== "expanded") {
+            return;
+        }
+
+        if (parentWindow) {
+            parentWindow.setResizable(self.getExpanded());
+        }
     };
 
     return (
@@ -54,45 +102,10 @@ const ExpanderDemo = () => {
             </GtkLabel>
 
             <GtkExpander name="expander" label="Details:" vexpand onNotify={handleExpandedNotify}>
-                <GtkScrolledWindow
-                    minContentHeight={100}
-                    hasFrame
-                    hscrollbarPolicy={Gtk.PolicyType.NEVER}
-                    vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                    propagateNaturalHeight
-                    vexpand
-                >
-                    <GtkTextView
-                        editable={false}
-                        cursorVisible={false}
-                        wrapMode={Gtk.WrapMode.WORD}
-                        pixelsAboveLines={2}
-                        pixelsBelowLines={2}
-                        leftMargin={10}
-                        rightMargin={10}
-                        topMargin={10}
-                        bottomMargin={10}
-                        buffer={(
-                            <GtkTextBuffer>
-                                {DETAILS_TEXT}
-                                <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
-                                    <TextPaintable paintable={texture} onInserted={applyLogoTag} />
-                                </GtkTextTag>
-                            </GtkTextBuffer>
-                        )}
-                    />
-                </GtkScrolledWindow>
+                <DetailsView texture={texture} />
             </GtkExpander>
         </GtkBox>
     );
-};
+}
 
-export const expanderDemo: Demo = {
-    id: "expander",
-    title: "Expander",
-    description:
-        'GtkExpander allows to provide additional content that is initially hidden. This is also known as "disclosure triangle".\n\nThis example also shows how to make the window resizable only if the expander is expanded.',
-    keywords: ["gtkexpander"],
-    component: ExpanderDemo,
-    sourceCode,
-};
+export { expanderDemo };

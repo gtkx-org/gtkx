@@ -6,23 +6,23 @@ import { ConstraintChildButtons } from "./child-buttons.js";
 
 const A = Gtk.ConstraintAttribute;
 
-export const TopEdgeConstraint = (): ReactNode => (
+const TopEdgeConstraint = (): ReactNode => (
     <ConstraintLayout.Constraint target="button1" targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
 );
 
-export const BottomEdgeConstraint = (): ReactNode => (
+const BottomEdgeConstraint = (): ReactNode => (
     <ConstraintLayout.Constraint target="button3" targetAttribute={A.BOTTOM} sourceAttribute={A.BOTTOM} constant={-8} />
 );
 
-export const StartEdgeConstraint = ({ target }: { target: string }): ReactNode => (
+const StartEdgeConstraint = ({ target }: { target: string }): ReactNode => (
     <ConstraintLayout.Constraint target={target} targetAttribute={A.START} sourceAttribute={A.START} constant={8} />
 );
 
-export const EndEdgeConstraint = ({ target }: { target: string }): ReactNode => (
+const EndEdgeConstraint = ({ target }: { target: string }): ReactNode => (
     <ConstraintLayout.Constraint target={target} targetAttribute={A.END} sourceAttribute={A.END} constant={-8} />
 );
 
-export const ConstraintContainer = ({
+const ConstraintContainer = ({
     layoutManager,
     controllers,
 }: {
@@ -33,3 +33,5 @@ export const ConstraintContainer = ({
         <ConstraintChildButtons />
     </GtkBox>
 );
+
+export { BottomEdgeConstraint, ConstraintContainer, EndEdgeConstraint, StartEdgeConstraint, TopEdgeConstraint };

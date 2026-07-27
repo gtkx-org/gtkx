@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::native_result;
+use crate::api::{byte_count_from_f64, native_result};
 use crate::ffi::codec::{Codec, PtrWriter as _, SlotInit};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
@@ -31,8 +31,10 @@ pub fn write<'env>(
     field_descriptor: Descriptor,
     offset: f64,
     value: Unknown<'_>,
-) -> napi::Result<Unknown<'env>> {
-    let field_ptr = handle.as_ptr().wrapping_byte_add(offset as usize);
+) -> Result<Unknown<'env>> {
+    let offset = byte_count_from_f64(offset, "field write: offset")?;
+
+    let field_ptr = handle.as_ptr().wrapping_byte_add(offset);
     let field_codec = field_descriptor.into_codec()?;
     native_result(
         "field write",
@@ -51,16 +53,16 @@ mod tests {
     fn writes_an_integer_field() {
         test_support::run(|| {
             let env = napi_mock::fake_env();
-            let mut raw: i32 = 0;
+            let mut slot: i32 = 0;
             let value = napi_mock::to_unknown(&env, napi_mock::fake_double(99.0));
             write_field(
                 &env,
-                (&mut raw as *mut i32).cast(),
+                (&raw mut slot).cast(),
                 &Codec::Integer(IntegerCodec::I32),
                 value,
             )
             .expect("write should succeed");
-            assert_eq!(raw, 99);
+            assert_eq!(slot, 99);
         });
     }
 
@@ -68,12 +70,12 @@ mod tests {
     fn rejects_a_non_number_value() {
         test_support::run(|| {
             let env = napi_mock::fake_env();
-            let mut raw: i32 = 0;
+            let mut slot: i32 = 0;
             let value = napi_mock::to_unknown(&env, napi_mock::fake_bool(true));
             assert!(
                 write_field(
                     &env,
-                    (&mut raw as *mut i32).cast(),
+                    (&raw mut slot).cast(),
                     &Codec::Integer(IntegerCodec::I32),
                     value,
                 )

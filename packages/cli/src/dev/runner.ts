@@ -77,16 +77,16 @@ const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedP
 };
 
 const createShutdownController = (server: DevServer, deps: DevRunnerDeps): ShutdownController => {
-    let shuttingDown = false;
+    let isShuttingDown = false;
 
     return {
-        isShuttingDown: () => shuttingDown,
+        isShuttingDown: () => isShuttingDown,
         shutdown: async (quitApplication: () => void): Promise<void> => {
-            if (shuttingDown) {
+            if (isShuttingDown) {
                 return;
             }
 
-            shuttingDown = true;
+            isShuttingDown = true;
             quitApplication();
             deps.stopMcpClient();
             await server.close();
@@ -120,12 +120,15 @@ const onShutdownSignal =
             }
 
             deps.log("Received shutdown signal - stopping dev runner...");
-            await controller.shutdown(() => deps.quitDefaultApplication());
+
+            await controller.shutdown(() => {
+                deps.quitDefaultApplication();
+            });
         };
 
 const closeAndExit = async (deps: DevRunnerDeps, controller: ShutdownController): Promise<never> => {
     try {
-        await controller.shutdown(() => {});
+        await controller.shutdown((): void => undefined);
     } catch (error_) {
         error("Error closing server:", error_);
 
@@ -163,8 +166,6 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         server.watcher.on("change", onFileChange(server, refreshTrackingDeps, controller));
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
-        // React 19 mounts the application asynchronously, so poll for it rather than
-        // reading a single snapshot immediately after loading the entry.
         const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS);
 
         if (liveApplicationId) {

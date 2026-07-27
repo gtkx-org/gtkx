@@ -57,7 +57,9 @@ describe("useMergedRef", () => {
         expect(objectRef.current).toBeNull();
         expect(callbackCleanup).toHaveBeenCalledTimes(1);
     });
+});
 
+describe("useMergedRef (swapped refs)", () => {
     it("forwards to the swapped ref object", async () => {
         const first: { current: Target | null } = { current: null };
         const second: { current: Target | null } = { current: null };
@@ -79,14 +81,16 @@ describe("useMergedRef", () => {
         expect(secondCallback).toHaveBeenCalledWith(value);
         expect(firstCallback).not.toHaveBeenCalled();
     });
+});
 
+describe("useMergedRef (widget reattachment)", () => {
     it("reattaches a widget ref when one of its ref arguments changes identity", async () => {
         const attach = vi.fn<RefCallback<Gtk.Button>>();
 
         function App({ tick }: { tick: number }) {
-            const merged = useMergedRef<Gtk.Button>(attach, () => {});
+            const merged = useMergedRef<Gtk.Button>(attach, vi.fn<RefCallback<Gtk.Button>>());
 
-            return <GtkButton label={`tick ${tick}`} ref={merged} />;
+            return <GtkButton label={`tick ${String(tick)}`} ref={merged} />;
         }
 
         const { rerender } = await render(<App tick={0} />);
@@ -106,7 +110,7 @@ describe("useMergedRef", () => {
         function App({ tick }: { tick: number }) {
             const merged = useMergedRef<Gtk.Button>(attach, objectRef);
 
-            return <GtkButton label={`tick ${tick}`} ref={merged} />;
+            return <GtkButton label={`tick ${String(tick)}`} ref={merged} />;
         }
 
         const { rerender } = await render(<App tick={0} />);

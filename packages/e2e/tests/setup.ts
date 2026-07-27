@@ -5,14 +5,12 @@ import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { callArgs, GTK_LIB } from "./helpers/native-utils.js";
 
+declare global {
+    var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
+
 const fixturesDir = dirname(fileURLToPath(new URL("fixtures/com.gtkx.test.useSetting.gschema.xml", import.meta.url)));
-
-execFileSync(resolveExecutable("glib-compile-schemas"), [fixturesDir], { stdio: "ignore" });
-
-const existing = process.env.GSETTINGS_SCHEMA_DIR;
-
-process.env.GSETTINGS_SCHEMA_DIR = existing ? `${fixturesDir}:${existing}` : fixturesDir;
-process.env.GSETTINGS_BACKEND = "memory";
+const existingSchemaDir = process.env.GSETTINGS_SCHEMA_DIR;
 
 const collectGarbage = (): void => {
     if (globalThis.gc) {
@@ -20,24 +18,26 @@ const collectGarbage = (): void => {
     }
 };
 
-afterEach(collectGarbage);
-
-declare global {
-    var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
-}
-
-let previousIsReactActEnvironment: boolean | undefined;
-
 const setIsReactActEnvironment = (value: boolean | undefined): void => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: value });
 };
 
-beforeAll(() => {
-    callArgs(GTK_LIB, "gtk_init", [], { kind: "void" });
-    previousIsReactActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
-    setIsReactActEnvironment(true);
-});
+const registerReactActEnvironment = (): void => {
+    let previousIsReactActEnvironment: boolean | undefined;
 
-afterAll(() => {
-    setIsReactActEnvironment(previousIsReactActEnvironment);
-});
+    beforeAll(() => {
+        callArgs(GTK_LIB, "gtk_init", [], { kind: "void" });
+        previousIsReactActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
+        setIsReactActEnvironment(true);
+    });
+
+    afterAll(() => {
+        setIsReactActEnvironment(previousIsReactActEnvironment);
+    });
+};
+
+execFileSync(resolveExecutable("glib-compile-schemas"), [fixturesDir], { stdio: "ignore" });
+process.env.GSETTINGS_SCHEMA_DIR = existingSchemaDir ? `${fixturesDir}:${existingSchemaDir}` : fixturesDir;
+process.env.GSETTINGS_BACKEND = "memory";
+afterEach(collectGarbage);
+registerReactActEnvironment();

@@ -32,7 +32,9 @@ const getStack = (thrown: unknown): string | undefined => {
 
 describe("checkError", () => {
     it("does nothing when the error ref is empty", () => {
-        expect(() => checkError({ value: null })).not.toThrow();
+        expect(() => {
+            checkError({ value: null });
+        }).not.toThrow();
     });
 
     it("throws the raw GError when the ref is populated", () => {

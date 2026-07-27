@@ -21,8 +21,10 @@ describe("cssAccordionDemo", () => {
 
     it("renders six accordion buttons with the expected labels", async () => {
         await renderDemo(cssAccordionDemo);
+
         for (const label of ACCORDION_LABELS) {
-            await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
+            const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label })) as Gtk.Button;
+            expect(button.getLabel()).toBe(label);
         }
     });
 
@@ -40,18 +42,24 @@ describe("cssAccordionDemo", () => {
         expect(children.every((child) => child instanceof Gtk.Button)).toBe(true);
         expect(children.map((child) => (child as Gtk.Button).getLabel())).toEqual(ACCORDION_LABELS);
     });
+});
 
+describe("cssAccordionDemo styling and interaction", () => {
     it("registers a CssProvider on the default display at application priority", async () => {
         const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
+
         try {
             await renderDemo(cssAccordionDemo);
+
             const applicationCalls = addSpy.mock.calls.filter(
-                ([, , priority]) => priority === Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+                (call) => call[2] === Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
+
             expect(
                 applicationCalls.length,
                 "expected the accordion demo to add a provider at STYLE_PROVIDER_PRIORITY_APPLICATION",
             ).toBeGreaterThan(0);
+
             expect(applicationCalls.every(([, provider]) => provider instanceof Gtk.CssProvider)).toBe(true);
         } finally {
             addSpy.mockRestore();
@@ -63,9 +71,13 @@ describe("cssAccordionDemo", () => {
         const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This" })) as Gtk.Button;
         const clickHandler = vi.fn();
         button.on("clicked", clickHandler);
+
         try {
             await userEvent.click(button);
-            await waitFor(() => expect(clickHandler).toHaveBeenCalled());
+
+            await waitFor(() => {
+                expect(clickHandler).toHaveBeenCalled();
+            });
         } finally {
             button.off("clicked", clickHandler);
         }

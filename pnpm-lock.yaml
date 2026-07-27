@@ -41,7 +41,7 @@ overrides:
   qs: ^6.15.3
   js-yaml: ^4.3.0
 
-packageExtensionsChecksum: sha256-CaXhd6D42CnNLWG7mL1hcqZe18avRXhAI3F7Y98EAmE=
+packageExtensionsChecksum: sha256-jSzF1bOtBg8sPvD3aRarMCrE3BFkYnMuYOq/eSuSgIQ=
 
 patchedDependencies:
   dependency-cruiser: 361fad6837a54856ac1010c7253e122bb9f98b948d4a1acc9701e63ea777a983
@@ -550,6 +550,9 @@ importers:
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
+      react:
+        specifier: ^19.2
+        version: 19.2.7
     devDependencies:
       '@gtkx/config':
         specifier: workspace:*
@@ -557,6 +560,9 @@ importers:
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.17
       '@vitest/expect':
         specifier: ^4.1.10
         version: 4.1.10
@@ -865,6 +871,9 @@ packages:
 
   '@emotion/serialize@1.3.3':
     resolution: {integrity: sha512-EISGqt7sSNWHGI76hC7x1CksiXPahbxEOrC5RjmFRJTqLyEK9/9hZvBbiYn70dw4wuwMKiEMCUlR6ZXTSWQqxA==}
+
+  '@emotion/sheet@1.4.0':
+    resolution: {integrity: sha512-fTBW9/8r2w3dXWYM4HCB1Rdp8NLibOw2+XELH5m5+AkWiL/KqYX6dc0kKYlaYyKjrQ6ds33MCdMPEwgs2z1rqg==}
 
   '@emotion/unitless@0.10.0':
     resolution: {integrity: sha512-dFoMUuQA20zvtVTuxZww6OHoJYgrzfKM1t52mVySDJnMSEa08ruEvdYQbhvyu6soU+NeLVd3yKfTfT0NeV6qGg==}
@@ -5763,9 +5772,13 @@ snapshots:
       '@emotion/utils': 1.4.2
       csstype: 3.2.3
 
+  '@emotion/sheet@1.4.0': {}
+
   '@emotion/unitless@0.10.0': {}
 
-  '@emotion/utils@1.4.2': {}
+  '@emotion/utils@1.4.2':
+    dependencies:
+      '@emotion/sheet': 1.4.0
 
   '@esbuild/aix-ppc64@0.28.1':
     optional: true

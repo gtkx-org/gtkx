@@ -7,7 +7,7 @@ import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js
 import { renderJsDoc } from "../../writer/doc.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
-import { callableReferencesClassStruct } from "./class-struct-record.js";
+import { hasClassStructReference } from "./class-struct-record.js";
 import {
     planCallArgs,
     renderMethodBody,
@@ -36,15 +36,15 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
     return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, throws: fn.throws });
 };
 
-const namespaceFunctionEmittable = (context: ModuleContext, fn: GirFunction): boolean =>
+const canEmitNamespaceFunction = (context: ModuleContext, fn: GirFunction): boolean =>
     fn.introspectable &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
-    !callableReferencesClassStruct(context, fn) &&
+    !hasClassStructReference(context, fn) &&
     !hasCallerAllocatedArrayLength(context.library, fn);
 
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
-    if (!namespaceFunctionEmittable(context, fn)) {
+    if (!canEmitNamespaceFunction(context, fn)) {
         return;
     }
 
@@ -76,7 +76,7 @@ const renderNamespaceFunctionDeclaration = (
     const finishFn = matchAsyncFinish(context.library, fn, context.namespace.functions);
     const finishCIdentifier = finishFn?.cIdentifier;
 
-    if (finishFn !== undefined && finishCIdentifier !== undefined && namespaceFunctionEmittable(context, finishFn)) {
+    if (finishFn !== undefined && finishCIdentifier !== undefined && canEmitNamespaceFunction(context, finishFn)) {
         const finishExport = namespaceFunctionExportName(
             finishCIdentifier,
             finishFn.name,

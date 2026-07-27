@@ -1,14 +1,14 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { type ApiReference, loadApiReference } from "../../src/index.js";
 
-const GIR_PATH = ["/usr/share/gir-1.0"];
-let reference: ApiReference;
-
-beforeAll(() => {
-    reference = loadApiReference({ libraries: ["Gtk-4.0", "Adw-1"], girPath: GIR_PATH });
-});
-
 type PageResult = Extract<ReturnType<ApiReference["lookup"]>, { outcome: "page" }>;
+
+const GIR_PATH = ["/usr/share/gir-1.0"];
+const reference = loadApiReference({ libraries: ["Gtk-4.0", "Adw-1"], girPath: GIR_PATH });
+
+const DBUS_CONNECTION_NEW_SIGNATURE =
+    "new(stream: Gio.IOStream, guid: string | null, flags: Gio.DBusConnectionFlags, " +
+    "observer: Gio.DBusAuthObserver | null, cancellable?: Gio.Cancellable | null): Promise<Gio.DBusConnection>";
 
 const pageResultFor = (query: string): PageResult => {
     const result = reference.lookup(query);
@@ -33,49 +33,7 @@ const candidateNamespacesFor = (query: string): string[] => {
     return result.candidates.map((candidate) => candidate.namespace);
 };
 
-describe("ApiReference — namespaces", () => {
-    it("lists every pulled-in namespace with symbol and element counts", () => {
-        const summaries = reference.namespaces();
-        const names = summaries.map((summary) => summary.name);
-        expect(names).toContain("Gtk");
-        expect(names).toContain("Adw");
-        expect(names).toContain("GLib");
-        const gtk = summaries.find((summary) => summary.name === "Gtk");
-        expect(gtk?.importPath).toBe("@gtkx/gi/gtk");
-        expect(gtk?.symbols).toBeGreaterThan(500);
-        expect(gtk?.elements).toBeGreaterThan(200);
-    });
-
-    it("renders the root overview with a namespace table", () => {
-        const overview = reference.overview();
-        expect(overview).toContain("# API Reference");
-        expect(overview).toContain("`Gtk-4.0`");
-        expect(overview).toContain("| Gtk | `@gtkx/gi/gtk` |");
-    });
-
-    it("renders a namespace overview grouped by kind", () => {
-        const overview = reference.namespaceOverview("gtk");
-        expect(overview).toContain("# Gtk");
-        expect(overview).toContain('import * as Gtk from "@gtkx/gi/gtk";');
-        expect(overview).toContain("## JSX elements");
-        expect(overview).toContain("`GtkButton`");
-        expect(overview).toContain("## Classes");
-        expect(overview).toContain("`Button`");
-        expect(overview).toContain("## Enums");
-        expect(overview).toContain("`Orientation`");
-        expect(reference.namespaceOverview("Nope")).toBeUndefined();
-    });
-
-    it("lists symbol names for completion", () => {
-        const names = reference.symbolNames("Gtk");
-        expect(names).toContain("Button");
-        expect(names).toContain("GtkButton");
-        expect(names).toContain("Orientation");
-        expect(reference.symbolNames("Nope")).toEqual([]);
-    });
-});
-
-describe("ApiReference — lookup", () => {
+const registerClassPageTests = (): void => {
     it("renders a class page with hierarchy, constructors, properties, signals, and methods", () => {
         const page = pageFor("Gtk.Button");
         expect(page).toContain("# Gtk.Button");
@@ -116,14 +74,12 @@ describe("ApiReference — lookup", () => {
             "open(parent: Gtk.Window | null, cancellable?: Gio.Cancellable | null): Promise<Gio.File>",
         );
     });
+};
 
+const registerPromisifiedPageTests = (): void => {
     it("renders promisified static async members on class pages", () => {
         const page = pageFor("Gio.DBusConnection");
-
-        expect(page).toContain(
-            "new(stream: Gio.IOStream, guid: string | null, flags: Gio.DBusConnectionFlags, observer: Gio.DBusAuthObserver | null, cancellable?: Gio.Cancellable | null): Promise<Gio.DBusConnection>",
-        );
-
+        expect(page).toContain(DBUS_CONNECTION_NEW_SIGNATURE);
         expect(page).toContain("newFinish(res: Gio.AsyncResult): Gio.DBusConnection");
     });
 
@@ -137,7 +93,9 @@ describe("ApiReference — lookup", () => {
         const finishPage = pageFor("Gio.busGetFinish");
         expect(finishPage).toContain("function busGetFinish(res: Gio.AsyncResult): Gio.DBusConnection");
     });
+};
 
+const registerSymbolPageTests = (): void => {
     it("renders an interface page with prerequisites", () => {
         const page = pageFor("Gtk.Orientable");
         expect(page).toContain("# Gtk.Orientable");
@@ -183,7 +141,9 @@ describe("ApiReference — lookup", () => {
         expect(page).toContain("`callback` in `@gtkx/gi/gtk`");
         expect(page).toContain("type TickCallback = (widget: Gtk.Widget, frameClock: Gdk.FrameClock) => boolean");
     });
+};
 
+const registerLookupResolutionTests = (): void => {
     it("renders alias, constant, and function pages", () => {
         expect(pageFor("GLib.Quark")).toContain("type Quark = number");
         const constant = pageFor("Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION");
@@ -217,6 +177,55 @@ describe("ApiReference — lookup", () => {
         expect(reference.lookup("Gtk.DoesNotExist").outcome).toBe("notFound");
         expect(reference.lookup("").outcome).toBe("notFound");
     });
+};
+
+describe("ApiReference — namespaces", () => {
+    it("lists every pulled-in namespace with symbol and element counts", () => {
+        const summaries = reference.namespaces();
+        const names = summaries.map((summary) => summary.name);
+        expect(names).toContain("Gtk");
+        expect(names).toContain("Adw");
+        expect(names).toContain("GLib");
+        const gtk = summaries.find((summary) => summary.name === "Gtk");
+        expect(gtk?.importPath).toBe("@gtkx/gi/gtk");
+        expect(gtk?.symbols).toBeGreaterThan(500);
+        expect(gtk?.elements).toBeGreaterThan(200);
+    });
+
+    it("renders the root overview with a namespace table", () => {
+        const overview = reference.overview();
+        expect(overview).toContain("# API Reference");
+        expect(overview).toContain("`Gtk-4.0`");
+        expect(overview).toContain("| Gtk | `@gtkx/gi/gtk` |");
+    });
+
+    it("renders a namespace overview grouped by kind", () => {
+        const overview = reference.namespaceOverview("gtk");
+        expect(overview).toContain("# Gtk");
+        expect(overview).toContain('import * as Gtk from "@gtkx/gi/gtk";');
+        expect(overview).toContain("## JSX elements");
+        expect(overview).toContain("`GtkButton`");
+        expect(overview).toContain("## Classes");
+        expect(overview).toContain("`Button`");
+        expect(overview).toContain("## Enums");
+        expect(overview).toContain("`Orientation`");
+        expect(reference.namespaceOverview("Nope")).toBeUndefined();
+    });
+
+    it("lists symbol names for completion", () => {
+        const names = reference.symbolNames("Gtk");
+        expect(names).toContain("Button");
+        expect(names).toContain("GtkButton");
+        expect(names).toContain("Orientation");
+        expect(reference.symbolNames("Nope")).toEqual([]);
+    });
+});
+
+describe("ApiReference — lookup", () => {
+    registerClassPageTests();
+    registerPromisifiedPageTests();
+    registerSymbolPageTests();
+    registerLookupResolutionTests();
 });
 
 describe("ApiReference — search", () => {

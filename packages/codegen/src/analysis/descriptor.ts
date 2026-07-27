@@ -163,7 +163,7 @@ const tBoxed = (glibName: string, options: BoxedOptions): string =>
                 : `sharedLibrary: ${sourceStringLiteral(options.sharedLibrary)}`,
             `getTypeFnName: ${sourceStringLiteral(options.getTypeFnName)}`,
             options.callerAllocated ? "callerAllocated: true" : undefined,
-            options.size === undefined ? undefined : `size: ${options.size}`,
+            options.size === undefined ? undefined : `size: ${String(options.size)}`,
         ]),
     ]);
 
@@ -171,7 +171,7 @@ const tStruct = (ownership: Ownership, options: StructOptions): string =>
     call("struct", [
         sourceStringLiteral(ownership),
         optionsObject([
-            options.size === undefined ? undefined : `size: ${options.size}`,
+            options.size === undefined ? undefined : `size: ${String(options.size)}`,
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
             options.callerAllocated ? "callerAllocated: true" : undefined,
         ]),
@@ -192,16 +192,16 @@ const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: 
         ]),
     ]);
 
-const tRef = (inner: string, inout = false): string => call("ref", [inner, inout ? "true" : undefined]);
+const tRef = (inner: string, isInout = false): string => call("ref", [inner, isInout ? "true" : undefined]);
 
 const tHashTable = (key: string, value: string, ownership: Ownership): string =>
     call("hashTable", [key, value, sourceStringLiteral(ownership)]);
 
-const tEnum = (lib: string, typeFnName: string, signed: boolean): string =>
-    call("enum", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(signed)]);
+const tEnum = (lib: string, typeFnName: string, isSigned: boolean): string =>
+    call("enum", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(isSigned)]);
 
-const tFlags = (lib: string, typeFnName: string, signed: boolean): string =>
-    call("flags", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(signed)]);
+const tFlags = (lib: string, typeFnName: string, isSigned: boolean): string =>
+    call("flags", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(isSigned)]);
 
 const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 
@@ -213,7 +213,7 @@ const tArray = (element: string, ownership?: Ownership, elementSize?: number): s
         element,
         ownership === undefined ? undefined : sourceStringLiteral("array"),
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        elementSize === undefined ? undefined : `{ elementSize: ${elementSize} }`,
+        elementSize === undefined ? undefined : `{ elementSize: ${String(elementSize)} }`,
     ]);
 
 const tSizedArray = (

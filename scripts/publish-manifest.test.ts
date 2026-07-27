@@ -3,8 +3,9 @@ import {
     assertPublishedShape,
     collectExportTargets,
     distTagForVersion,
-    exportsContainSource,
+    hasSourceCondition,
     type PackageManifest,
+    type PublishedPackage,
     stripDevArtifacts,
 } from "./publish-manifest.js";
 
@@ -26,10 +27,119 @@ const reactManifest: PackageManifest = {
     },
 };
 
+const strippedReactEntries = [
+    "package/README.md",
+    "package/package.json",
+    "package/dist/index.js",
+    "package/dist/index.d.ts",
+    "package/dist/internal.js",
+    "package/dist/internal.d.ts",
+];
+
+const strippedReactManifest = stripDevArtifacts(reactManifest);
+
+const minimalReactTarball: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: strippedReactEntries,
+    manifest: strippedReactManifest,
+};
+
+const binEntrypointTarball: PublishedPackage = {
+    name: "create-gtkx",
+    entries: ["package/README.md", "package/package.json", "package/bin/create-gtkx.js"],
+    manifest: { bin: { "create-gtkx": "./bin/create-gtkx.js" }, exports: {} },
+};
+
+const reactTarballWithSrc: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: [...strippedReactEntries, "package/src/index.ts"],
+    manifest: strippedReactManifest,
+};
+
+const reactTarballWithBuildInfo: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: [...strippedReactEntries, "package/dist/tsconfig.tsbuildinfo"],
+    manifest: strippedReactManifest,
+};
+
+const reactTarballWithSourceCondition: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: strippedReactEntries,
+    manifest: reactManifest,
+};
+
+const tarballMissingExportTarget: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: ["package/README.md", "package/package.json", "package/dist/index.js"],
+    manifest: { exports: { ".": { default: "./dist/index.js", types: "./dist/index.d.ts" } } },
+};
+
+const tarballMissingBinTarget: PublishedPackage = {
+    name: "@gtkx/cli",
+    entries: ["package/README.md", "package/package.json"],
+    manifest: { bin: { gtkx: "./bin/gtkx.js" }, exports: {} },
+};
+
+const tarballMissingReadme: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: ["package/package.json", "package/dist/index.js", "package/dist/index.d.ts"],
+    manifest: { exports: {} },
+};
+
+const ejsTemplateTarball: PublishedPackage = {
+    name: "create-gtkx",
+    entries: [
+        "package/README.md",
+        "package/package.json",
+        "package/dist/templates/src/app.tsx.ejs",
+        "package/dist/templates/gtkx-env.d.ts.ejs",
+    ],
+    manifest: { exports: {} },
+};
+
+const declarationMapTarball: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: [...strippedReactEntries, "package/src/index.ts", "package/dist/index.d.ts.map"],
+    manifest: strippedReactManifest,
+    maps: { "package/dist/index.d.ts.map": sourceMap(["../src/index.ts"]) },
+};
+
+const nestedDeclarationMapTarball: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: [...strippedReactEntries, "package/src/hooks/use-app.ts", "package/dist/hooks/use-app.d.ts.map"],
+    manifest: strippedReactManifest,
+    maps: { "package/dist/hooks/use-app.d.ts.map": sourceMap(["../../src/hooks/use-app.ts"]) },
+};
+
+const tarballMissingMapSource: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: [...strippedReactEntries, "package/dist/index.d.ts.map"],
+    manifest: strippedReactManifest,
+    maps: { "package/dist/index.d.ts.map": sourceMap(["../src/index.ts"]) },
+};
+
+const inlinedSourcesContentTarball: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: [...strippedReactEntries, "package/dist/index.js.map"],
+    manifest: strippedReactManifest,
+    maps: { "package/dist/index.js.map": sourceMap(["../src/index.ts"], ["export {};\n"]) },
+};
+
+const malformedMapTarball: PublishedPackage = {
+    name: "@gtkx/react",
+    entries: [...strippedReactEntries, "package/dist/index.js.map"],
+    manifest: strippedReactManifest,
+    maps: { "package/dist/index.js.map": "not json" },
+};
+
+function sourceMap(sources: string[], sourcesContent?: (string | null)[]): string {
+    return JSON.stringify({ version: 3, sources, ...(sourcesContent !== undefined && { sourcesContent }) });
+}
+
 describe("stripDevArtifacts", () => {
     it("removes the source condition at every depth", () => {
         const stripped = stripDevArtifacts(reactManifest);
-        expect(exportsContainSource(stripped.exports ?? {})).toBe(false);
+        expect(hasSourceCondition(stripped.exports ?? {})).toBe(false);
 
         expect(stripped.exports).toEqual({
             "./package.json": "./package.json",
@@ -116,174 +226,90 @@ describe("collectExportTargets", () => {
     });
 });
 
-const strippedReactEntries = [
-    "package/README.md",
-    "package/package.json",
-    "package/dist/index.js",
-    "package/dist/index.d.ts",
-    "package/dist/internal.js",
-    "package/dist/internal.d.ts",
-];
-
-const strippedReactManifest = stripDevArtifacts(reactManifest);
-
 describe("assertPublishedShape", () => {
     it("accepts a minimal, self-consistent tarball", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: strippedReactEntries,
-                manifest: strippedReactManifest,
-            }),
-        ).not.toThrow();
+        expect(() => {
+            assertPublishedShape(minimalReactTarball);
+        }).not.toThrow();
     });
 
     it("accepts a package whose entrypoints resolve via bin", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "create-gtkx",
-                entries: ["package/README.md", "package/package.json", "package/bin/create-gtkx.js"],
-                manifest: { bin: { "create-gtkx": "./bin/create-gtkx.js" }, exports: {} },
-            }),
-        ).not.toThrow();
+        expect(() => {
+            assertPublishedShape(binEntrypointTarball);
+        }).not.toThrow();
     });
 
     it("accepts a tarball that ships src", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: [...strippedReactEntries, "package/src/index.ts"],
-                manifest: strippedReactManifest,
-            }),
-        ).not.toThrow();
+        expect(() => {
+            assertPublishedShape(reactTarballWithSrc);
+        }).not.toThrow();
     });
 
     it("rejects a build artifact", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: [...strippedReactEntries, "package/dist/tsconfig.tsbuildinfo"],
-                manifest: strippedReactManifest,
-            }),
-        ).toThrow(/build artifact/);
+        expect(() => {
+            assertPublishedShape(reactTarballWithBuildInfo);
+        }).toThrow(/build artifact/);
     });
 
     it("rejects a lingering source export condition", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: strippedReactEntries,
-                manifest: reactManifest,
-            }),
-        ).toThrow(/still declares a "source" condition/);
+        expect(() => {
+            assertPublishedShape(reactTarballWithSourceCondition);
+        }).toThrow(/still declares a "source" condition/);
     });
 
     it("rejects an export target that is not shipped", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: ["package/README.md", "package/package.json", "package/dist/index.js"],
-                manifest: { exports: { ".": { default: "./dist/index.js", types: "./dist/index.d.ts" } } },
-            }),
-        ).toThrow(/export target \.\/dist\/index\.d\.ts resolves to a missing file/);
+        expect(() => {
+            assertPublishedShape(tarballMissingExportTarget);
+        }).toThrow(/export target \.\/dist\/index\.d\.ts resolves to a missing file/);
     });
 
     it("rejects a bin target that is not shipped", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/cli",
-                entries: ["package/README.md", "package/package.json"],
-                manifest: { bin: { gtkx: "./bin/gtkx.js" }, exports: {} },
-            }),
-        ).toThrow(/bin target \.\/bin\/gtkx\.js resolves to a missing file/);
+        expect(() => {
+            assertPublishedShape(tarballMissingBinTarget);
+        }).toThrow(/bin target \.\/bin\/gtkx\.js resolves to a missing file/);
     });
 
     it("rejects a missing README", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: ["package/package.json", "package/dist/index.js", "package/dist/index.d.ts"],
-                manifest: { exports: {} },
-            }),
-        ).toThrow(/missing README\.md/);
+        expect(() => {
+            assertPublishedShape(tarballMissingReadme);
+        }).toThrow(/missing README\.md/);
     });
 
     it("does not flag ejs templates as TypeScript sources", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "create-gtkx",
-                entries: [
-                    "package/README.md",
-                    "package/package.json",
-                    "package/dist/templates/src/app.tsx.ejs",
-                    "package/dist/templates/gtkx-env.d.ts.ejs",
-                ],
-                manifest: { exports: {} },
-            }),
-        ).not.toThrow();
+        expect(() => {
+            assertPublishedShape(ejsTemplateTarball);
+        }).not.toThrow();
     });
 });
 
-const sourceMap = (sources: string[], sourcesContent?: (string | null)[]): string =>
-    JSON.stringify({ version: 3, sources, ...(sourcesContent !== undefined && { sourcesContent }) });
-
 describe("assertPublishedShape source maps", () => {
     it("accepts a declaration map whose source is shipped alongside it", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: [...strippedReactEntries, "package/src/index.ts", "package/dist/index.d.ts.map"],
-                manifest: strippedReactManifest,
-                maps: { "package/dist/index.d.ts.map": sourceMap(["../src/index.ts"]) },
-            }),
-        ).not.toThrow();
+        expect(() => {
+            assertPublishedShape(declarationMapTarball);
+        }).not.toThrow();
     });
 
     it("resolves nested sources relative to the map location", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: [
-                    ...strippedReactEntries,
-                    "package/src/hooks/use-app.ts",
-                    "package/dist/hooks/use-app.d.ts.map",
-                ],
-                manifest: strippedReactManifest,
-                maps: { "package/dist/hooks/use-app.d.ts.map": sourceMap(["../../src/hooks/use-app.ts"]) },
-            }),
-        ).not.toThrow();
+        expect(() => {
+            assertPublishedShape(nestedDeclarationMapTarball);
+        }).not.toThrow();
     });
 
     it("rejects a map whose source is missing from the tarball", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: [...strippedReactEntries, "package/dist/index.d.ts.map"],
-                manifest: strippedReactManifest,
-                maps: { "package/dist/index.d.ts.map": sourceMap(["../src/index.ts"]) },
-            }),
-        ).toThrow(/source map dist\/index\.d\.ts\.map references missing source \.\.\/src\/index\.ts/);
+        expect(() => {
+            assertPublishedShape(tarballMissingMapSource);
+        }).toThrow(/source map dist\/index\.d\.ts\.map references missing source \.\.\/src\/index\.ts/);
     });
 
     it("accepts a source map that inlines its sourcesContent", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: [...strippedReactEntries, "package/dist/index.js.map"],
-                manifest: strippedReactManifest,
-                maps: { "package/dist/index.js.map": sourceMap(["../src/index.ts"], ["export {};\n"]) },
-            }),
-        ).not.toThrow();
+        expect(() => {
+            assertPublishedShape(inlinedSourcesContentTarball);
+        }).not.toThrow();
     });
 
     it("rejects a malformed source map", () => {
-        expect(() =>
-            assertPublishedShape({
-                name: "@gtkx/react",
-                entries: [...strippedReactEntries, "package/dist/index.js.map"],
-                manifest: strippedReactManifest,
-                maps: { "package/dist/index.js.map": "not json" },
-            }),
-        ).toThrow(/source map dist\/index\.js\.map is not valid JSON/);
+        expect(() => {
+            assertPublishedShape(malformedMapTarball);
+        }).toThrow(/source map dist\/index\.js\.map is not valid JSON/);
     });
 });

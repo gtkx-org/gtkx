@@ -9,10 +9,13 @@ import {
 } from "../src/config.js";
 import { DEFAULT_USER_EVENT_SIGNALS } from "../src/user-event-signals.js";
 
-const validateUnknown = (config: unknown): void => validateConfig(config as Config);
+const validateUnknown = (config: unknown): void => {
+    validateConfig(config as Config);
+};
 
-const validateWithAppId = (config: Partial<Config>): void =>
+const validateWithAppId = (config: Partial<Config>): void => {
     validateConfig({ applicationId: "org.gtk.Test", ...config });
+};
 
 describe("defineConfig", () => {
     it("returns the config unchanged", () => {
@@ -31,130 +34,187 @@ describe("defineConfig", () => {
     });
 });
 
-describe("validateConfig (libraries)", () => {
+describe("validateConfig (libraries) — accepted shapes", () => {
     it("accepts a girPath array", () => {
-        expect(() => validateWithAppId({ libraries: ["Gtk-4.0"], girPath: ["/usr/share/gir-1.0"] })).not.toThrow();
+        expect(() => {
+            validateWithAppId({ libraries: ["Gtk-4.0"], girPath: ["/usr/share/gir-1.0"] });
+        }).not.toThrow();
     });
 
     it("rejects an empty libraries array", () => {
-        expect(() => validateWithAppId({ libraries: [] })).toThrow(
+        expect(() => {
+            validateWithAppId({ libraries: [] });
+        }).toThrow(
             '`libraries` must be "*", a non-empty string array, or omitted',
         );
     });
 
     it("rejects a non-array, non-wildcard libraries field", () => {
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", libraries: "Gtk-4.0" })).toThrow(
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", libraries: "Gtk-4.0" });
+        }).toThrow(
             '`libraries` must be "*", a non-empty string array, or omitted',
         );
     });
 
     it('accepts the "*" wildcard', () => {
-        expect(() => validateWithAppId({ libraries: "*" })).not.toThrow();
+        expect(() => {
+            validateWithAppId({ libraries: "*" });
+        }).not.toThrow();
     });
 
     it("accepts a config that omits libraries", () => {
-        expect(() => validateWithAppId({})).not.toThrow();
-        expect(() => validateWithAppId({ girPath: ["/usr/share/gir-1.0"] })).not.toThrow();
-    });
+        expect(() => {
+            validateWithAppId({});
+        }).not.toThrow();
 
+        expect(() => {
+            validateWithAppId({ girPath: ["/usr/share/gir-1.0"] });
+        }).not.toThrow();
+    });
+});
+
+describe("validateConfig (libraries) — identifier and girPath validation", () => {
     it('rejects "*" used as an array entry and hints at the bare-string form', () => {
-        expect(() => validateWithAppId({ libraries: ["*"] })).toThrow(
+        expect(() => {
+            validateWithAppId({ libraries: ["*"] });
+        }).toThrow(
             'set `libraries: "*"` as a bare string, not an array entry',
         );
     });
 
     it("rejects a library identifier without a version suffix", () => {
-        expect(() => validateWithAppId({ libraries: ["Gtk"] })).toThrow(/invalid library identifier/);
+        expect(() => {
+            validateWithAppId({ libraries: ["Gtk"] });
+        }).toThrow(/invalid library identifier/);
     });
 
     it("rejects a library identifier that starts with a digit", () => {
-        expect(() => validateWithAppId({ libraries: ["4Gtk-1.0"] })).toThrow(/invalid library identifier/);
+        expect(() => {
+            validateWithAppId({ libraries: ["4Gtk-1.0"] });
+        }).toThrow(/invalid library identifier/);
     });
 
     it("accepts multi-component versions", () => {
-        expect(() => validateWithAppId({ libraries: ["Glib-2.0.1"] })).not.toThrow();
+        expect(() => {
+            validateWithAppId({ libraries: ["Glib-2.0.1"] });
+        }).not.toThrow();
     });
 
     it("rejects a non-string library entry", () => {
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", libraries: [123] })).toThrow(
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", libraries: [123] });
+        }).toThrow(
             /invalid library identifier/,
         );
     });
 
     it("rejects a non-array girPath", () => {
-        expect(() =>
-            validateUnknown({ applicationId: "org.gtk.Test", libraries: ["Gtk-4.0"], girPath: "/usr/share/gir-1.0" }),
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", libraries: ["Gtk-4.0"], girPath: "/usr/share/gir-1.0" });
+        },
         ).toThrow(/`girPath` must be an array of strings if provided/);
     });
 });
 
 describe("validateConfig (applicationId)", () => {
     it("accepts a valid applicationId", () => {
-        expect(() => validateConfig({ applicationId: "org.gtk.Demo4" })).not.toThrow();
+        expect(() => {
+            validateConfig({ applicationId: "org.gtk.Demo4" });
+        }).not.toThrow();
     });
 
     it("rejects an invalid applicationId", () => {
-        expect(() => validateConfig({ applicationId: "not valid" })).toThrow(/invalid `applicationId`/);
-        expect(() => validateConfig({ applicationId: "singletoken" })).toThrow(/invalid `applicationId`/);
+        expect(() => {
+            validateConfig({ applicationId: "not valid" });
+        }).toThrow(/invalid `applicationId`/);
+
+        expect(() => {
+            validateConfig({ applicationId: "singletoken" });
+        }).toThrow(/invalid `applicationId`/);
     });
 
     it("rejects a non-string applicationId", () => {
-        expect(() => validateUnknown({ applicationId: 123 })).toThrow(/invalid `applicationId`/);
+        expect(() => {
+            validateUnknown({ applicationId: 123 });
+        }).toThrow(/invalid `applicationId`/);
     });
 
     it("rejects a config that omits applicationId", () => {
-        expect(() => validateUnknown({ libraries: ["Gtk-4.0"] })).toThrow(/invalid `applicationId`/);
+        expect(() => {
+            validateUnknown({ libraries: ["Gtk-4.0"] });
+        }).toThrow(/invalid `applicationId`/);
     });
 });
 
 describe("validateConfig reactCompiler validation", () => {
     it("accepts a boolean", () => {
-        expect(() => validateWithAppId({ reactCompiler: false })).not.toThrow();
-        expect(() => validateWithAppId({ reactCompiler: true })).not.toThrow();
+        expect(() => {
+            validateWithAppId({ reactCompiler: false });
+        }).not.toThrow();
+
+        expect(() => {
+            validateWithAppId({ reactCompiler: true });
+        }).not.toThrow();
     });
 
     it("accepts an options object", () => {
-        expect(() =>
-            validateWithAppId({ reactCompiler: { compilationMode: "annotation", panicThreshold: "all_errors" } }),
+        expect(() => {
+            validateWithAppId({ reactCompiler: { compilationMode: "annotation", panicThreshold: "all_errors" } });
+        },
         ).not.toThrow();
     });
 
     it("accepts a config that omits reactCompiler", () => {
-        expect(() => validateWithAppId({ libraries: ["Gtk-4.0"] })).not.toThrow();
+        expect(() => {
+            validateWithAppId({ libraries: ["Gtk-4.0"] });
+        }).not.toThrow();
     });
 
     it("rejects a non-boolean, non-object value", () => {
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", reactCompiler: "yes" })).toThrow(
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", reactCompiler: "yes" });
+        }).toThrow(
             /`reactCompiler` must be a boolean or an options object/,
         );
     });
 
     it("rejects an array value", () => {
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", reactCompiler: [] })).toThrow(
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", reactCompiler: [] });
+        }).toThrow(
             /`reactCompiler` must be a boolean or an options object/,
         );
     });
+});
 
+describe("validateConfig (reactCompiler options and codegen)", () => {
     it("rejects an invalid compilationMode", () => {
-        expect(() =>
-            validateUnknown({ applicationId: "org.gtk.Test", reactCompiler: { compilationMode: "eager" } }),
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", reactCompiler: { compilationMode: "eager" } });
+        },
         ).toThrow(/invalid `reactCompiler\.compilationMode` "eager"/);
     });
 
     it("rejects an invalid panicThreshold", () => {
-        expect(() =>
-            validateUnknown({ applicationId: "org.gtk.Test", reactCompiler: { panicThreshold: "warn" } }),
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", reactCompiler: { panicThreshold: "warn" } });
+        },
         ).toThrow(/invalid `reactCompiler\.panicThreshold` "warn"/);
     });
 
     it("rejects a non-boolean codegen", () => {
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", codegen: "no" })).toThrow(
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", codegen: "no" });
+        }).toThrow(
             /`codegen` must be a boolean/,
         );
     });
 
     it("accepts a boolean codegen", () => {
-        expect(() => validateWithAppId({ codegen: false })).not.toThrow();
+        expect(() => {
+            validateWithAppId({ codegen: false });
+        }).not.toThrow();
     });
 });
 
@@ -179,27 +239,36 @@ describe("resolveReactCompilerOptions", () => {
 
 describe("validateConfig (userEventSignals)", () => {
     it("accepts a record of type names to signal name arrays", () => {
-        expect(() => validateWithAppId({ userEventSignals: { MyWidget: ["changed", "toggled"] } })).not.toThrow();
+        expect(() => {
+            validateWithAppId({ userEventSignals: { MyWidget: ["changed", "toggled"] } });
+        }).not.toThrow();
     });
 
     it("accepts an empty record", () => {
-        expect(() => validateWithAppId({ userEventSignals: {} })).not.toThrow();
+        expect(() => {
+            validateWithAppId({ userEventSignals: {} });
+        }).not.toThrow();
     });
 
     it("rejects a non-record value", () => {
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", userEventSignals: ["changed"] })).toThrow(
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", userEventSignals: ["changed"] });
+        }).toThrow(
             "`userEventSignals` must be a record of GLib type names to signal name arrays",
         );
     });
 
     it("rejects a non-array entry", () => {
-        expect(() =>
-            validateUnknown({ applicationId: "org.gtk.Test", userEventSignals: { MyWidget: "changed" } }),
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", userEventSignals: { MyWidget: "changed" } });
+        },
         ).toThrow("`userEventSignals.MyWidget` must be an array of signal names");
     });
 
     it("rejects an empty signal name", () => {
-        expect(() => validateUnknown({ applicationId: "org.gtk.Test", userEventSignals: { MyWidget: [""] } })).toThrow(
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", userEventSignals: { MyWidget: [""] } });
+        }).toThrow(
             "`userEventSignals.MyWidget[0]` must be a non-empty signal name",
         );
     });
@@ -241,11 +310,15 @@ describe("resolveConfig", () => {
     });
 
     it("rejects an empty element behaviors module path", () => {
-        expect(() => validateConfig({ applicationId: "org.example.App", elements: { behaviors: "" } })).toThrow(
+        expect(() => {
+            validateConfig({ applicationId: "org.example.App", elements: { behaviors: "" } });
+        }).toThrow(
             /must be a path to a module exporting element behaviors/,
         );
     });
+});
 
+describe("resolveConfig — compiler collapse and signal unions", () => {
     it("collapses a disabled reactCompiler to null", () => {
         expect(resolveConfig({ applicationId: "org.example.App", reactCompiler: false }).reactCompiler).toBeNull();
     });
@@ -296,7 +369,9 @@ describe("isValidApplicationId", () => {
         expect(maxLength).toHaveLength(255);
         expect(isValidApplicationId(maxLength)).toBe(true);
     });
+});
 
+describe("isValidApplicationId — character, dot, and segment rules", () => {
     it("rejects an element starting with a digit", () => {
         expect(isValidApplicationId("com.4example.app")).toBe(false);
     });
@@ -338,35 +413,40 @@ describe("isValidApplicationId", () => {
 
 describe("validateConfig (elements.config)", () => {
     it("accepts per-element component and lazy config", () => {
-        expect(() =>
+        expect(() => {
             validateWithAppId({
                 elements: {
                     config: {
                         GtkButton: { component: { module: "@example/wrappers", export: "withButton" }, lazy: true },
                     },
                 },
-            }),
+            });
+        },
         ).not.toThrow();
     });
 
     it("accepts a config that omits elements", () => {
-        expect(() => validateWithAppId({})).not.toThrow();
+        expect(() => {
+            validateWithAppId({});
+        }).not.toThrow();
     });
 
     it("rejects a component entry missing its export", () => {
-        expect(() =>
+        expect(() => {
             validateUnknown({
                 applicationId: "org.gtk.Test",
                 elements: { config: { GtkButton: { component: { module: "m" } } } },
-            }),
+            });
+        },
         ).toThrow();
     });
 
     it("rejects an empty component module specifier", () => {
-        expect(() =>
+        expect(() => {
             validateWithAppId({
                 elements: { config: { GtkButton: { component: { module: "", export: "withButton" } } } },
-            }),
+            });
+        },
         ).toThrow(/must be a module specifier/);
     });
 });

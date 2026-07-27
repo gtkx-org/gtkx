@@ -1,6 +1,5 @@
 import { ConstraintLayout } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-
 import type { Demo } from "../types.js";
 import {
     BottomEdgeConstraint,
@@ -14,6 +13,20 @@ import sourceCode from "./constraints.tsx?raw";
 const A = Gtk.ConstraintAttribute;
 const R = Gtk.ConstraintRelation;
 const S = Gtk.ConstraintStrength;
+
+const constraintsDemo: Demo = {
+    id: "constraints",
+    title: "Constraints/Simple Constraints",
+    description:
+        "GtkConstraintLayout provides a layout manager that uses relations between widgets (also known as " +
+        "“constraints”) to compute the position and size of each child.\n\nIn addition to child widgets, the " +
+        "constraints can involve spacer objects (also known as “guides”). This example has a guide between the two " +
+        "buttons in the top row.\n\nTry resizing the window to see how the constraints react to update the layout.",
+    keywords: ["GtkLayoutManager"],
+    component: ConstraintsDemo,
+    sourceCode,
+    defaultWidth: 260,
+};
 
 const renderSpaceGuide = () => (
     <>
@@ -106,15 +119,8 @@ const renderLayout = () => (
     </ConstraintLayout>
 );
 
-const ConstraintsDemo = () => <ConstraintContainer layoutManager={renderLayout()} />;
+function ConstraintsDemo() {
+    return <ConstraintContainer layoutManager={renderLayout()} />;
+}
 
-export const constraintsDemo: Demo = {
-    id: "constraints",
-    title: "Constraints/Simple Constraints",
-    description:
-        "GtkConstraintLayout provides a layout manager that uses relations between widgets (also known as “constraints”) to compute the position and size of each child.\n\nIn addition to child widgets, the constraints can involve spacer objects (also known as “guides”). This example has a guide between the two buttons in the top row.\n\nTry resizing the window to see how the constraints react to update the layout.",
-    keywords: ["GtkLayoutManager"],
-    component: ConstraintsDemo,
-    sourceCode,
-    defaultWidth: 260,
-};
+export { constraintsDemo };

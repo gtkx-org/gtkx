@@ -132,8 +132,8 @@ const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollect
     }
 };
 
-const collectPropNames = (sources: GirClass[], keep: (property: GirProperty) => boolean): string[] => {
-    const collector: PropNameCollector = { keep, seen: new Set<string>(), names: [] };
+const collectPropNames = (sources: GirClass[], shouldKeep: (property: GirProperty) => boolean): string[] => {
+    const collector: PropNameCollector = { keep: shouldKeep, seen: new Set<string>(), names: [] };
 
     for (const source of sources) {
         collectPropNamesFromSource(source, collector);
@@ -211,7 +211,7 @@ const defaultPropEntry = (
     return [jsName, literal];
 };
 
-const setterRejectsNull = (library: Library, klass: GirClass, property: GirProperty): boolean => {
+const willSetterRejectNull = (library: Library, klass: GirClass, property: GirProperty): boolean => {
     if (property.setter === undefined) {
         return false;
     }
@@ -228,7 +228,7 @@ const setterRejectsNull = (library: Library, klass: GirClass, property: GirPrope
 };
 
 const renderDefaultLiteral = (library: Library, klass: GirClass, property: GirProperty): string | undefined => {
-    if (property.defaultValue === "NULL" && setterRejectsNull(library, klass, property)) {
+    if (property.defaultValue === "NULL" && willSetterRejectNull(library, klass, property)) {
         return undefined;
     }
 
@@ -330,7 +330,11 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
         case "string": {
             return sourceStringLiteral(raw);
         }
-        default: {
+        case "bigint64":
+        case "biguint64":
+        case "gtype":
+        case "pointer":
+        case "void": {
             return undefined;
         }
     }

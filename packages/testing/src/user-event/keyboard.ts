@@ -70,15 +70,15 @@ const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
 
 const parseKeyToken = (token: string): { keyval: number; press: boolean; release: boolean } => {
     let keyName = token;
-    let press = true;
-    let release = true;
+    let isPress = true;
+    let isRelease = true;
 
     if (keyName.startsWith("/")) {
         keyName = keyName.slice(1);
-        press = false;
+        isPress = false;
     } else if (keyName.endsWith(">")) {
         keyName = keyName.slice(0, -1);
-        release = false;
+        isRelease = false;
     }
 
     const keyval = KEY_MAP[keyName];
@@ -87,7 +87,7 @@ const parseKeyToken = (token: string): { keyval: number; press: boolean; release
         throw new Error(`Unknown key: {${keyName}}`);
     }
 
-    return { keyval, press, release };
+    return { keyval, press: isPress, release: isRelease };
 };
 
 const parseCharAt = (input: string, i: number): ParseStep => {
@@ -158,7 +158,7 @@ const updateModifierState = (state: UserEventState, action: KeyAction): void => 
     }
 };
 
-const matchesTrigger = (
+const isTriggerMatch = (
     trigger: Gtk.ShortcutTrigger | null,
     keyval: number,
     modifiers: Gdk.ModifierType,
@@ -169,21 +169,21 @@ const matchesTrigger = (
 
     if (trigger instanceof Gtk.AlternativeTrigger) {
         return (
-            matchesTrigger(trigger.getFirst(), keyval, modifiers) ||
-            matchesTrigger(trigger.getSecond(), keyval, modifiers)
+            isTriggerMatch(trigger.getFirst(), keyval, modifiers) ||
+            isTriggerMatch(trigger.getSecond(), keyval, modifiers)
         );
     }
 
     return false;
 };
 
-const tryActivateShortcut = (
+const didActivateShortcut = (
     shortcut: Gtk.Shortcut,
     widget: Gtk.Widget,
     keyval: number,
     modifiers: Gdk.ModifierType,
 ): boolean => {
-    if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) {
+    if (!isTriggerMatch(shortcut.getTrigger(), keyval, modifiers)) {
         return false;
     }
 
@@ -196,7 +196,7 @@ const tryActivateShortcut = (
     return action?.activate(0 as Gtk.ShortcutActionFlags, widget, shortcut.getArguments()) ?? false;
 };
 
-const activateMatchingShortcut = (
+const didActivateMatchingShortcut = (
     controller: Gtk.ShortcutController,
     widget: Gtk.Widget,
     keyval: number,
@@ -211,7 +211,7 @@ const activateMatchingShortcut = (
             continue;
         }
 
-        if (tryActivateShortcut(shortcut, widget, keyval, modifiers)) {
+        if (didActivateShortcut(shortcut, widget, keyval, modifiers)) {
             return true;
         }
     }
@@ -219,7 +219,7 @@ const activateMatchingShortcut = (
     return false;
 };
 
-const dispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+const didDispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
     const controllers = widget.observeControllers();
 
     for (let i = 0; i < controllers.getNItems(); i++) {
@@ -227,7 +227,7 @@ const dispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers
 
         if (
             controller instanceof Gtk.ShortcutController &&
-            activateMatchingShortcut(controller, widget, keyval, modifiers)
+            didActivateMatchingShortcut(controller, widget, keyval, modifiers)
         ) {
             return true;
         }
@@ -236,15 +236,15 @@ const dispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers
     return false;
 };
 
-const dispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+const didDispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
     const delegate = getEditableDelegate(widget);
 
-    if (delegate && dispatchShortcutsOnWidget(delegate, keyval, modifiers)) {
+    if (delegate && didDispatchShortcutsOnWidget(delegate, keyval, modifiers)) {
         return true;
     }
 
     for (let current: Gtk.Widget | null = widget; current; current = current.getParent()) {
-        if (dispatchShortcutsOnWidget(current, keyval, modifiers)) {
+        if (didDispatchShortcutsOnWidget(current, keyval, modifiers)) {
             return true;
         }
     }
@@ -253,9 +253,9 @@ const dispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number
 };
 
 const handleKeyPress = async (widget: Gtk.Widget, keyval: number, modifiers: number): Promise<void> => {
-    const handled = dispatchShortcuts(widget, keyval, modifiers);
+    const isHandled = didDispatchShortcuts(widget, keyval, modifiers);
 
-    if (!handled && keyval === Gdk.KEY_Return && widget instanceof Gtk.Editable) {
+    if (!isHandled && keyval === Gdk.KEY_Return && widget instanceof Gtk.Editable) {
         await fireEvent(widget, "activate");
     }
 };

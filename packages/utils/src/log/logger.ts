@@ -45,7 +45,7 @@ function formatValue(value: unknown): string {
     }
 }
 
-function resolveDebugEnabled(namespace: string | undefined, argv: string[], env: NodeJS.ProcessEnv): boolean {
+function isDebugEnabled(namespace: string | undefined, argv: string[], env: NodeJS.ProcessEnv): boolean {
     if (argv.includes("--debug")) {
         return true;
     }
@@ -85,7 +85,7 @@ class Logger {
     constructor(options: LoggerOptions = {}) {
         this.stream = options.stream ?? process.stderr;
         this.prefix = getPrefix(options.namespace);
-        this.debugEnabled = options.debugEnabled ?? resolveDebugEnabled(options.namespace, process.argv, process.env);
+        this.debugEnabled = options.debugEnabled ?? isDebugEnabled(options.namespace, process.argv, process.env);
         this.colors = getColors(this.stream);
     }
 

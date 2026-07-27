@@ -500,10 +500,6 @@ fn typeof_of(value: &FakeValue) -> sys::napi_valuetype {
     }
 }
 
-// ---------------------------------------------------------------------------
-// #[no_mangle] recording mocks. Signatures mirror napi_sys exactly.
-// ---------------------------------------------------------------------------
-
 macro_rules! ok {
     () => {
         sys::Status::napi_ok

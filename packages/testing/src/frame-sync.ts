@@ -1,16 +1,17 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as GLib from "@gtkx/gi/glib";
 
 const CLOCK_STALL_FALLBACK_MS = 500;
 
 const once = (callback: () => void): (() => void) => {
-    let called = false;
+    let isCalled = false;
 
     return () => {
-        if (called) {
+        if (isCalled) {
             return;
         }
 
-        called = true;
+        isCalled = true;
         callback();
     };
 };
@@ -25,13 +26,13 @@ const runWhenSized = (widget: Gtk.Widget, finish: () => void): void => {
 
     tickId = widget.addTickCallback(() => {
         if (widget.getWidth() === 0) {
-            return true;
+            return GLib.SOURCE_CONTINUE;
         }
 
         clearTimeout(fallback);
         finish();
 
-        return false;
+        return GLib.SOURCE_REMOVE;
     });
 };
 

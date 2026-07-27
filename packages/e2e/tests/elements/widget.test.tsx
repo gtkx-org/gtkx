@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -23,6 +24,9 @@ import { createPortal, rootElement } from "@gtkx/react";
 import { render as baseRender, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";
+import { createAppIdFactory } from "../helpers/unique-name.js";
+
+const uniqueAppId = createAppIdFactory("org.gtkx.widgettest");
 
 const render = (element: ReactNode) => baseRender(element);
 
@@ -34,12 +38,9 @@ const labelCount = (container: Gtk.Widget | null): number => {
     return within(container).getAllByRole(Gtk.AccessibleRole.LABEL).length;
 };
 
-let nextAppId = 0;
-
-const uniqueAppId = (): string => `org.gtkx.widgettest${nextAppId++}`;
 const findClickButton = () => screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
 
-const clickExpectingCallCount = async (button: Gtk.Widget, handler: Mock, times: number): Promise<void> => {
+const expectClickCallCount = async (button: Gtk.Widget, handler: Mock, times: number): Promise<void> => {
     await userEvent.click(button);
 
     await waitFor(() => {
@@ -65,6 +66,64 @@ const renderSwitchAndClick = async (props: ComponentProps<typeof GtkSwitch>): Pr
 };
 
 const labelItems = (items: string[]): ReactNode => items.map((item) => <GtkLabel key={item}>{item}</GtkLabel>);
+
+function SameLabel() {
+    return <GtkLabel label="Same" />;
+}
+
+function TextLabel({ text }: { text: string }) {
+    return <GtkLabel label={text} />;
+}
+
+function OptionalLabel({ label }: { label?: string | undefined }) {
+    return <GtkLabel label={label} />;
+}
+
+function CountingButton({ prefix }: { prefix: string }) {
+    const [count, setCount] = useState(0);
+
+    return (
+        <GtkButton
+            onClicked={() => {
+                setCount((c) => c + 1);
+            }}
+            label={`${prefix}: ${String(count)}`}
+        />
+    );
+}
+
+function LabelListBox({ items }: { items: string[] }) {
+    return <GtkListBox>{labelItems(items)}</GtkListBox>;
+}
+
+function LabelList({ count }: { count: number }) {
+    return (
+        <GtkBox>
+            {Array.from({ length: count }, (_, i) => (
+                <GtkLabel key={`label-${String(i)}`}>
+                    Label
+                    {i}
+                </GtkLabel>
+            ))}
+        </GtkBox>
+    );
+}
+
+function ClickButton({ onClicked }: { onClicked?: (() => void) | undefined }) {
+    return <GtkButton onClicked={onClicked} label="Click" />;
+}
+
+function OptionalClickButton({ onClicked, mounted }: { onClicked: () => void; mounted: boolean }) {
+    return mounted ? <GtkButton onClicked={onClicked} label="Click" /> : null;
+}
+
+const renderInApp = (window: ReactNode) =>
+    baseRender(
+        <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+            {window}
+        </GtkApplication>,
+        { container: rootElement },
+    );
 
 describe("widget - creation (1)", () => {
     describe("basic widgets", () => {
@@ -229,38 +288,6 @@ describe("widget - props (1)", () => {
     });
 });
 
-function SameLabel() {
-    return <GtkLabel label="Same" />;
-}
-
-function TextLabel({ text }: { text: string }) {
-    return <GtkLabel label={text} />;
-}
-
-function OptionalLabel({ label }: { label?: string | undefined }) {
-    return <GtkLabel label={label} />;
-}
-
-function CountingButton({ prefix }: { prefix: string }) {
-    const [count, setCount] = useState(0);
-
-    return <GtkButton onClicked={() => setCount((c) => c + 1)} label={`${prefix}: ${count}`} />;
-}
-
-function LabelListBox({ items }: { items: string[] }) {
-    return <GtkListBox>{labelItems(items)}</GtkListBox>;
-}
-
-function LabelList({ count }: { count: number }) {
-    return (
-        <GtkBox>
-            {Array.from({ length: count }, (_, i) => (
-                <GtkLabel key={`label-${i}`}>Label {i}</GtkLabel>
-            ))}
-        </GtkBox>
-    );
-}
-
 describe("widget - props (2)", () => {
     describe("change detection (1)", () => {
         it("skips update when value unchanged", async () => {
@@ -376,7 +403,7 @@ describe("widget - signals (1)", () => {
         });
 
         it("connects onStateSet handler to state-set signal", async () => {
-            const handleStateSet = vi.fn(() => false);
+            const handleStateSet = vi.fn(() => Gdk.EVENT_PROPAGATE);
             await renderSwitchAndClick({ onStateSet: handleStateSet });
 
             await waitFor(() => {
@@ -386,30 +413,22 @@ describe("widget - signals (1)", () => {
     });
 });
 
-function ClickButton({ onClicked }: { onClicked?: (() => void) | undefined }) {
-    return <GtkButton onClicked={onClicked} label="Click" />;
-}
-
-function OptionalClickButton({ onClicked, mounted }: { onClicked: () => void; mounted: boolean }) {
-    return mounted ? <GtkButton onClicked={onClicked} label="Click" /> : null;
-}
-
 describe("widget - signals (2)", () => {
     describe("disconnection", () => {
         it("disconnects handler when prop removed", async () => {
             const handleClick = vi.fn();
             const { rerender } = await render(<ClickButton onClicked={handleClick} />);
             const button = await findClickButton();
-            await clickExpectingCallCount(button, handleClick, 1);
+            await expectClickCallCount(button, handleClick, 1);
             await rerender(<ClickButton />);
-            await clickExpectingCallCount(button, handleClick, 1);
+            await expectClickCallCount(button, handleClick, 1);
         });
 
         it("disconnects handler when widget unmounted", async () => {
             const handleClick = vi.fn();
             const { rerender } = await render(<OptionalClickButton onClicked={handleClick} mounted={true} />);
             const button = await findClickButton();
-            await clickExpectingCallCount(button, handleClick, 1);
+            await expectClickCallCount(button, handleClick, 1);
             await rerender(<OptionalClickButton onClicked={handleClick} mounted={false} />);
             expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON)).toBeNull();
         });
@@ -428,10 +447,10 @@ describe("widget - signals (3)", () => {
 
             const { rerender } = await render(<App useHandler1={true} />);
             const button = await findClickButton();
-            await clickExpectingCallCount(button, handler1, 1);
+            await expectClickCallCount(button, handler1, 1);
             expect(handler2).not.toHaveBeenCalled();
             await rerender(<App useHandler1={false} />);
-            await clickExpectingCallCount(button, handler2, 1);
+            await expectClickCallCount(button, handler2, 1);
             expect(handler1).toHaveBeenCalledTimes(1);
         });
 
@@ -445,7 +464,7 @@ describe("widget - signals (3)", () => {
             const { rerender } = await render(<App label="First" />);
             await rerender(<App label="Second" />);
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
-            await clickExpectingCallCount(button, handleClick, 1);
+            await expectClickCallCount(button, handleClick, 1);
         });
     });
 });
@@ -453,7 +472,7 @@ describe("widget - signals (3)", () => {
 describe("widget - signals (4)", () => {
     describe("signal arguments", () => {
         it("receives signal arguments in callback", async () => {
-            const handleStateSet = vi.fn(() => false);
+            const handleStateSet = vi.fn(() => Gdk.EVENT_PROPAGATE);
             await renderSwitchAndClick({ onStateSet: handleStateSet });
 
             await waitFor(() => {
@@ -601,7 +620,7 @@ describe("widget - signals (9)", () => {
     describe("event controllers (4)", () => {
         describe("key controller (1)", () => {
             it("connects onKeyPressed handler", async () => {
-                const handleKeyPressed = vi.fn(() => false);
+                const handleKeyPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
 
                 await render(
                     <GtkButton
@@ -641,7 +660,7 @@ describe("widget - signals (10)", () => {
     describe("event controllers (5)", () => {
         describe("key controller (2)", () => {
             it("disconnects key handlers when controller removed", async () => {
-                const handleKeyPressed = vi.fn(() => false);
+                const handleKeyPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
 
                 function App({ hasController }: { hasController: boolean }) {
                     return (
@@ -830,14 +849,6 @@ describe("widget - auto-wrapping (4)", () => {
         });
     });
 });
-
-const renderInApp = (window: ReactNode) =>
-    baseRender(
-        <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-            {window}
-        </GtkApplication>,
-        { container: rootElement },
-    );
 
 describe("widget - AboutDialog (1)", () => {
     describe("creditSections", () => {

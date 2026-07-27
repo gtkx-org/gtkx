@@ -6,15 +6,9 @@ import { getHandle, registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { forceGC, getRefCount } from "../helpers/native-utils.js";
 
-class NameObject extends GObject.Object {
-    name = "";
-}
-
-registerClass(NameObject, { typeName: "GtkxTestModelNameObject" });
-
-async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boolean> {
+async function gcUntil(isSatisfied: () => boolean, maxRounds = 100): Promise<boolean> {
     for (let i = 0; i < maxRounds; i++) {
-        if (predicate()) {
+        if (isSatisfied()) {
             return true;
         }
 
@@ -23,7 +17,7 @@ async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boole
         await new Promise((resolve) => setImmediate(resolve));
     }
 
-    return predicate();
+    return isSatisfied();
 }
 
 function detachLabel(): { handle: ExternalObject<Handle>; weak: WeakRef<object> } {
@@ -39,6 +33,12 @@ function appendDetachedLabel(box: Gtk.Box): { handle: ExternalObject<Handle>; we
 
     return { handle: getHandle(label), weak: new WeakRef(label) };
 }
+
+class NameObject extends GObject.Object {
+    name = "";
+}
+
+registerClass(NameObject, { typeName: "GtkxTestModelNameObject" });
 
 describe("wrapper identity and reference counting", () => {
     it("keeps a strongly-held wrapper alive across GC and preserves identity", async () => {
@@ -76,7 +76,7 @@ describe("wrapper collection", () => {
     it("collects a wrapper with no other holder once its JS reference is dropped", async () => {
         const { handle, weak } = detachLabel();
         expect(getRefCount(handle)).toBe(1);
-        const collected = await gcUntil(() => weak.deref() === undefined);
-        expect(collected).toBe(true);
+        const isCollected = await gcUntil(() => weak.deref() === undefined);
+        expect(isCollected).toBe(true);
     });
 });

@@ -1,16 +1,16 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ComponentType, ReactNode, RefObject } from "react";
 
-export type DemoProps = {
+type DemoProps = {
     onClose?: () => void;
     window: RefObject<Gtk.Window | null>;
 };
 
-export type DemoProviderProps = DemoProps & {
+type DemoProviderProps = DemoProps & {
     children: ReactNode;
 };
 
-export type Demo = {
+type Demo = {
     id: string;
     title: string;
     description: string;
@@ -28,6 +28,8 @@ export type Demo = {
     windowCssClasses?: string[];
 };
 
-export type TreeItem =
+type TreeItem =
     | { type: "category"; title: string; children: TreeItem[] } |
     { type: "demo"; demo: Demo; displayTitle: string };
+
+export { type Demo, type DemoProps, type DemoProviderProps, type TreeItem };

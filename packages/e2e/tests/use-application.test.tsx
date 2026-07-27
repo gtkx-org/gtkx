@@ -4,10 +4,9 @@ import { rootElement, useApplication } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
+import { createAppIdFactory } from "./helpers/unique-name.js";
 
-let nextAppId = 0;
-
-const uniqueAppId = (): string => `org.gtkx.useapplicationtest${nextAppId++}`;
+const uniqueAppId = createAppIdFactory("org.gtkx.useapplicationtest");
 
 const Probe = () => {
     useApplication();

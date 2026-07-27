@@ -1,6 +1,5 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::mem::ManuallyDrop;
+use std::sync::{Mutex, OnceLock, PoisonError};
 
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
@@ -8,12 +7,14 @@ use crate::handle::{RefFn, UnrefFn};
 
 type GetTypeFn = unsafe extern "C" fn() -> glib::ffi::GType;
 
-thread_local! {
-    static FFI_CACHE: RefCell<FfiCache> = RefCell::new(FfiCache::default());
-}
+/// The cache is process-global rather than per-thread because everything it hands out is
+/// process-global: `dlopen` handles, the raw symbol pointers callers copy out, and the types
+/// `invoke_and_cache_type` registers, which `GLib` never unregisters. A `static` is never
+/// dropped, so no `dlclose` can run while another library's worker threads still execute its code.
+static FFI_CACHE: OnceLock<Mutex<FfiCache>> = OnceLock::new();
 
 pub struct LibraryCache {
-    libraries: ManuallyDrop<HashMap<String, Library>>,
+    libraries: HashMap<String, Library>,
     types: HashMap<String, HashMap<String, glib::Type>>,
 }
 
@@ -28,7 +29,7 @@ impl std::fmt::Debug for LibraryCache {
 impl LibraryCache {
     fn new() -> Self {
         Self {
-            libraries: ManuallyDrop::new(HashMap::new()),
+            libraries: HashMap::new(),
             types: HashMap::new(),
         }
     }
@@ -55,6 +56,13 @@ impl LibraryCache {
         anyhow::bail!("Failed to load library '{library_name}': {err}")
     }
 
+    /// # Safety
+    ///
+    /// `T` must be layout- and ABI-compatible with the type the symbol is actually exported with:
+    /// a function pointer whose calling convention and signature match the C declaration, or a
+    /// pointer to the exported object. The returned value carries no lifetime tying it to the
+    /// library, so it is only usable while the library stays mapped; the cache holding the
+    /// `Library` is a `static` that is never dropped, so that holds for the life of the process.
     pub unsafe fn resolve_symbol<T: Copy>(
         &mut self,
         library_name: &str,
@@ -126,10 +134,12 @@ impl LibraryCache {
         type_
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.libraries.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.libraries.is_empty()
     }
@@ -228,7 +238,12 @@ impl FfiCache {
     where
         F: FnOnce(&mut Self) -> R,
     {
-        FFI_CACHE.with_borrow_mut(f)
+        let mut cache = FFI_CACHE
+            .get_or_init(|| Mutex::new(Self::default()))
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+
+        f(&mut cache)
     }
 
     pub fn lookup_fundamental_fns(
@@ -241,6 +256,11 @@ impl FfiCache {
             .lookup(&mut self.libs, library_name, ref_fn_name, unref_fn_name)
     }
 
+    /// # Safety
+    ///
+    /// Same contract as `LibraryCache::resolve_symbol`: `T` must be layout- and ABI-compatible
+    /// with the type the symbol is actually exported with, and the value stays usable only while
+    /// the library remains mapped.
     pub unsafe fn resolve_symbol<T: Copy>(
         &mut self,
         library_name: &str,

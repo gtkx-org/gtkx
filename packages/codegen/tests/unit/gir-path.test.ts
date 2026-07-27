@@ -1,15 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const execFileSyncMock = vi.hoisted(() => vi.fn());
-
-vi.mock("node:child_process", async (importOriginal) => {
-    const actual = (await importOriginal()) as typeof import("node:child_process");
-
-    return { ...actual, execFileSync: execFileSyncMock };
-});
-
 const { resolveGirPath } = await import("../../src/gir/gir-path.js");
-let originalGirPath: string | undefined;
+const originalGirPath = process.env.GTKX_GIR_PATH;
 
 const setGirPath = (value: string | undefined): void => {
     if (value === undefined) {
@@ -26,9 +19,14 @@ const enoentError = (): NodeJS.ErrnoException => {
     return error;
 };
 
+vi.mock("node:child_process", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("node:child_process")>();
+
+    return { ...actual, execFileSync: execFileSyncMock };
+});
+
 describe("resolveGirPath", () => {
     beforeEach(() => {
-        originalGirPath = process.env.GTKX_GIR_PATH;
         execFileSyncMock.mockReset();
 
         execFileSyncMock.mockImplementation(() => {
@@ -88,7 +86,6 @@ describe("resolveGirPath", () => {
 
 describe("resolveGirPath — pkg-config invocation", () => {
     beforeEach(() => {
-        originalGirPath = process.env.GTKX_GIR_PATH;
         setGirPath(undefined);
         execFileSyncMock.mockReset();
     });

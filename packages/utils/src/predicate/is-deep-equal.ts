@@ -1,5 +1,5 @@
+import { areObjectKeysEqual } from "./are-object-keys-equal.js";
 import { isPlainObject } from "./is-plain-object.js";
-import { objectKeysEqual } from "./object-keys-equal.js";
 
 /**
  * Checks whether two values are deeply equal: identical, arrays of the same length whose elements
@@ -32,7 +32,7 @@ function isDeepEqual(a: unknown, b: unknown): boolean {
     }
 
     if (isPlainObject(a) && isPlainObject(b)) {
-        return objectKeysEqual(a, b, isDeepEqual);
+        return areObjectKeysEqual(a, b, isDeepEqual);
     }
 
     return false;

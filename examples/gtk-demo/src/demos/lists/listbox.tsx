@@ -34,39 +34,83 @@ type Message = {
     nReshares: number;
 };
 
-function parseMessages(raw: string): Message[] {
-    const lines = raw.split("\n").filter((line) => line.length > 0);
-    return lines.map((line) => {
-        const parts = line.split("|");
-        return {
-            id: Number.parseInt(parts[0] ?? "0", 10),
-            senderName: parts[1] ?? "",
-            senderNick: parts[2] ?? "",
-            message: parts[3] ?? "",
-            time: Number.parseInt(parts[4] ?? "0", 10),
-            replyTo: Number.parseInt(parts[5] ?? "0", 10),
-            resentBy: parts[6] && parts[6].length > 0 ? parts[6] : null,
-            nFavorites: Number.parseInt(parts[7] ?? "0", 10),
-            nReshares: Number.parseInt(parts[8] ?? "0", 10),
-        };
-    });
-}
+type MessageRowProps = {
+    message: Message;
+    expanded: boolean;
+    onToggleExpand: (id: number) => void;
+    onFavorite: (id: number) => void;
+    onReshare: (id: number) => void;
+};
+
+type MessageExtraButtonsProps = {
+    message: Message;
+    extraButtonsRef: React.RefObject<Gtk.Box | null>;
+    onFavorite: (id: number) => void;
+    onReshare: (id: number) => void;
+};
+
+type MessageActionsProps = MessageExtraButtonsProps & {
+    expanded: boolean;
+    onToggleExpand: (id: number) => void;
+};
 
 const ALL_MESSAGES = parseMessages(messagesRaw);
-
 const appleRedTexture = Gdk.Texture.newFromResource(appleRedPath);
 
 const boldAttrs = (() => {
     const attrs = Pango.AttrList.new();
     attrs.insert(Pango.attrWeightNew(Pango.Weight.BOLD));
+
     return attrs;
 })();
+
+const listboxDemo: Demo = {
+    id: "listbox",
+    title: "List Box/Complex",
+    description:
+        "GtkListBox allows lists with complicated layouts, using regular widgets supporting sorting and filtering.",
+    keywords: [],
+    component: ListBoxDemo,
+    sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 600,
+    windowTitle: "List Box — Complex",
+};
+
+function messageField(parts: string[], index: number): string {
+    return parts[index] ?? "";
+}
+
+function parseMessage(line: string): Message {
+    const parts = line.split("|");
+    const resentBy = messageField(parts, 6);
+
+    return {
+        id: Number(messageField(parts, 0)),
+        senderName: messageField(parts, 1),
+        senderNick: messageField(parts, 2),
+        message: messageField(parts, 3),
+        time: Number(messageField(parts, 4)),
+        replyTo: Number(messageField(parts, 5)),
+        resentBy: resentBy.length > 0 ? resentBy : null,
+        nFavorites: Number(messageField(parts, 7)),
+        nReshares: Number(messageField(parts, 8)),
+    };
+}
+
+function parseMessages(raw: string): Message[] {
+    return raw
+        .split("\n")
+        .filter((line) => line.length > 0)
+        .map((line) => parseMessage(line));
+}
 
 function formatShortTime(timestamp: number): string {
     const date = new Date(timestamp * 1000);
     const day = String(date.getUTCDate()).padStart(2, " ");
     const month = date.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
     const year = String(date.getUTCFullYear()).slice(-2);
+
     return `${day} ${month} ${year}`;
 }
 
@@ -75,17 +119,30 @@ function formatDetailedTime(timestamp: number): string {
     const time = date.toLocaleTimeString(undefined, { timeZone: "UTC" });
     const day = String(date.getUTCDate()).padStart(2, " ");
     const month = date.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
-    const year = date.getUTCFullYear();
+    const year = String(date.getUTCFullYear());
+
     return `${time} - ${day} ${month} ${year}`;
 }
 
-type MessageRowProps = {
-    message: Message;
-    expanded: boolean;
-    onToggleExpand: (id: number) => void;
-    onFavorite: (id: number) => void;
-    onReshare: (id: number) => void;
-};
+function toggleExpandedId(ids: Set<number>, id: number): Set<number> {
+    const next = new Set(ids);
+
+    if (next.has(id)) {
+        next.delete(id);
+    } else {
+        next.add(id);
+    }
+
+    return next;
+}
+
+function incrementFavorites(message: Message, id: number): Message {
+    return message.id === id ? { ...message, nFavorites: message.nFavorites + 1 } : message;
+}
+
+function incrementReshares(message: Message, id: number): Message {
+    return message.id === id ? { ...message, nReshares: message.nReshares + 1 } : message;
+}
 
 const MessageAvatar = ({ message }: { message: Message }) => (
     <GtkGridLayoutChild column={0} row={0} rowSpan={5}>
@@ -140,14 +197,59 @@ const MessageResentBy = ({ message }: { message: Message }) => (
     </GtkGridLayoutChild>
 );
 
-type MessageActionsProps = {
-    message: Message;
-    expanded: boolean;
-    extraButtonsRef: React.RefObject<Gtk.Box | null>;
-    onToggleExpand: (id: number) => void;
-    onFavorite: (id: number) => void;
-    onReshare: (id: number) => void;
-};
+const MessageMoreMenuButton = () => (
+    <GtkMenuButton
+        receivesDefault
+        hasFrame={false}
+        label="More..."
+        menuModel={(
+            <GMenu
+                items={[
+                    {
+                        section: [
+                            { label: "Email message", action: "msg.email" },
+                            { label: "Embed message", action: "msg.embed" },
+                        ],
+                    },
+                ]}
+            />
+        )}
+        actionGroups={(
+            <GSimpleActionGroup
+                prefix="msg"
+                actions={(
+                    <>
+                        <GSimpleAction name="email" onActivate={(): void => undefined} />
+                        <GSimpleAction name="embed" onActivate={(): void => undefined} />
+                    </>
+                )}
+            />
+        )}
+    />
+);
+
+const MessageExtraButtons = ({ message, extraButtonsRef, onFavorite, onReshare }: MessageExtraButtonsProps) => (
+    <GtkBox ref={extraButtonsRef} spacing={6} visible={false}>
+        <GtkButton label="Reply" receivesDefault hasFrame={false} />
+        <GtkButton
+            label="Reshare"
+            receivesDefault
+            hasFrame={false}
+            onClicked={() => {
+                onReshare(message.id);
+            }}
+        />
+        <GtkButton
+            label="Favorite"
+            receivesDefault
+            hasFrame={false}
+            onClicked={() => {
+                onFavorite(message.id);
+            }}
+        />
+        <MessageMoreMenuButton />
+    </GtkBox>
+);
 
 const MessageActions = ({
     message,
@@ -164,41 +266,16 @@ const MessageActions = ({
                 label={expanded ? "Hide" : "Expand"}
                 receivesDefault
                 hasFrame={false}
-                onClicked={() => onToggleExpand(message.id)}
+                onClicked={() => {
+                    onToggleExpand(message.id);
+                }}
             />
-            <GtkBox ref={extraButtonsRef} spacing={6} visible={false}>
-                <GtkButton label="Reply" receivesDefault hasFrame={false} />
-                <GtkButton label="Reshare" receivesDefault hasFrame={false} onClicked={() => onReshare(message.id)} />
-                <GtkButton label="Favorite" receivesDefault hasFrame={false} onClicked={() => onFavorite(message.id)} />
-                <GtkMenuButton
-                    receivesDefault
-                    hasFrame={false}
-                    label="More..."
-                    menuModel={(
-                        <GMenu
-                            items={[
-                                {
-                                    section: [
-                                        { label: "Email message", action: "msg.email" },
-                                        { label: "Embed message", action: "msg.embed" },
-                                    ],
-                                },
-                            ]}
-                        />
-                    )}
-                    actionGroups={(
-                        <GSimpleActionGroup
-                            prefix="msg"
-                            actions={(
-                                <>
-                                    <GSimpleAction name="email" onActivate={() => {}} />
-                                    <GSimpleAction name="embed" onActivate={() => {}} />
-                                </>
-                            )}
-                        />
-                    )}
-                />
-            </GtkBox>
+            <MessageExtraButtons
+                message={message}
+                extraButtonsRef={extraButtonsRef}
+                onFavorite={onFavorite}
+                onReshare={onReshare}
+            />
         </GtkBox>
     </GtkGridLayoutChild>
 );
@@ -209,10 +286,10 @@ const MessageDetails = ({ message, expanded }: { message: Message; expanded: boo
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkBox marginTop={2} marginBottom={2} spacing={8}>
                     <GtkLabel visible={message.nReshares !== 0} useMarkup>
-                        {`<b>${message.nReshares}</b>\nReshares`}
+                        {`<b>${String(message.nReshares)}</b>\nReshares`}
                     </GtkLabel>
                     <GtkLabel visible={message.nFavorites !== 0} useMarkup>
-                        {`<b>${message.nFavorites}</b>\nFavorites`}
+                        {`<b>${String(message.nFavorites)}</b>\nFavorites`}
                     </GtkLabel>
                 </GtkBox>
                 <GtkBox>
@@ -229,8 +306,8 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
 
     const handleStateFlagsChanged = (_previousFlags: Gtk.StateFlags, row: Gtk.Widget) => {
         const flags = row.getStateFlags();
-        const visible = (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0;
-        extraButtonsRef.current?.setVisible(visible);
+        const isVisible = (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0;
+        extraButtonsRef.current?.setVisible(isVisible);
     };
 
     return (
@@ -254,32 +331,29 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
     );
 };
 
-const ListBoxDemo = () => {
+function ListBoxDemo() {
     const [messages, setMessages] = useState(ALL_MESSAGES);
     const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
-
-    const sortedMessages = [...messages].sort((a, b) => b.time - a.time);
+    const sortedMessages = messages.toSorted((a, b) => b.time - a.time);
 
     const handleToggleExpand = (id: number) => {
-        setExpandedIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
+        setExpandedIds((previous) => toggleExpandedId(previous, id));
     };
 
     const handleFavorite = (id: number) => {
-        setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, nFavorites: m.nFavorites + 1 } : m)));
+        setMessages((previous) => previous.map((message) => incrementFavorites(message, id)));
     };
 
     const handleReshare = (id: number) => {
-        setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, nReshares: m.nReshares + 1 } : m)));
+        setMessages((previous) => previous.map((message) => incrementReshares(message, id)));
     };
 
     const handleRowActivated = (row: Gtk.ListBoxRow) => {
-        const msg = sortedMessages[row.getIndex()];
-        if (msg) handleToggleExpand(msg.id);
+        const message = sortedMessages[row.getIndex()];
+
+        if (message) {
+            handleToggleExpand(message.id);
+        }
     };
 
     return (
@@ -306,17 +380,6 @@ const ListBoxDemo = () => {
             </GtkScrolledWindow>
         </GtkBox>
     );
-};
+}
 
-export const listboxDemo: Demo = {
-    id: "listbox",
-    title: "List Box/Complex",
-    description:
-        "GtkListBox allows lists with complicated layouts, using regular widgets supporting sorting and filtering.",
-    keywords: [],
-    component: ListBoxDemo,
-    sourceCode,
-    defaultWidth: 400,
-    defaultHeight: 600,
-    windowTitle: "List Box — Complex",
-};
+export { listboxDemo };

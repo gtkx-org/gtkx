@@ -18,7 +18,7 @@ impl Encoder for VoidCodec {
         &self,
         cif: &libffi::Cif,
         ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
+        args: &[libffi::Arg<'_>],
     ) -> anyhow::Result<ffi::Stash> {
         unsafe { cif.call::<()>(ptr, args) };
         Ok(ffi::Stash::Void)

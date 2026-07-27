@@ -78,10 +78,11 @@ const enclosingTagNodes = (node: TextNode): ElementNode[] => {
 
 const textRestrictionError = (text: string): Error =>
     new Error(
-        `Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element; received ${JSON.stringify(text)}`,
+        "Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element; " +
+        `received ${JSON.stringify(text)}`,
     );
 
-const acceptsText = (host: ElementNode): boolean =>
+const canAcceptText = (host: ElementNode): boolean =>
     host.contentKind !== null && TEXT_CONTENT_KINDS.has(host.contentKind);
 
 const isRootHost = (node: ElementNode): boolean => node.contentKind === "label" || node.contentKind === "buffer";
@@ -303,7 +304,7 @@ const applyEnclosingTags = (
     }
 };
 
-const surgicalTextUpdate = (host: ElementNode, node: TextNode, oldText: string, newText: string): boolean => {
+const didUpdateTextSurgically = (host: ElementNode, node: TextNode, oldText: string, newText: string): boolean => {
     const buffer = host.object;
 
     if (host.contentKind !== "buffer" || !(buffer instanceof Gtk.TextBuffer)) {
@@ -328,12 +329,12 @@ const surgicalTextUpdate = (host: ElementNode, node: TextNode, oldText: string, 
 
 export {
     textRestrictionError,
-    acceptsText,
+    canAcceptText,
     markTextDirty,
     enclosingHost,
     addContent,
     removeContent,
     validateContentMix,
     flushTextHosts,
-    surgicalTextUpdate,
+    didUpdateTextSurgically,
 };

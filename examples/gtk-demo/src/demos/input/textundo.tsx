@@ -3,11 +3,28 @@ import { GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./textundo.tsx?raw";
 
-const INITIAL_TEXT = `The GtkTextView supports undo and redo through the use of a GtkTextBuffer. You can enable or disable undo support using gtk_text_buffer_set_enable_undo().
-Type to add more text.
-Use Control+z to undo and Control+Shift+z or Control+y to redo previously undone operations.`;
+const INITIAL_TEXT =
+    "The GtkTextView supports undo and redo through the use of a GtkTextBuffer. You can enable " +
+    "or disable undo support using gtk_text_buffer_set_enable_undo().\n" +
+    "Type to add more text.\n" +
+    "Use Control+z to undo and Control+Shift+z or Control+y to redo previously undone operations.";
 
-const TextUndoDemo = () => {
+const textundoDemo: Demo = {
+    id: "textundo",
+    title: "Text View/Undo and Redo",
+    description:
+        "The GtkTextView supports undo and redo through the use of a GtkTextBuffer. You can enable " +
+        "or disable undo support using gtk_text_buffer_set_enable_undo().\n\nUse Control+z to undo " +
+        "and Control+Shift+z or Control+y to redo previously undone operations.",
+    keywords: [],
+    component: TextUndoDemo,
+    sourceCode,
+    defaultWidth: 330,
+    defaultHeight: 330,
+    resizable: false,
+};
+
+function TextUndoDemo() {
     return (
         <GtkScrolledWindow
             name="scrolled"
@@ -25,17 +42,6 @@ const TextUndoDemo = () => {
             />
         </GtkScrolledWindow>
     );
-};
+}
 
-export const textundoDemo: Demo = {
-    id: "textundo",
-    title: "Text View/Undo and Redo",
-    description:
-        "The GtkTextView supports undo and redo through the use of a GtkTextBuffer. You can enable or disable undo support using gtk_text_buffer_set_enable_undo().\n\nUse Control+z to undo and Control+Shift+z or Control+y to redo previously undone operations.",
-    keywords: [],
-    component: TextUndoDemo,
-    sourceCode,
-    defaultWidth: 330,
-    defaultHeight: 330,
-    resizable: false,
-};
+export { textundoDemo };

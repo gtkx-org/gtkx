@@ -5,12 +5,13 @@ import { rootElement } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { Demo } from "../src/app.js";
+import { createApplicationIdFactory } from "./test-utils.js";
 
-let nextAppId = 0;
+const nextApplicationId = createApplicationIdFactory("org.gtkx.gtkdemoapp");
 
 const renderDemo = () =>
     render(
-        <GtkApplication applicationId={`org.gtkx.gtkdemoapp${nextAppId++}`} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+        <GtkApplication applicationId={nextApplicationId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
             <Demo />
         </GtkApplication>,
         { container: rootElement },

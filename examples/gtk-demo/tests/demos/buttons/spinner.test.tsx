@@ -61,6 +61,7 @@ describe("spinnerDemo Stop / Play toggling", () => {
         await renderDemo(spinnerDemo);
         const stop = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Stop" })) as Gtk.Button;
         await userEvent.click(stop);
+
         await waitFor(() => {
             const spinners = screen.queryAllByRole(Gtk.AccessibleRole.PROGRESS_BAR) as Gtk.Spinner[];
             expect(spinners.every((s) => !s.getSpinning())).toBe(true);
@@ -72,11 +73,14 @@ describe("spinnerDemo Stop / Play toggling", () => {
         const stop = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Stop" })) as Gtk.Button;
         const play = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Play" })) as Gtk.Button;
         await userEvent.click(stop);
+
         await waitFor(() => {
             const spinners = screen.queryAllByRole(Gtk.AccessibleRole.PROGRESS_BAR) as Gtk.Spinner[];
             expect(spinners.every((s) => !s.getSpinning())).toBe(true);
         });
+
         await userEvent.click(play);
+
         await waitFor(() => {
             const spinners = screen.queryAllByRole(Gtk.AccessibleRole.PROGRESS_BAR) as Gtk.Spinner[];
             expect(spinners.every((s) => s.getSpinning())).toBe(true);
@@ -90,8 +94,15 @@ describe("spinnerDemo Stop / Play toggling", () => {
         const stop = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Stop" })) as Gtk.Button;
         const play = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Play" })) as Gtk.Button;
         await userEvent.click(stop);
-        await waitFor(() => expect(spinners.every((s) => !s.getSpinning())).toBe(true));
+
+        await waitFor(() => {
+            expect(spinners.every((s) => !s.getSpinning())).toBe(true);
+        });
+
         await userEvent.click(play);
-        await waitFor(() => expect(spinners.every((s) => s.getSpinning())).toBe(true));
+
+        await waitFor(() => {
+            expect(spinners.every((s) => s.getSpinning())).toBe(true);
+        });
     });
 });

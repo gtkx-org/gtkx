@@ -72,7 +72,11 @@ class ImportsBuilder {
     }
 
     toSource(): string {
-        const lines: string[] = Array.from(this.sideEffects, (specifier) => `import ${sourceStringLiteral(specifier)};`);
+        const lines: string[] = Array.from(
+            this.sideEffects,
+            (specifier) => `import ${sourceStringLiteral(specifier)};`,
+        );
+
         const specifiers: Set<string> = new Set([...this.named.keys(), ...this.namespaces.keys()]);
 
         for (const specifier of sortStrings(specifiers)) {

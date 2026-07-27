@@ -7,12 +7,13 @@ use super::prelude::*;
 #[derive(Debug, Clone, Copy)]
 pub struct UnicharCodec;
 
-impl UnicharCodec {
+impl IntegerBacked for UnicharCodec {
     fn ffi_codec(&self) -> IntegerCodec {
         IntegerCodec::U32
     }
 }
 
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn checked_codepoint(n: f64) -> anyhow::Result<u32> {
     if n.fract() != 0.0 || !(0.0..=f64::from(char::MAX as u32)).contains(&n) {
         bail!("Invalid Unicode codepoint: {n}");
@@ -22,6 +23,11 @@ fn checked_codepoint(n: f64) -> anyhow::Result<u32> {
         bail!("Invalid Unicode codepoint: 0x{cp:X}");
     }
     Ok(cp)
+}
+
+#[allow(clippy::cast_possible_truncation)]
+fn codepoint_from_inline_ptr(ptr: *mut c_void) -> u32 {
+    ptr.addr() as u32
 }
 
 fn codepoint_from_value(value: Unknown<'_>) -> anyhow::Result<u32> {
@@ -63,11 +69,11 @@ impl Decoder for UnicharCodec {
                     .ok_or_else(|| anyhow::anyhow!("Invalid Unicode codepoint: 0x{cp:X}"))?
             }
             ReadSource::Value(ptr, _context) => {
-                let cp = ptr as usize as u32;
+                let cp = codepoint_from_inline_ptr(ptr);
                 char::from_u32(cp).unwrap_or('\u{FFFD}')
             }
             ReadSource::Slot(ptr, _context) => {
-                let cp = unsafe { (ptr as *const u32).read_unaligned() };
+                let cp = unsafe { ptr.cast::<u32>().read_unaligned() };
                 char::from_u32(cp).unwrap_or('\u{FFFD}')
             }
         };

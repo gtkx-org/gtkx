@@ -73,16 +73,16 @@ pub(super) fn read_string_item(value: Unknown<'_>) -> anyhow::Result<String> {
 impl Encoder for ArrayCodec {
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         if value.is_array()? {
-            let array: Array = value::read_napi(value)?;
+            let array: Array<'_> = value::read_napi(value)?;
             let len = array.len();
             let mut items = Vec::with_capacity(len as usize);
             for i in 0..len {
-                let item: Unknown = array
+                let item: Unknown<'_> = array
                     .get(i)?
                     .ok_or_else(|| anyhow::anyhow!("array element {i} is missing"))?;
                 items.push(item);
             }
-            return self.container.encode(self, env, &items);
+            return self.container.encode(self, *env, &items);
         }
         if let Some(view) = TypedView::from_unknown(env, value)? {
             return self.container.encode_buffer_view(self, &view);
@@ -141,7 +141,7 @@ pub(super) fn dup_strings_to_glib(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*
     for &v in array {
         let duplicated = read_string_item(v).and_then(|s| str_to_glib_full(&s));
         match duplicated {
-            Ok(ptr) => ptrs.push(ptr as *mut c_void),
+            Ok(ptr) => ptrs.push(ptr.cast::<c_void>()),
             Err(err) => {
                 for ptr in ptrs {
                     unsafe { glib::ffi::g_free(ptr) };
@@ -253,7 +253,7 @@ impl ArrayCodec {
 
     fn encode_items(
         &self,
-        env: &Env,
+        env: Env,
         encoder: &dyn ArrayKindEncoder,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
@@ -262,7 +262,7 @@ impl ArrayCodec {
 
     fn encode_zero_terminated_items(
         &self,
-        env: &Env,
+        env: Env,
         encoder: &dyn ArrayKindEncoder,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
@@ -293,7 +293,7 @@ impl ArrayCodec {
 
     fn encode_items_with_terminator(
         &self,
-        env: &Env,
+        env: Env,
         encoder: &dyn ArrayKindEncoder,
         array: &[Unknown<'_>],
         zero_terminated: bool,
@@ -308,7 +308,7 @@ impl ArrayCodec {
             ItemCodec::BigInt(kind) => {
                 let storage = if zero_terminated {
                     let mut items = array.to_vec();
-                    items.push(0f64.into_unknown(env)?);
+                    items.push(0f64.into_unknown(&env)?);
                     kind.to_stash_storage(&items)?
                 } else {
                     kind.to_stash_storage(array)?
@@ -357,6 +357,10 @@ impl ArrayCodec {
         }
     }
 
+    // `data` is the first byte of a C array whose element type is `codec`, produced either by the
+    // GLib allocators (aligned for any fundamental type) or by a JavaScript ArrayBufferView (8-byte
+    // aligned), so every element pointer below is already correctly aligned for its element type.
+    #[allow(clippy::cast_ptr_alignment)]
     fn decode_contiguous<'e>(
         &self,
         env: &'e Env,

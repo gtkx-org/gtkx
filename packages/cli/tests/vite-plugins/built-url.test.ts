@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { gtkxBuiltUrl } from "../../src/vite-plugins/built-url.js";
 
 type ConfigHook = (userConfig: {
@@ -24,7 +24,7 @@ describe("gtkxBuiltUrl", () => {
 
     it("config returns undefined when the user already configures renderBuiltUrl", () => {
         const plugin = gtkxBuiltUrl();
-        const result = callConfig(plugin, { experimental: { renderBuiltUrl: () => undefined } });
+        const result = callConfig(plugin, { experimental: { renderBuiltUrl: vi.fn() } });
         expect(result).toBeUndefined();
     });
 

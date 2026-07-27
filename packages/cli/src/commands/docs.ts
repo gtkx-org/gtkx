@@ -37,7 +37,8 @@ const docs = defineCommand({
 
         if (config.codegen === false) {
             throw new Error(
-                "codegen is disabled for this project, so there are no GIR libraries to document. Remove `codegen: false` from gtkx.config.ts to use `gtkx docs`.",
+                "codegen is disabled for this project, so there are no GIR libraries to document. " +
+                "Remove `codegen: false` from gtkx.config.ts to use `gtkx docs`.",
             );
         }
 
@@ -45,7 +46,9 @@ const docs = defineCommand({
 
         if (girPath.length === 0) {
             throw new Error(
-                "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
+                "No GIR search paths available. Install gobject-introspection " +
+                "(Linux: `sudo dnf install gobject-introspection-devel` or " +
+                "`sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.",
             );
         }
 
@@ -71,7 +74,8 @@ const docs = defineCommand({
         const count = namespaces.reduce((total, namespace) => total + namespace.elements.length, 0);
 
         info(
-            `docs: wrote ${count} element pages across ${namespaces.length} namespaces to ${outDir} in ${Date.now() - startedAt}ms`,
+            `docs: wrote ${String(count)} element pages across ${String(namespaces.length)} namespaces ` +
+            `to ${outDir} in ${String(Date.now() - startedAt)}ms`,
         );
     },
 });

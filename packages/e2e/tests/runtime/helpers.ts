@@ -2,7 +2,7 @@ import { type Type, typeIsA } from "@gtkx/gi/gobject";
 import { type ExternalObject, getType, type Handle } from "@gtkx/native";
 import { TYPE_INVALID } from "@gtkx/runtime";
 
-function instanceIsA(handle: ExternalObject<Handle>, gtype: Type): boolean {
+function isInstanceOfType(handle: ExternalObject<Handle>, gtype: Type): boolean {
     const instanceGtype: Type = getType(handle);
 
     if (instanceGtype === TYPE_INVALID) {
@@ -12,4 +12,4 @@ function instanceIsA(handle: ExternalObject<Handle>, gtype: Type): boolean {
     return typeIsA(instanceGtype, gtype);
 }
 
-export { instanceIsA };
+export { isInstanceOfType };

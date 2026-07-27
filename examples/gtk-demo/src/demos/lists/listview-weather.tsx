@@ -14,6 +14,18 @@ type WeatherInfo = {
     weatherType: WeatherType;
 };
 
+type WeatherCode = {
+    code: string;
+    weatherType: WeatherType;
+};
+
+type WeatherState = {
+    data: WeatherInfo[];
+    timestamp: number;
+    temperature: number;
+    weatherType: WeatherType;
+};
+
 const WEATHER_ICONS: Record<WeatherType, string> = {
     clear: "weather-clear-symbolic",
     "few-clouds": "weather-few-clouds-symbolic",
@@ -25,92 +37,165 @@ const WEATHER_ICONS: Record<WeatherType, string> = {
     storm: "weather-storm-symbolic",
 };
 
+const PRECIPITATION_CODES: WeatherCode[] = [
+    { code: "SN", weatherType: "snow" },
+    { code: "TS", weatherType: "storm" },
+    { code: "DZ", weatherType: "showers-scattered" },
+    { code: "SH", weatherType: "showers" },
+    { code: "RA", weatherType: "showers" },
+    { code: "FG", weatherType: "fog" },
+];
+
+const CLOUD_CODES: WeatherCode[] = [
+    { code: "OVC", weatherType: "overcast" },
+    { code: "BKN", weatherType: "few-clouds" },
+    { code: "SCT", weatherType: "few-clouds" },
+    { code: "VV", weatherType: "fog" },
+];
+
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
-const parseWeatherType = (clouds: string, precip: string, fallback: WeatherType): WeatherType => {
-    if (precip.includes("SN")) return "snow";
-    if (precip.includes("TS")) return "storm";
-    if (precip.includes("DZ")) return "showers-scattered";
-    if (precip.includes("SH") || precip.includes("RA")) return "showers";
-    if (precip.includes("FG")) return "fog";
-
-    if (clouds === "M" || clouds === "") return fallback;
-
-    if (clouds.includes("OVC")) return "overcast";
-    if (clouds.includes("BKN")) return "few-clouds";
-    if (clouds.includes("SCT")) return "few-clouds";
-    if (clouds.includes("VV")) return "fog";
-
-    return "clear";
+const listviewWeatherDemo: Demo = {
+    id: "listview-weather",
+    title: "Lists/Weather",
+    description:
+        "This demo shows a few of the rarer features of GtkListView and how they can be used to display " +
+        "weather information.\n\nThe hourly weather info uses a horizontal listview. This is easy to achieve " +
+        "because GtkListView implements the GtkOrientable interface. To make the items in the list stand out " +
+        "more, the listview uses separators.\n\nA GtkNoSelectionModel is used to make sure no item in the list " +
+        "can be selected. All other interactions with the items is still possible.\n\nThe dataset used here " +
+        "has 70 000 items.",
+    keywords: [],
+    component: ListViewWeatherDemo,
+    sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 400,
 };
 
-const parseTimestamp = (dateStr: string): number => {
-    const withSeconds = `${dateStr}:00`;
-    return new Date(`${withSeconds.replace(" ", "T")}Z`).getTime();
-};
-
-const formatHour = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const hours = date.getUTCHours().toString().padStart(2, "0");
-    const minutes = date.getUTCMinutes().toString().padStart(2, "0");
-    return `${hours}:${minutes}`;
-};
-
-const parseTemperature = (s: string, fallback: number): number => {
-    const value = Number.parseFloat(s);
-    if (Number.isNaN(value)) return fallback;
-    return value;
-};
-
-const parseWeatherData = (): WeatherInfo[] => {
-    const data: WeatherInfo[] = [];
-    const lines = rawWeatherData.split("\n");
-
-    let currentTimestamp = Date.UTC(2011, 0, 1, 0, 0, 0);
-    let currentTemp = 0;
-    let currentWeather: WeatherType = "clear";
-    let idx = 0;
-
-    data.push({
-        id: `weather-${idx++}`,
-        hour: formatHour(currentTimestamp),
-        temperature: currentTemp,
-        weatherType: currentWeather,
-    });
-
-    for (const line of lines) {
-        if (line.trim() === "") continue;
-
-        const fields = line.split(",");
-        if (fields.length < 4) continue;
-
-        const dateMs = parseTimestamp(fields[0] ?? "");
-
-        while (dateMs - currentTimestamp > THIRTY_MINUTES_MS) {
-            currentTimestamp += ONE_HOUR_MS;
-            data.push({
-                id: `weather-${idx++}`,
-                hour: formatHour(currentTimestamp),
-                temperature: currentTemp,
-                weatherType: currentWeather,
-            });
-        }
-
-        currentTemp = parseTemperature(fields[1] ?? "", currentTemp);
-        currentWeather = parseWeatherType(fields[2] ?? "", fields[3] ?? "", currentWeather);
-
-        const last = data.at(-1);
-        if (last) {
-            last.temperature = currentTemp;
-            last.weatherType = currentWeather;
+function matchWeatherCode(source: string, codes: WeatherCode[]): WeatherType | null {
+    for (const { code, weatherType } of codes) {
+        if (source.includes(code)) {
+            return weatherType;
         }
     }
 
-    return data;
-};
+    return null;
+}
 
-const ListViewWeatherDemo = () => {
+function parseWeatherType(clouds: string, precip: string, fallback: WeatherType): WeatherType {
+    const precipitation = matchWeatherCode(precip, PRECIPITATION_CODES);
+
+    if (precipitation !== null) {
+        return precipitation;
+    }
+
+    if (clouds === "M" || clouds === "") {
+        return fallback;
+    }
+
+    return matchWeatherCode(clouds, CLOUD_CODES) ?? "clear";
+}
+
+function parseTimestamp(dateStr: string): number {
+    const withSeconds = `${dateStr}:00`;
+
+    return new Date(`${withSeconds.replace(" ", "T")}Z`).getTime();
+}
+
+function formatHour(timestamp: number): string {
+    const date = new Date(timestamp);
+    const hours = date.getUTCHours().toString().padStart(2, "0");
+    const minutes = date.getUTCMinutes().toString().padStart(2, "0");
+
+    return `${hours}:${minutes}`;
+}
+
+function parseTemperature(field: string, fallback: number): number {
+    const value = Number(field);
+
+    if (field.trim() === "" || Number.isNaN(value)) {
+        return fallback;
+    }
+
+    return value;
+}
+
+function pushWeatherEntry(state: WeatherState) {
+    state.data.push({
+        id: `weather-${String(state.data.length)}`,
+        hour: formatHour(state.timestamp),
+        temperature: state.temperature,
+        weatherType: state.weatherType,
+    });
+}
+
+function fillWeatherGap(state: WeatherState, dateMs: number) {
+    while (dateMs - state.timestamp > THIRTY_MINUTES_MS) {
+        state.timestamp += ONE_HOUR_MS;
+        pushWeatherEntry(state);
+    }
+}
+
+function updateLastWeatherEntry(state: WeatherState) {
+    const last = state.data.at(-1);
+
+    if (last) {
+        last.temperature = state.temperature;
+        last.weatherType = state.weatherType;
+    }
+}
+
+function applyWeatherLine(state: WeatherState, line: string) {
+    const fields = line.split(",");
+
+    if (fields.length < 4) {
+        return;
+    }
+
+    const [dateField = "", temperatureField = "", cloudField = "", precipitationField = ""] = fields;
+    fillWeatherGap(state, parseTimestamp(dateField));
+    state.temperature = parseTemperature(temperatureField, state.temperature);
+    state.weatherType = parseWeatherType(cloudField, precipitationField, state.weatherType);
+    updateLastWeatherEntry(state);
+}
+
+function parseWeatherData(): WeatherInfo[] {
+    const state: WeatherState = {
+        data: [],
+        timestamp: Date.UTC(2011, 0, 1, 0, 0, 0),
+        temperature: 0,
+        weatherType: "clear",
+    };
+
+    pushWeatherEntry(state);
+
+    for (const line of rawWeatherData.split("\n")) {
+        applyWeatherLine(state, line);
+    }
+
+    return state.data;
+}
+
+function renderWeatherItem({ item }: { item: WeatherInfo }) {
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
+            <GtkLabel widthChars={5} valign={Gtk.Align.START}>
+                {item.hour}
+            </GtkLabel>
+            <GtkImage
+                iconName={WEATHER_ICONS[item.weatherType]}
+                iconSize={Gtk.IconSize.LARGE}
+                valign={Gtk.Align.START}
+            />
+            <GtkLabel widthChars={4} vexpand valign={Gtk.Align.END}>
+                {`${String(Math.round(item.temperature))}°`}
+            </GtkLabel>
+        </GtkBox>
+    );
+}
+
+function ListViewWeatherDemo() {
     const weatherData = parseWeatherData();
 
     return (
@@ -122,35 +207,11 @@ const ListViewWeatherDemo = () => {
                 orientation={Gtk.Orientation.HORIZONTAL}
                 showSeparators
                 selectionMode={Gtk.SelectionMode.NONE}
-                renderItem={({ item }: { item: WeatherInfo }) => (
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
-                        <GtkLabel widthChars={5} valign={Gtk.Align.START}>
-                            {item.hour}
-                        </GtkLabel>
-                        <GtkImage
-                            iconName={WEATHER_ICONS[item.weatherType]}
-                            iconSize={Gtk.IconSize.LARGE}
-                            valign={Gtk.Align.START}
-                        />
-                        <GtkLabel widthChars={4} vexpand valign={Gtk.Align.END}>
-                            {`${Math.round(item.temperature)}°`}
-                        </GtkLabel>
-                    </GtkBox>
-                )}
+                renderItem={renderWeatherItem}
                 items={weatherData.map((info) => ({ id: info.id, value: info }))}
             />
         </GtkScrolledWindow>
     );
-};
+}
 
-export const listviewWeatherDemo: Demo = {
-    id: "listview-weather",
-    title: "Lists/Weather",
-    description:
-        "This demo shows a few of the rarer features of GtkListView and how they can be used to display weather information.\n\nThe hourly weather info uses a horizontal listview. This is easy to achieve because GtkListView implements the GtkOrientable interface. To make the items in the list stand out more, the listview uses separators.\n\nA GtkNoSelectionModel is used to make sure no item in the list can be selected. All other interactions with the items is still possible.\n\nThe dataset used here has 70 000 items.",
-    keywords: [],
-    component: ListViewWeatherDemo,
-    sourceCode,
-    defaultWidth: 600,
-    defaultHeight: 400,
-};
+export { listviewWeatherDemo };

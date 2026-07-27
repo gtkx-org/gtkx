@@ -60,7 +60,12 @@ type SocketWatch = {
 
 const DEFAULT_HEADLESS_SIZE = "1024x768";
 const DEFAULT_HEADLESS_COMPOSITOR: CompositorId = "weston";
-let westonFakeSeatSupport: boolean | undefined;
+
+const BUS_CONFIG_DOCTYPE =
+    '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" ' +
+    '"https://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">';
+
+const hasWestonFakeSeat = createWestonFakeSeatProbe();
 
 const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
     sway: {
@@ -101,7 +106,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
                 [
                     "--backend=headless",
                     "--renderer=pixman",
-                    ...(westonSupportsFakeSeat() ? ["--fake-seat"] : []),
+                    ...(hasWestonFakeSeat() ? ["--fake-seat"] : []),
                     `--width=${width}`,
                     `--height=${height}`,
                     "--socket=wayland-0",
@@ -156,14 +161,18 @@ const spawnWithParentDeathSignal = (command: string, args: string[], stdio: Stdi
     return child;
 };
 
-const westonSupportsFakeSeat = (): boolean => {
-    if (westonFakeSeatSupport === undefined) {
-        const help = spawnSync(resolveExecutable("weston"), ["--help"], { encoding: "utf8" });
-        westonFakeSeatSupport = `${help.stdout}${help.stderr}`.includes("--fake-seat");
-    }
+function createWestonFakeSeatProbe(): () => boolean {
+    let isSupported: boolean | undefined;
 
-    return westonFakeSeatSupport;
-};
+    return () => {
+        if (isSupported === undefined) {
+            const help = spawnSync(resolveExecutable("weston"), ["--help"], { encoding: "utf8" });
+            isSupported = `${help.stdout}${help.stderr}`.includes("--fake-seat");
+        }
+
+        return isSupported;
+    };
+}
 
 const isCompositorId = (value: string): value is CompositorId => Object.hasOwn(compositorRegistry, value);
 
@@ -195,17 +204,19 @@ const startCompositor = (runtimeDir: string, options: HeadlessOptions, env: EnvS
 const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
     writeFileSync(
         busConfigPath,
-        `<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
-<busconfig>
-  <type>session</type>
-  <listen>unix:path=${busSocketPath}</listen>
-  <auth>EXTERNAL</auth>
-  <policy context="default">
-    <allow send_destination="*" eavesdrop="true"/>
-    <allow eavesdrop="true"/>
-    <allow own="*"/>
-  </policy>
-</busconfig>`,
+        [
+            BUS_CONFIG_DOCTYPE,
+            "<busconfig>",
+            "  <type>session</type>",
+            `  <listen>unix:path=${busSocketPath}</listen>`,
+            "  <auth>EXTERNAL</auth>",
+            '  <policy context="default">',
+            '    <allow send_destination="*" eavesdrop="true"/>',
+            '    <allow eavesdrop="true"/>',
+            '    <allow own="*"/>',
+            "  </policy>",
+            "</busconfig>",
+        ].join("\n"),
     );
 };
 
@@ -242,7 +253,7 @@ const trackChild = (child: ChildProcess, handlers: ChildHandlers): (() => void) 
 };
 
 const exitedMessage = (label: string, path: string, code: number | null, signal: NodeJS.Signals | null): string =>
-    `${label} exited (code ${code ?? "null"}, signal ${signal ?? "null"}) before ${path} appeared`;
+    `${label} exited (code ${String(code)}, signal ${signal ?? "null"}) before ${path} appeared`;
 
 const runCleanups = (cleanups: (() => void)[]): void => {
     for (const cleanup of cleanups) {
@@ -262,7 +273,7 @@ const pollForPath = (path: string, onFound: () => void): NodeJS.Timeout =>
 const stderrSuffix = (child: ChildProcess | undefined, stderr: StderrCapture): string =>
     child ? `\n${stderr.read()}` : "";
 
-const listenForAbort = (signal: AbortSignal | undefined, onAbort: () => void, cleanups: (() => void)[]): boolean => {
+const hasAlreadyAborted = (signal: AbortSignal | undefined, onAbort: () => void, cleanups: (() => void)[]): boolean => {
     if (signal === undefined) {
         return false;
     }
@@ -284,7 +295,10 @@ const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void =
     const { label, timeout = 15_000, child, signal } = options;
     const stderr = captureStderr(child);
     const cleanups: (() => void)[] = [stderr.stop];
-    const stop = (): void => runCleanups(cleanups);
+
+    const stop = (): void => {
+        runCleanups(cleanups);
+    };
 
     const fail = (message: string): void => {
         stop();
@@ -309,7 +323,7 @@ const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void =
     });
 
     const timer = setTimeout(() => {
-        fail(`${label} did not become available within ${timeout}ms${stderrSuffix(child, stderr)}`);
+        fail(`${label} did not become available within ${String(timeout)}ms${stderrSuffix(child, stderr)}`);
     }, timeout);
 
     cleanups.push(() => {
@@ -321,7 +335,7 @@ const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void =
         cleanups.push(trackChild(child, { exit: onExit, error: onError }));
     }
 
-    if (listenForAbort(signal, onAbort, cleanups)) {
+    if (hasAlreadyAborted(signal, onAbort, cleanups)) {
         onAbort();
     }
 };
@@ -338,7 +352,7 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): string[]
     if (stderr !== null) {
         stderr.setEncoding("utf8");
         const logStream = createWriteStream(logPath);
-        logStream.on("error", () => {});
+        logStream.on("error", (): void => undefined);
 
         stderr.on("data", (chunk: string) => {
             captured.push(chunk);
@@ -355,7 +369,7 @@ const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: str
     }
 
     process.stderr.write(
-        `[gtkx] headless compositor died before teardown (code ${child.exitCode ?? "null"}, ` +
+        `[gtkx] headless compositor died before teardown (code ${String(child.exitCode)}, ` +
         `signal ${child.signalCode ?? "null"}); the worker's Wayland client was severed.\n${capturedStderr.join("")}`,
     );
 };
@@ -366,14 +380,14 @@ const makeTeardown = (
     stopNotifications: () => void,
     removeRuntime: () => void,
 ): (() => void) => {
-    let torndown = false;
+    let isTorndown = false;
 
     return (): void => {
-        if (torndown) {
+        if (isTorndown) {
             return;
         }
 
-        torndown = true;
+        isTorndown = true;
         reportUnexpectedCompositorExit(compositor, capturedStderr);
         stopNotifications();
         removeRuntime();

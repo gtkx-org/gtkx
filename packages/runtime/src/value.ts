@@ -21,6 +21,7 @@ import { toNative } from "./native-value.js";
 import { getHandle, getWrapperClass, wrapHandle } from "./registry.js";
 import {
     getStrvType,
+    isResolvableDescriptor,
     resolveBoxedType,
     resolveDescriptorType,
     resolveFundamentalType,
@@ -228,6 +229,10 @@ const resolveValueType = (descriptor: Descriptor): ValueType => {
         return plain;
     }
 
+    if (!isResolvableDescriptor(descriptor)) {
+        throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
+    }
+
     switch (descriptor.kind) {
         case "enum":
         case "flags": {
@@ -241,9 +246,6 @@ const resolveValueType = (descriptor: Descriptor): ValueType => {
         }
         case "array": {
             return arrayValueType(descriptor);
-        }
-        default: {
-            throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
         }
     }
 };

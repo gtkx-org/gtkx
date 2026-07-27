@@ -2,11 +2,21 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
 import { BIGUINT64, callArgs, GOBJECT_LIB, typeFromName } from "../helpers/native-utils.js";
+import { createTypeNameFactory } from "../helpers/unique-name.js";
 
 const G_TYPE_INVALID_NAME = "ThisGTypeDefinitelyDoesNotExist";
-let uniqueSuffix = 0;
+const uniqueName = createTypeNameFactory("NativeTest");
 
-const uniqueName = (prefix: string): string => `${prefix}NativeTest${process.pid}_${++uniqueSuffix}`;
+const queryTypeIsA = (gtype: bigint, target: bigint): unknown =>
+    callArgs(
+        GOBJECT_LIB,
+        "g_type_is_a",
+        [
+            { type: BIGUINT64, value: gtype },
+            { type: BIGUINT64, value: target },
+        ],
+        { kind: "boolean" },
+    );
 
 describe("registerClass", () => {
     it("registers a new GType derived from GObject", () => {
@@ -36,24 +46,9 @@ describe("registerClass", () => {
         const buildableGtype = typeFromName("GtkBuildable");
         expect(widgetGtype).toBeGreaterThan(0);
         expect(buildableGtype).toBeGreaterThan(0);
-
-        const newGtype = registerClass(name, widgetGtype, {
-            interfaces: [{ type: buildableGtype, vfuncs: [] }],
-        });
-
+        const newGtype = registerClass(name, widgetGtype, { interfaces: [{ type: buildableGtype, vfuncs: [] }] });
         expect(newGtype).toBeGreaterThan(0);
-
-        const stillImplementsBuildable = callArgs(
-            GOBJECT_LIB,
-            "g_type_is_a",
-            [
-                { type: BIGUINT64, value: newGtype },
-                { type: BIGUINT64, value: buildableGtype },
-            ],
-            { kind: "boolean" },
-        );
-
-        expect(stillImplementsBuildable).toBe(true);
+        expect(queryTypeIsA(newGtype, buildableGtype)).toBe(true);
     });
 
     it("rejects a non-interface type in the interfaces option without registering", () => {

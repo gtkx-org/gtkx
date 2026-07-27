@@ -6,13 +6,12 @@ import { rootElement, useParentWindow } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
+import { createAppIdFactory } from "./helpers/unique-name.js";
 
 type ProbeProps = { slot: string };
 
-let nextAppId = 0;
 const captured: Record<string, Gtk.Window | null> = {};
-
-const uniqueAppId = (): string => `org.gtkx.useparentwindowtest${nextAppId++}`;
+const uniqueAppId = createAppIdFactory("org.gtkx.useparentwindowtest");
 
 const Probe = ({ slot }: ProbeProps) => {
     const parentWindow = useParentWindow();

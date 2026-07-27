@@ -13,7 +13,7 @@ type GlSubset = {
     enums: Map<string, string>;
 };
 
-const blockApplies = (block: GlInterfaceBlock, selection: GlSelection): boolean =>
+const isBlockApplicable = (block: GlInterfaceBlock, selection: GlSelection): boolean =>
     block.profile === undefined || block.profile === selection.profile;
 
 const addMissing = (target: Map<string, string>, names: string[], value: string): void => {
@@ -31,7 +31,7 @@ const applyRequires = (
     enums: Map<string, string>,
 ): void => {
     for (const block of feature.requires) {
-        if (!blockApplies(block, selection)) {
+        if (!isBlockApplicable(block, selection)) {
             continue;
         }
 
@@ -57,7 +57,7 @@ const applyRemoves = (
     enums: Map<string, string>,
 ): void => {
     for (const block of feature.removes) {
-        if (!blockApplies(block, selection)) {
+        if (!isBlockApplicable(block, selection)) {
             continue;
         }
 

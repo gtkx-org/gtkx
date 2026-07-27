@@ -12,6 +12,34 @@ type GestureState = {
     longPressed: boolean;
 };
 
+type DrawGesturesArgs = {
+    width: number;
+    height: number;
+    state: GestureState;
+    rotate: Gtk.GestureRotate | null;
+    zoom: Gtk.GestureZoom | null;
+};
+
+type GestureControllersProps = {
+    handlers: ReturnType<typeof useGesturesHandlers>;
+    queueDraw: () => void;
+    setRotate: (gesture: Gtk.GestureRotate | null) => void;
+    setZoom: (gesture: Gtk.GestureZoom | null) => void;
+};
+
+const gesturesDemo: Demo = {
+    id: "gestures",
+    title: "Gestures",
+    description:
+        "Perform gestures on touchscreens and other input devices. This demo reacts to long presses and " +
+        "swipes from all devices, plus multi-touch rotate and zoom gestures.",
+    keywords: ["GtkGesture"],
+    component: GesturesDemo,
+    sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 400,
+};
+
 function useGesturesHandlers(gestureStateRef: React.RefObject<GestureState>, queueDraw: () => void) {
     const handleSwipe = (velocityX: number, velocityY: number) => {
         gestureStateRef.current.swipeX = velocityX / 10;
@@ -32,25 +60,24 @@ function useGesturesHandlers(gestureStateRef: React.RefObject<GestureState>, que
     return { handleSwipe, handleLongPressPressed, handleLongPressEnd };
 }
 
-type DrawGesturesArgs = {
-    width: number;
-    height: number;
-    state: GestureState;
-    rotate: Gtk.GestureRotate | null;
-    zoom: Gtk.GestureZoom | null;
-};
-
 const drawGestures = (cr: Context, args: DrawGesturesArgs) => {
     const { width, height, state, rotate, zoom } = args;
     drawSwipe(cr, width, height, state);
+
     if (rotate?.isRecognized() || zoom?.isRecognized()) {
         drawRotateZoom(cr, { width, height, rotate, zoom });
     }
-    if (state.longPressed) drawLongPress(cr, width, height);
+
+    if (state.longPressed) {
+        drawLongPress(cr, width, height);
+    }
 };
 
 const drawSwipe = (cr: Context, width: number, height: number, state: GestureState) => {
-    if (state.swipeX === 0 && state.swipeY === 0) return;
+    if (state.swipeX === 0 && state.swipeY === 0) {
+        return;
+    }
+
     cr.save();
     cr.setLineWidth(6);
     cr.moveTo(width / 2, height / 2);
@@ -72,8 +99,8 @@ const drawRotateZoom = (
     const rectSize = 200;
     let centerX = width / 2;
     let centerY = height / 2;
-
     const center = zoom?.getBoundingBoxCenter();
+
     if (center?.[0]) {
         centerX = center[1];
         centerY = center[2];
@@ -81,17 +108,14 @@ const drawRotateZoom = (
 
     const angle = rotate?.getAngleDelta() ?? 0;
     const scale = zoom?.getScaleDelta() ?? 1;
-
     cr.save();
     cr.translate(centerX, centerY);
     cr.rotate(angle);
     cr.scale(scale, scale);
-
     const pattern = Pattern.createLinear(-rectSize / 2, 0, rectSize, 0);
     pattern.addColorStopRgb(0, 0, 0, 1);
     pattern.addColorStopRgb(1, 1, 0, 0);
     cr.setSource(pattern);
-
     cr.rectangle(-rectSize / 2, -rectSize / 2, rectSize, rectSize);
     cr.fill();
     cr.restore();
@@ -105,14 +129,39 @@ const drawLongPress = (cr: Context, width: number, height: number) => {
     cr.restore();
 };
 
-const GesturesDemo = () => {
+const GestureControllers = ({ handlers, queueDraw, setRotate, setZoom }: GestureControllersProps) => (
+    <>
+        <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handlers.handleSwipe} />
+        <GtkGestureSwipe
+            propagationPhase={Gtk.PropagationPhase.BUBBLE}
+            nPoints={3}
+            onBegin={(_sequence, self) => {
+                if (_sequence !== null) {
+                    self.setState(Gtk.EventSequenceState.DENIED);
+                }
+            }}
+            onSwipe={handlers.handleSwipe}
+        />
+        <GtkGestureLongPress
+            propagationPhase={Gtk.PropagationPhase.BUBBLE}
+            onPressed={handlers.handleLongPressPressed}
+            onEnd={handlers.handleLongPressEnd}
+        />
+        <GtkGestureRotate
+            propagationPhase={Gtk.PropagationPhase.BUBBLE}
+            ref={setRotate}
+            onAngleChanged={queueDraw}
+        />
+        <GtkGestureZoom propagationPhase={Gtk.PropagationPhase.BUBBLE} ref={setZoom} onScaleChanged={queueDraw} />
+    </>
+);
+
+function GesturesDemo() {
     const gestureStateRef = useRef<GestureState>({ swipeX: 0, swipeY: 0, longPressed: false });
     const rotateRef = useRef<Gtk.GestureRotate | null>(null);
     const zoomRef = useRef<Gtk.GestureZoom | null>(null);
     const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
-
     const queueDraw = () => drawingAreaRef.current?.queueDraw();
-
     const handlers = useGesturesHandlers(gestureStateRef, queueDraw);
 
     const drawFunc = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -133,49 +182,19 @@ const GesturesDemo = () => {
             contentHeight={400}
             drawFunc={drawFunc}
             controllers={(
-                <>
-                    <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handlers.handleSwipe} />
-                    <GtkGestureSwipe
-                        propagationPhase={Gtk.PropagationPhase.BUBBLE}
-                        nPoints={3}
-                        onBegin={(_sequence, self) => {
-                            if (_sequence !== null) self.setState(Gtk.EventSequenceState.DENIED);
-                        }}
-                        onSwipe={handlers.handleSwipe}
-                    />
-                    <GtkGestureLongPress
-                        propagationPhase={Gtk.PropagationPhase.BUBBLE}
-                        onPressed={handlers.handleLongPressPressed}
-                        onEnd={handlers.handleLongPressEnd}
-                    />
-                    <GtkGestureRotate
-                        propagationPhase={Gtk.PropagationPhase.BUBBLE}
-                        ref={(g: Gtk.GestureRotate | null) => {
-                            rotateRef.current = g;
-                        }}
-                        onAngleChanged={queueDraw}
-                    />
-                    <GtkGestureZoom
-                        propagationPhase={Gtk.PropagationPhase.BUBBLE}
-                        ref={(g: Gtk.GestureZoom | null) => {
-                            zoomRef.current = g;
-                        }}
-                        onScaleChanged={queueDraw}
-                    />
-                </>
+                <GestureControllers
+                    handlers={handlers}
+                    queueDraw={queueDraw}
+                    setRotate={(gesture) => {
+                        rotateRef.current = gesture;
+                    }}
+                    setZoom={(gesture) => {
+                        zoomRef.current = gesture;
+                    }}
+                />
             )}
         />
     );
-};
+}
 
-export const gesturesDemo: Demo = {
-    id: "gestures",
-    title: "Gestures",
-    description:
-        "Perform gestures on touchscreens and other input devices. This demo reacts to long presses and swipes from all devices, plus multi-touch rotate and zoom gestures.",
-    keywords: ["GtkGesture"],
-    component: GesturesDemo,
-    sourceCode,
-    defaultWidth: 400,
-    defaultHeight: 400,
-};
+export { gesturesDemo };

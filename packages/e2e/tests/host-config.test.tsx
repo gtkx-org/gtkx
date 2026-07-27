@@ -2,15 +2,14 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { render, screen, within } from "@gtkx/testing";
+import { render, screen, waitFor, within } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
-
-let nextAppId = 0;
-
-const uniqueAppId = (): string => `org.gtkx.hostconfigtest${nextAppId++}`;
-
 import { renderChildren } from "./helpers/render-children.js";
+import { createAppIdFactory } from "./helpers/unique-name.js";
+
+const uniqueAppId = createAppIdFactory("org.gtkx.hostconfigtest");
+const TEXT_SEGMENTS = ["First", "Second", "Third"];
 
 const labelTexts = (box: Gtk.Box): string[] =>
     within(box)
@@ -32,32 +31,6 @@ const renderOrderedLabelBox = async () => {
 
     return { boxRef, rerender };
 };
-
-describe("host-config - children (1)", () => {
-    describe("adding children", () => {
-        it("appends child to appendable widget (Box)", async () => {
-            await render(
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel>Child</GtkLabel>
-                </GtkBox>,
-            );
-
-            const label = await screen.findByText("Child");
-            expect(label).toBeDefined();
-        });
-
-        it("sets child on single-child widget", async () => {
-            await render(
-                <GtkFrame>
-                    <GtkLabel>Single Child</GtkLabel>
-                </GtkFrame>,
-            );
-
-            const label = await screen.findByText("Single Child");
-            expect(label).toBeDefined();
-        });
-    });
-});
 
 function RemovableChildBox({ showChild }: { showChild: boolean }) {
     return (
@@ -84,6 +57,32 @@ function OptionalTextBox({ showText }: { showText: boolean }) {
         </GtkBox>
     );
 }
+
+describe("host-config - children (1)", () => {
+    describe("adding children", () => {
+        it("appends child to appendable widget (Box)", async () => {
+            await render(
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel>Child</GtkLabel>
+                </GtkBox>,
+            );
+
+            const label = await screen.findByText("Child");
+            expect(label).toBeDefined();
+        });
+
+        it("sets child on single-child widget", async () => {
+            await render(
+                <GtkFrame>
+                    <GtkLabel>Single Child</GtkLabel>
+                </GtkFrame>,
+            );
+
+            const label = await screen.findByText("Single Child");
+            expect(label).toBeDefined();
+        });
+    });
+});
 
 describe("host-config - children (2)", () => {
     describe("removing children", () => {
@@ -132,7 +131,7 @@ describe("host-config - children (4)", () => {
                 { container: rootElement },
             );
 
-            await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Root Container" });
+            expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Root Container" })).toBeDefined();
         });
 
         it("removes root level window", async () => {
@@ -147,8 +146,12 @@ describe("host-config - children (4)", () => {
             }
 
             const { rerender } = await render(<App showWindow={true} />, { container: rootElement });
-            await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Window" });
+            expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Window" })).toBeDefined();
             await rerender(<App showWindow={false} />);
+
+            await waitFor(() => {
+                expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Window" })).toBeNull();
+            });
         });
 
         it("inserts root level window before sibling", async () => {
@@ -271,7 +274,7 @@ describe("host-config - text instances (1)", () => {
 
         await render(
             <GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL}>
-                {""}
+
             </GtkBox>,
         );
 
@@ -301,9 +304,9 @@ describe("host-config - text instances (2)", () => {
     it("concatenates multiple text children in order", async () => {
         await render(
             <GtkLabel>
-                {"First"}
-                {"Second"}
-                {"Third"}
+                {TEXT_SEGMENTS[0]}
+                {TEXT_SEGMENTS[1]}
+                {TEXT_SEGMENTS[2]}
             </GtkLabel>,
         );
 

@@ -20,7 +20,8 @@ fn make_gslist_one() -> *mut glib::ffi::GSList {
 }
 
 fn make_g_array() -> *mut glib::ffi::GArray {
-    unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) }
+    let element_size = u32::try_from(size_of::<i32>()).expect("i32 size fits in a guint");
+    unsafe { glib::ffi::g_array_sized_new(0, 0, element_size, 0) }
 }
 
 fn make_g_byte_array() -> *mut glib::ffi::GByteArray {
@@ -40,10 +41,10 @@ fn make_hash_table() -> *mut glib::ffi::GHashTable {
 
 fn glist_storage(ptr: *mut glib::ffi::GList, should_free: bool) -> StashStorage {
     StashStorage::new(
-        ptr as *mut c_void,
+        ptr.cast::<c_void>(),
         StashData::List(ListData {
-            ops: &native::ffi::GLIST_OPS,
-            ptr: ptr as *mut c_void,
+            ops: &GLIST_OPS,
+            ptr: ptr.cast::<c_void>(),
             should_free,
             payload: ListPayload::Handles(Vec::new()),
         }),
@@ -52,10 +53,10 @@ fn glist_storage(ptr: *mut glib::ffi::GList, should_free: bool) -> StashStorage 
 
 fn gslist_storage(ptr: *mut glib::ffi::GSList, should_free: bool) -> StashStorage {
     StashStorage::new(
-        ptr as *mut c_void,
+        ptr.cast::<c_void>(),
         StashData::List(ListData {
-            ops: &native::ffi::GSLIST_OPS,
-            ptr: ptr as *mut c_void,
+            ops: &GSLIST_OPS,
+            ptr: ptr.cast::<c_void>(),
             should_free,
             payload: ListPayload::Handles(Vec::new()),
         }),
@@ -64,7 +65,7 @@ fn gslist_storage(ptr: *mut glib::ffi::GSList, should_free: bool) -> StashStorag
 
 fn garray_storage(ptr: *mut glib::ffi::GArray, should_free: bool) -> StashStorage {
     StashStorage::new(
-        ptr as *mut c_void,
+        ptr.cast::<c_void>(),
         StashData::GArray(GArrayData { ptr, should_free }),
     )
 }
@@ -72,14 +73,14 @@ fn garray_storage(ptr: *mut glib::ffi::GArray, should_free: bool) -> StashStorag
 fn gbytearray_storage(ptr: *mut glib::ffi::GByteArray, should_free: bool) -> StashStorage {
     let owned: Option<glib::ByteArray> =
         should_free.then(|| unsafe { glib::translate::from_glib_full(ptr) });
-    StashStorage::new(ptr as *mut c_void, StashData::GByteArray(owned))
+    StashStorage::new(ptr.cast::<c_void>(), StashData::GByteArray(owned))
 }
 
 fn hashtable_storage(handle: *mut glib::ffi::GHashTable, should_free: bool) -> StashStorage {
     if should_free {
-        StashStorage::new(handle as *mut c_void, StashData::HashTable)
+        StashStorage::new(handle.cast::<c_void>(), StashData::HashTable)
     } else {
-        StashStorage::unit(handle as *mut c_void)
+        StashStorage::unit(handle.cast::<c_void>())
     }
 }
 
@@ -90,10 +91,10 @@ fn string_glist_storage(
     items_duped: bool,
 ) -> StashStorage {
     StashStorage::new(
-        ptr as *mut c_void,
+        ptr.cast::<c_void>(),
         StashData::List(ListData {
-            ops: &native::ffi::GLIST_OPS,
-            ptr: ptr as *mut c_void,
+            ops: &GLIST_OPS,
+            ptr: ptr.cast::<c_void>(),
             should_free,
             payload: ListPayload::Strings {
                 strings,
@@ -110,10 +111,10 @@ fn string_gslist_storage(
     items_duped: bool,
 ) -> StashStorage {
     StashStorage::new(
-        ptr as *mut c_void,
+        ptr.cast::<c_void>(),
         StashData::List(ListData {
-            ops: &native::ffi::GSLIST_OPS,
-            ptr: ptr as *mut c_void,
+            ops: &GSLIST_OPS,
+            ptr: ptr.cast::<c_void>(),
             should_free,
             payload: ListPayload::Strings {
                 strings,
@@ -261,7 +262,7 @@ fn glist_storage_null_ptr_safe_on_drop() {
     let _storage = StashStorage::new(
         std::ptr::null_mut(),
         StashData::List(ListData {
-            ops: &native::ffi::GLIST_OPS,
+            ops: &GLIST_OPS,
             ptr: std::ptr::null_mut(),
             should_free: true,
             payload: ListPayload::Handles(Vec::new()),
@@ -295,7 +296,7 @@ fn gslist_storage_null_ptr_safe_on_drop() {
     let _storage = StashStorage::new(
         std::ptr::null_mut(),
         StashData::List(ListData {
-            ops: &native::ffi::GSLIST_OPS,
+            ops: &GSLIST_OPS,
             ptr: std::ptr::null_mut(),
             should_free: true,
             payload: ListPayload::Handles(Vec::new()),
@@ -374,7 +375,7 @@ fn hashtable_storage_keeps_when_not_freed() {
 
 fn string_list_element_ptr(s: &CString, dup: bool) -> *mut c_void {
     if dup {
-        unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
+        unsafe { glib::ffi::g_strdup(s.as_ptr()).cast::<c_void>() }
     } else {
         s.as_ptr() as *mut c_void
     }
@@ -385,7 +386,7 @@ fn build_string_glist(strings: &[CString], dup: bool) -> *mut glib::ffi::GList {
         .iter()
         .map(|s| string_list_element_ptr(s, dup))
         .collect();
-    build_list(&GLIST_OPS, &ptrs) as *mut glib::ffi::GList
+    build_list(&GLIST_OPS, &ptrs).cast::<glib::ffi::GList>()
 }
 
 #[test]
@@ -433,7 +434,7 @@ fn build_string_gslist(strings: &[CString], dup: bool) -> *mut glib::ffi::GSList
         .iter()
         .map(|s| string_list_element_ptr(s, dup))
         .collect();
-    build_list(&GSLIST_OPS, &ptrs) as *mut glib::ffi::GSList
+    build_list(&GSLIST_OPS, &ptrs).cast::<glib::ffi::GSList>()
 }
 
 #[test]
@@ -531,7 +532,7 @@ fn encode_string_array_element_transfer_frees_duplicates_when_call_never_happens
         let Stash::Storage(storage) = &encoded else {
             panic!("expected storage")
         };
-        let block = storage.ptr() as *mut *mut c_char;
+        let block = storage.ptr().cast::<*mut c_char>();
         let first = unsafe { CStr::from_ptr(*block) };
         let second = unsafe { CStr::from_ptr(*block.add(1)) };
         assert_eq!(first.to_str().unwrap(), "foo");
@@ -566,7 +567,7 @@ fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
             panic!("expected storage")
         };
         assert!(matches!(storage.data(), StashData::GByteArray(None)));
-        let byte_array = storage.ptr() as *mut glib::ffi::GByteArray;
+        let byte_array = storage.ptr().cast::<glib::ffi::GByteArray>();
         unsafe { glib::ffi::g_byte_array_ref(byte_array) };
         drop(encoded);
         unsafe {

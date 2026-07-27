@@ -21,11 +21,13 @@ const emitGesture = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress
     }
 };
 
-const emitPress = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void =>
+const emitPress = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void => {
     emitGesture(widget, controllers, nPress, "pressed");
+};
 
-const emitRelease = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void =>
+const emitRelease = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void => {
     emitGesture(widget, controllers, nPress, "released");
+};
 
 const emitClickSequence = (widget: Gtk.Widget, target: Gtk.Widget, nPress: number): Promise<void> =>
     wrapEvent(widget, () => {
@@ -56,13 +58,13 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
         return false;
     }
 
-    let activated = false;
+    let isActivated = false;
 
     await wrapEvent(widget, () => {
-        activated = widget.activate();
+        isActivated = widget.activate();
     });
 
-    return activated;
+    return isActivated;
 };
 
 const click = async (widget: Gtk.Widget): Promise<void> => {

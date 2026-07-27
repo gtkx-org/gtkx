@@ -79,7 +79,7 @@ const getSignalId = (instance: object, signal: string): number => {
 };
 
 function connectBind(type: bigint, signal: string, callback: CallbackDescriptor): (...values: unknown[]) => unknown {
-    const key = `${type}\0${getSignalBaseName(signal)}`;
+    const key = `${String(type)}\0${getSignalBaseName(signal)}`;
 
     return connectCache(
         key,

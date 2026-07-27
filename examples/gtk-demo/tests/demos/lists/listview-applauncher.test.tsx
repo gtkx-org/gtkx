@@ -5,17 +5,26 @@ import { describe, expect, it, vi } from "vitest";
 import { listviewApplauncherDemo } from "../../../src/demos/lists/listview-applauncher.js";
 import { renderDemo } from "../../test-utils.js";
 
-const appInfoPrototype = (): Gio.AppInfo => {
+const firstAppInfo = (): Gio.AppInfo => {
     const [first] = Gio.appInfoGetAll();
-    if (first === undefined) throw new Error("expected at least one installed application");
-    return Object.getPrototypeOf(first);
+
+    if (first === undefined) {
+        throw new Error("expected at least one installed application");
+    }
+
+    return first;
 };
+
+const appInfoPrototype = (): Gio.AppInfo => Object.getPrototypeOf(firstAppInfo()) as Gio.AppInfo;
 
 const activateFirstRowAndExpectLaunch = async (launchSpy: ReturnType<typeof vi.spyOn>): Promise<void> => {
     await renderDemo(listviewApplauncherDemo);
     const listView = (await screen.findByName("list-view")) as Gtk.ListView;
     await fireEvent(listView, "activate", 0);
-    await waitFor(() => expect(launchSpy).toHaveBeenCalled());
+
+    await waitFor(() => {
+        expect(launchSpy).toHaveBeenCalled();
+    });
 };
 
 describe("listviewApplauncherDemo metadata", () => {
@@ -70,12 +79,12 @@ describe("listviewApplauncherDemo rows", () => {
 
     it("launches the activated app's AppInfo with a launch context", async () => {
         const launchSpy = vi.spyOn(appInfoPrototype(), "launch").mockReturnValue(true);
+
         try {
             await activateFirstRowAndExpectLaunch(launchSpy);
             expect(launchSpy).toHaveBeenCalledWith(null, expect.any(Gio.AppLaunchContext));
-            const [firstApp] = Gio.appInfoGetAll();
             const launchedOn = launchSpy.mock.instances[0] as Gio.AppInfo;
-            expect(launchedOn.getId()).toBe(firstApp?.getId());
+            expect(launchedOn.getId()).toBe(firstAppInfo().getId());
         } finally {
             launchSpy.mockRestore();
         }
@@ -85,11 +94,11 @@ describe("listviewApplauncherDemo rows", () => {
         const launchSpy = vi.spyOn(appInfoPrototype(), "launch").mockImplementation(() => {
             throw new Error("denied by policy");
         });
+
         try {
             await activateFirstRowAndExpectLaunch(launchSpy);
             await screen.findByText("denied by policy");
-            const [firstApp] = Gio.appInfoGetAll();
-            const headings = await screen.findAllByText(`Could not launch ${firstApp?.getDisplayName()}`);
+            const headings = await screen.findAllByText(`Could not launch ${firstAppInfo().getDisplayName()}`);
             expect(headings.length).toBeGreaterThan(0);
         } finally {
             launchSpy.mockRestore();
@@ -102,10 +111,9 @@ describe("listviewApplauncherDemo rows", () => {
         const images = within(listView).getAllByRole(Gtk.AccessibleRole.IMG);
         const labels = within(listView).getAllByRole(Gtk.AccessibleRole.LABEL);
         expect(images.length).toBeGreaterThan(0);
-        expect(images.length).toBe(labels.length);
-        const [firstApp] = Gio.appInfoGetAll();
-        const firstAppName = firstApp?.getDisplayName();
+        expect(images).toHaveLength(labels.length);
+        const firstAppName = firstAppInfo().getDisplayName();
         expect(firstAppName).toBeTypeOf("string");
-        expect(await within(listView).findByText(firstAppName as string)).toBeInstanceOf(Gtk.Label);
+        expect(await within(listView).findByText(firstAppName)).toBeInstanceOf(Gtk.Label);
     });
 });

@@ -4,7 +4,10 @@ import { emitPress, emitRelease } from "./click.js";
 import { getOrCreateControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 
-/** A pointer action token: a full click (`click`, `[MouseLeft]`), a button press (`down`, `[MouseLeft>]`), or a button release (`up`, `[/MouseLeft]`). */
+/**
+ * A pointer action token: a full click (`click`, `[MouseLeft]`), a button press (`down`,
+ * `[MouseLeft>]`), or a button release (`up`, `[/MouseLeft]`).
+ */
 type PointerInput = "click" | "down" | "up" | "[MouseLeft]" | "[MouseLeft>]" | "[/MouseLeft]";
 
 const PRESS_INPUTS: Set<PointerInput> = new Set(["[MouseLeft>]", "down"]);
@@ -36,6 +39,8 @@ const applyPointerInput = (widget: Gtk.Widget, state: UserEventState, input: Poi
 };
 
 const pointer = (state: UserEventState, widget: Gtk.Widget, input: PointerInput): Promise<void> =>
-    wrapEvent(widget, () => applyPointerInput(widget, state, input));
+    wrapEvent(widget, () => {
+        applyPointerInput(widget, state, input);
+    });
 
 export { pointer, type PointerInput };

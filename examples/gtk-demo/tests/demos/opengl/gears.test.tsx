@@ -26,11 +26,14 @@ describe("gearsDemo", () => {
 
     it("renders one vertical inverted axis slider for each of X, Y, Z", async () => {
         await renderDemo(gearsDemo);
+
         for (const axis of ["X", "Y", "Z"]) {
             await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: axis });
         }
+
         const sliders = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
         expect(sliders).toHaveLength(3);
+
         for (const slider of sliders) {
             expect(slider.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
             expect(slider.getInverted()).toBe(true);
@@ -38,7 +41,9 @@ describe("gearsDemo", () => {
             expect(slider.getAdjustment().getUpper()).toBe(360);
         }
     });
+});
 
+describe("gearsDemo axis sliders", () => {
     it("seeds each axis slider with its own distinct initial rotation value", async () => {
         await renderDemo(gearsDemo);
         const sliders = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
@@ -54,18 +59,26 @@ describe("gearsDemo", () => {
         const xSlider = sliders[0] as Gtk.Scale;
         const ySlider = sliders[1] as Gtk.Scale;
         const zSlider = sliders[2] as Gtk.Scale;
-
         xSlider.grabFocus();
         await userEvent.keyboard(xSlider, "{PageUp}");
-        await waitFor(() => expect(xSlider).toHaveValue(32));
+
+        await waitFor(() => {
+            expect(xSlider).toHaveValue(32);
+        });
 
         ySlider.grabFocus();
         await userEvent.keyboard(ySlider, "{PageUp}");
-        await waitFor(() => expect(ySlider).toHaveValue(42));
+
+        await waitFor(() => {
+            expect(ySlider).toHaveValue(42);
+        });
 
         zSlider.grabFocus();
         await userEvent.keyboard(zSlider, "{PageUp}");
-        await waitFor(() => expect(zSlider).toHaveValue(32));
+
+        await waitFor(() => {
+            expect(zSlider).toHaveValue(32);
+        });
     });
 
     it("shows the placeholder FPS readout before any frame timing is sampled", async () => {

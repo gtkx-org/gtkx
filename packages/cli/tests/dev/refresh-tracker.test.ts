@@ -26,7 +26,10 @@ describe("createRefreshTracker", () => {
             throw new Error("boom");
         });
 
-        expect(() => tracker.performRefresh()).toThrow("boom");
+        expect(() => {
+            tracker.performRefresh();
+        }).toThrow("boom");
+
         expect(tracker.isRefreshing()).toBe(true);
         vi.runAllTimers();
         expect(tracker.isRefreshing()).toBe(false);

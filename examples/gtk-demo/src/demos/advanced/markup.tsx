@@ -13,12 +13,46 @@ import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./markup.tsx?raw";
 import markupContent from "./markup.txt?raw";
 
+type MarkupStackProps = {
+    showSource: boolean;
+    formattedViewRef: React.RefObject<Gtk.TextView | null>;
+    sourceViewRef: React.RefObject<Gtk.TextView | null>;
+    onFormattedRealized: (self: Gtk.Widget) => void;
+};
+
+type MarkupContextValue = {
+    showSource: boolean;
+    handleSourceToggle: (isActive: boolean) => void;
+    applyMarkup: () => void;
+    formattedViewRef: React.RefObject<Gtk.TextView | null>;
+    sourceViewRef: React.RefObject<Gtk.TextView | null>;
+    markupRef: React.RefObject<string>;
+};
+
 const SAMPLE_MARKUP = markupContent;
+const MarkupContext = createContext<MarkupContextValue | null>(null);
+
+const markupDemo: Demo = {
+    id: "markup",
+    title: "Text View/Markup",
+    description:
+        "GtkTextBuffer lets you define your own tags that can influence text formatting in a variety of ways. " +
+        "In this example, we show that GtkTextBuffer can load Pango markup and automatically generate suitable tags.",
+    keywords: ["GtkTextView"],
+    component: MarkupDemo,
+    titlebar: MarkupTitlebar,
+    provider: MarkupProvider,
+    sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 680,
+};
 
 const applyMarkupToView = (formattedView: Gtk.TextView | null, markup: string) => {
-    if (!formattedView) return;
-    const buffer = formattedView.getBuffer();
+    if (!formattedView) {
+        return;
+    }
 
+    const buffer = formattedView.getBuffer();
     buffer.beginIrreversibleAction();
     const startIter = buffer.getStartIter();
     const endIter = buffer.getEndIter();
@@ -29,18 +63,14 @@ const applyMarkupToView = (formattedView: Gtk.TextView | null, markup: string) =
 };
 
 const syncMarkupFromSource = (sourceView: Gtk.TextView | null, markupRef: React.RefObject<string>) => {
-    if (!sourceView) return;
+    if (!sourceView) {
+        return;
+    }
+
     const buffer = sourceView.getBuffer();
     const startIter = buffer.getStartIter();
     const endIter = buffer.getEndIter();
     markupRef.current = buffer.getText(startIter, endIter, false);
-};
-
-type MarkupStackProps = {
-    showSource: boolean;
-    formattedViewRef: React.RefObject<Gtk.TextView | null>;
-    sourceViewRef: React.RefObject<Gtk.TextView | null>;
-    onFormattedRealized: (self: Gtk.Widget) => void;
 };
 
 const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedRealized }: MarkupStackProps) => (
@@ -89,24 +119,17 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedR
     </GtkStack>
 );
 
-type MarkupContextValue = {
-    showSource: boolean;
-    handleSourceToggle: (active: boolean) => void;
-    applyMarkup: () => void;
-    formattedViewRef: React.RefObject<Gtk.TextView | null>;
-    sourceViewRef: React.RefObject<Gtk.TextView | null>;
-    markupRef: React.RefObject<string>;
-};
-
-const MarkupContext = createContext<MarkupContextValue | null>(null);
-
 const useMarkupContext = (): MarkupContextValue => {
     const ctx = useContext(MarkupContext);
-    if (!ctx) throw new Error("MarkupContext is missing");
+
+    if (!ctx) {
+        throw new Error("MarkupContext is missing");
+    }
+
     return ctx;
 };
 
-const MarkupProvider = ({ children }: DemoProviderProps) => {
+function MarkupProvider({ children }: DemoProviderProps) {
     const formattedViewRef = useRef<Gtk.TextView | null>(null);
     const sourceViewRef = useRef<Gtk.TextView | null>(null);
     const [showSource, setShowSource] = useState(false);
@@ -116,12 +139,13 @@ const MarkupProvider = ({ children }: DemoProviderProps) => {
         applyMarkupToView(formattedViewRef.current, markupRef.current);
     };
 
-    const handleSourceToggle = (active: boolean) => {
-        if (!active && showSource) {
+    const handleSourceToggle = (isActive: boolean) => {
+        if (!isActive && showSource) {
             syncMarkupFromSource(sourceViewRef.current, markupRef);
             applyMarkup();
         }
-        setShowSource(active);
+
+        setShowSource(isActive);
     };
 
     const value = {
@@ -134,10 +158,11 @@ const MarkupProvider = ({ children }: DemoProviderProps) => {
     };
 
     return <MarkupContext.Provider value={value}>{children}</MarkupContext.Provider>;
-};
+}
 
-const MarkupTitlebar = () => {
+function MarkupTitlebar() {
     const { showSource, handleSourceToggle } = useMarkupContext();
+
     return (
         <GtkHeaderBar
             start={(
@@ -145,16 +170,22 @@ const MarkupTitlebar = () => {
                     label="Source"
                     active={showSource}
                     valign={Gtk.Align.CENTER}
-                    onToggled={(btn) => handleSourceToggle(btn.getActive())}
+                    onToggled={(btn) => {
+                        handleSourceToggle(btn.getActive());
+                    }}
                 />
             )}
         />
     );
-};
+}
 
-const MarkupDemo = () => {
+function MarkupDemo() {
     const { showSource, formattedViewRef, sourceViewRef, markupRef } = useMarkupContext();
-    const onFormattedRealized = (self: Gtk.Widget) => applyMarkupToView(self as Gtk.TextView, markupRef.current);
+
+    const onFormattedRealized = (self: Gtk.Widget) => {
+        applyMarkupToView(self as Gtk.TextView, markupRef.current);
+    };
+
     return (
         <MarkupStack
             showSource={showSource}
@@ -163,18 +194,6 @@ const MarkupDemo = () => {
             onFormattedRealized={onFormattedRealized}
         />
     );
-};
+}
 
-export const markupDemo: Demo = {
-    id: "markup",
-    title: "Text View/Markup",
-    description:
-        "GtkTextBuffer lets you define your own tags that can influence text formatting in a variety of ways. In this example, we show that GtkTextBuffer can load Pango markup and automatically generate suitable tags.",
-    keywords: ["GtkTextView"],
-    component: MarkupDemo,
-    titlebar: MarkupTitlebar,
-    provider: MarkupProvider,
-    sourceCode,
-    defaultWidth: 600,
-    defaultHeight: 680,
-};
+export { markupDemo };

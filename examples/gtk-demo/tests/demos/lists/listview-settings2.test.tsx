@@ -9,9 +9,27 @@ const listModel = async (): Promise<Gtk.SelectionModel> =>
 
 const schemaHeaderLabels = (): string[] =>
     screen
-        .queryAllByText(/^\S+\.\S+$/)
+        .queryAllByText(/^[^\s.]+\.\S+$/)
         .map((l) => (l as Gtk.Label).getLabel())
         .filter((text) => !text.includes(" "));
+
+async function activateSearch(): Promise<{ toggle: Gtk.ToggleButton; bar: Gtk.SearchBar }> {
+    const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
+    await userEvent.click(toggle);
+    const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
+
+    await waitFor(() => {
+        expect(bar.getSearchMode()).toBe(true);
+    });
+
+    return { toggle, bar };
+}
+
+async function openSearchEntry(): Promise<Gtk.SearchEntry> {
+    await activateSearch();
+
+    return (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+}
 
 describe("listviewSettings2Demo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -68,23 +86,11 @@ describe("listviewSettings2Demo layout", () => {
     });
 });
 
-async function activateSearch(): Promise<{ toggle: Gtk.ToggleButton; bar: Gtk.SearchBar }> {
-    const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-    await userEvent.click(toggle);
-    const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
-    await waitFor(() => expect(bar.getSearchMode()).toBe(true));
-    return { toggle, bar };
-}
-
-async function openSearchEntry(): Promise<Gtk.SearchEntry> {
-    await activateSearch();
-    return (await screen.findByName("search-entry")) as Gtk.SearchEntry;
-}
-
 describe("listviewSettings2Demo search and editing", () => {
     it("enables the search bar when the titlebar search toggle is activated", async () => {
         await renderDemo(listviewSettings2Demo);
-        await activateSearch();
+        const { bar } = await activateSearch();
+        expect(bar.getSearchMode()).toBe(true);
     });
 
     it("narrows the list model to the matching schema when the search term matches a subset", async () => {
@@ -98,7 +104,11 @@ describe("listviewSettings2Demo search and editing", () => {
         const entry = await openSearchEntry();
         await userEvent.type(entry, token);
         expect(entry).toHaveDisplayValue(token);
-        await waitFor(() => expect(model.getNItems()).toBeLessThan(initial));
+
+        await waitFor(() => {
+            expect(model.getNItems()).toBeLessThan(initial);
+        });
+
         expect(model.getNItems()).toBeGreaterThan(0);
         expect(schemaHeaderLabels().every((header) => header.toLowerCase().includes(token))).toBe(true);
     });
@@ -108,34 +118,52 @@ describe("listviewSettings2Demo search and editing", () => {
         const model = await listModel();
         const entry = await openSearchEntry();
         await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
-        await waitFor(() => expect(model.getNItems()).toBe(0));
-    });
 
+        await waitFor(() => {
+            expect(model.getNItems()).toBe(0);
+        });
+    });
+});
+
+describe("listviewSettings2Demo search reset and editing", () => {
     it("restores the full list model when stop-search is emitted", async () => {
         await renderDemo(listviewSettings2Demo);
         const model = await listModel();
         const initial = model.getNItems();
         const entry = await openSearchEntry();
         await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
-        await waitFor(() => expect(model.getNItems()).toBe(0));
+
+        await waitFor(() => {
+            expect(model.getNItems()).toBe(0);
+        });
+
         await userEvent.keyboard(entry, "{Escape}");
-        await waitFor(() => expect(model.getNItems()).toBe(initial));
+
+        await waitFor(() => {
+            expect(model.getNItems()).toBe(initial);
+        });
     });
 
     it("turns the search bar off when the search toggle is deactivated", async () => {
         await renderDemo(listviewSettings2Demo);
         const { toggle, bar } = await activateSearch();
         await userEvent.click(toggle);
-        await waitFor(() => expect(bar.getSearchMode()).toBe(false));
+
+        await waitFor(() => {
+            expect(bar.getSearchMode()).toBe(false);
+        });
     });
 
-    it("does not blow the trampoline stack when typing invalid characters into a numeric schema-key entry", async () => {
-        await renderDemo(listviewSettings2Demo);
-        const entries = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
-        const entry = entries[0] as Gtk.Entry;
-        const initial = entry.getText();
-        await userEvent.clear(entry);
-        await userEvent.type(entry, "x");
-        expect(entry).toHaveDisplayValue(initial);
-    });
+    it(
+        "does not blow the trampoline stack when typing invalid characters into a numeric schema-key entry",
+        async () => {
+            await renderDemo(listviewSettings2Demo);
+            const entries = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
+            const entry = entries[0] as Gtk.Entry;
+            const initial = entry.getText();
+            await userEvent.clear(entry);
+            await userEvent.type(entry, "x");
+            expect(entry).toHaveDisplayValue(initial);
+        },
+    );
 });

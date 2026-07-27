@@ -1,15 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-
-vi.mock("../../src/builder.js", () => ({
-    build: vi.fn(async () => undefined),
-}));
-
-vi.mock("../../src/codegen/run-codegen.js", () => ({
-    ensureGenerated: vi.fn(async () => false),
-    runCodegen: vi.fn(),
-}));
-
 import { runCommand } from "citty";
+import { describe, expect, it, vi } from "vitest";
 import { build as buildApp } from "../../src/builder.js";
 import { ensureGenerated } from "../../src/codegen/run-codegen.js";
 import { build } from "../../src/commands/build.js";
@@ -17,6 +7,15 @@ import { setupLogState } from "./log-state.js";
 
 const buildMock = vi.mocked(buildApp);
 const ensureGeneratedMock = vi.mocked(ensureGenerated);
+
+vi.mock("../../src/builder.js", () => ({
+    build: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock("../../src/codegen/run-codegen.js", () => ({
+    ensureGenerated: vi.fn(() => Promise.resolve(false)),
+    runCodegen: vi.fn(),
+}));
 
 describe("build", () => {
     setupLogState();

@@ -47,19 +47,30 @@ pub use r#struct::StructCodec;
 pub use unichar::UnicharCodec;
 pub use void::VoidCodec;
 
+pub(crate) trait IntegerBacked {
+    fn ffi_codec(&self) -> IntegerCodec;
+}
+
 macro_rules! forward_ffi_encoder {
     () => {
         fn libffi_type(&self) -> ::libffi::middle::Type {
-            $crate::ffi::codec::Encoder::libffi_type(&self.ffi_codec())
+            $crate::ffi::codec::Encoder::libffi_type(&$crate::ffi::codec::IntegerBacked::ffi_codec(
+                self,
+            ))
         }
 
         fn call_cif(
             &self,
             cif: &::libffi::middle::Cif,
             ptr: ::libffi::middle::CodePtr,
-            args: &[::libffi::middle::Arg],
+            args: &[::libffi::middle::Arg<'_>],
         ) -> ::anyhow::Result<$crate::ffi::Stash> {
-            $crate::ffi::codec::Encoder::call_cif(&self.ffi_codec(), cif, ptr, args)
+            $crate::ffi::codec::Encoder::call_cif(
+                &$crate::ffi::codec::IntegerBacked::ffi_codec(self),
+                cif,
+                ptr,
+                args,
+            )
         }
     };
 }
@@ -86,11 +97,13 @@ impl std::fmt::Display for Ownership {
 
 impl Ownership {
     #[inline]
+    #[must_use]
     pub fn is_full(self) -> bool {
         matches!(self, Self::Full)
     }
 
     #[inline]
+    #[must_use]
     pub fn is_borrowed(self) -> bool {
         matches!(self, Self::Borrowed)
     }
@@ -111,6 +124,7 @@ pub enum SlotInit {
 
 impl SlotInit {
     #[inline]
+    #[must_use]
     pub fn is_initialized(self) -> bool {
         matches!(self, Self::Initialized)
     }
@@ -149,13 +163,19 @@ pub trait Encoder {
         &self,
         cif: &libffi::Cif,
         ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
+        args: &[libffi::Arg<'_>],
     ) -> anyhow::Result<ffi::Stash> {
         Ok(ffi::Stash::Ptr(unsafe {
             cif.call::<*mut c_void>(ptr, args)
         }))
     }
 
+    /// # Safety
+    ///
+    /// `ptr` must be null or a live pointer to an instance of the type this codec describes, so
+    /// that the reference/copy operation the concrete codec performs (`g_object_ref`,
+    /// `g_boxed_copy`, a fundamental `ref` function, ...) is the correct one for it. The returned
+    /// pointer carries full ownership and must be released with the matching free function.
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         Ok(ptr)
     }
@@ -163,6 +183,12 @@ pub trait Encoder {
 
 #[enum_dispatch]
 pub trait Decoder {
+    /// # Safety
+    ///
+    /// Any pointer carried by `src` must be null or a live pointer to an instance of the type
+    /// this codec describes, and must stay valid for the duration of the call. For
+    /// `ReadSource::Slot` the pointer must additionally point at an initialized machine word.
+    /// `env` must be the environment of the thread currently running the JavaScript main loop.
     unsafe fn read<'e>(&self, env: &'e Env, src: ReadSource<'_>) -> anyhow::Result<Unknown<'e>> {
         match src {
             ReadSource::Call(stash) => self.decode_call(env, stash),
@@ -176,6 +202,12 @@ pub trait Decoder {
         bail!("This type cannot be decoded from Stash")
     }
 
+    /// # Safety
+    ///
+    /// `_ptr` must be null or a live pointer to an instance of the type this codec describes,
+    /// valid for reads for the duration of the call. Ownership is not taken unless the concrete
+    /// codec documents otherwise. `env` must belong to the thread running the JavaScript main
+    /// loop.
     unsafe fn read_value<'e>(
         &self,
         env: &'e Env,
@@ -200,13 +232,19 @@ pub trait Decoder {
         self.decode(env, stash)
     }
 
+    /// # Safety
+    ///
+    /// `ptr` must point at an initialized, readable machine word holding a pointer to an instance
+    /// of the type this codec describes (a C out-parameter slot). The word itself need not be
+    /// aligned; it is read unaligned. `env` must belong to the thread running the JavaScript main
+    /// loop.
     unsafe fn read_pointer_slot<'e>(
         &self,
         env: &'e Env,
         ptr: *const c_void,
         context: &str,
     ) -> anyhow::Result<Unknown<'e>> {
-        let inner_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
+        let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
         unsafe { self.read(env, ReadSource::Value(inner_ptr, context)) }
     }
 
@@ -244,12 +282,7 @@ pub trait Decoder {
 
 #[enum_dispatch]
 pub trait PtrWriter {
-    fn write_return_to_ptr(
-        &self,
-        env: &Env,
-        ret: ffi::Slot,
-        value: &std::result::Result<Unknown<'_>, ()>,
-    ) {
+    fn write_return_to_ptr(&self, env: &Env, ret: ffi::Slot, value: &Result<Unknown<'_>, ()>) {
         let _ = (env, value);
         unsafe { ret.store(std::ptr::null_mut()) };
     }
@@ -269,7 +302,7 @@ pub trait PtrWriter {
         &self,
         _env: &Env,
         ret: ffi::Slot,
-        value: &std::result::Result<Unknown<'_>, ()>,
+        value: &Result<Unknown<'_>, ()>,
         ownership: Ownership,
         acquire: F,
     ) where
@@ -308,6 +341,7 @@ pub enum Codec {
 }
 
 impl Codec {
+    #[must_use]
     pub fn is_handle_backed(&self) -> bool {
         matches!(
             self,

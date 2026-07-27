@@ -23,7 +23,8 @@ const renderEnumsModule = (
         const groupNote = token.groups.length > 0 ? ` Groups: ${quotedGroupList(token.groups)}.` : "";
 
         builder.appendDeclaration(
-            `/** \`${token.name}\`, provided by \`${feature}\`.${groupNote} */\nexport const ${exportName} = ${literal};`,
+            `/** \`${token.name}\`, provided by \`${feature}\`.${groupNote} */\n` +
+            `export const ${exportName} = ${literal};`,
         );
     }
 
@@ -40,7 +41,8 @@ const renderTypesModule = (groupAliases: Map<string, string>): string => {
     );
 
     builder.appendDeclaration(
-        "/** An opaque native pointer handle (e.g. a `glMapBufferRange` mapping). */\nexport type GLpointer = ExternalObject<Handle>;",
+        "/** An opaque native pointer handle (e.g. a `glMapBufferRange` mapping). */\n" +
+        "export type GLpointer = ExternalObject<Handle>;",
     );
 
     const seen: Set<string> = new Set();
@@ -61,7 +63,8 @@ const renderTypesModule = (groupAliases: Map<string, string>): string => {
 
     for (const [group, base] of sortedAliases) {
         builder.appendDeclaration(
-            `/** Registry enum group \`${group}\`; open and documentation-only, any \`${base}\` value is accepted. */\nexport type ${group} = ${base};`,
+            `/** Registry enum group \`${group}\`; open and documentation-only, ` +
+            `any \`${base}\` value is accepted. */\nexport type ${group} = ${base};`,
         );
     }
 

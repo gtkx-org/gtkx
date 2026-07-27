@@ -1,4 +1,6 @@
-pub(super) use super::{Decoder, Encoder, Ownership, PtrWriter, ReadSource, SlotInit};
+pub(super) use super::{
+    Decoder, Encoder, IntegerBacked, Ownership, PtrWriter, ReadSource, SlotInit,
+};
 pub(super) use crate::ffi;
 pub(super) use crate::value;
 pub(super) use napi::Env;
@@ -22,7 +24,7 @@ macro_rules! reject_return_codec {
             &self,
             _cif: &::libffi::middle::Cif,
             _ptr: ::libffi::middle::CodePtr,
-            _args: &[::libffi::middle::Arg],
+            _args: &[::libffi::middle::Arg<'_>],
         ) -> ::anyhow::Result<$crate::ffi::Stash> {
             ::anyhow::bail!("{} codecs cannot be return codecs", $kind)
         }
@@ -142,7 +144,7 @@ pub(super) fn encode_and_leak_container<F>(
     encode: F,
 ) -> *mut c_void
 where
-    F: FnOnce(Unknown<'_>) -> anyhow::Result<crate::ffi::Stash>,
+    F: FnOnce(Unknown<'_>) -> anyhow::Result<ffi::Stash>,
 {
     let Ok(unknown) = value else {
         return std::ptr::null_mut();
@@ -154,17 +156,13 @@ where
         return std::ptr::null_mut();
     };
     let container = stash.as_ptr(context).expect(context);
+    stash.disarm_pending_transfer();
     std::mem::forget(stash);
     container
 }
 
-pub(super) fn full_transfer_stash(
-    ptr: *mut c_void,
-    release: crate::ffi::ReleaseKind,
-) -> crate::ffi::Stash {
-    crate::ffi::Stash::Storage(
-        crate::ffi::StashStorage::unit(ptr).with_pending_transfer(ptr, release),
-    )
+pub(super) fn full_transfer_stash(ptr: *mut c_void, release: ffi::ReleaseKind) -> ffi::Stash {
+    ffi::Stash::Storage(ffi::StashStorage::unit(ptr).with_pending_transfer(ptr, release))
 }
 
 pub(super) fn finalize_container_stash(

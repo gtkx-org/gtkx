@@ -1,7 +1,25 @@
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "../src/index.js";
+
+const errorHook = () => {
+    throw new Error("Hook error");
+};
+
+const useCounter = (initial: number) => {
+    const [count, setCount] = useState(initial);
+
+    return {
+        count,
+        increment: () => {
+            setCount((c) => c + 1);
+        },
+        decrement: () => {
+            setCount((c) => c - 1);
+        },
+    };
+};
 
 describe("renderHook", () => {
     it("renders a hook and returns its result", async () => {
@@ -13,7 +31,11 @@ describe("renderHook", () => {
         const { result } = await renderHook(() => useState(0));
         expect(result.current[0]).toBe(0);
         const [, setState] = result.current;
-        await act(() => setState(10));
+
+        await act(() => {
+            setState(10);
+        });
+
         expect(result.current[0]).toBe(10);
     });
 });
@@ -62,30 +84,36 @@ describe("renderHook rerender", () => {
         const { result } = await renderHook(() => {
             const [count, setCount] = useState(0);
 
-            return { count, increment: () => setCount((c) => c + 1) };
+            return { count, increment: () => {
+                setCount((c) => c + 1);
+            } };
         });
 
         expect(result.current.count).toBe(0);
-        await act(() => result.current.increment());
+
+        await act(() => {
+            result.current.increment();
+        });
+
         expect(result.current.count).toBe(1);
     });
 });
 
 describe("renderHook unmount", () => {
     it("unmounts the component containing the hook", async () => {
-        let unmounted = false;
+        let isUnmounted = false;
 
         const { unmount } = await renderHook(() => {
             useEffect(() => {
                 return () => {
-                    unmounted = true;
+                    isUnmounted = true;
                 };
             }, []);
         });
 
-        expect(unmounted).toBe(false);
+        expect(isUnmounted).toBe(false);
         await unmount();
-        expect(unmounted).toBe(true);
+        expect(isUnmounted).toBe(true);
     });
 
     it("cleans up after unmount", async () => {
@@ -94,7 +122,7 @@ describe("renderHook unmount", () => {
         const { unmount } = await renderHook(() => {
             useEffect(() => {
                 return () => {
-                    cleanup.push(() => {});
+                    cleanup.push(vi.fn());
                 };
             }, []);
         });
@@ -128,10 +156,6 @@ describe("renderHook wrapper option", () => {
     });
 });
 
-const errorHook = () => {
-    throw new Error("Hook error");
-};
-
 describe("renderHook error handling", () => {
     it("throws when hook throws on initial render", async () => {
         await expect(renderHook(errorHook)).rejects.toThrow("Hook error");
@@ -160,7 +184,11 @@ describe("renderHook complex hooks state", () => {
         const { result } = await renderHook(() => useState({ count: 0 }));
         expect(result.current[0]).toEqual({ count: 0 });
         const [, setState] = result.current;
-        await act(() => setState({ count: 5 }));
+
+        await act(() => {
+            setState({ count: 5 });
+        });
+
         expect(result.current[0]).toEqual({ count: 5 });
     });
 
@@ -194,16 +222,6 @@ describe("renderHook complex hooks state", () => {
     });
 });
 
-const useCounter = (initial: number) => {
-    const [count, setCount] = useState(initial);
-
-    return {
-        count,
-        increment: () => setCount((c) => c + 1),
-        decrement: () => setCount((c) => c - 1),
-    };
-};
-
 describe("renderHook complex hooks effects", () => {
     it("works with useEffect", async () => {
         const effects: string[] = [];
@@ -234,10 +252,21 @@ describe("renderHook complex hooks effects", () => {
         });
 
         expect(result.current.count).toBe(10);
-        await act(() => result.current.increment());
+
+        await act(() => {
+            result.current.increment();
+        });
+
         expect(result.current.count).toBe(11);
-        await act(() => result.current.decrement());
-        await act(() => result.current.decrement());
+
+        await act(() => {
+            result.current.decrement();
+        });
+
+        await act(() => {
+            result.current.decrement();
+        });
+
         expect(result.current.count).toBe(9);
     });
 });

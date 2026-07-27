@@ -9,12 +9,17 @@ type DrawFunc = (self: Gtk.DrawingArea, cr: Context, width: number, height: numb
 
 const captureDrawFunc = async (): Promise<{ drawingArea: Gtk.DrawingArea; drawFunc: DrawFunc }> => {
     const setDrawFunc = vi.spyOn(Gtk.DrawingArea.prototype, "setDrawFunc");
+
     try {
         await renderDemo(textmaskDemo);
         const drawingArea = (await screen.findByName("textmask-area")) as Gtk.DrawingArea;
         const call = setDrawFunc.mock.calls.find(([fn]) => typeof fn === "function");
         const drawFunc = call?.[0] as DrawFunc | undefined;
-        if (!drawFunc) throw new Error("textmask draw function was not registered");
+
+        if (!drawFunc) {
+            throw new Error("textmask draw function was not registered");
+        }
+
         return { drawingArea, drawFunc };
     } finally {
         setDrawFunc.mockRestore();
@@ -61,7 +66,11 @@ describe("textmaskDemo paint", () => {
         const { drawingArea, drawFunc } = await captureDrawFunc();
         const surface = ImageSurface.create(Format.ARGB32, 400, 240);
         const cr = Context.create(surface);
-        expect(() => drawFunc(drawingArea, cr, 400, 240)).not.toThrow();
+
+        expect(() => {
+            drawFunc(drawingArea, cr, 400, 240);
+        }).not.toThrow();
+
         surface.finish();
     });
 
@@ -69,10 +78,12 @@ describe("textmaskDemo paint", () => {
         const { drawingArea, drawFunc } = await captureDrawFunc();
         const layoutTexts: string[] = [];
         const createLayout = vi.spyOn(Gtk.Widget.prototype, "createPangoLayout");
+
         try {
             const surface = ImageSurface.create(Format.ARGB32, 400, 240);
             const cr = Context.create(surface);
             drawFunc(drawingArea, cr, 400, 240);
+
             for (const call of createLayout.mock.results) {
                 if (call.type !== "return") {
                     continue;
@@ -81,10 +92,12 @@ describe("textmaskDemo paint", () => {
                 const layout = call.value;
                 layoutTexts.push(layout.getText());
             }
+
             surface.finish();
         } finally {
             createLayout.mockRestore();
         }
+
         expect(layoutTexts).toContain("Pango power!\nPango power!\nPango power!");
     });
 });

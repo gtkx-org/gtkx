@@ -17,6 +17,6 @@ const setHeadlessShutdownInstalled = (installed: boolean | undefined): void => {
     defineGlobal("gtkxHeadlessShutdownInstalled", installed);
 };
 
-const headlessShutdownInstalled = (): boolean => globalThis.gtkxHeadlessShutdownInstalled === true;
+const isHeadlessShutdownInstalled = (): boolean => globalThis.gtkxHeadlessShutdownInstalled === true;
 
-export { setHeadlessTeardown, headlessTeardown, setHeadlessShutdownInstalled, headlessShutdownInstalled };
+export { setHeadlessTeardown, headlessTeardown, setHeadlessShutdownInstalled, isHeadlessShutdownInstalled };

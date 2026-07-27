@@ -12,7 +12,8 @@ const noInlineExports = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
         },
         messages: {
             inlineExport:
-                "Declare {{names}} without `export` and add {{list}} to the trailing export list, so the module's public surface reads in one place.",
+                "Declare {{names}} without `export` and add {{list}} to the trailing export list, " +
+                "so the module's public surface reads in one place.",
         },
         schema: [],
     },

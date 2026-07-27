@@ -1,7 +1,7 @@
 import type { ParseContext } from "./type-id.js";
 import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, attrBool, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
+import { attr, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, isAttrTrue, type RawNode } from "./parse.js";
 
 type GirRecord = {
     isVtable: boolean;
@@ -40,9 +40,9 @@ const recordFromNode = (
     glibUnrefFunc: attr(node, "glib:unref-func"),
     copyFunc: attr(node, "copy-function"),
     freeFunc: attr(node, "free-function"),
-    disguised: attrBool(node, "disguised"),
-    opaque: attrBool(node, "opaque"),
-    introspectable: attrBool(node, "introspectable", true),
+    disguised: isAttrTrue(node, "disguised"),
+    opaque: isAttrTrue(node, "opaque"),
+    introspectable: isAttrTrue(node, "introspectable", true),
     fields: getChildren(node, "field").map((field) => fieldFromNode(field, context)),
     methods: getChildren(node, "method").map((method) => functionFromNode(method, context)),
     constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),

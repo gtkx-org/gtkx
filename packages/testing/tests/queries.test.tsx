@@ -61,6 +61,22 @@ const renderTwoButtons = () =>
         </VBox>,
     );
 
+const queryButtonsBesideHidden = async (hiddenButton: ReactNode) => {
+    const { container } = await render(
+        <VBox>
+            <GtkButton label="Shown" />
+            {hiddenButton}
+        </VBox>,
+    );
+
+    return {
+        defaultMatches: queryAllByRole(container, Gtk.AccessibleRole.BUTTON),
+        hiddenIncludedMatches: queryAllByRole(container, Gtk.AccessibleRole.BUTTON, { hidden: true }),
+    };
+};
+
+const normalizer = (text: string) => getDefaultNormalizer()(text).toLowerCase();
+
 describe("findByRole", () => {
     it("finds element by accessible role", async () => {
         const { container } = await render(<GtkButton label="Test" />);
@@ -740,25 +756,23 @@ describe("getByRole value", () => {
     });
 });
 
-const expectHiddenButtonExcludedByDefault = async (hiddenButton: ReactNode) => {
-    const { container } = await render(
-        <VBox>
-            <GtkButton label="Shown" />
-            {hiddenButton}
-        </VBox>,
-    );
-
-    expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON)).toHaveLength(1);
-    expect(queryAllByRole(container, Gtk.AccessibleRole.BUTTON, { hidden: true })).toHaveLength(2);
-};
-
 describe("getByRole hidden", () => {
     it("excludes accessibility-hidden widgets by default", async () => {
-        await expectHiddenButtonExcludedByDefault(<GtkButton label="Hidden" accessibleHidden />);
+        const { defaultMatches, hiddenIncludedMatches } = await queryButtonsBesideHidden(
+            <GtkButton label="Hidden" accessibleHidden />,
+        );
+
+        expect(defaultMatches).toHaveLength(1);
+        expect(hiddenIncludedMatches).toHaveLength(2);
     });
 
     it("excludes not-visible widgets by default", async () => {
-        await expectHiddenButtonExcludedByDefault(<GtkButton label="Gone" visible={false} />);
+        const { defaultMatches, hiddenIncludedMatches } = await queryButtonsBesideHidden(
+            <GtkButton label="Gone" visible={false} />,
+        );
+
+        expect(defaultMatches).toHaveLength(1);
+        expect(hiddenIncludedMatches).toHaveLength(2);
     });
 });
 
@@ -789,8 +803,6 @@ describe("getByLabelText accessible-label and accessible-labelledby", () => {
         expect(getByLabelText(container, "Full name")).toBeInstanceOf(Gtk.Entry);
     });
 });
-
-const normalizer = (text: string) => getDefaultNormalizer()(text).toLowerCase();
 
 describe("getDefaultNormalizer", () => {
     it("trims and collapses whitespace by default", () => {

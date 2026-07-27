@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
-import { act, render } from "@gtkx/testing";
+import { render } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -96,41 +96,33 @@ describe("render - Shortcut (2)", () => {
     });
 });
 
-let updateDisabled: (next: boolean) => void = () => {};
-
 describe("render - Shortcut (3)", () => {
     it("re-applies the trigger when it changes", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
-        const Harness = () => {
-            const [disabled, setDisabled] = useState(false);
-            updateDisabled = setDisabled;
+        const Harness = ({ isDisabled }: { isDisabled: boolean }) => (
+            <GtkBox
+                controllers={(
+                    <GtkShortcutController
+                        ref={controllerRef}
+                        shortcuts={(
+                            <GtkShortcut
+                                trigger={
+                                    isDisabled
+                                        ? Gtk.NeverTrigger.get()
+                                        : Gtk.ShortcutTrigger.parseString("<Control>s")
+                                }
+                                action={callbackAction()}
+                            />
+                        )}
+                    />
+                )}
+            />
+        );
 
-            return (
-                <GtkBox
-                    controllers={(
-                        <GtkShortcutController
-                            ref={controllerRef}
-                            shortcuts={(
-                                <GtkShortcut
-                                    trigger={
-                                        disabled
-                                            ? Gtk.NeverTrigger.get()
-                                            : Gtk.ShortcutTrigger.parseString("<Control>s")
-                                    }
-                                    action={callbackAction()}
-                                />
-                            )}
-                        />
-                    )}
-                />
-            );
-        };
-
-        const { rerender } = await render(<Harness />);
+        const { rerender } = await render(<Harness isDisabled={false} />);
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
-        await act(() => updateDisabled(true));
-        await rerender(<Harness />);
+        await rerender(<Harness isDisabled={true} />);
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
     });
 });

@@ -1,9 +1,14 @@
 import type { Socket } from "node:net";
-import EventEmitter from "node:events";
 import type { Message } from "./protocol/schemas.js";
-import { type AppConnectionEvents, type AppConnections, ProtocolConnection } from "./transport.js";
+import {
+    type AppConnections,
+    connectionDisconnectionEvent,
+    connectionErrorEvent,
+    connectionRequestEvent,
+    ProtocolConnection,
+} from "./transport.js";
 
-class ConnectionRegistry extends EventEmitter<AppConnectionEvents> implements AppConnections {
+class ConnectionRegistry extends EventTarget implements AppConnections {
     private connections: Map<string, ProtocolConnection> = new Map();
     private sockets: Map<string, Socket> = new Map();
 
@@ -12,14 +17,14 @@ class ConnectionRegistry extends EventEmitter<AppConnectionEvents> implements Ap
             onClose: () => {
                 this.connections.delete(connection.id);
                 this.sockets.delete(connection.id);
-                this.emit("disconnection", connection);
+                this.dispatchEvent(connectionDisconnectionEvent(connection));
             },
-            onError: (error) => this.emit("error", error),
+            onError: (error) => this.dispatchEvent(connectionErrorEvent(error)),
         });
 
         this.connections.set(connection.id, connection);
         this.sockets.set(connection.id, socket);
-        connection.on("request", (request) => this.emit("request", connection, request));
+        connection.on("request", (request) => this.dispatchEvent(connectionRequestEvent(connection, request)));
 
         connection.on("invalid", ({ id: badId, error }) => {
             connection.write({ id: badId, error: error.toErrorObject() });

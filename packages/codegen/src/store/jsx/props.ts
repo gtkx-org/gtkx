@@ -10,8 +10,8 @@ import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../../analy
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import {
-    classExposesMethod,
     giNamespaceAlias,
+    hasExposedMethod,
     isIntrinsicElementClass,
     signalHandlerName,
 } from "./intrinsic-elements.js";
@@ -82,15 +82,14 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
         return;
     }
 
-    const settable = isConstructableProperty(property);
+    const isSettable = isConstructableProperty(property);
 
-    if (settable) {
+    if (isSettable) {
         state.propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
     }
 
-    state.propLines.push(
-        `${settable ? "" : doc}onNotify${upperFirst(jsName)}?: ((value: ${tsType} | null, self: Self) => void) | null | undefined;`,
-    );
+    const handlerType = `((value: ${tsType} | null, self: Self) => void) | null | undefined`;
+    state.propLines.push(`${isSettable ? "" : doc}onNotify${upperFirst(jsName)}?: ${handlerType};`);
 };
 
 const acceptCollectorProperty = (state: PropCollectorState, property: GirProperty): void => {
@@ -137,8 +136,12 @@ const createPropEntryCollector = (owner: IntrinsicElementScope): PropEntryCollec
         propLines: state.propLines,
         imports,
         objectPropNames: state.objectPropNames,
-        acceptProperty: (property) => acceptCollectorProperty(state, property),
-        acceptSignal: (signal) => acceptCollectorSignal(state, signal),
+        acceptProperty: (property) => {
+            acceptCollectorProperty(state, property);
+        },
+        acceptSignal: (signal) => {
+            acceptCollectorSignal(state, signal);
+        },
     };
 };
 
@@ -188,10 +191,13 @@ const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => 
 
     const ancestry = { library, namespace };
     visitMembers(klass);
-    forEachAncestor(ancestry, klass, (ancestor) => visitMembers(ancestor.klass), isIntrinsicElementAncestor);
+
+    forEachAncestor(ancestry, klass, (ancestor) => {
+        visitMembers(ancestor.klass);
+    }, isIntrinsicElementAncestor);
 };
 
-const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boolean => {
+const isGObjectType = (library: Library, ref: TypeId | undefined): boolean => {
     if (ref === undefined) {
         return false;
     }
@@ -214,11 +220,11 @@ const isObjectProp = (owner: IntrinsicElementScope, property: GirProperty, jsNam
         return false;
     }
 
-    if (!resolvesToGObjectType(owner.library, property.type)) {
+    if (!isGObjectType(owner.library, property.type)) {
         return false;
     }
 
-    if (jsName === "child" && classExposesMethod(owner.klass, owner.namespace, owner.library, "set_child")) {
+    if (jsName === "child" && hasExposedMethod(owner.klass, owner.namespace, owner.library, "set_child")) {
         return false;
     }
 

@@ -7,6 +7,33 @@ import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
+type MenuRef = RefObject<Gtk.PopoverMenu | null>;
+
+const FILE_SUBMENU_ITEMS: MenuItem[] = [
+    {
+        label: "File",
+        submenu: [
+            { label: "New", action: "win.new" },
+            { label: "Open", action: "win.open" },
+        ],
+    },
+];
+
+const NESTED_SUBMENU_ITEMS: MenuItem[] = [
+    {
+        label: "File",
+        submenu: [
+            {
+                label: "Recent",
+                submenu: [
+                    { label: "File 1", action: "win.f1" },
+                    { label: "File 2", action: "win.f2" },
+                ],
+            },
+        ],
+    },
+];
+
 const itemLabel = (model: Gio.MenuModel, index: number): string | null => {
     const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_LABEL, null);
 
@@ -62,8 +89,6 @@ const renderPopoverMenu = async (items: MenuItem[]): Promise<Gio.MenuModel> => {
     return requireModel(ref.current);
 };
 
-type MenuRef = RefObject<Gtk.PopoverMenu | null>;
-
 const ItemListApp = ({ menuRef, items }: { menuRef: MenuRef; items: string[] }) => (
     <GtkPopoverMenu
         ref={menuRef}
@@ -99,6 +124,43 @@ const RemovableItemApp = ({ menuRef, showItem }: { menuRef: MenuRef; showItem: b
     />
 );
 
+const buildDeepItems = (quitLabel: string): MenuItem[] => [
+    { label: "Open", action: "win.open" },
+    { label: "Edit", submenu: [{ label: "Cut", action: "win.cut" }] },
+    { label: "App", section: [{ label: quitLabel, action: "app.quit" }] },
+];
+
+const DeepMenuApp = ({ menuRef, quitLabel }: { menuRef: MenuRef; quitLabel: string }) => (
+    <GtkPopoverMenu ref={menuRef} menuModel={<GMenu items={buildDeepItems(quitLabel)} />} />
+);
+
+const observeItemsChanged = (model: Gio.MenuModel): { count: number } => {
+    const observed = { count: 0 };
+
+    model.connect("items-changed", () => {
+        observed.count++;
+    });
+
+    return observed;
+};
+
+const setupDeepMenu = async () => {
+    const ref = createRef<Gtk.PopoverMenu>();
+    const { rerender } = await render(<DeepMenuApp menuRef={ref} quitLabel="Quit" />);
+
+    return { ref, rerender };
+};
+
+const GrowingSubmenuApp = ({ menuRef, extra }: { menuRef: MenuRef; extra: boolean }) => {
+    const submenu: MenuItem[] = [{ label: "Cut", action: "win.cut" }];
+
+    if (extra) {
+        submenu.push({ label: "Copy", action: "win.copy" });
+    }
+
+    return <SingleEntryApp menuRef={menuRef} entry={{ label: "Edit", submenu }} />;
+};
+
 describe("render - Menu items", () => {
     it("adds a menu item with a label and detailed action", async () => {
         const model = await renderPopoverMenu([{ label: "Item 1", action: "win.item1" }]);
@@ -108,8 +170,12 @@ describe("render - Menu items", () => {
     });
 
     it("appends items in array order and re-snapshots on change", async () => {
-        const model = await renderItemListTransition(["Item 1", "Item 2"], ["Item 1", "Item 2", "Item 3"], (initial) =>
-            expect(initial.getNItems()).toBe(2),
+        const model = await renderItemListTransition(
+            ["Item 1", "Item 2"],
+            ["Item 1", "Item 2", "Item 3"],
+            (initial) => {
+                expect(initial.getNItems()).toBe(2);
+            },
         );
 
         expect(model.getNItems()).toBe(3);
@@ -176,33 +242,6 @@ describe("render - Menu sections", () => {
     });
 });
 
-const buildDeepItems = (quitLabel: string): MenuItem[] => [
-    { label: "Open", action: "win.open" },
-    { label: "Edit", submenu: [{ label: "Cut", action: "win.cut" }] },
-    { label: "App", section: [{ label: quitLabel, action: "app.quit" }] },
-];
-
-const DeepMenuApp = ({ menuRef, quitLabel }: { menuRef: MenuRef; quitLabel: string }) => (
-    <GtkPopoverMenu ref={menuRef} menuModel={<GMenu items={buildDeepItems(quitLabel)} />} />
-);
-
-const observeItemsChanged = (model: Gio.MenuModel): { count: number } => {
-    const observed = { count: 0 };
-
-    model.connect("items-changed", () => {
-        observed.count++;
-    });
-
-    return observed;
-};
-
-const setupDeepMenu = async () => {
-    const ref = createRef<Gtk.PopoverMenu>();
-    const { rerender } = await render(<DeepMenuApp menuRef={ref} quitLabel="Quit" />);
-
-    return { ref, rerender };
-};
-
 describe("render - Menu change notification", () => {
     it("emits no items-changed when rerendered with structurally equal entries", async () => {
         const { ref, rerender } = await setupDeepMenu();
@@ -224,41 +263,6 @@ describe("render - Menu change notification", () => {
         expect(itemLabel(section, 0)).toBe("Exit");
     });
 });
-
-const FILE_SUBMENU_ITEMS: MenuItem[] = [
-    {
-        label: "File",
-        submenu: [
-            { label: "New", action: "win.new" },
-            { label: "Open", action: "win.open" },
-        ],
-    },
-];
-
-const NESTED_SUBMENU_ITEMS: MenuItem[] = [
-    {
-        label: "File",
-        submenu: [
-            {
-                label: "Recent",
-                submenu: [
-                    { label: "File 1", action: "win.f1" },
-                    { label: "File 2", action: "win.f2" },
-                ],
-            },
-        ],
-    },
-];
-
-const GrowingSubmenuApp = ({ menuRef, extra }: { menuRef: MenuRef; extra: boolean }) => {
-    const submenu: MenuItem[] = [{ label: "Cut", action: "win.cut" }];
-
-    if (extra) {
-        submenu.push({ label: "Copy", action: "win.copy" });
-    }
-
-    return <SingleEntryApp menuRef={menuRef} entry={{ label: "Edit", submenu }} />;
-};
 
 describe("render - Menu submenus", () => {
     it("links a submenu entry's items as a submenu", async () => {

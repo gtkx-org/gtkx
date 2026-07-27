@@ -14,12 +14,12 @@ use crate::value::ClosureHandle;
 pub struct VfuncCallback(ClosureHandle);
 
 impl FromNapiValue for VfuncCallback {
-    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> napi::Result<Self> {
+    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
         let env_wrapper = Env::from(env);
         let value = unsafe { Unknown::from_napi_value(env, napi_val)? };
-        if !matches!(value.get_type()?, napi::ValueType::Function) {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
+        if !matches!(value.get_type()?, ValueType::Function) {
+            return Err(Error::new(
+                Status::InvalidArg,
                 "register_class: vfunc 'fn' must be a function",
             ));
         }
@@ -45,7 +45,7 @@ pub struct RegisterClassVfunc {
 /// An interface a registered class implements, together with the interface vfuncs it provides.
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassInterface {
-    /// GType of the interface to implement.
+    /// `GType` of the interface to implement.
     pub r#type: BigInt,
     /// Interface vfunc implementations to install.
     pub vfuncs: Vec<RegisterClassVfunc>,
@@ -61,7 +61,7 @@ pub struct RegisterClassOptions {
 }
 
 impl RegisterClassVfunc {
-    fn into_raw(self) -> napi::Result<RawVfunc> {
+    fn into_raw(self) -> Result<RawVfunc> {
         Ok(RawVfunc {
             byte_offset: self.byte_offset as usize,
             js_fn: self.r#fn.0,
@@ -69,40 +69,40 @@ impl RegisterClassVfunc {
                 .arg_descriptors
                 .into_iter()
                 .map(Descriptor::into_codec)
-                .collect::<napi::Result<_>>()?,
+                .collect::<Result<_>>()?,
             return_codec: self.return_descriptor.into_codec()?,
         })
     }
 }
 
 impl RegisterClassInterface {
-    fn into_raw(self) -> napi::Result<RawInterface> {
-        let type_ = type_from_bigint(self.r#type, "register_class: interface")?;
+    fn into_raw(self) -> Result<RawInterface> {
+        let type_ = type_from_bigint(&self.r#type, "register_class: interface")?;
         Ok(RawInterface {
             type_,
             vfuncs: self
                 .vfuncs
                 .into_iter()
                 .map(RegisterClassVfunc::into_raw)
-                .collect::<napi::Result<_>>()?,
+                .collect::<Result<_>>()?,
         })
     }
 }
 
 impl RegisterClassOptions {
-    fn into_raw(self) -> napi::Result<(Vec<RawVfunc>, Vec<RawInterface>)> {
+    fn into_raw(self) -> Result<(Vec<RawVfunc>, Vec<RawInterface>)> {
         let vfuncs = self
             .vfuncs
             .unwrap_or_default()
             .into_iter()
             .map(RegisterClassVfunc::into_raw)
-            .collect::<napi::Result<_>>()?;
+            .collect::<Result<_>>()?;
         let interfaces = self
             .interfaces
             .unwrap_or_default()
             .into_iter()
             .map(RegisterClassInterface::into_raw)
-            .collect::<napi::Result<_>>()?;
+            .collect::<Result<_>>()?;
         Ok((vfuncs, interfaces))
     }
 }
@@ -120,6 +120,11 @@ struct RawInterface {
 }
 
 impl RawVfunc {
+    // `vtable_base` is a GTypeClass/GTypeInterface vtable allocated by GLib, so it carries at least
+    // pointer alignment, and `validate_vfunc_offset` has already rejected any `byte_offset` that is
+    // not a multiple of `align_of::<*mut c_void>()`. The resulting slot pointer is therefore
+    // aligned for the `*mut c_void` it writes.
+    #[allow(clippy::cast_ptr_alignment)]
     unsafe fn install_into(self, vtable_base: *mut c_void) {
         let Self {
             byte_offset,
@@ -173,7 +178,7 @@ impl ClassRegistration {
             class_size: 0,
             instance_size: 0,
         };
-        unsafe { gobject_ffi::g_type_query(self.parent_type.into_glib(), &mut query) };
+        unsafe { gobject_ffi::g_type_query(self.parent_type.into_glib(), &raw mut query) };
         if query.type_ == 0 {
             anyhow::bail!("parent type could not be queried");
         }
@@ -204,8 +209,8 @@ impl ClassRegistration {
     }
 
     fn validate_layout(&self, query: &gobject_ffi::GTypeQuery) -> anyhow::Result<()> {
-        let pointer_align = std::mem::align_of::<*mut c_void>();
-        let pointer_size = std::mem::size_of::<*mut c_void>();
+        let pointer_align = align_of::<*mut c_void>();
+        let pointer_size = size_of::<*mut c_void>();
 
         for vfunc in &self.vfuncs {
             Self::validate_vfunc_offset(
@@ -272,7 +277,12 @@ impl ClassRegistration {
         };
 
         let new_type = unsafe {
-            gobject_ffi::g_type_register_static(parent_type.into_glib(), name_ptr, &info, 0)
+            gobject_ffi::g_type_register_static(
+                parent_type.into_glib(),
+                name_ptr,
+                &raw const info,
+                0,
+            )
         };
 
         if new_type == 0 {
@@ -293,14 +303,20 @@ impl ClassRegistration {
     }
 }
 
+fn fits_in_type_info_size(size: u32, label: &str) -> anyhow::Result<u16> {
+    u16::try_from(size).map_err(|_| {
+        anyhow::anyhow!("parent {label} size {size} does not fit GTypeInfo's guint16 field")
+    })
+}
+
 impl ClassRegistration {
     fn execute(self) -> anyhow::Result<u64> {
         let query = self.query_parent_type()?;
         self.validate_layout(&query)?;
         self.validate_interfaces()?;
 
-        let class_size = query.class_size as u16;
-        let instance_size = query.instance_size as u16;
+        let class_size = fits_in_type_info_size(query.class_size, "class")?;
+        let instance_size = fits_in_type_info_size(query.instance_size, "instance")?;
 
         let new_type = Self::register_type(
             self.parent_type,
@@ -315,21 +331,22 @@ impl ClassRegistration {
     }
 }
 
-/// Registers a new GObject subtype named `name` deriving from `parentType`, wiring up any vfunc
-/// overrides and implemented interfaces, and returns the new GType.
+/// Registers a new `GObject` subtype named `name` deriving from `parentType`, wiring up any vfunc
+/// overrides and implemented interfaces, and returns the new `GType`.
+#[allow(clippy::needless_pass_by_value)]
 #[napi(catch_unwind)]
 pub fn register_class(
     name: String,
     parent_type: BigInt,
     options: Option<RegisterClassOptions>,
-) -> napi::Result<BigInt> {
+) -> Result<BigInt> {
     let name = glib::GString::from_string_checked(name).map_err(|err| {
-        napi::Error::new(
-            napi::Status::InvalidArg,
+        Error::new(
+            Status::InvalidArg,
             format!("register_class: invalid type name: {err}"),
         )
     })?;
-    let parent_type = type_from_bigint(parent_type, "register_class: parent")?;
+    let parent_type = type_from_bigint(&parent_type, "register_class: parent")?;
     let (vfuncs, interfaces) = match options {
         Some(options) => options.into_raw()?,
         None => (Vec::new(), Vec::new()),
@@ -448,7 +465,8 @@ mod tests {
                 .execute()
                 .expect("conforming interface should register");
             assert_ne!(type_, 0);
-            assert!(unsafe { glib::Type::from_glib(type_ as glib::ffi::GType) }.is_a(plugin_type));
+            let raw = glib::ffi::GType::try_from(type_).expect("GType fits in a usize");
+            assert!(unsafe { glib::Type::from_glib(raw) }.is_a(plugin_type));
         });
     }
 

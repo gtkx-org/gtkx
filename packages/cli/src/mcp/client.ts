@@ -31,20 +31,24 @@ const toResponseError = (error: unknown): { code: number; message: string; data?
         : { code: ErrorCode.INTERNAL_ERROR, message: errorMessage(error) };
 
 const connectSettler = (callbacks: ConnectCallbacks): ConnectSettler => {
-    let settled = false;
+    let isSettled = false;
 
     const settle = (notify: () => void): void => {
-        if (settled) {
+        if (isSettled) {
             return;
         }
 
-        settled = true;
+        isSettled = true;
         notify();
     };
 
     return {
-        succeed: () => settle(() => callbacks.onSuccess?.()),
-        fail: (failure) => settle(() => callbacks.onError?.(failure)),
+        succeed: () => {
+            settle(() => callbacks.onSuccess?.());
+        },
+        fail: (failure) => {
+            settle(() => callbacks.onError?.(failure));
+        },
     };
 };
 
@@ -106,7 +110,9 @@ class McpClient {
         });
 
         const connection = ProtocolConnection.fromSocket(socket, {
-            onClose: () => this.handleClose(),
+            onClose: () => {
+                this.handleClose();
+            },
             onError: (socketError) => {
                 this.handleSocketError(socketError);
                 settle.fail(socketError);

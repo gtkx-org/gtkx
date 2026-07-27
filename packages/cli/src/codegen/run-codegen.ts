@@ -49,7 +49,9 @@ type RunOptionsInput = {
 };
 
 const GIR_PATH_MISSING_MESSAGE =
-    "No GIR search paths available. Install gobject-introspection (Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), or set `girPath` in gtkx.config.ts.";
+    "No GIR search paths available. Install gobject-introspection " +
+    "(Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), " +
+    "or set `girPath` in gtkx.config.ts.";
 
 const removeSharedStoreShadow = (cwd: string): void => {
     for (const path of [
@@ -122,9 +124,9 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
         throw new Error(GIR_PATH_MISSING_MESSAGE);
     }
 
-    const force = options.force === true || isCodegenStale({ girPath, libraries, store });
+    const isForce = options.force === true || isCodegenStale({ girPath, libraries, store });
 
-    return { girPath, libraries, store, force };
+    return { girPath, libraries, store, force: isForce };
 };
 
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {

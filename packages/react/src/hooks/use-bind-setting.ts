@@ -6,22 +6,30 @@ import type { SettingsSchema, SettingsSchemaKeys } from "../utils/settings.js";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useSettings } from "./use-setting.js";
 
+type UseBindSettingOptions<K extends SettingsSchemaKeys> = {
+    schema: SettingsSchema<K>;
+    key: keyof K & string;
+    object: RefProp<GObject.Object>;
+    property: string;
+    flags?: Gio.SettingsBindFlags;
+};
+
 /**
  * Binds a GSettings key to a property of a GObject, keeping the two in sync for the object's lifetime.
  *
- * @param schema The schema reference identifying the settings backend.
- * @param key The key within the schema to bind.
- * @param object The GObject whose property is bound to the setting.
- * @param property The name of the object property to bind.
- * @param flags Flags controlling the binding's direction and behaviour.
+ * @param options.schema The schema reference identifying the settings backend.
+ * @param options.key The key within the schema to bind.
+ * @param options.object The GObject whose property is bound to the setting.
+ * @param options.property The name of the object property to bind.
+ * @param options.flags Flags controlling the binding's direction and behaviour.
  */
-function useBindSetting<K extends SettingsSchemaKeys>(
-    schema: SettingsSchema<K>,
-    key: keyof K & string,
-    object: RefProp<GObject.Object>,
-    property: string,
-    flags: Gio.SettingsBindFlags = Gio.SettingsBindFlags.DEFAULT,
-): void {
+function useBindSetting<K extends SettingsSchemaKeys>({
+    schema,
+    key,
+    object,
+    property,
+    flags = Gio.SettingsBindFlags.DEFAULT,
+}: UseBindSettingOptions<K>): void {
     const settings = useSettings(schema);
     const propertyName = kebabCase(property);
 

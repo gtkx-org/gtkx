@@ -92,10 +92,11 @@ const renderTranslatingConstructor = (context: ModuleContext, props: GirProperty
     const destructured = props.map((property) => toCamelIdentifier(property.name));
     const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
 
-    const entries = props.map(
-        (property) =>
-            `${sourceStringLiteral(property.name)}: [${renderDescriptor(context, property.type, property.transferOwnership)}, ${toCamelIdentifier(property.name)}],`,
-    );
+    const entries = props.map((property) => {
+        const descriptor = renderDescriptor(context, property.type, property.transferOwnership);
+
+        return `${sourceStringLiteral(property.name)}: [${descriptor}, ${toCamelIdentifier(property.name)}],`;
+    });
 
     const recordLiteral = renderBraced(entries.join("\n"));
     const lines = [`const props: ${PROPS_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];

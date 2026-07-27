@@ -97,10 +97,14 @@ ENV CARGO_NET_RETRY=10
 ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain stable \
+# Keep in sync with /rust-toolchain.toml (stable) and scripts/run-headless.ts (nightly), which pin
+# the same toolchains for local builds; the image is built without the repository checked out.
+ARG RUST_VERSION=1.97.0
+ARG RUST_NIGHTLY=nightly-2026-07-13
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
-RUN rustup toolchain install nightly --profile minimal --component llvm-tools-preview --component rust-src --component miri \
+RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component llvm-tools-preview --component rust-src --component miri \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
 RUN cargo install cargo-llvm-cov --locked \
@@ -110,7 +114,6 @@ RUN if [ -d /usr/share/vulkan/icd.d ]; then \
         find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete; \
     fi
 
-ENV RUSTUP_TOOLCHAIN=stable
 ENV CARGO_INCREMENTAL=0
 
 LABEL org.opencontainers.image.source="https://github.com/gtkx-org/gtkx"

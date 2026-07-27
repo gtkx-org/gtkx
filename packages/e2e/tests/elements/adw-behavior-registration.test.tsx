@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const behaviorsFor = (type: string): ElementBehavior[] => ELEMENTS[type]?.behaviors ?? [];
 
 const emptyBehaviorNames = (type: string, behaviors: ElementBehavior[]): string[] =>
-    behaviors.flatMap((behavior, index) => (Object.keys(behavior).length === 0 ? [`${type}[${index}]`] : []));
+    behaviors.flatMap((behavior, index) => (Object.keys(behavior).length === 0 ? [`${type}[${String(index)}]`] : []));
 
 describe("adwaita behavior registration", () => {
     it("registers Adwaita behaviors when @gtkx/jsx/adw is loaded", () => {

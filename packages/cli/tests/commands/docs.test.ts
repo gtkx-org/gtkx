@@ -1,10 +1,41 @@
+import { resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
+import { loadConfig } from "@gtkx/config";
 import { describe, expect, it, vi } from "vitest";
+import { docs } from "../../src/commands/docs.js";
 import { collectLogged, setupLogState } from "./log-state.js";
+
+type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; cwd?: string };
+type DocsRun = NonNullable<typeof docs.run>;
+type DocsContext = Parameters<DocsRun>[0];
+
+const writeDocsMock = vi.mocked(writeDocs);
+const loadConfigMock = vi.mocked(loadConfig);
+const resolveGirPathMock = vi.mocked(resolveGirPath);
+const resolveLibrariesMock = vi.mocked(resolveLibraries);
+
+const stringContaining = (expected: string): string => expect.stringContaining(expected) as string;
+
+const run = (overrides: DocsArgs): Promise<unknown> => {
+    const handler = docs.run;
+
+    if (!handler) {
+        throw new Error("docs command has no run handler");
+    }
+
+    const args = {
+        out: "docs/reference",
+        "base-path": "/reference",
+        force: false,
+        ...overrides,
+    } as DocsContext["args"];
+
+    return Promise.resolve(handler({ rawArgs: [], args, cmd: docs }));
+};
 
 vi.mock("@gtkx/codegen", () => ({
     resolveGirPath: vi.fn(() => ["/usr/share/gir-1.0"]),
     resolveLibraries: vi.fn(() => ["Gtk-4.0"]),
-    readBuiltinElements: vi.fn(async () => ({ components: {}, lazyElements: [], props: {} })),
+    readBuiltinElements: vi.fn(() => Promise.resolve({ components: {}, lazyElements: [], props: {} })),
     writeDocs: vi.fn(() => ({
         regenerated: true,
         namespaces: [
@@ -28,43 +59,13 @@ vi.mock("@gtkx/codegen", () => ({
 }));
 
 vi.mock("@gtkx/config", () => ({
-    loadConfig: vi.fn(async () => ({
-        config: { applicationId: "com.example.App", libraries: ["Gtk-4.0"] },
-        configFile: "/project/gtkx.config.ts",
-    })),
+    loadConfig: vi.fn(() =>
+        Promise.resolve({
+            config: { applicationId: "com.example.App", libraries: ["Gtk-4.0"] },
+            configFile: "/project/gtkx.config.ts",
+        }),
+    ),
 }));
-
-import { resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
-import { loadConfig } from "@gtkx/config";
-import { docs } from "../../src/commands/docs.js";
-
-const writeDocsMock = vi.mocked(writeDocs);
-const loadConfigMock = vi.mocked(loadConfig);
-const resolveGirPathMock = vi.mocked(resolveGirPath);
-const resolveLibrariesMock = vi.mocked(resolveLibraries);
-
-const stringContaining = (expected: string): string => expect.stringContaining(expected) as string;
-
-type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; cwd?: string };
-type DocsRun = NonNullable<typeof docs.run>;
-type DocsContext = Parameters<DocsRun>[0];
-
-const run = (overrides: DocsArgs): Promise<unknown> => {
-    const handler = docs.run;
-
-    if (!handler) {
-        throw new Error("docs command has no run handler");
-    }
-
-    const args = {
-        out: "docs/reference",
-        "base-path": "/reference",
-        force: false,
-        ...overrides,
-    } as DocsContext["args"];
-
-    return Promise.resolve(handler({ rawArgs: [], args, cmd: docs }));
-};
 
 describe("docs command", () => {
     const state = setupLogState();

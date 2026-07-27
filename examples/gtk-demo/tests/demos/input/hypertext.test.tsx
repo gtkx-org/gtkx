@@ -5,52 +5,60 @@ import { describe, expect, it, vi } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
 
-const spawnMock = vi.hoisted(() => vi.fn((_command: string, _args: string[]) => ({ on() {} })));
-vi.mock("node:child_process", async (importOriginal) => {
-    const actual = (await importOriginal()) as typeof import("node:child_process");
-    return { ...actual, spawn: spawnMock };
-});
+const spawnMock = vi.hoisted(() =>
+    vi.fn<(command: string, args: string[]) => { on: () => void }>(() => ({ on: vi.fn() })),
+);
+
+const demoController = <T extends Gtk.EventController>(
+    view: Gtk.TextView,
+    type: new (...args: never[]) => T,
+    isMatch: (controller: T) => boolean,
+): T => {
+    const controllers = view.observeControllers();
+
+    for (let i = 0; i < controllers.getNItems(); i++) {
+        const controller = controllers.getItem(i);
+
+        if (controller instanceof type && isMatch(controller)) {
+            return controller;
+        }
+    }
+
+    throw new Error(`hypertext demo ${type.name} not found`);
+};
 
 const findTextView = async (): Promise<Gtk.TextView> =>
     (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
 
-const demoClickGesture = (view: Gtk.TextView): Gtk.GestureClick => {
-    const controllers = view.observeControllers();
-    for (let i = 0; i < controllers.getNItems(); i++) {
-        const controller = controllers.getItem(i);
-        if (controller instanceof Gtk.GestureClick && controller.getButton() === 1) return controller;
-    }
-    throw new Error("hypertext demo GestureClick (button 1) not found");
-};
+const demoClickGesture = (view: Gtk.TextView): Gtk.GestureClick =>
+    demoController(view, Gtk.GestureClick, (gesture) => gesture.getButton() === 1);
 
-const demoMotionController = (view: Gtk.TextView): Gtk.EventControllerMotion => {
-    const controllers = view.observeControllers();
-    for (let i = 0; i < controllers.getNItems(); i++) {
-        const controller = controllers.getItem(i);
-        if (controller instanceof Gtk.EventControllerMotion) return controller;
-    }
-    throw new Error("hypertext demo EventControllerMotion not found");
-};
+const demoMotionController = (view: Gtk.TextView): Gtk.EventControllerMotion =>
+    demoController(view, Gtk.EventControllerMotion, () => true);
 
-const demoKeyController = (view: Gtk.TextView): Gtk.EventControllerKey => {
-    const controllers = view.observeControllers();
-    for (let i = 0; i < controllers.getNItems(); i++) {
-        const controller = controllers.getItem(i);
-        if (controller instanceof Gtk.EventControllerKey) return controller;
-    }
-    throw new Error("hypertext demo EventControllerKey not found");
-};
+const demoKeyController = (view: Gtk.TextView): Gtk.EventControllerKey =>
+    demoController(view, Gtk.EventControllerKey, () => true);
 
 const windowCoordsAtOffset = (view: Gtk.TextView, offset: number): [number, number] => {
     const iter = view.getBuffer().getIterAtOffset(offset);
     const rect = view.getIterLocation(iter);
+
     return view.bufferToWindowCoords(Gtk.TextWindowType.WIDGET, rect.x + 1, rect.y + Math.trunc(rect.height / 2));
 };
 
 const clickOffset = async (view: Gtk.TextView, offset: number): Promise<void> => {
     const [x, y] = windowCoordsAtOffset(view, offset);
-    await act(() => demoClickGesture(view).emit("released", 1, x, y));
+
+    await act(() => {
+        demoClickGesture(view).emit("released", 1, x, y);
+    });
 };
+
+vi.mock("node:child_process", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("node:child_process")>();
+
+    return { ...actual, spawn: spawnMock };
+});
 
 describe("hypertextDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -95,9 +103,13 @@ describe("hypertextDemo link navigation", () => {
         const buffer = textView.getBuffer();
         const tagsOffset = readBufferText(textView).indexOf("tags");
         expect(tagsOffset).toBeGreaterThan(0);
-        await act(() => buffer.placeCursor(buffer.getIterAtOffset(tagsOffset)));
+
+        await act(() => {
+            buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
+        });
+
         await userEvent.keyboard(textView, "{Enter}");
-        await screen.findByDisplayValue(/attribute that can be applied to some range of text/);
+        expect(await screen.findByDisplayValue(/attribute that can be applied to some range of text/)).toBe(textView);
     });
 
     it("navigates to the hypertext definition page when Enter is pressed at the hypertext link", async () => {
@@ -106,9 +118,13 @@ describe("hypertextDemo link navigation", () => {
         const buffer = textView.getBuffer();
         const linkOffset = readBufferText(textView).indexOf("hypertext");
         expect(linkOffset).toBeGreaterThan(0);
-        await act(() => buffer.placeCursor(buffer.getIterAtOffset(linkOffset)));
+
+        await act(() => {
+            buffer.placeCursor(buffer.getIterAtOffset(linkOffset));
+        });
+
         await userEvent.keyboard(textView, "{Enter}");
-        await screen.findByDisplayValue(/Machine-readable text that is not sequential/);
+        expect(await screen.findByDisplayValue(/Machine-readable text that is not sequential/)).toBe(textView);
     });
 
     it("navigates via the numeric-keypad Enter key at a link", async () => {
@@ -116,9 +132,13 @@ describe("hypertextDemo link navigation", () => {
         const textView = await findTextView();
         const buffer = textView.getBuffer();
         const tagsOffset = readBufferText(textView).indexOf("tags");
-        await act(() => buffer.placeCursor(buffer.getIterAtOffset(tagsOffset)));
+
+        await act(() => {
+            buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
+        });
+
         await fireEvent(demoKeyController(textView), "key-pressed", Gdk.KEY_KP_Enter, 0, 0);
-        await screen.findByDisplayValue(/attribute that can be applied to some range of text/);
+        expect(await screen.findByDisplayValue(/attribute that can be applied to some range of text/)).toBe(textView);
     });
 });
 
@@ -128,7 +148,7 @@ describe("hypertextDemo click navigation", () => {
         const textView = await findTextView();
         const linkOffset = readBufferText(textView).indexOf("hypertext");
         await clickOffset(textView, linkOffset);
-        await screen.findByDisplayValue(/Machine-readable text that is not sequential/);
+        expect(await screen.findByDisplayValue(/Machine-readable text that is not sequential/)).toBe(textView);
     });
 
     it("follows the tags link to the definition page when clicked", async () => {
@@ -136,7 +156,7 @@ describe("hypertextDemo click navigation", () => {
         const textView = await findTextView();
         const linkOffset = readBufferText(textView).indexOf("tags");
         await clickOffset(textView, linkOffset);
-        await screen.findByDisplayValue(/attribute that can be applied to some range of text/);
+        expect(await screen.findByDisplayValue(/attribute that can be applied to some range of text/)).toBe(textView);
     });
 
     it("returns to page 1 when the Go back link is clicked on a definition page", async () => {
@@ -156,14 +176,22 @@ describe("hypertextDemo round trip", () => {
         const textView = await findTextView();
         const buffer = textView.getBuffer();
         const tagsOffset = readBufferText(textView).indexOf("tags");
-        await act(() => buffer.placeCursor(buffer.getIterAtOffset(tagsOffset)));
+
+        await act(() => {
+            buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
+        });
+
         await userEvent.keyboard(textView, "{Enter}");
         await screen.findByDisplayValue(/attribute that can be applied/);
         const pageTwo = readBufferText(textView);
         const backOffset = pageTwo.indexOf("Go back");
         expect(backOffset).toBeGreaterThanOrEqual(0);
         const bufferAfter = textView.getBuffer();
-        await act(() => bufferAfter.placeCursor(bufferAfter.getIterAtOffset(backOffset + 1)));
+
+        await act(() => {
+            bufferAfter.placeCursor(bufferAfter.getIterAtOffset(backOffset + 1));
+        });
+
         await userEvent.keyboard(textView, "{Enter}");
         await screen.findByDisplayValue(/can easily be realized with |Some text to show/);
     });
@@ -174,13 +202,19 @@ describe("hypertextDemo hover cursor", () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
         const motion = demoMotionController(textView);
-
         const [linkX, linkY] = windowCoordsAtOffset(textView, readBufferText(textView).indexOf("tags"));
-        await act(() => motion.emit("motion", linkX, linkY));
-        expect(textView.getCursor()?.getName()).toBe("pointer");
 
+        await act(() => {
+            motion.emit("motion", linkX, linkY);
+        });
+
+        expect(textView.getCursor()?.getName()).toBe("pointer");
         const [textX, textY] = windowCoordsAtOffset(textView, 2);
-        await act(() => motion.emit("motion", textX, textY));
+
+        await act(() => {
+            motion.emit("motion", textX, textY);
+        });
+
         expect(textView.getCursor()?.getName()).toBe("text");
     });
 });
@@ -192,20 +226,27 @@ describe("hypertextDemo speaker icon", () => {
         const textView = await findTextView();
         const buffer = textView.getBuffer();
         const tagsOffset = readBufferText(textView).indexOf("tags");
-        await act(() => buffer.placeCursor(buffer.getIterAtOffset(tagsOffset)));
+
+        await act(() => {
+            buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
+        });
+
         await userEvent.keyboard(textView, "{Enter}");
         await screen.findByDisplayValue(/attribute that can be applied/);
-
         const speaker = (await screen.findByRole(Gtk.AccessibleRole.IMG)) as Gtk.Image;
         const controllers = speaker.observeControllers();
         let gesture: Gtk.GestureClick | null = null;
+
         for (let i = 0; i < controllers.getNItems(); i++) {
             const controller = controllers.getItem(i);
-            if (controller instanceof Gtk.GestureClick) gesture = controller;
+
+            if (controller instanceof Gtk.GestureClick) {
+                gesture = controller;
+            }
         }
+
         expect(gesture).not.toBeNull();
         await fireEvent(gesture as Gtk.GestureClick, "pressed", 1, 0, 0);
-
         expect(spawnMock).toHaveBeenCalledTimes(1);
         expect(spawnMock.mock.calls[0]?.[0]).toBe("espeak-ng");
         expect(spawnMock.mock.calls[0]?.[1]).toEqual(["tag"]);
@@ -225,7 +266,11 @@ describe("hypertextDemo input edge cases", () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
         const buffer = textView.getBuffer();
-        await act(() => buffer.placeCursor(buffer.getStartIter()));
+
+        await act(() => {
+            buffer.placeCursor(buffer.getStartIter());
+        });
+
         await userEvent.keyboard(textView, "{Enter}");
         expect(screen.getByDisplayValue(/Some text to show/)).toBe(textView);
         expect(screen.queryByDisplayValue(/attribute that can be applied/)).toBeNull();

@@ -88,7 +88,10 @@ const stageAndCompileProjectSchemas = (root: string, dataDir: string | null): st
     }
 
     compileSchemas(dir);
-    process.once("exit", () => removeTempDir(dir));
+
+    process.once("exit", () => {
+        removeTempDir(dir);
+    });
 
     return dir;
 };
@@ -133,7 +136,7 @@ const readFileOrNull = (path: string): string | null => {
     }
 };
 
-const writeIfChanged = (path: string, content: string): boolean => {
+const didWriteChanges = (path: string, content: string): boolean => {
     if (readFileOrNull(path) === content) {
         return false;
     }
@@ -150,9 +153,9 @@ const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEnvResult
     const parsed = dataDirAbs === null ? [] : parseProjectSchemas(schemaFiles, dataDirAbs);
     const content = renderEnvModule(parsed);
     const path = schemaEnvPath(rootDir);
-    const written = writeIfChanged(path, content);
+    const isWritten = didWriteChanges(path, content);
 
-    return { path, written };
+    return { path, written: isWritten };
 };
 
 export {

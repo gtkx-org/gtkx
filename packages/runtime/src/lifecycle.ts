@@ -17,7 +17,29 @@ type ApplicationLike = {
 };
 
 const shutdownCallbacks: (() => void)[] = [];
-let hasQuit = false;
+/**
+ * Runs every registered exit callback and shuts down the native runtime. Safe to
+ * call more than once; only the first call takes effect.
+ */
+const quit: () => void = createQuit();
+
+function createQuit(): () => void {
+    let hasQuit = false;
+
+    return () => {
+        if (hasQuit) {
+            return;
+        }
+
+        hasQuit = true;
+
+        for (const callback of shutdownCallbacks) {
+            callback();
+        }
+
+        nativeQuit();
+    };
+}
 
 /**
  * Registers a callback to run once when the process quits, before the native
@@ -30,32 +52,19 @@ const onExit = (callback: () => void): void => {
 };
 
 /**
- * Runs every registered exit callback and shuts down the native runtime. Safe to
- * call more than once; only the first call takes effect.
- */
-const quit = (): void => {
-    if (hasQuit) {
-        return;
-    }
-
-    hasQuit = true;
-
-    for (const callback of shutdownCallbacks) {
-        callback();
-    }
-
-    nativeQuit();
-};
-
-/**
  * Registers the application if needed and activates it, keeping the runtime alive
  * while it is active and releasing it on shutdown.
  *
  * @param application The application to register and activate.
  */
 const runApplication = (application: ApplicationLike): void => {
-    application.on("activate", () => keepAlive(true));
-    application.on("shutdown", () => keepAlive(false));
+    application.on("activate", () => {
+        keepAlive(true);
+    });
+
+    application.on("shutdown", () => {
+        keepAlive(false);
+    });
 
     if (!application.getIsRegistered()) {
         application.register(null);
@@ -81,7 +90,10 @@ const quitApplication = (application: ApplicationLike): void => {
         application.removeWindow?.(window);
     }
 
-    application.on("shutdown", () => application.quit());
+    application.on("shutdown", () => {
+        application.quit();
+    });
+
     blockMatchedSignalHandlers(application, "activate");
     application.run([]);
 };

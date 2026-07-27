@@ -14,7 +14,9 @@ type ScrollAdjustments = {
 const slide = (widget: Gtk.Widget, value: number): Promise<void> =>
     wrapEvent(widget, () => {
         if (!(widget instanceof Gtk.Range)) {
-            throw new TypeError(`userEvent.slide requires a Gtk.Range (e.g. Gtk.Scale), got ${widget.constructor.name}`);
+            throw new TypeError(
+                `userEvent.slide requires a Gtk.Range (e.g. Gtk.Scale), got ${widget.constructor.name}`,
+            );
         }
 
         widget.emit("change-value", Gtk.ScrollType.JUMP, value);

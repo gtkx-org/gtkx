@@ -14,7 +14,8 @@ use napi::bindgen_prelude::{External, Unknown};
 
 use native::ffi;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BoxedCodec, Codec, Decoder, ObjectCodec, Ownership, StringCodec,
+    ArrayCodec, ArrayKind, BoxedCodec, Codec, Decoder, FundamentalCodec, IntegerCodec, ObjectCodec,
+    Ownership, RefCodec, StringCodec,
 };
 
 use test_support::napi_mock;
@@ -42,7 +43,7 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Codec {
 }
 
 fn gvariant_fundamental_type_of(ownership: Ownership) -> Codec {
-    Codec::Fundamental(native::ffi::codec::FundamentalCodec {
+    Codec::Fundamental(FundamentalCodec {
         ownership,
         shared_library: "libglib-2.0.so.0".to_string(),
         ref_fn_name: "g_variant_ref_sink".to_string(),
@@ -108,7 +109,7 @@ fn assert_string_item(items: &[napi::sys::napi_value], index: usize, expected: &
 
 fn new_gobject_handle() -> (glib::Object, *mut c_void, native::Handle) {
     let obj = glib::Object::new::<glib::Object>();
-    let obj_ptr = obj.as_ptr() as *mut c_void;
+    let obj_ptr = obj.as_ptr().cast::<c_void>();
     let handle = native::Handle::from_glib_borrow(obj_ptr);
     (obj, obj_ptr, handle)
 }
@@ -120,14 +121,14 @@ fn build_gobject_glist(count: usize) -> *mut glib::ffi::GList {
         unsafe {
             glib::gobject_ffi::g_object_ref(obj.as_ptr());
         }
-        list = unsafe { glib::ffi::g_list_append(list, obj.as_ptr() as *mut c_void) };
+        list = unsafe { glib::ffi::g_list_append(list, obj.as_ptr().cast::<c_void>()) };
     }
     list
 }
 
 fn ptr_slot_stash(ptr: *mut c_void) -> ffi::Stash {
     let mut slot: Vec<*mut c_void> = vec![ptr];
-    let storage_ptr = slot.as_mut_ptr() as *mut c_void;
+    let storage_ptr = slot.as_mut_ptr().cast::<c_void>();
     ffi::Stash::Storage(ffi::StashStorage::new(
         storage_ptr,
         ffi::StashData::PtrSlot(slot),
@@ -143,7 +144,7 @@ fn glist_transfer_none_does_not_free_list() {
         let items = decode_array(
             &env,
             &gobject_glist_type_of(Ownership::Borrowed),
-            list as *mut c_void,
+            list.cast::<c_void>(),
         );
         assert_eq!(items.len(), 3);
 
@@ -154,7 +155,7 @@ fn glist_transfer_none_does_not_free_list() {
             let data = unsafe { glib::ffi::g_list_nth_data(list, index) };
             if !data.is_null() {
                 unsafe {
-                    glib::gobject_ffi::g_object_unref(data as *mut glib::gobject_ffi::GObject);
+                    glib::gobject_ffi::g_object_unref(data.cast::<glib::gobject_ffi::GObject>());
                 }
             }
         }
@@ -173,7 +174,7 @@ fn glist_full_transfer_frees_list() {
         let items = decode_array(
             &env,
             &gobject_glist_type_of(Ownership::Full),
-            list as *mut c_void,
+            list.cast::<c_void>(),
         );
         assert_eq!(items.len(), 3);
     });
@@ -228,7 +229,7 @@ fn strv_full_transfer_frees_strings() {
         let items = decode_array(
             &env,
             &string_array_type_of(Ownership::Full, Ownership::Full, ArrayKind::Array),
-            strv as *mut c_void,
+            strv.cast::<c_void>(),
         );
         assert_eq!(items.len(), 2);
     });
@@ -247,7 +248,7 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
         let result = decode_ptr(
             &env,
             &gvariant_fundamental_type_of(Ownership::Borrowed),
-            variant as *mut c_void,
+            variant.cast::<c_void>(),
         );
         assert!(
             napi_mock::read_external(result.raw()).is_some(),
@@ -274,7 +275,7 @@ fn from_cif_value_ref_gobject_null_inner() {
         let env = helpers::fake_env();
         let cif_value = ptr_slot_stash(std::ptr::null_mut());
         let codec = Codec::Ref(
-            native::ffi::codec::RefCodec::new(gobject_type_of(Ownership::Borrowed), false)
+            RefCodec::new(gobject_type_of(Ownership::Borrowed), false)
                 .expect("GObject is a valid Ref inner"),
         );
 
@@ -294,7 +295,7 @@ fn from_cif_value_ref_boxed() {
 
         let cif_value = ptr_slot_stash(ptr);
         let codec = Codec::Ref(
-            native::ffi::codec::RefCodec::new(rgba_boxed_type_of(Ownership::Borrowed), false)
+            RefCodec::new(rgba_boxed_type_of(Ownership::Borrowed), false)
                 .expect("Boxed is a valid Ref inner"),
         );
 
@@ -326,7 +327,7 @@ fn glist_with_string_items() {
         let items = decode_array(
             &env,
             &string_array_type_of(Ownership::Borrowed, Ownership::Borrowed, ArrayKind::GList),
-            list as *mut c_void,
+            list.cast::<c_void>(),
         );
         assert_eq!(items.len(), 2);
         assert_string_item(&items, 0, "hello");
@@ -424,7 +425,7 @@ fn decode_with_context_decodes_integer() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let stash = ffi::Stash::I32(99);
-        let codec = Codec::Integer(native::ffi::codec::IntegerCodec::I32);
+        let codec = Codec::Integer(IntegerCodec::I32);
 
         let result = codec
             .decode_with_context(&env, &stash, &[], &[])

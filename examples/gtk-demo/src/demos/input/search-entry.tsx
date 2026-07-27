@@ -9,19 +9,41 @@ type SearchEntryContextValue = {
     searchText: string;
     setSearchText: (value: string) => void;
     searchMode: boolean;
-    setSearchMode: (value: boolean) => void;
+    setSearchMode: (isEnabled: boolean) => void;
     handleToggleButtonClicked: (btn: Gtk.ToggleButton) => void;
 };
 
 const SearchEntryContext = createContext<SearchEntryContextValue | null>(null);
 
-const useSearchEntryContext = (): SearchEntryContextValue => {
-    const ctx = useContext(SearchEntryContext);
-    if (!ctx) throw new Error("SearchEntryContext is missing");
-    return ctx;
+const searchEntryDemo: Demo = {
+    id: "search-entry",
+    title: "Entry/Search Entry",
+    description:
+        "GtkSearchEntry provides an entry that is ready for search.\n\nSearch entries have their " +
+        "\"search-changed\" signal delayed and should be used when the search operation is slow, " +
+        "such as big datasets to search, or online searches.\n\nGtkSearchBar allows have a hidden " +
+        "search entry that 'springs into action' upon keyboard input.",
+    keywords: [],
+    component: SearchEntryDemo,
+    titlebar: SearchEntryTitlebar,
+    provider: SearchEntryProvider,
+    sourceCode,
+    windowTitle: "Type to Search",
+    resizable: false,
+    defaultWidth: 200,
 };
 
-const SearchEntryProvider = ({ children }: DemoProviderProps) => {
+function useSearchEntryContext(): SearchEntryContextValue {
+    const ctx = useContext(SearchEntryContext);
+
+    if (!ctx) {
+        throw new Error("SearchEntryContext is missing");
+    }
+
+    return ctx;
+}
+
+function SearchEntryProvider({ children }: DemoProviderProps) {
     const [searchText, setSearchText] = useState("");
     const [searchMode, setSearchMode] = useState(false);
 
@@ -38,10 +60,11 @@ const SearchEntryProvider = ({ children }: DemoProviderProps) => {
     };
 
     return <SearchEntryContext.Provider value={value}>{children}</SearchEntryContext.Provider>;
-};
+}
 
-const SearchEntryTitlebar = () => {
+function SearchEntryTitlebar() {
     const { searchMode, handleToggleButtonClicked } = useSearchEntryContext();
+
     return (
         <GtkHeaderBar
             end={(
@@ -53,20 +76,28 @@ const SearchEntryTitlebar = () => {
             )}
         />
     );
-};
+}
 
-const SearchEntryDemo = () => {
+function SearchEntryDemo() {
     const { searchText, setSearchText, searchMode, setSearchMode } = useSearchEntryContext();
     const parentWindow = useParentWindow();
+
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
             <GtkSearchBar
                 searchModeEnabled={searchMode}
                 showCloseButton={false}
                 keyCaptureWidget={parentWindow}
-                onNotifySearchModeEnabled={(enabled) => setSearchMode(enabled ?? false)}
+                onNotifySearchModeEnabled={(enabled) => {
+                    setSearchMode(enabled ?? false);
+                }}
             >
-                <GtkSearchEntry halign={Gtk.Align.CENTER} onSearchChanged={(entry) => setSearchText(entry.getText())} />
+                <GtkSearchEntry
+                    halign={Gtk.Align.CENTER}
+                    onSearchChanged={(entry) => {
+                        setSearchText(entry.getText());
+                    }}
+                />
             </GtkSearchBar>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
@@ -80,19 +111,6 @@ const SearchEntryDemo = () => {
             </GtkBox>
         </GtkBox>
     );
-};
+}
 
-export const searchEntryDemo: Demo = {
-    id: "search-entry",
-    title: "Entry/Search Entry",
-    description:
-        "GtkSearchEntry provides an entry that is ready for search.\n\nSearch entries have their \"search-changed\" signal delayed and should be used when the search operation is slow, such as big datasets to search, or online searches.\n\nGtkSearchBar allows have a hidden search entry that 'springs into action' upon keyboard input.",
-    keywords: [],
-    component: SearchEntryDemo,
-    titlebar: SearchEntryTitlebar,
-    provider: SearchEntryProvider,
-    sourceCode,
-    windowTitle: "Type to Search",
-    resizable: false,
-    defaultWidth: 200,
-};
+export { searchEntryDemo };

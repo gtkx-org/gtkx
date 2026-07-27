@@ -5,7 +5,11 @@ type EmitFile = ThisParameterType<BuildEndHook>["emitFile"];
 
 const expectBuildEndIsNoop = (buildEnd: BuildEndHook): void => {
     const emitFile = vi.fn<EmitFile>();
-    expect(() => buildEnd.call({ emitFile })).not.toThrow();
+
+    expect(() => {
+        buildEnd.call({ emitFile });
+    }).not.toThrow();
+
     expect(emitFile).not.toHaveBeenCalled();
 };
 

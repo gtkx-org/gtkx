@@ -75,7 +75,7 @@ const gtkDocToMarkdown = (raw: string): string => {
     const stash: string[] = [];
 
     const protect = (value: string): string => {
-        const token = `${SENTINEL}${stash.length}${SENTINEL}`;
+        const token = `${SENTINEL}${String(stash.length)}${SENTINEL}`;
         stash.push(value);
 
         return token;
@@ -92,7 +92,7 @@ const gtkDocToMarkdown = (raw: string): string => {
 
     for (let index = stash.length - 1; index >= 0; index -= 1) {
         const value = stash[index] ?? "";
-        text = text.replaceAll(`${SENTINEL}${index}${SENTINEL}`, () => value);
+        text = text.replaceAll(`${SENTINEL}${String(index)}${SENTINEL}`, () => value);
     }
 
     return text;

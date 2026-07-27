@@ -1,16 +1,29 @@
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render, screen } from "@gtkx/testing";
 import { useEffect, useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-const noop = () => {};
+const noop: () => void = vi.fn();
 
 function CountLabel({ count }: { count: number }) {
-    return <GtkLabel>Count: {count}</GtkLabel>;
+    return (
+        <GtkLabel>
+            Count:
+            {" "}
+            {count}
+        </GtkLabel>
+    );
 }
 
 function MiddleSegmentLabel({ showMiddle }: { showMiddle: boolean }) {
-    return <GtkLabel>Start{showMiddle && " Middle"} End</GtkLabel>;
+    return (
+        <GtkLabel>
+            Start
+            {showMiddle && " Middle"}
+            {" "}
+            End
+        </GtkLabel>
+    );
 }
 
 function OptionalTextLabel({ showText }: { showText: boolean }) {
@@ -66,15 +79,29 @@ describe("render - Label text children (2)", () => {
             const [count, setCount] = useState(0);
 
             useEffect(() => {
-                increment = () => setCount((value) => value + 1);
+                increment = () => {
+                    setCount((value) => value + 1);
+                };
             });
 
-            return <GtkLabel>Clicked {count} times</GtkLabel>;
+            return (
+                <GtkLabel>
+                    Clicked
+                    {" "}
+                    {count}
+                    {" "}
+                    times
+                </GtkLabel>
+            );
         }
 
         await render(<App />);
         expect(screen.getByText("Clicked 0 times")).toBeDefined();
-        await act(() => increment());
+
+        await act(() => {
+            increment();
+        });
+
         expect(screen.getByText("Clicked 1 times")).toBeDefined();
     });
 

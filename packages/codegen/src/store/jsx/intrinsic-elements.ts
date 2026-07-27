@@ -85,11 +85,11 @@ const implementedInterfaces = (
 
 const getGlibName = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
 const giNamespaceAlias = (namespaceName: string): string => `${namespaceName}$`;
-const noContainerProps: HasContainerProps = () => false;
+const hasNoContainerProps: HasContainerProps = () => false;
 
-const interfaceHasPropsBody = (
+const hasInterfacePropsBody = (
     klass: GirClass,
-    hasContainerProps: HasContainerProps = noContainerProps,
+    hasContainerProps: HasContainerProps = hasNoContainerProps,
 ): boolean => klass.properties.length > 0 || klass.signals.length > 0 || hasContainerProps(getGlibName(klass));
 
 const qualifiedInterfaceKey = (iface: ResolvedQualifiedInterface): string =>
@@ -99,7 +99,7 @@ const isCollectibleInterface = (
     iface: ResolvedQualifiedInterface,
     targetNamespaceName: string,
     hasContainerProps: HasContainerProps,
-): boolean => interfaceHasPropsBody(iface.klass, hasContainerProps) && iface.namespace.name === targetNamespaceName;
+): boolean => hasInterfacePropsBody(iface.klass, hasContainerProps) && iface.namespace.name === targetNamespaceName;
 
 const parentImplementedInterfaceKeys = (klass: GirClass, namespace: GirNamespace, library: Library): Set<string> => {
     const keys: Set<string> = new Set();
@@ -125,13 +125,13 @@ const newlyImplementedInterfaces = (
     klass: GirClass,
     namespace: GirNamespace,
     library: Library,
-    hasContainerProps: HasContainerProps = noContainerProps,
+    hasContainerProps: HasContainerProps = hasNoContainerProps,
 ): ResolvedQualifiedInterface[] => {
     const inherited = parentImplementedInterfaceKeys(klass, namespace, library);
 
     const own = implementedInterfaces(klass, namespace, library).filter(
         (iface) =>
-            interfaceHasPropsBody(iface.klass, hasContainerProps) && !inherited.has(qualifiedInterfaceKey(iface)),
+            hasInterfacePropsBody(iface.klass, hasContainerProps) && !inherited.has(qualifiedInterfaceKey(iface)),
     );
 
     return sortStringsBy(own, qualifiedInterfaceKey);
@@ -159,7 +159,7 @@ const collectInterfacePropsClasses = (
     library: Library,
     intrinsicElements: GlibNamedClass[],
     targetNamespaceName: string,
-    hasContainerProps: HasContainerProps = noContainerProps,
+    hasContainerProps: HasContainerProps = hasNoContainerProps,
 ): ResolvedQualifiedInterface[] => {
     const collector: InterfacePropsCollector = {
         library,
@@ -190,16 +190,16 @@ const ancestorGlibNames = (klass: GirClass, namespace: GirNamespace, library: Li
     return names;
 };
 
-const someAncestor = (
+const hasMatchingAncestor = (
     klass: GirClass,
     namespace: GirNamespace,
     library: Library,
-    predicate: (klass: GirClass, glibName: string) => boolean,
+    isMatch: (klass: GirClass, glibName: string) => boolean,
 ): boolean => {
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {
         const glibName = getGlibName(ancestor) ?? "";
 
-        if (predicate(ancestor, glibName)) {
+        if (isMatch(ancestor, glibName)) {
             return true;
         }
     }
@@ -207,22 +207,23 @@ const someAncestor = (
     return false;
 };
 
-const descendsFrom = (
+const hasMatchingAncestorName = (
     klass: GirClass,
     namespace: GirNamespace,
     library: Library,
-    matches: (glibName: string) => boolean,
-): boolean => someAncestor(klass, namespace, library, (_klass, glibName) => matches(glibName));
+    isMatch: (glibName: string) => boolean,
+): boolean => hasMatchingAncestor(klass, namespace, library, (_klass, glibName) => isMatch(glibName));
 
-const classExposesMethod = (
+const hasExposedMethod = (
     klass: GirClass,
     namespace: GirNamespace,
     library: Library,
     methodName: string,
-): boolean => someAncestor(klass, namespace, library, (current) => current.methods.some((m) => m.name === methodName));
+): boolean =>
+    hasMatchingAncestor(klass, namespace, library, (current) => current.methods.some((m) => m.name === methodName));
 
 const isIntrinsicElementClass = (klass: GirClass, namespace: GirNamespace, library: Library): boolean =>
-    descendsFrom(klass, namespace, library, (glibName) => glibName === "GObject");
+    hasMatchingAncestorName(klass, namespace, library, (glibName) => glibName === "GObject");
 
 const collectIntrinsicElementClasses = (library: Library): GlibNamedClass[] => {
     const seen: Set<string> = new Set();
@@ -252,11 +253,11 @@ export {
     implementedInterfaces,
     getGlibName,
     giNamespaceAlias,
-    interfaceHasPropsBody,
+    hasInterfacePropsBody,
     newlyImplementedInterfaces,
     collectInterfacePropsClasses,
     ancestorGlibNames,
-    classExposesMethod,
+    hasExposedMethod,
     isIntrinsicElementClass,
     collectIntrinsicElementClasses,
     type GlibNamedClass,

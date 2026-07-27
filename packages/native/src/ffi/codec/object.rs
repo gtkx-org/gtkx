@@ -27,11 +27,11 @@ unsafe fn acquire_decoded_ref(gobject_ptr: *mut glib::gobject_ffi::GObject, owne
     }
 }
 
-unsafe fn tracked_gobject_value<'e>(
-    env: &'e Env,
+unsafe fn tracked_gobject_value(
+    env: &Env,
     gobject_ptr: *mut glib::gobject_ffi::GObject,
     ownership: Ownership,
-) -> anyhow::Result<Unknown<'e>> {
+) -> anyhow::Result<Unknown<'_>> {
     unsafe { acquire_decoded_ref(gobject_ptr, ownership) };
 
     let object: glib::Object = unsafe { from_glib_full(gobject_ptr) };
@@ -43,7 +43,7 @@ unsafe fn tracked_gobject_value<'e>(
 
 unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
     let obj: glib::Object =
-        unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
+        unsafe { glib::Object::from_glib_none(ptr.cast::<glib::gobject_ffi::GObject>()) };
     IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>()
 }
 
@@ -75,7 +75,7 @@ impl Decoder for ObjectCodec {
         self.decode_call_non_null(env, stash, "Object", |object_ptr| unsafe {
             tracked_gobject_value(
                 env,
-                object_ptr as *mut glib::gobject_ffi::GObject,
+                object_ptr.cast::<glib::gobject_ffi::GObject>(),
                 self.ownership,
             )
         })
@@ -84,7 +84,7 @@ impl Decoder for ObjectCodec {
     read_value_non_null!(|self, env, ptr| unsafe {
         tracked_gobject_value(
             env,
-            ptr as *mut glib::gobject_ffi::GObject,
+            ptr.cast::<glib::gobject_ffi::GObject>(),
             Ownership::Borrowed,
         )
     });
@@ -110,12 +110,12 @@ impl PtrWriter for ObjectCodec {
             "Object field write",
             |new_ptr| unsafe {
                 let borrowed_new: Borrowed<glib::Object> =
-                    from_glib_borrow(new_ptr as *mut glib::gobject_ffi::GObject);
+                    from_glib_borrow(new_ptr.cast::<glib::gobject_ffi::GObject>());
                 ToGlibPtr::<*mut glib::gobject_ffi::GObject>::to_glib_full(&*borrowed_new).cast()
             },
             |old_ptr| unsafe {
                 let released: glib::Object =
-                    from_glib_full(old_ptr as *mut glib::gobject_ffi::GObject);
+                    from_glib_full(old_ptr.cast::<glib::gobject_ffi::GObject>());
                 drop(released);
             },
         )

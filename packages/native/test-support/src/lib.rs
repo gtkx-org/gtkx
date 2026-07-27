@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::ffi::c_void;
 
 use gtk4::gdk;
@@ -55,6 +56,10 @@ pub mod uv_mock;
 
 pub use napi_mock::fake_env;
 
+thread_local! {
+    static FIXTURE_BOXED: RefCell<Vec<(glib::Type, *mut c_void)>> = const { RefCell::new(Vec::new()) };
+}
+
 pub fn register_common_boxed_types() {
     let _ = gdk::RGBA::static_type();
     let _ = glib::Bytes::static_type();
@@ -71,7 +76,10 @@ where
     uv_mock::install_uv_mock();
     uv_mock::reset();
     node_env::install(fake_env()).expect("installing the fake node env should succeed");
-    f()
+    let result = f();
+    napi_mock::reset();
+    free_fixture_boxed();
+    result
 }
 
 pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GHashTable {
@@ -160,8 +168,16 @@ pub fn fresh_gobject() -> (glib::Object, *mut glib::gobject_ffi::GObject, u32) {
 }
 
 pub fn boxed_handle() -> Handle {
-    let ptr = allocate_test_boxed(gdk::RGBA::static_type());
+    let type_ = gdk::RGBA::static_type();
+    let ptr = allocate_test_boxed(type_);
+    FIXTURE_BOXED.with_borrow_mut(|owned| owned.push((type_, ptr)));
     Handle::from_glib_borrow(ptr)
+}
+
+fn free_fixture_boxed() {
+    for (type_, ptr) in FIXTURE_BOXED.with_borrow_mut(std::mem::take) {
+        unsafe { glib::gobject_ffi::g_boxed_free(type_.into_glib(), ptr) };
+    }
 }
 
 pub fn pump_default_context_until(done: impl Fn() -> bool) {

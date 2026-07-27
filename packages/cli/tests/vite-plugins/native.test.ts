@@ -9,6 +9,11 @@ type ResolveIdHook = (id: string) => { id: string; external: boolean } | null;
 
 const LOADER_PATH = "/fake/path/@gtkx/native/index.js";
 
+const fakeRequire = Object.assign((id: string) => id, {
+    resolve: (id: string) =>
+        id === "@gtkx/native/package.json" ? "/fake/path/@gtkx/native/package.json" : `/fake/path/${id}.node`,
+});
+
 const mockOs = (platform: string, arch: string): void => {
     vi.resetModules();
 
@@ -17,11 +22,6 @@ const mockOs = (platform: string, arch: string): void => {
         arch: () => arch,
     }));
 };
-
-const fakeRequire = Object.assign((id: string) => id, {
-    resolve: (id: string) =>
-        id === "@gtkx/native/package.json" ? "/fake/path/@gtkx/native/package.json" : `/fake/path/${id}.node`,
-});
 
 const mockModuleResolution = (): void => {
     vi.doMock("node:module", () => ({
@@ -32,6 +32,21 @@ const mockModuleResolution = (): void => {
 const unmockOs = (): void => {
     vi.doUnmock("node:os");
     vi.resetModules();
+};
+
+const expectBuildStartThrows = async (platform: string, arch: string, message: RegExp): Promise<void> => {
+    mockOs(platform, arch);
+    const { gtkxNative } = await import("../../src/vite-plugins/native.js");
+    const plugin = gtkxNative("/tmp");
+
+    expect(() => {
+        (plugin.buildStart as BuildStartHook).call({
+            emitFile: vi.fn(),
+        });
+    },
+    ).toThrow(message);
+
+    unmockOs();
 };
 
 describe("gtkxNative (plugin shape)", () => {
@@ -88,20 +103,6 @@ describe("gtkxNative (transform)", () => {
         vi.resetModules();
     });
 });
-
-const expectBuildStartThrows = async (platform: string, arch: string, message: RegExp): Promise<void> => {
-    mockOs(platform, arch);
-    const { gtkxNative } = await import("../../src/vite-plugins/native.js");
-    const plugin = gtkxNative("/tmp");
-
-    expect(() =>
-        (plugin.buildStart as BuildStartHook).call({
-            emitFile: () => {},
-        }),
-    ).toThrow(message);
-
-    unmockOs();
-};
 
 describe("gtkxNative (buildStart platform guards)", () => {
     it("buildStart throws on unsupported platform", async () => {

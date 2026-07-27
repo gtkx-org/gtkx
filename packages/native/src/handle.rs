@@ -56,6 +56,7 @@ impl Handle {
         Self::Borrowed(ptr)
     }
 
+    #[must_use]
     pub fn decoded_gobject(object: glib::Object) -> Self {
         let ptr = object.as_ptr().cast::<c_void>();
         Self::Object {

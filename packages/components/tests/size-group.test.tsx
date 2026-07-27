@@ -38,21 +38,22 @@ const expectGroupedWide = async (app: ReactElement) => {
     return result;
 };
 
-const renderGroupOfTwo = () => expectGroupedWide(<GroupedLabels count={2} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
+const expectGroupOfTwoIsWide = () => expectGroupedWide(<GroupedLabels count={2} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
+const Orphan = () => <SizeGroup.Child component={GtkLabel}>orphan</SizeGroup.Child>;
 
 describe("SizeGroup members", () => {
     it("stretches every member to the widest member's natural size", async () => {
-        await renderGroupOfTwo();
+        await expectGroupOfTwoIsWide();
     });
 
     it("stops sharing size with a widget once it leaves the group", async () => {
-        const { rerender } = await renderGroupOfTwo();
+        const { rerender } = await expectGroupOfTwoIsWide();
         await rerender(<GroupedLabels count={1} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
         expect(naturalWidth(screen.getByText("A"))).toBe(NARROW_WIDTH);
     });
 
     it("clears membership when the group empties", async () => {
-        const { rerender } = await renderGroupOfTwo();
+        const { rerender } = await expectGroupOfTwoIsWide();
         await rerender(<GroupedLabels count={0} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
         await rerender(<GroupedLabels count={1} mode={Gtk.SizeGroupMode.HORIZONTAL} />);
         expect(naturalWidth(screen.getByText("A"))).toBe(NARROW_WIDTH);
@@ -108,8 +109,6 @@ describe("SizeGroup across subtrees", () => {
         expect(within(screen.getByRole(Gtk.AccessibleRole.GROUP, { name: /Frame B/ })).getByText("B")).toBeDefined();
     });
 });
-
-const Orphan = () => <SizeGroup.Child component={GtkLabel}>orphan</SizeGroup.Child>;
 
 describe("SizeGroup.Child", () => {
     it("forwards the caller's ref while registering the widget", async () => {

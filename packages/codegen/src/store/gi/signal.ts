@@ -5,9 +5,9 @@ import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
 import {
     isCellInout,
-    omitsPrimaryReturn,
     renderDescriptor,
     renderParamDescriptor,
+    shouldOmitPrimaryReturn,
 } from "../../analysis/descriptor-render.js";
 import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
 import {
@@ -72,8 +72,10 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
         ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");"
         : "default:\n    return super.emit(sigName, ...args);";
 
-    const connectSwitch = `switch (getSignalBaseName(signal)) {\n${indent([...connectCases, connectDefault].join("\n"), 1)}\n}`;
-    const emitSwitch = `switch (getSignalBaseName(sigName)) {\n${indent([...emitCases, emitDefault].join("\n"), 1)}\n}`;
+    const connectBody = indent([...connectCases, connectDefault].join("\n"), 1);
+    const connectSwitch = `switch (getSignalBaseName(signal)) {\n${connectBody}\n}`;
+    const emitBody = indent([...emitCases, emitDefault].join("\n"), 1);
+    const emitSwitch = `switch (getSignalBaseName(sigName)) {\n${emitBody}\n}`;
 
     return [
         renderBlock(`connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number`, connectSwitch),
@@ -85,9 +87,9 @@ const renderSignalDeclarations = (
     context: ModuleContext,
     klass: GirClass,
     className: string,
-    parentlessExtendsObject: boolean,
+    isParentlessObjectSubclass: boolean,
 ): string[] => {
-    const base = { context, klass, className, parentlessExtendsObject };
+    const base = { context, klass, className, parentlessExtendsObject: isParentlessObjectSubclass };
 
     const declarations = [
         renderSignalMap({ ...base, suffix: SIGNALS_SUFFIX, renderEntry: renderSignalHandlerType }),
@@ -136,7 +138,7 @@ const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suff
 const signalMapParentRefs = (
     context: ModuleContext,
     klass: GirClass,
-    parentlessExtendsObject: boolean,
+    isParentlessObjectSubclass: boolean,
     suffix: string,
 ): string[] => {
     const parentRef = parentCompanionRef(context, klass, suffix);
@@ -145,7 +147,7 @@ const signalMapParentRefs = (
         return [parentRef];
     }
 
-    if (!parentlessExtendsObject) {
+    if (!isParentlessObjectSubclass) {
         return [];
     }
 
@@ -207,15 +209,15 @@ const renderSignalHandlerType = (context: ModuleContext, signal: GirCallable): s
 const renderResultType = (
     context: ModuleContext,
     signal: GirCallable,
-    includeCallerAllocated: boolean,
-    optOut: boolean,
+    shouldIncludeCallerAllocated: boolean,
+    isOptOut: boolean,
 ): string =>
     renderHandlerResultType({
         library: context.library,
         signal,
         renderType: (ref, nullable) => renderTsType(context, ref, nullable),
-        includeCallerAllocated,
-        optOut,
+        includeCallerAllocated: shouldIncludeCallerAllocated,
+        optOut: isOptOut,
     });
 
 const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): string => {
@@ -249,7 +251,7 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
 
     if (isCellInout(context.library, parameter)) {
         return {
-            literal: `{ type: ${descriptor}, direction: "inout", value: args[${argIndex}] }`,
+            literal: `{ type: ${descriptor}, direction: "inout", value: args[${String(argIndex)}] }`,
             nextArgIndex: argIndex + 1,
         };
     }
@@ -265,12 +267,14 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
 
     if (isRecordInout(context, parameter)) {
         return {
-            literal: `{ type: ${descriptor}, direction: "inout", callerAllocated: true, value: args[${argIndex}] }`,
+            literal:
+                `{ type: ${descriptor}, direction: "inout", callerAllocated: true, ` +
+                `value: args[${String(argIndex)}] }`,
             nextArgIndex: argIndex + 1,
         };
     }
 
-    return { literal: `{ type: ${descriptor}, value: args[${argIndex}] }`, nextArgIndex: argIndex + 1 };
+    return { literal: `{ type: ${descriptor}, value: args[${String(argIndex)}] }`, nextArgIndex: argIndex + 1 };
 };
 
 const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => {
@@ -291,7 +295,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => 
         return rendered.literal;
     });
 
-    const isVoid = omitsPrimaryReturn(context.library, signal.returnValue);
+    const isVoid = shouldOmitPrimaryReturn(context.library, signal.returnValue);
 
     const returnArg = isVoid
         ? ""
@@ -328,7 +332,7 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
         renderParamDescriptor(context, parameter, parameter.type),
     );
 
-    const isVoid = omitsPrimaryReturn(context.library, signal.returnValue);
+    const isVoid = shouldOmitPrimaryReturn(context.library, signal.returnValue);
 
     const returnDescriptor = isVoid
         ? tVoid
@@ -336,7 +340,11 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
 
     const callbackArgs = [tObject("borrowed"), ...callbackParamDescriptors, tVoid];
 
-    return tCallback(callbackArgs, returnDescriptor, `{ hasDestroy: true, userDataIndex: ${params.length + 1} }`);
+    return tCallback(
+        callbackArgs,
+        returnDescriptor,
+        `{ hasDestroy: true, userDataIndex: ${String(params.length + 1)} }`,
+    );
 };
 
 const forEachInterfaceSignal = (

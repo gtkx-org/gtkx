@@ -92,8 +92,8 @@ const shouldHighlight = (): boolean => {
     return process.stdout.isTTY;
 };
 
-const createColors = (enabled: boolean): Colors => {
-    if (!enabled) {
+const createColors = (isEnabled: boolean): Colors => {
+    if (!isEnabled) {
         const identity = (s: string): string => s;
 
         return { tag: identity, attr: identity, value: identity };
@@ -135,7 +135,7 @@ const formatHiddenChildrenLine = (widget: Gtk.Widget, depth: number, ctx: Format
     const count = countChildren(widget);
     const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
     const plural = count === 1 ? "" : "s";
-    const summary = `… ${count} child widget${plural} hidden${hint}`;
+    const summary = `… ${String(count)} child widget${plural} hidden${hint}`;
 
     return `${indent}${INDENT}${colors.tag(summary)}\n`;
 };
@@ -206,8 +206,8 @@ const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): 
         return "";
     }
 
-    const highlight = options.highlight ?? shouldHighlight();
-    const colors = createColors(highlight);
+    const isHighlight = options.highlight ?? shouldHighlight();
+    const colors = createColors(isHighlight);
     let output = "";
 
     for (const root of roots(container)) {

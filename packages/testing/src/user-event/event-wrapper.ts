@@ -9,7 +9,9 @@ const NOT_MAPPED = "it is not mapped (it is not shown on screen, e.g. it is hidd
 const WINDOW_NOT_ACTIVE = "its window never became active";
 
 const actionableHop = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 1));
-const displayDeliversActivation = (window: Gtk.Window): boolean => window.getDisplay().getDefaultSeat() !== null;
+
+const canDisplayDeliverActivation = (window: Gtk.Window): boolean =>
+    window.getDisplay().getDefaultSeat() !== null;
 
 const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): string | null => {
     if (root.getAllocatedWidth() === 0) {
@@ -20,7 +22,7 @@ const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): s
         return NOT_MAPPED;
     }
 
-    if (displayDeliversActivation(root) && !root.isActive()) {
+    if (canDisplayDeliverActivation(root) && !root.isActive()) {
         return WINDOW_NOT_ACTIVE;
     }
 
@@ -61,7 +63,8 @@ const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {
 
     if (failure !== null) {
         throw new Error(
-            `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable within ${timeout}ms because ${failure}`,
+            `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable ` +
+            `within ${String(timeout)}ms because ${failure}`,
         );
     }
 };

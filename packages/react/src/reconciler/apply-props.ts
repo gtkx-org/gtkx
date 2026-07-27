@@ -34,7 +34,7 @@ const signalForProp = (info: TypeInfo, name: string): string => {
 const isReservedName = (name: string, info: TypeInfo): boolean =>
     REACT_RESERVED_PROPS.has(name) || isHandlerName(name) || isAccessibleProp(name) || info.constructOnly.has(name);
 
-const skipValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
+const isSkippedValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
     isReservedName(name, info) || consumed.has(name);
 
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
@@ -119,7 +119,7 @@ const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, prev: Props, next
 
 const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange, consumed: Set<string>): void => {
     eachChangedName(change.prev, change.next, (name) => {
-        if (skipValueName(name, info, consumed) || Object.is(change.prev[name], change.next[name])) {
+        if (isSkippedValueName(name, info, consumed) || Object.is(change.prev[name], change.next[name])) {
             return;
         }
 
@@ -168,7 +168,9 @@ const eachBehavior = (node: ElementNode, visit: (behavior: ElementBehavior, cont
 };
 
 const flushBehaviors = (): void => {
-    drain(flushDirty, (node) => eachBehavior(node, (behavior, context) => behavior.flush?.(node.object, context)));
+    drain(flushDirty, (node) => {
+        eachBehavior(node, (behavior, context) => behavior.flush?.(node.object, context));
+    });
 };
 
 const mountBehaviors = (node: ElementNode): void => {
@@ -200,14 +202,14 @@ const applyElementProps = (node: ElementNode, prev: Props, next: Props): void =>
     node.props = next;
 };
 
-const skipAdoptedName = (info: TypeInfo, name: string): boolean => isReservedName(name, info);
+const isSkippedAdoptedName = (info: TypeInfo, name: string): boolean => isReservedName(name, info);
 
 const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void => {
     const { object, typeName } = target;
     const info = typeInfoFor(typeName);
 
     eachChangedName(prev, next, (name) => {
-        if (skipAdoptedName(info, name) || Object.is(prev[name], next[name])) {
+        if (isSkippedAdoptedName(info, name) || Object.is(prev[name], next[name])) {
             return;
         }
 

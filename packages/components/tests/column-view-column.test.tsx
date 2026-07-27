@@ -10,10 +10,30 @@ import { describe, expect, it, vi } from "vitest";
 import { renderChildren } from "./helpers/render-children.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
-const noop = () => {};
-const cellRenderer = () => <GtkLabel>Cell</GtkLabel>;
-
 type ColumnExtra = Omit<Column, "id" | "title" | "renderCell">;
+
+type ActionSpec = {
+    id: string;
+    label: string;
+    onActivate?: () => void;
+};
+
+type ShowcasePerson = { name: string; role: string; salary: number };
+type ShowcaseSortColumn = "name" | "role" | "salary" | null;
+
+const ROLE_SORT_HIDE_MENU = sectionedMenu("role", [
+    [{ id: "sort-asc", label: "Sort Ascending" }],
+    [{ id: "hide", label: "Hide Column" }],
+]);
+
+const showcasePeople: ShowcasePerson[] = [
+    { name: "Alice", role: "Dev", salary: 95_000 },
+    { name: "Bob", role: "Designer", salary: 85_000 },
+    { name: "Charlie", role: "Manager", salary: 120_000 },
+];
+
+const noop = (): void => undefined;
+const cellRenderer = () => <GtkLabel>Cell</GtkLabel>;
 
 const defaultColumn = (id: string, title: string, extra?: ColumnExtra): Column => ({
     id,
@@ -22,12 +42,6 @@ const defaultColumn = (id: string, title: string, extra?: ColumnExtra): Column =
     renderCell: cellRenderer,
     ...extra,
 });
-
-type ActionSpec = {
-    id: string;
-    label: string;
-    onActivate?: () => void;
-};
 
 const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
     <GSimpleActionGroup
@@ -38,14 +52,15 @@ const actionGroup = (prefix: string, specs: ActionSpec[]): ReactNode => (
     />
 );
 
-const menuEntries = (prefix: string, specs: ActionSpec[]): MenuItem[] =>
-    specs.map((spec) => ({ label: spec.label, action: `${prefix}.${spec.id}` }));
+function menuEntries(prefix: string, specs: ActionSpec[]): MenuItem[] {
+    return specs.map((spec) => ({ label: spec.label, action: `${prefix}.${spec.id}` }));
+}
 
 const flatMenu = (prefix: string, specs: ActionSpec[]): ReactElement => <GMenu items={menuEntries(prefix, specs)} />;
 
-const sectionedMenu = (prefix: string, sections: ActionSpec[][]): ReactElement => (
-    <GMenu items={sections.map((specs) => ({ section: menuEntries(prefix, specs) }))} />
-);
+function sectionedMenu(prefix: string, sections: ActionSpec[][]): ReactElement {
+    return <GMenu items={sections.map((specs) => ({ section: menuEntries(prefix, specs) }))} />;
+}
 
 const renderColumns = async (
     columnViewRef: RefObject<Gtk.ColumnView | null>,
@@ -80,11 +95,6 @@ const expectHeaderMenuItemCounts = (
     }
 };
 
-const ROLE_SORT_HIDE_MENU = sectionedMenu("role", [
-    [{ id: "sort-asc", label: "Sort Ascending" }],
-    [{ id: "hide", label: "Hide Column" }],
-]);
-
 const renderNameAndRoleColumns = async (
     columnViewRef: RefObject<Gtk.ColumnView | null>,
     nameMenu: ReactElement,
@@ -100,6 +110,121 @@ const renderNameAndRoleColumns = async (
         actionGroups,
     );
 };
+
+const buildColumnMenu = (columnViewRef: RefObject<Gtk.ColumnView | null>) => (items: string[]) => (
+    <ScrollWrapper>
+        <ColumnView
+            ref={columnViewRef}
+            columns={[
+                defaultColumn("name", "Name", {
+                    headerMenu: flatMenu(
+                        "name",
+                        items.map((label) => ({ id: label, label })),
+                    ),
+                }),
+            ]}
+        />
+    </ScrollWrapper>
+);
+
+const sortShowcasePeople = (sortColumn: ShowcaseSortColumn, sortOrder: Gtk.SortType): ShowcasePerson[] => {
+    if (!sortColumn) {
+        return showcasePeople;
+    }
+
+    return showcasePeople.toSorted((a, b) => {
+        const av = a[sortColumn];
+        const bv = b[sortColumn];
+        const cmp = typeof av === "number" ? av - (bv as number) : av.localeCompare(String(bv));
+
+        return sortOrder === Gtk.SortType.ASCENDING ? cmp : -cmp;
+    });
+};
+
+const buildSortActions = (
+    column: ShowcaseSortColumn,
+    onSort: (column: string | null, order: Gtk.SortType) => void,
+): ActionSpec[] => [
+    { id: "sort-asc", label: "Sort Ascending", onActivate: () => {
+        onSort(column, Gtk.SortType.ASCENDING);
+    } },
+    { id: "sort-desc", label: "Sort Descending", onActivate: () => {
+        onSort(column, Gtk.SortType.DESCENDING);
+    } },
+    { id: "sort-clear", label: "Clear Sort", onActivate: () => {
+        onSort(null, Gtk.SortType.ASCENDING);
+    } },
+];
+
+const ShowcaseActionGroups = ({ sortActions }: { sortActions: (column: ShowcaseSortColumn) => ActionSpec[] }) => (
+    <>
+        {actionGroup("name", sortActions("name"))}
+        {actionGroup("role", [...sortActions("role"), { id: "hide", label: "Hide Column" }])}
+        {actionGroup("salary", [...sortActions("salary"), { id: "hide", label: "Hide Column" }])}
+    </>
+);
+
+const ShowcaseColumns = ({
+    sortActions,
+}: {
+    sortActions: (column: ShowcaseSortColumn) => ActionSpec[];
+}): Column<ShowcasePerson>[] => [
+    {
+        id: "name",
+        title: "Name",
+        expand: true,
+        sortable: true,
+        renderCell: ({ item }: RenderItemArgs<ShowcasePerson>) => <GtkLabel>{item.name}</GtkLabel>,
+        headerMenu: sectionedMenu("name", [sortActions("name")]),
+    },
+    {
+        id: "role",
+        title: "Role",
+        fixedWidth: 100,
+        sortable: true,
+        renderCell: ({ item }: RenderItemArgs<ShowcasePerson>) => <GtkLabel>{item.role}</GtkLabel>,
+        headerMenu: sectionedMenu("role", [sortActions("role"), [{ id: "hide", label: "Hide Column" }]]),
+    },
+    {
+        id: "salary",
+        title: "Salary",
+        fixedWidth: 100,
+        sortable: true,
+        renderCell: ({ item }: RenderItemArgs<ShowcasePerson>) => <GtkLabel>{item.salary.toString()}</GtkLabel>,
+        headerMenu: sectionedMenu("salary", [sortActions("salary"), [{ id: "hide", label: "Hide Column" }]]),
+    },
+];
+
+function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.ColumnView | null> }) {
+    const [sortColumn, setSortColumn] = useState<ShowcaseSortColumn>(null);
+    const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
+
+    const handleSortChange = useCallback((column: string | null, order: Gtk.SortType) => {
+        setSortColumn(column as ShowcaseSortColumn);
+        setSortOrder(order);
+    }, []);
+
+    const sortedPeople = useMemo(() => sortShowcasePeople(sortColumn, sortOrder), [sortColumn, sortOrder]);
+
+    const sortActions = useCallback(
+        (column: ShowcaseSortColumn) => buildSortActions(column, handleSortChange),
+        [handleSortChange],
+    );
+
+    return (
+        <ScrollWrapper actionGroups={<ShowcaseActionGroups sortActions={sortActions} />}>
+            <ColumnView
+                ref={columnViewRef}
+                estimatedItemHeight={48}
+                sortColumn={sortColumn}
+                sortOrder={sortOrder}
+                onSortChanged={handleSortChange}
+                items={sortedPeople.map((person) => ({ id: person.name, value: person }))}
+                columns={ShowcaseColumns({ sortActions })}
+            />
+        </ScrollWrapper>
+    );
+}
 
 describe("render - ColumnViewColumn (1)", () => {
     describe("ColumnViewColumn (1)", () => {
@@ -257,22 +382,6 @@ describe("render - ColumnViewColumn (5)", () => {
     });
 });
 
-const buildColumnMenu = (columnViewRef: RefObject<Gtk.ColumnView | null>) => (items: string[]) => (
-    <ScrollWrapper>
-        <ColumnView
-            ref={columnViewRef}
-            columns={[
-                defaultColumn("name", "Name", {
-                    headerMenu: flatMenu(
-                        "name",
-                        items.map((label) => ({ id: label, label })),
-                    ),
-                }),
-            ]}
-        />
-    </ScrollWrapper>
-);
-
 describe("render - ColumnViewColumn (6)", () => {
     describe("header menu updates", () => {
         it("dynamically adds menu items", async () => {
@@ -412,108 +521,6 @@ describe("render - ColumnViewColumn (13)", () => {
         });
     });
 });
-
-type ShowcasePerson = { name: string; role: string; salary: number };
-type ShowcaseSortColumn = "name" | "role" | "salary" | null;
-
-const showcasePeople: ShowcasePerson[] = [
-    { name: "Alice", role: "Dev", salary: 95_000 },
-    { name: "Bob", role: "Designer", salary: 85_000 },
-    { name: "Charlie", role: "Manager", salary: 120_000 },
-];
-
-const sortShowcasePeople = (sortColumn: ShowcaseSortColumn, sortOrder: Gtk.SortType): ShowcasePerson[] => {
-    if (!sortColumn) {
-        return showcasePeople;
-    }
-
-    return showcasePeople.toSorted((a, b) => {
-        const av = a[sortColumn];
-        const bv = b[sortColumn];
-        const cmp = typeof av === "number" ? av - (bv as number) : av.localeCompare(String(bv));
-
-        return sortOrder === Gtk.SortType.ASCENDING ? cmp : -cmp;
-    });
-};
-
-const buildSortActions = (
-    column: ShowcaseSortColumn,
-    onSort: (column: string | null, order: Gtk.SortType) => void,
-): ActionSpec[] => [
-    { id: "sort-asc", label: "Sort Ascending", onActivate: () => onSort(column, Gtk.SortType.ASCENDING) },
-    { id: "sort-desc", label: "Sort Descending", onActivate: () => onSort(column, Gtk.SortType.DESCENDING) },
-    { id: "sort-clear", label: "Clear Sort", onActivate: () => onSort(null, Gtk.SortType.ASCENDING) },
-];
-
-const ShowcaseActionGroups = ({ sortActions }: { sortActions: (column: ShowcaseSortColumn) => ActionSpec[] }) => (
-    <>
-        {actionGroup("name", sortActions("name"))}
-        {actionGroup("role", [...sortActions("role"), { id: "hide", label: "Hide Column" }])}
-        {actionGroup("salary", [...sortActions("salary"), { id: "hide", label: "Hide Column" }])}
-    </>
-);
-
-const ShowcaseColumns = ({
-    sortActions,
-}: {
-    sortActions: (column: ShowcaseSortColumn) => ActionSpec[];
-}): Column<ShowcasePerson>[] => [
-    {
-        id: "name",
-        title: "Name",
-        expand: true,
-        sortable: true,
-        renderCell: ({ item }: RenderItemArgs<ShowcasePerson>) => <GtkLabel>{item.name}</GtkLabel>,
-        headerMenu: sectionedMenu("name", [sortActions("name")]),
-    },
-    {
-        id: "role",
-        title: "Role",
-        fixedWidth: 100,
-        sortable: true,
-        renderCell: ({ item }: RenderItemArgs<ShowcasePerson>) => <GtkLabel>{item.role}</GtkLabel>,
-        headerMenu: sectionedMenu("role", [sortActions("role"), [{ id: "hide", label: "Hide Column" }]]),
-    },
-    {
-        id: "salary",
-        title: "Salary",
-        fixedWidth: 100,
-        sortable: true,
-        renderCell: ({ item }: RenderItemArgs<ShowcasePerson>) => <GtkLabel>{item.salary.toString()}</GtkLabel>,
-        headerMenu: sectionedMenu("salary", [sortActions("salary"), [{ id: "hide", label: "Hide Column" }]]),
-    },
-];
-
-function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.ColumnView | null> }) {
-    const [sortColumn, setSortColumn] = useState<ShowcaseSortColumn>(null);
-    const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
-
-    const handleSortChange = useCallback((column: string | null, order: Gtk.SortType) => {
-        setSortColumn(column as ShowcaseSortColumn);
-        setSortOrder(order);
-    }, []);
-
-    const sortedPeople = useMemo(() => sortShowcasePeople(sortColumn, sortOrder), [sortColumn, sortOrder]);
-
-    const sortActions = useCallback(
-        (column: ShowcaseSortColumn) => buildSortActions(column, handleSortChange),
-        [handleSortChange],
-    );
-
-    return (
-        <ScrollWrapper actionGroups={<ShowcaseActionGroups sortActions={sortActions} />}>
-            <ColumnView
-                ref={columnViewRef}
-                estimatedItemHeight={48}
-                sortColumn={sortColumn}
-                sortOrder={sortOrder}
-                onSortChanged={handleSortChange}
-                items={sortedPeople.map((person) => ({ id: person.name, value: person }))}
-                columns={ShowcaseColumns({ sortActions })}
-            />
-        </ScrollWrapper>
-    );
-}
 
 describe("render - ColumnViewColumn (10) > header menu showcase", () => {
     it("renders sortable columns with independent header menus", async () => {

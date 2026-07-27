@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { listTemplates, renderFile, type TemplateContext } from "../src/templates.js";
 
-const context = (overrides: Partial<TemplateContext> = {}): TemplateContext => ({
-    name: "my-app",
-    applicationId: "com.example.MyApp",
-    title: "My App",
-    includeTesting: false,
-    typescript: true,
-    importExtension: ".js",
-    ...overrides,
-});
-
 const baseContext: TemplateContext = context();
+
+function context(overrides: Partial<TemplateContext> = {}): TemplateContext {
+    return {
+        name: "my-app",
+        applicationId: "com.example.MyApp",
+        title: "My App",
+        includeTesting: false,
+        typescript: true,
+        importExtension: ".js",
+        ...overrides,
+    };
+}
 
 describe("renderFile", () => {
     it("renders the package.json template with the project name", async () => {
@@ -67,7 +69,7 @@ describe("renderFile", () => {
 });
 
 describe("listTemplates", () => {
-    it("lists every template with forward-slashed relative paths, sorted", async () => {
+    it("lists every template with forward-slashed relative paths, sorted", () => {
         const templates = listTemplates();
 
         expect(templates).toEqual([

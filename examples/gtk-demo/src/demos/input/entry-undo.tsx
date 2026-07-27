@@ -4,7 +4,20 @@ import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./entry-undo.tsx?raw";
 
-const EntryUndoDemo = () => {
+const entryUndoDemo: Demo = {
+    id: "entry-undo",
+    title: "Entry/Undo and Redo",
+    description:
+        "GtkEntry can provide basic Undo/Redo support using standard keyboard accelerators such as " +
+        "Control+z to undo and Control+Shift+z to redo. Additionally, Control+y can be used to redo." +
+        "\n\nUse gtk_entry_set_enable_undo() to enable undo/redo support.",
+    keywords: [],
+    component: EntryUndoDemo,
+    sourceCode,
+    resizable: false,
+};
+
+function EntryUndoDemo() {
     const [label, setLabel] = useState<Gtk.Label | null>(null);
 
     return (
@@ -21,15 +34,6 @@ const EntryUndoDemo = () => {
             <GtkEntry accessibleLabelledBy={label ? [label] : undefined} enableUndo />
         </GtkBox>
     );
-};
+}
 
-export const entryUndoDemo: Demo = {
-    id: "entry-undo",
-    title: "Entry/Undo and Redo",
-    description:
-        "GtkEntry can provide basic Undo/Redo support using standard keyboard accelerators such as Control+z to undo and Control+Shift+z to redo. Additionally, Control+y can be used to redo.\n\nUse gtk_entry_set_enable_undo() to enable undo/redo support.",
-    keywords: [],
-    component: EntryUndoDemo,
-    sourceCode,
-    resizable: false,
-};
+export { entryUndoDemo };

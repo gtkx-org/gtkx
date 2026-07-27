@@ -2,15 +2,8 @@ import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwPreferencesGroup, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
 import { act, render, screen, userEvent } from "@gtkx/testing";
-import { createRef, type ReactElement, type RefObject, useState } from "react";
+import { createRef, type ReactElement, type RefObject } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";
-
-const installAdjustment = (row: Adw.SpinRow, lower: number, upper: number, value: number) => {
-    const adjustment = Gtk.Adjustment.new(value, lower, upper, 1, 10, 0);
-    row.setAdjustment(adjustment);
-
-    return adjustment;
-};
 
 type ListenerClearedCase<Widget> = {
     renderRow: (ref: RefObject<Widget | null>, handler: Mock | null) => ReactElement;
@@ -19,7 +12,12 @@ type ListenerClearedCase<Widget> = {
     fireSecond: (row: Widget) => void | Promise<void>;
 };
 
-let setActiveHandler: (next: Mock | null) => void = () => {};
+const installAdjustment = (row: Adw.SpinRow, lower: number, upper: number, value: number) => {
+    const adjustment = Gtk.Adjustment.new(value, lower, upper, 1, 10, 0);
+    row.setAdjustment(adjustment);
+
+    return adjustment;
+};
 
 const expectListenerClearedWhenHandlerNull = async <Widget,>({
     renderRow,
@@ -29,15 +27,8 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
 }: ListenerClearedCase<Widget>) => {
     const handler = vi.fn();
     const ref = createRef<Widget>();
-
-    const Harness = () => {
-        const [active, setActive] = useState<Mock | null>(handler);
-        setActiveHandler = setActive;
-
-        return renderRow(ref, active);
-    };
-
-    const { rerender } = await render(<Harness />);
+    const Harness = ({ active }: { active: Mock | null }) => renderRow(ref, active);
+    const { rerender } = await render(<Harness active={handler} />);
     const row = ref.current;
 
     if (!row) {
@@ -48,8 +39,7 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
     await act(() => fireFirst(row));
     const callsBefore = handler.mock.calls.length;
     expect(callsBefore).toBeGreaterThan(0);
-    await act(() => setActiveHandler(null));
-    await rerender(<Harness />);
+    await rerender(<Harness active={null} />);
     await act(() => fireSecond(row));
     expect(handler.mock.calls).toHaveLength(callsBefore);
 };
@@ -84,7 +74,11 @@ describe("render - SpinRow (1)", () => {
         }
 
         installAdjustment(row, 0, 10, 1);
-        await act(() => row.setValue(7));
+
+        await act(() => {
+            row.setValue(7);
+        });
+
         expect(onValueChanged).toHaveBeenCalled();
         const lastCall = onValueChanged.mock.calls.at(-1);
         expect(lastCall?.[0]).toBe(7);
@@ -100,8 +94,12 @@ describe("render - SpinRow (2)", () => {
                 </AdwPreferencesGroup>
             ),
             afterMount: (row) => installAdjustment(row, 0, 10, 1),
-            fireFirst: (row) => row.setValue(2),
-            fireSecond: (row) => row.setValue(5),
+            fireFirst: (row) => {
+                row.setValue(2);
+            },
+            fireSecond: (row) => {
+                row.setValue(5);
+            },
         });
     });
 });

@@ -1,2 +1,4 @@
-export const REPO_URL = "https://github.com/gtkx-org/gtkx";
-export const LICENSE = "MPL-2.0";
+const REPO_URL = "https://github.com/gtkx-org/gtkx";
+const LICENSE = "MPL-2.0";
+
+export { LICENSE, REPO_URL };

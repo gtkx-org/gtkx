@@ -13,7 +13,7 @@ pub mod wrapper;
 pub use closure::ClosureHandle;
 pub use view::{TypedView, ViewKind};
 
-pub fn read_napi<T: FromNapiValue>(value: Unknown<'_>) -> napi::Result<T> {
+pub fn read_napi<T: FromNapiValue>(value: Unknown<'_>) -> Result<T> {
     T::from_unknown(value)
 }
 
@@ -28,23 +28,32 @@ pub fn handle_ptr(value: Unknown<'_>, type_name: &str) -> anyhow::Result<*mut c_
     }
 }
 
-pub fn handle_to_unknown<'e>(env: &'e Env, handle: Handle) -> napi::Result<Unknown<'e>> {
+pub fn handle_to_unknown(env: &Env, handle: Handle) -> Result<Unknown<'_>> {
     let size_hint = handle.size_hint();
     External::new_with_size_hint(handle, size_hint).into_unknown(env)
 }
 
-pub fn js_null<'e>(env: &'e Env) -> napi::Result<Unknown<'e>> {
+pub fn js_null(env: &Env) -> Result<Unknown<'_>> {
     Null.into_unknown(env)
 }
 
-pub fn js_undefined<'e>(env: &'e Env) -> napi::Result<Unknown<'e>> {
+pub fn js_undefined(env: &Env) -> Result<Unknown<'_>> {
     ().into_unknown(env)
 }
 
-pub fn js_array<'e>(env: &'e Env, items: Vec<Unknown<'e>>) -> napi::Result<Unknown<'e>> {
-    let mut js_array = env.create_array(items.len() as u32)?;
-    for (i, item) in items.into_iter().enumerate() {
-        js_array.set(i as u32, item)?;
+pub fn js_array<'e>(env: &'e Env, items: Vec<Unknown<'e>>) -> Result<Unknown<'e>> {
+    let length = u32::try_from(items.len()).map_err(|_| {
+        Error::new(
+            Status::InvalidArg,
+            format!(
+                "Array of {} items exceeds the JavaScript array index range",
+                items.len()
+            ),
+        )
+    })?;
+    let mut js_array = env.create_array(length)?;
+    for (index, item) in (0..length).zip(items) {
+        js_array.set(index, item)?;
     }
     js_array.into_unknown(env)
 }

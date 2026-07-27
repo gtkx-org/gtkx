@@ -4,6 +4,18 @@ import { describe, expect, it } from "vitest";
 import { searchEntryDemo } from "../../../src/demos/input/search-entry.js";
 import { renderDemo } from "../../test-utils.js";
 
+const enableSearchMode = async (): Promise<{ toggle: Gtk.ToggleButton; searchBar: Gtk.SearchBar }> => {
+    const toggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON)) as Gtk.ToggleButton;
+    const searchBar = (await screen.findByRole(Gtk.AccessibleRole.SEARCH)) as Gtk.SearchBar;
+    await userEvent.click(toggle);
+
+    await waitFor(() => {
+        expect(searchBar.getSearchMode()).toBe(true);
+    });
+
+    return { toggle, searchBar };
+};
+
 describe("searchEntryDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(searchEntryDemo.id).toBe("search-entry");
@@ -30,16 +42,6 @@ describe("searchEntryDemo rendering", () => {
     });
 });
 
-const enableSearchMode = async (): Promise<{ toggle: Gtk.ToggleButton; searchBar: Gtk.SearchBar }> => {
-    const toggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON)) as Gtk.ToggleButton;
-    const searchBar = (await screen.findByRole(Gtk.AccessibleRole.SEARCH)) as Gtk.SearchBar;
-    await userEvent.click(toggle);
-    await waitFor(() => {
-        expect(searchBar.getSearchMode()).toBe(true);
-    });
-    return { toggle, searchBar };
-};
-
 describe("searchEntryDemo interactions", () => {
     it("activates search mode when the toggle is clicked", async () => {
         await renderDemo(searchEntryDemo);
@@ -52,6 +54,7 @@ describe("searchEntryDemo interactions", () => {
         const { toggle, searchBar } = await enableSearchMode();
         await userEvent.click(toggle);
         await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: false });
+
         await waitFor(() => {
             expect(searchBar.getSearchMode()).toBe(false);
         });
@@ -70,7 +73,11 @@ describe("searchEntryDemo interactions", () => {
         await renderDemo(searchEntryDemo);
         const toggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON)) as Gtk.ToggleButton;
         const searchBar = (await screen.findByRole(Gtk.AccessibleRole.SEARCH)) as Gtk.SearchBar;
-        await act(() => searchBar.setSearchMode(true));
+
+        await act(() => {
+            searchBar.setSearchMode(true);
+        });
+
         expect(searchBar.getSearchMode()).toBe(true);
         expect(screen.getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: true })).toBe(toggle);
     });

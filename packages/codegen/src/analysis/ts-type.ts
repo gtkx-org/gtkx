@@ -32,7 +32,10 @@ const willEmitEntity = (library: Library, type: EntityType): boolean => {
                 !isClassStructRecord(library, type.namespace.name, type.value)
             );
         }
-        default: {
+        case "alias":
+        case "class":
+        case "enum":
+        case "interface": {
             return true;
         }
     }

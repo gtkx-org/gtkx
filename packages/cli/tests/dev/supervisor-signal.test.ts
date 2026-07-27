@@ -3,12 +3,6 @@ import { type ChildProcess, type ChildProcessByStdio, spawn } from "node:child_p
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-const HARNESS_PATH = fileURLToPath(new URL("fixtures/supervisor-harness.ts", import.meta.url));
-const REPO_ROOT = fileURLToPath(new URL("../../../..", import.meta.url));
-const READY_TIMEOUT_MS = 15_000;
-const EXIT_TIMEOUT_MS = 15_000;
-const READY_MARKER = "CHILD_READY";
-
 type HarnessProcess = ChildProcessByStdio<null, Readable, Readable>;
 
 type Harness = {
@@ -19,12 +13,18 @@ type Harness = {
     childPid: () => number | undefined;
 };
 
+const HARNESS_PATH = fileURLToPath(new URL("fixtures/supervisor-harness.ts", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("../../../..", import.meta.url));
+const READY_TIMEOUT_MS = 15_000;
+const EXIT_TIMEOUT_MS = 15_000;
+const READY_MARKER = "CHILD_READY";
+
 const withTimeout = async <T>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
     let timer: NodeJS.Timeout | undefined;
 
     const expiry: Promise<never> = new Promise((_resolve, reject) => {
         timer = setTimeout(() => {
-            reject(new Error(`${label} timed out after ${ms}ms`));
+            reject(new Error(`${label} timed out after ${String(ms)}ms`));
         }, ms);
 
         timer.unref();
@@ -52,7 +52,10 @@ const readyPromise = (child: HarnessProcess, output: () => string): Promise<void
         };
 
         child.stdout.on("data", check);
-        child.once("exit", () => reject(new Error(`harness exited before ready:\n${output()}`)));
+
+        child.once("exit", () => {
+            reject(new Error(`harness exited before ready:\n${output()}`));
+        });
     });
 };
 
@@ -74,7 +77,9 @@ const startHarness = (): Harness => {
     });
 
     const exitPromise: Promise<number | null> = new Promise((resolve) => {
-        child.once("exit", (code) => resolve(code));
+        child.once("exit", (code) => {
+            resolve(code);
+        });
     });
 
     const waitForReady = (): Promise<void> =>
@@ -99,7 +104,7 @@ const startHarness = (): Harness => {
     };
 };
 
-const killIfAlive = (pid: number): boolean => {
+const didKill = (pid: number): boolean => {
     try {
         process.kill(pid, "SIGKILL");
 
@@ -114,8 +119,8 @@ const killGroup = (pid: number | undefined): void => {
         return;
     }
 
-    killIfAlive(-pid);
-    killIfAlive(pid);
+    didKill(-pid);
+    didKill(pid);
 };
 
 describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
@@ -131,7 +136,7 @@ describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
         harness = undefined;
     });
 
-    const runCleanShutdown = async (deliverSignals: (groupPid: number) => void): Promise<void> => {
+    const expectCleanShutdown = async (deliverSignals: (groupPid: number) => void): Promise<void> => {
         harness = startHarness();
         await harness.waitForReady();
         const groupPid = harness.process.pid;
@@ -150,13 +155,13 @@ describe.skipIf(process.platform === "win32")("dev supervisor Ctrl+C", () => {
     };
 
     it("shuts the child down cleanly on a single group SIGINT", async () => {
-        await runCleanShutdown((groupPid) => {
+        await expectCleanShutdown((groupPid) => {
             process.kill(-groupPid, "SIGINT");
         });
     });
 
     it("shuts down cleanly when one Ctrl+C arrives as duplicate signals", async () => {
-        await runCleanShutdown((groupPid) => {
+        await expectCleanShutdown((groupPid) => {
             process.kill(-groupPid, "SIGINT");
             process.kill(groupPid, "SIGINT");
         });

@@ -32,14 +32,26 @@ import {
 } from "./node.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { beginSuppression, disconnectAllHandlers, endSuppression } from "./signals.js";
-import { enclosingHost, flushTextHosts, markTextDirty, surgicalTextUpdate, validateContentMix } from "./text.js";
+import {
+    didUpdateTextSurgically,
+    enclosingHost,
+    flushTextHosts,
+    markTextDirty,
+    validateContentMix,
+} from "./text.js";
 
 /** A top-level container an element tree can be mounted into. */
 type Container = RootElement | GObject.Object;
 
+type PriorityTracker = {
+    get: () => number;
+    set: (priority: number) => void;
+    withDiscrete: <T>(fn: () => T) => T;
+};
+
 const HOST_CONTEXT: Record<string, never> = {};
-let currentPriority: number = NoEventPriority;
 const containerNodes: WeakMap<object, ElementNode> = new WeakMap();
+const priority = createPriorityTracker();
 
 const hostConfig = {
     supportsMutation: true,
@@ -54,7 +66,9 @@ const hostConfig = {
     },
     createInstance: (type: string, props: Props): Instance => createNode(type, props),
     createTextInstance: (text: string): TextNode => createTextNode(text),
-    appendInitialChild: (parent: Instance, child: AnyNode): void => attachChild(parent, child, null),
+    appendInitialChild: (parent: Instance, child: AnyNode): void => {
+        attachChild(parent, child, null);
+    },
     finalizeInitialChildren: (instance: Instance, _type: string, props: Props): boolean => {
         if (instance.kind !== ELEMENT_KIND) {
             return false;
@@ -83,20 +97,31 @@ const hostConfig = {
         flushBehaviors();
         endSuppression();
     },
-    preparePortalMount: (): void => {},
-    clearContainer: (): void => {},
-    appendChild: (parent: Instance, child: AnyNode): void => attachChild(parent, child, null),
-    appendChildToContainer: (container: Container, child: AnyNode): void => attachToContainer(container, child, null),
-    insertBefore: (parent: Instance, child: AnyNode, before: AnyNode): void => attachChild(parent, child, before),
-    insertInContainerBefore: (container: Container, child: AnyNode, before: AnyNode): void =>
-        attachToContainer(container, child, before),
-    removeChild: (parent: Instance, child: AnyNode): void => detachChild(parent, child),
-    removeChildFromContainer: (container: Container, child: AnyNode): void => detachFromContainer(container, child),
+    preparePortalMount: (): void => undefined,
+    clearContainer: (): void => undefined,
+    appendChild: (parent: Instance, child: AnyNode): void => {
+        attachChild(parent, child, null);
+    },
+    appendChildToContainer: (container: Container, child: AnyNode): void => {
+        attachToContainer(container, child, null);
+    },
+    insertBefore: (parent: Instance, child: AnyNode, before: AnyNode): void => {
+        attachChild(parent, child, before);
+    },
+    insertInContainerBefore: (container: Container, child: AnyNode, before: AnyNode): void => {
+        attachToContainer(container, child, before);
+    },
+    removeChild: (parent: Instance, child: AnyNode): void => {
+        detachChild(parent, child);
+    },
+    removeChildFromContainer: (container: Container, child: AnyNode): void => {
+        detachFromContainer(container, child);
+    },
     commitTextUpdate: (textInstance: TextNode, oldText: string, newText: string): void => {
         textInstance.text = newText;
         const host = enclosingHost(textInstance);
 
-        if (host !== null && !surgicalTextUpdate(host, textInstance, oldText, newText)) {
+        if (host !== null && !didUpdateTextSurgically(host, textInstance, oldText, newText)) {
             markTextDirty(host);
         }
     },
@@ -108,10 +133,14 @@ const hostConfig = {
             instance.props = nextProps;
         }
     },
-    hideInstance: (instance: Instance): void => setWidgetVisible(instance, false),
-    unhideInstance: (instance: Instance, props: Props): void => setWidgetVisible(instance, props.visible !== false),
-    hideTextInstance: (): void => {},
-    unhideTextInstance: (): void => {},
+    hideInstance: (instance: Instance): void => {
+        setWidgetVisible(instance, false);
+    },
+    unhideInstance: (instance: Instance, props: Props): void => {
+        setWidgetVisible(instance, props.visible !== false);
+    },
+    hideTextInstance: (): void => undefined,
+    unhideTextInstance: (): void => undefined,
     detachDeletedInstance: (instance: Instance): void => {
         if (instance.kind === ELEMENT_KIND) {
             disconnectAllHandlers(instance);
@@ -121,25 +150,25 @@ const hostConfig = {
         }
     },
     getInstanceFromNode: (): null => null,
-    beforeActiveInstanceBlur: (): void => {},
-    afterActiveInstanceBlur: (): void => {},
-    prepareScopeUpdate: (): void => {},
+    beforeActiveInstanceBlur: (): void => undefined,
+    afterActiveInstanceBlur: (): void => undefined,
+    prepareScopeUpdate: (): void => undefined,
     getInstanceFromScope: (): null => null,
-    setCurrentUpdatePriority: (priority: number): void => {
-        currentPriority = priority;
+    setCurrentUpdatePriority: (next: number): void => {
+        priority.set(next);
     },
-    getCurrentUpdatePriority: (): number => currentPriority,
-    resolveUpdatePriority: (): number => (currentPriority === NoEventPriority ? DefaultEventPriority : currentPriority),
-    resetFormInstance: (): void => {},
-    requestPostPaintCallback: (): void => {},
+    getCurrentUpdatePriority: (): number => priority.get(),
+    resolveUpdatePriority: (): number => (priority.get() === NoEventPriority ? DefaultEventPriority : priority.get()),
+    resetFormInstance: (): void => undefined,
+    requestPostPaintCallback: (): void => undefined,
     shouldAttemptEagerTransition: (): boolean => false,
-    trackSchedulerEvent: (): void => {},
+    trackSchedulerEvent: (): void => undefined,
     resolveEventType: (): null => null,
     resolveEventTimeStamp: (): number => -1,
     maySuspendCommit: (): boolean => false,
     preloadInstance: (): boolean => true,
-    startSuspendingCommit: (): void => {},
-    suspendInstance: (): void => {},
+    startSuspendingCommit: (): void => undefined,
+    suspendInstance: (): void => undefined,
     waitForCommitToBeReady: (): null => null,
     NotPendingTransition: null,
     HostTransitionContext: createContext(null) as unknown as ReactReconciler.ReactContext<null>,
@@ -147,6 +176,27 @@ const hostConfig = {
 
 const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unknown, unknown, object> =
     ReactReconciler(hostConfig);
+
+function createPriorityTracker(): PriorityTracker {
+    let current: number = NoEventPriority;
+
+    return {
+        get: () => current,
+        set: (next) => {
+            current = next;
+        },
+        withDiscrete: (fn) => {
+            const previous = current;
+            current = DiscreteEventPriority;
+
+            try {
+                return fn();
+            } finally {
+                current = previous;
+            }
+        },
+    };
+}
 
 const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
     if (!isRootElement(container)) {
@@ -172,20 +222,16 @@ const getPublicInstance = (instance: Instance): object => {
     return instance;
 };
 
-const setWidgetVisible = (instance: Instance, visible: boolean): void => {
+const setWidgetVisible = (instance: Instance, isVisible: boolean): void => {
     if (instance.kind === ELEMENT_KIND && instance.object instanceof Gtk.Widget) {
-        instance.object.setVisible(visible);
+        instance.object.setVisible(isVisible);
     }
 };
 
 const runDiscrete: Dispatch = (fn) => {
-    const previous = currentPriority;
-    currentPriority = DiscreteEventPriority;
-
     try {
-        return fn();
+        return priority.withDiscrete(fn);
     } finally {
-        currentPriority = previous;
         reconciler.flushSyncWork();
     }
 };

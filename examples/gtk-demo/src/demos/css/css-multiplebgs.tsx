@@ -38,7 +38,7 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
 
 /* The gradients below are adapted versions of Lea Verou's CSS3 patterns,
  * licensed under the MIT license:
- * Copyright (c) 2011 Lea Verou, http://lea.verou.me/
+ * Copyright (c) 2011 Lea Verou, https://lea.verou.me/
  *
  * See https://github.com/LeaVerou/CSS3-Patterns-Gallery
  */
@@ -91,23 +91,25 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
 
 #canvas {
     background-color: @tartan_bg;
-    background-image: repeating-linear-gradient(transparent, transparent 50px, rgba(0,0,0,.4) 50px,
-                                                rgba(0,0,0,.4) 53px, transparent 53px, transparent 63px,
-                                                rgba(0,0,0,.4) 63px, rgba(0,0,0,.4) 66px, transparent 66px,
-                                                transparent 116px, rgba(0,0,0,.5) 116px, rgba(0,0,0,.5) 166px,
-                                                rgba(255,255,255,.2) 166px, rgba(255,255,255,.2) 169px, rgba(0,0,0,.5) 169px,
-                                                rgba(0,0,0,.5) 179px, rgba(255,255,255,.2) 179px, rgba(255,255,255,.2) 182px,
-                                                rgba(0,0,0,.5) 182px, rgba(0,0,0,.5) 232px, transparent 232px),
-                      repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0,0,0,.4) 50px, rgba(0,0,0,.4) 53px,
-                                                transparent 53px, transparent 63px, rgba(0,0,0,.4) 63px, rgba(0,0,0,.4) 66px,
-                                                transparent 66px, transparent 116px, rgba(0,0,0,.5) 116px, rgba(0,0,0,.5) 166px,
-                                                rgba(255,255,255,.2) 166px, rgba(255,255,255,.2) 169px, rgba(0,0,0,.5) 169px,
-                                                rgba(0,0,0,.5) 179px, rgba(255,255,255,.2) 179px, rgba(255,255,255,.2) 182px,
-                                                rgba(0,0,0,.5) 182px, rgba(0,0,0,.5) 232px, transparent 232px),
-                      repeating-linear-gradient(-55deg, transparent, transparent 1px, rgba(0,0,0,.2) 1px, rgba(0,0,0,.2) 4px,
-                                                transparent 4px, transparent 19px, rgba(0,0,0,.2) 19px,
-                                                rgba(0,0,0,.2) 24px, transparent 24px, transparent 51px, rgba(0,0,0,.2) 51px,
-                                                rgba(0,0,0,.2) 54px, transparent 54px, transparent 74px);
+    background-image:
+        repeating-linear-gradient(transparent, transparent 50px, rgba(0,0,0,.4) 50px,
+            rgba(0,0,0,.4) 53px, transparent 53px, transparent 63px,
+            rgba(0,0,0,.4) 63px, rgba(0,0,0,.4) 66px, transparent 66px,
+            transparent 116px, rgba(0,0,0,.5) 116px, rgba(0,0,0,.5) 166px,
+            rgba(255,255,255,.2) 166px, rgba(255,255,255,.2) 169px, rgba(0,0,0,.5) 169px,
+            rgba(0,0,0,.5) 179px, rgba(255,255,255,.2) 179px, rgba(255,255,255,.2) 182px,
+            rgba(0,0,0,.5) 182px, rgba(0,0,0,.5) 232px, transparent 232px),
+        repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0,0,0,.4) 50px,
+            rgba(0,0,0,.4) 53px, transparent 53px, transparent 63px,
+            rgba(0,0,0,.4) 63px, rgba(0,0,0,.4) 66px, transparent 66px,
+            transparent 116px, rgba(0,0,0,.5) 116px, rgba(0,0,0,.5) 166px,
+            rgba(255,255,255,.2) 166px, rgba(255,255,255,.2) 169px, rgba(0,0,0,.5) 169px,
+            rgba(0,0,0,.5) 179px, rgba(255,255,255,.2) 179px, rgba(255,255,255,.2) 182px,
+            rgba(0,0,0,.5) 182px, rgba(0,0,0,.5) 232px, transparent 232px),
+        repeating-linear-gradient(-55deg, transparent, transparent 1px, rgba(0,0,0,.2) 1px,
+            rgba(0,0,0,.2) 4px, transparent 4px, transparent 19px, rgba(0,0,0,.2) 19px,
+            rgba(0,0,0,.2) 24px, transparent 24px, transparent 51px, rgba(0,0,0,.2) 51px,
+            rgba(0,0,0,.2) 54px, transparent 54px, transparent 74px);
 }
 
 #canvas:backdrop {
@@ -143,21 +145,37 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
 /*
 #canvas {
     background-color: #fff;
-    background-image: linear-gradient(90deg, transparent 79px, alpha(#f98195, 0.40) 79px, #f98195 80px, alpha(#f98195, 0.40) 81px, transparent 81px),
+    background-image: linear-gradient(90deg, transparent 79px, alpha(#f98195, 0.40) 79px,
+                                      #f98195 80px, alpha(#f98195, 0.40) 81px, transparent 81px),
                       linear-gradient(alpha(#77c5cf, 0.60), alpha(#77c5cf, 0.60) 1px, transparent 1px);
     background-size: 100% 36px;
 }
 
 #canvas:backdrop {
     background-color: #f1f2f4;
-    background-image: linear-gradient(90deg, transparent 79px, alpha(#999, 0.40) 79px, #999 80px, alpha(#999, 0.40) 81px, transparent 81px),
+    background-image: linear-gradient(90deg, transparent 79px, alpha(#999, 0.40) 79px,
+                                      #999 80px, alpha(#999, 0.40) 81px, transparent 81px),
                       linear-gradient(alpha(#bbb, 0.60), alpha(#bbb, 0.60) 1px, transparent 1px);
 }
 */`;
 
 const WINDOW_CLASSES = ["demo"];
 
-const CssMultiplebgsDemo = () => {
+const cssMultiplebgsDemo: Demo = {
+    id: "css-multiplebgs",
+    title: "Theming/Multiple Backgrounds",
+    description:
+        "GTK themes are written using CSS. Every widget is build of multiple items that you can style very " +
+        "similarly to a regular website.",
+    keywords: [],
+    component: CssMultiplebgsDemo,
+    sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 300,
+    windowCssClasses: WINDOW_CLASSES,
+};
+
+function CssMultiplebgsDemo() {
     const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
@@ -194,17 +212,6 @@ const CssMultiplebgsDemo = () => {
             <GtkDrawingArea name="canvas" hexpand vexpand />
         </GtkOverlay>
     );
-};
+}
 
-export const cssMultiplebgsDemo: Demo = {
-    id: "css-multiplebgs",
-    title: "Theming/Multiple Backgrounds",
-    description:
-        "GTK themes are written using CSS. Every widget is build of multiple items that you can style very similarly to a regular website.",
-    keywords: [],
-    component: CssMultiplebgsDemo,
-    sourceCode,
-    defaultWidth: 400,
-    defaultHeight: 300,
-    windowCssClasses: WINDOW_CLASSES,
-};
+export { cssMultiplebgsDemo };

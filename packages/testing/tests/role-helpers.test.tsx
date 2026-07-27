@@ -63,7 +63,7 @@ describe("logRoles", () => {
     let consoleSpy: MockInstance<typeof console.log>;
 
     beforeEach(() => {
-        consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+        consoleSpy = vi.spyOn(console, "log").mockImplementation(vi.fn());
     });
 
     afterEach(() => {

@@ -1,6 +1,5 @@
 import "./exit-hook.js";
 
-export { alloc, type ExternalObject, type Handle, read, setWrapper, write } from "@gtkx/native";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type ApplicationLike, onExit, quit, quitApplication, runApplication } from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
@@ -57,3 +56,4 @@ export {
     valueIsA,
 } from "./type.js";
 export { getBoxedValue, setBoxedValue } from "./value.js";
+export { alloc, type ExternalObject, type Handle, read, setWrapper, write } from "@gtkx/native";

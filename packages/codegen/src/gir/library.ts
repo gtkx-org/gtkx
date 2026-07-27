@@ -114,7 +114,7 @@ class Library {
         const namespace = this.namespaceById[nsId];
 
         if (namespace === undefined) {
-            throw new Error(`No namespace registered for type table id ${nsId}`);
+            throw new Error(`No namespace registered for type table id ${String(nsId)}`);
         }
 
         return namespace;
@@ -124,7 +124,7 @@ class Library {
         const typeTable = this.typeTables[nsId];
 
         if (typeTable === undefined) {
-            throw new Error(`No type table for namespace id ${nsId}`);
+            throw new Error(`No type table for namespace id ${String(nsId)}`);
         }
 
         return typeTable;

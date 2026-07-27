@@ -4,6 +4,78 @@ import { describe, expect, it, vi } from "vitest";
 const nativeMock = vi.hoisted(() => ({ quit: vi.fn(), keepAlive: vi.fn() }));
 const signalMock = vi.hoisted(() => ({ blockMatchedSignalHandlers: vi.fn() }));
 
+class FakeApplication implements ApplicationLike {
+    private handlers: Record<"activate" | "shutdown", (() => void)[]> = { activate: [], shutdown: [] };
+    private isRegistered = false;
+
+    registerCalls = 0;
+    activateCalls = 0;
+    quitCalls = 0;
+    runCalls = 0;
+    shutdownEmits = 0;
+    lastRunArgv: string[] | null = null;
+    windows: object[];
+    windowsAtRun: number | null = null;
+
+    constructor(windows: object[] = []) {
+        this.windows = [...windows];
+    }
+
+    getIsRegistered(): boolean {
+        return this.isRegistered;
+    }
+
+    register(): boolean {
+        this.registerCalls++;
+        this.isRegistered = true;
+
+        return true;
+    }
+
+    activate(): void {
+        this.activateCalls++;
+        this.emit("activate");
+    }
+
+    quit(): void {
+        this.quitCalls++;
+    }
+
+    run(argv: string[]): number {
+        this.runCalls++;
+        this.lastRunArgv = argv;
+        this.windowsAtRun = this.windows.length;
+        this.isRegistered = false;
+        this.emit("shutdown");
+
+        return 0;
+    }
+
+    getWindows(): object[] {
+        return [...this.windows];
+    }
+
+    removeWindow(window: object): void {
+        this.windows = this.windows.filter((candidate) => candidate !== window);
+    }
+
+    on(signal: "activate" | "shutdown", handler: () => void): void {
+        this.handlers[signal].push(handler);
+    }
+
+    emit(signal: "activate" | "shutdown"): void {
+        if (signal === "shutdown") {
+            this.shutdownEmits++;
+        }
+
+        const signalHandlers = this.handlers[signal];
+
+        for (const handler of signalHandlers) {
+            handler();
+        }
+    }
+}
+
 vi.mock("@gtkx/native", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@gtkx/native")>();
 
@@ -16,80 +88,9 @@ vi.mock("../src/signal.js", async (importOriginal) => {
     return { ...actual, blockMatchedSignalHandlers: signalMock.blockMatchedSignalHandlers };
 });
 
-type FakeApplication = ApplicationLike & {
-    registerCalls: number;
-    activateCalls: number;
-    quitCalls: number;
-    runCalls: number;
-    shutdownEmits: number;
-    lastRunArgv: string[] | null;
-    windows: object[];
-    windowsAtRun: number | null;
-    emit(signal: "activate" | "shutdown"): void;
-};
-
-const createFakeApplication = (windows: object[] = []): FakeApplication => {
-    const handlers: Record<"activate" | "shutdown", (() => void)[]> = { activate: [], shutdown: [] };
-    let registered = false;
-
-    return {
-        registerCalls: 0,
-        activateCalls: 0,
-        quitCalls: 0,
-        runCalls: 0,
-        shutdownEmits: 0,
-        lastRunArgv: null,
-        windows: [...windows],
-        windowsAtRun: null,
-        getIsRegistered: () => registered,
-        register() {
-            this.registerCalls++;
-            registered = true;
-
-            return true;
-        },
-        activate() {
-            this.activateCalls++;
-            this.emit("activate");
-        },
-        quit() {
-            this.quitCalls++;
-        },
-        run(argv: string[]) {
-            this.runCalls++;
-            this.lastRunArgv = argv;
-            this.windowsAtRun = this.windows.length;
-            registered = false;
-            this.emit("shutdown");
-
-            return 0;
-        },
-        getWindows() {
-            return [...this.windows];
-        },
-        removeWindow(window: object) {
-            this.windows = this.windows.filter((candidate) => candidate !== window);
-        },
-        on(signal, handler) {
-            handlers[signal].push(handler);
-        },
-        emit(signal) {
-            if (signal === "shutdown") {
-                this.shutdownEmits++;
-            }
-
-            const signalHandlers = handlers[signal];
-
-            for (const handler of signalHandlers) {
-                handler();
-            }
-        },
-    };
-};
-
-describe("runApplication and quitApplication", () => {
+describe("runApplication and quitApplication — full lifecycle", () => {
     it("registers, activates, and holds the loop alive until shutdown", () => {
-        const app = createFakeApplication();
+        const app = new FakeApplication();
         nativeMock.keepAlive.mockClear();
         runApplication(app);
         expect(app.registerCalls).toBe(1);
@@ -108,7 +109,7 @@ describe("runApplication and quitApplication", () => {
     });
 
     it("blocks activate handlers before running the application", () => {
-        const app = createFakeApplication();
+        const app = new FakeApplication();
         const order: string[] = [];
 
         signalMock.blockMatchedSignalHandlers.mockImplementationOnce(() => {
@@ -129,23 +130,25 @@ describe("runApplication and quitApplication", () => {
     });
 
     it("removes every held window before running the application", () => {
-        const app = createFakeApplication([{ id: "w1" }, { id: "w2" }]);
+        const app = new FakeApplication([{ id: "w1" }, { id: "w2" }]);
         runApplication(app);
         quitApplication(app);
         expect(app.windows).toEqual([]);
         expect(app.windowsAtRun).toBe(0);
     });
+});
 
+describe("runApplication and quitApplication — registration and keepalive", () => {
     it("does not re-register an already-registered application", () => {
-        const app = createFakeApplication();
-        app.register(null);
+        const app = new FakeApplication();
+        app.register();
         runApplication(app);
         expect(app.registerCalls).toBe(1);
         quitApplication(app);
     });
 
     it("does nothing when the application was never registered", () => {
-        const app = createFakeApplication();
+        const app = new FakeApplication();
         quitApplication(app);
         expect(app.runCalls).toBe(0);
         expect(app.shutdownEmits).toBe(0);
@@ -153,7 +156,7 @@ describe("runApplication and quitApplication", () => {
     });
 
     it("forwards keepalive to the native loop on each activation", () => {
-        const app = createFakeApplication();
+        const app = new FakeApplication();
         nativeMock.keepAlive.mockClear();
         runApplication(app);
         app.activate();

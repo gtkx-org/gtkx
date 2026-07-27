@@ -1,7 +1,7 @@
 import type { AnyClass } from "@gtkx/utils";
 
 type MixinReceiver = {
-    connect(signal: string, handler: (...args: unknown[]) => unknown, after?: boolean): number;
+    connect(signal: string, handler: (...args: unknown[]) => unknown, isAfter?: boolean): number;
     emit(signal: string, ...args: unknown[]): unknown;
 };
 
@@ -11,7 +11,7 @@ type MixinReceiver = {
  */
 type Mixin = (base: AnyClass<MixinReceiver>) => AnyClass;
 
-function definedInClassChain(prototype: object, key: string): boolean {
+function isDefinedInClassChain(prototype: object, key: string): boolean {
     let current: object | null = prototype;
 
     while (current !== null && current !== Object.prototype) {
@@ -30,7 +30,7 @@ function copyLayerMember(target: AnyClass, layer: object, key: string): void {
         return;
     }
 
-    if (definedInClassChain(target.prototype, key)) {
+    if (isDefinedInClassChain(target.prototype, key)) {
         return;
     }
 

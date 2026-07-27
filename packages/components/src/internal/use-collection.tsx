@@ -217,10 +217,10 @@ const applyExpansion = (tree: Gtk.TreeListModel, model: CollectionModel, expande
     const wanted = new Set(expandedIds);
 
     eachRow(tree, model, (row, id) => {
-        const desired = id !== null && wanted.has(id);
+        const isDesired = id !== null && wanted.has(id);
 
-        if (row.isExpandable() && row.getExpanded() !== desired) {
-            row.setExpanded(desired);
+        if (row.isExpandable() && row.getExpanded() !== isDesired) {
+            row.setExpanded(isDesired);
         }
     });
 };

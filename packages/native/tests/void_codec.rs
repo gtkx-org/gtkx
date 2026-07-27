@@ -96,8 +96,8 @@ fn ptr_to_value_yields_undefined() {
 fn read_from_pointer_yields_undefined() {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let mut slot: usize = 42;
-        let ptr = &mut slot as *mut usize as *const c_void;
+        let slot: usize = 42;
+        let ptr = (&raw const slot).cast::<c_void>();
         let read =
             unsafe { Decoder::read(&VoidCodec, &env, ReadSource::Slot(ptr, "ctx")) }.unwrap();
         assert!(napi_mock::is_undefined(read.raw()));
@@ -109,7 +109,7 @@ fn write_return_to_pointer_is_a_no_op() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let mut slot: usize = 99;
-        let ret = &mut slot as *mut usize as *mut c_void;
+        let ret = (&raw mut slot).cast::<c_void>();
         PtrWriter::write_return_to_ptr(
             &VoidCodec,
             &env,

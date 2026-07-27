@@ -2,11 +2,11 @@ use napi::{Error, Status};
 
 use super::node_env;
 
-pub fn report(error: &anyhow::Error) {
+pub(crate) fn report(error: &anyhow::Error) {
     report_str(&format!("{error:#}"));
 }
 
-pub fn report_str(message: &str) {
+pub(crate) fn report_str(message: &str) {
     eprintln!("gtkx: {message}");
     if node_env::is_installed_on_current_thread() {
         raise_fatal(message.to_owned());
@@ -23,7 +23,7 @@ fn raise_fatal(message: String) {
     env.fatal_exception(Error::new(Status::GenericFailure, message));
 }
 
-pub trait ReportErr<T> {
+pub(crate) trait ReportErr<T> {
     fn report_err<C>(self, context: C) -> Option<T>
     where
         C: std::fmt::Display + Send + Sync + 'static;

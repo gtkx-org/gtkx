@@ -3,6 +3,8 @@ type FilterableItem = {
     active: boolean;
 };
 
+type FilterMode = "all" | "active" | "inactive";
+
 const FILTERABLE_ITEMS: FilterableItem[] = [
     { id: "1", active: true },
     { id: "2", active: false },
@@ -10,8 +12,6 @@ const FILTERABLE_ITEMS: FilterableItem[] = [
     { id: "4", active: false },
     { id: "5", active: true },
 ];
-
-type FilterMode = "all" | "active" | "inactive";
 
 function filterableIds(filter: FilterMode): string[] {
     return FILTERABLE_ITEMS.filter((item) => {

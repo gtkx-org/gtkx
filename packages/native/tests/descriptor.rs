@@ -8,8 +8,8 @@ use napi::JsValue as _;
 use native::ffi;
 use native::ffi::Slot;
 use native::ffi::codec::{
-    BooleanCodec, CallbackCodec, Codec, Decoder, Encoder, IntegerCodec, Ownership, PtrWriter,
-    ReadSource, SlotInit, StructCodec, VoidCodec,
+    BooleanCodec, CallbackCodec, CallbackScope, Codec, Decoder, Encoder, IntegerCodec, Ownership,
+    PtrWriter, ReadSource, SlotInit, StructCodec, VoidCodec,
 };
 
 fn assert_ownership_predicates_mutually_exclusive() {
@@ -88,7 +88,7 @@ fn callback_codec() -> CallbackCodec {
         return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy: false,
         user_data_index: None,
-        scope: Default::default(),
+        scope: CallbackScope::default(),
     }
 }
 
@@ -124,7 +124,7 @@ fn pointer_codec_ptr_to_value_default_bails() {
 fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
     let env = helpers::fake_env();
     let mut inner: *mut c_void = 8 as *mut c_void;
-    let ptr = &mut inner as *mut *mut c_void as *const c_void;
+    let ptr = (&raw mut inner).cast_const().cast::<c_void>();
     let result = unsafe { Decoder::read(&callback_codec(), &env, ReadSource::Slot(ptr, "ctx")) };
     assert!(result.is_err());
 }
@@ -133,7 +133,7 @@ fn pointer_codec_read_from_pointer_default_dereferences_then_bails() {
 fn pointer_codec_write_return_to_pointer_default_writes_null() {
     let env = helpers::fake_env();
     let mut slot: *mut c_void = 9 as *mut c_void;
-    let ret = &mut slot as *mut *mut c_void as *mut c_void;
+    let ret = (&raw mut slot).cast::<c_void>();
     PtrWriter::write_return_to_ptr(
         &callback_codec(),
         &env,
@@ -151,7 +151,7 @@ fn pointer_codec_write_return_to_pointer_default_writes_null() {
 fn pointer_codec_write_value_to_pointer_default_bails() {
     let env = helpers::fake_env();
     let mut slot: *mut c_void = std::ptr::null_mut();
-    let ptr = &mut slot as *mut *mut c_void as *mut c_void;
+    let ptr = (&raw mut slot).cast::<c_void>();
     assert!(
         PtrWriter::write_value_to_ptr(
             &callback_codec(),

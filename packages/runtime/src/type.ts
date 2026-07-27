@@ -18,6 +18,10 @@ type TypedClass = {
     _type_: bigint;
 };
 
+type ResolvableKind = "enum" | "flags" | "boxed" | "fundamental" | "array";
+/** Descriptor kinds whose GType is resolved from library metadata rather than a fixed fundamental type. */
+type ResolvableDescriptor = Extract<Descriptor, { kind: ResolvableKind }>;
+
 const resolvedTypeCache: Map<string, bigint> = new Map();
 const gTypeFromName = bind(LIB, "g_type_from_name", [stringT("borrowed")], biguint64T);
 const gTypeIsA = bind(LIB, "g_type_is_a", [biguint64T, biguint64T], booleanT);
@@ -94,6 +98,14 @@ const PLAIN_DESCRIPTOR_TYPES: Partial<Record<Descriptor["kind"], bigint>> = {
     object: TYPE_OBJECT,
 };
 
+const RESOLVABLE_DESCRIPTOR_KINDS: Set<Descriptor["kind"]> = new Set<ResolvableKind>([
+    "enum",
+    "flags",
+    "boxed",
+    "fundamental",
+    "array",
+]);
+
 function lazyType(name: string): () => bigint {
     let cached: bigint | undefined;
 
@@ -107,9 +119,9 @@ function lazyType(name: string): () => bigint {
 const isTypedClass = (value: unknown): value is TypedClass =>
     typeof value === "object" && value !== null && "_type_" in value && typeof value._type_ === "bigint";
 
-/** Returns whether `type` is `isAType` or descends from it. */
-function typeIsA(type: bigint, isAType: bigint): boolean {
-    return gTypeIsA(type, isAType) as boolean;
+/** Returns whether `type` is `ancestorType` or descends from it. */
+function typeIsA(type: bigint, ancestorType: bigint): boolean {
+    return gTypeIsA(type, ancestorType) as boolean;
 }
 
 /** Returns the immediate parent GType of the given type. */
@@ -197,6 +209,10 @@ function resolveArrayType(descriptor: ArrayDescriptor): bigint {
     throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
 }
 
+function isResolvableDescriptor(descriptor: Descriptor): descriptor is ResolvableDescriptor {
+    return RESOLVABLE_DESCRIPTOR_KINDS.has(descriptor.kind);
+}
+
 function resolveDescriptorType(descriptor: Descriptor): bigint {
     if (descriptor.kind === "biguint64" && "type" in descriptor) {
         return TYPE_GTYPE;
@@ -206,6 +222,10 @@ function resolveDescriptorType(descriptor: Descriptor): bigint {
 
     if (plain !== undefined) {
         return plain;
+    }
+
+    if (!isResolvableDescriptor(descriptor)) {
+        throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
     }
 
     switch (descriptor.kind) {
@@ -221,9 +241,6 @@ function resolveDescriptorType(descriptor: Descriptor): bigint {
         }
         case "array": {
             return resolveArrayType(descriptor);
-        }
-        default: {
-            throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
         }
     }
 }
@@ -255,6 +272,7 @@ export {
     TYPE_UNICHAR,
     getErrorType,
     getStrvType,
+    isResolvableDescriptor,
     isTypedClass,
     typeIsA,
     typeParent,
@@ -267,5 +285,6 @@ export {
     resolveBoxedType,
     resolveFundamentalType,
     resolveDescriptorType,
+    type ResolvableDescriptor,
     type TypedClass,
 };

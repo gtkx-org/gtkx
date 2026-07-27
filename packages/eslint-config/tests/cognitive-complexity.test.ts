@@ -1,13 +1,5 @@
-import { RuleTester } from "@typescript-eslint/rule-tester";
-import { afterAll, describe, it } from "vitest";
 import { cognitiveComplexity } from "../src/rules/cognitive-complexity.js";
-
-RuleTester.afterAll = afterAll;
-RuleTester.describe = describe;
-RuleTester.it = it;
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester();
+import { createRuleTester } from "./rule-tester.js";
 
 const hookWithClosures = `
 const useDropDownSelection = (options) => {
@@ -44,6 +36,8 @@ const useDropDownSelection = (options) => {
 };
 `;
 
+const ruleTester = createRuleTester();
+
 ruleTester.run("cognitive-complexity", cognitiveComplexity, {
     valid: [
         { code: "const f = (a) => (a ? 1 : 2);", options: [{ max: 1 }] },
@@ -53,12 +47,16 @@ ruleTester.run("cognitive-complexity", cognitiveComplexity, {
     ],
     invalid: [
         {
-            code: "function outer(a, b) { const inner = () => { if (a) { if (b) return 1; } return 0; }; return inner(); }",
+            code:
+                "function outer(a, b) { const inner = () => { if (a) { if (b) return 1; } return 0; }; " +
+                "return inner(); }",
             options: [{ max: 4 }],
             errors: [{ messageId: "excessiveComplexity", data: { complexity: 5, max: 4 } }],
         },
         {
-            code: "function outer(a) { const x = () => { if (a) return 1; return 0; }; const y = () => { if (a) return 1; return 0; }; return x() + y(); }",
+            code:
+                "function outer(a) { const x = () => { if (a) return 1; return 0; }; " +
+                "const y = () => { if (a) return 1; return 0; }; return x() + y(); }",
             options: [{ max: 3 }],
             errors: [{ messageId: "excessiveComplexity", data: { complexity: 4, max: 3 } }],
         },
