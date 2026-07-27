@@ -1,6 +1,6 @@
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ScreenshotOptions, ScreenshotResult, WindowSelector } from "./types.js";
@@ -138,13 +138,8 @@ const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
 };
 
 const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
-    const dir = join(tmpdir(), "gtkx-screenshots");
-
-    if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-    }
-
-    const filepath = join(dir, `${String(Date.now())}-screenshot.png`);
+    const dir = mkdtempSync(join(tmpdir(), "gtkx-screenshots-"));
+    const filepath = join(dir, "screenshot.png");
     writeFileSync(filepath, Buffer.from(result.data, "base64"));
 
     return filepath;

@@ -69,11 +69,6 @@ const appendCandidateExport = (
     }
 
     const line = renderCandidateExport(candidate, library, collector.imports, components);
-
-    if (line === null) {
-        return;
-    }
-
     collector.exportLines.push(line);
     collector.exportedNames.add(candidate.glibName);
 };
@@ -105,7 +100,7 @@ const renderCandidateExport = (
     library: Library,
     imports: ImportsBuilder,
     components: Record<string, ElementComponent>,
-): string | null => {
+): string => {
     const { glibName, klass, namespace } = candidate;
     const ancestry = ancestorGlibNames(klass, namespace, library);
     const component = resolveElementComponent(ancestry, components);

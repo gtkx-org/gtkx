@@ -5,6 +5,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV LANG=C.UTF-8
 
+# A dbgsym depends on an exact version of its library. ddebs carries the libadwaita
+# dbgsym only for the release pocket, so -updates is held off for that source to keep
+# libadwaita-1-0 and libadwaita-1-0-dbgsym on the one version both archives publish.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg ubuntu-dbgsym-keyring \
     && codename="$(. /etc/os-release; echo "$VERSION_CODENAME")" \
@@ -13,6 +16,8 @@ RUN apt-get update \
     && printf 'deb http://archive.ubuntu.com/ubuntu %s-proposed main\n' "$codename" > /etc/apt/sources.list.d/proposed.list \
     && printf 'Package: *\nPin: release a=%s-proposed\nPin-Priority: 100\n\nPackage: src:gtk4\nPin: release a=%s-proposed\nPin-Priority: 600\n' \
         "$codename" "$codename" > /etc/apt/preferences.d/gtk4-proposed \
+    && printf 'Package: src:libadwaita-1\nPin: release a=%s-updates\nPin-Priority: -1\n' \
+        "$codename" > /etc/apt/preferences.d/libadwaita-updates \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
