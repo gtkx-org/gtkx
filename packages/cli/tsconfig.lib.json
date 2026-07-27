@@ -4,26 +4,32 @@
         "isolatedDeclarations": false
     },
     "references": [
-        {
-            "path": "../codegen/tsconfig.lib.json"
-        },
-        {
-            "path": "../config/tsconfig.lib.json"
-        },
-        {
-            "path": "../create-gtkx/tsconfig.lib.json"
-        },
-        {
-            "path": "../runtime/tsconfig.lib.json"
-        },
-        {
-            "path": "../mcp/tsconfig.lib.json"
-        },
-        {
-            "path": "../utils/tsconfig.lib.json"
-        },
-        {
-            "path": "../vitest/tsconfig.lib.json"
-        }
+      {
+        "path": "../react/tsconfig.lib.json"
+      },
+      {
+        "path": "../create-gtkx/tsconfig.lib.json"
+      },
+      {
+        "path": "../vitest/tsconfig.lib.json"
+      },
+      {
+        "path": "../utils/tsconfig.lib.json"
+      },
+      {
+        "path": "../mcp/tsconfig.lib.json"
+      },
+      {
+        "path": "../runtime/tsconfig.lib.json"
+      },
+      {
+        "path": "../config/tsconfig.lib.json"
+      },
+      {
+        "path": "../codegen/tsconfig.lib.json"
+      },
+      {
+        "path": "../testing/tsconfig.lib.json"
+      }
     ]
 }

@@ -7,42 +7,130 @@
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "scripts": {
-        "bench": "turbo run bench --filter=!gtkx",
-        "build": "turbo run build --filter=!gtkx",
-        "codegen": "turbo run codegen:all && turbo run codegen --filter=!gtkx",
-        "codegen:all": "NODE_OPTIONS=--conditions=source pnpm exec tsx packages/cli/src/cli.ts codegen --force",
-        "coverage": "turbo run coverage:all && turbo run coverage --filter=!gtkx",
-        "coverage:all": "vitest run --coverage --maxWorkers=50%",
-        "lint": "turbo run lint:all && turbo run lint --filter=!gtkx",
-        "lint:all": "eslint .",
-        "lint:deps": "depcruise packages",
-        "lint:knip": "knip",
-        "release": "turbo run build --filter=!gtkx --filter='!./examples/*' --filter=!./website --filter=!@gtkx/e2e && turbo run release --env-mode=loose --filter=!gtkx --filter='!./examples/*' --filter=!./website --filter=!@gtkx/e2e",
+        "bench": "nx run-many -t bench",
+        "build": "nx run-many -t build",
+        "codegen": "nx run-many -t codegen",
+        "coverage": "nx run-many -t coverage",
+        "lint": "nx run-many -t lint lint:rust lint:knip",
+        "release": "nx run-many -t release",
         "release-e2e": "tsx ./scripts/release-e2e.ts",
-        "test": "turbo run test:all && turbo run test --filter=!gtkx",
-        "test:all": "vitest run",
+        "test": "nx run-many -t test",
         "tutorial": "tsx ./scripts/tutorial.ts",
-        "typecheck": "turbo run typecheck:all && turbo run typecheck --filter=!gtkx",
-        "typecheck:all": "tsc --noEmit"
+        "typecheck": "nx run-many -t typecheck"
+    },
+    "nx": {
+        "includedScripts": [],
+        "targets": {
+            "codegen": {
+                "command": "NODE_OPTIONS=--conditions=source tsx packages/cli/src/cli.ts codegen",
+                "cache": false,
+                "dependsOn": [
+                    "@gtkx/native:build"
+                ]
+            },
+            "typecheck": {
+                "command": "tsc --noEmit",
+                "cache": true,
+                "dependsOn": [
+                    "codegen"
+                ],
+                "inputs": [
+                    "{workspaceRoot}/tsconfig.json",
+                    "{workspaceRoot}/eslint.config.ts",
+                    "{workspaceRoot}/scripts/**/*",
+                    "{workspaceRoot}/packages/*/gtkx.config.ts",
+                    "{workspaceRoot}/packages/*/vitest.config.ts",
+                    "{workspaceRoot}/packages/*/vitest.bench.config.ts",
+                    "sharedGlobals"
+                ],
+                "outputs": []
+            },
+            "coverage": {
+                "command": "vitest run --coverage --maxWorkers=50%",
+                "cache": true,
+                "dependsOn": [
+                    "codegen",
+                    "@gtkx/cli:build",
+                    "@gtkx/components:build",
+                    "@gtkx/css:build",
+                    "@gtkx/gl:build"
+                ],
+                "outputs": [
+                    "{workspaceRoot}/coverage/**"
+                ]
+            },
+            "lint": {
+                "command": "eslint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern website",
+                "cache": true,
+                "dependsOn": [
+                    "codegen"
+                ],
+                "inputs": [
+                    "{workspaceRoot}/eslint.config.ts",
+                    "{workspaceRoot}/gtkx.config.ts",
+                    "{workspaceRoot}/gtkx.config.base.ts",
+                    "{workspaceRoot}/vitest.config.ts",
+                    "{workspaceRoot}/vitest.config.base.ts",
+                    "{workspaceRoot}/scripts/**/*",
+                    "{workspaceRoot}/packages/eslint/src/**/*",
+                    {
+                        "externalDependencies": [
+                            "eslint"
+                        ]
+                    }
+                ],
+                "outputs": []
+            },
+            "test": {
+                "command": "vitest run --project scripts",
+                "cache": true,
+                "dependsOn": [
+                    "codegen"
+                ],
+                "inputs": [
+                    "{workspaceRoot}/scripts/**/*",
+                    "{workspaceRoot}/vitest.config.ts",
+                    "{workspaceRoot}/vitest.config.base.ts"
+                ],
+                "outputs": []
+            },
+            "lint:knip": {
+                "command": "knip",
+                "cache": true,
+                "dependsOn": [
+                    "codegen",
+                    "@gtkx/cli:build"
+                ],
+                "inputs": [
+                    "{workspaceRoot}/knip.json",
+                    "{workspaceRoot}/packages/*/src/**/*",
+                    "{workspaceRoot}/packages/*/tests/**/*",
+                    "{workspaceRoot}/packages/*/package.json",
+                    "{workspaceRoot}/packages/*/gtkx.config.ts"
+                ],
+                "outputs": []
+            }
+        }
     },
     "devDependencies": {
         "@gtkx/eslint": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
-        "@gtkx/utils": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
+        "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "@swc/core": "^1.15.46",
+        "@nx/eslint": "^23.1.0",
+        "@nx/js": "^23.1.0",
+        "@nx/vitest": "^23.1.0",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@vitest/coverage-v8": "catalog:",
-        "dependency-cruiser": "^18.1.0",
         "eslint": "^10.8.0",
         "jiti": "^2.7.0",
         "knip": "^6.27.0",
+        "nx": "^23.1.0",
         "react": "catalog:",
         "tsx": "^4.23.1",
-        "turbo": "^2.10.5",
         "typescript": "catalog:",
         "verdaccio": "^6.8.0",
         "vitest": "catalog:"

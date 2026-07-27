@@ -1,5 +1,5 @@
 name: Setup CI
-description: Pull the CI image, compute Turbo env vars, and (optionally) restore the cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
+description: Pull the CI image, compute the version env vars Nx hashes, and (optionally) restore the Nx, cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
 
 inputs:
   cargo:
@@ -8,6 +8,9 @@ inputs:
   pnpm:
     description: Restore the pnpm store cache
     default: "true"
+  nx:
+    description: Restore the Nx task cache
+    default: "true"
 
 runs:
   using: composite
@@ -15,8 +18,12 @@ runs:
     - name: Pull CI image
       uses: ./.github/actions/pull-image
 
-    - name: Compute turbo env
-      uses: ./.github/actions/compute-turbo-env
+    - name: Compute cache env
+      uses: ./.github/actions/compute-cache-env
+
+    - name: Setup Nx cache
+      if: inputs.nx == 'true'
+      uses: ./.github/actions/setup-nx-cache
 
     - name: Setup cargo cache
       if: inputs.cargo == 'true'

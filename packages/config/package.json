@@ -31,9 +31,6 @@
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         },
-        "./env": {
-            "types": "./env.d.ts"
-        },
         "./internal": {
             "source": "./src/internal.ts",
             "types": "./dist/internal.d.ts",
@@ -48,12 +45,9 @@
     "sideEffects": false,
     "files": [
         "dist",
-        "src",
-        "env.d.ts"
+        "src"
     ],
     "scripts": {
-        "build": "rm -rf dist tsconfig.lib.tsbuildinfo && tsc -p tsconfig.lib.json",
-        "typecheck": "tsc -p tsconfig.test.json",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {

@@ -7,7 +7,6 @@
     "type": "module",
     "scripts": {
         "build": "gtkx build",
-        "typecheck": "gtkx codegen && tsc -p tsconfig.app.json --emitDeclarationOnly",
         "dev": "gtkx dev",
         "start": "node dist/bundle.js"
     },
@@ -19,5 +18,44 @@
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
         "@gtkx/config": "workspace:*"
+    },
+    "nx": {
+        "targets": {
+            "codegen": {
+                "command": "gtkx codegen",
+                "options": {
+                    "cwd": "{projectRoot}"
+                },
+                "cache": false,
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/cli:build"
+                ]
+            },
+            "build": {
+                "cache": true,
+                "dependsOn": [
+                    "^build",
+                    "codegen"
+                ],
+                "outputs": [
+                    "{projectRoot}/dist/**"
+                ]
+            },
+            "typecheck": {
+                "dependsOn": [
+                    "^build",
+                    "codegen"
+                ]
+            },
+            "dev": {
+                "cache": false,
+                "continuous": true
+            },
+            "start": {
+                "cache": false,
+                "continuous": true
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 .env
-.turbo/
+.nx/cache
+.nx/workspace-data
 *.log
 *.tsbuildinfo
 /.playwright-mcp

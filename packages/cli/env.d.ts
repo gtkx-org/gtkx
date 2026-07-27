@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-/// <reference types="@gtkx/config/env" />
+/// <reference types="@gtkx/react/env" />
 
 declare module "*.aac" {
     export const path: string;

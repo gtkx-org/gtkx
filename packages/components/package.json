@@ -44,15 +44,14 @@
     ],
     "scripts": {
         "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
-        "build": "rm -rf dist tsconfig.lib.tsbuildinfo && tsc -p tsconfig.lib.json",
-        "typecheck": "tsc -p tsconfig.test.json",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=24"
     },
     "dependencies": {
-        "@gtkx/react": "workspace:*"
+        "@gtkx/react": "workspace:*",
+        "@gtkx/utils": "workspace:*"
     },
     "peerDependencies": {
         "react": "^19.2"

@@ -58,17 +58,6 @@ const hostNativeTargets: Record<string, HostNativeTarget> = {
     arm64: { triple: "aarch64-unknown-linux-gnu", platformPackage: "@gtkx/native-linux-arm64-gnu" },
 };
 
-const PUBLISH_FILTERS = [
-    "--filter",
-    "!gtkx",
-    "--filter",
-    "!./examples/*",
-    "--filter",
-    "!./website",
-    "--filter",
-    "!@gtkx/e2e",
-];
-
 const BUILT_APP_STABLE_MS = 8000;
 
 function runAsync(command: string, args: string[], options: RunOptions): Promise<void> {
@@ -235,7 +224,7 @@ const prepareHostOnlyPublish = (): (() => void) => {
 };
 
 async function stageNativeArtifacts(): Promise<void> {
-    await runAsync("turbo", ["run", "build", "--filter", "@gtkx/native"], { env: process.env });
+    await runAsync("nx", ["run", "@gtkx/native:build"], { env: process.env });
     const artifactsDir = join(NATIVE_DIR, "artifacts");
     mkdirSync(artifactsDir, { recursive: true });
 
@@ -247,8 +236,7 @@ async function stageNativeArtifacts(): Promise<void> {
 }
 
 async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
-    await runAsync("turbo", ["run", "build", ...PUBLISH_FILTERS], { env });
-    await runAsync("turbo", ["run", "release", ...PUBLISH_FILTERS], { env });
+    await runAsync("nx", ["run-many", "-t", "release"], { env });
 }
 
 async function withRegistry(fn: (ctx: RegistryContext) => Promise<void>): Promise<void> {

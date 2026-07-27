@@ -44,8 +44,7 @@
         "src"
     ],
     "scripts": {
-        "build": "rm -rf dist tsconfig.lib.tsbuildinfo && tsc -p tsconfig.lib.json && cp -r src/templates dist/templates",
-        "typecheck": "tsc -p tsconfig.test.json",
+        "copy-templates": "mkdir -p dist/templates && cp -R src/templates/. dist/templates/",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
@@ -66,5 +65,25 @@
         "memfs": "^4.64.0",
         "typescript": "catalog:",
         "vitest": "catalog:"
+    },
+    "nx": {
+        "targets": {
+            "copy-templates": {
+                "cache": true,
+                "inputs": [
+                    "{projectRoot}/src/templates/**/*"
+                ],
+                "outputs": [
+                    "{projectRoot}/dist/templates/**"
+                ]
+            },
+            "build": {
+                "dependsOn": [
+                    "^build",
+                    "gtkx:codegen",
+                    "copy-templates"
+                ]
+            }
+        }
     }
 }

@@ -8,14 +8,12 @@
         "./package.json": "./package.json",
         ".": "./src/index.ts"
     },
-    "scripts": {
-        "typecheck": "tsc -p tsconfig.app.json --emitDeclarationOnly && tsc -p tsconfig.test.json"
-    },
     "engines": {
         "node": ">=24"
     },
     "dependencies": {
         "@eslint/js": "^10.0.1",
+        "@nx/eslint-plugin": "^23.1.0",
         "@stylistic/eslint-plugin": "^5.10.0",
         "@typescript-eslint/eslint-plugin": "^8.65.0",
         "@typescript-eslint/utils": "^8.65.0",
@@ -26,6 +24,7 @@
         "eslint-plugin-react-hooks": "^7.1.1",
         "eslint-plugin-sonarjs": "^4.2.0",
         "eslint-plugin-unicorn": "^72.0.0",
+        "jsonc-eslint-parser": "^3.1.0",
         "typescript": "catalog:",
         "typescript-eslint": "^8.65.0"
     },

@@ -10,7 +10,6 @@
     },
     "scripts": {
         "build": "gtkx build",
-        "typecheck": "gtkx codegen && tsc -p tsconfig.app.json --emitDeclarationOnly && tsc -p tsconfig.test.json",
         "dev": "gtkx dev",
         "start": "node dist/bundle.js",
         "coverage": "vitest run --coverage"
@@ -31,5 +30,44 @@
         "@vitest/coverage-v8": "catalog:",
         "vite": "catalog:",
         "vitest": "catalog:"
+    },
+    "nx": {
+        "targets": {
+            "codegen": {
+                "command": "gtkx codegen",
+                "options": {
+                    "cwd": "{projectRoot}"
+                },
+                "cache": false,
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/cli:build"
+                ]
+            },
+            "build": {
+                "cache": true,
+                "dependsOn": [
+                    "^build",
+                    "codegen"
+                ],
+                "outputs": [
+                    "{projectRoot}/dist/**"
+                ]
+            },
+            "typecheck": {
+                "dependsOn": [
+                    "^build",
+                    "codegen"
+                ]
+            },
+            "dev": {
+                "cache": false,
+                "continuous": true
+            },
+            "start": {
+                "cache": false,
+                "continuous": true
+            }
+        }
     }
 }

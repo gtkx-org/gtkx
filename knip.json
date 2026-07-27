@@ -1,27 +1,50 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
-    "ignore": ["packages/native/index.js"],
-    "ignoreDependencies": ["^@gtkx/gi(/.*)?$", "^@gtkx/jsx(/.*)?$"],
+    "ignore": [
+        "packages/native/index.js"
+    ],
+    "ignoreDependencies": [
+        "^@gtkx/gi(/.*)?$",
+        "^@gtkx/jsx(/.*)?$"
+    ],
     "workspaces": {
         ".": {
-            "entry": ["gtkx.config.ts", "gtkx.config.base.ts", "scripts/**/*.ts"],
-            "ignoreDependencies": ["@gtkx/runtime", "@gtkx/native", "@swc/core"]
+            "entry": [
+                "gtkx.config.ts",
+                "gtkx.config.base.ts",
+                "scripts/**/*.ts"
+            ],
+            "ignoreDependencies": [
+                "@gtkx/runtime",
+                "@gtkx/native"
+            ]
         },
         "website": {
-            "entry": [".vitepress/theme/**/*.{ts,vue}"]
+            "entry": [
+                ".vitepress/theme/**/*.{ts,vue}"
+            ]
         },
         "packages/react": {
-            "entry": ["src/env.d.ts!"]
+            "entry": [
+                "src/env.d.ts!"
+            ]
         },
         "packages/components": {
-            "entry": ["gtkx.config.ts!"]
+            "entry": [
+                "gtkx.config.ts!"
+            ]
         },
         "packages/e2e": {
-            "entry": ["gtkx.config.ts!", "elements.ts"]
+            "entry": [
+                "gtkx.config.ts!",
+                "elements.ts"
+            ]
         },
         "packages/testing": {
-            "entry": ["gtkx.config.ts!"]
+            "entry": [
+                "gtkx.config.ts!"
+            ]
         },
         "packages/cli": {
             "entry": [
@@ -31,10 +54,18 @@
             ]
         },
         "packages/vitest": {
-            "entry": ["src/worker-preload.ts!", "src/worker-setup.ts!"]
+            "entry": [
+                "src/worker-preload.ts!",
+                "src/worker-setup.ts!"
+            ]
         },
         "examples/*": {
-            "entry": ["gtkx.config.ts!", "src/gtkx-env.d.ts!", "src/app.tsx!", "src/index.tsx!"]
+            "entry": [
+                "gtkx.config.ts!",
+                "src/gtkx-env.d.ts!",
+                "src/app.tsx!",
+                "src/index.tsx!"
+            ]
         }
     }
 }

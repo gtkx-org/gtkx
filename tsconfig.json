@@ -15,10 +15,10 @@
         "packages/native/main.d.ts",
         "packages/cli/src/babel-modules.d.ts",
         "packages/eslint/src/eslint-plugin-promise.d.ts",
-        "packages/vitest/src/dbus-native.d.ts",
-        ".dependency-cruiser.js"
+        "packages/vitest/src/dbus-native.d.ts"
     ],
     "exclude": ["examples/tutorial"],
+    "references": [],
     "compilerOptions": {
         "composite": false,
         "declaration": false,

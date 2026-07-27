@@ -43,8 +43,6 @@
         "src"
     ],
     "scripts": {
-        "build": "rm -rf dist tsconfig.lib.tsbuildinfo && tsc -p tsconfig.lib.json",
-        "typecheck": "tsc -p tsconfig.test.json",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {

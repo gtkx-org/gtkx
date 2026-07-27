@@ -17,5 +17,39 @@
         "typescript": "catalog:",
         "vitepress": "^2.0.0-alpha.18",
         "vue": "^3.5.40"
+    },
+    "nx": {
+        "targets": {
+            "build": {
+                "cache": true,
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/components:build",
+                    "@gtkx/config:build",
+                    "@gtkx/css:build",
+                    "@gtkx/gl:build",
+                    "@gtkx/native:build",
+                    "@gtkx/react:build",
+                    "@gtkx/runtime:build",
+                    "@gtkx/testing:build",
+                    "@gtkx/vitest:build"
+                ],
+                "outputs": [
+                    "{projectRoot}/.vitepress/dist/**",
+                    "{projectRoot}/reference/**"
+                ]
+            },
+            "reference": {
+                "cache": false
+            },
+            "dev": {
+                "cache": false,
+                "continuous": true
+            },
+            "preview": {
+                "cache": false,
+                "continuous": true
+            }
+        }
     }
 }

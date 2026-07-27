@@ -55,11 +55,83 @@
         "build": "napi build --platform --release --esm --no-dts-cache --no-const-enum",
         "coverage": "mkdir -p coverage && tsx ../../scripts/run-headless.ts cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 70 -- --test-threads=1",
         "create-npm-dirs": "napi create-npm-dirs",
-        "lint": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
+        "lint:rust": "cargo fmt --check && cargo clippy --all-targets -- -D warnings",
         "test:asan": "RUSTFLAGS=\"-Zsanitizer=address\" ASAN_OPTIONS=\"detect_leaks=1:abort_on_error=1:detect_stack_use_after_return=1\" tsx ../../scripts/run-headless.ts cargo +nightly test --target x86_64-unknown-linux-gnu -- --test-threads=1",
         "test:miri": "tsx ../../scripts/run-headless.ts cargo +nightly miri test --test integer_codec --test descriptor_into_codec",
         "test": "tsx ../../scripts/run-headless.ts cargo test -- --test-threads=1",
         "release": "tsx ../../scripts/prepublish-native.ts && tsx ../../scripts/release-package.ts"
+    },
+    "nx": {
+        "namedInputs": {
+            "crate": [
+                "{projectRoot}/src/**/*",
+                "{projectRoot}/build.rs",
+                "{projectRoot}/Cargo.toml",
+                "{projectRoot}/Cargo.lock",
+                "{projectRoot}/package.json"
+            ],
+            "crateTests": [
+                "crate",
+                "{projectRoot}/tests/**/*",
+                "{projectRoot}/test-support/**/*",
+                "{workspaceRoot}/scripts/run-headless.ts"
+            ]
+        },
+        "targets": {
+            "build": {
+                "dependsOn": [],
+                "cache": true,
+                "inputs": ["crate"],
+                "outputs": [
+                    "{projectRoot}/index.d.ts",
+                    "{projectRoot}/index.js",
+                    "{projectRoot}/native.*.node"
+                ]
+            },
+            "test": {
+                "dependsOn": ["build", "test:asan", "test:miri"],
+                "cache": true,
+                "inputs": ["crateTests"],
+                "outputs": []
+            },
+            "test:asan": {
+                "dependsOn": ["build"],
+                "cache": true,
+                "inputs": ["crateTests"],
+                "outputs": []
+            },
+            "test:miri": {
+                "dependsOn": ["build"],
+                "cache": true,
+                "inputs": ["crateTests"],
+                "outputs": []
+            },
+            "coverage": {
+                "dependsOn": ["build"],
+                "cache": true,
+                "inputs": ["crateTests"],
+                "outputs": ["{projectRoot}/coverage/**"]
+            },
+            "lint:rust": {
+                "cache": true,
+                "inputs": ["crateTests"],
+                "outputs": []
+            },
+            "create-npm-dirs": {
+                "dependsOn": ["build"],
+                "cache": true,
+                "inputs": ["crate"],
+                "outputs": ["{projectRoot}/npm/**"]
+            },
+            "artifacts": {
+                "dependsOn": ["build", "create-npm-dirs"],
+                "cache": false
+            },
+            "release": {
+                "dependsOn": ["artifacts", "create-npm-dirs"],
+                "cache": false
+            }
+        }
     },
     "engines": {
         "node": ">=24"

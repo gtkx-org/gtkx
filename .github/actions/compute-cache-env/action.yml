@@ -1,5 +1,5 @@
-name: Compute Turbo Env
-description: Inspect the CI container for NODE_VERSION and GTK4_VERSION; export them to $GITHUB_ENV so they participate in Turbo cache keys.
+name: Compute Cache Env
+description: Inspect the CI container for NODE_VERSION and GTK4_VERSION; export them to $GITHUB_ENV so they participate in Nx cache keys.
 
 runs:
   using: composite

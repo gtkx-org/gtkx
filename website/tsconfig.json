@@ -1,4 +1,7 @@
 {
+    "nx": {
+        "addTypecheckTarget": false
+    },
     "compilerOptions": {
         "target": "ESNext",
         "module": "ESNext",

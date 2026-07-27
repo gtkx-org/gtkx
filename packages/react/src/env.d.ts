@@ -1,1 +1,1 @@
-/// <reference types="@gtkx/config/env" />
+/// <reference types="@gtkx/react/env" />

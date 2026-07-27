@@ -17,8 +17,6 @@ permissions:
   packages: read
 
 env:
-  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
   changes:
@@ -266,10 +264,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    env:
-      # The macro runner is ARM64; a fresh build is forced so the x86_64 remote
-      # cache can never satisfy the native addon or platform-specific outputs.
-      TURBO_TOKEN: ""
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

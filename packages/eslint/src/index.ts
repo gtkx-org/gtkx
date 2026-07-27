@@ -1,6 +1,7 @@
 import type { TSESLint } from "@typescript-eslint/utils";
 import type { Linter } from "eslint";
 import js from "@eslint/js";
+import nx from "@nx/eslint-plugin";
 import stylistic from "@stylistic/eslint-plugin";
 import vitest from "@vitest/eslint-plugin";
 import perfectionist from "eslint-plugin-perfectionist";
@@ -9,6 +10,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
 import unicorn from "eslint-plugin-unicorn";
 import { includeIgnoreFile } from "eslint/config";
+import * as jsonc from "jsonc-eslint-parser";
 import { join } from "node:path";
 import tseslint from "typescript-eslint";
 import { gtkx } from "./plugin.js";
@@ -20,6 +22,58 @@ const JS_SOURCES = ["**/*.{js,jsx,mjs,cjs}"];
 const TESTS = ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"];
 const CORE_SOURCES = ["packages/*/src/**/*.{ts,tsx}"];
 const ADW_SOURCES = ["packages/react/src/adw/**", "packages/components/src/adw/**"];
+const MANIFESTS = ["packages/*/package.json"];
+const TOOLING = ["**/*.config.{ts,mts,cts,js,mjs,cjs}", "**/*.config.base.ts", "**/scripts/**/*.ts"];
+const TYPE_ONLY_DEPS = ["@types/ejs", "@types/node", "@types/react"];
+const DEPENDENCY_CHECKS = { checkObsoleteDependencies: false };
+const CLI_OPTIONAL_DEPS = ["@gtkx/native", "@gtkx/react", "@gtkx/testing", "vitest"];
+
+const NX_CONFIGS: FlatConfig[] = [
+    {
+        files: SOURCES,
+        ignores: [...TESTS, ...TOOLING],
+        plugins: { "@nx": nx },
+        rules: {
+            "@nx/enforce-module-boundaries": [
+                "error",
+                {
+                    enforceBuildableLibDependency: true,
+                    allow: [],
+                    checkDynamicDependenciesExceptions: [".*"],
+                    depConstraints: [{ sourceTag: "*", onlyDependOnLibsWithTags: ["*"] }],
+                },
+            ],
+        },
+    },
+    {
+        files: MANIFESTS,
+        plugins: { "@nx": nx },
+        languageOptions: { parser: jsonc },
+        rules: { "@nx/dependency-checks": ["error", { ...DEPENDENCY_CHECKS, ignoredDependencies: TYPE_ONLY_DEPS }] },
+    },
+    {
+        files: ["packages/react/package.json"],
+        plugins: { "@nx": nx },
+        languageOptions: { parser: jsonc },
+        rules: {
+            "@nx/dependency-checks": [
+                "error",
+                { ...DEPENDENCY_CHECKS, ignoredDependencies: [...TYPE_ONLY_DEPS, "@gtkx/config"] },
+            ],
+        },
+    },
+    {
+        files: ["packages/cli/package.json"],
+        plugins: { "@nx": nx },
+        languageOptions: { parser: jsonc },
+        rules: {
+            "@nx/dependency-checks": [
+                "error",
+                { ...DEPENDENCY_CHECKS, ignoredDependencies: [...TYPE_ONLY_DEPS, ...CLI_OPTIONAL_DEPS] },
+            ],
+        },
+    },
+];
 
 const ADW_CORE_MESSAGE =
     "Adwaita must stay out of the core graph. Put Adwaita-dependent code under a dedicated adw subpath " +
@@ -166,6 +220,7 @@ const config = (root: string): FlatConfig[] => [
         plugins: { gtkx, perfectionist },
         rules: SOURCE_RULES,
     },
+    ...NX_CONFIGS,
     { files: CORE_SOURCES, ignores: ADW_SOURCES, rules: restrictAdwImports(ADW_CORE_MESSAGE, []) },
     {
         files: ["packages/react/src/**/*.{ts,tsx}", "packages/components/src/**/*.{ts,tsx}"],

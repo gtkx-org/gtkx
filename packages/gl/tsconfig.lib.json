@@ -1,8 +1,17 @@
 {
     "extends": "../../tsconfig.lib.json",
     "references": [
-        {
-            "path": "../runtime/tsconfig.lib.json"
-        }
+      {
+        "path": "../runtime/tsconfig.lib.json"
+      },
+      {
+        "path": "../vitest/tsconfig.lib.json"
+      },
+      {
+        "path": "../utils/tsconfig.lib.json"
+      },
+      {
+        "path": "../codegen/tsconfig.lib.json"
+      }
     ]
 }

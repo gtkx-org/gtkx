@@ -17,9 +17,6 @@ inputs:
   extra-env:
     description: Extra environment variables to forward as `-e NAME` flags (whitespace-separated, names only)
     default: ""
-  turbo-env:
-    description: Forward TURBO_TOKEN and TURBO_TEAM to the container
-    default: "true"
 
 runs:
   using: composite
@@ -32,7 +29,6 @@ runs:
         INPUT_MOUNT_CARGO_CACHE: ${{ inputs.mount-cargo-cache }}
         INPUT_MOUNT_PNPM_STORE: ${{ inputs.mount-pnpm-store }}
         INPUT_EXTRA_ENV: ${{ inputs.extra-env }}
-        INPUT_TURBO_ENV: ${{ inputs.turbo-env }}
         WORKSPACE: ${{ github.workspace }}
       run: |
         set -euo pipefail
@@ -46,10 +42,6 @@ runs:
 
         if [ "$INPUT_MOUNT_PNPM_STORE" = "true" ]; then
           DOCKER_ARGS+=(-v "$HOME/.local/share/pnpm/store:/root/.local/share/pnpm/store")
-        fi
-
-        if [ "$INPUT_TURBO_ENV" = "true" ]; then
-          DOCKER_ARGS+=(-e TURBO_TOKEN -e TURBO_TEAM)
         fi
 
         for var in NODE_VERSION GTK4_VERSION VERSION; do

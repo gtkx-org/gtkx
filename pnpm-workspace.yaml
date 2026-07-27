@@ -8,6 +8,10 @@ packages:
 minimumReleaseAge: 0
 trustPolicy: no-downgrade
 
+# Nx orders and gates every task, so pnpm re-verifying the tree before each
+# `pnpm run` is redundant and races with tasks writing into node_modules.
+verifyDepsBeforeRun: false
+
 publicHoistPattern:
   - clipanion
 
@@ -30,6 +34,7 @@ catalog:
 allowBuilds:
   '@swc/core': true
   esbuild: true
+  nx: true
 
 packageExtensions:
   '@emotion/utils':
@@ -42,6 +47,3 @@ overrides:
   '@docsearch/react': ^4.6.3
   qs: ^6.15.3
   js-yaml: ^4.3.0
-
-patchedDependencies:
-  dependency-cruiser: patches/dependency-cruiser.patch
