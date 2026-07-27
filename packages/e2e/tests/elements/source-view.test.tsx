@@ -19,6 +19,7 @@ const renderJsLanguageSourceView = async (ref: RefObject<GtkSource.View | null>)
     const { rerender } = await render(buildLanguageSourceView(ref, getLanguage("js")));
     const buffer = getSourceBuffer(ref);
     expect(buffer.getLanguage()?.getId()).toBe("js");
+
     return { buffer, rerender };
 };
 
@@ -29,6 +30,7 @@ const renderUndoableSourceViewAfterUserAction = async (
     await render(<GtkSourceView ref={ref} buffer={<GtkSourceBuffer enableUndo {...notify} />} />);
     const buffer = getSourceBuffer(ref);
     await userEvent.type(screen.getByRole(Gtk.AccessibleRole.TEXT_BOX), "text");
+
     return buffer;
 };
 

@@ -24,6 +24,7 @@ const resolveInterface = (
     name: string,
 ): ResolvedAncestor | undefined => {
     const resolved = library.resolveType(defaultNamespace, name);
+
     return resolved?.kind === "interface" ? ancestorOf(resolved) : undefined;
 };
 

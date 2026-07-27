@@ -22,6 +22,7 @@ type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; s
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
     const object = nodeObject(node);
     if (object === null) return null;
+
     return { node, object, adopted: null, slot, behavior: null, attached: false };
 };
 
@@ -40,6 +41,7 @@ const placeInfo = (entry: PlacedChild, index: number, sibling: GObject.Object | 
 const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementBehavior, claim: unknown): void => {
     if (behavior.resolve !== undefined) {
         entry.adopted = behavior.resolve(parent.object, entry.object);
+
         return;
     }
 
@@ -78,6 +80,7 @@ const tryAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
     adoptedFrom(ctx.parent, ctx.entry, behavior, claim);
     ctx.entry.attached = true;
     applyLazyProps(ctx.entry);
+
     return true;
 };
 
@@ -105,6 +108,7 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
 
     if (behavior === null) {
         if (entry.slot !== DEFAULT_SLOT) Reflect.set(parent.object, entry.slot, null);
+
         return;
     }
 
@@ -128,6 +132,7 @@ const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[
 
     if (!entry.attached) {
         remove(entries, entry);
+
         return;
     }
 
@@ -142,6 +147,7 @@ const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild
 
     if (behavior === null || reorder === undefined) {
         rebuild(parent, entries);
+
         return;
     }
 
@@ -158,6 +164,7 @@ const resolveEntry = (
     node: PlaceableNode,
 ): PlacedChild | null => {
     if (existing >= 0) return entries[existing] ?? null;
+
     return createEntry(slot, node);
 };
 

@@ -48,11 +48,13 @@ const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string
 const paramIndexByName = (command: GlCommand, name: string): number => {
     const index = command.params.findIndex((param) => param.name === name);
     if (index === -1) throw new Error(`Command ${command.name} has no parameter named ${name}`);
+
     return index;
 };
 
 const arrayInTsType = (scalar: GlScalar, group: string | undefined): string => {
     const element = scalarAliasOrGroup(scalar, group);
+
     return scalar.viewType === undefined ? `${element}[]` : `${element}[] | ${scalar.viewType}`;
 };
 
@@ -86,6 +88,7 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
         }
         case "array-in": {
             track(scalarAliasOrGroup(plan.scalar, param.group));
+
             return inArg(name, arrayInTsType(plan.scalar, param.group), tArray(plan.scalar.descriptor));
         }
         case "buffer": {
@@ -163,6 +166,7 @@ const trackInto =
     (usedTypes: Set<string>) =>
         (alias: string): string => {
             usedTypes.add(alias);
+
             return alias;
         };
 

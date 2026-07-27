@@ -14,6 +14,7 @@ const uniqueAppId = (): string => `org.gtkx.dialogtest${nextAppId++}`;
 const requireDialog = (ref: RefObject<Adw.AlertDialog | null>): Adw.AlertDialog => {
     const dialog = ref.current;
     if (!dialog) throw new Error("Dialog ref was not populated");
+
     return dialog;
 };
 

@@ -45,11 +45,13 @@ function createErrorDomain<const T extends Record<string, number>>(
 
     const hasInstance = (value: unknown): value is ErrorLike => {
         domain ??= resolveDomain();
+
         return isError(value) && value.domain === domain;
     };
 
     const enumObject: Record<string, unknown> = { ...members };
     Object.defineProperty(enumObject, Symbol.hasInstance, { value: hasInstance });
+
     return enumObject as ErrorDomain<T>;
 }
 

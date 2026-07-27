@@ -49,6 +49,7 @@ const visitTypeRef = (walker: UnresolvedWalker, ref: TypeId | undefined): void =
 
     if (type === undefined) {
         recordUnresolved(walker, ref);
+
         return;
     }
 
@@ -107,6 +108,7 @@ const visitNamespace = (walker: UnresolvedWalker, namespace: GirNamespace): void
 const collectUnresolvedTypeNames = (target: Library): string[] => {
     const walker: UnresolvedWalker = { target, seen: new Set<string>(), unresolved: new Set<string>() };
     for (const namespace of target.namespaces.values()) visitNamespace(walker, namespace);
+
     return [...walker.unresolved];
 };
 
@@ -529,6 +531,7 @@ describe("codegen widget-slot props", () => {
 
 const interfaceBody = (jsxSource: string, glibName: string): string => {
     const block = jsxSource.slice(jsxSource.indexOf(`export interface ${glibName}Props`));
+
     return block.slice(0, block.indexOf("\n}"));
 };
 
@@ -579,6 +582,7 @@ describe("codegen read-only props", () => {
 const defaultPropsBody = (metadata: string, glibName: string): string => {
     const table = metadata.slice(metadata.indexOf("export const DEFAULT_PROPS"));
     const block = table.slice(table.indexOf(`"${glibName}": {`));
+
     return block.slice(0, block.indexOf("\n    }"));
 };
 
@@ -619,6 +623,7 @@ describe("Library.resolveType", () => {
 
         const unexpected = unresolved.filter((name) => {
             const local = name.slice(name.indexOf(".") + 1);
+
             return local !== "va_list" && local !== "";
         });
 
@@ -634,6 +639,7 @@ const hasContainerProps = (glibName: string | undefined): boolean =>
 const interfacePropsNameOf = (iface: ResolvedQualifiedInterface): string | undefined => {
     if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) return undefined;
     const glib = glibNameOf(iface.klass);
+
     return glib === undefined ? undefined : `${glib}Props`;
 };
 
@@ -647,6 +653,7 @@ const addInterfacePropsNames = (widget: GlibNamedClass, names: Set<string>): voi
 const interfacePropsNames = (): Set<string> => {
     const names: Set<string> = new Set();
     for (const widget of collectIntrinsicElementClasses(library)) addInterfacePropsNames(widget, names);
+
     return names;
 };
 
@@ -663,6 +670,7 @@ const stripDocComments = (source: string): string => source.replaceAll(/\/\*\*[\
 const moduleSource = (directory: string): string => {
     const found = giModules.find((entry) => entry.directory === directory);
     expect(found, `expected generated module for ${directory}`).toBeDefined();
+
     return stripDocComments(found?.source ?? "");
 };
 

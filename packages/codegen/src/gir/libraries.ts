@@ -27,6 +27,7 @@ const resolveLibraries = (libraries: Config["libraries"], girPath: string[]): st
     }
 
     const hasGtk = libraries.some((library) => library.startsWith("Gtk-"));
+
     return [...new Set([...(hasGtk ? [] : DEFAULT_LIBRARIES), ...libraries])];
 };
 
@@ -50,6 +51,7 @@ const parseGirNamespace = (entry: string): GirNamespace | undefined => {
     }
 
     const separator = identifier.indexOf("-");
+
     return { name: identifier.slice(0, separator), version: identifier.slice(separator + 1), identifier };
 };
 

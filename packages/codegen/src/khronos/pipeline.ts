@@ -121,11 +121,13 @@ const enumLiteral = (token: GlEnum): string | undefined => {
 
     if (value > MAX_SAFE) return undefined;
     if (/^0[xX]/.test(text)) return `0x${text.slice(2).toLowerCase()}`;
+
     return text;
 };
 
 const groupAliasValue = (existing: string | undefined, scalarAlias: string): string => {
     if (scalarAlias === "GLbitfield") return "GLbitfield";
+
     return existing ?? "GLenum";
 };
 
@@ -160,6 +162,7 @@ const collectPlanGroups = (aliases: Map<string, string>, plan: OkPlan): void => 
 const collectGroupAliases = (plans: OkPlan[]): Map<string, string> => {
     const aliases: Map<string, string> = new Map();
     for (const plan of plans) collectPlanGroups(aliases, plan);
+
     return aliases;
 };
 
@@ -169,6 +172,7 @@ const planSelectedCommand = (registry: ReturnType<typeof loadGlRegistry>, name: 
     if (OVERRIDE_OWNED.has(name)) return { command: name, reason: "override-owned" };
     const plan = planCommand(command, PLAN_POLICY);
     if (!plan.ok) return { command: name, reason: plan.reason };
+
     return plan;
 };
 

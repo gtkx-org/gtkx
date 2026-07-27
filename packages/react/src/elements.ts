@@ -326,6 +326,7 @@ function layoutChild(parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | nu
 const buildMenu = (items: MenuItem[]): Gio.Menu => {
     const menu = Gio.Menu.new();
     for (const item of items) appendMenuItem(menu, item);
+
     return menu;
 };
 
@@ -334,11 +335,13 @@ function appendMenuItem(menu: Gio.Menu, item: MenuItem): void {
 
     if (item.submenu !== undefined) {
         menu.appendSubmenu(label, buildMenu(item.submenu));
+
         return;
     }
 
     if (item.section !== undefined) {
         menu.appendSection(label, buildMenu(item.section));
+
         return;
     }
 

@@ -83,6 +83,7 @@ const parentName = (parent: TSESTree.Node | undefined): TSESTree.Node | undefine
     if (parent === undefined) return undefined;
     if (isKeyedParent(parent)) return parent.computed ? undefined : parent.key;
     if (parent.type === AST_NODE_TYPES.VariableDeclarator) return declaratorName(parent);
+
     return undefined;
 };
 
@@ -112,12 +113,14 @@ const childNodesOf = (node: TSESTree.Node, keys: VisitorKeys): TSESTree.Node[] =
     const nodeKeys = keys[node.type] ?? [];
     const children: TSESTree.Node[] = [];
     for (const key of nodeKeys) children.push(...nodesIn(Reflect.get(node, key)));
+
     return children;
 };
 
 const sumOf = <T>(items: T[], score: (item: T) => number): number => {
     let total = 0;
     for (const item of items) total += score(item);
+
     return total;
 };
 
@@ -166,6 +169,7 @@ const ifComplexity = (node: TSESTree.IfStatement, nesting: number, keys: Visitor
 const loopChildComplexity = (node: TSESTree.Node, key: string, nesting: number, keys: VisitorKeys): number => {
     const child: unknown = Reflect.get(node, key);
     if (!isNode(child)) return 0;
+
     return complexityAt(child, key === "body" ? nesting + 1 : nesting, keys);
 };
 
@@ -173,6 +177,7 @@ const loopComplexity = (node: TSESTree.Node, nesting: number, keys: VisitorKeys)
     const nodeKeys = keys[node.type] ?? [];
     let total = 1 + nesting;
     for (const key of nodeKeys) total += loopChildComplexity(node, key, nesting, keys);
+
     return total;
 };
 
@@ -193,6 +198,7 @@ const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): 
         }
         case AST_NODE_TYPES.SwitchStatement: {
             const cases = sumOf(node.cases, (switchCase) => complexityAt(switchCase, nesting + 1, keys));
+
             return 1 + nesting + complexityAt(node.discriminant, nesting, keys) + cases;
         }
         case AST_NODE_TYPES.ForStatement:
@@ -204,6 +210,7 @@ const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): 
         }
         case AST_NODE_TYPES.CatchClause: {
             const param = node.param === null ? 0 : complexityAt(node.param, nesting, keys);
+
             return 1 + nesting + param + complexityAt(node.body, nesting + 1, keys);
         }
         case AST_NODE_TYPES.LogicalExpression: {
@@ -217,6 +224,7 @@ const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): 
         case AST_NODE_TYPES.FunctionDeclaration:
         case AST_NODE_TYPES.FunctionExpression: {
             const params = sumOf(node.params, (parameter) => complexityAt(parameter, nesting, keys));
+
             return params + complexityAt(node.body, nesting + 1, keys);
         }
         default: {

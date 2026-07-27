@@ -99,6 +99,7 @@ const patchDragState = (controller: Gtk.GestureDrag, start: DragOffset, offset: 
 
     instance.getOffset = () => {
         const current = offset();
+
         return [true, current.x, current.y];
     };
 

@@ -27,6 +27,7 @@ function useSetting<K extends SettingsSchemaKeys, P extends keyof K>(
     const settings = useSettings({ id: schema.id, path: schema.path });
     const accessor = resolveSettingAccessor(settings, schema, key);
     const value = useObjectValue(settings, `changed::${key}`, () => accessor.get());
+
     return [value, accessor.set];
 }
 

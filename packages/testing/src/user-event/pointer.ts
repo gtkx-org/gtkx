@@ -18,12 +18,14 @@ const applyPointerInput = (widget: Gtk.Widget, state: UserEventState, input: Poi
         emitPress(widget, controllers, 1);
         emitRelease(widget, controllers, 1);
         state.mouseLeftDown = false;
+
         return;
     }
 
     if (PRESS_INPUTS.has(input) && !state.mouseLeftDown) {
         emitPress(widget, controllers, 1);
         state.mouseLeftDown = true;
+
         return;
     }
 

@@ -26,6 +26,7 @@ describe("gtkxIcons", () => {
     const configuredPlugin = (): ReturnType<typeof gtkxIcons> => {
         const plugin = gtkxIcons();
         (plugin.config as ConfigHook)({ root: projectDir });
+
         return plugin;
     };
 

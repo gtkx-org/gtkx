@@ -5,6 +5,7 @@ let globalClient: McpClient | null = null;
 const connectQuietly = async (client: McpClient): Promise<boolean> => {
     try {
         await client.connect();
+
         return true;
     } catch {
         return false;
@@ -19,6 +20,7 @@ const startMcpClient = async (applicationId: string): Promise<McpClient> => {
     const client = new McpClient({ applicationId });
     globalClient = client;
     await connectQuietly(client);
+
     return client;
 };
 

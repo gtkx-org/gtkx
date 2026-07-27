@@ -14,6 +14,7 @@ type TransformFn = (code: string, id: string, options?: { ssr?: boolean }) => Pr
 
 const normalizeResult = (result: Awaited<ReturnType<TransformHook>>): TransformResult => {
     if (!result || typeof result === "string" || typeof result.code !== "string") return undefined;
+
     return { code: result.code, map: result.map };
 };
 
@@ -29,6 +30,7 @@ const getTransform = (plugin: Plugin): TransformFn => {
 
     return async (code, id, options) => {
         const hookOptions = options as TransformOptions;
+
         return normalizeResult(await handler.call(context, code, id, hookOptions));
     };
 };

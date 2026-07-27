@@ -39,6 +39,7 @@ async function renderHook<Result, Props>(
     const TestComponent = ({ props }: { props: Props }): null => {
         const result = callback(props);
         resultRef.current = result;
+
         return null;
     };
 

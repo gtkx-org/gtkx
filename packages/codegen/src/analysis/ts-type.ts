@@ -85,10 +85,12 @@ const renderContainerType = (
     if (type.kind === "hashtable") {
         const key = renderBaseTypeFor(library, target, type.key);
         const value = renderBaseTypeFor(library, target, type.value);
+
         return target.containerStyle === "record" ? `Record<${key}, ${value}>` : `Map<${key}, ${value}>`;
     }
 
     if (type.kind === "list" && type.flavor === "gbytearray" && target.byteArrayAsNumber) return "number[]";
+
     return `${renderBaseTypeFor(library, target, type.element)}[]`;
 };
 
@@ -98,6 +100,7 @@ const renderNamedType = (
     name: ReferenceName | undefined,
 ): string => {
     if (name === undefined) return resolved?.kind === "callback" ? target.callbackType : "unknown";
+
     return target.renderNamed(resolved, name);
 };
 
@@ -111,6 +114,7 @@ const moduleTarget = (context: ModuleContext): TsTypeTarget => ({
 
 const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string => {
     const base = renderBaseTypeFor(context.library, moduleTarget(context), ref);
+
     return isNullable ? `${base} | null` : base;
 };
 

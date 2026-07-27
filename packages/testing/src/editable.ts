@@ -13,12 +13,14 @@ const isEditable = (widget: unknown): widget is EditableTarget =>
 
 const getEditableDelegate = (widget: Gtk.Widget): Gtk.Widget | null => {
     if (!(widget instanceof Gtk.Editable)) return null;
+
     return widget.getDelegate();
 };
 
 const readTextViewBufferText = (widget: Gtk.TextView): string => {
     const buffer = widget.getBuffer();
     const [start, end] = buffer.getBounds();
+
     return buffer.getText(start, end, true);
 };
 

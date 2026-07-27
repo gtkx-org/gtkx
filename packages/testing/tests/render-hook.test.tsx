@@ -39,6 +39,7 @@ describe("renderHook rerender", () => {
 
         const { result, rerender } = await renderHook(() => {
             renderCount++;
+
             return renderCount;
         });
 
@@ -60,6 +61,7 @@ describe("renderHook rerender", () => {
     it("preserves hook state across rerenders", async () => {
         const { result } = await renderHook(() => {
             const [count, setCount] = useState(0);
+
             return { count, increment: () => setCount((c) => c + 1) };
         });
 
@@ -182,6 +184,7 @@ describe("renderHook complex hooks state", () => {
         const { result, rerender } = await renderHook(() => {
             const ref = useRef(0);
             ref.current++;
+
             return ref;
         });
 

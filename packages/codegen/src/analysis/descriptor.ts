@@ -142,6 +142,7 @@ const call = (name: DescriptorName, args: (string | undefined)[]): string => `${
 
 const optionsObject = (parts: (string | undefined)[]): string | undefined => {
     const present = parts.filter((part): part is string => part !== undefined);
+
     return present.length === 0 ? undefined : `{ ${present.join(", ")} }`;
 };
 

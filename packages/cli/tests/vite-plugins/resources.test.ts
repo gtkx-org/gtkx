@@ -24,6 +24,7 @@ type ResourcesPlugin = ReturnType<typeof gtkxResources>;
 const hasGlibCompileResources = (): boolean => {
     try {
         execFileSync(resolveExecutable("glib-compile-resources"), ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+
         return true;
     } catch {
         return false;
@@ -38,6 +39,7 @@ const writeDataAsset = (relPath: string, bytes: Buffer): string => {
     const full = dataAssetPath(relPath);
     mkdirSync(dirname(full), { recursive: true });
     writeFileSync(full, bytes);
+
     return full;
 };
 
@@ -281,6 +283,7 @@ const setupTrackedAssetServer = async (assetName: string): Promise<WatcherHarnes
     const refresh = vi.fn();
     const server = createFakeServer(refresh);
     (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+
     return { assetPath, server, refresh };
 };
 

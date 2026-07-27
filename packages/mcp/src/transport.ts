@@ -80,12 +80,14 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
             const requestResult = RequestSchema.safeParse(parsed);
             if (!requestResult.success) return false;
             this.emit("request", requestResult.data);
+
             return true;
         }
 
         const responseResult = ResponseSchema.safeParse(parsed);
         if (!responseResult.success) return false;
         this.handleResponse(responseResult.data);
+
         return true;
     }
 
@@ -96,6 +98,7 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
             parsed = JSON.parse(line);
         } catch {
             this.emit("invalid", { id: "unknown", error: invalidRequestError("Invalid JSON") });
+
             return;
         }
 
@@ -147,6 +150,7 @@ class ProtocolConnection extends EventEmitter<ProtocolConnectionEvents> {
         return new Promise<T>((resolve, reject) => {
             if (!this.writer.writable) {
                 reject(new ConnectionClosedError());
+
                 return;
             }
 

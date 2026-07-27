@@ -49,6 +49,7 @@ const renderWinNewAccels = async (appRef: RefObject<Gtk.Application | null>, app
     });
 
     expect(appRef.current?.getAccelsForAction("win.new")).toEqual(["<Control>n"]);
+
     return rendered;
 };
 

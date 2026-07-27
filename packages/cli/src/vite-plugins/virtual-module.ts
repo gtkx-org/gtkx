@@ -33,6 +33,7 @@ const createVirtualNamespace = (prefix: string): VirtualNamespace => {
             });
 
             if (!resolved || resolved.external) return;
+
             return toVirtualId(resolved.id);
         },
     };

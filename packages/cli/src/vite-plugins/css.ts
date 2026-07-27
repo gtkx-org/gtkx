@@ -14,6 +14,7 @@ const resolveCssId = async (ctx: CssResolveContext, request: CssResolveRequest):
     if (!CSS_RE.test(request.source)) return;
     const virtualId = await resolveToVirtual(ctx, request);
     if (virtualId === undefined) return;
+
     return virtualId + INJECT_SUFFIX;
 };
 
@@ -21,6 +22,7 @@ const loadInjectedCss = (id: string): string | undefined => {
     if (!isVirtual(id) || !id.endsWith(INJECT_SUFFIX)) return;
     const filePath = fromVirtualId(id.slice(0, -INJECT_SUFFIX.length));
     const content = readFileSync(filePath, "utf8");
+
     return ["import { injectGlobal } from \"@gtkx/css\";", `injectGlobal(${JSON.stringify(content)});`].join("\n");
 };
 

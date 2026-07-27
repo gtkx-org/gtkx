@@ -69,6 +69,7 @@ class AppRouter extends EventEmitter<AppRouterEventMap> {
 
         if (!parseResult.success) {
             this.sendError(connection, request, invalidRequestError(parseResult.error.message));
+
             return;
         }
 
@@ -126,6 +127,7 @@ class AppRouter extends EventEmitter<AppRouterEventMap> {
 
     getDefaultApp(): RegisteredApp | undefined {
         const first = this.apps.values().next();
+
         return first.done ? undefined : first.value;
     }
 

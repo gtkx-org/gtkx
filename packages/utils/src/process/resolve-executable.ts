@@ -4,6 +4,7 @@ import { delimiter, isAbsolute, join, resolve } from "node:path";
 const isExecutable = (path: string): boolean => {
     try {
         accessSync(path, constants.X_OK);
+
         return true;
     } catch {
         return false;
@@ -37,6 +38,7 @@ function resolveExecutable(command: string): string {
     if (command.includes("/")) return resolve(command);
     const found = findOnPath(command);
     if (found === undefined) throw new Error(`Cannot find the "${command}" executable on PATH`);
+
     return found;
 }
 

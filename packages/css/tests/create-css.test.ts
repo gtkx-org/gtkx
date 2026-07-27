@@ -23,6 +23,7 @@ const soleClassName = (result: string[]): string => {
     expect(result).toHaveLength(1);
     const [merged] = result;
     if (typeof merged !== "string") throw new Error("cx should merge into one class");
+
     return merged;
 };
 
@@ -298,6 +299,7 @@ describe("css — named colors and at-rule scoping", () => {
         const rules = insertSpy.mock.calls.map((call) => call[0]);
         const rule = rules.find((r) => r.startsWith(selectorPrefix));
         expect(rule).toBeDefined();
+
         return rule ?? "";
     }
 

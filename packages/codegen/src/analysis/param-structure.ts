@@ -29,6 +29,7 @@ const isInputParameter = (options: {
     if (isOutParameter(parameter)) return false;
     if (isCallerAllocatedOut(parameter)) return false;
     if (lengthIndices.has(index)) return false;
+
     return !closureIndices.has(index);
 };
 
@@ -59,12 +60,14 @@ const closureAndDestroyIndices = (fn: GirFunction): Set<number> => {
 
 const arrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     const map = arrayLengthSources(library, fn);
+
     return new Set(map.keys());
 };
 
 const carrayLengthIndex = (library: Library, ref: TypeId | undefined): number | undefined => {
     const type = ref === undefined ? undefined : library.typeOf(ref);
     if (type?.kind !== "carray") return undefined;
+
     return type.lengthParameterIndex;
 };
 
@@ -93,17 +96,20 @@ const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number
     if (returnType?.kind !== "carray") return new Set();
     const lengthIndex = returnType.lengthParameterIndex;
     if (lengthIndex === undefined) return new Set();
+
     return new Set([lengthIndex]);
 };
 
 const foldedLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     const indices: Set<number> = new Set(arrayLengthSources(library, fn).keys());
     for (const index of returnArrayLengthIndices(library, fn)) indices.add(index);
+
     return indices;
 };
 
 const parameterIdentifier = (parameter: GirParameter, index: number): string => {
     if (parameter.name.length === 0) return `arg${index}`;
+
     return toCamelIdentifier(parameter.name);
 };
 
@@ -123,6 +129,7 @@ const foldOutParamShape = (primary: string | undefined, outTypes: string[]): str
     if (primary !== undefined) return `[${primary}, ${outTypes.join(", ")}]`;
     const [single, ...rest] = outTypes;
     if (single !== undefined && rest.length === 0) return single;
+
     return `[${outTypes.join(", ")}]`;
 };
 
@@ -135,11 +142,13 @@ const isHandlerOutParameter = (options: {
     if (parameter.isVarargs) return false;
     if (isOutParameter(parameter)) return true;
     if (isCellInout(library, parameter)) return true;
+
     return includeCallerAllocated && isCallerAllocatedOut(parameter);
 };
 
 const scalarResultType = (primary: string | undefined, optOut: boolean): string => {
     if (primary === undefined) return "void";
+
     return optOut ? `${primary} | undefined` : primary;
 };
 
@@ -155,6 +164,7 @@ const renderHandlerResultType = (options: HandlerResultOptions): string => {
         .map((parameter) => renderType(parameter.type, false));
 
     if (outTypes.length === 0) return scalarResultType(primary, optOut);
+
     return foldOutParamShape(primary, outTypes);
 };
 

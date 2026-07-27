@@ -19,6 +19,7 @@ const OBJECT_ITEM_COMPARATOR_OWNERS = new Set(["Gtk.CustomSorter"]);
 
 const qualifiedName = (context: ModuleContext, ref: TypeId): string | undefined => {
     const name = context.library.nameOf(ref);
+
     return name === undefined ? undefined : `${name.namespaceName}.${name.typeName}`;
 };
 
@@ -28,6 +29,7 @@ const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
 
     return resolved.value.implements.some((interfaceName) => {
         const iface = resolveInterface(context.library, resolved.namespace.name, interfaceName);
+
         return iface?.namespaceName === "Gio" && iface.klass.name === "ListModel";
     });
 };
@@ -37,12 +39,14 @@ const comparesObjectItems = (context: ModuleContext, fn: GirFunction): boolean =
     if (ownerRef === undefined) return false;
     const owner = qualifiedName(context, ownerRef);
     if (owner !== undefined && OBJECT_ITEM_COMPARATOR_OWNERS.has(owner)) return true;
+
     return implementsListModel(context, ownerRef);
 };
 
 const isItemPointer = (context: ModuleContext, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
     const resolved = context.library.typeOf(ref);
+
     return resolved?.kind === "primitive" && resolved.category === "pointer";
 };
 
@@ -56,6 +60,7 @@ const itemComparatorCallback = (
     if (resolved?.kind !== "callback") return undefined;
     const name = qualifiedName(context, parameter.type);
     if (name === undefined || !COMPARATOR_CALLBACK_TYPES.has(name)) return undefined;
+
     return comparesObjectItems(context, fn) ? resolved.value : undefined;
 };
 
@@ -87,11 +92,13 @@ const itemComparatorTsType = (
 
     const args = inputParameters(context.library, callbackAsFunction(callback)).map(({ parameter: item, index }) => {
         const tsType = isItemPointer(context, item.type) ? itemType : renderTsType(context, item.type, item.nullable);
+
         return `${parameterIdentifier(item, index)}: ${tsType}`;
     });
 
     const returnType = renderTsType(context, callback.returnValue.type, callback.returnValue.nullable);
     const fnType = `(${args.join(", ")}) => ${returnType}`;
+
     return parameter.nullable ? `(${fnType}) | null` : fnType;
 };
 

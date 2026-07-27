@@ -56,6 +56,7 @@ const renderToolbarWithSingleBar = async (bar: { topBar?: ReactNode; bottomBar?:
     const toolbarRef = createRef<Adw.ToolbarView>();
     const contentRef = createRef<Gtk.Label>();
     await render(toolbarWithBar(toolbarRef, bar, <GtkLabel ref={contentRef}>Content</GtkLabel>));
+
     return { toolbarRef, contentRef };
 };
 

@@ -52,17 +52,20 @@ const isRawNode = (value: unknown): value is RawNode => typeof value === "object
 
 const attr = (node: RawNode, name: string): string | null => {
     const value = node[`@_${name}`];
+
     return typeof value === "string" ? value : null;
 };
 
 const text = (node: RawNode, name: string): string | null => {
     const value = node[name];
+
     return typeof value === "string" && value.length > 0 ? value : null;
 };
 
 const children = (node: RawNode, name: string): RawNode[] => {
     const value = node[name];
     if (!Array.isArray(value)) return [];
+
     return value.filter(isRawNode);
 };
 
@@ -134,6 +137,7 @@ const collectInheritedKeys = (context: MergeContext, current: RawSchema): void =
 const mergeInheritedKeys = (schema: RawSchema, byId: Map<string, RawSchema>): ParsedKey[] => {
     const context: MergeContext = { byId, merged: new Map(), visited: new Set() };
     collectInheritedKeys(context, schema);
+
     return context.merged.values().toArray();
 };
 

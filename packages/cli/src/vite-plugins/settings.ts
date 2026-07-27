@@ -45,6 +45,7 @@ const ensureSchemaDir = (state: PluginState): string => {
 
         if (runnerDir) {
             state.schemaDir = runnerDir;
+
             return runnerDir;
         }
 
@@ -102,6 +103,7 @@ const registerSchemaForMode = (state: PluginState, filePath: string, id: string)
     if (state.isBuild) {
         state.buildSchemas.add(filePath);
         info(`Queued GSettings schema: ${fileName}`);
+
         return;
     }
 
@@ -143,6 +145,7 @@ const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
         }
 
         compileSchemas(dir);
+
         return readFileSync(join(dir, "gschemas.compiled"));
     });
 
@@ -167,6 +170,7 @@ const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDev
 
     if (mod) {
         server.moduleGraph.invalidateModule(mod);
+
         return [mod];
     }
 
@@ -214,11 +218,13 @@ function gtkxSettings(): Plugin {
 
         outputOptions(options) {
             if (!state.isBuild) return;
+
             return prependBanner(options, SCHEMA_ENV_BANNER);
         },
 
         async resolveId(source, importer, options) {
             if (!source.endsWith(SCHEMA_SUFFIX)) return;
+
             return resolveToVirtual(this, { source, importer, options });
         },
 

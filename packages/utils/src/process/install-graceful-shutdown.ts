@@ -83,6 +83,7 @@ const beginShutdown = (state: ShutdownState, signal: NodeJS.Signals): void => {
 const handle = (state: ShutdownState, signal: NodeJS.Signals): void => {
     if (state.firstSignal === null) {
         beginShutdown(state, signal);
+
         return;
     }
 

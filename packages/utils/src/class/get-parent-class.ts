@@ -8,6 +8,7 @@ import type { AnyClass } from "./any-class.js";
  */
 function getParentClass(cls: AnyClass): AnyClass | null {
     const parent: unknown = Object.getPrototypeOf(cls);
+
     return typeof parent === "function" && parent !== Function.prototype ? (parent as AnyClass) : null;
 }
 

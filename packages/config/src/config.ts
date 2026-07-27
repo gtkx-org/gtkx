@@ -61,6 +61,7 @@ const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((
 
     if (!Array.isArray(value) || value.length === 0) {
         ctx.issues.push(rawIssue(value, [], `must be "${LIBRARIES_WILDCARD}", a non-empty string array, or omitted`));
+
         return;
     }
 
@@ -90,6 +91,7 @@ const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ct
 
     if (!isRecord(value)) {
         ctx.issues.push(rawIssue(value, [], "must be a boolean or an options object"));
+
         return;
     }
 
@@ -174,10 +176,12 @@ const libraryEntryIssues = (value: unknown[], index: number, entry: unknown): Re
 
     if (entry === LIBRARIES_WILDCARD) {
         const message = `to generate every library, set \`libraries: "${LIBRARIES_WILDCARD}"\` as a bare string, not an array entry`;
+
         return [rawIssue(value, [index], message, true)];
     }
 
     const message = `invalid library identifier "${String(entry)}", must be of the form "Name-Version" (e.g. "Gtk-4.0")`;
+
     return [rawIssue(value, [index], message, true)];
 };
 
@@ -192,6 +196,7 @@ const isValidApplicationId = (applicationId: string): boolean => {
 const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): ResolvedReactCompilerOptions | null => {
     if (setting === false) return null;
     const overrides = setting === undefined || setting === true ? {} : setting;
+
     return { ...overrides, target: REACT_COMPILER_TARGET };
 };
 
@@ -212,6 +217,7 @@ const mergeConfig = (base: Config, override: Config): Config => defu(override, b
 
 const resolveElementsModule = (behaviors: string | undefined, root: string | undefined): string | null => {
     if (behaviors === undefined) return null;
+
     return root === undefined ? behaviors : resolve(root, behaviors);
 };
 

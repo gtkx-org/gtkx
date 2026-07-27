@@ -32,11 +32,13 @@ const collectLabelTexts = (container: Gtk.Widget): string[] =>
 
 const listViewView = async (items: Parameters<typeof renderListView>[0]): Promise<CollectionView> => {
     const { ref, rerender } = await renderListView(items);
+
     return { texts: () => collectLabelTexts(ref.current), rerender };
 };
 
 const gridViewView = async (items: Parameters<typeof renderGridView>[0]): Promise<CollectionView> => {
     const { ref, rerender } = await renderGridView(items);
+
     return { texts: () => collectLabelTexts(ref.current), rerender };
 };
 

@@ -56,6 +56,7 @@ function gtkxSwcRefresh(): Plugin {
             }
 
             const result = await transform(code, buildSwcOptions(id));
+
             return buildRefreshResult(result);
         },
     };
@@ -69,6 +70,7 @@ function gtkxRefreshRuntime(): Plugin {
 
         resolveId(id) {
             if (id !== REFRESH_RUNTIME_SPECIFIER) return;
+
             return fileURLToPath(import.meta.resolve(REFRESH_RUNTIME_SPECIFIER));
         },
 

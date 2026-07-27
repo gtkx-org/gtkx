@@ -15,6 +15,7 @@ const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): s
     if (root.getAllocatedWidth() === 0) return WINDOW_NOT_ALLOCATED;
     if (!widget.getMapped()) return NOT_MAPPED;
     if (displayDeliversActivation(root) && !root.isActive()) return WINDOW_NOT_ACTIVE;
+
     return null;
 };
 
@@ -22,6 +23,7 @@ const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
     if (!widget.isSensitive()) return NOT_SENSITIVE;
     const root = widget.getRoot();
     if (!(root instanceof Gtk.Window) || !root.getVisible()) return null;
+
     return findWindowActionabilityFailure(widget, root);
 };
 
@@ -29,6 +31,7 @@ const describeWidget = (widget: Gtk.Widget): string => {
     const tag = widget.constructor.name;
     const name = widget.getName();
     const nameAttribute = name && !name.endsWith(tag) ? ` name="${name}"` : "";
+
     return `<${tag}${nameAttribute} role="${formatRole(widget.getAccessibleRole())}">`;
 };
 

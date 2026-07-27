@@ -160,6 +160,7 @@ describe("render options", () => {
 
         const Plain = () => {
             plain++;
+
             return <GtkButton label="plain" />;
         };
 
@@ -169,6 +170,7 @@ describe("render options", () => {
 
         const Strict = () => {
             strict++;
+
             return <GtkButton label="strict" />;
         };
 

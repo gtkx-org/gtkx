@@ -57,6 +57,7 @@ const renderClassConstructor = (
     if (!hasParent) return renderRootConstructor(context);
     const props = collectConstructableProps(context, klass);
     if (props.length === 0) return undefined;
+
     return renderTranslatingConstructor(context, props, className);
 };
 
@@ -88,6 +89,7 @@ const renderTranslatingConstructor = (context: ModuleContext, props: GirProperty
     const recordLiteral = renderBraced(entries.join("\n"));
     const lines = [`const props: ${PROPS_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];
     const body = lines.join("\n");
+
     return renderBlock(`constructor(${pattern}: ${className}ConstructorProps = {})`, body);
 };
 

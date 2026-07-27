@@ -65,6 +65,7 @@ function onceSignal(instance: SignalConnectable, signal: string, handler: Signal
         untrackListener(instance, signal, wrapped);
         untrackListener(instance, signal, handler);
         instance.disconnect(handlerId);
+
         return handler(...args);
     };
 

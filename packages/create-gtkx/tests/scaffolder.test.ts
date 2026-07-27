@@ -28,6 +28,7 @@ vi.mock("tinyexec", () => ({
 
 vi.mock("node:fs", async () => {
     const memfs = await vi.importActual<typeof import("memfs")>("memfs");
+
     return { ...memfs.fs, default: memfs.fs };
 });
 
@@ -324,10 +325,12 @@ const captureInitialValue = async (detectedName: string | undefined): Promise<un
 
     clack.select.mockImplementationOnce(async (opts) => {
         initialValue = opts.initialValue;
+
         return opts.initialValue;
     });
 
     await scaffold(partialOptions({ name: "test-app" }));
+
     return initialValue;
 };
 

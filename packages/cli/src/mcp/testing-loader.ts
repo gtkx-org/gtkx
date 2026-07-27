@@ -21,6 +21,7 @@ const loadTestingModule = async (): Promise<TestingModule> => {
 
     try {
         testingModule = await loader();
+
         return testingModule;
     } catch (error) {
         testingLoadError = new Error(

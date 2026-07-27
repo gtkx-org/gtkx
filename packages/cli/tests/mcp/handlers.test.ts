@@ -70,6 +70,7 @@ const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidge
 
 const registerWidget = (registry: WidgetRegistry, widget: never): string => {
     registry.register(widget);
+
     return registry.idFor(widget);
 };
 

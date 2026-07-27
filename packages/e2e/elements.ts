@@ -8,6 +8,7 @@ export default defineElements({
                 update: (widget: Gtk.Widget, prev, next) => {
                     const name = next.cursorName;
                     if (typeof name === "string" && !Object.is(prev.cursorName, name)) widget.setCursorFromName(name);
+
                     return ["cursorName"];
                 },
             },
@@ -19,6 +20,7 @@ export default defineElements({
                 attach: (frame: Gtk.Frame, child, info) => {
                     if (info.slot !== "labelSlot") return;
                     frame.setLabelWidget(child as Gtk.Widget);
+
                     return true;
                 },
                 detach: (frame: Gtk.Frame, _child, info) => {
@@ -34,6 +36,7 @@ export default defineElements({
                     if (info.slot !== "children") return;
                     frame.addCssClass("app-claimed-children");
                     frame.setChild(child as Gtk.Widget);
+
                     return true;
                 },
                 detach: (frame: Gtk.AspectFrame, _child, info) => {

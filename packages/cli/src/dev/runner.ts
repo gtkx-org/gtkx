@@ -37,6 +37,7 @@ const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
 const requestRestart = async (server: DevServer, deps: DevRunnerDeps): Promise<never> => {
     deps.log("Full restart (process restart)");
     await server.close();
+
     return deps.exit(RESTART_EXIT_CODE);
 };
 
@@ -48,6 +49,7 @@ const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedP
 
     if (loadedExports && !deps.isRefreshBoundary(loadedExports)) {
         await requestRestart(server, deps);
+
         return;
     }
 
@@ -63,6 +65,7 @@ const handleFileChange = async (server: DevServer, deps: DevRunnerDeps, changedP
         deps.log("Running Fast Refresh...");
         deps.performRefresh();
         deps.log("Fast Refresh complete");
+
         return;
     }
 
@@ -112,6 +115,7 @@ const closeAndExit = async (deps: DevRunnerDeps, controller: ShutdownController)
         await controller.shutdown(() => {});
     } catch (error_) {
         error("Error closing server:", error_);
+
         return deps.exit(1);
     }
 
@@ -125,6 +129,7 @@ const onApplicationShutdown =
 
             if (refreshTracker.isRefreshing()) {
                 deps.log("Application unmounted during Fast Refresh - restarting dev runner...");
+
                 return deps.exit(RESTART_EXIT_CODE);
             }
 

@@ -77,6 +77,7 @@ const announceLogs = async (cwd: string): Promise<string> => {
 
     try {
         await ensureGenerated(cwd, { announce: true });
+
         return stderrSpy.mock.calls.map((call) => String(call[0])).join("");
     } finally {
         stderrSpy.mockRestore();

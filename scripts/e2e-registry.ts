@@ -134,6 +134,7 @@ function verdaccioConfig(workDir: string): string {
 async function ping(): Promise<boolean> {
     try {
         const response = await fetch(`${REGISTRY}-/ping`);
+
         return response.ok;
     } catch {
         return false;
@@ -180,6 +181,7 @@ function registryEnv(userConfig: string): NodeJS.ProcessEnv {
     };
 
     delete env.NPM_CONFIG_PROVENANCE;
+
     return env;
 }
 
@@ -279,6 +281,7 @@ async function withRegistry(fn: (ctx: RegistryContext) => Promise<void>): Promis
 
 async function loadHeadlessDisplay(): Promise<HeadlessDisplay> {
     const modulePath = join(ROOT_DIR, "packages", "vitest", "dist", "headless-display.js");
+
     return (await import(pathToFileURL(modulePath).href)) as HeadlessDisplay;
 }
 

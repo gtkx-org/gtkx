@@ -57,6 +57,7 @@ const childNamed = (node: OrderedNode, tag: string): OrderedNode | undefined => 
 const elementName = (node: OrderedNode): string => {
     const nameChild = childNamed(node, NAME_TAG);
     if (nameChild === undefined) return "";
+
     return normalizeWhitespace(collectText(nameChild, new Set()));
 };
 
@@ -155,6 +156,7 @@ const parseFeature = (node: OrderedNode): GlFeature | undefined => {
     const requires: GlInterfaceBlock[] = [];
     const removes: GlInterfaceBlock[] = [];
     for (const child of nodeChildren(node)) collectFeatureBlock(child, requires, removes);
+
     return { api, name, number: Number(number), requires, removes };
 };
 
@@ -173,11 +175,13 @@ const parseSection = (section: OrderedNode, registry: GlRegistry): void => {
 
     if (tag === "commands") {
         parseCommandsSection(section, registry.commands);
+
         return;
     }
 
     if (tag === "enums") {
         parseEnums(section, registry.enums);
+
         return;
     }
 
@@ -189,6 +193,7 @@ const parseSection = (section: OrderedNode, registry: GlRegistry): void => {
 const loadGlRegistry = (path: string): GlRegistry => {
     const registry: GlRegistry = { commands: new Map<string, GlCommand>(), enums: [], features: [] };
     for (const section of parseRegistryFile(path)) parseSection(section, registry);
+
     return registry;
 };
 

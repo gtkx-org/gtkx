@@ -7,6 +7,7 @@ function bind(
     returnDescriptor: Descriptor,
 ): (...values: unknown[]) => unknown {
     const descriptor = nativeBind(sharedLibrary, symbol, argDescriptors, returnDescriptor);
+
     return (...values) => call(descriptor, values);
 }
 
@@ -18,6 +19,7 @@ function createBindCache(): (key: string, ...args: Parameters<typeof bind>) => R
         if (existing !== undefined) return existing;
         const bound = bind(...args);
         cache.set(key, bound);
+
         return bound;
     };
 }

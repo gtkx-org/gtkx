@@ -14,6 +14,7 @@ const usePaintable = (icon = "image-x-generic-symbolic"): Gtk.IconPaintable | nu
         const display = Gdk.Display.getDefault();
         if (!display) return null;
         const theme = Gtk.IconTheme.getForDisplay(display);
+
         return theme.lookupIcon(icon, null, 16, 1, Gtk.TextDirection.LTR, Gtk.IconLookupFlags.PRELOAD);
     }, [icon]);
 };
@@ -26,6 +27,7 @@ const PaintableHarness = ({
     content: (paintable: Gtk.IconPaintable | null) => ReactNode;
 }) => {
     const paintable = usePaintable();
+
     return <GtkTextView ref={viewRef} buffer={<GtkTextBuffer>{content(paintable)}</GtkTextBuffer>} />;
 };
 
@@ -65,6 +67,7 @@ type InsertedCall = { buffer: Gtk.TextBuffer; mark: Gtk.TextMark };
 const requireCall = (calls: InsertedCall[], index: number): InsertedCall => {
     const call = calls[index];
     if (!call) throw new Error(`Expected an onInserted call at index ${index}`);
+
     return call;
 };
 

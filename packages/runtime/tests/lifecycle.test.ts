@@ -6,11 +6,13 @@ const signalMock = vi.hoisted(() => ({ blockMatchedSignalHandlers: vi.fn() }));
 
 vi.mock("@gtkx/native", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@gtkx/native")>();
+
     return { ...actual, quit: nativeMock.quit, keepAlive: nativeMock.keepAlive };
 });
 
 vi.mock("../src/signal.js", async (importOriginal) => {
     const actual = await importOriginal<typeof import("../src/signal.js")>();
+
     return { ...actual, blockMatchedSignalHandlers: signalMock.blockMatchedSignalHandlers };
 });
 
@@ -43,6 +45,7 @@ const createFakeApplication = (windows: object[] = []): FakeApplication => {
         register() {
             this.registerCalls++;
             registered = true;
+
             return true;
         },
         activate() {
@@ -58,6 +61,7 @@ const createFakeApplication = (windows: object[] = []): FakeApplication => {
             this.windowsAtRun = this.windows.length;
             registered = false;
             this.emit("shutdown");
+
             return 0;
         },
         getWindows() {
@@ -109,6 +113,7 @@ describe("runApplication and quitApplication", () => {
 
         app.run = (argv: string[]) => {
             order.push("run");
+
             return originalRun(argv);
         };
 

@@ -30,11 +30,13 @@ const attachToContentHost = (parent: ElementNode, child: AnyNode, before: AnyNod
 const attachToElement = (parent: ElementNode, child: AnyNode, before: AnyNode | null): void => {
     if (child.kind === PROP_KIND) {
         attachPropToElement(parent, child, before);
+
         return;
     }
 
     if (parent.contentKind !== null) {
         attachToContentHost(parent, child, before);
+
         return;
     }
 
@@ -57,6 +59,7 @@ const insertChild = (parent: PropNode | LazyNode, child: AnyNode, before: AnyNod
     const placeable = asPlaceable(child);
     if (placeable === null) return null;
     insertPlaceable(parent.children, placeable, before);
+
     return placeable;
 };
 

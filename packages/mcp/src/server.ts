@@ -130,6 +130,7 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
 
             const apps = appRouter.getApps();
             const appsWithWindows = await Promise.all(apps.map((app) => appWithWindows(appRouter, app)));
+
             return textContent(JSON.stringify(appsWithWindows, null, 2));
         },
     });
@@ -190,6 +191,7 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             inputSchema: queryWidgetsShape,
             handler: async ({ applicationId, ...params }) => {
                 const result = await appRouter.sendToApp(applicationId, "widget.query", params);
+
                 return textContent(JSON.stringify(result, null, 2));
             },
         }),
@@ -202,6 +204,7 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, ...params }) => {
                 const result = await appRouter.sendToApp(applicationId, "widget.getProps", params);
+
                 return textContent(JSON.stringify(result, null, 2));
             },
         }),
@@ -219,6 +222,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.click", params);
+
                 return textContent("Clicked");
             },
         }),
@@ -230,6 +234,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             inputSchema: typeShape,
             handler: async ({ applicationId, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.type", params);
+
                 return textContent("Typed text");
             },
         }),
@@ -241,6 +246,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             inputSchema: fireEventShape,
             handler: async ({ applicationId, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.fireEvent", params);
+
                 return textContent("Fired event");
             },
         }),

@@ -89,6 +89,7 @@ const resolveContainer = (container: RenderOptions["container"]): ResolvedContai
 
     const window = new Gtk.Window({ defaultWidth: HARNESS_WINDOW_WIDTH, defaultHeight: HARNESS_WINDOW_HEIGHT });
     window.setTitlebar(new Gtk.HeaderBar({ showTitleButtons: false }));
+
     return { containerInfo: window, window };
 };
 
@@ -106,6 +107,7 @@ const resolveResultContainer = (
 ): Gtk.Widget => {
     if (resolved.window) return resolved.window;
     if (container instanceof Gtk.Widget) return container;
+
     return firstToplevelWidget(baseElement);
 };
 
@@ -160,6 +162,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
 
     const wrap = (node: ReactNode): ReactNode => {
         const wrapped = Wrapper ? <Wrapper>{node}</Wrapper> : node;
+
         return options?.reactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
     };
 
@@ -190,6 +193,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     };
 
     setScreen(result);
+
     return result;
 };
 

@@ -16,6 +16,7 @@ const isClassStructRecord = (library: Library, namespaceName: string, record: Gi
     if (first?.type === undefined) return false;
     const name = library.nameOf(first.type);
     if (name === undefined) return false;
+
     return TYPE_STRUCT_ROOTS.has(qualify(name.namespaceName, name.typeName));
 };
 

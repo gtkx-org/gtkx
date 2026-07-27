@@ -16,6 +16,7 @@ const passesHandleInPlace = (context: ModuleContext, parameter: GirParameter): b
 const underlyingType = (context: ModuleContext, ref: TypeId): GirType | undefined => {
     const type = context.library.typeOf(ref);
     if (type?.kind !== "alias") return type;
+
     return type.value.target === undefined ? undefined : underlyingType(context, type.value.target);
 };
 
@@ -24,6 +25,7 @@ const underlyingParamKind = (context: ModuleContext, parameter: GirParameter): G
 
 const isCollectibleCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
     const kind = underlyingParamKind(context, parameter);
+
     return kind === "record" || kind === "class";
 };
 

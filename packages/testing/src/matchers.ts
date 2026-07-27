@@ -86,12 +86,14 @@ const asWidget = (received: unknown, matcherName: string): Gtk.Widget => {
 const describeWidget = (widget: Gtk.Widget): string => {
     const role = Gtk.AccessibleRole[widget.getAccessibleRole()];
     const name = getWidgetAccessibleName(widget);
+
     return name === null ? `<${role}>` : `<${role} name=${JSON.stringify(name)}>`;
 };
 
 const matchesText = (actual: string, expected: TextExpectation, mode: "exact" | "substring"): boolean => {
     if (expected instanceof RegExp) {
         expected.lastIndex = 0;
+
         return expected.test(actual);
     }
 
@@ -125,6 +127,7 @@ function textMatcher(
         const actual = read(widget);
         const context: TextMatcherContext = { isNot: this.isNot, matcherName, widget, actual };
         if (expected === undefined) return nonEmptyResult(context);
+
         return matchedResult(context, expected, actual !== null && matchesText(actual, expected, mode));
     };
 }

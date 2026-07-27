@@ -47,6 +47,7 @@ const childMatcher =
     (name: string): ((child: GObject.Object) => boolean) =>
         (child) => {
             const type = childTypeOf(name);
+
             return type === TYPE_INVALID || typeIsA(getInstanceType(child), type);
         };
 
@@ -58,6 +59,7 @@ const slotAttach =
     ): NonNullable<ElementBehavior["attach"]> =>
         (object, child, info) => {
             if (info.slot !== slotName || !matches(child)) return;
+
             return attach(object as P, child as C, info) ?? true;
         };
 
@@ -80,6 +82,7 @@ const slot = <P extends GObject.Object, C extends GObject.Object>(
         };
 
     if (resolve !== undefined) behavior.resolve = (object, child) => resolve(object as P, child as C);
+
     return behavior;
 };
 
@@ -90,6 +93,7 @@ const value = <P extends GObject.Object, V>(
 ): ElementBehavior<P> => ({
     update: (object, prev, next) => {
         if (!Object.is(prev[prop], next[prop]) && next[prop] !== undefined) apply(object as P, next[prop] as V);
+
         return [prop];
     },
 });
@@ -101,6 +105,7 @@ const teardownList = <P extends GObject.Object, I, H>(
 ): void => {
     if (hooks.clear !== undefined) {
         hooks.clear(object);
+
         return;
     }
 
@@ -130,6 +135,7 @@ const list = <P extends GObject.Object, I, H = void>(
             teardownList(object as P, state.entries, hooks);
             state.entries = items.map((item) => ({ item, handle: add?.(object as P, item as I) }));
             state.snapshot = structuredClone(items);
+
             return [prop];
         },
     };
@@ -159,6 +165,7 @@ const deferred = <P extends GObject.Object, V>(
         const state = context as DeferredState;
         state.desired = next[prop];
         state.present = next[prop] !== undefined;
+
         return [prop];
     },
     flush: (object, context) => flushDeferred(object, context, prop, canApply),
@@ -221,6 +228,7 @@ const wrappedRow = <W extends Gtk.Widget>(
     const wrapper = new Wrapper({});
     setChild(wrapper, child);
     rows.set(child, wrapper);
+
     return wrapper;
 };
 

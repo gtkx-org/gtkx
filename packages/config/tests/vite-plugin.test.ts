@@ -12,6 +12,7 @@ type ConfigHook = (config: { root: string }, env: { command: "serve"; mode: stri
 const hookHandlerOf = <T>(hook: T | { handler: T } | undefined | null, name: string): T => {
     if (hook === undefined || hook === null) throw new Error(`expected the plugin to define the ${name} hook`);
     if (typeof hook === "object" && "handler" in hook) return hook.handler;
+
     return hook;
 };
 
@@ -20,12 +21,14 @@ const makeLoader = (): ConfigLoader => vi.fn(async () => resolveConfig({ applica
 const resolveId = (plugin: Plugin, id: string): string | undefined => {
     const hook = hookHandlerOf<ResolveIdHook>(plugin.resolveId, "resolveId");
     const result = hook(id, undefined, { isEntry: false });
+
     return typeof result === "string" ? result : undefined;
 };
 
 const load = async (plugin: Plugin, id: string): Promise<string | undefined> => {
     const hook = hookHandlerOf<LoadHook>(plugin.load, "load");
     const result = await hook(id);
+
     return typeof result === "string" ? result : undefined;
 };
 

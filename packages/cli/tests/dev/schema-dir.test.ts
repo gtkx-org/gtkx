@@ -19,6 +19,7 @@ const DATA_DIR = "data";
 const restoreEnv = (name: string, value: string | undefined): void => {
     if (value === undefined) {
         Reflect.deleteProperty(process.env, name);
+
         return;
     }
 

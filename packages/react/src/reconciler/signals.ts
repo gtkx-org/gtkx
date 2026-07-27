@@ -37,6 +37,7 @@ const invokeHandler = (
 const wrapHandler = (target: SignalTarget, record: HandlerRecord, notifyProperty: string | null): SignalHandler =>
     (...args: unknown[]): unknown => {
         if (record.blockable && isSuppressed()) return undefined;
+
         return target.dispatch(() => invokeHandler(target, record, notifyProperty, args));
     };
 
@@ -45,6 +46,7 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
 
     if (existing?.signal === signal) {
         existing.handler = handler;
+
         return;
     }
 

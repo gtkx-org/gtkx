@@ -50,6 +50,7 @@ const deriveResourcePrefix = (applicationId: string): string => `/${applicationI
 const compileBundle = (state: PluginState, outputPath: string): Buffer =>
     withStagingDir("resources", (dir) => {
         const manifest = stageBundle(dir, state.entries);
+
         return runCompiler(dir, manifest, outputPath);
     });
 
@@ -77,6 +78,7 @@ const stageBundle = (dir: string, entries: Map<string, ResourceEntry>): string =
     ].join("\n");
 
     writeFileSync(manifest, xml);
+
     return manifest;
 };
 
@@ -155,6 +157,7 @@ const registerEntry = (state: PluginState, absPath: string, rel: string): Resour
 
     state.entries.set(absPath, entry);
     state.sourcePaths.add(absPath);
+
     return entry;
 };
 
@@ -163,6 +166,7 @@ const isTrackedSource = (state: PluginState, file: string): boolean => state.sou
 const dataAssetSource = (source: string): string | null => {
     const clean = stripQuery(source);
     if (!clean.startsWith(DATA_PREFIX) || !ASSET_PATH_RE.test(clean)) return null;
+
     return clean;
 };
 
@@ -171,11 +175,13 @@ const resolvedAssetId = (
     clean: string,
 ): string | undefined => {
     if (!resolved || resolved.external) return undefined;
+
     return toVirtualId(resolved.id) + REL_SEPARATOR + clean.slice(DATA_PREFIX.length);
 };
 
 const loadInitModule = (state: PluginState): string => {
     if (!state.isBuild) ensureStagingDir(state);
+
     return renderInitModule({ isBuild: state.isBuild, devBundlePath: state.devBundlePath });
 };
 
@@ -259,6 +265,7 @@ const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void =
 const loadResourceModule = (state: PluginState, id: string): string | undefined => {
     if (id === VIRTUAL_INIT) return loadInitModule(state);
     if (!isVirtual(id)) return undefined;
+
     return loadAssetModule(state, id);
 };
 
@@ -297,6 +304,7 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin 
             const clean = dataAssetSource(source);
             if (clean === null) return;
             const resolved = await this.resolve(clean, importer, { ...opts, skipSelf: true });
+
             return resolvedAssetId(resolved, clean);
         },
 

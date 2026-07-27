@@ -30,6 +30,7 @@ const distTagForVersion = (version: string): string => {
     const dashIndex = core.indexOf("-");
     if (dashIndex === -1) return "latest";
     const identifier = core.slice(dashIndex + 1).split(".", 1)[0] ?? "";
+
     return identifier === "" || /^\d+$/.test(identifier) ? "next" : identifier;
 };
 
@@ -59,17 +60,20 @@ const stripDevArtifacts = (manifest: PackageManifest): PackageManifest => {
 
 const exportsContainSource = (entry: ExportsField): boolean => {
     if (typeof entry === "string") return false;
+
     return Object.entries(entry).some(([key, value]) => key === "source" || exportsContainSource(value));
 };
 
 const collectExportTargets = (entry: ExportsField): string[] => {
     if (typeof entry === "string") return entry.startsWith("./") ? [entry] : [];
+
     return Object.values(entry).flatMap((value) => collectExportTargets(value));
 };
 
 const binTargets = (bin: PackageManifest["bin"]): string[] => {
     if (bin === undefined) return [];
     if (typeof bin === "string") return [bin];
+
     return Object.values(bin);
 };
 
@@ -79,6 +83,7 @@ const requiredFileViolations = (files: Set<string>): string[] => {
     const violations: string[] = [];
     if (!files.has("README.md")) violations.push("missing README.md");
     if (!files.has("package.json")) violations.push("missing package.json");
+
     return violations;
 };
 
@@ -134,6 +139,7 @@ const sourceViolation = (options: {
     const sourceRoot = parsed.sourceRoot ?? "";
     const resolved = posix.normalize(posix.join(posix.dirname(mapPath), sourceRoot, source));
     if (files.has(resolved)) return undefined;
+
     return `source map ${mapPath} references missing source ${source}`;
 };
 

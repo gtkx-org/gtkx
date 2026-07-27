@@ -22,6 +22,7 @@ function enumNamesByValue(enumObject: Record<string, string | number>): Map<numb
 const formatRole = (role: Gtk.AccessibleRole): string => {
     const name = ROLE_NAMES_BY_VALUE.get(role);
     if (!name) return String(role);
+
     return name.toLowerCase();
 };
 
@@ -38,6 +39,7 @@ const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
 
     const head = names.slice(0, -1);
     const last = names.at(-1);
+
     return `${head.join(", ")}, or ${last}`;
 };
 
@@ -68,6 +70,7 @@ const formatWidgetPreview = (widget: Gtk.Widget, name: string | null): string =>
     const tagName = widget.constructor.name;
     const roleAttr = formatRole(widget.getAccessibleRole());
     const nameDisplay = name ? `Name "${name}"` : 'Name ""';
+
     return `${nameDisplay}: <${tagName} role="${roleAttr}">${name ?? ""}</${tagName}>`;
 };
 

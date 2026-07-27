@@ -14,6 +14,7 @@ class StyleSheet {
         const provider = registerProviderForDefaultDisplay();
         this.provider = provider;
         attachParsingErrorLogger(provider, log, "CSS");
+
         return provider;
     }
 

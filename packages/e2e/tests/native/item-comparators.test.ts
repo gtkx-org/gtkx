@@ -13,23 +13,27 @@ registerClass(ValueObject, { typeName: "GtkxTestItemComparatorValueObject" });
 const valueObject = (value: number): ValueObject => {
     const object = new ValueObject();
     object.value = value;
+
     return object;
 };
 
 const itemValue = (item: GObject.Object | null): number => {
     expect(item).toBeInstanceOf(ValueObject);
+
     return item instanceof ValueObject ? item.value : 0;
 };
 
 const valueStore = (...values: number[]): Gio.ListStore => {
     const store = Gio.ListStore.new(ValueObject.prototype._type_);
     for (const value of values) store.append(valueObject(value));
+
     return store;
 };
 
 const storeValues = (model: Gio.ListModel): number[] => {
     const values: number[] = [];
     for (let index = 0; index < model.getNItems(); index += 1) values.push(itemValue(model.getItem(index)));
+
     return values;
 };
 

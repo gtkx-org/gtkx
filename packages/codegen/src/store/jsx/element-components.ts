@@ -49,6 +49,7 @@ const generateElementComponentsSection = (
 
     collectLazyElementExports(collector, lazyElements);
     const source = collector.exportLines.join("\n\n");
+
     return { source, exportedNames: collector.exportedNames };
 };
 
@@ -84,6 +85,7 @@ const collectLazyElementExports = (collector: ExportCollector, lazyElements: Laz
 const renderLazyElementExport = (spec: LazyElementSpec): string => {
     const factory = `createElementComponent(${sourceStringLiteral(spec.element)})`;
     const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
+
     return `${spec.typeSource}\n\n${component}`;
 };
 
@@ -99,6 +101,7 @@ const renderCandidateExport = (
     imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
     if (component !== undefined) imports.addNamed(component.module, component.export, false);
+
     return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, component)}`;
 };
 
@@ -123,6 +126,7 @@ const renderElementComponentExport = (glibName: string, component: ElementCompon
     }
 
     const annotation = `(props: ${propsType}) => ReactNode`;
+
     return `export const ${glibName}: ${annotation} = ${component.export}(createElementComponent(${sourceStringLiteral(glibName)}));`;
 };
 

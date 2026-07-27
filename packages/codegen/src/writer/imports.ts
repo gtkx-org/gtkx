@@ -13,6 +13,7 @@ type NamedImport = {
 function formatNamedNames(namedNames: Map<string, NamedImport>): string[] {
     return sortStringsBy(namedNames.entries(), ([local]) => local).map(([local, entry]) => {
         const spec = entry.name === local ? entry.name : `${entry.name} as ${local}`;
+
         return entry.isType ? `type ${spec}` : spec;
     });
 }
@@ -38,6 +39,7 @@ class ImportsBuilder {
         }
 
         if (parts.length === 0) return undefined;
+
         return `import ${parts.join(", ")} from ${sourceStringLiteral(specifier)};`;
     }
 

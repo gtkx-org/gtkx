@@ -11,6 +11,7 @@ type ConfigHook = (config: { root?: string }) => { test?: { env?: Record<string,
 const hasGlibCompileSchemas = (): boolean => {
     try {
         execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+
         return true;
     } catch {
         return false;
@@ -43,6 +44,7 @@ const restoreEnv = (name: string, previous: string | undefined): void => {
 
 const callConfig = (root: string): ReturnType<ConfigHook> => {
     const plugin = gtkxSettingsWorkerEnv();
+
     return (plugin.config as ConfigHook)({ root });
 };
 

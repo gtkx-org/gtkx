@@ -34,6 +34,7 @@ const expectGroupedWide = async (app: ReactElement) => {
     const result = await render(app);
     expect(naturalWidth(screen.getByText("A"))).toBe(WIDE_WIDTH);
     expect(naturalWidth(screen.getByText("B"))).toBe(WIDE_WIDTH);
+
     return result;
 };
 

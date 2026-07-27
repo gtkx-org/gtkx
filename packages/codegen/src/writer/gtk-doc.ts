@@ -23,12 +23,14 @@ const renderLink = (kind: string, target: string): string => {
     }
 
     const symbol = segments.join(".");
+
     return `\`${symbol}${CALLABLE_LINK_KINDS.has(kind) ? "()" : ""}\``;
 };
 
 const trimTrailingNewlines = (value: string): string => {
     let end = value.length;
     while (end > 0 && value[end - 1] === "\n") end -= 1;
+
     return value.slice(0, end);
 };
 
@@ -37,6 +39,7 @@ const renderCodeFence = (body: string): string => {
     const fence = (languageMatch?.[1] ?? "").trim().toLowerCase();
     const rest = languageMatch === null ? body : body.slice(languageMatch[0].length);
     const code = trimTrailingNewlines(rest.trimStart());
+
     return `\`\`\`${fence}\n${code}\n\`\`\``;
 };
 
@@ -63,6 +66,7 @@ const gtkDocToMarkdown = (raw: string): string => {
     const protect = (value: string): string => {
         const token = `${SENTINEL}${stash.length}${SENTINEL}`;
         stash.push(value);
+
         return token;
     };
 

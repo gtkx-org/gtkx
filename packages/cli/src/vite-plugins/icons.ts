@@ -29,6 +29,7 @@ const findIconFiles = (iconsDir: string | null): ListedFile[] =>
 const resolveIconsDir = (config: UserConfig): string | null => {
     const root = config.root ?? process.cwd();
     const dataDir = resolveDataDir(root);
+
     return dataDir === null ? null : join(root, dataDir, ICONS_DIR);
 };
 
@@ -56,6 +57,7 @@ function gtkxIcons(): Plugin {
 
         outputOptions(options) {
             if (findIconFiles(state.iconsDir).length === 0) return;
+
             return prependBanner(options, XDG_ENV_BANNER);
         },
 

@@ -20,6 +20,7 @@ const STAGED_NAME_LENGTH = 16;
 const prependSchemaDir = (dir: string, existing: string | undefined): string => {
     if (existing === undefined || existing.length === 0) return dir;
     if (existing.split(":").includes(dir)) return existing;
+
     return `${dir}:${existing}`;
 };
 
@@ -60,6 +61,7 @@ const collectSchemaFiles = (dir: string, found: string[]): void => {
 const findSchemaFiles = (dataDir: string): string[] => {
     const found: string[] = [];
     collectSchemaFiles(dataDir, found);
+
     return sortStrings(found);
 };
 
@@ -71,6 +73,7 @@ const stageAndCompileProjectSchemas = (root: string, dataDir: string | null): st
     for (const filePath of schemaFiles) stageSchema(dir, filePath);
     compileSchemas(dir);
     process.once("exit", () => removeTempDir(dir));
+
     return dir;
 };
 
@@ -84,6 +87,7 @@ const parseSchemaFileOrWarn = (filePath: string, dataDirAbs: string): ParsedSche
     } catch (error) {
         if (!(error instanceof SchemaParseError)) throw error;
         warn(`Skipping ${filePath} in schema type generation: ${error.message}`);
+
         return null;
     }
 };
@@ -111,6 +115,7 @@ const writeIfChanged = (path: string, content: string): boolean => {
     if (readFileOrNull(path) === content) return false;
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, content);
+
     return true;
 };
 
@@ -121,6 +126,7 @@ const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEnvResult
     const content = renderEnvModule(parsed);
     const path = schemaEnvPath(rootDir);
     const written = writeIfChanged(path, content);
+
     return { path, written };
 };
 

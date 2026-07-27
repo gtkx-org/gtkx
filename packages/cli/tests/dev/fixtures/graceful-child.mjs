@@ -15,6 +15,7 @@ const finishAfterDelay = async () => {
         await new Promise((resolve) => setTimeout(resolve, GRACEFUL_DELAY_MS));
     } catch {
         finish(false);
+
         return;
     }
 
@@ -27,6 +28,7 @@ const handle = (signal) => {
     if (firstSignal === null) {
         firstSignal = signal;
         void finishAfterDelay();
+
         return;
     }
 

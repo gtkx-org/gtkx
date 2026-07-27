@@ -65,6 +65,7 @@ const implementedInterfaces = (
 ): ResolvedQualifiedInterface[] => {
     const state: InterfaceVisitState = { library, visited: new Set<string>(), result: [] };
     visitImplementedInterfaces(state, klass.implements, namespace);
+
     return state.result;
 };
 
@@ -144,6 +145,7 @@ const collectInterfacePropsClasses = (
     };
 
     for (const element of intrinsicElements) collectInterfacePropsFromElement(element, collector);
+
     return sortStringsBy(collector.result, qualifiedInterfaceKey);
 };
 

@@ -58,17 +58,20 @@ const gSignalHandlersBlockMatched = bind(
 /** Returns the signal name without its detail suffix (the part after `::`). */
 const getSignalBaseName = (signal: string): string => {
     const detailIndex = signal.indexOf("::");
+
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
 
 function getQuarkForSignalDetail(signal: string): number {
     const detailIndex = signal.indexOf("::");
     if (detailIndex === -1) return 0;
+
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
 
 const getSignalId = (instance: object, signal: string): number => {
     const type: bigint = (instance as TypedClass)._type_;
+
     return gSignalLookup(getSignalBaseName(signal), type) as number;
 };
 
@@ -95,6 +98,7 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
     const wrapped = wrapCallback(handler, callback, "emitter");
     const type: bigint = (instance as TypedClass)._type_;
     const connect = connectBind(type, signal, callback);
+
     return connect(getHandle(instance), signal, wrapped, after ? 1 : 0) as number;
 }
 
@@ -109,6 +113,7 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
     if (isCallerAllocatedArg(arg)) {
         if (isInoutArg(arg)) return { value: inoutValueForBoxedDescriptor(arg.type, arg.value as object) };
         const value = outValueForBoxedDescriptor(arg.type, arg.value as object);
+
         return { value, read: () => getBoxedValue(value) };
     }
 

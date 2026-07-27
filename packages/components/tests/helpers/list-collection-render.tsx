@@ -18,6 +18,7 @@ const namedLabelRenderItem = () =>
 const renderTestItemWithSpy = async (): Promise<ReturnType<typeof namedLabelRenderItem>> => {
     const renderItem = namedLabelRenderItem();
     await renderListView([{ id: "1", value: { name: "Test Item" } }], { renderItem });
+
     return renderItem;
 };
 

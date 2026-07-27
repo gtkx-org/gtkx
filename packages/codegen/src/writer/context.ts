@@ -38,11 +38,13 @@ class ModuleContext {
         const path = isFoundational ? `../${directory}/${directory}.js` : `../${directory}/index.js`;
         if (!isFoundational) this.module.imports.addSideEffect(path);
         this.module.imports.addNamespace(path, namespaceName);
+
         return namespaceName;
     }
 
     qualify(namespaceName: string, typeName: string): string {
         if (namespaceName === this.namespace.name) return typeName;
+
         return `${this.addCrossNamespaceImport(namespaceName)}.${typeName}`;
     }
 }

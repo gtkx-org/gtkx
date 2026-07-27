@@ -5,6 +5,7 @@ import { TYPE_INVALID } from "@gtkx/runtime";
 function instanceIsA(handle: ExternalObject<Handle>, gtype: Type): boolean {
     const instanceGtype: Type = getType(handle);
     if (instanceGtype === TYPE_INVALID) return false;
+
     return typeIsA(instanceGtype, gtype);
 }
 

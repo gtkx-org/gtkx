@@ -109,6 +109,7 @@ const parseBraceAt = (input: string, i: number): ParseStep | null => {
     const actions: KeyAction[] = [];
     if (press) actions.push({ keyval, press: true });
     if (release) actions.push({ keyval, press: false });
+
     return { actions, next: endBrace + 1 };
 };
 
@@ -168,6 +169,7 @@ const tryActivateShortcut = (
     if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) return false;
     const action = shortcut.getAction();
     if (action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus") return false;
+
     return action?.activate(0 as Gtk.ShortcutActionFlags, widget, shortcut.getArguments()) ?? false;
 };
 

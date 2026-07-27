@@ -15,6 +15,7 @@ const loadVirtualModule = async (
     state: PluginState,
 ): Promise<string | undefined> => {
     if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) return undefined;
+
     return renderConfigModule(await loadConfig(state.root ?? process.cwd()));
 };
 
@@ -37,6 +38,7 @@ const createConfigPlugin = (options: {
         name: options.name,
         config(config: UserConfig) {
             state.root = config.root ?? state.root;
+
             return options.config?.();
         },
         resolveId: (id: string) => resolveVirtualId(id),

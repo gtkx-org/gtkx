@@ -46,6 +46,7 @@ const formatByRoleValue = (value: ByRoleValue): string => {
     if (value.min !== undefined) parts.push(`min=${value.min}`);
     if (value.max !== undefined) parts.push(`max=${value.max}`);
     if (value.text !== undefined) parts.push(`text ${formatTextMatcher(value.text)}`);
+
     return parts.join(", ");
 };
 
@@ -63,6 +64,7 @@ const roleOptionParts = (options: ByRoleOptions): string[] => {
 const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptions): string => {
     const parts = [`role '${formatRole(role).toUpperCase()}'`];
     if (options) parts.push(...roleOptionParts(options));
+
     return parts.join(" and ");
 };
 
@@ -150,12 +152,14 @@ const multipleFoundError = (container: Container, descriptor: QueryDescriptor, m
 const suggestionError = (suggestion: string, container: Container): Error => {
     const config = getConfig();
     const message = `A better query is available, try this:\n${suggestion}\n`;
+
     return config.getElementError(message, container);
 };
 
 const timeoutError = (timeout: number, lastError: Error | null): Error => {
     const baseMessage = `Timed out after ${timeout}ms`;
     const message = lastError ? `${baseMessage}.\n\n${lastError.message}` : baseMessage;
+
     return getConfig().getElementError(message);
 };
 

@@ -23,6 +23,7 @@ class ModuleBuilder {
         const name = `_desc${this.hoistedDescriptors.size}`;
         this.hoistedDescriptors.set(expression, name);
         this.appendBinding(`const ${name} = ${expression};`, name);
+
         return name;
     }
 
@@ -41,6 +42,7 @@ class ModuleBuilder {
         if (this.declarations.length > 0) sections.push(this.declarations.join("\n\n"));
         if (this.bindings.length > 0) sections.push(this.bindings.join("\n\n"));
         if (this.registrations.length > 0) sections.push(this.registrations.join("\n\n"));
+
         return `${sections.join("\n\n")}\n`;
     }
 }

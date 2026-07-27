@@ -55,6 +55,7 @@ const addReactBuiltin = (imports: ImportsBuilder, name: string): void => {
 const propLineName = (line: string): string | undefined => {
     const declaration = line.slice(line.lastIndexOf("\n") + 1);
     const name = declaration.split(/[?:]/, 1)[0]?.trim();
+
     return name === undefined || name === "" ? undefined : name;
 };
 
@@ -69,6 +70,7 @@ const dedupePropLines = (lines: string[]): string[] => {
     const seen: Set<string> = new Set();
     const result: string[] = [];
     for (const line of lines) acceptPropLine(line, seen, result);
+
     return result;
 };
 
@@ -87,6 +89,7 @@ const generateJsxSection = (
 
     const isIntrinsicElementAncestor = (candidate: GirClass): boolean => {
         const candidateGlib = glibNameOf(candidate);
+
         return candidateGlib !== undefined && intrinsicElementByGlibName.has(candidateGlib);
     };
 
@@ -170,6 +173,7 @@ const interfacePropsRef = (
     const glib = glibNameOf(iface.klass);
     if (glib === undefined) return undefined;
     registerCrossNsProps(imports, targetNamespaceName, iface.namespace.name, `${glib}Props`);
+
     return `${glib}Props<Self>`;
 };
 
@@ -182,6 +186,7 @@ const prerequisiteExtendRef = (
     const resolved = library.resolveType(iface.namespace.name, prerequisiteName);
     if (resolved?.kind !== "interface") return undefined;
     if (!interfaceHasPropsBody(resolved.value, hasContainerProps)) return undefined;
+
     return interfacePropsRef({ klass: resolved.value, namespace: resolved.namespace }, targetNamespaceName, imports);
 };
 
@@ -245,6 +250,7 @@ const renderJsxAugmentation = (namespaceElements: GlibNamedClass[]): string => {
     const elementLines = namespaceElements.map((entry) => `${entry.glibName}: ${entry.glibName}Props;`).join("\n");
     const intrinsicInterface = renderBlock("interface IntrinsicElements", elementLines);
     const reactJsxNamespace = renderBlock("namespace React.JSX", intrinsicInterface);
+
     return renderBlock("declare global", reactJsxNamespace);
 };
 
@@ -300,6 +306,7 @@ const resolveParentClassLike = (library: Library, namespaceName: string, parent:
     const resolved = library.resolveType(namespaceName, parent);
     if (resolved === undefined) return;
     if (resolved.kind !== "class" && resolved.kind !== "interface") return;
+
     return resolved;
 };
 
@@ -316,6 +323,7 @@ const resolveParentPropsRef = (
     if (parentGlib === undefined) return undefined;
     if (!context.intrinsicElementByGlibName.has(parentGlib)) return undefined;
     registerCrossNsProps(context.imports, context.targetNamespaceName, resolved.namespace.name, `${parentGlib}Props`);
+
     return `${parentGlib}Props<Self>`;
 };
 

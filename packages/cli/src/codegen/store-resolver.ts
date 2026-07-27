@@ -28,6 +28,7 @@ type CodegenContext = {
 
 const readVersion = (packageJsonPath: string): string => {
     const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
+
     return parsed.version ?? "0.0.0";
 };
 
@@ -45,18 +46,21 @@ const readSubexports = (packageDir: string): string[] => {
 const resolveReactSubexports = (dir: string): string[] => {
     const require = createRequire(pathToFileURL(join(dir, "__gtkx_resolver__.js")).href);
     const react = resolvePackage(require, dir, "@gtkx/react");
+
     return react === null ? [] : readSubexports(react.dir);
 };
 
 const resolvePackage = (require: NodeJS.Require, dir: string, packageName: string): ResolvedPackage | null => {
     try {
         const real = realpathSync(require.resolve(`${packageName}/package.json`));
+
         return { dir: dirname(real), version: readVersion(real) };
     } catch {
         const unscoped = packageName.replace(/^@[^/]+\//, "");
         const workspacePkg = join(dir, "packages", unscoped, "package.json");
         if (!existsSync(workspacePkg)) return null;
         const real = realpathSync(workspacePkg);
+
         return { dir: dirname(real), version: readVersion(real) };
     }
 };
@@ -98,6 +102,7 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
 const resolveCodegenContext = async (cwd: string, mode?: string): Promise<CodegenContext | null> => {
     const { config, configFile } = await loadConfig(cwd, { mode });
     if (configFile === undefined) return null;
+
     return { root: cwd, config, configFile };
 };
 

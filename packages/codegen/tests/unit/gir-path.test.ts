@@ -4,6 +4,7 @@ const execFileSyncMock = vi.hoisted(() => vi.fn());
 
 vi.mock("node:child_process", async (importOriginal) => {
     const actual = (await importOriginal()) as typeof import("node:child_process");
+
     return { ...actual, execFileSync: execFileSyncMock };
 });
 
@@ -21,6 +22,7 @@ const setGirPath = (value: string | undefined): void => {
 const enoentError = (): NodeJS.ErrnoException => {
     const error = new Error("spawn pkg-config ENOENT") as NodeJS.ErrnoException;
     error.code = "ENOENT";
+
     return error;
 };
 

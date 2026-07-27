@@ -65,6 +65,7 @@ class Library {
     static load(libraries: string[], girPath: string[]): Library {
         const library = new Library();
         this.drive(library, libraries, girPath);
+
         return library;
     }
 
@@ -89,6 +90,7 @@ class Library {
         this.namespaceById[nsId] = undefined;
         this.nsNameById[nsId] = name;
         this.nsIdByName.set(name, nsId);
+
         return nsId;
     }
 
@@ -97,6 +99,7 @@ class Library {
         const shell = createNamespaceShell(header, nsId);
         this.namespaceById[nsId] = shell;
         this.namespacesByName.set(header.name, shell);
+
         return shell;
     }
 
@@ -128,6 +131,7 @@ class Library {
         typeTable.types.push(slot.type);
         typeTable.names.push(slot.displayName);
         if (slot.indexKey !== undefined) typeTable.index.set(slot.indexKey, id);
+
         return id;
     }
 
@@ -135,6 +139,7 @@ class Library {
         const typeTable = this.typeTableOf(nsId);
         const existing = typeTable.index.get(name);
         if (existing !== undefined) return existing;
+
         return this.insertIntoTypeTable(typeTable, { type, indexKey: name, displayName: name });
     }
 
@@ -149,12 +154,14 @@ class Library {
     private addAnonymousType(nsId: number, type: GirType): TypeId {
         const typeTable = this.typeTableOf(nsId);
         const id = this.insertIntoTypeTable(typeTable, { type });
+
         return { nsId, id };
     }
 
     private findTypeByName(currentNsId: number, name: string): TypeId {
         const [namespaceName, localName] = splitOptionalNamespace(name);
         const targetNsId = namespaceName === undefined ? currentNsId : this.ensureNsId(namespaceName);
+
         return this.findType(targetNsId, localName);
     }
 
@@ -189,6 +196,7 @@ class Library {
         const existing = typeTable.index.get(key);
         if (existing !== undefined) return { nsId: INTERNAL_NS_ID, id: existing };
         const id = this.insertIntoTypeTable(typeTable, { type, indexKey: key });
+
         return { nsId: INTERNAL_NS_ID, id };
     }
 
@@ -280,6 +288,7 @@ class Library {
         const typeName = this.typeTables[tid.nsId]?.names[tid.id];
         const namespaceName = this.nsNameById[tid.nsId];
         if (typeName === undefined || namespaceName === undefined) return undefined;
+
         return { namespaceName, typeName };
     }
 
@@ -291,6 +300,7 @@ class Library {
         if (targetNsId === undefined) return undefined;
         const id = this.typeTableOf(targetNsId).index.get(localName);
         if (id === undefined) return undefined;
+
         return this.typeTableOf(targetNsId).types[id];
     }
 }

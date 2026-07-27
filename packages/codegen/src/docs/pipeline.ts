@@ -53,6 +53,7 @@ const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]
     const rows = elements.map((entry, index) => {
         const link = namespace.elements[index]?.link ?? "";
         const description = firstSentence(entry.klass.doc).replaceAll("|", String.raw`\|`);
+
         return `| [${entry.glibName}](${link}) | ${description} |`;
     });
 
@@ -157,6 +158,7 @@ const namespacePages = (input: {
     }));
 
     pages.push({ path: `${directory}/index.md`, content: namespaceIndexPage(docs, elements) });
+
     return { docs, pages };
 };
 
@@ -177,6 +179,7 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
     }
 
     pages.push({ path: "index.md", content: rootIndexPage(namespaces, options.libraries) });
+
     return { pages, namespaces };
 };
 
@@ -184,6 +187,7 @@ const cachedDocsResult = (options: DocsOptions, manifestPath: string): DocsResul
     if (options.force === true || !isGiStoreFresh(options.outDir, options.libraries)) return undefined;
     if (!existsSync(manifestPath)) return undefined;
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as DocsManifest;
+
     return { regenerated: false, namespaces: manifest.namespaces };
 };
 

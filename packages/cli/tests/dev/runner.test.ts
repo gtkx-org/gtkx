@@ -135,6 +135,7 @@ const loggedMessages = (harness: Harness): string[] => harness.log.mock.calls.ma
 const createdServerConfig = (harness: Harness): InlineConfig => {
     const [config] = harness.createServer.mock.calls[0] ?? [];
     if (!config) throw new Error("createServer was never called");
+
     return config;
 };
 
@@ -186,6 +187,7 @@ type OnShutdown = () => void;
 const installedShutdown = (harness: Harness): OnShutdown => {
     expect(harness.watchAppShutdown).toHaveBeenCalledTimes(1);
     const [onShutdown] = harness.watchAppShutdown.mock.calls[0] as [OnShutdown];
+
     return onShutdown;
 };
 
@@ -194,6 +196,7 @@ type OnSignal = () => void | Promise<void>;
 const installedSignalHandler = (harness: Harness): OnSignal => {
     expect(harness.installShutdownHandlers).toHaveBeenCalledTimes(1);
     const [onSignal] = harness.installShutdownHandlers.mock.calls[0] as [OnSignal];
+
     return onSignal;
 };
 
@@ -210,6 +213,7 @@ const expectRefreshRestart = async (schedule: (fireShutdown: () => void) => void
     harness.performRefresh.mockImplementationOnce(() => schedule(() => onShutdown()));
     await emitBoundaryChange(harness, "/x/y.ts");
     expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+
     return harness;
 };
 

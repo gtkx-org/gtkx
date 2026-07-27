@@ -11,6 +11,7 @@ type Target = {
 
 const detachOf = (result: ReturnType<ReturnType<typeof useMergedRef<Target>>>): (() => void) => {
     if (typeof result !== "function") throw new Error("expected the merged ref to return a cleanup");
+
     return result;
 };
 
@@ -82,6 +83,7 @@ describe("useMergedRef", () => {
 
         function App({ tick }: { tick: number }) {
             const merged = useMergedRef<Gtk.Button>(attach, () => {});
+
             return <GtkButton label={`tick ${tick}`} ref={merged} />;
         }
 
@@ -101,6 +103,7 @@ describe("useMergedRef", () => {
 
         function App({ tick }: { tick: number }) {
             const merged = useMergedRef<Gtk.Button>(attach, objectRef);
+
             return <GtkButton label={`tick ${tick}`} ref={merged} />;
         }
 

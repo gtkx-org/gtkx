@@ -9,6 +9,7 @@ const resolveCliTool = (() => {
         if (cached) return cached;
         const resolved = findInPath(executable);
         cache.set(executable, resolved);
+
         return resolved;
     };
 })();

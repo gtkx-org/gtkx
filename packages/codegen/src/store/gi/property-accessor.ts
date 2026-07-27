@@ -46,6 +46,7 @@ const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined
     if (resolved.kind === "primitive") return false;
     if (resolved.kind === "enum") return false;
     if (resolved.kind === "alias") return isNullablePropertyType(context, resolved.value.target);
+
     return true;
 };
 
@@ -57,6 +58,7 @@ const resolveDelegate = (
 ): AccessorDelegate => {
     const method = member !== undefined && attribute !== undefined ? args.methodByName.get(attribute) : undefined;
     const delegatable = method === undefined || isDelegatable(method);
+
     return delegatable ? { member, method } : { member: undefined, method: undefined };
 };
 
@@ -98,6 +100,7 @@ const resolveOwnType = (
         return renderTsType(context, setterParam.type, setterParam.nullable || setterParam.optional);
 
     if (getterMethod !== undefined) return renderMethodReturnType(context, getterMethod);
+
     return renderTsType(context, property.type, isNullablePropertyType(context, property.type));
 };
 
@@ -118,6 +121,7 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
     if (!hasGetter && !writable) return undefined;
     const ownType = resolveOwnType(context, property, getterMethod, setterMethod);
     const tsType = resolveTsType(args.inheritedType, ownType);
+
     return { jsName, tsType, hasGetter, writable, getterMember, getterMethod, setterMember };
 };
 
@@ -150,6 +154,7 @@ const withAccessor = (
 ): string | undefined => {
     const accessor = resolveAccessor(args);
     if (accessor === undefined) return undefined;
+
     return render(accessor);
 };
 
@@ -184,6 +189,7 @@ const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | u
         const doc = renderJsDoc(args.property.doc);
         if (hasGetter && writable) return `${doc}${jsName}: ${tsType};`;
         if (hasGetter) return `${doc}get ${jsName}(): ${tsType};`;
+
         return `${doc}set ${jsName}(value: ${tsType});`;
     });
 
@@ -193,12 +199,14 @@ const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty)
 const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsType: string): string => {
     context.addRuntimeImport("getObjectProperty");
     context.addRuntimeImport("t");
+
     return `return getObjectProperty(this, ${sourceStringLiteral(property.name)}, ${renderPropertyDescriptor(context, property)}) as ${tsType};`;
 };
 
 const renderGenericSetBody = (context: ModuleContext, property: GirProperty): string => {
     context.addRuntimeImport("setObjectProperty");
     context.addRuntimeImport("t");
+
     return `setObjectProperty(this, ${sourceStringLiteral(property.name)}, ${renderPropertyDescriptor(context, property)}, value);`;
 };
 
@@ -207,6 +215,7 @@ const renderGetterBody = (options: GetterBodyOptions): string => {
     if (getterMember === undefined) return renderGenericGetBody(context, property, tsType);
     if (getterMethod === undefined) return `return this.${getterMember}() as ${tsType};`;
     const getterType = renderMethodReturnType(context, getterMethod);
+
     return getterType === tsType ? `return this.${getterMember}();` : `return this.${getterMember}() as ${tsType};`;
 };
 
@@ -219,6 +228,7 @@ const delegateMember = (
     const member = camelCase(attribute);
     if (member === accessorName) return undefined;
     if (!claimedNames.has(member)) return undefined;
+
     return member;
 };
 

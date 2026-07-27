@@ -107,10 +107,12 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
 
     const signalEntries = collectClassSignals(context, klass).map((signal) => {
         const entry = `${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`;
+
         return suffix === SIGNALS_SUFFIX ? `${renderJsDoc(signal.doc)}${entry}` : entry;
     });
 
     const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
+
     return renderBracedOrEmpty(`export interface ${className}${suffix}${extendsClause}`, entries.join("\n"));
 };
 
@@ -119,6 +121,7 @@ const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suff
 
     return collectNotifyDetails(context, klass).map((name) => {
         const detailedSignal = `notify::${name}`;
+
         return `${sourceStringLiteral(detailedSignal)}: ${notifyValue};`;
     });
 };
@@ -139,11 +142,13 @@ const signalMapParentRefs = (
         .map((entry) => `${entry}${suffix}`);
 
     if (prerequisiteRefs.length > 0) return prerequisiteRefs;
+
     return [gobjectObjectMapRef(context, suffix)];
 };
 
 const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => {
     if (context.namespace.name === "GObject") return `Object${suffix}`;
+
     return `${context.addCrossNamespaceImport("GObject")}.Object${suffix}`;
 };
 
@@ -178,6 +183,7 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
 
 const renderSignalHandlerType = (context: ModuleContext, signal: GirCallable): string => {
     const params = renderHandlerParameters(signal.parameters, (ref, nullable) => renderTsType(context, ref, nullable));
+
     return `(${params.join(", ")}) => ${renderResultType(context, signal, false, true)}`;
 };
 
@@ -203,6 +209,7 @@ const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): str
     );
 
     const result = renderResultType(context, signal, true, false);
+
     return `{ args: [${args.join(", ")}]; result: ${result} }`;
 };
 
@@ -212,6 +219,7 @@ const nonVarargParameters = (signal: GirCallable): GirParameter[] =>
 const renderConnectCase = (context: ModuleContext, signal: GirCallable): string => {
     const callback = renderCallback(context, signal);
     const body = `return connectSignal(this, signal, { callback: ${callback}, handler, after: after ?? false });`;
+
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };
 
@@ -262,6 +270,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => 
         const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership);
         const rendered = renderEmitArgLiteral({ context, parameter, descriptor, argIndex });
         argIndex = rendered.nextArgIndex;
+
         return rendered.literal;
     });
 
@@ -272,6 +281,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => 
         : `, ${renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership)}`;
 
     const body = `return emitSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
+
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };
 
@@ -308,6 +318,7 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
         : renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership);
 
     const callbackArgs = [tObject("borrowed"), ...callbackParamDescriptors, tVoid];
+
     return tCallback(callbackArgs, returnDescriptor, `{ hasDestroy: true, userDataIndex: ${params.length + 1} }`);
 };
 
@@ -337,6 +348,7 @@ const collectClassSignals = (context: ModuleContext, klass: GirClass): GirCallab
 
     for (const signal of klass.signals) consider(signal);
     forEachInterfaceSignal(context, klass, consider);
+
     return result;
 };
 
@@ -376,6 +388,7 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): string[]
 
     for (const property of klass.properties) consider(property);
     for (const { property } of collectInterfaceProperties(context, klass)) consider(property);
+
     return result;
 };
 

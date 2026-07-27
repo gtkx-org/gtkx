@@ -9,6 +9,7 @@ const parentCompanionRef = (context: ModuleContext, klass: GirClass, suffix: str
     const namespaceName = parentNamespace ?? context.namespace.name;
     const name = `${pascalCase(typeName)}${suffix}`;
     if (namespaceName === context.namespace.name) return name;
+
     return `${context.addCrossNamespaceImport(namespaceName)}.${name}`;
 };
 

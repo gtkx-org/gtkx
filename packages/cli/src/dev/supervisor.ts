@@ -73,12 +73,14 @@ const handleChildExit = (state: SupervisorState, code: number | null, signal: No
 
     if (state.shuttingDown) {
         captureShutdownExit(state, code, signal);
+
         return;
     }
 
     if (code === RESTART_EXIT_CODE) {
         info("Restarting dev runner...");
         launch(state);
+
         return;
     }
 
@@ -111,11 +113,13 @@ const restart = async (state: SupervisorState): Promise<void> => {
     } catch (error_) {
         error("Codegen failed; keeping the current dev runner. Fix the error and save again.", error_);
         state.restarting = false;
+
         return;
     }
 
     if (state.shuttingDown) {
         state.restarting = false;
+
         return;
     }
 
@@ -124,6 +128,7 @@ const restart = async (state: SupervisorState): Promise<void> => {
     if (current === null) {
         state.restarting = false;
         launch(state);
+
         return;
     }
 
@@ -138,6 +143,7 @@ const scheduleRestart = (state: SupervisorState, timer: DebounceTimer): void => 
 
 const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: string | Buffer | null): boolean => {
     if (filename === null || state.shuttingDown) return false;
+
     return names.has(basename(filename.toString()));
 };
 
@@ -189,6 +195,7 @@ const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promi
 
         if (!state.child) {
             resolve();
+
             return;
         }
 
@@ -227,6 +234,7 @@ const runDevSupervisor = async (
     installConfigWatchers(state);
     installShutdown(state);
     launch(state);
+
     return new Promise<never>(() => {});
 };
 

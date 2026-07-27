@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 const accessible = (current: Gtk.Accessible | null): Gtk.Accessible => {
     if (!current) throw new Error("Expected rendered widget");
+
     return current;
 };
 

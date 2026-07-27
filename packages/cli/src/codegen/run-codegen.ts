@@ -69,6 +69,7 @@ const userModuleExports = (
     Object.fromEntries(
         Object.entries(elements?.config ?? {}).flatMap(([type, entry]) => {
             const ref = entry[key];
+
             return ref === undefined ? [] : [[type, ref] as const];
         }),
     );
@@ -122,6 +123,7 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
     }
 
     const force = options.force === true || isCodegenStale({ girPath, libraries, store });
+
     return { girPath, libraries, store, force };
 };
 
@@ -131,6 +133,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
 
     if (config.codegen === false) {
         removeSharedStoreShadow(cwd);
+
         return disabledCodegenResult(configFile);
     }
 
@@ -159,6 +162,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
 const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {
     try {
         const { config } = await loadConfig(cwd, { mode });
+
         return config.codegen === false;
     } catch {
         return false;
@@ -189,6 +193,7 @@ const maybeAnnounceStale = (announce: boolean | undefined, inputs: CodegenInputs
 
 const runOptionsFor = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCodegenOptions => {
     if (inputs === null) return { cwd: root, mode, resolved };
+
     return { cwd: root, mode, inputs, resolved };
 };
 
@@ -210,6 +215,7 @@ const ensureGenerated = async (
 
     if (context.config.codegen === false) {
         removeSharedStoreShadow(context.root);
+
         return false;
     }
 
@@ -217,6 +223,7 @@ const ensureGenerated = async (
     maybeAnnounceStale(options.announce, inputs);
     const resolved = { config: context.config, configFile: context.configFile };
     const result = await runCodegen(runOptionsFor({ root: context.root, mode: options.mode, inputs, resolved }));
+
     return result.regenerated;
 };
 

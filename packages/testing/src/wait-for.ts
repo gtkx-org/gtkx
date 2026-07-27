@@ -20,6 +20,7 @@ const copyStackTrace = (target: Error, source: Error): void => {
 
     if (index === -1) {
         target.stack = stack;
+
         return;
     }
 
@@ -38,6 +39,7 @@ const pollUntilSuccess = async <T>(
         try {
             const result = await callback();
             await delay(0);
+
             return { status: "resolved", value: result };
         } catch (error) {
             lastError = error as Error;
@@ -57,6 +59,7 @@ const buildTimeoutError = (
     const error = timeoutError(timeout, lastError);
     const finalError = onTimeout ? onTimeout(error) : error;
     copyStackTrace(finalError, stackTraceError);
+
     return finalError;
 };
 

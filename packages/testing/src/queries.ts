@@ -236,6 +236,7 @@ const buildNormalizer = (options?: MatcherOptions): NormalizerFn => {
 
 const normalizeText = (text: string, options?: MatcherOptions): string => {
     const normalizer = buildNormalizer(options);
+
     return normalizer(text);
 };
 
@@ -249,6 +250,7 @@ const matchText = (actual: string | null, expected: Matcher, widget: Gtk.Widget,
 
     if (expected instanceof RegExp) {
         expected.lastIndex = 0;
+
         return expected.test(normalizedActual);
     }
 
@@ -263,6 +265,7 @@ const matchText = (actual: string | null, expected: Matcher, widget: Gtk.Widget,
 const matchAccessibleName = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
     if (options.name === undefined) return true;
     const text = getWidgetAccessibleName(widget);
+
     return matchText(text, options.name, widget, options);
 };
 
@@ -318,6 +321,7 @@ const matchAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): bool
 
 const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
     if (!options) return true;
+
     return matchAccessibleName(widget, options) && matchAccessibleStates(widget, options);
 };
 
@@ -354,6 +358,7 @@ function queryAllByRole(
     return findAll(container, (widget) => {
         if (widget.getAccessibleRole() !== role) return false;
         if (!options?.hidden && isInaccessible(widget)) return false;
+
         return matchByRoleOptions(widget, options);
     });
 }
@@ -366,6 +371,7 @@ const collectMnemonicMatch = (
     if (!(widget instanceof Gtk.Label)) return null;
     const labelText = widget.getLabel();
     if (!labelText || !matchText(labelText, text, widget, options)) return null;
+
     return widget.getMnemonicWidget();
 };
 

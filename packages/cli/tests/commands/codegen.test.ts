@@ -32,6 +32,7 @@ type RunCodegenOptions = NonNullable<Parameters<typeof runCodegen>[0]>;
 const firstRunCodegenOptions = (): RunCodegenOptions => {
     const call = runCodegenMock.mock.calls[0];
     if (!call) throw new Error("runCodegen was not invoked");
+
     return call[0] ?? {};
 };
 
@@ -39,6 +40,7 @@ const run = (overrides: CodegenArgs): Promise<unknown> => {
     const handler = codegen.run;
     if (!handler) throw new Error("codegen command has no run handler");
     const args = { force: false, ...overrides } as CodegenContext["args"];
+
     return Promise.resolve(handler({ rawArgs: [], args, cmd: codegen }));
 };
 

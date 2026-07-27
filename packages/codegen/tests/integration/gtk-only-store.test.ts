@@ -71,6 +71,7 @@ const walkEmittedFiles = (directory: string, collected: string[]): void => {
 const emittedFiles = (root: string): string[] => {
     const collected: string[] = [];
     walkEmittedFiles(root, collected);
+
     return collected;
 };
 

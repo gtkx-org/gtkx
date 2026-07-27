@@ -24,6 +24,7 @@ const runWhenSized = (widget: Gtk.Widget, finish: () => void): void => {
         if (widget.getWidth() === 0) return true;
         clearTimeout(fallback);
         finish();
+
         return false;
     });
 };
@@ -33,6 +34,7 @@ const scheduleAfterLayout = (widget: Gtk.Widget | null, callback: () => void): v
 
     if (widget?.getFrameClock() == null || widget.getWidth() > 0) {
         queueMicrotask(finish);
+
         return;
     }
 

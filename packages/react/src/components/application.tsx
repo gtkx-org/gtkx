@@ -32,6 +32,7 @@ const useApplicationLifecycle = (
 
 const applicationChildren = (application: Gtk.Application | null, children: ReactNode): ReactNode => {
     if (!application) return null;
+
     return <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>;
 };
 

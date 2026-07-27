@@ -89,6 +89,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     resolveBehaviorFlags(info);
     info.lazy = chain.some((ancestor) => ELEMENTS[ancestor]?.lazy === true);
     for (const ancestor of chain.toReversed()) Object.assign(info.defaults, DEFAULT_PROPS[ancestor] ?? {});
+
     return info;
 };
 

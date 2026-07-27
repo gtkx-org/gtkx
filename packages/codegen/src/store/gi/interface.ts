@@ -91,6 +91,7 @@ const interfaceTypeExtends = (context: ModuleContext, iface: GirClass): string =
         .filter((entry): entry is string => entry !== undefined);
 
     if (refs.length > 0) return refs.join(", ");
+
     return context.qualify("GObject", "Object");
 };
 
@@ -146,6 +147,7 @@ const renderInterfaceMembers = (
     const claimedNames: Set<string> = new Set();
     const methodMembers = collectMethodMembers({ context, className, scope, callables, renderers, claimedNames });
     const propertyMembers = collectPropertyMembers({ context, iface, scope, renderers, claimedNames });
+
     return [...methodMembers, ...propertyMembers];
 };
 
@@ -164,6 +166,7 @@ const renderInterfaceClass = (
     const members: string[] = [];
     if (gtypeExpr !== undefined) members.push(renderInterfaceHasInstance(context, className, gtypeExpr));
     members.push(...renderStaticHead(context, callables, className));
+
     return renderBracedOrEmpty(`export abstract class ${className}`, members.join("\n\n"));
 };
 
@@ -185,6 +188,7 @@ const renderInterfaceMaker = (
     context.addRuntimeTypeImport("Mixin");
     const members = renderInterfaceInstanceMembers(context, iface, callables);
     const classExpression = renderBracedOrEmpty("class extends Base", members.join("\n\n"));
+
     return `export const ${makerName(className)}: Mixin = (Base) =>\n${classExpression};`;
 };
 

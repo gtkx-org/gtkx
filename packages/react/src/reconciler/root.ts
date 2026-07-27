@@ -38,6 +38,7 @@ const activeRoots: Set<OpaqueRoot> = new Set();
 const setReconcilerErrorHandler = (handler: (error: unknown) => void): ((error: unknown) => void) | null => {
     const previous = errorHandler;
     errorHandler = handler;
+
     return previous;
 };
 
@@ -64,6 +65,7 @@ const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks):
     ) as OpaqueRoot;
 
     activeRoots.add(container);
+
     return container;
 };
 
@@ -114,6 +116,7 @@ const createRoot = (container: Container = rootElement): Root => {
 /** Unmounts every active render root and returns `true`. */
 const quit = (): true => {
     for (const container of activeRoots) unmountContainer(container);
+
     return true;
 };
 

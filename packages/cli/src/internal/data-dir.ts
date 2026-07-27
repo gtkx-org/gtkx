@@ -21,11 +21,13 @@ const conditionTarget = (conditions: Record<string, unknown>): string | null => 
 const targetString = (entry: unknown): string | null => {
     if (typeof entry === "string") return entry;
     if (isConditionMap(entry)) return conditionTarget(entry);
+
     return null;
 };
 
 const directoryFromTarget = (target: string): string | null => {
     const match = DATA_TARGET_PATTERN.exec(target);
+
     return match?.[1] ?? null;
 };
 
@@ -43,6 +45,7 @@ const resolveDataDir = (root: string): string | null => {
     if (!isConditionMap(imports)) return null;
     const target = targetString(imports[DATA_IMPORT_KEY]);
     if (target === null) return null;
+
     return directoryFromTarget(target);
 };
 

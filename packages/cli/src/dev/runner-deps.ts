@@ -33,10 +33,12 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     waitForApplicationId,
     getConfiguredApplicationId: async (root: string) => {
         const loaded = await loadConfig(root, { mode: DEV_MODE });
+
         return loaded.config.applicationId;
     },
     startMcpClient: (applicationId, loadAppModule) => {
         setTestingModuleLoader(() => loadAppModule("@gtkx/testing") as Promise<typeof import("@gtkx/testing")>);
+
         return startMcpClient(applicationId);
     },
     stopMcpClient,

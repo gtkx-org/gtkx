@@ -99,6 +99,7 @@ const qualifiedName = (entry: GiSymbolBase): string => `${entry.namespace.name}.
 const frontmatter = (entry: GiSymbolBase, kindLabel: string): string => {
     const sentence = firstSentence(entry.doc);
     const description = sentence.length > 0 ? sentence : `API reference for the ${qualifiedName(entry)} ${kindLabel}.`;
+
     return `---\ndescription: ${JSON.stringify(description)}\n---`;
 };
 
@@ -148,6 +149,7 @@ const hierarchySection = (entry: GiSymbolBase & { klass: GirClass }, library: Li
     }
 
     lines.push(...implementsLine(interfaces));
+
     return lines;
 };
 
@@ -163,6 +165,7 @@ const prerequisitesLine = (entry: GiSymbolBase & { klass: GirClass }, library: L
     });
 
     if (names.length === 0) return [];
+
     return [`Requires ${names.join(", ")}.`];
 };
 
@@ -184,6 +187,7 @@ const staticSection = (options: StaticSectionOptions): string[] => {
     }
 
     if (rendered.length === 0) return [];
+
     return [options.title, options.intro, ...sortStringsBy(rendered, (item) => item.name).map((item) => item.block)];
 };
 
@@ -246,6 +250,7 @@ const propertyMeta = (property: GirProperty, accessor: ResolvedAccessor, origin:
     else if (!accessor.hasGetter) meta.push("write-only");
 
     if (origin !== undefined) meta.push(`from \`${origin}\``);
+
     return meta.join(" · ");
 };
 
@@ -291,6 +296,7 @@ const propertiesSection = (
 
     if (entries.length === 0) return [];
     const intro = "Properties are read and written as instance fields; changes can be observed with `connect(\"notify::<property-name>\", handler)`. Properties inherited from ancestors are documented on their own pages.";
+
     return ["## Properties", intro, ...sortedMetaBlocks(entries)];
 };
 
@@ -322,6 +328,7 @@ const signalsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Libr
 
     if (entries.length === 0) return [];
     const intro = "Connect with `instance.connect(\"<signal>\", handler)` or `instance.on(\"<signal>\", handler)`. Signals inherited from ancestors are documented on their own pages.";
+
     return ["## Signals", intro, ...originSignatureBlocks(entries)];
 };
 
@@ -451,6 +458,7 @@ const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: 
     }
 
     if (entries.length === 0) return [];
+
     return ["## Fields", ...sortedMetaBlocks(entries)];
 };
 
@@ -461,6 +469,7 @@ const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }):
 
     const rows = enumeration.members.map((member) => {
         const description = firstSentence(member.doc).replaceAll("|", String.raw`\|`);
+
         return `| \`${enumMemberKey(member.name)}\` | \`${member.value}\` | ${description} |`;
     });
 
@@ -470,6 +479,7 @@ const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }):
             : `Members are error codes for the \`${enumeration.errorDomain}\` GError domain, accessed as \`${qualified}.<member>\`.`;
 
     const table = ["| Member | Value | Description |", "| --- | --- | --- |", ...rows].join("\n");
+
     return joinSections([...pageHeader(entry, kindLabel), "## Members", usage, table]);
 };
 
@@ -477,6 +487,7 @@ const callbackPage = (entry: GiSymbolBase & { kind: "callback"; callback: GirCal
     const docsContext = docsSignatureContext(entry.namespace, library);
     const fn = callbackAsFunction(entry.callback);
     const signature = `type ${entry.name} = (${renderMethodSignature(docsContext, fn)}) => ${renderMethodReturnType(docsContext, fn)}`;
+
     return joinSections([...pageHeader(entry, "callback"), "## Signature", `\`\`\`ts\n${signature}\n\`\`\``]);
 };
 
@@ -484,6 +495,7 @@ const aliasPage = (entry: GiSymbolBase & { kind: "alias"; alias: GirAlias }, lib
     const docsContext = docsSignatureContext(entry.namespace, library);
     const category = entry.alias.cType === undefined ? undefined : primitiveCategory(entry.alias.cType);
     const target = category === "gtype" ? PRIMITIVE_TS_TYPE.gtype : renderTsType(docsContext, entry.alias.target);
+
     return joinSections([...pageHeader(entry, "alias"), `\`\`\`ts\ntype ${entry.name} = ${target}\n\`\`\``]);
 };
 
@@ -492,6 +504,7 @@ const functionSignature = (context: ModuleContext, name: string, fn: GirFunction
 
     if (finishFn !== undefined) {
         const { signature, returnType } = renderPromisifiedSignature(context, fn, finishFn);
+
         return `function ${name}(${signature}): ${returnType}`;
     }
 
@@ -501,6 +514,7 @@ const functionSignature = (context: ModuleContext, name: string, fn: GirFunction
 const functionPage = (entry: GiSymbolBase & { kind: "function"; fn: GirFunction }, library: Library): string => {
     const docsContext = docsSignatureContext(entry.namespace, library);
     const signature = functionSignature(docsContext, entry.name, entry.fn, entry.namespace.functions);
+
     return joinSections([...pageHeader(entry, "function"), `\`\`\`ts\n${signature}\n\`\`\``]);
 };
 

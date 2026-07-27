@@ -60,6 +60,7 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void =
 
     if (value !== undefined && isBufferText(node, name)) {
         applyBufferText(node.object, propText(value));
+
         return;
     }
 
@@ -83,6 +84,7 @@ const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, prev: Props, next
     const consumed: Set<string> = new Set();
     const ctx: BehaviorUpdateContext = { node, prev, next, consumed };
     for (const behavior of info.behaviors) collectConsumed(ctx, behavior);
+
     return consumed;
 };
 

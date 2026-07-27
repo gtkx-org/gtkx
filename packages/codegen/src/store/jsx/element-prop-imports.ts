@@ -13,6 +13,7 @@ const setElementProps = (props: ElementProps): void => {
 /** The base props interface an element extends, when its element config declares one. */
 const elementPropTypeFor = (glibName: string): ElementPropTypeRef | undefined => {
     const ref = elementProps[glibName];
+
     return ref === undefined ? undefined : { type: glibName, module: ref.module, export: ref.export };
 };
 

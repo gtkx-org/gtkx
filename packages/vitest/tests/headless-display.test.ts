@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:child_process", async (importOriginal) => {
     const actual = await importOriginal<typeof import("node:child_process")>();
+
     return { ...actual, spawn: vi.fn(), spawnSync: vi.fn() };
 });
 
@@ -101,6 +102,7 @@ describe("startHeadlessDisplay", () => {
         fulfillSockets(options.compositor);
         const teardown = await pending;
         teardowns.push(teardown);
+
         return { teardown, runtimeDir };
     };
 
@@ -110,6 +112,7 @@ describe("startHeadlessDisplay", () => {
         spawnMock.mockImplementation(() => {
             const child = makeChild();
             children.push(child);
+
             return child;
         });
 
@@ -132,6 +135,7 @@ describe("startHeadlessDisplay", () => {
         spawnMock.mockImplementation(() => {
             const child = spawnIdleChild();
             children.push(child);
+
             return child;
         });
     });

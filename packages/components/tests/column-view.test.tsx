@@ -25,6 +25,7 @@ import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 const cellText = (cell: Gtk.Widget): string => {
     const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
+
     return label ? (getWidgetNodeText(label) ?? "") : "";
 };
 
@@ -43,6 +44,7 @@ const getColumnViewItemTexts = (columnView: Gtk.ColumnView): string[] =>
 
 const getFirstRowCellTexts = (columnView: Gtk.ColumnView): string[] => {
     const [firstRow] = dataRows(columnView);
+
     return firstRow ? rowCellTexts(firstRow) : [];
 };
 
@@ -55,6 +57,7 @@ const collectBoxSizeRequests = (columnView: Gtk.ColumnView): [number, number][] 
 
 const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Promise<CollectionView> => {
     const { ref, rerender } = await renderColumnView(items);
+
     return { texts: () => getColumnViewItemTexts(ref.current), rerender };
 };
 
@@ -82,6 +85,7 @@ const renderTitledColumnView = async (titles: string[]): Promise<TitledColumnVie
 const renderAbcThenReorder = async (nextTitles: string[]): Promise<TitledColumnViewFixture> => {
     const fixture = await renderTitledColumnView(["A", "B", "C"]);
     await fixture.rerenderTitles(nextTitles);
+
     return fixture;
 };
 
@@ -121,6 +125,7 @@ const compareBySort = (
     sortOrder: Gtk.SortType,
 ): number => {
     const comparison = sortColumn === "name" ? a.name.localeCompare(b.name) : a.salary - b.salary;
+
     return sortOrder === Gtk.SortType.ASCENDING ? comparison : -comparison;
 };
 
@@ -170,6 +175,7 @@ function SortableColumnView({
 
     const sortedEmployees = useMemo(() => {
         if (!sortColumn) return employees;
+
         return employees.toSorted((a, b) => compareBySort(a, b, sortColumn, sortOrder));
     }, [employees, sortColumn, sortOrder]);
 
@@ -584,6 +590,7 @@ describe("render - ColumnView (13)", () => {
 
             const sortBy = (sortColumn: SortColumn, sortOrder: Gtk.SortType): Item[] => {
                 if (!sortColumn) return items;
+
                 return items.toSorted((a, b) => compareBySort(a, b, sortColumn, sortOrder));
             };
 
@@ -751,6 +758,7 @@ const renderEmptyCells = async (estimatedItemHeight?: number): Promise<Gtk.Colum
 
     const columnView = ref.current;
     if (columnView === null) throw new Error("Expected ColumnView to render");
+
     return columnView;
 };
 

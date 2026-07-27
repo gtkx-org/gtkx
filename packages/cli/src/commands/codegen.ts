@@ -24,12 +24,14 @@ const codegen = defineCommand({
             await runCodegen({ cwd });
             syncSchemaEnv(cwd);
             info("codegen: disabled for this project; reusing an installed binding store");
+
             return;
         }
 
         if (!args.force) {
             const ran = await ensureGenerated(cwd);
             info(ran ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
+
             return;
         }
 

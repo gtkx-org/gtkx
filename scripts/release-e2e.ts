@@ -70,6 +70,7 @@ function publishableName(entry: string): string | undefined {
     if (!existsSync(manifestPath)) return undefined;
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
     if (manifest.private === true) return undefined;
+
     return typeof manifest.name === "string" ? manifest.name : undefined;
 }
 

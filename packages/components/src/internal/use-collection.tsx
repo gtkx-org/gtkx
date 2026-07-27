@@ -105,6 +105,7 @@ const applySelection = (selection: Gtk.SelectionModel, model: CollectionModel, i
 
     if (selection instanceof Gtk.SingleSelection) {
         applySingleSelection(selection, positions);
+
         return;
     }
 
@@ -155,6 +156,7 @@ const reportExpansion = (report: ExpansionReport): void => {
 const selectionElement = (mode: Gtk.SelectionMode | null | undefined, props: SelectionElementProps): ReactElement => {
     if (mode === Gtk.SelectionMode.MULTIPLE) return <GtkMultiSelection {...props} />;
     if (mode === Gtk.SelectionMode.NONE) return <GtkNoSelection {...props} />;
+
     return <GtkSingleSelection {...props} autoselect={false} canUnselect />;
 };
 
@@ -222,6 +224,7 @@ const useControlledExpansion = (sync: ExpansionSync): void => {
     useLayoutEffect(() => {
         const tree = model.treeModel;
         if (tree === null) return;
+
         return watchExpansion(tree, cells, report);
     }, [model, cells]);
 

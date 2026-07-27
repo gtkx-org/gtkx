@@ -4,11 +4,25 @@ import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, type GtkApplicationWindowProps, GtkBox } from "@gtkx/jsx/gtk";
 import { rootElement, useParentWindow } from "@gtkx/react";
 import { render } from "@gtkx/testing";
+import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
 
+type ProbeProps = { slot: string };
+
 let nextAppId = 0;
+const captured: Record<string, Gtk.Window | null> = {};
 
 const uniqueAppId = (): string => `org.gtkx.useparentwindowtest${nextAppId++}`;
+
+const Probe = ({ slot }: ProbeProps) => {
+    const parentWindow = useParentWindow();
+
+    useEffect(() => {
+        captured[slot] = parentWindow;
+    }, [slot, parentWindow]);
+
+    return null;
+};
 
 const renderProbedWindow = async (props: GtkApplicationWindowProps): Promise<Gtk.Window | null> => {
     let windowInstance: Gtk.Window | null = null;
@@ -32,68 +46,35 @@ const renderProbedWindow = async (props: GtkApplicationWindowProps): Promise<Gtk
 
 describe("useParentWindow", () => {
     it("returns the window provided by createWindowComponent", async () => {
-        let captured: unknown = "unset";
-
-        const Probe = () => {
-            captured = useParentWindow();
-            return null;
-        };
-
-        const windowInstance = await renderProbedWindow({ children: <Probe /> });
+        const windowInstance = await renderProbedWindow({ children: <Probe slot="children" /> });
         expect(windowInstance).not.toBeNull();
-        expect(captured).toBe(windowInstance);
+        expect(captured.children).toBe(windowInstance);
     });
 
     it("reaches the titlebar, controllers, and actions slots, not just children", async () => {
-        let titlebarWindow: unknown = "unset";
-        let controllerWindow: unknown = "unset";
-        let actionWindow: unknown = "unset";
-
-        const TitlebarProbe = () => {
-            titlebarWindow = useParentWindow();
-            return null;
-        };
-
-        const ControllerProbe = () => {
-            controllerWindow = useParentWindow();
-            return null;
-        };
-
-        const ActionProbe = () => {
-            actionWindow = useParentWindow();
-            return null;
-        };
-
         const windowInstance = await renderProbedWindow({
             titlebar: (
                 <GtkBox>
-                    <TitlebarProbe />
+                    <Probe slot="titlebar" />
                 </GtkBox>
             ),
-            controllers: <ControllerProbe />,
+            controllers: <Probe slot="controllers" />,
             actions: (
                 <>
                     <GSimpleAction name="noop" />
-                    <ActionProbe />
+                    <Probe slot="actions" />
                 </>
             ),
         });
 
         expect(windowInstance).not.toBeNull();
-        expect(titlebarWindow).toBe(windowInstance);
-        expect(controllerWindow).toBe(windowInstance);
-        expect(actionWindow).toBe(windowInstance);
+        expect(captured.titlebar).toBe(windowInstance);
+        expect(captured.controllers).toBe(windowInstance);
+        expect(captured.actions).toBe(windowInstance);
     });
 
     it("returns null when there is no createWindowComponent ancestor", async () => {
-        let captured: unknown = "unset";
-
-        const Probe = () => {
-            captured = useParentWindow();
-            return null;
-        };
-
-        await render(<Probe />);
-        expect(captured).toBeNull();
+        await render(<Probe slot="orphan" />);
+        expect(captured.orphan).toBeNull();
     });
 });

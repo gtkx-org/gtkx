@@ -88,6 +88,7 @@ const readTargets = (layout: Gtk.ConstraintLayout): Targets => {
     const targets: Targets = new Map();
     addNamedGuides(layout, targets);
     addNamedChildren(layout, targets);
+
     return targets;
 };
 
@@ -175,6 +176,7 @@ const useDeclaration = (declaration: Declaration): null => {
     }, [registry, key, signature]);
 
     useLayoutEffect(() => () => registry.remove(key), [registry, key]);
+
     return null;
 };
 
@@ -200,6 +202,7 @@ const useRegistry = (setDeclarations: (update: (previous: Declarations) => Decla
                 setDeclarations((previous) => {
                     const next = new Map(previous);
                     next.delete(key);
+
                     return next;
                 });
             },
@@ -211,6 +214,7 @@ const nextTargets = (current: Targets | null, layout: Gtk.ConstraintLayout | nul
     if (layout === null) return null;
     const next = readTargets(layout);
     if (current !== null && sameTargets(current, next)) return null;
+
     return next;
 };
 

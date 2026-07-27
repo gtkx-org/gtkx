@@ -45,6 +45,7 @@ const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
 
 const enumMemberKey = (name: string): string => {
     const upper = name.toUpperCase().replaceAll("-", "_");
+
     return /^\d/.test(upper) ? `_${upper}` : upper;
 };
 
@@ -54,6 +55,7 @@ const renderQuarkExpression = (context: ModuleContext, errorDomain: string): str
     }
 
     const alias = context.addCrossNamespaceImport("GLib");
+
     return `() => ${alias}.quarkFromString(${sourceStringLiteral(errorDomain)})`;
 };
 

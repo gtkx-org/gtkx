@@ -65,6 +65,7 @@ const deferredProps = (behavior: ElementBehavior): string[] => behavior.deferred
 
 const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], prepend: boolean): ElementBehavior[] => {
     const baseBehaviors = base.behaviors ?? [];
+
     return prepend ? [...added, ...baseBehaviors] : [...baseBehaviors, ...added];
 };
 
@@ -78,6 +79,7 @@ const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, prep
     if (added.lazy === true) entry.lazy = true;
     if (added.component !== undefined) entry.component = added.component;
     if (added.props !== undefined) entry.props = added.props;
+
     return entry;
 };
 

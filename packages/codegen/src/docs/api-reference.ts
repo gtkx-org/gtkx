@@ -84,6 +84,7 @@ const DEFAULT_SEARCH_LIMIT = 20;
 
 const compareNames = (a: string, b: string): number => {
     if (a < b) return -1;
+
     return a > b ? 1 : 0;
 };
 
@@ -98,12 +99,14 @@ const functionEntry = (
     const cIdentifier = fn.cIdentifier;
     if (cIdentifier === undefined) return undefined;
     const name = namespaceFunctionExportName(cIdentifier, fn.name, namespace.cSymbolPrefixes);
+
     return { kind: "function", namespace, name, doc: fn.doc, fn };
 };
 
 const classEntry = (namespace: GirNamespace, klass: GirClass): GiSymbolEntry | undefined => {
     if (!klass.introspectable || klass.name.length === 0) return undefined;
     const kind = klass.isInterface ? "interface" : "class";
+
     return { kind, namespace, name: pascalCase(klass.name), doc: klass.doc, klass };
 };
 
@@ -121,6 +124,7 @@ const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
 const recordEntry = (library: Library, namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
     if (!record.introspectable || record.isVtable || record.name.length === 0) return undefined;
     if (isClassStructRecord(library, namespace.name, record)) return undefined;
+
     return { kind: "record", namespace, name: record.name, doc: record.doc, record };
 };
 
@@ -187,6 +191,7 @@ const matchesSearchFilters = (
 ): boolean => {
     if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) return false;
     if (kinds !== undefined && !kinds.includes(entry.kind)) return false;
+
     return true;
 };
 
@@ -199,6 +204,7 @@ const scoredEntryFor = (
     if (!matchesSearchFilters(entry, namespaceFilter, kinds)) return undefined;
     const score = searchScore(entry, query);
     if (score === 0) return undefined;
+
     return { score, entry };
 };
 
@@ -215,6 +221,7 @@ const searchScore = (entry: SymbolEntry, query: string): number => {
     if (name === query || qualified === query) return 3;
     if (name.startsWith(query)) return 2;
     if (name.includes(query) || qualified.includes(query)) return 1;
+
     return 0;
 };
 
@@ -309,6 +316,7 @@ class ApiReference {
 
     private renderPage(entry: SymbolEntry): string {
         if (entry.kind === "element") return renderElementPage(entry.element, this.elementContext);
+
         return renderSymbolPage(entry, this.symbolPageOptions());
     }
 
@@ -327,6 +335,7 @@ class ApiReference {
         const map = qualified ? this.byQualified : this.byName;
         let candidates = map.get(trimmed.toLowerCase()) ?? [];
         if (kind !== undefined) candidates = candidates.filter((entry) => entry.kind === kind);
+
         return narrowToExactMatches(candidates, trimmed, qualified);
     }
 
@@ -370,6 +379,7 @@ class ApiReference {
         const namespaceFilter = options.namespace?.toLowerCase();
         const scored = this.scoreEntries(query, namespaceFilter, options.kinds);
         scored.sort(compareScoredEntries);
+
         return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));
     }
 
@@ -388,6 +398,7 @@ class ApiReference {
         const namespace = this.findNamespace(namespaceName);
         if (namespace === undefined) return [];
         const entries = this.byNamespace.get(namespace.name) ?? [];
+
         return sortStrings(entries.map((entry) => entry.name));
     }
 
@@ -439,6 +450,7 @@ class ApiReference {
         }
 
         lines.push("");
+
         return lines.join("\n");
     }
 }

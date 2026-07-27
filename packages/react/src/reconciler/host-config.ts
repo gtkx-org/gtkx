@@ -58,6 +58,7 @@ const hostConfig = {
     finalizeInitialChildren: (instance: Instance, _type: string, props: Props): boolean => {
         if (instance.kind !== ELEMENT_KIND) return false;
         validateContentMix(instance, props);
+
         return typeInfoOf(instance.typeName).hasMount;
     },
     commitMount: (instance: Instance): void => {
@@ -69,6 +70,7 @@ const hostConfig = {
     getPublicInstance: (instance: Instance): object => publicInstanceOf(instance),
     prepareForCommit: (): null => {
         beginSuppression();
+
         return null;
     },
     resetAfterCommit: (): void => {
@@ -148,6 +150,7 @@ const detachFromContainer = (container: Container, child: AnyNode): void => {
 const publicInstanceOf = (instance: Instance): object => {
     if (instance.kind === ELEMENT_KIND) return instance.object;
     if (instance.kind === LAZY_KIND) return instance.adopted ?? instance;
+
     return instance;
 };
 
@@ -170,6 +173,7 @@ const runDiscrete: Dispatch = (fn) => {
 const adoptContainer = (container: GObject.Object): ElementNode => {
     const name = typeName(getInstanceType(container));
     if (name === null) throw new Error("Cannot adopt a container whose GType has no registered name");
+
     return createElementNode(name, container, runDiscrete, null);
 };
 

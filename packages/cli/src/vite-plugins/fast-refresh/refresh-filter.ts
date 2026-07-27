@@ -11,6 +11,7 @@ const shouldTransformForRefresh = (
     if (!transformOptions?.ssr) return false;
     if (!REFRESH_INCLUDE.test(id)) return false;
     if (REFRESH_EXCLUDE.test(id)) return false;
+
     return true;
 };
 

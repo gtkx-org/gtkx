@@ -35,6 +35,7 @@ const inParamDocLine = (command: GlCommand, arg: InArg): string => {
     if (param.group !== undefined) notes.push(`group \`${param.group}\``);
     if (param.len !== undefined) notes.push(`length \`${param.len}\``);
     if (param.objectClass !== undefined) notes.push(`object class \`${param.objectClass}\``);
+
     return ` * @param ${arg.name} - ${notes.join(", ")}`;
 };
 
@@ -54,6 +55,7 @@ const returnsDocLine = (command: GlCommand, returnPlan: ReturnPlan, outs: OutArg
     for (const out of outs) members.push(outMember(command, out));
     if (members.length === 0) return undefined;
     if (members.length === 1) return ` * @returns ${members[0]}`;
+
     return ` * @returns Tuple of ${members.join(", ")}`;
 };
 

@@ -67,6 +67,7 @@ function newObjectWithProperties(gtype: bigint, props: Record<string, unknown>):
 function getObjectProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown {
     const value = newValueForDescriptor(descriptor);
     gObjectGetProperty(getHandle(obj), propertyName, value);
+
     return fromValue(value);
 }
 

@@ -12,12 +12,14 @@ const generateConstant = (context: ModuleContext, constant: GirConstant): void =
 
 const constantLiteral = (context: ModuleContext, constant: GirConstant): string => {
     if (isStringTyped(context, constant.type)) return sourceStringLiteral(constant.value);
+
     return isNumericLiteral(constant.value) ? constant.value : sourceStringLiteral(constant.value);
 };
 
 const isStringTyped = (context: ModuleContext, type: TypeId | undefined): boolean => {
     if (type === undefined) return false;
     const resolved = context.library.typeOf(type);
+
     return resolved?.kind === "primitive" && resolved.category === "string";
 };
 

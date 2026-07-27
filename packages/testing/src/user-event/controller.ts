@@ -44,6 +44,7 @@ const getOrCreateControllers = <T extends Gtk.EventController>(
     if (existing.length > 0) return existing;
     const controller = new controllerType();
     widget.addController(controller);
+
     return [controller];
 };
 

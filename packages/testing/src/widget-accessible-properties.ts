@@ -18,16 +18,19 @@ const callStringGetter = (widget: Gtk.Widget, method: string): string | null => 
     const fn: unknown = Reflect.get(widget, method);
     if (typeof fn !== "function") return null;
     const value = (fn as () => string | null).call(widget);
+
     return value ?? null;
 };
 
 const readAccessibleString = (widget: Gtk.Widget, key: string): string | null => {
     const value = getAccessibleMetadata(widget, key);
+
     return typeof value === "string" ? value : null;
 };
 
 const readAccessibleNumber = (widget: Gtk.Widget, key: string): number | null => {
     const value = getAccessibleMetadata(widget, key);
+
     return typeof value === "number" ? value : null;
 };
 
@@ -35,17 +38,20 @@ const readAccessibleWidgets = (widget: Gtk.Widget, key: string): Gtk.Widget[] | 
     const value = getAccessibleMetadata(widget, key);
     if (!Array.isArray(value)) return null;
     const widgets = value.filter((item): item is Gtk.Widget => item instanceof Gtk.Widget);
+
     return widgets.length > 0 ? widgets : null;
 };
 
 const readAccessibleBoolean = (widget: Gtk.Widget, key: string): boolean | null => {
     const value = getAccessibleMetadata(widget, key);
+
     return typeof value === "boolean" ? value : null;
 };
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
     if (widget instanceof Gtk.Label) return widget.getLabel();
     if (widget instanceof Gtk.Inscription) return widget.getText() ?? null;
+
     return null;
 };
 
@@ -69,6 +75,7 @@ const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
 const namingLabelText = (widget: Gtk.Widget): string | null => {
     const text = getLabelText(widget);
     if (text === null) return null;
+
     return widget instanceof Gtk.Label && widget.getUseUnderline() ? stripMnemonic(text) : text;
 };
 
@@ -90,6 +97,7 @@ const collectLabels = (widget: Gtk.Widget): string[] => {
 
 const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
     if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) return null;
+
     return getLabelText(widget);
 };
 
@@ -112,6 +120,7 @@ const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     if (ownText) return ownText;
     const childLabels = collectLabels(widget);
     if (childLabels.length > 0) return childLabels.join(" ");
+
     return callStringGetter(widget, "getTooltipText");
 };
 
@@ -148,6 +157,7 @@ const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
 
 const getWidgetPressedState = (widget: Gtk.Widget): boolean | null => {
     if (widget instanceof Gtk.ToggleButton) return widget.getActive();
+
     return null;
 };
 
@@ -181,6 +191,7 @@ const getWidgetLevel = (widget: Gtk.Widget): number | null => {
 
 const getWidgetInvalidState = (widget: Gtk.Widget): Gtk.AccessibleInvalidState | null => {
     const value = readAccessibleNumber(widget, "accessibleInvalid");
+
     return value === null ? null : (value as Gtk.AccessibleInvalidState);
 };
 
@@ -206,6 +217,7 @@ const adjustmentWidgetValue = (widget: Gtk.Widget): ValueTriplet | null => {
     if (widget instanceof Gtk.Scrollbar) return adjustmentValue(widget.getAdjustment());
     if (widget instanceof Gtk.SpinButton) return adjustmentValue(widget.getAdjustment());
     if (widget instanceof Gtk.ScaleButton) return adjustmentValue(widget.getAdjustment());
+
     return null;
 };
 
@@ -218,6 +230,7 @@ const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
     }
 
     if (widget instanceof Gtk.ProgressBar) return { now: widget.getFraction(), min: 0, max: 1 };
+
     return null;
 };
 
@@ -253,6 +266,7 @@ const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
     const targets = readAccessibleWidgets(widget, "accessibleLabelledBy");
     if (targets === null) return null;
     const texts = collectAccessibleNames(targets);
+
     return texts.length > 0 ? texts.join(" ") : null;
 };
 

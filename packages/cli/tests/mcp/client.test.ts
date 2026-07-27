@@ -67,6 +67,7 @@ const startServer = (): ServerContext => {
     });
 
     server.listen(socketPath);
+
     return { server, socketPath, sockets, received };
 };
 
@@ -123,6 +124,7 @@ const beginRegistration = async (ctx: ServerContext): Promise<PendingRegistratio
     const connectPromise = client.connect();
     await waitFor(() => ctx.received[0]?.length === 1);
     const [registerLine] = parseLines(ctx.received[0] ?? []);
+
     return { client, connectPromise, registerLine };
 };
 
@@ -134,17 +136,20 @@ const connectAndRegister = async (ctx: ServerContext): Promise<McpClient> => {
     const registration = await beginRegistration(ctx);
     respondToRegister(ctx, registration);
     await registration.connectPromise;
+
     return registration.client;
 };
 
 const registerWithApp = async (ctx: ServerContext): Promise<McpClient> => {
     hoisted.getDefault.mockReturnValue(new hoisted.FakeApplication());
+
     return connectAndRegister(ctx);
 };
 
 const registerWithStderrSpy = async (ctx: ServerContext) => {
     const stderrSpy = spyStderr();
     const client = await connectAndRegister(ctx);
+
     return { stderrSpy, client };
 };
 
@@ -154,6 +159,7 @@ const sendRequest = async (ctx: ServerContext, request: Record<string, unknown>)
     const [, responseLine] = parseLines(ctx.received[0] ?? []);
     assertLine(responseLine);
     expect(responseLine.id).toBe(request.id);
+
     return responseLine;
 };
 

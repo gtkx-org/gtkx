@@ -59,6 +59,7 @@ const sortTargetFor = (view: Gtk.ColumnView | null, sortColumn: string | null | 
     if (view === null || sortColumn === undefined) return null;
     if (sortColumn === null) return { view, column: null };
     const column = columnById(view, sortColumn);
+
     return column === null ? null : { view, column };
 };
 
@@ -136,6 +137,7 @@ const columnItem = (
     const column = record.slot === null ? undefined : byId.get(record.slot);
     if (column === undefined) return null;
     const args = renderItemArgs(record, options);
+
     return args === null ? null : (column.renderCell)(args);
 };
 

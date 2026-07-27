@@ -80,12 +80,14 @@ const shouldHighlight = (): boolean => {
     if (typeof process === "undefined") return false;
     if (process.env.COLORS === "false" || process.env.NO_COLOR) return false;
     if (process.env.COLORS === "true" || process.env.FORCE_COLOR) return true;
+
     return process.stdout.isTTY;
 };
 
 const createColors = (enabled: boolean): Colors => {
     if (!enabled) {
         const identity = (s: string): string => s;
+
         return { tag: identity, attr: identity, value: identity };
     }
 
@@ -100,6 +102,7 @@ const escapeAttrValue = (value: string): string => value.replaceAll('"', "&quot;
 
 const formatAttr = (key: string, value: string, colors: Colors): string => {
     const quoted = `"${escapeAttrValue(value)}"`;
+
     return ` ${colors.attr(key)}=${colors.value(quoted)}`;
 };
 
@@ -125,6 +128,7 @@ const formatHiddenChildrenLine = (widget: Gtk.Widget, depth: number, ctx: Format
     const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
     const plural = count === 1 ? "" : "s";
     const summary = `… ${count} child widget${plural} hidden${hint}`;
+
     return `${indent}${INDENT}${colors.tag(summary)}\n`;
 };
 
@@ -163,16 +167,19 @@ const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): st
     if (firstChild && maxDepth !== undefined && depth >= maxDepth) {
         output += formatHiddenChildrenLine(widget, depth, ctx);
         output += `${indent}${closeTag}\n`;
+
         return output;
     }
 
     output += formatChildren(widget, depth, ctx);
     output += `${indent}${closeTag}\n`;
+
     return output;
 };
 
 const resolveMaxLength = (options: PrettyWidgetOptions): number => {
     const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
+
     return options.maxLength ?? envLimit;
 };
 

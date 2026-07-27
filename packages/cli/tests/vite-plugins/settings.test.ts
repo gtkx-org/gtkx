@@ -21,6 +21,7 @@ type LoadHook = (
 const hasGlibCompileSchemas = (): boolean => {
     try {
         execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+
         return true;
     } catch {
         return false;
@@ -39,6 +40,7 @@ const callResolveIdSettings = async (
     source: string,
 ): Promise<string | undefined | null> => {
     const plugin = gtkxSettings();
+
     return (plugin.resolveId as ResolveIdHook).call({ resolve }, source);
 };
 
@@ -248,6 +250,7 @@ const setupDataDir = (tmp: string): string => {
     writeFileSync(join(tmp, "package.json"), JSON.stringify({ imports: { "#data/*": "./data/*" } }));
     const dataDir = join(tmp, "data");
     mkdirSync(dataDir, { recursive: true });
+
     return dataDir;
 };
 
@@ -264,6 +267,7 @@ const initSchemaEnvPlugin = (tmp: string, seedSchemas?: (dataDir: string) => voi
     (plugin.config as ConfigHook).call(plugin, { root: tmp });
     (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmp });
     const envPath = join(tmp, "node_modules", ".gtkx", "env.d.ts");
+
     return { dataDir, plugin, envPath };
 };
 
@@ -274,6 +278,7 @@ const loadSchemaInServeMode = (schemaPath: string): { plugin: ReturnType<typeof 
     (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
     const virtualId = settingsVirtualId(schemaPath);
     (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
+
     return { plugin, virtualId };
 };
 

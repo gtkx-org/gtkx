@@ -58,6 +58,7 @@ const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
 
 const resolveCallerAllocated = (inputs: unknown[], inputIndex: number): unknown => {
     const wrapper = inputs[inputIndex];
+
     return wrapper == null ? wrapper : getHandle(wrapper);
 };
 
@@ -70,6 +71,7 @@ const buildNativeValue = (spec: ArgSpec, inputs: unknown[]): unknown => {
     if (isCallerAllocated) return resolveCallerAllocated(inputs, inputIndex);
     if (isRef) return buildRefValue(consumesInput, inputs, inputIndex);
     if (arg.type.kind === "callback") return wrapCallbackValue(arg.type, inputs[inputIndex]);
+
     return inputs[inputIndex];
 };
 
@@ -99,6 +101,7 @@ function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: un
 
     const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown => {
         const primary = hasPrimary ? fromNative(returnDescriptor, nativeResult) : undefined;
+
         return packTupleResult(readOutParams(plans, inputs, nativeValues), primary, hasPrimary);
     };
 
@@ -109,12 +112,14 @@ function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: un
             nativeValues.push(errorRef);
             const nativeResult = nativeFn(...nativeValues);
             checkError(errorRef);
+
             return shape(inputs, nativeValues, nativeResult);
         };
     }
 
     return (...inputs) => {
         const nativeValues = buildNativeValues(plans, inputs);
+
         return shape(inputs, nativeValues, nativeFn(...nativeValues));
     };
 }

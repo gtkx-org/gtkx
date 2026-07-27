@@ -33,12 +33,14 @@ const resolveRoot = (container: QueryContainer): Gtk.Widget | null => {
     if (container instanceof Gtk.EventController) return container.getWidget();
     if (container instanceof Gtk.LayoutManager) return container.getWidget();
     if (container instanceof Gtk.ListItem || container instanceof Gtk.ListHeader) return container.getChild();
+
     return null;
 };
 
 const roots = function* (container: Container): Generator<Gtk.Widget> {
     if (container === TOPLEVELS || isApplication(container)) {
         yield* Gtk.Window.listToplevels();
+
         return;
     }
 

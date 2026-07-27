@@ -70,6 +70,7 @@ const resolvePrerequisiteReference = (context: ModuleContext, name: string): str
     const resolved = context.library.resolveType(context.namespace.name, name);
     if (resolved === undefined) return undefined;
     if (resolved.kind !== "interface" && resolved.kind !== "class") return undefined;
+
     return context.qualify(resolved.namespace.name, pascalCase(resolved.value.name));
 };
 
@@ -116,6 +117,7 @@ const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<
     const seen: Set<string> = new Set();
     for (const property of klass.properties) seen.add(toCamelIdentifier(property.name));
     forEachInheritedProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
+
     return seen;
 };
 
@@ -162,6 +164,7 @@ const recordAncestorSignatures = (
 const ancestorClassMethodSignatures = (context: ModuleContext, klass: GirClass): Map<string, MethodSignature> => {
     const signatures: Map<string, MethodSignature> = new Map();
     forEachAncestor(context, klass, (ancestor) => recordAncestorSignatures(context, ancestor.klass, signatures));
+
     return signatures;
 };
 
@@ -176,6 +179,7 @@ const mergeOmissionName = (
     if (ancestor === undefined) return undefined;
     const returnType = renderTsType(context, method.returnValue.type, method.returnValue.nullable);
     const arity = inputParameters(context.library, method).length;
+
     return ancestor.returnType !== returnType || ancestor.arity !== arity ? name : undefined;
 };
 
@@ -206,6 +210,7 @@ const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass):
     };
 
     forEachInheritedProperty(context, klass, record);
+
     return types;
 };
 
@@ -247,6 +252,7 @@ const inheritedMatch = (inherited: InheritedMethods, name: string): InheritedMat
     const inheritedReturn = inherited.returnTypes.get(name);
     const inheritedMethod = inherited.definitions.get(name);
     if (inheritedReturn === undefined || inheritedMethod === undefined) return undefined;
+
     return { inheritedReturn, inheritedMethod };
 };
 
@@ -279,6 +285,7 @@ const conflictRename = (
     const match = inheritedMatch(inherited, name);
     if (match === undefined) return undefined;
     const conflicts = methodsConflict({ context, callable, ...match });
+
     return conflicts ? conflictingMethodName(className, callable.name) : undefined;
 };
 
@@ -297,6 +304,7 @@ const enumConflict = (
 ): boolean => {
     const ownEnum = enumIdentity(context, ownRef);
     const inheritedEnum = enumIdentity(context, inheritedRef);
+
     return ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum;
 };
 
@@ -325,6 +333,7 @@ const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string |
     if (ref === undefined) return undefined;
     const resolved = context.library.typeOf(ref);
     if (resolved?.kind !== "enum") return undefined;
+
     return `${resolved.namespace.name}.${resolved.value.name}`;
 };
 

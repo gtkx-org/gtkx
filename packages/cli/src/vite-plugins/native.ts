@@ -10,6 +10,7 @@ const EMITTED_BINDING_SPECIFIER = "./gtkx.node";
 function resolveBinaryPath(projectRequire: ReturnType<typeof createRequire>, currentArch: string): string {
     const nativeRoot = dirname(projectRequire.resolve("@gtkx/native/package.json"));
     const localBinary = join(nativeRoot, `native.linux-${currentArch}-gnu.node`);
+
     return existsSync(localBinary) ? localBinary : projectRequire.resolve(`@gtkx/native-linux-${currentArch}-gnu`);
 }
 
@@ -56,6 +57,7 @@ function gtkxNative(root: string): Plugin {
 
     const loaderPath = (): string => {
         cachedLoaderPath ??= join(dirname(projectRequire.resolve("@gtkx/native/package.json")), "index.js");
+
         return cachedLoaderPath;
     };
 

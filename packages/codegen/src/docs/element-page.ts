@@ -62,6 +62,7 @@ const createElementPageContext = (
 const frontmatter = (entry: GlibNamedClass): string => {
     const sentence = firstSentence(entry.klass.doc);
     const description = sentence.length > 0 ? sentence : `API reference for the ${entry.glibName} element.`;
+
     return `---\ndescription: ${JSON.stringify(description)}\n---`;
 };
 
@@ -70,6 +71,7 @@ const importBlock = (entry: GlibNamedClass): string =>
 
 const glibLabel = (context: ElementPageContext, glibName: string): string => {
     const link = context.linkFor(glibName);
+
     return link === undefined ? `\`${glibName}\`` : `[${glibName}](${link})`;
 };
 
@@ -79,6 +81,7 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
 
     const parts = ancestors.map((ancestor) => {
         const glib = glibNameOf(ancestor.klass);
+
         return glib === undefined ? `\`${ancestor.namespaceName}.${ancestor.klass.name}\`` : glibLabel(context, glib);
     });
 
@@ -90,6 +93,7 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
         .filter((name): name is string => name !== undefined);
 
     lines.push(...implementsLine(interfaces));
+
     return lines;
 };
 
@@ -102,6 +106,7 @@ const memberOwners = (entry: GlibNamedClass, context: ElementPageContext): Membe
         (glibName) => glibName !== undefined && elementPropTypeFor(glibName) !== undefined,
     ).map((iface) => {
         const glibName = glibNameOf(iface.klass);
+
         return { klass: iface.klass, namespace: iface.namespace, origin: glibName, glibName };
     }),
 ];
@@ -125,6 +130,7 @@ const propertyEntry = (
     if (property.constructOnly) meta.push("construct-only");
     if (!isConstructableProperty(property)) meta.push(`read-only, observe with \`onNotify${upperFirst(jsName)}\``);
     if (owner.origin !== undefined) meta.push(`from \`${owner.origin}\``);
+
     return { name: jsName, meta: meta.join(" · "), doc: docMarkdown(property.doc) };
 };
 
@@ -133,6 +139,7 @@ const propJsName = (property: GirProperty, seen: Set<string>): string | undefine
     const jsName = toCamelIdentifier(property.name);
     if (seen.has(jsName)) return undefined;
     seen.add(jsName);
+
     return jsName;
 };
 
@@ -169,6 +176,7 @@ const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfTy
 
     if (entries.length === 0) return ["## Props", intro];
     const sorted = sortStringsBy(entries, (item) => item.name);
+
     return ["## Props", intro, ...sorted.map((item) => metaBlock(item.name, item.meta, item.doc))];
 };
 
@@ -205,12 +213,14 @@ const signalsSection = (entry: GlibNamedClass, context: ElementPageContext, self
     }
 
     if (entries.length === 0) return [];
+
     return ["## Signals", ...originSignatureBlocks(entries)];
 };
 
 const methodsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
     const entries = classMethodEntries(context.library, entry.namespace, entry.klass);
     const intro = `Methods are called on the \`${selfType}\` instance, obtained with the \`ref\` prop or imported from \`@gtkx/gi/${namespaceDirectory(entry.namespace)}\`. Methods inherited from ancestors are documented on their own pages.`;
+
     return methodsSectionBlocks(entries, intro);
 };
 

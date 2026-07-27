@@ -30,6 +30,7 @@ const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | 
     const kind: VtableKind = klass.isInterface ? "interface" : "class";
     const entries = vtableEntries(context, structName, kind, klass.glibTypeStruct);
     if (entries.length === 0) return undefined;
+
     return renderBraced(entries.join("\n"));
 };
 
@@ -37,6 +38,7 @@ const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallbac
     if (field.type === undefined) return undefined;
     const type = context.library.typeOf(field.type);
     if (type?.kind !== "callback" || context.library.nameOf(field.type) !== undefined) return undefined;
+
     return type.value;
 };
 
@@ -50,6 +52,7 @@ const vtableSlotEntry = (
     const key = toCamelIdentifier(field.name);
     if (key === "constructor" || claimedNames.has(key)) return undefined;
     if (!isVtableSlotEligible(context, callback)) return undefined;
+
     return { key, callback };
 };
 
@@ -88,6 +91,7 @@ const isUnsupportedOutParam = (context: ModuleContext, param: GirParameter): boo
 const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boolean => {
     if (param.isVarargs) return false;
     if (isUnsupportedOutParam(context, param)) return false;
+
     return !isInlineCallbackRef(context.library, param.type);
 };
 

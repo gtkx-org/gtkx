@@ -46,6 +46,7 @@ function resolveDebugEnabled(namespace: string | undefined, argv: string[], env:
     if (!spec) return false;
     const names = new Set(spec.split(/[\s,]+/).filter((name) => name.length > 0));
     if (names.has("1") || names.has("*")) return true;
+
     return namespace !== undefined && names.has(namespace);
 }
 

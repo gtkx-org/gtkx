@@ -25,6 +25,7 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
     context.addRuntimeImport("t");
     const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
     const ret = renderReturnDescriptor(context, fn);
+
     return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, throws: fn.throws });
 };
 
@@ -66,12 +67,14 @@ const renderNamespaceFunctionDeclaration = (
 
         const { signature, returnType } = renderPromisifiedSignature(context, fn, finishFn);
         const body = renderPromisifiedBody(context, fn, finishExport, bindingName);
+
         return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
     }
 
     const signature = renderMethodSignature(context, fn);
     const returnType = renderMethodReturnType(context, fn);
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName });
+
     return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
 };
 
@@ -81,6 +84,7 @@ const namespaceFunctionExportName = (cIdentifier: string, girName: string, symbo
     }
 
     const stripped = stripLongestPrefix(cIdentifier, symbolPrefixes);
+
     return toCamelIdentifier(stripped);
 };
 
@@ -104,6 +108,7 @@ const isBootstrapFunction = (fn: GirFunction): boolean =>
 const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {
     if (fn.name === "init") {
         context.module.appendRegistration(`${exportName}();`);
+
         return;
     }
 

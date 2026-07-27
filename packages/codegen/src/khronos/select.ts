@@ -61,6 +61,7 @@ const selectSubset = (registry: GlRegistry, selection: GlSelection): GlSubset =>
     const enums: Map<string, string> = new Map();
     for (const feature of features) applyRequires(feature, selection, commands, enums);
     for (const feature of features) applyRemoves(feature, selection, commands, enums);
+
     return { commands, enums };
 };
 

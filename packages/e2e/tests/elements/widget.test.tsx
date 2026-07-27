@@ -28,6 +28,7 @@ const render = (element: ReactNode) => baseRender(element);
 
 const labelCount = (container: Gtk.Widget | null): number => {
     if (container === null) throw new Error("expected a mounted container");
+
     return within(container).getAllByRole(Gtk.AccessibleRole.LABEL).length;
 };
 
@@ -49,6 +50,7 @@ const renderClickButtonAndClick = async (): Promise<Mock> => {
     await render(<GtkButton onClicked={handleClick} label="Click" />);
     const button = await findClickButton();
     await userEvent.click(button);
+
     return handleClick;
 };
 
@@ -56,6 +58,7 @@ const renderSwitchAndClick = async (props: ComponentProps<typeof GtkSwitch>): Pr
     await render(<GtkSwitch {...props} />);
     const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
     await userEvent.click(switchWidget);
+
     return switchWidget;
 };
 
@@ -238,6 +241,7 @@ function OptionalLabel({ label }: { label?: string | undefined }) {
 
 function CountingButton({ prefix }: { prefix: string }) {
     const [count, setCount] = useState(0);
+
     return <GtkButton onClicked={() => setCount((c) => c + 1)} label={`${prefix}: ${count}`} />;
 }
 

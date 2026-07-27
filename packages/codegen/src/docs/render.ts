@@ -36,6 +36,7 @@ const docsTarget = (library: Library): TsTypeTarget =>
 
 const renderDocsType = (library: Library, ref: TypeId | undefined, isNullable: boolean): string => {
     const base = renderBaseTypeFor(library, docsTarget(library), ref);
+
     return isNullable ? `${base} | null` : base;
 };
 
@@ -53,6 +54,7 @@ const renderDocsHandlerParameters = (library: Library, signal: GirCallable): str
 
 const renderDocsSignalSignature = (library: Library, signal: GirCallable, selfType: string): string => {
     const params = [...renderDocsHandlerParameters(library, signal), `self: ${selfType}`];
+
     return `(${params.join(", ")}) => ${renderDocsHandlerResultType(library, signal)}`;
 };
 
@@ -70,6 +72,7 @@ const stripDocMedia = (markdown: string): string =>
 const demoteLine = (line: string, inFence: boolean): { text: string; inFence: boolean } => {
     if (FENCE_LINE.test(line)) return { text: line, inFence: !inFence };
     if (inFence) return { text: line, inFence };
+
     return { text: HEADING_LINE.test(line) ? `#${line}` : line, inFence };
 };
 
@@ -103,6 +106,7 @@ const firstSentence = (doc: string | undefined): string => {
     if (text.length === 0) return "";
     const match = /^.*?[.!?](?=\s|$)/.exec(text);
     const sentence = match?.[0] ?? text;
+
     return sentence.length > 220 ? `${sentence.slice(0, 217)}...` : sentence;
 };
 
@@ -115,6 +119,7 @@ const elementSlug = (className: string): string =>
 const implementsLine = (names: string[]): string[] => {
     if (names.length === 0) return [];
     const quotedNames = names.map((name) => `\`${name}\``).join(", ");
+
     return [`Implements ${quotedNames}.`];
 };
 
@@ -124,6 +129,7 @@ const joinSections = (sections: string[]): string =>
 const metaBlock = (name: string, meta: string, doc: string): string => {
     const lines = [`### \`${name}\``, "", meta];
     if (doc.length > 0) lines.push("", doc);
+
     return lines.join("\n");
 };
 
@@ -139,6 +145,7 @@ const signatureBlock = (name: string, signature: string, notes: string[]): strin
 
 const namespaceOrder = (name: string): string => {
     const index = LEADING_NAMESPACES.indexOf(name);
+
     return index === -1 ? `1${name}` : `0${index}`;
 };
 

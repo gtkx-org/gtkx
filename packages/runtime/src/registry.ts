@@ -41,6 +41,7 @@ function setClassType(cls: AnyClass, type: bigint): void {
 
 function getClassType(cls: AnyClass): bigint {
     const proto: object = cls.prototype;
+
     return Object.hasOwn(proto, "_type_") ? (proto as TypedClass)._type_ : TYPE_INVALID;
 }
 
@@ -113,6 +114,7 @@ function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: Any
 
     const instance: object = Object.create(cls.prototype) as object;
     setHandle(instance, handle);
+
     return instance;
 }
 
@@ -147,6 +149,7 @@ function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, appl
     const mixin = interfaceMixinRegistry.get(type);
     if (mixin === undefined) return cls;
     applied.add(type);
+
     return mixin(cls as AnyClass<MixinReceiver>);
 }
 
@@ -173,6 +176,7 @@ function resolveComposedClass(runtimeType: bigint): AnyClass | null {
     if (composed === base) return base;
     setClassType(composed, runtimeType);
     composedClassRegistry.set(runtimeType, composed);
+
     return composed;
 }
 
@@ -189,6 +193,7 @@ function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
     if (!cls) throw new Error(`Expected registered GLib type, got type ${String(runtimeType)}`);
     const instance: object = Object.create(cls.prototype) as object;
     registerWrapper(handle, instance);
+
     return instance;
 }
 

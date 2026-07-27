@@ -32,6 +32,7 @@ const presentNamespaceDirs = (giStoreDir: string): Set<string> => {
 const configEntrypoints = (reactSubexports: string[], present: Set<string>): string[] =>
     reactSubexports.filter((sub) => {
         if (sub === CONFIG_ENTRYPOINT) return true;
+
         return sub.endsWith(CONFIG_SUFFIX) && present.has(sub.slice(0, sub.length - CONFIG_SUFFIX.length));
     });
 

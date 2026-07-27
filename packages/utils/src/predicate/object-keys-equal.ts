@@ -5,6 +5,7 @@ const objectKeysEqual = (
 ): boolean => {
     const keysA = Object.keys(a);
     if (keysA.length !== Object.keys(b).length) return false;
+
     return keysA.every((key) => Object.hasOwn(b, key) && isValueEqual(a[key], b[key]));
 };
 

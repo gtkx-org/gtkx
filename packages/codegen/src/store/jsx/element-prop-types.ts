@@ -18,6 +18,7 @@ const appendConstructOnlyNames = (klass: GirClass, names: string[]): void => {
 const constructOnlyNames = (context: GirIndex, entry: GirTypeEntry): string[] => {
     const names: string[] = [];
     for (const klass of chainOf(context, entry)) appendConstructOnlyNames(klass, names);
+
     return names;
 };
 
@@ -27,6 +28,7 @@ const specFor = (context: GirIndex, element: string, entry: GirTypeEntry): LazyE
     const omitted = constructOnlyNames(context, entry);
     const omitUnion = omitted.map((name) => JSON.stringify(name)).join(" | ");
     const base = omitted.length === 0 ? `${baseName}Props` : `Omit<${baseName}Props, ${omitUnion}>`;
+
     return { element, typeName, typeSource: `export type ${typeName} = ${base} & { children?: ReactNode };` };
 };
 

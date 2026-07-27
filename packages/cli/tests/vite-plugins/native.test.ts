@@ -120,6 +120,7 @@ describe("gtkxNative (buildStart success)", () => {
 
         vi.doMock("node:fs", async () => {
             const real = await vi.importActual<typeof import("node:fs")>("node:fs");
+
             return { ...real, readFileSync: () => Buffer.from("native-bytes") };
         });
 

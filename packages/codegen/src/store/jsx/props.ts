@@ -78,6 +78,7 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
     if (isObjectProp(state.owner, property, jsName)) {
         state.propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
         state.objectPropNames.push(jsName);
+
         return;
     }
 
@@ -148,6 +149,7 @@ const buildInterfacePropsEntries = (options: InterfacePropsOptions): IntrinsicEl
     const collector = createPropEntryCollector({ library, klass: iface, namespace });
     for (const property of iface.properties) collector.acceptProperty(property);
     for (const signal of iface.signals) collector.acceptSignal(signal);
+
     return { propLines: collector.propLines, imports: collector.imports, objectPropNames: collector.objectPropNames };
 };
 
@@ -169,6 +171,7 @@ const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boole
     const resolved = library.typeOf(ref);
     if (resolved?.kind === "interface") return true;
     if (resolved?.kind !== "class") return false;
+
     return isIntrinsicElementClass(resolved.value, resolved.namespace, library);
 };
 
@@ -207,16 +210,19 @@ const reactTarget = (context: PropTypeRenderContext): TsTypeTarget =>
         context.library,
         (name) => {
             context.imports.set(name.namespaceName, giNamespaceAlias(name.namespaceName));
+
             return `${giNamespaceAlias(name.namespaceName)}.${name.typeName}`;
         },
         () => {
             context.imports.set("GObject", giNamespaceAlias("GObject"));
+
             return `${giNamespaceAlias("GObject")}.Type`;
         },
     );
 
 const renderReactPropType = (context: PropTypeRenderContext, ref: TypeId | undefined, isNullable: boolean): string => {
     const base = renderBaseTypeFor(context.library, reactTarget(context), ref);
+
     return isNullable ? `${base} | null` : base;
 };
 

@@ -45,11 +45,13 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "widget.query": validated(ServerRequestParamsSchemas["widget.query"], handleQuery),
     "widget.getProps": validated(ServerRequestParamsSchemas["widget.getProps"], async ({ registry }, params) => {
         const { testing, widget } = await widgetTarget(registry, params.widgetId);
+
         return serializeWidget(widget, (target) => registry.idFor(target), testing);
     }),
     "widget.click": validated(ServerRequestParamsSchemas["widget.click"], async ({ registry }, params) => {
         const { testing, widget } = await widgetTarget(registry, params.widgetId);
         await testing.userEvent.click(widget);
+
         return { success: true };
     }),
     "widget.type": validated(ServerRequestParamsSchemas["widget.type"], async ({ registry }, params) => {
@@ -60,12 +62,14 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
         }
 
         await testing.userEvent.type(widget, params.text);
+
         return { success: true };
     }),
     "widget.fireEvent": validated(ServerRequestParamsSchemas["widget.fireEvent"], async ({ registry }, params) => {
         const { testing, widget } = await widgetTarget(registry, params.widgetId);
         const signalArgs = (params.args ?? []).map((arg) => extractSignalArg(arg));
         await testing.fireEvent(widget, params.signal, ...signalArgs);
+
         return { success: true };
     }),
     "widget.screenshot": validated(ServerRequestParamsSchemas["widget.screenshot"], handleScreenshot),
@@ -107,12 +111,14 @@ const requireWidget = (registry: WidgetRegistry, widgetId: string | undefined): 
 
 const extractSignalArg = (arg: unknown): unknown => {
     const isTypedArg = typeof arg === "object" && arg !== null && "type" in arg && "value" in arg;
+
     return isTypedArg ? (arg as { value: unknown }).value : arg;
 };
 
 const resolveRole = (value: string | number): Gtk.AccessibleRole | undefined => {
     if (typeof value === "number") return value;
     const resolved = Gtk.AccessibleRole[value.toUpperCase() as keyof typeof Gtk.AccessibleRole];
+
     return typeof resolved === "number" ? resolved : undefined;
 };
 
@@ -187,6 +193,7 @@ async function handleScreenshot(
     if (params.path) {
         mkdirSync(dirname(params.path), { recursive: true });
         writeFileSync(params.path, Buffer.from(result.data, "base64"));
+
         return { data: result.data, mimeType: result.mimeType, savedPath: params.path };
     }
 

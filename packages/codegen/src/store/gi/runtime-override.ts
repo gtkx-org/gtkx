@@ -32,6 +32,7 @@ const renderRuntimeOverride = (callable: GirFunction, memberName: string): strin
     const override = RUNTIME_OVERRIDES.get(callable.cIdentifier);
     if (override === undefined) return undefined;
     const generics = override.generics ?? "";
+
     return `${memberName}${generics}(${override.signature}): ${override.returnType} {\n    ${override.body}\n}`;
 };
 

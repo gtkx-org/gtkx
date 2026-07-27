@@ -159,6 +159,7 @@ const renderClassMembers = (
     }
 
     members.push(...renderSignalMembers(context, klass));
+
     return { members, accessors };
 };
 
@@ -219,6 +220,7 @@ const interfaceMergeRef = (context: ModuleContext, klass: GirClass, ref: Impleme
 
     if (omissions.length === 0) return ref.typeRef;
     const keys = omissions.map((name) => JSON.stringify(name)).join(" | ");
+
     return `Omit<${ref.typeRef}, ${keys}>`;
 };
 
@@ -262,12 +264,14 @@ const renderExtendsClause = (
     if (constructorNames.length === 0) return ` extends ${parentExpression}`;
     context.addRuntimeTypeImport("StaticBase");
     const omitted = constructorNames.map((name) => JSON.stringify(name)).join(" | ");
+
     return ` extends (${parentExpression} as StaticBase<typeof ${parentExpression}, ${omitted}>)`;
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
     if (klass.parent === undefined) return undefined;
     const [namespace, typeName] = splitOptionalNamespace(klass.parent);
+
     return context.qualify(namespace ?? context.namespace.name, pascalCase(typeName));
 };
 

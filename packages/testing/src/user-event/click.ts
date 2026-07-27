@@ -6,6 +6,7 @@ const pressPointOf = (widget: Gtk.Widget): { x: number; y: number } => {
     const width = widget.getWidth();
     const height = widget.getHeight();
     if (width > 0 && height > 0) return { x: width / 2, y: height / 2 };
+
     return { x: 0, y: 0 };
 };
 
@@ -61,6 +62,7 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
 const click = async (widget: Gtk.Widget): Promise<void> => {
     if (widget instanceof Gtk.Button) {
         await emitClickSequence(widget, widget, 1);
+
         return;
     }
 

@@ -149,6 +149,7 @@ function registerTools(appRouter: AppRouterStub): RegisteredTool[] {
 function getTool(appRouter: AppRouterStub, name: string): RegisteredTool {
     const tool = registerTools(appRouter).find((t) => t.name === name);
     if (!tool) throw new Error(`Tool not found: ${name}`);
+
     return tool;
 }
 
@@ -162,6 +163,7 @@ async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "tex
 
     const result = await getTool(appRouter, "gtkx_list_apps").handler({ waitForApps: true } as never);
     expect(result.isError).toBe(true);
+
     return result.content[0] as { type: "text"; text: string };
 }
 
@@ -439,6 +441,7 @@ function useMainSetup(): () => MainSetup {
     });
 
     afterEach(() => teardownMainMocks(setup));
+
     return () => setup;
 }
 

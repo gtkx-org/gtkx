@@ -11,6 +11,7 @@ const itemLabel = (model: Gio.MenuModel, index: number): string | null => {
     const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_LABEL, null);
     if (!variant) return null;
     const [text] = variant.dupString();
+
     return typeof text === "string" ? text : null;
 };
 
@@ -18,6 +19,7 @@ const itemAction = (model: Gio.MenuModel, index: number): string | null => {
     const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_ACTION, null);
     if (!variant) return null;
     const [text] = variant.dupString();
+
     return typeof text === "string" ? text : null;
 };
 
@@ -30,17 +32,20 @@ const submenuAt = (model: Gio.MenuModel, index: number): Gio.MenuModel | null =>
 const requireModel = (menu: Gtk.PopoverMenu | Gtk.PopoverMenuBar | null): Gio.MenuModel => {
     const model = menu?.getMenuModel();
     if (!model) throw new Error("Expected menu model");
+
     return model;
 };
 
 const requireLink = (model: Gio.MenuModel | null): Gio.MenuModel => {
     if (!model) throw new Error("Expected linked menu model");
+
     return model;
 };
 
 const renderPopoverMenu = async (items: MenuItem[]): Promise<Gio.MenuModel> => {
     const ref = createRef<Gtk.PopoverMenu>();
     await render(<GtkPopoverMenu ref={ref} menuModel={<GMenu items={items} />} />);
+
     return requireModel(ref.current);
 };
 
@@ -62,6 +67,7 @@ const renderItemListTransition = async (
     await render(<ItemListApp menuRef={ref} items={initialItems} />);
     betweenRenders?.(requireModel(ref.current));
     await render(<ItemListApp menuRef={ref} items={updatedItems} />);
+
     return requireModel(ref.current);
 };
 
@@ -180,6 +186,7 @@ const observeItemsChanged = (model: Gio.MenuModel): { count: number } => {
 const setupDeepMenu = async () => {
     const ref = createRef<Gtk.PopoverMenu>();
     const { rerender } = await render(<DeepMenuApp menuRef={ref} quitLabel="Quit" />);
+
     return { ref, rerender };
 };
 
@@ -233,6 +240,7 @@ const NESTED_SUBMENU_ITEMS: MenuItem[] = [
 const GrowingSubmenuApp = ({ menuRef, extra }: { menuRef: MenuRef; extra: boolean }) => {
     const submenu: MenuItem[] = [{ label: "Cut", action: "win.cut" }];
     if (extra) submenu.push({ label: "Copy", action: "win.copy" });
+
     return <SingleEntryApp menuRef={menuRef} entry={{ label: "Edit", submenu }} />;
 };
 

@@ -20,6 +20,7 @@ const EDITABLE_REQUIRED = `expected editable widget (${formatRoleList(EDITABLE_R
 const insertEditableText = (widget: EditableTarget, text: string): void => {
     if (widget instanceof Gtk.TextView) {
         widget.emit("insert-at-cursor", text);
+
         return;
     }
 
@@ -27,6 +28,7 @@ const insertEditableText = (widget: EditableTarget, text: string): void => {
 
     if (target instanceof Gtk.Text) {
         target.emit("insert-at-cursor", text);
+
         return;
     }
 
@@ -39,16 +41,19 @@ const readSelection = (widget: EditableTarget): string => {
     if (widget instanceof Gtk.TextView) {
         const buffer = widget.getBuffer();
         const [hasSelection, start, end] = buffer.getSelectionBounds();
+
         return hasSelection ? buffer.getText(start, end, true) : "";
     }
 
     const [hasSelection, start, end] = widget.getSelectionBounds();
+
     return hasSelection ? widget.getChars(start, end) : "";
 };
 
 const deleteSelection = (widget: EditableTarget): void => {
     if (widget instanceof Gtk.TextView) {
         widget.getBuffer().deleteSelection(false, true);
+
         return;
     }
 
@@ -58,6 +63,7 @@ const deleteSelection = (widget: EditableTarget): void => {
 const setEditableText = (widget: EditableTarget, text: string): void => {
     if (widget instanceof Gtk.TextView) {
         widget.getBuffer().setText(text, text.length);
+
         return;
     }
 
@@ -83,6 +89,7 @@ const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): vo
 
     if (widget instanceof Gtk.TextView) {
         applyTextViewSelection(widget, start, end);
+
         return;
     }
 

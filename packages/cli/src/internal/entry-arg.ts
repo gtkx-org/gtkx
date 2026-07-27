@@ -35,6 +35,7 @@ const resolveDefaultEntry = (cwd: string): string => {
 
 const resolveEntry = (args: { entry?: string; cwd?: string }): { cwd: string; entry: string } => {
     const cwd = resolveCwd(args);
+
     return { cwd, entry: args.entry ? resolve(cwd, args.entry) : resolveDefaultEntry(cwd) };
 };
 

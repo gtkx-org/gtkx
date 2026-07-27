@@ -32,6 +32,7 @@ function runSuite(): VitestReport {
 
     const report = JSON.parse(readFileSync(reportPath, "utf8")) as VitestReport;
     rmSync(reportPath, { force: true });
+
     return report;
 }
 
@@ -49,6 +50,7 @@ function recordAssertion(assertion: VitestAssertion, observed: Baseline, skipped
 
     if (SKIP_STATUSES.has(assertion.status ?? "")) {
         skipped.push(name);
+
         return;
     }
 
@@ -86,12 +88,14 @@ const collectFailures = (observed: Baseline, skipped: string[], baseline: Baseli
     const failures: string[] = Array.from(removed, (name) => `removed spec: ${name}`);
     for (const name of skipped) failures.push(`skipped spec: ${name}`);
     for (const [name] of regressed) failures.push(`regressed green to red: ${name}`);
+
     return failures;
 };
 
 const reportFixed = (observed: Baseline, baseline: Baseline): number => {
     const fixed = Object.entries(observed).filter(([name, status]) => baseline[name] === "red" && status === "green");
     for (const [name] of fixed) process.stdout.write(`fixed: ${name}\n`);
+
     return fixed.length;
 };
 

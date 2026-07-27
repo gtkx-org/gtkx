@@ -13,22 +13,27 @@ const main = defineCommand({
     subCommands: {
         dev: async () => {
             const { dev } = await import("./commands/dev.js");
+
             return withErrorBoundary(dev);
         },
         build: async () => {
             const { build } = await import("./commands/build.js");
+
             return withErrorBoundary(build);
         },
         codegen: async () => {
             const { codegen } = await import("./commands/codegen.js");
+
             return withErrorBoundary(codegen);
         },
         docs: async () => {
             const { docs } = await import("./commands/docs.js");
+
             return withErrorBoundary(docs);
         },
         create: async () => {
             const { scaffoldCommand } = await import("create-gtkx");
+
             return withErrorBoundary(scaffoldCommand);
         },
     },

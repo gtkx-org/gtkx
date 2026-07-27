@@ -13,6 +13,7 @@ type PageResult = Extract<ReturnType<ApiReference["lookup"]>, { outcome: "page" 
 const pageResultFor = (query: string): PageResult => {
     const result = reference.lookup(query);
     if (result.outcome !== "page") throw new Error(`Expected a page for ${query}, got ${result.outcome}`);
+
     return result;
 };
 

@@ -49,6 +49,7 @@ const constraintsOf = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint[] => c
 const firstConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => {
     const [constraint] = constraintsOf(boxRef);
     if (!constraint) throw new Error("expected at least one constraint");
+
     return constraint;
 };
 
@@ -57,6 +58,7 @@ const onlyConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => {
     expect(constraints).toHaveLength(1);
     const [constraint] = constraints;
     if (!constraint) throw new Error("expected exactly one constraint");
+
     return constraint;
 };
 

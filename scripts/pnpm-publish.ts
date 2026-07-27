@@ -18,6 +18,7 @@ const assertPublishOutcome = (packageDir: string, result: SpawnSyncReturns<strin
 
     if (ALREADY_PUBLISHED.test(output)) {
         console.log(`${packageDir} is already published, skipping`);
+
         return;
     }
 

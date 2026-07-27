@@ -130,6 +130,7 @@ const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor =
     };
 
     applyBoxedOptions(result, options);
+
     return result;
 };
 
@@ -138,6 +139,7 @@ const structT = (ownership: Ownership = "borrowed", options: StructOptions = {})
     if (options.size !== undefined) result.size = options.size;
     if (options.wrapperClass !== undefined) result.wrapperClass = options.wrapperClass;
     if (options.callerAllocated) result.callerAllocated = true;
+
     return result;
 };
 
@@ -151,6 +153,7 @@ const fundamentalT = (
     const result: FundamentalDescriptor = { kind: "fundamental", ownership, sharedLibrary, refFnName, unrefFnName };
     if (options.typeName !== undefined) result.typeName = options.typeName;
     if (options.wrapperClass !== undefined) result.wrapperClass = options.wrapperClass;
+
     return result;
 };
 
@@ -164,6 +167,7 @@ const arrayT = (
     if (options?.elementSize !== undefined) result.elementSize = options.elementSize;
     if (options?.sizeParamIndex !== undefined) result.sizeParamIndex = options.sizeParamIndex;
     if (options?.fixedSize !== undefined) result.fixedSize = options.fixedSize;
+
     return result;
 };
 
@@ -209,6 +213,7 @@ const callbackT = (
     if (options?.hasDestroy !== undefined) result.hasDestroy = options.hasDestroy;
     if (options?.userDataIndex !== undefined) result.userDataIndex = options.userDataIndex;
     if (options?.scope !== undefined) result.scope = options.scope;
+
     return result;
 };
 

@@ -33,6 +33,7 @@ const resolveGirPath = (configGirPath: string[] | undefined): string[] => {
 const pkgConfigGirDirError = (error: unknown): Error => {
     const details = formatChildProcessError(error);
     const suffix = details ? `:\n${details}` : "";
+
     return new Error(`pkg-config failed querying gobject-introspection-1.0 girdir${suffix}`, { cause: error });
 };
 
@@ -55,6 +56,7 @@ const queryPkgConfigGirDir = (): string | undefined => {
         });
 
         const trimmed = output.trim();
+
         return trimmed.length > 0 ? trimmed : undefined;
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return;

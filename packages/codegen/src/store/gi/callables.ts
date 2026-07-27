@@ -104,6 +104,7 @@ const renderBinding = (
     if (callableReferencesClassStruct(context, callable)) return undefined;
     const expression = renderFnExpression(context, callable);
     if (expression === undefined) return undefined;
+
     return { text: `const ${toCamelIdentifier(cIdentifier)} = ${expression};`, cIdentifier };
 };
 
@@ -126,6 +127,7 @@ const resolveCallableMember = (
     if (cIdentifier === undefined) return undefined;
     const name = resolveName(callable);
     if (name === undefined || name === "constructor") return undefined;
+
     return { cIdentifier, name };
 };
 
@@ -137,6 +139,7 @@ const runtimeOverrideMember = (
 ): string | undefined => {
     if (allow !== true) return undefined;
     const override = renderRuntimeOverride(callable, name);
+
     return override === undefined ? undefined : `${doc}${override}`;
 };
 
@@ -161,6 +164,7 @@ const renderCallableMember = (
 
     const prefix = options.isStatic ? "static " : "";
     const header = `${prefix}${name}(${signature}): ${returnType}`;
+
     return `${doc}${renderBlock(header, body)}`;
 };
 
@@ -212,6 +216,7 @@ const resolveInstanceMember = (
     if (name === "constructor") return undefined;
     const finishFn = matchFinishFunction(context, callable, scope);
     if (finishFn !== undefined && !isEmittableCallable(context, finishFn)) return undefined;
+
     return { name, finishFn };
 };
 
@@ -225,6 +230,7 @@ function instanceMemberRenderer(
 ): InstanceMemberRenderer {
     return (context, callable, scope, nameOverride) => {
         const member = resolveInstanceMember(context, callable, scope, nameOverride);
+
         return member === undefined ? undefined : render(context, callable, member, scope);
     };
 }
@@ -261,6 +267,7 @@ const matchStaticFinishFunction = (
     if (!isEmittableCallable(context, callable)) return undefined;
     const finishFn = matchAsyncFinish(context.library, callable, siblings);
     if (finishFn === undefined || !isEmittableCallable(context, finishFn)) return undefined;
+
     return finishFn;
 };
 
@@ -283,12 +290,14 @@ const renderPromisifiedCallable = (
 
     const prefix = member.isStatic ? "static " : "";
     const header = `${prefix}${member.name}(${signature}): ${returnType}`;
+
     return `${renderJsDoc(callable.doc)}${renderBlock(header, body)}`;
 };
 
 const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {
     const map: Map<string, GirFunction> = new Map();
     for (const callable of methods) map.set(callable.name, callable);
+
     return map;
 };
 
@@ -302,6 +311,7 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
 const constructorMemberName = (girName: string): string | undefined => {
     const camel = camelCase(girName);
     if (camel === "constructor") return undefined;
+
     return camel;
 };
 

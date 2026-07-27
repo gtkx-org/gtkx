@@ -22,6 +22,7 @@ const assertReady = (ready: boolean): void => {
 const elementIfAttached = (element: Gtk.Widget): Gtk.Widget | null => {
     try {
         const parent = element.getParent();
+
         return parent ? element : null;
     } catch {
         return null;
@@ -45,6 +46,7 @@ describe("waitFor resolves", () => {
 
         const result = await waitFor(() => {
             assertReady(value === 42);
+
             return value;
         });
 
@@ -57,6 +59,7 @@ describe("waitFor resolves", () => {
         await waitFor(() => {
             attempts++;
             assertReady(attempts >= 3);
+
             return true;
         });
 
@@ -175,6 +178,7 @@ describe("waitForElementToBeRemoved widget", () => {
         element.getRoot = () => {
             const root = originalGetRoot();
             if (root === null) throw new Error("Widget destroyed");
+
             return root;
         };
 

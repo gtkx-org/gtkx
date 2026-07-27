@@ -27,6 +27,7 @@ function useObjectValue<T extends GObject.Object, V>(
             };
 
             resolved.on(signal, handler);
+
             return () => resolved.off(signal, handler);
         },
         [resolved, signal],
@@ -41,6 +42,7 @@ function useObjectValue<T extends GObject.Object, V>(
 
         const value = read(resolved);
         cacheRef.current = { object: resolved, signal, value };
+
         return value;
     };
 

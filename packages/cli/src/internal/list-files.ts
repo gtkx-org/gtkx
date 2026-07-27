@@ -13,6 +13,7 @@ const listFilesRecursive = (dir: string, predicate?: (name: string) => boolean):
         .filter((entry) => entry.isFile() && (predicate === undefined || predicate(entry.name)))
         .map((entry) => {
             const absPath = join(entry.parentPath, entry.name);
+
             return { absPath, rel: relative(dir, absPath) };
         });
 };

@@ -77,6 +77,7 @@ const installNeverSettlingShutdown = (options: { forceKillAfterMs: number; coale
     const onSignal = vi.fn().mockReturnValue(new Promise<void>(() => {}));
     const onForce = vi.fn();
     installGracefulShutdown({ onSignal, onForce, ...options });
+
     return { onSignal, onForce };
 };
 

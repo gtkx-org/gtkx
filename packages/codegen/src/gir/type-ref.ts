@@ -6,6 +6,7 @@ const LIST_FLAVOR_BY_NAME_LOOKUP: Map<string, ListFlavor> = new Map(Object.entri
 
 const elementRefOf = (node: RawNode, context: ParseContext): TypeId => {
     const elementNode = childOf(node, "type");
+
     return elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
 };
 
@@ -18,6 +19,7 @@ const typeRefFromNode = (parent: RawNode | undefined, context: ParseContext): Ty
     if (typeNode !== undefined) return typeRefFromTypeNode(typeNode, context);
     const callback = childOf(parent, "callback");
     if (callback !== undefined) return context.addAnonymousCallback(callback);
+
     return undefined;
 };
 
@@ -44,6 +46,7 @@ const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId =
     if (name === "GLib.HashTable") return hashTableRefFromNode(typeNode, context);
     const primitive = primitiveCategory(name);
     if (primitive !== undefined) return context.addPrimitive(primitive);
+
     return context.findType(name);
 };
 
@@ -74,6 +77,7 @@ const pointerFallback = (context: ParseContext): TypeId => context.addPrimitive(
 const splitOptionalNamespace = (name: string): [string | undefined, string] => {
     const dot = name.indexOf(".");
     if (dot === -1) return [undefined, name];
+
     return [name.slice(0, dot), name.slice(dot + 1)];
 };
 

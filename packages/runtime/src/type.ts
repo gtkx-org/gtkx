@@ -99,6 +99,7 @@ function lazyType(name: string): () => bigint {
 
     return () => {
         cached ??= typeFromName(name);
+
         return cached;
     };
 }
@@ -119,6 +120,7 @@ function typeParent(type: bigint): bigint {
 /** Returns the GTypes of the interfaces implemented by the given type. */
 function typeInterfaces(type: bigint): bigint[] {
     const nInterfacesRef = { value: 0 };
+
     return gTypeInterfaces(type, nInterfacesRef) as bigint[];
 }
 
@@ -153,6 +155,7 @@ const resolveType = (sharedLibrary: string, typeFnName: string): bigint => {
     if (cached !== undefined) return cached;
     const gtype = nativeResolveType(sharedLibrary, typeFnName);
     resolvedTypeCache.set(key, gtype);
+
     return gtype;
 };
 

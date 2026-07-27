@@ -59,6 +59,7 @@ const methodExportName = (fn: GirFunction): string => camelCase(fn.name);
 
 const arrayLengthArgument = (source: GirParameter, sourceIndex: number): string => {
     const identifier = parameterIdentifier(source, sourceIndex);
+
     return source.nullable || source.optional ? `(${identifier}?.length ?? 0)` : `${identifier}.length`;
 };
 
@@ -113,6 +114,7 @@ const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string
 
     if (outs.length === 0) return primary ?? "void";
     const outTypes = outs.map((parameter) => renderTsType(context, parameter.type, false));
+
     return foldOutParamShape(primary, outTypes);
 };
 
@@ -130,6 +132,7 @@ const classifyPromisifiedParameter = (
     }
 
     const sawOptional = state.sawOptional || parameter.optional;
+
     return { sawOptional, expression: promisifiedArgument(promisify, parameter, index, sawOptional) };
 };
 
@@ -149,6 +152,7 @@ const collectPromisifiedArguments = (promisify: PromisifyContext, cancellableInd
 const renderCancellableExpression = (parameters: GirParameter[], cancellableIndex: number): string => {
     if (cancellableIndex < 0) return "null";
     const parameter = parameters[cancellableIndex];
+
     return parameter === undefined ? "null" : parameterIdentifier(parameter, cancellableIndex);
 };
 
@@ -178,6 +182,7 @@ const renderPromisifiedBody = (
     leadingExpressions.push(...collectPromisifiedArguments(promisifyContext, cancellableIndex));
     const cancellableExpression = renderCancellableExpression(asyncFn.parameters, cancellableIndex);
     const leadingArguments = leadingExpressions.length > 0 ? `, ${leadingExpressions.join(", ")}` : "";
+
     return `return promisify(${bindingExpression}, ${finishExpression}, ${cancellableExpression}${leadingArguments});`;
 };
 
@@ -201,6 +206,7 @@ const promisifiedArgument = (
     const sourceIndex = lengthFor.get(index);
     const source = sourceIndex === undefined ? undefined : asyncFn.parameters[sourceIndex];
     if (sourceIndex !== undefined && source !== undefined) return arrayLengthArgument(source, sourceIndex);
+
     return parameterCallExpression(context, parameter, index, sawOptional);
 };
 
@@ -220,6 +226,7 @@ const renderPromisifiedSignature = (
     );
 
     const finishReturn = renderMethodReturnType(context, finishFn);
+
     return { signature, returnType: `Promise<${finishReturn}>` };
 };
 
@@ -229,6 +236,7 @@ const isCancellable = (context: ModuleContext, parameter: GirParameter): boolean
 const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): boolean => {
     const ref = parameter.type;
     if (ref === undefined) return false;
+
     return context.library.typeOf(ref)?.kind === "callback";
 };
 
@@ -241,6 +249,7 @@ const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: Writ
 
     const callExpression = `${bindingExpression}(${inputs.join(", ")})`;
     const annotation = returnTypeOverride ?? renderMethodReturnType(context, fn);
+
     return annotation === "void" ? `${callExpression};` : `return ${callExpression} as ${annotation};`;
 };
 
@@ -249,6 +258,7 @@ const paramDescriptorLiteral = (descriptor: string, options: ParamDescriptorOpti
     if (options.direction !== undefined) parts.push(`direction: ${sourceStringLiteral(options.direction)}`);
     if (options.callerAllocated === true) parts.push("callerAllocated: true");
     if (options.consumed === true) parts.push("consumed: true");
+
     return `{ ${parts.join(", ")} }`;
 };
 
@@ -304,6 +314,7 @@ const planParameter = (
     if (isInoutParameter(parameter)) return planInoutArgument(context, parameter, index, planContext);
     const sourceIndex = lengthFor.get(index);
     if (sourceIndex !== undefined) return planLengthArgument(context, parameter, sourceIndex, planContext);
+
     return planInParam(context, parameter, index, planContext);
 };
 
@@ -455,16 +466,19 @@ const planInParam = (
 const handleArgument = (context: ModuleContext, name: string, nullable: boolean): string => {
     if (nullable) {
         context.addRuntimeImport("tryGetHandle");
+
         return `tryGetHandle(${name})`;
     }
 
     context.addRuntimeImport("getHandle");
+
     return `getHandle(${name})`;
 };
 
 const hashtableArgument = (context: ModuleContext, valueRef: TypeId, name: string): string => {
     if (isHandlePassing(context, valueRef)) {
         context.addRuntimeImport("tryGetHandle");
+
         return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, tryGetHandle(v)]) : null`;
     }
 
@@ -482,10 +496,12 @@ const collectionArgument = (
 ): string | undefined => {
     if ((type?.kind === "carray" || type?.kind === "list") && isHandlePassing(context, type.element)) {
         context.addRuntimeImport("getHandle");
+
         return mapHandleExpression(name, nullable);
     }
 
     if (type?.kind === "hashtable") return hashtableArgument(context, type.value, name);
+
     return undefined;
 };
 
@@ -501,6 +517,7 @@ const parameterCallExpression = (
     const nullable = parameter.nullable || parameter.optional || forceNullable;
     if (isHandlePassing(context, ref)) return handleArgument(context, name, nullable);
     const type = context.library.typeOf(ref);
+
     return collectionArgument(context, type, name, nullable) ?? name;
 };
 

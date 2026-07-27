@@ -14,6 +14,7 @@ const uniqueAppId = (): string => `org.gtkx.portaltest${nextAppId++}`;
 
 const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: string }) => {
     const app = useApplication();
+
     return <>{createPortal(children, app, portalKey)}</>;
 };
 
@@ -50,6 +51,7 @@ const renderPortalIntoBox = async (
 
     const { rerender } = await render(<App />);
     await rerender(<App />);
+
     return boxRef.current as Gtk.Box;
 };
 
@@ -113,11 +115,13 @@ describe("createPortal (1)", () => {
 
 function OptionalPortal({ showPortal }: { showPortal: boolean }) {
     const app = useApplication();
+
     return <>{showPortal && createPortal(<GtkApplicationWindow title="Portal" />, app)}</>;
 }
 
 function TitledPortal({ title }: { title: string }) {
     const app = useApplication();
+
     return <>{createPortal(<GtkApplicationWindow title={title} />, app)}</>;
 }
 

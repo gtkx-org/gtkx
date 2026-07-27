@@ -429,6 +429,7 @@ const sortShowcasePeople = (sortColumn: ShowcaseSortColumn, sortOrder: Gtk.SortT
         const av = a[sortColumn];
         const bv = b[sortColumn];
         const cmp = typeof av === "number" ? av - (bv as number) : av.localeCompare(String(bv));
+
         return sortOrder === Gtk.SortType.ASCENDING ? cmp : -cmp;
     });
 };

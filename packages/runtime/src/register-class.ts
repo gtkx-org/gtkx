@@ -52,6 +52,7 @@ function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptio
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
     const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
     registerClassType(klass, newType);
+
     return klass;
 }
 
@@ -59,6 +60,7 @@ function resolveParentType(klass: AnyClass): bigint {
     return (
         walkClassChain(getParentClass(klass), (cls) => {
             const gtype = getClassType(cls);
+
             return gtype === TYPE_INVALID ? undefined : gtype;
         }) ?? TYPE_INVALID
     );
@@ -70,6 +72,7 @@ function ownInstanceMethodNames(klass: AnyClass): string[] {
 
     return Object.getOwnPropertyNames(proto).filter((name) => {
         if (name === "constructor") return false;
+
         return typeof (proto as Record<string, unknown>)[name] === "function";
     });
 }
@@ -161,6 +164,7 @@ function discoverInterfaceVfuncs(
         klass,
         (methodName) => {
             const entry = vfuncRegistry[methodName];
+
             return entry?.kind === "interface" ? entry : undefined;
         },
         claimedMethodNames,
@@ -171,6 +175,7 @@ function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDes
     return (
         walkClassChain(getParentClass(klass), (cls) => {
             const entry = getVfuncRegistry(cls)?.[methodName];
+
             return entry?.kind === "class" ? entry : undefined;
         }) ?? null
     );

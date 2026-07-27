@@ -121,6 +121,7 @@ const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => 
 
 const tempStoreFor = (storeDir: string): string => {
     mkdirSync(dirname(storeDir), { recursive: true });
+
     return mkdtempSync(`${storeDir}.tmp-`);
 };
 

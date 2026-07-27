@@ -26,6 +26,7 @@ const runDev = (entry?: string): Promise<unknown> => {
     const run = dev.run;
     if (!run) throw new Error("dev command has no run handler");
     const args = { entry } as DevContext["args"];
+
     return Promise.resolve(run({ rawArgs: [], args, cmd: dev }));
 };
 

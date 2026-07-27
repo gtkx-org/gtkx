@@ -52,6 +52,7 @@ const CHECK_OPTIONS = {
 /** `@gtkx/codegen`'s own `node_modules`, which has `@types/node` plus the `@gtkx/*` deps the store typecheck needs. */
 const codegenModules = (): string => {
     const sourceDir = dirname(fileURLToPath(import.meta.url));
+
     return join(dirname(sourceDir), "node_modules");
 };
 
@@ -59,6 +60,7 @@ const linkToolingModules = (projectDir: string): (() => void) => {
     const link = join(projectDir, "node_modules");
     if (existsSync(link)) return () => {};
     symlinkSync(codegenModules(), link, "junction");
+
     return () => rmSync(link, { force: true });
 };
 
@@ -95,6 +97,7 @@ const parseDiagnosticLine = (raw: string, projectDir: string): ProjectDiagnostic
     if (filePart === undefined || line === undefined || column === undefined || code === undefined) return undefined;
     const file = resolve(projectDir, filePart);
     if (!isProjectFile(relative(projectDir, file))) return undefined;
+
     return { file, line, column, code, message: (message ?? "").trim() };
 };
 

@@ -29,6 +29,7 @@ const renderOrderedLabelBox = async () => {
     const boxRef = createRef<Gtk.Box>();
     const { rerender } = await renderChildren(["A", "B", "C"], buildLabelBox(boxRef));
     expect(labelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+
     return { boxRef, rerender };
 };
 

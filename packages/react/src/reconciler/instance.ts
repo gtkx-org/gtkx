@@ -44,6 +44,7 @@ const constructInput = (info: TypeInfo, props: Props): Props =>
 
 const instantiate = (type: bigint, input: Props): GObject.Object => {
     const cls = getWrapperClass(type) as WidgetConstructor;
+
     return new cls(input);
 };
 
@@ -52,6 +53,7 @@ const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch):
     if (info.lazy) return createLazyNode(typeName, props, dispatch);
     const type = typeFromName(typeName);
     const object = instantiate(type, constructInput(info, props));
+
     return createElementNode(typeName, object, dispatch, resolveContentKind(type));
 };
 

@@ -27,6 +27,7 @@ describe("compileStore", () => {
         }
 
         compileStore({ storeDir, files, packageName: "@gtkx/gi" });
+
         return storeDir;
     };
 

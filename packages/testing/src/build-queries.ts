@@ -32,6 +32,7 @@ const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
 
     if (last && typeof last === "object" && !(last instanceof RegExp)) {
         const { timeout, interval, onTimeout } = last as WaitForOptions;
+
         return { timeout, interval, onTimeout };
     }
 
@@ -106,6 +107,7 @@ const singleFrom =
         (container, ...args) => {
             const matches = allQuery(container, ...args);
             if (matches.length > 1) throw getMultipleError(container, matches, ...args);
+
             return matches[0] ?? null;
         };
 
@@ -117,6 +119,7 @@ const allOrThrow =
         (container, ...args) => {
             const matches = allQuery(container, ...args);
             if (matches.length === 0) throw getMissingError(container, ...args);
+
             return matches;
         };
 
@@ -156,6 +159,7 @@ const requireSingle =
         (container: Container, ...args: Args): Gtk.Widget => {
             const match = query(container, ...args);
             if (match === null) throw getMissingError(container, ...args);
+
             return match;
         };
 
@@ -179,6 +183,7 @@ const buildQueries = <Args extends unknown[]>(
     const getByWithSuggestion: (container: Container, ...args: Args) => Gtk.Widget = (container, ...args) => {
         const match = getBy(container, ...args);
         maybeThrowSuggestion({ container, match, queryName, variant: "get", suggest: extractSuggestOption(args) });
+
         return match;
     };
 

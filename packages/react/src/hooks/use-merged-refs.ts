@@ -45,6 +45,7 @@ function applyRefs<T>(cleanupMap: CleanupMap<T>, refs: PossibleRef<T>[], node: T
 
 function mergeRefs<T>(...refs: PossibleRef<T>[]): RefCallback<T> {
     const cleanupMap: CleanupMap<T> = new Map();
+
     return (node: T | null): RefCleanup<T> => applyRefs(cleanupMap, refs, node);
 }
 

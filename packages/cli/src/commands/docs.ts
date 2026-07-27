@@ -64,6 +64,7 @@ const docs = defineCommand({
 
         if (!regenerated) {
             info(`docs: pages in ${outDir} are up to date`);
+
             return;
         }
 
@@ -79,6 +80,7 @@ const resolveDocsProps = async (cwd: string): Promise<ElementProps> => {
     const giStoreDir = join(cwd, "node_modules", ".gtkx", "gi");
     if (!existsSync(giStoreDir)) return {};
     const { props } = await readBuiltinElements(resolveReactSubexports(cwd), giStoreDir);
+
     return props;
 };
 

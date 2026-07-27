@@ -128,6 +128,7 @@ const admitField = (
     const jsName = toCamelIdentifier(field.name);
     if (claimedNames.has(jsName)) return undefined;
     if (jsName === "constructor") return undefined;
+
     return { field, jsName };
 };
 
@@ -162,6 +163,7 @@ const renderRecordFieldAccessor = (
 
     if (!isAccessorEligibleType(context, field.type)) {
         const tsType = renderTsType(context, field.type, false);
+
         return `${doc}declare ${jsName}: ${tsType};`;
     }
 
@@ -226,6 +228,7 @@ const resolveInlineStructFields = (
     if (type?.kind !== "record") return undefined;
     if (type.value.cType?.endsWith("*") === true) return undefined;
     if (type.value.fields.length === 0) return undefined;
+
     return type.value.fields;
 };
 
@@ -237,6 +240,7 @@ const arrayLengthExpression = (
     if (arrayRef.lengthParameterIndex === undefined) return undefined;
     const lengthField = siblingFields.filter((field) => !field.private)[arrayRef.lengthParameterIndex];
     if (lengthField === undefined) return undefined;
+
     return `this.${toCamelIdentifier(lengthField.name)}`;
 };
 
@@ -254,6 +258,7 @@ const visitInlineStructSlot = (
 
     if (nested !== undefined) {
         visitors.nested(jsName, nested, offset);
+
         return;
     }
 
@@ -287,6 +292,7 @@ const renderElementReadEntry = (context: ModuleContext, visit: InlineFieldVisit)
     }
 
     const shift = slot.bitOffset ?? 0;
+
     return `${jsName}: (((${access} as number) >>> ${shift}) & ${bitMask(slot.bitWidth)})`;
 };
 
@@ -394,6 +400,7 @@ const resolveStructArrayElements = (context: ModuleContext, fieldType: TypeId): 
     if (elementType?.kind === "record" && elementType.value.glibGetType !== undefined) return undefined;
     const elementFields = resolveInlineStructFields(context, arrayType.element, arrayType.elementCType);
     if (elementFields === undefined) return undefined;
+
     return { arrayType, elementFields };
 };
 
@@ -406,6 +413,7 @@ const resolveStructArrayShape = (
     if (lengthExpr === undefined) return undefined;
     const elementSize = computeRecordFieldSlots(context, elements.elementFields).size;
     if (elementSize === 0) return undefined;
+
     return { lengthExpr, elementSize };
 };
 
@@ -475,17 +483,20 @@ const getterBlock = (options: AccessorOptions): string => {
         });
 
         const body = `return ${wrapped};`;
+
         return renderBlock(`get ${jsName}(): ${tsType}`, body);
     }
 
     const mask = bitMask(slot.bitWidth);
     const shift = slot.bitOffset ?? 0;
     const body = `const __unit = read(getHandle(this), ${descriptor}, ${slot.byteOffset}) as number;\nreturn (((__unit >>> ${shift}) & ${mask}) >>> 0) as ${tsType};`;
+
     return renderBlock(`get ${jsName}(): ${tsType}`, body);
 };
 
 const setterBody = (context: ModuleContext, descriptor: string, slot: FieldSlot): string => {
     context.addRuntimeImport("getHandle");
+
     return emitFieldWrite(context, { descriptor, slot, targetExpr: "getHandle(this)", valueExpr: "value" });
 };
 

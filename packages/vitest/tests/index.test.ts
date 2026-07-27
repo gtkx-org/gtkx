@@ -21,6 +21,7 @@ type ConfigHook = (config: InputConfig) => WorkerConfig;
 
 const unwrap = <Fn extends (...args: never[]) => unknown>(hook: Fn | { handler: Fn } | undefined): Fn => {
     if (hook === undefined) throw new Error("plugin hook is missing");
+
     return typeof hook === "function" ? hook : hook.handler;
 };
 
@@ -32,6 +33,7 @@ const preloadSpecifier = (config: WorkerConfig): URL => {
     expect(execArgv[0]).toBe("--import");
     const specifier = execArgv[1] ?? "";
     expect(specifier.startsWith("file://")).toBe(true);
+
     return new URL(specifier);
 };
 

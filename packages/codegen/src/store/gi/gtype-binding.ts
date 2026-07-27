@@ -15,12 +15,14 @@ const gtypeMemberDeclaration = (context: ModuleContext): string => `declare _typ
 const renderInternGtype = (context: ModuleContext, typeName: string | undefined): string | undefined => {
     if (typeName === undefined) return undefined;
     if (context.namespace.name !== "GObject") context.addRuntimeImport("typeFromName");
+
     return `typeFromName(${sourceStringLiteral(typeName)})`;
 };
 
 const renderResolveGtype = (context: ModuleContext, typeFnName: string): string => {
     context.addRuntimeImport("resolveType");
     const lib = context.namespace.sharedLibrary ?? "";
+
     return `resolveType(${sourceStringLiteral(lib)}, ${sourceStringLiteral(typeFnName)})`;
 };
 

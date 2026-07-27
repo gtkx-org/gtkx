@@ -26,12 +26,14 @@ type StructLayoutState = {
 
 const layoutOfPrimitive = (category: PrimitiveCategory): FieldLayout => {
     const size = PRIMITIVE_SIZE[category];
+
     return { size, align: size === 0 ? 1 : size };
 };
 
 const roundUp = (value: number, multiple: number): number => {
     if (multiple <= 1) return value;
     const remainder = value % multiple;
+
     return remainder === 0 ? value : value + (multiple - remainder);
 };
 
@@ -42,6 +44,7 @@ const computeUnionSlots = (fields: FieldLayoutInput[]): { slots: FieldSlot[]; si
     const slots = fields.map((field) => {
         maxSize = Math.max(maxSize, field.layout.size);
         maxAlign = Math.max(maxAlign, field.layout.align);
+
         return { byteOffset: 0, bitOffset: field.bits === undefined ? undefined : 0, bitWidth: field.bits };
     });
 
@@ -90,6 +93,7 @@ const processStructField = (state: StructLayoutState, slots: FieldSlot[], field:
 
     if (field.bits === undefined) {
         pushPlainField(state, slots, field, align);
+
         return;
     }
 

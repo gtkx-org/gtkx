@@ -10,6 +10,7 @@ const bindQuery =
 
 const bindCustomQueries = <Q extends QueryMap>(customQueries: Q, container: Container): BoundCustomQueries<Q> => {
     const entries = Object.entries(customQueries).map(([key, query]) => [key, bindQuery(query, container)] as const);
+
     return Object.fromEntries(entries) as BoundCustomQueries<Q>;
 };
 

@@ -16,6 +16,7 @@ const makeAdjustment = () => Gtk.Adjustment.new(0, 0, 1000, 1, 10, 0);
 const renderSpinButton = async (onInput?: ComponentProps<typeof GtkSpinButton>["onInput"]): Promise<Gtk.SpinButton> => {
     const spinRef = createRef<Gtk.SpinButton>();
     await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} onInput={onInput} />);
+
     return spinRef.current as Gtk.SpinButton;
 };
 
@@ -28,6 +29,7 @@ const setTextAndUpdate = async (spin: Gtk.SpinButton, text: string): Promise<voi
 const renderText = async (): Promise<Gtk.Text> => {
     const textRef = createRef<Gtk.Text>();
     await render(<GtkText ref={textRef} accessibleRole={Gtk.AccessibleRole.TEXT_BOX} />);
+
     return textRef.current as Gtk.Text;
 };
 
@@ -71,6 +73,7 @@ const renderSnippetView = async (spec: string, initialText?: string): Promise<Sn
     snippet.addChunk(chunk);
     const location = buffer.getStartIter();
     expect(location.getOffset()).toBe(0);
+
     return { view, buffer, snippet, location };
 };
 
@@ -78,6 +81,7 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
     it("writes the handler's tuple out-value back through the new_value pointer", async () => {
         const spin = await renderSpinButton((spinButton) => {
             const digits = spinButton.getText().replaceAll(/\D/g, "");
+
             return digits === "" ? [GTK_INPUT_ERROR, 0] : [1, Number(digits)];
         });
 
@@ -106,6 +110,7 @@ describe("signal inout-parameters - GtkEditable::insert-text", () => {
 
         text.connect("insert-text", (_text: string, _length: number, position: number) => {
             seenPositions.push(position);
+
             return position;
         });
 
@@ -130,6 +135,7 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
 
         const handleGetChildPosition = vi.fn((_widget: Gtk.Widget, allocation: Gdk.Rectangle) => {
             expect(allocation).toBeInstanceOf(Gdk.Rectangle);
+
             return [true, new Gdk.Rectangle({ x: 11, y: 22, width: 33, height: 44 })];
         });
 
@@ -196,6 +202,7 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
         view.connect("push-snippet", () => {
             const advanced = buffer.getStartIter();
             advanced.forwardChars(5);
+
             return advanced;
         });
 

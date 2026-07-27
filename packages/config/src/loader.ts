@@ -54,6 +54,7 @@ const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
     const loadResolved = async (root: string): Promise<ResolvedConfig> => {
         const { config } = await loadConfig(root, options);
         validateConfig(config);
+
         return resolveConfig(config, root);
     };
 

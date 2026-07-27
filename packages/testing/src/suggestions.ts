@@ -50,6 +50,7 @@ const roleSuggestion = (widget: Gtk.Widget, variant: Variant): Suggestion | unde
 
 const textSuggestion = (queryName: Method, variant: Variant, value: string | null): Suggestion | undefined => {
     if (value === null) return undefined;
+
     return makeSuggestion(queryName, variant, `'${value}'`);
 };
 

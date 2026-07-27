@@ -14,6 +14,7 @@ const capturing =
 
 const visibilityOf = (held: Captured): boolean => {
     if (!held.widget) throw new Error("widget was never captured");
+
     return held.widget.getVisible();
 };
 
@@ -21,6 +22,7 @@ type DeferredPromise = { promise: Promise<string>; resolve: () => void };
 
 const createDeferred = (): DeferredPromise => {
     const { promise, resolve } = Promise.withResolvers<string>();
+
     return { promise, resolve: () => resolve("loaded") };
 };
 

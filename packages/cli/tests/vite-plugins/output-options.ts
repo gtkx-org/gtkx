@@ -8,6 +8,7 @@ const callOutputOptions = (
     const hook = plugin.outputOptions;
     const handler = typeof hook === "function" ? hook : hook?.handler;
     if (!handler) return undefined;
+
     return (Reflect.apply(handler, {}, [options]) ?? undefined) as Record<string, unknown> | undefined;
 };
 
@@ -19,6 +20,7 @@ const callBannerFunction = async (
 ): Promise<string> => {
     const banner = result?.banner;
     if (typeof banner !== "function") throw new Error(`Expected a function banner, got ${typeof banner}`);
+
     return await (banner as BannerFunction)(chunk);
 };
 

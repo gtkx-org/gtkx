@@ -26,6 +26,7 @@ function getOrInsert<K, V>(map: GetSet<K, V>, key: K, factory: (key: K) => V): V
 
     const value = factory(key);
     map.set(key, value);
+
     return value;
 }
 

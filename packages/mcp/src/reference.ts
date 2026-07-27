@@ -77,6 +77,7 @@ const apiDocsShape = {
 const watchFile = (path: string): WatchedFile => {
     try {
         const stats = statSync(path);
+
         return { path, mtimeMs: stats.mtimeMs, size: stats.size };
     } catch {
         return { path, mtimeMs: -1, size: -1 };
@@ -86,6 +87,7 @@ const watchFile = (path: string): WatchedFile => {
 const isFresh = (loaded: LoadedReference): boolean =>
     loaded.watched.every((file) => {
         const current = watchFile(file.path);
+
         return current.mtimeMs === file.mtimeMs && current.size === file.size;
     });
 
@@ -129,6 +131,7 @@ const startLoad = (cache: ReferenceCache, root: string): CacheEntry => {
     const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
     void markFailed(entry);
     cache.set(root, entry);
+
     return entry;
 };
 
@@ -137,11 +140,13 @@ const isRetryDue = (entry: CacheEntry): boolean =>
 
 const resolveEntry = (cache: ReferenceCache, root: string): CacheEntry => {
     const entry = cache.get(root) ?? startLoad(cache, root);
+
     return isRetryDue(entry) ? startLoad(cache, root) : entry;
 };
 
 const revalidate = (cache: ReferenceCache, root: string, entry: CacheEntry): CacheEntry => {
     const current = cache.get(root);
+
     return current === undefined || current === entry ? startLoad(cache, root) : current;
 };
 
@@ -152,10 +157,12 @@ const currentReference = async (cache: ReferenceCache, root: string): Promise<Re
 
     if (isFresh(loaded)) {
         entry.verifiedAt = Date.now();
+
         return loaded.reference;
     }
 
     const revalidated = await revalidate(cache, root, entry).pending;
+
     return revalidated.reference;
 };
 
@@ -175,6 +182,7 @@ const buildSearchOptions = (args: ToolArgs<typeof searchApiShape>): SearchOption
     if (args.namespace !== undefined) options.namespace = args.namespace;
     if (args.kind !== undefined) options.kinds = [args.kind];
     if (args.limit !== undefined) options.limit = args.limit;
+
     return options;
 };
 
@@ -288,6 +296,7 @@ const completeSymbol = async (provider: ReferenceProvider, namespace: string, va
 
     return withLoadFallback(async () => {
         const reference = await provider.get();
+
         return reference.symbolNames(namespace).filter((name) => name.toLowerCase().startsWith(value.toLowerCase()));
     }, []);
 };
@@ -324,6 +333,7 @@ const registerIndexResource = (server: ResourceServer, provider: ReferenceProvid
         },
         async (uri) => {
             const reference = await provider.get();
+
             return markdownResource(uri, reference.overview());
         },
     );
@@ -362,6 +372,7 @@ const registerNamespaceResource = (server: ResourceServer, provider: ReferencePr
             const reference = await provider.get();
             const overview = reference.namespaceOverview(namespace);
             if (overview === undefined) throw resourceNotFound(`Unknown namespace "${namespace}"`);
+
             return markdownResource(uri, overview);
         },
     );

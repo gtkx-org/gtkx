@@ -27,12 +27,14 @@ const SizeGroup: SizeGroupComponent = Object.assign(SizeGroupRoot, { Child: Size
 const useRegister = (): Register => {
     const register = useContext(SizeGroupContext);
     if (register === null) throw new Error("<SizeGroup.Child> must be a child of <SizeGroup>");
+
     return register;
 };
 
 function SizeGroupChildImpl(props: SizeGroupChildRuntimeProps): ReactNode {
     const { component: Component, ref, ...rest } = props;
     const refCallback = useMergedRef<Gtk.Widget | null>(ref, useRegister());
+
     return <Component {...rest} ref={refCallback} />;
 }
 

@@ -56,6 +56,7 @@ const wrapAlias = (
 const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
     context.addRuntimeImport("fromNative");
     const descriptor = context.hoistDescriptor(renderDescriptor(context, ref, "none"));
+
     return `(fromNative(${descriptor}, ${valueExpression}) as ${renderTsType(context, ref, false)})`;
 };
 
@@ -67,6 +68,7 @@ const wrapPrimitive = (category: PrimitiveCategory, nullable: boolean, valueExpr
     if (category === "string") return wrapStringPrimitive(nullable, valueExpression);
     if (category === "boolean") return `Boolean(${valueExpression})`;
     if (BIGINT_CATEGORIES.has(category)) return `(${valueExpression} as bigint)`;
+
     return `(${valueExpression} as number)`;
 };
 

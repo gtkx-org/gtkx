@@ -27,6 +27,7 @@ function makeConnection(id: string): TestConnection {
     connection.id = id;
     connection.socket = socket;
     createdConnections.push(connection);
+
     return connection;
 }
 
@@ -40,12 +41,14 @@ class FakeAppConnections extends EventEmitter<AppConnectionEvents> implements Ap
 
 function lastResponse(connections: FakeAppConnections): Response | undefined {
     const entry = connections.sent.at(-1);
+
     return entry?.message;
 }
 
 function lastOutgoingRequest(conn: TestConnection): Request {
     const line = conn.socket.lines.at(-1);
     if (!line) throw new Error("No outgoing request captured");
+
     return JSON.parse(line) as Request;
 }
 
@@ -69,6 +72,7 @@ function registerWithUnregisterSpy(): { conn: TestConnection; onUnregister: Retu
     const onUnregister = vi.fn();
     ctx.router.on("appUnregistered", onUnregister);
     emitRegister(conn, { applicationId: "app-a", pid: 1 });
+
     return { conn, onUnregister };
 }
 
@@ -239,6 +243,7 @@ function registerAppForContext(applicationId: string, connectionId = "c1"): Test
     const conn = makeConnection(connectionId);
     emitRegister(conn, { applicationId, pid: 1 }, "reg");
     ctx.connections.sent.length = 0;
+
     return conn;
 }
 

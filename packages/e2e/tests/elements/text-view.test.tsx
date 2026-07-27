@@ -13,6 +13,7 @@ const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number)
     const tag = tagTable.lookup(tagName);
     if (!tag) return false;
     const iter = buffer.getIterAtOffset(offset);
+
     return iter.hasTag(tag);
 };
 
@@ -62,6 +63,7 @@ const buildMarkOrTag = (item: string, markRef: RefObject<Gtk.TextMark | null>): 
 const requireMark = (markRef: RefObject<Gtk.TextMark | null>): Gtk.TextMark => {
     const mark = markRef.current;
     if (mark === null) throw new Error("Expected the GtkTextMark to be assigned");
+
     return mark;
 };
 

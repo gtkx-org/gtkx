@@ -8,6 +8,7 @@ import { describe, expect, it, type Mock, vi } from "vitest";
 const installAdjustment = (row: Adw.SpinRow, lower: number, upper: number, value: number) => {
     const adjustment = Gtk.Adjustment.new(value, lower, upper, 1, 10, 0);
     row.setAdjustment(adjustment);
+
     return adjustment;
 };
 
@@ -32,6 +33,7 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
     const Harness = () => {
         const [active, setActive] = useState<Mock | null>(handler);
         setActiveHandler = setActive;
+
         return renderRow(ref, active);
     };
 

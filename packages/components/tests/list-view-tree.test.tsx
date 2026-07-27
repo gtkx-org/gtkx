@@ -52,6 +52,7 @@ const rowTexts = (container: Gtk.ListView | null): (string | null)[] =>
 const listRowByName = (name: string): Gtk.TreeListRow => {
     const row = expanderByName(name).getListRow();
     if (!row) throw new Error("Expected row to exist");
+
     return row;
 };
 

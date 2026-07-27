@@ -135,21 +135,25 @@ const parsePair = (source: string, start: number): [VariantTypeNode, VariantType
     if (key.kind !== "basic" || key.code === "v") throw invalidType(source);
     const [value, valueEnd] = parseNode(source, keyEnd);
     if (source[valueEnd] !== "}") throw invalidType(source);
+
     return [key, value, valueEnd + 1];
 };
 
 function parseArrayNode(source: string, start: number): [VariantTypeNode, number] {
     if (source[start] === "{") {
         const [key, value, end] = parsePair(source, start + 1);
+
         return [{ kind: "dict", entryTypeString: source.slice(start, end), key, value }, end];
     }
 
     const [element, end] = parseNode(source, start);
+
     return [{ kind: "array", elementTypeString: source.slice(start, end), element }, end];
 }
 
 function parseMaybeNode(source: string, start: number): [VariantTypeNode, number] {
     const [element, end] = parseNode(source, start);
+
     return [{ kind: "maybe", elementTypeString: source.slice(start, end), element }, end];
 }
 
@@ -169,6 +173,7 @@ function parseTupleNode(source: string, start: number): [VariantTypeNode, number
 
 function parseEntryNode(source: string, start: number): [VariantTypeNode, number] {
     const [key, value, end] = parsePair(source, start);
+
     return [{ kind: "entry", key, value }, end];
 }
 
@@ -187,6 +192,7 @@ const parseVariantType = (typeString: string): VariantTypeNode => {
     const [node, end] = parseNode(typeString, 0);
     if (end !== typeString.length) throw invalidType(typeString);
     parsedTypes.set(typeString, node);
+
     return node;
 };
 
@@ -213,11 +219,13 @@ const unpackDict = (
     const entries = unpackChildren(variant, (entry) => unpackPair(node.key, node.value, entry)) as [unknown, unknown][];
     if (!isStringKeyed(node.key)) return new Map(entries);
     const stringEntries: [string, unknown][] = entries.map(([key, value]) => [key as string, value]);
+
     return Object.fromEntries(stringEntries);
 };
 
 const unpackMaybe = (element: VariantTypeNode, variant: GLib.Variant): unknown => {
     const child = variant.getMaybe();
+
     return child === null ? null : unpackVariant(element, child);
 };
 

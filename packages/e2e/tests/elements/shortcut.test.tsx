@@ -76,6 +76,7 @@ describe("render - Shortcut (2)", () => {
                                         trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
                                         action={Gtk.CallbackAction.new(() => {
                                             setShow(false);
+
                                             return true;
                                         })}
                                     />

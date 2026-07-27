@@ -15,6 +15,7 @@ const param = (name: string, cType: string, extra?: Partial<GlParam>): GlParam =
 const okPlan = (input: GlCommand, policy: GlPlanPolicy = NO_POLICY): CommandPlan & { ok: true } => {
     const plan = planCommand(input, policy);
     if (!plan.ok) throw new Error(`Expected ${input.name} to plan, got exclusion: ${plan.reason}`);
+
     return plan;
 };
 

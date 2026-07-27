@@ -95,6 +95,7 @@ const renderCommandsModule = (
     appendCommandBindings(builder, singulars);
     appendCommandDeclarations(builder, rendered);
     appendCommandDeclarations(builder, singulars);
+
     return `${GENERATED_HEADER}\n\n${builder.toSource()}`;
 };
 

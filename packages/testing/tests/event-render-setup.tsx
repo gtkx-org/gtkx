@@ -15,6 +15,7 @@ async function renderClickButton(label = "Click me"): Promise<RenderedClickButto
     const handleClick = vi.fn();
     await render(<GtkButton label={label} onClicked={handleClick} />);
     const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
+
     return { handleClick, button };
 }
 
@@ -58,6 +59,7 @@ async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<R
 
     const source = await screen.findByName("drag-source");
     const target = await screen.findByName("drop-target");
+
     return { source, target };
 }
 

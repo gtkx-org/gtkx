@@ -42,18 +42,21 @@ function renameReservedTag(tag: string): string {
 
 const parseGirFile = (path: string): RawNode => {
     const xml = readFileSync(path, "utf8");
+
     return PARSER.parse(xml) as RawNode;
 };
 
 const attr = (node: RawNode | undefined, name: string): string | undefined => {
     if (node === undefined) return undefined;
     const value = node[`@_${name}`];
+
     return typeof value === "string" ? value : undefined;
 };
 
 const attrBool = (node: RawNode | undefined, name: string, fallback = false): boolean => {
     const value = attr(node, name);
     if (value === undefined) return fallback;
+
     return value === "1";
 };
 
@@ -61,6 +64,7 @@ const nameAttr = (node: RawNode): string => attr(node, "name") ?? "";
 
 const intAttr = (node: RawNode, name: string): number | undefined => {
     const raw = attr(node, name);
+
     return raw === undefined ? undefined : Number(raw);
 };
 
@@ -84,6 +88,7 @@ const childrenOf = (node: RawNode | undefined, tag: string): RawNode[] => {
     const value = node[tag];
     if (value === undefined) return [];
     if (Array.isArray(value)) return value as RawNode[];
+
     return [value as RawNode];
 };
 
@@ -101,6 +106,7 @@ const childOf = (node: RawNode | undefined, tag: string): RawNode | undefined =>
 
 const normalizeDoc = (text: string): string | undefined => {
     const trimmed = text.trim();
+
     return trimmed.length === 0 ? undefined : trimmed;
 };
 
@@ -108,6 +114,7 @@ const firstDocValue = (raw: unknown): unknown => (Array.isArray(raw) ? raw[0] : 
 
 const docTextFromObject = (value: object): string | undefined => {
     const text = (value as RawNode)["#text"];
+
     return typeof text === "string" ? normalizeDoc(text) : undefined;
 };
 
@@ -116,6 +123,7 @@ const docOf = (node: RawNode | undefined): string | undefined => {
     const value = firstDocValue(node.doc);
     if (typeof value === "string") return normalizeDoc(value);
     if (value === null || typeof value !== "object") return undefined;
+
     return docTextFromObject(value);
 };
 

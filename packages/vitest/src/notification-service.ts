@@ -43,6 +43,7 @@ class NotificationService extends EventEmitter {
 
     Notify(): number {
         this.lastId += 1;
+
         return this.lastId;
     }
 

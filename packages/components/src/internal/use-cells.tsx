@@ -218,6 +218,7 @@ const renderItemArgs = (record: CellRecord, options: ItemArgsOptions): RenderIte
     if (entry === undefined) return null;
     const args: RenderItemArgs<unknown> = { item: entry.item.value, index: record.position() };
     if (record.row !== null) applyRowArgs(args, record.row, entry.id, options.expandedIds);
+
     return args;
 };
 
@@ -227,6 +228,7 @@ const headerRenderer = (
 ): ((record: CellRecord) => ReactNode) => {
     if (renderHeader == null) return () => null;
     const render = renderHeader as HeaderRenderer<unknown>;
+
     return (record) => render({ section: collection.entryOf(record.holder)?.sectionValue });
 };
 
@@ -236,6 +238,7 @@ const collectionRenderers = (options: CollectionRenderersOptions): CellRenderers
     return {
         item: (record) => {
             const args = renderItemArgs(record, options);
+
             return args === null ? null : render(args);
         },
         header: headerRenderer(options.collection, options.renderHeader),

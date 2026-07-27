@@ -101,6 +101,7 @@ const isWindow = (widget: Gtk.Widget): widget is Gtk.Window => widget instanceof
 
 const titleMatches = (window: Gtk.Window, selector: string | RegExp): boolean => {
     const title = window.getTitle() ?? "";
+
     return selector instanceof RegExp ? selector.test(title) : title.includes(selector);
 };
 
@@ -126,6 +127,7 @@ const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
 
     if (selector === undefined) return firstToplevelWindow(windows);
     if (typeof selector === "number") return windowAtIndex(windows, selector);
+
     return windowByTitle(windows, selector);
 };
 
@@ -138,6 +140,7 @@ const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
 
     const filepath = join(dir, `${Date.now()}-screenshot.png`);
     writeFileSync(filepath, Buffer.from(result.data, "base64"));
+
     return filepath;
 };
 
@@ -166,6 +169,7 @@ const captureAndSaveScreenshot = async (
     const target = resolveWindow(selector);
     const result = await screenshot(target, options);
     logScreenshotPath(saveScreenshotToTempFile(result));
+
     return result;
 };
 

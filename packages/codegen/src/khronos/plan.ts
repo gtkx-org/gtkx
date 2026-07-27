@@ -103,6 +103,7 @@ const isCompsize = (len: string): boolean => len.includes("COMPSIZE(");
 
 const planCompsizeOut = (command: GlCommand, scalar: GlScalar, policy: GlPlanPolicy): ParamOutcome => {
     if (policy.singleValuedQueries.has(command.name)) return { plan: { kind: "ref-out", scalar } };
+
     return { reason: "compsize-output" };
 };
 
@@ -122,6 +123,7 @@ const planPointerOut = (command: GlCommand, param: GlParam, scalar: GlScalar, po
 const planByteOffsetParam = (parsed: ParsedCType): ParamOutcome => {
     if (parsed.pointers === 1) return { plan: { kind: "byte-offset" } };
     if (parsed.pointers === 2) return { plan: { kind: "byte-offset-array" } };
+
     return { reason: "unsupported-shape" };
 };
 
@@ -129,6 +131,7 @@ const charStringOutLen = (command: GlCommand, param: GlParam, parsed: ParsedCTyp
     if (parsed.pointers !== 1) return undefined;
     const len = param.len;
     if (len === undefined) return undefined;
+
     return command.params.some((other) => other.name === len) ? len : undefined;
 };
 
@@ -137,6 +140,7 @@ const planCharParam = (command: GlCommand, param: GlParam, parsed: ParsedCType):
     if (parsed.pointers === 2 && parsed.constData) return { plan: { kind: "string-array-in" } };
     const lenParamName = charStringOutLen(command, param, parsed);
     if (lenParamName !== undefined) return { plan: { kind: "string-out", lenParamName } };
+
     return { reason: "unsupported-shape" };
 };
 
@@ -155,22 +159,26 @@ const planScalarParam = (
     if (parsed.pointers === 0) return { plan: { kind: "scalar", scalar } };
     if (parsed.pointers === 1 && parsed.constData) return { plan: { kind: "array-in", scalar } };
     if (parsed.pointers === 1) return planPointerOut(command, param, scalar, policy);
+
     return { reason: "unsupported-shape" };
 };
 
 const planVoidParam = (parsed: ParsedCType): ParamOutcome => {
     if (parsed.pointers === 1) return { plan: { kind: "buffer" } };
+
     return { reason: "unsupported-shape" };
 };
 
 const planBooleanParam = (parsed: ParsedCType): ParamOutcome => {
     if (parsed.pointers === 0) return { plan: { kind: "boolean" } };
+
     return { reason: "unsupported-shape" };
 };
 
 const planCharOrBoolean = (command: GlCommand, param: GlParam, parsed: ParsedCType): ParamOutcome | undefined => {
     if (parsed.base === GL_CHAR || parsed.base === "GLcharARB") return planCharParam(command, param, parsed);
     if (parsed.base === GL_BOOLEAN) return planBooleanParam(parsed);
+
     return undefined;
 };
 
@@ -178,6 +186,7 @@ const planByBase = (command: GlCommand, param: GlParam, parsed: ParsedCType, pol
     const { base, pointers } = parsed;
     if (base === GL_SYNC && pointers === 0) return { plan: { kind: "sync" } };
     if (base === "void") return planVoidParam(parsed);
+
     return planCharOrBoolean(command, param, parsed) ?? planScalarParam(command, param, parsed, policy);
 };
 
@@ -202,12 +211,14 @@ const planScalarReturn = (base: string): ReturnPlan | undefined => {
     if (base === GL_BOOLEAN) return { kind: "boolean" };
     const scalar = GL_SCALARS.get(base);
     if (scalar !== undefined) return { kind: "scalar", scalar };
+
     return undefined;
 };
 
 const planPointerReturn = (base: string): ReturnPlan | undefined => {
     if (base === "void") return { kind: "opaque-pointer" };
     if (base === "GLubyte" || base === GL_CHAR) return { kind: "string" };
+
     return undefined;
 };
 

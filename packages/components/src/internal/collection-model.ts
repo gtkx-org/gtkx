@@ -47,6 +47,7 @@ const hasChildren = (item: Item): boolean => item.children !== undefined && item
 
 const collectionModeOf = (data: CollectionData): CollectionMode => {
     if (data.sections !== undefined) return "sections";
+
     return (data.items ?? []).some((item) => hasChildren(item)) ? "tree" : "flat";
 };
 
@@ -64,6 +65,7 @@ const refreshDirty = (state: ModelState, store: Gio.ListStore, order: GObject.Ob
 const syncStore = (state: ModelState, store: Gio.ListStore, order: GObject.Object[], next: GObject.Object[]): void => {
     if (sameOrder(order, next)) {
         refreshDirty(state, store, next);
+
         return;
     }
 
@@ -88,6 +90,7 @@ const entryFor = (state: ModelState, item: Item): CollectionEntry => {
 
     state.entries.set(item.id, entry);
     state.holders.set(holder, entry);
+
     return entry;
 };
 
@@ -98,6 +101,7 @@ const syncLevel = (state: ModelState, items: Item[], sectionValue: unknown): GOb
         entry.sectionValue = sectionValue;
         state.seen.add(item.id);
         if (state.mode === "tree") syncChildren(state, entry, item.children ?? []);
+
         return entry.holder;
     });
 
@@ -128,6 +132,7 @@ const syncSections = (state: ModelState, next: Section[]): void => {
         }
 
         syncStore(state, record.store, record.order, syncLevel(state, section.data, section.value));
+
         return record.store;
     });
 
@@ -156,6 +161,7 @@ const idAt = (state: ModelState, model: Gio.ListModel, position: number): string
     const item = model.getItem(position);
     if (item === null) return null;
     const holder = item instanceof Gtk.TreeListRow ? item.getItem() : item;
+
     return holder === null ? null : (state.holders.get(holder)?.id ?? null);
 };
 
@@ -176,16 +182,19 @@ const positionsOfIds = (state: ModelState, model: Gio.ListModel, ids: string[]):
 const childModelOf = (state: ModelState, holder: GObject.Object): Gio.ListStore | null => {
     const entry = state.holders.get(holder);
     if (entry === undefined || !hasChildren(entry.item)) return null;
+
     return entry.childStore;
 };
 
 const presentedModel = (state: ModelState): { model: Gio.ListModel; treeModel: Gtk.TreeListModel | null } => {
     if (state.mode === "tree") {
         const treeModel = Gtk.TreeListModel.new(state.root, false, false, (holder) => childModelOf(state, holder));
+
         return { model: treeModel, treeModel };
     }
 
     if (state.mode === "sections") return { model: Gtk.FlattenListModel.new(state.root), treeModel: null };
+
     return { model: state.root, treeModel: null };
 };
 

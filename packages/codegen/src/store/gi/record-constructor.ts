@@ -35,6 +35,7 @@ const renderRecordConstructorPropsInterface = (
 
 const renderOpaqueConstructor = (className: string, superCall: string[]): string => {
     const message = sourceStringLiteral(`Cannot construct ${className}: opaque boxed type with no known layout`);
+
     return renderBlock("constructor()", [...superCall, `throw new globalThis.Error(${message});`].join("\n"));
 };
 

@@ -25,6 +25,7 @@ const relaxParameters = (parameters: GirParameter[], names: string[]): void => {
 const relaxMissingNullable = (fn: GirFunction): GirFunction => {
     const names = fn.cIdentifier === undefined ? undefined : PARAMETERS_MISSING_NULLABLE_ANNOTATION.get(fn.cIdentifier);
     if (names !== undefined) relaxParameters(fn.parameters, names);
+
     return fn;
 };
 

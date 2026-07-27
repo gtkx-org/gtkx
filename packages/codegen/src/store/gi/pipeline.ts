@@ -27,6 +27,7 @@ const generateNamespaceModule = (namespace: GirNamespace, library: Library): str
     context.addGObjectBootstrapImports();
     generateNamespaceTypes(context, namespace);
     generateNamespaceMembers(context, namespace);
+
     return context.module.toSource();
 };
 
@@ -97,6 +98,7 @@ const topologicalClassOrder = (classes: GirClass[], namespaceName: string): GirC
     };
 
     for (const klass of classes) visitClass(state, klass);
+
     return state.result;
 };
 
@@ -108,6 +110,7 @@ const sameNamespaceParent = (
     if (klass.parent === undefined) return undefined;
     const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
     if (parentNamespace !== undefined && parentNamespace !== namespaceName) return undefined;
+
     return byLocalName.get(typeName);
 };
 

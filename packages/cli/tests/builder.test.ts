@@ -21,6 +21,7 @@ const { viteBuildMock } = vi.hoisted(() => ({
 
 vi.mock("vite", async (importActual) => {
     const actual = await importActual<typeof import("vite")>();
+
     return { ...actual, build: viteBuildMock };
 });
 
@@ -29,6 +30,7 @@ import { build } from "../src/builder.js";
 function getViteConfig(): ViteConfigSnapshot {
     const call = viteBuildMock.mock.calls[0];
     if (!call) throw new Error("vite.build was not invoked");
+
     return call[0];
 }
 

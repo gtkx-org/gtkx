@@ -173,6 +173,7 @@ const buildValue = (descriptor: AccessibleDescriptor, jsValue: unknown): GObject
         }
         case "list": {
             const list = Gtk.AccessibleList.newFromList(jsValue as Gtk.Widget[]);
+
             return GObject.buildValue(Gtk.AccessibleList.prototype._type_, (v) => v.setBoxed(list));
         }
     }

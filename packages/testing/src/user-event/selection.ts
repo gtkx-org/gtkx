@@ -14,6 +14,7 @@ const isSelectable = (widget: Gtk.Widget): boolean => {
 const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: number[], exclusive: boolean): void => {
     if (positions.length === 0) {
         selectionModel.unselectRange(0, selectionModel.getNItems());
+
         return;
     }
 
@@ -21,6 +22,7 @@ const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: numb
 
     if (exclusive && first !== undefined && positions.length === 1) {
         selectionModel.selectItem(first, true);
+
         return;
     }
 
@@ -114,6 +116,7 @@ const runSelectionEvent = (
 
         if (isListView(widget)) {
             inListView(widget, valueArray);
+
             return;
         }
 

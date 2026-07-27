@@ -45,12 +45,14 @@ const variableNames = (declaration: TSESTree.VariableDeclaration): string[] =>
 
 const namedDeclarationName = (declaration: Exclude<Declaration, TSESTree.VariableDeclaration>): string | undefined => {
     const id: TSESTree.Node | null = declaration.id;
+
     return id === null ? undefined : identifierName(id);
 };
 
 const namesOf = (declaration: Declaration): string[] => {
     if (declaration.type === AST_NODE_TYPES.VariableDeclaration) return variableNames(declaration);
     const name = namedDeclarationName(declaration);
+
     return name === undefined ? [] : [name];
 };
 

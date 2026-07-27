@@ -21,6 +21,7 @@ const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", ".
 const overrideFiles = (directory: string): string[] => {
     const dir = join(OVERRIDES_ROOT, directory);
     if (!existsSync(dir)) return [];
+
     return readdirSync(dir).filter((name) => name.endsWith(".ejs") && name !== "index.ts.ejs");
 };
 

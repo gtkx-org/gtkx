@@ -100,6 +100,7 @@ const collectSignals = (sources: GirClass[]): [string, string][] => {
     const seen: Set<string> = new Set();
     const signals: [string, string][] = [];
     for (const source of sources) collectSignalsFromSource(source, seen, signals);
+
     return signals;
 };
 
@@ -118,6 +119,7 @@ const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollect
 const collectPropNames = (sources: GirClass[], keep: (property: GirProperty) => boolean): string[] => {
     const collector: PropNameCollector = { keep, seen: new Set<string>(), names: [] };
     for (const source of sources) collectPropNamesFromSource(source, collector);
+
     return collector.names;
 };
 
@@ -129,6 +131,7 @@ const collectConstructable = (sources: GirClass[]): string[] => collectPropNames
 const renderObjectLiteral = (entries: [string, string][], renderValue: (value: string) => string): string => {
     if (entries.length === 0) return "{}";
     const lines = entries.map(([key, value]) => `        ${sourceStringLiteral(key)}: ${renderValue(value)}`);
+
     return `{\n${lines.join(",\n")}\n    }`;
 };
 
@@ -147,6 +150,7 @@ const collectDefaultsFromClass = (klass: GirClass, collector: DefaultPropsCollec
 const collectDefaultProps = (library: Library, sources: GirClass[]): [string, string][] => {
     const collector: DefaultPropsCollector = { library, seen: new Set<string>(), defaults: [] };
     for (const klass of sources) collectDefaultsFromClass(klass, collector);
+
     return collector.defaults;
 };
 
@@ -165,6 +169,7 @@ const defaultPropEntry = (
     seen.add(jsName);
     const literal = renderDefaultLiteral(library, klass, property);
     if (literal === undefined) return undefined;
+
     return [jsName, literal];
 };
 
@@ -173,11 +178,13 @@ const setterRejectsNull = (library: Library, klass: GirClass, property: GirPrope
     const setter = klass.methods.find((method) => method.name === property.setter);
     if (setter === undefined) return false;
     const [value] = inputParameters(library, setter);
+
     return value !== undefined && !value.parameter.nullable && !value.parameter.optional;
 };
 
 const renderDefaultLiteral = (library: Library, klass: GirClass, property: GirProperty): string | undefined => {
     if (property.defaultValue === "NULL" && setterRejectsNull(library, klass, property)) return undefined;
+
     return resolveDefaultLiteral(library, property.type, property.defaultValue);
 };
 
@@ -191,6 +198,7 @@ const resolveDefaultLiteral = (
     if (ref === undefined) return undefined;
     const resolved = library.typeOf(ref);
     if (resolved === undefined) return undefined;
+
     return resolveTypeDefaultLiteral(library, resolved, raw);
 };
 
@@ -198,17 +206,20 @@ const resolveTypeDefaultLiteral = (library: Library, resolved: GirType, raw: str
     if (resolved.kind === "primitive") return primitiveDefaultLiteral(resolved.category, raw);
     if (resolved.kind === "enum") return enumDefaultLiteral(resolved.value, raw);
     if (resolved.kind === "alias") return resolveDefaultLiteral(library, resolved.value.target, raw);
+
     return undefined;
 };
 
 const booleanDefaultLiteral = (raw: string): string | undefined => {
     if (raw === "TRUE") return "true";
     if (raw === "FALSE") return "false";
+
     return undefined;
 };
 
 const integerDefaultLiteral = (raw: string): string | undefined => {
     const trimmed = raw.trim();
+
     return INTEGER_PATTERN.test(trimmed) ? trimmed : undefined;
 };
 
@@ -216,6 +227,7 @@ const floatDefaultLiteral = (raw: string): string | undefined => {
     const trimmed = raw.trim();
     if (!FLOAT_PATTERN.test(trimmed)) return undefined;
     const value = Number(trimmed);
+
     return Number.isFinite(value) ? String(value) : undefined;
 };
 
@@ -252,6 +264,7 @@ const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined 
     const trimmed = raw.trim();
     if (INTEGER_PATTERN.test(trimmed)) return trimmed;
     const member = enumType.members.find((entry) => entry.cIdentifier === trimmed || entry.name === trimmed);
+
     return member?.value;
 };
 

@@ -17,6 +17,7 @@ const runGiCodegen = (library: Library, gi: GiStoreOptions, libraries: string[])
     }));
 
     writeGiStore(gi, namespaces, computeGiFingerprint(library.girFiles, [...libraries]));
+
     return library.namespaces.size;
 };
 

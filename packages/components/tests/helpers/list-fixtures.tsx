@@ -42,6 +42,7 @@ const collectExpandableIds = <T,>(list: Item<T>[], ids: string[]): void => {
 const allExpandableIds = <T,>(items: Item<T>[]): string[] => {
     const ids: string[] = [];
     collectExpandableIds(items, ids);
+
     return ids;
 };
 

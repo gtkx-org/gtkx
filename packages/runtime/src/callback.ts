@@ -26,11 +26,13 @@ type CallbackPlan = {
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
     if (descriptor.kind === "boxed" && descriptor.typeName === "GValue") {
         copyValue(getHandle(target), getHandle(source));
+
         return;
     }
 
     if ((descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.size !== undefined) {
         copy(getHandle(target), getHandle(source), descriptor.size);
+
         return;
     }
 
@@ -58,6 +60,7 @@ const collectCallbackArg = (
 ): void => {
     if (descriptor?.kind === "ref") {
         collectRefArg(descriptor, wrappedValue, inputs, outParams);
+
         return;
     }
 
@@ -107,12 +110,14 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     if (outParams.length === 0) return toNative(returnDescriptor, result);
     const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", outParams.length);
     writeOutParams(outParams, outValues);
+
     return toNative(returnDescriptor, primary);
 };
 
 const effectiveTypesOf = (spec: CallbackSpec): Descriptor[] => {
     const { userDataIndex } = spec;
     if (userDataIndex === undefined) return spec.argDescriptors;
+
     return spec.argDescriptors.filter((_, i) => i !== userDataIndex);
 };
 

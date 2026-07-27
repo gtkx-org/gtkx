@@ -22,6 +22,7 @@ const callResolveId = async (
     source: string,
 ): Promise<string | undefined | null> => {
     const plugin = gtkxCss();
+
     return (plugin.resolveId as ResolveIdHook).call({ resolve }, source);
 };
 

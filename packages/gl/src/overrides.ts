@@ -103,6 +103,7 @@ function getProgramPipelineInfoLog(pipeline: GLuint): string {
 function debugMessageCallback(callback: DebugMessageCallback | null): void {
     if (callback === null) {
         glDebugMessageCallbackBinding(null);
+
         return;
     }
 
@@ -118,6 +119,7 @@ function debugMessageCallback(callback: DebugMessageCallback | null): void {
 const settledSyncStatus = (status: SyncStatus): SyncStatus | null => {
     if (status === ALREADY_SIGNALED || status === CONDITION_SATISFIED) return status;
     if (status !== TIMEOUT_EXPIRED) return status;
+
     return null;
 };
 

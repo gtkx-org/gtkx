@@ -51,6 +51,7 @@ const useMissingKey = () =>
 
 const renderCountSetting = async () => {
     resetSettingsKey(SCHEMA_ID, "count");
+
     return renderHook(() => useSetting(TYPED_SCHEMA, "count"));
 };
 

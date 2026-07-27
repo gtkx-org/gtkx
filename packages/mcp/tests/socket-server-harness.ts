@@ -57,6 +57,7 @@ const waitForConnection = (registry: ConnectionRegistry): Promise<ProtocolConnec
             const connection = original(socket);
             registry.register = original;
             resolve(connection);
+
             return connection;
         };
     });
@@ -86,6 +87,7 @@ function setupSocketServer(): void {
 
 const startWithClient = async (): Promise<net.Socket> => {
     await socketCtx.server.start();
+
     return connectClient(socketCtx.socketPath);
 };
 
@@ -106,6 +108,7 @@ const collectFirstFrame = async <T>(client: net.Socket, act: () => void): Promis
     client.destroy();
     await collector.promise;
     expect(collector.lines.length).toBeGreaterThan(0);
+
     return JSON.parse(collector.lines[0] as string) as T;
 };
 

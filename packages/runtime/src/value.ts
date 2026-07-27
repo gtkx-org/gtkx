@@ -131,6 +131,7 @@ const dupBoxedBind = (name: string) =>
 
 const boxedValueType = (type: bigint): ValueType => {
     const name = getBoxedTypeName(type);
+
     return { set: setBoxedBind(name), get: dupBoxedBind(name) };
 };
 
@@ -169,6 +170,7 @@ function copyValue(dest: ExternalObject<Handle>, src: ExternalObject<Handle>): v
 const newTypedValue = (type: bigint): ExternalObject<Handle> => {
     const value = newValue();
     gValueInit(value, type);
+
     return value;
 };
 
@@ -180,6 +182,7 @@ const newBoxedValue = (
     const type = resolveDescriptorType(descriptor);
     const value = newTypedValue(type);
     resolveSetBind(getBoxedTypeName(type))(value, getHandle(boxed));
+
     return value;
 };
 
@@ -192,6 +195,7 @@ function getBoxedValue(value: ExternalObject<Handle>): object | null {
     if (typeFundamental(type) !== TYPE_BOXED) return null;
     const cls = getWrapperClass(type);
     const boxed = dupBoxedBind(getBoxedTypeName(type))(value) as ExternalObject<Handle> | null;
+
     return wrapHandle(boxed, cls);
 }
 
@@ -277,11 +281,13 @@ const resolveValueGetter = (fundamental: bigint): ValueGetter | undefined =>
 const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
     const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
     if (!isHandleKind) return toNative(descriptor, value);
+
     return value == null ? null : getHandle(value);
 };
 
 const resolveValueGType = (descriptor: Descriptor, nativeValue: unknown): bigint => {
     if (descriptor.kind !== "object") return resolveDescriptorType(descriptor);
+
     return nativeValue == null ? TYPE_OBJECT : getType(nativeValue as ExternalObject<Handle>);
 };
 
@@ -290,6 +296,7 @@ function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle>
     const type = resolveValueGType(descriptor, nativeValue);
     const gValue = newTypedValue(type);
     resolveValueType(descriptor).set(gValue, nativeValue);
+
     return gValue;
 }
 
@@ -318,6 +325,7 @@ function outValueForDescriptor(
     if (initial !== undefined) write(storage, descriptor, 0, initial);
     const value = newTypedValue(TYPE_POINTER);
     pointerValueType.set(value, storage);
+
     return { value, read: () => read(storage, descriptor, 0) };
 }
 

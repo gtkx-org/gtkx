@@ -114,6 +114,7 @@ const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, text, par
 const nodeObject = (node: PlaceableNode): GObject.Object | null => {
     if (node.kind === LAZY_KIND) {
         const [child] = node.children;
+
         return child === undefined ? null : nodeObject(child);
     }
 

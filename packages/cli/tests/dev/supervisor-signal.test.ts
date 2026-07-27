@@ -82,6 +82,7 @@ const startHarness = (): Harness => {
 
     const childPid = (): number | undefined => {
         const match = /CHILD_PID (\d+)/.exec(buffer);
+
         return match?.[1] ? Number(match[1]) : undefined;
     };
 
@@ -97,6 +98,7 @@ const startHarness = (): Harness => {
 const killIfAlive = (pid: number): boolean => {
     try {
         process.kill(pid, "SIGKILL");
+
         return true;
     } catch {
         return false;

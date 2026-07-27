@@ -146,6 +146,7 @@ const restoreEnv = (snapshot: EnvSnapshot): void => {
 const spawnWithParentDeathSignal = (command: string, args: string[], stdio: StdioOptions): ChildProcess => {
     const child = spawn(resolveExecutable("setpriv"), ["--pdeathsig", "SIGKILL", command, ...args], { stdio });
     child.unref();
+
     return child;
 };
 
@@ -166,6 +167,7 @@ const readHeadlessOptions = (params: URLSearchParams): Partial<HeadlessOptions> 
     if (size !== null) options.size = size;
     const compositor = params.get("compositor");
     if (compositor !== null && isCompositorId(compositor)) options.compositor = compositor;
+
     return options;
 };
 
@@ -173,6 +175,7 @@ const startCompositor = (runtimeDir: string, options: HeadlessOptions, env: EnvS
     const descriptor = compositorRegistry[options.compositor];
     const [width = "", height = ""] = options.size.split("x", 2);
     applyEnv(env, descriptor.env);
+
     return { child: descriptor.start(runtimeDir, width, height), socket: descriptor.socket };
 };
 
@@ -385,6 +388,7 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
 
         const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "weston.stderr.log"));
+
         return makeTeardown(compositor.child, capturedStderr, stopNotifications, removeRuntime);
     } catch (error) {
         for (const child of spawned) child.kill("SIGKILL");

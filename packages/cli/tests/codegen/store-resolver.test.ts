@@ -21,6 +21,7 @@ describe("resolveCodegenStore", () => {
         mkdirSync(pkgDir, { recursive: true });
         writeFileSync(join(pkgDir, "package.json"), JSON.stringify({ name, version, main: "./index.js" }));
         writeFileSync(join(pkgDir, "index.js"), "");
+
         return pkgDir;
     }
 

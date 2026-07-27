@@ -8,6 +8,7 @@ const testing: WidgetFormatting = {
     formatRole: (role) => ROLE_NAMES[role] ?? String(role),
     getWidgetNodeText: (widget) => {
         const probe = widget as { getLabel?: () => string | null; getText?: () => string | null };
+
         return probe.getLabel?.() ?? probe.getText?.() ?? null;
     },
 };

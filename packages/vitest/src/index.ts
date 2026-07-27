@@ -16,6 +16,7 @@ const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 const workerPreloadUrl = (): URL => {
     const sibling = join(import.meta.dirname, "worker-preload.js");
     const path = existsSync(sibling) ? sibling : join(import.meta.dirname, "..", "dist", "worker-preload.js");
+
     return pathToFileURL(path);
 };
 
@@ -31,6 +32,7 @@ const headlessPreloadSpecifier = (options: GtkxPluginOptions): string => {
 
 const workerSetupPath = (): string => {
     const sibling = join(import.meta.dirname, "worker-setup.js");
+
     return existsSync(sibling) ? sibling : join(import.meta.dirname, "..", "dist", "worker-setup.js");
 };
 

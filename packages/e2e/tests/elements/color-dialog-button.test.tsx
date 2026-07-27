@@ -10,6 +10,7 @@ const renderDialogSlot = async (dialog: ReactElement): Promise<Gtk.ColorDialog |
     const ref = createRef<Gtk.ColorDialogButton>();
     await render(<GtkColorDialogButton ref={ref} dialog={dialog} />);
     expect(ref.current).not.toBeNull();
+
     return ref.current?.getDialog() ?? null;
 };
 

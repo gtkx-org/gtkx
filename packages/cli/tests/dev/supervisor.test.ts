@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } fr
 
 vi.mock("node:fs", async (importActual) => {
     const actual = await importActual<typeof import("node:fs")>();
+
     return { ...actual, watch: vi.fn() };
 });
 
@@ -35,6 +36,7 @@ function createFakeChild(): FakeChild {
         exitCode: null as number | null,
         kill: vi.fn<(signal?: number | NodeJS.Signals) => boolean>(() => {
             child.killed = true;
+
             return true;
         }),
     });
@@ -51,6 +53,7 @@ const superviseUntilExit = async (
 ): Promise<boolean> => {
     try {
         await runDevSupervisor(entry, TEST_CWD, watch, forkMock);
+
         return true;
     } catch {
         return false;
@@ -64,6 +67,7 @@ const startWithForkMock = (entry: string, watch?: Parameters<typeof runDevSuperv
 function queueChild(): FakeChild {
     const child = createFakeChild();
     forkMock.mockReturnValueOnce(child);
+
     return child;
 }
 
@@ -82,6 +86,7 @@ let fire: () => void = () => {};
 function captureConfigWatcher(): { fireConfigChange: () => void } {
     watchMock.mockImplementationOnce((_path, listener) => {
         fire = () => listener("change", "gtkx.config.ts");
+
         return createFakeWatcher();
     });
 
@@ -137,6 +142,7 @@ const startSupervisor = async (entry = "/abs/src/main.tsx"): Promise<FakeChild> 
     const child = queueChild();
     startWithForkMock(entry);
     await Promise.resolve();
+
     return child;
 };
 
@@ -313,6 +319,7 @@ const startWithWatch = async (
     });
 
     await Promise.resolve();
+
     return { child, fireConfigChange };
 };
 

@@ -83,6 +83,7 @@ const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName
 const transferOwnership = (transfer: ParameterTransfer): Ownership => {
     if (transfer === "full") return "full";
     if (transfer === "container") return "full";
+
     return "borrowed";
 };
 
@@ -92,6 +93,7 @@ const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =
 const isVoidRef = (library: Library, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return true;
     const type = library.typeOf(ref);
+
     return type?.kind === "primitive" && type.category === "void";
 };
 
@@ -144,6 +146,7 @@ const renderDescriptor = (
             const elementTransfer = deriveElementTransfer(transfer);
             const key = renderDescriptor(context, type.key, elementTransfer, { argIndexOffset });
             const value = renderDescriptor(context, type.value, elementTransfer, { argIndexOffset });
+
             return tHashTable(key, value, ownership);
         }
     }
@@ -153,6 +156,7 @@ const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): G
     if (ref === undefined) return undefined;
     const type = context.library.typeOf(ref);
     if (type?.kind !== "callback") return undefined;
+
     return type.value;
 };
 
@@ -176,6 +180,7 @@ const isScalarType = (library: Library, type: GirType): boolean => {
 const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
     if (ref === undefined) return false;
     const type = library.typeOf(ref);
+
     return type !== undefined && isScalarType(library, type);
 };
 
@@ -215,6 +220,7 @@ const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number
     if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
     if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
     if (owningParameter.scope !== undefined) options.push(`scope: ${sourceStringLiteral(owningParameter.scope)}`);
+
     return options.length > 0 ? `{ ${options.join(", ")} }` : undefined;
 };
 
@@ -238,6 +244,7 @@ const renderCallbackType = (
         : renderDescriptor(context, returnRef, callback.returnValue.transferOwnership);
 
     const optionsArg = callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters));
+
     return tCallback(argTypes, returnType, optionsArg);
 };
 
@@ -246,6 +253,7 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership):
     if (category === "string") return tString(ownership);
     if (category === "pointer") return tUint64;
     if (category === "gtype") return tGtype;
+
     return tScalar(category satisfies ScalarDescriptorName);
 };
 
@@ -306,6 +314,7 @@ const walkFundamental = (
     if (fundamental !== undefined) return fundamental;
     if (current.value.parent === undefined) return undefined;
     const parent = context.library.resolveType(current.namespace.name, current.value.parent);
+
     return walkFundamental(context, parent, seen);
 };
 
@@ -319,6 +328,7 @@ const classSelfDescriptor = (
     type: Extract<EntityType, { kind: "class" | "interface" }>,
 ): string => {
     const ancestor = fundamentalAncestor(context, type);
+
     return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
 };
 
@@ -329,6 +339,7 @@ const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): s
     if (type === undefined) return tObject("borrowed");
     if (isClassOrInterface(type)) return classSelfDescriptor(context, type);
     if (type.kind === "record") return recordExpression(context, type, transferOwnership(instance.transferOwnership));
+
     return tObject("borrowed");
 };
 
@@ -340,6 +351,7 @@ const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; u
 const recordNeedsFallbackClass = (record: ResolvedRecord): boolean => {
     const { refFunc, unrefFunc } = recordRefPair(record);
     if (refFunc !== undefined && unrefFunc !== undefined) return record.glibTypeName === undefined;
+
     return record.glibGetType === undefined;
 };
 
@@ -430,6 +442,7 @@ const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string
     const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
     if (getter === undefined || getter === "") return rawEnumDescriptor(signed);
     const lib = resolved.namespace.sharedLibrary ?? "";
+
     return resolved.value.kind === "bitfield" ? tFlags(lib, getter, signed) : tEnum(lib, getter, signed);
 };
 
@@ -482,6 +495,7 @@ const arrayExpression = (
 const recordInlineSize = (context: ModuleContext, record: ResolvedRecord): number | undefined => {
     if (record.opaque || record.disguised || record.fields.length === 0) return undefined;
     const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+
     return size > 0 ? size : undefined;
 };
 
@@ -494,6 +508,7 @@ const inlineElementSize = (
     if (elementCType?.includes("*")) return undefined;
     const type = context.library.typeOf(element);
     if (type?.kind !== "record") return undefined;
+
     return recordInlineSize(context, type.value);
 };
 

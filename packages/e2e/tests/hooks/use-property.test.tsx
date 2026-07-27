@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 function deref<T>(ref: { current: T | null }): T {
     const value = ref.current;
     if (value === null) throw new Error("ref is null");
+
     return value;
 }
 

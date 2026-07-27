@@ -11,6 +11,7 @@ const captureStream = (isTTY?: boolean): Capture => {
         written,
         write(chunk: string) {
             written.push(chunk);
+
             return true;
         },
     };

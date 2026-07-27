@@ -24,6 +24,7 @@ const deleteAccessibleMetadata = (widget: object, name: string): void => {
  */
 const getAccessibleMetadata = (widget: object, name: string): unknown => {
     const value = metadataStore.get(widget)?.get(name);
+
     return value === undefined ? null : value;
 };
 

@@ -32,6 +32,7 @@ const compileShader = (type: number, source: string): number => {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, 1, [source], [-1]);
     gl.compileShader(shader);
+
     return shader;
 };
 
@@ -44,6 +45,7 @@ const compileShaderPair = (vertSrc: string, fragSrc: string): number => {
     gl.linkProgram(program);
     gl.deleteShader(vertShader);
     gl.deleteShader(fragShader);
+
     return program;
 };
 
@@ -55,6 +57,7 @@ const setUpTriangleAttribArray = (): { vao: number; vbo: number } => {
     gl.bufferData(gl.ARRAY_BUFFER, TRIANGLE_POSITIONS.byteLength, TRIANGLE_POSITIONS, gl.STATIC_DRAW);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(0);
+
     return { vao, vbo };
 };
 
@@ -72,6 +75,7 @@ beforeAll(async () => {
 
         glArea.on("render", () => {
             resolve(true);
+
             return true;
         });
 

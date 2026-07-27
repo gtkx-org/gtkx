@@ -41,6 +41,7 @@ const computeRecordFieldSlots = (
 
 const bitMask = (width: number): number => {
     if (width >= 32) return 0xFF_FF_FF_FF;
+
     return (1 << width) - 1;
 };
 
@@ -101,6 +102,7 @@ const arrayLayout = (
 ): FieldLayout => {
     if (ref.fixedSize === undefined) return POINTER_LAYOUT;
     const elementLayout = layoutOfType(context, ref.element, ref.elementCType, visited);
+
     return { size: elementLayout.size * ref.fixedSize, align: elementLayout.align };
 };
 
@@ -125,6 +127,7 @@ const layoutOfRecord = (
     const align = Math.max(1, ...inputs.map((input) => input.layout.align));
     const layout: FieldLayout = { size, align };
     recordLayoutCache.set(key, layout);
+
     return layout;
 };
 
@@ -135,6 +138,7 @@ const resolveAliasLayout = (
 ): FieldLayout => {
     const ref = resolved.value.target;
     if (ref === undefined) return POINTER_LAYOUT;
+
     return layoutOfType(context, ref, resolved.value.targetCType, visited);
 };
 

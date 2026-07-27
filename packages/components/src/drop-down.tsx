@@ -50,6 +50,7 @@ const itemContent = (record: CellRecord, model: CollectionModel, props: DropDown
     if (args === null) return null;
     const listRenderer = record.slot === "list" ? (props.renderListItem ?? props.renderItem) : null;
     const render = (listRenderer ?? props.renderItem);
+
     return render == null ? defaultItemContent(args.item) : render(args);
 };
 
@@ -59,6 +60,7 @@ const resolvePosition = (
     selectedId: string | null | undefined,
 ): number => {
     const requested = selectedId == null ? -1 : model.positionOf(selectedId);
+
     return requested >= 0 ? requested : widget.getSelected();
 };
 
@@ -125,6 +127,7 @@ const useDropDownSelection = (options: SelectionOptions): void => {
 
         if (effectiveId === null) {
             known.current = null;
+
             return;
         }
 

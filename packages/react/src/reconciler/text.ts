@@ -21,6 +21,7 @@ const charLength = (text: string): number => text[Symbol.iterator]().toArray().l
 const contentTextLength = (node: ContentChild): number => {
     if (node.kind === TEXT_KIND) return charLength(node.text);
     if (node.contentKind === "tag") return node.content.reduce((sum, child) => sum + contentTextLength(child), 0);
+
     return node.contentKind === "anchor" ? 1 : 0;
 };
 
@@ -30,6 +31,7 @@ const isTagElement = (node: ContentChild): node is ElementNode =>
 const stepOffset = (node: ContentChild, target: TextNode, offset: number): OffsetResult => {
     if (node === target) return { found: true, offset };
     if (isTagElement(node)) return offsetOf(node.content, target, offset);
+
     return { found: false, offset: offset + contentTextLength(node) };
 };
 
@@ -228,6 +230,7 @@ const surgicalTextUpdate = (host: ElementNode, node: TextNode, oldText: string, 
     const startIter = buffer.getIterAtOffset(start);
     const endIter = buffer.getIterAtOffset(start + charLength(newText));
     applyEnclosingTags(buffer, node, startIter, endIter);
+
     return true;
 };
 

@@ -11,6 +11,7 @@ const uniqueAppId = (): string => `org.gtkx.useapplicationtest${nextAppId++}`;
 
 const Probe = () => {
     useApplication();
+
     return null;
 };
 

@@ -26,12 +26,14 @@ async function gcUntil(predicate: () => boolean, maxRounds = 100): Promise<boole
 function detachLabel(): { handle: ExternalObject<Handle>; weak: WeakRef<object> } {
     const label = new Gtk.Label();
     const handle = getHandle(label);
+
     return { handle, weak: new WeakRef(label) };
 }
 
 function appendDetachedLabel(box: Gtk.Box): { handle: ExternalObject<Handle>; weak: WeakRef<object> } {
     const label = new Gtk.Label();
     box.append(label);
+
     return { handle: getHandle(label), weak: new WeakRef(label) };
 }
 

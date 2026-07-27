@@ -17,6 +17,7 @@ type PluginHooks = {
 
 const hookOf = <K extends keyof PluginHooks>(hook: unknown, name: K): PluginHooks[K] => {
     if (typeof hook !== "function") throw new Error(`${name} must be a function hook`);
+
     return hook as PluginHooks[K];
 };
 
@@ -67,6 +68,7 @@ const enabledPlugin = async (): Promise<ReturnType<typeof gtkxReactCompiler>> =>
     }));
 
     await configOf(plugin)({});
+
     return plugin;
 };
 
@@ -82,6 +84,7 @@ const transformForProjectConfig = async (cwd: string, reactCompiler: boolean): P
     const plugin = gtkxReactCompiler();
     await configOf(plugin)({ root: cwd });
     configResolvedOf(plugin)({ root: cwd });
+
     return transformOf(plugin);
 };
 

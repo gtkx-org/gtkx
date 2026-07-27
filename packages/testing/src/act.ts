@@ -47,6 +47,7 @@ const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseLike<T>)
         const result: T | PromiseLike<T> = fn();
         if (isThenable<T>(result)) return restoreAfter(result, previousActEnvironment);
         setIsReactActEnvironment(previousActEnvironment);
+
         return Promise.resolve(result);
     } catch (error) {
         setIsReactActEnvironment(previousActEnvironment);
@@ -57,6 +58,7 @@ const runWithActEnvironment = <T>(forced: boolean, fn: () => T | PromiseLike<T>)
 function withGlobalActEnvironment(actImplementation: ActImplementation): ActImplementation {
     return <T>(callback: ActCallback<T>): PromiseLike<T> => {
         const settled = runWithActEnvironment(true, () => actImplementation(() => callback()));
+
         return Promise.resolve(settled);
     };
 }

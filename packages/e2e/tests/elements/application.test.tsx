@@ -45,6 +45,7 @@ const renderApp = async (menubar: Gio.MenuModel | null): Promise<Gtk.Application
     });
 
     if (!ref.current) throw new Error("Expected application instance");
+
     return ref.current;
 };
 

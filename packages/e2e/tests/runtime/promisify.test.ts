@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 const handle = (id: number): ExternalObject<Handle> => {
     const token: object = { id };
+
     return token as ExternalObject<Handle>;
 };
 

@@ -24,6 +24,7 @@ const createDialogComponent = (Component: ElementType): ((props: DialogComponent
         }, [dialog, parent]);
 
         const mergedRef = useMergedRef(ref, setDialog);
+
         return createPortal(<Component ref={mergedRef} {...rest} />, rootElement);
     };
 };

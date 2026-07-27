@@ -56,6 +56,7 @@ const buildEmittedReturn = (
         }
         case "scalar": {
             const alias = track(scalarAliasOrGroup(plan.scalar, returnGroup));
+
             return { tsType: alias, descriptor: plan.scalar.descriptor, expr: (call) => `${call} as ${alias}` };
         }
         case "boolean": {
@@ -97,6 +98,7 @@ const returnStatements = (call: string, returned: EmittedReturn, outs: OutArg[])
 
     if (returned.expr === undefined) {
         const tail = outValues.length === 1 ? `return ${outValues[0]};` : `return [${outValues.join(", ")}];`;
+
         return [`${call};`, tail];
     }
 
@@ -151,6 +153,7 @@ const genSingularScalars = (
     if (countPlan?.kind !== "scalar") return undefined;
     const outPlan = plan.params.at(-1);
     if (outPlan?.kind !== "ref-array-out") return undefined;
+
     return { countScalar: countPlan.scalar, outScalar: outPlan.scalar, lenParamName: outPlan.lenParamName };
 };
 
@@ -159,6 +162,7 @@ const genSingularObjectClass = (plan: CommandPlan & { ok: true }, lenParamName: 
     const outParam = plan.command.params[plan.params.length - 1];
     if (countParam === undefined || outParam === undefined) return undefined;
     if (lenParamName !== countParam.name) return undefined;
+
     return outParam.objectClass;
 };
 
@@ -167,6 +171,7 @@ const genSingularShape = (plan: CommandPlan & { ok: true }): GenSingularShape | 
     if (scalars === undefined) return undefined;
     const objectClass = genSingularObjectClass(plan, scalars.lenParamName);
     if (objectClass === undefined) return undefined;
+
     return { countScalar: scalars.countScalar, outScalar: scalars.outScalar, objectClass };
 };
 
@@ -213,6 +218,7 @@ const deleteSingularAlias = (plan: CommandPlan & { ok: true }): string | undefin
     const [countPlan, arrayPlan] = plan.params;
     if (countPlan?.kind !== "scalar") return undefined;
     if (arrayPlan?.kind !== "array-in") return undefined;
+
     return arrayPlan.scalar.tsAlias;
 };
 
@@ -220,6 +226,7 @@ const deleteSingularObjectClass = (plan: CommandPlan & { ok: true }): string | u
     const [countParam, arrayParam] = plan.command.params;
     if (countParam === undefined || arrayParam === undefined) return undefined;
     if (arrayParam.len !== countParam.name) return undefined;
+
     return arrayParam.objectClass;
 };
 
