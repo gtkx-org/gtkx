@@ -362,3 +362,46 @@ fn write_value_to_pointer_full_null_releases_previous_object() {
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before - 1);
     });
 }
+
+// `gtk_scale_new` and every other GTK widget constructor is `transfer-ownership="none"` in GIR
+// because the reference it returns is floating, so a transfer-none decode is the path a freshly
+// constructed widget actually takes, and the float it carries is left for whoever adopts it.
+fn floating_widget() -> *mut glib::gobject_ffi::GObject {
+    let widget = unsafe {
+        glib::gobject_ffi::g_object_new(
+            glib::gobject_ffi::g_initially_unowned_get_type(),
+            std::ptr::null(),
+        )
+    };
+    assert_ne!(
+        unsafe { glib::gobject_ffi::g_object_is_floating(widget) },
+        0,
+        "a freshly constructed GInitiallyUnowned starts out floating"
+    );
+    widget
+}
+
+fn decode_object<'e>(
+    env: &'e Env,
+    codec: &ObjectCodec,
+    ptr: *mut glib::gobject_ffi::GObject,
+) -> Unknown<'e> {
+    codec
+        .decode(env, &ffi::Stash::Ptr(ptr.cast::<c_void>()))
+        .expect("decoding a live object should succeed")
+}
+
+#[test]
+fn a_transfer_none_decode_of_a_sunk_object_still_takes_its_own_reference() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let widget = floating_widget();
+        unsafe { glib::gobject_ffi::g_object_ref_sink(widget) };
+        let before = unsafe { get_gobject_refcount(widget) };
+
+        let decoded = decode_object(&env, &borrowed(), widget);
+
+        assert_eq!(unsafe { get_gobject_refcount(widget) }, before + 1);
+        assert_is_object(&decoded);
+    });
+}
