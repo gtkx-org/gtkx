@@ -28,7 +28,7 @@ type PromisifyContext = {
     context: ModuleContext;
     asyncFn: GirFunction;
     closureIndices: Set<number>;
-    lengthFor: Map<number, number>;
+    lengthSources: Map<number, number>;
 };
 
 type WriteMethodBodyOptions = {
@@ -50,7 +50,7 @@ type ParamDescriptorOptions = {
 type PlanArgsContext = {
     fn: GirFunction;
     instanceOffset: number;
-    lengthFor: Map<number, number>;
+    lengthSources: Map<number, number>;
     closureIndices: Set<number>;
     folded: Set<number>;
 };
@@ -190,7 +190,7 @@ const renderPromisifiedBody = (
         context,
         asyncFn,
         closureIndices: closureAndDestroyIndices(asyncFn),
-        lengthFor: arrayLengthSources(context.library, asyncFn),
+        lengthSources: arrayLengthSources(context.library, asyncFn),
     };
 
     const leadingExpressions: string[] = [];
@@ -223,8 +223,8 @@ const promisifiedArgument = (
     index: number,
     sawOptional: boolean,
 ): string => {
-    const { context, asyncFn, lengthFor } = promisify;
-    const sourceIndex = lengthFor.get(index);
+    const { context, asyncFn, lengthSources } = promisify;
+    const sourceIndex = lengthSources.get(index);
     const source = sourceIndex === undefined ? undefined : asyncFn.parameters[sourceIndex];
 
     if (sourceIndex !== undefined && source !== undefined) {
@@ -255,7 +255,7 @@ const renderPromisifiedSignature = (
 };
 
 const isCancellable = (context: ModuleContext, parameter: GirParameter): boolean =>
-    parameter.type !== undefined && context.library.nameOf(parameter.type)?.typeName === "Cancellable";
+    parameter.type !== undefined && context.library.nameFor(parameter.type)?.typeName === "Cancellable";
 
 const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): boolean => {
     const ref = parameter.type;
@@ -264,7 +264,7 @@ const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): b
         return false;
     }
 
-    return context.library.typeOf(ref)?.kind === "callback";
+    return context.library.typeFor(ref)?.kind === "callback";
 };
 
 const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {
@@ -321,7 +321,7 @@ const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPlan[] =>
     const planContext: PlanArgsContext = {
         fn,
         instanceOffset: fn.instance === undefined ? 0 : 1,
-        lengthFor: arrayLengthSources(context.library, fn),
+        lengthSources: arrayLengthSources(context.library, fn),
         closureIndices: closureAndDestroyIndices(fn),
         folded: foldedLengthIndices(context.library, fn),
     };
@@ -346,7 +346,7 @@ const planParameter = (
     index: number,
     planContext: PlanArgsContext,
 ): CallArgPlan | undefined => {
-    const { instanceOffset, folded, closureIndices, lengthFor } = planContext;
+    const { instanceOffset, folded, closureIndices, lengthSources } = planContext;
 
     if (isSkippedPlanParameter(parameter, index, closureIndices)) {
         return undefined;
@@ -364,7 +364,7 @@ const planParameter = (
         return planInoutArgument(context, parameter, index, planContext);
     }
 
-    const sourceIndex = lengthFor.get(index);
+    const sourceIndex = lengthSources.get(index);
 
     if (sourceIndex !== undefined) {
         return planLengthArgument(context, parameter, sourceIndex, planContext);
@@ -379,8 +379,8 @@ const planInoutArgument = (
     index: number,
     planContext: PlanArgsContext,
 ): CallArgPlan => {
-    const { fn, instanceOffset, folded, lengthFor } = planContext;
-    const lengthSourceIndex = lengthFor.get(index);
+    const { fn, instanceOffset, folded, lengthSources } = planContext;
+    const lengthSourceIndex = lengthSources.get(index);
     const lengthSourceParam = lengthSourceIndex === undefined ? undefined : fn.parameters[lengthSourceIndex];
 
     const lengthSource =
@@ -429,14 +429,14 @@ const constructibleName = (
     let current = ref;
 
     while (current !== undefined) {
-        const resolved = context.library.typeOf(current);
+        const resolved = context.library.typeFor(current);
 
         if (resolved?.kind === "alias" && resolved.value.target !== undefined) {
             current = resolved.value.target;
             continue;
         }
 
-        return context.library.nameOf(current);
+        return context.library.nameFor(current);
     }
 
     return undefined;
@@ -581,7 +581,7 @@ const parameterCallExpression = (
         return handleArgument(context, name, nullable);
     }
 
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     return collectionArgument(context, type, name, nullable) ?? name;
 };

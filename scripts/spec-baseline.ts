@@ -42,7 +42,7 @@ function allAssertions(report: VitestReport): VitestAssertion[] {
     return (report.testResults ?? []).flatMap((suite) => suite.assertionResults ?? []);
 }
 
-function statusOf(status: string | undefined): Status {
+function getStatus(status: string | undefined): Status {
     return status === "passed" ? "green" : "red";
 }
 
@@ -59,7 +59,7 @@ function recordAssertion(assertion: VitestAssertion, observed: Baseline, skipped
         return;
     }
 
-    observed[name] = statusOf(assertion.status);
+    observed[name] = getStatus(assertion.status);
 }
 
 function collect(report: VitestReport): { observed: Baseline; skipped: string[] } {

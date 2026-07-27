@@ -8,9 +8,9 @@ import { renderBlock } from "../../writer/emit.js";
 import { elementPropTypeFor } from "./element-prop-imports.js";
 import {
     collectInterfacePropsClasses,
+    getGlibName,
     giNamespaceAlias,
     type GlibNamedClass,
-    glibNameOf,
     type HasContainerProps,
     interfaceHasPropsBody,
     newlyImplementedInterfaces,
@@ -101,7 +101,7 @@ const generateJsxSection = (
     );
 
     const isIntrinsicElementAncestor = (candidate: GirClass): boolean => {
-        const candidateGlib = glibNameOf(candidate);
+        const candidateGlib = getGlibName(candidate);
 
         return candidateGlib !== undefined && intrinsicElementByGlibName.has(candidateGlib);
     };
@@ -164,7 +164,7 @@ const renderInterfacePropBlocks = (
         targetNamespaceName,
         hasContainerProps,
     )) {
-        if (glibNameOf(iface.klass) === undefined) {
+        if (getGlibName(iface.klass) === undefined) {
             continue;
         }
 
@@ -199,7 +199,7 @@ const interfacePropsRef = (
     targetNamespaceName: string,
     imports: ImportsBuilder,
 ): string | undefined => {
-    const glib = glibNameOf(iface.klass);
+    const glib = getGlibName(iface.klass);
 
     if (glib === undefined) {
         return undefined;
@@ -248,7 +248,7 @@ const renderInterfacePropsBlock = (
     context: InterfaceBlockContext,
 ): { block: string; objectPropNames: string[] } => {
     const { library, imports } = context;
-    const glib = glibNameOf(iface.klass);
+    const glib = getGlibName(iface.klass);
 
     const {
         propLines,
@@ -387,7 +387,7 @@ const resolveParentPropsRef = (
         return undefined;
     }
 
-    const parentGlib = glibNameOf(resolved.value);
+    const parentGlib = getGlibName(resolved.value);
 
     if (parentGlib === undefined) {
         return undefined;

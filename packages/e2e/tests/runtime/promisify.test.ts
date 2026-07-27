@@ -20,7 +20,7 @@ const invokeCallback = (...args: unknown[]): void => {
     );
 };
 
-const rejectionOf = async (promise: Promise<unknown>): Promise<unknown> => {
+const getRejection = async (promise: Promise<unknown>): Promise<unknown> => {
     try {
         await promise;
     } catch (error) {
@@ -75,7 +75,7 @@ describe("promisify", () => {
     });
 
     it("attaches the creation call-site as the rejected error's cause", async () => {
-        const rejection = await rejectionOf(
+        const rejection = await getRejection(
             promisify(
                 invokeCallback,
                 () => {

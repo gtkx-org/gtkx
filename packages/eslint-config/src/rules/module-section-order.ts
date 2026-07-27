@@ -1,5 +1,5 @@
 import { ESLintUtils, type TSESTree } from "@typescript-eslint/utils";
-import { rankOf, type Section, sectionOf } from "./sections.js";
+import { getSection, rankFor, type Section } from "./sections.js";
 
 type MessageIds = "outOfOrder";
 type Placement = { section: Section; line: number };
@@ -35,10 +35,10 @@ const moduleSectionOrder = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
 });
 
 const blocks = (furthest: Placement | undefined, section: Section): furthest is Placement =>
-    furthest !== undefined && rankOf(section) < rankOf(furthest.section);
+    furthest !== undefined && rankFor(section) < rankFor(furthest.section);
 
 const advanced = (furthest: Placement | undefined, section: Section, line: number): Placement =>
-    furthest !== undefined && rankOf(section) <= rankOf(furthest.section)
+    furthest !== undefined && rankFor(section) <= rankFor(furthest.section)
         ? furthest
         : { section, line };
 
@@ -47,7 +47,7 @@ const misplaced = (program: TSESTree.Program): Misplacement[] => {
     let furthest: Placement | undefined;
 
     for (const statement of program.body) {
-        const section = sectionOf(statement);
+        const section = getSection(statement);
 
         if (section === undefined) {
             continue;

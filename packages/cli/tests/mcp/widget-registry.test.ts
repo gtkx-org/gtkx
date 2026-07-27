@@ -14,15 +14,15 @@ import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
 
 const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget({ type: "GtkLabel", ...overrides });
 
-describe("WidgetRegistry.idFor", () => {
+describe("WidgetRegistry.getOrCreateId", () => {
     it("assigns stable, distinct ids to distinct widgets", () => {
         const registry = new WidgetRegistry();
         const a = makeWidget();
         const b = makeWidget();
-        const idA = registry.idFor(a);
-        const idB = registry.idFor(b);
+        const idA = registry.getOrCreateId(a);
+        const idB = registry.getOrCreateId(b);
         expect(idA).not.toBe(idB);
-        expect(registry.idFor(a)).toBe(idA);
+        expect(registry.getOrCreateId(a)).toBe(idA);
     });
 });
 
@@ -33,9 +33,9 @@ describe("WidgetRegistry.register / get", () => {
         const child = makeWidget({ getFirstChild: () => grandchild });
         const root = makeWidget({ getFirstChild: () => child });
         registry.register(root);
-        const rootId = registry.idFor(root);
-        const childId = registry.idFor(child);
-        const grandId = registry.idFor(grandchild);
+        const rootId = registry.getOrCreateId(root);
+        const childId = registry.getOrCreateId(child);
+        const grandId = registry.getOrCreateId(grandchild);
         expect(registry.get(rootId)).toBe(root);
         expect(registry.get(childId)).toBe(child);
         expect(registry.get(grandId)).toBe(grandchild);
@@ -47,7 +47,7 @@ describe("WidgetRegistry.register / get", () => {
         const firstChild = makeWidget({ getNextSibling: () => sibling });
         const root = makeWidget({ getFirstChild: () => firstChild });
         registry.register(root);
-        expect(registry.get(registry.idFor(sibling))).toBe(sibling);
+        expect(registry.get(registry.getOrCreateId(sibling))).toBe(sibling);
     });
 });
 
@@ -57,11 +57,11 @@ describe("WidgetRegistry.refresh / windows", () => {
         const fresh = makeWidget();
         const registry = new WidgetRegistry();
         registry.register(stale);
-        const staleId = registry.idFor(stale);
+        const staleId = registry.getOrCreateId(stale);
         listToplevels.mockReturnValueOnce([fresh]);
         registry.refresh();
         expect(registry.get(staleId)).toBeUndefined();
-        expect(registry.get(registry.idFor(fresh))).toBe(fresh);
+        expect(registry.get(registry.getOrCreateId(fresh))).toBe(fresh);
     });
 
     it("retains the toplevel set captured by the most recent refresh", () => {

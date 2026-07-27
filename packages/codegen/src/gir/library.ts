@@ -110,7 +110,7 @@ class Library {
         return shell;
     }
 
-    private namespaceOf(nsId: number): GirNamespace {
+    private namespaceFor(nsId: number): GirNamespace {
         const namespace = this.namespaceById[nsId];
 
         if (namespace === undefined) {
@@ -120,7 +120,7 @@ class Library {
         return namespace;
     }
 
-    private typeTableOf(nsId: number): TypeTable {
+    private typeTableFor(nsId: number): TypeTable {
         const typeTable = this.typeTables[nsId];
 
         if (typeTable === undefined) {
@@ -146,7 +146,7 @@ class Library {
     }
 
     private resolveTypeId(nsId: number, name: string, type: GirType | undefined): number {
-        const typeTable = this.typeTableOf(nsId);
+        const typeTable = this.typeTableFor(nsId);
         const existing = typeTable.index.get(name);
 
         if (existing !== undefined) {
@@ -157,7 +157,7 @@ class Library {
     }
 
     private addType(nsId: number, name: string, type: GirType): void {
-        this.typeTableOf(nsId).types[this.resolveTypeId(nsId, name, type)] = type;
+        this.typeTableFor(nsId).types[this.resolveTypeId(nsId, name, type)] = type;
     }
 
     private findType(nsId: number, name: string): TypeId {
@@ -165,7 +165,7 @@ class Library {
     }
 
     private addAnonymousType(nsId: number, type: GirType): TypeId {
-        const typeTable = this.typeTableOf(nsId);
+        const typeTable = this.typeTableFor(nsId);
         const id = this.insertIntoTypeTable(typeTable, { type });
 
         return { nsId, id };
@@ -188,7 +188,7 @@ class Library {
             addAnonymousCallback: (node) =>
                 this.addAnonymousType(nsId, {
                     kind: "callback",
-                    namespace: this.namespaceOf(nsId),
+                    namespace: this.namespaceFor(nsId),
                     value: callbackFromNode(node, context),
                 }),
         };
@@ -205,7 +205,7 @@ class Library {
     }
 
     private findOrAddContainer(key: string, type: GirType): TypeId {
-        const typeTable = this.typeTableOf(INTERNAL_NS_ID);
+        const typeTable = this.typeTableFor(INTERNAL_NS_ID);
         const existing = typeTable.index.get(key);
 
         if (existing !== undefined) {
@@ -309,11 +309,11 @@ class Library {
         return this.girFilesValue;
     }
 
-    typeOf(tid: TypeId): GirType | undefined {
+    typeFor(tid: TypeId): GirType | undefined {
         return this.typeTables[tid.nsId]?.types[tid.id];
     }
 
-    nameOf(tid: TypeId): { namespaceName: string; typeName: string } | undefined {
+    nameFor(tid: TypeId): { namespaceName: string; typeName: string } | undefined {
         const typeName = this.typeTables[tid.nsId]?.names[tid.id];
         const namespaceName = this.nsNameById[tid.nsId];
 
@@ -338,13 +338,13 @@ class Library {
             return undefined;
         }
 
-        const id = this.typeTableOf(targetNsId).index.get(localName);
+        const id = this.typeTableFor(targetNsId).index.get(localName);
 
         if (id === undefined) {
             return undefined;
         }
 
-        return this.typeTableOf(targetNsId).types[id];
+        return this.typeTableFor(targetNsId).types[id];
     }
 }
 

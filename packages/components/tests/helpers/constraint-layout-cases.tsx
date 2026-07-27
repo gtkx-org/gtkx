@@ -50,10 +50,10 @@ const collectGuides = (layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide[] => {
     return out;
 };
 
-const constraintsOf = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint[] => collectConstraints(layoutFrom(boxRef));
+const getConstraints = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint[] => collectConstraints(layoutFrom(boxRef));
 
 const firstConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => {
-    const [constraint] = constraintsOf(boxRef);
+    const [constraint] = getConstraints(boxRef);
 
     if (!constraint) {
         throw new Error("expected at least one constraint");
@@ -63,7 +63,7 @@ const firstConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => {
 };
 
 const onlyConstraint = (boxRef: RefObject<Gtk.Box | null>): Gtk.Constraint => {
-    const constraints = constraintsOf(boxRef);
+    const constraints = getConstraints(boxRef);
     expect(constraints).toHaveLength(1);
     const [constraint] = constraints;
 

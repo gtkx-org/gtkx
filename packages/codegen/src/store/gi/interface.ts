@@ -15,7 +15,7 @@ import {
     renderInstanceMethodSignature,
     renderStaticHead,
 } from "./callables.js";
-import { gtypeExprFor } from "./gtype-binding.js";
+import { renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import {
     type PropertyAccessorArgs,
@@ -71,7 +71,7 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     };
 
     generateBindings(context, callables);
-    const gtypeExpr = gtypeExprFor(context, iface);
+    const gtypeExpr = renderSourceGtype(context, iface);
     context.module.appendDeclaration(renderInterfaceType(context, iface, className, callables));
     context.module.appendDeclaration(renderInterfaceClass(context, className, callables, gtypeExpr));
 

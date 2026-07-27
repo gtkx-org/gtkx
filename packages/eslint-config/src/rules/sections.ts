@@ -5,7 +5,7 @@ type Section = "imports" | "types" | "constants" | "functions" | "classes" | "si
 const ORDER: Section[] = ["imports", "types", "constants", "functions", "classes", "side effects", "exports"];
 const CONTIGUOUS: Set<Section> = new Set<Section>(["imports", "exports"]);
 
-const rankOf = (section: Section): number => ORDER.indexOf(section);
+const rankFor = (section: Section): number => ORDER.indexOf(section);
 
 const isFunctionInitializer = (node: TSESTree.Expression | null | undefined): boolean =>
     node?.type === AST_NODE_TYPES.ArrowFunctionExpression || node?.type === AST_NODE_TYPES.FunctionExpression;
@@ -20,7 +20,7 @@ const variableSection = (node: TSESTree.VariableDeclaration): Section => {
         : "constants";
 };
 
-const sectionOf = (node: TSESTree.Node): Section | undefined => {
+const getSection = (node: TSESTree.Node): Section | undefined => {
     switch (node.type) {
         case AST_NODE_TYPES.ImportDeclaration: {
             return "imports";
@@ -47,7 +47,7 @@ const sectionOf = (node: TSESTree.Node): Section | undefined => {
             return "exports";
         }
         case AST_NODE_TYPES.ExportNamedDeclaration: {
-            return node.declaration === null ? "exports" : sectionOf(node.declaration);
+            return node.declaration === null ? "exports" : getSection(node.declaration);
         }
         default: {
             return undefined;
@@ -55,4 +55,4 @@ const sectionOf = (node: TSESTree.Node): Section | undefined => {
     }
 };
 
-export { ORDER, CONTIGUOUS, rankOf, sectionOf, type Section };
+export { ORDER, CONTIGUOUS, rankFor, getSection, type Section };

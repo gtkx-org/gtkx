@@ -20,7 +20,7 @@ class WidgetRegistry {
     }
 
     register(widget: Gtk.Widget): void {
-        const id = this.idFor(widget);
+        const id = this.getOrCreateId(widget);
         this.widgetById.set(id, widget);
         let child = widget.getFirstChild();
 
@@ -30,7 +30,7 @@ class WidgetRegistry {
         }
     }
 
-    idFor(widget: Gtk.Widget): string {
+    getOrCreateId(widget: Gtk.Widget): string {
         let id = this.idByWidget.get(widget);
 
         if (!id) {

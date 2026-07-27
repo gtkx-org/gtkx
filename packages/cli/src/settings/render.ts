@@ -13,7 +13,7 @@ const FLAGS_KIND = "flags";
 const toJsStringLiteral = (value: string): string =>
     JSON.stringify(value).replaceAll("\u{2028}", String.raw`\u2028`).replaceAll("\u{2029}", String.raw`\u2029`);
 
-const exportNameFor = (schemaId: string): string => schemaId.replaceAll(".", "_");
+const getExportName = (schemaId: string): string => schemaId.replaceAll(".", "_");
 
 const runtimeKindForKey = (key: ParsedKey): string => {
     if (key.enumId !== null) {
@@ -27,7 +27,7 @@ const runtimeKindForKey = (key: ParsedKey): string => {
     return key.variantType ?? "";
 };
 
-const runtimeKeysFor = (schema: ParsedSchema): string => {
+const getRuntimeKeys = (schema: ParsedSchema): string => {
     const entries = schema.keys.map(
         (key) => `${toJsStringLiteral(key.name)}: ${toJsStringLiteral(runtimeKindForKey(key))}`,
     );
@@ -41,21 +41,21 @@ const renderRuntimeModule = (file: ParsedSchemaFile): string => {
     for (const [index, schema] of file.schemas.entries()) {
         const keysName = `keys_${index}`;
         const id = toJsStringLiteral(schema.id);
-        lines.push(`const ${keysName} = ${runtimeKeysFor(schema)};`);
+        lines.push(`const ${keysName} = ${getRuntimeKeys(schema)};`);
 
         if (schema.path === null) {
             lines.push(
-                `export const ${exportNameFor(schema.id)} = { id: ${id}, keys: ${keysName}, at: (path) => ({ id: ${id}, path, keys: ${keysName} }) };`,
+                `export const ${getExportName(schema.id)} = { id: ${id}, keys: ${keysName}, at: (path) => ({ id: ${id}, path, keys: ${keysName} }) };`,
             );
         } else {
-            lines.push(`export const ${exportNameFor(schema.id)} = { id: ${id}, path: null, keys: ${keysName} };`);
+            lines.push(`export const ${getExportName(schema.id)} = { id: ${id}, path: null, keys: ${keysName} };`);
         }
     }
 
     const first = file.schemas[0];
 
     if (first !== undefined) {
-        lines.push(`export default ${exportNameFor(first.id)};`);
+        lines.push(`export default ${getExportName(first.id)};`);
     }
 
     return lines.join("\n");
@@ -63,7 +63,7 @@ const renderRuntimeModule = (file: ParsedSchemaFile): string => {
 
 const sanitizeSummary = (summary: string): string => summary.replaceAll("*/", String.raw`*\/`);
 
-const interfaceNameFor = (schemaId: string, usedNames: Set<string>): string => {
+const allocateInterfaceName = (schemaId: string, usedNames: Set<string>): string => {
     const base = `${schemaId
         .split(/[^a-zA-Z0-9]+/)
         .filter((part) => part.length > 0)
@@ -106,7 +106,7 @@ const boundRefTypeLines = (interfaceName: string, indent: string): string[] => [
 ];
 
 const renderSchemaConst = (schema: ParsedSchema, interfaceName: string): string[] => {
-    const exportName = exportNameFor(schema.id);
+    const exportName = getExportName(schema.id);
 
     if (schema.path !== null) {
         return [
@@ -137,9 +137,9 @@ const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): strin
             lines.push("");
         }
 
-        const interfaceName = interfaceNameFor(schema.id, usedNames);
+        const interfaceName = allocateInterfaceName(schema.id, usedNames);
         lines.push(...renderKeysType(interfaceName, schema), "", ...renderSchemaConst(schema, interfaceName));
-        exportNames.push(exportNameFor(schema.id));
+        exportNames.push(getExportName(schema.id));
     }
 
     if (exportNames.length > 0) {

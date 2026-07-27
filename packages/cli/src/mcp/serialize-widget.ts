@@ -10,7 +10,7 @@ type WidgetFormatting = {
 
 const serializeWidget = (
     widget: Gtk.Widget,
-    idFor: WidgetIdResolver,
+    resolveId: WidgetIdResolver,
     testing: WidgetFormatting,
     maxDepth = Infinity,
 ): SerializedWidget => {
@@ -20,13 +20,13 @@ const serializeWidget = (
         let child = widget.getFirstChild();
 
         while (child) {
-            children.push(serializeWidget(child, idFor, testing, maxDepth - 1));
+            children.push(serializeWidget(child, resolveId, testing, maxDepth - 1));
             child = child.getNextSibling();
         }
     }
 
     return {
-        id: idFor(widget),
+        id: resolveId(widget),
         type: widget.constructor.name,
         role: testing.formatRole(widget.getAccessibleRole()),
         name: widget.getName() || null,

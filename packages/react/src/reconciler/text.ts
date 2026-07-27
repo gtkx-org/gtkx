@@ -39,13 +39,13 @@ const stepOffset = (node: ContentChild, target: TextNode, offset: number): Offse
     }
 
     if (isTagElement(node)) {
-        return offsetOf(node.content, target, offset);
+        return getOffset(node.content, target, offset);
     }
 
     return { found: false, offset: offset + contentTextLength(node) };
 };
 
-const offsetOf = (nodes: ContentChild[], target: TextNode, start: number): OffsetResult => {
+const getOffset = (nodes: ContentChild[], target: TextNode, start: number): OffsetResult => {
     let offset = start;
 
     for (const node of nodes) {
@@ -91,7 +91,7 @@ const mapElementParent = <T>(parent: ParentNode | null, map: (element: ElementNo
 
 const parentElement = (node: ElementNode): ElementNode | null => mapElementParent(node.parent, (parent) => parent);
 
-const rootHostOf = (node: ElementNode): ElementNode | null => {
+const getRootHost = (node: ElementNode): ElementNode | null => {
     let current: ElementNode | null = node;
 
     while (current !== null) {
@@ -106,14 +106,14 @@ const rootHostOf = (node: ElementNode): ElementNode | null => {
 };
 
 const markTextDirty = (host: ElementNode): void => {
-    const root = rootHostOf(host);
+    const root = getRootHost(host);
 
     if (root !== null) {
         dirtyHosts.add(root);
     }
 };
 
-const enclosingHost = (node: TextNode): ElementNode | null => mapElementParent(node.parent, rootHostOf);
+const enclosingHost = (node: TextNode): ElementNode | null => mapElementParent(node.parent, getRootHost);
 
 const addContent = (host: ElementNode, child: ContentChild, before: ContentChild | null): void => {
     const content = host.content;
@@ -310,7 +310,7 @@ const surgicalTextUpdate = (host: ElementNode, node: TextNode, oldText: string, 
         return false;
     }
 
-    const located = offsetOf(host.content, node, 0);
+    const located = getOffset(host.content, node, 0);
 
     if (!located.found) {
         return false;

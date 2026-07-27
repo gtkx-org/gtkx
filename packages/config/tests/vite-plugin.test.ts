@@ -9,7 +9,7 @@ type ResolveIdHook = (id: string, importer: string | undefined, options: { isEnt
 type LoadHook = (id: string) => unknown;
 type ConfigHook = (config: { root: string }, env: { command: "serve"; mode: string }) => unknown;
 
-const hookHandlerOf = <T>(hook: T | { handler: T } | undefined | null, name: string): T => {
+const getHookHandler = <T>(hook: T | { handler: T } | undefined | null, name: string): T => {
     if (hook === undefined || hook === null) {
         throw new Error(`expected the plugin to define the ${name} hook`);
     }
@@ -24,21 +24,21 @@ const hookHandlerOf = <T>(hook: T | { handler: T } | undefined | null, name: str
 const makeLoader = (): ConfigLoader => vi.fn(async () => resolveConfig({ applicationId: "org.gtk.Test" }));
 
 const resolveId = (plugin: Plugin, id: string): string | undefined => {
-    const hook = hookHandlerOf<ResolveIdHook>(plugin.resolveId, "resolveId");
+    const hook = getHookHandler<ResolveIdHook>(plugin.resolveId, "resolveId");
     const result = hook(id, undefined, { isEntry: false });
 
     return typeof result === "string" ? result : undefined;
 };
 
 const load = async (plugin: Plugin, id: string): Promise<string | undefined> => {
-    const hook = hookHandlerOf<LoadHook>(plugin.load, "load");
+    const hook = getHookHandler<LoadHook>(plugin.load, "load");
     const result = await hook(id);
 
     return typeof result === "string" ? result : undefined;
 };
 
 const applyConfig = async (plugin: Plugin, root: string): Promise<void> => {
-    const hook = hookHandlerOf<ConfigHook>(plugin.config, "config");
+    const hook = getHookHandler<ConfigHook>(plugin.config, "config");
     await hook({ root }, { command: "serve", mode: "development" });
 };
 

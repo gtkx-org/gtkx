@@ -52,7 +52,7 @@ const cognitiveComplexity = ESLintUtils.RuleCreator.withoutDocs<Options, Message
             }
 
             context.report({
-                node: nameNodeOf(node),
+                node: getNameNode(node),
                 messageId: "excessiveComplexity",
                 data: { complexity, max },
             });
@@ -112,7 +112,7 @@ const ownName = (node: TSESTree.Node): TSESTree.Node | undefined => {
     return undefined;
 };
 
-const nameNodeOf = (node: TSESTree.Node): TSESTree.Node => parentName(node.parent) ?? ownName(node) ?? node;
+const getNameNode = (node: TSESTree.Node): TSESTree.Node => parentName(node.parent) ?? ownName(node) ?? node;
 
 const nodesIn = (value: unknown): TSESTree.Node[] => {
     if (isNode(value)) {
@@ -134,7 +134,7 @@ const nodesIn = (value: unknown): TSESTree.Node[] => {
     return nodes;
 };
 
-const childNodesOf = (node: TSESTree.Node, keys: VisitorKeys): TSESTree.Node[] => {
+const getChildNodes = (node: TSESTree.Node, keys: VisitorKeys): TSESTree.Node[] => {
     const nodeKeys = keys[node.type] ?? [];
     const children: TSESTree.Node[] = [];
 
@@ -145,7 +145,7 @@ const childNodesOf = (node: TSESTree.Node, keys: VisitorKeys): TSESTree.Node[] =
     return children;
 };
 
-const sumOf = <T>(items: T[], score: (item: T) => number): number => {
+const getSum = <T>(items: T[], score: (item: T) => number): number => {
     let total = 0;
 
     for (const item of items) {
@@ -156,7 +156,7 @@ const sumOf = <T>(items: T[], score: (item: T) => number): number => {
 };
 
 const childrenComplexity = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): number =>
-    sumOf(childNodesOf(node, keys), (child) => complexityAt(child, nesting, keys));
+    getSum(getChildNodes(node, keys), (child) => complexityAt(child, nesting, keys));
 
 const operandComplexity = (node: TSESTree.Node, operator: string, nesting: number, keys: VisitorKeys): number => {
     if (node.type === AST_NODE_TYPES.LogicalExpression && node.operator === operator) {
@@ -234,7 +234,7 @@ const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): 
             return ternaryComplexity(node, nesting, keys);
         }
         case AST_NODE_TYPES.SwitchStatement: {
-            const cases = sumOf(node.cases, (switchCase) => complexityAt(switchCase, nesting + 1, keys));
+            const cases = getSum(node.cases, (switchCase) => complexityAt(switchCase, nesting + 1, keys));
 
             return 1 + nesting + complexityAt(node.discriminant, nesting, keys) + cases;
         }
@@ -260,7 +260,7 @@ const complexityAt = (node: TSESTree.Node, nesting: number, keys: VisitorKeys): 
         case AST_NODE_TYPES.ArrowFunctionExpression:
         case AST_NODE_TYPES.FunctionDeclaration:
         case AST_NODE_TYPES.FunctionExpression: {
-            const params = sumOf(node.params, (parameter) => complexityAt(parameter, nesting, keys));
+            const params = getSum(node.params, (parameter) => complexityAt(parameter, nesting, keys));
 
             return params + complexityAt(node.body, nesting + 1, keys);
         }

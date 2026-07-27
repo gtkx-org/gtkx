@@ -6,7 +6,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
-import { gtypeExprFor } from "./gtype-binding.js";
+import { renderSourceGtype } from "./gtype-binding.js";
 import { emitFieldWrite, isEmittableField } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 
@@ -94,7 +94,7 @@ const renderRecordConstructor = (
 const allocArgs = (context: ModuleContext, record: GirRecord, size: number): string[] => {
     const args = [String(size)];
 
-    if (gtypeExprFor(context, record) !== undefined) {
+    if (renderSourceGtype(context, record) !== undefined) {
         args.push("this._type_");
     }
 

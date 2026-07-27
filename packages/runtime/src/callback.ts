@@ -101,13 +101,13 @@ const writeOutParams = (outParams: OutParam[], outValues: unknown[]): void => {
     }
 };
 
-const thisArgOf = (receiver: CallbackReceiver, wrapped: unknown[]): unknown =>
+const getThisArg = (receiver: CallbackReceiver, wrapped: unknown[]): unknown =>
     receiver === "this" ? (wrapped[0] ?? null) : null;
 
 const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     const { effectiveTypes, returnDescriptor } = plan;
     const wrapped = effectiveTypes.map((descriptor, i) => fromNative(descriptor, rawArgs[i]));
-    const thisArg = thisArgOf(plan.receiver, wrapped);
+    const thisArg = getThisArg(plan.receiver, wrapped);
     const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, plan.start);
     const result = plan.fn.apply(thisArg, inputs);
 
@@ -121,7 +121,7 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     return toNative(returnDescriptor, primary);
 };
 
-const effectiveTypesOf = (spec: CallbackSpec): Descriptor[] => {
+const getEffectiveTypes = (spec: CallbackSpec): Descriptor[] => {
     const { userDataIndex } = spec;
 
     if (userDataIndex === undefined) {
@@ -137,7 +137,7 @@ const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): unknown
 function wrapCallback(fn: Callback, spec: CallbackSpec, receiver: CallbackReceiver): Callback {
     const plan: CallbackPlan = {
         fn,
-        effectiveTypes: effectiveTypesOf(spec),
+        effectiveTypes: getEffectiveTypes(spec),
         returnDescriptor: spec.returnDescriptor,
         start: receiver === "none" ? 0 : 1,
         receiver,

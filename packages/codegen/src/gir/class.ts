@@ -1,7 +1,7 @@
 import type { ParseContext } from "./type-id.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { type GirCallable, parseCallable } from "./parameter.js";
-import { attr, attrBool, childrenOf, docOf, GIR_CONSTRUCTOR_TAG, nameAttr, type RawNode } from "./parse.js";
+import { attr, attrBool, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, nameAttr, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
 
 type GirClass = {
@@ -28,7 +28,7 @@ type GirClass = {
 
 const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContext): GirClass => ({
     name: nameAttr(node),
-    doc: docOf(node),
+    doc: getDoc(node),
     cType: attr(node, "c:type"),
     parent: attr(node, "parent"),
     glibTypeName: attr(node, "glib:type-name"),
@@ -39,17 +39,17 @@ const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContex
     fundamental: attrBool(node, "glib:fundamental"),
     isInterface,
     introspectable: attrBool(node, "introspectable", true),
-    implements: childrenOf(node, "implements")
+    implements: getChildren(node, "implements")
         .map((implement) => attr(implement, "name"))
         .filter((name): name is string => name !== undefined),
-    prerequisites: childrenOf(node, "prerequisite")
+    prerequisites: getChildren(node, "prerequisite")
         .map((prerequisite) => attr(prerequisite, "name"))
         .filter((name): name is string => name !== undefined),
-    methods: childrenOf(node, "method").map((method) => functionFromNode(method, context)),
-    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
-    functions: childrenOf(node, "function").map((fn) => functionFromNode(fn, context)),
-    properties: childrenOf(node, "property").map((property) => propertyFromNode(property, context)),
-    signals: childrenOf(node, "glib:signal").map((signal) => parseCallable(signal, context)),
+    methods: getChildren(node, "method").map((method) => functionFromNode(method, context)),
+    constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
+    functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),
+    properties: getChildren(node, "property").map((property) => propertyFromNode(property, context)),
+    signals: getChildren(node, "glib:signal").map((signal) => parseCallable(signal, context)),
 });
 
 export { classFromNode, type GirClass };

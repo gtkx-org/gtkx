@@ -22,7 +22,7 @@ const catchCheckError = (): unknown => {
     return thrown;
 };
 
-const stackOf = (thrown: unknown): string | undefined => {
+const getStack = (thrown: unknown): string | undefined => {
     if (typeof thrown === "object" && thrown !== null && "stack" in thrown && typeof thrown.stack === "string") {
         return thrown.stack;
     }
@@ -61,7 +61,7 @@ describe("checkError", () => {
     });
 
     it("attaches a stack trace pointing past checkError", () => {
-        const stack = stackOf(catchCheckError());
+        const stack = getStack(catchCheckError());
         expect(typeof stack).toBe("string");
         expect(stack ?? "").not.toContain("at checkError");
     });

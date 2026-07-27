@@ -18,13 +18,13 @@ const COMPARATOR_CALLBACK_TYPES = new Set([
 const OBJECT_ITEM_COMPARATOR_OWNERS = new Set(["Gtk.CustomSorter"]);
 
 const qualifiedName = (context: ModuleContext, ref: TypeId): string | undefined => {
-    const name = context.library.nameOf(ref);
+    const name = context.library.nameFor(ref);
 
     return name === undefined ? undefined : `${name.namespaceName}.${name.typeName}`;
 };
 
 const implementsListModel = (context: ModuleContext, ref: TypeId): boolean => {
-    const resolved = context.library.typeOf(ref);
+    const resolved = context.library.typeFor(ref);
 
     if (resolved?.kind !== "class") {
         return false;
@@ -58,7 +58,7 @@ const isItemPointer = (context: ModuleContext, ref: TypeId | undefined): boolean
         return false;
     }
 
-    const resolved = context.library.typeOf(ref);
+    const resolved = context.library.typeFor(ref);
 
     return resolved?.kind === "primitive" && resolved.category === "pointer";
 };
@@ -72,7 +72,7 @@ const itemComparatorCallback = (
         return undefined;
     }
 
-    const resolved = context.library.typeOf(parameter.type);
+    const resolved = context.library.typeFor(parameter.type);
 
     if (resolved?.kind !== "callback") {
         return undefined;

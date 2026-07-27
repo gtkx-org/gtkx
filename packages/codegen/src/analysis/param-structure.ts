@@ -82,7 +82,7 @@ const arrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
 };
 
 const carrayLengthIndex = (library: Library, ref: TypeId | undefined): number | undefined => {
-    const type = ref === undefined ? undefined : library.typeOf(ref);
+    const type = ref === undefined ? undefined : library.typeFor(ref);
 
     if (type?.kind !== "carray") {
         return undefined;
@@ -118,7 +118,7 @@ const hasCallerAllocatedArrayLength = (library: Library, fn: GirFunction): boole
 };
 
 const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
-    const returnType = fn.returnValue.type === undefined ? undefined : library.typeOf(fn.returnValue.type);
+    const returnType = fn.returnValue.type === undefined ? undefined : library.typeFor(fn.returnValue.type);
 
     if (returnType?.kind !== "carray") {
         return new Set();

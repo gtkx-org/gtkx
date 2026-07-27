@@ -38,7 +38,7 @@ const stageSchema = (dir: string, filePath: string): void => {
 
 const toForwardSlashes = (value: string): string => value.replaceAll(/[/\\]/g, "/");
 
-const moduleSpecifierFor = (dataDirAbs: string, filePath: string): string =>
+const getModuleSpecifier = (dataDirAbs: string, filePath: string): string =>
     `${DATA_IMPORT_PREFIX}/${toForwardSlashes(relative(dataDirAbs, filePath))}`;
 
 const readVisibleEntries = (dir: string): Dirent[] => {
@@ -96,7 +96,7 @@ const stageAndCompileProjectSchemas = (root: string, dataDir: string | null): st
 const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");
 
 const parseSchemaFileOrWarn = (filePath: string, dataDirAbs: string): ParsedSchemaFile | null => {
-    const specifier = moduleSpecifierFor(dataDirAbs, filePath);
+    const specifier = getModuleSpecifier(dataDirAbs, filePath);
 
     try {
         return parseSchemaXml(readFileSync(filePath, "utf8"), specifier);

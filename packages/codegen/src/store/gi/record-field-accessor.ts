@@ -212,7 +212,7 @@ const renderRecordFieldAccessor = (
 };
 
 const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean => {
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type === undefined) {
         return true;
@@ -230,7 +230,7 @@ const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean =>
             return true;
         }
         case "callback": {
-            return context.library.nameOf(ref) !== undefined;
+            return context.library.nameFor(ref) !== undefined;
         }
         case "carray": {
             return type.fixedSize !== undefined;
@@ -256,7 +256,7 @@ const resolveInlineStructFields = (
         return undefined;
     }
 
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type?.kind !== "record") {
         return undefined;
@@ -451,13 +451,13 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string =>
     );
 
 const resolveStructArrayElements = (context: ModuleContext, fieldType: TypeId): StructArrayElements | undefined => {
-    const arrayType = context.library.typeOf(fieldType);
+    const arrayType = context.library.typeFor(fieldType);
 
     if (arrayType?.kind !== "carray") {
         return undefined;
     }
 
-    const elementType = context.library.typeOf(arrayType.element);
+    const elementType = context.library.typeFor(arrayType.element);
 
     if (elementType?.kind === "record" && elementType.value.glibGetType !== undefined) {
         return undefined;

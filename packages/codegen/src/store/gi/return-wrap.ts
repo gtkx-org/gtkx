@@ -19,7 +19,7 @@ const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): st
         return valueExpression;
     }
 
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type === undefined) {
         return wrapValue(context, ref, valueExpression);
@@ -48,7 +48,7 @@ const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): st
 };
 
 const wrapCallback = (context: ModuleContext, ref: TypeId, valueExpression: string): string =>
-    context.library.nameOf(ref) === undefined
+    context.library.nameFor(ref) === undefined
         ? `(${valueExpression} as unknown[])`
         : `(${valueExpression} as ${renderTsType(context, ref, false)})`;
 

@@ -3,14 +3,14 @@ import type { SignalHandler } from "@gtkx/runtime";
 import { useEffectEvent, useLayoutEffect } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
-type SignalsOf<T extends GObject.Object> = NonNullable<T["__signals__"]>;
-type SignalNameOf<T extends GObject.Object> = keyof SignalsOf<T> | `${keyof SignalsOf<T> & string}::${string}`;
+type Signals<T extends GObject.Object> = NonNullable<T["__signals__"]>;
+type SignalName<T extends GObject.Object> = keyof Signals<T> | `${keyof Signals<T> & string}::${string}`;
 
-type SignalHandlerFor<T extends GObject.Object, S extends string> = S extends keyof SignalsOf<T>
-    ? SignalsOf<T>[S]
+type TypedSignalHandler<T extends GObject.Object, S extends string> = S extends keyof Signals<T>
+    ? Signals<T>[S]
     : S extends `${infer TBase}::${string}`
-        ? TBase extends keyof SignalsOf<T>
-            ? SignalsOf<T>[TBase]
+        ? TBase extends keyof Signals<T>
+            ? Signals<T>[TBase]
             : SignalHandler
         : SignalHandler;
 
@@ -30,10 +30,10 @@ type UseSignalOptions = {
  * @param handler The callback invoked when the signal is emitted.
  * @param options Connection options such as running after the default handler or invoking immediately.
  */
-function useSignal<T extends GObject.Object, S extends SignalNameOf<T> & string>(
+function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
     object: RefProp<T>,
     signal: S,
-    handler: SignalHandlerFor<T, S>,
+    handler: TypedSignalHandler<T, S>,
     { after = false, immediate = false }: UseSignalOptions = {},
 ): void {
     const emit = useEffectEvent(handler as SignalHandler);
@@ -57,4 +57,4 @@ function useSignal<T extends GObject.Object, S extends SignalNameOf<T> & string>
     }, [object, signal, after, immediate]);
 }
 
-export { useSignal, type SignalNameOf, type SignalHandlerFor };
+export { useSignal, type SignalName, type TypedSignalHandler };

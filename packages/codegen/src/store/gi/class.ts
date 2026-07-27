@@ -24,7 +24,7 @@ import {
     renderStaticHead,
 } from "./callables.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
-import { gtypeExprFor, gtypeMemberDeclaration } from "./gtype-binding.js";
+import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyDeclarations } from "./properties.js";
 import { renderResolvedPropertyAccessor, resolveAccessor, type ResolvedAccessor } from "./property-accessor.js";
@@ -206,7 +206,7 @@ const appendInstallMixins = (context: ModuleContext, className: string, implemen
 };
 
 const appendClassRegistrations = (context: ModuleContext, klass: GirClass, className: string): void => {
-    const gtypeExpr = gtypeExprFor(context, klass);
+    const gtypeExpr = renderSourceGtype(context, klass);
 
     appendWrapperClassRegistration(context, {
         className,

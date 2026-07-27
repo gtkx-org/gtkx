@@ -62,7 +62,7 @@ const getSignalBaseName = (signal: string): string => {
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
 };
 
-function getQuarkForSignalDetail(signal: string): number {
+function getSignalDetailQuark(signal: string): number {
     const detailIndex = signal.indexOf("::");
 
     if (detailIndex === -1) {
@@ -138,7 +138,7 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
  */
 function emitSignal(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor): unknown {
     const signalId = getSignalId(instance, signal);
-    const detail = getQuarkForSignalDetail(signal);
+    const detail = getSignalDetailQuark(signal);
     const values: ExternalObject<Handle>[] = [toValue(objectT("full"), instance)];
     const reads: (() => unknown)[] = [];
 

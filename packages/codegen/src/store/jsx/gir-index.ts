@@ -2,7 +2,7 @@ import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { ancestorChain } from "../../gir/ancestry.js";
-import { glibNameOf, implementedInterfaces } from "./intrinsic-elements.js";
+import { getGlibName, implementedInterfaces } from "./intrinsic-elements.js";
 
 type GirTypeEntry = {
     klass: GirClass;
@@ -22,7 +22,7 @@ const indexClasses = (
     isInterface: boolean,
 ): void => {
     for (const klass of classes) {
-        const glibName = glibNameOf(klass);
+        const glibName = getGlibName(klass);
 
         if (glibName !== undefined && !index.has(glibName)) {
             index.set(glibName, { klass, namespace, isInterface });
@@ -41,7 +41,7 @@ const buildGirIndex = (library: Library): GirIndex => {
     return { library, index };
 };
 
-const chainOf = (context: GirIndex, entry: GirTypeEntry): GirClass[] => {
+const getChain = (context: GirIndex, entry: GirTypeEntry): GirClass[] => {
     if (entry.isInterface) {
         return [entry.klass];
     }
@@ -59,4 +59,4 @@ const chainOf = (context: GirIndex, entry: GirTypeEntry): GirClass[] => {
     return chain;
 };
 
-export { buildGirIndex, chainOf, type GirTypeEntry, type GirIndex };
+export { buildGirIndex, getChain, type GirTypeEntry, type GirIndex };

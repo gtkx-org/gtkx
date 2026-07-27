@@ -41,12 +41,12 @@ type IndexedInserter = GObject.Object & {
 
 const childTypeCache: Map<string, bigint> = new Map();
 
-const childTypeOf = (name: string): bigint => getOrInsert(childTypeCache, name, typeFromName);
+const childTypeFor = (name: string): bigint => getOrInsert(childTypeCache, name, typeFromName);
 
 const childMatcher =
     (name: string): ((child: GObject.Object) => boolean) =>
         (child) => {
-            const type = childTypeOf(name);
+            const type = childTypeFor(name);
 
             return type === TYPE_INVALID || typeIsA(getInstanceType(child), type);
         };

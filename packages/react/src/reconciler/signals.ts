@@ -1,12 +1,12 @@
 import { getSignalBaseName, type SignalHandler } from "@gtkx/runtime";
 import { camelCase } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
-import { type TypeInfo, typeInfoOf } from "./metadata.js";
+import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
 const NOTIFY_DETAIL_PREFIX = "notify::";
 let suppressionDepth = 0;
 
-const notifyPropertyOf = (signal: string): string | null =>
+const getNotifyProperty = (signal: string): string | null =>
     signal.startsWith(NOTIFY_DETAIL_PREFIX) ? camelCase(signal.slice(NOTIFY_DETAIL_PREFIX.length)) : null;
 
 const isBlockableSignal = (info: TypeInfo, signal: string): boolean =>
@@ -56,8 +56,8 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
         target.object.off(existing.signal, existing.wrapped);
     }
 
-    const blockable = isBlockableSignal(typeInfoOf(target.typeName), signal);
-    const notifyProperty = notifyPropertyOf(signal);
+    const blockable = isBlockableSignal(typeInfoFor(target.typeName), signal);
+    const notifyProperty = getNotifyProperty(signal);
     const record: HandlerRecord = { signal, handler, wrapped: () => undefined, blockable };
     record.wrapped = wrapHandler(target, record, notifyProperty);
     target.object.on(signal, record.wrapped);

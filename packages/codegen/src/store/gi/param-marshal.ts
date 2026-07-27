@@ -16,7 +16,7 @@ const passesHandleInPlace = (context: ModuleContext, parameter: GirParameter): b
 };
 
 const underlyingType = (context: ModuleContext, ref: TypeId): GirType | undefined => {
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type?.kind !== "alias") {
         return type;
@@ -41,7 +41,7 @@ const isRecordInout = (context: ModuleContext, parameter: GirParameter): boolean
     isInoutParameter(parameter) && underlyingParamKind(context, parameter) === "record";
 
 const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean => {
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type === undefined) {
         return true;

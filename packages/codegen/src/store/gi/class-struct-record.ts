@@ -22,7 +22,7 @@ const isClassStructRecord = (library: Library, namespaceName: string, record: Gi
         return false;
     }
 
-    const name = library.nameOf(first.type);
+    const name = library.nameFor(first.type);
 
     if (name === undefined) {
         return false;
@@ -36,7 +36,7 @@ const refIsClassStruct = (context: ModuleContext, ref: TypeId | undefined): bool
         return false;
     }
 
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type === undefined) {
         return false;

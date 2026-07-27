@@ -44,7 +44,7 @@ const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined
         return false;
     }
 
-    const resolved = context.library.typeOf(type);
+    const resolved = context.library.typeFor(type);
 
     if (resolved === undefined) {
         return true;

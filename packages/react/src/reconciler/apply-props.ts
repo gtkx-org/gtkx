@@ -4,8 +4,8 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { drain, kebabCase } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { type TypeInfo, typeInfoOf } from "./metadata.js";
-import { contextFor, type ElementNode, type SignalTarget } from "./node.js";
+import { type TypeInfo, typeInfoFor } from "./metadata.js";
+import { type ElementNode, getOrCreateContext, type SignalTarget } from "./node.js";
 import { connectHandler, disconnectHandler } from "./signals.js";
 
 type PropDelta = { name: string; value: unknown; prevValue: unknown };
@@ -95,7 +95,7 @@ const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior):
         return;
     }
 
-    const result = behavior.update(ctx.node.object, ctx.prev, ctx.next, contextFor(ctx.node, behavior));
+    const result = behavior.update(ctx.node.object, ctx.prev, ctx.next, getOrCreateContext(ctx.node, behavior));
 
     if (result === undefined) {
         return;
@@ -156,14 +156,14 @@ const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: 
 };
 
 const markFlush = (node: ElementNode): void => {
-    if (typeInfoOf(node.typeName).hasFlush) {
+    if (typeInfoFor(node.typeName).hasFlush) {
         flushDirty.add(node);
     }
 };
 
 const eachBehavior = (node: ElementNode, visit: (behavior: ElementBehavior, context: unknown) => void): void => {
-    for (const behavior of typeInfoOf(node.typeName).behaviors) {
-        visit(behavior, contextFor(node, behavior));
+    for (const behavior of typeInfoFor(node.typeName).behaviors) {
+        visit(behavior, getOrCreateContext(node, behavior));
     }
 };
 
@@ -172,7 +172,7 @@ const flushBehaviors = (): void => {
 };
 
 const mountBehaviors = (node: ElementNode): void => {
-    if (!typeInfoOf(node.typeName).hasMount) {
+    if (!typeInfoFor(node.typeName).hasMount) {
         return;
     }
 
@@ -190,7 +190,7 @@ const applyAccessible = (object: GObject.Object, prev: Props, next: Props): void
 };
 
 const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
-    const info = typeInfoOf(node.typeName);
+    const info = typeInfoFor(node.typeName);
     const consumed = runBehaviorUpdates(node, info, prev, next);
     applyValueEntries(node, info, { prev, next }, consumed);
     restoreActionableSensitivity(node, info, prev, next);
@@ -204,7 +204,7 @@ const skipAdoptedName = (info: TypeInfo, name: string): boolean => isReservedNam
 
 const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void => {
     const { object, typeName } = target;
-    const info = typeInfoOf(typeName);
+    const info = typeInfoFor(typeName);
 
     eachChangedName(prev, next, (name) => {
         if (skipAdoptedName(info, name) || Object.is(prev[name], next[name])) {

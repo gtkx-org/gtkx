@@ -1,7 +1,7 @@
 import type { ParseContext } from "./type-id.js";
 import { fieldFromNode, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, attrBool, childrenOf, docOf, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
+import { attr, attrBool, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, type RawNode } from "./parse.js";
 
 type GirRecord = {
     isVtable: boolean;
@@ -32,7 +32,7 @@ const recordFromNode = (
 ): GirRecord => ({
     isVtable,
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
-    doc: docOf(node),
+    doc: getDoc(node),
     cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),
     glibGetType: attr(node, "glib:get-type"),
@@ -43,10 +43,10 @@ const recordFromNode = (
     disguised: attrBool(node, "disguised"),
     opaque: attrBool(node, "opaque"),
     introspectable: attrBool(node, "introspectable", true),
-    fields: childrenOf(node, "field").map((field) => fieldFromNode(field, context)),
-    methods: childrenOf(node, "method").map((method) => functionFromNode(method, context)),
-    constructors: childrenOf(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
-    functions: childrenOf(node, "function").map((fn) => functionFromNode(fn, context)),
+    fields: getChildren(node, "field").map((field) => fieldFromNode(field, context)),
+    methods: getChildren(node, "method").map((method) => functionFromNode(method, context)),
+    constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
+    functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),
     isUnion,
 });
 

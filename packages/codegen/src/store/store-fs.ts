@@ -62,7 +62,7 @@ const buildManifest = (input: ManifestInput): Manifest => {
 };
 
 const writeStore = (params: WriteStoreParams): void => {
-    const tmp = tempStoreFor(params.storeDir);
+    const tmp = createTempStore(params.storeDir);
 
     try {
         for (const file of params.files) {
@@ -119,7 +119,7 @@ const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => 
     symlinkRelative(visibleLink, storeDir);
 };
 
-const tempStoreFor = (storeDir: string): string => {
+const createTempStore = (storeDir: string): string => {
     mkdirSync(dirname(storeDir), { recursive: true });
 
     return mkdtempSync(`${storeDir}.tmp-`);

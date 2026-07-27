@@ -24,7 +24,7 @@ const noInlineExports = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
                     context.report({
                         loc: context.sourceCode.getFirstToken(node)?.loc ?? node.loc,
                         messageId: "inlineExport",
-                        data: dataOf(namesOf(node.declaration)),
+                        data: getData(getNames(node.declaration)),
                     });
                 }
             },
@@ -49,7 +49,7 @@ const namedDeclarationName = (declaration: Exclude<Declaration, TSESTree.Variabl
     return id === null ? undefined : identifierName(id);
 };
 
-const namesOf = (declaration: Declaration): string[] => {
+const getNames = (declaration: Declaration): string[] => {
     if (declaration.type === AST_NODE_TYPES.VariableDeclaration) {
         return variableNames(declaration);
     }
@@ -59,7 +59,7 @@ const namesOf = (declaration: Declaration): string[] => {
     return name === undefined ? [] : [name];
 };
 
-const dataOf = (names: string[]): Record<string, string> =>
+const getData = (names: string[]): Record<string, string> =>
     names.length === 0
         ? { names: "this", list: "it" }
         : { names: names.join(", "), list: `\`export { ${names.join(", ")} };\`` };

@@ -13,8 +13,8 @@ import { matchAsyncFinish } from "../../src/store/gi/async.js";
 import { elementPropTypeFor } from "../../src/store/jsx/element-prop-imports.js";
 import {
     collectIntrinsicElementClasses,
+    getGlibName,
     type GlibNamedClass,
-    glibNameOf,
     implementedInterfaces,
     interfaceHasPropsBody,
     type ResolvedQualifiedInterface,
@@ -38,7 +38,7 @@ const visitEach = <T>(items: Iterable<T>, visitor: (item: T) => void): void => {
 type UnresolvedWalker = { target: Library; seen: Set<string>; unresolved: Set<string> };
 
 const recordUnresolved = (walker: UnresolvedWalker, ref: TypeId): void => {
-    const name = walker.target.nameOf(ref);
+    const name = walker.target.nameFor(ref);
 
     if (name !== undefined) {
         walker.unresolved.add(`${name.namespaceName}.${name.typeName}`);
@@ -57,7 +57,7 @@ const visitTypeRef = (walker: UnresolvedWalker, ref: TypeId | undefined): void =
     }
 
     walker.seen.add(key);
-    const type = walker.target.typeOf(ref);
+    const type = walker.target.typeFor(ref);
 
     if (type === undefined) {
         recordUnresolved(walker, ref);
@@ -148,7 +148,7 @@ const collectUnresolvedTypeNames = (target: Library): string[] => {
 
 const reactPipeline = generateJsxFiles(library, REACT_SURFACE);
 
-const sourceFor = (files: typeof reactPipeline, directory: string): string =>
+const getSource = (files: typeof reactPipeline, directory: string): string =>
     files.namespaces.find((entry) => entry.directory === directory)?.source ?? "";
 
 const giSource = (directory: string): string =>
@@ -440,13 +440,13 @@ describe("codegen React pipeline", () => {
     });
 
     it("loads its own namespace as a side effect and never another", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
+        const gtk = getSource(reactPipeline, "gtk");
         expect(gtk).toContain('import "@gtkx/gi/gtk";');
         expect(gtk).not.toContain('import "@gtkx/gi/adw";');
     });
 
     it("imports a cross-namespace parent Props type from the sibling namespace module by relative path", () => {
-        const adw = sourceFor(reactPipeline, "adw");
+        const adw = getSource(reactPipeline, "adw");
         expect(adw).toMatch(/import \{[^}]*type GtkWidgetProps[^}]*\} from "\.\.\/gtk\/gtk\.js";/);
     });
 
@@ -455,7 +455,7 @@ describe("codegen React pipeline", () => {
     });
 
     it("emits page elements as lazy-element components", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
+        const gtk = getSource(reactPipeline, "gtk");
 
         expect(gtk).toContain(
             'export const GtkNotebookPage: (props: GtkNotebookPageElementProps) => ReactNode = createElementComponent("GtkNotebookPage");',
@@ -466,7 +466,7 @@ describe("codegen React pipeline", () => {
 });
 
 describe("codegen configurable element components", () => {
-    const overridden = sourceFor(
+    const overridden = getSource(
         generateJsxFiles(library, {
             ...REACT_SURFACE,
             components: {
@@ -500,7 +500,7 @@ describe("codegen configurable element components", () => {
     });
 
     it("lets a user override win over a built-in on the same ancestry", () => {
-        const gtk = sourceFor(
+        const gtk = getSource(
             generateJsxFiles(library, {
                 ...REACT_SURFACE,
                 components: {
@@ -516,7 +516,7 @@ describe("codegen configurable element components", () => {
     });
 
     it("leaves elements unwrapped without any override", () => {
-        expect(sourceFor(reactPipeline, "gtk")).toContain(
+        expect(getSource(reactPipeline, "gtk")).toContain(
             'export const GtkButton: (props: GtkButtonProps) => ReactNode = createElementComponent("GtkButton");',
         );
     });
@@ -524,12 +524,12 @@ describe("codegen configurable element components", () => {
 
 describe("codegen widget-slot props", () => {
     it("widens a settable GObject-class property into a ReactElement slot", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
+        const gtk = getSource(reactPipeline, "gtk");
         expect(interfaceBody(gtk, "GtkWindow")).toContain("titlebar?: Gtk$.Widget | ReactElement | null | undefined;");
     });
 
     it("widens a text view's buffer into a ReactElement slot", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
+        const gtk = getSource(reactPipeline, "gtk");
 
         expect(interfaceBody(gtk, "GtkTextView")).toContain(
             "buffer?: Gtk$.TextBuffer | ReactElement | null | undefined;",
@@ -537,13 +537,13 @@ describe("codegen widget-slot props", () => {
     });
 
     it("keeps the single-child `child` property a plain widget reference, not a slot", () => {
-        const body = interfaceBody(sourceFor(reactPipeline, "gtk"), "GtkButton");
+        const body = interfaceBody(getSource(reactPipeline, "gtk"), "GtkButton");
         expect(body).toContain("child?: Gtk$.Widget | null | undefined;");
         expect(body).not.toContain("child?: Gtk$.Widget | ReactElement");
     });
 
     it("extends the configured base props interface on a container-prop host", () => {
-        const adw = sourceFor(reactPipeline, "adw");
+        const adw = getSource(reactPipeline, "adw");
 
         expect(adw).toMatch(
             /import \{[^}]*type GtkHeaderBarProps as GtkHeaderBarPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
@@ -553,7 +553,7 @@ describe("codegen widget-slot props", () => {
     });
 
     it("extends the configured base props interface on GtkWidget", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
+        const gtk = getSource(reactPipeline, "gtk");
 
         expect(gtk).toMatch(
             /import \{[^}]*type GtkWidgetProps as GtkWidgetPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
@@ -571,12 +571,12 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
 
 describe("codegen applied element props", () => {
     it("extends the hand-declared props interface for a value prop host", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
+        const gtk = getSource(reactPipeline, "gtk");
         expect(gtk).toMatch(/export interface GtkDropTargetProps<[^>]*> extends GtkDropTargetPropsBase,/);
     });
 
     it("extends the configured placement props on the child element's interface", () => {
-        const gio = sourceFor(reactPipeline, "gio");
+        const gio = getSource(reactPipeline, "gio");
 
         expect(gio).toMatch(
             /import \{[^}]*type GActionGroupProps as GActionGroupPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
@@ -586,7 +586,7 @@ describe("codegen applied element props", () => {
     });
 
     it("emits lazy-element props from the page class interface", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
+        const gtk = getSource(reactPipeline, "gtk");
 
         expect(gtk).toContain(
             'export type GtkStackPageElementProps = Omit<GtkStackPageProps, "child"> & { children?: ReactNode };',
@@ -599,14 +599,14 @@ describe("codegen applied element props", () => {
 
 describe("codegen read-only props", () => {
     it("omits the settable line for a read-only property but keeps its notify handler", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
+        const gtk = getSource(reactPipeline, "gtk");
         const widgetBody = interfaceBody(gtk, "GtkWidget");
         expect(widgetBody).not.toContain("parent?: Gtk$.Widget | null;");
         expect(widgetBody).toContain("onNotifyParent?:");
     });
 
     it("keeps the settable line for a writable property", () => {
-        const gtk = sourceFor(reactPipeline, "gtk");
+        const gtk = getSource(reactPipeline, "gtk");
         const widgetBody = interfaceBody(gtk, "GtkWidget");
         expect(widgetBody).toContain("opacity?: number | null | undefined;");
         expect(widgetBody).toContain("onNotifyOpacity?:");
@@ -637,7 +637,7 @@ describe("codegen runtime tables", () => {
     });
 
     it("extends named-slot elements from the configured base props types", () => {
-        const adw = sourceFor(reactPipeline, "adw");
+        const adw = getSource(reactPipeline, "adw");
         expect(adw).toMatch(/export interface AdwHeaderBarProps<[^>]*> extends [^{]*GtkHeaderBarPropsBase/);
     });
 });
@@ -670,19 +670,19 @@ const jsxSources = (): string[] => generateJsxFiles(library, REACT_SURFACE).name
 const hasContainerProps = (glibName: string | undefined): boolean =>
     glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
 
-const interfacePropsNameOf = (iface: ResolvedQualifiedInterface): string | undefined => {
+const getInterfacePropsName = (iface: ResolvedQualifiedInterface): string | undefined => {
     if (!interfaceHasPropsBody(iface.klass, hasContainerProps)) {
         return undefined;
     }
 
-    const glib = glibNameOf(iface.klass);
+    const glib = getGlibName(iface.klass);
 
     return glib === undefined ? undefined : `${glib}Props`;
 };
 
 const addInterfacePropsNames = (widget: GlibNamedClass, names: Set<string>): void => {
     for (const iface of implementedInterfaces(widget.klass, widget.namespace, library)) {
-        const name = interfacePropsNameOf(iface);
+        const name = getInterfacePropsName(iface);
 
         if (name !== undefined) {
             names.add(name);

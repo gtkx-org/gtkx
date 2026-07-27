@@ -1,5 +1,5 @@
 import type { ParseContext, TypeId } from "./type-id.js";
-import { attr, attrBool, childOf, childrenOf, docOf, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
+import { attr, attrBool, getChild, getChildren, getDoc, intAttr, nameAttr, parseEnumAttr, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 type ParameterDirection = "in" | "out" | "inout";
@@ -54,7 +54,7 @@ const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter =
     scope: parseEnumAttr(attr(node, "scope"), SCOPES, undefined, "scope"),
     closureIndex: intAttr(node, "closure"),
     destroyIndex: intAttr(node, "destroy"),
-    isVarargs: childOf(node, "varargs") !== undefined,
+    isVarargs: getChild(node, "varargs") !== undefined,
 });
 
 const isOutParameter = (parameter: GirParameter): boolean =>
@@ -79,14 +79,14 @@ const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): 
 };
 
 const parseCallable = (node: RawNode, context: ParseContext): GirCallable => {
-    const parametersNode = childOf(node, "parameters");
-    const parameterNodes = childrenOf(parametersNode, "parameter");
+    const parametersNode = getChild(node, "parameters");
+    const parameterNodes = getChildren(parametersNode, "parameter");
 
     return {
         name: nameAttr(node),
-        doc: docOf(node),
+        doc: getDoc(node),
         parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, context)),
-        returnValue: returnValueFromNode(childOf(node, "return-value"), context),
+        returnValue: returnValueFromNode(getChild(node, "return-value"), context),
     };
 };
 

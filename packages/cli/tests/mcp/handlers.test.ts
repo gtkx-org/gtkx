@@ -71,7 +71,7 @@ const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidge
 const registerWidget = (registry: WidgetRegistry, widget: never): string => {
     registry.register(widget);
 
-    return registry.idFor(widget);
+    return registry.getOrCreateId(widget);
 };
 
 beforeEach(() => {
@@ -129,7 +129,7 @@ describe("widget.getTree", () => {
         const widget = makeWidget({});
         await dispatch("widget.getTree", {}, { app: makeApp() as never, registry });
         const getId = prettyWidget.mock.calls[0]?.[1]?.getId;
-        expect(getId?.(widget)).toBe(registry.idFor(widget));
+        expect(getId?.(widget)).toBe(registry.getOrCreateId(widget));
     });
 
     it("renders only the subtree for a rootId", async () => {

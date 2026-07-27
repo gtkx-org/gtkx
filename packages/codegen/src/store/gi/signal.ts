@@ -312,7 +312,7 @@ const renderUnsupportedEmitCase = (signal: GirCallable): string => {
 };
 
 const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParameter): string => {
-    const name = parameter.type === undefined ? undefined : context.library.nameOf(parameter.type);
+    const name = parameter.type === undefined ? undefined : context.library.nameFor(parameter.type);
 
     if (name === undefined) {
         throw new Error("renderCallerOutAllocation: expected a named caller-allocated out-parameter");

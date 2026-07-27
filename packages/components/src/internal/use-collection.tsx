@@ -9,8 +9,8 @@ import type { Item, Section } from "../types.js";
 import {
     type CollectionMode,
     type CollectionModel,
-    collectionModeOf,
     createCollectionModel,
+    getCollectionMode,
 } from "./collection-model.js";
 import { type Cells, type CellSize, useCells } from "./use-cells.js";
 
@@ -72,7 +72,7 @@ type SelectionSync = {
 
 const lastSelections: WeakMap<Cells, LastSelection> = new WeakMap();
 
-const selectedIdsOf = (selection: Gtk.SelectionModel, model: CollectionModel): string[] => {
+const getSelectedIds = (selection: Gtk.SelectionModel, model: CollectionModel): string[] => {
     const bitset = selection.getSelection();
     const size = Number(bitset.getSize());
     const ids: string[] = [];
@@ -113,7 +113,7 @@ const applySelection = (selection: Gtk.SelectionModel, model: CollectionModel, i
         return;
     }
 
-    const positions = model.positionsOf(ids);
+    const positions = model.positionsFor(ids);
 
     if (ids.length > 0 && positions.length === 0) {
         return;
@@ -129,7 +129,7 @@ const applySelection = (selection: Gtk.SelectionModel, model: CollectionModel, i
 };
 
 const rowId = (model: CollectionModel, holder: GObject.Object | null): string | null =>
-    holder === null ? null : (model.entryOf(holder)?.id ?? null);
+    holder === null ? null : (model.entryFor(holder)?.id ?? null);
 
 const eachRow = (
     tree: Gtk.TreeListModel,
@@ -154,7 +154,7 @@ const reportSelection = (report: SelectionReport): void => {
         return;
     }
 
-    const ids = selectedIdsOf(selection, model);
+    const ids = getSelectedIds(selection, model);
     const key = ids.join(" ");
     const last = lastSelections.get(cells);
 
@@ -311,7 +311,7 @@ const useControlledSelection = (sync: SelectionSync): void => {
 
 const useCollection = (options: CollectionOptions): Collection => {
     const { items, sections, selectionMode, selectedIds, expandedIds, onSelectionChanged, onExpandedChange } = options;
-    const model = useCollectionModel(options.mode ?? collectionModeOf({ items, sections }));
+    const model = useCollectionModel(options.mode ?? getCollectionMode({ items, sections }));
     const cells = useCells(options.size);
     const [selection, setSelection] = useState<Gtk.SelectionModel | null>(null);
     useDataSync({ model, cells, items, sections });

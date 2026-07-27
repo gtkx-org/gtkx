@@ -25,7 +25,7 @@ type LoggerOptions = {
 
 const BASE_PREFIX = "[gtkx]";
 
-function colorsFor(stream: OutputStream): Colors {
+function getColors(stream: OutputStream): Colors {
     return pc.createColors(pc.isColorSupported && stream.isTTY === true);
 }
 
@@ -65,7 +65,7 @@ function resolveDebugEnabled(namespace: string | undefined, argv: string[], env:
     return namespace !== undefined && names.has(namespace);
 }
 
-function prefixFor(namespace: string | undefined): string {
+function getPrefix(namespace: string | undefined): string {
     return namespace === undefined ? BASE_PREFIX : `[gtkx:${namespace}]`;
 }
 
@@ -84,9 +84,9 @@ class Logger {
      */
     constructor(options: LoggerOptions = {}) {
         this.stream = options.stream ?? process.stderr;
-        this.prefix = prefixFor(options.namespace);
+        this.prefix = getPrefix(options.namespace);
         this.debugEnabled = options.debugEnabled ?? resolveDebugEnabled(options.namespace, process.argv, process.env);
-        this.colors = colorsFor(this.stream);
+        this.colors = getColors(this.stream);
     }
 
     private write(message: string, rest: unknown[]): void {

@@ -1,7 +1,7 @@
 import type { ParseContext } from "./type-id.js";
 import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
-import { attr, attrBool, childOf, type RawNode } from "./parse.js";
+import { attr, attrBool, getChild, type RawNode } from "./parse.js";
 
 type GirFunction = {
     name: string;
@@ -35,7 +35,7 @@ const relaxMissingNullable = (fn: GirFunction): GirFunction => {
 };
 
 const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => {
-    const instanceNode = childOf(childOf(node, "parameters"), "instance-parameter");
+    const instanceNode = getChild(getChild(node, "parameters"), "instance-parameter");
 
     return relaxMissingNullable({
         ...parseCallable(node, context),

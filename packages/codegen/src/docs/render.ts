@@ -7,7 +7,7 @@ import type { GirCallable } from "../gir/parameter.js";
 import type { TypeId } from "../gir/type-id.js";
 import { collectInheritedMethods, conflictRename } from "../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../analysis/param-structure.js";
-import { recordTypeTarget, renderBaseTypeFor, type TsTypeTarget } from "../analysis/ts-type.js";
+import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../analysis/ts-type.js";
 import { dedupeCallables, instanceScope, renderInstanceMethodSignature } from "../store/gi/callables.js";
 import { methodExportName } from "../store/gi/method.js";
 import { ModuleContext } from "../writer/context.js";
@@ -35,7 +35,7 @@ const docsTarget = (library: Library): TsTypeTarget =>
     );
 
 const renderDocsType = (library: Library, ref: TypeId | undefined, isNullable: boolean): string => {
-    const base = renderBaseTypeFor(library, docsTarget(library), ref);
+    const base = renderBaseType(library, docsTarget(library), ref);
 
     return isNullable ? `${base} | null` : base;
 };

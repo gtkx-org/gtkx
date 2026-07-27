@@ -31,7 +31,7 @@ const removeLabel = (element: Element): void => {
     element.value = "";
 };
 
-const classNameFor = (serialized: SerializedStyles): string => `${KEY}-${serialized.name}`;
+const getClassName = (serialized: SerializedStyles): string => `${KEY}-${serialized.name}`;
 const isNonEmptyString = (token: CxToken): token is string => typeof token === "string" && token.length > 0;
 
 const partitionTokens = (tokens: string[], registered: RegisteredCache): TokenPartition => {
@@ -79,7 +79,7 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
         return;
     }
 
-    const className = classNameFor(serialized);
+    const className = getClassName(serialized);
     runStylis(state.sheet, `.${className}{${serialized.styles}}`);
     state.registered[className] = serialized.styles;
 };
@@ -96,7 +96,7 @@ const cssClassName = (state: CssState, args: CSSInterpolation[]): string => {
     const serialized = serializeStyles(args, state.registered);
     insertStyles(state, serialized);
 
-    return classNameFor(serialized);
+    return getClassName(serialized);
 };
 
 const cxClassNames = (state: CssState, classNames: CxToken[]): string[] => {

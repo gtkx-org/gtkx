@@ -9,7 +9,7 @@ type Target = {
     id: number;
 };
 
-const detachOf = (result: ReturnType<ReturnType<typeof useMergedRef<Target>>>): (() => void) => {
+const getDetach = (result: ReturnType<ReturnType<typeof useMergedRef<Target>>>): (() => void) => {
     if (typeof result !== "function") {
         throw new TypeError("expected the merged ref to return a cleanup");
     }
@@ -38,7 +38,7 @@ describe("useMergedRef", () => {
         const cleanup = vi.fn();
         const callback = vi.fn(() => cleanup);
         const { result } = await renderHook(() => useMergedRef<Target>(callback, undefined));
-        const detach = detachOf(result.current({ id: 1 }));
+        const detach = getDetach(result.current({ id: 1 }));
         expect(cleanup).not.toHaveBeenCalled();
         detach();
         expect(cleanup).toHaveBeenCalledTimes(1);
@@ -51,7 +51,7 @@ describe("useMergedRef", () => {
         const callback = vi.fn(() => callbackCleanup);
         const value: Target = { id: 1 };
         const { result } = await renderHook(() => useMergedRef<Target>(objectRef, callback));
-        const detach = detachOf(result.current(value));
+        const detach = getDetach(result.current(value));
         expect(objectRef.current).toBe(value);
         detach();
         expect(objectRef.current).toBeNull();

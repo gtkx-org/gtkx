@@ -32,7 +32,7 @@ const signalHandlerName = (signalName: string): string => `on${upperFirst(toCame
 
 function* classesWithGlibNameIn(namespace: GirNamespace): IterableIterator<GlibNamedClass> {
     for (const klass of namespace.classes) {
-        const glibName = glibNameOf(klass);
+        const glibName = getGlibName(klass);
 
         if (glibName === undefined) {
             continue;
@@ -83,14 +83,14 @@ const implementedInterfaces = (
     return state.result;
 };
 
-const glibNameOf = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
+const getGlibName = (klass: GirClass): string | undefined => klass.glibTypeName ?? klass.cType;
 const giNamespaceAlias = (namespaceName: string): string => `${namespaceName}$`;
 const noContainerProps: HasContainerProps = () => false;
 
 const interfaceHasPropsBody = (
     klass: GirClass,
     hasContainerProps: HasContainerProps = noContainerProps,
-): boolean => klass.properties.length > 0 || klass.signals.length > 0 || hasContainerProps(glibNameOf(klass));
+): boolean => klass.properties.length > 0 || klass.signals.length > 0 || hasContainerProps(getGlibName(klass));
 
 const qualifiedInterfaceKey = (iface: ResolvedQualifiedInterface): string =>
     `${iface.namespace.name}.${iface.klass.name}`;
@@ -180,7 +180,7 @@ const ancestorGlibNames = (klass: GirClass, namespace: GirNamespace, library: Li
     const names: string[] = [];
 
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {
-        const glibName = glibNameOf(ancestor);
+        const glibName = getGlibName(ancestor);
 
         if (glibName !== undefined) {
             names.push(glibName);
@@ -197,7 +197,7 @@ const someAncestor = (
     predicate: (klass: GirClass, glibName: string) => boolean,
 ): boolean => {
     for (const { klass: ancestor } of ancestorChain(library, klass, namespace.name)) {
-        const glibName = glibNameOf(ancestor) ?? "";
+        const glibName = getGlibName(ancestor) ?? "";
 
         if (predicate(ancestor, glibName)) {
             return true;
@@ -250,7 +250,7 @@ export {
     signalHandlerName,
     iterateClassesWithGlibName,
     implementedInterfaces,
-    glibNameOf,
+    getGlibName,
     giNamespaceAlias,
     interfaceHasPropsBody,
     newlyImplementedInterfaces,

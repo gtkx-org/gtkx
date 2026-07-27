@@ -6,7 +6,7 @@ import type { GirCallable } from "../../gir/parameter.js";
 import type { TypeId } from "../../gir/type-id.js";
 import { forEachAncestor } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
-import { recordTypeTarget, renderBaseTypeFor, type TsTypeTarget } from "../../analysis/ts-type.js";
+import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../../analysis/ts-type.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import {
@@ -196,7 +196,7 @@ const resolvesToGObjectType = (library: Library, ref: TypeId | undefined): boole
         return false;
     }
 
-    const resolved = library.typeOf(ref);
+    const resolved = library.typeFor(ref);
 
     if (resolved?.kind === "interface") {
         return true;
@@ -260,7 +260,7 @@ const reactTarget = (context: PropTypeRenderContext): TsTypeTarget =>
     );
 
 const renderReactPropType = (context: PropTypeRenderContext, ref: TypeId | undefined, isNullable: boolean): string => {
-    const base = renderBaseTypeFor(context.library, reactTarget(context), ref);
+    const base = renderBaseType(context.library, reactTarget(context), ref);
 
     return isNullable ? `${base} | null` : base;
 };

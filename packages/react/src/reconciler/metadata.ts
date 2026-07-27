@@ -47,7 +47,7 @@ const buildAncestry = (name: string): string[] => {
     return names;
 };
 
-const ancestryOf = (name: string): string[] => getOrInsert(ancestryCache, name, buildAncestry);
+const ancestryFor = (name: string): string[] => getOrInsert(ancestryCache, name, buildAncestry);
 
 const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
     const items = source ?? [];
@@ -84,7 +84,7 @@ const resolveBehaviorFlags = (info: TypeInfo): void => {
 };
 
 const buildTypeInfo = (name: string): TypeInfo => {
-    const chain = ancestryOf(name);
+    const chain = ancestryFor(name);
 
     const info: TypeInfo = {
         typeName: name,
@@ -114,6 +114,6 @@ const buildTypeInfo = (name: string): TypeInfo => {
     return info;
 };
 
-const typeInfoOf = (name: string): TypeInfo => getOrInsert(typeInfoCache, name, buildTypeInfo);
+const typeInfoFor = (name: string): TypeInfo => getOrInsert(typeInfoCache, name, buildTypeInfo);
 
-export { typeInfoOf, type TypeInfo };
+export { typeInfoFor, type TypeInfo };

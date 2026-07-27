@@ -7,8 +7,8 @@ import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
 import { buildGirIndex, type GirIndex } from "../store/jsx/gir-index.js";
 import {
+    getGlibName,
     type GlibNamedClass,
-    glibNameOf,
     implementedInterfaces,
     newlyImplementedInterfaces,
     signalHandlerName,
@@ -83,7 +83,7 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
     }
 
     const parts = ancestors.map((ancestor) => {
-        const glib = glibNameOf(ancestor.klass);
+        const glib = getGlibName(ancestor.klass);
 
         return glib === undefined ? `\`${ancestor.namespaceName}.${ancestor.klass.name}\`` : glibLabel(context, glib);
     });
@@ -92,7 +92,7 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
     const lines = ["## Hierarchy", parts.join(" → ")];
 
     const interfaces = implementedInterfaces(entry.klass, entry.namespace, context.library)
-        .map((iface) => glibNameOf(iface.klass))
+        .map((iface) => getGlibName(iface.klass))
         .filter((name): name is string => name !== undefined);
 
     lines.push(...implementsLine(interfaces));
@@ -108,7 +108,7 @@ const memberOwners = (entry: GlibNamedClass, context: ElementPageContext): Membe
         context.library,
         (glibName) => glibName !== undefined && elementPropTypeFor(glibName) !== undefined,
     ).map((iface) => {
-        const glibName = glibNameOf(iface.klass);
+        const glibName = getGlibName(iface.klass);
 
         return { klass: iface.klass, namespace: iface.namespace, origin: glibName, glibName };
     }),

@@ -1,6 +1,6 @@
 import type { ParseContext, TypeId } from "./type-id.js";
 import { type ParameterTransfer, transferOwnership } from "./parameter.js";
-import { attr, attrBool, docOf, nameAttr, type RawNode } from "./parse.js";
+import { attr, attrBool, getDoc, nameAttr, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 type GirProperty = {
@@ -23,7 +23,7 @@ const isConstructableProperty = (property: GirProperty): boolean =>
 
 const propertyFromNode = (node: RawNode, context: ParseContext): GirProperty => ({
     name: nameAttr(node),
-    doc: docOf(node),
+    doc: getDoc(node),
     type: typeRefFromNode(node, context),
     readable: attrBool(node, "readable", true),
     writable: attrBool(node, "writable"),

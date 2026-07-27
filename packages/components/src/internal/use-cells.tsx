@@ -62,7 +62,7 @@ const placeholder = (size: CellSize): Gtk.Widget =>
     new Gtk.Box({ widthRequest: size.width, heightRequest: size.height });
 
 const expanded = (record: CellRecord, content: ReactNode, collection: CollectionModel): ReactNode => {
-    const item = collection.entryOf(record.holder)?.item;
+    const item = collection.entryFor(record.holder)?.item;
     const row = record.row;
 
     const expander: ReactNode =
@@ -245,7 +245,7 @@ const applyRowArgs = (
 };
 
 const renderItemArgs = (record: CellRecord, options: ItemArgsOptions): RenderItemArgs<unknown> | null => {
-    const entry = options.collection.entryOf(record.holder);
+    const entry = options.collection.entryFor(record.holder);
 
     if (entry === undefined) {
         return null;
@@ -270,7 +270,7 @@ const headerRenderer = (
 
     const render = renderHeader as HeaderRenderer<unknown>;
 
-    return (record) => render({ section: collection.entryOf(record.holder)?.sectionValue });
+    return (record) => render({ section: collection.entryFor(record.holder)?.sectionValue });
 };
 
 const collectionRenderers = (options: CollectionRenderersOptions): CellRenderers => {

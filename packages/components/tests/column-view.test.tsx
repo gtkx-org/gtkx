@@ -151,10 +151,10 @@ const expectCellsAreDirectChildLabels = (view: Gtk.ColumnView, expectedCount: nu
     }
 };
 
-const columnTitleForId = (columnId: string): string => `${columnId.charAt(0).toUpperCase()}${columnId.slice(1)}`;
+const getExpectedColumnTitle = (columnId: string): string => `${columnId.charAt(0).toUpperCase()}${columnId.slice(1)}`;
 
 const sortByColumnHeader = async (columnView: Gtk.ColumnView, columnId: string, order: Gtk.SortType): Promise<void> => {
-    const title = columnTitleForId(columnId);
+    const title = getExpectedColumnTitle(columnId);
     const headers = within(columnView).getAllByRole(Gtk.AccessibleRole.COLUMN_HEADER);
     const index = headers.findIndex((header) => cellText(header) === title);
     const column = columnView.getColumns().getItem(index);
@@ -607,19 +607,19 @@ describe("render - ColumnView (13)", () => {
             };
 
             const toRows = (rows: Item[]) => rows.map((item) => ({ id: item.id, value: item }));
-            const rowsFor = (sortColumn: SortColumn) => toRows(sortBy(sortColumn, Gtk.SortType.ASCENDING));
+            const createRows = (sortColumn: SortColumn) => toRows(sortBy(sortColumn, Gtk.SortType.ASCENDING));
 
-            const optionsFor = (sortColumn: SortColumn) => ({
+            const createOptions = (sortColumn: SortColumn) => ({
                 columns,
                 sortColumn,
                 sortOrder: Gtk.SortType.ASCENDING,
             });
 
-            const { ref, rerender } = await renderColumnView(rowsFor(null), optionsFor(null));
+            const { ref, rerender } = await renderColumnView(createRows(null), createOptions(null));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Charlie", "Alice", "Bob"]);
-            await rerender(rowsFor("name"), optionsFor("name"));
+            await rerender(createRows("name"), createOptions("name"));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Alice", "Bob", "Charlie"]);
-            await rerender(rowsFor(null), optionsFor(null));
+            await rerender(createRows(null), createOptions(null));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["Charlie", "Alice", "Bob"]);
         });
     });
@@ -668,7 +668,7 @@ describe("render - ColumnView (14)", () => {
     });
 });
 
-const itemsFor = (offset: number) => [
+const createItems = (offset: number) => [
     { id: "1", value: { name: "A", count: offset } },
     { id: "2", value: { name: "B", count: offset } },
     { id: "3", value: { name: "C", count: offset } },
@@ -677,11 +677,11 @@ const itemsFor = (offset: number) => [
 describe("render - ColumnView (15)", () => {
     describe("item reordering (6)", () => {
         it("preserves order with frequent value updates", async () => {
-            const { ref, rerender } = await renderColumnView(itemsFor(0));
+            const { ref, rerender } = await renderColumnView(createItems(0));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C"]);
 
             for (let i = 1; i <= 10; i++) {
-                await rerender(itemsFor(i));
+                await rerender(createItems(i));
                 expect(getColumnViewItemTexts(ref.current)).toEqual(["A", "B", "C"]);
             }
         });

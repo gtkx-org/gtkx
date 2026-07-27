@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getOrCreateControllers, queryController } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 
-const pressPointOf = (widget: Gtk.Widget): { x: number; y: number } => {
+const getPressPoint = (widget: Gtk.Widget): { x: number; y: number } => {
     const width = widget.getWidth();
     const height = widget.getHeight();
 
@@ -14,7 +14,7 @@ const pressPointOf = (widget: Gtk.Widget): { x: number; y: number } => {
 };
 
 const emitGesture = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number, signal: string): void => {
-    const { x, y } = pressPointOf(widget);
+    const { x, y } = getPressPoint(widget);
 
     for (const controller of controllers) {
         controller.emit(signal, nPress, x, y);

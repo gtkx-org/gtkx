@@ -45,9 +45,9 @@ const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallbac
         return undefined;
     }
 
-    const type = context.library.typeOf(field.type);
+    const type = context.library.typeFor(field.type);
 
-    if (type?.kind !== "callback" || context.library.nameOf(field.type) !== undefined) {
+    if (type?.kind !== "callback" || context.library.nameFor(field.type) !== undefined) {
         return undefined;
     }
 

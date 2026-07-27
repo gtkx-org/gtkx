@@ -1,4 +1,4 @@
-import { attr, attrBool, childrenOf, docOf, nameAttr, type RawNode } from "./parse.js";
+import { attr, attrBool, getChildren, getDoc, nameAttr, type RawNode } from "./parse.js";
 
 type EnumMember = {
     name: string;
@@ -23,14 +23,14 @@ type GirEnum = {
 const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
     kind,
     name: nameAttr(node),
-    doc: docOf(node),
+    doc: getDoc(node),
     glibTypeName: attr(node, "glib:type-name"),
     glibGetType: attr(node, "glib:get-type"),
     errorDomain: attr(node, "glib:error-domain"),
     introspectable: attrBool(node, "introspectable", true),
-    members: childrenOf(node, "member").map((member) => ({
+    members: getChildren(node, "member").map((member) => ({
         name: nameAttr(member),
-        doc: docOf(member),
+        doc: getDoc(member),
         value: attr(member, "value") ?? "0",
         cIdentifier: attr(member, "c:identifier"),
     })),

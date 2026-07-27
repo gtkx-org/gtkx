@@ -91,7 +91,7 @@ const parseEnumAttr = <T extends string, F extends T | undefined>(
     label: string,
 ): T | F => (raw === undefined ? fallback : enumMember(raw, members, label));
 
-const childrenOf = (node: RawNode | undefined, tag: string): RawNode[] => {
+const getChildren = (node: RawNode | undefined, tag: string): RawNode[] => {
     if (node === undefined) {
         return [];
     }
@@ -109,7 +109,7 @@ const childrenOf = (node: RawNode | undefined, tag: string): RawNode[] => {
     return [value as RawNode];
 };
 
-const childOf = (node: RawNode | undefined, tag: string): RawNode | undefined => {
+const getChild = (node: RawNode | undefined, tag: string): RawNode | undefined => {
     if (node === undefined) {
         return undefined;
     }
@@ -141,7 +141,7 @@ const docTextFromObject = (value: object): string | undefined => {
     return typeof text === "string" ? normalizeDoc(text) : undefined;
 };
 
-const docOf = (node: RawNode | undefined): string | undefined => {
+const getDoc = (node: RawNode | undefined): string | undefined => {
     if (node === undefined) {
         return undefined;
     }
@@ -167,8 +167,8 @@ export {
     nameAttr,
     intAttr,
     parseEnumAttr,
-    childrenOf,
-    childOf,
-    docOf,
+    getChildren,
+    getChild,
+    getDoc,
     type RawNode,
 };

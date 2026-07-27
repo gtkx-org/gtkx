@@ -67,7 +67,7 @@ const layoutOfType = (
     occurrenceCType: string | undefined,
     visited: Set<string>,
 ): FieldLayout => {
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type === undefined) {
         return POINTER_LAYOUT;

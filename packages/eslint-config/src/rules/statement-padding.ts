@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESLint, type TSESTree } from "@typescript-eslint/utils";
-import { CONTIGUOUS, sectionOf } from "./sections.js";
+import { CONTIGUOUS, getSection } from "./sections.js";
 
 type MessageIds = "missingPadding" | "unexpectedPadding" | "extraPadding";
 type SourceCode = TSESLint.SourceCode;
@@ -37,7 +37,7 @@ const statementPadding = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
     defaultOptions: [],
     create(context) {
         const check = (statements: TSESTree.Node[], sectioned: boolean): void => {
-            for (const pair of pairsOf(statements, context.sourceCode, sectioned)) {
+            for (const pair of getPairs(statements, context.sourceCode, sectioned)) {
                 report(context, pair);
             }
         };
@@ -79,16 +79,16 @@ const returnsFrom = (node: TSESTree.Node): boolean => {
 
 const isPadded = (node: TSESTree.Node): boolean => isMultiline(node) || returnsFrom(node);
 
-const anchorOf = (node: TSESTree.Node, previous: TSESTree.Node, source: SourceCode): Anchor => {
+const getAnchor = (node: TSESTree.Node, previous: TSESTree.Node, source: SourceCode): Anchor => {
     const leading = source.getCommentsBefore(node).find((comment) => comment.loc.start.line > previous.loc.end.line);
 
     return leading ?? node;
 };
 
-const pairOf = (previous: TSESTree.Node, next: TSESTree.Node, source: SourceCode, sectioned: boolean): Pair => {
-    const anchor = anchorOf(next, previous, source);
-    const previousSection = sectionOf(previous);
-    const nextSection = sectionOf(next);
+const getPair = (previous: TSESTree.Node, next: TSESTree.Node, source: SourceCode, sectioned: boolean): Pair => {
+    const anchor = getAnchor(next, previous, source);
+    const previousSection = getSection(previous);
+    const nextSection = getSection(next);
     const sameSection = previousSection === nextSection;
     const known = previousSection !== undefined && nextSection !== undefined;
 
@@ -102,7 +102,7 @@ const pairOf = (previous: TSESTree.Node, next: TSESTree.Node, source: SourceCode
     };
 };
 
-const pairsOf = (statements: TSESTree.Node[], source: SourceCode, sectioned: boolean): Pair[] => {
+const getPairs = (statements: TSESTree.Node[], source: SourceCode, sectioned: boolean): Pair[] => {
     const pairs: Pair[] = [];
 
     for (const [index, next] of statements.entries()) {
@@ -112,7 +112,7 @@ const pairsOf = (statements: TSESTree.Node[], source: SourceCode, sectioned: boo
             continue;
         }
 
-        pairs.push(pairOf(previous, next, source, sectioned));
+        pairs.push(getPair(previous, next, source, sectioned));
     }
 
     return pairs;
@@ -134,9 +134,9 @@ const padWith = (
 const needsPadding = (pair: Pair): boolean =>
     !pair.contiguous && (pair.boundary || isPadded(pair.previous) || isPadded(pair.next));
 
-const reasonOf = (pair: Pair): string => {
+const getReason = (pair: Pair): string => {
     if (pair.boundary) {
-        return `${String(sectionOf(pair.next))} section`;
+        return `${String(getSection(pair.next))} section`;
     }
 
     if (returnsFrom(pair.next) || returnsFrom(pair.previous)) {
@@ -146,13 +146,13 @@ const reasonOf = (pair: Pair): string => {
     return "multiline statement";
 };
 
-const violationOf = (pair: Pair, wants: number): Violation => {
+const getViolation = (pair: Pair, wants: number): Violation => {
     if (wants === 0) {
         return { messageId: "unexpectedPadding", data: {} };
     }
 
     if (pair.blankLines === 0) {
-        return { messageId: "missingPadding", data: { reason: reasonOf(pair) } };
+        return { messageId: "missingPadding", data: { reason: getReason(pair) } };
     }
 
     return { messageId: "extraPadding", data: { count: pair.blankLines } };
@@ -172,7 +172,7 @@ const report = (context: TSESLint.RuleContext<MessageIds, []>, pair: Pair): void
     }
 
     const loc = context.sourceCode.getFirstToken(next)?.loc ?? next.loc;
-    const violation = violationOf(pair, wants);
+    const violation = getViolation(pair, wants);
 
     context.report({
         loc,

@@ -100,13 +100,13 @@ const isVoidRef = (library: Library, ref: TypeId | undefined): boolean => {
         return true;
     }
 
-    const type = library.typeOf(ref);
+    const type = library.typeFor(ref);
 
     return type?.kind === "primitive" && type.category === "void";
 };
 
 const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): boolean =>
-    ref !== undefined && library.typeOf(ref)?.kind === "callback" && library.nameOf(ref) === undefined;
+    ref !== undefined && library.typeFor(ref)?.kind === "callback" && library.nameFor(ref) === undefined;
 
 const omitsPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
     isVoidRef(library, returnValue.type) || returnValue.skip;
@@ -123,7 +123,7 @@ const renderDescriptor = (
 
     const { argIndexOffset = 0 } = options;
     const ownership = transferOwnership(transfer);
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type === undefined) {
         return tObject(ownership);
@@ -173,7 +173,7 @@ const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): G
         return undefined;
     }
 
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type?.kind !== "callback") {
         return undefined;
@@ -204,7 +204,7 @@ const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
         return false;
     }
 
-    const type = library.typeOf(ref);
+    const type = library.typeFor(ref);
 
     return type !== undefined && isScalarType(library, type);
 };
@@ -339,7 +339,7 @@ const classOrInterfaceExpression = (
 const isClassOrInterface = (type: GirType | undefined): type is Extract<EntityType, { kind: "class" | "interface" }> =>
     type !== undefined && (type.kind === "class" || type.kind === "interface");
 
-const fundamentalOf = (node: Extract<EntityType, { kind: "class" | "interface" }>): AncestorFundamental | undefined => {
+const getFundamental = (node: Extract<EntityType, { kind: "class" | "interface" }>): AncestorFundamental | undefined => {
     const cls = node.value;
 
     if (!cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
@@ -370,7 +370,7 @@ const walkFundamental = (
     }
 
     seen.add(key);
-    const fundamental = fundamentalOf(current);
+    const fundamental = getFundamental(current);
 
     if (fundamental !== undefined) {
         return fundamental;
@@ -406,7 +406,7 @@ const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): s
         return tObject("borrowed");
     }
 
-    const type = context.library.typeOf(ref);
+    const type = context.library.typeFor(ref);
 
     if (type === undefined) {
         return tObject("borrowed");
@@ -602,7 +602,7 @@ const inlineElementSize = (
         return undefined;
     }
 
-    const type = context.library.typeOf(element);
+    const type = context.library.typeFor(element);
 
     if (type?.kind !== "record") {
         return undefined;

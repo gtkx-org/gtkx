@@ -48,13 +48,13 @@ const renderEntityType = (
     name: ReferenceName | undefined,
 ): string => renderNamedType(target, type, willEmitEntity(library, type) ? name : undefined);
 
-const renderBaseTypeFor = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
+const renderBaseType = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
     if (ref === undefined) {
         return "void";
     }
 
-    const type = library.typeOf(ref);
-    const name = library.nameOf(ref);
+    const type = library.typeFor(ref);
+    const name = library.nameFor(ref);
 
     if (type === undefined) {
         return renderNamedType(target, undefined, name);
@@ -89,8 +89,8 @@ const renderContainerType = (
     type: CArrayType | ListType | HashTableType,
 ): string => {
     if (type.kind === "hashtable") {
-        const key = renderBaseTypeFor(library, target, type.key);
-        const value = renderBaseTypeFor(library, target, type.value);
+        const key = renderBaseType(library, target, type.key);
+        const value = renderBaseType(library, target, type.value);
 
         return target.containerStyle === "record" ? `Record<${key}, ${value}>` : `Map<${key}, ${value}>`;
     }
@@ -99,7 +99,7 @@ const renderContainerType = (
         return "number[]";
     }
 
-    return `${renderBaseTypeFor(library, target, type.element)}[]`;
+    return `${renderBaseType(library, target, type.element)}[]`;
 };
 
 const renderNamedType = (
@@ -123,7 +123,7 @@ const moduleTarget = (context: ModuleContext): TsTypeTarget => ({
 });
 
 const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string => {
-    const base = renderBaseTypeFor(context.library, moduleTarget(context), ref);
+    const base = renderBaseType(context.library, moduleTarget(context), ref);
 
     return isNullable ? `${base} | null` : base;
 };
@@ -141,7 +141,7 @@ const recordTypeTarget = (
             if (resolved?.kind === "alias") {
                 return resolved.value.target === undefined
                     ? "number"
-                    : renderBaseTypeFor(library, target, resolved.value.target);
+                    : renderBaseType(library, target, resolved.value.target);
             }
 
             return renderNamedRef(name);
@@ -152,4 +152,4 @@ const recordTypeTarget = (
     return target;
 };
 
-export { renderBaseTypeFor, renderTsType, recordTypeTarget, type TsTypeTarget };
+export { renderBaseType, renderTsType, recordTypeTarget, type TsTypeTarget };

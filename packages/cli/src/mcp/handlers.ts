@@ -26,7 +26,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], ({ registry }) =>
         Promise.resolve({
             windows: registry.toplevels().map((window) => ({
-                id: registry.idFor(window),
+                id: registry.getOrCreateId(window),
                 title: window.getTitle(),
             })),
         })),
@@ -36,7 +36,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
 
         return {
             tree: testing.prettyWidget(container, {
-                getId: (w) => registry.idFor(w),
+                getId: (w) => registry.getOrCreateId(w),
                 highlight: false,
                 ...((params.maxDepth !== undefined) && { maxDepth: params.maxDepth }),
             }),
@@ -46,7 +46,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "widget.getProps": validated(ServerRequestParamsSchemas["widget.getProps"], async ({ registry }, params) => {
         const { testing, widget } = await widgetTarget(registry, params.widgetId);
 
-        return serializeWidget(widget, (target) => registry.idFor(target), testing);
+        return serializeWidget(widget, (target) => registry.getOrCreateId(target), testing);
     }),
     "widget.click": validated(ServerRequestParamsSchemas["widget.click"], async ({ registry }, params) => {
         const { testing, widget } = await widgetTarget(registry, params.widgetId);
@@ -172,7 +172,7 @@ async function handleQuery(
     // Query results are match summaries, not trees: serialize each match shallowly (no
     // descendants) so a container-role match doesn't dump its whole subtree. Use
     // widget.getProps on an id to expand one.
-    return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.idFor(widget), testing, 0)) };
+    return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.getOrCreateId(widget), testing, 0)) };
 }
 
 const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Widget => {

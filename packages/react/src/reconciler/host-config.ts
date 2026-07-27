@@ -16,7 +16,7 @@ import {
 } from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
 import { resolveElementNode } from "./instance.js";
-import { typeInfoOf } from "./metadata.js";
+import { typeInfoFor } from "./metadata.js";
 import {
     type AnyNode,
     createElementNode,
@@ -62,7 +62,7 @@ const hostConfig = {
 
         validateContentMix(instance, props);
 
-        return typeInfoOf(instance.typeName).hasMount;
+        return typeInfoFor(instance.typeName).hasMount;
     },
     commitMount: (instance: Instance): void => {
         if (instance.kind === ELEMENT_KIND) {
@@ -72,7 +72,7 @@ const hostConfig = {
     shouldSetTextContent: (): boolean => false,
     getRootHostContext: (): Record<string, never> => HOST_CONTEXT,
     getChildHostContext: (parent: Record<string, never>): Record<string, never> => parent,
-    getPublicInstance: (instance: Instance): object => publicInstanceOf(instance),
+    getPublicInstance: (instance: Instance): object => getPublicInstance(instance),
     prepareForCommit: (): null => {
         beginSuppression();
 
@@ -150,17 +150,17 @@ const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unkn
 
 const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
     if (!isRootElement(container)) {
-        attachChild(containerNodeFor(container), child, before);
+        attachChild(getOrCreateContainerNode(container), child, before);
     }
 };
 
 const detachFromContainer = (container: Container, child: AnyNode): void => {
     if (!isRootElement(container)) {
-        detachChild(containerNodeFor(container), child);
+        detachChild(getOrCreateContainerNode(container), child);
     }
 };
 
-const publicInstanceOf = (instance: Instance): object => {
+const getPublicInstance = (instance: Instance): object => {
     if (instance.kind === ELEMENT_KIND) {
         return instance.object;
     }
@@ -200,7 +200,7 @@ const adoptContainer = (container: GObject.Object): ElementNode => {
     return createElementNode(name, container, runDiscrete, null);
 };
 
-const containerNodeFor = (container: GObject.Object): ElementNode =>
+const getOrCreateContainerNode = (container: GObject.Object): ElementNode =>
     getOrInsert(containerNodes, container, adoptContainer);
 
 const createNode = (type: string, props: Props): Instance => {

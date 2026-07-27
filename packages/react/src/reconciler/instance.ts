@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { pickBy } from "@gtkx/utils";
 import type { Props } from "./registry.js";
-import { type TypeInfo, typeInfoOf } from "./metadata.js";
+import { type TypeInfo, typeInfoFor } from "./metadata.js";
 import {
     type ContentKind,
     createElementNode,
@@ -51,7 +51,7 @@ const instantiate = (type: bigint, input: Props): GObject.Object => {
 };
 
 const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
-    const info = typeInfoOf(typeName);
+    const info = typeInfoFor(typeName);
 
     if (info.lazy) {
         return createLazyNode(typeName, props, dispatch);

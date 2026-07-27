@@ -403,7 +403,7 @@ const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string |
         return undefined;
     }
 
-    const resolved = context.library.typeOf(ref);
+    const resolved = context.library.typeFor(ref);
 
     if (resolved?.kind !== "enum") {
         return undefined;

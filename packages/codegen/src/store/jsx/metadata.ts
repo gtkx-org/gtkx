@@ -252,7 +252,7 @@ const resolveDefaultLiteral = (
         return undefined;
     }
 
-    const resolved = library.typeOf(ref);
+    const resolved = library.typeFor(ref);
 
     if (resolved === undefined) {
         return undefined;

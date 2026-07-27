@@ -128,7 +128,7 @@ const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarget => ({
     dispatch: node.dispatch,
 });
 
-const contextFor = (node: ElementNode, behavior: ElementBehavior): unknown =>
+const getOrCreateContext = (node: ElementNode, behavior: ElementBehavior): unknown =>
     getOrInsert(node.contexts, behavior, () => behavior.createContext?.(node.object));
 
 export {
@@ -143,7 +143,7 @@ export {
     createTextNode,
     nodeObject,
     lazyTarget,
-    contextFor,
+    getOrCreateContext,
     type ContentKind,
     type HandlerRecord,
     type Dispatch,

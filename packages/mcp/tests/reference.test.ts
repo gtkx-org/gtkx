@@ -76,7 +76,7 @@ const getTool = (name: string): Tool => {
     return tool;
 };
 
-const textOf = (result: { content: { type: string }[] }): string => {
+const getText = (result: { content: { type: string }[] }): string => {
     const first = result.content[0];
 
     if (first?.type !== "text") {
@@ -171,26 +171,26 @@ describe("createReferenceProvider", () => {
 describe("gtkx_list_api", () => {
     it("returns the root overview without a namespace", async () => {
         const result = await getTool("gtkx_list_api").handler({});
-        expect(textOf(result)).toBe("ROOT OVERVIEW");
+        expect(getText(result)).toBe("ROOT OVERVIEW");
     });
 
     it("returns a namespace overview", async () => {
         const result = await getTool("gtkx_list_api").handler({ namespace: "Gtk" });
-        expect(textOf(result)).toBe("GTK OVERVIEW");
+        expect(getText(result)).toBe("GTK OVERVIEW");
     });
 
     it("errors on an unknown namespace, listing the known ones", async () => {
         const result = await getTool("gtkx_list_api").handler({ namespace: "Nope" });
         expect(result.isError).toBe(true);
-        expect(textOf(result)).toContain('Unknown namespace "Nope"');
-        expect(textOf(result)).toContain("Gtk, Adw");
+        expect(getText(result)).toContain('Unknown namespace "Nope"');
+        expect(getText(result)).toContain("Gtk, Adw");
     });
 });
 
 describe("gtkx_search_api", () => {
     it("returns matches as JSON", async () => {
         const result = await getTool("gtkx_search_api").handler({ query: "button" });
-        expect(JSON.parse(textOf(result))).toEqual([buttonSymbol]);
+        expect(JSON.parse(getText(result))).toEqual([buttonSymbol]);
     });
 
     it("forwards namespace, kind, and limit filters", async () => {
@@ -209,27 +209,27 @@ describe("gtkx_search_api", () => {
     it("reports when nothing matched", async () => {
         const result = await getTool("gtkx_search_api").handler({ query: "nothing" });
         expect(result.isError).toBeUndefined();
-        expect(textOf(result)).toContain('No symbols matched "nothing"');
+        expect(getText(result)).toContain('No symbols matched "nothing"');
     });
 });
 
 describe("gtkx_get_api_docs", () => {
     it("returns the rendered page", async () => {
         const result = await getTool("gtkx_get_api_docs").handler({ symbol: "Gtk.Button" });
-        expect(textOf(result)).toBe("BUTTON PAGE");
+        expect(getText(result)).toBe("BUTTON PAGE");
     });
 
     it("errors with candidates when the symbol is ambiguous", async () => {
         const result = await getTool("gtkx_get_api_docs").handler({ symbol: "HeaderBar" });
         expect(result.isError).toBe(true);
-        expect(textOf(result)).toContain("- Gtk.HeaderBar (class)");
-        expect(textOf(result)).toContain("- Adw.HeaderBar (class)");
+        expect(getText(result)).toContain("- Gtk.HeaderBar (class)");
+        expect(getText(result)).toContain("- Adw.HeaderBar (class)");
     });
 
     it("errors with a search hint when the symbol is unknown", async () => {
         const result = await getTool("gtkx_get_api_docs").handler({ symbol: "Missing" });
         expect(result.isError).toBe(true);
-        expect(textOf(result)).toContain("gtkx_search_api");
+        expect(getText(result)).toContain("gtkx_search_api");
     });
 });
 

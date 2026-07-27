@@ -24,10 +24,10 @@ type CollectionModel = {
     model: Gio.ListModel;
     treeModel: Gtk.TreeListModel | null;
     update: (data: CollectionData) => void;
-    entryOf: (holder: GObject.Object) => CollectionEntry | undefined;
+    entryFor: (holder: GObject.Object) => CollectionEntry | undefined;
     idAt: (position: number) => string | null;
-    positionOf: (id: string) => number;
-    positionsOf: (ids: string[]) => number[];
+    positionFor: (id: string) => number;
+    positionsFor: (ids: string[]) => number[];
 };
 
 type SectionStore = { store: Gio.ListStore; order: GObject.Object[] };
@@ -45,7 +45,7 @@ type ModelState = {
 
 const hasChildren = (item: Item): boolean => item.children !== undefined && item.children.length > 0;
 
-const collectionModeOf = (data: CollectionData): CollectionMode => {
+const getCollectionMode = (data: CollectionData): CollectionMode => {
     if (data.sections !== undefined) {
         return "sections";
     }
@@ -81,7 +81,7 @@ const syncStore = (state: ModelState, store: Gio.ListStore, order: GObject.Objec
     }
 };
 
-const entryFor = (state: ModelState, item: Item): CollectionEntry => {
+const getOrCreateEntry = (state: ModelState, item: Item): CollectionEntry => {
     const existing = state.entries.get(item.id);
 
     if (existing !== undefined) {
@@ -107,7 +107,7 @@ const entryFor = (state: ModelState, item: Item): CollectionEntry => {
 
 const syncLevel = (state: ModelState, items: Item[], sectionValue: unknown): GObject.Object[] =>
     items.map((item) => {
-        const entry = entryFor(state, item);
+        const entry = getOrCreateEntry(state, item);
         entry.item = item;
         entry.sectionValue = sectionValue;
         state.seen.add(item.id);
@@ -198,7 +198,7 @@ const idAt = (state: ModelState, model: Gio.ListModel, position: number): string
 
 const isWanted = (id: string | null, wanted: Set<string>): boolean => id !== null && wanted.has(id);
 
-const positionsOfIds = (state: ModelState, model: Gio.ListModel, ids: string[]): number[] => {
+const findPositions = (state: ModelState, model: Gio.ListModel, ids: string[]): number[] => {
     const wanted = new Set(ids);
     const positions: number[] = [];
     const count = model.getNItems();
@@ -212,7 +212,7 @@ const positionsOfIds = (state: ModelState, model: Gio.ListModel, ids: string[]):
     return positions;
 };
 
-const childModelOf = (state: ModelState, holder: GObject.Object): Gio.ListStore | null => {
+const childModelFor = (state: ModelState, holder: GObject.Object): Gio.ListStore | null => {
     const entry = state.holders.get(holder);
 
     if (entry === undefined || !hasChildren(entry.item)) {
@@ -224,7 +224,7 @@ const childModelOf = (state: ModelState, holder: GObject.Object): Gio.ListStore 
 
 const presentedModel = (state: ModelState): { model: Gio.ListModel; treeModel: Gtk.TreeListModel | null } => {
     if (state.mode === "tree") {
-        const treeModel = Gtk.TreeListModel.new(state.root, false, false, (holder) => childModelOf(state, holder));
+        const treeModel = Gtk.TreeListModel.new(state.root, false, false, (holder) => childModelFor(state, holder));
 
         return { model: treeModel, treeModel };
     }
@@ -255,9 +255,9 @@ const createCollectionModel = (mode: CollectionMode): CollectionModel => {
         model,
         treeModel,
         update: (data) => update(state, data),
-        entryOf: (holder) => state.holders.get(holder),
+        entryFor: (holder) => state.holders.get(holder),
         idAt: (position) => idAt(state, model, position),
-        positionOf: (id) => {
+        positionFor: (id) => {
             const count = model.getNItems();
 
             for (let index = 0; index < count; index++) {
@@ -268,12 +268,12 @@ const createCollectionModel = (mode: CollectionMode): CollectionModel => {
 
             return -1;
         },
-        positionsOf: (ids) => positionsOfIds(state, model, ids),
+        positionsFor: (ids) => findPositions(state, model, ids),
     };
 };
 
 export {
-    collectionModeOf,
+    getCollectionMode,
     createCollectionModel,
     type CollectionMode,
     type CollectionData,

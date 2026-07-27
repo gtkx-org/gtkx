@@ -46,33 +46,33 @@ const SCHEMA: SettingsSchema<VariantSchemaKeys> = {
     },
 };
 
-type ValueOf<P extends keyof VariantSchemaKeys> = SettingValue<VariantSchemaKeys, P>;
+type Value<P extends keyof VariantSchemaKeys> = SettingValue<VariantSchemaKeys, P>;
 
 describe("useSetting (variant types: arrays)", () => {
     it("reads and writes byte arrays as number arrays", async () => {
-        expectTypeOf<ValueOf<"payload">>().toEqualTypeOf<number[]>();
+        expectTypeOf<Value<"payload">>().toEqualTypeOf<number[]>();
         await expectSettingRoundTrip(SCHEMA, "payload", [1, 2], [3, 4, 5]);
     });
 
     it("reads and writes int64 arrays as bigint arrays", async () => {
-        expectTypeOf<ValueOf<"big-offsets">>().toEqualTypeOf<bigint[]>();
+        expectTypeOf<Value<"big-offsets">>().toEqualTypeOf<bigint[]>();
         await expectSettingRoundTrip(SCHEMA, "big-offsets", [1n, 2n], [9_007_199_254_740_993n, -3n]);
     });
 
     it("reads and writes nested arrays", async () => {
-        expectTypeOf<ValueOf<"matrix">>().toEqualTypeOf<number[][]>();
+        expectTypeOf<Value<"matrix">>().toEqualTypeOf<number[][]>();
         await expectSettingRoundTrip(SCHEMA, "matrix", [[1], [2, 3]], [[9, 8], [7], []]);
     });
 });
 
 describe("useSetting (variant types: dictionaries)", () => {
     it("reads and writes string-keyed dictionaries as plain objects", async () => {
-        expectTypeOf<ValueOf<"metadata">>().toEqualTypeOf<Record<string, string>>();
+        expectTypeOf<Value<"metadata">>().toEqualTypeOf<Record<string, string>>();
         await expectSettingRoundTrip(SCHEMA, "metadata", { origin: "default" }, { origin: "user", locale: "en" });
     });
 
     it("reads and writes non-string-keyed dictionaries as maps", async () => {
-        expectTypeOf<ValueOf<"scores">>().toEqualTypeOf<Map<number, bigint>>();
+        expectTypeOf<Value<"scores">>().toEqualTypeOf<Map<number, bigint>>();
 
         await expectSettingRoundTrip(
             SCHEMA,
@@ -86,7 +86,7 @@ describe("useSetting (variant types: dictionaries)", () => {
     });
 
     it("reads and writes variant-valued dictionaries", async () => {
-        expectTypeOf<ValueOf<"extras">>().toEqualTypeOf<Record<string, GLib.Variant>>();
+        expectTypeOf<Value<"extras">>().toEqualTypeOf<Record<string, GLib.Variant>>();
         resetSettingsKey(SCHEMA_ID, "extras");
         const { result } = await renderHook(() => useSetting(SCHEMA, "extras"));
         expect(result.current[0]).toEqual({});
@@ -103,7 +103,7 @@ describe("useSetting (variant types: dictionaries)", () => {
 
 describe("useSetting (variant types: maybe and variant)", () => {
     it("reads and writes maybe keys as nullable values", async () => {
-        expectTypeOf<ValueOf<"opt-limit">>().toEqualTypeOf<number | null>();
+        expectTypeOf<Value<"opt-limit">>().toEqualTypeOf<number | null>();
         resetSettingsKey(SCHEMA_ID, "opt-limit");
         const { result } = await renderHook(() => useSetting(SCHEMA, "opt-limit"));
         expect(result.current[0]).toBeNull();
@@ -121,7 +121,7 @@ describe("useSetting (variant types: maybe and variant)", () => {
     });
 
     it("reads and writes variant keys as GLib.Variant", async () => {
-        expectTypeOf<ValueOf<"wrapped">>().toEqualTypeOf<GLib.Variant>();
+        expectTypeOf<Value<"wrapped">>().toEqualTypeOf<GLib.Variant>();
         resetSettingsKey(SCHEMA_ID, "wrapped");
         const { result } = await renderHook(() => useSetting(SCHEMA, "wrapped"));
         expect(result.current[0].getString()[0]).toBe("hello");
@@ -135,39 +135,39 @@ describe("useSetting (variant types: maybe and variant)", () => {
 
 describe("useSetting (variant types: scalars)", () => {
     it("reads and writes int16 keys across the full range", async () => {
-        expectTypeOf<ValueOf<"small-signed">>().toEqualTypeOf<number>();
+        expectTypeOf<Value<"small-signed">>().toEqualTypeOf<number>();
         await expectSettingRoundTrip(SCHEMA, "small-signed", -32_768, 32_767);
     });
 
     it("reads and writes uint16 keys across the full range", async () => {
-        expectTypeOf<ValueOf<"small-unsigned">>().toEqualTypeOf<number>();
+        expectTypeOf<Value<"small-unsigned">>().toEqualTypeOf<number>();
         await expectSettingRoundTrip(SCHEMA, "small-unsigned", 65_535, 0);
     });
 
     it("reads and writes byte keys across the full range", async () => {
-        expectTypeOf<ValueOf<"one-byte">>().toEqualTypeOf<number>();
+        expectTypeOf<Value<"one-byte">>().toEqualTypeOf<number>();
         await expectSettingRoundTrip(SCHEMA, "one-byte", 255, 0);
     });
 
     it("reads and writes handle keys as numbers", async () => {
-        expectTypeOf<ValueOf<"handle-slot">>().toEqualTypeOf<number>();
+        expectTypeOf<Value<"handle-slot">>().toEqualTypeOf<number>();
         await expectSettingRoundTrip(SCHEMA, "handle-slot", 0, 42);
     });
 
     it("reads and writes object path keys as strings", async () => {
-        expectTypeOf<ValueOf<"bus-path">>().toEqualTypeOf<string>();
+        expectTypeOf<Value<"bus-path">>().toEqualTypeOf<string>();
         await expectSettingRoundTrip(SCHEMA, "bus-path", "/com/gtkx/test", "/com/gtkx/other");
     });
 
     it("reads and writes signature keys as strings", async () => {
-        expectTypeOf<ValueOf<"bus-signature">>().toEqualTypeOf<string>();
+        expectTypeOf<Value<"bus-signature">>().toEqualTypeOf<string>();
         await expectSettingRoundTrip(SCHEMA, "bus-signature", "a{sv}", "s");
     });
 });
 
 describe("useSetting (variant types: dict entries)", () => {
     it("reads and writes bare dict entry keys as pairs", async () => {
-        expectTypeOf<ValueOf<"pair">>().toEqualTypeOf<[string, string]>();
+        expectTypeOf<Value<"pair">>().toEqualTypeOf<[string, string]>();
         await expectSettingRoundTrip(SCHEMA, "pair", ["k", "v"], ["a", "b"]);
     });
 

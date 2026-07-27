@@ -38,9 +38,9 @@ const renderGtypeExpression = (
 ): string | undefined =>
     typeFnName === "intern" ? renderInternGtype(context, typeName) : renderResolveGtype(context, typeFnName);
 
-const gtypeExprFor = (context: ModuleContext, source: TypeSource): string | undefined =>
+const renderSourceGtype = (context: ModuleContext, source: TypeSource): string | undefined =>
     source.glibGetType === undefined
         ? undefined
         : renderGtypeExpression(context, source.glibGetType, source.glibTypeName);
 
-export { gtypeTsType, gtypeMemberDeclaration, gtypeExprFor };
+export { gtypeTsType, gtypeMemberDeclaration, renderSourceGtype };

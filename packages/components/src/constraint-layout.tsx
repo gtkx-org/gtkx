@@ -30,7 +30,7 @@ type Registry = {
 };
 
 type Targets = Map<string, Gtk.ConstraintTarget>;
-type EntryOf<K extends Declaration["kind"]> = { signature: string; declaration: Extract<Declaration, { kind: K }> };
+type KindEntry<K extends Declaration["kind"]> = { signature: string; declaration: Extract<Declaration, { kind: K }> };
 
 type TargetsStore = {
     subscribe: (onChange: () => void) => () => void;
@@ -154,16 +154,16 @@ const constraintElement = (key: string, props: ConstraintProps, targets: Targets
     />
 );
 
-const elementsOf = <K extends Declaration["kind"]>(
+const getElements = <K extends Declaration["kind"]>(
     declarations: Declarations,
     kind: K,
-    build: (key: string, entry: EntryOf<K>) => ReactElement,
+    build: (key: string, entry: KindEntry<K>) => ReactElement,
 ): ReactElement[] => {
     const elements: ReactElement[] = [];
 
     for (const [key, entry] of declarations) {
         if (entry.declaration.kind === kind) {
-            elements.push(build(key, entry as EntryOf<K>));
+            elements.push(build(key, entry as KindEntry<K>));
         }
     }
 
@@ -296,7 +296,7 @@ function ConstraintLayoutRoot(props: ConstraintLayoutProps): ReactNode {
     const targets = useTargets(layout);
 
     const guides = useMemo(
-        () => elementsOf(declarations, "guide", (key, entry) => guideElement(key, entry.declaration.props)),
+        () => getElements(declarations, "guide", (key, entry) => guideElement(key, entry.declaration.props)),
         [declarations],
     );
 
@@ -304,7 +304,7 @@ function ConstraintLayoutRoot(props: ConstraintLayoutProps): ReactNode {
         () =>
             targets === null
                 ? null
-                : elementsOf(declarations, "constraint", (key, entry) =>
+                : getElements(declarations, "constraint", (key, entry) =>
                         constraintElement(`${key}:${entry.signature}`, entry.declaration.props, targets),
                     ),
         [declarations, targets],

@@ -4,7 +4,7 @@ import { renderJsDoc } from "../../writer/doc.js";
 import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
 import { isClassStructRecord } from "./class-struct-record.js";
-import { gtypeExprFor } from "./gtype-binding.js";
+import { renderSourceGtype } from "./gtype-binding.js";
 import { renderRecordConstructor, renderRecordConstructorPropsInterface } from "./record-constructor.js";
 import { renderRecordFieldAccessor } from "./record-field-accessor.js";
 import { computeRecordFieldSlots } from "./record-layout.js";
@@ -45,7 +45,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     const heritage = extendsError ? " extends globalThis.Error" : "";
     context.module.appendDeclaration(`${renderJsDoc(record.doc)}export class ${className}${heritage} {\n${body}\n}`);
     context.module.appendDeclaration(renderRecordConstructorPropsInterface(context, record, className));
-    const gtypeExpr = gtypeExprFor(context, record);
+    const gtypeExpr = renderSourceGtype(context, record);
 
     appendWrapperClassRegistration(context, {
         className,

@@ -3,12 +3,12 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getOrInsert, indexBeforeOrEnd, remove } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, markFlush } from "./apply-props.js";
-import { typeInfoOf } from "./metadata.js";
+import { typeInfoFor } from "./metadata.js";
 import {
-    contextFor,
     DEFAULT_SLOT,
     ELEMENT_KIND,
     type ElementNode,
+    getOrCreateContext,
     LAZY_KIND,
     lazyTarget,
     nodeObject,
@@ -83,7 +83,7 @@ const tryAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
         return false;
     }
 
-    const context = contextFor(ctx.parent, behavior);
+    const context = getOrCreateContext(ctx.parent, behavior);
     const claim = attach(ctx.parent.object, ctx.entry.object, placeInfo(ctx.entry, ctx.index, ctx.sibling, context));
 
     if (claim === undefined) {
@@ -101,7 +101,7 @@ const tryAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
 const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
     const ctx: AttachContext = { parent, entry, index, sibling };
 
-    for (const behavior of typeInfoOf(parent.typeName).behaviors) {
+    for (const behavior of typeInfoFor(parent.typeName).behaviors) {
         if (tryAttach(ctx, behavior)) {
             return;
         }
@@ -135,7 +135,7 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
         return;
     }
 
-    behavior.detach?.(parent.object, entry.object, detachInfo(entry, contextFor(parent, behavior)));
+    behavior.detach?.(parent.object, entry.object, detachInfo(entry, getOrCreateContext(parent, behavior)));
 };
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
@@ -149,7 +149,7 @@ const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
     }
 };
 
-const positionOf = (entries: PlacedChild[], before: PlaceableNode | null): number =>
+const getPosition = (entries: PlacedChild[], before: PlaceableNode | null): number =>
     indexBeforeOrEnd(entries, before, (entry, target) => entry.node === target);
 
 const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[], index: number): void => {
@@ -179,7 +179,7 @@ const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild
         return;
     }
 
-    const context = contextFor(parent, behavior);
+    const context = getOrCreateContext(parent, behavior);
     const claim = reorder(parent.object, entry.object, placeInfo(entry, index, siblingAt(entries, index), context));
     adoptedFrom(parent, entry, behavior, claim);
     applyLazyProps(entry);
@@ -218,7 +218,7 @@ const placeChild = (
         entries.splice(existing, 1);
     }
 
-    const index = positionOf(entries, before);
+    const index = getPosition(entries, before);
     entries.splice(index, 0, entry);
 
     if (isMove) {

@@ -197,7 +197,7 @@ const maybeAnnounceStale = (announce: boolean | undefined, inputs: CodegenInputs
     }
 };
 
-const runOptionsFor = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCodegenOptions => {
+const getRunOptions = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCodegenOptions => {
     if (inputs === null) {
         return { cwd: root, mode, resolved };
     }
@@ -230,7 +230,7 @@ const ensureGenerated = async (
     const inputs = resolveInputsOrNull(context.root, context.config);
     maybeAnnounceStale(options.announce, inputs);
     const resolved = { config: context.config, configFile: context.configFile };
-    const result = await runCodegen(runOptionsFor({ root: context.root, mode: options.mode, inputs, resolved }));
+    const result = await runCodegen(getRunOptions({ root: context.root, mode: options.mode, inputs, resolved }));
 
     return result.regenerated;
 };

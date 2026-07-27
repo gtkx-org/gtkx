@@ -225,7 +225,7 @@ const matchesSearchFilters = (
     return true;
 };
 
-const scoredEntryFor = (
+const getScoredEntry = (
     entry: SymbolEntry,
     query: string,
     namespaceFilter: string | undefined,
@@ -405,7 +405,7 @@ class ApiReference {
         const scored: ScoredEntry[] = [];
 
         for (const entry of this.entries) {
-            const item = scoredEntryFor(entry, query, namespaceFilter, kinds);
+            const item = getScoredEntry(entry, query, namespaceFilter, kinds);
 
             if (item !== undefined) {
                 scored.push(item);

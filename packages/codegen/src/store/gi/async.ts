@@ -39,11 +39,11 @@ const findFinishSibling = (fn: GirFunction, siblings: GirFunction[]): GirFunctio
 };
 
 const callbackParameterName = (library: Library, ref: TypeId | undefined): string | undefined => {
-    if (ref === undefined || library.typeOf(ref)?.kind !== "callback") {
+    if (ref === undefined || library.typeFor(ref)?.kind !== "callback") {
         return undefined;
     }
 
-    return library.nameOf(ref)?.typeName;
+    return library.nameFor(ref)?.typeName;
 };
 
 const hasCanonicalAsyncCallback = (library: Library, fn: GirFunction): boolean => {
@@ -63,7 +63,7 @@ const isPromisifiableFinish = (library: Library, finishFn: GirFunction): boolean
 
     const only = inputs[0];
 
-    return only?.parameter.type !== undefined && library.nameOf(only.parameter.type)?.typeName === "AsyncResult";
+    return only?.parameter.type !== undefined && library.nameFor(only.parameter.type)?.typeName === "AsyncResult";
 };
 
 export { matchAsyncFinish };

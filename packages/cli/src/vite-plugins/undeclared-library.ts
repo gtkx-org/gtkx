@@ -19,10 +19,10 @@ const girSearchPaths = async (state: PluginState): Promise<string[]> => {
     return state.girPath;
 };
 
-const namespaceOf = (identifier: string): string => identifier.slice(0, identifier.indexOf("-")).toLowerCase();
+const getNamespace = (identifier: string): string => identifier.slice(0, identifier.indexOf("-")).toLowerCase();
 
 const findGirIdentifier = (girPath: string[], namespace: string): string | undefined =>
-    discoverGirNamespaces(girPath).find((identifier) => namespaceOf(identifier) === namespace);
+    discoverGirNamespaces(girPath).find((identifier) => getNamespace(identifier) === namespace);
 
 const undeclaredLibraryError = (source: string, namespace: string, girPath: string[]): Error => {
     const identifier = findGirIdentifier(girPath, namespace);

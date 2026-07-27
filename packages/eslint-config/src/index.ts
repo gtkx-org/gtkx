@@ -124,6 +124,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "@typescript-eslint/non-nullable-type-assertion-style": "off",
     "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
     curly: ["error", "all"],
+    "gtkx/accessor-naming": "error",
     "gtkx/cognitive-complexity": ["error", { max: 5 }],
     "gtkx/module-section-order": "error",
     "gtkx/no-inline-exports": "error",

@@ -58,7 +58,7 @@ const columnById = (view: Gtk.ColumnView, id: string): Gtk.ColumnViewColumn | nu
     return null;
 };
 
-const sortTargetFor = (view: Gtk.ColumnView | null, sortColumn: string | null | undefined): SortTarget | null => {
+const getSortTarget = (view: Gtk.ColumnView | null, sortColumn: string | null | undefined): SortTarget | null => {
     if (view === null || sortColumn === undefined) {
         return null;
     }
@@ -105,7 +105,7 @@ const syncSort = (
     sortColumn: string | null | undefined,
     sortOrder: Gtk.SortType | null | undefined,
 ): void => {
-    const target = sortTargetFor(view, sortColumn);
+    const target = getSortTarget(view, sortColumn);
 
     if (target === null) {
         return;

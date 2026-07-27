@@ -23,7 +23,7 @@ const isStringTyped = (context: ModuleContext, type: TypeId | undefined): boolea
         return false;
     }
 
-    const resolved = context.library.typeOf(type);
+    const resolved = context.library.typeFor(type);
 
     return resolved?.kind === "primitive" && resolved.category === "string";
 };

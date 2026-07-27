@@ -7,7 +7,7 @@ import { useCallback, useEffectEvent, useLayoutEffect, useRef } from "react";
 import type { CollectionModel } from "./internal/collection-model.js";
 import type { CellRecord, Cells } from "./internal/use-cells.js";
 import type { DropDownProps } from "./types.js";
-import { collectionModeOf } from "./internal/collection-model.js";
+import { getCollectionMode } from "./internal/collection-model.js";
 import { headerRenderer, renderItemArgs, useCells } from "./internal/use-cells.js";
 import { useCollectionModel } from "./internal/use-collection.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
@@ -63,7 +63,7 @@ const resolvePosition = (
     model: CollectionModel,
     selectedId: string | null | undefined,
 ): number => {
-    const requested = selectedId == null ? -1 : model.positionOf(selectedId);
+    const requested = selectedId == null ? -1 : model.positionFor(selectedId);
 
     return requested >= 0 ? requested : widget.getSelected();
 };
@@ -180,7 +180,7 @@ function DropDownImpl(props: DropDownRuntimeProps): ReactNode {
     ]);
 
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
-    const model = useCollectionModel(collectionModeOf({ items, sections }));
+    const model = useCollectionModel(getCollectionMode({ items, sections }));
     const cells = useCells({ width: -1, height: -1 });
     useDropDownSelection({ widget, model, cells, props });
     const Component = component ?? GtkDropDown;
