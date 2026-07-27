@@ -1,5 +1,5 @@
 {
-    "name": "@gtkx/eslint-config",
+    "name": "@gtkx/eslint",
     "version": "0.0.0",
     "description": "Internal ESLint flat config and custom lint rules for the GTKX workspace",
     "private": true,

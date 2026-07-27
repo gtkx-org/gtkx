@@ -1,5 +1,5 @@
 import { elements } from "virtual:gtkx-config";
-import "./elements.js";
+import "./element-behaviors.js";
 import { registerElements } from "./reconciler/registry.js";
 
 registerElements(elements, { prepend: true });

@@ -5,7 +5,7 @@ import { noInlineExports } from "./rules/no-inline-exports.js";
 import { statementPadding } from "./rules/statement-padding.js";
 
 const gtkx = {
-    meta: { name: "@gtkx/eslint-config" },
+    meta: { name: "@gtkx/eslint" },
     rules: {
         "accessor-naming": accessorNaming,
         "cognitive-complexity": cognitiveComplexity,

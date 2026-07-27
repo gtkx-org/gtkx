@@ -14,7 +14,7 @@
         "packages/e2e/elements.ts",
         "packages/native/main.d.ts",
         "packages/cli/src/babel-modules.d.ts",
-        "packages/eslint-config/src/eslint-plugin-promise.d.ts",
+        "packages/eslint/src/eslint-plugin-promise.d.ts",
         "packages/vitest/src/dbus-native.d.ts",
         ".dependency-cruiser.js"
     ],

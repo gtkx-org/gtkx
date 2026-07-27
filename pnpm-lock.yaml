@@ -50,9 +50,9 @@ importers:
 
   .:
     devDependencies:
-      '@gtkx/eslint-config':
+      '@gtkx/eslint':
         specifier: workspace:*
-        version: link:packages/eslint-config
+        version: link:packages/eslint
       '@gtkx/native':
         specifier: workspace:*
         version: link:packages/native
@@ -403,7 +403,7 @@ importers:
         specifier: 'catalog:'
         version: 19.2.7
 
-  packages/eslint-config:
+  packages/eslint:
     dependencies:
       '@eslint/js':
         specifier: ^10.0.1

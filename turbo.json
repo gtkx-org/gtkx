@@ -186,7 +186,7 @@
             "inputs": [
                 "$TURBO_DEFAULT$",
                 "eslint.config.ts",
-                "packages/eslint-config/src/**",
+                "packages/eslint/src/**",
                 "packages/**/src/**",
                 "packages/**/tests/**",
                 "packages/**/gtkx.config.ts",

@@ -5,7 +5,7 @@ export default mergeConfig(
     sourceResolveConfig,
     defineConfig({
         test: {
-            name: "eslint-config",
+            name: "eslint",
         },
     }),
 );

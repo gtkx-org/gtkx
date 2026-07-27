@@ -60,12 +60,12 @@
         "./dist/internal.js",
         "./src/bootstrap.ts",
         "./dist/bootstrap.js",
-        "./src/elements.ts",
-        "./dist/elements.js",
+        "./src/element-behaviors.ts",
+        "./dist/element-behaviors.js",
         "./src/adw/index.ts",
         "./dist/adw/index.js",
-        "./src/adw/elements.ts",
-        "./dist/adw/elements.js"
+        "./src/adw/element-behaviors.ts",
+        "./dist/adw/element-behaviors.js"
     ],
     "files": [
         "dist",

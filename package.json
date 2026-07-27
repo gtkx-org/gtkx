@@ -26,7 +26,7 @@
         "typecheck:all": "tsc --noEmit"
     },
     "devDependencies": {
-        "@gtkx/eslint-config": "workspace:*",
+        "@gtkx/eslint": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/native": "workspace:*",
