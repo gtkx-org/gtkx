@@ -335,7 +335,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /opt/sway
-          key: sway-1.10.1-wlroots-0.18.2-${{ runner.os }}-${{ runner.arch }}
+          key: sway-1.10.1-wlroots-0.18.2-deps-r3-${{ runner.os }}-${{ runner.arch }}
 
       - name: Build sway with the headless backend
         if: steps.sway.outputs.cache-hit != 'true'
@@ -351,7 +351,7 @@ jobs:
             ninja-build python3-pip pkg-config cmake \
             libpixman-1-dev libxkbcommon-dev libudev-dev libevdev-dev \
             libdbus-1-dev libcairo2-dev libpango1.0-dev libglib2.0-dev \
-            libpng-dev libjson-c-dev libpcre2-dev scdoc hwdata
+            libpng-dev libjson-c-dev libpcre2-dev scdoc hwdata bison
           sudo pip3 install --quiet "meson>=1.3"
 
           PREFIX=/opt/sway
@@ -361,14 +361,16 @@ jobs:
           build() {
             local name="$1" url="$2" dir="$3"
             shift 3
-            curl -fsSL "$url" | tar -xJ -C "$RUNNER_TEMP"
+            curl -fsSL "$url" | tar -x -C "$RUNNER_TEMP"
             meson setup "$RUNNER_TEMP/$dir/build" "$RUNNER_TEMP/$dir" \
               --prefix="$PREFIX" --libdir=lib --buildtype=release "$@"
             ninja -C "$RUNNER_TEMP/$dir/build" install
           }
 
-          # wlroots 0.18 needs wayland >= 1.22 (jammy has 1.20), wayland-protocols
-          # >= 1.32, libdrm >= 2.4.114 and libdisplay-info, none of which jammy meets.
+          # jammy meets none of the floors these need: wayland-server >= 1.23,
+          # wayland-protocols >= 1.24, libdrm >= 2.4.122, pixman >= 0.42 and
+          # xkbcommon >= 1.5. Disabling the libinput backend also drops sway's
+          # libinput >= 1.26 requirement, which jammy's 1.20 could never satisfy.
           build wayland \
             "https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.23.1/downloads/wayland-1.23.1.tar.xz" \
             "wayland-1.23.1" -Dtests=false -Ddocumentation=false -Ddtd_validation=false
@@ -376,13 +378,22 @@ jobs:
             "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.36/downloads/wayland-protocols-1.36.tar.xz" \
             "wayland-protocols-1.36" -Dtests=false
           build libdrm \
-            "https://dri.freedesktop.org/libdrm/libdrm-2.4.120.tar.xz" \
-            "libdrm-2.4.120" -Dtests=false -Dcairo-tests=disabled -Dman-pages=disabled \
+            "https://dri.freedesktop.org/libdrm/libdrm-2.4.125.tar.xz" \
+            "libdrm-2.4.125" -Dtests=false -Dcairo-tests=disabled -Dman-pages=disabled \
             -Dvalgrind=disabled -Dintel=disabled -Dradeon=disabled -Damdgpu=disabled \
             -Dnouveau=disabled -Dvmwgfx=disabled
           build libdisplay-info \
             "https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/0.2.0/downloads/libdisplay-info-0.2.0.tar.xz" \
             "libdisplay-info-0.2.0"
+
+          build pixman \
+            "https://www.cairographics.org/releases/pixman-0.42.2.tar.gz" \
+            "pixman-0.42.2"
+          build libxkbcommon \
+            "https://xkbcommon.org/download/libxkbcommon-1.7.0.tar.xz" \
+            "libxkbcommon-1.7.0" -Denable-docs=false -Denable-tools=false \
+            -Denable-wayland=false -Denable-x11=false -Denable-xkbregistry=false \
+            -Denable-bash-completion=false
 
           curl -fsSL "https://gitlab.freedesktop.org/wlroots/wlroots/-/releases/0.18.2/downloads/wlroots-0.18.2.tar.gz" \
             | tar -xz -C "$RUNNER_TEMP"
