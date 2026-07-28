@@ -54,7 +54,7 @@ type UriRowProps = {
     onLaunchUri: () => Promise<void>;
 };
 
-const gfileType = Gio.File.prototype._type_;
+const gfileType = Gio.File.prototype.__type__;
 const DIALOG_TIMEOUT_SECONDS = 20;
 
 const pickersDemo: Demo = {

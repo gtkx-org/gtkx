@@ -330,12 +330,12 @@ jobs:
         shell: bash
         run: echo "GTKX_GIR_PATH=$RUNNER_TEMP/gir" >> "$GITHUB_ENV"
 
-      - name: Cache the headless sway build
+      - name: Restore the headless sway build
         id: sway
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /opt/sway
-          key: sway-1.10.1-wlroots-0.18.2-deps-r4-${{ runner.os }}-${{ runner.arch }}
+          key: &sway-key sway-1.10.1-wlroots-0.18.2-deps-r4-${{ runner.os }}-${{ runner.arch }}
 
       - name: Build sway with the headless backend
         if: steps.sway.outputs.cache-hit != 'true'
@@ -402,6 +402,13 @@ jobs:
             -Dswaybar=false -Dswaynag=false -Ddefault-wallpaper=false \
             -Dzsh-completions=false -Dbash-completions=false -Dfish-completions=false
 
+      - name: Save the headless sway build
+        if: steps.sway.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /opt/sway
+          key: *sway-key
+
       - name: Put the headless sway on PATH
         shell: bash
         run: |
@@ -430,6 +437,7 @@ jobs:
         shell: bash
         run: |
           pnpm install --frozen-lockfile
+          pnpm build
 
       - name: Run the TypeScript benchmarks under CodSpeed
         uses: CodSpeedHQ/action@f22792bfac16f3e14eb9fbea76f4a48e9cc22b93 # v4.19.1

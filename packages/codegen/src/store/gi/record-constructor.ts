@@ -95,7 +95,7 @@ const allocArgs = (context: ModuleContext, record: GirRecord, size: number): str
     const args = [String(size)];
 
     if (renderSourceGtype(context, record) !== undefined) {
-        args.push("this._type_");
+        args.push("this.__type__");
     }
 
     return args;

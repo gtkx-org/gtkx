@@ -102,7 +102,12 @@ const NAMING_CONVENTION = [
     { selector: "variable", format: ["camelCase", "PascalCase", "UPPER_CASE"], leadingUnderscore: "allow" },
     { selector: "function", format: ["camelCase", "PascalCase"] },
     { selector: "parameter", format: ["camelCase", "PascalCase"], leadingUnderscore: "allow" },
-    { selector: "memberLike", format: ["camelCase", "PascalCase"], leadingUnderscore: "allow" },
+    {
+        selector: "memberLike",
+        format: ["camelCase", "PascalCase"],
+        leadingUnderscore: "allowSingleOrDouble",
+        trailingUnderscore: "allowSingleOrDouble",
+    },
     { selector: "typeLike", format: ["PascalCase"] },
     { selector: "typeAlias", format: null, custom: { regex: "^[A-Z][a-zA-Z0-9]*$", match: true } },
     { selector: "typeParameter", format: null, custom: { regex: "^T?[A-Z][a-zA-Z0-9]*$", match: true } },
@@ -110,8 +115,8 @@ const NAMING_CONVENTION = [
     {
         selector: ["objectLiteralProperty", "typeProperty"],
         format: ["camelCase", "PascalCase", "UPPER_CASE"],
-        leadingUnderscore: "allow",
-        trailingUnderscore: "allow",
+        leadingUnderscore: "allowSingleOrDouble",
+        trailingUnderscore: "allowSingleOrDouble",
     },
     { selector: ["objectLiteralProperty", "typeProperty"], format: null, modifiers: ["requiresQuotes"] },
 ];

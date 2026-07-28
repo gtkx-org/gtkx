@@ -10,7 +10,7 @@ type TypeSource = {
 const gtypeTsType = (context: ModuleContext): string =>
     context.namespace.name === "GObject" ? "Type" : PRIMITIVE_TS_TYPE.gtype;
 
-const gtypeMemberDeclaration = (context: ModuleContext): string => `declare _type_: ${gtypeTsType(context)};`;
+const gtypeMemberDeclaration = (context: ModuleContext): string => `declare __type__: ${gtypeTsType(context)};`;
 
 const renderInternGtype = (context: ModuleContext, typeName: string | undefined): string | undefined => {
     if (typeName === undefined) {

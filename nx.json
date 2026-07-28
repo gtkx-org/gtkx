@@ -127,6 +127,7 @@
         },
         "bench": {
             "cache": false,
+            "parallelism": false,
             "dependsOn": [
                 "gtkx:codegen",
                 "^build"

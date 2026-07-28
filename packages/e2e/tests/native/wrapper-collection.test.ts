@@ -65,7 +65,7 @@ describe("wrapper identity and reference counting", () => {
     it("returns the same wrapper instance for a subclassed item held by a list store", () => {
         const item = new NameObject();
         item.name = "Persisted";
-        const store = Gio.ListStore.new(NameObject.prototype._type_);
+        const store = Gio.ListStore.new(NameObject.prototype.__type__);
         store.append(item);
         expect(store.getItem(0)).toBe(item);
         expect((store.getItem(0) as NameObject).name).toBe("Persisted");

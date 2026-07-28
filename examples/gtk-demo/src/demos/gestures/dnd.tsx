@@ -175,7 +175,7 @@ const SWATCH_COLORS = [
 
 const defaultItemStyle = "frame";
 const ITEM_SIZE = 40;
-const gdkRgbaType = Gdk.RGBA.prototype._type_;
+const gdkRgbaType = Gdk.RGBA.prototype.__type__;
 const INITIAL_ITEM_COUNT = 4;
 const takeNextItemNumber = createItemNumberGenerator(INITIAL_ITEM_COUNT + 1);
 

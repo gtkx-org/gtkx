@@ -52,7 +52,7 @@ const toggleFullscreen = (win: Gtk.Window | null) => {
 const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.File) => void) => {
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Select a video");
-    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype._type_);
+    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype.__type__);
     const allFilter = new Gtk.FileFilter();
     allFilter.setName("All Files");
     allFilter.addPattern("*");

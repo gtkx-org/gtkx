@@ -534,7 +534,7 @@ function getCompareFn(mode: SortMode): ((a: ColorItem, b: ColorItem) => number) 
 
 function useColorsModels(): ColorsModels {
     const [models] = useState<ColorsModels>(() => {
-        const baseStore = Gio.ListStore.new(ColorObject.prototype._type_);
+        const baseStore = Gio.ListStore.new(ColorObject.prototype.__type__);
 
         return { baseStore, selection: new Gtk.MultiSelection({ model: baseStore }), liveRefs: [] };
     });

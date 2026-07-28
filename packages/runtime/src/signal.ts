@@ -84,7 +84,7 @@ const isSignalHandlerConnected = (instance: object, handlerId: number): boolean 
     gSignalHandlerIsConnected(getHandle(instance), handlerId) as boolean;
 
 const getSignalId = (instance: object, signal: string): number => {
-    const type: bigint = (instance as TypedClass)._type_;
+    const type: bigint = (instance as TypedClass).__type__;
 
     return gSignalLookup(getSignalBaseName(signal), type) as number;
 };
@@ -110,7 +110,7 @@ function connectBind(type: bigint, signal: string, callback: CallbackDescriptor)
 function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
     const { callback, handler, after } = spec;
     const wrapped = wrapCallback(handler, callback, "emitter");
-    const type: bigint = (instance as TypedClass)._type_;
+    const type: bigint = (instance as TypedClass).__type__;
     const connect = connectBind(type, signal, callback);
 
     return connect(getHandle(instance), signal, wrapped, after ? 1 : 0) as number;

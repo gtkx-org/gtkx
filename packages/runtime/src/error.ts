@@ -27,7 +27,7 @@ function checkError(error: Ref): void {
     throw gerror;
 }
 
-const isError = (value: unknown): value is ErrorLike => isTypedClass(value) && value._type_ === getErrorType();
+const isError = (value: unknown): value is ErrorLike => isTypedClass(value) && value.__type__ === getErrorType();
 
 /**
  * Builds an error domain enum object from its members and a lazy resolver for the

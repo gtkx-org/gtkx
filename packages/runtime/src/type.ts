@@ -13,9 +13,9 @@ import {
 } from "./descriptors.js";
 import { LIB } from "./library.js";
 
-/** Object tagged with its GLib type through a `_type_` GType field. */
+/** Object tagged with its GLib type through a `__type__` GType field. */
 type TypedClass = {
-    _type_: bigint;
+    __type__: bigint;
 };
 
 type ResolvableKind = "enum" | "flags" | "boxed" | "fundamental" | "array";
@@ -117,7 +117,7 @@ function lazyType(name: string): () => bigint {
 }
 
 const isTypedClass = (value: unknown): value is TypedClass =>
-    typeof value === "object" && value !== null && "_type_" in value && typeof value._type_ === "bigint";
+    typeof value === "object" && value !== null && "__type__" in value && typeof value.__type__ === "bigint";
 
 /** Returns whether `type` is `ancestorType` or descends from it. */
 function typeIsA(type: bigint, ancestorType: bigint): boolean {
@@ -152,7 +152,7 @@ function typeName(type: bigint): string | null {
 
 /** Returns whether `value` is a typed wrapper whose GType is or descends from `gtype`. */
 function valueIsA(value: unknown, gtype: bigint): boolean {
-    return isTypedClass(value) && typeIsA(value._type_, gtype);
+    return isTypedClass(value) && typeIsA(value.__type__, gtype);
 }
 
 /**

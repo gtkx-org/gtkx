@@ -58,7 +58,7 @@ const ConstraintLayout: ConstraintLayoutComponent = Object.assign(ConstraintLayo
     Vfl,
 });
 
-const typeNameOfWidget = (widget: Gtk.Widget): string => GObject.typeName(widget._type_) ?? "";
+const typeNameOfWidget = (widget: Gtk.Widget): string => GObject.typeName(widget.__type__) ?? "";
 
 const addNamedGuide = (guide: GObject.Object | null, targets: Targets): void => {
     if (!(guide instanceof Gtk.ConstraintGuide)) {

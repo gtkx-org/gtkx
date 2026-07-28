@@ -50,7 +50,7 @@ const pickSvgFile = async (window: Gtk.Window | null): Promise<Gio.File | null> 
     filter.addMimeType("image/svg+xml");
     filter.addMimeType("image/x-gtk-path-animation");
     filter.addPattern("*.gpa");
-    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype._type_);
+    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype.__type__);
     filters.append(filter);
     dialog.setFilters(filters);
 
