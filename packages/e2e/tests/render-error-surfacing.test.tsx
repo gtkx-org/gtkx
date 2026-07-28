@@ -18,9 +18,9 @@ class Boundary extends Component<BoundaryProps, BoundaryState> {
         return { failed: true };
     }
 
-    public state: BoundaryState = { failed: false };
+    public override state: BoundaryState = { failed: false };
 
-    public render(): ReactNode {
+    public override render(): ReactNode {
         return this.state.failed ? <GtkLabel>recovered</GtkLabel> : this.props.children;
     }
 }
