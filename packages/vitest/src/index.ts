@@ -69,4 +69,4 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
 
 export default gtkx;
 export { type CompositorId, type HeadlessOptions } from "./headless-display.js";
-export { GTKX_INLINE_DEPS, type GtkxPluginOptions };
+export { type GtkxPluginOptions };

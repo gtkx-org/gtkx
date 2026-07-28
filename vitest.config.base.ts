@@ -1,7 +1,7 @@
-import { GTKX_INLINE_DEPS } from "@gtkx/vitest";
 import { availableParallelism } from "node:os";
 import { defineConfig } from "vitest/config";
 
+const INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 const CPUS_PER_WORKER = 4;
 const configuredWorkers = Number(process.env.GTKX_MAX_WORKERS);
 const defaultWorkers = Math.max(1, Math.floor(availableParallelism() / CPUS_PER_WORKER));
@@ -20,7 +20,7 @@ const sourceResolveConfig = defineConfig({
         maxWorkers,
         server: {
             deps: {
-                inline: GTKX_INLINE_DEPS,
+                inline: INLINE_DEPS,
             },
         },
     },

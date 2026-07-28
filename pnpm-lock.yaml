@@ -61,9 +61,6 @@ importers:
       '@gtkx/utils':
         specifier: workspace:*
         version: link:packages/utils
-      '@gtkx/vitest':
-        specifier: workspace:*
-        version: link:packages/vitest
       '@nx/eslint':
         specifier: ^23.1.0
         version: 23.1.0(@babel/traverse@7.29.7(supports-color@7.2.0))(@swc/core@1.15.46)(@zkochan/js-yaml@0.0.7)(eslint@10.8.0(jiti@2.7.0)(supports-color@7.2.0))(nx@23.1.0(@swc/core@1.15.46))(supports-color@7.2.0)(verdaccio@6.9.0(supports-color@7.2.0)(typanion@3.14.0))

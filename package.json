@@ -170,7 +170,6 @@
         "@gtkx/react": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@gtkx/vitest": "workspace:*",
         "@nx/eslint": "^23.1.0",
         "@nx/js": "^23.1.0",
         "@nx/vitest": "^23.1.0",

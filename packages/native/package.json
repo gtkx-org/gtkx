@@ -69,7 +69,8 @@
                 "{projectRoot}/Cargo.toml",
                 "{projectRoot}/Cargo.lock",
                 "{projectRoot}/package.json",
-                "{workspaceRoot}/rust-toolchain.toml"
+                "{workspaceRoot}/rust-toolchain.toml",
+                { "runtime": "uname -m" }
             ],
             "crateTests": [
                 "crate",
