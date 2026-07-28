@@ -335,7 +335,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /opt/sway
-          key: sway-1.10.1-wlroots-0.18.2-deps-r3-${{ runner.os }}-${{ runner.arch }}
+          key: sway-1.10.1-wlroots-0.18.2-deps-r4-${{ runner.os }}-${{ runner.arch }}
 
       - name: Build sway with the headless backend
         if: steps.sway.outputs.cache-hit != 'true'
@@ -344,7 +344,7 @@ jobs:
           set -euo pipefail
           sudo apt-get install -y --no-install-recommends \
             ninja-build python3-pip pkg-config cmake \
-            libpixman-1-dev libxkbcommon-dev libudev-dev libevdev-dev \
+            libpixman-1-dev libxkbcommon-dev libudev-dev libevdev-dev libmtdev-dev \
             libdbus-1-dev libcairo2-dev libpango1.0-dev libglib2.0-dev \
             libpng-dev libjson-c-dev libpcre2-dev scdoc hwdata bison
           sudo pip3 install --quiet "meson>=1.3"
@@ -352,6 +352,7 @@ jobs:
           PREFIX=/opt/sway
           export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
           export LD_LIBRARY_PATH="$PREFIX/lib:${LD_LIBRARY_PATH:-}"
+          export CPPFLAGS="-I$PREFIX/include"
 
           build() {
             local url="$1" dir="$2"
@@ -386,6 +387,11 @@ jobs:
             "libxkbcommon-1.7.0" -Denable-docs=false -Denable-tools=false \
             -Denable-wayland=false -Denable-x11=false -Denable-xkbregistry=false \
             -Denable-bash-completion=false
+
+          build \
+            "https://gitlab.freedesktop.org/libinput/libinput/-/archive/1.26.1/libinput-1.26.1.tar.gz" \
+            "libinput-1.26.1" -Dlibwacom=false -Ddebug-gui=false -Dtests=false \
+            -Ddocumentation=false
 
           build \
             "https://gitlab.freedesktop.org/wlroots/wlroots/-/releases/0.18.2/downloads/wlroots-0.18.2.tar.gz" \
