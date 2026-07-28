@@ -1,5 +1,5 @@
 name: Setup CI
-description: Pull the CI image, compute the version env vars Nx hashes, and (optionally) restore the Nx, cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
+description: Pull the CI image, compute the version env vars Nx hashes, and (optionally) restore the cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
 
 inputs:
   cargo:
@@ -7,9 +7,6 @@ inputs:
     default: "true"
   pnpm:
     description: Restore the pnpm store cache
-    default: "true"
-  nx:
-    description: Restore the Nx task cache
     default: "true"
 
 runs:
@@ -20,10 +17,6 @@ runs:
 
     - name: Compute cache env
       uses: ./.github/actions/compute-cache-env
-
-    - name: Setup Nx cache
-      if: inputs.nx == 'true'
-      uses: ./.github/actions/setup-nx-cache
 
     - name: Setup cargo cache
       if: inputs.cargo == 'true'

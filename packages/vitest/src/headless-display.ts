@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startNotificationService } from "./notification-service.js";
 import { resolveExecutable } from "./resolve-executable.js";
+import { startVirtualSeat } from "./virtual-seat.js";
 
 /**
  * Wayland compositors that can back a headless display.
@@ -26,12 +27,14 @@ type EnvSnapshot = Record<string, string | undefined>;
 type CompositorDescriptor = {
     socket: string;
     env: Record<string, string>;
+    needsVirtualSeat: boolean;
     start: (runtimeDir: string, width: string, height: string) => ChildProcess;
 };
 
 type SpawnedCompositor = {
     child: ChildProcess;
     socket: string;
+    needsVirtualSeat: boolean;
 };
 
 type WaitForSocketOptions = {
@@ -51,6 +54,13 @@ type ChildHandlers = {
     error: (cause: Error) => void;
 };
 
+type DisplaySockets = {
+    compositor: SpawnedCompositor;
+    compositorSocketPath: string;
+    busChild: ChildProcess;
+    busSocketPath: string;
+};
+
 type SocketWatch = {
     path: string;
     options: WaitForSocketOptions;
@@ -59,17 +69,19 @@ type SocketWatch = {
 };
 
 const DEFAULT_HEADLESS_SIZE = "1024x768";
-const DEFAULT_HEADLESS_COMPOSITOR: CompositorId = "weston";
+const DEFAULT_HEADLESS_COMPOSITOR: CompositorId = "sway";
 
 const BUS_CONFIG_DOCTYPE =
     '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" ' +
     '"https://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">';
 
+const PARENT_DEATH_SCRIPT = 'trap \'kill -9 "$child" 2>/dev/null\' TERM; "$@" & child=$!; wait "$child"';
 const hasWestonFakeSeat = createWestonFakeSeatProbe();
 
 const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
     sway: {
         socket: "wayland-1",
+        needsVirtualSeat: true,
         env: {
             WLR_BACKENDS: "headless",
             WLR_RENDERER: "pixman",
@@ -99,6 +111,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
     },
     weston: {
         socket: "wayland-0",
+        needsVirtualSeat: false,
         env: {},
         start: (_runtimeDir, width, height) =>
             spawnWithParentDeathSignal(
@@ -155,7 +168,12 @@ const restoreEnv = (snapshot: EnvSnapshot): void => {
 };
 
 const spawnWithParentDeathSignal = (command: string, args: string[], stdio: StdioOptions): ChildProcess => {
-    const child = spawn(resolveExecutable("setpriv"), ["--pdeathsig", "SIGKILL", command, ...args], { stdio });
+    const child = spawn(
+        resolveExecutable("setpriv"),
+        ["--pdeathsig", "SIGTERM", "sh", "-c", PARENT_DEATH_SCRIPT, "sh", command, ...args],
+        { stdio },
+    );
+
     child.unref();
 
     return child;
@@ -198,8 +216,17 @@ const startCompositor = (runtimeDir: string, options: HeadlessOptions, env: EnvS
     const [width = "", height = ""] = options.size.split("x", 2);
     applyEnv(env, descriptor.env);
 
-    return { child: descriptor.start(runtimeDir, width, height), socket: descriptor.socket };
+    return {
+        child: descriptor.start(runtimeDir, width, height),
+        socket: descriptor.socket,
+        needsVirtualSeat: descriptor.needsVirtualSeat,
+    };
 };
+
+const noVirtualSeat = (): void => undefined;
+
+const attachVirtualSeat = (compositor: SpawnedCompositor, socketPath: string): Promise<() => void> =>
+    compositor.needsVirtualSeat ? startVirtualSeat(socketPath) : Promise.resolve(noVirtualSeat);
 
 const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
     writeFileSync(
@@ -363,23 +390,49 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): string[]
     return captured;
 };
 
-const reportUnexpectedCompositorExit = (child: ChildProcess, capturedStderr: string[]): void => {
-    if (child.exitCode === null && child.signalCode === null) {
-        return;
-    }
+const compositorExitMessage = (
+    code: number | null,
+    signal: NodeJS.Signals | null,
+    capturedStderr: string[],
+): string =>
+    `[gtkx] the headless compositor exited (code ${String(code)}, signal ${signal ?? "null"}); ` +
+    `every Wayland client in this worker has been severed.\n${capturedStderr.join("")}`;
 
-    process.stderr.write(
-        `[gtkx] headless compositor died before teardown (code ${String(child.exitCode)}, ` +
-        `signal ${child.signalCode ?? "null"}); the worker's Wayland client was severed.\n${capturedStderr.join("")}`,
-    );
+const watchCompositorExit = (child: ChildProcess, capturedStderr: string[]): (() => void) => {
+    const report = (code: number | null, signal: NodeJS.Signals | null): void => {
+        process.stderr.write(compositorExitMessage(code, signal, capturedStderr));
+    };
+
+    child.on("exit", report);
+
+    return () => child.removeListener("exit", report);
 };
 
-const makeTeardown = (
-    compositor: ChildProcess,
-    capturedStderr: string[],
-    stopNotifications: () => void,
-    removeRuntime: () => void,
-): (() => void) => {
+const waitForDisplaySockets = async (sockets: DisplaySockets): Promise<void> => {
+    const { compositor, compositorSocketPath, busChild, busSocketPath } = sockets;
+    const abort = new AbortController();
+
+    try {
+        await Promise.all([
+            waitForSocket(compositorSocketPath, {
+                label: "Compositor",
+                child: compositor.child,
+                signal: abort.signal,
+            }),
+            waitForSocket(busSocketPath, { label: "D-Bus session bus", child: busChild, signal: abort.signal }),
+        ]);
+    } finally {
+        abort.abort();
+    }
+};
+
+const killSpawned = (children: ChildProcess[]): void => {
+    for (const child of children) {
+        child.kill("SIGTERM");
+    }
+};
+
+const makeTeardown = (stops: (() => void)[]): (() => void) => {
     let isTorndown = false;
 
     return (): void => {
@@ -388,9 +441,7 @@ const makeTeardown = (
         }
 
         isTorndown = true;
-        reportUnexpectedCompositorExit(compositor, capturedStderr);
-        stopNotifications();
-        removeRuntime();
+        runCleanups(stops);
     };
 };
 
@@ -422,30 +473,24 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         const compositor = startCompositor(runtimeDir, options, env);
         spawned.push(compositor.child);
         applyEnv(env, { WAYLAND_DISPLAY: compositor.socket });
-        const abort = new AbortController();
-
-        try {
-            await Promise.all([
-                waitForSocket(join(runtimeDir, compositor.socket), {
-                    label: "Compositor",
-                    child: compositor.child,
-                    signal: abort.signal,
-                }),
-                waitForSocket(busSocketPath, { label: "D-Bus session bus", child: busChild, signal: abort.signal }),
-            ]);
-        } finally {
-            abort.abort();
-        }
-
+        const compositorSocketPath = join(runtimeDir, compositor.socket);
+        await waitForDisplaySockets({ compositor, compositorSocketPath, busChild, busSocketPath });
+        const stopVirtualSeat = await attachVirtualSeat(compositor, compositorSocketPath);
         const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
-        const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "weston.stderr.log"));
+        const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "compositor.stderr.log"));
+        const stopExitWatch = watchCompositorExit(compositor.child, capturedStderr);
 
-        return makeTeardown(compositor.child, capturedStderr, stopNotifications, removeRuntime);
+        return makeTeardown([
+            stopExitWatch,
+            () => {
+                killSpawned(spawned);
+            },
+            stopVirtualSeat,
+            stopNotifications,
+            removeRuntime,
+        ]);
     } catch (error) {
-        for (const child of spawned) {
-            child.kill("SIGKILL");
-        }
-
+        killSpawned(spawned);
         removeRuntime();
         throw error;
     }

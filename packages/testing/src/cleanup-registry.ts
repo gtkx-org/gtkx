@@ -7,11 +7,21 @@ const addToCleanupQueue = (fn: CleanupFunction): void => {
 };
 
 const runCleanup = async (): Promise<void> => {
+    const failures: unknown[] = [];
+
     for (const fn of cleanupQueue) {
-        await fn();
+        try {
+            await fn();
+        } catch (error) {
+            failures.push(error);
+        }
     }
 
     cleanupQueue.clear();
+
+    if (failures.length > 0) {
+        throw new AggregateError(failures, "Cleanup failed");
+    }
 };
 
 export { addToCleanupQueue, runCleanup, type CleanupFunction };

@@ -39,7 +39,7 @@ jobs:
               - '!**/*.md'
 
   # The image is built once per architecture on a native runner (QEMU emulation
-  # would have to compile weston and cargo-llvm-cov, which blows any sane budget)
+  # would have to compile cargo-llvm-cov, which blows any sane budget)
   # and the per-arch digests are merged into one manifest list by `image-manifest`.
   # arm64 exists for publish.yml's native addon build on ubuntu-24.04-arm.
   image:
@@ -172,6 +172,14 @@ jobs:
           command: pnpm lint
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
+      - name: Report failures to Nx Cloud
+        if: &fix-ci always() && env.NX_CLOUD_ACCESS_TOKEN != ''
+        continue-on-error: true
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm exec nx fix-ci
+          install: "false"
+
   test:
     needs: [changes, image-manifest]
     if: *code-changed
@@ -187,6 +195,14 @@ jobs:
           command: pnpm test
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
+      - name: Report failures to Nx Cloud
+        if: *fix-ci
+        continue-on-error: true
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm exec nx fix-ci
+          install: "false"
+
   typecheck:
     needs: [changes, image-manifest]
     if: *code-changed
@@ -201,6 +217,14 @@ jobs:
         with:
           command: pnpm typecheck
           image-ref: ${{ needs.image-manifest.outputs.ref }}
+
+      - name: Report failures to Nx Cloud
+        if: *fix-ci
+        continue-on-error: true
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm exec nx fix-ci
+          install: "false"
 
   publish-e2e:
     needs: [changes, image-manifest]
@@ -284,7 +308,7 @@ jobs:
             libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev libwebkitgtk-6.0-dev \
             libgirepository1.0-dev gobject-introspection \
             gvfs libgles2 libgl1-mesa-dri \
-            weston dbus \
+            sway dbus \
             adwaita-icon-theme gsettings-desktop-schemas shared-mime-info \
             hicolor-icon-theme librsvg2-common \
             fontconfig fonts-noto-core fonts-dejavu-core \
@@ -305,58 +329,6 @@ jobs:
       - name: Point codegen at the downloaded GIR
         shell: bash
         run: echo "GTKX_GIR_PATH=$RUNNER_TEMP/gir" >> "$GITHUB_ENV"
-
-      - name: Cache the headless weston build
-        id: weston
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: /opt/weston
-          key: weston-12.0.4-r2-${{ runner.os }}-${{ runner.arch }}
-
-      - name: Build weston with the headless backend
-        if: steps.weston.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          # The runner's apt weston (jammy) ships no headless backend, so the vitest
-          # per-worker compositor can't start. Build a headless-capable weston from
-          # source; 12.x is the newest that builds against the runner's stock
-          # libwayland. The benches are non-interactive, so no --fake-seat is needed.
-          sudo apt-get install -y --no-install-recommends \
-            ninja-build python3-pip pkg-config \
-            libwayland-dev libwayland-bin libpixman-1-dev \
-            libinput-dev libevdev-dev libxkbcommon-dev libdrm-dev libudev-dev \
-            libdbus-1-dev libcairo2-dev libpango1.0-dev libglib2.0-dev \
-            libpng-dev libfontconfig1-dev libseat-dev libsystemd-dev libpam0g-dev
-          sudo pip3 install --quiet meson
-          # jammy's wayland-protocols (1.25) predates weston 12's >= 1.31 floor; the
-          # package is data-only (XML + pkg-config), so build the newer release into
-          # /usr where weston's meson discovers it. Runtime weston needs none of it.
-          WP=1.31
-          curl -fsSL "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/${WP}/downloads/wayland-protocols-${WP}.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
-          meson setup "$RUNNER_TEMP/wayland-protocols-${WP}/build" "$RUNNER_TEMP/wayland-protocols-${WP}" \
-            --prefix=/usr -Dtests=false
-          sudo ninja -C "$RUNNER_TEMP/wayland-protocols-${WP}/build" install
-          WESTON=12.0.4
-          curl -fsSL "https://gitlab.freedesktop.org/wayland/weston/-/releases/${WESTON}/downloads/weston-${WESTON}.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
-          meson setup "$RUNNER_TEMP/weston-${WESTON}/build" "$RUNNER_TEMP/weston-${WESTON}" \
-            --prefix=/opt/weston --libdir=lib --buildtype=release \
-            -Dbackend-default=headless \
-            -Dbackend-drm=false -Dbackend-x11=false -Dbackend-rdp=false \
-            -Dbackend-vnc=false -Dbackend-wayland=false -Dbackend-pipewire=false \
-            -Drenderer-gl=false -Dxwayland=false -Dremoting=false -Dpipewire=false \
-            -Dsystemd=false -Dcolor-management-lcms=false \
-            -Dimage-jpeg=false -Dimage-webp=false -Dtest-junit-xml=false \
-            -Ddemo-clients=false -Dsimple-clients=[] -Dtools=[]
-          sudo ninja -C "$RUNNER_TEMP/weston-${WESTON}/build" install
-
-      - name: Put the headless weston on PATH
-        shell: bash
-        run: |
-          echo "/opt/weston/bin" >> "$GITHUB_PATH"
-          echo "LD_LIBRARY_PATH=/opt/weston/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
-          # GITHUB_ENV only affects later steps, so set the runtime path inline for
-          # this in-step sanity check against the freshly installed libweston.
-          LD_LIBRARY_PATH="/opt/weston/lib:$LD_LIBRARY_PATH" /opt/weston/bin/weston --version
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

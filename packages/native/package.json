@@ -73,9 +73,11 @@
             ],
             "crateTests": [
                 "crate",
+                "sharedGlobals",
                 "{projectRoot}/tests/**/*",
                 "{projectRoot}/test-support/**/*",
-                "{workspaceRoot}/scripts/run-headless.ts"
+                "{workspaceRoot}/scripts/run-headless.ts",
+                "{workspaceRoot}/packages/utils/src/**/*"
             ]
         },
         "targets": {

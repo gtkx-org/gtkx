@@ -27,6 +27,9 @@
                 "cache": false,
                 "dependsOn": [
                     "@gtkx/native:build"
+                ],
+                "outputs": [
+                    "{workspaceRoot}/node_modules/.gtkx/**/*.{js,d.ts,json}"
                 ]
             },
             "typecheck": {
@@ -38,13 +41,18 @@
                 "inputs": [
                     "{workspaceRoot}/tsconfig.json",
                     "{workspaceRoot}/eslint.config.ts",
+                    "{workspaceRoot}/gtkx.config.ts",
+                    "{workspaceRoot}/vitest.config.ts",
                     "{workspaceRoot}/scripts/**/*",
-                    "{workspaceRoot}/packages/*/gtkx.config.ts",
-                    "{workspaceRoot}/packages/*/vitest.config.ts",
-                    "{workspaceRoot}/packages/*/vitest.bench.config.ts",
-                    "sharedGlobals"
-                ],
-                "outputs": []
+                    "{workspaceRoot}/packages/**/*.{ts,tsx,mts,cts,json}",
+                    "{workspaceRoot}/examples/**/*.{ts,tsx,mts,cts,json}",
+                    "{workspaceRoot}/website/**/*.{ts,tsx,mts,cts,json}",
+                    "sharedGlobals",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{d.ts,d.cts,d.mts}",
+                        "transitive": true
+                    }
+                ]
             },
             "coverage": {
                 "command": "vitest run --coverage --maxWorkers=50%",
@@ -56,6 +64,20 @@
                     "@gtkx/components:build",
                     "@gtkx/css:build",
                     "@gtkx/gl:build"
+                ],
+                "inputs": [
+                    "default",
+                    "{workspaceRoot}/packages/**/*",
+                    "{workspaceRoot}/examples/gtk-demo/**/*",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}"
+                    },
+                    {
+                        "externalDependencies": [
+                            "vitest",
+                            "@vitest/coverage-v8"
+                        ]
+                    }
                 ],
                 "outputs": [
                     "{workspaceRoot}/coverage/**"
@@ -70,18 +92,29 @@
                 "inputs": [
                     "{workspaceRoot}/eslint.config.ts",
                     "{workspaceRoot}/gtkx.config.ts",
-                    "{workspaceRoot}/gtkx.config.base.ts",
                     "{workspaceRoot}/vitest.config.ts",
-                    "{workspaceRoot}/vitest.config.base.ts",
                     "{workspaceRoot}/scripts/**/*",
                     "{workspaceRoot}/packages/eslint/src/**/*",
+                    "{workspaceRoot}/packages/eslint/package.json",
+                    "sharedGlobals",
                     {
                         "externalDependencies": [
-                            "eslint"
+                            "eslint",
+                            "typescript",
+                            "typescript-eslint",
+                            "@eslint/js",
+                            "@nx/eslint-plugin",
+                            "@stylistic/eslint-plugin",
+                            "@vitest/eslint-plugin",
+                            "eslint-plugin-perfectionist",
+                            "eslint-plugin-promise",
+                            "eslint-plugin-react-hooks",
+                            "eslint-plugin-sonarjs",
+                            "eslint-plugin-unicorn",
+                            "jiti"
                         ]
                     }
-                ],
-                "outputs": []
+                ]
             },
             "test": {
                 "command": "vitest run --project scripts",
@@ -93,9 +126,17 @@
                 "inputs": [
                     "{workspaceRoot}/scripts/**/*",
                     "{workspaceRoot}/vitest.config.ts",
-                    "{workspaceRoot}/vitest.config.base.ts"
-                ],
-                "outputs": []
+                    "{workspaceRoot}/packages/*/vitest.config.ts",
+                    "{workspaceRoot}/packages/utils/src/**/*",
+                    "{workspaceRoot}/packages/vitest/src/**/*",
+                    "sharedGlobals",
+                    {
+                        "externalDependencies": [
+                            "vitest",
+                            "verdaccio"
+                        ]
+                    }
+                ]
             },
             "lint:knip": {
                 "command": "knip",
@@ -106,12 +147,20 @@
                 ],
                 "inputs": [
                     "{workspaceRoot}/knip.json",
-                    "{workspaceRoot}/packages/*/src/**/*",
-                    "{workspaceRoot}/packages/*/tests/**/*",
-                    "{workspaceRoot}/packages/*/package.json",
-                    "{workspaceRoot}/packages/*/gtkx.config.ts"
-                ],
-                "outputs": []
+                    "{workspaceRoot}/package.json",
+                    "{workspaceRoot}/pnpm-workspace.yaml",
+                    "{workspaceRoot}/gtkx.config.ts",
+                    "{workspaceRoot}/scripts/**/*",
+                    "{workspaceRoot}/packages/**/*",
+                    "{workspaceRoot}/examples/**/*",
+                    "{workspaceRoot}/website/**/*",
+                    "sharedGlobals",
+                    {
+                        "externalDependencies": [
+                            "knip"
+                        ]
+                    }
+                ]
             }
         }
     },

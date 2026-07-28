@@ -14,6 +14,8 @@ type HeadlessFixture = {
 type StartupAttempt = { attempt: Promise<() => void>; runtimeDir: string };
 
 const stopNotificationsMock = vi.fn();
+const stopVirtualSeatMock = vi.fn();
+const startVirtualSeatMock = vi.fn(() => Promise.resolve(stopVirtualSeatMock));
 const { spawn: realSpawn } = await vi.importActual<typeof import("node:child_process")>("node:child_process");
 
 const { DEFAULT_HEADLESS_SIZE, readHeadlessOptions, resolveHeadlessOptions, startHeadlessDisplay } = await import(
@@ -123,6 +125,8 @@ const installHeadlessFixture = (): HeadlessFixture => {
         fixture.teardowns = [];
         fixture.savedEnv = saveTrackedEnv();
         stopNotificationsMock.mockReset();
+        stopVirtualSeatMock.mockReset();
+        startVirtualSeatMock.mockClear();
         spawnSyncMock.mockReset();
         spawnSyncMock.mockReturnValue(westonHelp("--fake-seat"));
         spawnMock.mockReset();
@@ -153,6 +157,21 @@ const startFulfilled = async (
     return { teardown, runtimeDir };
 };
 
+const killAndAwaitExit = async (child: ChildProcess | undefined): Promise<void> => {
+    if (child === undefined) {
+        return;
+    }
+
+    const exited: Promise<void> = new Promise((resolve) => {
+        child.once("exit", () => {
+            resolve();
+        });
+    });
+
+    child.kill("SIGKILL");
+    await exited;
+};
+
 const startWithFailingChild = (fixture: HeadlessFixture, makeChild: () => ChildProcess): StartupAttempt => {
     spawnMock.mockReset();
     spawnMock.mockImplementation(() => trackSpawnedChild(fixture, makeChild));
@@ -169,6 +188,10 @@ vi.mock("node:child_process", async (importOriginal) => {
 
 vi.mock("../src/notification-service.js", () => ({
     startNotificationService: vi.fn(() => Promise.resolve(stopNotificationsMock)),
+}));
+
+vi.mock("../src/virtual-seat.js", () => ({
+    startVirtualSeat: startVirtualSeatMock,
 }));
 
 describe("startHeadlessDisplay — compositor selection and configuration", () => {
@@ -230,7 +253,7 @@ describe("startHeadlessDisplay — compositor selection and configuration", () =
 describe("startHeadlessDisplay — teardown and startup failures", () => {
     const fixture = installHeadlessFixture();
 
-    it("restores env and removes the runtime dir on teardown without killing the compositor", async () => {
+    it("restores env, removes the runtime dir, and kills the compositor and bus on teardown", async () => {
         process.env.WAYLAND_DISPLAY = "prior-value";
 
         const { teardown, runtimeDir } = await startFulfilled(fixture, {
@@ -245,8 +268,8 @@ describe("startHeadlessDisplay — teardown and startup failures", () => {
         expect(process.env.WAYLAND_DISPLAY).toBe("prior-value");
         expect(process.env.XDG_RUNTIME_DIR).toBeUndefined();
         const [busChild, compositorChild] = fixture.children;
-        expect(busChild?.killed).toBe(false);
-        expect(compositorChild?.killed).toBe(false);
+        expect(busChild?.killed).toBe(true);
+        expect(compositorChild?.killed).toBe(true);
     });
 
     it("runs teardown only once when invoked repeatedly", async () => {
@@ -273,15 +296,67 @@ describe("startHeadlessDisplay — teardown and startup failures", () => {
     });
 });
 
+describe("startHeadlessDisplay — virtual seat", () => {
+    const fixture = installHeadlessFixture();
+
+    it("attaches a virtual seat to the sway socket, which has no input devices of its own", async () => {
+        const { runtimeDir } = await startFulfilled(fixture, { size: "800x600", compositor: "sway" });
+        expect(startVirtualSeatMock).toHaveBeenCalledWith(join(runtimeDir, "wayland-1"));
+    });
+
+    it("leaves the seat to weston, which fakes one itself", async () => {
+        await startFulfilled(fixture, { size: "800x600", compositor: "weston" });
+        expect(startVirtualSeatMock).not.toHaveBeenCalled();
+    });
+
+    it("closes the virtual seat connection on teardown", async () => {
+        const { teardown } = await startFulfilled(fixture, { size: DEFAULT_HEADLESS_SIZE, compositor: "sway" });
+        expect(stopVirtualSeatMock).not.toHaveBeenCalled();
+        teardown();
+        expect(stopVirtualSeatMock).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("startHeadlessDisplay — compositor exit reporting", () => {
+    const fixture = installHeadlessFixture();
+
+    it("reports a compositor that dies while the display is in use", async () => {
+        await startFulfilled(fixture, { size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
+        const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+        const [, compositorChild] = fixture.children;
+
+        try {
+            await killAndAwaitExit(compositorChild);
+            expect(spy).toHaveBeenCalledWith(expect.stringContaining("the headless compositor exited"));
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    it("stays quiet about the compositor exit that teardown itself leads to", async () => {
+        const { teardown } = await startFulfilled(fixture, { size: DEFAULT_HEADLESS_SIZE, compositor: "weston" });
+        teardown();
+        const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+        const [, compositorChild] = fixture.children;
+
+        try {
+            await killAndAwaitExit(compositorChild);
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+        }
+    });
+});
+
 describe("resolveHeadlessOptions", () => {
     it("fills the size and compositor defaults when nothing is provided", () => {
-        expect(resolveHeadlessOptions({})).toEqual({ size: "1024x768", compositor: "weston" });
+        expect(resolveHeadlessOptions({})).toEqual({ size: "1024x768", compositor: "sway" });
     });
 
     it("keeps the provided size and compositor", () => {
-        expect(resolveHeadlessOptions({ size: "640x480", compositor: "sway" })).toEqual({
+        expect(resolveHeadlessOptions({ size: "640x480", compositor: "weston" })).toEqual({
             size: "640x480",
-            compositor: "sway",
+            compositor: "weston",
         });
     });
 });

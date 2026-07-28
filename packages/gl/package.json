@@ -65,6 +65,7 @@
                 "inputs": [
                     "{projectRoot}/scripts/**/*",
                     "{projectRoot}/src/overrides.ts",
+                    "^production",
                     "{workspaceRoot}/packages/codegen/src/khronos/**/*"
                 ],
                 "outputs": [
@@ -76,6 +77,12 @@
                     "^build",
                     "gtkx:codegen",
                     "codegen"
+                ],
+                "inputs": [
+                    "...",
+                    {
+                        "dependentTasksOutputFiles": "**/*.ts"
+                    }
                 ]
             }
         }

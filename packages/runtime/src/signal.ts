@@ -6,6 +6,7 @@ import { wrapCallback } from "./callback.js";
 import {
     arrayT,
     biguint64T,
+    booleanT,
     type CallbackDescriptor,
     objectT,
     stringT,
@@ -55,6 +56,13 @@ const gSignalHandlersBlockMatched = bind(
     uint32T,
 );
 
+const gSignalHandlerIsConnected = bind(
+    LIB,
+    "g_signal_handler_is_connected",
+    [objectT("borrowed"), uint64T],
+    booleanT,
+);
+
 /** Returns the signal name without its detail suffix (the part after `::`). */
 const getSignalBaseName = (signal: string): string => {
     const detailIndex = signal.indexOf("::");
@@ -71,6 +79,9 @@ function getSignalDetailQuark(signal: string): number {
 
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
+
+const isSignalHandlerConnected = (instance: object, handlerId: number): boolean =>
+    gSignalHandlerIsConnected(getHandle(instance), handlerId) as boolean;
 
 const getSignalId = (instance: object, signal: string): number => {
     const type: bigint = (instance as TypedClass)._type_;
@@ -171,4 +182,11 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returnDes
     );
 }
 
-export { getSignalBaseName, connectSignal, blockMatchedSignalHandlers, emitSignal, type SignalHandler };
+export {
+    getSignalBaseName,
+    connectSignal,
+    blockMatchedSignalHandlers,
+    emitSignal,
+    isSignalHandlerConnected,
+    type SignalHandler,
+};

@@ -1,5 +1,5 @@
 name: Run CI Command
-description: Set up the CI image, Turbo env, and caches via `setup-ci`, then run a command in the CI container with the cargo and pnpm caches mounted.
+description: Set up the CI image, Nx env, and caches via `setup-ci`, then run a command in the CI container with the cargo and pnpm caches mounted.
 
 inputs:
   command:

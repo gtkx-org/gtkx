@@ -336,7 +336,7 @@ describe("scaffold (next steps)", () => {
         const note = lastNote();
         expect(note).toContain("cd test-app");
         expect(note).toContain("npm run dev");
-        expect(note).toContain("weston");
+        expect(note).toContain("sway");
     });
 
     it("prints the pnpm dev command", async () => {

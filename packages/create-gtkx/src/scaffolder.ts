@@ -69,8 +69,8 @@ const PACKAGE_JSON_TEMPLATE = "package.json";
 const HEADLESS_COMPOSITOR_NOTE = `
 
 To run tests, you need a headless Wayland compositor installed:
-  Fedora: sudo dnf install weston
-  Ubuntu: sudo apt install weston`;
+  Fedora: sudo dnf install sway
+  Ubuntu: sudo apt install sway`;
 
 const pinGtkxDependency = (name: string, version: string): string =>
     name.startsWith("@gtkx/") ? `${name}@^${version}` : name;

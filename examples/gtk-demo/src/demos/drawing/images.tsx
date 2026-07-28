@@ -38,7 +38,6 @@ const loadSvgPaintable = (resourcePath: string): Gtk.Svg => {
 const createGifPaintable = (): Gtk.MediaFile | null => {
     try {
         const mediaFile = Gtk.MediaFile.newForResource(floppybuddyGifPath);
-        mediaFile.setLoop(true);
         mediaFile.play();
 
         return mediaFile;

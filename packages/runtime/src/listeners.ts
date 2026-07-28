@@ -1,4 +1,4 @@
-import type { SignalHandler } from "./signal.js";
+import { isSignalHandlerConnected, type SignalHandler } from "./signal.js";
 
 type SignalConnectable = {
     connect(signal: string, handler: SignalHandler, isAfter?: boolean): number;
@@ -28,12 +28,21 @@ const trackListener = (instance: object, signal: string, handler: SignalHandler,
     byHandler.set(handler, handlerId);
 };
 
-const untrackListener = (instance: object, signal: string, handler: SignalHandler): void => {
+const untrackHandlerId = (instance: object, signal: string, handlerId: number): void => {
     const bySignal = listenerTable.get(instance);
     const byHandler = bySignal?.get(signal);
-    byHandler?.delete(handler);
 
-    if (byHandler?.size === 0) {
+    if (byHandler === undefined) {
+        return;
+    }
+
+    for (const [handler, id] of byHandler) {
+        if (id === handlerId) {
+            byHandler.delete(handler);
+        }
+    }
+
+    if (byHandler.size === 0) {
         bySignal?.delete(signal);
     }
 };
@@ -65,8 +74,7 @@ function onceSignal(instance: SignalConnectable, signal: string, handler: Signal
     let handlerId = 0;
 
     const wrapped: SignalHandler = (...args) => {
-        untrackListener(instance, signal, wrapped);
-        untrackListener(instance, signal, handler);
+        untrackHandlerId(instance, signal, handlerId);
         instance.disconnect(handlerId);
 
         return handler(...args);
@@ -88,10 +96,17 @@ function onceSignal(instance: SignalConnectable, signal: string, handler: Signal
 function offSignal(instance: SignalConnectable, signal: string, handler: SignalHandler): void {
     const handlerId = findListenerHandlerId(instance, signal, handler);
 
-    if (handlerId !== undefined) {
-        instance.disconnect(handlerId);
-        untrackListener(instance, signal, handler);
+    if (handlerId === undefined) {
+        return;
     }
+
+    untrackHandlerId(instance, signal, handlerId);
+
+    if (!isSignalHandlerConnected(instance, handlerId)) {
+        return;
+    }
+
+    instance.disconnect(handlerId);
 }
 
 export { onSignal, onceSignal, offSignal };

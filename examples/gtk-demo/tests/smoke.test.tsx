@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { configure, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { configure, fireEvent, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, beforeAll, describe, expect, it, type MockInstance, vi } from "vitest";
 import { Demo } from "../src/app.js";
 import { parseTitle } from "../src/context/demo-context.js";
@@ -89,7 +89,23 @@ const getActionName = (widget: Gtk.Widget): string | null => {
 
 const readWindowTitle = (window: Gtk.Window): string => window.getTitle() ?? "";
 
-const clickWindowClose = async (window: Gtk.Window): Promise<void> => {
+const submitPasswordDemo = async (window: Gtk.Window, passwordEntry: Gtk.Widget): Promise<void> => {
+    const bound = within(window);
+    await userEvent.type(passwordEntry, "hunter2");
+    await userEvent.type((await bound.findByName("confirm-entry")), "hunter2");
+    const done = await bound.findByRole(Gtk.AccessibleRole.BUTTON, { name: /Done/ });
+    await userEvent.click(done);
+};
+
+const closeDemoWindow = async (window: Gtk.Window): Promise<void> => {
+    const passwordEntry = within(window).queryByName("password-entry");
+
+    if (passwordEntry) {
+        await submitPasswordDemo(window, passwordEntry);
+
+        return;
+    }
+
     const closeButton = firstMatching(window, (w) => getActionName(w) === "window.close");
 
     if (closeButton) {
@@ -98,11 +114,7 @@ const clickWindowClose = async (window: Gtk.Window): Promise<void> => {
         return;
     }
 
-    const bound = within(window);
-    await userEvent.type((await bound.findByName("password-entry")), "hunter2");
-    await userEvent.type((await bound.findByName("confirm-entry")), "hunter2");
-    const done = await bound.findByRole(Gtk.AccessibleRole.BUTTON, { name: /Done/ });
-    await userEvent.click(done);
+    await fireEvent(window, "close-request");
 };
 
 const dismissDialog = async (dialog: Gtk.Widget): Promise<void> => {
@@ -119,13 +131,15 @@ const dismissDialog = async (dialog: Gtk.Widget): Promise<void> => {
     });
 };
 
+const waitForDemoWindows = async (title: string, expected: number, phase: string): Promise<void> => {
+    await waitFor(() => {
+        expect(demoWindows().length, `demo "${title}" ${phase}`).toBe(expected);
+    });
+};
+
 const exerciseWindowDemo = async (title: string, run: Gtk.Button, mainWindow: Gtk.ApplicationWindow): Promise<void> => {
     await userEvent.click(run);
-
-    await waitFor(() => {
-        expect(demoWindows().length, `demo "${title}" did not open a window`).toBe(1);
-    });
-
+    await waitForDemoWindows(title, 1, "did not open a window");
     const win = requireOnlyDemoWindow(demoWindows(), title);
 
     await waitFor(() => {
@@ -137,12 +151,8 @@ const exerciseWindowDemo = async (title: string, run: Gtk.Button, mainWindow: Gt
     });
 
     expect(win.getChild(), `demo "${title}" opened an empty window with no content`).not.toBeNull();
-    await clickWindowClose(win);
-
-    await waitFor(() => {
-        expect(demoWindows().length, `demo "${title}" window did not close`).toBe(0);
-    });
-
+    await closeDemoWindow(win);
+    await waitForDemoWindows(title, 0, "window did not close");
     expect(mainWindow.getVisible(), `closing demo "${title}" tore down the main window`).toBe(true);
 };
 

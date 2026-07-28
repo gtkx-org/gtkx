@@ -55,7 +55,8 @@
         {
             "plugin": "@nx/vitest",
             "options": {
-                "testTargetName": "test"
+                "testTargetName": "test",
+                "testMode": "run"
             },
             "exclude": [
                 "examples/gtk-demo/*"
@@ -67,6 +68,10 @@
             "dependsOn": [
                 "^build",
                 "gtkx:codegen"
+            ],
+            "inputs": [
+                "...",
+                "sharedGlobals"
             ]
         },
         "typecheck": {
@@ -74,6 +79,10 @@
                 "build",
                 "^typecheck",
                 "gtkx:codegen"
+            ],
+            "inputs": [
+                "...",
+                "sharedGlobals"
             ]
         },
         "lint": {
@@ -86,15 +95,27 @@
                 "^default",
                 "{workspaceRoot}/eslint.config.ts",
                 "{workspaceRoot}/packages/eslint/src/**/*",
+                "{workspaceRoot}/packages/eslint/package.json",
                 {
                     "externalDependencies": [
-                        "eslint"
+                        "eslint",
+                        "typescript",
+                        "typescript-eslint",
+                        "@eslint/js",
+                        "@nx/eslint-plugin",
+                        "@stylistic/eslint-plugin",
+                        "@vitest/eslint-plugin",
+                        "eslint-plugin-perfectionist",
+                        "eslint-plugin-promise",
+                        "eslint-plugin-react-hooks",
+                        "eslint-plugin-sonarjs",
+                        "eslint-plugin-unicorn",
+                        "jiti"
                     ]
                 }
             ]
         },
         "test": {
-            "parallelism": false,
             "dependsOn": [
                 "gtkx:codegen",
                 "@gtkx/vitest:build",
@@ -118,7 +139,6 @@
             ]
         },
         "coverage": {
-            "parallelism": false,
             "dependsOn": [
                 "gtkx:codegen",
                 "@gtkx/vitest:build",

@@ -42,6 +42,9 @@
                 "dependsOn": [
                     "gtkx:codegen",
                     "@gtkx/cli:build"
+                ],
+                "outputs": [
+                    "{projectRoot}/node_modules/.gtkx/**/*.{js,d.ts,json}"
                 ]
             },
             "build": {
@@ -49,6 +52,9 @@
                 "dependsOn": [
                     "^build",
                     "codegen"
+                ],
+                "inputs": [
+                    "default"
                 ],
                 "outputs": [
                     "{projectRoot}/dist/**"
@@ -62,11 +68,18 @@
             },
             "dev": {
                 "cache": false,
-                "continuous": true
+                "continuous": true,
+                "dependsOn": [
+                    "^build",
+                    "codegen"
+                ]
             },
             "start": {
                 "cache": false,
-                "continuous": true
+                "continuous": true,
+                "dependsOn": [
+                    "build"
+                ]
             },
             "test": {
                 "command": "vitest run",
@@ -76,16 +89,19 @@
                 "cache": true,
                 "inputs": [
                     "default",
-                    "^production"
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "transitive": true
+                    }
                 ],
                 "outputs": [
                     "{projectRoot}/coverage"
                 ],
                 "dependsOn": [
+                    "...",
                     "codegen",
-                    "@gtkx/cli:build",
-                    "@gtkx/testing:build",
-                    "@gtkx/vitest:build"
+                    "@gtkx/testing:build"
                 ]
             },
             "lint": {
@@ -103,16 +119,19 @@
                 "cache": true,
                 "inputs": [
                     "default",
-                    "^production"
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "transitive": true
+                    }
                 ],
                 "outputs": [
                     "{projectRoot}/coverage"
                 ],
                 "dependsOn": [
+                    "...",
                     "codegen",
-                    "@gtkx/cli:build",
-                    "@gtkx/testing:build",
-                    "@gtkx/vitest:build"
+                    "@gtkx/testing:build"
                 ]
             }
         }

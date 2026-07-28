@@ -19,11 +19,25 @@
         "vue": "^3.5.40"
     },
     "nx": {
+        "implicitDependencies": [
+            "@gtkx/components",
+            "@gtkx/config",
+            "@gtkx/css",
+            "@gtkx/gl",
+            "@gtkx/native",
+            "@gtkx/react",
+            "@gtkx/runtime",
+            "@gtkx/testing",
+            "@gtkx/vitest"
+        ],
         "targets": {
             "build": {
                 "cache": true,
                 "dependsOn": [
                     "reference"
+                ],
+                "inputs": [
+                    "default"
                 ],
                 "outputs": [
                     "{projectRoot}/.vitepress/dist/**"
@@ -33,15 +47,22 @@
                 "cache": true,
                 "dependsOn": [
                     "gtkx:codegen",
-                    "@gtkx/components:build",
-                    "@gtkx/config:build",
-                    "@gtkx/css:build",
-                    "@gtkx/gl:build",
-                    "@gtkx/native:build",
-                    "@gtkx/react:build",
-                    "@gtkx/runtime:build",
-                    "@gtkx/testing:build",
-                    "@gtkx/vitest:build"
+                    "^build"
+                ],
+                "inputs": [
+                    "default",
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{d.ts,d.cts,d.mts}",
+                        "transitive": true
+                    },
+                    {
+                        "externalDependencies": [
+                            "typedoc",
+                            "typedoc-plugin-markdown",
+                            "typedoc-vitepress-theme"
+                        ]
+                    }
                 ],
                 "outputs": [
                     "{projectRoot}/reference/**"
@@ -49,11 +70,17 @@
             },
             "dev": {
                 "cache": false,
-                "continuous": true
+                "continuous": true,
+                "dependsOn": [
+                    "reference"
+                ]
             },
             "preview": {
                 "cache": false,
-                "continuous": true
+                "continuous": true,
+                "dependsOn": [
+                    "build"
+                ]
             },
             "lint": {
                 "dependsOn": [
