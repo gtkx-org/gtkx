@@ -308,7 +308,7 @@ jobs:
             libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev libwebkitgtk-6.0-dev \
             libgirepository1.0-dev gobject-introspection \
             gvfs libgles2 libgl1-mesa-dri \
-            weston dbus \
+            dbus \
             adwaita-icon-theme gsettings-desktop-schemas shared-mime-info \
             hicolor-icon-theme librsvg2-common \
             fontconfig fonts-noto-core fonts-dejavu-core \
@@ -329,6 +329,82 @@ jobs:
       - name: Point codegen at the downloaded GIR
         shell: bash
         run: echo "GTKX_GIR_PATH=$RUNNER_TEMP/gir" >> "$GITHUB_ENV"
+
+      - name: Cache the headless sway build
+        id: sway
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /opt/sway
+          key: sway-1.10.1-wlroots-0.18.2-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build sway with the headless backend
+        if: steps.sway.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          # Jammy's archive ships no compositor the harness can use: its weston has no
+          # headless backend and its sway (1.7 / wlroots 0.15) hangs the per-worker
+          # display. Build sway from source so the bench job runs the same compositor
+          # as every other suite. Only the headless backend and the pixman renderer
+          # are enabled, which drops the DRM, session and GL dependency chains.
+          set -euo pipefail
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build python3-pip pkg-config cmake \
+            libpixman-1-dev libxkbcommon-dev libudev-dev libevdev-dev \
+            libdbus-1-dev libcairo2-dev libpango1.0-dev libglib2.0-dev \
+            libpng-dev libjson-c-dev libpcre2-dev scdoc hwdata
+          sudo pip3 install --quiet "meson>=1.3"
+
+          PREFIX=/opt/sway
+          export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+          export LD_LIBRARY_PATH="$PREFIX/lib:${LD_LIBRARY_PATH:-}"
+
+          build() {
+            local name="$1" url="$2" dir="$3"
+            shift 3
+            curl -fsSL "$url" | tar -xJ -C "$RUNNER_TEMP"
+            meson setup "$RUNNER_TEMP/$dir/build" "$RUNNER_TEMP/$dir" \
+              --prefix="$PREFIX" --libdir=lib --buildtype=release "$@"
+            ninja -C "$RUNNER_TEMP/$dir/build" install
+          }
+
+          # wlroots 0.18 needs wayland >= 1.22 (jammy has 1.20), wayland-protocols
+          # >= 1.32, libdrm >= 2.4.114 and libdisplay-info, none of which jammy meets.
+          build wayland \
+            "https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.23.1/downloads/wayland-1.23.1.tar.xz" \
+            "wayland-1.23.1" -Dtests=false -Ddocumentation=false -Ddtd_validation=false
+          build wayland-protocols \
+            "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.36/downloads/wayland-protocols-1.36.tar.xz" \
+            "wayland-protocols-1.36" -Dtests=false
+          build libdrm \
+            "https://dri.freedesktop.org/libdrm/libdrm-2.4.120.tar.xz" \
+            "libdrm-2.4.120" -Dtests=false -Dcairo-tests=disabled -Dman-pages=disabled \
+            -Dvalgrind=disabled -Dintel=disabled -Dradeon=disabled -Damdgpu=disabled \
+            -Dnouveau=disabled -Dvmwgfx=disabled
+          build libdisplay-info \
+            "https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/0.2.0/downloads/libdisplay-info-0.2.0.tar.xz" \
+            "libdisplay-info-0.2.0"
+
+          curl -fsSL "https://gitlab.freedesktop.org/wlroots/wlroots/-/releases/0.18.2/downloads/wlroots-0.18.2.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP"
+          meson setup "$RUNNER_TEMP/wlroots-0.18.2/build" "$RUNNER_TEMP/wlroots-0.18.2" \
+            --prefix="$PREFIX" --libdir=lib --buildtype=release \
+            -Dbackends=headless -Drenderers=pixman -Dallocators=shm \
+            -Dxwayland=disabled -Dsession=disabled -Dexamples=false
+          ninja -C "$RUNNER_TEMP/wlroots-0.18.2/build" install
+
+          curl -fsSL "https://github.com/swaywm/sway/releases/download/1.10.1/sway-1.10.1.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP"
+          meson setup "$RUNNER_TEMP/sway-1.10.1/build" "$RUNNER_TEMP/sway-1.10.1" \
+            --prefix="$PREFIX" --libdir=lib --buildtype=release \
+            -Dxwayland=disabled -Dtray=disabled -Dman-pages=disabled
+          ninja -C "$RUNNER_TEMP/sway-1.10.1/build" install
+
+      - name: Put the headless sway on PATH
+        shell: bash
+        run: |
+          echo "/opt/sway/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=/opt/sway/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          LD_LIBRARY_PATH="/opt/sway/lib:${LD_LIBRARY_PATH:-}" /opt/sway/bin/sway --version
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
