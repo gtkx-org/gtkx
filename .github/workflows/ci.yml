@@ -408,7 +408,9 @@ jobs:
             | tar -xz -C "$RUNNER_TEMP"
           meson setup "$RUNNER_TEMP/sway-1.10.1/build" "$RUNNER_TEMP/sway-1.10.1" \
             --prefix="$PREFIX" --libdir=lib --buildtype=release \
-            -Dxwayland=disabled -Dtray=disabled -Dman-pages=disabled
+            -Dtray=disabled -Dman-pages=disabled -Dgdk-pixbuf=disabled \
+            -Dswaybar=false -Dswaynag=false -Ddefault-wallpaper=false \
+            -Dzsh-completions=false -Dbash-completions=false -Dfish-completions=false
           ninja -C "$RUNNER_TEMP/sway-1.10.1/build" install
 
       - name: Put the headless sway on PATH
