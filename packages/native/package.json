@@ -141,6 +141,6 @@
         "node": ">=24"
     },
     "devDependencies": {
-        "@napi-rs/cli": "^3.8.0"
+        "@napi-rs/cli": "~3.7.4"
     }
 }
