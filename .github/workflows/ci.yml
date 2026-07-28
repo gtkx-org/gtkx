@@ -341,11 +341,6 @@ jobs:
         if: steps.sway.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          # Jammy's archive ships no compositor the harness can use: its weston has no
-          # headless backend and its sway (1.7 / wlroots 0.15) hangs the per-worker
-          # display. Build sway from source so the bench job runs the same compositor
-          # as every other suite. Only the headless backend and the pixman renderer
-          # are enabled, which drops the DRM, session and GL dependency chains.
           set -euo pipefail
           sudo apt-get install -y --no-install-recommends \
             ninja-build python3-pip pkg-config cmake \
@@ -359,8 +354,8 @@ jobs:
           export LD_LIBRARY_PATH="$PREFIX/lib:${LD_LIBRARY_PATH:-}"
 
           build() {
-            local name="$1" url="$2" dir="$3"
-            shift 3
+            local url="$1" dir="$2"
+            shift 2
             curl -fsSL "$url" -o "$RUNNER_TEMP/src.tar"
             tar -xf "$RUNNER_TEMP/src.tar" -C "$RUNNER_TEMP"
             meson setup "$RUNNER_TEMP/$dir/build" "$RUNNER_TEMP/$dir" \
@@ -368,50 +363,38 @@ jobs:
             ninja -C "$RUNNER_TEMP/$dir/build" install
           }
 
-          # jammy meets none of the floors these need: wayland-server >= 1.23,
-          # wayland-protocols >= 1.24, libdrm >= 2.4.122, pixman >= 0.42 and
-          # xkbcommon >= 1.5. Disabling the libinput backend also drops sway's
-          # libinput >= 1.26 requirement, which jammy's 1.20 could never satisfy.
-          build wayland \
+          build \
             "https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.23.1/downloads/wayland-1.23.1.tar.xz" \
             "wayland-1.23.1" -Dtests=false -Ddocumentation=false -Ddtd_validation=false
-          build wayland-protocols \
+          build \
             "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.36/downloads/wayland-protocols-1.36.tar.xz" \
             "wayland-protocols-1.36" -Dtests=false
-          build libdrm \
+          build \
             "https://dri.freedesktop.org/libdrm/libdrm-2.4.125.tar.xz" \
             "libdrm-2.4.125" -Dtests=false -Dcairo-tests=disabled -Dman-pages=disabled \
             -Dvalgrind=disabled -Dintel=disabled -Dradeon=disabled -Damdgpu=disabled \
             -Dnouveau=disabled -Dvmwgfx=disabled
-          build libdisplay-info \
+          build \
             "https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/0.2.0/downloads/libdisplay-info-0.2.0.tar.xz" \
             "libdisplay-info-0.2.0"
 
-          build pixman \
+          build \
             "https://www.cairographics.org/releases/pixman-0.42.2.tar.gz" \
             "pixman-0.42.2"
-          build libxkbcommon \
+          build \
             "https://xkbcommon.org/download/libxkbcommon-1.7.0.tar.xz" \
             "libxkbcommon-1.7.0" -Denable-docs=false -Denable-tools=false \
             -Denable-wayland=false -Denable-x11=false -Denable-xkbregistry=false \
             -Denable-bash-completion=false
 
-          curl -fsSL "https://gitlab.freedesktop.org/wlroots/wlroots/-/releases/0.18.2/downloads/wlroots-0.18.2.tar.gz" \
-            | tar -xz -C "$RUNNER_TEMP"
-          meson setup "$RUNNER_TEMP/wlroots-0.18.2/build" "$RUNNER_TEMP/wlroots-0.18.2" \
-            --prefix="$PREFIX" --libdir=lib --buildtype=release \
-            -Dbackends= \
-            -Dxwayland=disabled -Dsession=disabled -Dexamples=false
-          ninja -C "$RUNNER_TEMP/wlroots-0.18.2/build" install
-
-          curl -fsSL "https://github.com/swaywm/sway/releases/download/1.10.1/sway-1.10.1.tar.gz" \
-            | tar -xz -C "$RUNNER_TEMP"
-          meson setup "$RUNNER_TEMP/sway-1.10.1/build" "$RUNNER_TEMP/sway-1.10.1" \
-            --prefix="$PREFIX" --libdir=lib --buildtype=release \
-            -Dtray=disabled -Dman-pages=disabled -Dgdk-pixbuf=disabled \
+          build \
+            "https://gitlab.freedesktop.org/wlroots/wlroots/-/releases/0.18.2/downloads/wlroots-0.18.2.tar.gz" \
+            "wlroots-0.18.2" -Dbackends= -Dxwayland=disabled -Dsession=disabled -Dexamples=false
+          build \
+            "https://github.com/swaywm/sway/releases/download/1.10.1/sway-1.10.1.tar.gz" \
+            "sway-1.10.1" -Dtray=disabled -Dman-pages=disabled -Dgdk-pixbuf=disabled \
             -Dswaybar=false -Dswaynag=false -Ddefault-wallpaper=false \
             -Dzsh-completions=false -Dbash-completions=false -Dfish-completions=false
-          ninja -C "$RUNNER_TEMP/sway-1.10.1/build" install
 
       - name: Put the headless sway on PATH
         shell: bash
