@@ -80,7 +80,7 @@ ENV CARGO_HTTP_MULTIPLEXING=false
 # Keep in sync with /rust-toolchain.toml (stable) and scripts/run-headless.ts (nightly), which pin
 # the same toolchains for local builds; the image is built without the repository checked out.
 ARG RUST_VERSION=1.97.1
-ARG RUST_NIGHTLY=nightly-2026-07-26
+ARG RUST_NIGHTLY=nightly-2026-07-28
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 

@@ -1,7 +1,7 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { spawnSync } from "node:child_process";
 
-const RUST_NIGHTLY = "nightly-2026-07-26";
+const RUST_NIGHTLY = "nightly-2026-07-28";
 
 const runHeadless = (): void => {
     const command = process.argv[2];
