@@ -6,6 +6,7 @@ import { type TypeInfo, typeInfoFor } from "./metadata.js";
 type SuppressionCounter = {
     beginSuppression: () => void;
     endSuppression: () => void;
+    endSuppressionNow: () => void;
     isSuppressed: () => boolean;
 };
 
@@ -13,20 +14,26 @@ const NOTIFY_DETAIL_PREFIX = "notify::";
 const suppressionCounter: SuppressionCounter = createSuppressionCounter();
 const beginSuppression: () => void = suppressionCounter.beginSuppression;
 const endSuppression: () => void = suppressionCounter.endSuppression;
+const endSuppressionNow: () => void = suppressionCounter.endSuppressionNow;
 const isSuppressed: () => boolean = suppressionCounter.isSuppressed;
 
 function createSuppressionCounter(): SuppressionCounter {
     let depth = 0;
+
+    const release = (): void => {
+        if (depth > 0) {
+            depth -= 1;
+        }
+    };
 
     return {
         beginSuppression: () => {
             depth += 1;
         },
         endSuppression: () => {
-            queueMicrotask(() => {
-                depth -= 1;
-            });
+            queueMicrotask(release);
         },
+        endSuppressionNow: release,
         isSuppressed: () => depth > 0,
     };
 }
@@ -96,4 +103,11 @@ const disconnectAllHandlers = (target: SignalTarget): void => {
     target.handlers.clear();
 };
 
-export { beginSuppression, endSuppression, connectHandler, disconnectHandler, disconnectAllHandlers };
+export {
+    beginSuppression,
+    endSuppression,
+    endSuppressionNow,
+    connectHandler,
+    disconnectHandler,
+    disconnectAllHandlers,
+};

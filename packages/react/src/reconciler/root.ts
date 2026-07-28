@@ -1,8 +1,10 @@
 import type { ErrorInfo, ReactNode } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
+import { createLogger, type Logger } from "@gtkx/utils";
 import { ConcurrentRoot } from "react-reconciler/constants.js";
 import { type Container, reconciler } from "./host-config.js";
 import { rootElement } from "./root-element.js";
+import { endSuppressionNow } from "./signals.js";
 
 type OpaqueRoot = { [opaqueRoot]: true };
 
@@ -30,6 +32,7 @@ type ErrorHandler = (error: unknown) => void;
 type ErrorHandlerSlot = { get: () => ErrorHandler | null; set: (handler: ErrorHandler) => ErrorHandler | null };
 
 declare const opaqueRoot: unique symbol;
+const log: Logger = createLogger("react");
 const activeRoots: Set<OpaqueRoot> = new Set();
 const errorHandlerSlot = createErrorHandlerSlot();
 
@@ -54,6 +57,16 @@ function createErrorHandlerSlot(): ErrorHandlerSlot {
  * @returns The previously installed handler, or null.
  */
 const setReconcilerErrorHandler = (handler: ErrorHandler): ErrorHandler | null => errorHandlerSlot.set(handler);
+
+const rethrowUncaughtRenderError = (error: unknown): never => {
+    endSuppressionNow();
+    throw error;
+};
+
+const logCaughtRenderError = (error: unknown): void => {
+    endSuppressionNow();
+    log.error("caught render error", error);
+};
 
 const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks): OpaqueRoot => {
     const container = reconciler.createContainer(
@@ -116,7 +129,10 @@ const createReconcilerRoot = (options: ReconcilerRootOptions): ReconcilerRoot =>
  * @returns A {@link Root} exposing render and unmount.
  */
 const createRoot = (container: Container = rootElement): Root => {
-    const opaque = openContainer(container, {});
+    const opaque = openContainer(container, {
+        onUncaughtError: rethrowUncaughtRenderError,
+        onCaughtError: logCaughtRenderError,
+    });
 
     return {
         render: (element) => {
