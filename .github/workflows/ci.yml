@@ -361,7 +361,8 @@ jobs:
           build() {
             local name="$1" url="$2" dir="$3"
             shift 3
-            curl -fsSL "$url" | tar -x -C "$RUNNER_TEMP"
+            curl -fsSL "$url" -o "$RUNNER_TEMP/src.tar"
+            tar -xf "$RUNNER_TEMP/src.tar" -C "$RUNNER_TEMP"
             meson setup "$RUNNER_TEMP/$dir/build" "$RUNNER_TEMP/$dir" \
               --prefix="$PREFIX" --libdir=lib --buildtype=release "$@"
             ninja -C "$RUNNER_TEMP/$dir/build" install
