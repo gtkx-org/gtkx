@@ -388,7 +388,7 @@ jobs:
             | tar -xz -C "$RUNNER_TEMP"
           meson setup "$RUNNER_TEMP/wlroots-0.18.2/build" "$RUNNER_TEMP/wlroots-0.18.2" \
             --prefix="$PREFIX" --libdir=lib --buildtype=release \
-            -Dbackends=headless -Drenderers=pixman -Dallocators=shm \
+            -Dbackends= \
             -Dxwayland=disabled -Dsession=disabled -Dexamples=false
           ninja -C "$RUNNER_TEMP/wlroots-0.18.2/build" install
 
