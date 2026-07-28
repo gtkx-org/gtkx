@@ -33,7 +33,11 @@ runs:
       run: |
         set -euo pipefail
 
-        DOCKER_ARGS=(--rm -v "$WORKSPACE:/workspace" -w /workspace)
+        CONTAINER_HOME="$RUNNER_TEMP/container-home"
+        mkdir -p "$CONTAINER_HOME"
+
+        DOCKER_ARGS=(--rm --user "$(id -u):$(id -g)" -e HOME=/ci-home)
+        DOCKER_ARGS+=(-v "$CONTAINER_HOME:/ci-home" -v "$WORKSPACE:/workspace" -w /workspace)
 
         if [ "$INPUT_MOUNT_CARGO_CACHE" = "true" ]; then
           DOCKER_ARGS+=(-v "$HOME/.cargo/registry:/usr/local/cargo/registry")
@@ -41,7 +45,7 @@ runs:
         fi
 
         if [ "$INPUT_MOUNT_PNPM_STORE" = "true" ]; then
-          DOCKER_ARGS+=(-v "$HOME/.local/share/pnpm/store:/root/.local/share/pnpm/store")
+          DOCKER_ARGS+=(-v "$HOME/.local/share/pnpm/store:/ci-home/.local/share/pnpm/store")
         fi
 
         for var in NODE_VERSION GTK4_VERSION VERSION NX_CLOUD_ACCESS_TOKEN \

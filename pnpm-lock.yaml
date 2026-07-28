@@ -503,8 +503,8 @@ importers:
   packages/native:
     devDependencies:
       '@napi-rs/cli':
-        specifier: ~3.7.4
-        version: 3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.2)(supports-color@7.2.0)
+        specifier: ^3.8.0
+        version: 3.8.0(@emnapi/runtime@1.11.2)(@types/node@26.1.2)(supports-color@7.2.0)
 
   packages/react:
     dependencies:
@@ -1899,12 +1899,12 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
-  '@napi-rs/cli@3.7.4':
-    resolution: {integrity: sha512-idELIUceJ9zPgx/shcMt1fSSsteFG68v56RIXi4qUm7OYuJOt7CoMj2KnHVmbOqXgUHWQU1lCULrtQdZDG4F5A==}
-    engines: {node: '>= 16'}
+  '@napi-rs/cli@3.8.0':
+    resolution: {integrity: sha512-RagwLdCJ1LigZTe3fE5Bc+2a4sHDV+1IAxvyFlZf25qSQj8e2Sdc8xq2xyN2ydNokdfDN4DprGQkU1eBJJCl8w==}
+    engines: {node: ^20.17.0 || ^22.13.0 || >= 23.5.0}
     hasBin: true
     peerDependencies:
-      '@emnapi/runtime': ^1.7.1
+      '@emnapi/runtime': 2.0.0-alpha.3
     peerDependenciesMeta:
       '@emnapi/runtime':
         optional: true
@@ -3886,8 +3886,8 @@ packages:
   electron-to-chromium@1.5.398:
     resolution: {integrity: sha512-AsvhAxopJGh6museTDMIjn6JpDYOfgu4RLlygomt87MUwBUqTfd/1EiPtx10/LZE8xpTvkP2E9Gafq7lkLtodQ==}
 
-  emnapi@1.11.3:
-    resolution: {integrity: sha512-+/ZS90YK/rYfVOHtGLHkGffVsnmD/MAKaBHio+Y4XAtg75RLr4cveV/w0jTkUdLM1CcAlaRgG76mpIemWAlk0A==}
+  emnapi@2.0.0-alpha.3:
+    resolution: {integrity: sha512-K9bc9Xx4OwSfhJpdSOpcfIKzn7/6emuubaIorf6I5e7WBAM79665rf6iHr9y50NL4qYMUP/AheTpD1Z4yU1EBw==}
     peerDependencies:
       node-addon-api: '>= 6.1.0'
     peerDependenciesMeta:
@@ -7623,7 +7623,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@napi-rs/cli@3.7.4(@emnapi/runtime@1.11.2)(@types/node@26.1.2)(supports-color@7.2.0)':
+  '@napi-rs/cli@3.8.0(@emnapi/runtime@1.11.2)(@types/node@26.1.2)(supports-color@7.2.0)':
     dependencies:
       '@inquirer/prompts': 8.5.2(@types/node@26.1.2)
       '@napi-rs/cross-toolchain': 1.0.3(supports-color@7.2.0)
@@ -7631,12 +7631,13 @@ snapshots:
       '@octokit/rest': 22.0.1
       clipanion: 4.0.0-rc.4(typanion@3.14.0)
       colorette: 2.0.20
-      emnapi: 1.11.3
+      emnapi: 2.0.0-alpha.3
       es-toolkit: 1.50.0
       js-yaml: 4.3.0
       obug: 2.1.4
       semver: 7.8.5
       typanion: 3.14.0
+      typescript: 6.0.3
     optionalDependencies:
       '@emnapi/runtime': 1.11.2
     transitivePeerDependencies:
@@ -9539,7 +9540,7 @@ snapshots:
 
   electron-to-chromium@1.5.398: {}
 
-  emnapi@1.11.3: {}
+  emnapi@2.0.0-alpha.3: {}
 
   emoji-regex@8.0.0: {}
 
