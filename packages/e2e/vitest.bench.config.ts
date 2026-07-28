@@ -3,7 +3,7 @@ import gtkx from "@gtkx/vitest";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-    plugins: [gtkx(), codspeedPlugin()],
+    plugins: [gtkx({ compositor: "weston" }), codspeedPlugin()],
     test: {
         name: "e2e-bench",
         setupFiles: ["./tests/setup.ts", "./tests/bench-setup.ts"],
