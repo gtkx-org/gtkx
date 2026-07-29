@@ -73,7 +73,8 @@ function resolveAccessor(accessors: PropertyAccessor[], propertyId: number): Pro
 function makeGetProperty(accessors: PropertyAccessor[]) {
     return function getProperty(this: object, propertyId: number, value: object): void {
         const accessor = resolveAccessor(accessors, propertyId);
-        intoValue(getHandle(value), readStored(this as Record<symbol, unknown>, accessor));
+        const current = (this as Record<string, unknown>)[camelCase(accessor.name)];
+        intoValue(getHandle(value), current);
     };
 }
 
