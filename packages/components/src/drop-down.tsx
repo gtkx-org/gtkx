@@ -52,8 +52,20 @@ const DROP_DOWN_PROPS: string[] = [
  */
 const DropDown: DropDownComponent = DropDownImpl as DropDownComponent;
 
+const describeValue = (value: unknown): string => {
+    if (typeof value === "string") {
+        return value;
+    }
+
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+};
+
 const defaultItemContent = (value: unknown): ReactNode =>
-    value == null ? null : <GtkLabel>{typeof value === "string" ? value : JSON.stringify(value)}</GtkLabel>;
+    value == null ? null : <GtkLabel>{describeValue(value)}</GtkLabel>;
 
 const defaultRenderItem = ({ item }: RenderItemArgs<unknown>): ReactNode => defaultItemContent(item);
 

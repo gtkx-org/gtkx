@@ -221,9 +221,9 @@ struct InterfaceInit {
     vfuncs: Option<Vec<RawVfunc>>,
 }
 
-// GLib hands `iface_data` back untouched from the `GInterfaceInfo` the registration passed in, so it
-// is the `InterfaceInit` leaked below and no other thread can reach it. The vfuncs are taken out on
-// the first call so a second initialization of the same interface installs nothing twice.
+// GLib hands `iface_data` back untouched from the `GInterfaceInfo` the registration passed in, so it is
+// the `InterfaceInit` allocated below and no other thread can reach it. The vfuncs are taken out on the
+// first call so a second initialization of the same interface installs nothing twice.
 unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut c_void) {
     let data = unsafe { &mut *iface_data.cast::<InterfaceInit>() };
 
@@ -234,6 +234,11 @@ unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut
     for vfunc in vfuncs {
         unsafe { vfunc.install_into(vtable) };
     }
+}
+
+// Runs when GLib tears the interface vtable down, which returns the allocation `add_to` handed over.
+unsafe extern "C" fn finalize_interface_vtable(_vtable: *mut c_void, iface_data: *mut c_void) {
+    drop(unsafe { Box::from_raw(iface_data.cast::<InterfaceInit>()) });
 }
 
 impl RawInterface {
@@ -247,7 +252,7 @@ impl RawInterface {
 
         let info = gobject_ffi::GInterfaceInfo {
             interface_init: Some(init_interface_vtable),
-            interface_finalize: None,
+            interface_finalize: Some(finalize_interface_vtable),
             interface_data: data.cast::<c_void>(),
         };
 

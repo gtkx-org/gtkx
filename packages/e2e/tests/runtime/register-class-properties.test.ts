@@ -73,9 +73,31 @@ describe("registerClass — properties", () => {
         });
 
         swatch.red = 3;
+        const afterFirstWrite = [...seen];
         swatch.red = 3;
+        expect(seen).toEqual(afterFirstWrite);
         swatch.label = "teal";
         expect(seen).toEqual(["red", "label"]);
+    });
+});
+
+describe("registerClass — property notifications", () => {
+    it("emits notify exactly once when the property is set through g_object_set_property", () => {
+        const Swatch = makeSwatchClass();
+        const swatch = new Swatch();
+        const seen: string[] = [];
+
+        swatch.on("notify", (...args: unknown[]) => {
+            const [pspec] = args as [ParamSpec];
+            seen.push(pspec.getName());
+        });
+
+        const written = new Value();
+        written.init(TYPE_INT);
+        written.setInt(99);
+        swatch.setProperty("red", written);
+        expect(seen).toEqual(["red"]);
+        expect(swatch.red).toBe(99);
     });
 });
 

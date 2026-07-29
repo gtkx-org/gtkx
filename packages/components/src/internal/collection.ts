@@ -92,7 +92,7 @@ function createCollection(gtk: CollectionModel, index: CollectionIndex): Collect
     return {
         isTree: index.isTree,
         model: gtk.model,
-        treeModel: gtk.treeModel,
+        treeModel: () => (index.isTree ? gtk.treeModel() : null),
         itemFor: index.itemFor,
         sectionFor: index.sectionFor,
         idAt: (position) => getId(gtk.model.getItem(position)),

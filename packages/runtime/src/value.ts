@@ -126,7 +126,9 @@ const PLAIN_VALUE_SETTERS: Map<bigint, ValueType["set"]> = new Map([
 
 const WRAPPED_VALUE_SETTERS: Map<bigint, ValueType["set"]> = new Map([
     [TYPE_STRING, setStringValue],
-    [TYPE_OBJECT, setObjectValue],
+    [TYPE_OBJECT, handleSetter(objectValueType)],
+    [TYPE_PARAM, handleSetter(paramValueType)],
+    [TYPE_VARIANT, handleSetter(variantValueType)],
     [TYPE_BOXED, setBoxedFromValue],
 ]);
 
@@ -307,8 +309,10 @@ function setStringValue(value: ExternalObject<Handle>, nativeValue: unknown): vo
     stringValueType.set(value, nativeValue ?? null);
 }
 
-function setObjectValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
-    objectValueType.set(value, nativeValue == null ? null : getHandle(nativeValue));
+function handleSetter(target: ValueType): ValueType["set"] {
+    return (value, nativeValue) => {
+        target.set(value, nativeValue == null ? null : getHandle(nativeValue));
+    };
 }
 
 function setBoxedFromValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
