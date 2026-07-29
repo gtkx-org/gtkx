@@ -90,7 +90,7 @@ Typing the array as `Column<Employee>[]` binds every `renderCell` callback to th
 
 ### DropDown
 
-`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus separate factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection, or `sections` plus `renderHeader` when the popup rows should be grouped. `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label via `String(value)`:
+`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus separate factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection, or `sections` plus `renderHeader` when the popup rows should be grouped. `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label, verbatim when it is a string and as JSON otherwise:
 
 ```tsx
 import { DropDown } from "@gtkx/components";

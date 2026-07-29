@@ -3,13 +3,11 @@ import type { ElementType, ReactNode, Ref, RefObject } from "react";
 import { GtkDropDown, GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
 import { omit } from "@gtkx/utils";
-import { useCallback, useEffectEvent, useLayoutEffect, useRef } from "react";
-import type { CollectionModel } from "./internal/collection-model.js";
-import type { CellRecord, Cells } from "./internal/use-cells.js";
-import type { DropDownProps } from "./types.js";
-import { getCollectionMode } from "./internal/collection-model.js";
-import { headerRenderer, renderItemArgs, useCells } from "./internal/use-cells.js";
-import { useCollectionModel } from "./internal/use-collection.js";
+import { useEffectEvent, useLayoutEffect, useRef } from "react";
+import type { Collection } from "./internal/collection.js";
+import type { DropDownProps, ItemRenderer, RenderItemArgs } from "./types.js";
+import { HeaderPortals, ItemPortals, useHeaderCells, useItemCells } from "./internal/cells.js";
+import { useCollectionData } from "./internal/use-collection.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
 
 type SelectableWidget = GObject.Object & { getSelected: () => number; selected: number };
@@ -21,8 +19,8 @@ type DropDownRuntimeProps = DropDownProps & {
 
 type SelectionOptions = {
     widget: SelectableWidget | null;
-    model: CollectionModel;
-    cells: Cells;
+    collection: Collection;
+    applying: RefObject<boolean>;
     props: DropDownRuntimeProps;
 };
 
@@ -35,6 +33,18 @@ type DropDownComponent = <T = unknown, S = unknown, C extends ElementType = type
     props: DropDownProps<T, S, C>,
 ) => ReactNode;
 
+const DROP_DOWN_PROPS: string[] = [
+    "component",
+    "items",
+    "sections",
+    "selectedId",
+    "onSelectionChanged",
+    "renderItem",
+    "renderListItem",
+    "renderHeader",
+    "ref",
+];
+
 /**
  * Renders a drop-down backed by a collection model, with customizable renderers for the
  * collapsed display, popup rows, and popup section headers, and controlled selection.
@@ -45,25 +55,20 @@ const DropDown: DropDownComponent = DropDownImpl as DropDownComponent;
 const defaultItemContent = (value: unknown): ReactNode =>
     value == null ? null : <GtkLabel>{typeof value === "string" ? value : JSON.stringify(value)}</GtkLabel>;
 
-const itemContent = (record: CellRecord, model: CollectionModel, props: DropDownRuntimeProps): ReactNode => {
-    const args = renderItemArgs(record, { collection: model });
+const defaultRenderItem = ({ item }: RenderItemArgs<unknown>): ReactNode => defaultItemContent(item);
 
-    if (args === null) {
-        return null;
-    }
+const faceRenderer = (props: DropDownRuntimeProps): ItemRenderer<never> =>
+    props.renderItem ?? defaultRenderItem;
 
-    const listRenderer = record.slot === "list" ? (props.renderListItem ?? props.renderItem) : null;
-    const render = (listRenderer ?? props.renderItem);
-
-    return render == null ? defaultItemContent(args.item) : render(args);
-};
+const listRenderer = (props: DropDownRuntimeProps): ItemRenderer<never> =>
+    props.renderListItem ?? props.renderItem ?? defaultRenderItem;
 
 const resolvePosition = (
     widget: SelectableWidget,
-    model: CollectionModel,
+    collection: Collection,
     selectedId: string | null | undefined,
 ): number => {
-    const requested = selectedId == null ? -1 : model.positionFor(selectedId);
+    const requested = selectedId == null ? -1 : collection.positionFor(selectedId);
 
     return requested >= 0 ? requested : widget.getSelected();
 };
@@ -99,13 +104,13 @@ const reportSelectedNotify = (
     tracker: KnownSelection,
     applying: RefObject<boolean>,
 ): void => {
-    const { widget, model } = options;
+    const { widget, collection } = options;
 
     if (widget === null || applying.current) {
         return;
     }
 
-    reportKnownSelection(tracker, model.idAt(widget.getSelected()));
+    reportKnownSelection(tracker, collection.idAt(widget.getSelected()));
 };
 
 const applySelectedPosition = (widget: SelectableWidget, position: number, applying: RefObject<boolean>): void => {
@@ -119,23 +124,12 @@ const applySelectedPosition = (widget: SelectableWidget, position: number, apply
 };
 
 const useDropDownSelection = (options: SelectionOptions): void => {
-    const { widget, model, cells } = options;
-    const { items, sections, selectedId } = options.props;
+    const { widget, collection, applying } = options;
+    const { selectedId } = options.props;
     const known = useRef<string | null>(null);
-    const applying = useRef(false);
-
-    const applyUpdate = useCallback((): void => {
-        applying.current = true;
-
-        try {
-            model.update({ items, sections });
-        } finally {
-            applying.current = false;
-        }
-    }, [model, items, sections]);
 
     const syncKnownSelection = useEffectEvent((position: number): void => {
-        const effectiveId = model.idAt(position);
+        const effectiveId = collection.idAt(position);
 
         if (effectiveId === null) {
             known.current = null;
@@ -152,12 +146,10 @@ const useDropDownSelection = (options: SelectionOptions): void => {
             return;
         }
 
-        applyUpdate();
-        cells.refresh();
-        const position = resolvePosition(widget, model, selectedId);
+        const position = resolvePosition(widget, collection, selectedId);
         applySelectedPosition(widget, position, applying);
         syncKnownSelection(position);
-    }, [widget, model, cells, selectedId, applyUpdate]);
+    }, [widget, collection, selectedId, applying]);
 
     useSignal(widget, "notify::selected", (): void => {
         reportSelectedNotify(options, { known, onSelectionChanged: options.props.onSelectionChanged }, applying);
@@ -166,44 +158,34 @@ const useDropDownSelection = (options: SelectionOptions): void => {
 
 function DropDownImpl(props: DropDownRuntimeProps): ReactNode {
     const { component, items, sections, renderListItem, renderHeader, ref } = props;
-
-    const rest = omit(props, [
-        "component",
-        "items",
-        "sections",
-        "selectedId",
-        "onSelectionChanged",
-        "renderItem",
-        "renderListItem",
-        "renderHeader",
-        "ref",
-    ]);
-
+    const rest = omit(props, DROP_DOWN_PROPS);
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
-    const model = useCollectionModel(getCollectionMode({ items, sections }));
-    const cells = useCells({ width: -1, height: -1 });
-    useDropDownSelection({ widget, model, cells, props });
+    const applying = useRef(false);
+    const collection = useCollectionData({ items, sections, applying });
+    const faceCells = useItemCells({ width: -1, height: -1 });
+    const listCells = useItemCells({ width: -1, height: -1 });
+    const headerCells = useHeaderCells({ width: -1, height: -1 });
+    useDropDownSelection({ widget, collection, applying, props });
     const Component = component ?? GtkDropDown;
+    const hasHeader = typeof renderHeader === "function";
 
     return (
         <>
             <Component
                 ref={refCallback}
-                model={model.model}
-                factory={<GtkSignalListItemFactory {...cells.item} />}
-                {...(renderListItem != null && { listFactory: <GtkSignalListItemFactory {...cells.slot("list")} /> })}
-                {...(typeof renderHeader === "function" && {
-                    headerFactory: <GtkSignalListItemFactory {...cells.header} />,
+                model={collection.model}
+                factory={<GtkSignalListItemFactory {...faceCells.handlers} />}
+                {...(renderListItem != null && {
+                    listFactory: <GtkSignalListItemFactory {...listCells.handlers} />,
                 })}
+                {...(hasHeader && { headerFactory: <GtkSignalListItemFactory {...headerCells.handlers} /> })}
                 {...rest}
             />
-            {cells.portals(
-                {
-                    item: (record) => itemContent(record, model, props),
-                    header: headerRenderer(model, renderHeader),
-                },
-                model,
+            <ItemPortals store={faceCells} render={faceRenderer(props)} collection={collection} />
+            {renderListItem != null && (
+                <ItemPortals store={listCells} render={listRenderer(props)} collection={collection} />
             )}
+            {hasHeader && <HeaderPortals store={headerCells} render={renderHeader} collection={collection} />}
         </>
     );
 }

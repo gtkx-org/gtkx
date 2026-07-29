@@ -187,6 +187,8 @@ type SizeGroupProps = {
 type SizeGroupChildProps<C extends ElementType> = ChildProps<C>;
 
 export {
+    type SelectionProps,
+    type ExpansionProps,
     type ChildProps,
     type WidgetProps,
     type Item,

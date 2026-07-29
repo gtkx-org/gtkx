@@ -1,38 +1,35 @@
 import type { ReactNode } from "react";
 import { GtkGridView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import { omit } from "@gtkx/utils";
 import type { GridViewProps } from "./types.js";
-import { collectionRenderers } from "./internal/use-cells.js";
+import { ItemPortals, useItemCells } from "./internal/cells.js";
 import { useCollection } from "./internal/use-collection.js";
+
+const GRID_VIEW_PROPS = [
+    "items",
+    "renderItem",
+    "selectedIds",
+    "onSelectionChanged",
+    "selectionMode",
+    "estimatedItemHeight",
+    "estimatedItemWidth",
+] as const satisfies (keyof GridViewProps)[];
 
 /**
  * Renders a Gtk.GridView of uniform cells from declarative items, with per-cell
  * rendering, controlled selection, and estimated item sizing.
  */
 function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
-    const {
-        items,
-        renderItem,
-        selectedIds,
-        onSelectionChanged,
-        selectionMode,
-        estimatedItemHeight,
-        estimatedItemWidth,
-        ...rest
-    } = props;
-
-    const { model, cells, selection } = useCollection({
-        items,
-        mode: "flat",
-        size: { width: estimatedItemWidth ?? -1, height: estimatedItemHeight ?? -1 },
-        selectedIds,
-        onSelectionChanged,
-        selectionMode,
-    });
+    const { renderItem, estimatedItemHeight, estimatedItemWidth } = props;
+    const rest = omit(props, GRID_VIEW_PROPS);
+    const size = { width: estimatedItemWidth ?? -1, height: estimatedItemHeight ?? -1 };
+    const { collection, selection } = useCollection({ ...props, flat: true });
+    const itemCells = useItemCells(size);
 
     return (
         <>
-            <GtkGridView model={selection} factory={<GtkSignalListItemFactory {...cells.item} />} {...rest} />
-            {cells.portals(collectionRenderers({ collection: model, renderItem }), model)}
+            <GtkGridView model={selection} factory={<GtkSignalListItemFactory {...itemCells.handlers} />} {...rest} />
+            <ItemPortals store={itemCells} render={renderItem} collection={collection} />
         </>
     );
 }

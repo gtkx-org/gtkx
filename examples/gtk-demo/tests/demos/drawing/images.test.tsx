@@ -14,7 +14,7 @@ const renderPaintable = (paintable: Gdk.Paintable): string => {
     paintable.snapshot(snapshot, 128, 128);
     const node = snapshot.toNode();
 
-    return node === null ? "" : String.fromCharCode(...(node.serialize().getData() ?? []));
+    return node === null ? "" : String.fromCodePoint(...(node.serialize().getData() ?? []));
 };
 
 const findStatefulSvg = async (): Promise<Gtk.Svg> => {

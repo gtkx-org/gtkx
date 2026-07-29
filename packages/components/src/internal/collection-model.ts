@@ -1,284 +1,237 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { Item, Section } from "../types.js";
+import type { CollectionIndex, Level } from "./collection-index.js";
+import { childLevelKey, ROOT_LEVEL_KEY } from "./collection-index.js";
 
-type CollectionMode = "flat" | "tree" | "sections";
-
-type CollectionData = {
-    items?: Item[] | undefined;
-    sections?: Section[] | undefined;
+type LevelState = {
+    store: Gio.ListStore;
+    ids: string[];
+    canExpand: Map<string, boolean>;
 };
 
-type CollectionEntry = {
-    id: string;
-    item: Item;
-    holder: GObject.Object;
-    childStore: Gio.ListStore | null;
-    childOrder: GObject.Object[];
-    sectionValue: unknown;
+type SpliceRange = {
+    start: number;
+    removed: number;
+    added: string[];
+};
+
+type ModelState = {
+    root: Gio.ListStore;
+    rootModels: GObject.Object[];
+    model: Gtk.FlattenListModel;
+    objects: Map<string, Gtk.StringObject>;
+    levels: Map<string, LevelState>;
+    tree: Gtk.TreeListModel | null;
 };
 
 type CollectionModel = {
-    mode: CollectionMode;
-    model: Gio.ListModel;
-    treeModel: Gtk.TreeListModel | null;
-    update: (data: CollectionData) => void;
-    entryFor: (holder: GObject.Object) => CollectionEntry | undefined;
-    idAt: (position: number) => string | null;
-    positionFor: (id: string) => number;
-    positionsFor: (ids: string[]) => number[];
-};
-
-type SectionStore = { store: Gio.ListStore; order: GObject.Object[] };
-
-type ModelState = {
-    mode: CollectionMode;
-    root: Gio.ListStore;
-    rootOrder: GObject.Object[];
-    entries: Map<string, CollectionEntry>;
-    holders: Map<GObject.Object, CollectionEntry>;
-    sections: Map<string, SectionStore>;
-    seen: Set<string>;
-    dirty: Set<GObject.Object>;
-};
-
-const hasChildren = (item: Item): boolean => item.children !== undefined && item.children.length > 0;
-
-const getCollectionMode = (data: CollectionData): CollectionMode => {
-    if (data.sections !== undefined) {
-        return "sections";
-    }
-
-    return (data.items ?? []).some((item) => hasChildren(item)) ? "tree" : "flat";
+    model: Gtk.FlattenListModel;
+    treeModel: () => Gtk.TreeListModel | null;
+    sync: (index: CollectionIndex) => void;
 };
 
 const newStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
 
-const hasSameOrder = (order: GObject.Object[], next: GObject.Object[]): boolean =>
-    order.length === next.length && next.every((holder, index) => order[index] === holder);
+function getId(value: GObject.Object | null): string | null {
+    const item = value instanceof Gtk.TreeListRow ? value.getItem() : value;
 
-const refreshDirty = (state: ModelState, store: Gio.ListStore, order: GObject.Object[]): void => {
-    for (const [index, holder] of order.entries()) {
-        if (state.dirty.has(holder)) {
-            store.itemsChanged(index, 1, 1);
-        }
-    }
-};
+    return item instanceof Gtk.StringObject ? item.getString() : null;
+}
 
-const syncStore = (state: ModelState, store: Gio.ListStore, order: GObject.Object[], next: GObject.Object[]): void => {
-    if (hasSameOrder(order, next)) {
-        refreshDirty(state, store, next);
-
-        return;
-    }
-
-    store.splice(0, order.length, next);
-    order.length = 0;
-
-    for (const holder of next) {
-        order.push(holder);
-    }
-};
-
-const getOrCreateEntry = (state: ModelState, item: Item): CollectionEntry => {
-    const existing = state.entries.get(item.id);
+function objectFor(state: ModelState, id: string): Gtk.StringObject {
+    const existing = state.objects.get(id);
 
     if (existing !== undefined) {
         return existing;
     }
 
-    const holder = new GObject.Object({});
+    const created = Gtk.StringObject.new(id);
+    state.objects.set(id, created);
 
-    const entry: CollectionEntry = {
-        id: item.id,
-        item,
-        holder,
-        childStore: null,
-        childOrder: [],
-        sectionValue: undefined,
-    };
+    return created;
+}
 
-    state.entries.set(item.id, entry);
-    state.holders.set(holder, entry);
+function commonPrefix(previous: string[], next: string[], max: number): number {
+    let count = 0;
 
-    return entry;
-};
+    while (count < max && previous[count] === next[count]) {
+        count += 1;
+    }
 
-const syncLevel = (state: ModelState, items: Item[], sectionValue: unknown): GObject.Object[] =>
-    items.map((item) => {
-        const entry = getOrCreateEntry(state, item);
-        entry.item = item;
-        entry.sectionValue = sectionValue;
-        state.seen.add(item.id);
+    return count;
+}
 
-        if (state.mode === "tree") {
-            syncChildren(state, entry, item.children ?? []);
+function commonSuffix(previous: string[], next: string[], max: number): number {
+    let count = 0;
+
+    while (count < max && previous[previous.length - 1 - count] === next[next.length - 1 - count]) {
+        count += 1;
+    }
+
+    return count;
+}
+
+function spliceRange(previous: string[], next: string[]): SpliceRange | null {
+    const shared = Math.min(previous.length, next.length);
+    const start = commonPrefix(previous, next, shared);
+
+    if (start === previous.length && start === next.length) {
+        return null;
+    }
+
+    const tail = commonSuffix(previous, next, shared - start);
+
+    return { start, removed: previous.length - start - tail, added: next.slice(start, next.length - tail) };
+}
+
+function levelFor(state: ModelState, key: string): LevelState {
+    const existing = state.levels.get(key);
+
+    if (existing !== undefined) {
+        return existing;
+    }
+
+    const created: LevelState = { store: newStore(), ids: [], canExpand: new Map() };
+    state.levels.set(key, created);
+
+    return created;
+}
+
+function refreshExpandable(current: LevelState, level: Level): void {
+    const next: Map<string, boolean> = new Map();
+
+    for (const [index, id] of level.ids.entries()) {
+        const isWanted = level.isExpandable[index] ?? false;
+        const previous = current.canExpand.get(id);
+        next.set(id, isWanted);
+
+        if (previous !== undefined && previous !== isWanted) {
+            current.store.itemsChanged(index, 1, 1);
         }
-
-        return entry.holder;
-    });
-
-function syncChildren(state: ModelState, entry: CollectionEntry, children: Item[]): void {
-    const isHad = entry.childOrder.length > 0;
-
-    if (children.length > 0) {
-        entry.childStore ??= newStore();
     }
 
-    if (entry.childStore !== null) {
-        syncStore(state, entry.childStore, entry.childOrder, syncLevel(state, children, undefined));
+    current.canExpand = next;
+}
+
+function didSpliceLevel(state: ModelState, level: Level): boolean {
+    const current = levelFor(state, level.key);
+    const range = spliceRange(current.ids, level.ids);
+
+    if (range === null) {
+        return false;
     }
 
-    if (isHad !== (children.length > 0)) {
-        state.dirty.add(entry.holder);
+    current.store.splice(range.start, range.removed, range.added.map((id) => objectFor(state, id)));
+    current.ids = [...level.ids];
+
+    return true;
+}
+
+function dropUnvisited(state: ModelState, visited: Set<string>): void {
+    for (const key of state.levels.keys()) {
+        if (!visited.has(key)) {
+            state.levels.delete(key);
+        }
     }
 }
 
-const syncSections = (state: ModelState, next: Section[]): void => {
-    const active = new Set(next.map((section) => section.id));
-
-    for (const id of state.sections.keys()) {
-        if (!active.has(id)) {
-            state.sections.delete(id);
+function pruneObjects(state: ModelState, index: CollectionIndex): void {
+    for (const id of state.objects.keys()) {
+        if (!index.has(id)) {
+            state.objects.delete(id);
         }
     }
+}
 
-    const stores = next.map((section) => {
-        let record = state.sections.get(section.id);
+function childStoreFor(state: ModelState, object: GObject.Object): Gio.ListStore | null {
+    const id = getId(object);
 
-        if (record === undefined) {
-            record = { store: newStore(), order: [] };
-            state.sections.set(section.id, record);
-        }
-
-        syncStore(state, record.store, record.order, syncLevel(state, section.data, section.value));
-
-        return record.store;
-    });
-
-    syncStore(state, state.root, state.rootOrder, stores);
-};
-
-const pruneUnseen = (state: ModelState): void => {
-    for (const [id, entry] of state.entries) {
-        if (state.seen.has(id)) {
-            continue;
-        }
-
-        state.entries.delete(id);
-        state.holders.delete(entry.holder);
-    }
-};
-
-const update = (state: ModelState, data: CollectionData): void => {
-    state.seen = new Set();
-    state.dirty = new Set();
-
-    if (state.mode === "sections") {
-        syncSections(state, data.sections ?? []);
-    } else {
-        syncStore(state, state.root, state.rootOrder, syncLevel(state, data.items ?? [], undefined));
-    }
-
-    pruneUnseen(state);
-};
-
-const idAt = (state: ModelState, model: Gio.ListModel, position: number): string | null => {
-    const item = model.getItem(position);
-
-    if (item === null) {
+    if (id === null) {
         return null;
     }
 
-    const holder = item instanceof Gtk.TreeListRow ? item.getItem() : item;
+    return state.levels.get(childLevelKey(id))?.store ?? null;
+}
 
-    return holder === null ? null : (state.holders.get(holder)?.id ?? null);
-};
+function ensureTree(state: ModelState): Gtk.TreeListModel {
+    state.tree ??= Gtk.TreeListModel.new(levelFor(state, ROOT_LEVEL_KEY).store, false, false, (object) =>
+        childStoreFor(state, object));
 
-const isWanted = (id: string | null, wanted: Set<string>): boolean => id !== null && wanted.has(id);
+    return state.tree;
+}
 
-const findPositions = (state: ModelState, model: Gio.ListModel, ids: string[]): number[] => {
-    const wanted = new Set(ids);
-    const positions: number[] = [];
-    const count = model.getNItems();
-
-    for (let index = 0; index < count && positions.length < wanted.size; index++) {
-        if (isWanted(idAt(state, model, index), wanted)) {
-            positions.push(index);
-        }
+function desiredRootModels(state: ModelState, index: CollectionIndex): GObject.Object[] {
+    if (index.isTree) {
+        return [ensureTree(state)];
     }
 
-    return positions;
-};
+    return index.groups.map((level) => levelFor(state, level.key).store);
+}
 
-const childModelFor = (state: ModelState, holder: GObject.Object): Gio.ListStore | null => {
-    const entry = state.holders.get(holder);
+function hasSameModels(previous: GObject.Object[], next: GObject.Object[]): boolean {
+    return previous.length === next.length && next.every((model, index) => previous[index] === model);
+}
 
-    if (entry === undefined || !hasChildren(entry.item)) {
-        return null;
+function syncRoot(state: ModelState, index: CollectionIndex): void {
+    const next = desiredRootModels(state, index);
+
+    if (hasSameModels(state.rootModels, next)) {
+        return;
     }
 
-    return entry.childStore;
-};
+    state.root.splice(0, state.rootModels.length, next);
+    state.rootModels = next;
+}
 
-const presentedModel = (state: ModelState): { model: Gio.ListModel; treeModel: Gtk.TreeListModel | null } => {
-    if (state.mode === "tree") {
-        const treeModel = Gtk.TreeListModel.new(state.root, false, false, (holder) => childModelFor(state, holder));
+function syncModel(state: ModelState, index: CollectionIndex): void {
+    const levels = [...index.groups, ...index.children.values()];
+    const visited: Set<string> = new Set();
+    let didChange = false;
 
-        return { model: treeModel, treeModel };
+    for (const level of levels) {
+        didChange = didSpliceLevel(state, level) || didChange;
+        visited.add(level.key);
     }
 
-    if (state.mode === "sections") {
-        return { model: Gtk.FlattenListModel.new(state.root), treeModel: null };
+    if (didChange || visited.size !== state.levels.size) {
+        dropUnvisited(state, visited);
+        pruneObjects(state, index);
     }
 
-    return { model: state.root, treeModel: null };
-};
+    syncRoot(state, index);
+    refreshExpandableLevels(state, index, levels);
+}
 
-const createCollectionModel = (mode: CollectionMode): CollectionModel => {
+function refreshExpandableLevels(state: ModelState, index: CollectionIndex, levels: Level[]): void {
+    if (!index.isTree) {
+        return;
+    }
+
+    for (const level of levels) {
+        refreshExpandable(levelFor(state, level.key), level);
+    }
+}
+
+function createCollectionModel(): CollectionModel {
+    const root = newStore();
+
     const state: ModelState = {
-        mode,
-        root: newStore(),
-        rootOrder: [],
-        entries: new Map(),
-        holders: new Map(),
-        sections: new Map(),
-        seen: new Set(),
-        dirty: new Set(),
+        root,
+        rootModels: [],
+        model: Gtk.FlattenListModel.new(root),
+        objects: new Map(),
+        levels: new Map(),
+        tree: null,
     };
-
-    const { model, treeModel } = presentedModel(state);
 
     return {
-        mode,
-        model,
-        treeModel,
-        update: (data) => {
-            update(state, data);
+        model: state.model,
+        treeModel: () => state.tree,
+        sync: (index) => {
+            syncModel(state, index);
         },
-        entryFor: (holder) => state.holders.get(holder),
-        idAt: (position) => idAt(state, model, position),
-        positionFor: (id) => {
-            const count = model.getNItems();
-
-            for (let index = 0; index < count; index++) {
-                if (idAt(state, model, index) === id) {
-                    return index;
-                }
-            }
-
-            return -1;
-        },
-        positionsFor: (ids) => findPositions(state, model, ids),
     };
-};
+}
 
-export {
-    getCollectionMode,
-    createCollectionModel,
-    type CollectionMode,
-    type CollectionData,
-    type CollectionEntry,
-    type CollectionModel,
-};
+export { createCollectionModel, getId, type CollectionModel };
