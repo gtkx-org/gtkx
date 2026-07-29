@@ -111,6 +111,25 @@ const PLAIN_VALUE_GETTERS: Map<bigint, ValueGetter> = new Map([
     [TYPE_FLAGS, flagsValueType.get],
 ]);
 
+const PLAIN_VALUE_SETTERS: Map<bigint, ValueType["set"]> = new Map([
+    [TYPE_BOOLEAN, booleanValueType.set],
+    [TYPE_GTYPE, typeValueType.set],
+    [TYPE_INT, intValueType.set],
+    [TYPE_UINT, uintValueType.set],
+    [TYPE_INT64, int64ValueType.set],
+    [TYPE_UINT64, uint64ValueType.set],
+    [TYPE_FLOAT, floatValueType.set],
+    [TYPE_DOUBLE, doubleValueType.set],
+    [TYPE_ENUM, enumValueType.set],
+    [TYPE_FLAGS, flagsValueType.set],
+]);
+
+const WRAPPED_VALUE_SETTERS: Map<bigint, ValueType["set"]> = new Map([
+    [TYPE_STRING, setStringValue],
+    [TYPE_OBJECT, setObjectValue],
+    [TYPE_BOXED, setBoxedFromValue],
+]);
+
 const getBoxedTypeName = (type: bigint): string => typeName(type) ?? "GBoxed";
 const newValue = (): ExternalObject<Handle> => alloc(VALUE_SIZE, resolveBoxedType(VALUE_T));
 
@@ -284,8 +303,41 @@ const wrappedValueGetter = (fundamental: bigint): ValueGetter | undefined => {
     }
 };
 
+function setStringValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
+    stringValueType.set(value, nativeValue ?? null);
+}
+
+function setObjectValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
+    objectValueType.set(value, nativeValue == null ? null : getHandle(nativeValue));
+}
+
+function setBoxedFromValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
+    setBoxedValue(value, nativeValue ?? null);
+}
+
 const resolveValueGetter = (fundamental: bigint): ValueGetter | undefined =>
     PLAIN_VALUE_GETTERS.get(fundamental) ?? wrappedValueGetter(fundamental);
+
+const resolveValueSetter = (fundamental: bigint): ValueType["set"] | undefined =>
+    PLAIN_VALUE_SETTERS.get(fundamental) ?? WRAPPED_VALUE_SETTERS.get(fundamental);
+
+/**
+ * Stores a JavaScript value into an already-initialized GValue, converting it to
+ * whatever type the GValue holds.
+ *
+ * @param value The initialized GValue to write into.
+ * @param jsValue The JavaScript value to store.
+ */
+function intoValue(value: ExternalObject<Handle>, jsValue: unknown): void {
+    const type = getValueType(value);
+    const set = resolveValueSetter(typeFundamental(type));
+
+    if (set === undefined) {
+        throw new Error(`Unsupported type for intoValue: ${typeName(type) ?? String(type)}`);
+    }
+
+    set(value, jsValue);
+}
 
 const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
     const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
@@ -361,6 +413,7 @@ function inoutValueForBoxedDescriptor(descriptor: Descriptor, boxed: object): Ex
 
 export {
     getValueType,
+    intoValue,
     copyValue,
     getBoxedValue,
     setBoxedValue,

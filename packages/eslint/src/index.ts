@@ -233,7 +233,7 @@ const config = (root: string): FlatConfig[] => [
         rules: restrictAdwImports(ADW_ENTRYPOINT_MESSAGE, ["@gtkx/react/adw"]),
     },
     {
-        files: ["packages/cli/src/vite-plugins/**/*.ts"],
+        files: ["packages/cli/src/vite-plugins/**/*.ts", "packages/runtime/src/properties.ts"],
         rules: { "unicorn/no-this-outside-of-class": "off" },
     },
     {

@@ -1,3 +1,4 @@
+import type { Descriptor } from "@gtkx/native";
 import {
     registerClass as nativeRegisterClass,
     type RegisterClassOptions as NativeRegisterClassOptions,
@@ -5,6 +6,14 @@ import {
 } from "@gtkx/native";
 import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
+import {
+    buildAccessors,
+    makeGetProperty,
+    makeSetProperty,
+    type PropertyAccessor,
+    type PropertySpec,
+    toNativeProperties,
+} from "./properties.js";
 import {
     getClassType,
     getInterfaceVfuncRegistry,
@@ -14,7 +23,17 @@ import {
 } from "./registry.js";
 import { TYPE_INVALID, typeInterfaces } from "./type.js";
 
-type RegisterClassOptions = { typeName?: string };
+type RegisterClassOptions = {
+    typeName?: string;
+    /**
+     * Properties to install on the new type, keyed by canonical property name. Each value is the
+     * `GObject.ParamSpec` describing it, for example `GObject.paramSpecString(...)`. Accessors are
+     * generated on the prototype for the dashed, underscored and camelCased spellings of the name
+     * unless the class already defines one, and writing through them emits `notify`.
+     */
+    properties?: Record<string, PropertySpec>;
+};
+
 type VfuncFn = NativeRegisterClassVfunc["fn"];
 type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn };
 type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
@@ -22,6 +41,7 @@ type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
 type InterfaceVfuncBinding = { gtype: bigint; vtableSize: number; vfuncs: DiscoveredInterfaceVfunc[] };
 
 const UNSUPPORTED_CONSTRUCT_VFUNCS: Set<string> = new Set(["constructed", "setProperty", "getProperty"]);
+const VALUE_ARG_INDEX = 2;
 
 /**
  * Registers a subclass of a wrapper class as a new GType, wiring up any class and
@@ -46,10 +66,12 @@ function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptio
         throw new Error("registerClass: cannot derive a GType name (anonymous class with no typeName option)");
     }
 
-    const classVfuncs = discoverClassVfuncs(klass);
+    const properties = options.properties ?? {};
+    const accessors = buildAccessors(klass, properties);
+    const classVfuncs = [...discoverClassVfuncs(klass), ...propertyVfuncs(klass, accessors)];
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
     const interfaceBindings = discoverInheritedInterfaceVfuncs(klass, parentType, claimedMethodNames);
-    const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
+    const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings, properties);
     const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
     registerClassType(klass, newType);
 
@@ -204,18 +226,66 @@ function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDes
     );
 }
 
+function propertyVfuncs(klass: AnyClass, accessors: PropertyAccessor[]): DiscoveredClassVfunc[] {
+    if (accessors.length === 0) {
+        return [];
+    }
+
+    return [
+        buildPropertyVfunc(klass, "getProperty", makeGetProperty(accessors), true),
+        buildPropertyVfunc(klass, "setProperty", makeSetProperty(accessors), false),
+    ];
+}
+
+// `get_property` fills a GValue the caller owns, so the marshalled copy handed to JavaScript has to
+// be written back into it; `set_property` only reads its GValue and needs no copy back.
+function markValueCallerAllocated(argDescriptors: Descriptor[]): Descriptor[] {
+    return argDescriptors.map((arg, index) =>
+        index === VALUE_ARG_INDEX ? { ...arg, callerAllocated: true } : arg);
+}
+
+function buildPropertyVfunc(
+    klass: AnyClass,
+    methodName: string,
+    fn: VfuncFn,
+    isValueOut: boolean,
+): DiscoveredClassVfunc {
+    const descriptor = findClassVfuncDescriptor(klass, methodName);
+
+    if (!descriptor) {
+        throw new Error(`registerClass: the parent class exposes no '${methodName}' vtable slot`);
+    }
+
+    const argDescriptors = isValueOut
+        ? markValueCallerAllocated(descriptor.argDescriptors)
+        : descriptor.argDescriptors;
+
+    return {
+        ...descriptor,
+        methodName,
+        argDescriptors,
+        fn: wrapVfunc(fn, argDescriptors, descriptor.returnDescriptor),
+    };
+}
+
 function toNativeOptions(
     classVfuncs: DiscoveredClassVfunc[],
     interfaceBindings: InterfaceVfuncBinding[],
+    properties: Record<string, PropertySpec>,
 ): NativeRegisterClassOptions | undefined {
     const hasInterfaces = interfaceBindings.length > 0;
     const hasClassVfuncs = classVfuncs.length > 0;
+    const hasProperties = Object.keys(properties).length > 0;
 
-    if (!hasClassVfuncs && !hasInterfaces) {
+    if (!hasClassVfuncs && !hasInterfaces && !hasProperties) {
         return undefined;
     }
 
     const options: NativeRegisterClassOptions = {};
+
+    if (hasProperties) {
+        options.properties = toNativeProperties(properties);
+    }
 
     if (hasClassVfuncs) {
         options.vfuncs = [...classVfuncs];
