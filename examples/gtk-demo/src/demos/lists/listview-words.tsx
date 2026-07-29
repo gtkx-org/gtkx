@@ -172,8 +172,12 @@ function selectFilteredWords(words: string[], searchText: string, result: Filter
         return { filteredWords: words, filterProgress: 1 };
     }
 
-    if (result?.search !== searchText) {
+    if (result === null) {
         return { filteredWords: words, filterProgress: 0 };
+    }
+
+    if (result.search !== searchText) {
+        return { filteredWords: result.words, filterProgress: 0 };
     }
 
     return { filteredWords: result.words, filterProgress: result.progress };

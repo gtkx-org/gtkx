@@ -8,6 +8,7 @@ type Level = {
 
 type CollectionIndex = {
     isTree: boolean;
+    size: number;
     groups: Level[];
     children: Map<string, Level>;
     has: (id: string) => boolean;
@@ -154,6 +155,7 @@ function createCollectionIndex(
 
     return {
         isTree: state.isTree,
+        size: state.itemsById.size,
         groups: state.groups,
         children: state.children,
         has: (id) => state.itemsById.has(id),

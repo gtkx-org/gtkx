@@ -31,6 +31,8 @@ type CollectionModel = {
     sync: (index: CollectionIndex) => void;
 };
 
+const OBJECT_CACHE_MAX = 1 << 20;
+
 const newStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
 
 function getId(value: GObject.Object | null): string | null {
@@ -136,7 +138,14 @@ function dropUnvisited(state: ModelState, visited: Set<string>): void {
     }
 }
 
+// Items keep their identity by id, so a collection that shrinks keeps its objects cached: filtering a long
+// list down and back up reuses them instead of rebuilding one GObject per row. Incremental filters shrink and
+// grow the list many times per keystroke, so the cache is only swept once it passes an absolute bound.
 function pruneObjects(state: ModelState, index: CollectionIndex): void {
+    if (state.objects.size <= OBJECT_CACHE_MAX) {
+        return;
+    }
+
     for (const id of state.objects.keys()) {
         if (!index.has(id)) {
             state.objects.delete(id);
