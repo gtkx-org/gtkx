@@ -78,7 +78,7 @@ function ownInstanceMethodNames(klass: AnyClass): string[] {
             return false;
         }
 
-        return typeof (proto as Record<string, unknown>)[name] === "function";
+        return typeof Object.getOwnPropertyDescriptor(proto, name)?.value === "function";
     });
 }
 

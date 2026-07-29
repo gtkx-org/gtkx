@@ -176,11 +176,23 @@ const EMPTY_CSS_CLASSES: string[] = [];
 const FILL_BATCH_DIVISOR = 4096;
 const FILL_BATCH_MAX = 4096;
 const colorNameMap = buildColorNameMap();
-const PLACEHOLDER_COLOR_ITEM: ColorItem = createColorItem(0);
 
 const ColorObject = registerClass(
     class extends GObject.Object {
-        colorItem: ColorItem = PLACEHOLDER_COLOR_ITEM;
+        position = 0;
+        r = 0;
+        g = 0;
+        b = 0;
+        h = 0;
+        s = 0;
+        v = 0;
+        described: ColorItem | null = null;
+
+        get colorItem(): ColorItem {
+            this.described ??= describeColor(this);
+
+            return this.described;
+        }
     },
     { typeName: "GtkxDemoColorObject" },
 );
@@ -349,29 +361,33 @@ function generateColorName(r: number, g: number, b: number): string {
     return colorNameMap.get(colorKey(r, g, b)) ?? `#${hex}`;
 }
 
-function createColorItem(position: number): ColorItem {
-    const rgb = positionToColor(position);
-    const r = (rgb >> 16) & 0xFF;
-    const g = (rgb >> 8) & 0xFF;
-    const b = rgb & 0xFF;
-    const hsv = rgbToHsv(r, g, b);
+function describeColor(color: ColorObject): ColorItem {
+    const { r, g, b, h, s, v } = color;
 
     return {
-        id: `color-${String(position)}`,
+        id: `color-${String(color.position)}`,
         name: generateColorName(r, g, b),
         hex: rgbToHex(r, g, b),
         r,
         g,
         b,
-        h: hsv.h,
-        s: hsv.s,
-        v: hsv.v,
+        h,
+        s,
+        v,
     };
 }
 
 function createColorObject(position: number): ColorObject {
+    const rgb = positionToColor(position);
     const obj = new ColorObject();
-    obj.colorItem = createColorItem(position);
+    obj.position = position;
+    obj.r = (rgb >> 16) & 0xFF;
+    obj.g = (rgb >> 8) & 0xFF;
+    obj.b = rgb & 0xFF;
+    const hsv = rgbToHsv(obj.r, obj.g, obj.b);
+    obj.h = hsv.h;
+    obj.s = hsv.s;
+    obj.v = hsv.v;
 
     return obj;
 }
@@ -519,13 +535,13 @@ function createDetailColorFactory(): Gtk.SignalListItemFactory {
     return factory;
 }
 
-function getCompareFn(mode: SortMode): ((a: ColorItem, b: ColorItem) => number) | null {
+function getCompareFn(mode: SortMode): ((a: ColorObject, b: ColorObject) => number) | null {
     switch (mode) {
         case "unsorted": {
             return null;
         }
         case "name": {
-            return (a, b) => a.name.localeCompare(b.name);
+            return (a, b) => a.colorItem.name.localeCompare(b.colorItem.name);
         }
         case "red": {
             return (a, b) => b.r - a.r;
@@ -576,12 +592,12 @@ function setColorCount(colors: ColorList, size: number): void {
 }
 
 function compareColorObjects(
-    cmp: (a: ColorItem, b: ColorItem) => number,
+    cmp: (a: ColorObject, b: ColorObject) => number,
     a: GObject.Object | null,
     b: GObject.Object | null,
 ): number {
     if (a instanceof ColorObject && b instanceof ColorObject) {
-        return cmp(a.colorItem, b.colorItem);
+        return cmp(a, b);
     }
 
     return 0;

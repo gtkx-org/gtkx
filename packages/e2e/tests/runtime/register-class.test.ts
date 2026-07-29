@@ -57,6 +57,25 @@ describe("registerClass — registration", () => {
     });
 });
 
+describe("registerClass — accessor safety", () => {
+    it("does not invoke a subclass getter while discovering vfuncs", () => {
+        const reads: unknown[] = [];
+
+        class WithGetter extends Gtk.Label {
+            get derived(): string {
+                reads.push(this);
+
+                return "derived";
+            }
+        }
+
+        registerClass(WithGetter, { typeName: uniqueName("GtkxGetterSubclass") });
+        expect(reads).toHaveLength(0);
+        expect(new WithGetter().derived).toBe("derived");
+        expect(reads).toHaveLength(1);
+    });
+});
+
 describe("registerClass — interface vtable isolation", () => {
     it("keeps an overridden interface vfunc off the parent type and off sibling subclasses", () => {
         const plain = new Gio.ListStore({ itemType: TYPE_OBJECT });
