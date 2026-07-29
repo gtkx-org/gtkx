@@ -1,5 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
-import { Object as GObject, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
+import * as Gio from "@gtkx/gi/gio";
+import { Object as GObject, TYPE_OBJECT, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getHandle, registerClass } from "@gtkx/runtime";
 import { resolveWrapperClass } from "@gtkx/runtime/internal";
@@ -53,6 +54,33 @@ describe("registerClass — registration", () => {
         class SecondUse extends Gtk.Label {}
         registerClass(FirstUse, { typeName: name });
         expect(() => registerClass(SecondUse, { typeName: name })).toThrow(/already registered/);
+    });
+});
+
+describe("registerClass — interface vtable isolation", () => {
+    it("keeps an overridden interface vfunc off the parent type and off sibling subclasses", () => {
+        const plain = new Gio.ListStore({ itemType: TYPE_OBJECT });
+        plain.append(new GObject({}));
+
+        class FirstStore extends Gio.ListStore {
+            override getNItems(): number {
+                return 111;
+            }
+        }
+
+        class SecondStore extends Gio.ListStore {
+            override getNItems(): number {
+                return 222;
+            }
+        }
+
+        registerClass(FirstStore, { typeName: uniqueName("GtkxFirstStore") });
+        registerClass(SecondStore, { typeName: uniqueName("GtkxSecondStore") });
+        const first = new FirstStore({ itemType: TYPE_OBJECT });
+        const second = new SecondStore({ itemType: TYPE_OBJECT });
+        expect(plain.getNItems()).toBe(1);
+        expect(first.getNItems()).toBe(111);
+        expect(second.getNItems()).toBe(222);
     });
 });
 

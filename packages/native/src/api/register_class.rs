@@ -150,17 +150,46 @@ impl RawVfunc {
     }
 }
 
+struct InterfaceInit {
+    vfuncs: Option<Vec<RawVfunc>>,
+}
+
+// GLib hands `iface_data` back untouched from the `GInterfaceInfo` the registration passed in, so it
+// is the `InterfaceInit` leaked below and no other thread can reach it. The vfuncs are taken out on
+// the first call so a second initialization of the same interface installs nothing twice.
+unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut c_void) {
+    let data = unsafe { &mut *iface_data.cast::<InterfaceInit>() };
+
+    let Some(vfuncs) = data.vfuncs.take() else {
+        return;
+    };
+
+    for vfunc in vfuncs {
+        unsafe { vfunc.install_into(vtable) };
+    }
+}
+
 impl RawInterface {
-    unsafe fn install(self, class_ptr: *mut c_void) {
-        let iface_vtable =
-            unsafe { gobject_ffi::g_type_interface_peek(class_ptr, self.type_.into_glib()) };
-        assert!(
-            !iface_vtable.is_null(),
-            "register_class: conforming type is missing the vtable for interface '{}'",
-            self.type_.name()
-        );
-        for vfunc in self.vfuncs {
-            unsafe { vfunc.install_into(iface_vtable) };
+    // An interface inherited from the parent shares the parent's vtable until the derived type adds
+    // its own implementation, so the vfuncs must go in through `g_type_add_interface_static` rather
+    // than be written into the peeked vtable, which would patch every instance of the parent type.
+    unsafe fn add_to(self, instance_type: glib::ffi::GType) {
+        let data = Box::into_raw(Box::new(InterfaceInit {
+            vfuncs: Some(self.vfuncs),
+        }));
+
+        let info = gobject_ffi::GInterfaceInfo {
+            interface_init: Some(init_interface_vtable),
+            interface_finalize: None,
+            interface_data: data.cast::<c_void>(),
+        };
+
+        unsafe {
+            gobject_ffi::g_type_add_interface_static(
+                instance_type,
+                self.type_.into_glib(),
+                &raw const info,
+            );
         }
     }
 }
@@ -295,14 +324,14 @@ impl ClassRegistration {
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
 
+        for iface in interfaces {
+            unsafe { iface.add_to(new_type) };
+        }
+
         let class_ptr = unsafe { gobject_ffi::g_type_class_ref(new_type) };
 
         for vfunc in vfuncs {
             unsafe { vfunc.install_into(class_ptr) };
-        }
-
-        for iface in interfaces {
-            unsafe { iface.install(class_ptr) };
         }
 
         Ok(new_type)

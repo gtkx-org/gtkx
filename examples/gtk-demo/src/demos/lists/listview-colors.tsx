@@ -90,10 +90,12 @@ type DetailCell = {
     hsvLabel: Gtk.Label;
 };
 
+type ColorList = InstanceType<typeof ColorList>;
+
 type ColorsModels = {
-    baseStore: Gio.ListStore;
+    colors: ColorList;
+    sortModel: Gtk.SortListModel;
     selection: Gtk.MultiSelection;
-    liveRefs: ColorObject[];
 };
 
 type FillProgress = {
@@ -118,7 +120,7 @@ type SelectionInfoPanelProps = {
 };
 
 type ColorsProgressBarProps = {
-    baseStore: Gio.ListStore;
+    model: Gio.ListModel;
     colorLimit: ColorLimit;
 };
 
@@ -181,6 +183,39 @@ const ColorObject = registerClass(
         colorItem: ColorItem = PLACEHOLDER_COLOR_ITEM;
     },
     { typeName: "GtkxDemoColorObject" },
+);
+
+const ColorList = registerClass(
+    class extends Gio.ListStore {
+        size = 0;
+        cache: Map<number, InstanceType<typeof ColorObject>> = new Map();
+
+        override getItemType(): bigint {
+            return ColorObject.prototype.__type__;
+        }
+
+        override getNItems(): number {
+            return this.size;
+        }
+
+        override getItem(position: number): GObject.Object | null {
+            if (position >= this.size) {
+                return null;
+            }
+
+            const cached = this.cache.get(position);
+
+            if (cached !== undefined) {
+                return cached;
+            }
+
+            const created = createColorObject(position);
+            this.cache.set(position, created);
+
+            return created;
+        }
+    },
+    { typeName: "GtkxDemoColorList" },
 );
 
 const getTnumAttrs = (() => {
@@ -339,16 +374,6 @@ function createColorObject(position: number): ColorObject {
     obj.colorItem = createColorItem(position);
 
     return obj;
-}
-
-function createColorBatch(from: number, to: number): ColorObject[] {
-    const batch: ColorObject[] = [];
-
-    for (let index = from; index < to; index++) {
-        batch.push(createColorObject(index));
-    }
-
-    return batch;
 }
 
 function calculateAverageColor(colors: ColorItem[]): AverageColor {
@@ -532,29 +557,60 @@ function getCompareFn(mode: SortMode): ((a: ColorItem, b: ColorItem) => number) 
     }
 }
 
+function setColorCount(colors: ColorList, size: number): void {
+    const previous = colors.size;
+
+    if (size === previous) {
+        return;
+    }
+
+    colors.size = size;
+
+    if (size > previous) {
+        colors.itemsChanged(previous, 0, size - previous);
+
+        return;
+    }
+
+    colors.itemsChanged(size, previous - size, 0);
+}
+
+function compareColorObjects(
+    cmp: (a: ColorItem, b: ColorItem) => number,
+    a: GObject.Object | null,
+    b: GObject.Object | null,
+): number {
+    if (a instanceof ColorObject && b instanceof ColorObject) {
+        return cmp(a.colorItem, b.colorItem);
+    }
+
+    return 0;
+}
+
+function sorterFor(mode: SortMode): Gtk.Sorter | null {
+    const cmp = getCompareFn(mode);
+
+    if (!cmp) {
+        return null;
+    }
+
+    return Gtk.CustomSorter.new((a, b) => compareColorObjects(cmp, a, b));
+}
+
 function useColorsModels(): ColorsModels {
     const [models] = useState<ColorsModels>(() => {
-        const baseStore = Gio.ListStore.new(ColorObject.prototype.__type__);
+        const colors = new ColorList({ itemType: ColorObject.prototype.__type__ });
+        const sortModel = Gtk.SortListModel.new(colors, null);
+        sortModel.setIncremental(true);
 
-        return { baseStore, selection: new Gtk.MultiSelection({ model: baseStore }), liveRefs: [] };
+        return { colors, sortModel, selection: new Gtk.MultiSelection({ model: sortModel }) };
     });
 
     return models;
 }
 
 function reorderStore(models: ColorsModels, mode: SortMode): void {
-    const cmp = getCompareFn(mode);
-
-    if (!cmp) {
-        return;
-    }
-
-    if (models.liveRefs.length <= 1) {
-        return;
-    }
-
-    models.liveRefs.sort((a, b) => cmp(a.colorItem, b.colorItem));
-    models.baseStore.splice(0, models.baseStore.getNItems(), models.liveRefs);
+    models.sortModel.setSorter(sorterFor(mode));
 }
 
 function useColorsSortMode(models: ColorsModels, mode: SortMode): void {
@@ -564,21 +620,11 @@ function useColorsSortMode(models: ColorsModels, mode: SortMode): void {
 }
 
 function clearStore(models: ColorsModels): void {
-    models.baseStore.removeAll();
-    models.liveRefs.length = 0;
-}
-
-function appendBatch(models: ColorsModels, batch: ColorObject[]): void {
-    for (const obj of batch) {
-        models.liveRefs.push(obj);
-    }
-
-    models.baseStore.splice(models.baseStore.getNItems(), 0, batch);
+    setColorCount(models.colors, 0);
 }
 
 function fillSynchronously(models: ColorsModels, colorLimit: ColorLimit, sortMode: SortMode): void {
-    clearStore(models);
-    appendBatch(models, createColorBatch(0, colorLimit));
+    setColorCount(models.colors, colorLimit);
     reorderStore(models, sortMode);
 }
 
@@ -598,7 +644,7 @@ function shouldContinueFill(progress: FillProgress): boolean {
     }
 
     const next = Math.min(progress.colorLimit, progress.appended + progress.increment);
-    appendBatch(progress.models, createColorBatch(progress.appended, next));
+    setColorCount(progress.models.colors, next);
     progress.appended = next;
 
     if (next >= progress.colorLimit) {
@@ -661,19 +707,19 @@ function useColorsLimitFill(models: ColorsModels, colorLimit: ColorLimit, sortMo
 
 const formatItemCount = (count: number): string => `${count.toLocaleString("en-US")} /`;
 
-function useStoreCountLabel(baseStore: Gio.ListStore, labelRef: React.RefObject<Gtk.Label | null>): void {
+function useStoreCountLabel(model: Gio.ListModel, labelRef: React.RefObject<Gtk.Label | null>): void {
     useSignal(
-        baseStore,
+        model,
         "items-changed",
         () => {
-            labelRef.current?.setLabel(formatItemCount(baseStore.getNItems()));
+            labelRef.current?.setLabel(formatItemCount(model.getNItems()));
         },
         { immediate: true },
     );
 }
 
 function useStoreProgressBar(
-    baseStore: Gio.ListStore,
+    model: Gio.ListModel,
     colorLimit: ColorLimit,
     progressBarRef: React.RefObject<Gtk.ProgressBar | null>,
 ): void {
@@ -684,12 +730,12 @@ function useStoreProgressBar(
             return;
         }
 
-        const itemCount = baseStore.getNItems();
+        const itemCount = model.getNItems();
         bar.setFraction(Math.min(1, itemCount / colorLimit));
         bar.setVisible(itemCount > 0 && itemCount < colorLimit);
-    }, [baseStore, colorLimit, progressBarRef]);
+    }, [model, colorLimit, progressBarRef]);
 
-    useSignal(baseStore, "items-changed", update, { immediate: true });
+    useSignal(model, "items-changed", update, { immediate: true });
 
     useEffect(() => {
         update();
@@ -857,7 +903,7 @@ const SelectionInfoPanel = ({ selectedColors, averageColor }: SelectionInfoPanel
 const ColorsHeaderStart = () => {
     const { state, models, computed } = useColorsContext();
     const countLabelRef = useRef<Gtk.Label | null>(null);
-    useStoreCountLabel(models.baseStore, countLabelRef);
+    useStoreCountLabel(models.sortModel, countLabelRef);
 
     return (
         <>
@@ -872,7 +918,7 @@ const ColorsHeaderStart = () => {
             />
             <GtkButton label="_Refill" useUnderline onClicked={computed.handleRefill} />
             <GtkLabel ref={countLabelRef} attributes={getTnumAttrs()} widthChars={8} xalign={1}>
-                {formatItemCount(models.baseStore.getNItems())}
+                {formatItemCount(models.sortModel.getNItems())}
             </GtkLabel>
             <DropDown
                 name="limit-dropdown"
@@ -915,9 +961,9 @@ const ColorsHeaderEnd = () => {
     );
 };
 
-const ColorsProgressBar = ({ baseStore, colorLimit }: ColorsProgressBarProps) => {
+const ColorsProgressBar = ({ model, colorLimit }: ColorsProgressBarProps) => {
     const progressBarRef = useRef<Gtk.ProgressBar | null>(null);
-    useStoreProgressBar(baseStore, colorLimit, progressBarRef);
+    useStoreProgressBar(model, colorLimit, progressBarRef);
 
     return (
         <GtkProgressBar
@@ -957,7 +1003,7 @@ const ColorsGridOverlay = () => {
             hexpand
             overlays={[
                 <GtkOverlayLayoutChild key="overlay-0">
-                    <ColorsProgressBar baseStore={models.baseStore} colorLimit={state.colorLimit} />
+                    <ColorsProgressBar model={models.sortModel} colorLimit={state.colorLimit} />
                 </GtkOverlayLayoutChild>,
             ]}
         >

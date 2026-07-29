@@ -29,6 +29,8 @@ const sortModeCases: SortModeCase[] = [
     { label: "hsv", index: 9, field: "h" },
 ];
 
+const PROBE_LENGTH = 12;
+
 const colorAt = (model: Gtk.MultiSelection, index: number): ColorLike => {
     const obj = model.getItem(index);
 
@@ -45,6 +47,12 @@ const findGridModel = async (): Promise<Gtk.MultiSelection> => gridModel(await f
 
 const orderingScore = (a: ColorLike, b: ColorLike, field: SortField): number =>
     field === "name" ? b.name.localeCompare(a.name) : a[field] - b[field];
+
+const leadingNames = (model: Gtk.MultiSelection): string[] =>
+    Array.from({ length: PROBE_LENGTH }, (_, index) => colorAt(model, index).name);
+
+const isAscending = (values: string[]): boolean =>
+    values.every((value, index) => index === 0 || (values[index - 1] ?? "").localeCompare(value) <= 0);
 
 vi.setConfig({ testTimeout: 30_000 });
 
@@ -222,24 +230,22 @@ describe("listviewColorsDemo sort modes", () => {
         });
     });
 
-    it("leaves the reordered model untouched when switching back to unsorted", async () => {
+    it("restores the generated order when switching back to unsorted", async () => {
         await renderDemo(listviewColorsDemo);
         const model = await findGridModel();
         const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
+        const original = leadingNames(model);
         await userEvent.selectOptions(sortDropdown, 1);
-        let sortedFirst = "";
 
         await waitFor(() => {
-            sortedFirst = colorAt(model, 0).name;
-            expect(sortedFirst.localeCompare(colorAt(model, 1).name)).toBeLessThanOrEqual(0);
+            expect(isAscending(leadingNames(model))).toBe(true);
         });
 
+        expect(leadingNames(model)).not.toEqual(original);
         await userEvent.selectOptions(sortDropdown, 0);
 
         await waitFor(() => {
-            expect(sortDropdown.getSelected()).toBe(0);
+            expect(leadingNames(model)).toEqual(original);
         });
-
-        expect(colorAt(model, 0).name).toBe(sortedFirst);
     });
 });
