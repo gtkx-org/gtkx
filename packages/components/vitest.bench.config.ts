@@ -6,6 +6,7 @@ export default defineConfig({
     plugins: [gtkx(), codspeedPlugin()],
     test: {
         name: "components-bench",
+        setupFiles: ["./tests/bench-setup.ts"],
         benchmark: {
             include: ["bench/**/*.bench.{ts,tsx}"],
         },
