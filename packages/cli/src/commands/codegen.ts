@@ -29,7 +29,7 @@ const codegen = defineCommand({
         }
 
         if (!args.force) {
-            const isRan = await ensureGenerated(cwd);
+            const isRan = await ensureGenerated(cwd, { requireProject: true });
             info(isRan ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
 
             return;
