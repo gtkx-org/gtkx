@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
-import { useEffectEvent, useLayoutEffect } from "react";
+import { useCallback, useInsertionEffect, useLayoutEffect, useRef } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
 type Signals<T extends GObject.Object> = NonNullable<T["__signals__"]>;
@@ -36,7 +36,19 @@ function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
     handler: TypedSignalHandler<T, S>,
     { after = false, immediate = false }: UseSignalOptions = {},
 ): void {
-    const emit = useEffectEvent(handler as SignalHandler);
+    // The connection outlives the render that created it, so the connected function has to be stable. React
+    // documents that an Effect Event must not be passed to another system for exactly that reason, so the
+    // latest handler is pinned in a ref instead and a stable wrapper is what reaches GObject. The ref is
+    // refreshed in an insertion effect, the earliest commit phase, so a signal emitted from a layout effect
+    // of the same commit already sees the handler from the render being committed.
+    const handle = handler as SignalHandler;
+    const latest = useRef(handle);
+
+    useInsertionEffect(() => {
+        latest.current = handle;
+    });
+
+    const emit = useCallback<SignalHandler>((...args) => latest.current(...args), []);
 
     useLayoutEffect(() => {
         const resolved = resolveRefProp(object);
@@ -54,7 +66,7 @@ function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
         return () => {
             resolved.off(signal, emit);
         };
-    }, [object, signal, after, immediate]);
+    }, [object, signal, after, immediate, emit]);
 }
 
 export { useSignal, type SignalName, type TypedSignalHandler };

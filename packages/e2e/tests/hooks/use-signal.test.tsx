@@ -1,8 +1,12 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
-import { act, renderHook, waitFor } from "@gtkx/testing";
+import { act, render, renderHook, screen, waitFor } from "@gtkx/testing";
+import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+
+const LATE_UPDATE_DELAY = 20;
 
 describe("useSignal (emission)", () => {
     it("fires the handler on emission", async () => {
@@ -180,5 +184,51 @@ describe("useSignal (options and lifecycle) (2)", () => {
         });
 
         expect(handler).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("useSignal (asynchronous updates)", () => {
+    // A parent that publishes state asynchronously after mount — the shape of rows arriving from a fetch —
+    // used to leave the connected handler pinned to the closure captured at mount. See issue #467.
+    it("runs the handler from the latest render when a parent updates after mount", async () => {
+        const source = new Gtk.Adjustment();
+        const seen: number[] = [];
+
+        const Child = ({ count }: { count: number }) => {
+            useSignal(source, "value-changed", () => {
+                seen.push(count);
+            });
+
+            return <GtkLabel>{`count ${String(count)}`}</GtkLabel>;
+        };
+
+        const Parent = () => {
+            const [count, setCount] = useState(0);
+
+            useEffect(() => {
+                const timer = setTimeout(() => {
+                    setCount(40);
+                }, LATE_UPDATE_DELAY);
+
+                return () => {
+                    clearTimeout(timer);
+                };
+            }, []);
+
+            return (
+                <GtkBox>
+                    <Child count={count} />
+                </GtkBox>
+            );
+        };
+
+        await render(<Parent />);
+        expect(await screen.findByText("count 40")).toBeDefined();
+
+        await act(() => {
+            source.emit("value-changed");
+        });
+
+        expect(seen).toEqual([40]);
     });
 });
