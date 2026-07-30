@@ -294,6 +294,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
+      '@gtkx/runtime':
+        specifier: workspace:*
+        version: link:../runtime
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing

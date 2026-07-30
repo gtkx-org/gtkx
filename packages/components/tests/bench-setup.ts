@@ -1,9 +1,41 @@
+import type { ColumnViewColumnConstructorProps, LabelConstructorProps } from "@gtkx/gi/gtk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass, registerWrapperClass } from "@gtkx/runtime";
 
-const POLYFILLED_METHODS = ["getId", "setId"] as const;
+type InscriptionProps = LabelConstructorProps & { text?: string | null | undefined };
+
+const INSCRIPTION_SINCE_MINOR = 8;
+const COLUMN_ID_SINCE_MINOR = 10;
+const gtkMinor = Gtk.getMinorVersion();
 const columnIds: WeakMap<object, string> = new WeakMap();
 
+class InscriptionFallback extends Gtk.Label {
+    constructor({ text, ...rest }: InscriptionProps = {}) {
+        super(rest);
+
+        if (text !== undefined) {
+            this.text = text;
+        }
+    }
+
+    get text(): string | null {
+        return this.getLabel();
+    }
+
+    set text(value: string | null) {
+        this.setLabel(value ?? "");
+    }
+}
+
 class ColumnViewColumnFallback extends Gtk.ColumnViewColumn {
+    constructor({ id, ...rest }: ColumnViewColumnConstructorProps = {}) {
+        super(rest);
+
+        if (id !== undefined) {
+            this.setId(id);
+        }
+    }
+
     override getId(): string | null {
         return columnIds.get(this) ?? null;
     }
@@ -19,12 +51,10 @@ class ColumnViewColumnFallback extends Gtk.ColumnViewColumn {
     }
 }
 
-if (process.env.GTKX_GIR_PATH) {
-    for (const method of POLYFILLED_METHODS) {
-        const fallback = Object.getOwnPropertyDescriptor(ColumnViewColumnFallback.prototype, method);
+if (gtkMinor < INSCRIPTION_SINCE_MINOR) {
+    registerClass(InscriptionFallback, { typeName: "GtkInscription" });
+}
 
-        if (fallback) {
-            Object.defineProperty(Gtk.ColumnViewColumn.prototype, method, fallback);
-        }
-    }
+if (gtkMinor < COLUMN_ID_SINCE_MINOR) {
+    registerWrapperClass(ColumnViewColumnFallback, Gtk.ColumnViewColumn.prototype.__type__);
 }
