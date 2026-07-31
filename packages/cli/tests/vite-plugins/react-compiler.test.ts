@@ -61,15 +61,22 @@ const getConfigResolved = (plugin: ReturnType<typeof gtkxReactCompiler>): Config
     getHook(plugin.configResolved, "configResolved");
 
 const enabledPlugin = async (): Promise<ReturnType<typeof gtkxReactCompiler>> => {
-    const plugin = gtkxReactCompiler(() =>
-        Promise.resolve({
-            applicationId: "org.gtk.Test",
-            reactCompiler: { target: "19" },
-            userEventSignals: {},
-            elements: null,
-            lazyElements: [],
-        }),
-    );
+    const plugin = gtkxReactCompiler({
+        load: () =>
+            Promise.resolve({
+                config: { applicationId: "org.gtk.Test" },
+                configFile: "gtkx.config.ts",
+                root: process.cwd(),
+            }),
+        resolve: () =>
+            Promise.resolve({
+                applicationId: "org.gtk.Test",
+                reactCompiler: { target: "19" },
+                userEventSignals: {},
+                elements: null,
+                lazyElements: [],
+            }),
+    });
 
     await getConfig(plugin)({});
 

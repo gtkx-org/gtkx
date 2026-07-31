@@ -54,6 +54,7 @@
         "node": ">=24"
     },
     "dependencies": {
+        "@gtkx/utils": "workspace:*",
         "c12": "^3.3.4",
         "defu": "^6.1.7",
         "vite": "catalog:",

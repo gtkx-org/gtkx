@@ -13,7 +13,7 @@ const gtkxVitePlugins = (mode?: string): Plugin[] => {
 
     return [
         createConfigPlugin({ name: "gtkx:config", loadConfig }),
-        gtkxUndeclaredLibrary(mode),
+        gtkxUndeclaredLibrary(loadConfig),
         gtkxSettings(),
         gtkxIcons(),
         gtkxResources(loadConfig),

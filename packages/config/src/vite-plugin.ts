@@ -18,7 +18,7 @@ const loadVirtualModule = async (
         return undefined;
     }
 
-    return renderConfigModule(await loadConfig(state.root ?? process.cwd()));
+    return renderConfigModule(await loadConfig.resolve(state.root ?? process.cwd()));
 };
 
 /**

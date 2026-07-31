@@ -253,7 +253,7 @@ const refreshDevRegistration = async (state: PluginState): Promise<void> => {
 };
 
 const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader) => {
-    const { applicationId } = await loadConfig(config.root ?? process.cwd());
+    const { applicationId } = await loadConfig.resolve(config.root ?? process.cwd());
     state.prefix = deriveResourcePrefix(applicationId);
 
     return {

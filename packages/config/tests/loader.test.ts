@@ -117,26 +117,26 @@ describe("createConfigLoader", () => {
 
     it("resolves a declared config", async () => {
         writeConfigIn(root, "export default { libraries: [\"Gtk-4.0\"], applicationId: \"org.gtk.Demo4\" };\n");
-        const resolved = await createConfigLoader()(root.path);
+        const resolved = await createConfigLoader().resolve(root.path);
         expect(resolved.applicationId).toBe("org.gtk.Demo4");
         expect(resolved.reactCompiler).toEqual({ target: "19" });
     });
 
     it("rejects when no config file exists because applicationId is required", async () => {
-        await expect(createConfigLoader()(root.path)).rejects.toThrow(/invalid `applicationId`/);
+        await expect(createConfigLoader().resolve(root.path)).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("propagates validation errors from the loader", async () => {
         writeConfigIn(root, "export default { applicationId: \"not valid\" };\n");
-        await expect(createConfigLoader()(root.path)).rejects.toThrow(/invalid `applicationId`/);
+        await expect(createConfigLoader().resolve(root.path)).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("loads the config once per root", async () => {
         writeConfigIn(root, "export default { applicationId: \"org.gtk.Demo4\" };\n");
-        const load = createConfigLoader();
-        const first = await load(root.path);
+        const loader = createConfigLoader();
+        const first = await loader.resolve(root.path);
         writeConfigIn(root, "export default { applicationId: \"org.gtk.Changed\" };\n");
-        const second = await load(root.path);
+        const second = await loader.resolve(root.path);
         expect(second).toBe(first);
         expect(second.applicationId).toBe("org.gtk.Demo4");
     });
@@ -147,9 +147,9 @@ describe("createConfigLoader", () => {
         writeFileSync(join(other, "gtkx.config.ts"), "export default { applicationId: \"org.gtk.Other\" };\n");
 
         try {
-            const load = createConfigLoader();
-            const cwdConfig = await load(root.path);
-            const otherConfig = await load(other);
+            const loader = createConfigLoader();
+            const cwdConfig = await loader.resolve(root.path);
+            const otherConfig = await loader.resolve(other);
             expect(cwdConfig.applicationId).toBe("org.gtk.Demo4");
             expect(otherConfig.applicationId).toBe("org.gtk.Other");
         } finally {
