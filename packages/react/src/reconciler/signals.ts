@@ -3,40 +3,21 @@ import { camelCase } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
-type SuppressionCounter = {
-    beginSuppression: () => void;
-    endSuppression: () => void;
-    endSuppressionNow: () => void;
-    isSuppressed: () => boolean;
-};
-
 const NOTIFY_DETAIL_PREFIX = "notify::";
-const suppressionCounter: SuppressionCounter = createSuppressionCounter();
-const beginSuppression: () => void = suppressionCounter.beginSuppression;
-const endSuppression: () => void = suppressionCounter.endSuppression;
-const endSuppressionNow: () => void = suppressionCounter.endSuppressionNow;
-const isSuppressed: () => boolean = suppressionCounter.isSuppressed;
+const writeDepths: WeakMap<object, number> = new WeakMap();
 
-function createSuppressionCounter(): SuppressionCounter {
-    let depth = 0;
+const writeDepthFor = (object: object): number => writeDepths.get(object) ?? 0;
+const isApplyingWrite = (object: object): boolean => writeDepthFor(object) > 0;
 
-    const release = (): void => {
-        if (depth > 0) {
-            depth -= 1;
-        }
-    };
+const applyWrite = <T>(object: object, write: () => T): T => {
+    writeDepths.set(object, writeDepthFor(object) + 1);
 
-    return {
-        beginSuppression: () => {
-            depth += 1;
-        },
-        endSuppression: () => {
-            queueMicrotask(release);
-        },
-        endSuppressionNow: release,
-        isSuppressed: () => depth > 0,
-    };
-}
+    try {
+        return write();
+    } finally {
+        writeDepths.set(object, Math.max(0, writeDepthFor(object) - 1));
+    }
+};
 
 const getNotifyProperty = (signal: string): string | null =>
     signal.startsWith(NOTIFY_DETAIL_PREFIX) ? camelCase(signal.slice(NOTIFY_DETAIL_PREFIX.length)) : null;
@@ -56,7 +37,7 @@ const invokeHandler = (
 
 const wrapHandler = (target: SignalTarget, record: HandlerRecord, notifyProperty: string | null): SignalHandler =>
     (...args: unknown[]): unknown => {
-        if (record.blockable && isSuppressed()) {
+        if (record.blockable && isApplyingWrite(target.object)) {
             return undefined;
         }
 
@@ -104,9 +85,8 @@ const disconnectAllHandlers = (target: SignalTarget): void => {
 };
 
 export {
-    beginSuppression,
-    endSuppression,
-    endSuppressionNow,
+    applyWrite,
+    isApplyingWrite,
     connectHandler,
     disconnectHandler,
     disconnectAllHandlers,

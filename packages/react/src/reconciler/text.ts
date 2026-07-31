@@ -5,6 +5,7 @@ import { drain, indexBeforeOrEnd } from "@gtkx/utils";
 import type { ContentChild, ContentKind, ElementNode, ParentNode, TextNode } from "./node.js";
 import type { Props } from "./registry.js";
 import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
+import { applyWrite } from "./signals.js";
 
 type OffsetResult = { found: boolean; offset: number };
 
@@ -319,13 +320,15 @@ const rebuildBuffer = (node: ElementNode): void => {
         return;
     }
 
-    buffer.setText("", -1);
-    const build: BufferBuild = { buffer, view: node.bufferView, marks: [] };
-    insertContent(build, node.content);
+    applyWrite(buffer, () => {
+        buffer.setText("", -1);
+        const build: BufferBuild = { buffer, view: node.bufferView, marks: [] };
+        insertContent(build, node.content);
 
-    for (const mark of build.marks) {
-        placeMark(buffer, mark.node, mark.offset);
-    }
+        for (const mark of build.marks) {
+            placeMark(buffer, mark.node, mark.offset);
+        }
+    });
 };
 
 const rebuildLabel = (node: ElementNode): void => {
@@ -381,8 +384,12 @@ const didUpdateTextSurgically = (host: ElementNode, node: TextNode, oldText: str
     }
 
     const start = located.offset;
-    buffer.delete(buffer.getIterAtOffset(start), buffer.getIterAtOffset(start + charLength(oldText)));
-    buffer.insert(buffer.getIterAtOffset(start), newText, -1);
+
+    applyWrite(buffer, () => {
+        buffer.delete(buffer.getIterAtOffset(start), buffer.getIterAtOffset(start + charLength(oldText)));
+        buffer.insert(buffer.getIterAtOffset(start), newText, -1);
+    });
+
     const startIter = buffer.getIterAtOffset(start);
     const endIter = buffer.getIterAtOffset(start + charLength(newText));
     applyEnclosingTags(buffer, node, startIter, endIter);

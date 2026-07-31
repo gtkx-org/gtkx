@@ -15,6 +15,7 @@ import {
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
+import { applyWrite } from "./signals.js";
 import { markTextDirty } from "./text.js";
 
 type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
@@ -69,8 +70,14 @@ const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
     markTextDirty(node);
 };
 
+const writeSlot = (parent: ElementNode, entry: PlacedChild, value: GObject.Object | null): void => {
+    applyWrite(parent.object, () => {
+        Reflect.set(parent.object, entry.slot, value);
+    });
+};
+
 const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
-    Reflect.set(parent.object, entry.slot, entry.object);
+    writeSlot(parent, entry, entry.object);
     wireBufferView(entry.node, parent);
     entry.behavior = null;
     entry.attached = true;
@@ -129,7 +136,7 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
 
     if (behavior === null) {
         if (entry.slot !== DEFAULT_SLOT) {
-            Reflect.set(parent.object, entry.slot, null);
+            writeSlot(parent, entry, null);
         }
 
         return;

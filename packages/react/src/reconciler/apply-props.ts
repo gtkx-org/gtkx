@@ -6,7 +6,7 @@ import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 import { type ElementNode, getOrCreateContext, type SignalTarget } from "./node.js";
-import { connectHandler, disconnectHandler } from "./signals.js";
+import { applyWrite, connectHandler, disconnectHandler } from "./signals.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
 
 type PropDelta = { name: string; value: unknown; prevValue: unknown };
@@ -43,7 +43,9 @@ const writeValue = (object: GObject.Object, name: string, value: unknown): void 
         return;
     }
 
-    Reflect.set(object, name, value);
+    applyWrite(object, () => {
+        Reflect.set(object, name, value);
+    });
 };
 
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
@@ -65,9 +67,11 @@ const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
         return;
     }
 
-    buffer.beginIrreversibleAction();
-    buffer.setText(text, -1);
-    buffer.endIrreversibleAction();
+    applyWrite(buffer, () => {
+        buffer.beginIrreversibleAction();
+        buffer.setText(text, -1);
+        buffer.endIrreversibleAction();
+    });
 };
 
 const isBufferText = (node: ElementNode, name: string): node is ElementNode & { object: Gtk.TextBuffer } =>
@@ -169,7 +173,9 @@ const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: P
     const desired = "sensitive" in next ? next.sensitive : info.defaults.sensitive;
 
     if (typeof desired === "boolean") {
-        Reflect.set(node.object, "sensitive", desired);
+        applyWrite(node.object, () => {
+            Reflect.set(node.object, "sensitive", desired);
+        });
     }
 };
 

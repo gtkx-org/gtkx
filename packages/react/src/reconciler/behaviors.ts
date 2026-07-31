@@ -3,6 +3,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
+import { applyWrite } from "./signals.js";
 import { hasSameText } from "./text.js";
 
 type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
@@ -176,7 +177,10 @@ const flushDeferred = <P extends GObject.Object, V>(
         return;
     }
 
-    Reflect.set(object, prop, state.desired);
+    applyWrite(object, () => {
+        Reflect.set(object, prop, state.desired);
+    });
+
     state.applied = state.desired;
 };
 
@@ -203,7 +207,9 @@ const deferred = <P extends GObject.Object, V>(
 const controlledText = (prop: string): ElementBehavior =>
     value(prop, (object, next) => {
         if (!hasSameText(object, prop, next)) {
-            Reflect.set(object, prop, next);
+            applyWrite(object, () => {
+                Reflect.set(object, prop, next);
+            });
         }
     });
 
