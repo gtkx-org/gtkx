@@ -1,8 +1,6 @@
-import type { ReactElement, RefObject } from "react";
+import type { ReactElement } from "react";
 import { useLayoutEffect, useMemo, useState } from "react";
 import type { ExpansionProps, Item, Section, SelectionProps } from "../types.js";
-import type { CollectionIndex } from "./collection-index.js";
-import type { CollectionModel } from "./collection-model.js";
 import type { Collection } from "./collection.js";
 import { createCollectionIndex } from "./collection-index.js";
 import { createCollectionModel } from "./collection-model.js";
@@ -14,7 +12,6 @@ type CollectionDataOptions = {
     items?: Item[] | undefined;
     sections?: Section[] | undefined;
     flat?: boolean | undefined;
-    applying?: RefObject<boolean> | undefined;
 };
 
 type CollectionOptions = CollectionDataOptions & SelectionProps & ExpansionProps;
@@ -24,31 +21,15 @@ type CollectionResult = {
     selection: ReactElement;
 };
 
-function runSync(gtk: CollectionModel, index: CollectionIndex, applying: RefObject<boolean> | undefined): void {
-    if (applying === undefined) {
-        gtk.sync(index);
-
-        return;
-    }
-
-    applying.current = true;
-
-    try {
-        gtk.sync(index);
-    } finally {
-        applying.current = false;
-    }
-}
-
 function useCollectionData(options: CollectionDataOptions): Collection {
-    const { items, sections, flat, applying } = options;
+    const { items, sections, flat } = options;
     const [gtk] = useState(createCollectionModel);
     const index = useMemo(() => createCollectionIndex(items, sections, flat === true), [items, sections, flat]);
     const collection = useMemo(() => createCollection(gtk, index), [gtk, index]);
 
     useLayoutEffect(() => {
-        runSync(gtk, index, applying);
-    }, [gtk, index, applying]);
+        gtk.sync(index);
+    }, [gtk, index]);
 
     return collection;
 }

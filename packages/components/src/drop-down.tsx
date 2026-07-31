@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { ElementType, ReactNode, Ref, RefObject } from "react";
+import type { ElementType, ReactNode, Ref } from "react";
 import { GtkDropDown, GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
-import { useSignal } from "@gtkx/react";
+import { applyWrite } from "@gtkx/react/internal";
 import { omit } from "@gtkx/utils";
 import { useEffectEvent, useLayoutEffect, useRef } from "react";
 import type { Collection } from "./internal/collection.js";
@@ -20,9 +20,10 @@ type DropDownRuntimeProps = DropDownProps & {
 type SelectionOptions = {
     widget: SelectableWidget | null;
     collection: Collection;
-    applying: RefObject<boolean>;
     props: DropDownRuntimeProps;
 };
+
+type NotifySelectedHandler = NonNullable<DropDownRuntimeProps["onNotifySelected"]>;
 
 type KnownSelection = {
     known: { current: string | null };
@@ -39,6 +40,7 @@ const DROP_DOWN_PROPS: string[] = [
     "sections",
     "selectedId",
     "onSelectionChanged",
+    "onNotifySelected",
     "renderItem",
     "renderListItem",
     "renderHeader",
@@ -111,32 +113,24 @@ const reportKnownSelection = (tracker: KnownSelection, id: string | null): void 
     onSelectionChanged?.(id);
 };
 
-const reportSelectedNotify = (
-    options: SelectionOptions,
-    tracker: KnownSelection,
-    applying: RefObject<boolean>,
-): void => {
+const reportSelectedNotify = (options: SelectionOptions, tracker: KnownSelection): void => {
     const { widget, collection } = options;
 
-    if (widget === null || applying.current) {
+    if (widget === null) {
         return;
     }
 
     reportKnownSelection(tracker, collection.idAt(widget.getSelected()));
 };
 
-const applySelectedPosition = (widget: SelectableWidget, position: number, applying: RefObject<boolean>): void => {
-    applying.current = true;
-
-    try {
+const applySelectedPosition = (widget: SelectableWidget, position: number): void => {
+    applyWrite(widget, () => {
         widget.selected = position;
-    } finally {
-        applying.current = false;
-    }
+    });
 };
 
-const useDropDownSelection = (options: SelectionOptions): void => {
-    const { widget, collection, applying } = options;
+const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler => {
+    const { widget, collection } = options;
     const { selectedId } = options.props;
     const known = useRef<string | null>(null);
 
@@ -159,25 +153,25 @@ const useDropDownSelection = (options: SelectionOptions): void => {
         }
 
         const position = resolvePosition(widget, collection, selectedId);
-        applySelectedPosition(widget, position, applying);
+        applySelectedPosition(widget, position);
         syncKnownSelection(position);
-    }, [widget, collection, selectedId, applying]);
+    }, [widget, collection, selectedId]);
 
-    useSignal(widget, "notify::selected", (): void => {
-        reportSelectedNotify(options, { known, onSelectionChanged: options.props.onSelectionChanged }, applying);
-    });
+    return (value, self) => {
+        reportSelectedNotify(options, { known, onSelectionChanged: options.props.onSelectionChanged });
+        options.props.onNotifySelected?.(value, self);
+    };
 };
 
 function DropDownImpl(props: DropDownRuntimeProps): ReactNode {
     const { component, items, sections, renderListItem, renderHeader, ref } = props;
     const rest = omit(props, DROP_DOWN_PROPS);
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
-    const applying = useRef(false);
-    const collection = useCollectionData({ items, sections, applying });
+    const collection = useCollectionData({ items, sections });
     const faceCells = useItemCells({ width: -1, height: -1 });
     const listCells = useItemCells({ width: -1, height: -1 });
     const headerCells = useHeaderCells({ width: -1, height: -1 });
-    useDropDownSelection({ widget, collection, applying, props });
+    const handleNotifySelected = useDropDownSelection({ widget, collection, props });
     const Component = component ?? GtkDropDown;
     const hasHeader = typeof renderHeader === "function";
 
@@ -192,6 +186,7 @@ function DropDownImpl(props: DropDownRuntimeProps): ReactNode {
                 })}
                 {...(hasHeader && { headerFactory: <GtkSignalListItemFactory {...headerCells.handlers} /> })}
                 {...rest}
+                onNotifySelected={handleNotifySelected}
             />
             <ItemPortals store={faceCells} render={faceRenderer(props)} collection={collection} />
             {renderListItem != null && (
