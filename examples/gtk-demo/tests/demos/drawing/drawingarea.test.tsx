@@ -27,31 +27,40 @@ describe("drawingAreaDemo metadata", () => {
 describe("drawingAreaDemo rendering", () => {
     it("renders both the knockout-groups heading and the scribble-area heading", async () => {
         await renderDemo(drawingAreaDemo);
-        const knockout = (await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Knockout groups" })) as Gtk.Label;
-        const scribble = (await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Scribble area" })) as Gtk.Label;
-        expect(knockout.hasCssClass("heading")).toBe(true);
-        expect(scribble.hasCssClass("heading")).toBe(true);
+
+        const knockout = await screen.findByRole(Gtk.AccessibleRole.LABEL, {
+            name: "Knockout groups",
+            as: Gtk.Label,
+        });
+
+        const scribble = await screen.findByRole(Gtk.AccessibleRole.LABEL, {
+            name: "Scribble area",
+            as: Gtk.Label,
+        });
+
+        expect(knockout).toHaveClass("heading");
+        expect(scribble).toHaveClass("heading");
     });
 
     it("renders two GtkDrawingArea widgets each sized 100x100", async () => {
         await renderDemo(drawingAreaDemo);
-        const knockoutFrame = (await screen.findByName("knockout-frame")) as Gtk.Frame;
-        const scribbleFrame = (await screen.findByName("scribble-frame")) as Gtk.Frame;
+        const knockoutFrame = await screen.findByName("knockout-frame", { as: Gtk.Frame });
+        const scribbleFrame = await screen.findByName("scribble-frame", { as: Gtk.Frame });
 
         for (const frame of [knockoutFrame, scribbleFrame]) {
-            const area = within(frame).getByRole(Gtk.AccessibleRole.IMG) as Gtk.DrawingArea;
-            expect(area.getContentWidth()).toBe(100);
-            expect(area.getContentHeight()).toBe(100);
+            const area = within(frame).getByRole(Gtk.AccessibleRole.IMG, { as: Gtk.DrawingArea });
+            expect(area).toHaveObjectProperty("contentWidth", 100);
+            expect(area).toHaveObjectProperty("contentHeight", 100);
         }
     });
 
     it("wraps each drawing area in a vertical-expanding frame", async () => {
         await renderDemo(drawingAreaDemo);
-        const knockoutFrame = (await screen.findByName("knockout-frame")) as Gtk.Frame;
-        const scribbleFrame = (await screen.findByName("scribble-frame")) as Gtk.Frame;
+        const knockoutFrame = await screen.findByName("knockout-frame", { as: Gtk.Frame });
+        const scribbleFrame = await screen.findByName("scribble-frame", { as: Gtk.Frame });
 
         for (const frame of [knockoutFrame, scribbleFrame]) {
-            expect(frame.getVexpand()).toBe(true);
+            expect(frame).toHaveObjectProperty("vexpand", true);
         }
 
         expect(within(knockoutFrame).getByName("knockout-area")).toBeInstanceOf(Gtk.DrawingArea);
@@ -64,7 +73,7 @@ describe("drawingAreaDemo gestures", () => {
         "paints the brush once per drag phase (begin, update, end) after the scribble surface is initialised",
         async () => {
             await renderDemo(drawingAreaDemo);
-            const scribble = (await screen.findByName("scribble-area")) as Gtk.DrawingArea;
+            const scribble = await screen.findByName("scribble-area", { as: Gtk.DrawingArea });
             await fireEvent(scribble, "resize", 100, 100);
             const queueDraw = vi.spyOn(scribble, "queueDraw");
             await userEvent.drag(scribble, 5, 5, { startX: 10, startY: 10, steps: 1 });

@@ -20,32 +20,33 @@ describe("themingStyleClassesDemo", () => {
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" });
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "And I'm another button" });
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This is a button party!" });
-        const linkedBox = (await screen.findByName("linked-buttons")) as Gtk.Box;
-        expect(linkedBox.hasCssClass("linked")).toBe(true);
-        expect(linkedBox.hasCssClass("suggested-action")).toBe(false);
-        expect(linkedBox.hasCssClass("destructive-action")).toBe(false);
+        const linkedBox = await screen.findByName("linked-buttons", { as: Gtk.Box });
+        expect(linkedBox).toHaveClass("linked");
+        expect(linkedBox).not.toHaveClass("suggested-action");
+        expect(linkedBox).not.toHaveClass("destructive-action");
     });
 
     it("renders the suggested and destructive action buttons with their style classes", async () => {
         await renderDemo(themingStyleClassesDemo);
-        const plain = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Plain" })) as Gtk.Button;
+        const plain = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Plain", as: Gtk.Button });
 
-        const destructive = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+        const destructive = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Destructive",
-        })) as Gtk.Button;
+            as: Gtk.Button,
+        });
 
-        const suggested = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Suggested" })) as Gtk.Button;
-        expect(plain.hasCssClass("destructive-action")).toBe(false);
-        expect(plain.hasCssClass("suggested-action")).toBe(false);
-        expect(destructive.hasCssClass("destructive-action")).toBe(true);
-        expect(suggested.hasCssClass("suggested-action")).toBe(true);
+        const suggested = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Suggested", as: Gtk.Button });
+        expect(plain).not.toHaveClass("destructive-action");
+        expect(plain).not.toHaveClass("suggested-action");
+        expect(destructive).toHaveClass("destructive-action");
+        expect(suggested).toHaveClass("suggested-action");
     });
 
     it("places the linked group and the action group in separate grid rows", async () => {
         await renderDemo(themingStyleClassesDemo);
-        const grid = (await screen.findByName("root-grid")) as Gtk.Grid;
-        const linkedBox = (await screen.findByName("linked-buttons")) as Gtk.Box;
-        const suggested = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Suggested" })) as Gtk.Button;
+        const grid = await screen.findByName("root-grid", { as: Gtk.Grid });
+        const linkedBox = await screen.findByName("linked-buttons", { as: Gtk.Box });
+        const suggested = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Suggested", as: Gtk.Button });
         expect(grid.getChildAt(0, 0)).toBe(linkedBox);
         const actionRow = grid.getChildAt(0, 1);
         expect(actionRow).not.toBeNull();

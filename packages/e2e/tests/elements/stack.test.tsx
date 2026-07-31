@@ -50,7 +50,7 @@ describe("render - Stack (1)", () => {
 
             await screen.findByText("Titled Content");
             const page = stackRef.current?.getPage(stackRef.current.getChildByName("titled") as Gtk.Widget);
-            expect(page?.getTitle()).toBe("Page Title");
+            expect(page).toHaveObjectProperty("title", "Page Title");
         });
 
         it("adds child page (no name/title)", async () => {
@@ -83,8 +83,8 @@ describe("render - Stack (2)", () => {
             await screen.findByText("With Props");
             const child = stackRef.current?.getChildByName("props-test");
             const page = stackRef.current?.getPage(child as Gtk.Widget);
-            expect(page?.getIconName()).toBe("dialog-information");
-            expect(page?.getNeedsAttention()).toBe(true);
+            expect(page).toHaveObjectProperty("iconName", "dialog-information");
+            expect(page).toHaveObjectProperty("needsAttention", true);
         });
     });
 });
@@ -125,10 +125,10 @@ describe("render - Stack (3)", () => {
             const { rerender } = await render(<App iconName="dialog-information" />);
             const child = stackRef.current?.getChildByName("dynamic");
             let page = stackRef.current?.getPage(child as Gtk.Widget);
-            expect(page?.getIconName()).toBe("dialog-information");
+            expect(page).toHaveObjectProperty("iconName", "dialog-information");
             await rerender(<App iconName="dialog-warning" />);
             page = stackRef.current?.getPage(child as Gtk.Widget);
-            expect(page?.getIconName()).toBe("dialog-warning");
+            expect(page).toHaveObjectProperty("iconName", "dialog-warning");
         });
     });
 });
@@ -149,7 +149,7 @@ describe("render - Stack (4)", () => {
                 </GtkStack>,
             );
 
-            expect(stackRef.current?.getVisibleChildName()).toBe("page2");
+            expect(stackRef.current).toHaveObjectProperty("visibleChildName", "page2");
         });
 
         it("handles pending visible child before pages added", async () => {
@@ -171,7 +171,7 @@ describe("render - Stack (4)", () => {
             await rerender(<App pages={["other", "target"]} />);
 
             await waitFor(() => {
-                expect(stackRef.current?.getVisibleChildName()).toBe("target");
+                expect(stackRef.current).toHaveObjectProperty("visibleChildName", "target");
             });
         });
     });
@@ -198,7 +198,7 @@ describe("render - Stack (5)", () => {
             }
 
             await render(<NavigableStack />);
-            expect(stackRef.current?.getVisibleChildName()).toBe("page1");
+            expect(stackRef.current).toHaveObjectProperty("visibleChildName", "page1");
         });
 
         it("finds content in currently visible page", async () => {
@@ -218,7 +218,7 @@ describe("render - Stack (5)", () => {
                 </GtkStack>,
             );
 
-            expect(stackRef.current?.getVisibleChildName()).toBe("settings");
+            expect(stackRef.current).toHaveObjectProperty("visibleChildName", "settings");
         });
     });
 });

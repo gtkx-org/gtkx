@@ -62,7 +62,7 @@ describe("render - NavigationPage (2)", () => {
 
         await screen.findByText("Root Page");
         const page = viewRef.current?.findPage("root");
-        expect(page?.getCanPop()).toBe(false);
+        expect(page).toHaveObjectProperty("canPop", false);
     });
 
     it("removes page when unmounted", async () => {
@@ -106,10 +106,10 @@ describe("render - NavigationPage (3)", () => {
 
         await render(<App title="Initial Title" />);
         let page = viewRef.current?.findPage("dynamic");
-        expect(page?.getTitle()).toBe("Initial Title");
+        expect(page).toHaveObjectProperty("title", "Initial Title");
         await render(<App title="Updated Title" />);
         page = viewRef.current?.findPage("dynamic");
-        expect(page?.getTitle()).toBe("Updated Title");
+        expect(page).toHaveObjectProperty("title", "Updated Title");
     });
 
     it("updates canPop when prop changes", async () => {
@@ -127,9 +127,9 @@ describe("render - NavigationPage (3)", () => {
 
         await render(<App canPop={true} />);
         let page = viewRef.current?.findPage("page");
-        expect(page?.getCanPop()).toBe(true);
+        expect(page).toHaveObjectProperty("canPop", true);
         await render(<App canPop={false} />);
         page = viewRef.current?.findPage("page");
-        expect(page?.getCanPop()).toBe(false);
+        expect(page).toHaveObjectProperty("canPop", false);
     });
 });

@@ -30,7 +30,7 @@ describe("flowboxDemo metadata", () => {
 describe("flowboxDemo container", () => {
     it("disables only the horizontal scrollbar on the GtkScrolledWindow", async () => {
         await renderDemo(flowboxDemo);
-        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
+        const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
         const [hpolicy, vpolicy] = sw.getPolicy();
         expect(hpolicy).toBe(Gtk.PolicyType.NEVER);
         expect(vpolicy).not.toBe(Gtk.PolicyType.NEVER);
@@ -38,10 +38,10 @@ describe("flowboxDemo container", () => {
 
     it("keeps the NONE-selection flow box unselectable when a swatch is clicked", async () => {
         await renderDemo(flowboxDemo);
-        const flowBox = (await screen.findByName("flow-box")) as Gtk.FlowBox;
-        expect(flowBox.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
-        expect(flowBox.getValign()).toBe(Gtk.Align.START);
-        expect(flowBox.getMaxChildrenPerLine()).toBe(30);
+        const flowBox = await screen.findByName("flow-box", { as: Gtk.FlowBox });
+        expect(flowBox).toHaveObjectProperty("selectionMode", Gtk.SelectionMode.NONE);
+        expect(flowBox).toHaveObjectProperty("valign", Gtk.Align.START);
+        expect(flowBox).toHaveObjectProperty("maxChildrenPerLine", 30);
         const [firstButton] = within(flowBox).getAllByRole(Gtk.AccessibleRole.BUTTON);
 
         if (!firstButton) {
@@ -57,14 +57,14 @@ describe("flowboxDemo children", () => {
     it("gives each color button a 24x24 GtkDrawingArea swatch", async () => {
         await renderDemo(flowboxDemo);
         const flowBox = await screen.findByName("flow-box");
-        const buttons = within(flowBox).getAllByRole(Gtk.AccessibleRole.BUTTON);
+        const buttons = within(flowBox).getAllByRole(Gtk.AccessibleRole.BUTTON, { as: Gtk.Button });
         expect(buttons).toHaveLength(EXPECTED_COLOR_COUNT);
 
         for (const button of buttons) {
-            const swatch = (button as Gtk.Button).getChild();
+            const swatch = button.getChild();
             expect(swatch).toBeInstanceOf(Gtk.DrawingArea);
-            expect((swatch as Gtk.DrawingArea).getContentWidth()).toBe(24);
-            expect((swatch as Gtk.DrawingArea).getContentHeight()).toBe(24);
+            expect(swatch).toHaveObjectProperty("contentWidth", 24);
+            expect(swatch).toHaveObjectProperty("contentHeight", 24);
         }
     });
 

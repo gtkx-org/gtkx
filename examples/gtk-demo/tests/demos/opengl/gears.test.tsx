@@ -19,9 +19,9 @@ describe("gearsDemo", () => {
 
     it("renders a GtkGLArea configured with an ES context and a depth buffer", async () => {
         await renderDemo(gearsDemo);
-        const glArea = (await screen.findByName("gl-area")) as Gtk.GLArea;
-        expect(glArea.getUseEs()).toBe(true);
-        expect(glArea.getHasDepthBuffer()).toBe(true);
+        const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
+        expect(glArea).toHaveObjectProperty("useEs", true);
+        expect(glArea).toHaveObjectProperty("hasDepthBuffer", true);
     });
 
     it("renders one vertical inverted axis slider for each of X, Y, Z", async () => {
@@ -31,14 +31,14 @@ describe("gearsDemo", () => {
             await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: axis });
         }
 
-        const sliders = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
         expect(sliders).toHaveLength(3);
 
         for (const slider of sliders) {
-            expect(slider.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
-            expect(slider.getInverted()).toBe(true);
-            expect(slider.getAdjustment().getLower()).toBe(0);
-            expect(slider.getAdjustment().getUpper()).toBe(360);
+            expect(slider).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
+            expect(slider).toHaveObjectProperty("inverted", true);
+            expect(slider.getAdjustment()).toHaveObjectProperty("lower", 0);
+            expect(slider.getAdjustment()).toHaveObjectProperty("upper", 360);
         }
     });
 });
@@ -46,7 +46,7 @@ describe("gearsDemo", () => {
 describe("gearsDemo axis sliders", () => {
     it("seeds each axis slider with its own distinct initial rotation value", async () => {
         await renderDemo(gearsDemo);
-        const sliders = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
         const [xSlider, ySlider, zSlider] = [sliders[0] as Gtk.Scale, sliders[1] as Gtk.Scale, sliders[2] as Gtk.Scale];
         expect(xSlider).toHaveValue(20);
         expect(ySlider).toHaveValue(30);
@@ -55,7 +55,7 @@ describe("gearsDemo axis sliders", () => {
 
     it("advances each axis slider one page increment on PageUp", async () => {
         await renderDemo(gearsDemo);
-        const sliders = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
         const xSlider = sliders[0] as Gtk.Scale;
         const ySlider = sliders[1] as Gtk.Scale;
         const zSlider = sliders[2] as Gtk.Scale;

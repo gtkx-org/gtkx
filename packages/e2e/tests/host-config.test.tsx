@@ -13,8 +13,8 @@ const TEXT_SEGMENTS = ["First", "Second", "Third"];
 
 const labelTexts = (box: Gtk.Box): string[] =>
     within(box)
-        .getAllByRole(Gtk.AccessibleRole.LABEL)
-        .map((widget) => (widget as Gtk.Label).getLabel());
+        .getAllByRole(Gtk.AccessibleRole.LABEL, { as: Gtk.Label })
+        .map((widget) => widget.getLabel());
 
 const buildLabelBox = (boxRef: RefObject<Gtk.Box | null>) => (items: string[]) => (
     <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>

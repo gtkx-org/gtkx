@@ -11,7 +11,7 @@ const FAKE_VIDEO_PATH = join(tmpdir(), "fake-video.webm");
 
 const renderAndClickOpenButton = async (): Promise<void> => {
     await renderDemo(videoPlayerDemo);
-    const openButton = (await screen.findByName("open-button")) as Gtk.Button;
+    const openButton = await screen.findByName("open-button", { as: Gtk.Button });
 
     await act(async () => {
         await userEvent.click(openButton);
@@ -43,22 +43,22 @@ describe("videoPlayerDemo header bar", () => {
         expect(await screen.findByName("open-button")).toBeInstanceOf(Gtk.Button);
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "GTK Logo" });
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Big Buck Bunny" });
-        const fullscreenButton = (await screen.findByName("fullscreen-button")) as Gtk.Button;
-        expect(fullscreenButton.getIconName()).toBe("view-fullscreen-symbolic");
+        const fullscreenButton = await screen.findByName("fullscreen-button", { as: Gtk.Button });
+        expect(fullscreenButton).toHaveObjectProperty("iconName", "view-fullscreen-symbolic");
     });
 
     it("wires the Open button with useUnderline in the header bar's pack-start area", async () => {
         await renderDemo(videoPlayerDemo);
         const openButton = await findOpenButton();
         expect(openButton).toBeInstanceOf(Gtk.Button);
-        expect(openButton.getUseUnderline()).toBe(true);
+        expect(openButton).toHaveObjectProperty("useUnderline", true);
     });
 
     it("renders the Big Buck Bunny header button with a 24px image child", async () => {
         await renderDemo(videoPlayerDemo);
-        const bbbImage = (await screen.findByName("bbb-image")) as Gtk.Image;
+        const bbbImage = await screen.findByName("bbb-image", { as: Gtk.Image });
         expect(bbbImage).toBeInstanceOf(Gtk.Image);
-        expect(bbbImage.getPixelSize()).toBe(24);
+        expect(bbbImage).toHaveObjectProperty("pixelSize", 24);
     });
 
     it("toggles the fullscreen button icon to restore and back as the window fullscreen state changes", async () => {
@@ -66,9 +66,9 @@ describe("videoPlayerDemo header bar", () => {
 
         try {
             await renderDemo(videoPlayerDemo);
-            const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-            const fullscreenButton = (await screen.findByName("fullscreen-button")) as Gtk.Button;
-            expect(fullscreenButton.getIconName()).toBe("view-fullscreen-symbolic");
+            const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+            const fullscreenButton = await screen.findByName("fullscreen-button", { as: Gtk.Button });
+            expect(fullscreenButton).toHaveObjectProperty("iconName", "view-fullscreen-symbolic");
             isFullscreenSpy.mockReturnValue(true);
 
             await act(() => {
@@ -76,7 +76,7 @@ describe("videoPlayerDemo header bar", () => {
             });
 
             await waitFor(() => {
-                expect(fullscreenButton.getIconName()).toBe("view-restore-symbolic");
+                expect(fullscreenButton).toHaveObjectProperty("iconName", "view-restore-symbolic");
             });
 
             isFullscreenSpy.mockReturnValue(false);
@@ -86,7 +86,7 @@ describe("videoPlayerDemo header bar", () => {
             });
 
             await waitFor(() => {
-                expect(fullscreenButton.getIconName()).toBe("view-fullscreen-symbolic");
+                expect(fullscreenButton).toHaveObjectProperty("iconName", "view-fullscreen-symbolic");
             });
         } finally {
             isFullscreenSpy.mockRestore();
@@ -99,10 +99,10 @@ describe("videoPlayerDemo video and actions", () => {
         "renders a GtkVideo widget configured with autoplay, graphics offload enabled, and no initial file",
         async () => {
             await renderDemo(videoPlayerDemo);
-            const video = (await screen.findByName("video")) as Gtk.Video;
-            expect(video.getAutoplay()).toBe(true);
-            expect(video.getGraphicsOffload()).toBe(Gtk.GraphicsOffloadEnabled.ENABLED);
-            expect(video.getFile()).toBeNull();
+            const video = await screen.findByName("video", { as: Gtk.Video });
+            expect(video).toHaveObjectProperty("autoplay", true);
+            expect(video).toHaveObjectProperty("graphicsOffload", Gtk.GraphicsOffloadEnabled.ENABLED);
+            expect(video).toHaveObjectProperty("file", null);
         },
     );
 
@@ -111,7 +111,7 @@ describe("videoPlayerDemo video and actions", () => {
 
         try {
             await renderDemo(videoPlayerDemo);
-            const logoButton = (await screen.findByName("logo-button")) as Gtk.Button;
+            const logoButton = await screen.findByName("logo-button", { as: Gtk.Button });
             await userEvent.click(logoButton);
 
             await waitFor(() => {
@@ -130,7 +130,7 @@ describe("videoPlayerDemo video and actions", () => {
 
         try {
             await renderDemo(videoPlayerDemo);
-            const fullscreenButton = (await screen.findByName("fullscreen-button")) as Gtk.Button;
+            const fullscreenButton = await screen.findByName("fullscreen-button", { as: Gtk.Button });
             await userEvent.click(fullscreenButton);
 
             await waitFor(() => {
@@ -149,7 +149,7 @@ describe("videoPlayerDemo remote media", () => {
 
         try {
             await renderDemo(videoPlayerDemo);
-            const bbbButton = (await screen.findByName("bbb-button")) as Gtk.Button;
+            const bbbButton = await screen.findByName("bbb-button", { as: Gtk.Button });
             await userEvent.click(bbbButton);
 
             await waitFor(() => {
@@ -223,7 +223,7 @@ describe("videoPlayerDemo fullscreen shortcut", () => {
 
         try {
             await renderDemo(videoPlayerDemo);
-            const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+            const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
             await userEvent.keyboard(window, "{F11}");
 
             await waitFor(() => {

@@ -21,7 +21,7 @@ describe("cssBasicsDemo metadata", () => {
 describe("cssBasicsDemo rendering", () => {
     it("renders a text view inside a scrolled window with the default CSS preloaded", async () => {
         await renderDemo(cssBasicsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         await screen.findByName("scrolled");
         expect(textView).toHaveDisplayValue(/Set a very futuristic style by default/);
         expect(textView).toHaveDisplayValue(/window\.demo/);
@@ -31,15 +31,15 @@ describe("cssBasicsDemo rendering", () => {
     it("declares the demo css class on the host window", async () => {
         expect(cssBasicsDemo.windowCssClasses).toEqual(["demo"]);
         await renderDemo(cssBasicsDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        expect(window.hasCssClass("demo")).toBe(true);
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+        expect(window).toHaveClass("demo");
     });
 });
 
 describe("cssBasicsDemo behavior", () => {
     it("propagates edited buffer text back into the text view", async () => {
         await renderDemo(cssBasicsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         await userEvent.clear(textView);
         await userEvent.type(textView, "/* edited */\nwindow { color: red; }\n");
         expect(textView).toHaveDisplayValue("/* edited */\nwindow { color: red; }\n");
@@ -47,7 +47,7 @@ describe("cssBasicsDemo behavior", () => {
 
     it("marks invalid CSS by adding an error tag to the buffer", async () => {
         await renderDemo(cssBasicsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: this-is-not-a-valid-color; }");
 
@@ -60,7 +60,7 @@ describe("cssBasicsDemo behavior", () => {
 
     it("marks warning-level CSS with the warning tag rather than the error tag", async () => {
         await renderDemo(cssBasicsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: green }");
 
@@ -73,7 +73,7 @@ describe("cssBasicsDemo behavior", () => {
 
     it("clears a previously applied error tag once the CSS becomes valid again", async () => {
         await renderDemo(cssBasicsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: this-is-not-a-valid-color; }");
 

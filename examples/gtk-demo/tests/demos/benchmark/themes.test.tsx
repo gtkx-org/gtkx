@@ -1,4 +1,4 @@
-import type * as Adw from "@gtkx/gi/adw";
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -18,17 +18,17 @@ const FPS_PATTERN = /^\d+\.\d{2} fps$/;
 
 const activateCycleAndAwaitAlert = async (): Promise<CycleContext> => {
     await renderDemo(themesDemo);
-    const header = (await screen.findByName("themes-header")) as Gtk.HeaderBar;
-    const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-    const cycle = within(header).getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Cycle" }) as Gtk.ToggleButton;
+    const header = await screen.findByName("themes-header", { as: Gtk.HeaderBar });
+    const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+    const cycle = within(header).getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Cycle", as: Gtk.ToggleButton });
     await userEvent.click(cycle);
-    const alert = (await screen.findByName("warning-dialog")) as Adw.AlertDialog;
+    const alert = await screen.findByName("warning-dialog", { as: Adw.AlertDialog });
 
     return { cycle, alert, header, window };
 };
 
 const queryFpsLabel = (header: Gtk.HeaderBar): Gtk.Label | null =>
-    within(header).queryByRole(Gtk.AccessibleRole.LABEL, { name: FPS_PATTERN }) as Gtk.Label | null;
+    within(header).queryByRole(Gtk.AccessibleRole.LABEL, { name: FPS_PATTERN, as: Gtk.Label });
 
 const waitForFpsReadout = async (header: Gtk.HeaderBar): Promise<void> => {
     await waitFor(() => {
@@ -56,20 +56,22 @@ describe("themesDemo", () => {
 
     it("renders the cycle toggle inside the titlebar and the linked body buttons", async () => {
         await renderDemo(themesDemo);
-        const header = (await screen.findByName("themes-header")) as Gtk.HeaderBar;
+        const header = await screen.findByName("themes-header", { as: Gtk.HeaderBar });
 
         const cycle = within(header).getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Cycle",
-        }) as Gtk.ToggleButton;
+            as: Gtk.ToggleButton,
+        });
 
         expect(cycle).not.toBePressed();
 
-        const firstLinked = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+        const firstLinked = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Hi, I am a button",
-        })) as Gtk.Button;
+            as: Gtk.Button,
+        });
 
         const linkedBox = firstLinked.getParent() as Gtk.Box;
-        expect(linkedBox.getCssClasses()).toContain("linked");
+        expect(linkedBox).toHaveClass("linked");
         const linkedLabels = getChildren(linkedBox).map((child) => (child as Gtk.Button).getLabel());
         expect(linkedLabels).toEqual(["Hi, I am a button", "And I'm another button", "This is a button party!"]);
     });
@@ -77,21 +79,23 @@ describe("themesDemo", () => {
     it("applies destructive and suggested style classes to the body buttons", async () => {
         await renderDemo(themesDemo);
 
-        const destructive = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+        const destructive = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Destructive",
-        })) as Gtk.Button;
+            as: Gtk.Button,
+        });
 
-        const suggested = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+        const suggested = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Suggested",
-        })) as Gtk.Button;
+            as: Gtk.Button,
+        });
 
-        expect(destructive.getCssClasses()).toContain("destructive-action");
-        expect(suggested.getCssClasses()).toContain("suggested-action");
+        expect(destructive).toHaveClass("destructive-action");
+        expect(suggested).toHaveClass("suggested-action");
     });
 
     it("opens the warning dialog and exposes the photosensitive warning text", async () => {
         const { cycle, alert } = await activateCycleAndAwaitAlert();
-        expect(alert.getHeading()).toBe("Warning");
+        expect(alert).toHaveObjectProperty("heading", "Warning");
         expect(alert.getBody()).toMatch(/photosensitive/i);
         expect(cycle).toBePressed();
     });
@@ -100,7 +104,7 @@ describe("themesDemo", () => {
 describe("themesDemo cycling lifecycle", () => {
     it("cycles themes and drives the fps readout after acceptance", async () => {
         const { cycle, alert, header, window } = await activateCycleAndAwaitAlert();
-        expect(window.getTitle()).toBeNull();
+        expect(window).toHaveObjectProperty("title", null);
         expect(queryFpsLabel(header)).toBeNull();
         await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_OK" }));
 
@@ -126,7 +130,7 @@ describe("themesDemo cycling lifecycle", () => {
         });
 
         await new Promise((resolve) => setTimeout(resolve, FPS_SETTLE_MS));
-        expect(window.getTitle()).toBeNull();
+        expect(window).toHaveObjectProperty("title", null);
         expect(queryFpsLabel(header)).toBeNull();
     });
 

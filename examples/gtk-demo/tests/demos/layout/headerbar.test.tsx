@@ -19,7 +19,7 @@ describe("headerbarDemo metadata", () => {
 
     it("installs the named GtkHeaderBar and packs the nav/check-out buttons into it", async () => {
         await renderDemo(headerbarDemo);
-        const headerbar = (await screen.findByName("headerbar-titlebar")) as Gtk.HeaderBar;
+        const headerbar = await screen.findByName("headerbar-titlebar", { as: Gtk.HeaderBar });
         expect(headerbar).toBeInstanceOf(Gtk.HeaderBar);
         expect(within(headerbar).getByName("nav-box")).toBeInstanceOf(Gtk.Box);
         expect(within(headerbar).getByName("check-out-button")).toBeInstanceOf(Gtk.Button);
@@ -30,22 +30,22 @@ describe("headerbarDemo metadata", () => {
 describe("headerbarDemo header content", () => {
     it("renders the navigation buttons with the symbolic icons and tooltips", async () => {
         await renderDemo(headerbarDemo);
-        const back = (await screen.findByName("back-button")) as Gtk.Button;
-        const forward = (await screen.findByName("forward-button")) as Gtk.Button;
-        const checkOut = (await screen.findByName("check-out-button")) as Gtk.Button;
-        expect(back.getIconName()).toBe("go-previous-symbolic");
-        expect(forward.getIconName()).toBe("go-next-symbolic");
-        expect(checkOut.getIconName()).toBe("mail-send-receive-symbolic");
-        expect(back.getTooltipText()).toBe("Back");
-        expect(forward.getTooltipText()).toBe("Forward");
-        expect(checkOut.getTooltipText()).toBe("Check out");
+        const back = await screen.findByName("back-button", { as: Gtk.Button });
+        const forward = await screen.findByName("forward-button", { as: Gtk.Button });
+        const checkOut = await screen.findByName("check-out-button", { as: Gtk.Button });
+        expect(back).toHaveObjectProperty("iconName", "go-previous-symbolic");
+        expect(forward).toHaveObjectProperty("iconName", "go-next-symbolic");
+        expect(checkOut).toHaveObjectProperty("iconName", "mail-send-receive-symbolic");
+        expect(back).toHaveObjectProperty("tooltipText", "Back");
+        expect(forward).toHaveObjectProperty("tooltipText", "Forward");
+        expect(checkOut).toHaveObjectProperty("tooltipText", "Check out");
     });
 
     it("groups Back and Forward inside a GtkBox with the 'linked' style class", async () => {
         await renderDemo(headerbarDemo);
-        const navBox = (await screen.findByName("nav-box")) as Gtk.Box;
+        const navBox = await screen.findByName("nav-box", { as: Gtk.Box });
         expect(navBox).toBeInstanceOf(Gtk.Box);
-        expect(navBox.getCssClasses()).toContain("linked");
+        expect(navBox).toHaveClass("linked");
     });
 
     it("renders a GtkSwitch in the header bar with the 'Change something' accessible label", async () => {
@@ -56,7 +56,7 @@ describe("headerbarDemo header content", () => {
 
     it("renders the body GtkTextView with its 'Content' accessible label", async () => {
         await renderDemo(headerbarDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         expect(textView).toBe(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Content" }));
     });
 });
@@ -65,10 +65,11 @@ describe("headerbarDemo interactions", () => {
     it("toggles the header-bar switch on activation", async () => {
         await renderDemo(headerbarDemo);
 
-        const switchEl = (await screen.findByRole(Gtk.AccessibleRole.SWITCH, {
+        const switchEl = await screen.findByRole(Gtk.AccessibleRole.SWITCH, {
             name: "Change something",
             checked: false,
-        })) as Gtk.Switch;
+            as: Gtk.Switch,
+        });
 
         await userEvent.click(switchEl);
 

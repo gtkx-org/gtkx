@@ -25,7 +25,7 @@ const establishTimeValue = async (timeButton: Gtk.SpinButton): Promise<void> => 
     await userEvent.keyboard(timeButton, "{Enter}");
 
     await waitFor(() => {
-        expect(timeButton.getValue()).toBe(750);
+        expect(timeButton).toHaveObjectProperty("value", 750);
     });
 };
 
@@ -54,7 +54,7 @@ describe("spinbuttonDemo", () => {
 describe("spinbuttonDemo custom output formatting", () => {
     it("formats hex output for a non-zero value", async () => {
         await renderDemo(spinbuttonDemo);
-        const hexButton = (await screen.findByName("hex_spin")) as Gtk.SpinButton;
+        const hexButton = await screen.findByName("hex_spin", { as: Gtk.SpinButton });
         await userEvent.clear(hexButton);
         await userEvent.type(hexButton, "0xAB");
         await userEvent.keyboard(hexButton, "{Enter}");
@@ -63,7 +63,7 @@ describe("spinbuttonDemo custom output formatting", () => {
 
     it("formats hex output as 0x00 when the value is essentially zero", async () => {
         await renderDemo(spinbuttonDemo);
-        const hexButton = (await screen.findByName("hex_spin")) as Gtk.SpinButton;
+        const hexButton = await screen.findByName("hex_spin", { as: Gtk.SpinButton });
         await userEvent.clear(hexButton);
         await userEvent.type(hexButton, "0");
         await userEvent.keyboard(hexButton, "{Enter}");
@@ -72,7 +72,7 @@ describe("spinbuttonDemo custom output formatting", () => {
 
     it("formats time output as HH:MM for a non-zero value", async () => {
         await renderDemo(spinbuttonDemo);
-        const timeButton = (await screen.findByName("time_spin")) as Gtk.SpinButton;
+        const timeButton = await screen.findByName("time_spin", { as: Gtk.SpinButton });
         await userEvent.clear(timeButton);
         await userEvent.type(timeButton, "02:30");
         await userEvent.keyboard(timeButton, "{Enter}");
@@ -81,7 +81,7 @@ describe("spinbuttonDemo custom output formatting", () => {
 
     it("formats month output for the corresponding month index", async () => {
         await renderDemo(spinbuttonDemo);
-        const monthButton = (await screen.findByName("month_spin")) as Gtk.SpinButton;
+        const monthButton = await screen.findByName("month_spin", { as: Gtk.SpinButton });
         await userEvent.clear(monthButton);
         await userEvent.type(monthButton, "July");
         await userEvent.keyboard(monthButton, "{Enter}");
@@ -92,7 +92,7 @@ describe("spinbuttonDemo custom output formatting", () => {
 describe("spinbuttonDemo custom input parsing", () => {
     it("parses hexadecimal text via the hex input handler when the user types and commits", async () => {
         await renderDemo(spinbuttonDemo);
-        const hexButton = (await screen.findByName("hex_spin")) as Gtk.SpinButton;
+        const hexButton = await screen.findByName("hex_spin", { as: Gtk.SpinButton });
         await userEvent.clear(hexButton);
         await userEvent.type(hexButton, "0xff");
         await userEvent.keyboard(hexButton, "{Enter}");
@@ -101,13 +101,13 @@ describe("spinbuttonDemo custom input parsing", () => {
 
     it("clamps a signed hexadecimal value to the adjustment lower bound via the '-' sign branch", async () => {
         await renderDemo(spinbuttonDemo);
-        const hexButton = (await screen.findByName("hex_spin")) as Gtk.SpinButton;
+        const hexButton = await screen.findByName("hex_spin", { as: Gtk.SpinButton });
         await userEvent.clear(hexButton);
         await userEvent.type(hexButton, "0x20");
         await userEvent.keyboard(hexButton, "{Enter}");
 
         await waitFor(() => {
-            expect(hexButton.getValue()).toBe(0x20);
+            expect(hexButton).toHaveObjectProperty("value", 0x20);
         });
 
         await userEvent.clear(hexButton);
@@ -115,7 +115,7 @@ describe("spinbuttonDemo custom input parsing", () => {
         await userEvent.keyboard(hexButton, "{Enter}");
 
         await waitFor(() => {
-            expect(hexButton.getValue()).toBe(0);
+            expect(hexButton).toHaveObjectProperty("value", 0);
         });
 
         expect(await screen.findByDisplayValue("0x00")).toBe(hexButton);
@@ -123,13 +123,13 @@ describe("spinbuttonDemo custom input parsing", () => {
 
     it("rejects text that does not match the hex regex instead of committing it verbatim", async () => {
         await renderDemo(spinbuttonDemo);
-        const hexButton = (await screen.findByName("hex_spin")) as Gtk.SpinButton;
+        const hexButton = await screen.findByName("hex_spin", { as: Gtk.SpinButton });
         await userEvent.clear(hexButton);
         await userEvent.type(hexButton, "0x05");
         await userEvent.keyboard(hexButton, "{Enter}");
 
         await waitFor(() => {
-            expect(hexButton.getValue()).toBe(5);
+            expect(hexButton).toHaveObjectProperty("value", 5);
         });
 
         await userEvent.clear(hexButton);
@@ -140,14 +140,14 @@ describe("spinbuttonDemo custom input parsing", () => {
             expect(hexButton.getText()).toMatch(/^0x[0-9A-Fa-f]{2}$/);
         });
 
-        expect(hexButton.getText()).not.toBe("not-a-number");
+        expect(hexButton).not.toHaveObjectProperty("text", "not-a-number");
     });
 });
 
 describe("spinbuttonDemo time input parsing", () => {
     it("parses HH:MM time strings via the time input handler", async () => {
         await renderDemo(spinbuttonDemo);
-        const timeButton = (await screen.findByName("time_spin")) as Gtk.SpinButton;
+        const timeButton = await screen.findByName("time_spin", { as: Gtk.SpinButton });
         await userEvent.clear(timeButton);
         await userEvent.type(timeButton, "12:30");
         await userEvent.keyboard(timeButton, "{Enter}");
@@ -156,7 +156,7 @@ describe("spinbuttonDemo time input parsing", () => {
 
     it.each(REJECTED_TIME_TEXTS)("rejects time strings $label and keeps the previous value", async ({ text }) => {
         await renderDemo(spinbuttonDemo);
-        const timeButton = (await screen.findByName("time_spin")) as Gtk.SpinButton;
+        const timeButton = await screen.findByName("time_spin", { as: Gtk.SpinButton });
         await establishTimeValue(timeButton);
         await userEvent.clear(timeButton);
         await userEvent.type(timeButton, text);
@@ -166,20 +166,20 @@ describe("spinbuttonDemo time input parsing", () => {
             expect(timeButton.getText()).toMatch(TIME_DISPLAY_PATTERN);
         });
 
-        expect(timeButton.getText()).not.toBe(text);
+        expect(timeButton).not.toHaveObjectProperty("text", text);
     });
 });
 
 describe("spinbuttonDemo month input parsing", () => {
     it("parses month names by prefix-matching the user input via the month input handler", async () => {
         await renderDemo(spinbuttonDemo);
-        const monthButton = (await screen.findByName("month_spin")) as Gtk.SpinButton;
+        const monthButton = await screen.findByName("month_spin", { as: Gtk.SpinButton });
         await userEvent.clear(monthButton);
         await userEvent.type(monthButton, "apr");
         await userEvent.keyboard(monthButton, "{Enter}");
 
         await waitFor(() => {
-            expect(monthButton.getValue()).toBe(4);
+            expect(monthButton).toHaveObjectProperty("value", 4);
         });
 
         expect(await screen.findByDisplayValue("April")).toBe(monthButton);
@@ -187,26 +187,26 @@ describe("spinbuttonDemo month input parsing", () => {
 
     it("rejects month text that matches no known month prefix and keeps the previous value", async () => {
         await renderDemo(spinbuttonDemo);
-        const monthButton = (await screen.findByName("month_spin")) as Gtk.SpinButton;
+        const monthButton = await screen.findByName("month_spin", { as: Gtk.SpinButton });
         await userEvent.clear(monthButton);
         await userEvent.type(monthButton, "apr");
         await userEvent.keyboard(monthButton, "{Enter}");
 
         await waitFor(() => {
-            expect(monthButton.getValue()).toBe(4);
+            expect(monthButton).toHaveObjectProperty("value", 4);
         });
 
         await userEvent.clear(monthButton);
         await userEvent.type(monthButton, "xyz");
         await userEvent.keyboard(monthButton, "{Enter}");
-        expect(monthButton.getValue()).toBe(4);
+        expect(monthButton).toHaveObjectProperty("value", 4);
     });
 });
 
 describe("spinbuttonDemo numeric input", () => {
     it("updates the numeric spin value and its mirrored label when the user types a number", async () => {
         await renderDemo(spinbuttonDemo);
-        const numericButton = (await screen.findByName("basic_spin")) as Gtk.SpinButton;
+        const numericButton = await screen.findByName("basic_spin", { as: Gtk.SpinButton });
         await userEvent.clear(numericButton);
         await userEvent.type(numericButton, "12.5");
         await userEvent.keyboard(numericButton, "{Enter}");
@@ -216,7 +216,7 @@ describe("spinbuttonDemo numeric input", () => {
 
     it("steps the numeric value up by its 0.5 step increment when ArrowUp is pressed", async () => {
         await renderDemo(spinbuttonDemo);
-        const numericButton = (await screen.findByName("basic_spin")) as Gtk.SpinButton;
+        const numericButton = await screen.findByName("basic_spin", { as: Gtk.SpinButton });
         numericButton.grabFocus();
         await userEvent.keyboard(numericButton, "{ArrowUp}");
 
@@ -231,13 +231,13 @@ describe("spinbuttonDemo numeric input", () => {
 describe("spinbuttonDemo mirrored value labels", () => {
     it("mirrors the parsed hex value into the third-column label", async () => {
         await renderDemo(spinbuttonDemo);
-        const hexButton = (await screen.findByName("hex_spin")) as Gtk.SpinButton;
+        const hexButton = await screen.findByName("hex_spin", { as: Gtk.SpinButton });
         await userEvent.clear(hexButton);
         await userEvent.type(hexButton, "0xff");
         await userEvent.keyboard(hexButton, "{Enter}");
 
         await waitFor(() => {
-            expect(hexButton.getValue()).toBe(255);
+            expect(hexButton).toHaveObjectProperty("value", 255);
         });
 
         expect(await screen.findByText("255")).toBeInstanceOf(Gtk.Label);
@@ -245,20 +245,20 @@ describe("spinbuttonDemo mirrored value labels", () => {
 
     it("mirrors the parsed time value (minutes since midnight) into the third-column label", async () => {
         await renderDemo(spinbuttonDemo);
-        const timeButton = (await screen.findByName("time_spin")) as Gtk.SpinButton;
+        const timeButton = await screen.findByName("time_spin", { as: Gtk.SpinButton });
         await establishTimeValue(timeButton);
         expect(await screen.findByText("750")).toBeInstanceOf(Gtk.Label);
     });
 
     it("mirrors the parsed month index into the third-column label", async () => {
         await renderDemo(spinbuttonDemo);
-        const monthButton = (await screen.findByName("month_spin")) as Gtk.SpinButton;
+        const monthButton = await screen.findByName("month_spin", { as: Gtk.SpinButton });
         await userEvent.clear(monthButton);
         await userEvent.type(monthButton, "July");
         await userEvent.keyboard(monthButton, "{Enter}");
 
         await waitFor(() => {
-            expect(monthButton.getValue()).toBe(7);
+            expect(monthButton).toHaveObjectProperty("value", 7);
         });
 
         expect(await screen.findByText("7")).toBeInstanceOf(Gtk.Label);
@@ -268,13 +268,13 @@ describe("spinbuttonDemo mirrored value labels", () => {
 describe("spinbuttonDemo wrap behavior", () => {
     it("wraps the hex value to the upper bound when stepped down past zero", async () => {
         await renderDemo(spinbuttonDemo);
-        const hexButton = (await screen.findByName("hex_spin")) as Gtk.SpinButton;
-        expect(hexButton.getValue()).toBe(0);
+        const hexButton = await screen.findByName("hex_spin", { as: Gtk.SpinButton });
+        expect(hexButton).toHaveObjectProperty("value", 0);
         hexButton.grabFocus();
         await userEvent.keyboard(hexButton, "{ArrowDown}");
 
         await waitFor(() => {
-            expect(hexButton.getValue()).toBe(255);
+            expect(hexButton).toHaveObjectProperty("value", 255);
         });
 
         expect(await screen.findByDisplayValue("0xFF")).toBe(hexButton);

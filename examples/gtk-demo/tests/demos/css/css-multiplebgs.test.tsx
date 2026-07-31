@@ -31,10 +31,10 @@ describe("cssMultiplebgsDemo", () => {
 
     it("splits the editor from the canvas with a vertical paned holding the editor as its end child", async () => {
         await renderDemo(cssMultiplebgsDemo);
-        const paned = (await screen.findByName("paned")) as Gtk.Paned;
+        const paned = await screen.findByName("paned", { as: Gtk.Paned });
         expect(paned.getStartChild()).toBeInstanceOf(Gtk.Box);
         expect(paned.getEndChild()).toBeInstanceOf(Gtk.ScrolledWindow);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         expect(textView).toHaveDisplayValue(/#canvas/);
         expect(textView).toHaveDisplayValue(/transition-property/);
     });
@@ -42,8 +42,8 @@ describe("cssMultiplebgsDemo", () => {
     it("declares the demo window class on the host window", async () => {
         expect(cssMultiplebgsDemo.windowCssClasses).toEqual(["demo"]);
         await renderDemo(cssMultiplebgsDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        expect(window.hasCssClass("demo")).toBe(true);
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+        expect(window).toHaveClass("demo");
     });
 });
 
@@ -72,7 +72,7 @@ describe("cssMultiplebgsDemo css provider", () => {
 
         try {
             await renderDemo(cssMultiplebgsDemo);
-            const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+            const textView = await screen.findByName("text-view", { as: Gtk.TextView });
             loadSpy.mockClear();
             await userEvent.clear(textView);
             await userEvent.type(textView, "#canvas { background-color: magenta; }");
@@ -91,7 +91,7 @@ describe("cssMultiplebgsDemo css provider", () => {
 
     it("marks invalid CSS by adding an error tag to the buffer", async () => {
         await renderDemo(cssMultiplebgsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         await userEvent.clear(textView);
         await userEvent.type(textView, "#canvas { color: this-is-not-a-valid-color; }");
 

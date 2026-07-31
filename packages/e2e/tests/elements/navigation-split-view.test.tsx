@@ -18,7 +18,7 @@ describe("render - NavigationSplitView", () => {
         );
 
         await screen.findByText("Split Content");
-        expect(viewRef.current?.getContent()?.getTag()).toBe("content");
+        expect(viewRef.current?.getContent()).toHaveObjectProperty("tag", "content");
     });
 
     it("clears the content page when unmounted", async () => {

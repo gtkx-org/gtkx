@@ -27,20 +27,20 @@ describe("markupDemo initial state", () => {
 
     it("starts with the 'formatted' stack page visible", async () => {
         await renderDemo(markupDemo);
-        const stack = (await screen.findByName("markup-stack")) as Gtk.Stack;
-        expect(stack.getVisibleChildName()).toBe("formatted");
+        const stack = await screen.findByName("markup-stack", { as: Gtk.Stack });
+        expect(stack).toHaveObjectProperty("visibleChildName", "formatted");
     });
 
     it("populates the source text view buffer with the raw markup content", async () => {
         await renderDemo(markupDemo);
-        const source = (await screen.findByName("source-view")) as Gtk.TextView;
+        const source = await screen.findByName("source-view", { as: Gtk.TextView });
         expect(source).toHaveDisplayValue(/Text sizes:/);
         expect(source).toHaveDisplayValue(/<span size="xx-small">/);
     });
 
     it("populates the formatted view with parsed markup, stripping the raw span tags", async () => {
         await renderDemo(markupDemo);
-        const formatted = (await screen.findByName("formatted-view")) as Gtk.TextView;
+        const formatted = await screen.findByName("formatted-view", { as: Gtk.TextView });
         expect(formatted).toHaveDisplayValue(/Text sizes:/);
         const formattedText = readBufferText(formatted);
         expect(formattedText).not.toContain("<span");
@@ -52,30 +52,32 @@ describe("markupDemo toggle interaction", () => {
     it("switches to the source page when the Source toggle is activated", async () => {
         await renderDemo(markupDemo);
 
-        const sourceToggle = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
+        const sourceToggle = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Source",
-        })) as Gtk.CheckButton;
+            as: Gtk.CheckButton,
+        });
 
         await userEvent.click(sourceToggle);
-        const stack = (await screen.findByName("markup-stack")) as Gtk.Stack;
-        expect(stack.getVisibleChildName()).toBe("source");
+        const stack = await screen.findByName("markup-stack", { as: Gtk.Stack });
+        expect(stack).toHaveObjectProperty("visibleChildName", "source");
     });
 
     it("re-applies the markup when toggling Source back off after editing", async () => {
         await renderDemo(markupDemo);
 
-        const sourceToggle = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
+        const sourceToggle = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Source",
-        })) as Gtk.CheckButton;
+            as: Gtk.CheckButton,
+        });
 
         await userEvent.click(sourceToggle);
-        const source = (await screen.findByName("source-view")) as Gtk.TextView;
-        const formatted = (await screen.findByName("formatted-view")) as Gtk.TextView;
+        const source = await screen.findByName("source-view", { as: Gtk.TextView });
+        const formatted = await screen.findByName("formatted-view", { as: Gtk.TextView });
         await userEvent.clear(source);
         await userEvent.type(source, "Hello <b>World</b>");
         await userEvent.click(sourceToggle);
-        const stack = (await screen.findByName("markup-stack")) as Gtk.Stack;
-        expect(stack.getVisibleChildName()).toBe("formatted");
+        const stack = await screen.findByName("markup-stack", { as: Gtk.Stack });
+        expect(stack).toHaveObjectProperty("visibleChildName", "formatted");
         expect(formatted).toHaveDisplayValue(/Hello/);
         expect(formatted).toHaveDisplayValue(/World/);
     });

@@ -33,20 +33,20 @@ describe("listviewWeatherDemo metadata", () => {
 describe("listviewWeatherDemo list view", () => {
     it("renders a horizontal GtkListView with separators and no selection", async () => {
         await renderDemo(listviewWeatherDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        expect(lv.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
-        expect(lv.getShowSeparators()).toBe(true);
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        expect(lv).toHaveObjectProperty("orientation", Gtk.Orientation.HORIZONTAL);
+        expect(lv).toHaveObjectProperty("showSeparators", true);
     });
 
     it("uses a no-selection model", async () => {
         await renderDemo(listviewWeatherDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
         expect(lv.getModel()).toBeInstanceOf(Gtk.NoSelection);
     });
 
     it("keeps the selection empty when a cell is clicked", async () => {
         await renderDemo(listviewWeatherDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
         const model = lv.getModel() as Gtk.SelectionModel;
         expect(Number(model.getSelection().getSize())).toBe(0);
         const cell = within(lv).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)[0] as Gtk.Widget;
@@ -56,36 +56,36 @@ describe("listviewWeatherDemo list view", () => {
 
     it("populates the list view with the full deterministic hourly dataset", async () => {
         await renderDemo(listviewWeatherDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
         const model = lv.getModel() as Gtk.SelectionModel;
-        expect(model.getNItems()).toBe(EXPECTED_ITEM_COUNT);
+        expect(model).toHaveObjectProperty("nItems", EXPECTED_ITEM_COUNT);
     });
 });
 
 describe("listviewWeatherDemo cell content", () => {
     it("wraps the list view inside the named scrolled window", async () => {
         await renderDemo(listviewWeatherDemo);
-        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
+        const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
         expect(within(sw).getByName("list-view")).toBeInstanceOf(Gtk.ListView);
     });
 
     it("maps each weather type to a known symbolic weather icon", async () => {
         await renderDemo(listviewWeatherDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        const images = within(lv).getAllByRole(Gtk.AccessibleRole.IMG) as Gtk.Image[];
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const images = within(lv).getAllByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
         expect(images.length).toBeGreaterThan(0);
 
         for (const image of images) {
-            expect(image.getIconSize()).toBe(Gtk.IconSize.LARGE);
+            expect(image).toHaveObjectProperty("iconSize", Gtk.IconSize.LARGE);
             expect(WEATHER_ICON_NAMES.has(image.getIconName() ?? "")).toBe(true);
         }
     });
 
     it("renders the first hour cell at midnight and temperature labels in materialized cells", async () => {
         await renderDemo(listviewWeatherDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        const hourLabels = within(lv).getAllByText(/^\d{2}:\d{2}$/) as Gtk.Label[];
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const hourLabels = within(lv).getAllByText(/^\d{2}:\d{2}$/, { as: Gtk.Label });
         const tempLabels = within(lv).getAllByText(/^-?\d+°$/);
         expect(hourLabels.map((label) => label.getText())).toContain("00:00");
         expect(tempLabels.length).toBeGreaterThan(0);

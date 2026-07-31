@@ -206,15 +206,15 @@ const renderDemo = async (
 };
 
 const findInactiveSearchToggle = async (): Promise<Gtk.ToggleButton> => {
-    const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
+    const toggle = await screen.findByName("search-toggle", { as: Gtk.ToggleButton });
     expect(toggle).toBeInstanceOf(Gtk.ToggleButton);
-    expect(toggle.getActive()).toBe(false);
+    expect(toggle).toHaveObjectProperty("active", false);
 
     return toggle;
 };
 
 const findOpenButton = async (): Promise<Gtk.Button> =>
-    (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
+    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
 
 const readBufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();

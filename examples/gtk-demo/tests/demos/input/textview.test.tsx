@@ -24,26 +24,20 @@ const FORMATTING_TAGS = [
 ];
 
 const findTextViews = async (): Promise<[Gtk.TextView, Gtk.TextView]> => {
-    const view1 = (await screen.findByName("text-view-1")) as Gtk.TextView;
-    const view2 = (await screen.findByName("text-view-2")) as Gtk.TextView;
+    const view1 = await screen.findByName("text-view-1", { as: Gtk.TextView });
+    const view2 = await screen.findByName("text-view-2", { as: Gtk.TextView });
 
     return [view1, view2];
 };
 
-const findClickMeButtons = async (): Promise<Gtk.Button[]> => {
-    const widgets = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: "Click Me" });
-
-    return widgets.filter((w): w is Gtk.Button => w instanceof Gtk.Button);
-};
+const findClickMeButtons = async (): Promise<Gtk.Button[]> =>
+    screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: "Click Me", as: Gtk.Button });
 
 const findComboBoxes = (): Gtk.DropDown[] =>
-    screen.queryAllByRole(Gtk.AccessibleRole.COMBO_BOX).filter((w): w is Gtk.DropDown => w instanceof Gtk.DropDown);
+    screen.queryAllByRole(Gtk.AccessibleRole.COMBO_BOX, { as: Gtk.DropDown });
 
-const findScales = (): Gtk.Scale[] =>
-    screen.queryAllByRole(Gtk.AccessibleRole.SLIDER).filter((w): w is Gtk.Scale => w instanceof Gtk.Scale);
-
-const findEntries = (): Gtk.Entry[] =>
-    screen.queryAllByRole(Gtk.AccessibleRole.TEXT_BOX).filter((w): w is Gtk.Entry => w instanceof Gtk.Entry);
+const findScales = (): Gtk.Scale[] => screen.queryAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
+const findEntries = (): Gtk.Entry[] => screen.queryAllByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
 
 const enclosingTextViewName = (widget: Gtk.Widget): string | null => {
     let cur: Gtk.Widget | null = widget;
@@ -102,8 +96,8 @@ const openEasterEggFromClonedButton = async (): Promise<{
         expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBeGreaterThan(beforeWindows.length);
     });
 
-    const after = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW);
-    const newWindow = after.find((w): w is Gtk.Window => w instanceof Gtk.Window && !beforeWindows.includes(w));
+    const after = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+    const newWindow = after.find((w) => !beforeWindows.includes(w));
 
     if (!newWindow) {
         throw new Error("easter-egg window not found");
@@ -131,7 +125,7 @@ describe("textviewDemo rendering", () => {
         await renderDemo(textviewDemo);
         await screen.findByRole(Gtk.AccessibleRole.WINDOW);
         const [view1, view2] = await findTextViews();
-        expect(view1.getBuffer()).toBe(view2.getBuffer());
+        expect(view1).toHaveObjectProperty("buffer", view2.getBuffer());
     });
 
     it("populates the shared buffer with section headings and international content", async () => {
@@ -155,8 +149,8 @@ describe("textviewDemo rendering", () => {
     it("sets word wrap mode on both reconciled text views", async () => {
         await renderDemo(textviewDemo);
         const [view1, view2] = await findTextViews();
-        expect(view1.getWrapMode()).toBe(Gtk.WrapMode.WORD);
-        expect(view2.getWrapMode()).toBe(Gtk.WrapMode.WORD);
+        expect(view1).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
+        expect(view2).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
     });
 });
 
@@ -195,9 +189,9 @@ describe("textviewDemo formatting tags", () => {
         await renderDemo(textviewDemo);
         const [view1] = await findTextViews();
         const table = getBuffer(view1).getTagTable();
-        expect((table.lookup("word_wrap") as Gtk.TextTag).wrapMode).toBe(Gtk.WrapMode.WORD);
-        expect((table.lookup("char_wrap") as Gtk.TextTag).wrapMode).toBe(Gtk.WrapMode.CHAR);
-        expect((table.lookup("no_wrap") as Gtk.TextTag).wrapMode).toBe(Gtk.WrapMode.NONE);
+        expect(table.lookup("word_wrap") as Gtk.TextTag).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
+        expect(table.lookup("char_wrap") as Gtk.TextTag).toHaveObjectProperty("wrapMode", Gtk.WrapMode.CHAR);
+        expect(table.lookup("no_wrap") as Gtk.TextTag).toHaveObjectProperty("wrapMode", Gtk.WrapMode.NONE);
     });
 });
 
@@ -248,21 +242,21 @@ describe("textviewDemo cloned widgets", () => {
         await findTextViews();
         const [primary, clone] = findComboBoxes();
         await userEvent.selectOptions(primary as Gtk.DropDown, 2);
-        expect((primary as Gtk.DropDown).getSelected()).toBe(2);
+        expect(primary as Gtk.DropDown).toHaveObjectProperty("selected", 2);
         await userEvent.selectOptions(clone as Gtk.DropDown, 1);
-        expect((clone as Gtk.DropDown).getSelected()).toBe(1);
+        expect(clone as Gtk.DropDown).toHaveObjectProperty("selected", 1);
     });
 
     it("moves the embedded scale to its adjustment bounds via keyboard stepping", async () => {
         await renderDemo(textviewDemo);
         await findTextViews();
         const scale = findScales()[0] as Gtk.Scale;
-        expect(scale.getAdjustment().getValue()).toBe(0);
+        expect(scale.getAdjustment()).toHaveObjectProperty("value", 0);
         scale.grabFocus();
         await userEvent.keyboard(scale, "{End}");
-        expect(scale.getAdjustment().getValue()).toBe(100);
+        expect(scale.getAdjustment()).toHaveObjectProperty("value", 100);
         await userEvent.keyboard(scale, "{Home}");
-        expect(scale.getAdjustment().getValue()).toBe(0);
+        expect(scale.getAdjustment()).toHaveObjectProperty("value", 0);
     });
 
     it("accepts typed text in the embedded and cloned entries", async () => {
@@ -296,22 +290,18 @@ describe("textviewDemo easter egg", () => {
 
     it("makes the easter-egg window modal and transient for the demo root window", async () => {
         const { newWindow } = await openEasterEggFromClonedButton();
-        expect(newWindow.getModal()).toBe(true);
+        expect(newWindow).toHaveObjectProperty("modal", true);
         expect(newWindow.getTransientFor()).toBeInstanceOf(Gtk.Window);
     });
 
     it("nests multiple text views inside the easter-egg window sharing one buffer", async () => {
         const { newWindow } = await openEasterEggFromClonedButton();
-
-        const nested = within(newWindow)
-            .queryAllByRole(Gtk.AccessibleRole.TEXT_BOX)
-            .filter((w): w is Gtk.TextView => w instanceof Gtk.TextView);
-
+        const nested = within(newWindow).queryAllByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
         expect(nested.length).toBeGreaterThan(1);
         const sharedBuffer = nested[0]?.getBuffer();
 
         for (const view of nested) {
-            expect(view.getBuffer()).toBe(sharedBuffer);
+            expect(view).toHaveObjectProperty("buffer", sharedBuffer);
         }
     });
 

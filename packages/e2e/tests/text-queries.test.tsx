@@ -12,9 +12,9 @@ describe("byText", () => {
             </GtkBox>,
         );
 
-        const label = await screen.findByText("Count: 2");
+        const label = await screen.findByText("Count: 2", { as: Gtk.Label });
         expect(label).toBeInstanceOf(Gtk.Label);
-        expect((label as Gtk.Label).getLabel()).toBe("Count: 2");
+        expect(label).toHaveObjectProperty("label", "Count: 2");
     });
 
     it("never matches a container by its children's joined text", async () => {

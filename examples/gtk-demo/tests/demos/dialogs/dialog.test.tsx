@@ -1,4 +1,4 @@
-import type * as Adw from "@gtkx/gi/adw";
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -6,10 +6,10 @@ import { dialogDemo } from "../../../src/demos/dialogs/dialog.js";
 import { renderDemo } from "../../test-utils.js";
 
 const openDialog = async (buttonName: string, dialogName: string): Promise<Adw.AlertDialog> => {
-    const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: buttonName })) as Gtk.Button;
+    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: buttonName, as: Gtk.Button });
     await userEvent.click(button);
 
-    return (await screen.findByName(dialogName)) as Adw.AlertDialog;
+    return screen.findByName(dialogName, { as: Adw.AlertDialog });
 };
 
 const openMessageDialog = (): Promise<Adw.AlertDialog> => openDialog("_Message Dialog", "message-dialog");
@@ -49,12 +49,13 @@ describe("dialogDemo message dialog", () => {
     it("increments the body text to 'Has been shown 2 times' after a second clicked signal", async () => {
         await renderDemo(dialogDemo);
 
-        const messageButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+        const messageButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
             name: "_Message Dialog",
-        })) as Gtk.Button;
+            as: Gtk.Button,
+        });
 
         await userEvent.click(messageButton);
-        const firstDialog = (await screen.findByName("message-dialog")) as Adw.AlertDialog;
+        const firstDialog = await screen.findByName("message-dialog", { as: Adw.AlertDialog });
         await within(firstDialog).findByText("Has been shown once");
         await userEvent.click(within(firstDialog).getByRole(Gtk.AccessibleRole.BUTTON, { name: /OK/ }));
 
@@ -63,7 +64,7 @@ describe("dialogDemo message dialog", () => {
         });
 
         await userEvent.click(messageButton);
-        const secondDialog = (await screen.findByName("message-dialog")) as Adw.AlertDialog;
+        const secondDialog = await screen.findByName("message-dialog", { as: Adw.AlertDialog });
         await within(secondDialog).findByText("Has been shown 2 times");
     });
 
@@ -91,14 +92,14 @@ describe("dialogDemo message dialog", () => {
 describe("dialogDemo interactive dialog", () => {
     it("updates the demo entry text from the typed value", async () => {
         await renderDemo(dialogDemo);
-        const firstEntry = (await screen.findByName("demo-entry-1")) as Gtk.Entry;
+        const firstEntry = await screen.findByName("demo-entry-1", { as: Gtk.Entry });
         await userEvent.type(firstEntry, "hello");
         expect(screen.getByDisplayValue("hello")).toBe(firstEntry);
     });
 
     it("updates the second demo entry text from the typed value", async () => {
         await renderDemo(dialogDemo);
-        const secondEntry = (await screen.findByName("demo-entry-2")) as Gtk.Entry;
+        const secondEntry = await screen.findByName("demo-entry-2", { as: Gtk.Entry });
         await userEvent.type(secondEntry, "world");
         expect(secondEntry).toHaveDisplayValue("world");
     });
@@ -126,7 +127,7 @@ describe("dialogDemo interactive dialog entries", () => {
         await renderDemo(dialogDemo);
         await userEvent.type((await screen.findByName("demo-entry-1")), "orig");
         const interactive = await openInteractiveDialog();
-        const dialogEntry1 = (await screen.findByName("dialog-entry-1")) as Gtk.Entry;
+        const dialogEntry1 = await screen.findByName("dialog-entry-1", { as: Gtk.Entry });
         expect(dialogEntry1).toHaveDisplayValue("orig");
         await userEvent.type(dialogEntry1, "-edited");
         expect(dialogEntry1).toHaveDisplayValue("orig-edited");
@@ -136,14 +137,14 @@ describe("dialogDemo interactive dialog entries", () => {
             expect(screen.queryByName("interactive-dialog")).toBeNull();
         });
 
-        expect((await screen.findByName("demo-entry-1")) as Gtk.Entry).toHaveDisplayValue("orig");
+        expect(await screen.findByName("demo-entry-1", { as: Gtk.Entry })).toHaveDisplayValue("orig");
     });
 
     it("commits the dialog entries to the demo entries when responding with 'ok'", async () => {
         await renderDemo(dialogDemo);
         const interactive = await openInteractiveDialog();
-        const dialogEntry1 = (await screen.findByName("dialog-entry-1")) as Gtk.Entry;
-        const dialogEntry2 = (await screen.findByName("dialog-entry-2")) as Gtk.Entry;
+        const dialogEntry1 = await screen.findByName("dialog-entry-1", { as: Gtk.Entry });
+        const dialogEntry2 = await screen.findByName("dialog-entry-2", { as: Gtk.Entry });
         await userEvent.type(dialogEntry1, "alpha");
         await userEvent.type(dialogEntry2, "beta");
         await userEvent.click(within(interactive).getByRole(Gtk.AccessibleRole.BUTTON, { name: /OK/ }));
@@ -152,8 +153,8 @@ describe("dialogDemo interactive dialog entries", () => {
             expect(screen.queryByName("interactive-dialog")).toBeNull();
         });
 
-        const demoEntry1 = (await screen.findByName("demo-entry-1")) as Gtk.Entry;
-        const demoEntry2 = (await screen.findByName("demo-entry-2")) as Gtk.Entry;
+        const demoEntry1 = await screen.findByName("demo-entry-1", { as: Gtk.Entry });
+        const demoEntry2 = await screen.findByName("demo-entry-2", { as: Gtk.Entry });
         expect(screen.getByDisplayValue("alpha")).toBe(demoEntry1);
         expect(screen.getByDisplayValue("beta")).toBe(demoEntry2);
     });

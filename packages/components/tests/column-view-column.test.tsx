@@ -231,14 +231,14 @@ describe("render - ColumnViewColumn (1)", () => {
         it("adds column to ColumnView", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             await renderColumns(columnViewRef, [defaultColumn("name", "Name")]);
-            expect(columnViewRef.current?.getColumns().getNItems()).toBe(1);
+            expect(columnViewRef.current?.getColumns()).toHaveObjectProperty("nItems", 1);
         });
 
         it("sets column title", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             await renderColumns(columnViewRef, [defaultColumn("col", "My Column")]);
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column.getTitle()).toBe("My Column");
+            expect(column).toHaveObjectProperty("title", "My Column");
         });
 
         it("sets column expand property", async () => {
@@ -249,7 +249,7 @@ describe("render - ColumnViewColumn (1)", () => {
             ]);
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column.getExpand()).toBe(true);
+            expect(column).toHaveObjectProperty("expand", true);
         });
     });
 });
@@ -264,7 +264,7 @@ describe("render - ColumnViewColumn (2)", () => {
             ]);
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column.getResizable()).toBe(true);
+            expect(column).toHaveObjectProperty("resizable", true);
         });
 
         it("adds multiple columns", async () => {
@@ -276,7 +276,7 @@ describe("render - ColumnViewColumn (2)", () => {
                 { id: "col3", title: "Column 3", expand: true, renderCell: () => <GtkLabel>Cell 3</GtkLabel> },
             ]);
 
-            expect(columnViewRef.current?.getColumns().getNItems()).toBe(3);
+            expect(columnViewRef.current?.getColumns()).toHaveObjectProperty("nItems", 3);
         });
     });
 });
@@ -298,9 +298,9 @@ describe("render - ColumnViewColumn (3)", () => {
             }
 
             await render(<App title="Initial" />);
-            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getTitle()).toBe("Initial");
+            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0)).toHaveObjectProperty("title", "Initial");
             await render(<App title="Updated" />);
-            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getTitle()).toBe("Updated");
+            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0)).toHaveObjectProperty("title", "Updated");
         });
     });
 });
@@ -327,9 +327,9 @@ describe("render - ColumnViewColumn (4)", () => {
             }
 
             await render(<App columns={["A", "B", "C"]} />);
-            expect(columnViewRef.current?.getColumns().getNItems()).toBe(3);
+            expect(columnViewRef.current?.getColumns()).toHaveObjectProperty("nItems", 3);
             await render(<App columns={["A", "C"]} />);
-            expect(columnViewRef.current?.getColumns().getNItems()).toBe(2);
+            expect(columnViewRef.current?.getColumns()).toHaveObjectProperty("nItems", 2);
         });
     });
 });
@@ -503,9 +503,9 @@ describe("render - ColumnViewColumn (9)", () => {
             }
 
             await render(<App showColumn={true} />);
-            expect(columnViewRef.current?.getColumns().getNItems()).toBe(2);
+            expect(columnViewRef.current?.getColumns()).toHaveObjectProperty("nItems", 2);
             await render(<App showColumn={false} />);
-            expect(columnViewRef.current?.getColumns().getNItems()).toBe(1);
+            expect(columnViewRef.current?.getColumns()).toHaveObjectProperty("nItems", 1);
         });
     });
 });

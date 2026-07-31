@@ -43,7 +43,7 @@ describe("cssShadowsDemo rendering", () => {
     it("renders a paned container holding the text view editor with the default CSS", async () => {
         await renderDemo(cssShadowsDemo);
         await screen.findByName("paned");
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         expect(textView).toHaveDisplayValue(/window\.demo\.background/);
         expect(textView).toHaveDisplayValue(/text-shadow/);
     });
@@ -53,9 +53,9 @@ describe("cssShadowsDemo behavior", () => {
     it("declares both demo and background css classes on the host window", async () => {
         expect(cssShadowsDemo.windowCssClasses).toEqual(["demo", "background"]);
         await renderDemo(cssShadowsDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        expect(window.hasCssClass("demo")).toBe(true);
-        expect(window.hasCssClass("background")).toBe(true);
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+        expect(window).toHaveClass("demo");
+        expect(window).toHaveClass("background");
     });
 
     it("loads the default CSS into a CssProvider when the editor mounts", async () => {
@@ -79,7 +79,7 @@ describe("cssShadowsDemo behavior", () => {
 
         try {
             await renderDemo(cssShadowsDemo);
-            const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+            const textView = await screen.findByName("text-view", { as: Gtk.TextView });
             loadSpy.mockClear();
             await userEvent.clear(textView);
             await userEvent.type(textView, "button { box-shadow: 0 0 10px red; }");
@@ -100,7 +100,7 @@ describe("cssShadowsDemo behavior", () => {
 describe("cssShadowsDemo error tagging", () => {
     it("underlines invalid CSS with an error tag in the buffer", async () => {
         await renderDemo(cssShadowsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         await userEvent.clear(textView);
 
         await waitFor(() => {
@@ -116,7 +116,7 @@ describe("cssShadowsDemo error tagging", () => {
 
     it("clears previously applied error tags once the buffer is edited to valid CSS", async () => {
         await renderDemo(cssShadowsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
         await userEvent.clear(textView);
         await userEvent.type(textView, "button { nonsense-prop: 5px; }");
 

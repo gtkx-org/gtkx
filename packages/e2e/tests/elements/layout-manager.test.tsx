@@ -31,8 +31,8 @@ describe("render - layoutManager prop wiring", () => {
 
         const layout = boxRef.current?.getLayoutManager();
         expect(layout).toBeInstanceOf(Gtk.BoxLayout);
-        expect((layout as Gtk.BoxLayout).getOrientation()).toBe(Gtk.Orientation.VERTICAL);
-        expect((layout as Gtk.BoxLayout).getSpacing()).toBe(12);
+        expect(layout).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
+        expect(layout).toHaveObjectProperty("spacing", 12);
     });
 
     it("attaches a GtkGridLayout to the host widget", async () => {
@@ -40,8 +40,8 @@ describe("render - layoutManager prop wiring", () => {
         await render(<GtkBox ref={boxRef} layoutManager={<GtkGridLayout columnSpacing={6} rowSpacing={4} />} />);
         const layout = boxRef.current?.getLayoutManager();
         expect(layout).toBeInstanceOf(Gtk.GridLayout);
-        expect((layout as Gtk.GridLayout).getColumnSpacing()).toBe(6);
-        expect((layout as Gtk.GridLayout).getRowSpacing()).toBe(4);
+        expect(layout).toHaveObjectProperty("columnSpacing", 6);
+        expect(layout).toHaveObjectProperty("rowSpacing", 4);
     });
 
     it("attaches a GtkFixedLayout to the host widget", async () => {
@@ -61,9 +61,9 @@ describe("render - layoutManager prop lifecycle", () => {
             throw new Error("expected the box ref to be assigned");
         }
 
-        expect((box.getLayoutManager() as Gtk.BoxLayout).getSpacing()).toBe(4);
+        expect(box.getLayoutManager()).toHaveObjectProperty("spacing", 4);
         await rerender(<SpacedBox boxRef={boxRef} spacing={20} />);
-        expect((box.getLayoutManager() as Gtk.BoxLayout).getSpacing()).toBe(20);
+        expect(box.getLayoutManager()).toHaveObjectProperty("spacing", 20);
     });
 
     it("clears the layout manager slot when the wrapper element is unmounted", async () => {

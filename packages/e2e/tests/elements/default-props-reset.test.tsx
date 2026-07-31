@@ -71,14 +71,14 @@ describe("default-props reset on removal", () => {
     it("leaves a property alone when its setter rejects the null default", async () => {
         const ref = createRef<Gtk.Button>();
         const { rerender } = await render(<GtkButton ref={ref} iconName="list-add-symbolic" />);
-        expect(ref.current?.iconName).toBe("list-add-symbolic");
+        expect(ref.current).toHaveObjectProperty("iconName", "list-add-symbolic");
 
         const criticals = await captureCriticals("Gtk", async () => {
             await rerender(<GtkButton ref={ref} label="Cancel" />);
         });
 
         expect(criticals).toEqual([]);
-        expect(ref.current?.label).toBe("Cancel");
+        expect(ref.current).toHaveObjectProperty("label", "Cancel");
         expect(ref.current?.iconName).toBeNull();
     });
 

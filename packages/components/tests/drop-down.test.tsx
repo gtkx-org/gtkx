@@ -52,7 +52,7 @@ const expectRemovalReported = async (options: {
     const { rerender } = await renderChildren(abcItems(), draw);
 
     await waitFor(() => {
-        expect(dropDownRef.current?.getSelected()).toBe(options.initialPosition);
+        expect(dropDownRef.current).toHaveObjectProperty("selected", options.initialPosition);
     });
 
     expect(onSelectionChanged).not.toHaveBeenCalled();
@@ -90,7 +90,7 @@ describe("render - DropDown (1)", () => {
         );
 
         await waitFor(() => {
-            expect(dropDownRef.current?.getSelected()).toBe(1);
+            expect(dropDownRef.current).toHaveObjectProperty("selected", 1);
         });
     });
 });
@@ -206,13 +206,13 @@ describe("render - DropDown (5)", () => {
         const { rerender } = await render(draw("a"));
 
         await waitFor(() => {
-            expect(dropDownRef.current?.getSelected()).toBe(0);
+            expect(dropDownRef.current).toHaveObjectProperty("selected", 0);
         });
 
         await rerender(draw("c"));
 
         await waitFor(() => {
-            expect(dropDownRef.current?.getSelected()).toBe(2);
+            expect(dropDownRef.current).toHaveObjectProperty("selected", 2);
         });
 
         expect(onSelectionChanged).not.toHaveBeenCalled();

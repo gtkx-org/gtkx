@@ -53,12 +53,12 @@ describe("render - StackPage (1)", () => {
 
     it("sets page title", async () => {
         const stack = await renderSinglePage({ name: "titled", title: "Page Title" });
-        expect(pageNamed(stack, "titled")?.getTitle()).toBe("Page Title");
+        expect(pageNamed(stack, "titled")).toHaveObjectProperty("title", "Page Title");
     });
 
     it("sets page icon", async () => {
         const stack = await renderSinglePage({ name: "iconic", iconName: "dialog-information" });
-        expect(pageNamed(stack, "iconic")?.getIconName()).toBe("dialog-information");
+        expect(pageNamed(stack, "iconic")).toHaveObjectProperty("iconName", "dialog-information");
     });
 
     it("removes page from Stack", async () => {
@@ -93,7 +93,7 @@ describe("render - StackPage (2)", () => {
             { key: "b", title: "B1" },
         ]);
 
-        expect(pageNamed(stackRef.current, "a")?.getTitle()).toBe("A2");
+        expect(pageNamed(stackRef.current, "a")).toHaveObjectProperty("title", "A2");
     });
 
     it("connects a notify handler on the page object", async () => {

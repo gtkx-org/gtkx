@@ -60,11 +60,11 @@ describe("render - toast (useToast / useToastOverlay)", () => {
             useMarkup: true,
         });
 
-        expect(toast.title).toBe("Moved to Trash");
-        expect(toast.buttonLabel).toBe("Undo");
-        expect(toast.timeout).toBe(3);
-        expect(toast.priority).toBe(Adw.ToastPriority.HIGH);
-        expect(toast.useMarkup).toBe(true);
+        expect(toast).toHaveObjectProperty("title", "Moved to Trash");
+        expect(toast).toHaveObjectProperty("buttonLabel", "Undo");
+        expect(toast).toHaveObjectProperty("timeout", 3);
+        expect(toast).toHaveObjectProperty("priority", Adw.ToastPriority.HIGH);
+        expect(toast).toHaveObjectProperty("useMarkup", true);
         expect(await screen.findByText("Moved to Trash")).toBeDefined();
     });
 

@@ -56,7 +56,7 @@ describe("ListView sections", () => {
         const ref = createRef<Gtk.ListView>();
         await renderSectioned(ref);
         await screen.findAllByText("Alpha");
-        expect(ref.current?.getModel()?.getNItems()).toBe(3);
+        expect(ref.current?.getModel()).toHaveObjectProperty("nItems", 3);
     });
 
     it("renders the header label as the header's direct content with no wrapper container", async () => {

@@ -157,7 +157,7 @@ describe("render - ListView (3)", () => {
                 singleClickActivate: true,
             });
 
-            expect(ref.current.getSingleClickActivate()).toBe(true);
+            expect(ref.current).toHaveObjectProperty("singleClickActivate", true);
         });
     });
 });

@@ -26,10 +26,10 @@ describe("sizegroupDemo metadata", () => {
 describe("sizegroupDemo frames and labels", () => {
     it("renders the Color Options and Line Options frames with their labels", async () => {
         await renderDemo(sizegroupDemo);
-        const colorFrame = (await screen.findByName("color-options-frame")) as Gtk.Frame;
-        const lineFrame = (await screen.findByName("line-options-frame")) as Gtk.Frame;
-        expect(colorFrame.getLabel()).toBe("Color Options");
-        expect(lineFrame.getLabel()).toBe("Line Options");
+        const colorFrame = await screen.findByName("color-options-frame", { as: Gtk.Frame });
+        const lineFrame = await screen.findByName("line-options-frame", { as: Gtk.Frame });
+        expect(colorFrame).toHaveObjectProperty("label", "Color Options");
+        expect(lineFrame).toHaveObjectProperty("label", "Line Options");
     });
 
     it("renders four GtkDropDowns - one per option row", async () => {
@@ -64,8 +64,8 @@ describe("sizegroupDemo check button", () => {
 
     it("labels the check button '_Enable grouping'", async () => {
         await renderDemo(sizegroupDemo);
-        const check = (await screen.findByName("enable-grouping-check")) as Gtk.CheckButton;
-        expect(check.getLabel()).toBe("_Enable grouping");
+        const check = await screen.findByName("enable-grouping-check", { as: Gtk.CheckButton });
+        expect(check).toHaveObjectProperty("label", "_Enable grouping");
     });
 
     it("toggling the check button off switches the size group to NONE, unequalising widths", async () => {
@@ -97,17 +97,17 @@ describe("sizegroupDemo dropdowns", () => {
         expect(dropdowns).toHaveLength(4);
 
         for (const dropdown of dropdowns) {
-            expect((dropdown as Gtk.DropDown).getSelected()).toBe(0);
+            expect(dropdown).toHaveObjectProperty("selected", 0);
         }
     });
 
     it.each(MNEMONIC_LABELS)("changing the %s dropdown selection persists in the widget", async (label) => {
         await renderDemo(sizegroupDemo);
-        const dropdown = (await screen.findByLabelText(label)) as Gtk.DropDown;
-        expect(dropdown.getSelected()).toBe(0);
+        const dropdown = await screen.findByLabelText(label, { as: Gtk.DropDown });
+        expect(dropdown).toHaveObjectProperty("selected", 0);
         await userEvent.selectOptions(dropdown, 2);
-        expect(dropdown.getSelected()).toBe(2);
+        expect(dropdown).toHaveObjectProperty("selected", 2);
         await userEvent.selectOptions(dropdown, 1);
-        expect(dropdown.getSelected()).toBe(1);
+        expect(dropdown).toHaveObjectProperty("selected", 1);
     });
 });

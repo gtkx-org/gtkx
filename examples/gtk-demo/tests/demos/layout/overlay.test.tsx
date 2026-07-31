@@ -32,20 +32,20 @@ describe("overlayDemo grid and labels", () => {
 
     it("renders the decorative 'Numbers' label as non-interactive markup inside a click-through box", async () => {
         await renderDemo(overlayDemo);
-        const numbersLabel = (await screen.findByName("numbers-label")) as Gtk.Label;
-        expect(numbersLabel.getUseMarkup()).toBe(true);
+        const numbersLabel = await screen.findByName("numbers-label", { as: Gtk.Label });
+        expect(numbersLabel).toHaveObjectProperty("useMarkup", true);
         expect(numbersLabel).toHaveTextContent("Numbers");
-        expect(numbersLabel.getCanTarget()).toBe(false);
+        expect(numbersLabel).toHaveObjectProperty("canTarget", false);
         const box = numbersLabel.getParent();
         expect(box).toBeInstanceOf(Gtk.Box);
-        expect(box?.getCanTarget()).toBe(false);
+        expect(box).toHaveObjectProperty("canTarget", false);
     });
 });
 
 describe("overlayDemo entry behavior", () => {
     it("renders the entry with the placeholder text 'Your Lucky Number' and empty initial value", async () => {
         await renderDemo(overlayDemo);
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
         expect(entry).toHavePlaceholderText("Your Lucky Number");
         expect(entry).toHaveDisplayValue("");
     });
@@ -53,7 +53,7 @@ describe("overlayDemo entry behavior", () => {
     it("updates the entry to the clicked number when a grid button is activated", async () => {
         await renderDemo(overlayDemo);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "13" });
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
         await userEvent.click(button);
 
         await waitFor(() => {
@@ -63,7 +63,7 @@ describe("overlayDemo entry behavior", () => {
 
     it("propagates user-typed text into the entry", async () => {
         await renderDemo(overlayDemo);
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
         await userEvent.type(entry, "typed");
         expect(entry).toHaveDisplayValue("typed");
     });

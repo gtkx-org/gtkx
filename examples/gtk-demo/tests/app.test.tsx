@@ -32,8 +32,8 @@ describe("App", () => {
 
     it("starts with the Run button disabled because the intro demo has no component", async () => {
         await renderDemo();
-        const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
-        expect(run.getSensitive()).toBe(false);
+        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
+        expect(run).toBeDisabled();
     });
 
     it("renders a search toggle in the header bar", async () => {
@@ -50,7 +50,7 @@ describe("App", () => {
 
     it("renders a menu button in the header bar", async () => {
         await renderDemo();
-        const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
+        const menuButton = await screen.findByName("menu-button", { as: Gtk.MenuButton });
         expect(menuButton).toBeInstanceOf(Gtk.MenuButton);
     });
 

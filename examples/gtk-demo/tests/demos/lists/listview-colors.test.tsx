@@ -41,7 +41,7 @@ const colorAt = (model: Gtk.MultiSelection, index: number): ColorLike => {
     return Reflect.get(obj, "colorItem") as ColorLike;
 };
 
-const findGrid = async (): Promise<Gtk.GridView> => (await screen.findByName("color-grid")) as Gtk.GridView;
+const findGrid = (): Promise<Gtk.GridView> => screen.findByName("color-grid", { as: Gtk.GridView });
 const gridModel = (grid: Gtk.GridView): Gtk.MultiSelection => grid.getModel() as Gtk.MultiSelection;
 const findGridModel = async (): Promise<Gtk.MultiSelection> => gridModel(await findGrid());
 
@@ -72,7 +72,7 @@ describe("listviewColorsDemo metadata", () => {
 describe("listviewColorsDemo header bar", () => {
     it("hosts the refill button and the three drop-downs inside the header bar", async () => {
         await renderDemo(listviewColorsDemo);
-        const headerBar = (await screen.findByName("header-bar")) as Gtk.HeaderBar;
+        const headerBar = await screen.findByName("header-bar", { as: Gtk.HeaderBar });
         const refill = await within(headerBar).findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Refill" });
         expect(refill).toBeInstanceOf(Gtk.Button);
         expect(await within(headerBar).findByName("limit-dropdown")).toBeInstanceOf(Gtk.DropDown);
@@ -82,17 +82,17 @@ describe("listviewColorsDemo header bar", () => {
 
     it("maps each drop-down's initial selection to demo state", async () => {
         await renderDemo(listviewColorsDemo);
-        const limit = (await screen.findByName("limit-dropdown")) as Gtk.DropDown;
-        const sort = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
-        const display = (await screen.findByName("display-dropdown")) as Gtk.DropDown;
-        expect(limit.getSelected()).toBe(3);
-        expect(sort.getSelected()).toBe(0);
-        expect(display.getSelected()).toBe(0);
+        const limit = await screen.findByName("limit-dropdown", { as: Gtk.DropDown });
+        const sort = await screen.findByName("sort-dropdown", { as: Gtk.DropDown });
+        const display = await screen.findByName("display-dropdown", { as: Gtk.DropDown });
+        expect(limit).toHaveObjectProperty("selected", 3);
+        expect(sort).toHaveObjectProperty("selected", 0);
+        expect(display).toHaveObjectProperty("selected", 0);
     });
 
     it("renders a selection-info toggle button initially unpressed", async () => {
         await renderDemo(listviewColorsDemo);
-        const selectionToggle = (await screen.findByName("selection-toggle")) as Gtk.ToggleButton;
+        const selectionToggle = await screen.findByName("selection-toggle", { as: Gtk.ToggleButton });
         expect(selectionToggle).not.toBePressed();
     });
 });
@@ -101,18 +101,18 @@ describe("listviewColorsDemo grid view", () => {
     it("populates the grid model with exactly the default color limit", async () => {
         await renderDemo(listviewColorsDemo);
         const grid = await findGrid();
-        expect(gridModel(grid).getNItems()).toBe(4096);
+        expect(gridModel(grid)).toHaveObjectProperty("nItems", 4096);
     });
 
     it("supports multiple selection reflected in the Size label", async () => {
         await renderDemo(listviewColorsDemo);
         const grid = await findGrid();
-        expect(grid.getEnableRubberband()).toBe(true);
+        expect(grid).toHaveObjectProperty("enableRubberband", true);
         const model = gridModel(grid);
         model.selectItem(0, true);
         model.selectItem(2, false);
         expect(Number(model.getSelection().getSize())).toBe(2);
-        const sizeLabel = (await screen.findByName("selection-size")) as Gtk.Label;
+        const sizeLabel = await screen.findByName("selection-size", { as: Gtk.Label });
 
         await waitFor(() => {
             expect(sizeLabel).toHaveTextContent("2");
@@ -121,7 +121,7 @@ describe("listviewColorsDemo grid view", () => {
 
     it("wraps the grid view in a scrolled window inside the overlay", async () => {
         await renderDemo(listviewColorsDemo);
-        const overlay = (await screen.findByName("grid-overlay")) as Gtk.Overlay;
+        const overlay = await screen.findByName("grid-overlay", { as: Gtk.Overlay });
         const sw = await within(overlay).findByName("grid-scrolled");
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
         expect(await within(sw).findByName("color-grid")).toBeInstanceOf(Gtk.GridView);
@@ -131,18 +131,18 @@ describe("listviewColorsDemo grid view", () => {
 describe("listviewColorsDemo selection info revealer", () => {
     it("starts collapsed (revealer not revealing children)", async () => {
         await renderDemo(listviewColorsDemo);
-        const revealer = (await screen.findByName("selection-revealer")) as Gtk.Revealer;
-        expect(revealer.getRevealChild()).toBe(false);
+        const revealer = await screen.findByName("selection-revealer", { as: Gtk.Revealer });
+        expect(revealer).toHaveObjectProperty("revealChild", false);
     });
 
     it("expands and shows the Selection panel when the toggle is activated", async () => {
         await renderDemo(listviewColorsDemo);
-        const toggle = (await screen.findByName("selection-toggle")) as Gtk.ToggleButton;
+        const toggle = await screen.findByName("selection-toggle", { as: Gtk.ToggleButton });
         await userEvent.click(toggle);
-        const revealer = (await screen.findByName("selection-revealer")) as Gtk.Revealer;
+        const revealer = await screen.findByName("selection-revealer", { as: Gtk.Revealer });
 
         await waitFor(() => {
-            expect(revealer.getRevealChild()).toBe(true);
+            expect(revealer).toHaveObjectProperty("revealChild", true);
         });
 
         expect(toggle).toBePressed();
@@ -174,7 +174,7 @@ describe("listviewColorsDemo header actions", () => {
     it("reorders the grid model when the sort dropdown selects Name", async () => {
         await renderDemo(listviewColorsDemo);
         const model = await findGridModel();
-        const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
+        const sortDropdown = await screen.findByName("sort-dropdown", { as: Gtk.DropDown });
         await userEvent.selectOptions(sortDropdown, 1);
 
         await waitFor(() => {
@@ -186,11 +186,11 @@ describe("listviewColorsDemo header actions", () => {
     it("refills the store to the new count and updates the count label when the limit drops to 8", async () => {
         await renderDemo(listviewColorsDemo);
         const model = await findGridModel();
-        const limitDropdown = (await screen.findByName("limit-dropdown")) as Gtk.DropDown;
+        const limitDropdown = await screen.findByName("limit-dropdown", { as: Gtk.DropDown });
         await userEvent.selectOptions(limitDropdown, 0);
 
         await waitFor(() => {
-            expect(model.getNItems()).toBe(8);
+            expect(model).toHaveObjectProperty("nItems", 8);
         });
 
         await screen.findByText("8 /");
@@ -201,9 +201,9 @@ describe("listviewColorsDemo display modes", () => {
     it("re-columns the grid when the display dropdown selects Everything", async () => {
         await renderDemo(listviewColorsDemo);
         const grid = await findGrid();
-        const displayDropdown = (await screen.findByName("display-dropdown")) as Gtk.DropDown;
-        expect(grid.getMinColumns()).toBe(8);
-        expect(grid.getMaxColumns()).toBe(24);
+        const displayDropdown = await screen.findByName("display-dropdown", { as: Gtk.DropDown });
+        expect(grid).toHaveObjectProperty("minColumns", 8);
+        expect(grid).toHaveObjectProperty("maxColumns", 24);
 
         await act(async () => {
             await userEvent.selectOptions(displayDropdown, 1);
@@ -211,8 +211,8 @@ describe("listviewColorsDemo display modes", () => {
         });
 
         await waitFor(() => {
-            expect(grid.getMinColumns()).toBe(4);
-            expect(grid.getMaxColumns()).toBe(12);
+            expect(grid).toHaveObjectProperty("minColumns", 4);
+            expect(grid).toHaveObjectProperty("maxColumns", 12);
         });
     });
 });
@@ -221,7 +221,7 @@ describe("listviewColorsDemo sort modes", () => {
     it.each(sortModeCases)("orders the model per the $label compare function", async ({ index, field }) => {
         await renderDemo(listviewColorsDemo);
         const model = await findGridModel();
-        const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
+        const sortDropdown = await screen.findByName("sort-dropdown", { as: Gtk.DropDown });
         await userEvent.selectOptions(sortDropdown, index);
 
         await waitFor(() => {
@@ -233,7 +233,7 @@ describe("listviewColorsDemo sort modes", () => {
     it("restores the generated order when switching back to unsorted", async () => {
         await renderDemo(listviewColorsDemo);
         const model = await findGridModel();
-        const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
+        const sortDropdown = await screen.findByName("sort-dropdown", { as: Gtk.DropDown });
         const original = leadingNames(model);
         await userEvent.selectOptions(sortDropdown, 1);
 

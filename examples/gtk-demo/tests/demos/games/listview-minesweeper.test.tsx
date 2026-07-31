@@ -71,8 +71,8 @@ describe("listviewMinesweeperDemo rendering", () => {
     it("renders the New Game button and a fresh 8x8 board of unrevealed cells", async () => {
         await renderDemo(listviewMinesweeperDemo);
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game" });
-        const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
-        expect(gridView.getModel()?.getNItems()).toBe(64);
+        const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
+        expect(gridView.getModel()).toHaveObjectProperty("nItems", 64);
         const texts = cellTexts(gridView);
         expect(texts).toHaveLength(64);
         expect(texts.every((text) => text === "?")).toBe(true);
@@ -88,7 +88,7 @@ describe("listviewMinesweeperDemo rendering", () => {
 describe("listviewMinesweeperDemo gameplay", () => {
     it("reveals the focused cell on a single-press activation (keyboard Enter)", async () => {
         await renderDemo(listviewMinesweeperDemo);
-        const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
+        const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
         gridView.grabFocus();
         await userEvent.keyboard(gridView, "{Enter}");
 
@@ -101,14 +101,14 @@ describe("listviewMinesweeperDemo gameplay", () => {
 
     it("restores the revealed cell to '?' after pressing New Game", async () => {
         await renderDemo(listviewMinesweeperDemo);
-        const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
+        const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
         await fireEvent(gridView, "activate", 0);
 
         await waitFor(() => {
             expect(cellTexts(gridView)[0]).not.toBe("?");
         });
 
-        const newGameButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game" })) as Gtk.Button;
+        const newGameButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game", as: Gtk.Button });
         await userEvent.click(newGameButton);
 
         await waitFor(() => {
@@ -123,7 +123,7 @@ describe("listviewMinesweeperDemo outcomes", () => {
     it("loses when a mine is activated and locks the board against further reveals", async () => {
         mockMinesAt([0, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
         await renderDemo(listviewMinesweeperDemo);
-        const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
+        const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
         await fireEvent(gridView, "activate", 0);
 
         await waitFor(() => {
@@ -140,7 +140,7 @@ describe("listviewMinesweeperDemo outcomes", () => {
     it("wins when every safe cell is revealed and swaps in the trophy title widget", async () => {
         mockMinesAt([54, 55, 56, 57, 58, 59, 60, 61, 62, 63]);
         await renderDemo(listviewMinesweeperDemo);
-        const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
+        const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
         const header = await screen.findByName("minesweeper-header");
 
         for (let position = 0; position < 54; position++) {

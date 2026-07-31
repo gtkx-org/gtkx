@@ -15,12 +15,12 @@ const capturing =
             }
         };
 
-const isWidgetVisible = (held: Captured): boolean => {
+const capturedWidget = (held: Captured): Gtk.Widget => {
     if (!held.widget) {
         throw new Error("widget was never captured");
     }
 
-    return held.widget.getVisible();
+    return held.widget;
 };
 
 const createDeferred = (): DeferredPromise => {
@@ -47,21 +47,21 @@ describe("visibility", () => {
     it("hides and restores a mounted subtree with Activity", async () => {
         const held: Captured = { widget: null };
         const { rerender } = await render(activityTree("visible", held));
-        expect(isWidgetVisible(held)).toBe(true);
+        expect(capturedWidget(held)).toBeVisible();
         await rerender(activityTree("hidden", held));
-        expect(isWidgetVisible(held)).toBe(false);
+        expect(capturedWidget(held)).not.toBeVisible();
         await rerender(activityTree("visible", held));
-        expect(isWidgetVisible(held)).toBe(true);
+        expect(capturedWidget(held)).toBeVisible();
     });
 
     it("keeps an explicitly invisible widget hidden across an unhide cycle", async () => {
         const held: Captured = { widget: null };
         const { rerender } = await render(hiddenPanelTree("visible", held));
-        expect(isWidgetVisible(held)).toBe(false);
+        expect(capturedWidget(held)).not.toBeVisible();
         await rerender(hiddenPanelTree("hidden", held));
-        expect(isWidgetVisible(held)).toBe(false);
+        expect(capturedWidget(held)).not.toBeVisible();
         await rerender(hiddenPanelTree("visible", held));
-        expect(isWidgetVisible(held)).toBe(false);
+        expect(capturedWidget(held)).not.toBeVisible();
     });
 
     it("hides and restores a subtree that suspends after mount", async () => {
@@ -79,15 +79,15 @@ describe("visibility", () => {
         );
 
         const { rerender } = await render(tree(false));
-        expect(isWidgetVisible(held)).toBe(true);
+        expect(capturedWidget(held)).toBeVisible();
         await rerender(tree(true));
-        expect(isWidgetVisible(held)).toBe(false);
+        expect(capturedWidget(held)).not.toBeVisible();
 
         await act(async () => {
             deferred.resolve();
             await deferred.promise;
         });
 
-        expect(isWidgetVisible(held)).toBe(true);
+        expect(capturedWidget(held)).toBeVisible();
     });
 });

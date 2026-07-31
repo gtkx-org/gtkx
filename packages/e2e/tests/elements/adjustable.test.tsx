@@ -90,9 +90,9 @@ describe("render - adjustment element (2)", () => {
         await render(<ScaleWithAdjustment config={{}} scaleRef={ref} />);
         expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 0, min: 0, max: 0 } })).toBeTruthy();
         const adjustment = ref.current?.getAdjustment();
-        expect(adjustment?.getStepIncrement()).toBe(0);
-        expect(adjustment?.getPageIncrement()).toBe(0);
-        expect(adjustment?.getPageSize()).toBe(0);
+        expect(adjustment).toHaveObjectProperty("stepIncrement", 0);
+        expect(adjustment).toHaveObjectProperty("pageIncrement", 0);
+        expect(adjustment).toHaveObjectProperty("pageSize", 0);
     });
 });
 

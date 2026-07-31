@@ -21,7 +21,7 @@ describe("shortcutTriggersDemo metadata", () => {
 describe("shortcutTriggersDemo rendering", () => {
     it("renders the two instruction labels in the listbox", async () => {
         await renderDemo(shortcutTriggersDemo);
-        const listBox = (await screen.findByName("list-box")) as Gtk.ListBox;
+        const listBox = await screen.findByName("list-box", { as: Gtk.ListBox });
         expect(within(listBox).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(2);
         expect(await screen.findByName("label-ctrl-g")).toHaveTextContent("Press Ctrl-G");
         expect(await screen.findByName("label-x")).toHaveTextContent("Press X");
@@ -39,11 +39,11 @@ describe("shortcutTriggersDemo rendering", () => {
 
     it("applies the 6px margins on the listbox container", async () => {
         await renderDemo(shortcutTriggersDemo);
-        const listBox = (await screen.findByName("list-box")) as Gtk.ListBox;
-        expect(listBox.getMarginTop()).toBe(6);
-        expect(listBox.getMarginBottom()).toBe(6);
-        expect(listBox.getMarginStart()).toBe(6);
-        expect(listBox.getMarginEnd()).toBe(6);
+        const listBox = await screen.findByName("list-box", { as: Gtk.ListBox });
+        expect(listBox).toHaveObjectProperty("marginTop", 6);
+        expect(listBox).toHaveObjectProperty("marginBottom", 6);
+        expect(listBox).toHaveObjectProperty("marginStart", 6);
+        expect(listBox).toHaveObjectProperty("marginEnd", 6);
     });
 });
 
@@ -53,7 +53,7 @@ describe("shortcutTriggersDemo activation handlers", () => {
 
         try {
             await renderDemo(shortcutTriggersDemo);
-            const label = (await screen.findByName("label-ctrl-g")) as Gtk.Label;
+            const label = await screen.findByName("label-ctrl-g", { as: Gtk.Label });
             await userEvent.keyboard(label, "{Control>}g{/Control}");
             expect(logSpy).toHaveBeenCalledWith("activated Press Ctrl-G");
         } finally {
@@ -66,7 +66,7 @@ describe("shortcutTriggersDemo activation handlers", () => {
 
         try {
             await renderDemo(shortcutTriggersDemo);
-            const label = (await screen.findByName("label-x")) as Gtk.Label;
+            const label = await screen.findByName("label-x", { as: Gtk.Label });
             await userEvent.keyboard(label, "x");
             expect(logSpy).toHaveBeenCalledWith("activated Press X");
         } finally {

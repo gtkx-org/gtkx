@@ -21,7 +21,7 @@ describe("render - ColorDialogButton (1)", () => {
     it("creates ColorDialogButton widget", async () => {
         const dialog = await renderDialogSlot(<GtkColorDialog />);
         expect(dialog).not.toBeNull();
-        expect(dialog?.getWithAlpha()).toBe(true);
+        expect(dialog).toHaveObjectProperty("withAlpha", true);
     });
 
     it("creates ColorDialogButton with initial rgba", async () => {
@@ -59,7 +59,7 @@ describe("render - ColorDialogButton (1)", () => {
 describe("render - ColorDialogButton (2)", () => {
     it("sets dialog title", async () => {
         const dialog = await renderDialogSlot(<GtkColorDialog title="Pick a Color" />);
-        expect(dialog?.getTitle()).toBe("Pick a Color");
+        expect(dialog).toHaveObjectProperty("title", "Pick a Color");
     });
 
     it("updates dialog title when the slot element changes", async () => {
@@ -76,7 +76,7 @@ describe("render - ColorDialogButton (2)", () => {
 
     it("sets dialog withAlpha property", async () => {
         const dialog = await renderDialogSlot(<GtkColorDialog withAlpha={false} />);
-        expect(dialog?.getWithAlpha()).toBe(false);
+        expect(dialog).toHaveObjectProperty("withAlpha", false);
     });
 });
 
@@ -89,8 +89,8 @@ describe("render - ColorDialogButton (3)", () => {
         }
 
         await render(<App withAlpha={true} />);
-        expect(ref.current?.getDialog()?.getWithAlpha()).toBe(true);
+        expect(ref.current?.getDialog()).toHaveObjectProperty("withAlpha", true);
         await render(<App withAlpha={false} />);
-        expect(ref.current?.getDialog()?.getWithAlpha()).toBe(false);
+        expect(ref.current?.getDialog()).toHaveObjectProperty("withAlpha", false);
     });
 });

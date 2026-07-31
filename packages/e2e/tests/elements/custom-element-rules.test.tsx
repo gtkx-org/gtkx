@@ -20,7 +20,7 @@ describe("custom element rules from gtkx.config.ts", () => {
     it("applies a rule declared by the configured module", async () => {
         const labelRef = createRef<Gtk.Label>();
         await render(<GtkLabel ref={labelRef} cursorName="pointer" />);
-        expect(labelRef.current?.getCursor()?.getName()).toBe("pointer");
+        expect(labelRef.current?.getCursor()).toHaveObjectProperty("name", "pointer");
     });
 
     it("consults the app config before a built-in slot behavior", async () => {
@@ -32,14 +32,14 @@ describe("custom element rules from gtkx.config.ts", () => {
             </GtkAspectFrame>,
         );
 
-        expect(frameRef.current?.hasCssClass("app-claimed-children")).toBe(true);
+        expect(frameRef.current).toHaveClass("app-claimed-children");
     });
 
     it("reapplies the rule when the prop changes", async () => {
         const labelRef = createRef<Gtk.Label>();
         const { rerender } = await render(<GtkLabel ref={labelRef} cursorName="pointer" />);
         await rerender(<GtkLabel ref={labelRef} cursorName="text" />);
-        expect(labelRef.current?.getCursor()?.getName()).toBe("text");
+        expect(labelRef.current?.getCursor()).toHaveObjectProperty("name", "text");
     });
 
     it("places children through a declared container prop", async () => {

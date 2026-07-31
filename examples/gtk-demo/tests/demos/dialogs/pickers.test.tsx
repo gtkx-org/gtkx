@@ -73,13 +73,13 @@ describe("pickersDemo file buttons", () => {
         "renders the symbolic-icon Open File, Open in Folder and Print buttons disabled before selecting a file",
         async () => {
             await renderDemo(pickersDemo);
-            const openFileBtn = (await screen.findByName("open-file-button")) as Gtk.Button;
-            const openFolderBtn = (await screen.findByName("open-folder-button")) as Gtk.Button;
-            const printBtn = (await screen.findByName("print-button")) as Gtk.Button;
-            expect(openFileBtn.getSensitive()).toBe(false);
-            expect(openFolderBtn.getSensitive()).toBe(false);
-            expect(printBtn.getSensitive()).toBe(false);
-            expect(printBtn.getTooltipText()).toBe("Print File");
+            const openFileBtn = await screen.findByName("open-file-button", { as: Gtk.Button });
+            const openFolderBtn = await screen.findByName("open-folder-button", { as: Gtk.Button });
+            const printBtn = await screen.findByName("print-button", { as: Gtk.Button });
+            expect(openFileBtn).toBeDisabled();
+            expect(openFolderBtn).toBeDisabled();
+            expect(printBtn).toBeDisabled();
+            expect(printBtn).toHaveObjectProperty("tooltipText", "Print File");
         },
     );
 });
@@ -91,7 +91,7 @@ describe("pickersDemo handlers", () => {
 
         try {
             await renderDemo(pickersDemo);
-            const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+            const selectFile = await screen.findByName("select-file-button", { as: Gtk.Button });
             await userEvent.click(selectFile);
 
             await waitFor(() => {
@@ -112,9 +112,10 @@ describe("pickersDemo handlers", () => {
         try {
             await renderDemo(pickersDemo);
 
-            const uri = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+            const uri = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
                 name: "Open www.gtk.org",
-            })) as Gtk.Button;
+                as: Gtk.Button,
+            });
 
             await userEvent.click(uri);
 
@@ -133,7 +134,7 @@ describe("pickersDemo handlers", () => {
 describe("pickersDemo drop target", () => {
     it("accepts a GFile dropped on the select-file button and updates the displayed filename", async () => {
         await renderDemo(pickersDemo);
-        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        const selectFile = await screen.findByName("select-file-button", { as: Gtk.Button });
         await userEvent.drop(selectFile, makeFileValue("/tmp"));
 
         await waitFor(() => {
@@ -145,7 +146,7 @@ describe("pickersDemo drop target", () => {
 
     it("returns false from the drop handler when a non-file value is dropped on the select-file button", async () => {
         await renderDemo(pickersDemo);
-        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        const selectFile = await screen.findByName("select-file-button", { as: Gtk.Button });
         await userEvent.drop(selectFile, makeStringValue("not a file"));
         await screen.findByText("None");
         expect(screen.queryByText("not a file")).toBeNull();
@@ -153,18 +154,18 @@ describe("pickersDemo drop target", () => {
 
     it("enables the Open File and Open in Folder buttons but keeps Print disabled for a non-PDF file", async () => {
         await renderDemo(pickersDemo);
-        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        const selectFile = await screen.findByName("select-file-button", { as: Gtk.Button });
         await userEvent.drop(selectFile, makeFileValue("/tmp"));
-        const openFileBtn = (await screen.findByName("open-file-button")) as Gtk.Button;
-        const openFolderBtn = (await screen.findByName("open-folder-button")) as Gtk.Button;
-        const printBtn = (await screen.findByName("print-button")) as Gtk.Button;
+        const openFileBtn = await screen.findByName("open-file-button", { as: Gtk.Button });
+        const openFolderBtn = await screen.findByName("open-folder-button", { as: Gtk.Button });
+        const printBtn = await screen.findByName("print-button", { as: Gtk.Button });
 
         await waitFor(() => {
-            expect(openFileBtn.getSensitive()).toBe(true);
+            expect(openFileBtn).toBeEnabled();
         });
 
-        expect(openFolderBtn.getSensitive()).toBe(true);
-        expect(printBtn.getSensitive()).toBe(false);
+        expect(openFolderBtn).toBeEnabled();
+        expect(printBtn).toBeDisabled();
     });
 });
 
@@ -174,12 +175,12 @@ describe("pickersDemo file-dependent handlers", () => {
 
         try {
             await renderDemo(pickersDemo);
-            const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+            const selectFile = await screen.findByName("select-file-button", { as: Gtk.Button });
             await userEvent.drop(selectFile, makeFileValue(PDF_PATH));
-            const openFile = (await screen.findByName("open-file-button")) as Gtk.Button;
+            const openFile = await screen.findByName("open-file-button", { as: Gtk.Button });
 
             await waitFor(() => {
-                expect(openFile.getSensitive()).toBe(true);
+                expect(openFile).toBeEnabled();
             });
 
             await userEvent.click(openFile);
@@ -197,12 +198,12 @@ describe("pickersDemo file-dependent handlers", () => {
 
         try {
             await renderDemo(pickersDemo);
-            const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+            const selectFile = await screen.findByName("select-file-button", { as: Gtk.Button });
             await userEvent.drop(selectFile, makeFileValue(PDF_PATH));
-            const openFolder = (await screen.findByName("open-folder-button")) as Gtk.Button;
+            const openFolder = await screen.findByName("open-folder-button", { as: Gtk.Button });
 
             await waitFor(() => {
-                expect(openFolder.getSensitive()).toBe(true);
+                expect(openFolder).toBeEnabled();
             });
 
             await userEvent.click(openFolder);
@@ -220,12 +221,12 @@ describe("pickersDemo printing", () => {
     it("enables the Print button and runs handlePrintFile after dropping a PDF GFile", async () => {
         const printFileSpy = vi.spyOn(Gtk.PrintDialog.prototype, "printFile").mockResolvedValue(true);
         await renderDemo(pickersDemo);
-        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        const selectFile = await screen.findByName("select-file-button", { as: Gtk.Button });
         await userEvent.drop(selectFile, makeFileValue(PDF_PATH));
-        const printBtn = (await screen.findByName("print-button")) as Gtk.Button;
+        const printBtn = await screen.findByName("print-button", { as: Gtk.Button });
 
         await waitFor(() => {
-            expect(printBtn.getSensitive()).toBe(true);
+            expect(printBtn).toBeEnabled();
         });
 
         try {

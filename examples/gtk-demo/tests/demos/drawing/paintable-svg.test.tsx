@@ -9,7 +9,7 @@ import { findOpenButton, renderDemo } from "../../test-utils.js";
 const renderAndFindPicture = async (): Promise<Gtk.Picture> => {
     await renderDemo(paintableSvgDemo);
 
-    return (await screen.findByName("picture")) as Gtk.Picture;
+    return screen.findByName("picture", { as: Gtk.Picture });
 };
 
 const renderAndFindSvgPicture = async (): Promise<{ picture: Gtk.Picture; svg: Gtk.Svg }> => {
@@ -42,25 +42,25 @@ describe("paintableSvgDemo rendering", () => {
         await renderDemo(paintableSvgDemo);
         const openButton = await findOpenButton();
         expect(openButton).toBeInstanceOf(Gtk.Button);
-        expect(openButton.getUseUnderline()).toBe(true);
+        expect(openButton).toHaveObjectProperty("useUnderline", true);
     });
 
     it("renders a GtkPicture displaying the SVG paintable", async () => {
         const { picture, svg } = await renderAndFindSvgPicture();
-        expect(picture.getPaintable()).toBe(svg);
+        expect(picture).toHaveObjectProperty("paintable", svg);
         expect(svg).toBeInstanceOf(Gtk.Svg);
     });
 
     it("packs the open button into a HeaderBar titlebar", async () => {
         await renderDemo(paintableSvgDemo);
-        const headerBar = (await screen.findByName("paintable-svg-header")) as Gtk.HeaderBar;
-        const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" }) as Gtk.Button;
+        const headerBar = await screen.findByName("paintable-svg-header", { as: Gtk.HeaderBar });
+        const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
         expect(openButton).toBeInstanceOf(Gtk.Button);
     });
 
     it("loads the bundled SVG and attaches it to the picture", async () => {
         const { picture, svg } = await renderAndFindSvgPicture();
-        expect(picture.getPaintable()).toBe(svg);
+        expect(picture).toHaveObjectProperty("paintable", svg);
         expect(svg.getIntrinsicWidth()).toBeGreaterThan(0);
         expect(svg.getIntrinsicHeight()).toBeGreaterThan(0);
     });
@@ -82,7 +82,7 @@ describe("paintableSvgDemo open dialog", () => {
             });
 
             await waitFor(() => {
-                expect(picture.getPaintable()).not.toBe(initial);
+                expect(picture).not.toHaveObjectProperty("paintable", initial);
             });
         } finally {
             openSpy.mockRestore();
@@ -104,7 +104,7 @@ describe("paintableSvgDemo open dialog", () => {
                 expect(errorSpy).toHaveBeenCalledWith("dismissed");
             });
 
-            expect(picture.getPaintable()).toBe(initial);
+            expect(picture).toHaveObjectProperty("paintable", initial);
         } finally {
             openSpy.mockRestore();
             errorSpy.mockRestore();
@@ -119,7 +119,7 @@ describe("paintableSvgDemo gesture", () => {
         await userEvent.pointer(picture, "[MouseLeft]");
 
         await waitFor(() => {
-            expect(svg.getState()).not.toBe(initialState);
+            expect(svg).not.toHaveObjectProperty("state", initialState);
         });
     });
 
@@ -129,7 +129,7 @@ describe("paintableSvgDemo gesture", () => {
         await userEvent.pointer(picture, "[MouseLeft]");
 
         await waitFor(() => {
-            expect(svg.getState()).toBe(0);
+            expect(svg).toHaveObjectProperty("state", 0);
         });
     });
 });

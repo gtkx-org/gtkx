@@ -12,7 +12,7 @@ const tempDirRef = { path: "" };
 
 async function renderDemoAndClickOpen() {
     await renderDemo(listviewWordsDemo);
-    const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
+    const openButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
     await userEvent.click(openButton);
 }
 
@@ -47,8 +47,8 @@ describe("listviewWordsDemo metadata", () => {
 describe("listviewWordsDemo layout", () => {
     it("installs a header bar with an Open button", async () => {
         await renderDemo(listviewWordsDemo);
-        const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
-        expect(openButton.getUseUnderline()).toBe(true);
+        const openButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
+        expect(openButton).toHaveObjectProperty("useUnderline", true);
     });
 
     it("renders a GtkSearchEntry with the configured placeholder", async () => {
@@ -59,13 +59,13 @@ describe("listviewWordsDemo layout", () => {
 
     it("renders a GtkListView with NONE selection", async () => {
         await renderDemo(listviewWordsDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
         expect(lv.getModel()).toBeInstanceOf(Gtk.NoSelection);
     });
 
     it("populates the list view from the loaded word list", async () => {
         await renderDemo(listviewWordsDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
         expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
     });
 
@@ -79,7 +79,7 @@ describe("listviewWordsDemo layout", () => {
 describe("listviewWordsDemo search interactions", () => {
     it("updates the search entry text when text is typed", async () => {
         await renderDemo(listviewWordsDemo);
-        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
         await userEvent.type(entry, "lorem");
         expect(await screen.findByDisplayValue("lorem")).toBe(entry);
     });
@@ -91,21 +91,21 @@ describe("listviewWordsDemo search interactions", () => {
 
         try {
             await renderDemoAndClickOpen();
-            const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+            const lv = await screen.findByName("list-view", { as: Gtk.ListView });
 
             await waitFor(() => {
-                expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(4);
+                expect(lv.getModel()).toHaveObjectProperty("nItems", 4);
             });
 
             for (const word of ["alpha", "beta", "gamma", "delta"]) {
                 await screen.findByText(word);
             }
 
-            const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+            const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
             await userEvent.type(entry, "gamma");
 
             await waitFor(() => {
-                expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(1);
+                expect(lv.getModel()).toHaveObjectProperty("nItems", 1);
             });
 
             await screen.findByText("gamma");
@@ -119,18 +119,18 @@ describe("listviewWordsDemo search interactions", () => {
 describe("listviewWordsDemo search filtering", () => {
     it("filters the list view to zero matches when the search text matches nothing", async () => {
         await renderDemo(listviewWordsDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
         await userEvent.type(entry, "qqqzzz");
 
         await waitFor(() => {
-            expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(0);
+            expect(lv.getModel()).toHaveObjectProperty("nItems", 0);
         });
     });
 
     it("clears the search entry when cleared", async () => {
         await renderDemo(listviewWordsDemo);
-        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
         await userEvent.type(entry, "abc");
         await userEvent.clear(entry);
         expect(screen.queryByDisplayValue("abc")).toBeNull();
@@ -138,8 +138,8 @@ describe("listviewWordsDemo search filtering", () => {
 
     it("restores the full word count when the search entry is cleared after filtering", async () => {
         await renderDemo(listviewWordsDemo);
-        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
         const initial = (lv.getModel() as Gtk.SelectionModel).getNItems();
         await userEvent.type(entry, "z");
 
@@ -169,18 +169,18 @@ describe("listviewWordsDemo Open button", () => {
                 expect(dialogSpy).toHaveBeenCalled();
             });
 
-            const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+            const lv = await screen.findByName("list-view", { as: Gtk.ListView });
 
             await waitFor(() => {
-                expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(4);
+                expect(lv.getModel()).toHaveObjectProperty("nItems", 4);
             });
 
             await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "4 lines" });
-            const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+            const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
             await userEvent.type(entry, "gamma");
 
             await waitFor(() => {
-                expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBe(1);
+                expect(lv.getModel()).toHaveObjectProperty("nItems", 1);
             });
 
             await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "1 lines" });

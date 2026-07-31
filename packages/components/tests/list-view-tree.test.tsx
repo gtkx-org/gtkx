@@ -240,7 +240,7 @@ const toTreeItems = (categories: (Category & { children: Setting[] })[]): Fixtur
     }));
 
 const expanderByName = (name: string): Gtk.TreeExpander =>
-    screen.getByRole(Gtk.AccessibleRole.BUTTON, { name }) as Gtk.TreeExpander;
+    screen.getByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.TreeExpander });
 
 const rowTexts = (container: Gtk.ListView | null): (string | null)[] =>
     container === null
@@ -535,7 +535,7 @@ describe("render - ListView (tree) (6)", () => {
             await renderListView(parentWith([leafNode("child1", "Child 1")]));
             const row = expanderByName("Parent").getListRow();
             expect(row).not.toBeNull();
-            expect(row?.isExpandable()).toBe(true);
+            expect(row).toHaveObjectProperty("expandable", true);
         });
 
         it("expands parent row to show children when expanded", async () => {
@@ -842,7 +842,7 @@ describe("render - ListView (tree) (24)", () => {
             });
 
             await expectRowTexts(ref, ["Anchor", "Anchor Child", "Late"]);
-            expect(listRowByName("Late").isExpandable()).toBe(false);
+            expect(listRowByName("Late")).toHaveObjectProperty("expandable", false);
 
             await rerender([anchorCategory, categoryNode("late", "Late", [childNode("late-child", "Late Child")])], {
                 expandAll: true,
@@ -851,7 +851,7 @@ describe("render - ListView (tree) (24)", () => {
             await expectRowTexts(ref, ["Anchor", "Anchor Child", "Late", "Late Child"]);
 
             await waitFor(() => {
-                expect(listRowByName("Late").isExpandable()).toBe(true);
+                expect(listRowByName("Late")).toHaveObjectProperty("expandable", true);
             });
         });
     });
@@ -869,7 +869,7 @@ describe("render - ListView (tree) (25)", () => {
             await expectRowTexts(ref, ["Anchor", "Anchor Child", "Parent", "Child"]);
 
             await waitFor(() => {
-                expect(listRowByName("Parent").isExpandable()).toBe(true);
+                expect(listRowByName("Parent")).toHaveObjectProperty("expandable", true);
             });
         });
     });

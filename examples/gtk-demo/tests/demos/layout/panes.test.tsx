@@ -30,41 +30,41 @@ describe("panesDemo content", () => {
 describe("panesDemo structure", () => {
     it("places the 'Hi there'/'Hello' labels in a horizontal inner paned", async () => {
         await renderDemo(panesDemo);
-        const innerPaned = (await screen.findByName("panes-inner")) as Gtk.Paned;
+        const innerPaned = await screen.findByName("panes-inner", { as: Gtk.Paned });
         expect(innerPaned).toBeInstanceOf(Gtk.Paned);
-        expect(innerPaned.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
+        expect(innerPaned).toHaveObjectProperty("orientation", Gtk.Orientation.HORIZONTAL);
         within(innerPaned).getByRole(Gtk.AccessibleRole.LABEL, { name: "Hi there" });
         within(innerPaned).getByRole(Gtk.AccessibleRole.LABEL, { name: "Hello" });
     });
 
     it("places the inner paned and 'Goodbye' inside a vertical outer paned", async () => {
         await renderDemo(panesDemo);
-        const outerPaned = (await screen.findByName("panes-outer")) as Gtk.Paned;
+        const outerPaned = await screen.findByName("panes-outer", { as: Gtk.Paned });
         expect(outerPaned).toBeInstanceOf(Gtk.Paned);
-        expect(outerPaned.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        expect(outerPaned).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
         expect(within(outerPaned).getByName("panes-inner")).toBeInstanceOf(Gtk.Paned);
         within(outerPaned).getByRole(Gtk.AccessibleRole.LABEL, { name: "Goodbye" });
     });
 
     it("disables shrink on both children of both panes", async () => {
         await renderDemo(panesDemo);
-        const outerPaned = (await screen.findByName("panes-outer")) as Gtk.Paned;
-        const innerPaned = (await screen.findByName("panes-inner")) as Gtk.Paned;
+        const outerPaned = await screen.findByName("panes-outer", { as: Gtk.Paned });
+        const innerPaned = await screen.findByName("panes-inner", { as: Gtk.Paned });
 
         for (const paned of [innerPaned, outerPaned]) {
-            expect(paned.getShrinkStartChild()).toBe(false);
-            expect(paned.getShrinkEndChild()).toBe(false);
+            expect(paned).toHaveObjectProperty("shrinkStartChild", false);
+            expect(paned).toHaveObjectProperty("shrinkEndChild", false);
         }
     });
 
     it("wraps the outer pane in a GtkFrame inside a vertical GtkBox", async () => {
         await renderDemo(panesDemo);
-        const frame = (await screen.findByName("panes-frame")) as Gtk.Frame;
+        const frame = await screen.findByName("panes-frame", { as: Gtk.Frame });
         expect(frame).toBeInstanceOf(Gtk.Frame);
         expect(within(frame).getByName("panes-outer")).toBeInstanceOf(Gtk.Paned);
-        const box = (await screen.findByName("panes-root")) as Gtk.Box;
+        const box = await screen.findByName("panes-root", { as: Gtk.Box });
         expect(box).toBeInstanceOf(Gtk.Box);
-        expect(box.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        expect(box).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
         expect(within(box).getByName("panes-frame")).toBeInstanceOf(Gtk.Frame);
     });
 });

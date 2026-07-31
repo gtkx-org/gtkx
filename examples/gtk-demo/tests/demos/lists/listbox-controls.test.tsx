@@ -19,10 +19,10 @@ describe("listboxControlsDemo metadata", () => {
 describe("listboxControlsDemo Group 1 structure", () => {
     it("renders two non-selectable list boxes that leave rows unselected on click", async () => {
         await renderDemo(listboxControlsDemo);
-        const group1 = (await screen.findByName("group-1-list")) as Gtk.ListBox;
-        const group2 = (await screen.findByName("group-2-list")) as Gtk.ListBox;
-        expect(group1.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
-        expect(group2.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
+        const group1 = await screen.findByName("group-1-list", { as: Gtk.ListBox });
+        const group2 = await screen.findByName("group-2-list", { as: Gtk.ListBox });
+        expect(group1).toHaveObjectProperty("selectionMode", Gtk.SelectionMode.NONE);
+        expect(group2).toHaveObjectProperty("selectionMode", Gtk.SelectionMode.NONE);
         const switchRow = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Switch/ });
         await userEvent.click(switchRow);
         expect(group1.getSelectedRow()).toBeNull();
@@ -46,8 +46,8 @@ describe("listboxControlsDemo Group 1 structure", () => {
 
     it("renders the click-here icon initially hidden via opacity", async () => {
         await renderDemo(listboxControlsDemo);
-        const clickHereImage = (await screen.findByName("click-here-image")) as Gtk.Image;
-        expect(clickHereImage.getOpacity()).toBe(0);
+        const clickHereImage = await screen.findByName("click-here-image", { as: Gtk.Image });
+        expect(clickHereImage).toHaveObjectProperty("opacity", 0);
     });
 });
 
@@ -70,10 +70,10 @@ describe("listboxControlsDemo direct toggles", () => {
 describe("listboxControlsDemo row activation", () => {
     it("activating the click-here row toggles the image opacity", async () => {
         await renderDemo(listboxControlsDemo);
-        const clickHereImage = (await screen.findByName("click-here-image")) as Gtk.Image;
+        const clickHereImage = await screen.findByName("click-here-image", { as: Gtk.Image });
         const clickRow = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Click here!/ });
         await userEvent.click(clickRow);
-        expect(clickHereImage.getOpacity()).toBe(1);
+        expect(clickHereImage).toHaveObjectProperty("opacity", 1);
     });
 
     it("activating the switch row toggles the switch", async () => {
@@ -111,7 +111,7 @@ describe("listboxControlsDemo Group 2 controls", () => {
 
     it("increments the scale value when an arrow key is pressed", async () => {
         await renderDemo(listboxControlsDemo);
-        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50 } })) as Gtk.Scale;
+        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50 }, as: Gtk.Scale });
         scale.grabFocus();
         await userEvent.keyboard(scale, "{ArrowUp}");
         expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 51 } })).toBe(scale);
@@ -120,9 +120,10 @@ describe("listboxControlsDemo Group 2 controls", () => {
     it("increments the spin button value when the up arrow is pressed", async () => {
         await renderDemo(listboxControlsDemo);
 
-        const spin = (await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, {
+        const spin = await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, {
             value: { now: 50 },
-        })) as Gtk.SpinButton;
+            as: Gtk.SpinButton,
+        });
 
         spin.grabFocus();
         await userEvent.keyboard(spin, "{ArrowUp}");
@@ -131,15 +132,15 @@ describe("listboxControlsDemo Group 2 controls", () => {
 
     it("updates the dropdown selection when a choice is picked", async () => {
         await renderDemo(listboxControlsDemo);
-        const dropdown = (await screen.findByName("dropdown")) as Gtk.DropDown;
-        expect(dropdown.getSelected()).toBe(0);
+        const dropdown = await screen.findByName("dropdown", { as: Gtk.DropDown });
+        expect(dropdown).toHaveObjectProperty("selected", 0);
         await userEvent.selectOptions(dropdown, 2);
-        expect(dropdown.getSelected()).toBe(2);
+        expect(dropdown).toHaveObjectProperty("selected", 2);
     });
 
     it("accepts typed text in the entry", async () => {
         await renderDemo(listboxControlsDemo);
-        const entry = (await screen.findByName("entry")) as Gtk.Entry;
+        const entry = await screen.findByName("entry", { as: Gtk.Entry });
         await userEvent.type(entry, "hello");
         expect(entry).toHaveDisplayValue("hello");
     });

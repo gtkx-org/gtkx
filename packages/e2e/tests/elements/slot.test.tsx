@@ -8,7 +8,7 @@ const expectPanedStartChild = async (label: string) => {
     const panedRef = createRef<Gtk.Paned>();
     const labelRef = createRef<Gtk.Label>();
     await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef}>{label}</GtkLabel>} />);
-    expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
+    expect(panedRef.current).toHaveObjectProperty("startChild", labelRef.current);
 };
 
 describe("render - Slot (1)", () => {
@@ -20,7 +20,7 @@ describe("render - Slot (1)", () => {
             <GtkHeaderBar ref={headerBarRef} titleWidget={<GtkLabel ref={titleRef}>Custom Title</GtkLabel>} />,
         );
 
-        expect(headerBarRef.current?.getTitleWidget()).toBe(titleRef.current);
+        expect(headerBarRef.current).toHaveObjectProperty("titleWidget", titleRef.current);
     });
 
     it("calls setSlotName(widget) on parent", async () => {
@@ -31,7 +31,7 @@ describe("render - Slot (1)", () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const title = new Gtk.Label({ label: "Imperative Title" });
         await render(<GtkHeaderBar ref={headerBarRef} titleWidget={title} />);
-        expect(headerBarRef.current?.getTitleWidget()).toBe(title);
+        expect(headerBarRef.current).toHaveObjectProperty("titleWidget", title);
     });
 
     it("clears slot when child removed", async () => {
@@ -76,9 +76,9 @@ describe("render - Slot (2)", () => {
         }
 
         await render(<App first={true} />);
-        expect(headerBarRef.current?.getTitleWidget()).toBe(label1Ref.current);
+        expect(headerBarRef.current).toHaveObjectProperty("titleWidget", label1Ref.current);
         await render(<App first={false} />);
-        expect(headerBarRef.current?.getTitleWidget()).toBe(label2Ref.current);
+        expect(headerBarRef.current).toHaveObjectProperty("titleWidget", label2Ref.current);
     });
 
     it("handles Paned.StartChild slot", async () => {
@@ -100,7 +100,7 @@ describe("render - Slot (2)", () => {
             />,
         );
 
-        expect(menuButtonRef.current?.getPopover()).toBe(popoverRef.current);
+        expect(menuButtonRef.current).toHaveObjectProperty("popover", popoverRef.current);
     });
 });
 
@@ -118,7 +118,7 @@ describe("render - Slot (3)", () => {
             />,
         );
 
-        expect(panedRef.current?.getStartChild()).toBe(startRef.current);
-        expect(panedRef.current?.getEndChild()).toBe(endRef.current);
+        expect(panedRef.current).toHaveObjectProperty("startChild", startRef.current);
+        expect(panedRef.current).toHaveObjectProperty("endChild", endRef.current);
     });
 });

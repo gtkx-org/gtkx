@@ -5,7 +5,7 @@ import { listviewUcdDemo } from "../../../src/demos/lists/listview-ucd.js";
 import { renderDemo } from "../../test-utils.js";
 
 const codepointCells = (): Gtk.Inscription[] =>
-    screen.queryAllByText(/^0x[0-9a-f]{4,6}$/).map((widget) => widget as Gtk.Inscription);
+    screen.queryAllByText(/^0x[0-9a-f]{4,6}$/, { as: Gtk.Inscription });
 
 const firstCodepointText = (): string => {
     const [cell] = codepointCells();
@@ -41,8 +41,8 @@ describe("listviewUcdDemo metadata", () => {
 describe("listviewUcdDemo column view", () => {
     it("renders a GtkColumnView with column separators enabled", async () => {
         await renderDemo(listviewUcdDemo);
-        const cv = (await screen.findByName("column-view")) as Gtk.ColumnView;
-        expect(cv.getShowColumnSeparators()).toBe(true);
+        const cv = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        expect(cv).toHaveObjectProperty("showColumnSeparators", true);
     });
 
     it("declares the six expected columns", async () => {
@@ -58,8 +58,8 @@ describe("listviewUcdDemo column view", () => {
 
     it("groups the first section under the 'No script' heading and renders codepoint cells", async () => {
         await renderDemo(listviewUcdDemo);
-        const heading = (await screen.findByText("No script")) as Gtk.Label;
-        expect(heading.getCssClasses()).toContain("heading");
+        const heading = await screen.findByText("No script", { as: Gtk.Label });
+        expect(heading).toHaveClass("heading");
         const cells = codepointCells();
         expect(cells.length).toBeGreaterThan(0);
         expect(firstCodepointText()).toMatch(/^0x[0-9a-f]{4,6}$/);
@@ -75,8 +75,8 @@ describe("listviewUcdDemo column view", () => {
 describe("listviewUcdDemo selection", () => {
     it("previews the exact character of the activated row", async () => {
         await renderDemo(listviewUcdDemo);
-        const cv = (await screen.findByName("column-view")) as Gtk.ColumnView;
-        const preview = (await screen.findByName("selected-char")) as Gtk.Label;
+        const cv = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        const preview = await screen.findByName("selected-char", { as: Gtk.Label });
         expect(preview).not.toHaveTextContent();
         const firstCodepoint = firstCodepointText();
         const expectedChar = String.fromCodePoint(Number.parseInt(firstCodepoint, 16));
@@ -87,6 +87,6 @@ describe("listviewUcdDemo selection", () => {
             expect(preview.getLabel().length).toBeGreaterThan(0);
         });
 
-        expect(preview.getLabel()).toBe(expectedChar);
+        expect(preview).toHaveObjectProperty("label", expectedChar);
     });
 });

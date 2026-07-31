@@ -175,12 +175,12 @@ describe("render - GtkConstraint props", () => {
         const boxRef = createRef<Gtk.Box>();
         await render(<WidthBox boxRef={boxRef} constant={100} />);
         const constraint = onlyConstraint(boxRef);
-        expect(constraint.getTarget()).toBe(boxRef.current?.getFirstChild());
-        expect(constraint.getTargetAttribute()).toBe(A.WIDTH);
-        expect(constraint.getRelation()).toBe(R.LE);
-        expect(constraint.getConstant()).toBe(100);
-        expect(constraint.getMultiplier()).toBe(1);
-        expect(constraint.getStrength()).toBe(S.REQUIRED);
+        expect(constraint).toHaveObjectProperty("target", boxRef.current?.getFirstChild());
+        expect(constraint).toHaveObjectProperty("targetAttribute", A.WIDTH);
+        expect(constraint).toHaveObjectProperty("relation", R.LE);
+        expect(constraint).toHaveObjectProperty("constant", 100);
+        expect(constraint).toHaveObjectProperty("multiplier", 1);
+        expect(constraint).toHaveObjectProperty("strength", S.REQUIRED);
     });
 
     it("leaves an omitted source as the layout's own widget", async () => {
@@ -188,9 +188,9 @@ describe("render - GtkConstraint props", () => {
         await render(<ToggledConstraintBox boxRef={boxRef} isShown={true} />);
         const constraint = onlyConstraint(boxRef);
         expect(constraint.getSource()).toBeNull();
-        expect(constraint.getSourceAttribute()).toBe(A.START);
-        expect(constraint.getConstant()).toBe(8);
-        expect(constraint.getStrength()).toBe(S.STRONG);
+        expect(constraint).toHaveObjectProperty("sourceAttribute", A.START);
+        expect(constraint).toHaveObjectProperty("constant", 8);
+        expect(constraint).toHaveObjectProperty("strength", S.STRONG);
     });
 });
 
@@ -198,9 +198,9 @@ describe("render - GtkConstraint lifecycle", () => {
     it("recreates the constraint when its key changes with a construct-only prop", async () => {
         const boxRef = createRef<Gtk.Box>();
         const { rerender } = await render(<WidthBox boxRef={boxRef} constant={100} />);
-        expect(onlyConstraint(boxRef).getConstant()).toBe(100);
+        expect(onlyConstraint(boxRef)).toHaveObjectProperty("constant", 100);
         await rerender(<WidthBox boxRef={boxRef} constant={50} />);
-        expect(onlyConstraint(boxRef).getConstant()).toBe(50);
+        expect(onlyConstraint(boxRef)).toHaveObjectProperty("constant", 50);
     });
 
     it("removes the constraint from the layout when it unmounts", async () => {
@@ -219,11 +219,11 @@ describe("render - GtkConstraintGuide", () => {
         const guides = collectGuides(layoutFrom(boxRef));
         expect(guides).toHaveLength(1);
         const guide = guides[0] as Gtk.ConstraintGuide;
-        expect(guide.getName()).toBe("space");
+        expect(guide).toHaveObjectProperty("name", "space");
         expect(guide.getMinSize()).toEqual([10, 10]);
         expect(guide.getNatSize()).toEqual([100, 20]);
         expect(guide.getMaxSize()).toEqual([200, 30]);
-        expect(guide.getStrength()).toBe(S.STRONG);
+        expect(guide).toHaveObjectProperty("strength", S.STRONG);
     });
 
     it("removes the guide from the layout when it unmounts", async () => {
@@ -239,8 +239,8 @@ describe("render - GtkConstraintGuide", () => {
         await render(<GuideSourceBox boxRef={boxRef} />);
         const [guide] = collectGuides(layoutFrom(boxRef));
         const constraint = onlyConstraint(boxRef);
-        expect(constraint.getSource()).toBe(guide);
-        expect(constraint.getTarget()).toBe(boxRef.current?.getFirstChild());
+        expect(constraint).toHaveObjectProperty("source", guide);
+        expect(constraint).toHaveObjectProperty("target", boxRef.current?.getFirstChild());
     });
 });
 

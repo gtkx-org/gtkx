@@ -18,7 +18,7 @@ const renderPaintable = (paintable: Gdk.Paintable): string => {
 };
 
 const findStatefulSvg = async (): Promise<Gtk.Svg> => {
-    const image = (await screen.findByName("stateful-icon-image")) as Gtk.Image;
+    const image = await screen.findByName("stateful-icon-image", { as: Gtk.Image });
 
     return image.getPaintable() as Gtk.Svg;
 };
@@ -56,9 +56,10 @@ describe("imagesDemo toggle", () => {
     it("renders the Insensitive toggle button in its default off state", async () => {
         await renderDemo(imagesDemo);
 
-        const toggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
+        const toggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "_Insensitive",
-        })) as Gtk.ToggleButton;
+            as: Gtk.ToggleButton,
+        });
 
         expect(toggle).not.toBePressed();
     });
@@ -66,22 +67,23 @@ describe("imagesDemo toggle", () => {
     it("toggles the sensitivity of the image strip when the toggle is activated", async () => {
         await renderDemo(imagesDemo);
 
-        const toggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
+        const toggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "_Insensitive",
-        })) as Gtk.ToggleButton;
+            as: Gtk.ToggleButton,
+        });
 
-        const imageStrip = (await screen.findByName("image-strip")) as Gtk.Box;
-        expect(imageStrip.getSensitive()).toBe(true);
+        const imageStrip = await screen.findByName("image-strip", { as: Gtk.Box });
+        expect(imageStrip).toBeEnabled();
         await userEvent.click(toggle);
 
         await waitFor(() => {
-            expect(imageStrip.getSensitive()).toBe(false);
+            expect(imageStrip).toBeDisabled();
         });
 
         await userEvent.click(toggle);
 
         await waitFor(() => {
-            expect(imageStrip.getSensitive()).toBe(true);
+            expect(imageStrip).toBeEnabled();
         });
     });
 });
@@ -91,8 +93,8 @@ describe("imagesDemo stateful icon switch", () => {
         await renderDemo(imagesDemo);
         const svg = await findStatefulSvg();
         expect(svg).toBeInstanceOf(Gtk.Svg);
-        expect(svg.getState()).toBe(0);
-        const toggle = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
+        expect(svg).toHaveObjectProperty("state", 0);
+        const toggle = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
         expect(toggle).not.toBeChecked();
         await userEvent.click(toggle);
 
@@ -100,21 +102,21 @@ describe("imagesDemo stateful icon switch", () => {
             expect(toggle).toBeChecked();
         });
 
-        expect(svg.getState()).toBe(1);
+        expect(svg).toHaveObjectProperty("state", 1);
         await userEvent.click(toggle);
 
         await waitFor(() => {
             expect(toggle).not.toBeChecked();
         });
 
-        expect(svg.getState()).toBe(0);
+        expect(svg).toHaveObjectProperty("state", 0);
     });
 
     it("repaints the icon from the checkmark to the cross as the switch is flipped", async () => {
         await renderDemo(imagesDemo);
         const svg = await findStatefulSvg();
         expect(renderPaintable(svg)).toContain(CHECKMARK_PATH);
-        const toggle = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
+        const toggle = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
         await userEvent.click(toggle);
 
         await waitFor(
@@ -142,7 +144,7 @@ describe("imagesDemo stateful icon switch", () => {
 describe("imagesDemo media widgets", () => {
     it("loads the animated GIF as the gif picture's paintable after mount", async () => {
         await renderDemo(imagesDemo);
-        const gif = (await screen.findByName("gif-picture")) as Gtk.Picture;
+        const gif = await screen.findByName("gif-picture", { as: Gtk.Picture });
 
         await waitFor(() => {
             expect(gif.getPaintable()).not.toBeNull();
@@ -151,14 +153,14 @@ describe("imagesDemo media widgets", () => {
 
     it("renders a GtkVideo widget configured to autoplay and loop", async () => {
         await renderDemo(imagesDemo);
-        const video = (await screen.findByName("logo-video")) as Gtk.Video;
-        expect(video.getAutoplay()).toBe(true);
-        expect(video.getLoop()).toBe(true);
+        const video = await screen.findByName("logo-video", { as: Gtk.Video });
+        expect(video).toHaveObjectProperty("autoplay", true);
+        expect(video).toHaveObjectProperty("loop", true);
     });
 
     it("creates the widget paintable for the host window after mount", async () => {
         await renderDemo(imagesDemo);
-        const picture = (await screen.findByName("widget-paintable-picture")) as Gtk.Picture;
+        const picture = await screen.findByName("widget-paintable-picture", { as: Gtk.Picture });
 
         await waitFor(() => {
             expect(picture.getPaintable()).not.toBeNull();

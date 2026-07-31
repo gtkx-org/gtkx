@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, fireEvent, screen, userEvent } from "@gtkx/testing";
+import { act, fireEvent, getAllControllers, getController, queryController, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
@@ -9,35 +9,24 @@ const spawnMock = vi.hoisted(() =>
     vi.fn<(command: string, args: string[]) => { on: () => void }>(() => ({ on: vi.fn() })),
 );
 
-const demoController = <T extends Gtk.EventController>(
-    view: Gtk.TextView,
-    type: new (...args: never[]) => T,
-    isMatch: (controller: T) => boolean,
-): T => {
-    const controllers = view.observeControllers();
+const findTextView = async (): Promise<Gtk.TextView> =>
+    screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
 
-    for (let i = 0; i < controllers.getNItems(); i++) {
-        const controller = controllers.getItem(i);
+const demoClickGesture = (view: Gtk.TextView): Gtk.GestureClick => {
+    const gesture = getAllControllers(view, Gtk.GestureClick).find((candidate) => candidate.getButton() === 1);
 
-        if (controller instanceof type && isMatch(controller)) {
-            return controller;
-        }
+    if (!gesture) {
+        throw new Error("hypertext demo GestureClick not found");
     }
 
-    throw new Error(`hypertext demo ${type.name} not found`);
+    return gesture;
 };
 
-const findTextView = async (): Promise<Gtk.TextView> =>
-    (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
-
-const demoClickGesture = (view: Gtk.TextView): Gtk.GestureClick =>
-    demoController(view, Gtk.GestureClick, (gesture) => gesture.getButton() === 1);
-
 const demoMotionController = (view: Gtk.TextView): Gtk.EventControllerMotion =>
-    demoController(view, Gtk.EventControllerMotion, () => true);
+    getController(view, Gtk.EventControllerMotion);
 
 const demoKeyController = (view: Gtk.TextView): Gtk.EventControllerKey =>
-    demoController(view, Gtk.EventControllerKey, () => true);
+    getController(view, Gtk.EventControllerKey);
 
 const windowCoordsAtOffset = (view: Gtk.TextView, offset: number): [number, number] => {
     const iter = view.getBuffer().getIterAtOffset(offset);
@@ -87,10 +76,10 @@ describe("hypertextDemo rendering", () => {
     it("embeds the ghost label, the level bar, and the emoji in page 1", async () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
-        const levelBar = (await screen.findByRole(Gtk.AccessibleRole.METER)) as Gtk.LevelBar;
-        expect(levelBar.getValue()).toBe(50);
-        expect(levelBar.getMinValue()).toBe(0);
-        expect(levelBar.getMaxValue()).toBe(100);
+        const levelBar = await screen.findByRole(Gtk.AccessibleRole.METER, { as: Gtk.LevelBar });
+        expect(levelBar).toHaveObjectProperty("value", 50);
+        expect(levelBar).toHaveObjectProperty("minValue", 0);
+        expect(levelBar).toHaveObjectProperty("maxValue", 100);
         expect(await screen.findByText("ghost")).toHaveTextContent("ghost");
         expect(readBufferText(textView)).toContain("😋");
     });
@@ -233,18 +222,8 @@ describe("hypertextDemo speaker icon", () => {
 
         await userEvent.keyboard(textView, "{Enter}");
         await screen.findByDisplayValue(/attribute that can be applied/);
-        const speaker = (await screen.findByRole(Gtk.AccessibleRole.IMG)) as Gtk.Image;
-        const controllers = speaker.observeControllers();
-        let gesture: Gtk.GestureClick | null = null;
-
-        for (let i = 0; i < controllers.getNItems(); i++) {
-            const controller = controllers.getItem(i);
-
-            if (controller instanceof Gtk.GestureClick) {
-                gesture = controller;
-            }
-        }
-
+        const speaker = await screen.findByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
+        const gesture = queryController(speaker, Gtk.GestureClick);
         expect(gesture).not.toBeNull();
         await fireEvent(gesture as Gtk.GestureClick, "pressed", 1, 0, 0);
         expect(spawnMock).toHaveBeenCalledTimes(1);

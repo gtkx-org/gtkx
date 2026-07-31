@@ -53,10 +53,10 @@ describe("cursorsDemo metadata", () => {
 describe("cursorsDemo list structure", () => {
     it("wraps the cursor list in a scrolled window that never shows the horizontal scrollbar", async () => {
         await renderDemo(cursorsDemo);
-        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
+        const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
         const [hpolicy] = sw.getPolicy();
         expect(hpolicy).toBe(Gtk.PolicyType.NEVER);
-        expect(sw.getPropagateNaturalHeight()).toBe(true);
+        expect(sw).toHaveObjectProperty("propagateNaturalHeight", true);
     });
 
     it("groups the cursor rows into six non-selectable list boxes", async () => {
@@ -102,7 +102,7 @@ describe("cursorsDemo cursor assignments and tooltips", () => {
         ]);
 
         for (const frame of frames) {
-            expect(frame.getCssClasses()).toContain("cursorbg");
+            expect(frame).toHaveClass("cursorbg");
             expect(frame.getSizeRequest()).toEqual([32, 32]);
         }
     });

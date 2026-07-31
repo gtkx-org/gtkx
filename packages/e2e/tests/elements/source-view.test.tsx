@@ -87,7 +87,7 @@ describe("render - SourceView (2)", () => {
             );
 
             const buffer = getSourceBuffer(ref);
-            expect(buffer.getEnableUndo()).toBe(enableUndo);
+            expect(buffer).toHaveObjectProperty("enableUndo", enableUndo);
         });
 
         it("calls onNotifyCanUndo when undo state changes", async () => {
@@ -157,7 +157,7 @@ describe("render - SourceView (5)", () => {
             const ref = createRef<GtkSource.View>();
             await render(<GtkSourceView ref={ref} buffer={<GtkSourceBuffer highlightSyntax>text</GtkSourceBuffer>} />);
             const buffer = getSourceBuffer(ref);
-            expect(buffer.getHighlightSyntax()).toBe(true);
+            expect(buffer).toHaveObjectProperty("highlightSyntax", true);
         });
 
         it("highlightSyntax can be explicitly disabled with language", async () => {
@@ -175,7 +175,7 @@ describe("render - SourceView (5)", () => {
             );
 
             const buffer = getSourceBuffer(ref);
-            expect(buffer.getHighlightSyntax()).toBe(false);
+            expect(buffer).toHaveObjectProperty("highlightSyntax", false);
         });
     });
 });
@@ -193,14 +193,14 @@ describe("render - SourceView (7)", () => {
             );
 
             const buffer = getSourceBuffer(ref);
-            expect(buffer.getHighlightMatchingBrackets()).toBe(false);
+            expect(buffer).toHaveObjectProperty("highlightMatchingBrackets", false);
         });
 
         it("highlightMatchingBrackets defaults to true", async () => {
             const ref = createRef<GtkSource.View>();
             await render(<GtkSourceView ref={ref} buffer={<GtkSourceBuffer>()</GtkSourceBuffer>} />);
             const buffer = getSourceBuffer(ref);
-            expect(buffer.getHighlightMatchingBrackets()).toBe(true);
+            expect(buffer).toHaveObjectProperty("highlightMatchingBrackets", true);
         });
 
         it("sets implicitTrailingNewline property to false", async () => {
@@ -214,7 +214,7 @@ describe("render - SourceView (7)", () => {
             );
 
             const buffer = getSourceBuffer(ref);
-            expect(buffer.getImplicitTrailingNewline()).toBe(false);
+            expect(buffer).toHaveObjectProperty("implicitTrailingNewline", false);
         });
 
         it("sets implicitTrailingNewline property to true", async () => {
@@ -228,7 +228,7 @@ describe("render - SourceView (7)", () => {
             );
 
             const buffer = getSourceBuffer(ref);
-            expect(buffer.getImplicitTrailingNewline()).toBe(true);
+            expect(buffer).toHaveObjectProperty("implicitTrailingNewline", true);
         });
     });
 });

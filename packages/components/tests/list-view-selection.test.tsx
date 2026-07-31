@@ -277,7 +277,7 @@ describe("render - ListView - selection (6) > tree - single (3)", () => {
         const scrollPosBefore = vadj.getValue();
         expect(scrollPosBefore).toBeGreaterThan(0);
         await userEvent.selectOptions(listView, targetPosition);
-        expect(selectionModel.getSelected()).toBe(targetPosition);
+        expect(selectionModel).toHaveObjectProperty("selected", targetPosition);
         const scrollPosAfter = vadj.getValue();
         expect(scrollPosAfter).toBe(scrollPosBefore);
     });

@@ -16,8 +16,8 @@ const PAGE_TITLES = [
     "Page 9",
 ];
 
-const findStack = async (): Promise<Gtk.Stack> => (await screen.findByName("stack")) as Gtk.Stack;
-const findSidebar = async (): Promise<Gtk.StackSidebar> => (await screen.findByName("sidebar")) as Gtk.StackSidebar;
+const findStack = async (): Promise<Gtk.Stack> => screen.findByName("stack", { as: Gtk.Stack });
+const findSidebar = async (): Promise<Gtk.StackSidebar> => screen.findByName("sidebar", { as: Gtk.StackSidebar });
 
 describe("sidebarDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -44,13 +44,13 @@ describe("sidebarDemo structure", () => {
         await renderDemo(sidebarDemo);
         const sidebar = await findSidebar();
         const stack = await findStack();
-        expect(sidebar.getStack()).toBe(stack);
+        expect(sidebar).toHaveObjectProperty("stack", stack);
     });
 
     it("uses a 256px decorated icon for the welcome page only", async () => {
         await renderDemo(sidebarDemo);
         const stack = await findStack();
-        const images = (await within(stack).findAllByRole(Gtk.AccessibleRole.IMG)) as Gtk.Image[];
+        const images = await within(stack).findAllByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
         expect(images).toHaveLength(1);
         const [image] = images;
 
@@ -58,8 +58,8 @@ describe("sidebarDemo structure", () => {
             throw new Error("expected a welcome-page image");
         }
 
-        expect(image.getPixelSize()).toBe(256);
-        expect(image.hasCssClass("icon-dropshadow")).toBe(true);
+        expect(image).toHaveObjectProperty("pixelSize", 256);
+        expect(image).toHaveClass("icon-dropshadow");
     });
 
     it("uses a plain GtkLabel for non-welcome pages", async () => {
@@ -75,25 +75,25 @@ describe("sidebarDemo navigation", () => {
         await renderDemo(sidebarDemo);
         const sidebar = await findSidebar();
         const stack = await findStack();
-        expect(stack.getVisibleChildName()).toBe("Welcome to GTK");
+        expect(stack).toHaveObjectProperty("visibleChildName", "Welcome to GTK");
         within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Welcome to GTK", selected: true });
         await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Scrolling" }));
 
         await waitFor(() => {
-            expect(stack.getVisibleChildName()).toBe("Scrolling");
+            expect(stack).toHaveObjectProperty("visibleChildName", "Scrolling");
         });
 
         within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Scrolling", selected: true });
         await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Page 9" }));
 
         await waitFor(() => {
-            expect(stack.getVisibleChildName()).toBe("Page 9");
+            expect(stack).toHaveObjectProperty("visibleChildName", "Page 9");
         });
 
         await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Welcome to GTK" }));
 
         await waitFor(() => {
-            expect(stack.getVisibleChildName()).toBe("Welcome to GTK");
+            expect(stack).toHaveObjectProperty("visibleChildName", "Welcome to GTK");
         });
     });
 

@@ -20,14 +20,14 @@ const renderDemo = () =>
     );
 
 const selectFirstDemoWithComponent = async (): Promise<void> => {
-    const sidebar = (await screen.findByName("sidebar-list")) as Gtk.ListView;
+    const sidebar = await screen.findByName("sidebar-list", { as: Gtk.ListView });
     const selectionModel = sidebar.getModel() as Gtk.SelectionModel;
     expect(selectionModel).not.toBeNull();
     let selectedIndex: number | null = null;
 
     for (let i = 0; i < selectionModel.getNItems(); i++) {
         await userEvent.selectOptions(sidebar, i);
-        const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
+        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
 
         if (run.getSensitive()) {
             selectedIndex = i;
@@ -39,7 +39,7 @@ const selectFirstDemoWithComponent = async (): Promise<void> => {
 };
 
 const openMenuItem = async (name: string): Promise<void> => {
-    const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
+    const menuButton = await screen.findByName("menu-button", { as: Gtk.MenuButton });
     await userEvent.click(menuButton);
     await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name }));
 };
@@ -47,13 +47,13 @@ const openMenuItem = async (name: string): Promise<void> => {
 describe("App search toggle", () => {
     it("turns the sidebar's search bar on when the header bar toggle is activated", async () => {
         await renderDemo();
-        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-        const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
-        expect(searchBar.getSearchMode()).toBe(false);
+        const toggle = await screen.findByName("search-toggle", { as: Gtk.ToggleButton });
+        const searchBar = await screen.findByName("sidebar-search-bar", { as: Gtk.SearchBar });
+        expect(searchBar).toHaveObjectProperty("searchModeEnabled", false);
         await userEvent.click(toggle);
 
         await waitFor(() => {
-            expect(searchBar.getSearchMode()).toBe(true);
+            expect(searchBar).toHaveObjectProperty("searchModeEnabled", true);
         });
     });
 });
@@ -62,8 +62,8 @@ describe("App run button", () => {
     it("enables the Run button after a demo with a component is selected", async () => {
         await renderDemo();
         await selectFirstDemoWithComponent();
-        const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
-        expect(run.getSensitive()).toBe(true);
+        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
+        expect(run).toBeEnabled();
     });
 
     it("opens a demo window when Run is clicked", async () => {
@@ -71,7 +71,7 @@ describe("App run button", () => {
         await selectFirstDemoWithComponent();
         const windowsBefore = await screen.findAllByRole(Gtk.AccessibleRole.WINDOW);
         const beforeCount = windowsBefore.length;
-        const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
+        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
         await userEvent.click(run);
 
         await waitFor(async () => {
@@ -112,15 +112,15 @@ describe("App notebook", () => {
 
     it("advances the page when the notebook page is set", async () => {
         await renderDemo();
-        const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
-        expect(notebook.getCurrentPage()).toBe(0);
+        const notebook = await screen.findByName("notebook", { as: Gtk.Notebook });
+        expect(notebook).toHaveObjectProperty("page", 0);
 
         await act(() => {
             notebook.setCurrentPage(1);
         });
 
         await waitFor(() => {
-            expect(notebook.getCurrentPage()).toBe(1);
+            expect(notebook).toHaveObjectProperty("page", 1);
         });
     });
 });
@@ -161,12 +161,12 @@ describe("App global shortcuts", () => {
     it("toggles the search bar when Ctrl+F is pressed", async () => {
         await renderDemo();
         const body = await screen.findByName("main-window-body");
-        const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
-        expect(searchBar.getSearchMode()).toBe(false);
+        const searchBar = await screen.findByName("sidebar-search-bar", { as: Gtk.SearchBar });
+        expect(searchBar).toHaveObjectProperty("searchModeEnabled", false);
         await userEvent.keyboard(body, "{Control>}f{/Control}");
 
         await waitFor(() => {
-            expect(searchBar.getSearchMode()).toBe(true);
+            expect(searchBar).toHaveObjectProperty("searchModeEnabled", true);
         });
     });
 
@@ -189,29 +189,29 @@ describe("App global shortcuts", () => {
     it("advances the notebook page when Ctrl+Page_Down is pressed", async () => {
         await renderDemo();
         const body = await screen.findByName("main-window-body");
-        const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
-        expect(notebook.getCurrentPage()).toBe(0);
+        const notebook = await screen.findByName("notebook", { as: Gtk.Notebook });
+        expect(notebook).toHaveObjectProperty("page", 0);
         await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
 
         await waitFor(() => {
-            expect(notebook.getCurrentPage()).toBe(1);
+            expect(notebook).toHaveObjectProperty("page", 1);
         });
     });
 
     it("returns to the previous notebook page when Ctrl+Page_Up is pressed", async () => {
         await renderDemo();
         const body = await screen.findByName("main-window-body");
-        const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
+        const notebook = await screen.findByName("notebook", { as: Gtk.Notebook });
         await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
 
         await waitFor(() => {
-            expect(notebook.getCurrentPage()).toBe(1);
+            expect(notebook).toHaveObjectProperty("page", 1);
         });
 
         await userEvent.keyboard(body, "{Control>}{PageUp}{/Control}");
 
         await waitFor(() => {
-            expect(notebook.getCurrentPage()).toBe(0);
+            expect(notebook).toHaveObjectProperty("page", 0);
         });
     });
 });
@@ -220,7 +220,7 @@ describe("App opens demos with custom titlebars and dialog-only demos", () => {
     it("renders Run-enabled demo entries from the sidebar (covers DemoWindow titlebar/provider paths)", async () => {
         await renderDemo();
         await selectFirstDemoWithComponent();
-        const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
+        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
         await userEvent.click(run);
 
         await waitFor(async () => {

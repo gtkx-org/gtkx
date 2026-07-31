@@ -18,19 +18,19 @@ describe("expanderDemo", () => {
             name: "Here are some more details but not the full story",
         });
 
-        const expander = (await screen.findByName("expander")) as Gtk.Expander;
+        const expander = await screen.findByName("expander", { as: Gtk.Expander });
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: false })).toBe(expander);
-        expect(expander.getExpanded()).toBe(false);
+        expect(expander).not.toBeExpanded();
     });
 
     it("flips its own expanded state to true when clicked", async () => {
         await renderDemo(expanderDemo);
-        const expander = (await screen.findByName("expander")) as Gtk.Expander;
-        expect(expander.getExpanded()).toBe(false);
+        const expander = await screen.findByName("expander", { as: Gtk.Expander });
+        expect(expander).not.toBeExpanded();
         await userEvent.click(expander);
 
         await waitFor(() => {
-            expect(expander.getExpanded()).toBe(true);
+            expect(expander).toBeExpanded();
         });
 
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: true })).toBe(expander);
@@ -38,30 +38,30 @@ describe("expanderDemo", () => {
 
     it("encloses a non-editable, word-wrapped TextView seeded with the details paragraph", async () => {
         await renderDemo(expanderDemo);
-        const expander = (await screen.findByName("expander")) as Gtk.Expander;
+        const expander = await screen.findByName("expander", { as: Gtk.Expander });
         await userEvent.click(expander);
-        const textView = (await within(expander).findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
+        const textView = await within(expander).findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
         expect(textView).toBeInstanceOf(Gtk.TextView);
-        expect(textView.getEditable()).toBe(false);
-        expect(textView.getWrapMode()).toBe(Gtk.WrapMode.WORD);
+        expect(textView).toHaveObjectProperty("editable", false);
+        expect(textView).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
         expect(screen.getByDisplayValue(/Finally, the full story/)).toBe(textView);
     });
 
     it("makes the host window resizable when the expander is expanded", async () => {
         await renderDemo(expanderDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        const expander = (await screen.findByName("expander")) as Gtk.Expander;
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+        const expander = await screen.findByName("expander", { as: Gtk.Expander });
         window.setResizable(false);
         await userEvent.click(expander);
 
         await waitFor(() => {
-            expect(window.getResizable()).toBe(true);
+            expect(window).toHaveObjectProperty("resizable", true);
         });
 
         await userEvent.click(expander);
 
         await waitFor(() => {
-            expect(window.getResizable()).toBe(false);
+            expect(window).toHaveObjectProperty("resizable", false);
         });
     });
 });

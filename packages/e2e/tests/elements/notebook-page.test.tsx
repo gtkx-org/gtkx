@@ -30,7 +30,7 @@ describe("render - NotebookPage (1)", () => {
 
     it("sets page tab label", async () => {
         const page = await renderPage({ tabLabel: "My Tab" });
-        expect(page?.tabLabel).toBe("My Tab");
+        expect(page).toHaveObjectProperty("tabLabel", "My Tab");
     });
 });
 
@@ -51,10 +51,10 @@ describe("render - NotebookPage (2)", () => {
 
         await render(<App labelText="Initial" />);
         let page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
-        expect(page?.tabLabel).toBe("Initial");
+        expect(page).toHaveObjectProperty("tabLabel", "Initial");
         await render(<App labelText="Updated" />);
         page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
-        expect(page?.tabLabel).toBe("Updated");
+        expect(page).toHaveObjectProperty("tabLabel", "Updated");
     });
 
     it("adds multiple pages", async () => {
@@ -101,14 +101,14 @@ describe("render - NotebookPage (4)", () => {
         await render(<App showContent={true} />);
         expect(notebookRef.current?.getNPages()).toBe(1);
         const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
-        expect(page?.tabLabel).toBe("Tab");
+        expect(page).toHaveObjectProperty("tabLabel", "Tab");
     });
 });
 
 describe("render - NotebookPage (5)", () => {
     it("applies tabExpand and tabFill page metadata", async () => {
         const page = await renderPage({ tabLabel: "Meta Tab", tabExpand: true, tabFill: false });
-        expect(page?.tabExpand).toBe(true);
-        expect(page?.tabFill).toBe(false);
+        expect(page).toHaveObjectProperty("tabExpand", true);
+        expect(page).toHaveObjectProperty("tabFill", false);
     });
 });

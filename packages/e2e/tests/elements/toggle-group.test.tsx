@@ -90,14 +90,14 @@ describe("render - ToggleGroup (1)", () => {
         it("sets toggle enabled state", async () => {
             const ref = createRef<Adw.ToggleGroup>();
             await renderEnabledStateGroup(ref);
-            expect(ref.current?.getToggleByName("enabled")?.getEnabled()).toBe(true);
-            expect(ref.current?.getToggleByName("disabled")?.getEnabled()).toBe(false);
+            expect(ref.current?.getToggleByName("enabled")).toHaveObjectProperty("enabled", true);
+            expect(ref.current?.getToggleByName("disabled")).toHaveObjectProperty("enabled", false);
         });
 
         it("selects the toggle named by activeName once its toggle exists", async () => {
             const ref = createRef<Adw.ToggleGroup>();
             await renderActiveNameGroup(ref);
-            expect(ref.current?.getActiveName()).toBe("done");
+            expect(ref.current).toHaveObjectProperty("activeName", "done");
         });
     });
 });

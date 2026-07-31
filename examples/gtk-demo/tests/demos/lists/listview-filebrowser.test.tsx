@@ -19,8 +19,8 @@ const waitForPopulatedModel = async (grid: Gtk.GridView): Promise<number> =>
 
 const orderedNames = (grid: Gtk.GridView): string[] =>
     within(grid)
-        .getAllByRole(Gtk.AccessibleRole.LABEL)
-        .map((label) => (label as Gtk.Label).getText());
+        .getAllByRole(Gtk.AccessibleRole.LABEL, { as: Gtk.Label })
+        .map((label) => label.getText());
 
 beforeAll(() => {
     process.chdir(repoRoot);
@@ -46,7 +46,7 @@ describe("listviewFilebrowserDemo metadata", () => {
 describe("listviewFilebrowserDemo header bar", () => {
     it("installs a header bar with the up-button and view-switcher packed into it", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const header = (await screen.findByName("filebrowser-header")) as Gtk.HeaderBar;
+        const header = await screen.findByName("filebrowser-header", { as: Gtk.HeaderBar });
         expect(header).toBeInstanceOf(Gtk.HeaderBar);
         expect(within(header).getByName("up-button")).toBeInstanceOf(Gtk.Button);
         expect(within(header).getByName("view-switcher")).toBeInstanceOf(Gtk.ListView);
@@ -54,14 +54,14 @@ describe("listviewFilebrowserDemo header bar", () => {
 
     it("renders a go-up button in the header bar", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const upButton = (await screen.findByName("up-button")) as Gtk.Button;
+        const upButton = await screen.findByName("up-button", { as: Gtk.Button });
         expect(upButton).toBeInstanceOf(Gtk.Button);
-        expect(upButton.getIconName()).toBe("go-up-symbolic");
+        expect(upButton).toHaveObjectProperty("iconName", "go-up-symbolic");
     });
 
     it("renders a view-mode list view with three entries", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const switcher = (await screen.findByName("view-switcher")) as Gtk.ListView;
+        const switcher = await screen.findByName("view-switcher", { as: Gtk.ListView });
         expect(within(switcher).getAllByRole(Gtk.AccessibleRole.IMG)).toHaveLength(3);
     });
 });
@@ -69,8 +69,8 @@ describe("listviewFilebrowserDemo header bar", () => {
 describe("listviewFilebrowserDemo file grid", () => {
     it("renders the file grid view inside the scrolled window with the working directory listed", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const sw = (await screen.findByName("files-scrolled")) as Gtk.ScrolledWindow;
-        const grid = within(sw).getByName("files-grid") as Gtk.GridView;
+        const sw = await screen.findByName("files-scrolled", { as: Gtk.ScrolledWindow });
+        const grid = within(sw).getByName("files-grid", { as: Gtk.GridView });
         expect(grid).toBeInstanceOf(Gtk.GridView);
         await waitForPopulatedModel(grid);
         await within(grid).findByText("package.json");
@@ -78,7 +78,7 @@ describe("listviewFilebrowserDemo file grid", () => {
 
     it("populates the file grid with known entries from the working directory", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
         await waitForPopulatedModel(grid);
         expect(await within(grid).findByText("package.json")).toBeInstanceOf(Gtk.Label);
         expect(within(grid).getByText("examples")).toBeInstanceOf(Gtk.Label);
@@ -87,7 +87,7 @@ describe("listviewFilebrowserDemo file grid", () => {
 
     it("sorts directories before files, alphabetically within each group", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
         await waitForPopulatedModel(grid);
         const names = orderedNames(grid);
         expect(names.indexOf("examples")).toBeLessThan(names.indexOf("packages"));
@@ -98,32 +98,32 @@ describe("listviewFilebrowserDemo file grid", () => {
 describe("listviewFilebrowserDemo view modes", () => {
     it("starts in list view orientation (horizontal)", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
-        expect(grid.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
+        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
+        expect(grid).toHaveObjectProperty("orientation", Gtk.Orientation.HORIZONTAL);
     });
 
     it("switches to grid view: vertical orientation, wrapped item labels, and switcher selection", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const switcher = (await screen.findByName("view-switcher")) as Gtk.ListView;
+        const switcher = await screen.findByName("view-switcher", { as: Gtk.ListView });
         await userEvent.selectOptions(switcher, 1);
-        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
 
         await waitFor(() => {
-            expect(grid.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+            expect(grid).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
         });
 
-        expect((switcher.getModel() as Gtk.SingleSelection).getSelected()).toBe(1);
-        const label = (await within(grid).findByText("examples")) as Gtk.Label;
-        expect(label.getWrap()).toBe(true);
+        expect(switcher.getModel()).toHaveObjectProperty("selected", 1);
+        const label = await within(grid).findByText("examples", { as: Gtk.Label });
+        expect(label).toHaveObjectProperty("wrap", true);
     });
 
     it("switches to paged view mode rendering the folder and content-type labels", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const switcher = (await screen.findByName("view-switcher")) as Gtk.ListView;
+        const switcher = await screen.findByName("view-switcher", { as: Gtk.ListView });
         await userEvent.selectOptions(switcher, 2);
-        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
         await waitForPopulatedModel(grid);
-        expect((switcher.getModel() as Gtk.SingleSelection).getSelected()).toBe(2);
+        expect(switcher.getModel()).toHaveObjectProperty("selected", 2);
         await within(grid).findByText("packages");
         expect(within(grid).getAllByText("folder").length).toBeGreaterThan(0);
         expect(within(grid).getAllByText("inode/directory").length).toBeGreaterThan(0);
@@ -133,18 +133,18 @@ describe("listviewFilebrowserDemo view modes", () => {
 describe("listviewFilebrowserDemo navigation", () => {
     it("navigates to the parent directory when the up button is clicked", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
         await waitForPopulatedModel(grid);
         const currentDirName = basename(process.cwd());
         expect(within(grid).queryByText(currentDirName)).toBeNull();
-        const upButton = (await screen.findByName("up-button")) as Gtk.Button;
+        const upButton = await screen.findByName("up-button", { as: Gtk.Button });
         await userEvent.click(upButton);
         await within(grid).findByText(currentDirName);
     });
 
     it("navigates into a directory when a directory entry is activated", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
         await waitForPopulatedModel(grid);
         const position = orderedNames(grid).indexOf("examples");
         expect(position).toBeGreaterThanOrEqual(0);

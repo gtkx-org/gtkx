@@ -20,7 +20,7 @@ describe("tabsDemo", () => {
 
     it("renders a GtkTextView populated with tab-separated rows", async () => {
         await renderDemo(tabsDemo);
-        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
+        const textView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
         expect(await screen.findByDisplayValue(/one\t2\.0\tthree/, { collapseWhitespace: false })).toBe(textView);
         expect(await screen.findByDisplayValue(/four\t5\.555\tsix/, { collapseWhitespace: false })).toBe(textView);
         expect(await screen.findByDisplayValue(/seven\t88\.88\tnine/, { collapseWhitespace: false })).toBe(textView);
@@ -28,7 +28,7 @@ describe("tabsDemo", () => {
 
     it("configures three tabs with LEFT, DECIMAL, RIGHT alignments", async () => {
         await renderDemo(tabsDemo);
-        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
+        const textView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
         const tabs = textView.getTabs();
         expect(tabs).not.toBeNull();
         const tabArray = tabs as Pango.TabArray;
@@ -45,7 +45,7 @@ describe("tabsDemo", () => {
 describe("tabsDemo text view", () => {
     it("places the tabs at positions 0, 150 and 290 with '.' as the decimal point", async () => {
         await renderDemo(tabsDemo);
-        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
+        const textView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
         const tabs = textView.getTabs() as Pango.TabArray;
         const [, pos0] = tabs.getTab(0);
         const [, pos1] = tabs.getTab(1);
@@ -58,13 +58,13 @@ describe("tabsDemo text view", () => {
 
     it("uses word wrap on the text view", async () => {
         await renderDemo(tabsDemo);
-        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
-        expect(textView.getWrapMode()).toBe(Gtk.WrapMode.WORD);
+        const textView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+        expect(textView).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
     });
 
     it("wraps the text view in a scrolled window with the expected scrollbar policies", async () => {
         await renderDemo(tabsDemo);
-        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
+        const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
         const [hpolicy, vpolicy] = sw.getPolicy();
         expect(hpolicy).toBe(Gtk.PolicyType.NEVER);
         expect(vpolicy).toBe(Gtk.PolicyType.AUTOMATIC);

@@ -163,7 +163,7 @@ describe("render - Window (4)", () => {
                 </GtkApplicationWindow>,
             );
 
-            expect(windowRef.current?.getChild()).toBe(labelRef.current);
+            expect(windowRef.current).toHaveObjectProperty("child", labelRef.current);
         });
 
         it("replaces child widget", async () => {
@@ -177,7 +177,7 @@ describe("render - Window (4)", () => {
                 appId,
             );
 
-            expect(windowRef.current?.getChild()).toBe(label1Ref.current);
+            expect(windowRef.current).toHaveObjectProperty("child", label1Ref.current);
 
             await rerender(
                 <GtkApplication applicationId={appId} flags={APP_FLAGS}>
@@ -190,7 +190,7 @@ describe("render - Window (4)", () => {
                 </GtkApplication>,
             );
 
-            expect(windowRef.current?.getChild()).toBe(label2Ref.current);
+            expect(windowRef.current).toHaveObjectProperty("child", label2Ref.current);
         });
 
         it("sets Adw.ApplicationWindow content via setContent", async () => {
@@ -203,7 +203,7 @@ describe("render - Window (4)", () => {
                 </AdwApplicationWindow>,
             );
 
-            expect(windowRef.current?.getContent()).toBe(labelRef.current);
+            expect(windowRef.current).toHaveObjectProperty("content", labelRef.current);
         });
     });
 });

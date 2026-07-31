@@ -54,7 +54,7 @@ describe("render - Shortcut (1)", () => {
             />,
         );
 
-        expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
+        expect(controllerRef.current).toHaveObjectProperty("nItems", 1);
     });
 });
 
@@ -89,10 +89,10 @@ describe("render - Shortcut (2)", () => {
         };
 
         const { rerender } = await render(<Harness />);
-        expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
+        expect(controllerRef.current).toHaveObjectProperty("nItems", 1);
         const Empty = () => <GtkBox controllers={<GtkShortcutController ref={controllerRef} />} />;
         await rerender(<Empty />);
-        expect(controllerRef.current?.getNItems() ?? 0).toBe(0);
+        expect(controllerRef.current).toHaveObjectProperty("nItems", 0);
     });
 });
 
@@ -121,8 +121,8 @@ describe("render - Shortcut (3)", () => {
         );
 
         const { rerender } = await render(<Harness isDisabled={false} />);
-        expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
+        expect(controllerRef.current).toHaveObjectProperty("nItems", 1);
         await rerender(<Harness isDisabled={true} />);
-        expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
+        expect(controllerRef.current).toHaveObjectProperty("nItems", 1);
     });
 });

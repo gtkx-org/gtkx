@@ -1,12 +1,12 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textscrollDemo } from "../../../src/demos/input/textscroll.js";
 import { renderDemo } from "../../test-utils.js";
 
 const findTextViews = async (): Promise<[Gtk.TextView, Gtk.TextView]> => {
-    const end = (await screen.findByName("text-view-end")) as Gtk.TextView;
-    const scroll = (await screen.findByName("text-view-scroll")) as Gtk.TextView;
+    const end = await screen.findByName("text-view-end", { as: Gtk.TextView });
+    const scroll = await screen.findByName("text-view-scroll", { as: Gtk.TextView });
 
     return [end, scroll];
 };

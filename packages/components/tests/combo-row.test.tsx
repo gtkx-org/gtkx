@@ -1,6 +1,5 @@
 import type * as Adw from "@gtkx/gi/adw";
-import { DropDown } from "@gtkx/components";
-import { AdwComboRow } from "@gtkx/jsx/adw";
+import { ComboRow } from "@gtkx/components/adw";
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";
@@ -14,14 +13,13 @@ const items = [
 
 const ComboProbe = ({ selectedId, comboRef }: { selectedId: string; comboRef: Ref<Adw.ComboRow> }): ReactNode => (
     <GtkListBox>
-        <DropDown component={AdwComboRow} ref={comboRef} title="Sort Order" items={items} selectedId={selectedId} />
+        <ComboRow ref={comboRef} title="Sort Order" items={items} selectedId={selectedId} />
     </GtkListBox>
 );
 
 const SectionedComboProbe = ({ comboRef }: { comboRef: Ref<Adw.ComboRow> }): ReactNode => (
     <GtkListBox>
-        <DropDown
-            component={AdwComboRow}
+        <ComboRow
             ref={comboRef}
             title="Sort Order"
             sections={[
@@ -42,8 +40,7 @@ const SectionedComboProbe = ({ comboRef }: { comboRef: Ref<Adw.ComboRow> }): Rea
 
 const TemplatedComboProbe = ({ comboRef }: { comboRef: Ref<Adw.ComboRow> }): ReactNode => (
     <GtkListBox>
-        <DropDown
-            component={AdwComboRow}
+        <ComboRow
             ref={comboRef}
             title="Sort Order"
             items={items}
@@ -53,11 +50,11 @@ const TemplatedComboProbe = ({ comboRef }: { comboRef: Ref<Adw.ComboRow> }): Rea
     </GtkListBox>
 );
 
-describe("render - AdwComboRow", () => {
+describe("render - ComboRow", () => {
     it("applies selectedId to the model selection", async () => {
         const ref = createRef<Adw.ComboRow>();
         await render(<ComboProbe selectedId="date" comboRef={ref} />);
-        expect(ref.current?.getSelected()).toBe(1);
+        expect(ref.current).toHaveObjectProperty("selected", 1);
     });
 
     it("renders the selected item in the row display", async () => {
@@ -73,7 +70,7 @@ describe("render - AdwComboRow", () => {
         const ref = createRef<Adw.ComboRow>();
         const { rerender } = await render(<ComboProbe selectedId="title" comboRef={ref} />);
         await rerender(<ComboProbe selectedId="size" comboRef={ref} />);
-        expect(ref.current?.getSelected()).toBe(2);
+        expect(ref.current).toHaveObjectProperty("selected", 2);
         const matches = await screen.findAllByText("By size");
         expect(matches.length).toBeGreaterThanOrEqual(2);
     });

@@ -24,8 +24,7 @@ const tree: Category[] = [
 
 const expandableExpanders = (): Gtk.TreeExpander[] =>
     screen
-        .queryAllByRole(Gtk.AccessibleRole.BUTTON)
-        .filter((widget): widget is Gtk.TreeExpander => widget instanceof Gtk.TreeExpander)
+        .queryAllByRole(Gtk.AccessibleRole.BUTTON, { as: Gtk.TreeExpander })
         .filter((widget) => widget.getListRow()?.isExpandable() ?? false);
 
 const expectNoActWarning = (errorSpy: MockInstance<typeof console.error>): void => {

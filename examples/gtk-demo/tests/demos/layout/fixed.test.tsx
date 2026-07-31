@@ -11,7 +11,7 @@ const findCubeFaces = async (): Promise<Gtk.Frame[]> => {
     const faces: Gtk.Frame[] = [];
 
     for (const name of FACE_NAMES) {
-        faces.push((await screen.findByName(`cube-face-${name}`)) as Gtk.Frame);
+        faces.push(await screen.findByName(`cube-face-${name}`, { as: Gtk.Frame }));
     }
 
     return faces;
@@ -35,27 +35,27 @@ describe("fixedDemo metadata", () => {
 describe("fixedDemo containers", () => {
     it("wraps the outer fixed inside the scrolled window's viewport", async () => {
         await renderDemo(fixedDemo);
-        const scrolled = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
-        const outer = (await screen.findByName("outer-fixed")) as Gtk.Fixed;
+        const scrolled = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
+        const outer = await screen.findByName("outer-fixed", { as: Gtk.Fixed });
         const viewport = scrolled.getChild();
         expect(viewport).toBeInstanceOf(Gtk.Viewport);
-        expect((viewport as Gtk.Viewport).getChild()).toBe(outer);
+        expect(viewport).toHaveObjectProperty("child", outer);
     });
 
     it("nests the inner GtkFixed as a child of the outer GtkFixed", async () => {
         await renderDemo(fixedDemo);
-        const outer = (await screen.findByName("outer-fixed")) as Gtk.Fixed;
-        const inner = (await screen.findByName("inner-fixed")) as Gtk.Fixed;
+        const outer = await screen.findByName("outer-fixed", { as: Gtk.Fixed });
+        const inner = await screen.findByName("inner-fixed", { as: Gtk.Fixed });
         expect(inner.getParent()).toBe(outer);
         expect(outer.getChildTransform(inner)).not.toBeNull();
     });
 
     it("aligns the outer fixed container centrally and enables visible overflow", async () => {
         await renderDemo(fixedDemo);
-        const outer = (await screen.findByName("outer-fixed")) as Gtk.Fixed;
-        expect(outer.getHalign()).toBe(Gtk.Align.CENTER);
-        expect(outer.getValign()).toBe(Gtk.Align.CENTER);
-        expect(outer.getOverflow()).toBe(Gtk.Overflow.VISIBLE);
+        const outer = await screen.findByName("outer-fixed", { as: Gtk.Fixed });
+        expect(outer).toHaveObjectProperty("halign", Gtk.Align.CENTER);
+        expect(outer).toHaveObjectProperty("valign", Gtk.Align.CENTER);
+        expect(outer).toHaveObjectProperty("overflow", Gtk.Overflow.VISIBLE);
     });
 });
 
@@ -65,8 +65,8 @@ describe("fixedDemo cube faces", () => {
         const faces = await findCubeFaces();
         expect(faces).toHaveLength(FACE_NAMES.length);
 
-        for (const [i, face] of faces.entries()) {
-            expect(face.getCssClasses()).toContain(FACE_NAMES[i]);
+        for (const [i, name] of FACE_NAMES.entries()) {
+            expect(faces[i]).toHaveClass(name);
         }
     });
 
@@ -83,7 +83,7 @@ describe("fixedDemo cube faces", () => {
 
     it("gives every cube face a distinct 3D GskTransform on the inner fixed", async () => {
         await renderDemo(fixedDemo);
-        const inner = (await screen.findByName("inner-fixed")) as Gtk.Fixed;
+        const inner = await screen.findByName("inner-fixed", { as: Gtk.Fixed });
         const faces = await findCubeFaces();
 
         const transformStrings = faces.map((face) => {

@@ -23,20 +23,20 @@ describe("cssAccordionDemo", () => {
         await renderDemo(cssAccordionDemo);
 
         for (const label of ACCORDION_LABELS) {
-            const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label })) as Gtk.Button;
-            expect(button.getLabel()).toBe(label);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label, as: Gtk.Button });
+            expect(button).toHaveObjectProperty("label", label);
         }
     });
 
     it("wraps the buttons in a frame with the accordion css class applied", async () => {
         await renderDemo(cssAccordionDemo);
-        const frame = (await screen.findByName("frame")) as Gtk.Frame;
-        expect(frame.getCssClasses()).toContain("accordion");
+        const frame = await screen.findByName("frame", { as: Gtk.Frame });
+        expect(frame).toHaveClass("accordion");
     });
 
     it("holds exactly the six accordion buttons as the button box children in order", async () => {
         await renderDemo(cssAccordionDemo);
-        const box = (await screen.findByName("button-box")) as Gtk.Box;
+        const box = await screen.findByName("button-box", { as: Gtk.Box });
         const children = getChildren(box);
         expect(children).toHaveLength(6);
         expect(children.every((child) => child instanceof Gtk.Button)).toBe(true);
@@ -68,7 +68,7 @@ describe("cssAccordionDemo styling and interaction", () => {
 
     it("fires the clicked signal when an accordion button is activated", async () => {
         await renderDemo(cssAccordionDemo);
-        const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This" })) as Gtk.Button;
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This", as: Gtk.Button });
         const clickHandler = vi.fn();
         button.on("clicked", clickHandler);
 

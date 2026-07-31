@@ -77,7 +77,7 @@ describe("Tasks", () => {
         await userEvent.click(orange);
         await userEvent.click(orange);
 
-        expect(orange).toHaveProperty("active", true);
-        expect(await screen.findByLabelText("Color #3584e4")).toHaveProperty("active", false);
+        expect(orange).toHaveObjectProperty("active", true);
+        expect(await screen.findByLabelText("Color #3584e4")).toHaveObjectProperty("active", false);
     });
 });

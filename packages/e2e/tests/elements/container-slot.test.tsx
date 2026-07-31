@@ -292,9 +292,9 @@ describe("render - ContainerProp (7)", () => {
             }
 
             const { rerender } = await render(<App title="Initial" />);
-            expect(ref.current?.getTitle()).toBe("Initial");
+            expect(ref.current).toHaveObjectProperty("title", "Initial");
             await rerender(<App title="Updated" />);
-            expect(ref.current?.getTitle()).toBe("Updated");
+            expect(ref.current).toHaveObjectProperty("title", "Updated");
         });
 
         it("adds prefix and suffix widgets via compound components", async () => {

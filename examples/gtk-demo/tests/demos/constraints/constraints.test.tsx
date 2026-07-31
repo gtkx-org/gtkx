@@ -57,7 +57,7 @@ const findSpacingGuide = (layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide => 
 const renderAndAllocate = async (): Promise<AllocatedLayout> => {
     await renderDemo(constraintsDemo);
     const { button1, button2, button3 } = await findChildButtons();
-    const container = (await screen.findByName("container")) as Gtk.Box;
+    const container = await screen.findByName("container", { as: Gtk.Box });
 
     await waitFor(() => {
         expect(button3.getAllocatedWidth()).toBeGreaterThan(0);
@@ -82,7 +82,7 @@ describe("constraintsDemo layout", () => {
     it("caps button1 with a width <= 200 constraint on the layout", async () => {
         await renderDemo(constraintsDemo);
         const layout = await getGridLayout();
-        const button1 = (await screen.findByName("button1")) as Gtk.Button;
+        const button1 = await screen.findByName("button1", { as: Gtk.Button });
 
         const maxWidth = collectConstraints(layout).find(
             (c) =>
@@ -170,11 +170,11 @@ describe("constraintsDemo geometry", () => {
 describe("constraintsDemo children", () => {
     it("renders the three child buttons inside the grid", async () => {
         await renderDemo(constraintsDemo);
-        const child1 = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 1" })) as Gtk.Button;
-        const child2 = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 2" })) as Gtk.Button;
-        const child3 = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 3" })) as Gtk.Button;
-        expect(child1.getLabel()).toBe("Child 1");
-        expect(child2.getLabel()).toBe("Child 2");
-        expect(child3.getLabel()).toBe("Child 3");
+        const child1 = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 1", as: Gtk.Button });
+        const child2 = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 2", as: Gtk.Button });
+        const child3 = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 3", as: Gtk.Button });
+        expect(child1).toHaveObjectProperty("label", "Child 1");
+        expect(child2).toHaveObjectProperty("label", "Child 2");
+        expect(child3).toHaveObjectProperty("label", "Child 3");
     });
 });

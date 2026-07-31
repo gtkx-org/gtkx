@@ -148,9 +148,9 @@ describe("render - GtkGridLayoutChild (1)", () => {
         );
 
         const grid = gridRef.current as Gtk.Grid;
-        expect(grid.getColumnSpacing()).toBe(6);
-        expect((grid.getChildAt(0, 0) as Gtk.Label).getLabel()).toBe("A");
-        expect((grid.getChildAt(1, 1) as Gtk.Label).getLabel()).toBe("B");
+        expect(grid).toHaveObjectProperty("columnSpacing", 6);
+        expect(grid.getChildAt(0, 0)).toHaveObjectProperty("label", "A");
+        expect(grid.getChildAt(1, 1)).toHaveObjectProperty("label", "B");
     });
 
     it("spans columns and rows", async () => {
@@ -166,7 +166,7 @@ describe("render - GtkGridLayoutChild (1)", () => {
 
         const grid = gridRef.current as Gtk.Grid;
         const label = grid.getChildAt(0, 0) as Gtk.Label;
-        expect(label.getLabel()).toBe("wide");
+        expect(label).toHaveObjectProperty("label", "wide");
         expect(grid.getChildAt(1, 1)).toBe(label);
     });
 });
@@ -196,8 +196,8 @@ describe("render - GtkGridLayoutChild (2)", () => {
         );
 
         expect(cellRef.current).toBeInstanceOf(Gtk.GridLayoutChild);
-        expect(cellRef.current?.getColumn()).toBe(3);
-        expect(cellRef.current?.getChildWidget()).toBe(labelRef.current);
+        expect(cellRef.current).toHaveObjectProperty("column", 3);
+        expect(cellRef.current).toHaveObjectProperty("childWidget", labelRef.current);
     });
 
     it("removes a child when it unmounts", async () => {
@@ -233,7 +233,7 @@ describe("render - GtkFixedLayoutChild", () => {
         await rerender(<AnchoredApp fixedRef={fixedRef} x={30} y={40} />);
         await expectPositionAt(fixed, label, 30, 40);
         expect(parentNotifications()).toBe(0);
-        expect(label.getParent()).toBe(fixed);
+        expect(label).toHaveObjectProperty("parent", fixed);
     });
 
     it("clears the transform when the prop is removed", async () => {
@@ -272,9 +272,9 @@ describe("render - GtkOverlayLayoutChild (1)", () => {
 
         const overlay = overlayRef.current as Gtk.Overlay;
         const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Overlay Button" });
-        expect(overlay.getChild()).toBe(mainRef.current);
+        expect(overlay).toHaveObjectProperty("child", mainRef.current);
         expect(overlay.getMeasureOverlay(button)).toBe(true);
-        expect(button.getParent()).toBe(overlay);
+        expect(button).toHaveObjectProperty("parent", overlay);
     });
 
     it("toggles clipOverlay in place", async () => {

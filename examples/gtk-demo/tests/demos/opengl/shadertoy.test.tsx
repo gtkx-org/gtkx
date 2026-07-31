@@ -7,7 +7,7 @@ import { renderDemo } from "../../test-utils.js";
 const PRESET_NAMES = ["Alien Planet", "Mandelbrot", "Neon", "Cogs", "Glowing Stars"];
 
 const clickPreset = async (name: string): Promise<void> => {
-    const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name })) as Gtk.Button;
+    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.Button });
     await userEvent.click(button);
 };
 
@@ -26,13 +26,13 @@ describe("shadertoyDemo", () => {
 
     it("renders the main GtkGLArea panel configured with an ES context", async () => {
         await renderDemo(shadertoyDemo);
-        const glArea = (await screen.findByName("shadertoy-gl-area")) as Gtk.GLArea;
+        const glArea = await screen.findByName("shadertoy-gl-area", { as: Gtk.GLArea });
 
         await waitFor(() => {
             expect(glArea.getAllocatedWidth()).toBeGreaterThan(0);
         });
 
-        expect(glArea.getUseEs()).toBe(true);
+        expect(glArea).toHaveObjectProperty("useEs", true);
     });
 
     it("seeds the source editor with the Alien Planet fragment shader", async () => {
@@ -67,9 +67,10 @@ describe("shadertoyDemo editor", () => {
         await renderDemo(shadertoyDemo);
         expect(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)).toHaveDisplayValue(/void mainImage/);
 
-        const clear = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+        const clear = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Clear the text view",
-        })) as Gtk.Button;
+            as: Gtk.Button,
+        });
 
         await userEvent.click(clear);
 
@@ -101,7 +102,7 @@ describe("shadertoyDemo editor", () => {
 
     it("propagates user edits to the buffer", async () => {
         await renderDemo(shadertoyDemo);
-        const sourceView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
+        const sourceView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
         await userEvent.clear(sourceView);
         await userEvent.type(sourceView, "// custom shader");
         expect(await screen.findByDisplayValue("// custom shader")).toBe(sourceView);

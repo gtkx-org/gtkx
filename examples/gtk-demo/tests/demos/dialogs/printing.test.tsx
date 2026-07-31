@@ -43,9 +43,9 @@ describe("configurePrintOperation", () => {
     it("returns a PrintOperation with the demo's async, unit, and page-setup defaults", () => {
         const printOp = configurePrintOperation("line one\nline two\nline three");
         expect(printOp).toBeInstanceOf(Gtk.PrintOperation);
-        expect(printOp.allowAsync).toBe(true);
-        expect(printOp.useFullPage).toBe(false);
-        expect(printOp.getEmbedPageSetup()).toBe(true);
+        expect(printOp).toHaveObjectProperty("allowAsync", true);
+        expect(printOp).toHaveObjectProperty("useFullPage", false);
+        expect(printOp).toHaveObjectProperty("embedPageSetup", true);
         const settings = printOp.getPrintSettings();
         expect(settings?.get(Gtk.PRINT_SETTINGS_OUTPUT_BASENAME)).toBe("gtk-demo");
     });
@@ -61,8 +61,8 @@ describe("configurePrintOperation", () => {
             expect(done).toHaveBeenCalled();
         });
 
-        expect(printOp.nPages).toBe(1);
-        expect(printOp.getNPagesToPrint()).toBe(1);
+        expect(printOp).toHaveObjectProperty("nPages", 1);
+        expect(printOp).toHaveObjectProperty("nPagesToPrint", 1);
     });
 
     it("renders exactly one page for a short source via draw-page", async () => {
@@ -84,7 +84,7 @@ describe("configurePrintOperation", () => {
 
     it("sets the demo's points unit on the print operation", () => {
         const printOp = configurePrintOperation("alpha\nbeta\ngamma");
-        expect(printOp.unit).toBe(Gtk.Unit.POINTS);
+        expect(printOp).toHaveObjectProperty("unit", Gtk.Unit.POINTS);
     });
 });
 
@@ -127,7 +127,7 @@ describe("configurePrintOperation export", () => {
         });
 
         expect(drawPage).toHaveBeenCalledTimes(1);
-        expect(printOp.nPages).toBe(1);
+        expect(printOp).toHaveObjectProperty("nPages", 1);
     });
 });
 

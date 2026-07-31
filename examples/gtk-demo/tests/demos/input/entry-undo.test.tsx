@@ -20,15 +20,15 @@ describe("entryUndoDemo", () => {
     it("labels the entry with the instructional label via accessibleLabelledBy", async () => {
         await renderDemo(entryUndoDemo);
         await screen.findByText(LABEL_TEXT);
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
         expect(screen.getByLabelText(LABEL_TEXT)).toBe(entry);
     });
 
     it("nests the sole entry inside a vertically-oriented box with 12px spacing", async () => {
         await renderDemo(entryUndoDemo);
-        const box = (await screen.findByName("entry-undo-root")) as Gtk.Box;
-        expect(box.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
-        expect(box.getSpacing()).toBe(12);
+        const box = await screen.findByName("entry-undo-root", { as: Gtk.Box });
+        expect(box).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
+        expect(box).toHaveObjectProperty("spacing", 12);
         const nested = within(box).getByRole(Gtk.AccessibleRole.TEXT_BOX);
         expect(nested).toBe(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX));
     });
@@ -37,7 +37,7 @@ describe("entryUndoDemo", () => {
 describe("entryUndoDemo undo and redo", () => {
     it("undoes the typed text when Control+z is dispatched to the entry", async () => {
         await renderDemo(entryUndoDemo);
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
         await userEvent.type(entry, "hello");
         expect(screen.getByDisplayValue("hello")).toBe(entry);
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
@@ -46,7 +46,7 @@ describe("entryUndoDemo undo and redo", () => {
 
     it("redoes the typed text when Control+Shift+z is dispatched after an undo", async () => {
         await renderDemo(entryUndoDemo);
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
         await userEvent.type(entry, "redo me");
         expect(screen.getByDisplayValue("redo me")).toBe(entry);
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
@@ -57,7 +57,7 @@ describe("entryUndoDemo undo and redo", () => {
 
     it("redoes the typed text with the Control+y accelerator after an undo", async () => {
         await renderDemo(entryUndoDemo);
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
         await userEvent.type(entry, "control y redo");
         expect(screen.getByDisplayValue("control y redo")).toBe(entry);
         await userEvent.keyboard(entry, "{Control>}z{/Control}");

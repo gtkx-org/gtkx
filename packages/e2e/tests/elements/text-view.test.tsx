@@ -221,9 +221,9 @@ describe("render - TextView - tag colors", () => {
 
         const tag = buffer.getTagTable().lookup("colored") ?? null;
         expect(tag).not.toBeNull();
-        expect(tag?.foregroundSet).toBe(true);
-        expect(tag?.backgroundSet).toBe(true);
-        expect(tag?.paragraphBackgroundSet).toBe(true);
+        expect(tag).toHaveObjectProperty("foregroundSet", true);
+        expect(tag).toHaveObjectProperty("backgroundSet", true);
+        expect(tag).toHaveObjectProperty("paragraphBackgroundSet", true);
         const fg = tag?.foregroundRgba ?? null;
         expect(fg).not.toBeNull();
         expect(fg?.red).toBeCloseTo(1, 2);
@@ -399,7 +399,7 @@ describe("render - TextView (8)", () => {
             );
 
             const buffer = getTextBuffer(ref);
-            expect(buffer.getEnableUndo()).toBe(enableUndo);
+            expect(buffer).toHaveObjectProperty("enableUndo", enableUndo);
         });
     });
 });

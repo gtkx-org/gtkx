@@ -7,7 +7,7 @@ import { renderDemo } from "../../test-utils.js";
 const renderScaleRows = async (): Promise<Gtk.Scale[]> => {
     await renderDemo(scaleDemo);
 
-    return (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+    return screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
 };
 
 describe("scaleDemo", () => {
@@ -24,12 +24,12 @@ describe("scaleDemo", () => {
         await screen.findByText("Plain", { exact: false });
         await screen.findByText("Marks", { exact: false });
         await screen.findByText("Discrete", { exact: false });
-        const scales = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
+        const scales = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
         expect(scales).toHaveLength(3);
         expect(screen.getAllByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 2, max: 4 } })).toHaveLength(3);
 
-        for (const scale of scales as Gtk.Scale[]) {
-            expect(scale.getDrawValue()).toBe(false);
+        for (const scale of scales) {
+            expect(scale).toHaveObjectProperty("drawValue", false);
             expect(scale.getAdjustment().getStepIncrement()).toBeCloseTo(0.1);
         }
     });

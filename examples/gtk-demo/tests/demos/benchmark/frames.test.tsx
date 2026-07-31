@@ -9,7 +9,7 @@ import { renderDemo } from "../../test-utils.js";
 const FPS_PATTERN = /^\d+\.\d{2} fps$/;
 
 const findFpsLabel = (header: Gtk.HeaderBar): Gtk.Label =>
-    within(header).getByRole(Gtk.AccessibleRole.LABEL, { name: FPS_PATTERN }) as Gtk.Label;
+    within(header).getByRole(Gtk.AccessibleRole.LABEL, { name: FPS_PATTERN, as: Gtk.Label });
 
 const getFontFeatures = (attrs: Pango.Attribute[]): string[] =>
     attrs.flatMap((attr) => attr.asFontFeatures()?.features ?? []);
@@ -34,7 +34,7 @@ const readFontFeatures = (label: Gtk.Label): string[] => {
 const findFramesHeader = async (): Promise<Gtk.HeaderBar> => {
     await renderDemo(framesDemo);
 
-    return (await screen.findByName("frames-header")) as Gtk.HeaderBar;
+    return screen.findByName("frames-header", { as: Gtk.HeaderBar });
 };
 
 vi.setConfig({ testTimeout: 30_000 });
@@ -82,12 +82,12 @@ describe("framesDemo fps polling", () => {
         await renderDemo(framesDemo);
         const colorWidget = await screen.findByName("color-widget");
         expect(colorWidget.getFrameClock()).not.toBeNull();
-        const header = (await screen.findByName("frames-header")) as Gtk.HeaderBar;
-        expect(findFpsLabel(header).getLabel()).toBe("0.00 fps");
+        const header = await screen.findByName("frames-header", { as: Gtk.HeaderBar });
+        expect(findFpsLabel(header)).toHaveObjectProperty("label", "0.00 fps");
 
         await waitFor(
             () => {
-                expect(findFpsLabel(header).getLabel()).not.toBe("0.00 fps");
+                expect(findFpsLabel(header)).not.toHaveObjectProperty("label", "0.00 fps");
             },
             { timeout: 10_000 },
         );
@@ -99,7 +99,7 @@ describe("framesDemo fps polling", () => {
 describe("framesDemo window", () => {
     it("realizes the host window at the demo's 600x400 default size", async () => {
         await renderDemo(framesDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
         expect(window.getWidth()).toBe(600);
         expect(window.getHeight()).toBe(400);
     });

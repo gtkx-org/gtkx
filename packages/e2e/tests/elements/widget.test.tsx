@@ -143,7 +143,7 @@ describe("widget - creation (1)", () => {
             const ref = createRef<Gtk.Box>();
             await render(<GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL} />);
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+            expect(ref.current).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
         });
 
         it("creates Entry widget", async () => {
@@ -156,7 +156,7 @@ describe("widget - creation (1)", () => {
             const ref = createRef<Gtk.Image>();
             await render(<GtkImage ref={ref} iconName="dialog-information" />);
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getIconName()).toBe("dialog-information");
+            expect(ref.current).toHaveObjectProperty("iconName", "dialog-information");
         });
     });
 });
@@ -166,7 +166,7 @@ describe("widget - creation (2)", () => {
         it("passes constructor parameters from props", async () => {
             const ref = createRef<Gtk.Box>();
             await render(<GtkBox ref={ref} spacing={10} />);
-            expect(ref.current?.getSpacing()).toBe(10);
+            expect(ref.current).toHaveObjectProperty("spacing", 10);
         });
 
         it("handles widgets with no constructor parameters", async () => {
@@ -194,7 +194,7 @@ describe("widget - creation (2)", () => {
             const ref = createRef<Gtk.Label>();
             await render(<GtkLabel ref={ref}>Widget Instance</GtkLabel>);
             expect(ref.current).toBeDefined();
-            expect(ref.current?.getLabel()).toBe("Widget Instance");
+            expect(ref.current).toHaveObjectProperty("label", "Widget Instance");
         });
     });
 });
@@ -271,19 +271,19 @@ describe("widget - props (1)", () => {
         it("sets boolean properties", async () => {
             const ref = createRef<Gtk.Label>();
             await render(<GtkLabel ref={ref} selectable={true} />);
-            expect(ref.current?.getSelectable()).toBe(true);
+            expect(ref.current).toHaveObjectProperty("selectable", true);
         });
 
         it("sets numeric properties", async () => {
             const ref = createRef<Gtk.Label>();
             await render(<GtkLabel ref={ref} maxWidthChars={20} />);
-            expect(ref.current?.getMaxWidthChars()).toBe(20);
+            expect(ref.current).toHaveObjectProperty("maxWidthChars", 20);
         });
 
         it("sets enum properties", async () => {
             const ref = createRef<Gtk.Box>();
             await render(<GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL} />);
-            expect(ref.current?.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+            expect(ref.current).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
         });
     });
 });
@@ -752,7 +752,7 @@ describe("widget - auto-wrapping (1)", () => {
             );
 
             expect(screen.getByText("Item 1")).toBeDefined();
-            expect(labelRef.current?.getParent()).not.toBe(listBoxRef.current);
+            expect(labelRef.current).not.toHaveObjectProperty("parent", listBoxRef.current);
         });
 
         it("appends multiple children", async () => {
@@ -814,7 +814,7 @@ describe("widget - auto-wrapping (3)", () => {
             );
 
             expect(screen.getByText("Item 1")).toBeDefined();
-            expect(labelRef.current?.getParent()).not.toBe(flowBoxRef.current);
+            expect(labelRef.current).not.toHaveObjectProperty("parent", flowBoxRef.current);
         });
 
         it("appends multiple children", async () => {

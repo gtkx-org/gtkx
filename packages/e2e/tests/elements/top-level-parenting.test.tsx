@@ -68,7 +68,7 @@ describe("explicit top-level parenting", () => {
         });
 
         expect(parentRef.current).not.toBeNull();
-        expect(childRef.current?.getTransientFor()).toBe(parentRef.current);
+        expect(childRef.current).toHaveObjectProperty("transientFor", parentRef.current);
         expect(childRef.current?.getParent()).toBeNull();
     });
 
@@ -81,7 +81,7 @@ describe("explicit top-level parenting", () => {
             { container: rootElement },
         );
 
-        expect(childRef.current?.getTransientFor()).toBe(parentRef.current);
+        expect(childRef.current).toHaveObjectProperty("transientFor", parentRef.current);
         await rerender(<PortaledChild parentRef={parentRef} childRef={childRef} parented={false} />);
         expect(childRef.current?.getTransientFor()).toBeNull();
     });
@@ -111,6 +111,6 @@ describe("explicit top-level parenting", () => {
             throw new TypeError("expected the presented dialog's root to be a window");
         }
 
-        expect(root.getTransientFor()).toBe(parentRef.current);
+        expect(root).toHaveObjectProperty("transientFor", parentRef.current);
     });
 });

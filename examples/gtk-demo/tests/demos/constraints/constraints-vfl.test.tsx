@@ -21,7 +21,7 @@ const BUTTON_GAP = 12;
 const renderVflDemo = async (): Promise<VflContext> => {
     await renderDemo(constraintsVflDemo);
     const buttons = await findChildButtons();
-    const box = (await screen.findByName("container")) as Gtk.Box;
+    const box = await screen.findByName("container", { as: Gtk.Box });
     const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
 
     return { ...buttons, constraints: collectConstraints(layout) };
@@ -103,7 +103,7 @@ describe("constraintsVflDemo", () => {
 
     it("attaches a GtkConstraintLayout manager to the container box", async () => {
         await renderDemo(constraintsVflDemo);
-        const box = (await screen.findByName("container")) as Gtk.Box;
+        const box = await screen.findByName("container", { as: Gtk.Box });
         expect(box.getLayoutManager()).toBeInstanceOf(Gtk.ConstraintLayout);
     });
 

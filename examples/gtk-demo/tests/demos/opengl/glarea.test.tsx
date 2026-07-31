@@ -17,7 +17,7 @@ describe("glareaDemo", () => {
 
     it("renders a GtkGLArea with the configured size hints", async () => {
         await renderDemo(glareaDemo);
-        const glArea = (await screen.findByName("gl-area")) as Gtk.GLArea;
+        const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
         const [width, height] = glArea.getSizeRequest();
         expect(width).toBe(100);
         expect(height).toBe(200);
@@ -26,28 +26,29 @@ describe("glareaDemo", () => {
     it("renders three axis sliders and an enabled Quit button", async () => {
         await renderDemo(glareaDemo);
 
-        const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, {
+        const scales = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, {
             value: { min: 0, max: 360 },
-        })) as Gtk.Scale[];
+            as: Gtk.Scale,
+        });
 
         expect(scales).toHaveLength(3);
 
         for (const scale of scales) {
-            expect(scale.getAdjustment().getStepIncrement()).toBe(1);
-            expect(scale.getDrawValue()).toBe(false);
+            expect(scale.getAdjustment()).toHaveObjectProperty("stepIncrement", 1);
+            expect(scale).toHaveObjectProperty("drawValue", false);
         }
 
-        const quit = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit" })) as Gtk.Button;
-        expect(quit.getSensitive()).toBe(true);
+        const quit = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit", as: Gtk.Button });
+        expect(quit).toBeEnabled();
     });
 });
 
 describe("glareaDemo interaction", () => {
     it("queues a re-render of the GL area when each axis slider's value changes", async () => {
         await renderDemo(glareaDemo);
-        const glArea = (await screen.findByName("gl-area")) as Gtk.GLArea;
+        const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
         const queueRenderSpy = vi.spyOn(glArea, "queueRender");
-        const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+        const scales = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
 
         for (const scale of scales) {
             scale.grabFocus();
@@ -65,7 +66,7 @@ describe("glareaDemo interaction", () => {
     it("destroys the host window when the Quit button is clicked", async () => {
         await renderDemo(glareaDemo);
         await screen.findByRole(Gtk.AccessibleRole.WINDOW);
-        const quit = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit" })) as Gtk.Button;
+        const quit = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit", as: Gtk.Button });
         await userEvent.click(quit);
 
         await waitFor(() => {

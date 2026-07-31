@@ -1,41 +1,24 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { act, queryController, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { dndDemo } from "../../../src/demos/gestures/dnd.js";
 import { makeRgbaValue, makeStringValue, renderDemo } from "../../test-utils.js";
 
-const findCanvas = async (): Promise<Gtk.Fixed> => (await screen.findByName("canvas")) as Gtk.Fixed;
-const findItemLabel = async (id: string): Promise<Gtk.Label> => (await screen.findByName(`item${id}`)) as Gtk.Label;
-
-const findController = <T extends Gtk.EventController>(
-    widget: Gtk.Widget,
-    type: new (...args: never[]) => T,
-): T | null => {
-    const list = widget.observeControllers();
-
-    for (let i = 0; i < list.getNItems(); i++) {
-        const item = list.getItem(i);
-
-        if (item instanceof type) {
-            return item;
-        }
-    }
-
-    return null;
-};
+const findCanvas = async (): Promise<Gtk.Fixed> => screen.findByName("canvas", { as: Gtk.Fixed });
+const findItemLabel = async (id: string): Promise<Gtk.Label> => screen.findByName(`item${id}`, { as: Gtk.Label });
 
 const openInlineEntryForItem1 = async (): Promise<Gtk.Entry> => {
     await renderDemo(dndDemo);
     const item1 = await findItemLabel("1");
     await userEvent.pointer(item1, "click");
 
-    return (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+    return await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
 };
 
 const triggerContextMenu = async (canvas: Gtk.Fixed, x: number, y: number): Promise<void> => {
-    const gestureClick = findController(canvas, Gtk.GestureClick);
+    const gestureClick = queryController(canvas, Gtk.GestureClick);
     expect(gestureClick).toBeInstanceOf(Gtk.GestureClick);
 
     if (!gestureClick) {
@@ -55,7 +38,7 @@ const triggerContextMenu = async (canvas: Gtk.Fixed, x: number, y: number): Prom
 };
 
 const findMenuButton = async (name: string): Promise<Gtk.Button> =>
-    (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name })) as Gtk.Button;
+    screen.findByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.Button });
 
 const openContextMenuAt = async (x: number, y: number): Promise<Gtk.Fixed> => {
     await renderDemo(dndDemo);
@@ -69,14 +52,14 @@ const clickEnabledMenuButton = async (name: string): Promise<void> => {
     const button = await findMenuButton(name);
 
     await waitFor(() => {
-        expect(button.getSensitive()).toBe(true);
+        expect(button).toBeEnabled();
     });
 
     await userEvent.click(button);
 };
 
 const beginDragRevealingTrash = async (item: Gtk.Label, trash: Gtk.Box): Promise<Gtk.DragSource | null> => {
-    const dragSource = findController(item, Gtk.DragSource);
+    const dragSource = queryController(item, Gtk.DragSource);
     expect(dragSource).toBeInstanceOf(Gtk.DragSource);
 
     if (!dragSource) {
@@ -88,7 +71,7 @@ const beginDragRevealingTrash = async (item: Gtk.Label, trash: Gtk.Box): Promise
     });
 
     await waitFor(() => {
-        expect(trash.getVisible()).toBe(true);
+        expect(trash).toBeVisible();
     });
 
     return dragSource;
@@ -109,7 +92,7 @@ describe("dndDemo metadata", () => {
 
     it("applies the default 640x480 size to the host window", async () => {
         await renderDemo(dndDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
         const [width, height] = window.getDefaultSize();
         expect(width).toBe(640);
         expect(height).toBe(480);
@@ -130,9 +113,9 @@ describe("dndDemo initial canvas", () => {
 
     it("attaches a hidden context-menu popover at startup", async () => {
         await renderDemo(dndDemo);
-        const popover = (await screen.findByName("context-menu")) as Gtk.Popover;
+        const popover = await screen.findByName("context-menu", { as: Gtk.Popover });
         expect(popover).toBeInstanceOf(Gtk.Popover);
-        expect(popover.isVisible()).toBe(false);
+        expect(popover).not.toBeVisible();
     });
 });
 
@@ -158,7 +141,7 @@ describe("dndDemo item styling", () => {
         await userEvent.drop(item1, makeStringValue("my-custom-class"));
 
         await waitFor(() => {
-            expect(item1.getCssClasses()).toEqual(expect.arrayContaining(["my-custom-class"]));
+            expect(item1).toHaveClass("my-custom-class");
         });
     });
 
@@ -217,7 +200,7 @@ describe("dndDemo item rotation", () => {
         await renderDemo(dndDemo);
         const canvas = await findCanvas();
         const item1 = await findItemLabel("1");
-        const rotate = findController(item1, Gtk.GestureRotate);
+        const rotate = queryController(item1, Gtk.GestureRotate);
         expect(rotate).toBeInstanceOf(Gtk.GestureRotate);
 
         if (!rotate) {
@@ -242,7 +225,7 @@ describe("dndDemo item rotation", () => {
         const canvas = await findCanvas();
         const item1 = await findItemLabel("1");
         const before = canvas.getChildTransform(item1);
-        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
+        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
         await userEvent.slide(scale, 90);
 
         await waitFor(() => {
@@ -256,8 +239,8 @@ describe("dndDemo item rotation", () => {
 describe("dndDemo swatch palette", () => {
     it("exposes an RGBA content provider from the red color swatch drag source", async () => {
         await renderDemo(dndDemo);
-        const redSwatch = (await screen.findByName("swatch-red")) as Gtk.Box;
-        const dragSource = findController(redSwatch, Gtk.DragSource);
+        const redSwatch = await screen.findByName("swatch-red", { as: Gtk.Box });
+        const dragSource = queryController(redSwatch, Gtk.DragSource);
         expect(dragSource).toBeInstanceOf(Gtk.DragSource);
         const provider = dragSource?.emit("prepare", 0, 0) as Gdk.ContentProvider | null;
         expect(provider).toBeInstanceOf(Gdk.ContentProvider);
@@ -268,8 +251,8 @@ describe("dndDemo swatch palette", () => {
         await renderDemo(dndDemo);
 
         for (const id of ["rainbow1", "rainbow2", "rainbow3"]) {
-            const swatch = (await screen.findByName(`pattern-${id}`)) as Gtk.Box;
-            const dragSource = findController(swatch, Gtk.DragSource);
+            const swatch = await screen.findByName(`pattern-${id}`, { as: Gtk.Box });
+            const dragSource = queryController(swatch, Gtk.DragSource);
             expect(dragSource).toBeInstanceOf(Gtk.DragSource);
             const provider = dragSource?.emit("prepare", 0, 0) as Gdk.ContentProvider | null;
             expect(provider).toBeInstanceOf(Gdk.ContentProvider);
@@ -311,7 +294,7 @@ describe("dndDemo context menu", () => {
 
     it("rounds fractional pointer coordinates into the popover's integer pointing rectangle", async () => {
         await openContextMenuAt(225.5, 130.25);
-        const popover = (await screen.findByName("context-menu")) as Gtk.Popover;
+        const popover = await screen.findByName("context-menu", { as: Gtk.Popover });
         const [ok, rectangle] = popover.getPointingTo();
         expect(ok).toBe(true);
         expect([rectangle.x, rectangle.y]).toEqual([226, 130]);
@@ -321,8 +304,8 @@ describe("dndDemo context menu", () => {
         await openContextMenuAt(600, 600);
         const editButton = await findMenuButton("Edit");
         const menuDeleteButton = await findMenuButton("Delete");
-        expect(editButton.getSensitive()).toBe(false);
-        expect(menuDeleteButton.getSensitive()).toBe(false);
+        expect(editButton).toBeDisabled();
+        expect(menuDeleteButton).toBeDisabled();
     });
 });
 
@@ -330,7 +313,7 @@ describe("dndDemo non-context-menu click is ignored", () => {
     it("does not open the context menu when the press event reports no context-menu trigger", async () => {
         await renderDemo(dndDemo);
         const canvas = await findCanvas();
-        const gestureClick = findController(canvas, Gtk.GestureClick);
+        const gestureClick = queryController(canvas, Gtk.GestureClick);
         expect(gestureClick).toBeInstanceOf(Gtk.GestureClick);
 
         if (!gestureClick) {
@@ -348,8 +331,8 @@ describe("dndDemo non-context-menu click is ignored", () => {
             spy.mockRestore();
         }
 
-        const popover = (await screen.findByName("context-menu")) as Gtk.Popover;
-        expect(popover.isVisible()).toBe(false);
+        const popover = await screen.findByName("context-menu", { as: Gtk.Popover });
+        expect(popover).not.toBeVisible();
     });
 });
 
@@ -357,8 +340,8 @@ describe("dndDemo item drag-source side effects", () => {
     it("dims the item and reveals the trash zone on drag-begin, then restores them on drag-end", async () => {
         await renderDemo(dndDemo);
         const item1 = await findItemLabel("1");
-        const trash = (await screen.findByName("trash-zone")) as Gtk.Box;
-        expect(trash.getVisible()).toBe(false);
+        const trash = await screen.findByName("trash-zone", { as: Gtk.Box });
+        expect(trash).not.toBeVisible();
         const dragSource = await beginDragRevealingTrash(item1, trash);
 
         if (!dragSource) {
@@ -375,14 +358,14 @@ describe("dndDemo item drag-source side effects", () => {
 
         await waitFor(() => {
             expect(item1.getOpacity()).toBeCloseTo(1, 2);
-            expect(trash.getVisible()).toBe(false);
+            expect(trash).not.toBeVisible();
         });
     });
 
     it("sets the drag icon from a fractional pointer hotspot", async () => {
         await renderDemo(dndDemo);
         const item1 = await findItemLabel("1");
-        const dragSource = findController(item1, Gtk.DragSource);
+        const dragSource = queryController(item1, Gtk.DragSource);
         expect(dragSource).toBeInstanceOf(Gtk.DragSource);
 
         if (!dragSource) {
@@ -407,7 +390,7 @@ describe("dndDemo trash zone", () => {
     it("deletes an item when its id is dropped on the trash zone", async () => {
         await renderDemo(dndDemo);
         const item1 = await findItemLabel("1");
-        const trash = (await screen.findByName("trash-zone")) as Gtk.Box;
+        const trash = await screen.findByName("trash-zone", { as: Gtk.Box });
 
         if (!(await beginDragRevealingTrash(item1, trash))) {
             return;
@@ -424,8 +407,8 @@ describe("dndDemo trash zone", () => {
 
     it("highlights the trash zone with a background class on drop-target enter and clears it on leave", async () => {
         await renderDemo(dndDemo);
-        const trash = (await screen.findByName("trash-zone")) as Gtk.Box;
-        const dropTarget = findController(trash, Gtk.DropTarget);
+        const trash = await screen.findByName("trash-zone", { as: Gtk.Box });
+        const dropTarget = queryController(trash, Gtk.DropTarget);
         expect(dropTarget).toBeInstanceOf(Gtk.DropTarget);
 
         if (!dropTarget) {
@@ -460,8 +443,8 @@ describe("dndDemo z-order", () => {
 
         const labelOrder = (): string[] =>
             within(canvas)
-                .getAllByText(/^Item /)
-                .map((w) => (w as Gtk.Label).getText());
+                .getAllByText(/^Item /, { as: Gtk.Label })
+                .map((w) => w.getText());
 
         expect(labelOrder().at(-1)).not.toBe("Item 1");
         const item1 = await findItemLabel("1");

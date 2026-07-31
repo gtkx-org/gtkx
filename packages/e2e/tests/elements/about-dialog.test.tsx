@@ -20,7 +20,7 @@ describe("render - AboutDialog credit sections", () => {
             container: rootElement,
         });
 
-        expect(ref.current?.getProgramName()).toBe("GTKX");
+        expect(ref.current).toHaveObjectProperty("programName", "GTKX");
     });
 
     it("keeps the initial sections when the prop changes", async () => {
@@ -38,7 +38,7 @@ describe("render - AboutDialog credit sections", () => {
             />,
         );
 
-        expect(ref.current?.getProgramName()).toBe("GTKX");
+        expect(ref.current).toHaveObjectProperty("programName", "GTKX");
     });
 
     it("applies sections provided after mount only once", async () => {
@@ -49,6 +49,6 @@ describe("render - AboutDialog credit sections", () => {
         });
 
         await rerender(<GtkAboutDialog ref={ref} programName="GTKX" creditSections={SECTIONS} />);
-        expect(ref.current?.getProgramName()).toBe("GTKX");
+        expect(ref.current).toHaveObjectProperty("programName", "GTKX");
     });
 });

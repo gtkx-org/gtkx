@@ -95,7 +95,7 @@ describe("tutorial regressions", () => {
         const buttonRef = createRef<Gtk.Button>();
         const onBack = vi.fn();
         await render(detailShell(buttonRef, onBack));
-        expect(buttonRef.current?.getSensitive()).toBe(true);
+        expect(buttonRef.current).toBeEnabled();
 
         if (buttonRef.current) {
             await userEvent.click(buttonRef.current);
@@ -111,8 +111,8 @@ describe("tutorial regressions", () => {
             container: rootElement,
         });
 
-        expect(buttonRef.current?.getSensitive()).toBe(true);
+        expect(buttonRef.current).toBeEnabled();
         await rerender(<ReuseShell buttonRef={buttonRef} isDetail={true} />);
-        expect(buttonRef.current?.getSensitive()).toBe(true);
+        expect(buttonRef.current).toBeEnabled();
     });
 });

@@ -12,7 +12,7 @@ const captureDrawFunc = async (): Promise<{ drawingArea: Gtk.DrawingArea; drawFu
 
     try {
         await renderDemo(textmaskDemo);
-        const drawingArea = (await screen.findByName("textmask-area")) as Gtk.DrawingArea;
+        const drawingArea = await screen.findByName("textmask-area", { as: Gtk.DrawingArea });
         const call = setDrawFunc.mock.calls.find(([fn]) => typeof fn === "function");
         const drawFunc = call?.[0] as DrawFunc | undefined;
 
@@ -48,7 +48,7 @@ describe("textmaskDemo metadata", () => {
 describe("textmaskDemo rendering", () => {
     it("applies the configured default size to the host window", async () => {
         await renderDemo(textmaskDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
         const [width, height] = window.getDefaultSize();
         expect(width).toBe(400);
         expect(height).toBe(240);

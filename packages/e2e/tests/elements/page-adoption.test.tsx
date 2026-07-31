@@ -39,7 +39,7 @@ describe("render - page adoption > NotebookPage", () => {
 
         const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(pageRef.current).toBe(page);
-        expect(pageRef.current?.getChild()).toBe(contentRef.current);
+        expect(pageRef.current).toHaveObjectProperty("child", contentRef.current);
     });
 
     it("applies reorderable, detachable and menuLabel declaratively", async () => {
@@ -55,9 +55,9 @@ describe("render - page adoption > NotebookPage", () => {
         );
 
         const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
-        expect(page?.reorderable).toBe(true);
-        expect(page?.detachable).toBe(true);
-        expect(page?.menuLabel).toBe("Menu Entry");
+        expect(page).toHaveObjectProperty("reorderable", true);
+        expect(page).toHaveObjectProperty("detachable", true);
+        expect(page).toHaveObjectProperty("menuLabel", "Menu Entry");
     });
 
     it("resets a page prop to its default when it is removed", async () => {
@@ -69,14 +69,14 @@ describe("render - page adoption > NotebookPage", () => {
         );
 
         let page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
-        expect(page?.reorderable).toBe(true);
+        expect(page).toHaveObjectProperty("reorderable", true);
 
         await rerender(
             <ReorderablePageApp notebookRef={notebookRef} contentRef={contentRef} reorderable={false} />,
         );
 
         page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
-        expect(page?.reorderable).toBe(false);
+        expect(page).toHaveObjectProperty("reorderable", false);
     });
 });
 
@@ -96,6 +96,6 @@ describe("render - page adoption > StackPage", () => {
 
         const page = stackRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(pageRef.current).toBe(page);
-        expect(pageRef.current?.getTitle()).toBe("Title");
+        expect(pageRef.current).toHaveObjectProperty("title", "Title");
     });
 });

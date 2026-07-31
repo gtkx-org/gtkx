@@ -57,18 +57,18 @@ const rerenderUncontrolled = async (textProps: TextProps): Promise<Gtk.Entry> =>
 describe("render - controlled editable text", () => {
     it.each(CARRIERS)("leaves the caret after text typed through the %s", async (_carrier, textProps) => {
         const entry = await typeIntoControlled(textProps);
-        expect(entry.getText()).toBe("abc");
+        expect(entry).toHaveObjectProperty("text", "abc");
         expect(entry.getPosition()).toBe(3);
     });
 
     it.each(CARRIERS)("writes %s text the widget does not already hold", async (_carrier, textProps) => {
         const entry = await rerenderUncontrolled(textProps);
-        expect(entry.getText()).toBe("two");
+        expect(entry).toHaveObjectProperty("text", "two");
     });
 
     it("appends successive characters typed without refocusing", async () => {
         const entry = await typeIntoControlled(directText);
         await userEvent.type(entry, "d", { skipClick: true });
-        expect(entry.getText()).toBe("abcd");
+        expect(entry).toHaveObjectProperty("text", "abcd");
     });
 });

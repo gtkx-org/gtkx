@@ -1,5 +1,5 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
+import * as Gtk from "@gtkx/gi/gtk";
 import { render, renderHook, screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import type { Demo } from "../../src/demos/types.js";
@@ -74,8 +74,8 @@ describe("Sidebar", () => {
             </DemoProvider>,
         );
 
-        const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
-        expect(searchBar.getSearchMode()).toBe(true);
+        const searchBar = await screen.findByName("sidebar-search-bar", { as: Gtk.SearchBar });
+        expect(searchBar).toHaveObjectProperty("searchModeEnabled", true);
         await screen.findByText("Buttons");
     });
 

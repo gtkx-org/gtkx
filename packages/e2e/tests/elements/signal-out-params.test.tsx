@@ -94,14 +94,14 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
 
         await setTextAndUpdate(spin, "value: 042");
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 42 } });
-        expect(spin.getValue()).toBe(42);
+        expect(spin).toHaveObjectProperty("value", 42);
     });
 
     it("falls back to GTK's default parsing when the handler returns the not-handled primary", async () => {
         const spin = await renderSpinButton(() => [FALSE, 0]);
         await setTextAndUpdate(spin, "55");
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 55 } });
-        expect(spin.getValue()).toBe(55);
+        expect(spin).toHaveObjectProperty("value", 55);
     });
 
     it("round-trips the tuple out-value through a direct FFI connect", async () => {
@@ -109,7 +109,7 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
         spin.connect("input", () => [1, 256]);
         await setTextAndUpdate(spin, "anything");
         await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 256 } });
-        expect(spin.getValue()).toBe(256);
+        expect(spin).toHaveObjectProperty("value", 256);
     });
 });
 

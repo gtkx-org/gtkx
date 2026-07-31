@@ -34,7 +34,7 @@ const findAllRevealers = async (): Promise<Gtk.Revealer[]> => {
     const revealers: Gtk.Revealer[] = [];
 
     for (let i = 0; i < REVEALER_COUNT; i++) {
-        revealers.push((await screen.findByName(`revealer-${String(i)}`)) as Gtk.Revealer);
+        revealers.push(await screen.findByName(`revealer-${String(i)}`, { as: Gtk.Revealer }));
     }
 
     return revealers;
@@ -67,7 +67,7 @@ describe("revealerDemo metadata", () => {
 describe("revealerDemo structure", () => {
     it("renders exactly nine GtkRevealer widgets initially hidden", async () => {
         await renderDemo(revealerDemo);
-        const grid = (await screen.findByName("revealer-grid")) as Gtk.Grid;
+        const grid = await screen.findByName("revealer-grid", { as: Gtk.Grid });
         const revealers = collectGridRevealers(grid);
         expect(revealers).toHaveLength(REVEALER_COUNT);
         expect(revealers.some((revealer) => revealer.getRevealChild())).toBe(false);
@@ -82,16 +82,16 @@ describe("revealerDemo structure", () => {
 
     it("places each revealer's child as a GtkImage with the cool-face icon", async () => {
         await renderDemo(revealerDemo);
-        const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG);
+        const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
         expect(images).toHaveLength(REVEALER_COUNT);
         expect(images.every((image) => image instanceof Gtk.Image)).toBe(true);
-        const iconNames = images.map((image) => (image as Gtk.Image).getIconName());
+        const iconNames = images.map((image) => image.getIconName());
         expect(iconNames.every((name) => name === "face-cool-symbolic")).toBe(true);
     });
 
     it("places each revealer at its configured grid cell forming the cross layout", async () => {
         await renderDemo(revealerDemo);
-        const grid = (await screen.findByName("revealer-grid")) as Gtk.Grid;
+        const grid = await screen.findByName("revealer-grid", { as: Gtk.Grid });
         const revealers = await findAllRevealers();
         const placed = REVEALER_CELLS.map((cell) => grid.getChildAt(cell.column, cell.row));
         expect(placed).toEqual(revealers);

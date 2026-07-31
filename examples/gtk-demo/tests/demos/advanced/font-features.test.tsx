@@ -22,7 +22,7 @@ const activateKerningFeature = async (): Promise<Gtk.Label> => {
     await expandFeatures();
     const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
     await userEvent.click(kerning);
-    const settings = (await screen.findByName("settings")) as Gtk.Label;
+    const settings = await screen.findByName("settings", { as: Gtk.Label });
 
     await waitFor(() => {
         expect(settings).toHaveTextContent("kern=1");
@@ -53,7 +53,7 @@ describe("fontFeaturesDemo rendering", () => {
 
     it("renders the preview label with default paragraph sample", async () => {
         await renderDemo(fontFeaturesDemo);
-        const label = (await screen.findByName("preview-label")) as Gtk.Label;
+        const label = await screen.findByName("preview-label", { as: Gtk.Label });
         expect(label).toHaveTextContent("Grumpy wizards");
     });
 
@@ -66,7 +66,7 @@ describe("fontFeaturesDemo rendering", () => {
 
     it("renders the settings label empty initially", async () => {
         await renderDemo(fontFeaturesDemo);
-        const settings = (await screen.findByName("settings")) as Gtk.Label;
+        const settings = await screen.findByName("settings", { as: Gtk.Label });
         expect(settings).not.toHaveTextContent();
     });
 });
@@ -74,15 +74,15 @@ describe("fontFeaturesDemo rendering", () => {
 describe("fontFeaturesDemo view mode buttons", () => {
     it("renders Plain and Waterfall toggle buttons with Plain active by default", async () => {
         await renderDemo(fontFeaturesDemo);
-        const plain = (await screen.findByName("plain_toggle")) as Gtk.ToggleButton;
-        const waterfall = (await screen.findByName("waterfall_toggle")) as Gtk.ToggleButton;
+        const plain = await screen.findByName("plain_toggle", { as: Gtk.ToggleButton });
+        const waterfall = await screen.findByName("waterfall_toggle", { as: Gtk.ToggleButton });
         expect(plain).toBePressed();
         expect(waterfall).not.toBePressed();
     });
 
     it("switches to waterfall mode and renders multiple sized labels", async () => {
         await renderDemo(fontFeaturesDemo);
-        const waterfall = (await screen.findByName("waterfall_toggle")) as Gtk.ToggleButton;
+        const waterfall = await screen.findByName("waterfall_toggle", { as: Gtk.ToggleButton });
         await userEvent.click(waterfall);
         const waterfallLabels = await screen.findAllByName("waterfall-label");
         expect(waterfallLabels).toHaveLength(15);
@@ -90,8 +90,8 @@ describe("fontFeaturesDemo view mode buttons", () => {
 
     it("switches back to plain mode", async () => {
         await renderDemo(fontFeaturesDemo);
-        const plain = (await screen.findByName("plain_toggle")) as Gtk.ToggleButton;
-        const waterfall = (await screen.findByName("waterfall_toggle")) as Gtk.ToggleButton;
+        const plain = await screen.findByName("plain_toggle", { as: Gtk.ToggleButton });
+        const waterfall = await screen.findByName("waterfall_toggle", { as: Gtk.ToggleButton });
         await userEvent.click(waterfall);
         await userEvent.click(plain);
         expect(plain).toBePressed();
@@ -99,19 +99,19 @@ describe("fontFeaturesDemo view mode buttons", () => {
 
     it("switches to edit mode and shows the TextView in the stack", async () => {
         await renderDemo(fontFeaturesDemo);
-        const editBtn = (await screen.findByName("edit_toggle")) as Gtk.ToggleButton;
+        const editBtn = await screen.findByName("edit_toggle", { as: Gtk.ToggleButton });
         await userEvent.click(editBtn);
-        const stack = (await screen.findByName("stack")) as Gtk.Stack;
-        expect(stack.getVisibleChildName()).toBe("entry");
+        const stack = await screen.findByName("stack", { as: Gtk.Stack });
+        expect(stack).toHaveObjectProperty("visibleChildName", "entry");
     });
 });
 
 describe("fontFeaturesDemo sample buttons", () => {
     it("cycles through alphabet samples on click", async () => {
         await renderDemo(fontFeaturesDemo);
-        const alphabetBtn = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Alphabet" })) as Gtk.Button;
+        const alphabetBtn = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Alphabet", as: Gtk.Button });
         await userEvent.click(alphabetBtn);
-        const label = (await screen.findByName("preview-label")) as Gtk.Label;
+        const label = await screen.findByName("preview-label", { as: Gtk.Label });
 
         await waitFor(() => {
             expect(label).toHaveTextContent("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -122,7 +122,7 @@ describe("fontFeaturesDemo sample buttons", () => {
 
     it("cycles through paragraph samples on click", async () => {
         await renderDemo(fontFeaturesDemo);
-        const paragraphBtn = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Paragraph" })) as Gtk.Button;
+        const paragraphBtn = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Paragraph", as: Gtk.Button });
         await screen.findByText(/Grumpy wizards/);
         await userEvent.click(paragraphBtn);
         expect(screen.queryByText(/Grumpy wizards/)).toBeNull();
@@ -150,7 +150,7 @@ describe("fontFeaturesDemo feature toggling", () => {
         await expandFeatures();
         const liningFigures = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Lining Figures" });
         await userEvent.click(liningFigures);
-        const settings = (await screen.findByName("settings")) as Gtk.Label;
+        const settings = await screen.findByName("settings", { as: Gtk.Label });
 
         await waitFor(() => {
             expect(settings).toHaveTextContent("lnum=1");
@@ -161,14 +161,14 @@ describe("fontFeaturesDemo feature toggling", () => {
 describe("fontFeaturesDemo titlebar", () => {
     it("sets a GtkHeaderBar as the window titlebar containing the Reset button", async () => {
         await renderDemo(fontFeaturesDemo);
-        const header = (await screen.findByName("font-features-header")) as Gtk.HeaderBar;
-        const resetButton = within(header).getByName("reset") as Gtk.Button;
-        expect(resetButton.getIconName()).toBe("view-refresh-symbolic");
+        const header = await screen.findByName("font-features-header", { as: Gtk.HeaderBar });
+        const resetButton = within(header).getByName("reset", { as: Gtk.Button });
+        expect(resetButton).toHaveObjectProperty("iconName", "view-refresh-symbolic");
     });
 
     it("clicking the titlebar Reset button clears active feature settings in the body", async () => {
         const settings = await activateKerningFeature();
-        const resetButton = (await screen.findByName("reset")) as Gtk.Button;
+        const resetButton = await screen.findByName("reset", { as: Gtk.Button });
         await userEvent.click(resetButton);
 
         await waitFor(() => {
@@ -180,7 +180,7 @@ describe("fontFeaturesDemo titlebar", () => {
 describe("fontFeaturesDemo size entry", () => {
     it("accepts a valid size entry value", async () => {
         await renderDemo(fontFeaturesDemo);
-        const sizeEntry = (await screen.findByName("size_entry")) as Gtk.Entry;
+        const sizeEntry = await screen.findByName("size_entry", { as: Gtk.Entry });
         await userEvent.clear(sizeEntry);
         await userEvent.type(sizeEntry, "24");
         await userEvent.keyboard(sizeEntry, "{Enter}");
@@ -189,7 +189,7 @@ describe("fontFeaturesDemo size entry", () => {
 
     it("ignores out-of-range size values without crashing the preview", async () => {
         await renderDemo(fontFeaturesDemo);
-        const sizeEntry = (await screen.findByName("size_entry")) as Gtk.Entry;
+        const sizeEntry = await screen.findByName("size_entry", { as: Gtk.Entry });
         await userEvent.clear(sizeEntry);
         await userEvent.type(sizeEntry, "9999");
         await userEvent.keyboard(sizeEntry, "{Enter}");
@@ -202,7 +202,7 @@ describe("fontFeaturesDemo size entry", () => {
 describe("fontFeaturesDemo letterspacing entry", () => {
     it("accepts a valid letterspacing entry", async () => {
         await renderDemo(fontFeaturesDemo);
-        const letterspacingEntry = (await screen.findByName("letterspacing_entry")) as Gtk.Entry;
+        const letterspacingEntry = await screen.findByName("letterspacing_entry", { as: Gtk.Entry });
         await userEvent.clear(letterspacingEntry);
         await userEvent.type(letterspacingEntry, "512");
         await userEvent.keyboard(letterspacingEntry, "{Enter}");
@@ -213,7 +213,7 @@ describe("fontFeaturesDemo letterspacing entry", () => {
 describe("fontFeaturesDemo line-height entry", () => {
     it("accepts a valid line-height entry", async () => {
         await renderDemo(fontFeaturesDemo);
-        const lineHeightEntry = (await screen.findByName("line_height_entry")) as Gtk.Entry;
+        const lineHeightEntry = await screen.findByName("line_height_entry", { as: Gtk.Entry });
         await userEvent.clear(lineHeightEntry);
         await userEvent.type(lineHeightEntry, "1.5");
         await userEvent.keyboard(lineHeightEntry, "{Enter}");
@@ -222,7 +222,7 @@ describe("fontFeaturesDemo line-height entry", () => {
 
     it("ignores invalid line-height values", async () => {
         await renderDemo(fontFeaturesDemo);
-        const lineHeightEntry = (await screen.findByName("line_height_entry")) as Gtk.Entry;
+        const lineHeightEntry = await screen.findByName("line_height_entry", { as: Gtk.Entry });
         await userEvent.clear(lineHeightEntry);
         await userEvent.type(lineHeightEntry, "0.1");
         await userEvent.keyboard(lineHeightEntry, "{Enter}");
@@ -235,11 +235,11 @@ describe("fontFeaturesDemo line-height entry", () => {
 describe("fontFeaturesDemo color swap", () => {
     it("swaps the default foreground and background colors on click", async () => {
         await renderDemo(fontFeaturesDemo);
-        const fg = (await screen.findByName("foreground-color")) as Gtk.ColorDialogButton;
-        const bg = (await screen.findByName("background-color")) as Gtk.ColorDialogButton;
+        const fg = await screen.findByName("foreground-color", { as: Gtk.ColorDialogButton });
+        const bg = await screen.findByName("background-color", { as: Gtk.ColorDialogButton });
         expect(isRgbaEqual(fg, 0, 0, 0)).toBe(true);
         expect(isRgbaEqual(bg, 1, 1, 1)).toBe(true);
-        const swap = (await screen.findByName("swap-colors")) as Gtk.Button;
+        const swap = await screen.findByName("swap-colors", { as: Gtk.Button });
         await fireEvent(swap, "clicked");
 
         await waitFor(() => {
@@ -251,8 +251,8 @@ describe("fontFeaturesDemo color swap", () => {
 
     it("applies a foreground color change and carries it to the background on swap", async () => {
         await renderDemo(fontFeaturesDemo);
-        const fg = (await screen.findByName("foreground-color")) as Gtk.ColorDialogButton;
-        const bg = (await screen.findByName("background-color")) as Gtk.ColorDialogButton;
+        const fg = await screen.findByName("foreground-color", { as: Gtk.ColorDialogButton });
+        const bg = await screen.findByName("background-color", { as: Gtk.ColorDialogButton });
         const red = new Gdk.RGBA();
         red.red = 1;
         red.green = 0;
@@ -267,7 +267,7 @@ describe("fontFeaturesDemo color swap", () => {
             expect(isRgbaEqual(fg, 1, 0, 0)).toBe(true);
         });
 
-        const swap = (await screen.findByName("swap-colors")) as Gtk.Button;
+        const swap = await screen.findByName("swap-colors", { as: Gtk.Button });
         await fireEvent(swap, "clicked");
 
         await waitFor(() => {
@@ -279,13 +279,13 @@ describe("fontFeaturesDemo color swap", () => {
 describe("fontFeaturesDemo font button", () => {
     it("derives the size from a selected font description", async () => {
         await renderDemo(fontFeaturesDemo);
-        const fontButton = (await screen.findByName("font-button")) as Gtk.FontDialogButton;
+        const fontButton = await screen.findByName("font-button", { as: Gtk.FontDialogButton });
 
         await act(() => {
             fontButton.setFontDesc(Pango.FontDescription.fromString("Sans 30"));
         });
 
-        const sizeEntry = (await screen.findByName("size_entry")) as Gtk.Entry;
+        const sizeEntry = await screen.findByName("size_entry", { as: Gtk.Entry });
 
         await waitFor(() => {
             expect(sizeEntry).toHaveDisplayValue("30");
@@ -306,7 +306,7 @@ describe("fontFeaturesDemo sliders", () => {
             expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 24 } })).toBeTruthy();
         });
 
-        const sizeEntry = (await screen.findByName("size_entry")) as Gtk.Entry;
+        const sizeEntry = await screen.findByName("size_entry", { as: Gtk.Entry });
 
         await waitFor(() => {
             expect(sizeEntry).toHaveDisplayValue("24");
@@ -317,20 +317,20 @@ describe("fontFeaturesDemo sliders", () => {
 describe("fontFeaturesDemo edit mode Escape", () => {
     it("reverts edits and returns to plain view when Escape is pressed", async () => {
         await renderDemo(fontFeaturesDemo);
-        const editBtn = (await screen.findByName("edit_toggle")) as Gtk.ToggleButton;
+        const editBtn = await screen.findByName("edit_toggle", { as: Gtk.ToggleButton });
         await userEvent.click(editBtn);
-        const stack = (await screen.findByName("stack")) as Gtk.Stack;
-        expect(stack.getVisibleChildName()).toBe("entry");
-        const textView = (await screen.findByName("edit_textview")) as Gtk.TextView;
+        const stack = await screen.findByName("stack", { as: Gtk.Stack });
+        expect(stack).toHaveObjectProperty("visibleChildName", "entry");
+        const textView = await screen.findByName("edit_textview", { as: Gtk.TextView });
         textView.grabFocus();
         await userEvent.type(textView, "scratch edits");
         await userEvent.keyboard(textView, "{Escape}");
 
         await waitFor(() => {
-            expect(stack.getVisibleChildName()).toBe("label");
+            expect(stack).toHaveObjectProperty("visibleChildName", "label");
         });
 
-        const preview = (await screen.findByName("preview-label")) as Gtk.Label;
+        const preview = await screen.findByName("preview-label", { as: Gtk.Label });
         expect(preview).toHaveTextContent("Grumpy wizards");
     });
 });

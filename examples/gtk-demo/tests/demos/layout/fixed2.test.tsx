@@ -21,7 +21,7 @@ describe("fixed2Demo metadata", () => {
 describe("fixed2Demo structure", () => {
     it("renders the 'All fixed?' label inside the GtkFixed container", async () => {
         await renderDemo(fixed2Demo);
-        const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
+        const fixed = await screen.findByName("fixed", { as: Gtk.Fixed });
 
         expect(within(fixed).getByRole(Gtk.AccessibleRole.LABEL, { name: "All fixed?" })).toHaveTextContent(
             "All fixed?",
@@ -30,9 +30,9 @@ describe("fixed2Demo structure", () => {
 
     it("nests the GtkFixed inside a hexpand+vexpand GtkScrolledWindow", async () => {
         await renderDemo(fixed2Demo);
-        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
-        expect(sw.getHexpand()).toBe(true);
-        expect(sw.getVexpand()).toBe(true);
+        const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
+        expect(sw).toHaveObjectProperty("hexpand", true);
+        expect(sw).toHaveObjectProperty("vexpand", true);
         const fixed = await screen.findByName("fixed");
         expect(within(sw).getByName("fixed")).toBe(fixed);
     });
@@ -41,15 +41,15 @@ describe("fixed2Demo structure", () => {
 describe("fixed2Demo configuration", () => {
     it("configures the GtkFixed with visible overflow and expand flags", async () => {
         await renderDemo(fixed2Demo);
-        const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
-        expect(fixed.getOverflow()).toBe(Gtk.Overflow.VISIBLE);
-        expect(fixed.getHexpand()).toBe(true);
-        expect(fixed.getVexpand()).toBe(true);
+        const fixed = await screen.findByName("fixed", { as: Gtk.Fixed });
+        expect(fixed).toHaveObjectProperty("overflow", Gtk.Overflow.VISIBLE);
+        expect(fixed).toHaveObjectProperty("hexpand", true);
+        expect(fixed).toHaveObjectProperty("vexpand", true);
     });
 
     it("renders exactly one fixed-label widget inside the GtkFixed", async () => {
         await renderDemo(fixed2Demo);
-        const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
+        const fixed = await screen.findByName("fixed", { as: Gtk.Fixed });
         expect(within(fixed).getAllByName("fixed-label")).toHaveLength(1);
     });
 });
@@ -57,8 +57,8 @@ describe("fixed2Demo configuration", () => {
 describe("fixed2Demo animation tick", () => {
     it("mutates the label's child transform as the frame clock advances", async () => {
         await renderDemo(fixed2Demo);
-        const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
-        const label = within(fixed).getByName("fixed-label") as Gtk.Label;
+        const fixed = await screen.findByName("fixed", { as: Gtk.Fixed });
+        const label = within(fixed).getByName("fixed-label", { as: Gtk.Label });
         const first = fixed.getChildTransform(label);
         expect(first).not.toBeNull();
 
