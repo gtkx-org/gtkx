@@ -257,9 +257,6 @@ importers:
 
   packages/codegen:
     dependencies:
-      '@gtkx/config':
-        specifier: workspace:*
-        version: link:../config
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
@@ -309,6 +306,9 @@ importers:
 
   packages/config:
     dependencies:
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       c12:
         specifier: ^3.3.4
         version: 3.3.4(magicast@0.5.3)
