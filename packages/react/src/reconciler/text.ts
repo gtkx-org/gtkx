@@ -320,7 +320,7 @@ const rebuildBuffer = (node: ElementNode): void => {
         return;
     }
 
-    applyWrite(buffer, () => {
+    applyWrite(() => {
         buffer.setText("", -1);
         const build: BufferBuild = { buffer, view: node.bufferView, marks: [] };
         insertContent(build, node.content);
@@ -385,7 +385,7 @@ const didUpdateTextSurgically = (host: ElementNode, node: TextNode, oldText: str
 
     const start = located.offset;
 
-    applyWrite(buffer, () => {
+    applyWrite(() => {
         buffer.delete(buffer.getIterAtOffset(start), buffer.getIterAtOffset(start + charLength(oldText)));
         buffer.insert(buffer.getIterAtOffset(start), newText, -1);
     });

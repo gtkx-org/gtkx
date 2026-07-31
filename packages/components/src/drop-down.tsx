@@ -124,7 +124,7 @@ const reportSelectedNotify = (options: SelectionOptions, tracker: KnownSelection
 };
 
 const applySelectedPosition = (widget: SelectableWidget, position: number): void => {
-    applyWrite(widget, () => {
+    applyWrite(() => {
         widget.selected = position;
     });
 };

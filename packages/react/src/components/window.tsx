@@ -2,9 +2,22 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
+import { applyWrite } from "../reconciler/signals.js";
 
 type WindowComponentProps = {
     ref?: Ref<Gtk.Window | null> | undefined;
+};
+
+const presentWindow = (window: Gtk.Window): void => {
+    applyWrite(() => {
+        window.present();
+    });
+};
+
+const destroyWindow = (window: Gtk.Window): void => {
+    applyWrite(() => {
+        window.destroy();
+    });
 };
 
 const createWindowComponent = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) => {
@@ -17,10 +30,10 @@ const createWindowComponent = (Component: ElementType): ((props: WindowComponent
                 return;
             }
 
-            window.present();
+            presentWindow(window);
 
             return () => {
-                window.destroy();
+                destroyWindow(window);
             };
         }, [window]);
 

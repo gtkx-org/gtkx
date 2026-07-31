@@ -71,7 +71,7 @@ const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
 };
 
 const writeSlot = (parent: ElementNode, entry: PlacedChild, value: GObject.Object | null): void => {
-    applyWrite(parent.object, () => {
+    applyWrite(() => {
         Reflect.set(parent.object, entry.slot, value);
     });
 };
@@ -105,7 +105,7 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
     return true;
 };
 
-const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
+const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
     const ctx: AttachContext = { parent, entry, index, sibling };
 
     for (const behavior of typeInfoFor(parent.typeName).behaviors) {
@@ -119,6 +119,12 @@ const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sib
     }
 };
 
+const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
+    applyWrite(() => {
+        runAttach(parent, entry, index, sibling);
+    });
+};
+
 const detachInfo = (entry: PlacedChild, context: unknown): DetachInfo => ({
     slot: entry.slot,
     adopted: entry.adopted,
@@ -126,12 +132,7 @@ const detachInfo = (entry: PlacedChild, context: unknown): DetachInfo => ({
     context,
 });
 
-const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
-    if (!entry.attached) {
-        return;
-    }
-
-    entry.attached = false;
+const runDetach = (parent: ElementNode, entry: PlacedChild): void => {
     const behavior = entry.behavior;
 
     if (behavior === null) {
@@ -143,6 +144,18 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
     }
 
     behavior.detach?.(parent.object, entry.object, detachInfo(entry, getOrCreateContext(parent, behavior)));
+};
+
+const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
+    if (!entry.attached) {
+        return;
+    }
+
+    entry.attached = false;
+
+    applyWrite(() => {
+        runDetach(parent, entry);
+    });
 };
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {

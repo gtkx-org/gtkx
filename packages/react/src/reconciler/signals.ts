@@ -4,18 +4,17 @@ import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
 const NOTIFY_DETAIL_PREFIX = "notify::";
-const writeDepths: WeakMap<object, number> = new WeakMap();
+const writeState: { depth: number } = { depth: 0 };
 
-const writeDepthFor = (object: object): number => writeDepths.get(object) ?? 0;
-const isApplyingWrite = (object: object): boolean => writeDepthFor(object) > 0;
+const isApplyingWrite = (): boolean => writeState.depth > 0;
 
-const applyWrite = <T>(object: object, write: () => T): T => {
-    writeDepths.set(object, writeDepthFor(object) + 1);
+const applyWrite = <T>(write: () => T): T => {
+    writeState.depth += 1;
 
     try {
         return write();
     } finally {
-        writeDepths.set(object, Math.max(0, writeDepthFor(object) - 1));
+        writeState.depth = Math.max(0, writeState.depth - 1);
     }
 };
 
@@ -37,7 +36,7 @@ const invokeHandler = (
 
 const wrapHandler = (target: SignalTarget, record: HandlerRecord, notifyProperty: string | null): SignalHandler =>
     (...args: unknown[]): unknown => {
-        if (record.blockable && isApplyingWrite(target.object)) {
+        if (record.blockable && isApplyingWrite()) {
             return undefined;
         }
 
