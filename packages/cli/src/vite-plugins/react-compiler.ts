@@ -61,7 +61,7 @@ function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader()): Plu
         enforce: "pre",
 
         async config(config: UserConfig) {
-            const resolved = await loadConfig(config.root ?? process.cwd());
+            const resolved = await loadConfig.resolve(config.root ?? process.cwd());
             state.options = resolved.reactCompiler;
         },
 

@@ -110,11 +110,9 @@ describe("runCodegen", () => {
         rmSync(cwd, { recursive: true, force: true });
     });
 
-    it("generates with default settings when no gtkx.config.ts is present", async () => {
+    it("rejects when no gtkx.config.ts is present because applicationId is required", async () => {
         installRuntimePackage(cwd);
-        const result = await runCodegen({ cwd });
-        expect(result.configFile).toBeUndefined();
-        expect(result.namespaces).toBe(1);
+        await expect(runCodegen({ cwd })).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("falls back to process.cwd() when options.cwd is omitted", async () => {
@@ -166,10 +164,10 @@ describe("ensureGenerated — announce path", () => {
         expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
     });
 
-    it("returns silently when there is no gtkx.config.ts", async () => {
+    it("rejects when there is no gtkx.config.ts", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installRuntimePackage(cwd);
-        expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
+        await expect(ensureGenerated(cwd, { announce: true })).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("propagates non-NotFound config errors", async () => {
@@ -230,9 +228,9 @@ describe("ensureGenerated", () => {
         expect(await ensureGenerated(cwd)).toBe(false);
     });
 
-    it("does nothing when there is no gtkx.config.ts", async () => {
+    it("rejects when there is no gtkx.config.ts", async () => {
         installRuntimePackage(cwd);
-        expect(await ensureGenerated(cwd)).toBe(false);
+        await expect(ensureGenerated(cwd)).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("propagates non-NotFound config errors", async () => {

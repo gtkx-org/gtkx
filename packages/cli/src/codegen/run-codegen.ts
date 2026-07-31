@@ -24,7 +24,7 @@ type RunCodegenOptions = {
 
 type LoadedConfig = {
     config: Config;
-    configFile: string | undefined;
+    configFile: string;
 };
 
 type RunCodegenResult = {
@@ -92,7 +92,7 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
     userOmitProps: resolveOmitProps(elements),
 });
 
-const disabledCodegenResult = (configFile: string | undefined): RunCodegenResult => ({
+const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     regenerated: false,
     namespaces: 0,
     intrinsicElements: 0,
@@ -209,11 +209,6 @@ const ensureGenerated = async (
     }
 
     const context = await resolveCodegenContext(cwd, options.mode);
-
-    if (!context) {
-        return false;
-    }
-
     syncSchemaEnv(cwd);
 
     if (context.config.codegen === false) {
@@ -233,12 +228,8 @@ const ensureGenerated = async (
 const resolveConfigWatch = async (
     cwd: string,
     mode?: string,
-): Promise<{ paths: string[]; regenerate: () => Promise<void> } | undefined> => {
+): Promise<{ paths: string[]; regenerate: () => Promise<void> }> => {
     const { configFile, root } = await loadConfig(cwd, { mode });
-
-    if (configFile === undefined) {
-        return undefined;
-    }
 
     return {
         paths: [resolve(root, configFile)],

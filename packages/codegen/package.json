@@ -54,7 +54,6 @@
         "node": ">=24"
     },
     "dependencies": {
-        "@gtkx/config": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:",

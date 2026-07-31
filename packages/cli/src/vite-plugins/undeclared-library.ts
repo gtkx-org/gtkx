@@ -1,10 +1,11 @@
+import type { ConfigLoader } from "@gtkx/config/internal";
 import type { Plugin, UserConfig } from "vite";
 import { discoverGirNamespaces, resolveGirPath } from "@gtkx/codegen";
-import { loadConfig } from "@gtkx/config";
+import { createConfigLoader } from "@gtkx/config/internal";
 
 type PluginState = {
     root: string;
-    mode: string | undefined;
+    loadConfig: ConfigLoader;
     girPath: string[] | null;
 };
 
@@ -12,7 +13,7 @@ const GENERATED_MODULE_PATTERN = /^@gtkx\/(?:gi|jsx)\/([a-z0-9]+)$/;
 
 const girSearchPaths = async (state: PluginState): Promise<string[]> => {
     if (state.girPath === null) {
-        const { config } = await loadConfig(state.root, { mode: state.mode });
+        const { config } = await state.loadConfig.load(state.root);
         state.girPath = resolveGirPath(config.girPath);
     }
 
@@ -42,10 +43,10 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
     );
 };
 
-function gtkxUndeclaredLibrary(mode?: string): Plugin {
+function gtkxUndeclaredLibrary(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: PluginState = {
         root: "",
-        mode,
+        loadConfig,
         girPath: null,
     };
 

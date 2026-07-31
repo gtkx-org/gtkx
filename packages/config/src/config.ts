@@ -290,8 +290,6 @@ const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
 });
 
 export {
-    LIBRARIES_WILDCARD,
-    GIR_LIBRARY_PATTERN,
     defineConfig,
     isValidApplicationId,
     resolveReactCompilerOptions,

@@ -1,3 +1,4 @@
+import { getOrInsert } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -5,12 +6,11 @@ import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from 
 
 /**
  * Result of loading a `gtkx.config.ts` file: the parsed configuration, the
- * resolved config file path (`undefined` when none was found), and the project
- * root it was loaded from.
+ * resolved config file path, and the project root it was loaded from.
  */
 type LoadedConfig = {
     config: Config;
-    configFile: string | undefined;
+    configFile: string;
     root: string;
 };
 
@@ -18,7 +18,14 @@ type LoadConfigOptions = {
     mode?: string | undefined;
 };
 
-type ConfigLoader = (cwd: string) => Promise<ResolvedConfig>;
+/**
+ * Caching accessor for a project's configuration: `load` yields the validated authored config together with
+ * its file path, and `resolve` yields the projection an app needs at runtime.
+ */
+type ConfigLoader = {
+    load: (cwd: string) => Promise<LoadedConfig>;
+    resolve: (cwd: string) => Promise<ResolvedConfig>;
+};
 
 /**
  * Loads and validates the `gtkx.config.ts` file for a project, returning the
@@ -38,39 +45,36 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     });
 
     const config = result.config;
-    const isFound = result.configFile !== undefined && existsSync(resolve(cwd, result.configFile));
+    const configFile = result.configFile;
+    validateConfig(config);
 
-    if (isFound) {
-        validateConfig(config);
+    if (configFile === undefined || !existsSync(resolve(cwd, configFile))) {
+        throw new Error(`gtkx.config.ts: no configuration file was found from ${cwd}`);
     }
 
     return {
         config,
-        configFile: isFound ? result.configFile : undefined,
+        configFile,
         root: result.cwd ?? cwd,
     };
 };
 
 const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
-    const cache: Map<string, Promise<ResolvedConfig>> = new Map();
+    const loaded: Map<string, Promise<LoadedConfig>> = new Map();
+    const resolved: Map<string, Promise<ResolvedConfig>> = new Map();
 
-    const loadResolved = async (root: string): Promise<ResolvedConfig> => {
-        const { config } = await loadConfig(root, options);
-        validateConfig(config);
+    const load = (cwd: string): Promise<LoadedConfig> =>
+        getOrInsert(loaded, resolve(cwd), (root) => loadConfig(root, options));
 
-        return resolveConfig(config, root);
+    const resolveAt = async (root: string): Promise<ResolvedConfig> => {
+        const { config, root: configRoot } = await load(root);
+
+        return resolveConfig(config, configRoot);
     };
 
-    return (cwd: string): Promise<ResolvedConfig> => {
-        const root = resolve(cwd);
-        let pending = cache.get(root);
-
-        if (!pending) {
-            pending = loadResolved(root);
-            cache.set(root, pending);
-        }
-
-        return pending;
+    return {
+        load,
+        resolve: (cwd: string): Promise<ResolvedConfig> => getOrInsert(resolved, resolve(cwd), resolveAt),
     };
 };
 

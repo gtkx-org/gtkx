@@ -23,7 +23,7 @@ type ResolvedPackage = { dir: string; version: string };
 type CodegenContext = {
     root: string;
     config: Config;
-    configFile: string | undefined;
+    configFile: string;
 };
 
 const readVersion = (packageJsonPath: string): string => {
@@ -103,12 +103,8 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
     };
 };
 
-const resolveCodegenContext = async (cwd: string, mode?: string): Promise<CodegenContext | null> => {
+const resolveCodegenContext = async (cwd: string, mode?: string): Promise<CodegenContext> => {
     const { config, configFile } = await loadConfig(cwd, { mode });
-
-    if (configFile === undefined) {
-        return null;
-    }
 
     return { root: cwd, config, configFile };
 };
