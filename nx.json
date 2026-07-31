@@ -130,6 +130,7 @@
             "parallelism": false,
             "dependsOn": [
                 "gtkx:codegen",
+                "build",
                 "^build"
             ]
         },
