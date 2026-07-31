@@ -1,5 +1,5 @@
-export { camelCase } from "./camel-case.js";
-export { kebabCase } from "./kebab-case.js";
-export { lowerFirst } from "./lower-first.js";
-export { pascalCase } from "./pascal-case.js";
-export { upperFirst } from "./upper-first.js";
+export { camelCase } from "./camel-case.ts";
+export { kebabCase } from "./kebab-case.ts";
+export { lowerFirst } from "./lower-first.ts";
+export { pascalCase } from "./pascal-case.ts";
+export { upperFirst } from "./upper-first.ts";

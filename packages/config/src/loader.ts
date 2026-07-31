@@ -2,7 +2,7 @@ import { getOrInsert } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from "./config.js";
+import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
 
 /**
  * Result of loading a `gtkx.config.ts` file: the parsed configuration, the

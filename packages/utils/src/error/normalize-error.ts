@@ -1,5 +1,5 @@
-import { isErrorLike } from "./error-like.js";
-import { errorMessage } from "./error-message.js";
+import { isErrorLike } from "./error-like.ts";
+import { errorMessage } from "./error-message.ts";
 
 /**
  * Coerces an unknown thrown value into an `Error`, reusing it when it already is one and otherwise

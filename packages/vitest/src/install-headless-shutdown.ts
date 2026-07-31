@@ -1,5 +1,5 @@
 import { installGracefulShutdown } from "@gtkx/utils";
-import { headlessTeardown, isHeadlessShutdownInstalled, setHeadlessShutdownInstalled } from "./headless-globals.js";
+import { headlessTeardown, isHeadlessShutdownInstalled, setHeadlessShutdownInstalled } from "./headless-globals.ts";
 
 const installHeadlessShutdown = (): void => {
     const teardown = headlessTeardown();

@@ -13,7 +13,7 @@
     },
     "dependencies": {
         "@eslint/js": "^10.0.1",
-        "@nx/eslint-plugin": "^23.1.0",
+        "@nx/eslint-plugin": "^23.1.1",
         "@stylistic/eslint-plugin": "^5.10.0",
         "@typescript-eslint/eslint-plugin": "^8.65.0",
         "@typescript-eslint/utils": "^8.65.0",

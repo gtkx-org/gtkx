@@ -1,3 +1,3 @@
-import { installHeadlessShutdown } from "./install-headless-shutdown.js";
+import { installHeadlessShutdown } from "./install-headless-shutdown.ts";
 
 installHeadlessShutdown();

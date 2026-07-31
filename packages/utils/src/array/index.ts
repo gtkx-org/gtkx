@@ -1,5 +1,5 @@
-export { indexBeforeOrEnd } from "./index-before-or-end.js";
-export { remove } from "./remove.js";
-export { sortStringsBy } from "./sort-strings-by.js";
-export { sortStrings } from "./sort-strings.js";
-export { uniqBy } from "./uniq-by.js";
+export { indexBeforeOrEnd } from "./index-before-or-end.ts";
+export { remove } from "./remove.ts";
+export { sortStringsBy } from "./sort-strings-by.ts";
+export { sortStrings } from "./sort-strings.ts";
+export { uniqBy } from "./uniq-by.ts";

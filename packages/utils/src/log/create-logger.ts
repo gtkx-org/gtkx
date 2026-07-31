@@ -1,4 +1,4 @@
-import { Logger, type LoggerOptions } from "./logger.js";
+import { Logger, type LoggerOptions } from "./logger.ts";
 
 /**
  * Creates a {@link Logger} scoped to the given namespace.

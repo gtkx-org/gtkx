@@ -1,4 +1,4 @@
-import { isSameArrayBy } from "./is-same-array-by.js";
+import { isSameArrayBy } from "./is-same-array-by.ts";
 
 /**
  * Checks whether two arrays have the same length and strictly equal (`===`) elements in order.

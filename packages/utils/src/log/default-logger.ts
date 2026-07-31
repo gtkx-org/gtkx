@@ -1,4 +1,4 @@
-import { Logger } from "./logger.js";
+import { Logger } from "./logger.ts";
 
 /**
  * The default namespace-less {@link Logger} backing the module-level {@link info}, {@link warn},

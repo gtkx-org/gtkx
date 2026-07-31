@@ -1,5 +1,5 @@
-import { camelCase } from "../string/camel-case.js";
-import { sanitizeIdentifier } from "./sanitize-identifier.js";
+import { camelCase } from "../string/camel-case.ts";
+import { sanitizeIdentifier } from "./sanitize-identifier.ts";
 
 /**
  * Converts a name to camel case and sanitizes it into a valid JavaScript identifier.

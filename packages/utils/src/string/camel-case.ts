@@ -1,5 +1,5 @@
-import { upperFirst } from "./upper-first.js";
-import { mapWordSegments } from "./word-segments.js";
+import { upperFirst } from "./upper-first.ts";
+import { mapWordSegments } from "./word-segments.ts";
 
 /**
  * Converts an underscore- or hyphen-delimited string to camel case.

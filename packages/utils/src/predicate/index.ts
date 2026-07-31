@@ -1,6 +1,6 @@
-export { isDeepEqual } from "./is-deep-equal.js";
-export { isPlainObject } from "./is-plain-object.js";
-export { isRecord } from "./is-record.js";
-export { isSameArrayBy } from "./is-same-array-by.js";
-export { isSameArray } from "./is-same-array.js";
-export { isShallowEqual } from "./is-shallow-equal.js";
+export { isDeepEqual } from "./is-deep-equal.ts";
+export { isPlainObject } from "./is-plain-object.ts";
+export { isRecord } from "./is-record.ts";
+export { isSameArrayBy } from "./is-same-array-by.ts";
+export { isSameArray } from "./is-same-array.ts";
+export { isShallowEqual } from "./is-shallow-equal.ts";

@@ -2,8 +2,8 @@ import { createDefineConfig, type DefineConfig } from "c12";
 import { defu } from "defu";
 import { resolve } from "node:path";
 import { z } from "zod";
-import { configError, isRecord, rawIssue } from "./config-error.js";
-import { resolveUserEventSignals } from "./user-event-signals.js";
+import { configError, isRecord, rawIssue } from "./config-error.ts";
+import { resolveUserEventSignals } from "./user-event-signals.ts";
 
 type ReactCompilerCompilationMode = (typeof COMPILATION_MODES)[number];
 type ReactCompilerPanicThreshold = (typeof PANIC_THRESHOLDS)[number];

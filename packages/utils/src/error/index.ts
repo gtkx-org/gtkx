@@ -1,3 +1,3 @@
-export { errorMessage } from "./error-message.js";
-export { formatChildProcessError } from "./format-child-process-error.js";
-export { normalizeError } from "./normalize-error.js";
+export { errorMessage } from "./error-message.ts";
+export { formatChildProcessError } from "./format-child-process-error.ts";
+export { normalizeError } from "./normalize-error.ts";

@@ -1,6 +1,6 @@
 import type { Plugin, UserConfig } from "vite";
-import { type ConfigLoader, createConfigLoader } from "./loader.js";
-import { GTKX_CONFIG_VIRTUAL_ID, renderConfigModule, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "./virtual.js";
+import { type ConfigLoader, createConfigLoader } from "./loader.ts";
+import { GTKX_CONFIG_VIRTUAL_ID, renderConfigModule, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "./virtual.ts";
 
 type PluginState = {
     root: string | undefined;

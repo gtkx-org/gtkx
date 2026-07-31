@@ -1,1 +1,1 @@
-export { packageVersion } from "./package-version.js";
+export { packageVersion } from "./package-version.ts";

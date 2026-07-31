@@ -3,9 +3,9 @@ import { chmodSync, createWriteStream, existsSync, mkdtempSync, rmSync, writeFil
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startNotificationService } from "./notification-service.js";
-import { resolveExecutable } from "./resolve-executable.js";
-import { startVirtualSeat } from "./virtual-seat.js";
+import { startNotificationService } from "./notification-service.ts";
+import { resolveExecutable } from "./resolve-executable.ts";
+import { startVirtualSeat } from "./virtual-seat.ts";
 
 /**
  * Wayland compositors that can back a headless display.

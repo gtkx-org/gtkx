@@ -1,1 +1,1 @@
-export { drain } from "./drain.js";
+export { drain } from "./drain.ts";

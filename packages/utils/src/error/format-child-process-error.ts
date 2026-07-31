@@ -1,5 +1,5 @@
-import { isRecord } from "../predicate/is-record.js";
-import { readStream } from "./error-like.js";
+import { isRecord } from "../predicate/is-record.ts";
+import { readStream } from "./error-like.ts";
 
 /**
  * Combines the `stderr` and `stdout` of a failed child-process error into a single trimmed string.

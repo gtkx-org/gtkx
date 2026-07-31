@@ -1,5 +1,5 @@
-import type { AnyClass } from "./any-class.js";
-import { getParentClass } from "./get-parent-class.js";
+import type { AnyClass } from "./any-class.ts";
+import { getParentClass } from "./get-parent-class.ts";
 
 /**
  * Walks the class chain from `cls` up through its ancestors, calling `visit` on each and returning

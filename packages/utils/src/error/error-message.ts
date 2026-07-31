@@ -1,4 +1,4 @@
-import { isErrorLike } from "./error-like.js";
+import { isErrorLike } from "./error-like.ts";
 
 /**
  * Extracts a human-readable message from an unknown thrown value, falling back to its string form.

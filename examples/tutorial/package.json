@@ -34,7 +34,7 @@
         "@gtkx/config": "^1.0.0-rc.3",
         "@gtkx/testing": "^1.0.0-rc.3",
         "@types/node": "^26.1.2",
-        "@types/react": "^19.2.17",
+        "@types/react": "^19.2.18",
         "esbuild": "^0.28.1",
         "postject": "1.0.0-alpha.6",
         "typescript": "^7.0.2",

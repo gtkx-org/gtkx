@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "allowImportingTsExtensions": true,
         "allowUnreachableCode": false,
         "allowUnusedLabels": false,
         "composite": true,
@@ -24,6 +25,7 @@
         "noUnusedParameters": true,
         "removeComments": false,
         "resolveJsonModule": true,
+        "rewriteRelativeImportExtensions": true,
         "skipLibCheck": true,
         "sourceMap": true,
         "strict": true,

@@ -1,4 +1,4 @@
-import { isPlainObject } from "../predicate/is-plain-object.js";
+import { isPlainObject } from "../predicate/is-plain-object.ts";
 
 /**
  * Recursively copies arrays and plain objects, sharing every other value by reference. The result

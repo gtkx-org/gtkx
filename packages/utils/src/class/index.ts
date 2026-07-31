@@ -1,3 +1,3 @@
-export type { AnyClass } from "./any-class.js";
-export { getParentClass } from "./get-parent-class.js";
-export { walkClassChain } from "./walk-class-chain.js";
+export type { AnyClass } from "./any-class.ts";
+export { getParentClass } from "./get-parent-class.ts";
+export { walkClassChain } from "./walk-class-chain.ts";

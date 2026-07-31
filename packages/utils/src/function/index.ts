@@ -1,1 +1,1 @@
-export { callMethod } from "./call-method.js";
+export { callMethod } from "./call-method.ts";

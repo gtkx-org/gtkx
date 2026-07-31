@@ -26,7 +26,7 @@ node --version
 You should see 24 or later:
 
 ```
-v24.18.0
+v24.18.1
 ```
 
 Scaffold the project:

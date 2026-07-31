@@ -1,5 +1,5 @@
-import { error } from "../log/default-logger.js";
-import { exitCodeForSignal } from "./exit-code-for-signal.js";
+import { error } from "../log/default-logger.ts";
+import { exitCodeForSignal } from "./exit-code-for-signal.ts";
 
 type GracefulShutdownOptions = {
     onSignal: (signal: NodeJS.Signals) => void | Promise<void>;

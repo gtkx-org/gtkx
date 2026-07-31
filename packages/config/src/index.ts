@@ -4,5 +4,5 @@ export {
     mergeConfig,
     type ResolvedConfig,
     type ResolvedReactCompilerOptions,
-} from "./config.js";
-export { type LoadedConfig, loadConfig } from "./loader.js";
+} from "./config.ts";
+export { type LoadedConfig, loadConfig } from "./loader.ts";

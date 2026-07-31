@@ -29,8 +29,10 @@ const BASE_COMPILER_OPTIONS = {
     noImplicitReturns: true,
     noFallthroughCasesInSwitch: true,
     allowUnreachableCode: false,
+    allowImportingTsExtensions: true,
     forceConsistentCasingInFileNames: true,
     resolveJsonModule: true,
+    rewriteRelativeImportExtensions: true,
     skipLibCheck: true,
     types: ["node"],
 };

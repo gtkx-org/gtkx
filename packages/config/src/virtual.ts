@@ -1,4 +1,4 @@
-import type { ResolvedConfig } from "./config.js";
+import type { ResolvedConfig } from "./config.ts";
 
 const GTKX_CONFIG_VIRTUAL_ID = "virtual:gtkx-config";
 const RESOLVED_GTKX_CONFIG_VIRTUAL_ID = `\0${GTKX_CONFIG_VIRTUAL_ID}`;

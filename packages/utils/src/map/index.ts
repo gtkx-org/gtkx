@@ -1,1 +1,1 @@
-export { getOrInsert } from "./get-or-insert.js";
+export { getOrInsert } from "./get-or-insert.ts";

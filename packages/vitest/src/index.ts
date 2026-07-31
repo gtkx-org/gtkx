@@ -3,7 +3,7 @@ import createConfigPlugin from "@gtkx/config/vite-plugin";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.js";
+import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.ts";
 
 /**
  * Options accepted by the {@link gtkx} Vitest plugin. Every headless display
@@ -68,5 +68,5 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
     });
 
 export default gtkx;
-export { type CompositorId, type HeadlessOptions } from "./headless-display.js";
+export { type CompositorId, type HeadlessOptions } from "./headless-display.ts";
 export { type GtkxPluginOptions };

@@ -1,5 +1,5 @@
-import { areObjectKeysEqual } from "./are-object-keys-equal.js";
-import { isPlainObject } from "./is-plain-object.js";
+import { areObjectKeysEqual } from "./are-object-keys-equal.ts";
+import { isPlainObject } from "./is-plain-object.ts";
 
 /**
  * Checks whether two values are shallowly equal: identical, or plain objects with the same own

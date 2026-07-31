@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { defineConfig, type HeadConfig } from "vitepress";
-import typedocSidebar from "../reference/typedoc-sidebar.json";
+import typedocSidebar from "../reference/typedoc-sidebar.json" with { type: "json" };
 
 const title = "GTKX";
 const description = "Write declarative JSX. GTKX renders it to GObject instances, powered by a native Rust core.";

@@ -55,7 +55,7 @@ RUN apt-get update \
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
 
-ARG NODE24_VERSION=24.18.0
+ARG NODE24_VERSION=24.18.1
 ARG TARGETARCH
 RUN set -eux \
     && case "${TARGETARCH}" in \
@@ -80,7 +80,7 @@ ENV CARGO_HTTP_MULTIPLEXING=false
 # Keep in sync with /rust-toolchain.toml (stable) and scripts/rust-nightly.ts (nightly), which pin
 # the same toolchains for local builds; the image is built without the repository checked out.
 ARG RUST_VERSION=1.97.1
-ARG RUST_NIGHTLY=nightly-2026-07-28
+ARG RUST_NIGHTLY=nightly-2026-07-30
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
