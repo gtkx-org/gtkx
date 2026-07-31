@@ -118,7 +118,12 @@ const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): string =>
     context.addRuntimeImport("write");
 
     if (slot.bitWidth === undefined) {
-        return `write(${targetExpr}, ${descriptor}, ${String(slot.byteOffset)}, ${valueExpr});`;
+        context.addRuntimeImport("toNative");
+
+        return (
+            `write(${targetExpr}, ${descriptor}, ${String(slot.byteOffset)}, ` +
+            `toNative(${descriptor}, ${valueExpr}));`
+        );
     }
 
     context.addRuntimeImport("read");
