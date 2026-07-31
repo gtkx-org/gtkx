@@ -5,12 +5,11 @@ import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from 
 
 /**
  * Result of loading a `gtkx.config.ts` file: the parsed configuration, the
- * resolved config file path (`undefined` when none was found), and the project
- * root it was loaded from.
+ * resolved config file path, and the project root it was loaded from.
  */
 type LoadedConfig = {
     config: Config;
-    configFile: string | undefined;
+    configFile: string;
     root: string;
 };
 
@@ -38,15 +37,16 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     });
 
     const config = result.config;
-    const isFound = result.configFile !== undefined && existsSync(resolve(cwd, result.configFile));
+    const configFile = result.configFile;
+    validateConfig(config);
 
-    if (isFound) {
-        validateConfig(config);
+    if (configFile === undefined || !existsSync(resolve(cwd, configFile))) {
+        throw new Error(`gtkx.config.ts: no configuration file was found from ${cwd}`);
     }
 
     return {
         config,
-        configFile: isFound ? result.configFile : undefined,
+        configFile,
         root: result.cwd ?? cwd,
     };
 };
@@ -56,7 +56,6 @@ const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
 
     const loadResolved = async (root: string): Promise<ResolvedConfig> => {
         const { config } = await loadConfig(root, options);
-        validateConfig(config);
 
         return resolveConfig(config, root);
     };

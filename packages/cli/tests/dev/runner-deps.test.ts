@@ -178,9 +178,9 @@ describe("defaultDevRunnerDeps (getConfiguredApplicationId)", () => {
         await expect(deps.getConfiguredApplicationId(root)).resolves.toBe("com.example.app");
     });
 
-    it("resolves undefined when no config file exists", async () => {
+    it("rejects when no config file exists because applicationId is required", async () => {
         const deps = defaultDevRunnerDeps();
-        await expect(deps.getConfiguredApplicationId(root)).resolves.toBeUndefined();
+        await expect(deps.getConfiguredApplicationId(root)).rejects.toThrow(/invalid `applicationId`/);
     });
 });
 

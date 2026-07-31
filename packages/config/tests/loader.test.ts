@@ -40,7 +40,7 @@ describe("loadConfig — accepted config shapes", () => {
 
         const result = await loadConfig(root.path);
         expect(result.config.libraries).toEqual(["Gtk-4.0"]);
-        expect(result.configFile?.endsWith("gtkx.config.ts")).toBe(true);
+        expect(result.configFile.endsWith("gtkx.config.ts")).toBe(true);
         expect(result.root).toBe(root.path);
     });
 
@@ -60,7 +60,7 @@ describe("loadConfig — accepted config shapes", () => {
         writeConfigIn(root, "export default { applicationId: \"org.gtk.Demo4\" };\n");
         const result = await loadConfig(root.path);
         expect(result.config.libraries).toBeUndefined();
-        expect(result.configFile?.endsWith("gtkx.config.ts")).toBe(true);
+        expect(result.configFile.endsWith("gtkx.config.ts")).toBe(true);
     });
 
     it('accepts the "*" wildcard for libraries', async () => {
@@ -69,10 +69,8 @@ describe("loadConfig — accepted config shapes", () => {
         expect(result.config.libraries).toBe("*");
     });
 
-    it("returns an undefined configFile when no config file exists", async () => {
-        const result = await loadConfig(root.path);
-        expect(result.configFile).toBeUndefined();
-        expect(result.config).toEqual({});
+    it("rejects when no config file exists because applicationId is required", async () => {
+        await expect(loadConfig(root.path)).rejects.toThrow(/invalid `applicationId`/);
     });
 });
 
