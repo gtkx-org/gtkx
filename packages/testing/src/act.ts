@@ -4,7 +4,9 @@ declare global {
     var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
 }
 
+/** Work run inside the act environment, either synchronous or asynchronous. */
 type ActCallback<T> = () => T | PromiseLike<T>;
+/** Runs a callback inside React's act environment and settles with its result once updates flush. */
 type ActImplementation = <T>(callback: ActCallback<T>) => PromiseLike<T>;
 
 const actImplementation: ActImplementation = reactAct;

@@ -49,12 +49,17 @@ import {
     type SignatureEntry,
 } from "./render.js";
 
+/** What every indexed GIR symbol carries, whatever its kind. */
 type GiSymbolBase = {
+    /** GIR namespace declaring the symbol. */
     namespace: GirNamespace;
+    /** Name the bindings export it under: camelCase for functions, PascalCase for classes, the GIR name otherwise. */
     name: string;
+    /** Raw gtk-doc text from the GIR, undefined when the symbol is undocumented. */
     doc: string | undefined;
 };
 
+/** A GIR symbol the reference indexes, discriminated by `kind` and carrying the GIR node its page renders from. */
 type GiSymbolEntry =
     | (GiSymbolBase & { kind: "class" | "interface"; klass: GirClass }) |
     (GiSymbolBase & { kind: "record"; record: GirRecord }) |

@@ -25,9 +25,10 @@ const SINGLE_CHILD_TYPES: string[] = [
 ];
 
 /**
- * The static, runtime-free half of the built-in element configuration: which base props interface each
- * generated element extends, which component wraps it, and whether its GObject is created lazily by its
- * parent. Codegen imports this module, so it must never reach the GObject bindings.
+ * The framework's own element configuration for the GTK types it customizes: the base props interface each
+ * generated element extends, the component that wraps it, the GObject properties left out of its generated
+ * props, and whether its GObject is created by its parent. Carries no behaviors, so importing it never
+ * reaches the GObject bindings.
  */
 const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     ...forTypes(SINGLE_CHILD_TYPES, {

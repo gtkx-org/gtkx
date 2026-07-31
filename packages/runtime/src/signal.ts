@@ -30,13 +30,27 @@ import {
 /** Function invoked when a connected GObject signal is emitted. */
 type SignalHandler = (...args: unknown[]) => unknown;
 
+/** The marshalling and handler that make up a single signal connection. */
 type SignalConnectSpec = {
+    /**
+     * Marshalling for the emission, whose `argDescriptors` lead with the emitter and include the
+     * closure's user data slot.
+     */
     callback: CallbackDescriptor;
+    /** Called on each emission with the signal's own arguments, without the leading emitter. */
     handler: SignalHandler;
+    /** When true, run the handler after the class's default handler instead of before it. */
     after: boolean;
 };
 
-type EmitArg = Arg & { value?: unknown };
+/** One argument of a signal emission: how to marshal it, plus the value to marshal. */
+type EmitArg = Arg & {
+    /**
+     * The value to pass for an input or inout argument, or the caller-allocated storage to fill for
+     * a caller-allocated output argument; omitted for a plain output argument.
+     */
+    value?: unknown;
+};
 
 const connectCache = createBindCache();
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);

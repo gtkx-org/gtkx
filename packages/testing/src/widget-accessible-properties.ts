@@ -11,7 +11,6 @@ type WidgetValue = {
 };
 
 type ValueTriplet = { now: number | null; min: number | null; max: number | null };
-/** A widget's checked state: on, off, or the mixed state of an inconsistent check button. */
 type CheckedState = "checked" | "unchecked" | "mixed";
 
 const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
@@ -158,6 +157,12 @@ const textContentParts = (widget: Gtk.Widget): string[] => {
     return [...getChildren(widget)].flatMap((child) => textContentParts(child));
 };
 
+/**
+ * Returns a widget's own text, or the space-joined text of its descendants when it has none of its
+ * own, or null when neither produces a value.
+ *
+ * @param widget The widget whose subtree is read.
+ */
 const getWidgetTextContent = (widget: Gtk.Widget): string | null => {
     const parts = textContentParts(widget);
 
@@ -370,12 +375,23 @@ const getWidgetLevel = (widget: Gtk.Widget): number | null => {
     return readAccessibleNumber(widget, "accessibleLevel");
 };
 
+/**
+ * Returns the accessible invalid state declared on a widget, or null when it declares none.
+ *
+ * @param widget The widget to read the state from.
+ */
 const getWidgetInvalidState = (widget: Gtk.Widget): Gtk.AccessibleInvalidState | null => {
     const value = readAccessibleNumber(widget, "accessibleInvalid");
 
     return value ?? null;
 };
 
+/**
+ * Returns the widgets a widget's accessible error-message relation points at, or null when it
+ * declares none.
+ *
+ * @param widget The widget to read the relation from.
+ */
 const getWidgetErrorMessage = (widget: Gtk.Widget): Gtk.Widget[] | null =>
     readAccessibleWidgets(widget, "accessibleErrorMessage");
 

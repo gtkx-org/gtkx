@@ -1,7 +1,13 @@
 import { isSignalHandlerConnected, type SignalHandler } from "./signal.js";
 
+/**
+ * The connect and disconnect surface {@link onSignal}, {@link onceSignal} and {@link offSignal}
+ * drive on an emitter.
+ */
 type SignalConnectable = {
+    /** Connects a handler to a signal and returns its handler id. */
     connect(signal: string, handler: SignalHandler, isAfter?: boolean): number;
+    /** Disconnects the handler previously connected under the given id. */
     disconnect(handlerId: number): void;
 };
 

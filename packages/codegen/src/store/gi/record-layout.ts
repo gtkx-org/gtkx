@@ -20,10 +20,6 @@ type RecordFieldSlot = {
 const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
 const recordLayoutCache: Map<string, FieldLayout> = new Map();
 
-// GIR carries no alignment attribute, and a type whose alignment exceeds its widest member cannot be
-// derived from the field list: Graphene models `graphene_simd4f_t` as four `gfloat`, which computes
-// to align 4 while the real type is a 16-byte SIMD vector. Keying the override on `c:type` keeps it
-// to the handful of types where the XML genuinely cannot express the ABI.
 const ALIGNMENT_OVERRIDES: Map<string, FieldLayout> = new Map([
     ["graphene_simd4f_t", { size: 16, align: 16 }],
     ["graphene_simd4x4f_t", { size: 64, align: 16 }],

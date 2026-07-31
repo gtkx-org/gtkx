@@ -4,34 +4,35 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
 
-/**
- * Result of loading a `gtkx.config.ts` file: the parsed configuration, the
- * resolved config file path, and the project root it was loaded from.
- */
+/** Result of loading a project's `gtkx.config.ts` file. */
 type LoadedConfig = {
+    /** The parsed and validated configuration. */
     config: Config;
+    /** Absolute path of the configuration file that was loaded. */
     configFile: string;
+    /** Absolute path of the project root the configuration was resolved against. */
     root: string;
 };
 
+/** How a configuration file is read, shared by {@link loadConfig} and `createConfigLoader`. */
 type LoadConfigOptions = {
+    /**
+     * Environment name such as `development`: the config's matching `$<mode>` block is layered over the
+     * top-level values, and the name is passed to a config authored as a function.
+     */
     mode?: string | undefined;
 };
 
-/**
- * Caching accessor for a project's configuration: `load` yields the validated authored config together with
- * its file path, and `resolve` yields the projection an app needs at runtime.
- */
 type ConfigLoader = {
     load: (cwd: string) => Promise<LoadedConfig>;
     resolve: (cwd: string) => Promise<ResolvedConfig>;
 };
 
 /**
- * Loads and validates the `gtkx.config.ts` file for a project, returning the
- * parsed configuration together with the config file path and project root.
- * @param cwd Directory from which to search for the configuration file.
- * @param options Loading options, such as the environment mode.
+ * Loads and validates the `gtkx.config.ts` file for a project.
+ * @param cwd Directory the configuration file is looked up in.
+ * @param options Loading options, such as the environment mode whose overrides are applied.
+ * @throws When the configuration fails validation, or when no configuration file is found.
  */
 const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise<LoadedConfig> => {
     const result = await loadConfigFile<Config>({

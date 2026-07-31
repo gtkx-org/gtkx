@@ -2,13 +2,22 @@ import { sortStrings } from "@gtkx/utils";
 import { readdirSync } from "node:fs";
 
 type GirNamespace = { name: string; version: string; identifier: string };
+/** A `libraries` config value: an explicit list, `"*"` for everything installed, or absent for the default. */
 type LibrarySelection = typeof LIBRARIES_WILDCARD | string[] | undefined;
 
+/** The `libraries` value that stands for every GIR library installed on the search path. */
 const LIBRARIES_WILDCARD = "*";
 const GIR_LIBRARY_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 const DEFAULT_LIBRARIES: string[] = ["Gtk-4.0"];
 const GIR_FILE_SUFFIX = ".gir";
 
+/**
+ * Expands a `libraries` config value into the GIR identifiers to generate from: `"Gtk-4.0"` alone when
+ * nothing is configured, everything installed for `"*"`, and otherwise the given list with `"Gtk-4.0"`
+ * prepended unless it already names a Gtk version.
+ *
+ * @throws If `"*"` matched no `.gir` file anywhere on the GIR path.
+ */
 const resolveLibraries = (libraries: LibrarySelection, girPath: string[]): string[] => {
     if (libraries === undefined) {
         return [...DEFAULT_LIBRARIES];
@@ -74,6 +83,10 @@ const collectDirNamespaces = (highestByName: Map<string, GirNamespace>, dir: str
     }
 };
 
+/**
+ * Every GIR library installed on the search path, as sorted `Name-Version` identifiers. A namespace found
+ * in more than one version contributes only its highest, and unreadable directories are skipped.
+ */
 const discoverGirNamespaces = (girPath: string[]): string[] => {
     const highestByName: Map<string, GirNamespace> = new Map();
 

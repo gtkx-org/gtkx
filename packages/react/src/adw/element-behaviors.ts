@@ -71,7 +71,6 @@ const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
     },
 );
 
-/** The runtime half of the built-in element configuration: the behaviors bound to each GObject type. */
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     ...forTypes(CHILD_SETTER_TYPES, {
         behaviors: [childSetter],

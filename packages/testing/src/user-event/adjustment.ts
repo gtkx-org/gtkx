@@ -3,7 +3,9 @@ import { wrapEvent } from "./event-wrapper.js";
 
 /** A scroll distance in pixels along each axis. */
 type ScrollDelta = {
+    /** Distance added to the horizontal adjustment. */
     x?: number;
+    /** Distance added to the vertical adjustment. */
     y?: number;
 };
 
@@ -12,6 +14,11 @@ type ScrollAdjustments = {
     vertical: Gtk.Adjustment | null;
 };
 
+/**
+ * Emits a jump `change-value` so a Gtk.Range moves to the given value.
+ *
+ * @throws When the widget is not a Gtk.Range.
+ */
 const slide = (widget: Gtk.Widget, value: number): Promise<void> =>
     wrapEvent(widget, () => {
         if (!(widget instanceof Gtk.Range)) {
@@ -45,6 +52,12 @@ const applyScrollDelta = (adjustment: Gtk.Adjustment | null, delta: number): voi
     adjustment.setValue(adjustment.getValue() + delta);
 };
 
+/**
+ * Adds the delta to the adjustments of the widget itself, or of its nearest Gtk.ScrolledWindow or
+ * Gtk.Scrollable ancestor.
+ *
+ * @throws When neither the widget nor any of its ancestors is scrollable.
+ */
 const scroll = (widget: Gtk.Widget, delta: ScrollDelta): Promise<void> =>
     wrapEvent(widget, () => {
         const adjustments = resolveScrollAdjustments(widget);

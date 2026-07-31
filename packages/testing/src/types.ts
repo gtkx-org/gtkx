@@ -59,7 +59,9 @@ type MatcherOptions<T extends Gtk.Widget = Gtk.Widget> = {
 type ByRoleValue = {
     /** The current value. */
     now?: number | undefined;
+    /** The lower bound of the value's range. */
     min?: number | undefined;
+    /** The upper bound of the value's range. */
     max?: number | undefined;
     /** Matcher for the value's textual representation. */
     text?: Matcher | undefined;
@@ -67,15 +69,23 @@ type ByRoleValue = {
 
 /** Options for role queries: an accessible name matcher plus accessible state and value constraints. */
 type ByRoleOptions<T extends Gtk.Widget = Gtk.Widget> = MatcherOptions<T> & {
+    /** Matcher for the widget's accessible name. */
     name?: Matcher | undefined;
+    /** Required checked state; a mixed check button reads as neither, so it matches neither value. */
     checked?: boolean | undefined;
+    /** Required active state of a toggle button; any other widget matches neither value. */
     pressed?: boolean | undefined;
+    /** Required selected state of a row, list item, grid cell, option or tree item. */
     selected?: boolean | undefined;
+    /** Required expanded state of an expander or tree expander. */
     expanded?: boolean | undefined;
     /** Heading or hierarchy level. */
     level?: number | undefined;
+    /** Required busy state, which an unset state satisfies as false. */
     busy?: boolean | undefined;
+    /** Matcher for the widget's own accessible description, ignoring its `described-by` targets. */
     description?: Matcher | undefined;
+    /** Constraints on the widget's range value, each checked only when given. */
     value?: ByRoleValue | undefined;
     /** When true, include widgets excluded from the accessibility tree. */
     hidden?: boolean | undefined;
@@ -86,26 +96,39 @@ type WrapperComponent = ComponentType<{
     children: ReactNode;
 }>;
 
+/** A custom query, taking the scope to search as its first argument and its matcher arguments after it. */
 type Query = (container: Container, ...args: never[]) => unknown;
+/** Custom queries keyed by the name each is bound under. */
 type QueryMap = Record<string, Query>;
 
+/** A query with its container argument already applied. */
 type BoundQuery<Q extends Query> = Q extends (container: Container, ...args: infer A) => infer R
     ? (...args: A) => R
     : never;
 
+/** Custom queries with their container argument already applied, keyed as they were passed in. */
 type BoundCustomQueries<Q extends QueryMap> = { [K in keyof Q]: BoundQuery<Q[K]> };
 
+/** What each variant of a query family yields for the widget type it matched. */
 type QueryFamilyReturns<T extends Gtk.Widget> = {
+    /** The single match, or null when nothing matched; throws when more than one matched. */
     queryBy: T | null;
+    /** Every match, empty when nothing matched. */
     queryAllBy: T[];
+    /** The single match; throws when nothing or more than one matched. */
     getBy: T;
+    /** Every match; throws when nothing matched. */
     getAllBy: T[];
+    /** The single match, retried until it appears or the timeout elapses. */
     findBy: Promise<T>;
+    /** Every match, retried until at least one appears or the timeout elapses. */
     findAllBy: Promise<T[]>;
 };
 
+/** What a query family matches against, which fixes the arguments it takes. */
 type QueryKind = "role" | "text" | "name" | "value";
 
+/** The arguments a query of the given kind takes after the family's leading ones. */
 type QueryArgs<Kind extends QueryKind, T extends Gtk.Widget> = Kind extends "role"
     ? [role: Gtk.AccessibleRole, options?: ByRoleOptions<T>]
     : Kind extends "name"
@@ -115,9 +138,8 @@ type QueryArgs<Kind extends QueryKind, T extends Gtk.Widget> = Kind extends "rol
             : [text: Matcher, options?: MatcherOptions<T>];
 
 /**
- * One query family (`queryBy`, `getBy`, `findBy` and their `All` variants) for a single suffix.
- * Each member takes an explicit widget type, as Testing Library's queries do, and also infers it
- * from an `as` option.
+ * One family's query variants, each named for its variant followed by `Suffix` and taking `Head`
+ * ahead of the family's own arguments.
  */
 type QueryFamily<Suffix extends string, Kind extends QueryKind, Head extends unknown[]> = {
     [K in keyof QueryFamilyReturns<Gtk.Widget> as `${K & string}${Suffix}`]: <T extends Gtk.Widget = Gtk.Widget>(
@@ -125,6 +147,10 @@ type QueryFamily<Suffix extends string, Kind extends QueryKind, Head extends unk
     ) => QueryFamilyReturns<T>[K];
 };
 
+/**
+ * Every built-in query, spanning the Role, LabelText, Text, Name, PlaceholderText, and DisplayValue
+ * families, with `Head` prepended to each signature.
+ */
 type QueryFamilies<Head extends unknown[]> = QueryFamily<"Role", "role", Head> &
     QueryFamily<"LabelText", "text", Head> &
     QueryFamily<"Text", "text", Head> &
@@ -137,9 +163,11 @@ type QueryFamilies<Head extends unknown[]> = QueryFamily<"Role", "role", Head> &
  * React behavior toggles, error callbacks, and custom queries to bind.
  */
 type RenderOptions<Q extends QueryMap = Record<never, never>> = {
+    /** Widget or root element to mount into; an undecorated harness window is created when omitted. */
     container?: Gtk.Widget | RootElement | undefined;
     /** Root of the subtree that bound queries search. */
     baseElement?: Container | undefined;
+    /** Component wrapped around the rendered element, such as a context provider. */
     wrapper?: WrapperComponent | undefined;
     /** Render inside React StrictMode. */
     reactStrictMode?: boolean | undefined;
@@ -153,17 +181,25 @@ type RenderOptions<Q extends QueryMap = Record<never, never>> = {
     queries?: Q | undefined;
 };
 
+/** Console helpers bundled with the bound queries on {@link screen} and on a render result. */
 type DebugUtilities = {
+    /** Prints the widget tree of the given containers, or of the whole scope, to the console. */
     debug: (element?: Container | Container[], options?: PrettyWidgetOptions) => void;
+    /** Prints the accessible roles found in the scope, with the widgets carrying each one. */
     logRoles: () => void;
+    /** Captures a window, writes the image to a temporary file, and logs its path. */
     screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
 };
 
 /** A captured screenshot: base64-encoded image data, its MIME type, and pixel dimensions. */
 type ScreenshotResult = {
+    /** Base64-encoded image bytes. */
     data: string;
+    /** MIME type of the encoded image, always `image/png`. */
     mimeType: string;
+    /** Image width in pixels, after the scale factor is applied. */
     width: number;
+    /** Image height in pixels, after the scale factor is applied. */
     height: number;
 };
 
@@ -200,7 +236,9 @@ type RenderHookOptions<Props> = {
 type RenderHookResult<Result, Props> = {
     /** Holds the most recent value returned by the hook under `current`. */
     result: { current: Result };
+    /** Re-invokes the hook, keeping the previous props when none are given. */
     rerender: (newProps?: Props) => Promise<void>;
+    /** Unmounts the component that calls the hook. */
     unmount: () => Promise<void>;
 };
 

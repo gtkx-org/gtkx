@@ -18,10 +18,6 @@ function PageSetupDemo({ onClose }: DemoProps) {
     const parentWindow = useParentWindow();
 
     useEffect(() => {
-        if (!parentWindow) {
-            return;
-        }
-
         const settings = new Gtk.PrintSettings();
 
         Gtk.printRunPageSetupDialogAsync(parentWindow, null, settings, () => {

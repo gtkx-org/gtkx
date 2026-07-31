@@ -30,6 +30,7 @@ import {
     isWidgetChecked,
 } from "./widget-accessible-properties.js";
 
+/** The built-in queries in their unbound form, each taking the container to search as its first argument. */
 type BuiltinQueries = QueryFamilies<[container: Container]>;
 
 const roleQueries = nameQueryFamily(

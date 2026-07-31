@@ -91,8 +91,6 @@ type AccessorOptions = {
     fieldType: TypeId;
 };
 
-// An inline record field is read and written through its own bytes, so it can only be exposed when
-// those bytes are copyable; a pointer field is marshalled as a handle and is always fine.
 const isMarshalableField = (context: ModuleContext, field: GirField): boolean => {
     if (field.cType?.endsWith("*") === true) {
         return true;
@@ -211,8 +209,6 @@ const renderRecordFieldAccessor = (
         return `${doc}declare ${jsName}: ${tsType};`;
     }
 
-    // A record field whose C type is the record itself rather than a pointer to it holds the value
-    // in place, so its own address is the value and no word may be loaded out of it.
     const descriptor = context.hoistDescriptor(
         renderDescriptor(context, field.type, "none", { isInline: isInlineField(context, field) }),
     );
@@ -269,8 +265,6 @@ const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean =>
     }
 };
 
-// A field whose record is embedded by value is read and written through its own bytes, so the
-// constructor and the setter have to describe it the same way.
 const isInlineField = (context: ModuleContext, field: GirField): boolean =>
     field.type !== undefined && resolveInlineStructFields(context, field.type, field.cType) !== undefined;
 

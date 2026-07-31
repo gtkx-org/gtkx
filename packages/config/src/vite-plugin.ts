@@ -21,13 +21,6 @@ const loadVirtualModule = async (
     return renderConfigModule(await loadConfig.resolve(state.root ?? process.cwd()));
 };
 
-/**
- * Creates the Vite plugin that resolves and serves the `virtual:gtkx-config`
- * module, exposing the JSX metadata and the resolved application ID from the
- * project's configuration.
- * @param options Plugin name, an optional custom {@link ConfigLoader}, and an
- * optional hook returning extra Vite user config.
- */
 const createConfigPlugin = (options: {
     name: string;
     loadConfig?: ConfigLoader;

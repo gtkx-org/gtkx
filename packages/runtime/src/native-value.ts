@@ -111,6 +111,14 @@ function hashTableToNative(descriptor: HashTableDescriptor, value: unknown): unk
     ]);
 }
 
+/**
+ * Converts a JavaScript value into the raw form native code expects, unwrapping
+ * object, struct, boxed, and fundamental wrappers back to their handles and
+ * recursively converting arrays and maps according to the descriptor.
+ *
+ * @param descriptor Describes the native type to convert to.
+ * @param value The JavaScript value to convert.
+ */
 function toNative(descriptor: Descriptor, value: unknown): unknown {
     if (!isMarshalledDescriptor(descriptor)) {
         return value;

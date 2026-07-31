@@ -17,16 +17,28 @@ import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeP
 type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &
     (C extends new (...args: infer A) => infer R ? new (...args: A) => R : never);
 
+/** One overridable vtable slot: where it sits in the vtable struct and how it is marshalled. */
 type VfuncDescriptor<K extends "class" | "interface"> = {
+    /** Whether the slot lives in a class struct or in an interface vtable. */
     kind: K;
+    /** GIR name of the type struct holding the slot, without its namespace, such as `WidgetClass`. */
     className: string;
+    /** Name of the slot's field in that struct. */
     vfuncName: string;
+    /** Byte offset of the slot within the struct. */
     byteOffset: number;
+    /** Byte size of the struct, used to bounds-check `VfuncDescriptor.byteOffset`. */
     vtableSize: number;
+    /** Descriptor for each argument the slot receives, starting with the instance. */
     argDescriptors: NativeRegisterClassVfunc["argDescriptors"];
+    /** Descriptor for the value the slot returns. */
     returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
 };
 
+/**
+ * The vtable slots a wrapper class or interface exposes, keyed by the JavaScript method name that
+ * overrides each one.
+ */
 type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
 
 const classRegistry: Map<bigint, AnyClass> = new Map();
@@ -65,7 +77,8 @@ function registerClassType(cls: AnyClass, type: bigint): void {
  * installing a registry of virtual functions.
  * @param cls Wrapper class to associate with the type.
  * @param type GType the class wraps.
- * @param vfuncs Virtual functions the class overrides.
+ * @param vfuncs Vtable slots the class exposes, so `registerClass` can bind the ones a subclass
+ * overrides.
  */
 function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistry): void {
     registerClassType(cls, type);
@@ -81,7 +94,8 @@ function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistr
  * @param cls Class carrying the interface's GType tag.
  * @param type GType of the interface.
  * @param mixin Mixin that applies the interface to a wrapper class.
- * @param vfuncs Virtual functions the interface exposes.
+ * @param vfuncs Vtable slots the interface exposes, so `registerClass` can bind the ones an
+ * implementing class overrides.
  */
 function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry): void {
     if (type === TYPE_INVALID) {

@@ -136,8 +136,6 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
         return undefined;
     }
 
-    // `g_object_set_property` rejects a construct-only pspec with a critical and drops the write, so
-    // the property is settable at construction time only and must not advertise a setter.
     const isWritable = isConstructableProperty(property) && !property.constructOnly;
     const { member: getterMember, method: getterMethod } = resolveGetterDelegate(args, jsName);
     const { member: setterMember, method: setterMethod } = resolveSetterDelegate(args, jsName, isWritable);

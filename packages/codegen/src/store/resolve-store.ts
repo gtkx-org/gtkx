@@ -7,7 +7,9 @@ import type { StoreOptions } from "./store-fs.js";
  * project has no `@gtkx/react` installed, in which case only the `@gtkx/gi` store can be generated.
  */
 type ResolvedStore = {
+    /** Where the `@gtkx/gi` store goes, versioned by the installed `@gtkx/runtime`. */
     gi: StoreOptions;
+    /** Where the `@gtkx/jsx` store goes, versioned by the installed `@gtkx/react`; null when it is absent. */
     jsx: StoreOptions | null;
     /** Subexport names of the installed `@gtkx/react`, empty when it is absent. */
     reactSubexports: string[];
@@ -48,8 +50,6 @@ const nodeModulesChain = function* (projectRoot: string): Generator<string> {
     yield join(root, "node_modules");
 };
 
-// Deliberately not `require.resolve`: that consults NODE_PATH and the global folders, so a project
-// could be versioned against an unrelated copy of @gtkx/react that it never installed.
 const resolvePackage = (projectRoot: string, packageName: string): ResolvedPackage | null => {
     for (const nodeModules of nodeModulesChain(projectRoot)) {
         const found = loadPackage(join(nodeModules, packageName, "package.json"));

@@ -439,10 +439,6 @@ impl ClosureData {
         }
     }
 
-    // A transfer-none return stays owned by the implementation, so the caller may hold it for as
-    // long as the implementation lives. Strings are interned by content so a getter called in a
-    // loop reuses one allocation, and containers are retained outright; both are released with the
-    // `ClosureData`.
     pub fn retain_container(&self, stash: Stash) {
         self.retained_containers.borrow_mut().push(stash);
     }

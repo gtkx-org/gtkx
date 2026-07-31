@@ -111,8 +111,6 @@ impl Handle {
         HandleKind::Struct(ptr).into()
     }
 
-    // Only a plain struct owns its field transfers; a boxed or object handle is freed by its own
-    // free function, which already owns whatever the fields point at.
     #[must_use]
     pub fn field_store(&self) -> Option<&FieldStore> {
         matches!(self.kind, HandleKind::Struct(_)).then_some(&self.fields)

@@ -161,7 +161,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const windowRef = useRef<Gtk.Window>(null);
     const hostWindowRef = useMemo<RefObject<Gtk.Window | null>>(() => ({ current: hostWindow }), [hostWindow]);
 
-    if (!hostWindow || !currentDemo?.component) {
+    if (!currentDemo?.component) {
         return null;
     }
 

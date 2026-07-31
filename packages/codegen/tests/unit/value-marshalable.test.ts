@@ -37,10 +37,6 @@ describe("isValueMarshalable", () => {
         expect(isMarshalable("Graphene", "Size")).toBe(true);
     });
 
-    // The traversal guards against a cycle, not against a type appearing more than once. `GskRoundedRect`
-    // holds a `graphene_rect_t` and four `graphene_size_t`, so `Graphene.Size` is reached twice: once
-    // under `bounds`, once under `corner`. A guard that never unwinds rejects the second visit and takes
-    // the whole all-scalar struct with it.
     it("accepts a record that reaches the same field type twice", () => {
         expect(isMarshalable("Gsk", "RoundedRect")).toBe(true);
     });

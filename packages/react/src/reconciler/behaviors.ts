@@ -67,7 +67,6 @@ const slotAttach =
             return attach(object as P, child as C, info) ?? true;
         };
 
-/** Builds a behavior for a named child slot holding children of `childType`, claiming matches only. */
 const slot = <P extends GObject.Object, C extends GObject.Object>(
     slotName: string,
     childType: string,
@@ -94,7 +93,6 @@ const slot = <P extends GObject.Object, C extends GObject.Object>(
     return behavior;
 };
 
-/** Builds a scalar-prop behavior that invokes `apply` whenever the value changes, and claims the prop. */
 const value = <P extends GObject.Object, V>(
     prop: string,
     apply: ValueApply<P, V>,
@@ -130,11 +128,6 @@ const teardownList = <P extends GObject.Object, I, H>(
     }
 };
 
-/**
- * Builds an array-prop behavior that adds, removes, and clears its items, reapplying on structural
- * change. `add` may return a handle that the same item's later `remove` receives, for items whose
- * teardown needs what `add` produced (as VFL constraints need the objects the layout created).
- */
 const list = <P extends GObject.Object, I, H = void>(
     prop: string,
     hooks: ListHooks<P, I, H>,
@@ -184,7 +177,6 @@ const flushDeferred = <P extends GObject.Object, V>(
     state.applied = state.desired;
 };
 
-/** Builds a behavior for a prop applied after the surrounding commit, deferred until `canApply` returns true. */
 const deferred = <P extends GObject.Object, V>(
     prop: string,
     canApply?: CanApply<P, V>,
@@ -203,7 +195,6 @@ const deferred = <P extends GObject.Object, V>(
     },
 });
 
-/** Builds a behavior for a text prop kept in controlled-input sync: set when provided, never reset. */
 const controlledText = (prop: string): ElementBehavior =>
     value(prop, (object, next) => {
         if (!hasSameText(object, prop, next)) {
@@ -213,7 +204,6 @@ const controlledText = (prop: string): ElementBehavior =>
         }
     });
 
-/** Behavior for a container that installs its single child with `setChild`. */
 const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", "GtkWidget", {
         attach: (parent, child) => {
@@ -224,7 +214,6 @@ const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
         },
     });
 
-/** Behavior for a container that installs its single child with `setContent`. */
 const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widget = Gtk.Widget>(
     childType = "GtkWidget",
 ): ElementBehavior<P> =>
@@ -237,7 +226,6 @@ const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widget = Gt
         },
     });
 
-/** Behavior for a `GtkBox`-style container that orders children by sibling. */
 const boxSlot = <P extends BoxLike>(): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", "GtkWidget", {
         attach: (box, child, info) => box.insertChildAfter(child, info.sibling as Gtk.Widget | null),
@@ -249,7 +237,6 @@ const boxSlot = <P extends BoxLike>(): ElementBehavior<P> =>
         },
     });
 
-/** Behavior for a container whose children are added and removed by a pair of methods. */
 const addRemoveSlot = <C extends GObject.Object, P extends GObject.Object>(
     slotName: string,
     childType: string,
@@ -257,7 +244,6 @@ const addRemoveSlot = <C extends GObject.Object, P extends GObject.Object>(
     remove: (parent: P, child: C) => void,
 ): ElementBehavior => slot<P, C>(slotName, childType, { attach: add, detach: remove });
 
-/** Behavior for a `children` slot whose attach call returns the page object the container adopts. */
 const adoptedChildrenSlot = <P extends GObject.Object, C extends GObject.Object>(
     childType: string,
     add: (parent: P, item: C) => unknown,
@@ -300,7 +286,6 @@ const removeWrappedRow = (
     }
 };
 
-/** Behavior for an index-placed container that wraps each child in `Wrapper` before adding it. */
 const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedInserter>(
     Wrapper: new (props: Props) => W,
     setChild: (wrapper: W, inner: Gtk.Widget) => void,

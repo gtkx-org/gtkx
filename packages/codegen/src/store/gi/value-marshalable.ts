@@ -7,7 +7,6 @@ import type { ModuleContext } from "../../writer/context.js";
 
 type Scope = { context: ModuleContext; seen: Set<string> };
 
-/** Primitive categories that are a pointer at the C level, so copying the bytes aliases the pointee. */
 const POINTER_CATEGORIES: Set<PrimitiveCategory> = new Set<PrimitiveCategory>(["string", "pointer"]);
 
 const recordKey = (namespaceName: string, record: GirRecord): string => `${namespaceName}.${record.name}`;
@@ -79,17 +78,9 @@ function isValueSafeRecord(scope: Scope, namespaceName: string, record: GirRecor
     return isSafe;
 }
 
-/**
- * Whether a record can be copied by value. A plain struct is duplicated with a byte-wise `g_memdup2`,
- * which shallow-copies whatever the bytes hold, so only a record whose every field is transitively a
- * scalar can be owned, allocated or written into an inline slot. A pointer, a string, a function
- * pointer or an opaque record makes it borrow-only. Records that carry their own copy/free pair are
- * duplicated through that instead and never reach the byte-wise path.
- */
 const isValueMarshalable = (context: ModuleContext, namespaceName: string, record: GirRecord): boolean =>
     isValueSafeRecord({ context, seen: new Set<string>() }, namespaceName, record);
 
-/** Whether a record can be allocated and populated from JavaScript. */
 const isConstructibleRecord = (context: ModuleContext, namespaceName: string, record: GirRecord): boolean =>
     hasOwnCopySemantics(record) || isValueMarshalable(context, namespaceName, record);
 

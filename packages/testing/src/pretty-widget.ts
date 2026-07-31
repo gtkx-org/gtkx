@@ -4,6 +4,7 @@ import { formatRole } from "./role-helpers.js";
 import { type Container, roots } from "./traversal.js";
 import { getWidgetNodeText } from "./widget-accessible-properties.js";
 
+/** Produces the value of the `id` attribute printed first on a widget's opening tag. */
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
 /**

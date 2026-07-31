@@ -23,9 +23,6 @@ thread_local! {
     static G_MEMDUPED: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Interposes `g_memdup2` so the tests can observe every struct copy the
-/// hash-table codec makes.
-///
 /// # Safety
 ///
 /// `mem` must either be null or point to at least `byte_size` initialized bytes

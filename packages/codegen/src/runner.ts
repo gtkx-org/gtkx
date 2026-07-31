@@ -8,7 +8,13 @@ import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
 
-type ModuleExport = { module: string; export: string };
+/** A named export in a module, referenced as plain data (the module is never imported at runtime). */
+type ModuleExport = {
+    /** Specifier the export is imported from. */
+    module: string;
+    /** Identifier the module exports it under. */
+    export: string;
+};
 
 type GlCodegenOptions = {
     registryPath: string;
@@ -19,7 +25,7 @@ type GlCodegenOptions = {
 
 /** What to generate and where to write it. */
 type CodegenRunnerOptions = {
-    /** GIR library identifiers such as `"Gtk-4.0"`, or `"*"` for every library found on the GIR path. */
+    /** GIR library identifiers such as `"Gtk-4.0"`; a `"*"` selection must be expanded before it gets here. */
     libraries: string[];
     /** Directories to search for `.gir` files. */
     girPath: string[];
@@ -29,9 +35,13 @@ type CodegenRunnerOptions = {
     jsx?: StoreOptions | undefined;
     /** Subexport names of the installed `@gtkx/react`, whose element config shapes the jsx store. */
     reactSubexports?: string[];
+    /** Component wrappers the project layers over the built-ins, keyed by GLib type name. */
     userComponents?: Record<string, ModuleExport>;
+    /** GLib type names whose GObject their parent container creates, added to the framework's own. */
     userLazyElements?: string[];
+    /** Base props interfaces the project's elements extend, keyed by GLib type name. */
     userProps?: Record<string, ModuleExport>;
+    /** Props the project drops from the generated element props, keyed by GLib type name. */
     userOmittedProps?: OmittedProps;
     /** Regenerates both stores even when their fingerprints are fresh. */
     force?: boolean;
@@ -41,7 +51,9 @@ type CodegenRunnerOptions = {
 type CodegenRunnerResult = {
     /** Whether either store was rewritten; false means both were already fresh. */
     regenerated: boolean;
+    /** How many namespaces the gi store was written with, zero when it was already fresh. */
     namespaces: number;
+    /** How many JSX elements the jsx store binds, zero when no jsx store was requested. */
     intrinsicElements: number;
     /** Wall-clock duration of the run, in milliseconds. */
     duration: number;

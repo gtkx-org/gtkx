@@ -1,7 +1,13 @@
 import type { AnyClass } from "@gtkx/utils";
 
+/**
+ * The signal plumbing every base class passed to a {@link Mixin} provides, so mixed-in interface
+ * members can connect and emit without knowing the concrete class.
+ */
 type MixinReceiver = {
+    /** Connects a handler to a signal and returns its handler id. */
     connect(signal: string, handler: (...args: unknown[]) => unknown, isAfter?: boolean): number;
+    /** Emits a signal with the given arguments and returns whatever the emission produced. */
     emit(signal: string, ...args: unknown[]): unknown;
 };
 
@@ -41,6 +47,12 @@ function copyLayerMember(target: AnyClass, layer: object, key: string): void {
     }
 }
 
+function copyLayerMembers(target: AnyClass, layer: object): void {
+    for (const key of Object.getOwnPropertyNames(layer)) {
+        copyLayerMember(target, layer, key);
+    }
+}
+
 /**
  * Copies each mixin's prototype members onto the target class prototype, skipping
  * any member already defined anywhere in the target's class chain.
@@ -48,12 +60,6 @@ function copyLayerMember(target: AnyClass, layer: object, key: string): void {
  * @param target The class whose prototype receives the mixin members.
  * @param mixins The mixins to apply, in order.
  */
-function copyLayerMembers(target: AnyClass, layer: object): void {
-    for (const key of Object.getOwnPropertyNames(layer)) {
-        copyLayerMember(target, layer, key);
-    }
-}
-
 function installMixins(target: AnyClass, mixins: Mixin[]): void {
     const empty: AnyClass<MixinReceiver> = class {
         connect(): number {

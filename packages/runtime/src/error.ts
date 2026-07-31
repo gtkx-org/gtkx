@@ -2,8 +2,14 @@ import type { ExternalObject, Handle, Ref } from "@gtkx/native";
 import { getWrapperClass, wrapHandle } from "./registry.js";
 import { getErrorType, isTypedClass } from "./type.js";
 
+/**
+ * A wrapped `GError` thrown across the FFI boundary: a JavaScript `Error` that also identifies its
+ * GLib domain and code.
+ */
 type ErrorLike = Error & {
+    /** Quark of the error domain the code belongs to. */
     domain: number;
+    /** Error code, meaningful only within `ErrorLike.domain`. */
     code: number;
 };
 

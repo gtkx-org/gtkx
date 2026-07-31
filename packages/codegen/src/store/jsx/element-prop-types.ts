@@ -37,7 +37,6 @@ const createLazyElementSpec = (context: GirIndex, element: string, entry: GirTyp
     return { element, typeName, typeSource: `export type ${typeName} = ${base} & { children?: ReactNode };` };
 };
 
-/** Lazy element prop types to emit, grouped by the namespace declaring each element. */
 const lazyElementSpecs = (context: GirIndex, lazyElements: string[]): Map<string, LazyElementSpec[]> => {
     const specs: Map<string, LazyElementSpec[]> = new Map();
 

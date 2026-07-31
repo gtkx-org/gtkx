@@ -6,6 +6,7 @@ import type { Container } from "./traversal.js";
  * checks.
  */
 type Config = {
+    /** Whether a successful query throws instead, naming a better query, when one is available. */
     throwSuggestions: boolean;
 
     /** Builds the error thrown when a query fails, given a message and optional container. */

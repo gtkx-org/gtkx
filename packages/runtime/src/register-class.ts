@@ -23,13 +23,14 @@ import {
 } from "./registry.js";
 import { TYPE_INVALID, typeInterfaces } from "./type.js";
 
+/** What {@link registerClass} adds to the new GType beyond the vtable slots it discovers on the class. */
 type RegisterClassOptions = {
+    /** Name to register the new GType under, defaulting to the class's own name. */
     typeName?: string;
     /**
-     * Properties to install on the new type, keyed by canonical property name. Each value is the
-     * `GObject.ParamSpec` describing it, for example `GObject.paramSpecString(...)`. Accessors are
-     * generated on the prototype for the dashed, underscored and camelCased spellings of the name
-     * unless the class already defines one, and writing through them emits `notify`.
+     * Properties to install on the new type, keyed by canonical name and valued with the
+     * `GObject.ParamSpec` describing each. Every property gains dashed, underscored and camelCased
+     * prototype accessors that emit `notify` on write, unless the class already defines that name.
      */
     properties?: Record<string, PropertySpec>;
 };
@@ -50,7 +51,6 @@ const VALUE_ARG_INDEX = 2;
  * unsupported construct-time vtable slot.
  *
  * @param klass The subclass to register.
- * @param options Registration options, such as an explicit type name.
  * @returns The same class, now registered.
  */
 function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
@@ -237,8 +237,6 @@ function propertyVfuncs(klass: AnyClass, accessors: PropertyAccessor[]): Discove
     ];
 }
 
-// `get_property` fills a GValue the caller owns, so the marshalled copy handed to JavaScript has to
-// be written back into it; `set_property` only reads its GValue and needs no copy back.
 function markValueCallerAllocated(argDescriptors: Descriptor[]): Descriptor[] {
     return argDescriptors.map((arg, index) =>
         index === VALUE_ARG_INDEX ? { ...arg, callerAllocated: true } : arg);

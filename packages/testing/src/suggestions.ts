@@ -20,10 +20,13 @@ type Method = "Role" | "LabelText" | "PlaceholderText" | "Text" | "DisplayValue"
  * `toString` that renders the full call.
  */
 type Suggestion = {
+    /** The query family, such as `Role`. */
     queryName: Method;
     /** The full query function name, such as `getByRole`. */
     queryMethod: string;
+    /** The variant the suggestion was asked for, which prefixes `Suggestion.queryMethod`. */
     variant: Variant;
+    /** Renders the suggested call with its arguments, such as `getByRole(Gtk.AccessibleRole.BUTTON)`. */
     toString: () => string;
 };
 

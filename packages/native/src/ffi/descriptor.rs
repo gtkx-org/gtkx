@@ -352,10 +352,6 @@ impl Descriptor {
         })
     }
 
-    // Without a user-data slot the callee is handed nothing but the trampoline address, so no
-    // destroy notify can be attached and there is no signal that it has stopped using it. Keeping
-    // the closure alive for the rest of the process is then the only choice that cannot dangle,
-    // whatever lifetime the descriptor claims.
     fn callback_scope(
         scope: Option<CallbackScope>,
         has_destroy: bool,

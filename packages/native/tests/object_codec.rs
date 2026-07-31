@@ -357,9 +357,6 @@ fn write_value_to_pointer_full_null_releases_previous_object() {
     });
 }
 
-// `gtk_scale_new` and every other GTK widget constructor is `transfer-ownership="none"` in GIR
-// because the reference it returns is floating, so a transfer-none decode is the path a freshly
-// constructed widget actually takes, and the float it carries is left for whoever adopts it.
 fn floating_widget() -> *mut glib::gobject_ffi::GObject {
     let widget = unsafe {
         glib::gobject_ffi::g_object_new(

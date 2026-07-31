@@ -5,11 +5,22 @@ import { compile, middleware, rulesheet, stringify, serialize as stylisSerialize
 import { escapeNamedColors, restoreNamedColors } from "./named-colors.js";
 import { StyleSheet } from "./stylesheet.js";
 
+/** A `cx` argument: a non-empty class name, or a boolean or nullish value that is dropped. */
 type CxToken = string | boolean | undefined | null;
 
+/** The `css`, `cx` and `injectGlobal` trio bound to one GTK4 stylesheet and its cache of inserted styles. */
 type Css = {
+    /**
+     * Serializes the given style interpolations, inserts the resulting rules into the stylesheet, and
+     * returns the generated GTK4 CSS class name.
+     */
     css: (...args: CSSInterpolation[]) => string;
+    /**
+     * Filters out falsy tokens and returns the remaining class names, collapsing two or more
+     * GTKX-generated classes into one merged class where later styles win.
+     */
     cx: (...classNames: CxToken[]) => string[];
+    /** Serializes and inserts the given styles into the stylesheet globally, unscoped by any class. */
     injectGlobal: (...args: CSSInterpolation[]) => void;
 };
 

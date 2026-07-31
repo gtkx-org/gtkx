@@ -6,8 +6,9 @@ import { fireEvent } from "../fire-event.js";
 import { getOrCreateControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 
-/** Options for {@link tab}: when `shift` is set, move focus backward instead of forward. */
+/** Options for `userEvent.tab`. */
 type TabOptions = {
+    /** Move focus backward instead of forward. */
     shift?: boolean;
 };
 
@@ -58,6 +59,7 @@ const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
 };
 
+/** Moves focus within the widget's root, forward by default and backward when `shift` is set. */
 const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
     wrapEvent(widget, () => {
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;

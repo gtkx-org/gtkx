@@ -238,9 +238,6 @@ impl Decoder for RefCodec {
 impl PtrWriter for RefCodec {}
 
 impl RefCodec {
-    // `vec![0u8; n]` aborts the process through `handle_alloc_error` when the request cannot be
-    // served, which no `catch_unwind` can intercept, so an out-of-range buffer length has to fail
-    // as an ordinary error before the allocator sees it.
     fn zeroed_buffer(size: usize) -> anyhow::Result<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
         buffer

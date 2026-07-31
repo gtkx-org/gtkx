@@ -1,5 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
 
+/**
+ * A scope that resolves to a single root widget: the widget itself, the widget a controller or
+ * layout manager is attached to, or a list item's or header's child.
+ */
 type QueryContainer = Gtk.Widget | Gtk.EventController | Gtk.LayoutManager | Gtk.ListItem | Gtk.ListHeader;
 /**
  * A scope that queries and traversal can run against: a widget, an event
@@ -8,6 +12,7 @@ type QueryContainer = Gtk.Widget | Gtk.EventController | Gtk.LayoutManager | Gtk
  */
 type Container = QueryContainer | Gtk.Application | typeof TOPLEVELS;
 
+/** Container sentinel that widens a query to every toplevel window currently open. */
 const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
 
 const isApplication = (container: Container): container is Gtk.Application => container instanceof Gtk.Application;

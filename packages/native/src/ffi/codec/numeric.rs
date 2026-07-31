@@ -20,11 +20,6 @@ macro_rules! impl_number_cast {
                 f64::from(self)
             }
 
-            // Filling a C integer slot from a JavaScript number is Rust's saturating
-            // float-to-int conversion: NaN becomes 0 and an out-of-range magnitude clamps to
-            // the slot type's bounds. That is the marshalling contract this boundary needs:
-            // range checking is a separate step (`IntegerCodec::check_range`), and the
-            // callback-return path has no channel on which to report a rejected value.
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             fn from_f64(value: f64) -> Self {
                 value as Self
@@ -36,16 +31,11 @@ macro_rules! impl_number_cast {
 macro_rules! impl_number_cast_64 {
     ($($ty:ty),+ $(,)?) => {
         $(impl NumberCast for $ty {
-            // A 64-bit C integer past 2^53 has no exact f64. The paths that must stay exact
-            // (`IntegerCodec::checked_read_ptr` and `IntegerCodec::checked_read_slice`) route
-            // the 64-bit codecs through `lossless_f64` and fail instead, so reaching this
-            // conversion means the caller explicitly asked for the raw, unchecked read.
             #[allow(clippy::cast_precision_loss)]
             fn to_f64(self) -> f64 {
                 self as f64
             }
 
-            // The same saturating float-to-int contract as the narrower widths.
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             fn from_f64(value: f64) -> Self {
                 value as Self
@@ -266,10 +256,6 @@ pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
 fn coerce_number(value: Unknown<'_>, label: &str, allow_object: bool) -> anyhow::Result<f64> {
     match value.get_type()? {
         ValueType::Number => Ok(value::read_napi::<f64>(value)?),
-        // An External carries a GObject handle, i.e. a Linux user-space virtual address. Those
-        // are 48 bits wide at most under the 4-level paging layout every supported target uses,
-        // so the address stays inside f64's 53-bit exact-integer range and survives the trip
-        // through the JavaScript number it is handed to.
         #[allow(clippy::cast_precision_loss)]
         ValueType::External if allow_object => {
             let ptr = value::handle_ptr(value, label)?;
@@ -375,13 +361,8 @@ impl IntegerCodec {
 
     pub fn number_from_ptr_raw(self, ptr: *mut c_void, context: &str) -> anyhow::Result<f64> {
         match self {
-            // The C ABI promotes a narrow integer into a full pointer-width word, so the word
-            // read back here is the sign- or zero-extended value of a `gint8`/`gint16` or a
-            // `guint8`/`guint16` and therefore lies inside that type's range, well within
-            // f64's 53-bit exact-integer range.
             #[allow(clippy::cast_precision_loss)]
             Self::I8 | Self::I16 => Ok(ptr as isize as f64),
-            // The same promoted word, zero-extended, for a `guint8`/`guint16`.
             #[allow(clippy::cast_precision_loss)]
             Self::U8 | Self::U16 => Ok(ptr as usize as f64),
             Self::I32 => Ok(f64::from(ptr as i32)),

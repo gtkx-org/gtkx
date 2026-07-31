@@ -7,10 +7,6 @@ use crate::handle::{RefFn, UnrefFn};
 
 type GetTypeFn = unsafe extern "C" fn() -> glib::ffi::GType;
 
-/// The cache is process-global rather than per-thread because everything it hands out is
-/// process-global: `dlopen` handles, the raw symbol pointers callers copy out, and the types
-/// `invoke_and_cache_type` registers, which `GLib` never unregisters. A `static` is never
-/// dropped, so no `dlclose` can run while another library's worker threads still execute its code.
 static FFI_CACHE: OnceLock<Mutex<FfiCache>> = OnceLock::new();
 
 pub struct LibraryCache {

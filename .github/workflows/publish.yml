@@ -25,8 +25,6 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
-    # Budgeted for `pull-image`'s fallback image build, which runs when the
-    # release commit's image tag is absent from GHCR.
     timeout-minutes: 60
     steps:
       - name: Checkout

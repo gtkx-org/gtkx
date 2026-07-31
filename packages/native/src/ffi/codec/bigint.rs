@@ -44,9 +44,6 @@ impl BigIntCodec {
                 }
                 Ok(int)
             }
-            // The guard rejects every non-integral, non-finite or beyond-2^53 value first, so
-            // what reaches the conversion is a whole number f64 holds exactly and i128 covers
-            // with room to spare.
             #[allow(clippy::cast_possible_truncation)]
             ValueType::Number => {
                 let n = value::read_napi::<f64>(value)?;

@@ -1,11 +1,15 @@
-/** Props interface a generated element's props extend, declared by hand in `@gtkx/react`. */
 type ElementPropTypeRef = { type: string; module: string; export: string };
+
 /** Base props interface each element extends, keyed by GLib type name (the module exports it). */
-type ElementProps = Record<string, { module: string; export: string }>;
+type ElementProps = Record<string, {
+    /** Specifier the props interface is imported from. */
+    module: string;
+    /** Identifier the module exports it under. */
+    export: string;
+}>;
 
 const elementProps: Map<string, { module: string; export: string }> = new Map();
 
-/** Installs the base props each element extends (GLib type name → `{ module, export }`); set once per run. */
 const setElementProps = (props: ElementProps): void => {
     elementProps.clear();
 
@@ -14,7 +18,6 @@ const setElementProps = (props: ElementProps): void => {
     }
 };
 
-/** The base props interface an element extends, when its element config declares one. */
 const elementPropTypeFor = (glibName: string): ElementPropTypeRef | undefined => {
     const ref = elementProps.get(glibName);
 

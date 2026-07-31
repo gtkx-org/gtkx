@@ -27,7 +27,6 @@ type UnresolvedWalker = { target: Library; seen: Set<string>; unresolved: Set<st
 
 const GI_STORE_DIR = fileURLToPath(new URL("../../../../node_modules/.gtkx/gi", import.meta.url));
 const REACT_SUBEXPORTS = ["config", "adw", "adw/config", "internal"];
-/** The @gtkx/react element config, read from the linked package the same way codegen threads it into the pipeline. */
 const REACT_SURFACE = await readBuiltinElements(REACT_SUBEXPORTS, GI_STORE_DIR);
 const reactPipeline = generateJsxFiles(library, REACT_SURFACE);
 
@@ -266,8 +265,6 @@ const addInterfacePropsNames = (widget: GlibNamedClass, names: Set<string>): voi
     }
 };
 
-// An abstract GType is not an element -- `g_object_new` on one aborts -- but its props interface has
-// to stay, because every concrete subclass extends it.
 const abstractPropsNames = (): Set<string> => {
     const names: Set<string> = new Set();
 

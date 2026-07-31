@@ -11,12 +11,6 @@ type GiCodegenOptions = {
     girPath: string[];
 };
 
-/**
- * Generates the `@gtkx/gi` store from the loaded GIR library and links it into the project. This is the
- * react-free half of codegen: it can run before `@gtkx/gi` (or `@gtkx/react`) exists, since it produces them.
- *
- * @returns The number of namespaces written.
- */
 const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
     const { gi, libraries, girPath } = options;
 

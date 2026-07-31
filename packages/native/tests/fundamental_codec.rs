@@ -479,7 +479,6 @@ fn write_value_to_pointer_leaves_the_previous_fundamental_ref_alone() {
         assert_eq!(slot, new);
         assert_eq!(unsafe { param_spec_refcount(new) }, new_before + 1);
         assert!(transfer.is_some());
-        // A transfer-none write never acquired the displaced reference, so it must not drop it.
         assert_eq!(unsafe { param_spec_refcount(old) }, old_before);
 
         release_param_spec_refs(new, 2);

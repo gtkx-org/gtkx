@@ -52,7 +52,6 @@ const resolvePackage = (require: NodeJS.Require, dir: string, packageName: strin
     }
 };
 
-// Where the jsx store would live when @gtkx/react is absent, so a stale one can still be cleared.
 const siblingStore = (giDir: string): string => join(dirname(giDir), "jsx");
 
 const resolveCodegenStore = (dir: string): CodegenStore => {

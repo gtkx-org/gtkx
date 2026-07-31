@@ -6,22 +6,23 @@ import type { SettingsSchema, SettingsSchemaKeys } from "../utils/settings.js";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useSettings } from "./use-setting.js";
 
+/** Options for {@link useBindSetting}. */
 type UseBindSettingOptions<K extends SettingsSchemaKeys> = {
+    /** Schema the settings object is opened from. */
     schema: SettingsSchema<K>;
+    /** Key of that schema to bind. */
     key: keyof K & string;
+    /** Object holding the property, given directly or as a ref; nothing is bound while it is absent. */
     object: RefProp<GObject.Object>;
+    /** camelCase name of the property to keep in sync with the key. */
     property: string;
+    /** Direction and conversion behavior of the bind; defaults to `Gio.SettingsBindFlags.DEFAULT`. */
     flags?: Gio.SettingsBindFlags;
 };
 
 /**
- * Binds a GSettings key to a property of a GObject, keeping the two in sync for the object's lifetime.
- *
- * @param options.schema The schema reference identifying the settings backend.
- * @param options.key The key within the schema to bind.
- * @param options.object The GObject whose property is bound to the setting.
- * @param options.property The name of the object property to bind.
- * @param options.flags Flags controlling the binding's direction and behaviour.
+ * Binds a GSettings key to a property of a GObject, keeping the two in sync until the component unmounts.
+ * `property` is given in camelCase, and `flags` defaults to `Gio.SettingsBindFlags.DEFAULT`, a two-way bind.
  */
 function useBindSetting<K extends SettingsSchemaKeys>({
     schema,

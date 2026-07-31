@@ -109,8 +109,6 @@ pub(super) fn write_return_object_ptr<F>(
     unsafe { ret.store(owned) };
 }
 
-// A transfer-none write gives us no claim on the pointer already in the slot, so the displaced value
-// must be left alone rather than released; the copy we store is handed back for the record to adopt.
 pub(super) fn store_acquired_slot<A>(
     slot: ffi::Slot,
     value: Unknown<'_>,
@@ -164,9 +162,6 @@ where
     Ok(None)
 }
 
-// The callee owns the container from here on, so the pending transfers are disarmed. Only the
-// backing store the C container actually points into has to outlive this call; everything else the
-// stash owns is Rust-side bookkeeping that would otherwise leak on every invocation.
 fn aliases_stash_backing(stash: &ffi::Stash) -> bool {
     let ffi::Stash::Storage(storage) = stash else {
         return true;

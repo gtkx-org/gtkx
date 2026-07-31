@@ -4,8 +4,13 @@ import { useEffectEvent, useLayoutEffect } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
 type Signals<T extends GObject.Object> = NonNullable<T["__signals__"]>;
+/** Every signal name `T` declares, on its own or narrowed by a `::detail` suffix. */
 type SignalName<T extends GObject.Object> = keyof Signals<T> | `${keyof Signals<T> & string}::${string}`;
 
+/**
+ * The handler signature `T` declares for signal `S`, looked up through any `::detail` suffix and
+ * falling back to an untyped `SignalHandler` when the object declares no such signal.
+ */
 type TypedSignalHandler<T extends GObject.Object, S extends string> = S extends keyof Signals<T>
     ? Signals<T>[S]
     : S extends `${infer TBase}::${string}`
@@ -14,8 +19,11 @@ type TypedSignalHandler<T extends GObject.Object, S extends string> = S extends 
             : SignalHandler
         : SignalHandler;
 
+/** Options for {@link useSignal}. */
 type UseSignalOptions = {
+    /** Runs the handler after the object's own default handler rather than before it. */
     after?: boolean;
+    /** Invokes the handler once, with no arguments, as soon as the signal is connected. */
     immediate?: boolean;
 };
 
@@ -29,10 +37,8 @@ type UseSignalOptions = {
  * runs the handler captured on the first render. Keep the calling component unwrapped, or read the values the
  * handler needs off the GObject itself. React fixes this on the 19.3 line.
  *
- * @param object The GObject (or ref to one) to connect to.
- * @param signal The signal name, optionally with a detail suffix.
- * @param handler The callback invoked when the signal is emitted.
- * @param options Connection options such as running after the default handler or invoking immediately.
+ * @param signal The signal name, optionally with a `::detail` suffix.
+ * @param options `after` runs the handler after the default handler; `immediate` also invokes it on connect.
  */
 function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
     object: RefProp<T>,

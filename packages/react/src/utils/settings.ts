@@ -1,13 +1,19 @@
 import type * as Gio from "@gtkx/gi/gio";
 import { packVariant, parseVariantType, unpackVariant, type VariantValue } from "./variant.js";
 
+/** Maps each key of a GSettings schema to its kind: a GVariant type string, or `enum` or `flags`. */
 type SettingsSchemaKeys = Record<string, string>;
 type SettingKindValue<S extends string> = S extends "enum" | "flags" ? number : VariantValue<S>;
+/** The JavaScript type key `P` holds: `number` for `enum` and `flags`, otherwise the unpacked GVariant. */
 type SettingValue<K extends SettingsSchemaKeys, P extends keyof K> = SettingKindValue<K[P] & string>;
 
+/** A GSettings schema, as described by the modules GTKX generates from a project's `.gschema.xml` files. */
 type SettingsSchema<K extends SettingsSchemaKeys = SettingsSchemaKeys> = {
+    /** Schema id it is looked up by, such as `org.gtkx.Example`. */
     id: string;
+    /** Path a relocatable schema is instantiated at, or `null` to use the schema's own path. */
     path: string | null;
+    /** Kind of every key the schema declares, which types reads and writes of that key. */
     keys: K;
 };
 

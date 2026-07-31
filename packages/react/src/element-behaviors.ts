@@ -25,7 +25,6 @@ import {
 } from "./reconciler/behaviors.js";
 import { type ElementConfig, forTypes, registerElements } from "./reconciler/registry.js";
 
-/** The runtime half of the built-in element configuration: the behaviors bound to each GObject type. */
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     ...forTypes(SINGLE_CHILD_TYPES, {
         behaviors: [childSetterSlot()],

@@ -76,10 +76,6 @@ fn delete_reference(napi_ref: sys::napi_ref) {
     unsafe { sys::napi_delete_reference(node_env::env().raw(), napi_ref) };
 }
 
-// Re-installing detaches the previous wrapper: its finalizer still runs, but with a stale
-// generation, so `schedule_cleanup` will not touch this handle again. The strong count the old
-// reference was given at `set_wrapper` therefore has to be given back here, or the outgoing wrapper
-// stays reachable from the reference alone and never becomes collectable.
 fn release_outgoing_ref(napi_ref: sys::napi_ref, was_strong: bool) {
     if napi_ref.is_null() || !was_strong {
         return;

@@ -5,9 +5,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV LANG=C.UTF-8
 
-# A dbgsym depends on an exact version of its library. ddebs carries the libadwaita
-# dbgsym only for the release pocket, so -updates is held off for that source to keep
-# libadwaita-1-0 and libadwaita-1-0-dbgsym on the one version both archives publish.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg ubuntu-dbgsym-keyring \
     && codename="$(. /etc/os-release; echo "$VERSION_CODENAME")" \
@@ -77,8 +74,6 @@ ENV CARGO_NET_RETRY=10
 ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
-# Keep in sync with /rust-toolchain.toml (stable) and scripts/rust-nightly.ts (nightly), which pin
-# the same toolchains for local builds; the image is built without the repository checked out.
 ARG RUST_VERSION=1.97.1
 ARG RUST_NIGHTLY=nightly-2026-07-30
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \

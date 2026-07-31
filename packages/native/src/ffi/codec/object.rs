@@ -7,12 +7,6 @@ use super::prelude::*;
 use crate::handle::Handle;
 use crate::value::wrapper;
 
-// A transfer-none pointer is decoded by taking a reference of our own and leaving any floating
-// reference alone: the float is the creator's only claim on the object, so sinking it here would
-// take over a lifetime the caller still expects to control. A floating transfer-full pointer is the
-// caller handing that claim over, so it is sunk. An already-sunk transfer-full `GInitiallyUnowned`
-// carries only the transferred reference, which the wrapper's toggle reference has to replace
-// before it lapses; the extra reference pins it across that window.
 unsafe fn acquire_decoded_ref(gobject_ptr: *mut glib::gobject_ffi::GObject, ownership: Ownership) {
     if ownership.is_borrowed() {
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };

@@ -51,11 +51,9 @@ import {
 
 type RenderDescriptorOptions = {
     argIndexOffset?: number;
-    /** GIR parameter index to emitted argument index, for callables that drop parameters. */
     argIndexMap?: Map<number, number> | undefined;
     callerAllocated?: boolean;
     isInline?: boolean;
-    /** Set on the return value of a callable with no instance parameter, which creates what it returns. */
     isNewlyCreated?: boolean;
 };
 
@@ -104,17 +102,8 @@ const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName
     garray: "gArray",
 };
 
-/**
- * `glib:type-name` of every fundamental whose instances are born with a floating reference, so a
- * callable that creates one hands back a claim nobody has taken rather than an owned reference.
- * GIR annotates those returns `transfer-ownership="full"` all the same, so the annotation alone
- * cannot tell them apart from a genuinely owned return such as `g_param_spec_ref`.
- */
 const FLOATING_FUNDAMENTALS: Set<string> = new Set(["GParam"]);
 
-// A callable that drops parameters (varargs, and the closure/destroy slots folded into a callback)
-// shifts every later parameter left, so a GIR length index has to be looked up in the emitted list
-// rather than shifted by the instance offset alone.
 const mapArgIndex = (options: ArgIndexOptions, girIndex: number): number =>
     options.argIndexMap?.get(girIndex) ?? girIndex + options.argIndexOffset;
 
@@ -175,9 +164,6 @@ const renderDescriptor = (
         case "varargs": {
             return tVoid;
         }
-        // A callback in a slot no `renderCallbackType` covers (a vtable entry, a signal argument, a
-        // record field) is still a function pointer occupying a pointer-sized slot. `t.void` would
-        // hand the implementation `undefined` where the pointer belongs.
         case "callback": {
             return tUint64;
         }
@@ -292,9 +278,6 @@ const renderParamDescriptor = (
     });
 };
 
-// `closure=` on a callback's own parameter states which slot carries the user data, and it is what
-// the TypeScript signature already goes by. The name scan stays as a fallback: 88 callbacks across
-// the installed GIRs carry no `closure=` at all.
 const userDataIndexByName = (parameters: GirParameter[]): number | undefined => {
     let userDataIndex: number | undefined;
 
@@ -389,9 +372,6 @@ const renderFundamental = (descriptor: FundamentalDescriptor): string => {
     });
 };
 
-// A freshly created floating instance is claimed by sinking it, which is what the fundamental's
-// declared ref function does, so it is marshalled as transfer-none: adopting the floating reference
-// instead would leave the handle releasing a claim it never took.
 const sunkOwnership = (
     ancestor: AncestorFundamental,
     ownership: Ownership,
@@ -404,8 +384,6 @@ const sunkOwnership = (
     return FLOATING_FUNDAMENTALS.has(ancestor.typeName) ? "borrowed" : ownership;
 };
 
-// GIR marks only the root of a fundamental hierarchy with `glib:fundamental` and its ref/unref pair,
-// so a derived type such as GtkPropertyExpression carries neither and has to inherit both.
 const classOrInterfaceExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "class" | "interface" }>,
@@ -510,9 +488,6 @@ const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): s
     return tObject("borrowed");
 };
 
-// A record expresses its acquire/release pair as `copy-function`/`free-function`: no `<record>` in
-// any installed GIR carries `glib:ref-func`, and GVariant's copy function really is
-// `g_variant_ref_sink`.
 const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; unrefFunc: string | undefined } => ({
     refFunc: record.glibRefFunc ?? record.copyFunc,
     unrefFunc: record.glibUnrefFunc ?? record.freeFunc,

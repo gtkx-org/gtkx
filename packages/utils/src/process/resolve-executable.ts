@@ -25,17 +25,6 @@ const findOnPath = (command: string): string | undefined => {
     return undefined;
 };
 
-/**
- * Resolves an executable to an absolute path, searching `PATH` only for a bare command name, so
- * spawning it never re-runs a lookup against a `PATH` that may have changed.
- *
- * @param command - An executable name, or a path to one.
- * @returns The absolute path of the executable.
- * @throws When a bare command name is not found on `PATH`.
- *
- * @example
- * resolveExecutable("weston"); // "/usr/bin/weston"
- */
 function resolveExecutable(command: string): string {
     if (isAbsolute(command)) {
         return command;

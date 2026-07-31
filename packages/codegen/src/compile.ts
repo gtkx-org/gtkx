@@ -49,7 +49,6 @@ const FORMAT_HOST: ts.FormatDiagnosticsHost = {
     getNewLine: () => "\n",
 };
 
-/** `@gtkx/codegen`'s own `node_modules`, which has `@types/node` plus the `@gtkx/*` deps the store typecheck needs. */
 const codegenModules = (): string => {
     const sourceDir = dirname(fileURLToPath(import.meta.url));
 

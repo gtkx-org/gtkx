@@ -72,8 +72,31 @@ describe("useParentWindow", () => {
         expect(captured.actions).toBe(windowInstance);
     });
 
-    it("returns null when there is no createWindowComponent ancestor", async () => {
-        await render(<Probe slot="orphan" />);
-        expect(captured.orphan).toBeNull();
+    it("throws when there is no createWindowComponent ancestor", async () => {
+        await expect(render(<Probe slot="orphan" />)).rejects.toThrow(
+            "useParentWindow must be called within a window element",
+        );
+    });
+
+    it("never exposes a window that has not been constructed", async () => {
+        const seen: (Gtk.Window | null)[] = [];
+
+        const RenderProbe = () => {
+            seen.push(useParentWindow());
+
+            return null;
+        };
+
+        await render(
+            <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                <GtkApplicationWindow defaultWidth={100} defaultHeight={100}>
+                    <RenderProbe />
+                </GtkApplicationWindow>
+            </GtkApplication>,
+            { container: rootElement },
+        );
+
+        expect(seen.length).toBeGreaterThan(0);
+        expect(seen.every((window) => window !== null)).toBe(true);
     });
 });

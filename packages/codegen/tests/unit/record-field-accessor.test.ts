@@ -30,10 +30,6 @@ const bitfieldSlot = (byteOffset: number, bitOffset: number, bitWidth: number): 
 });
 
 describe("emitFieldWrite", () => {
-    // A record field write crosses into native code the same way a GI function argument does, so a
-    // wrapper instance (e.g. a `Gdk.RGBA` handed to `Gsk.ColorStop`'s constructor or setter) has to be
-    // converted to its native handle first. Without this, `write` receives the wrapper object itself,
-    // and the native side rejects it: "Expected an Object for Boxed field write type, got Object".
     it("converts the value through toNative before writing it", () => {
         const statement = emitFieldWrite(makeContext(), {
             descriptor: "GDK_RGBA_DESCRIPTOR",
@@ -58,8 +54,6 @@ describe("emitFieldWrite", () => {
         expect(context.module.toSource()).toContain('import { toNative, write } from "@gtkx/runtime";');
     });
 
-    // Bitfields are always packed integers, never handle-passing values, so the merge expression is
-    // left as-is.
     it("leaves a bitfield merge untouched", () => {
         const statement = emitFieldWrite(makeContext(), {
             descriptor: "UINT32_DESCRIPTOR",

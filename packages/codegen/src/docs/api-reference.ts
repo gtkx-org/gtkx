@@ -13,8 +13,11 @@ import { createElementPageContext, type ElementPageContext, renderElementPage } 
 import { docsSignatureContext, firstSentence, namespaceOrder } from "./render.js";
 import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./symbol-page.js";
 
+/** What to index and the element config the rendered pages reflect. */
 type ApiReferenceOptions = {
+    /** GIR library identifiers to load, such as `"Gtk-4.0"`; their dependencies are pulled in too. */
     libraries: string[];
+    /** Directories to search for `.gir` files. */
     girPath: string[];
     /** Base props interfaces per element, as read by `readBuiltinElements`; without it pages miss them. */
     props?: ElementProps;
@@ -24,35 +27,69 @@ type ApiReferenceOptions = {
 
 /** Narrows an `ApiReference.symbols` enumeration. */
 type ApiSymbolQuery = {
+    /** GIR namespace to keep, matched case-insensitively; every namespace when omitted. */
     namespace?: string;
+    /** Symbol kinds to keep; every kind when omitted. */
     kinds?: ApiSymbolKind[];
 };
 
+/** What an indexed symbol is: one of the GIR symbol kinds, or a JSX element. */
 type ApiSymbolKind = GiSymbolEntry["kind"] | "element";
 
+/** An indexed symbol, without its reference page. */
 type ApiSymbol = {
+    /** GIR namespace declaring the symbol, such as `"Gtk"`. */
     namespace: string;
+    /** Name within the namespace, which for an element is its GLib type name. */
     name: string;
+    /** Kind the reference groups and filters the symbol by, `"element"` for a JSX tag. */
     kind: ApiSymbolKind;
+    /** First sentence of the symbol's GIR documentation, elided past 220 characters and empty when it has none. */
     summary: string;
 };
 
+/** How much of one namespace the reference indexes. */
 type ApiNamespaceSummary = {
+    /** GIR namespace name, such as `"Gtk"`. */
     name: string;
+    /** The `@gtkx/gi` subpath the namespace's symbols are imported from. */
     importPath: string;
+    /** How many symbols other than JSX elements the namespace contributes. */
     symbols: number;
+    /** How many JSX elements the namespace contributes. */
     elements: number;
 };
 
+/** What an `ApiReference.lookup` found: a rendered page, several candidates for the name, or nothing. */
 type ApiLookupResult =
-    | { outcome: "page"; symbol: ApiSymbol; markdown: string } |
-    { outcome: "ambiguous"; candidates: ApiSymbol[] } |
-    { outcome: "notFound" };
+    | {
+        /** Discriminant selecting the variant. */
+        outcome: "page";
+        /** Index entry for the symbol the query resolved to. */
+        symbol: ApiSymbol;
+        /** The symbol's complete reference page, rendered as Markdown. */
+        markdown: string;
+    } |
+    {
+        /** Discriminant selecting the variant. */
+        outcome: "ambiguous";
+        /** Every symbol the name answers to, to be narrowed by namespace or kind. */
+        candidates: ApiSymbol[];
+    } |
+    {
+        /** Discriminant selecting the variant. */
+        outcome: "notFound";
+    };
 
+/** A fuzzy search over indexed symbol names. */
 type ApiSearchOptions = {
+    /** Text matched case-insensitively against each symbol's name and its qualified `Namespace.Name` form. */
     query: string;
+    /** GIR namespace to keep, matched case-insensitively; every namespace when omitted. */
     namespace?: string;
+    /** Symbol kinds to keep; every kind when omitted. */
     kinds?: ApiSymbolKind[];
+    /** Maximum number of results, 20 by default. */
     limit?: number;
 };
 
@@ -67,6 +104,7 @@ type ElementEntry = {
 type SymbolEntry = GiSymbolEntry | ElementEntry;
 type ScoredEntry = { score: number; entry: SymbolEntry };
 
+/** Every kind the reference indexes, in the order a namespace overview groups its symbols. */
 const API_SYMBOL_KINDS: ApiSymbolKind[] = [
     "element",
     "class",
@@ -303,6 +341,7 @@ const searchScore = (entry: SymbolEntry, query: string): number => {
     return 0;
 };
 
+/** An index over the GIR data a project's bindings are generated from, queryable and renderable as Markdown. */
 class ApiReference {
     private library: Library;
     private libraries: string[];
@@ -460,10 +499,18 @@ class ApiReference {
         return scored;
     }
 
+    /** Paths of the `.gir` files the index was built from, including the ones pulled in as dependencies. */
     get girFiles(): string[] {
         return this.library.girFiles;
     }
 
+    /**
+     * Resolves a name to a single symbol and renders its reference page. The name may be bare (`Button`) or
+     * qualified (`Gtk.Button`), and is matched case-insensitively; a name several symbols answer to is
+     * reported as ambiguous rather than picked between.
+     *
+     * @param kind Restricts the match to one kind, which is how a class and its JSX element are told apart.
+     */
     lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
         const trimmed = query.trim();
 
@@ -485,6 +532,7 @@ class ApiReference {
         return { outcome: "page", symbol: this.toApiSymbol(entry), markdown: this.renderPage(entry) };
     }
 
+    /** Every indexed symbol the query keeps, ordered by namespace (Gtk, then Adw, then alphabetically) and name. */
     symbols(query: ApiSymbolQuery = {}): ApiSymbol[] {
         const namespaceFilter = query.namespace?.toLowerCase();
         const kinds = query.kinds === undefined ? undefined : new Set(query.kinds);
@@ -495,6 +543,10 @@ class ApiReference {
             .toSorted(compareApiSymbols);
     }
 
+    /**
+     * Symbols whose name matches the query, best first: an exact name beats a prefix, which beats a
+     * substring, and shorter names win ties. An empty query matches nothing.
+     */
     search(options: ApiSearchOptions): ApiSymbol[] {
         const query = options.query.trim().toLowerCase();
 
@@ -510,6 +562,7 @@ class ApiReference {
         return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));
     }
 
+    /** A summary of every indexed namespace, ordered Gtk, Adw, then alphabetically. */
     namespaces(): ApiNamespaceSummary[] {
         const summaries = [...this.byNamespace].map(([name, entries]) => ({
             name,
@@ -521,6 +574,10 @@ class ApiReference {
         return sortStringsBy(summaries, (summary) => namespaceOrder(summary.name));
     }
 
+    /**
+     * Sorted names of everything a namespace contributes, JSX elements included. The namespace is matched
+     * case-insensitively, and an unindexed one yields an empty array.
+     */
     symbolNames(namespaceName: string): string[] {
         const namespace = this.findNamespace(namespaceName);
 
@@ -533,6 +590,7 @@ class ApiReference {
         return sortStrings(entries.map((entry) => entry.name));
     }
 
+    /** Renders the reference's Markdown landing page: every namespace, its import path, and its totals. */
     overview(): string {
         const rows = this.namespaces().map(
             (summary) =>
@@ -560,6 +618,10 @@ class ApiReference {
         ].join("\n");
     }
 
+    /**
+     * Renders one namespace's Markdown page: its import line and its symbol names grouped by kind. The
+     * namespace is matched case-insensitively, and an unindexed one yields undefined.
+     */
     namespaceOverview(name: string): string | undefined {
         const namespace = this.findNamespace(name);
 

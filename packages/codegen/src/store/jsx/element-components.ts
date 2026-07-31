@@ -6,9 +6,7 @@ import type { LazyElementSpec } from "./element-prop-types.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
-/** A component that wraps a generated element, keyed by GLib type name (built-in or user-provided). */
 type ElementComponent = { module: string; export: string };
-/** Component wrappers keyed by GLib type name; the framework's built-ins merged with the project's own. */
 type ElementComponentOverrides = Record<string, ElementComponent>;
 
 type ExportCollector = {
@@ -73,9 +71,6 @@ const appendCandidateExport = (
     collector.exportedNames.add(candidate.glibName);
 };
 
-// An abstract GType cannot be instantiated: `g_object_new` on one is a fatal GObject error rather
-// than a NULL return. Its props interface and metadata still have to be emitted, since every
-// concrete subclass extends them, so only the constructible component export is withheld.
 const collectCandidateExports = (collector: ExportCollector, options: CandidateExportOptions): void => {
     for (const candidate of options.intrinsicElements) {
         if (candidate.klass.isAbstract) {
@@ -121,7 +116,6 @@ const renderCandidateExport = (
     return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, component)}`;
 };
 
-/** The component for the nearest ancestry match, most-derived first; user overrides win on their exact type. */
 const resolveElementComponent = (
     ancestry: string[],
     components: Record<string, ElementComponent>,

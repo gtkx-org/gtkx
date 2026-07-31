@@ -9,12 +9,6 @@ type RefProp<T extends object> = T | RefObject<T | null> | null | undefined;
 const isRefObject = <T extends object>(value: T | RefObject<T | null>): value is RefObject<T | null> =>
     typeof value === "object" && "current" in value;
 
-/**
- * Resolves a {@link RefProp} to the concrete object it points at, or null when it is absent or unresolved.
- *
- * @param prop The target object, a ref to one, or null/undefined.
- * @returns The resolved object, or null.
- */
 const resolveRefProp = <T extends object>(prop: RefProp<T>): T | null => {
     if (prop === null || prop === undefined) {
         return null;

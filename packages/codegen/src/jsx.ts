@@ -30,11 +30,6 @@ type RunJsxCodegenResult = {
     intrinsicElementCount: number;
 };
 
-/**
- * Generates the `@gtkx/jsx` store, reading the framework's built-in element config from the freshly
- * linked `@gtkx/react` and layering the project's own element config over it. This is the react-importing
- * half of codegen: it must run only after the gi store has been written and linked.
- */
 const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodegenResult> => {
     const builtin = await readBuiltinElements(options.reactSubexports, options.giStoreDir);
     const components = { ...builtin.components, ...options.userComponents };

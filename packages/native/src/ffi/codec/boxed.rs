@@ -19,8 +19,6 @@ pub struct BoxedCodec {
     pub inline: bool,
 }
 
-// A GValue slot already holds an initialized value whose contents are owned, so it is unset before
-// being re-initialized to the source's type and deep-copied into.
 unsafe fn write_inline_value(
     slot: ffi::Slot,
     src_ptr: *mut c_void,
@@ -100,8 +98,6 @@ impl BoxedCodec {
                 self.type_name
             )
         }
-        // Copying the bytes of an inline boxed aliases whatever they point at, so a type that owns
-        // references needs its own copy-into-place operation; GValue has one and GClosure does not.
         match self.type_name.as_str() {
             "GValue" => return unsafe { write_inline_value(slot, src_ptr) },
             "GClosure" => bail!(

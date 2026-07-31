@@ -5,7 +5,6 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** The freshness sentinel of the `@gtkx/gi` store, derived purely from the GIR inputs. */
 type GiFingerprint = {
     value: string;
     girFiles: string[];
@@ -15,7 +14,6 @@ type GiFingerprint = {
 
 type ModuleExport = { module: string; export: string };
 
-/** The `@gtkx/react` element config that shapes the generated `@gtkx/jsx` store. */
 type JsxFingerprintInput = {
     reactVersion: string;
     components: Record<string, ModuleExport>;
@@ -24,7 +22,6 @@ type JsxFingerprintInput = {
     omittedProps: Record<string, string[]>;
 };
 
-/** The freshness sentinel of the `@gtkx/jsx` store, derived from the React element config. */
 type JsxFingerprint = {
     value: string;
     intrinsicElementCount: number;
@@ -37,8 +34,6 @@ const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "o
 
 const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
 
-// The overrides are copied verbatim into the store, so editing one changes the output even though no
-// GIR file moved. Without them in the hash a stale override survives every non-forced run.
 const overrideFiles = (): string[] => {
     if (!existsSync(OVERRIDES_ROOT)) {
         return [];

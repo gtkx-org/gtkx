@@ -6,7 +6,6 @@ type CompileStoreParams = {
     storeDir: string;
     files: SourceModule[];
     packageName: string;
-    /** Declare `virtual:gtkx-config` for the typecheck, needed when it follows imports into `@gtkx/react` source. */
     configEnv?: boolean;
 };
 

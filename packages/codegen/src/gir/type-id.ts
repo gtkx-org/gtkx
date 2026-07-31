@@ -46,8 +46,6 @@ const LIST_FLAVOR_BY_NAME = {
     "GLib.ByteArray": "gbytearray",
 } as const;
 
-// An array with no length parameter, no fixed size and an explicit `zero-terminated="0"` carries no
-// way to recover its length, so it is a bare pointer rather than something that can be walked.
 const hasUnknownArrayLength = (ref: CArrayType): boolean =>
     !ref.zeroTerminated && ref.lengthParameterIndex === undefined && ref.fixedSize === undefined;
 

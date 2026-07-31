@@ -19,7 +19,6 @@ type TypedClass = {
 };
 
 type ResolvableKind = "enum" | "flags" | "boxed" | "fundamental" | "array";
-/** Descriptor kinds whose GType is resolved from library metadata rather than a fixed fundamental type. */
 type ResolvableDescriptor = Extract<Descriptor, { kind: ResolvableKind }>;
 
 const resolvedTypeCache: Map<string, bigint> = new Map();

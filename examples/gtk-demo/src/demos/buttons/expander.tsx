@@ -75,9 +75,7 @@ function ExpanderDemo() {
             return;
         }
 
-        if (parentWindow) {
-            parentWindow.setResizable(self.getExpanded());
-        }
+        parentWindow.setResizable(self.getExpanded());
     };
 
     return (

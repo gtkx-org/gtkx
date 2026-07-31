@@ -2,14 +2,17 @@ import type { ModuleExport } from "@gtkx/react/internal";
 import { readdirSync } from "node:fs";
 import type { OmittedProps } from "../store/jsx/omitted-props.js";
 
-/** The codegen-relevant subset of a React element config; behaviors are ignored at codegen time. */
 type BuiltinElement = { component?: ModuleExport; lazy?: boolean; props?: ModuleExport; omittedProps?: string[] };
 
 /** The framework's built-in element config, split into the maps codegen consumes. */
 type BuiltinElements = {
+    /** Component wrappers keyed by GLib type name; an element without one inherits its nearest ancestor's. */
     components: Record<string, ModuleExport>;
+    /** GLib type names with no GObject of their own, exported as elements that drop their construct-only props. */
     lazyElements: string[];
+    /** Base props interfaces the generated element props extend, keyed by GLib type name. */
     props: Record<string, ModuleExport>;
+    /** Props left out of the generated element props, keyed by GLib type name. */
     omittedProps: OmittedProps;
 };
 
@@ -29,10 +32,6 @@ const presentNamespaceDirs = (giStoreDir: string): Set<string> => {
     return dirs;
 };
 
-/**
- * The clean, reconciler-free `@gtkx/react` config entrypoints to import: the base `config` entry plus
- * each namespace's `<ns>/config` entry whose GIR namespace is present in the gi store.
- */
 const configEntrypoints = (reactSubexports: string[], present: Set<string>): string[] =>
     reactSubexports.filter((sub) => {
         if (sub === CONFIG_ENTRYPOINT) {
@@ -70,17 +69,21 @@ const applyBuiltinElement = (target: BuiltinElements, type: string, config: Buil
     }
 };
 
-/**
- * Reads the framework's built-in element config by importing the freshly linked `@gtkx/react` config
- * entrypoints. These are reconciler-free, so importing them resolves `@gtkx/gi` but never `virtual:gtkx-config`;
- * it must run only after the gi store has been linked.
- */
 const collectBuiltinElements = (target: BuiltinElements, elements: Record<string, BuiltinElement>): void => {
     for (const [type, config] of Object.entries(elements)) {
         applyBuiltinElement(target, type, config);
     }
 };
 
+/**
+ * Reads the framework's built-in element config by importing the `config` entrypoints of the installed
+ * `@gtkx/react`, skipping the per-namespace ones whose namespace the gi store does not carry. Those
+ * entrypoints are reconciler-free, so importing them resolves `@gtkx/gi` but never `virtual:gtkx-config`,
+ * which means this must run only after the gi store has been written and linked.
+ *
+ * @param reactSubexports Subexport names of the installed `@gtkx/react`, as `resolveStore` reports them.
+ * @param giStoreDir The gi store directory, whose subdirectories name the generated namespaces.
+ */
 const readBuiltinElements = async (reactSubexports: string[], giStoreDir: string): Promise<BuiltinElements> => {
     const present = presentNamespaceDirs(giStoreDir);
     const entrypoints = configEntrypoints(reactSubexports, present);

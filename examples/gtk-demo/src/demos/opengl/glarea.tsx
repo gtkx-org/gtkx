@@ -319,7 +319,13 @@ function GLAreaDemo() {
                 <AxisScale label="X axis" onValueChanged={handlers.createAxisHandler(setRotationX)} />
                 <AxisScale label="Y axis" onValueChanged={handlers.createAxisHandler(setRotationY)} />
                 <AxisScale label="Z axis" onValueChanged={handlers.createAxisHandler(setRotationZ)} />
-                <GtkButton label="Quit" hexpand onClicked={() => parentWindow?.destroy()} />
+                <GtkButton
+                    label="Quit"
+                    hexpand
+                    onClicked={() => {
+                        parentWindow.destroy();
+                    }}
+                />
             </GtkBox>
         </GtkBox>
     );

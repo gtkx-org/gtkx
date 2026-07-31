@@ -426,8 +426,6 @@ fn a_transfer_none_field_write_on_a_boxed_handle_is_left_to_its_free_function() 
         let written = unsafe { ffi::Slot::new(handle.as_ptr()).load() };
         drain_g_freed();
 
-        // A boxed handle is released by its own free function, which already owns whatever its
-        // fields point at; adopting the write as well would free the same pointer twice.
         drop(handle);
         assert!(!drain_g_freed().contains(&(written as usize)));
         unsafe { glib::ffi::g_free(written) };

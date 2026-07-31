@@ -6,55 +6,103 @@ import { deleteAccessibleMetadata, setAccessibleMetadata } from "./accessible-me
 /**
  * Accessibility props available on every widget. Each member maps to a GTK4 accessible attribute
  * (a `Gtk.AccessibleProperty`, `Gtk.AccessibleState`, or `Gtk.AccessibleRelation`) and is applied
- * to the widget's accessible interface; setting a member to `undefined` resets that attribute to its default.
+ * to the widget's accessible interface. Setting a member to `null` or `undefined`, or dropping it from the
+ * props, resets that attribute to its default.
  */
 type AccessibleProps = {
+    /** How the widget completes the text being typed into it. */
     accessibleAutocomplete?: Gtk.AccessibleAutocomplete | null | undefined;
+    /** Longer description announced after the label. */
     accessibleDescription?: string | null | undefined;
+    /** Whether activating the widget opens a popup. */
     accessibleHasPopup?: boolean | null | undefined;
+    /** Keyboard shortcuts that activate the widget. */
     accessibleKeyShortcuts?: string | null | undefined;
+    /** Short name announced for the widget. */
     accessibleLabel?: string | null | undefined;
+    /** Depth of the widget within a hierarchy of headings, list items, or tree rows. */
     accessibleLevel?: number | null | undefined;
+    /** Whether the widget blocks interaction with everything behind it. */
     accessibleModal?: boolean | null | undefined;
+    /** Whether the text input accepts more than one line. */
     accessibleMultiLine?: boolean | null | undefined;
+    /** Whether more than one of the widget's items can be selected at a time. */
     accessibleMultiSelectable?: boolean | null | undefined;
+    /** Whether the widget arranges its items horizontally or vertically. */
     accessibleOrientation?: Gtk.Orientation | null | undefined;
+    /** Hint announced while the input is empty. */
     accessiblePlaceholder?: string | null | undefined;
+    /** Whether the value can be read but not changed. */
     accessibleReadOnly?: boolean | null | undefined;
+    /** Whether a value has to be supplied before the form can be submitted. */
     accessibleRequired?: boolean | null | undefined;
+    /** Wording that replaces the default announcement of the widget's role. */
     accessibleRoleDescription?: string | null | undefined;
+    /** Direction the widget's items are sorted in. */
     accessibleSort?: Gtk.AccessibleSort | null | undefined;
+    /** Upper bound of the widget's value range. */
     accessibleValueMax?: number | null | undefined;
+    /** Lower bound of the widget's value range. */
     accessibleValueMin?: number | null | undefined;
+    /** Current value within the widget's range. */
     accessibleValueNow?: number | null | undefined;
+    /** Wording announced in place of the numeric value. */
     accessibleValueText?: string | null | undefined;
+    /** Help text describing how to use the widget. */
     accessibleHelpText?: string | null | undefined;
+    /** Whether the widget is still loading and its content may yet change. */
     accessibleBusy?: boolean | null | undefined;
+    /** Checked state of a check button or menu item, which may be mixed. */
     accessibleChecked?: Gtk.AccessibleTristate | null | undefined;
+    /** Whether the widget is visible but cannot be edited or operated. */
     accessibleDisabled?: boolean | null | undefined;
+    /** Whether the content the widget discloses is showing. */
     accessibleExpanded?: boolean | null | undefined;
+    /** Whether the widget is kept out of the accessibility tree. */
     accessibleHidden?: boolean | null | undefined;
+    /** Whether the entered value fails validation, and in what way. */
     accessibleInvalid?: Gtk.AccessibleInvalidState | null | undefined;
+    /** Pressed state of a toggle button, which may be mixed. */
     accessiblePressed?: Gtk.AccessibleTristate | null | undefined;
+    /** Whether the widget is selected within its container. */
     accessibleSelected?: boolean | null | undefined;
+    /** Whether the link has already been followed. */
     accessibleVisited?: boolean | null | undefined;
+    /** Descendant that holds the focus while the widget itself keeps it. */
     accessibleActiveDescendant?: Gtk.Widget | null | undefined;
+    /** Total number of columns in the table, including any that are not rendered. */
     accessibleColCount?: number | null | undefined;
+    /** One-based column position of the cell within its table. */
     accessibleColIndex?: number | null | undefined;
+    /** Wording announced in place of the numeric column position. */
     accessibleColIndexText?: string | null | undefined;
+    /** Number of columns the cell spans. */
     accessibleColSpan?: number | null | undefined;
+    /** Widgets whose content or presence this widget controls. */
     accessibleControls?: Gtk.Widget[] | null | undefined;
+    /** Widgets that describe this one. */
     accessibleDescribedBy?: Gtk.Widget[] | null | undefined;
+    /** Widgets holding extended detail about this one. */
     accessibleDetails?: Gtk.Widget[] | null | undefined;
+    /** Widgets holding the message that explains why the value is invalid. */
     accessibleErrorMessage?: Gtk.Widget[] | null | undefined;
+    /** Widgets to read next, overriding the default reading order. */
     accessibleFlowTo?: Gtk.Widget[] | null | undefined;
+    /** Widgets that label this one. */
     accessibleLabelledBy?: Gtk.Widget[] | null | undefined;
+    /** Widgets this one owns that the widget hierarchy does not already imply. */
     accessibleOwns?: Gtk.Widget[] | null | undefined;
+    /** One-based position of the widget within its set. */
     accessiblePosInSet?: number | null | undefined;
+    /** Total number of rows in the table, including any that are not rendered. */
     accessibleRowCount?: number | null | undefined;
+    /** One-based row position of the cell within its table. */
     accessibleRowIndex?: number | null | undefined;
+    /** Wording announced in place of the numeric row position. */
     accessibleRowIndexText?: string | null | undefined;
+    /** Number of rows the cell spans. */
     accessibleRowSpan?: number | null | undefined;
+    /** Total number of items in the set the widget belongs to. */
     accessibleSetSize?: number | null | undefined;
 };
 

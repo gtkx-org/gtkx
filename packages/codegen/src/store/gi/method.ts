@@ -588,8 +588,6 @@ const collectionArgument = (
     return mapHandleExpression(name, isNullable);
 };
 
-// An array whose length nothing states is marshalled as the bare pointer it is, so there is nothing
-// to map over.
 const isMappableSequence = (context: ModuleContext, type: GirType | undefined): boolean => {
     if (type?.kind === "carray") {
         return !hasUnknownArrayLength(type) && isHandlePassing(context, type.element);

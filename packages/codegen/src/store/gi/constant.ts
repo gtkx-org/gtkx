@@ -6,8 +6,6 @@ import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 
 const TRUE_VALUES: Set<string> = new Set(["true", "1"]);
-// A `gint64`/`guint64` constant is typed `bigint`, and its decimal text does not survive a double:
-// G_MAXINT64 rounds to 2^63. The literal has to carry the BigInt suffix the type promises.
 const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["bigint64", "biguint64", "gtype"]);
 
 const generateConstant = (context: ModuleContext, constant: GirConstant): void => {

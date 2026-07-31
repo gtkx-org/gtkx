@@ -18,7 +18,9 @@ const killTree = (child: ChildProcess): void => {
 
     try {
         process.kill(-child.pid, "SIGKILL");
-    } catch { /* The process group is already gone, which is what killTree wants anyway. */ }
+    } catch {
+        return;
+    }
 };
 
 describe("gtkx dev", () => {

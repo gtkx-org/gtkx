@@ -22,47 +22,82 @@ type UnicharDescriptor = Extract<Descriptor, { kind: "unichar" }>;
 type VoidDescriptor = Extract<Descriptor, { kind: "void" }>;
 type BufferDescriptor = Extract<Descriptor, { kind: "buffer" }>;
 type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }>;
-type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & { wrapperClass?: AnyClass };
-type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & { wrapperClass?: AnyClass };
+
+type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & {
+    /** Class a decoded value is wrapped in; without it the wrapper comes from the value's own GType. */
+    wrapperClass?: AnyClass;
+};
+
+type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & {
+    /** Class a decoded value is wrapped in; without it the wrapper comes from the type named by `typeName`. */
+    wrapperClass?: AnyClass;
+};
+
 type ArrayDescriptor = Extract<Descriptor, { kind: "array" }>;
 type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
 type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
 type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
 type TypeDescriptor = BigUint64Descriptor & { type: true };
 
+/** How a boxed value is stored, and where its GType and free function are resolved from. */
 type BoxedOptions = {
+    /** The caller owns the storage the callee fills, so a decoded value is borrowed instead of copied. */
     callerAllocated?: boolean;
+    /** The value is embedded in the containing struct rather than reached through a pointer. */
     inline?: boolean;
+    /** Whether a decoded value is owned by the caller; defaults to `"borrowed"`. */
     ownership?: Ownership;
+    /** Library `getTypeFnName` and `freeFnName` are resolved in. */
     sharedLibrary?: string;
+    /** Symbol returning the boxed GType, used when the type is not already registered under its name. */
     getTypeFnName?: string;
+    /** Symbol that frees the value, for a boxed type with no GType of its own. */
     freeFnName?: string;
+    /** Byte size of the value, needed to copy it into an inline field. */
     size?: number;
 };
 
+/** How the callee takes a callback's closure, and how long that closure has to stay alive. */
 type CallbackOptions = {
+    /** The callee also takes a `GDestroyNotify`, which frees the closure once it is done with it. */
     hasDestroy?: boolean;
+    /** Position of the `user_data` argument carrying the closure; without one it can never be freed. */
     userDataIndex?: number;
+    /** Lifetime of the closure; defaults to `notified` when `hasDestroy` is set and `call` otherwise. */
     scope?: CallbackDescriptor["scope"];
 };
 
+/** The lengths and strides a C array layout needs beyond its element type. */
 type ArrayOptions = {
+    /** Stride in bytes between elements stored inline in the array. */
     elementSize?: number | undefined;
+    /** Position of the argument carrying the element count, for a length-bounded array. */
     sizeParamIndex?: number | undefined;
+    /** Element count of a fixed-length array. */
     fixedSize?: number | undefined;
 };
 
+/** How a ref-counted fundamental value is named, wrapped and stored. */
 type FundamentalOptions = {
+    /** Whether a decoded value is owned by the caller; defaults to `"borrowed"`. */
     ownership?: Ownership;
+    /** GLib type name the wrapper class is looked up by. */
     typeName?: string;
+    /** Class a decoded value is wrapped in, instead of the one registered for `typeName`. */
     wrapperClass?: AnyClass;
+    /** The value is embedded in the containing struct rather than reached through a pointer. */
     inline?: boolean;
 };
 
+/** How a plain C struct is stored and wrapped. */
 type StructOptions = {
+    /** The caller owns the storage the callee fills, so a decoded value is borrowed instead of copied. */
     callerAllocated?: boolean;
+    /** The value is embedded in the containing struct rather than reached through a pointer. */
     inline?: boolean;
+    /** Byte size of the struct, needed to copy it rather than borrow the pointer. */
     size?: number;
+    /** Class a decoded value is wrapped in, instead of the one registered for its GType. */
     wrapperClass?: AnyClass;
 };
 

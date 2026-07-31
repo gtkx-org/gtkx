@@ -13,29 +13,56 @@ import { clear, copy, cut, paste, type } from "./text.js";
  * keyboard, pointer, gestures, selection, and scrolling.
  */
 type UserEvent = {
+    /**
+     * Clicks a button, toggles a switch, and otherwise activates the widget, falling back to a click
+     * gesture on its nearest clickable ancestor when activation does nothing.
+     */
     click: typeof click;
+    /** Emits a two-press click gesture on the widget. */
     dblClick: typeof dblClick;
+    /** Emits a three-press click gesture on the widget. */
     tripleClick: typeof tripleClick;
+    /** Moves focus within the widget's root, forward by default and backward with `shift`. */
     tab: typeof tab;
+    /** Focuses an editable widget, applies any initial selection, and inserts the text at the cursor. */
     type: typeof type;
+    /** Empties an editable widget's text. */
     clear: typeof clear;
+    /** Writes an editable widget's current selection to the clipboard. */
     copy: typeof copy;
+    /** Writes an editable widget's current selection to the clipboard and deletes it. */
     cut: typeof cut;
+    /** Inserts the given text, or the clipboard's text, at an editable widget's cursor. */
     paste: typeof paste;
+    /** Selects the items at the given positions in a list view, drop-down, combo box, or list box. */
     selectOptions: typeof selectOptions;
+    /** Deselects the items at the given positions in a list view or list box. */
     deselectOptions: typeof deselectOptions;
+    /** Emits a motion `enter` on the widget, adding a motion controller when it has none. */
     hover: typeof hover;
+    /** Emits a motion `leave` on the widget, adding a motion controller when it has none. */
     unhover: typeof unhover;
+    /** Emits `angle-changed` on the widget's rotate gestures. */
     rotate: typeof rotate;
+    /** Emits `scale-changed` on the widget's zoom gestures. */
     zoom: typeof zoom;
+    /** Emits `swipe` with the given velocity on the widget's swipe gestures. */
     swipe: typeof swipe;
+    /** Emits `pressed` at the given point on the widget's long-press gestures. */
     longPress: typeof longPress;
+    /** Runs a begin, update, and end sequence on the widget's drag gestures, ending at the given offset. */
     drag: typeof drag;
+    /** Emits `drop` with the given content on the widget's drop targets. */
     drop: typeof drop;
+    /** Requires a drag source on the source widget, then emits `drop` with the content on the target's drop targets. */
     dragAndDrop: typeof dragAndDrop;
+    /** Emits a jump `change-value` on a Gtk.Range so it moves to the given value. */
     slide: typeof slide;
+    /** Adds the delta to the adjustments of the widget itself, or of its nearest scrollable ancestor. */
     scroll: typeof scroll;
+    /** Sends a key sequence, dispatching matching shortcuts and tracking held modifiers across calls. */
     keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
+    /** Applies a pointer token, tracking whether the left button is held across calls. */
     pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
 };
 

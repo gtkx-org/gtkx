@@ -213,10 +213,6 @@ impl ResolvedProperty {
 }
 
 impl ResolvedVfunc {
-    // `vtable_base` is a GTypeClass/GTypeInterface vtable allocated by GLib, so it carries at least
-    // pointer alignment, and `validate_vfunc_offset` has already rejected any `byte_offset` that is
-    // not a multiple of `align_of::<*mut c_void>()`. The resulting slot pointer is therefore
-    // aligned for the `*mut c_void` it writes.
     #[allow(clippy::cast_ptr_alignment)]
     unsafe fn install_into(self, vtable_base: *mut c_void) {
         let Self {
@@ -241,9 +237,6 @@ struct InterfaceInit {
     vfuncs: Option<Vec<ResolvedVfunc>>,
 }
 
-// GLib hands `iface_data` back untouched from the `GInterfaceInfo` the registration passed in, so it is
-// the `InterfaceInit` allocated below and no other thread can reach it. The vfuncs are taken out on the
-// first call so a second initialization of the same interface installs nothing twice.
 unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut c_void) {
     let data = unsafe { &mut *iface_data.cast::<InterfaceInit>() };
 
@@ -256,15 +249,11 @@ unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut
     }
 }
 
-// Runs when GLib tears the interface vtable down, which returns the allocation `add_to` handed over.
 unsafe extern "C" fn finalize_interface_vtable(_vtable: *mut c_void, iface_data: *mut c_void) {
     drop(unsafe { Box::from_raw(iface_data.cast::<InterfaceInit>()) });
 }
 
 impl ResolvedInterface {
-    // An interface inherited from the parent shares the parent's vtable until the derived type adds
-    // its own implementation, so the vfuncs must go in through `g_type_add_interface_static` rather
-    // than be written into the peeked vtable, which would patch every instance of the parent type.
     unsafe fn add_to(self, instance_type: glib::ffi::GType) {
         let data = Box::into_raw(Box::new(InterfaceInit {
             vfuncs: Some(self.vfuncs),

@@ -16,8 +16,6 @@ build-options:
   env:
     npm_config_nodedir: /usr/lib/sdk/node24
   no-debuginfo: true
-  # The SEA blob is appended to the node binary as an ELF section; stripping
-  # it would corrupt the embedded application, so leave the binary unstripped.
   strip: false
 
 modules:

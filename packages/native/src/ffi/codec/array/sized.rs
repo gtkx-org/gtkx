@@ -17,9 +17,6 @@ impl SizedArrayCodec {
 }
 
 impl ArrayContainer for SizedArrayCodec {
-    // The length lives in a sibling parameter, so decoding without the surrounding argument list is
-    // not possible. Falling back to the container default would scan for a terminator this array
-    // does not have, so it fails loudly instead.
     fn decode<'e>(
         &self,
         _codec: &ArrayCodec,
@@ -57,9 +54,6 @@ impl ArrayContainer for SizedArrayCodec {
 }
 
 impl ArrayCodec {
-    // 2^53 is the largest integer an f64 holds exactly and is far below `usize::MAX` on the 64-bit
-    // Linux targets this crate builds for, so a size that passes the guard converts without
-    // saturating; a fractional size keeps truncating toward zero, as a C length would.
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn validated_size(size: f64, param_index: usize) -> anyhow::Result<usize> {
         const MAX_EXACT_INTEGER: f64 = 9_007_199_254_740_992.0;

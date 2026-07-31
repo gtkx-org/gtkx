@@ -19,7 +19,7 @@ type ToastOptions = Adw.ToastConstructorProps & Pick<AdwToastProps, "onButtonCli
 type ToastController = {
     /** Builds a toast, shows it through the overlay, and returns it. */
     show: (options?: ToastOptions) => Adw.Toast;
-    /** Dismisses a single toast, typically one returned by {@link ToastController.show}. */
+    /** Dismisses a single toast, typically one returned by `ToastController.show`. */
     dismiss: (toast: Adw.Toast) => void;
 };
 
@@ -33,6 +33,7 @@ type ToastOverlayController = {
 type ToastProviderProps = {
     /** Ref also given to the `AdwToastOverlay` the toasts appear over. */
     overlayRef: RefObject<Adw.ToastOverlay | null>;
+    /** Subtree whose `useToast` and `useToastOverlay` calls target that overlay. */
     children?: ReactNode | undefined;
 };
 

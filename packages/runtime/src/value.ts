@@ -209,8 +209,8 @@ const newBoxedValue = (
 };
 
 /**
- * Reads the boxed pointer out of a GValue and returns it wrapped in its registered
- * class, or null when the value does not hold a boxed type.
+ * Duplicates the boxed value held by a GValue and returns the copy wrapped in the
+ * class registered for its GType, or null when the GValue holds no boxed type.
  */
 function getBoxedValue(value: ExternalObject<Handle>): object | null {
     const type = getValueType(value);
@@ -325,13 +325,6 @@ const resolveValueGetter = (fundamental: bigint): ValueGetter | undefined =>
 const resolveValueSetter = (fundamental: bigint): ValueType["set"] | undefined =>
     PLAIN_VALUE_SETTERS.get(fundamental) ?? WRAPPED_VALUE_SETTERS.get(fundamental);
 
-/**
- * Stores a JavaScript value into an already-initialized GValue, converting it to
- * whatever type the GValue holds.
- *
- * @param value The initialized GValue to write into.
- * @param jsValue The JavaScript value to store.
- */
 function intoValue(value: ExternalObject<Handle>, jsValue: unknown): void {
     const type = getValueType(value);
     const set = resolveValueSetter(typeFundamental(type));

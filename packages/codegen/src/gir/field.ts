@@ -11,7 +11,6 @@ type GirField = {
     writable: boolean;
     private: boolean;
     bits: number | undefined;
-    /** Members of an anonymous nested `<union>`/`<record>`, which occupies a slot but has no type. */
     inlineMembers: GirField[] | undefined;
     inlineIsUnion: boolean;
 };
@@ -29,9 +28,6 @@ const fieldFromNode = (node: RawNode, context: ParseContext): GirField => ({
     inlineIsUnion: false,
 });
 
-// A record may embed an anonymous `<union>` or `<record>` instead of naming a type for it. The
-// member occupies a real slot and contributes its own size and alignment, but carries no `<type>`,
-// so it has to be admitted as a field whose layout comes from its own children.
 const anonymousMemberFromNode = (node: RawNode, isUnion: boolean, context: ParseContext): GirField => ({
     name: nameAttr(node),
     doc: getDoc(node),

@@ -59,9 +59,6 @@ const pushPlainField = (state: StructLayoutState, slots: FieldSlot[], field: Fie
     state.bitCursor = (byteOffset + field.layout.size) * 8;
 };
 
-// SysV AMD64 places a bit-field at the current bit offset whenever it still fits inside a storage
-// unit of its declared type aligned to that type's alignment, so the unit the cursor already sits in
-// may have room even though the cursor is not on a unit boundary.
 const pushBitfield = (input: {
     state: StructLayoutState;
     slots: FieldSlot[];

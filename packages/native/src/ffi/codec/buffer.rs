@@ -7,9 +7,6 @@ use super::prelude::*;
 pub struct BufferCodec;
 
 impl BufferCodec {
-    // The guard leaves only a non-negative whole number no larger than 2^53, which f64 holds
-    // exactly and which fits the 64-bit usize of every target this crate builds for, so the
-    // address reaches C unchanged.
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn ptr_from_number(value: f64) -> anyhow::Result<*mut c_void> {
         if !value.is_finite() || value.fract() != 0.0 || !(0.0..=MAX_SAFE_INTEGER).contains(&value)

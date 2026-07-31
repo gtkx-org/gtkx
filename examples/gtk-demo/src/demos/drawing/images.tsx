@@ -164,10 +164,7 @@ function ImagesDemo() {
     const parentWindow = useParentWindow();
     const [gifPaintable] = useState(createGifPaintable);
     const [insensitive, setInsensitive] = useState(false);
-
-    const widgetPaintable = useMemo(() => (parentWindow ? Gtk.WidgetPaintable.new(parentWindow) : null), [
-        parentWindow,
-    ]);
+    const widgetPaintable = useMemo(() => Gtk.WidgetPaintable.new(parentWindow), [parentWindow]);
 
     return (
         <GtkBox

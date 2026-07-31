@@ -7,10 +7,6 @@ const METADATA_SPECIFIER = "@gtkx/jsx/metadata";
 const lazyElementConfig = (lazyElements: string[]): Record<string, { lazy: true }> =>
     Object.fromEntries(lazyElements.map((type) => [type, { lazy: true }]));
 
-/**
- * The runtime element config is the app's static per-element config (currently its lazy flags) merged
- * with its behaviors module, so a single `elements` map is registered.
- */
 const renderConfigModule = (config: ResolvedConfig): string => {
     const lazyJson = JSON.stringify(lazyElementConfig(config.lazyElements));
 

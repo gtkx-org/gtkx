@@ -2,9 +2,13 @@ import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, wr
 import { dirname, join, relative } from "node:path";
 import { compileStore } from "./compile-store.js";
 
+/** Where one generated store is written and how it is reached. */
 type StoreOptions = {
+    /** Directory the generated package is written to, replaced atomically on each run. */
     storeDir: string;
+    /** Path the store is symlinked at, which is the specifier's resolution target under `node_modules`. */
     linkDir: string;
+    /** Version stamped on the store's `package.json`, taken from the dependency the store is generated for. */
     version: string;
 };
 

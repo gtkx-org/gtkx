@@ -39,45 +39,89 @@ type TextContentOptions = {
 
 /** The expected value for a style class: an exact class name or a regular expression. */
 type ClassExpectation = string | RegExp;
+/** The outcome of a matcher: whether it passed, and the failure text built on demand. */
 type MatcherResult = { pass: boolean; message: () => string };
+/** The matcher state bound as `this`, supplying the test runner's deep equality check. */
 type MatcherContext = { equals: (actual: unknown, expected: unknown) => boolean };
+/** Compares text read from the received widget; with no expected value, asserts the text is non-empty. */
 type TextMatcher = (received: unknown, expected?: TextExpectation) => MatcherResult;
+/** Asserts a single state of the received widget, taking no expected value. */
 type StateMatcher = (received: unknown) => MatcherResult;
 type TextMatcherContext = { matcherName: string; widget: Gtk.Widget; actual: string | null };
 type ClassArguments = { expected: ClassExpectation[]; isExact: boolean };
 
+/** A text matcher that also takes normalization options for the text it reads. */
 type TextContentMatcher = (
     received: unknown,
     expected?: TextExpectation,
     options?: TextContentOptions,
 ) => MatcherResult;
 
+/** Signatures of the widget assertion matchers, keyed by the name each is registered under. */
 type MatcherImplementations = {
+    /** Asserts the text an editable widget or combo box shows; with no argument, that it is not empty. */
     toHaveDisplayValue: TextMatcher;
+    /** Asserts the widget's own text, or its descendants' when it has none, contains or matches the expectation. */
     toHaveTextContent: TextContentMatcher;
+    /** Asserts the widget's accessible name; with no argument, that it has one. */
     toHaveAccessibleName: TextMatcher;
+    /**
+     * Asserts the joined accessible names of the widget's `described-by` targets, falling back to its
+     * `description` and then to its tooltip.
+     */
     toHaveAccessibleDescription: TextMatcher;
+    /** Asserts the joined accessible names of the widget's `error-message` targets, read only while it is invalid. */
     toHaveAccessibleErrorMessage: TextMatcher;
+    /** Asserts the widget's placeholder text; with no argument, that it has some. */
     toHavePlaceholderText: TextMatcher;
+    /** Asserts the text currently selected in an editable widget. */
     toHaveSelection: TextMatcher;
+    /** Asserts the widget's checked state is checked rather than unchecked or mixed. */
     toBeChecked: StateMatcher;
+    /** Asserts the widget's checked state is mixed. */
     toBePartiallyChecked: StateMatcher;
+    /** Asserts a `Gtk.ToggleButton` is active, and throws for any other widget. */
     toBePressed: StateMatcher;
+    /** Asserts a `Gtk.Expander` or the row behind a `Gtk.TreeExpander` is expanded, and throws for anything else. */
     toBeExpanded: StateMatcher;
+    /**
+     * Asserts a `Gtk.ListBoxRow` or `Gtk.FlowBoxChild` is selected, or that a widget in a selectable role
+     * carries the selected state flag, and throws for anything else.
+     */
     toBeSelected: StateMatcher;
+    /** Asserts the widget is insensitive, or sits inside an insensitive ancestor. */
     toBeDisabled: StateMatcher;
+    /** Asserts the widget and all of its ancestors are sensitive. */
     toBeEnabled: StateMatcher;
+    /** Asserts the widget and its ancestors are all visible, and that none of them is fully transparent. */
     toBeVisible: StateMatcher;
+    /** Asserts the widget's root is a window that is still in the toplevel list. */
     toBeRooted: StateMatcher;
+    /** Asserts the widget has neither a child nor label text. */
     toBeEmpty: StateMatcher;
+    /** Asserts the widget's accessible invalid state is set to anything other than false. */
     toBeInvalid: StateMatcher;
+    /** Asserts the widget's accessible invalid state is unset or false. */
     toBeValid: StateMatcher;
+    /** Asserts the widget's accessible required state. */
     toBeRequired: StateMatcher;
+    /** Asserts the widget holds the platform focus state. */
     toHaveFocus: StateMatcher;
+    /** Asserts a widget's numeric value, or its display value when a string is given. */
     toHaveValue: (received: unknown, expected?: number | string) => MatcherResult;
+    /** Asserts the widget's accessible role. */
     toHaveRole: (received: unknown, expected: Gtk.AccessibleRole) => MatcherResult;
+    /** Asserts the widget is, or is an ancestor of, the given widget. */
     toContainElement: (received: unknown, descendant: Gtk.Widget | null) => MatcherResult;
+    /**
+     * Asserts the widget carries every given style class, each a name, a space-separated list, or a pattern.
+     * Pass `{ exact: true }` last to require exactly that set, which rules out patterns.
+     */
     toHaveClass: (received: unknown, ...args: unknown[]) => MatcherResult;
+    /**
+     * Asserts a GObject property, named as in GObject and looked up by its camel-cased accessor, equals the
+     * expected value. With no expected value, asserts the property is set. GObject values compare by identity.
+     */
     toHaveObjectProperty: (this: MatcherContext, received: unknown, ...args: unknown[]) => MatcherResult;
 };
 

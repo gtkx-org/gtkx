@@ -100,8 +100,6 @@ const renderContainerType = (
     return renderSequenceType(library, target, type);
 };
 
-// An array whose length nothing states decodes as the bare pointer it is, so its TypeScript type has
-// to say so too rather than promising elements nothing can count.
 const renderSequenceType = (library: Library, target: TsTypeTarget, type: CArrayType | ListType): string => {
     if (type.kind === "list" && type.flavor === "gbytearray" && target.byteArrayAsNumber) {
         return "number[]";

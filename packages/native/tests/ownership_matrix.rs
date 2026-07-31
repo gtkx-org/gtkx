@@ -1,28 +1,3 @@
-// The contract every row below is measured against.
-//
-// WRITE (`write_value_to_ptr`). A transfer-none write has no claim on whatever the slot already
-// holds, so it must leave the displaced value alone, and whatever it had to acquire to produce the
-// stored pointer it must hand back as a `PendingTransfer` for the owner to adopt. A transfer-full
-// write owns the slot: it releases what it displaces when the slot is initialized, stores without
-// releasing when it is not, and hands nothing back. `inline` means the bytes are embedded in the
-// slot, so no pointer may be stored there and a type that owns references needs a copy-into-place
-// operation or must refuse. A descriptor with no write path must refuse rather than store.
-//
-// ADOPTION (`api::write::write`). A returned `PendingTransfer` is adopted only by a plain struct
-// handle; a boxed handle is released by its own free function, which already owns its field bytes,
-// so adopting there would free the same pointer twice, and a borrowed handle points at memory it
-// does not own at all.
-//
-// READ (`Decoder::read`). A transfer-none read takes a claim of its own and gives it back when the
-// wrapper is collected; a floating transfer-full pointer is sunk. Caller-allocated and unsized
-// slots are borrowed, not copied, and a copy is owned by the wrapper that produced it.
-//
-// `emitted` counts every use of the row's descriptor shape in the generated store under
-// `node_modules/.gtkx/gi`, and `on_path` counts the uses that reach a `read`/`write` field call,
-// which is the only path `api::read` and `api::write` drive. A row with `on_path: 0` is a cell the
-// runtime supports that codegen either reaches only through a call argument, a return value or a
-// callback out-parameter, or does not produce at all.
-
 use std::ffi::{CStr, c_char, c_void};
 
 use gtk4::glib::translate::IntoGlib as _;

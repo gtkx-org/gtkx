@@ -5,7 +5,7 @@ import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable } 
 import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
 
-/** Options for {@link type}. */
+/** Options for `userEvent.type`. */
 type TypeOptions = {
     /** Do not focus the widget before typing. */
     skipClick?: boolean | undefined;
@@ -131,6 +131,12 @@ const runEditableEvent = (
         action(widget);
     });
 
+/**
+ * Focuses the widget unless `skipClick` is set, applies any initial selection, and inserts the text
+ * at the cursor.
+ *
+ * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
+ */
 const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
     runEditableEvent(widget, "Cannot type into element", (editable) => {
         if (!options?.skipClick) {
@@ -141,22 +147,43 @@ const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<
         insertEditableText(editable, text);
     });
 
+/**
+ * Replaces an editable widget's text with the empty string.
+ *
+ * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
+ */
 const clear = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot clear element", (editable) => {
         setEditableText(editable, "");
     });
 
+/**
+ * Writes an editable widget's selected text to its clipboard, or the empty string when nothing is selected.
+ *
+ * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
+ */
 const copy = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot copy", (editable) => {
         writeClipboardText(editable, readSelection(editable));
     });
 
+/**
+ * Writes an editable widget's selected text to its clipboard, then deletes that selection.
+ *
+ * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
+ */
 const cut = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot cut", (editable) => {
         writeClipboardText(editable, readSelection(editable));
         deleteSelection(editable);
     });
 
+/**
+ * Inserts the given text at an editable widget's cursor, reading the clipboard instead when no text
+ * is given.
+ *
+ * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
+ */
 const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
         throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);

@@ -4,6 +4,7 @@ import type { DropDownBaseProps } from "./internal/drop-down.js";
 import type { DropDownProps } from "./types.js";
 import { DropDownBase } from "./internal/drop-down.js";
 
+/** Call signature of {@link DropDown}, generic in the item and section value types. */
 type DropDownComponent = <T = unknown, S = unknown>(props: DropDownProps<T, S>) => ReactNode;
 
 /**

@@ -3,7 +3,6 @@ type OmittedProps = Record<string, string[]>;
 
 const omittedProps: Map<string, Set<string>> = new Map();
 
-/** Installs the props each element omits (GLib type name → prop names); set once per run. */
 const setOmittedProps = (props: OmittedProps): void => {
     omittedProps.clear();
 
@@ -12,7 +11,6 @@ const setOmittedProps = (props: OmittedProps): void => {
     }
 };
 
-/** Whether the element config declares this prop omitted for the type that declares the property. */
 const isOmittedProp = (glibName: string | undefined, jsName: string): boolean =>
     glibName !== undefined && omittedProps.get(glibName)?.has(jsName) === true;
 

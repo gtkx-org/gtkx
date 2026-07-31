@@ -75,8 +75,6 @@ const closureAndDestroyIndices = (fn: GirFunction): Set<number> => {
     return indices;
 };
 
-// The emitted argument list is the instance parameter followed by every parameter `planParameter`
-// keeps, so a GIR index only lines up with an emitted index when nothing before it was dropped.
 const emittedArgIndices = (fn: GirFunction, instanceOffset: number): Map<number, number> => {
     const closureIndices = closureAndDestroyIndices(fn);
     const map: Map<number, number> = new Map();

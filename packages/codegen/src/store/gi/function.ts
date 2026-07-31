@@ -35,10 +35,6 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
     return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, throws: fn.throws });
 };
 
-// `moved-to` names the type member this function is also reachable as, so the namespace-level copy
-// is a second export of one binding. Suppressing it is only right when that member is really
-// emitted: 15 of Gtk-4.0's 28 `moved-to` targets are enum or error-domain members codegen emits no
-// static for, and dropping those would delete API with nothing to replace it.
 const isMovedOntoEmittedMember = (context: ModuleContext, fn: GirFunction): boolean => {
     const [typeName, memberName] = fn.movedTo?.split(".") ?? [];
 

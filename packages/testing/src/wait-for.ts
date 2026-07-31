@@ -5,7 +5,9 @@ import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
 
 type PollResult<T> = { status: "resolved"; value: T } | { status: "timedout"; lastError: Error | null };
+/** Widgets watched for removal; null counts as already removed. */
 type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;
+/** The widgets to watch for removal, or a function re-read on every poll to locate them. */
 type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
 
 const DEFAULT_INTERVAL = 50;

@@ -2,17 +2,26 @@ import { keepAlive, quit as nativeQuit } from "@gtkx/native";
 import { blockMatchedSignalHandlers } from "./signal.js";
 
 /**
- * Minimal structural interface of a GTK4/GIO application needed to register, run,
- * and shut it down, plus the signals its lifecycle helpers connect to.
+ * The GIO and GTK application surface {@link runApplication} and {@link quitApplication} drive, so any
+ * application subclass satisfies it structurally; the window members only `Gtk.Application` defines are
+ * optional.
  */
 type ApplicationLike = {
+    /** Returns whether the application has already been registered. */
     getIsRegistered(): boolean;
+    /** Registers the application with the session, returning whether it succeeded. */
     register(cancellable: null): boolean;
+    /** Emits `activate`, bringing up the application's initial user interface. */
     activate(): void;
+    /** Quits the application, so `run` returns at the next main-loop iteration after `shutdown` runs. */
     quit(): void;
+    /** Runs the application's main loop until it shuts down and returns the exit status. */
     run(argv: string[]): number;
+    /** Returns the windows currently attached to the application. */
     getWindows?(): object[];
+    /** Detaches a window, so it no longer holds the application open. */
     removeWindow?(window: object): void;
+    /** Connects a handler to the application's `activate` or `shutdown` signal. */
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
 };
 
@@ -74,8 +83,9 @@ const runApplication = (application: ApplicationLike): void => {
 };
 
 /**
- * Closes all of the application's windows and drives its main loop until it quits,
- * so pending shutdown work can complete before the process exits.
+ * Detaches every window from the application and runs its main loop until it shuts
+ * down, so pending shutdown work completes before the process exits. Does nothing
+ * when the application was never registered.
  *
  * @param application The application to shut down.
  */

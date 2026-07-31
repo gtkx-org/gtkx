@@ -3,8 +3,6 @@ import { execFileSync } from "node:child_process";
 import { RUST_NIGHTLY } from "./rust-nightly.js";
 
 const ASAN_OPTIONS = "detect_leaks=0:verify_asan_link_order=0:halt_on_error=0:abort_on_error=0";
-// glycin runs its image loaders in a bwrap sandbox with --clearenv, which the preloaded runtime does
-// not survive; those specs exercise an out-of-process loader rather than our own marshalling.
 const SANDBOXED_SPECS = "tests/runtime/promisify.test.ts";
 
 const BUILD_ARGS = ["--filter", "@gtkx/native", "exec", "napi", "build", "--platform", "--release", "--esm",
@@ -25,8 +23,6 @@ const run = (command: string, args: string[], env: NodeJS.ProcessEnv): void => {
     execFileSync(resolveExecutable(command), args, { stdio: "inherit", env });
 };
 
-// An instrumented addon cannot be loaded without the runtime preloaded, so the plain one is put back
-// afterwards; otherwise every later run in the same checkout fails to load it.
 const runAsanE2e = (): void => {
     run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
         ...process.env,

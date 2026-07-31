@@ -15,13 +15,6 @@ const deleteAccessibleMetadata = (widget: object, name: string): void => {
     metadataStore.get(widget)?.delete(name);
 };
 
-/**
- * Returns the last value applied for an accessible prop on a widget, or null when none was applied.
- *
- * @param widget The widget to read from.
- * @param name The accessible prop name.
- * @returns The last applied value, or null.
- */
 const getAccessibleMetadata = (widget: object, name: string): unknown => {
     const value = metadataStore.get(widget)?.get(name);
 

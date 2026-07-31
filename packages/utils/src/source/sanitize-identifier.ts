@@ -48,17 +48,6 @@ const RESERVED: Set<string> = new Set([
     "yield",
 ]);
 
-/**
- * Returns the name unchanged, or with a trailing underscore when it collides with a reserved word,
- * so it is safe to emit as a JavaScript identifier.
- *
- * @param name - The candidate identifier.
- * @returns The name, suffixed with `_` when it is a reserved word.
- *
- * @example
- * sanitizeIdentifier("iconName"); // "iconName"
- * sanitizeIdentifier("class"); // "class_"
- */
 function sanitizeIdentifier(name: string): string {
     return RESERVED.has(name) ? `${name}_` : name;
 }

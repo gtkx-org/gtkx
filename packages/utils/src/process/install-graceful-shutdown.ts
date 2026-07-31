@@ -98,12 +98,6 @@ const handle = (state: ShutdownState, signal: NodeJS.Signals): void => {
     finish(state, signal, false);
 };
 
-/**
- * Registers handlers for `SIGINT`, `SIGTERM`, and `SIGHUP` that run the given cleanup callback once
- * and then exit, forcing exit if a repeated signal arrives or the cleanup exceeds its timeout.
- *
- * @param options - The shutdown callbacks and timing configuration.
- */
 function installGracefulShutdown(options: GracefulShutdownOptions): void {
     const state: ShutdownState = {
         options,

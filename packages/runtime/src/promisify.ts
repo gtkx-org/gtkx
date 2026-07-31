@@ -1,10 +1,8 @@
 import { tryGetHandle } from "./registry.js";
 
 /**
- * Extracts the finished value from the async result a GIO-style operation completes with.
- *
- * @template R - The async result type passed to the completion callback.
- * @template T - The finished value type.
+ * Extracts the value of a completed asynchronous operation from its `GAsyncResult`, throwing when
+ * the operation failed.
  */
 type FinishResult<R extends object, T> = (result: R) => T;
 

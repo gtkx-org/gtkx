@@ -567,8 +567,6 @@ fn write_value_to_pointer_leaves_the_previous_pointer_alone() {
         assert_ne!(slot, previous);
         assert!(transfer.is_some());
 
-        // A transfer-none write never acquired the displaced pointer, so it is still the caller's to
-        // free; freeing it here would abort under ASan if the codec had already released it.
         free_rgba(type_, previous);
         free_rgba(type_, slot);
         free_rgba(type_, original);

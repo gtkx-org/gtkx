@@ -93,9 +93,6 @@ impl Decoder for CallbackCodec {}
 impl PtrWriter for CallbackCodec {}
 
 impl CallbackCodec {
-    // A `user_data` slot in the callback's own signature is what tells us the C function that
-    // receives it takes a closure argument, so it is also what decides how many words the call
-    // pushes: the trampoline alone, or the trampoline plus the state pointer.
     fn has_user_data(&self) -> bool {
         self.user_data_index.is_some()
     }

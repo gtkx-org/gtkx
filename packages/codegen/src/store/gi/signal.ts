@@ -328,9 +328,6 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
 const renderCallback = (context: ModuleContext, signal: GirCallable): string => {
     const params = nonVarargParameters(signal);
 
-    // The emitted argument list prepends the instance the signal was raised on, so every index a
-    // parameter descriptor carries (an array's `sizeParamIndex`, above all) sits one slot further
-    // right than the position GIR assigned it.
     const callbackParamDescriptors = params.map((parameter) =>
         renderParamDescriptor(context, parameter, parameter.type, { argIndexOffset: 1 }),
     );

@@ -41,7 +41,7 @@ import {
     validateContentMix,
 } from "./text.js";
 
-/** A top-level container an element tree can be mounted into. */
+/** What a tree is rendered into: any GObject, or the {@link RootElement} marker to render at the top level. */
 type Container = RootElement | GObject.Object;
 
 type PriorityTracker = {

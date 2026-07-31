@@ -9,9 +9,13 @@ import { fromNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
 
+/** The signature a native function is bound against. */
 type FnSpec = {
+    /** The C arguments in declaration order, including the ones the callee writes into. */
     args: Arg[];
+    /** Descriptor for the C return value, packed first when output arguments are also returned. */
     returns: Descriptor;
+    /** The function takes a trailing `GError**`, whose contents are thrown as an error on return. */
     throws?: boolean;
 };
 

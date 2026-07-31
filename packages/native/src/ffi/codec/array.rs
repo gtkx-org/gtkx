@@ -245,10 +245,6 @@ impl ArrayCodec {
         ItemCodec::from_codec(&self.item_codec).map(ItemCodec::element_size)
     }
 
-    // A handle-backed item paired with an explicit `element_size` is codegen's encoding of an array
-    // whose elements are stored by value: the C element type is the record itself, not a pointer to
-    // it. Every element therefore lives at `base + index * element_size` and its own address is the
-    // value, so no word may be loaded out of it.
     pub(super) fn inline_element_size(&self) -> Option<usize> {
         if !self.item_codec.is_handle_backed() {
             return None;
@@ -397,9 +393,6 @@ impl ArrayCodec {
         }
     }
 
-    // `data` is the first byte of a C array whose element type is `codec`, produced either by the
-    // GLib allocators (aligned for any fundamental type) or by a JavaScript ArrayBufferView (8-byte
-    // aligned), so every element pointer below is already correctly aligned for its element type.
     #[allow(clippy::cast_ptr_alignment)]
     fn decode_contiguous<'e>(
         &self,

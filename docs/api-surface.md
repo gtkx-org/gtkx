@@ -23,20 +23,20 @@ Entrypoint: `packages/react/src/index.ts`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `AccessibleProps` | type | `{ accessibleAutocomplete?: Gtk.AccessibleAutocomplete \| null \| undefined; accessibleDescription?: string \| null \| undefined; accessibleHasPopup?: boolean \| null \| undefined; accessibleKeyShortcuts?: string \| null \| unde…` | `packages/react/src/utils/accessible-props.ts:11` | Accessibility props available on every widget. |
-| `createPortal` | function | `(children: ReactNode, container: Container, key?: string) => ReactPortal` | `packages/react/src/reconciler/root.ts:161` | Renders children into a container other than the surrounding tree. |
-| `createRoot` | function | `(container?: Container) => Root` | `packages/react/src/reconciler/root.ts:128` | Creates a render root for a GTKX application. |
-| `quit` | function | `() => typeof Gdk.EVENT_STOP` | `packages/react/src/reconciler/root.ts:145` | Unmounts every active render root and stops the originating signal from propagating further. |
+| `AccessibleProps` | type | `{ accessibleAutocomplete?: Gtk.AccessibleAutocomplete \| null \| undefined; accessibleDescription?: string \| null \| undefined; accessibleHasPopup?: boolean \| null \| undefined; accessibleKeyShortcuts?: string \| null \| unde…` | `packages/react/src/utils/accessible-props.ts:12` | Accessibility props available on every widget. |
+| `createPortal` | function | `(children: ReactNode, container: Container, key?: string) => ReactPortal` | `packages/react/src/reconciler/root.ts:147` | Renders children into a container other than the surrounding tree. |
+| `createRoot` | function | `(container?: Container) => Root` | `packages/react/src/reconciler/root.ts:117` | Creates a render root for a GTKX application. |
+| `quit` | function | `() => typeof Gdk.EVENT_STOP` | `packages/react/src/reconciler/root.ts:134` | Unmounts every active render root and stops the originating signal from propagating further. |
 | `RefProp<T extends object>` | type | `T \| RefObject<T \| null> \| null \| undefined` | `packages/react/src/utils/ref-prop.ts:7` | A way to reach a GObject: the object itself, a ref object whose `current` is the object or null, or null or undefined when the target is ab… |
-| `Root` | type | `{ render: (element: ReactNode) => void; unmount: () => void; }` | `packages/react/src/reconciler/root.ts:25` | The object createRoot returns: it renders an element tree into a container and can tear it down. |
+| `Root` | type | `{ render: (element: ReactNode) => void; unmount: () => void; }` | `packages/react/src/reconciler/root.ts:24` | The object createRoot returns: it renders an element tree into a container and can tear it down. |
 | `rootElement` | const | `RootElement` | `packages/react/src/reconciler/root-element.ts:6` | A shared marker value used as the default top-level container for rendering and portals. |
 | `RootElement` | type | `{ [ROOT_ELEMENT_BRAND]: true }` | `packages/react/src/reconciler/root-element.ts:2` | The type of the shared rootElement marker used as a default top-level container. |
 | `useApplication` | function | `() => Gtk.Application` | `packages/react/src/hooks/use-application.ts:9` | Returns the `Gtk.Application` provided by the nearest `GtkApplication` ancestor, throwing if used outside one. |
-| `useBindSetting<K extends SettingsSchemaKeys>` | function | `<K extends SettingsSchemaKeys>({ schema, key, object, property, flags, }: UseBindSettingOptions<K>) => void` | `packages/react/src/hooks/use-bind-setting.ts:26` | Binds a GSettings key to a property of a GObject, keeping the two in sync for the object's lifetime. |
-| `useParentWindow` | function | `() => Gtk.Window \| null` | `packages/react/src/hooks/use-parent-window.ts:9` | Returns the `Gtk.Window` provided by the nearest window ancestor, or `null` when there is none. |
+| `useBindSetting<K extends SettingsSchemaKeys>` | function | `<K extends SettingsSchemaKeys>({ schema, key, object, property, flags, }: UseBindSettingOptions<K>) => void` | `packages/react/src/hooks/use-bind-setting.ts:27` | Binds a GSettings key to a property of a GObject, keeping the two in sync until the component unmounts. |
+| `useParentWindow` | function | `() => Gtk.Window` | `packages/react/src/hooks/use-parent-window.ts:10` | Returns the `Gtk.Window` of the nearest window ancestor, throwing if used outside one. |
 | `useProperty<T extends GObject.Object, P extends PropertyName<T>>` | function | `<T extends GObject.Object, P extends PropertyName<T>>(object: RefProp<T>, propertyName: P & string) => T[P] \| undefined` | `packages/react/src/hooks/use-property.ts:16` | Subscribes to a GObject property and returns its current value, re-rendering when the property changes. |
-| `useSetting<K extends SettingsSchemaKeys, P extends keyof K>` | function | `<K extends SettingsSchemaKeys, P extends keyof K>(schema: SettingsSchema<K>, key: P & string) => [SettingValue<K, P>, (value: SettingValue<K, P>) => void]` | `packages/react/src/hooks/use-setting.ts:23` | Reads and writes a single key of a GSettings schema, re-rendering when the stored value changes. |
-| `useSignal<T extends GObject.Object, S extends SignalName<T> & string>` | function | `<T extends GObject.Object, S extends SignalName<T> & string>(object: RefProp<T>, signal: S, handler: TypedSignalHandler<T, S>, { after, immediate }?: UseSignalOptions) => void` | `packages/react/src/hooks/use-signal.ts:37` | Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the object changes. |
+| `useSetting<K extends SettingsSchemaKeys, P extends keyof K>` | function | `<K extends SettingsSchemaKeys, P extends keyof K>(schema: SettingsSchema<K>, key: P & string) => [SettingValue<K, P>, (value: SettingValue<K, P>) => void]` | `packages/react/src/hooks/use-setting.ts:22` | Reads and writes a single key of a GSettings schema, re-rendering when the stored value changes. |
+| `useSignal<T extends GObject.Object, S extends SignalName<T> & string>` | function | `<T extends GObject.Object, S extends SignalName<T> & string>(object: RefProp<T>, signal: S, handler: TypedSignalHandler<T, S>, { after, immediate }?: UseSignalOptions) => void` | `packages/react/src/hooks/use-signal.ts:43` | Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the object changes. |
 
 ### `AccessibleProps` members
 
@@ -103,14 +103,14 @@ Entrypoint: `packages/react/src/config.ts`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `BUILTIN_ELEMENTS` | const | `Record<string, ElementConfig>` | `packages/react/src/element-config.ts:32` | The static, runtime-free half of the built-in element configuration: which base props interface each generated element extends, which compo… |
-| `defineBehavior` | function | `<T extends GObject.Object>(hooks: ElementBehavior<T>) => ElementBehavior<never>` | `packages/react/src/reconciler/registry.ts:151` | Types one behavior against the GObject class it applies to, so every hook's object parameter is inferred rather than annotated by hand. |
-| `defineElements` | function | `(elements: Record<string, ElementConfig<never>>) => Record<string, ElementConfig<never>>` | `packages/react/src/reconciler/registry.ts:138` | Identity helper that types the module named by the `elements` entry of `gtkx.config.ts`, enabling editor autocompletion and type checking. |
-| `DetachInfo` | type | `{ slot: string; adopted: GObject.Object \| null; props: Props; context: unknown; }` | `packages/react/src/reconciler/registry.ts:17` | Per-child values a slot hook receives while removing one child. |
-| `ElementBehavior<T extends GObject.Object = GObject.Object>` | type | `{ create?: (props: Props) => GObject.Object; initialize?: (object: T) => unknown; attach?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown; reorder?: (object: T, child: GObject.Object, info: PlaceInfo) =>…` | `packages/react/src/reconciler/registry.ts:33` | Customizes how one element type places children and applies props. |
-| `ElementConfig<T extends GObject.Object = GObject.Object>` | type | `{ lazy?: boolean; behaviors?: ElementBehavior<T>[]; component?: ModuleExport; props?: ModuleExport; omittedProps?: string[]; }` | `packages/react/src/reconciler/registry.ts:58` | Per-element configuration keyed by GLib type name: whether the element is lazy (its GObject is created by its parent container, as pages an… |
-| `ELEMENTS` | const | `Record<string, ElementConfig<GObject.Object>>` | `packages/react/src/reconciler/registry.ts:70` | Every registered element config, keyed by GLib type name. |
-| `mergeElementConfigs` | function | `(...maps: Record<string, ElementConfig<never>>[]) => Record<string, ElementConfig>` | `packages/react/src/reconciler/registry.ts:106` | Merges maps of ElementConfig keyed by GLib type name into one, concatenating each type's behaviors and omitted props in the order the maps… |
+| `BUILTIN_ELEMENTS` | const | `Record<string, ElementConfig>` | `packages/react/src/element-config.ts:33` | The framework's own element configuration for the GTK types it customizes: the base props interface each generated element extends, the com… |
+| `defineBehavior` | function | `<T extends GObject.Object>(hooks: ElementBehavior<T>) => ElementBehavior<never>` | `packages/react/src/reconciler/registry.ts:168` | Types one behavior against the GObject class it applies to, so every hook's object parameter is inferred rather than annotated by hand. |
+| `defineElements` | function | `(elements: Record<string, ElementConfig<never>>) => Record<string, ElementConfig<never>>` | `packages/react/src/reconciler/registry.ts:155` | Identity helper that types the module named by `elements.behaviors` in `gtkx.config.ts`, enabling editor autocompletion and type checking. |
+| `DetachInfo` | type | `{ slot: string; adopted: GObject.Object \| null; props: Props; context: unknown; }` | `packages/react/src/reconciler/registry.ts:23` | Per-child values a slot hook receives while removing one child. |
+| `ElementBehavior<T extends GObject.Object = GObject.Object>` | type | `{ create?: (props: Props) => GObject.Object; initialize?: (object: T) => unknown; attach?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown; reorder?: (object: T, child: GObject.Object, info: PlaceInfo) =>…` | `packages/react/src/reconciler/registry.ts:40` | Customizes how one element type places children and applies props. |
+| `ElementConfig<T extends GObject.Object = GObject.Object>` | type | `{ lazy?: boolean; behaviors?: ElementBehavior<T>[]; component?: ModuleExport; props?: ModuleExport; omittedProps?: string[]; }` | `packages/react/src/reconciler/registry.ts:77` | How one GLib type is rendered. |
+| `ELEMENTS` | const | `Record<string, ElementConfig<GObject.Object>>` | `packages/react/src/reconciler/registry.ts:94` | Every registered element config, keyed by GLib type name. |
+| `mergeElementConfigs` | function | `(...maps: Record<string, ElementConfig<never>>[]) => Record<string, ElementConfig>` | `packages/react/src/reconciler/registry.ts:129` | Merges maps of ElementConfig keyed by GLib type name into one, concatenating each type's behaviors and omitted props in the order the maps… |
 | `PlaceInfo` | type | `{ slot: string; index: number; sibling: GObject.Object \| null; adopted: GObject.Object \| null; props: Props; context: unknown; }` | `packages/react/src/reconciler/registry.ts:7` | Per-child values a slot hook receives while placing or moving one child. |
 | `Props` | type | `Record<string, unknown>` | `packages/react/src/reconciler/registry.ts:4` | The props of a host element or node, as React passes them through the reconciler. |
 
@@ -170,13 +170,13 @@ _No exports._
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `applicationId` | const | `string` | `packages/react/env.d.ts:6` | — |
-| `constructOnlyProps` | const | `Record<string, Set<string>>` | `packages/react/env.d.ts:3` | — |
-| `constructProps` | const | `Record<string, Set<string>>` | `packages/react/env.d.ts:4` | — |
-| `defaultProps` | const | `Record<string, Record<string, unknown>>` | `packages/react/env.d.ts:5` | — |
-| `elements` | const | `Record<string, ElementConfig<Object>>` | `packages/react/env.d.ts:8` | — |
-| `signals` | const | `Record<string, Record<string, string>>` | `packages/react/env.d.ts:2` | — |
-| `userEventSignals` | const | `Record<string, string[]>` | `packages/react/env.d.ts:7` | — |
+| `applicationId` | const | `string` | `packages/react/env.d.ts:11` | The application id from `gtkx.config.ts`, used as the default for `<GtkApplication>`. |
+| `constructOnlyProps` | const | `Record<string, Set<string>>` | `packages/react/env.d.ts:5` | Props GTK accepts only while an object is being built, keyed by GLib type name. |
+| `constructProps` | const | `Record<string, Set<string>>` | `packages/react/env.d.ts:7` | Props that can be passed to the constructor, keyed by GLib type name. |
+| `defaultProps` | const | `Record<string, Record<string, unknown>>` | `packages/react/env.d.ts:9` | The value each property is reset to when its prop is removed, keyed by GLib type name. |
+| `elements` | const | `Record<string, ElementConfig<Object>>` | `packages/react/env.d.ts:15` | The element configuration the project's `gtkx.config.ts` contributes, keyed by GLib type name. |
+| `signals` | const | `Record<string, Record<string, string>>` | `packages/react/env.d.ts:3` | The GObject signal each `on…` handler prop connects to, keyed by GLib type name. |
+| `userEventSignals` | const | `Record<string, string[]>` | `packages/react/env.d.ts:13` | Signals a user can trigger, which stay blocked while props are written, keyed by GLib type name. |
 
 ## `@gtkx/runtime`
 
@@ -185,76 +185,76 @@ Entrypoint: `packages/runtime/src/index.ts`
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `alloc` | function | `(size: number, gtype?: bigint \| undefined \| null) => ExternalObject<Handle>` | `packages/native/index.d.ts:15` | Allocates a zero-filled native memory block of `size` bytes and returns an opaque handle to it. |
-| `connectSignal` | function | `(instance: object, signal: string, spec: SignalConnectSpec) => number` | `packages/runtime/src/signal.ts:110` | Connects a handler to a GObject signal on an instance and returns the handler id. |
-| `createErrorDomain<const T extends Record<string, number>>` | function | `<const T extends Record<string, number>>(resolveDomain: () => number, members: T) => ErrorDomain<T>` | `packages/runtime/src/error.ts:40` | Builds an error domain enum object from its members and a lazy resolver for the domain quark, giving it an `instanceof` check that matches… |
-| `emitSignal` | function | `(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor) => unknown` | `packages/runtime/src/signal.ts:150` | Emits a signal on an instance with the given arguments and returns its result combined with any output-argument values. |
-| `ErrorDomain<T extends Record<string, number>>` | type | `T & { [Symbol.hasInstance]: (value: unknown) => value is ErrorLike; }` | `packages/runtime/src/error.ts:14` | An error enum object carrying its member codes plus an `instanceof` check that matches wrapped GLib errors belonging to a specific error do… |
+| `connectSignal` | function | `(instance: object, signal: string, spec: SignalConnectSpec) => number` | `packages/runtime/src/signal.ts:124` | Connects a handler to a GObject signal on an instance and returns the handler id. |
+| `createErrorDomain<const T extends Record<string, number>>` | function | `<const T extends Record<string, number>>(resolveDomain: () => number, members: T) => ErrorDomain<T>` | `packages/runtime/src/error.ts:46` | Builds an error domain enum object from its members and a lazy resolver for the domain quark, giving it an `instanceof` check that matches… |
+| `emitSignal` | function | `(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor) => unknown` | `packages/runtime/src/signal.ts:164` | Emits a signal on an instance with the given arguments and returns its result combined with any output-argument values. |
+| `ErrorDomain<T extends Record<string, number>>` | type | `T & { [Symbol.hasInstance]: (value: unknown) => value is ErrorLike; }` | `packages/runtime/src/error.ts:20` | An error enum object carrying its member codes plus an `instanceof` check that matches wrapped GLib errors belonging to a specific error do… |
 | `ExternalObject<T>` | class (type-only) | — | `packages/native/index.d.ts:4` | — |
 | `fromNative` | function | `(descriptor: Descriptor, value: unknown) => unknown` | `packages/runtime/src/native-value.ts:72` | Converts a raw value returned from native code into its JavaScript form, wrapping object, struct, boxed, and fundamental handles and recurs… |
-| `getBoxedValue` | function | `(value: ExternalObject<Handle>) => object \| null` | `packages/runtime/src/value.ts:215` | Reads the boxed pointer out of a GValue and returns it wrapped in its registered class, or null when the value does not hold a boxed type. |
-| `getHandle` | function | `(instance: object) => ExternalObject<Handle>` | `packages/runtime/src/registry.ts:248` | Returns the native handle bound to a wrapper instance, throwing if none is set. |
-| `getInstanceType` | function | `(instance: object) => bigint` | `packages/runtime/src/registry.ts:50` | Returns the GType tag of the given wrapper instance. |
+| `getBoxedValue` | function | `(value: ExternalObject<Handle>) => object \| null` | `packages/runtime/src/value.ts:215` | Duplicates the boxed value held by a GValue and returns the copy wrapped in the class registered for its GType, or null when the GValue hol… |
+| `getHandle` | function | `(instance: object) => ExternalObject<Handle>` | `packages/runtime/src/registry.ts:262` | Returns the native handle bound to a wrapper instance, throwing if none is set. |
+| `getInstanceType` | function | `(instance: object) => bigint` | `packages/runtime/src/registry.ts:62` | Returns the GType tag of the given wrapper instance. |
 | `getObjectProperty` | function | `(obj: object, propertyName: string, descriptor: Descriptor) => unknown` | `packages/runtime/src/object.ts:75` | Reads a GObject property and converts it to its JavaScript value using the descriptor. |
-| `getSignalBaseName` | function | `(signal: string) => string` | `packages/runtime/src/signal.ts:67` | Returns the signal name without its detail suffix (the part after `::`). |
-| `getWrapperClass` | function | `(type: bigint) => AnyClass` | `packages/runtime/src/registry.ts:137` | Returns the wrapper class registered for a GType, walking up to ancestor types, and throws if none is registered. |
+| `getSignalBaseName` | function | `(signal: string) => string` | `packages/runtime/src/signal.ts:81` | Returns the signal name without its detail suffix (the part after `::`). |
+| `getWrapperClass` | function | `(type: bigint) => AnyClass` | `packages/runtime/src/registry.ts:151` | Returns the wrapper class registered for a GType, walking up to ancestor types, and throws if none is registered. |
 | `Handle` | type | `{ _opaque: "Handle" }` | `packages/native/main.d.ts:9` | An opaque handle to a native memory region: a GObject, a boxed value, or a raw allocation. |
-| `installMixins` | function | `(target: AnyClass, mixins: Mixin[]) => void` | `packages/runtime/src/mixin.ts:57` | — |
-| `Mixin` | type | `(base: AnyClass<MixinReceiver>) => AnyClass` | `packages/runtime/src/mixin.ts:12` | A factory that, given a base class, returns a subclass adding extra members to be merged onto a target prototype. |
+| `installMixins` | function | `(target: AnyClass, mixins: Mixin[]) => void` | `packages/runtime/src/mixin.ts:63` | Copies each mixin's prototype members onto the target class prototype, skipping any member already defined anywhere in the target's class c… |
+| `Mixin` | type | `(base: AnyClass<MixinReceiver>) => AnyClass` | `packages/runtime/src/mixin.ts:18` | A factory that, given a base class, returns a subclass adding extra members to be merged onto a target prototype. |
 | `newObjectWithProperties` | function | `(gtype: bigint, props: Record<string, unknown>) => ExternalObject<Handle>` | `packages/runtime/src/object.ts:43` | Constructs a new GObject of the given type, setting the supplied construct properties. |
-| `offSignal` | function | `(instance: SignalConnectable, signal: string, handler: SignalHandler) => void` | `packages/runtime/src/listeners.ts:96` | Disconnects a handler previously connected with onSignal or onceSignal. |
-| `onceSignal` | function | `(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean) => void` | `packages/runtime/src/listeners.ts:73` | Connects a handler that runs at most once, disconnecting itself after the first emission. |
-| `onExit` | function | `(callback: () => void) => void` | `packages/runtime/src/lifecycle.ts:50` | Registers a callback to run once when the process quits, before the native runtime is torn down. |
-| `onSignal` | function | `(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean) => void` | `packages/runtime/src/listeners.ts:59` | Connects a handler to a signal and tracks it so it can later be removed with offSignal. |
-| `promisify` | function | `<R extends object, T>(asyncFn: (...args: unknown[]) => void, finish: FinishResult<R, T>, cancellable: object \| null \| undefined, ...leading: unknown[]) => Promise<T>` | `packages/runtime/src/promisify.ts:52` | Wraps a GIO-style asynchronous function that takes a completion callback into a promise, invoking the finish function to extract the result. |
-| `quit` | function | `() => void` | `packages/runtime/src/lifecycle.ts:24` | Runs every registered exit callback and shuts down the native runtime. |
-| `quitApplication` | function | `(application: ApplicationLike) => void` | `packages/runtime/src/lifecycle.ts:82` | Closes all of the application's windows and drives its main loop until it quits, so pending shutdown work can complete before the process e… |
+| `offSignal` | function | `(instance: SignalConnectable, signal: string, handler: SignalHandler) => void` | `packages/runtime/src/listeners.ts:102` | Disconnects a handler previously connected with onSignal or onceSignal. |
+| `onceSignal` | function | `(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean) => void` | `packages/runtime/src/listeners.ts:79` | Connects a handler that runs at most once, disconnecting itself after the first emission. |
+| `onExit` | function | `(callback: () => void) => void` | `packages/runtime/src/lifecycle.ts:59` | Registers a callback to run once when the process quits, before the native runtime is torn down. |
+| `onSignal` | function | `(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean) => void` | `packages/runtime/src/listeners.ts:65` | Connects a handler to a signal and tracks it so it can later be removed with offSignal. |
+| `promisify` | function | `<R extends object, T>(asyncFn: (...args: unknown[]) => void, finish: FinishResult<R, T>, cancellable: object \| null \| undefined, ...leading: unknown[]) => Promise<T>` | `packages/runtime/src/promisify.ts:50` | Wraps a GIO-style asynchronous function that takes a completion callback into a promise, invoking the finish function to extract the result. |
+| `quit` | function | `() => void` | `packages/runtime/src/lifecycle.ts:33` | Runs every registered exit callback and shuts down the native runtime. |
+| `quitApplication` | function | `(application: ApplicationLike) => void` | `packages/runtime/src/lifecycle.ts:92` | Detaches every window from the application and runs its main loop until it shuts down, so pending shutdown work completes before the proces… |
 | `read` | function | `(handle: ExternalObject<Handle>, fieldDescriptor: Descriptor, offset: number) => unknown` | `packages/native/index.d.ts:126` | Reads and decodes a value at `offset` bytes into the handle's memory, using `fieldDescriptor` to interpret the raw bytes. |
 | `registerClass<T extends AnyClass>` | function | `<T extends AnyClass>(klass: T, options?: RegisterClassOptions) => T` | `packages/runtime/src/register-class.ts:56` | Registers a subclass of a wrapper class as a new GType, wiring up any class and inherited-interface virtual functions it overrides. |
-| `registerInterface` | function | `(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry) => void` | `packages/runtime/src/registry.ts:86` | Registers a GInterface, associating its GType with a mixin used to compose the interface onto wrapper classes and an optional virtual funct… |
-| `registerWrapperClass` | function | `(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistry) => void` | `packages/runtime/src/registry.ts:70` | Registers a wrapper class as the JS representation of a GType, optionally installing a registry of virtual functions. |
-| `resolveType` | function | `(sharedLibrary: string, typeFnName: string) => bigint` | `packages/runtime/src/type.ts:164` | Resolves the GType produced by a `get_type` function in a shared library, caching the result per library and function name. |
-| `runApplication` | function | `(application: ApplicationLike) => void` | `packages/runtime/src/lifecycle.ts:60` | Registers the application if needed and activates it, keeping the runtime alive while it is active and releasing it on shutdown. |
+| `registerInterface` | function | `(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry) => void` | `packages/runtime/src/registry.ts:100` | Registers a GInterface, associating its GType with a mixin used to compose the interface onto wrapper classes and an optional virtual funct… |
+| `registerWrapperClass` | function | `(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistry) => void` | `packages/runtime/src/registry.ts:83` | Registers a wrapper class as the JS representation of a GType, optionally installing a registry of virtual functions. |
+| `resolveType` | function | `(sharedLibrary: string, typeFnName: string) => bigint` | `packages/runtime/src/type.ts:163` | Resolves the GType produced by a `get_type` function in a shared library, caching the result per library and function name. |
+| `runApplication` | function | `(application: ApplicationLike) => void` | `packages/runtime/src/lifecycle.ts:69` | Registers the application if needed and activates it, keeping the runtime alive while it is active and releasing it on shutdown. |
 | `setBoxedValue` | function | `(value: ExternalObject<Handle>, boxed: object \| null) => void` | `packages/runtime/src/value.ts:229` | Stores a boxed object, or null, into a GValue that holds a boxed type. |
-| `setHandle` | function | `(instance: object, handle: ExternalObject<Handle>) => void` | `packages/runtime/src/registry.ts:265` | Associates a native handle with a wrapper instance. |
+| `setHandle` | function | `(instance: object, handle: ExternalObject<Handle>) => void` | `packages/runtime/src/registry.ts:279` | Associates a native handle with a wrapper instance. |
 | `setObjectProperty` | function | `(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown) => void` | `packages/runtime/src/object.ts:91` | Writes a JavaScript value to a GObject property, converting it to native form using the descriptor. |
 | `setWrapper` | function | `(handle: ExternalObject<Handle>, wrapper: object) => void` | `packages/native/index.d.ts:191` | Attaches the JavaScript `wrapper` object to the handle's `GObject` and registers a finalizer that releases it when the wrapper is garbage c… |
 | `SignalHandler` | type | `(...args: unknown[]) => unknown` | `packages/runtime/src/signal.ts:31` | Function invoked when a connected GObject signal is emitted. |
 | `StaticBase<C, K extends PropertyKey = "new">` | type | `Omit<C, K> & (C extends new (...args: infer A) => infer R ? new (...args: A) => R : never)` | `packages/runtime/src/registry.ts:17` | Static side of class `C` with its construct signature preserved but the member named `K` (default `"new"`) removed. |
-| `t` | const | `T` | `packages/runtime/src/t.ts:50` | Type descriptor builder: a collection of factory helpers that describe C types for FFI marshalling, plus `bind` to bind a native function a… |
-| `toNative` | function | `(descriptor: Descriptor, value: unknown) => unknown` | `packages/runtime/src/native-value.ts:114` | — |
-| `tryGetHandle` | function | `(instance: object \| null \| undefined) => ExternalObject<Handle> \| undefined` | `packages/runtime/src/registry.ts:260` | Returns the native handle bound to an instance, or undefined when there is none or the instance is null. |
-| `TYPE_BOOLEAN` | const | `bigint` | `packages/runtime/src/type.ts:43` | GType tag for `gboolean`. |
-| `TYPE_BOXED` | const | `bigint` | `packages/runtime/src/type.ts:69` | GType tag for the base GBoxed type. |
-| `TYPE_CHAR` | const | `bigint` | `packages/runtime/src/type.ts:39` | GType tag for `gchar` (signed 8-bit integer). |
-| `TYPE_DOUBLE` | const | `bigint` | `packages/runtime/src/type.ts:63` | GType tag for `gdouble`. |
-| `TYPE_ENUM` | const | `bigint` | `packages/runtime/src/type.ts:57` | GType tag for the base GEnum type. |
-| `TYPE_FLAGS` | const | `bigint` | `packages/runtime/src/type.ts:59` | GType tag for the base GFlags type. |
-| `TYPE_FLOAT` | const | `bigint` | `packages/runtime/src/type.ts:61` | GType tag for `gfloat`. |
-| `TYPE_GTYPE` | const | `bigint` | `packages/runtime/src/type.ts:75` | GType tag for a GType value itself. |
-| `TYPE_INT` | const | `bigint` | `packages/runtime/src/type.ts:45` | GType tag for `gint`. |
-| `TYPE_INT64` | const | `bigint` | `packages/runtime/src/type.ts:53` | GType tag for `gint64`. |
-| `TYPE_INTERFACE` | const | `bigint` | `packages/runtime/src/type.ts:37` | GType tag for the base GInterface type. |
-| `TYPE_INVALID` | const | `0n` | `packages/runtime/src/type.ts:33` | GType tag for an invalid or uninitialized type. |
-| `TYPE_LONG` | const | `bigint` | `packages/runtime/src/type.ts:49` | GType tag for `glong`. |
-| `TYPE_NONE` | const | `bigint` | `packages/runtime/src/type.ts:35` | GType tag for the absence of a value (`void`). |
-| `TYPE_OBJECT` | const | `bigint` | `packages/runtime/src/type.ts:73` | GType tag for the base GObject type. |
-| `TYPE_PARAM` | const | `bigint` | `packages/runtime/src/type.ts:71` | GType tag for the base GParam type. |
-| `TYPE_POINTER` | const | `bigint` | `packages/runtime/src/type.ts:67` | GType tag for `gpointer` (an opaque pointer). |
-| `TYPE_STRING` | const | `bigint` | `packages/runtime/src/type.ts:65` | GType tag for `gchararray` (a nul-terminated C string). |
-| `TYPE_UCHAR` | const | `bigint` | `packages/runtime/src/type.ts:41` | GType tag for `guchar` (unsigned 8-bit integer). |
-| `TYPE_UINT` | const | `bigint` | `packages/runtime/src/type.ts:47` | GType tag for `guint`. |
-| `TYPE_UINT64` | const | `bigint` | `packages/runtime/src/type.ts:55` | GType tag for `guint64`. |
-| `TYPE_ULONG` | const | `bigint` | `packages/runtime/src/type.ts:51` | GType tag for `gulong`. |
-| `TYPE_UNICHAR` | const | `bigint` | `packages/runtime/src/type.ts:79` | GType tag for a Unicode character stored as `guint`. |
-| `TYPE_VARIANT` | const | `bigint` | `packages/runtime/src/type.ts:77` | GType tag for GVariant. |
+| `t` | const | `T` | `packages/runtime/src/t.ts:94` | Type descriptor builder: a collection of factory helpers that describe C types for FFI marshalling, plus `bind` to bind a native function a… |
+| `toNative` | function | `(descriptor: Descriptor, value: unknown) => unknown` | `packages/runtime/src/native-value.ts:122` | Converts a JavaScript value into the raw form native code expects, unwrapping object, struct, boxed, and fundamental wrappers back to their… |
+| `tryGetHandle` | function | `(instance: object \| null \| undefined) => ExternalObject<Handle> \| undefined` | `packages/runtime/src/registry.ts:274` | Returns the native handle bound to an instance, or undefined when there is none or the instance is null. |
+| `TYPE_BOOLEAN` | const | `bigint` | `packages/runtime/src/type.ts:42` | GType tag for `gboolean`. |
+| `TYPE_BOXED` | const | `bigint` | `packages/runtime/src/type.ts:68` | GType tag for the base GBoxed type. |
+| `TYPE_CHAR` | const | `bigint` | `packages/runtime/src/type.ts:38` | GType tag for `gchar` (signed 8-bit integer). |
+| `TYPE_DOUBLE` | const | `bigint` | `packages/runtime/src/type.ts:62` | GType tag for `gdouble`. |
+| `TYPE_ENUM` | const | `bigint` | `packages/runtime/src/type.ts:56` | GType tag for the base GEnum type. |
+| `TYPE_FLAGS` | const | `bigint` | `packages/runtime/src/type.ts:58` | GType tag for the base GFlags type. |
+| `TYPE_FLOAT` | const | `bigint` | `packages/runtime/src/type.ts:60` | GType tag for `gfloat`. |
+| `TYPE_GTYPE` | const | `bigint` | `packages/runtime/src/type.ts:74` | GType tag for a GType value itself. |
+| `TYPE_INT` | const | `bigint` | `packages/runtime/src/type.ts:44` | GType tag for `gint`. |
+| `TYPE_INT64` | const | `bigint` | `packages/runtime/src/type.ts:52` | GType tag for `gint64`. |
+| `TYPE_INTERFACE` | const | `bigint` | `packages/runtime/src/type.ts:36` | GType tag for the base GInterface type. |
+| `TYPE_INVALID` | const | `0n` | `packages/runtime/src/type.ts:32` | GType tag for an invalid or uninitialized type. |
+| `TYPE_LONG` | const | `bigint` | `packages/runtime/src/type.ts:48` | GType tag for `glong`. |
+| `TYPE_NONE` | const | `bigint` | `packages/runtime/src/type.ts:34` | GType tag for the absence of a value (`void`). |
+| `TYPE_OBJECT` | const | `bigint` | `packages/runtime/src/type.ts:72` | GType tag for the base GObject type. |
+| `TYPE_PARAM` | const | `bigint` | `packages/runtime/src/type.ts:70` | GType tag for the base GParam type. |
+| `TYPE_POINTER` | const | `bigint` | `packages/runtime/src/type.ts:66` | GType tag for `gpointer` (an opaque pointer). |
+| `TYPE_STRING` | const | `bigint` | `packages/runtime/src/type.ts:64` | GType tag for `gchararray` (a nul-terminated C string). |
+| `TYPE_UCHAR` | const | `bigint` | `packages/runtime/src/type.ts:40` | GType tag for `guchar` (unsigned 8-bit integer). |
+| `TYPE_UINT` | const | `bigint` | `packages/runtime/src/type.ts:46` | GType tag for `guint`. |
+| `TYPE_UINT64` | const | `bigint` | `packages/runtime/src/type.ts:54` | GType tag for `guint64`. |
+| `TYPE_ULONG` | const | `bigint` | `packages/runtime/src/type.ts:50` | GType tag for `gulong`. |
+| `TYPE_UNICHAR` | const | `bigint` | `packages/runtime/src/type.ts:78` | GType tag for a Unicode character stored as `guint`. |
+| `TYPE_VARIANT` | const | `bigint` | `packages/runtime/src/type.ts:76` | GType tag for GVariant. |
 | `TypedClass` | type | `{ __type__: bigint; }` | `packages/runtime/src/type.ts:17` | Object tagged with its GLib type through a `__type__` GType field. |
-| `typeFromName` | function | `(name: string) => bigint` | `packages/runtime/src/type.ts:140` | Returns the GType registered under the given name, or `TYPE_INVALID` if none exists. |
-| `typeInterfaces` | function | `(type: bigint) => bigint[]` | `packages/runtime/src/type.ts:133` | Returns the GTypes of the interfaces implemented by the given type. |
-| `typeIsA` | function | `(type: bigint, ancestorType: bigint) => boolean` | `packages/runtime/src/type.ts:123` | Returns whether `type` is `ancestorType` or descends from it. |
-| `typeName` | function | `(type: bigint) => string \| null` | `packages/runtime/src/type.ts:149` | Returns the registered name of a GType, or null if it has none. |
-| `typeParent` | function | `(type: bigint) => bigint` | `packages/runtime/src/type.ts:128` | Returns the immediate parent GType of the given type. |
-| `valueIsA` | function | `(value: unknown, gtype: bigint) => boolean` | `packages/runtime/src/type.ts:154` | Returns whether `value` is a typed wrapper whose GType is or descends from `gtype`. |
-| `wrapHandle` | function | `{ (handle: null \| undefined, cls?: AnyClass): null; <T extends object>(handle: ExternalObject<Handle>, cls: AnyClass<T>): T; <T extends object>(handle: ExternalObject<Handle> \| null \| undefined, cls: AnyClass<T>): T \| n…` | `packages/runtime/src/registry.ts:107` | Wraps a native handle in a JS wrapper instance. |
+| `typeFromName` | function | `(name: string) => bigint` | `packages/runtime/src/type.ts:139` | Returns the GType registered under the given name, or `TYPE_INVALID` if none exists. |
+| `typeInterfaces` | function | `(type: bigint) => bigint[]` | `packages/runtime/src/type.ts:132` | Returns the GTypes of the interfaces implemented by the given type. |
+| `typeIsA` | function | `(type: bigint, ancestorType: bigint) => boolean` | `packages/runtime/src/type.ts:122` | Returns whether `type` is `ancestorType` or descends from it. |
+| `typeName` | function | `(type: bigint) => string \| null` | `packages/runtime/src/type.ts:148` | Returns the registered name of a GType, or null if it has none. |
+| `typeParent` | function | `(type: bigint) => bigint` | `packages/runtime/src/type.ts:127` | Returns the immediate parent GType of the given type. |
+| `valueIsA` | function | `(value: unknown, gtype: bigint) => boolean` | `packages/runtime/src/type.ts:153` | Returns whether `value` is a typed wrapper whose GType is or descends from `gtype`. |
+| `wrapHandle` | function | `{ (handle: null \| undefined, cls?: AnyClass): null; <T extends object>(handle: ExternalObject<Handle>, cls: AnyClass<T>): T; <T extends object>(handle: ExternalObject<Handle> \| null \| undefined, cls: AnyClass<T>): T \| n…` | `packages/runtime/src/registry.ts:121` | Wraps a native handle in a JS wrapper instance. |
 | `write` | function | `(handle: ExternalObject<Handle>, fieldDescriptor: Descriptor, offset: number, value: unknown) => unknown` | `packages/native/index.d.ts:194` | Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes. |
 
 ### `Handle` members
@@ -394,12 +394,12 @@ Entrypoint: `packages/config/src/index.ts`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `Config` | type | `z.infer<typeof configSchema>` | `packages/config/src/config.ts:32` | User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`: the GIR libraries to bind, extra `.gir` search paths, the GA… |
-| `defineConfig` | function | `DefineConfig<{ applicationId: string; libraries?: string[] \| '*' \| undefined; girPath?: string[] \| undefined; reactCompiler?: boolean \| ReactCompilerOptions \| undefined; codegen?: boolean \| undefined; userEventSignals?:…` | `packages/config/src/config.ts:192` | Identity helper that returns the given configuration typed as Config, enabling editor autocompletion and type checking in `gtkx.config.ts`. |
-| `loadConfig` | function | `(cwd: string, options?: LoadConfigOptions) => Promise<LoadedConfig>` | `packages/config/src/loader.ts:36` | Loads and validates the `gtkx.config.ts` file for a project, returning the parsed configuration together with the config file path and proj… |
-| `LoadedConfig` | type | `{ config: Config; configFile: string; root: string; }` | `packages/config/src/loader.ts:11` | Result of loading a `gtkx.config.ts` file: the parsed configuration, the resolved config file path, and the project root it was loaded from. |
-| `mergeConfig` | function | `(base: Config, override: Config) => Config` | `packages/config/src/config.ts:248` | Deep-merges two configurations, with `override` taking precedence over `base`. |
-| `ResolvedConfig` | type | `{ applicationId: string; reactCompiler: ResolvedReactCompilerOptions \| null; userEventSignals: Record<string, string[]>; elements: string \| null; lazyElements: string[]; }` | `packages/config/src/config.ts:43` | Configuration reduced to the values needed at runtime: the GApplication identifier, the resolved React Compiler options (`null` when disabl… |
+| `Config` | type | `z.infer<typeof configSchema>` | `packages/config/src/config.ts:35` | User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`: the GIR libraries to bind and where to find them, the GAppli… |
+| `defineConfig` | function | `DefineConfig<{ applicationId: string; libraries?: string[] \| '*' \| undefined; girPath?: string[] \| undefined; reactCompiler?: boolean \| ReactCompilerOptions \| undefined; codegen?: boolean \| undefined; userEventSignals?:…` | `packages/config/src/config.ts:228` | Returns the given configuration unchanged, typed as Config, so `gtkx.config.ts` gets autocompletion and type checking. |
+| `loadConfig` | function | `(cwd: string, options?: LoadConfigOptions) => Promise<LoadedConfig>` | `packages/config/src/loader.ts:37` | Loads and validates the `gtkx.config.ts` file for a project. |
+| `LoadedConfig` | type | `{ config: Config; configFile: string; root: string; }` | `packages/config/src/loader.ts:8` | Result of loading a project's `gtkx.config.ts` file. |
+| `mergeConfig` | function | `(base: Config, override: Config) => Config` | `packages/config/src/config.ts:283` | Deep-merges two configurations. |
+| `ResolvedConfig` | type | `{ applicationId: string; reactCompiler: ResolvedReactCompilerOptions \| null; userEventSignals: Record<string, string[]>; elements: string \| null; lazyElements: string[]; }` | `packages/config/src/config.ts:42` | Configuration reduced to the values the app runtime and the build need, with paths already resolved. |
 
 ### `LoadedConfig` members
 
@@ -430,160 +430,160 @@ _No exports._
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:143` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:5` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:6` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.avif`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:105` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:9` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:11` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.css?url`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `default` | const | `string` | `packages/cli/env.d.ts:97` | — |
+| `default` | const | `string` | `packages/cli/env.d.ts:122` | Filesystem path of the emitted stylesheet, imported without installing it on the default display. |
 
 ### `*.data`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `default` | const | `string` | `packages/cli/env.d.ts:85` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:86` | — |
+| `default` | const | `string` | `packages/cli/env.d.ts:106` | `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. |
+| `path` | const | `string` | `packages/cli/env.d.ts:108` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.eot`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:173` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:13` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:16` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.flac`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:139` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:17` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:21` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.gif`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:89` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:21` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:26` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.gpa`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `default` | const | `string` | `packages/cli/env.d.ts:91` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:92` | — |
+| `default` | const | `string` | `packages/cli/env.d.ts:114` | `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. |
+| `path` | const | `string` | `packages/cli/env.d.ts:116` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.ico`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:97` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:25` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:31` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.jpeg`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:73` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:29` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:36` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.jpg`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:69` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:33` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:41` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.mp3`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:131` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:37` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:46` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.mp4`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:119` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:41` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:51` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.ogg`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:127` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:45` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:56` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.otf`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:181` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:49` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:61` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.png`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:65` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:53` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:66` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.svg`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:93` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:57` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:71` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.ttf`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:177` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:61` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:76` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.wav`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:135` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:65` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:81` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.webm`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:123` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:69` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:86` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.webp`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:101` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:73` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:91` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.woff`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:165` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:77` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:96` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ### `*.woff2`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `default` | const | `string` | `vite/client.d.ts:169` | — |
-| `path` | const | `string` | `packages/cli/env.d.ts:81` | — |
+| `path` | const | `string` | `packages/cli/env.d.ts:101` | GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. |
 
 ## `@gtkx/gl`
 
@@ -2733,20 +2733,20 @@ Entrypoint: `packages/components/src/index.ts`
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `ColumnView<T = unknown, S = unknown>` | function | `<T = unknown, S = unknown>(props: ColumnViewProps<T, S>) => ReactNode` | `packages/components/src/column-view.tsx:175` | Renders a Gtk.ColumnView from declarative items or sections and a columns array, with controlled selection, expansion, and sorting, per-col… |
-| `ColumnViewColumn<T = unknown>` | type | `Omit<GtkColumnViewColumnProps, "factory" \| "sorter" \| "id" \| "title"> & { id: string; title: string; renderCell: ListItemRenderer<T>; sortable?: boolean \| undefined; headerMenu?: ReactNode; }` | `packages/components/src/types.ts:79` | One column of a ColumnView, pairing Gtk.ColumnViewColumn props with a cell renderer. |
-| `ColumnViewProps<T = unknown, S = unknown>` | type | `Omit< GtkColumnViewProps, "columns" \| "model" \| "headerFactory" \| keyof ColumnViewOwnProps<T, S> > & ColumnViewOwnProps<T, S>` | `packages/components/src/types.ts:107` | Props for ColumnView. |
-| `DropDown` | function | `DropDownComponent` | `packages/components/src/drop-down.tsx:13` | Renders a `Gtk.DropDown` backed by a collection model, with customizable renderers for the collapsed display, popup rows, and popup section… |
-| `DropDownProps<T = unknown, S = unknown>` | type | `DropDownWidgetProps<GtkDropDownProps, T, S>` | `packages/components/src/types.ts:135` | Props for DropDown. |
+| `ColumnViewColumn<T = unknown>` | type | `Omit<GtkColumnViewColumnProps, "factory" \| "sorter" \| "id" \| "title"> & { id: string; title: string; renderCell: ListItemRenderer<T>; sortable?: boolean \| undefined; headerMenu?: ReactNode; }` | `packages/components/src/types.ts:98` | One column of a ColumnView, pairing Gtk.ColumnViewColumn props with a cell renderer. |
+| `ColumnViewProps<T = unknown, S = unknown>` | type | `Omit< GtkColumnViewProps, "columns" \| "model" \| "headerFactory" \| keyof ColumnViewOwnProps<T, S> > & ColumnViewOwnProps<T, S>` | `packages/components/src/types.ts:134` | Props for ColumnView. |
+| `DropDown` | function | `DropDownComponent` | `packages/components/src/drop-down.tsx:14` | Renders a `Gtk.DropDown` backed by a collection model, with customizable renderers for the collapsed display, popup rows, and popup section… |
+| `DropDownProps<T = unknown, S = unknown>` | type | `DropDownWidgetProps<GtkDropDownProps, T, S>` | `packages/components/src/types.ts:166` | Props for DropDown. |
 | `GridView<T = unknown>` | function | `<T = unknown>(props: GridViewProps<T>) => ReactNode` | `packages/components/src/grid-view.tsx:22` | Renders a Gtk.GridView of uniform cells from declarative items, with per-cell rendering, controlled selection, and estimated item sizing. |
-| `GridViewProps<T = unknown>` | type | `Omit<GtkGridViewProps, "model" \| "factory" \| keyof GridViewOwnProps<T>> & GridViewOwnProps<T>` | `packages/components/src/types.ts:148` | Props for GridView. |
+| `GridViewProps<T = unknown>` | type | `Omit<GtkGridViewProps, "model" \| "factory" \| keyof GridViewOwnProps<T>> & GridViewOwnProps<T>` | `packages/components/src/types.ts:182` | Props for GridView. |
 | `ListItem<T = unknown>` | type | `{ id: string; value: T; children?: ListItem<T>[] \| undefined; hideExpander?: boolean \| undefined; indentForDepth?: boolean \| undefined; indentForIcon?: boolean \| undefined; }` | `packages/components/src/types.ts:15` | A single item in a collection model, identified by a stable id and holding an arbitrary value. |
-| `ListItemRenderArgs<T>` | type | `{ item: T; index: number; depth?: number \| undefined; isExpanded?: boolean \| undefined; }` | `packages/components/src/types.ts:38` | Arguments passed to a ListItemRenderer when rendering one cell. |
-| `ListItemRenderer<T>` | type | `(args: ListItemRenderArgs<T>) => ReactNode` | `packages/components/src/types.ts:53` | Renders the contents of one cell of a collection view. |
-| `ListSection<S = unknown, T = unknown>` | type | `{ id: string; value: S; data: ListItem<T>[]; }` | `packages/components/src/types.ts:29` | A group of items rendered under a shared section header. |
-| `ListSectionRenderArgs<S>` | type | `{ section: S; }` | `packages/components/src/types.ts:48` | Arguments passed to a ListSectionRenderer when rendering one section header. |
-| `ListSectionRenderer<S>` | type | `(args: ListSectionRenderArgs<S>) => ReactNode` | `packages/components/src/types.ts:55` | Renders the contents of one section header of a collection view. |
+| `ListItemRenderArgs<T>` | type | `{ item: T; index: number; depth?: number \| undefined; isExpanded?: boolean \| undefined; }` | `packages/components/src/types.ts:41` | Arguments passed to a ListItemRenderer when rendering one cell. |
+| `ListItemRenderer<T>` | type | `(args: ListItemRenderArgs<T>) => ReactNode` | `packages/components/src/types.ts:59` | Renders the contents of one cell of a collection view. |
+| `ListSection<S = unknown, T = unknown>` | type | `{ id: string; value: S; data: ListItem<T>[]; }` | `packages/components/src/types.ts:31` | A group of items rendered under a shared section header. |
+| `ListSectionRenderArgs<S>` | type | `{ section: S; }` | `packages/components/src/types.ts:53` | Arguments passed to a ListSectionRenderer when rendering one section header. |
+| `ListSectionRenderer<S>` | type | `(args: ListSectionRenderArgs<S>) => ReactNode` | `packages/components/src/types.ts:61` | Renders the contents of one section header of a collection view. |
 | `ListView<T = unknown, S = unknown>` | function | `<T = unknown, S = unknown>(props: ListViewProps<T, S>) => ReactNode` | `packages/components/src/list-view.tsx:26` | Renders a Gtk.ListView from declarative items or sections, with per-row rendering, controlled selection, controlled tree expansion, and est… |
-| `ListViewProps<T = unknown, S = unknown>` | type | `Omit< GtkListViewProps, "model" \| "factory" \| "headerFactory" \| keyof ListViewOwnProps<T, S> > & ListViewOwnProps<T, S>` | `packages/components/src/types.ts:165` | Props for ListView. |
+| `ListViewProps<T = unknown, S = unknown>` | type | `Omit< GtkListViewProps, "model" \| "factory" \| "headerFactory" \| keyof ListViewOwnProps<T, S> > & ListViewOwnProps<T, S>` | `packages/components/src/types.ts:202` | Props for ListView. |
 
 ### `ListItem<T = unknown>` members
 
@@ -2788,7 +2788,7 @@ Entrypoint: `packages/components/src/adw/index.ts`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `ComboRow` | function | `ComboRowComponent` | `packages/components/src/adw/combo-row.tsx:14` | Renders an `Adw.ComboRow` backed by a collection model, presenting the same choice as a `DropDown` in the shape of a preferences row, with… |
+| `ComboRow` | function | `ComboRowComponent` | `packages/components/src/adw/combo-row.tsx:15` | Renders an `Adw.ComboRow` backed by a collection model, presenting the same choice as a `DropDown` in the shape of a preferences row, with… |
 | `ComboRowProps<T = unknown, S = unknown>` | type | `DropDownWidgetProps<AdwComboRowProps, T, S>` | `packages/components/src/adw/types.ts:11` | Props for ComboRow. |
 | `ToastController` | type | `{ show: (options?: ToastOptions) => Adw.Toast; dismiss: (toast: Adw.Toast) => void; }` | `packages/components/src/adw/types.ts:19` | Imperative controls for individual toasts, returned by useToast. |
 | `ToastOptions` | type | `Adw.ToastConstructorProps & Pick<AdwToastProps, "onButtonClicked" \| "onDismissed">` | `packages/components/src/adw/types.ts:16` | Describes a toast raised through useToast: the construct-time properties of an `Adw.Toast` plus its `button-clicked` and `dismissed` handle… |
@@ -2824,34 +2824,34 @@ Entrypoint: `packages/codegen/src/index.ts`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `API_SYMBOL_KINDS` | const | `ApiSymbolKind[]` | `packages/codegen/src/docs/api-reference.ts:70` | — |
-| `ApiLookupResult` | type | `\| { outcome: "page"; symbol: ApiSymbol; markdown: string } \| { outcome: "ambiguous"; candidates: ApiSymbol[] } \| { outcome: "notFound" }` | `packages/codegen/src/docs/api-reference.ts:47` | — |
-| `ApiNamespaceSummary` | type | `{ name: string; importPath: string; symbols: number; elements: number; }` | `packages/codegen/src/docs/api-reference.ts:40` | — |
-| `ApiReference` | class (type-only) | — | `packages/codegen/src/docs/api-reference.ts:306` | — |
-| `ApiReferenceOptions` | type | `{ libraries: string[]; girPath: string[]; props?: ElementProps; omittedProps?: OmittedProps; }` | `packages/codegen/src/docs/api-reference.ts:16` | — |
-| `ApiSearchOptions` | type | `{ query: string; namespace?: string; kinds?: ApiSymbolKind[]; limit?: number; }` | `packages/codegen/src/docs/api-reference.ts:52` | — |
-| `ApiSymbol` | type | `{ namespace: string; name: string; kind: ApiSymbolKind; summary: string; }` | `packages/codegen/src/docs/api-reference.ts:33` | — |
-| `ApiSymbolKind` | type | `GiSymbolEntry["kind"] \| "element"` | `packages/codegen/src/docs/api-reference.ts:31` | — |
-| `ApiSymbolQuery` | type | `{ namespace?: string; kinds?: ApiSymbolKind[]; }` | `packages/codegen/src/docs/api-reference.ts:26` | Narrows an `ApiReference.symbols` enumeration. |
-| `BuiltinElements` | type | `{ components: Record<string, ModuleExport>; lazyElements: string[]; props: Record<string, ModuleExport>; omittedProps: OmittedProps; }` | `packages/codegen/src/react/element-config.ts:9` | The framework's built-in element config, split into the maps codegen consumes. |
-| `CodegenRunnerOptions` | type | `{ libraries: string[]; girPath: string[]; gi: StoreOptions; jsx?: StoreOptions \| undefined; reactSubexports?: string[]; userComponents?: Record<string, ModuleExport>; userLazyElements?: string[]; userProps?: Record<stri…` | `packages/codegen/src/runner.ts:21` | What to generate and where to write it. |
-| `CodegenRunnerResult` | type | `{ regenerated: boolean; namespaces: number; intrinsicElements: number; duration: number; }` | `packages/codegen/src/runner.ts:41` | What a `runCodegen` run produced. |
-| `discoverGirNamespaces` | function | `(girPath: string[]) => string[]` | `packages/codegen/src/gir/libraries.ts:77` | — |
-| `ElementProps` | type | `Record<string, { module: string; export: string }>` | `packages/codegen/src/store/jsx/element-prop-imports.ts:4` | Base props interface each element extends, keyed by GLib type name (the module exports it). |
+| `API_SYMBOL_KINDS` | const | `ApiSymbolKind[]` | `packages/codegen/src/docs/api-reference.ts:108` | Every kind the reference indexes, in the order a namespace overview groups its symbols. |
+| `ApiLookupResult` | type | `\| { outcome: "page"; symbol: ApiSymbol; markdown: string; } \| { outcome: "ambiguous"; candidates: ApiSymbol[]; } \| { outcome: "notFound"; }` | `packages/codegen/src/docs/api-reference.ts:64` | What an `ApiReference.lookup` found: a rendered page, several candidates for the name, or nothing. |
+| `ApiNamespaceSummary` | type | `{ name: string; importPath: string; symbols: number; elements: number; }` | `packages/codegen/src/docs/api-reference.ts:52` | How much of one namespace the reference indexes. |
+| `ApiReference` | class (type-only) | — | `packages/codegen/src/docs/api-reference.ts:345` | An index over the GIR data a project's bindings are generated from, queryable and renderable as Markdown. |
+| `ApiReferenceOptions` | type | `{ libraries: string[]; girPath: string[]; props?: ElementProps; omittedProps?: OmittedProps; }` | `packages/codegen/src/docs/api-reference.ts:17` | What to index and the element config the rendered pages reflect. |
+| `ApiSearchOptions` | type | `{ query: string; namespace?: string; kinds?: ApiSymbolKind[]; limit?: number; }` | `packages/codegen/src/docs/api-reference.ts:85` | A fuzzy search over indexed symbol names. |
+| `ApiSymbol` | type | `{ namespace: string; name: string; kind: ApiSymbolKind; summary: string; }` | `packages/codegen/src/docs/api-reference.ts:40` | An indexed symbol, without its reference page. |
+| `ApiSymbolKind` | type | `GiSymbolEntry["kind"] \| "element"` | `packages/codegen/src/docs/api-reference.ts:37` | What an indexed symbol is: one of the GIR symbol kinds, or a JSX element. |
+| `ApiSymbolQuery` | type | `{ namespace?: string; kinds?: ApiSymbolKind[]; }` | `packages/codegen/src/docs/api-reference.ts:29` | Narrows an `ApiReference.symbols` enumeration. |
+| `BuiltinElements` | type | `{ components: Record<string, ModuleExport>; lazyElements: string[]; props: Record<string, ModuleExport>; omittedProps: OmittedProps; }` | `packages/codegen/src/react/element-config.ts:8` | The framework's built-in element config, split into the maps codegen consumes. |
+| `CodegenRunnerOptions` | type | `{ libraries: string[]; girPath: string[]; gi: StoreOptions; jsx?: StoreOptions \| undefined; reactSubexports?: string[]; userComponents?: Record<string, ModuleExport>; userLazyElements?: string[]; userProps?: Record<stri…` | `packages/codegen/src/runner.ts:27` | What to generate and where to write it. |
+| `CodegenRunnerResult` | type | `{ regenerated: boolean; namespaces: number; intrinsicElements: number; duration: number; }` | `packages/codegen/src/runner.ts:51` | What a `runCodegen` run produced. |
+| `discoverGirNamespaces` | function | `(girPath: string[]) => string[]` | `packages/codegen/src/gir/libraries.ts:90` | Every GIR library installed on the search path, as sorted `Name-Version` identifiers. |
+| `ElementProps` | type | `Record<string, { module: string; export: string; }>` | `packages/codegen/src/store/jsx/element-prop-imports.ts:4` | Base props interface each element extends, keyed by GLib type name (the module exports it). |
 | `GeneratedElement` | type | `{ namespace: string; directory: string; glibName: string; mountable: boolean; }` | `packages/codegen/src/store/jsx/generated-elements.ts:7` | One element the `@gtkx/jsx` store binds. |
-| `LibrarySelection` | type | `typeof LIBRARIES_WILDCARD \| string[] \| undefined` | `packages/codegen/src/gir/libraries.ts:5` | — |
-| `loadApiReference` | function | `(options: ApiReferenceOptions) => ApiReference` | `packages/codegen/src/docs/api-reference.ts:130` | Loads the GIR data for the given libraries and indexes every symbol and JSX element in it. |
-| `mergeOmittedProps` | function | `(...maps: OmittedProps[]) => OmittedProps` | `packages/codegen/src/store/jsx/omitted-props.ts:20` | Merges omitted-prop maps keyed by GLib type name, concatenating the names each map contributes. |
-| `ModuleExport` | type | `{ module: string; export: string }` | `packages/react/src/reconciler/registry.ts:48` | A named export in a module, referenced as plain data (the module is never imported at runtime). |
+| `LibrarySelection` | type | `typeof LIBRARIES_WILDCARD \| string[] \| undefined` | `packages/codegen/src/gir/libraries.ts:6` | A `libraries` config value: an explicit list, `"*"` for everything installed, or absent for the default. |
+| `loadApiReference` | function | `(options: ApiReferenceOptions) => ApiReference` | `packages/codegen/src/docs/api-reference.ts:168` | Loads the GIR data for the given libraries and indexes every symbol and JSX element in it. |
+| `mergeOmittedProps` | function | `(...maps: OmittedProps[]) => OmittedProps` | `packages/codegen/src/store/jsx/omitted-props.ts:18` | Merges omitted-prop maps keyed by GLib type name, concatenating the names each map contributes. |
+| `ModuleExport` | type | `{ module: string; export: string; }` | `packages/react/src/reconciler/registry.ts:66` | A named export in a module, referenced as plain data (the module is never imported at runtime). |
 | `OmittedProps` | type | `Record<string, string[]>` | `packages/codegen/src/store/jsx/omitted-props.ts:2` | Props left out of the generated element props, keyed by GLib type name. |
-| `readBuiltinElements` | function | `(reactSubexports: string[], giStoreDir: string) => Promise<BuiltinElements>` | `packages/codegen/src/react/element-config.ts:84` | — |
+| `readBuiltinElements` | function | `(reactSubexports: string[], giStoreDir: string) => Promise<BuiltinElements>` | `packages/codegen/src/react/element-config.ts:87` | Reads the framework's built-in element config by importing the `config` entrypoints of the installed `@gtkx/react`, skipping the per-namesp… |
 | `readGeneratedElements` | function | `(jsxStoreDir: string) => GeneratedElement[]` | `packages/codegen/src/store/jsx/generated-elements.ts:44` | Reads the inventory of elements the `@gtkx/jsx` store binds, written into the store by codegen. |
 | `ResolvedStore` | type | `{ gi: StoreOptions; jsx: StoreOptions \| null; reactSubexports: string[]; }` | `packages/codegen/src/store/resolve-store.ts:9` | Where a project's generated stores live, ready to spread into `runCodegen`. |
-| `resolveGirPath` | function | `(configGirPath: string[] \| undefined) => string[]` | `packages/codegen/src/gir/gir-path.ts:7` | — |
-| `resolveLibraries` | function | `(libraries: LibrarySelection, girPath: string[]) => string[]` | `packages/codegen/src/gir/libraries.ts:12` | — |
+| `resolveGirPath` | function | `(configGirPath: string[] \| undefined) => string[]` | `packages/codegen/src/gir/gir-path.ts:14` | The directories to search for `.gir` files, in precedence order: the config's own `girPath`, then `GTKX_GIR_PATH`, then `/usr/share/gir-1.0… |
+| `resolveLibraries` | function | `(libraries: LibrarySelection, girPath: string[]) => string[]` | `packages/codegen/src/gir/libraries.ts:21` | Expands a `libraries` config value into the GIR identifiers to generate from: `"Gtk-4.0"` alone when nothing is configured, everything inst… |
 | `resolveStore` | function | `(projectRoot: string) => ResolvedStore` | `packages/codegen/src/store/resolve-store.ts:83` | Resolves where a project's `@gtkx/gi` and `@gtkx/jsx` stores belong, from the project root alone. |
-| `runCodegen` | function | `(options: CodegenRunnerOptions) => Promise<CodegenRunnerResult>` | `packages/codegen/src/runner.ts:66` | Writes and links a project's `@gtkx/gi` and `@gtkx/jsx` stores from the given GObject-Introspection libraries. |
-| `StoreOptions` | type | `{ storeDir: string; linkDir: string; version: string; }` | `packages/codegen/src/store/store-fs.ts:5` | — |
+| `runCodegen` | function | `(options: CodegenRunnerOptions) => Promise<CodegenRunnerResult>` | `packages/codegen/src/runner.ts:78` | Writes and links a project's `@gtkx/gi` and `@gtkx/jsx` stores from the given GObject-Introspection libraries. |
+| `StoreOptions` | type | `{ storeDir: string; linkDir: string; version: string; }` | `packages/codegen/src/store/store-fs.ts:6` | Where one generated store is written and how it is reached. |
 
 ### `ApiNamespaceSummary` members
 
@@ -2980,114 +2980,114 @@ Entrypoint: `packages/testing/src/index.ts`
 
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
-| `act` | function | `ActImplementation` | `packages/testing/src/act.ts:18` | Runs a callback inside React's act environment, flushing pending state updates and effects, and resolves once the work has settled. |
+| `act` | function | `ActImplementation` | `packages/testing/src/act.ts:20` | Runs a callback inside React's act environment, flushing pending state updates and effects, and resolves once the work has settled. |
 | `BoundQueries` | type | `QueryFamilies<[]>` | `packages/testing/src/bound-queries.ts:10` | The set of built-in queries (getBy, findBy, queryBy, and their All variants) bound to a specific container. |
-| `ByRoleOptions<T extends Gtk.Widget = Gtk.Widget>` | type | `MatcherOptions<T> & { name?: Matcher \| undefined; checked?: boolean \| undefined; pressed?: boolean \| undefined; selected?: boolean \| undefined; expanded?: boolean \| undefined; level?: number \| undefined; busy?: boolean…` | `packages/testing/src/types.ts:69` | Options for role queries: an accessible name matcher plus accessible state and value constraints. |
+| `ByRoleOptions<T extends Gtk.Widget = Gtk.Widget>` | type | `MatcherOptions<T> & { name?: Matcher \| undefined; checked?: boolean \| undefined; pressed?: boolean \| undefined; selected?: boolean \| undefined; expanded?: boolean \| undefined; level?: number \| undefined; busy?: boolean…` | `packages/testing/src/types.ts:71` | Options for role queries: an accessible name matcher plus accessible state and value constraints. |
 | `ByRoleValue` | type | `{ now?: number \| undefined; min?: number \| undefined; max?: number \| undefined; text?: Matcher \| undefined; }` | `packages/testing/src/types.ts:59` | Constraints on a widget's numeric range value used by role queries. |
 | `captureAndSaveScreenshot` | function | `(selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>` | `packages/testing/src/screenshot.ts:166` | Captures a screenshot of a toplevel window, writes it to a temporary file, logs its path, and returns the image data. |
 | `ClassExpectation` | type | `string \| RegExp` | `packages/testing/src/matchers.ts:41` | The expected value for a style class: an exact class name or a regular expression. |
 | `cleanup` | function | `() => Promise<void>` | `packages/testing/src/render.tsx:225` | Unmounts every active render and runs all registered cleanup callbacks, resetting the screen and clipboard. |
 | `Config` | type | `{ throwSuggestions: boolean; getElementError: (message: string, container?: Container) => Error; asyncUtilTimeout: number; actionabilityTimeout: number; }` | `packages/testing/src/config.ts:8` | Global configuration for the testing harness, controlling query behavior, error formatting, and the timeouts used by async utilities and ac… |
-| `ConfigFn` | type | `(existingConfig: Config) => Partial<Config>` | `packages/testing/src/config.ts:25` | Function form of a configuration update: receives the current config and returns the fields to override. |
-| `configure` | function | `(newConfig: Partial<Config> \| ConfigFn) => void` | `packages/testing/src/config.ts:53` | Merges the given overrides into the global testing configuration. |
-| `Container` | type | `QueryContainer \| Gtk.Application \| typeof TOPLEVELS` | `packages/testing/src/traversal.ts:9` | A scope that queries and traversal can run against: a widget, an event controller, a layout manager, a list item or header, an application,… |
-| `ControllerConstructor<T extends Gtk.EventController>` | type | `new () => T` | `packages/testing/src/user-event/controller.ts:3` | — |
-| `DragOffset` | type | `{ x: number; y: number; }` | `packages/testing/src/user-event/gesture.ts:17` | A drag offset relative to the drag start point. |
-| `DragOptions` | type | `{ startX?: number; startY?: number; steps?: number; offsets?: DragOffset[]; }` | `packages/testing/src/user-event/gesture.ts:26` | Options for a drag gesture: the starting point, the number of interpolated drag updates, or explicit intermediate offsets emitted before th… |
+| `ConfigFn` | type | `(existingConfig: Config) => Partial<Config>` | `packages/testing/src/config.ts:26` | Function form of a configuration update: receives the current config and returns the fields to override. |
+| `configure` | function | `(newConfig: Partial<Config> \| ConfigFn) => void` | `packages/testing/src/config.ts:54` | Merges the given overrides into the global testing configuration. |
+| `Container` | type | `QueryContainer \| Gtk.Application \| typeof TOPLEVELS` | `packages/testing/src/traversal.ts:13` | A scope that queries and traversal can run against: a widget, an event controller, a layout manager, a list item or header, an application,… |
+| `ControllerConstructor<T extends Gtk.EventController>` | type | `new () => T` | `packages/testing/src/user-event/controller.ts:4` | An event controller class that can be constructed without arguments, such as `Gtk.GestureClick`. |
+| `DragOffset` | type | `{ x: number; y: number; }` | `packages/testing/src/user-event/gesture.ts:19` | A drag offset relative to the drag start point. |
+| `DragOptions` | type | `{ startX?: number; startY?: number; steps?: number; offsets?: DragOffset[]; }` | `packages/testing/src/user-event/gesture.ts:30` | Options for a drag gesture: the starting point, the number of interpolated drag updates, or explicit intermediate offsets emitted before th… |
 | `DropContent` | type | `string \| number \| boolean \| GObject.Value` | `packages/testing/src/user-event/gesture.ts:8` | The value delivered to a drop target: a primitive (converted to a GObject.Value) or an explicit GObject.Value. |
 | `DropOptions` | type | `{ x?: number; y?: number; }` | `packages/testing/src/user-event/gesture.ts:11` | Options for a drop: the drop coordinates within the target. |
-| `findAllByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:222` | Waits for and returns every widget with a matching display value, retrying until at least one appears or the timeout elapses. |
-| `findAllByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:146` | Waits for and returns every widget with matching associated label text, retrying until at least one appears or the timeout elapses. |
-| `findAllByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:184` | Waits for and returns every widget with a matching widget name, retrying until at least one appears or the timeout elapses. |
-| `findAllByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:203` | Waits for and returns every widget with matching placeholder text, retrying until at least one appears or the timeout elapses. |
-| `findAllByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:127` | Waits for and returns every widget with a matching accessible role and options, retrying until at least one appears or the timeout elapses. |
-| `findAllByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:165` | Waits for and returns every widget with matching rendered text content, retrying until at least one appears or the timeout elapses. |
-| `findByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:227` | Waits for and returns the single widget with a matching display value, retrying until it appears or the timeout elapses. |
-| `findByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:151` | Waits for and returns the single widget with matching associated label text, retrying until it appears or the timeout elapses. |
-| `findByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:189` | Waits for and returns the single widget with a matching widget name, retrying until it appears or the timeout elapses. |
-| `findByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:208` | Waits for and returns the single widget with matching placeholder text, retrying until it appears or the timeout elapses. |
-| `findByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:132` | Waits for and returns the single widget with a matching accessible role and options, retrying until it appears or the timeout elapses. |
-| `findByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:170` | Waits for and returns the single widget with matching rendered text content, retrying until it appears or the timeout elapses. |
+| `findAllByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:223` | Waits for and returns every widget with a matching display value, retrying until at least one appears or the timeout elapses. |
+| `findAllByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:147` | Waits for and returns every widget with matching associated label text, retrying until at least one appears or the timeout elapses. |
+| `findAllByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:185` | Waits for and returns every widget with a matching widget name, retrying until at least one appears or the timeout elapses. |
+| `findAllByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:204` | Waits for and returns every widget with matching placeholder text, retrying until at least one appears or the timeout elapses. |
+| `findAllByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:128` | Waits for and returns every widget with a matching accessible role and options, retrying until at least one appears or the timeout elapses. |
+| `findAllByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T[]>` | `packages/testing/src/queries.ts:166` | Waits for and returns every widget with matching rendered text content, retrying until at least one appears or the timeout elapses. |
+| `findByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:228` | Waits for and returns the single widget with a matching display value, retrying until it appears or the timeout elapses. |
+| `findByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:152` | Waits for and returns the single widget with matching associated label text, retrying until it appears or the timeout elapses. |
+| `findByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:190` | Waits for and returns the single widget with a matching widget name, retrying until it appears or the timeout elapses. |
+| `findByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:209` | Waits for and returns the single widget with matching placeholder text, retrying until it appears or the timeout elapses. |
+| `findByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:133` | Waits for and returns the single widget with a matching accessible role and options, retrying until it appears or the timeout elapses. |
+| `findByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => Promise<T>` | `packages/testing/src/queries.ts:171` | Waits for and returns the single widget with matching rendered text content, retrying until it appears or the timeout elapses. |
 | `fireEvent` | function | `(element: GObject.Object, signalName: string, ...args: unknown[]) => Promise<void>` | `packages/testing/src/fire-event.ts:12` | Emits a GObject signal on a widget or object inside React's act environment, so any resulting state updates are flushed before the promise… |
 | `formatRole` | function | `(role: Gtk.AccessibleRole) => string` | `packages/testing/src/role-helpers.ts:22` | Converts an accessible role enum value into its lowercase name, falling back to the numeric value when the role is unknown. |
-| `getAllByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:215` | Returns every widget with a matching display value. |
-| `getAllByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:139` | Returns every widget with matching associated label text. |
-| `getAllByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:177` | Returns every widget with a matching widget name. |
-| `getAllByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:196` | Returns every widget with matching placeholder text. |
-| `getAllByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:117` | Returns every widget with a matching accessible role and options. |
-| `getAllByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:158` | Returns every widget with matching rendered text content. |
-| `getAllControllers` | function | `<T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: ControllerConstructor<T>) => T[]` | `packages/testing/src/user-event/controller.ts:29` | — |
-| `getByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:217` | Returns the single widget with a matching display value. |
-| `getByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:141` | Returns the single widget with matching associated label text. |
-| `getByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:179` | Returns the single widget with a matching widget name. |
-| `getByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:198` | Returns the single widget with matching placeholder text. |
-| `getByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:122` | Returns the single widget with a matching accessible role and options. |
-| `getByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:160` | Returns the single widget with matching rendered text content. |
-| `getConfig` | function | `() => Config` | `packages/testing/src/config.ts:43` | Returns the current global testing configuration. |
-| `getController` | function | `<T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: ControllerConstructor<T>) => T` | `packages/testing/src/user-event/controller.ts:42` | — |
+| `getAllByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:216` | Returns every widget with a matching display value. |
+| `getAllByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:140` | Returns every widget with matching associated label text. |
+| `getAllByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:178` | Returns every widget with a matching widget name. |
+| `getAllByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:197` | Returns every widget with matching placeholder text. |
+| `getAllByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:118` | Returns every widget with a matching accessible role and options. |
+| `getAllByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T[]` | `packages/testing/src/queries.ts:159` | Returns every widget with matching rendered text content. |
+| `getAllControllers` | function | `<T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: ControllerConstructor<T>) => T[]` | `packages/testing/src/user-event/controller.ts:51` | Returns every controller of the given type attached to a widget. |
+| `getByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:218` | Returns the single widget with a matching display value. |
+| `getByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:142` | Returns the single widget with matching associated label text. |
+| `getByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:180` | Returns the single widget with a matching widget name. |
+| `getByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:199` | Returns the single widget with matching placeholder text. |
+| `getByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:123` | Returns the single widget with a matching accessible role and options. |
+| `getByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T` | `packages/testing/src/queries.ts:161` | Returns the single widget with matching rendered text content. |
+| `getConfig` | function | `() => Config` | `packages/testing/src/config.ts:44` | Returns the current global testing configuration. |
+| `getController` | function | `<T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: ControllerConstructor<T>) => T` | `packages/testing/src/user-event/controller.ts:71` | Returns the first controller of the given type attached to a widget. |
 | `getDefaultNormalizer` | function | `({ trim, collapseWhitespace, }?: NormalizerOptions) => NormalizerFn` | `packages/testing/src/normalize.ts:9` | Builds the default text normalizer, which optionally trims surrounding whitespace and collapses runs of whitespace into single spaces. |
 | `getRoles` | function | `(container: Container) => Map<string, Gtk.Widget[]>` | `packages/testing/src/role-helpers.ts:55` | Groups every widget in a container's tree by its accessible role name. |
-| `getSuggestedQuery` | function | `(widget: Gtk.Widget, variant?: Variant, method?: Method) => Suggestion \| undefined` | `packages/testing/src/suggestions.ts:74` | Computes the recommended query for reaching the given widget, preferring role, then label text, placeholder text, text, display value, and… |
-| `getWidgetErrorMessage` | function | `(widget: Gtk.Widget) => Gtk.Widget[] \| null` | `packages/testing/src/widget-accessible-properties.ts:379` | — |
-| `getWidgetInvalidState` | function | `(widget: Gtk.Widget) => Gtk.AccessibleInvalidState \| null` | `packages/testing/src/widget-accessible-properties.ts:373` | — |
-| `getWidgetNodeText` | function | `(widget: Gtk.Widget) => string \| null` | `packages/testing/src/widget-accessible-properties.ts:87` | Returns a widget's own text by trying its label, text, and title getters in order, or null when none produce a value. |
-| `getWidgetTextContent` | function | `(widget: Gtk.Widget) => string \| null` | `packages/testing/src/widget-accessible-properties.ts:161` | — |
+| `getSuggestedQuery` | function | `(widget: Gtk.Widget, variant?: Variant, method?: Method) => Suggestion \| undefined` | `packages/testing/src/suggestions.ts:77` | Computes the recommended query for reaching the given widget, preferring role, then label text, placeholder text, text, display value, and… |
+| `getWidgetErrorMessage` | function | `(widget: Gtk.Widget) => Gtk.Widget[] \| null` | `packages/testing/src/widget-accessible-properties.ts:395` | Returns the widgets a widget's accessible error-message relation points at, or null when it declares none. |
+| `getWidgetInvalidState` | function | `(widget: Gtk.Widget) => Gtk.AccessibleInvalidState \| null` | `packages/testing/src/widget-accessible-properties.ts:383` | Returns the accessible invalid state declared on a widget, or null when it declares none. |
+| `getWidgetNodeText` | function | `(widget: Gtk.Widget) => string \| null` | `packages/testing/src/widget-accessible-properties.ts:86` | Returns a widget's own text by trying its label, text, and title getters in order, or null when none produce a value. |
+| `getWidgetTextContent` | function | `(widget: Gtk.Widget) => string \| null` | `packages/testing/src/widget-accessible-properties.ts:166` | Returns a widget's own text, or the space-joined text of its descendants when it has none of its own, or null when neither produces a value. |
 | `logRoles` | function | `(container: Container) => void` | `packages/testing/src/role-helpers.ts:115` | Prints the accessible roles in a container's tree to the console using prettyRoles. |
 | `logScreenshotPath` | function | `(filepath: string) => void` | `packages/testing/src/screenshot.ts:153` | Prints a clickable file URL for a saved screenshot to the console. |
-| `logWidget` | function | `(container: Container \| Container[], options?: PrettyWidgetOptions) => void` | `packages/testing/src/pretty-widget.ts:230` | Prints one or more widget trees to the console using prettyWidget. |
+| `logWidget` | function | `(container: Container \| Container[], options?: PrettyWidgetOptions) => void` | `packages/testing/src/pretty-widget.ts:231` | Prints one or more widget trees to the console using prettyWidget. |
 | `Matcher` | type | `string \| number \| RegExp \| MatcherFunction` | `packages/testing/src/types.ts:13` | A value used to match widget text: a string or number, a regular expression, or a custom MatcherFunction. |
 | `MatcherFunction` | type | `(content: string, widget: Gtk.Widget) => boolean` | `packages/testing/src/types.ts:11` | A custom matcher predicate: given a candidate widget's normalized text content and the widget itself, returns whether it matches. |
 | `MatcherOptions<T extends Gtk.Widget = Gtk.Widget>` | type | `{ exact?: boolean \| undefined; normalizer?: NormalizerFn \| undefined; trim?: boolean \| undefined; collapseWhitespace?: boolean \| undefined; suggest?: boolean \| undefined; as?: WidgetType<T> \| undefined; } & WaitForOptio…` | `packages/testing/src/types.ts:43` | Options controlling text matching and, for asynchronous queries, polling behavior. |
-| `matchers` | const | `MatcherImplementations` | `packages/testing/src/matchers.ts:110` | The widget assertion matchers keyed by name, suitable for passing to `expect.extend`. |
+| `matchers` | const | `MatcherImplementations` | `packages/testing/src/matchers.ts:154` | The widget assertion matchers keyed by name, suitable for passing to `expect.extend`. |
 | `Method` | type | `"Role" \| "LabelText" \| "PlaceholderText" \| "Text" \| "DisplayValue" \| "Name"` | `packages/testing/src/suggestions.ts:16` | The query family a suggestion targets. |
 | `NormalizerFn` | type | `(text: string) => string` | `packages/testing/src/types.ts:15` | Normalizes a widget's text before it is compared against a matcher. |
 | `NormalizerOptions` | type | `{ trim?: boolean \| undefined; collapseWhitespace?: boolean \| undefined; }` | `packages/testing/src/types.ts:23` | Options controlling the default text normalizer. |
 | `PointerInput` | type | `"click" \| "down" \| "up" \| "[MouseLeft]" \| "[MouseLeft>]" \| "[/MouseLeft]"` | `packages/testing/src/user-event/pointer.ts:11` | A pointer action token: a full click (`click`, `[MouseLeft]`), a button press (`down`, `[MouseLeft>]`), or a button release (`up`, `[/Mouse… |
 | `prettyRoles` | function | `(container: Container) => string` | `packages/testing/src/role-helpers.ts:86` | Formats the accessible roles in a container's tree as a readable string, listing each role together with its widgets and their accessible n… |
-| `prettyWidget` | function | `(container: Container, options?: PrettyWidgetOptions) => string` | `packages/testing/src/pretty-widget.ts:202` | Renders a widget tree as an indented, HTML-like string showing each widget's tag, accessible attributes, and text content. |
-| `PrettyWidgetOptions` | type | `{ maxLength?: number; highlight?: boolean; getId?: WidgetIdResolver; maxDepth?: number; }` | `packages/testing/src/pretty-widget.ts:13` | Options controlling how a widget tree is rendered to a string by prettyWidget and logWidget. |
-| `queryAllByDisplayValue` | function | `(container: Container, value: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:521` | Finds every widget whose current display value matches. |
-| `queryAllByLabelText` | function | `(container: Container, text: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:455` | Finds every widget associated with a label whose text matches: a Gtk.Label mnemonic target, the widget's own accessible label, or its label… |
-| `queryAllByName` | function | `(container: Container, name: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:487` | Finds every widget whose widget name matches. |
-| `queryAllByPlaceholderText` | function | `(container: Container, text: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:501` | Finds every widget whose placeholder text matches. |
-| `queryAllByRole` | function | `(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:386` | Finds every widget under the container whose accessible role matches `role` and that satisfies the given options. |
-| `queryAllByText` | function | `(container: Container, text: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:472` | Finds every widget whose rendered text content matches. |
-| `queryAllControllers` | function | `<T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: ControllerConstructor<T>) => T[]` | `packages/testing/src/user-event/controller.ts:5` | — |
-| `queryByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:213` | Returns the single widget with a matching display value, or null when none match. |
-| `queryByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:137` | Returns the single widget with matching associated label text, or null when none match. |
-| `queryByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:175` | Returns the single widget with a matching widget name, or null when none match. |
-| `queryByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:194` | Returns the single widget with matching placeholder text, or null when none match. |
-| `queryByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:115` | Returns the single widget with a matching accessible role and options, or null when none match. |
-| `queryByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:156` | Returns the single widget with matching rendered text content, or null when none match. |
-| `queryController` | function | `<T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: ControllerConstructor<T>) => T \| null` | `packages/testing/src/user-event/controller.ts:24` | — |
-| `registerMatchers` | function | `() => void` | `packages/testing/src/matchers.ts:571` | Registers the widget matchers on the global `expect`, when one is available. |
+| `prettyWidget` | function | `(container: Container, options?: PrettyWidgetOptions) => string` | `packages/testing/src/pretty-widget.ts:203` | Renders a widget tree as an indented, HTML-like string showing each widget's tag, accessible attributes, and text content. |
+| `PrettyWidgetOptions` | type | `{ maxLength?: number; highlight?: boolean; getId?: WidgetIdResolver; maxDepth?: number; }` | `packages/testing/src/pretty-widget.ts:14` | Options controlling how a widget tree is rendered to a string by prettyWidget and logWidget. |
+| `queryAllByDisplayValue` | function | `(container: Container, value: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:522` | Finds every widget whose current display value matches. |
+| `queryAllByLabelText` | function | `(container: Container, text: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:456` | Finds every widget associated with a label whose text matches: a Gtk.Label mnemonic target, the widget's own accessible label, or its label… |
+| `queryAllByName` | function | `(container: Container, name: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:488` | Finds every widget whose widget name matches. |
+| `queryAllByPlaceholderText` | function | `(container: Container, text: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:502` | Finds every widget whose placeholder text matches. |
+| `queryAllByRole` | function | `(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:387` | Finds every widget under the container whose accessible role matches `role` and that satisfies the given options. |
+| `queryAllByText` | function | `(container: Container, text: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:473` | Finds every widget whose rendered text content matches. |
+| `queryAllControllers` | function | `<T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: ControllerConstructor<T>) => T[]` | `packages/testing/src/user-event/controller.ts:13` | Returns every controller of the given type attached to a widget, in the order GTK4 reports them. |
+| `queryByDisplayValue` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, value: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:214` | Returns the single widget with a matching display value, or null when none match. |
+| `queryByLabelText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:138` | Returns the single widget with matching associated label text, or null when none match. |
+| `queryByName` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, name: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:176` | Returns the single widget with a matching widget name, or null when none match. |
+| `queryByPlaceholderText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:195` | Returns the single widget with matching placeholder text, or null when none match. |
+| `queryByRole` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:116` | Returns the single widget with a matching accessible role and options, or null when none match. |
+| `queryByText` | function | `<T extends Gtk.Widget = Gtk.Widget>(container: Container, text: Matcher, options?: MatcherOptions<T> \| undefined) => T \| null` | `packages/testing/src/queries.ts:157` | Returns the single widget with matching rendered text content, or null when none match. |
+| `queryController` | function | `<T extends Gtk.EventController>(widget: Gtk.Widget, controllerType: ControllerConstructor<T>) => T \| null` | `packages/testing/src/user-event/controller.ts:39` | Returns the first controller of the given type attached to a widget. |
+| `registerMatchers` | function | `() => void` | `packages/testing/src/matchers.ts:615` | Registers the widget matchers on the global `expect`, when one is available. |
 | `render` | function | `<Q extends QueryMap = Record<never, never>>(element: ReactNode, options?: RenderOptions<Q>) => Promise<RenderResult<Q>>` | `packages/testing/src/render.tsx:163` | Renders a React element into a GTK4 widget tree and returns queries scoped to it along with controls for rerendering and unmounting. |
 | `renderHook<Result>` | function | `{ <Result>(callback: () => Result, options?: RenderHookOptions<undefined>): Promise<RenderHookResult<Result, undefined>>; <Result, Props>(callback: (props: Props) => Result, options: RenderHookOptions<Props>): Promise<R…` | `packages/testing/src/render-hook.tsx:13` | Renders a test component that calls the given hook, exposing its latest return value along with rerender and unmount controls. |
-| `RenderHookOptions<Props>` | type | `{ wrapper?: WrapperComponent; } & (undefined extends Props ? { initialProps?: Props; } : { initialProps: Props; })` | `packages/testing/src/types.ts:186` | Options for renderHook: an optional wrapper and the initial props (required unless the props type permits undefined). |
-| `RenderHookResult<Result, Props>` | type | `{ result: { current: Result }; rerender: (newProps?: Props) => Promise<void>; unmount: () => Promise<void>; }` | `packages/testing/src/types.ts:200` | The result of renderHook: the latest hook return value plus functions to rerender with new props and to unmount. |
-| `RenderOptions<Q extends QueryMap = Record<never, never>>` | type | `{ container?: Gtk.Widget \| RootElement \| undefined; baseElement?: Container \| undefined; wrapper?: WrapperComponent \| undefined; reactStrictMode?: boolean \| undefined; animations?: boolean \| undefined; onCaughtError?: (…` | `packages/testing/src/types.ts:139` | Options for render: the container and base element to mount into, an optional wrapper, React behavior toggles, error callbacks, and custom… |
+| `RenderHookOptions<Props>` | type | `{ wrapper?: WrapperComponent; } & (undefined extends Props ? { initialProps?: Props; } : { initialProps: Props; })` | `packages/testing/src/types.ts:222` | Options for renderHook: an optional wrapper and the initial props (required unless the props type permits undefined). |
+| `RenderHookResult<Result, Props>` | type | `{ result: { current: Result }; rerender: (newProps?: Props) => Promise<void>; unmount: () => Promise<void>; }` | `packages/testing/src/types.ts:236` | The result of renderHook: the latest hook return value plus functions to rerender with new props and to unmount. |
+| `RenderOptions<Q extends QueryMap = Record<never, never>>` | type | `{ container?: Gtk.Widget \| RootElement \| undefined; baseElement?: Container \| undefined; wrapper?: WrapperComponent \| undefined; reactStrictMode?: boolean \| undefined; animations?: boolean \| undefined; onCaughtError?: (…` | `packages/testing/src/types.ts:165` | Options for render: the container and base element to mount into, an optional wrapper, React behavior toggles, error callbacks, and custom… |
 | `RenderResult<Q extends QueryMap = Record<never, never>>` | type | `BoundQueries & BoundCustomQueries<Q> & DebugUtilities & { container: Gtk.Widget; baseElement: Container; unmount: () => Promise<void>; rerender: (element: ReactNode) => Promise<void>; }` | `packages/testing/src/bound-queries.ts:23` | The result of a render call: queries scoped to the rendered tree, debug utilities, and controls for updating or tearing down the render. |
 | `screen` | const | `Screen` | `packages/testing/src/screen.ts:21` | Queries and debug utilities bound to the most recent render, scoped to the current toplevel windows. |
 | `Screen` | type | `BoundQueries & DebugUtilities` | `packages/testing/src/bound-queries.ts:15` | The global screen object's shape: built-in queries scoped to the current toplevels, plus debug utilities. |
 | `screenshot` | function | `(widget: Gtk.Widget, options?: ScreenshotOptions) => Promise<ScreenshotResult>` | `packages/testing/src/screenshot.ts:68` | Captures a PNG snapshot of a widget, retrying until it has a paintable size. |
-| `ScreenshotOptions` | type | `Pick<WaitForOptions, "timeout" \| "interval"> & { scale?: number; }` | `packages/testing/src/types.ts:171` | Options for capturing a screenshot: the poll timeout and interval, plus a rendering scale factor. |
-| `ScreenshotResult` | type | `{ data: string; mimeType: string; width: number; height: number; }` | `packages/testing/src/types.ts:163` | A captured screenshot: base64-encoded image data, its MIME type, and pixel dimensions. |
+| `ScreenshotOptions` | type | `Pick<WaitForOptions, "timeout" \| "interval"> & { scale?: number; }` | `packages/testing/src/types.ts:207` | Options for capturing a screenshot: the poll timeout and interval, plus a rendering scale factor. |
+| `ScreenshotResult` | type | `{ data: string; mimeType: string; width: number; height: number; }` | `packages/testing/src/types.ts:195` | A captured screenshot: base64-encoded image data, its MIME type, and pixel dimensions. |
 | `ScrollDelta` | type | `{ x?: number; y?: number; }` | `packages/testing/src/user-event/adjustment.ts:5` | A scroll distance in pixels along each axis. |
 | `Suggestion` | type | `{ queryName: Method; queryMethod: string; variant: Variant; toString: () => string; }` | `packages/testing/src/suggestions.ts:22` | A suggested query for reaching a widget, including its family, variant, method name, and a `toString` that renders the full call. |
-| `TabOptions` | type | `{ shift?: boolean; }` | `packages/testing/src/user-event/keyboard.ts:10` | Options for tab: when `shift` is set, move focus backward instead of forward. |
+| `TabOptions` | type | `{ shift?: boolean; }` | `packages/testing/src/user-event/keyboard.ts:10` | Options for `userEvent.tab`. |
 | `TextContentOptions` | type | `{ normalizeWhitespace?: boolean \| undefined; }` | `packages/testing/src/matchers.ts:32` | Options controlling how `toHaveTextContent` normalizes the text it reads. |
 | `TextExpectation` | type | `string \| RegExp` | `packages/testing/src/matchers.ts:29` | The expected value for a text matcher: an exact string or a regular expression. |
-| `TypeOptions` | type | `{ skipClick?: boolean \| undefined; initialSelectionStart?: number \| undefined; initialSelectionEnd?: number \| undefined; }` | `packages/testing/src/user-event/text.ts:9` | Options for type. |
-| `userEvent` | const | `UserEvent` | `packages/testing/src/user-event/index.ts:48` | High-level helpers that drive widgets by dispatching the same events and gestures GTK4 delivers when someone clicks, types, or drags. |
+| `TypeOptions` | type | `{ skipClick?: boolean \| undefined; initialSelectionStart?: number \| undefined; initialSelectionEnd?: number \| undefined; }` | `packages/testing/src/user-event/text.ts:9` | Options for `userEvent.type`. |
+| `userEvent` | const | `UserEvent` | `packages/testing/src/user-event/index.ts:75` | High-level helpers that drive widgets by dispatching the same events and gestures GTK4 delivers when someone clicks, types, or drags. |
 | `UserEvent` | type | `{ click: typeof click; dblClick: typeof dblClick; tripleClick: typeof tripleClick; tab: typeof tab; type: typeof type; clear: typeof clear; copy: typeof copy; cut: typeof cut; paste: typeof paste; selectOptions: typeof…` | `packages/testing/src/user-event/index.ts:15` | The set of user interaction helpers exposed by userEvent, covering clicks, typing, keyboard, pointer, gestures, selection, and scrolling. |
 | `Variant` | type | `"get" \| "getAll" \| "query" \| "queryAll" \| "find" \| "findAll"` | `packages/testing/src/suggestions.ts:14` | The query variant a suggestion targets. |
-| `waitFor` | function | `<T>(callback: () => T \| Promise<T>, options?: WaitForOptions) => Promise<T>` | `packages/testing/src/wait-for.ts:78` | Repeatedly invokes a callback until it succeeds without throwing or the timeout elapses, retrying on each rejection at a fixed interval. |
-| `waitForElementToBeRemoved` | function | `(elementOrCallback: ElementOrCallback, options?: WaitForOptions) => Promise<void>` | `packages/testing/src/wait-for.ts:131` | Waits until the given widget or widgets are detached from the tree. |
+| `waitFor` | function | `<T>(callback: () => T \| Promise<T>, options?: WaitForOptions) => Promise<T>` | `packages/testing/src/wait-for.ts:80` | Repeatedly invokes a callback until it succeeds without throwing or the timeout elapses, retrying on each rejection at a fixed interval. |
+| `waitForElementToBeRemoved` | function | `(elementOrCallback: ElementOrCallback, options?: WaitForOptions) => Promise<void>` | `packages/testing/src/wait-for.ts:133` | Waits until the given widget or widgets are detached from the tree. |
 | `WaitForOptions` | type | `{ timeout?: number \| undefined; interval?: number \| undefined; onTimeout?: ((error: Error) => Error) \| undefined; stackTraceError?: Error \| undefined; }` | `packages/testing/src/types.ts:31` | Options controlling how asynchronous queries and waits poll for a condition. |
 | `WidgetType<T extends Gtk.Widget = Gtk.Widget>` | type | `abstract new (...args: never[]) => T` | `packages/testing/src/types.ts:20` | A widget class usable as a query's `as` constraint, such as `Gtk.Button`. |
-| `WindowSelector` | type | `number \| string \| RegExp \| undefined` | `packages/testing/src/types.ts:180` | Selects the window to screenshot by index, or by title (exact string or regular expression); undefined targets the default window. |
+| `WindowSelector` | type | `number \| string \| RegExp \| undefined` | `packages/testing/src/types.ts:216` | Selects the window to screenshot by index, or by title (exact string or regular expression); undefined targets the default window. |
 | `within` | function | `<Q extends QueryMap = Record<never, never>>(container: Container, queries?: Q) => BoundQueries & BoundCustomQueries<Q>` | `packages/testing/src/within.ts:25` | Binds the built-in queries, and any custom queries, to a specific container so they search only within that scope. |
-| `WrapperComponent` | type | `ComponentType<{ children: ReactNode; }>` | `packages/testing/src/types.ts:85` | A React component that wraps rendered content, receiving it as its children. |
+| `WrapperComponent` | type | `ComponentType<{ children: ReactNode; }>` | `packages/testing/src/types.ts:95` | A React component that wraps rendered content, receiving it as its children. |
 
 ### `ByRoleValue` members
 
@@ -3379,5 +3379,5 @@ Entrypoint: `packages/css/src/index.ts`
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `css` | function | `(...args: CSSInterpolation[]) => string` | `packages/css/src/index.ts:8` | Serializes the given style interpolations, inserts the resulting rules into the default stylesheet, and returns the generated GTK4 CSS clas… |
-| `cx` | function | `(...classNames: CxToken[]) => string[]` | `packages/css/src/index.ts:13` | Combines class name tokens, filtering out falsy values and merging any GTKX-registered styles into a single generated class. |
+| `cx` | function | `(...classNames: CxToken[]) => string[]` | `packages/css/src/index.ts:13` | Filters out falsy tokens and returns the remaining class names, collapsing two or more GTKX-generated classes into one merged class where l… |
 | `injectGlobal` | function | `(...args: CSSInterpolation[]) => void` | `packages/css/src/index.ts:18` | Serializes and inserts the given styles into the default stylesheet globally, without scoping them to a generated class. |

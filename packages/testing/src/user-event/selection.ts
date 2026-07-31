@@ -134,6 +134,14 @@ const runSelectionEvent = (
         byRole(widget, valueArray);
     });
 
+/**
+ * Selects the items at the given positions through a list, grid, or column view's selection model,
+ * by setting the active item of a drop-down or combo box, or by selecting list box rows. An empty
+ * array clears a view's selection.
+ *
+ * @throws When a view has no selection model, when a combo box is given more than one position, or
+ * when the widget is neither a view nor something with the combo box or list role.
+ */
 const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, selectInListView, selectByRole);
 
@@ -153,6 +161,13 @@ const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     applyListBoxRows(widget, valueArray, unselectListBoxRow);
 };
 
+/**
+ * Unselects the items at the given positions in a list, grid, or column view, or the rows at those
+ * indices in a Gtk.ListBox.
+ *
+ * @throws When a view has no selection model, or when the widget is neither one of those views nor
+ * a Gtk.ListBox.
+ */
 const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, deselectInListView, deselectByRole);
 

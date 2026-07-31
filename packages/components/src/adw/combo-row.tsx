@@ -4,6 +4,7 @@ import type { DropDownBaseProps } from "../internal/drop-down.js";
 import type { ComboRowProps } from "./types.js";
 import { DropDownBase } from "../internal/drop-down.js";
 
+/** Call signature of {@link ComboRow}, generic in the item and section value types. */
 type ComboRowComponent = <T = unknown, S = unknown>(props: ComboRowProps<T, S>) => ReactNode;
 
 /**

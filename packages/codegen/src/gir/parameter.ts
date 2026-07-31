@@ -53,10 +53,6 @@ const SCOPES: Set<CallbackScope> = new Set(["call", "notified", "async", "foreve
 const transferOwnership = (node: RawNode): ParameterTransfer =>
     parseEnumAttr(attr(node, "transfer-ownership"), TRANSFERS, "none", "transfer-ownership");
 
-// `allow-none` is the legacy spelling of two different attributes: on an in-parameter it means the
-// value may be NULL (`nullable`), but on an out-parameter it means the caller may pass a NULL
-// location (`optional`). Folding it into `nullable` for an out-parameter would claim the returned
-// value can be null for the 494 out-parameters across the installed GIRs that only say `allow-none`.
 const isInDirection = (node: RawNode): boolean =>
     parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction") === "in";
 

@@ -12,6 +12,7 @@ type PropertyAccessor = {
     pspec: object;
 };
 
+/** A `GObject.ParamSpec` wrapper describing one property's name, type, flags and default. */
 type PropertySpec = object;
 type NotifyingObject = { notify?: (propertyName: string) => void };
 

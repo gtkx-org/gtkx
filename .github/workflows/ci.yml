@@ -38,10 +38,6 @@ jobs:
               - '**'
               - '!**/*.md'
 
-  # The image is built once per architecture on a native runner (QEMU emulation
-  # would have to compile cargo-llvm-cov, which blows any sane budget)
-  # and the per-arch digests are merged into one manifest list by `image-manifest`.
-  # arm64 exists for publish.yml's native addon build on ubuntu-24.04-arm.
   image:
     strategy:
       fail-fast: false
@@ -99,8 +95,6 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # Always runs so downstream jobs get `ref` even on fork PRs, where nothing was
-  # pushed and `pull-image` falls back to building the Dockerfile locally.
   image-manifest:
     needs: image
     runs-on: ubuntu-latest
@@ -272,10 +266,6 @@ jobs:
       - name: Extract the project's GTK 4.22 GIR closure
         shell: bash
         run: |
-          # Replay the CI image's GTK-from-proposed install in a throwaway
-          # ubuntu:26.04 container (GIR is arch-independent XML) on a cheap runner,
-          # so the codspeed-macro bench can consume it as an artifact instead of
-          # paying an apt/Docker cost on the metered macro minutes.
           mkdir -p gir
           docker run --rm -v "$PWD/gir:/gir" ubuntu:26.04 bash -c '
             set -e
@@ -330,11 +320,6 @@ jobs:
             util-linux libglib2.0-bin
           pkg-config --modversion gtk4
 
-      # The macro runner's apt GTK is too old to type-check the project's newer API
-      # surface (loadFromString, newer Adw easings, ...). The `gir` job extracted
-      # the exact GIR the project targets on a cheap runner; download it here so the
-      # macro job stays fast and Docker-free. A runtime polyfill
-      # (tests/bench-setup.ts) bridges the newer surface back to the older runtime.
       - name: Download the matching GTK 4.22 GIR
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:

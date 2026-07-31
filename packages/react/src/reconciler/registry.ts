@@ -5,61 +5,85 @@ type Props = Record<string, unknown>;
 
 /** Per-child values a slot hook receives while placing or moving one child. */
 type PlaceInfo = {
+    /** Name of the slot being filled: `children`, or the prop the child was nested under. */
     slot: string;
+    /** Position of the child among the slot's children. */
     index: number;
+    /** Object of the preceding child in the slot, or null when the child comes first. */
     sibling: GObject.Object | null;
+    /** Object adopted for this child by an earlier attach, or null before it has one. */
     adopted: GObject.Object | null;
+    /** Props of the child element. */
     props: Props;
+    /** Value `initialize` returned for this behavior on the parent. */
     context: unknown;
 };
 
 /** Per-child values a slot hook receives while removing one child. */
 type DetachInfo = {
+    /** Name of the slot the child is leaving. */
     slot: string;
+    /** Object the container adopted for this child, or null when it adopted none. */
     adopted: GObject.Object | null;
+    /** Props of the child element. */
     props: Props;
+    /** Value `initialize` returned for this behavior on the parent. */
     context: unknown;
 };
 
 /**
- * Customizes how one element type places children and applies props. Every hook receives the
- * GObject instance and a private per-node `context` built once by `initialize`. A slot hook
- * claims a child by returning a non-`undefined` value; that value, or `resolve`, is the object
- * the container adopts for the child. `update` returns the prop names it consumed so those props
- * are not also set as plain GObject properties. `create` builds the GObject for types whose
- * constructor does more than set properties, and is consulted for its own type only, never
- * inherited by subtypes.
+ * Customizes how one element type places children and applies props. Hooks other than `create` receive the
+ * GObject instance; `update`, `flush`, `mount` and `unmount` also take the private per-node context
+ * `initialize` built, and `attach`, `reorder` and `detach` read it off their info object. Subtypes inherit a
+ * type's behaviors, except for `create`, which is consulted only for the type it is registered on.
  */
 type ElementBehavior<T extends GObject.Object = GObject.Object> = {
+    /** Builds the GObject from its construct props, for types whose constructor does more than set properties. */
     create?: (props: Props) => GObject.Object;
+    /** Builds the private per-node context the other hooks receive, once per node. */
     initialize?: (object: T) => unknown;
+    /** Places a child, claiming it by returning anything other than `undefined`. */
     attach?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown;
+    /** Moves an already-attached child; without it, the whole slot is detached and re-attached in order. */
     reorder?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown;
+    /** Removes a child this behavior attached. */
     detach?: (object: T, child: GObject.Object, info: DetachInfo) => void;
+    /** Returns the object the container adopts for a child, overriding whatever `attach` returned. */
     resolve?: (object: T, child: GObject.Object) => GObject.Object | null;
+    /** Applies changed props and returns the names it consumed, which are then not set as GObject properties. */
     update?: (object: T, prev: Props, next: Props, context: unknown) => Iterable<string> | undefined;
+    /** Runs after the commit that touched the node, once every child has been placed. */
     flush?: (object: T, context: unknown) => void;
+    /** Runs once the node and its initial children are attached. */
     mount?: (object: T, context: unknown) => void;
+    /** Runs when React deletes the node. */
     unmount?: (object: T, context: unknown) => void;
+    /** Props to withhold from the constructor, leaving them for a later hook to apply. */
     deferred?: string[];
 };
 
 /** A named export in a module, referenced as plain data (the module is never imported at runtime). */
-type ModuleExport = { module: string; export: string };
+type ModuleExport = {
+    /** Specifier the export is imported from. */
+    module: string;
+    /** Identifier the module exports it under. */
+    export: string;
+};
 
 /**
- * Per-element configuration keyed by GLib type name: whether the element is lazy (its GObject is
- * created by its parent container, as pages and layout children are), the custom behaviors bound to
- * its type, an optional component that wraps the generated element, the base props interface its
- * generated props extend, and the GObject properties to leave out of the generated props (those a
- * behavior already writes from children, such as the `child` and `content` properties). `component`,
- * `props` and `omittedProps` are inert at runtime; they are read only by codegen.
+ * How one GLib type is rendered. `component`, `props` and `omittedProps` are inert at runtime; they are
+ * read only by codegen.
  */
 type ElementConfig<T extends GObject.Object = GObject.Object> = {
+    /** The element has no GObject of its own; its parent container creates one, as it does for pages. */
     lazy?: boolean;
+    /** Behaviors bound to the type, consulted in registration order and inherited by its subtypes. */
     behaviors?: ElementBehavior<T>[];
+    /** Component that wraps the generated element. */
     component?: ModuleExport;
+    /** Base props interface the generated props extend. */
     props?: ModuleExport;
+    /** GObject properties to leave out of the generated props, such as those a behavior writes from children. */
     omittedProps?: string[];
 };
 
@@ -69,7 +93,6 @@ type ElementConfig<T extends GObject.Object = GObject.Object> = {
  */
 const ELEMENTS: Record<string, ElementConfig> = {};
 
-/** Props a behavior applies after construction; the constructor is never given them. */
 const deferredProps = (behavior: ElementBehavior): string[] => behavior.deferred ?? [];
 
 const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], isPrepended: boolean): ElementBehavior[] => {
@@ -99,9 +122,9 @@ const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, isPr
 
 /**
  * Merges maps of {@link ElementConfig} keyed by GLib type name into one, concatenating each type's
- * behaviors and omitted props in the order the maps are given (an earlier map's behaviors come first)
- * and taking the last lazy flag, component, and props seen. Use it to combine an app's element config
- * with its behaviors.
+ * behaviors and omitted props in the order the maps are given (an earlier map's behaviors come first),
+ * taking the last component and props seen, and marking a type lazy if any map does. Use it to combine
+ * an app's element config with its behaviors.
  */
 const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>>[]): Record<string, ElementConfig> => {
     const merged: Record<string, ElementConfig> = {};
@@ -115,12 +138,6 @@ const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>>[]): R
     return merged;
 };
 
-/**
- * Registers a map of {@link ElementConfig} keyed by GLib type name, merging each entry into the
- * registry. Behaviors are appended by default (the framework's built-ins register this way); pass
- * `{ prepend: true }` for an app's own configuration so its behaviors are consulted before the
- * built-ins for the same slot, letting it override them regardless of registration order.
- */
 const registerElements = (
     map: Record<string, ElementConfig<never>>,
     options: { prepend?: boolean } = {},
@@ -131,7 +148,7 @@ const registerElements = (
 };
 
 /**
- * Identity helper that types the module named by the `elements` entry of `gtkx.config.ts`, enabling
+ * Identity helper that types the module named by `elements.behaviors` in `gtkx.config.ts`, enabling
  * editor autocompletion and type checking. Key each entry by GLib type name and write each behavior
  * with {@link defineBehavior} so its hooks receive the concrete GObject class.
  */
@@ -150,11 +167,9 @@ const defineElements = (elements: Record<string, ElementConfig<never>>): Record<
  */
 const defineBehavior = <T extends GObject.Object>(hooks: ElementBehavior<T>): ElementBehavior<never> => hooks;
 
-/** Spreads one config across many GLib type names. */
 const forTypes = (types: string[], config: ElementConfig<never>): Record<string, ElementConfig<never>> =>
     Object.fromEntries(types.map((type) => [type, config]));
 
-/** References a base props interface exported from `@gtkx/react/internal`. */
 const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
 
 export {

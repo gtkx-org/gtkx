@@ -4,6 +4,13 @@ import { existsSync } from "node:fs";
 
 const SYSTEM_GIR_PATH = "/usr/share/gir-1.0";
 
+/**
+ * The directories to search for `.gir` files, in precedence order: the config's own `girPath`, then
+ * `GTKX_GIR_PATH`, then `/usr/share/gir-1.0`, then the girdir pkg-config reports for
+ * gobject-introspection-1.0. Duplicates are dropped, and the last two are included only when they exist.
+ *
+ * @throws If pkg-config is installed but fails while being queried.
+ */
 const resolveGirPath = (configGirPath: string[] | undefined): string[] => {
     const paths: string[] = [];
 
