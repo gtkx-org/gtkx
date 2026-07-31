@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
-import { writeDocs } from "../../src/index.js";
+import { writeDocs } from "../../src/internal.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
@@ -134,7 +134,7 @@ describe("writeDocs with omitted props", () => {
             libraries: ["Gtk-4.0"],
             girPath: GIR_PATH,
             outDir,
-            omitProps: { GtkButton: ["child"] },
+            omittedProps: { GtkButton: ["child"] },
         });
 
         const button = page(outDir, join("gtk", "button.md"));

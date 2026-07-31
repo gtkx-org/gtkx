@@ -129,7 +129,7 @@ const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarget => ({
 });
 
 const getOrCreateContext = (node: ElementNode, behavior: ElementBehavior): unknown =>
-    getOrInsert(node.contexts, behavior, () => behavior.createContext?.(node.object));
+    getOrInsert(node.contexts, behavior, () => behavior.initialize?.(node.object));
 
 export {
     ELEMENT_KIND,

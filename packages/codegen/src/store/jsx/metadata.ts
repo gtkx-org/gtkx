@@ -57,10 +57,10 @@ const generateMetadata = (library: Library): string => {
         .map(({ glibName, defaults }) => `    "${glibName}": ${renderDefaultsObject(defaults)},`);
 
     return `${[
-        `export const SIGNALS: Record<string, Record<string, string>> = {\n${signalsEntries.join("\n")}\n};`,
-        `export const CONSTRUCT_ONLY_PROPS: Record<string, Set<string>> = {\n${constructOnlyEntries.join("\n")}\n};`,
-        `export const CONSTRUCT_PROPS: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
-        `export const DEFAULT_PROPS: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
+        `export const signals: Record<string, Record<string, string>> = {\n${signalsEntries.join("\n")}\n};`,
+        `export const constructOnlyProps: Record<string, Set<string>> = {\n${constructOnlyEntries.join("\n")}\n};`,
+        `export const constructProps: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
+        `export const defaultProps: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
     ].join("\n\n")}\n`;
 };
 

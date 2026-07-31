@@ -6,7 +6,9 @@ import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
+import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
+import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
 import { docsSignatureContext, firstSentence, namespaceOrder } from "./render.js";
 import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./symbol-page.js";
@@ -14,6 +16,16 @@ import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./
 type ApiReferenceOptions = {
     libraries: string[];
     girPath: string[];
+    /** Base props interfaces per element, as read by `readBuiltinElements`; without it pages miss them. */
+    props?: ElementProps;
+    /** GObject properties the project omits from generated props; without it pages show props that do not exist. */
+    omittedProps?: OmittedProps;
+};
+
+/** Narrows an `ApiReference.symbols` enumeration. */
+type ApiSymbolQuery = {
+    namespace?: string;
+    kinds?: ApiSymbolKind[];
 };
 
 type ApiSymbolKind = GiSymbolEntry["kind"] | "element";
@@ -89,6 +101,32 @@ const compareNames = (a: string, b: string): number => {
     return a > b ? 1 : 0;
 };
 
+const isQueriedEntry = (
+    entry: SymbolEntry,
+    namespaceFilter: string | undefined,
+    kinds: Set<ApiSymbolKind> | undefined,
+): boolean => {
+    if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) {
+        return false;
+    }
+
+    return kinds === undefined || kinds.has(entry.kind);
+};
+
+const compareApiSymbols = (a: ApiSymbol, b: ApiSymbol): number => {
+    const byNamespace = namespaceOrder(a.namespace).localeCompare(namespaceOrder(b.namespace));
+
+    return byNamespace === 0 ? a.name.localeCompare(b.name) : byNamespace;
+};
+
+/**
+ * Loads the GIR data for the given libraries and indexes every symbol and JSX element in it. The result is
+ * a read-only view: it generates no store and needs none, so a tool can explore the bindings a project would
+ * get without running codegen.
+ *
+ * @param options Which libraries to index, where to find them, and the project's element config.
+ * @returns The indexed reference.
+ */
 const loadApiReference = (options: ApiReferenceOptions): ApiReference => new ApiReference(options);
 
 const functionEntry = (
@@ -275,11 +313,21 @@ class ApiReference {
     private byNamespace: Map<string, SymbolEntry[]> = new Map();
     private elementsByClass: Map<string, string> = new Map();
 
+    private props: ElementProps;
+    private omittedProps: OmittedProps;
+
     constructor(options: ApiReferenceOptions) {
         this.libraries = options.libraries;
+        this.props = options.props ?? {};
+        this.omittedProps = options.omittedProps ?? {};
         this.library = Library.load(options.libraries, options.girPath);
         this.elementContext = createElementPageContext(this.library, (): string | undefined => undefined);
         this.buildIndex();
+    }
+
+    private applyElementConfig(): void {
+        setElementProps(this.props);
+        setOmittedProps(this.omittedProps);
     }
 
     private add(entry: SymbolEntry): void {
@@ -362,6 +410,8 @@ class ApiReference {
 
     private renderPage(entry: SymbolEntry): string {
         if (entry.kind === "element") {
+            this.applyElementConfig();
+
             return renderElementPage(entry.element, this.elementContext);
         }
 
@@ -433,6 +483,16 @@ class ApiReference {
         }
 
         return { outcome: "page", symbol: this.toApiSymbol(entry), markdown: this.renderPage(entry) };
+    }
+
+    symbols(query: ApiSymbolQuery = {}): ApiSymbol[] {
+        const namespaceFilter = query.namespace?.toLowerCase();
+        const kinds = query.kinds === undefined ? undefined : new Set(query.kinds);
+
+        return this.entries
+            .filter((entry) => isQueriedEntry(entry, namespaceFilter, kinds))
+            .map((entry) => this.toApiSymbol(entry))
+            .toSorted(compareApiSymbols);
     }
 
     search(options: ApiSearchOptions): ApiSymbol[] {
@@ -549,4 +609,5 @@ export {
     type ApiNamespaceSummary,
     type ApiLookupResult,
     type ApiSearchOptions,
+    type ApiSymbolQuery,
 };

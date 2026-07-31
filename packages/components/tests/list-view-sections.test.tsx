@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { ListView, type Section } from "@gtkx/components";
+import { type ListSection, ListView } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
@@ -12,7 +12,7 @@ type Row = {
     name: string;
 };
 
-const sectioned: Section<string, Row>[] = [
+const sectioned: ListSection<string, Row>[] = [
     {
         id: "s1",
         value: "Section One",

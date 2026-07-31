@@ -6,7 +6,7 @@ import { omit } from "@gtkx/utils";
 import { useLayoutEffect, useRef } from "react";
 import type { CellSize } from "./internal/cells.js";
 import type { Collection } from "./internal/collection.js";
-import type { Column, ColumnViewProps } from "./types.js";
+import type { ColumnViewColumn, ColumnViewProps } from "./types.js";
 import { HeaderPortals, ItemPortals, useHeaderCells, useItemCells } from "./internal/cells.js";
 import { useCollection } from "./internal/use-collection.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
@@ -20,14 +20,14 @@ type SortProps = {
 type SortTarget = { view: Gtk.ColumnView; column: Gtk.ColumnViewColumn | null };
 
 type ColumnCellsProps = {
-    column: Column<never>;
+    column: ColumnViewColumn<never>;
     collection: Collection;
     expandedIds: string[] | null | undefined;
     size: CellSize;
 };
 
 type ColumnListProps = Omit<ColumnCellsProps, "column"> & {
-    columns: Column<never>[];
+    columns: ColumnViewColumn<never>[];
 };
 
 const COLUMN_VIEW_PROPS = [
@@ -118,7 +118,7 @@ const syncSort = (
     applySort(sorting, target.view, target.column, sortOrder);
 };
 
-const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns: Column<never>[]): void => {
+const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns: ColumnViewColumn<never>[]): void => {
     const sorting = useRef(false);
     const sorter = view?.getSorter() ?? null;
     const columnSorter = sorter instanceof Gtk.ColumnViewSorter ? sorter : null;
@@ -181,7 +181,7 @@ function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): Rea
     const size = { width: -1, height: estimatedItemHeight ?? -1 };
     const { collection, selection } = useCollection(props);
     const headerCells = useHeaderCells(size);
-    const columnList = columns as Column<never>[];
+    const columnList = columns as ColumnViewColumn<never>[];
     useColumnSorting(view, { sortColumn, sortOrder, onSortChanged }, columnList);
 
     return (

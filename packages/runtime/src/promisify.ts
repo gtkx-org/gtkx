@@ -57,11 +57,11 @@ const promisify = <R extends object, T>(
 ): Promise<T> =>
     new Promise<T>((resolve, reject) => {
         const creationStack =
-            process.env.NODE_ENV === "production" ? undefined : new Error("gtkx async operation started here");
+            process.env.NODE_ENV === "production" ? undefined : new Error("GTKX async operation started here");
 
         asyncFn(...leading, tryGetHandle(cancellable), (_source: object | null, asyncResult: object) => {
             settle({ finish, creationStack, resolve, reject }, asyncResult);
         });
     });
 
-export { promisify, type FinishResult };
+export { promisify };

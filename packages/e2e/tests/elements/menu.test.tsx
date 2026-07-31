@@ -1,13 +1,13 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { MenuItem } from "@gtkx/react";
 import * as Gio from "@gtkx/gi/gio";
-import { GMenu } from "@gtkx/jsx/gio";
+import { GMenu, type GMenuProps } from "@gtkx/jsx/gio";
 import { GtkPopoverMenu, GtkPopoverMenuBar } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
 type MenuRef = RefObject<Gtk.PopoverMenu | null>;
+type MenuItem = NonNullable<GMenuProps["items"]>[number];
 
 const FILE_SUBMENU_ITEMS: MenuItem[] = [
     {

@@ -8,7 +8,7 @@ const instance = createCss();
 const css: Css["css"] = instance.css;
 /**
  * Combines class name tokens, filtering out falsy values and merging any
- * gtkx-registered styles into a single generated class.
+ * GTKX-registered styles into a single generated class.
  */
 const cx: Css["cx"] = instance.cx;
 /**

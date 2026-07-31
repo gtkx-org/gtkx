@@ -32,7 +32,7 @@ const SINGLE_CHILD_TYPES: string[] = [
 const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     ...forTypes(SINGLE_CHILD_TYPES, {
         props: internal("ChildrenProps"),
-        omitProps: ["child"],
+        omittedProps: ["child"],
     }),
     ...forTypes(["GtkHeaderBar", "GtkActionBar"], {
         props: internal("GtkHeaderBarProps"),
@@ -40,7 +40,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     GtkWindow: {
         props: internal("ChildrenProps"),
         component: internal("createWindowComponent"),
-        omitProps: ["child"],
+        omittedProps: ["child"],
     },
     GtkLabel: {
         props: internal("ChildrenProps"),
@@ -86,7 +86,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     },
     GtkOverlay: {
         props: internal("GtkOverlayProps"),
-        omitProps: ["child"],
+        omittedProps: ["child"],
     },
     GtkShortcutController: {
         props: internal("GtkShortcutControllerProps"),

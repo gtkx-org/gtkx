@@ -34,7 +34,7 @@ const defaultConfig: Config = {
 const currentConfig: Config = { ...defaultConfig };
 
 function defaultGetElementError(message: string): Error {
-    return new GtkxElementError(message);
+    return new ElementError(message);
 }
 
 /**
@@ -55,8 +55,8 @@ const configure = (newConfig: Partial<Config> | ConfigFn): void => {
     Object.assign(currentConfig, updates);
 };
 
-class GtkxElementError extends Error {
-    override name = "GtkxElementError";
+class ElementError extends Error {
+    override name = "ElementError";
 }
 
 export { getConfig, configure, type Config, type ConfigFn };

@@ -1,4 +1,4 @@
-import { type Column, ColumnView, ListView } from "@gtkx/components";
+import { ColumnView, type ColumnViewColumn, ListView } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -419,7 +419,7 @@ const renderKeyInfoCell =
             </GtkLabel>
         );
 
-function toggleableColumn(spec: KeyInfoColumnSpec, columnVisibility: ColumnVisibility): Column<KeyInfo> {
+function toggleableColumn(spec: KeyInfoColumnSpec, columnVisibility: ColumnVisibility): ColumnViewColumn<KeyInfo> {
     return {
         id: spec.id,
         title: spec.title,
@@ -432,7 +432,7 @@ function toggleableColumn(spec: KeyInfoColumnSpec, columnVisibility: ColumnVisib
     };
 }
 
-function renderSettingsColumns({ columnVisibility, onValueEdit }: SettingsColumnsProps): Column<KeyInfo>[] {
+function renderSettingsColumns({ columnVisibility, onValueEdit }: SettingsColumnsProps): ColumnViewColumn<KeyInfo>[] {
     return [
         { id: "name", title: "Name", renderCell: renderKeyInfoCell((keyInfo) => keyInfo.name) },
         {

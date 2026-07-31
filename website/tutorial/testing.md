@@ -200,7 +200,7 @@ screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Add task" });
 and the failure prints the accessible tree grouped by role:
 
 ```
-GtkxElementError: Unable to find an element with role 'BUTTON' and name 'Add task'
+ElementError: Unable to find an element with role 'BUTTON' and name 'Add task'
 
 Here are the accessible roles:
 

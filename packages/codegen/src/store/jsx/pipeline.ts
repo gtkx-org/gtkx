@@ -5,6 +5,7 @@ import { ImportsBuilder } from "../../writer/imports.js";
 import { type ElementComponentOverrides, generateElementComponentsSection } from "./element-components.js";
 import { type ElementProps, setElementProps } from "./element-prop-imports.js";
 import { type LazyElementSpec, lazyElementSpecs } from "./element-prop-types.js";
+import { collectGeneratedElements, type GeneratedElement } from "./generated-elements.js";
 import { buildGirIndex } from "./gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
@@ -20,13 +21,14 @@ type JsxFiles = {
     namespaces: JsxNamespaceFile[];
     metadata: string;
     intrinsicElementCount: number;
+    elements: GeneratedElement[];
 };
 
 type JsxGenerationOptions = {
     reactSubexports?: string[];
     components?: ElementComponentOverrides;
     props?: ElementProps;
-    omitProps?: OmittedProps;
+    omittedProps?: OmittedProps;
     lazyElements?: string[];
 };
 
@@ -49,7 +51,7 @@ type JsxNamespaceContext = {
 
 const generateJsxFiles = (library: Library, options: JsxGenerationOptions = {}): JsxFiles => {
     setElementProps(options.props ?? {});
-    setOmittedProps(options.omitProps ?? {});
+    setOmittedProps(options.omittedProps ?? {});
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const intrinsicElementByGlibName = new Map(intrinsicElements.map((entry) => [entry.glibName, entry]));
     const girIndex = buildGirIndex(library);
@@ -66,7 +68,7 @@ const generateJsxFiles = (library: Library, options: JsxGenerationOptions = {}):
 
     const metadata = generateMetadata(library);
 
-    return { namespaces, metadata, intrinsicElementCount };
+    return { namespaces, metadata, intrinsicElementCount, elements: collectGeneratedElements(intrinsicElements) };
 };
 
 const orderedIntrinsicNamespaces = (intrinsicElements: GlibNamedClass[]): GirNamespace[] => {

@@ -25,11 +25,11 @@ const preferencesRowProps = adw("AdwPreferencesRowProps");
 const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     ...forTypes(CHILD_SETTER_TYPES, {
         props: childrenProps,
-        omitProps: ["child"],
+        omittedProps: ["child"],
     }),
     ...forTypes(CONTENT_SETTER_TYPES, {
         props: childrenProps,
-        omitProps: ["content"],
+        omittedProps: ["content"],
     }),
     AdwViewStackPage: {
         lazy: true,
@@ -43,19 +43,19 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwDialog: {
         props: breakpointsProps,
         component: adw("createDialogComponent"),
-        omitProps: ["child"],
+        omittedProps: ["child"],
     },
     AdwApplicationWindow: {
         props: breakpointsProps,
-        omitProps: ["content"],
+        omittedProps: ["content"],
     },
     AdwWindow: {
         props: breakpointsProps,
-        omitProps: ["content"],
+        omittedProps: ["content"],
     },
     AdwBreakpointBin: {
         props: breakpointsProps,
-        omitProps: ["child"],
+        omittedProps: ["child"],
     },
     AdwActionRow: {
         props: preferencesRowProps,
@@ -68,7 +68,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     },
     AdwNavigationSplitView: {
         props: childrenProps,
-        omitProps: ["content"],
+        omittedProps: ["content"],
     },
     AdwLeaflet: {
         props: childrenProps,
@@ -105,7 +105,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     },
     AdwToolbarView: {
         props: adw("AdwToolbarViewProps"),
-        omitProps: ["content"],
+        omittedProps: ["content"],
     },
     AdwHeaderBar: {
         props: internal("GtkHeaderBarProps"),

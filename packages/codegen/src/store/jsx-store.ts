@@ -2,13 +2,11 @@ import type { JsxNamespaceFile } from "./jsx/pipeline.js";
 import type { RawFile } from "./store-fs.js";
 import { buildManifest, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
-type JsxStoreOptions = StoreOptions;
-
 const writeJsxStore = (
-    options: JsxStoreOptions,
+    options: StoreOptions,
     namespaces: JsxNamespaceFile[],
     metadata: string,
-    fingerprint: RawFile,
+    rawFiles: RawFile[],
 ): void => {
     const exportsMap: Record<string, unknown> = {
         "./metadata": subpathExport("metadata"),
@@ -31,9 +29,9 @@ const writeJsxStore = (
             exports: exportsMap,
             peerDependencies: { "@gtkx/gi": "*", "@gtkx/react": "*", react: "*" },
         }),
-        rawFiles: [fingerprint],
+        rawFiles,
         configEnv: true,
     });
 };
 
-export { writeJsxStore, type JsxStoreOptions };
+export { writeJsxStore };

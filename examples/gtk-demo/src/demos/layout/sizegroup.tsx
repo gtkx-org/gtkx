@@ -1,34 +1,65 @@
-import { DropDown, SizeGroup } from "@gtkx/components";
+import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkCheckButton, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
-import { useState } from "react";
+import { GtkBox, GtkCheckButton, GtkFrame, GtkLabel, GtkSizeGroup } from "@gtkx/jsx/gtk";
+import { type Dispatch, type ReactNode, type SetStateAction, useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";
 
-type DropdownRowProps = {
+type Selection = Record<string, string>;
+type Dropdowns = Record<string, Gtk.DropDown | null>;
+
+type RowSpec = {
     labelText: string;
-    selectedId: string;
     options: string[];
-    onSelectionChanged: (id: string) => void;
 };
 
-type ColorFrameProps = {
-    foreground: string;
-    background: string;
-    onForeground: (id: string) => void;
-    onBackground: (id: string) => void;
+type FrameSpec = {
+    name: string;
+    label: string;
+    rows: RowSpec[];
 };
 
-type LineFrameProps = {
-    dashing: string;
-    lineEnd: string;
-    onDashing: (id: string) => void;
-    onLineEnd: (id: string) => void;
+type RowState = {
+    selection: Selection;
+    dropdowns: Dropdowns;
+    setSelection: Dispatch<SetStateAction<Selection>>;
+    setDropdowns: Dispatch<SetStateAction<Dropdowns>>;
+};
+
+type DropdownRowProps = RowState & {
+    row: RowSpec;
+};
+
+type OptionsFrameProps = RowState & {
+    frame: FrameSpec;
 };
 
 const COLOR_OPTIONS = ["Red", "Green", "Blue"];
 const DASH_OPTIONS = ["Solid", "Dashed", "Dotted"];
 const END_OPTIONS = ["Square", "Round", "Double Arrow"];
+
+const FRAMES: FrameSpec[] = [
+    {
+        name: "color-options-frame",
+        label: "Color Options",
+        rows: [
+            { labelText: "_Foreground", options: COLOR_OPTIONS },
+            { labelText: "_Background", options: COLOR_OPTIONS },
+        ],
+    },
+    {
+        name: "line-options-frame",
+        label: "Line Options",
+        rows: [
+            { labelText: "_Dashing", options: DASH_OPTIONS },
+            { labelText: "_Line ends", options: END_OPTIONS },
+        ],
+    },
+];
+
+const INITIAL_SELECTION: Selection = Object.fromEntries(
+    FRAMES.flatMap((frame) => frame.rows).map((row) => [row.labelText, row.options[0] ?? ""]),
+);
 
 const sizegroupDemo: Demo = {
     id: "sizegroup",
@@ -47,29 +78,45 @@ const sizegroupDemo: Demo = {
     resizable: false,
 };
 
-const DropdownRow = ({ labelText, selectedId, options, onSelectionChanged }: DropdownRowProps) => {
-    const [dropdown, setDropdown] = useState<Gtk.DropDown | null>(null);
+const groupedDropdowns = (dropdowns: Dropdowns): Gtk.Widget[] =>
+    Object.values(dropdowns).filter((dropdown) => dropdown !== null);
+
+function DropdownRow({ row, selection, dropdowns, setSelection, setDropdowns }: DropdownRowProps): ReactNode {
+    const { labelText, options } = row;
+
+    const handleSelectionChanged = useCallback(
+        (id: string) => {
+            setSelection((previous) => ({ ...previous, [labelText]: id }));
+        },
+        [labelText, setSelection],
+    );
+
+    const captureDropdown = useCallback(
+        (dropdown: Gtk.DropDown | null) => {
+            setDropdowns((previous) => ({ ...previous, [labelText]: dropdown }));
+        },
+        [labelText, setDropdowns],
+    );
 
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={10}>
-            <GtkLabel useUnderline halign={Gtk.Align.START} hexpand mnemonicWidget={dropdown}>
+            <GtkLabel useUnderline halign={Gtk.Align.START} hexpand mnemonicWidget={dropdowns[labelText]}>
                 {labelText}
             </GtkLabel>
-            <SizeGroup.Child
-                component={DropDown}
-                ref={setDropdown}
+            <DropDown
+                ref={captureDropdown}
                 halign={Gtk.Align.END}
                 valign={Gtk.Align.BASELINE_FILL}
-                selectedId={selectedId}
-                onSelectionChanged={onSelectionChanged}
+                selectedId={selection[labelText]}
+                onSelectionChanged={handleSelectionChanged}
                 items={options.map((option) => ({ id: option, value: option }))}
             />
         </GtkBox>
     );
-};
+}
 
-const renderColorFrame = ({ foreground, background, onForeground, onBackground }: ColorFrameProps) => (
-    <GtkFrame name="color-options-frame" label="Color Options">
+const OptionsFrame = ({ frame, ...state }: OptionsFrameProps) => (
+    <GtkFrame name={frame.name} label={frame.label}>
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             spacing={5}
@@ -78,60 +125,24 @@ const renderColorFrame = ({ foreground, background, onForeground, onBackground }
             marginTop={5}
             marginBottom={5}
         >
-            <DropdownRow
-                labelText="_Foreground"
-                selectedId={foreground}
-                options={COLOR_OPTIONS}
-                onSelectionChanged={onForeground}
-            />
-            <DropdownRow
-                labelText="_Background"
-                selectedId={background}
-                options={COLOR_OPTIONS}
-                onSelectionChanged={onBackground}
-            />
-        </GtkBox>
-    </GtkFrame>
-);
-
-const renderLineFrame = ({ dashing, lineEnd, onDashing, onLineEnd }: LineFrameProps) => (
-    <GtkFrame name="line-options-frame" label="Line Options">
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={5}
-            marginStart={5}
-            marginEnd={5}
-            marginTop={5}
-            marginBottom={5}
-        >
-            <DropdownRow
-                labelText="_Dashing"
-                selectedId={dashing}
-                options={DASH_OPTIONS}
-                onSelectionChanged={onDashing}
-            />
-            <DropdownRow
-                labelText="_Line ends"
-                selectedId={lineEnd}
-                options={END_OPTIONS}
-                onSelectionChanged={onLineEnd}
-            />
+            {frame.rows.map((row) => (
+                <DropdownRow key={row.labelText} row={row} {...state} />
+            ))}
         </GtkBox>
     </GtkFrame>
 );
 
 function SizeGroupDemo() {
     const [groupingEnabled, setGroupingEnabled] = useState(true);
-    const [foreground, setForeground] = useState("Red");
-    const [background, setBackground] = useState("Red");
-    const [dashing, setDashing] = useState("Solid");
-    const [lineEnd, setLineEnd] = useState("Square");
+    const [selection, setSelection] = useState<Selection>(INITIAL_SELECTION);
+    const [dropdowns, setDropdowns] = useState<Dropdowns>({});
 
     const handleToggle = (button: Gtk.CheckButton) => {
         setGroupingEnabled(button.getActive());
     };
 
     const mode = groupingEnabled ? Gtk.SizeGroupMode.HORIZONTAL : Gtk.SizeGroupMode.NONE;
+    const state = { selection, dropdowns, setSelection, setDropdowns };
 
     return (
         <GtkBox
@@ -142,20 +153,10 @@ function SizeGroupDemo() {
             marginTop={5}
             marginBottom={5}
         >
-            <SizeGroup mode={mode}>
-                {renderColorFrame({
-                    foreground,
-                    background,
-                    onForeground: setForeground,
-                    onBackground: setBackground,
-                })}
-                {renderLineFrame({
-                    dashing,
-                    lineEnd,
-                    onDashing: setDashing,
-                    onLineEnd: setLineEnd,
-                })}
-            </SizeGroup>
+            <GtkSizeGroup mode={mode} widgets={groupedDropdowns(dropdowns)} />
+            {FRAMES.map((frame) => (
+                <OptionsFrame key={frame.name} frame={frame} {...state} />
+            ))}
             <GtkCheckButton
                 name="enable-grouping-check"
                 label="_Enable grouping"

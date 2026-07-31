@@ -1,10 +1,10 @@
-import { type Item, ListView } from "@gtkx/components";
+import { type ListItem, ListView } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
-function App({ items }: { items: Item<string>[] }) {
+function App({ items }: { items: ListItem<string>[] }) {
     return (
         <ScrollWrapper>
             <ListView items={items} renderItem={() => <GtkLabel>Item</GtkLabel>} />
@@ -16,7 +16,7 @@ describe("ListView performance", () => {
     it("filters 10k items to 2 in under 4s", async () => {
         const n = 10_000;
 
-        const items: Item<string>[] = Array.from({ length: n }, (_, i) => ({
+        const items: ListItem<string>[] = Array.from({ length: n }, (_, i) => ({
             id: `w-${String(i)}`,
             value: `w-${String(i)}`,
         }));

@@ -4,7 +4,7 @@ import { GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { applyWrite } from "@gtkx/react/internal";
 import { omit } from "@gtkx/utils";
 import { useEffectEvent, useLayoutEffect, useRef } from "react";
-import type { DropDownOwnProps, ItemRenderer, RenderItemArgs } from "../types.js";
+import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
 import type { Collection } from "./collection.js";
 import { HeaderPortals, ItemPortals, useHeaderCells, useItemCells } from "./cells.js";
 import { useCollectionData } from "./use-collection.js";
@@ -58,10 +58,10 @@ const describeValue = (value: unknown): string => {
 const defaultItemContent = (value: unknown): ReactNode =>
     value == null ? null : <GtkLabel>{describeValue(value)}</GtkLabel>;
 
-const defaultRenderItem = ({ item }: RenderItemArgs<unknown>): ReactNode => defaultItemContent(item);
-const faceRenderer = (props: DropDownBaseProps): ItemRenderer<never> => props.renderItem ?? defaultRenderItem;
+const defaultRenderItem = ({ item }: ListItemRenderArgs<unknown>): ReactNode => defaultItemContent(item);
+const faceRenderer = (props: DropDownBaseProps): ListItemRenderer<never> => props.renderItem ?? defaultRenderItem;
 
-const listRenderer = (props: DropDownBaseProps): ItemRenderer<never> =>
+const listRenderer = (props: DropDownBaseProps): ListItemRenderer<never> =>
     props.renderListItem ?? props.renderItem ?? defaultRenderItem;
 
 const resolvePosition = (

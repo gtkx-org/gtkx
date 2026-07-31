@@ -36,9 +36,9 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Give your `Item`s `children` and the same component renders a tree with expander arrows. Add `expandedIds`/`onExpandedChange` on top of that to drive expansion from React state. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
+Give your `ListItem`s `children` and the same component renders a tree with expander arrows. Add `expandedIds`/`onExpandedChange` on top of that to drive expansion from React state. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
 
-To group rows under headers, pass `sections` in place of `items`. Each `Section` holds its own `data` array of `Item`s, and `renderHeader` draws the header shown above each group. `ColumnView` and `DropDown` accept the same pair.
+To group rows under headers, pass `sections` in place of `items`. Each `ListSection` holds its own `data` array of `ListItem`s, and `renderHeader` draws the header shown above each group. `ColumnView` and `DropDown` accept the same pair.
 
 ### GridView
 
@@ -61,13 +61,13 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 ### ColumnView
 
-`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `Column` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
+`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnViewColumn` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
 
 ```tsx
-import { ColumnView, type Column } from "@gtkx/components";
+import { ColumnView, type ColumnViewColumn } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
-const columns: Column<Employee>[] = [
+const columns: ColumnViewColumn<Employee>[] = [
     {
         id: "name",
         title: "Name",
@@ -86,7 +86,7 @@ const columns: Column<Employee>[] = [
 />
 ```
 
-Typing the array as `Column<Employee>[]` binds every `renderCell` callback to the view's item type, so the `item` argument is inferred as `Employee` without annotating each callback.
+Typing the array as `ColumnViewColumn<Employee>[]` binds every `renderCell` callback to the view's item type, so the `item` argument is inferred as `Employee` without annotating each callback.
 
 ### DropDown
 
@@ -173,22 +173,30 @@ import { GtkFixed, GtkFixedLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
 
 In `examples/gtk-demo`, `fixed.tsx` assembles a 3D cube from six perspective-transformed faces, and `fixed2.tsx` animates a rotating label per frame from the widget's frame clock.
 
-### SizeGroup and SizeGroup.Child
+### GtkSizeGroup
 
-`SizeGroup` manages a `Gtk.SizeGroup`, which keeps widgets scattered across the tree at a common width, height, or both (`mode: Gtk.SizeGroupMode`). Each `SizeGroup.Child` names the widget to add to the group; membership follows the React tree, so a `SizeGroup.Child` nested anywhere under the `SizeGroup` joins it:
+`Gtk.SizeGroup` keeps widgets scattered across the tree at a common width, height, or both (`mode: Gtk.SizeGroupMode`). It contributes no widget of its own, so it can sit anywhere in the tree; its `widgets` prop holds the members, which join and leave the group as the array changes:
 
 ```tsx
-import { SizeGroup } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkSizeGroup } from "@gtkx/jsx/gtk";
+import { useState } from "react";
 
-<SizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL}>
-    <SizeGroup.Child component={GtkButton} label="Short" />
-    <SizeGroup.Child component={GtkButton} label="A much longer label" />
-</SizeGroup>
+function Grouped() {
+    const [short, setShort] = useState<Gtk.Button | null>(null);
+    const [long, setLong] = useState<Gtk.Button | null>(null);
+
+    return (
+        <GtkBox>
+            <GtkSizeGroup mode={Gtk.SizeGroupMode.HORIZONTAL} widgets={short && long && [short, long]} />
+            <GtkButton ref={setShort} label="Short" />
+            <GtkButton ref={setLong} label="A much longer label" />
+        </GtkBox>
+    );
+}
 ```
 
-`SizeGroup.Child` forwards its `ref`, so a member can still be captured when you also need the widget instance for something else (a `mnemonicWidget` target, for example). The `component` prop accepts high-level components such as `DropDown` as well as intrinsic elements.
+Members are compared by identity, so a fresh array on every render costs nothing as long as the widgets themselves are stable. Members do not have to be siblings: any widget you hold a reference to can join, whichever container it lives in.
 
 ### GtkConstraintLayout
 

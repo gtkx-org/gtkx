@@ -35,8 +35,8 @@ it("applies props through the inferred update hook", () => {
 });
 
 it("slots into defineElements and survives merging", () => {
-    const elements = defineElements({ GtkFrame: { behaviors: [frameBehavior], omitProps: ["child"] } });
+    const elements = defineElements({ GtkFrame: { behaviors: [frameBehavior], omittedProps: ["child"] } });
     const merged = mergeElementConfigs(elements);
     expect(merged.GtkFrame?.behaviors).toHaveLength(1);
-    expect(merged.GtkFrame?.omitProps).toEqual(["child"]);
+    expect(merged.GtkFrame?.omittedProps).toEqual(["child"]);
 });

@@ -1,4 +1,4 @@
-import { ListView, type RenderItemArgs } from "@gtkx/components";
+import { type ListItemRenderer, ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
 import type { TreeItem } from "../demos/types.js";
@@ -42,7 +42,7 @@ const collectExpandableIds = (nodes: SidebarItemData[]): string[] => {
     return ids;
 };
 
-const renderItem = ({ item }: RenderItemArgs<TreeItem>) => {
+const renderItem: ListItemRenderer<TreeItem> = ({ item }) => {
     const text = item.type === "category" ? item.title : item.displayTitle;
 
     return <GtkInscription text={text} natChars={25} textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END} />;

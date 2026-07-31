@@ -26,7 +26,7 @@ const removeStaleSocket = async (socketPath: string): Promise<void> => {
     if (await socketIsLive(socketPath)) {
         throw new Error(
             `Another GTKX MCP server already owns ${socketPath}. ` +
-            "Stop the other server (for example, the gtkx MCP server of another active session) and reconnect.",
+            "Stop the other server (for example, the GTKX MCP server of another active session) and reconnect.",
         );
     }
 

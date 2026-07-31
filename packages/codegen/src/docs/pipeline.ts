@@ -28,7 +28,7 @@ type DocsOptions = {
     outDir: string;
     basePath?: string;
     props?: ElementProps;
-    omitProps?: OmittedProps;
+    omittedProps?: OmittedProps;
     force?: boolean;
 };
 
@@ -216,7 +216,7 @@ const writePages = (outDir: string, pages: Page[]): void => {
 
 const writeDocs = (options: DocsOptions): DocsResult => {
     setElementProps(options.props ?? {});
-    setOmittedProps(options.omitProps ?? {});
+    setOmittedProps(options.omittedProps ?? {});
     const basePath = options.basePath ?? "/reference";
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
     const cached = cachedDocsResult(options, manifestPath);

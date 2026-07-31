@@ -1,4 +1,4 @@
-import type { Column, Item } from "@gtkx/components";
+import type { ColumnViewColumn, ListItem } from "@gtkx/components";
 import { ColumnView, ListView } from "@gtkx/components";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -14,12 +14,12 @@ const ROWS = 5000;
 const COLUMNS = 6;
 const counts = { cells: 0 };
 
-const rows: Item<Row>[] = Array.from({ length: ROWS }, (_, index) => ({
+const rows: ListItem<Row>[] = Array.from({ length: ROWS }, (_, index) => ({
     id: `r${String(index)}`,
     value: { name: `row ${String(index)}` },
 }));
 
-const columns: Column<Row>[] = Array.from({ length: COLUMNS }, (_, index) => ({
+const columns: ColumnViewColumn<Row>[] = Array.from({ length: COLUMNS }, (_, index) => ({
     id: `c${String(index)}`,
     title: `Col ${String(index)}`,
     renderCell: ({ item }) => {

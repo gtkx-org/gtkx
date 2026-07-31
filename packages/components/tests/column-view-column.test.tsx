@@ -1,8 +1,7 @@
-import type { MenuItem } from "@gtkx/react";
 import type { ReactElement, ReactNode, RefObject } from "react";
-import { type Column, ColumnView, type RenderItemArgs } from "@gtkx/components";
+import { ColumnView, type ColumnViewColumn } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GMenu, type GMenuProps, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
@@ -10,7 +9,8 @@ import { describe, expect, it, vi } from "vitest";
 import { renderChildren } from "./helpers/render-children.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
-type ColumnExtra = Omit<Column, "id" | "title" | "renderCell">;
+type ColumnExtra = Omit<ColumnViewColumn, "id" | "title" | "renderCell">;
+type MenuItem = NonNullable<GMenuProps["items"]>[number];
 
 type ActionSpec = {
     id: string;
@@ -35,7 +35,7 @@ const showcasePeople: ShowcasePerson[] = [
 const noop = (): void => undefined;
 const cellRenderer = () => <GtkLabel>Cell</GtkLabel>;
 
-const defaultColumn = (id: string, title: string, extra?: ColumnExtra): Column => ({
+const defaultColumn = (id: string, title: string, extra?: ColumnExtra): ColumnViewColumn => ({
     id,
     title,
     expand: true,
@@ -64,7 +64,7 @@ function sectionedMenu(prefix: string, sections: ActionSpec[][]): ReactElement {
 
 const renderColumns = async (
     columnViewRef: RefObject<Gtk.ColumnView | null>,
-    columns: Column[],
+    columns: ColumnViewColumn[],
     actionGroups?: ReactNode,
 ): Promise<void> => {
     await render(
@@ -168,13 +168,13 @@ const ShowcaseColumns = ({
     sortActions,
 }: {
     sortActions: (column: ShowcaseSortColumn) => ActionSpec[];
-}): Column<ShowcasePerson>[] => [
+}): ColumnViewColumn<ShowcasePerson>[] => [
     {
         id: "name",
         title: "Name",
         expand: true,
         sortable: true,
-        renderCell: ({ item }: RenderItemArgs<ShowcasePerson>) => <GtkLabel>{item.name}</GtkLabel>,
+        renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
         headerMenu: sectionedMenu("name", [sortActions("name")]),
     },
     {
@@ -182,7 +182,7 @@ const ShowcaseColumns = ({
         title: "Role",
         fixedWidth: 100,
         sortable: true,
-        renderCell: ({ item }: RenderItemArgs<ShowcasePerson>) => <GtkLabel>{item.role}</GtkLabel>,
+        renderCell: ({ item }) => <GtkLabel>{item.role}</GtkLabel>,
         headerMenu: sectionedMenu("role", [sortActions("role"), [{ id: "hide", label: "Hide Column" }]]),
     },
     {
@@ -190,7 +190,7 @@ const ShowcaseColumns = ({
         title: "Salary",
         fixedWidth: 100,
         sortable: true,
-        renderCell: ({ item }: RenderItemArgs<ShowcasePerson>) => <GtkLabel>{item.salary.toString()}</GtkLabel>,
+        renderCell: ({ item }) => <GtkLabel>{item.salary.toString()}</GtkLabel>,
         headerMenu: sectionedMenu("salary", [sortActions("salary"), [{ id: "hide", label: "Hide Column" }]]),
     },
 ];

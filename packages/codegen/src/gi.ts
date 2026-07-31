@@ -1,11 +1,12 @@
 import type { Library } from "./gir/library.js";
+import type { StoreOptions } from "./store/store-fs.js";
 import { computeGiFingerprint } from "./fingerprint.js";
 import { namespaceDirectory } from "./gir/namespace.js";
-import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./store/gi-store.js";
+import { type GiNamespaceInput, writeGiStore } from "./store/gi-store.js";
 import { generateNamespaceModule } from "./store/gi/pipeline.js";
 
 type GiCodegenOptions = {
-    gi: GiStoreOptions;
+    gi: StoreOptions;
     libraries: string[];
     girPath: string[];
 };
@@ -30,6 +31,4 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
     return library.namespaces.size;
 };
 
-export { isGiStoreFresh } from "./fingerprint.js";
-export type { GiStoreOptions } from "./store/gi-store.js";
 export { runGiCodegen, type GiCodegenOptions };

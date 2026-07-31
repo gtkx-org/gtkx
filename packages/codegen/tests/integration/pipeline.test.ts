@@ -235,7 +235,7 @@ const interfaceBody = (jsxSource: string, glibName: string): string => {
 };
 
 const defaultPropsBody = (metadata: string, glibName: string): string => {
-    const table = metadata.slice(metadata.indexOf("export const DEFAULT_PROPS"));
+    const table = metadata.slice(metadata.indexOf("export const defaultProps"));
     const block = table.slice(table.indexOf(`"${glibName}": {`));
 
     return block.slice(0, block.indexOf("\n    }"));
@@ -556,9 +556,9 @@ describe("codegen React pipeline", () => {
             expect(source.length).toBeGreaterThan(0);
         }
 
-        expect(reactPipeline.metadata).toContain("export const SIGNALS");
-        expect(reactPipeline.metadata).toContain("export const CONSTRUCT_ONLY_PROPS");
-        expect(reactPipeline.metadata).toContain("export const DEFAULT_PROPS");
+        expect(reactPipeline.metadata).toContain("export const signals");
+        expect(reactPipeline.metadata).toContain("export const constructOnlyProps");
+        expect(reactPipeline.metadata).toContain("export const defaultProps");
     });
 
     it("loads its own namespace as a side effect and never another", () => {

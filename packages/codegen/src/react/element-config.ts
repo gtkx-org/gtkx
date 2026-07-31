@@ -1,16 +1,16 @@
-import type { ModuleExport } from "@gtkx/react/config";
+import type { ModuleExport } from "@gtkx/react/internal";
 import { readdirSync } from "node:fs";
 import type { OmittedProps } from "../store/jsx/omitted-props.js";
 
 /** The codegen-relevant subset of a React element config; behaviors are ignored at codegen time. */
-type BuiltinElement = { component?: ModuleExport; lazy?: boolean; props?: ModuleExport; omitProps?: string[] };
+type BuiltinElement = { component?: ModuleExport; lazy?: boolean; props?: ModuleExport; omittedProps?: string[] };
 
 /** The framework's built-in element config, split into the maps codegen consumes. */
 type BuiltinElements = {
     components: Record<string, ModuleExport>;
     lazyElements: string[];
     props: Record<string, ModuleExport>;
-    omitProps: OmittedProps;
+    omittedProps: OmittedProps;
 };
 
 const CONFIG_ENTRYPOINT = "config";
@@ -61,8 +61,8 @@ const applyBuiltinElement = (target: BuiltinElements, type: string, config: Buil
         target.props[type] = config.props;
     }
 
-    if (config.omitProps !== undefined) {
-        target.omitProps[type] = [...(target.omitProps[type] ?? []), ...config.omitProps];
+    if (config.omittedProps !== undefined) {
+        target.omittedProps[type] = [...(target.omittedProps[type] ?? []), ...config.omittedProps];
     }
 
     if (config.lazy === true) {
@@ -84,7 +84,7 @@ const collectBuiltinElements = (target: BuiltinElements, elements: Record<string
 const readBuiltinElements = async (reactSubexports: string[], giStoreDir: string): Promise<BuiltinElements> => {
     const present = presentNamespaceDirs(giStoreDir);
     const entrypoints = configEntrypoints(reactSubexports, present);
-    const result: BuiltinElements = { components: {}, lazyElements: [], props: {}, omitProps: {} };
+    const result: BuiltinElements = { components: {}, lazyElements: [], props: {}, omittedProps: {} };
 
     for (const entrypoint of entrypoints) {
         collectBuiltinElements(result, await importBuiltinElements(entrypoint));
@@ -93,5 +93,5 @@ const readBuiltinElements = async (reactSubexports: string[], giStoreDir: string
     return result;
 };
 
-export { type ModuleExport } from "@gtkx/react/config";
+export type { ModuleExport } from "@gtkx/react/internal";
 export { readBuiltinElements, type BuiltinElement, type BuiltinElements };

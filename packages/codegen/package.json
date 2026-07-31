@@ -30,15 +30,10 @@
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         },
-        "./gi": {
-            "source": "./src/gi.ts",
-            "types": "./dist/gi.d.ts",
-            "default": "./dist/gi.js"
-        },
-        "./jsx": {
-            "source": "./src/jsx.ts",
-            "types": "./dist/jsx.d.ts",
-            "default": "./dist/jsx.js"
+        "./internal": {
+            "source": "./src/internal.ts",
+            "types": "./dist/internal.d.ts",
+            "default": "./dist/internal.js"
         }
     },
     "sideEffects": false,

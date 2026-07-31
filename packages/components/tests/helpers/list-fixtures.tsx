@@ -1,5 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type Column, ColumnView, GridView, type Item, ListView, type RenderItemArgs } from "@gtkx/components";
+import {
+    ColumnView,
+    type ColumnViewColumn,
+    GridView,
+    type ListItem,
+    type ListItemRenderer,
+    ListView,
+} from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render as testingRender } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
@@ -11,7 +18,7 @@ type NamedValue = {
     name: string;
 };
 
-type FixtureInput<T> = string[] | Item<T>[];
+type FixtureInput<T> = string[] | ListItem<T>[];
 
 type ListViewFixtureOptions = {
     selected?: string[];
@@ -24,14 +31,14 @@ type ListViewFixtureOptions = {
 };
 
 type RenderListViewOptions<T> = ListViewFixtureOptions & {
-    renderItem?: (props: RenderItemArgs<T>) => ReactNode;
+    renderItem?: ListItemRenderer<T>;
     expandedIds?: string[];
     onExpandedChange?: (ids: string[]) => void;
     expandAll?: boolean;
 };
 
 type RenderGridViewOptions<T> = ListViewFixtureOptions & {
-    renderItem?: (props: RenderItemArgs<T>) => ReactNode;
+    renderItem?: ListItemRenderer<T>;
     singleClickActivate?: boolean;
 };
 
@@ -52,7 +59,7 @@ type ContentSizing = {
 };
 
 type RenderColumnViewOptions<T> = {
-    columns?: Column<T>[];
+    columns?: ColumnViewColumn<T>[];
     selected?: string[];
     selectionMode?: Gtk.SelectionMode;
     onSelectionChanged?: (ids: string[]) => void;
@@ -71,22 +78,22 @@ type ColumnViewFixture<T> = {
     rerender: (items: FixtureInput<T>, options?: RenderColumnViewOptions<T>) => Promise<void>;
 };
 
-const firstSecondItems: Item<NamedValue>[] = [
+const firstSecondItems: ListItem<NamedValue>[] = [
     { id: "1", value: { name: "First" } },
     { id: "2", value: { name: "Second" } },
 ];
 
-const firstSecondThirdItems: Item<NamedValue>[] = [...firstSecondItems, { id: "3", value: { name: "Third" } }];
+const firstSecondThirdItems: ListItem<NamedValue>[] = [...firstSecondItems, { id: "3", value: { name: "Third" } }];
 
 const valueItems = (values: string[]): { id: string; value: string }[] =>
     values.map((value, index) => ({ id: String(index + 1), value }));
 
-const toListItems = <T,>(items: FixtureInput<T>): Item<T>[] =>
+const toListItems = <T,>(items: FixtureInput<T>): ListItem<T>[] =>
     items.length > 0 && typeof items[0] === "string"
         ? (items as string[]).map((id) => ({ id, value: { name: id } as T }))
-        : (items as Item<T>[]);
+        : (items as ListItem<T>[]);
 
-const collectExpandableIds = <T,>(list: Item<T>[], ids: string[]): void => {
+const collectExpandableIds = <T,>(list: ListItem<T>[], ids: string[]): void => {
     for (const item of list) {
         if (item.children === undefined || item.children.length === 0) {
             continue;
@@ -97,7 +104,7 @@ const collectExpandableIds = <T,>(list: Item<T>[], ids: string[]): void => {
     }
 };
 
-const allExpandableIds = <T,>(items: Item<T>[]): string[] => {
+const allExpandableIds = <T,>(items: ListItem<T>[]): string[] => {
     const ids: string[] = [];
     collectExpandableIds(items, ids);
 
@@ -202,7 +209,7 @@ const renderColumnView = async <T = NamedValue>(
     render: FixtureRender = testingRender,
 ): Promise<ColumnViewFixture<T>> => {
     const ref = createRef<Gtk.ColumnView>();
-    const defaultColumns: Column<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
+    const defaultColumns: ColumnViewColumn<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
 
     const draw = (data: FixtureInput<T>, opts: RenderColumnViewOptions<T>): ReactNode => {
         const { columns = defaultColumns } = opts;
@@ -229,7 +236,7 @@ const renderColumnView = async <T = NamedValue>(
     return wireFixture({ ref, draw, items, options, render });
 };
 
-export type { Column } from "@gtkx/components";
+export type { ColumnViewColumn } from "@gtkx/components";
 export {
     valueItems,
     firstSecondItems,

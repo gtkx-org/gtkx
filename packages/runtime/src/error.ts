@@ -21,7 +21,7 @@ function checkError(error: Ref): void {
     }
 
     const gerror = wrapHandle(error.value as ExternalObject<Handle>, getWrapperClass(getErrorType())) as ErrorLike;
-    const callSite = new Error("gtkx call site");
+    const callSite = new Error("GTKX call site");
     const callerFrames = (callSite.stack ?? "").split("\n").slice(2);
     gerror.stack = [`${gerror.name}: ${gerror.message}`, ...callerFrames].join("\n");
     throw gerror;

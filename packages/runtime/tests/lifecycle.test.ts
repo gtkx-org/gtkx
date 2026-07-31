@@ -1,5 +1,6 @@
-import { type ApplicationLike, onExit, quitApplication, runApplication } from "@gtkx/runtime";
+import { onExit, quitApplication, runApplication } from "@gtkx/runtime";
 import { describe, expect, it, vi } from "vitest";
+import type { ApplicationLike } from "../src/lifecycle.js";
 
 const nativeMock = vi.hoisted(() => ({ quit: vi.fn(), keepAlive: vi.fn() }));
 const signalMock = vi.hoisted(() => ({ blockMatchedSignalHandlers: vi.fn() }));

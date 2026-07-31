@@ -17,7 +17,7 @@ const isOmittedProp = (glibName: string | undefined, jsName: string): boolean =>
     glibName !== undefined && omittedProps.get(glibName)?.has(jsName) === true;
 
 /** Merges omitted-prop maps keyed by GLib type name, concatenating the names each map contributes. */
-const mergeOmitProps = (...maps: OmittedProps[]): OmittedProps => {
+const mergeOmittedProps = (...maps: OmittedProps[]): OmittedProps => {
     const merged: OmittedProps = {};
 
     for (const map of maps) {
@@ -29,4 +29,4 @@ const mergeOmitProps = (...maps: OmittedProps[]): OmittedProps => {
     return merged;
 };
 
-export { setOmittedProps, isOmittedProp, mergeOmitProps, type OmittedProps };
+export { setOmittedProps, isOmittedProp, mergeOmittedProps, type OmittedProps };

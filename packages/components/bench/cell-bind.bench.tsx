@@ -1,4 +1,4 @@
-import type { Column, Item } from "@gtkx/components";
+import type { ColumnViewColumn, ListItem } from "@gtkx/components";
 import type { ReactNode, RefCallback } from "react";
 import { ColumnView, ListView } from "@gtkx/components";
 import * as GLib from "@gtkx/gi/glib";
@@ -15,12 +15,12 @@ const ROWS = 5000;
 const PAGES = 5;
 const COLUMN_COUNTS = [1, 6];
 
-const rows: Item<Row>[] = Array.from({ length: ROWS }, (_, index) => ({
+const rows: ListItem<Row>[] = Array.from({ length: ROWS }, (_, index) => ({
     id: `r${String(index)}`,
     value: { name: `row ${String(index)}` },
 }));
 
-const makeColumns = (count: number): Column<Row>[] =>
+const makeColumns = (count: number): ColumnViewColumn<Row>[] =>
     Array.from({ length: count }, (_, index) => ({
         id: `c${String(index)}`,
         title: `Col ${String(index)}`,

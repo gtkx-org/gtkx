@@ -109,7 +109,7 @@ React Native and similar frameworks hide the native toolkit so one API can run e
 
 ### Why Node.js, and why generated bindings
 
-GTKX runs on Node.js, which puts native modules, the npm ecosystem, and the tooling built for Node.js APIs within reach. GJS is GNOME's own runtime, built on SpiderMonkey rather than V8; node-gtk runs on Node.js but is lightly maintained, on the older nan/V8 ABI rather than N-API, and still centered on GTK3. The [why-gtkx guide](https://gtkx.dev/guide/why-gtkx) covers the comparison in full.
+GTKX runs on Node.js, which puts native modules, the npm ecosystem, and the tooling built for Node.js APIs within reach. GJS is GNOME's own runtime, built on SpiderMonkey rather than V8; node-gtk runs on Node.js but is lightly maintained, on the older nan/V8 ABI rather than N-API, and still centered on GTK3. The [Why GTKX guide](https://gtkx.dev/guide/why-gtkx) covers the comparison in full.
 
 GTKX generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back. Codegen covers the whole GTK4 and Adwaita surface.
 

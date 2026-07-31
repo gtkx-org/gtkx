@@ -4,8 +4,6 @@ import { fileURLToPath } from "node:url";
 import { FINGERPRINT_FILENAME, type GiFingerprint } from "../fingerprint.js";
 import { buildManifest, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
-type GiStoreOptions = StoreOptions;
-
 type GiNamespaceInput = {
     directory: string;
     rawSource: string;
@@ -69,7 +67,7 @@ const collectStoreSources = (
 };
 
 const writeGiStore = (
-    options: GiStoreOptions,
+    options: StoreOptions,
     namespaces: GiNamespaceInput[],
     fingerprint: GiFingerprint,
 ): void => {
@@ -89,4 +87,4 @@ const writeGiStore = (
     });
 };
 
-export { writeGiStore, type GiStoreOptions, type GiNamespaceInput };
+export { writeGiStore, type GiNamespaceInput };

@@ -1,5 +1,5 @@
 import type { Context } from "@gtkx/gi/cairo";
-import { DropDown, GridView, type RenderItemArgs } from "@gtkx/components";
+import { DropDown, GridView, type ListItemRenderer } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
@@ -850,7 +850,7 @@ function useColorsContext(): ColorsContextValue {
     return ctx;
 }
 
-const renderSelectionItem = ({ item }: RenderItemArgs<ColorItem>) => (
+const renderSelectionItem: ListItemRenderer<ColorItem> = ({ item }) => (
     <GtkDrawingArea
         contentWidth={8}
         contentHeight={8}

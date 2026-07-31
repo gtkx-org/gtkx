@@ -6,22 +6,17 @@ import type {
     GtkGridViewProps,
     GtkListViewProps,
 } from "@gtkx/jsx/gtk";
-import type { ComponentPropsWithRef, ElementType, ReactNode, Ref } from "react";
-
-/** Props of a container's Child component: the widget to render and its own props. */
-type ChildProps<C extends ElementType> = {
-    component: C;
-} & ComponentPropsWithRef<C>;
+import type { ReactNode } from "react";
 
 /**
  * A single item in a collection model, identified by a stable id and holding an
  * arbitrary value. Nested items form a tree.
  */
-type Item<T = unknown> = {
+type ListItem<T = unknown> = {
     /** Stable identifier used to track the item across updates and selection. */
     id: string;
     value: T;
-    children?: Item<T>[] | undefined;
+    children?: ListItem<T>[] | undefined;
     /** Hides the tree expander arrow even when the item has children. */
     hideExpander?: boolean | undefined;
     /** Adds indentation matching the item's depth in the tree. */
@@ -31,16 +26,16 @@ type Item<T = unknown> = {
 };
 
 /** A group of items rendered under a shared section header. */
-type Section<S = unknown, T = unknown> = {
+type ListSection<S = unknown, T = unknown> = {
     /** Stable identifier used to track the section across updates. */
     id: string;
     value: S;
     /** Items belonging to this section. */
-    data: Item<T>[];
+    data: ListItem<T>[];
 };
 
-/** Arguments passed to an {@link ItemRenderer} when rendering one cell. */
-type RenderItemArgs<T> = {
+/** Arguments passed to a {@link ListItemRenderer} when rendering one cell. */
+type ListItemRenderArgs<T> = {
     item: T;
     index: number;
     /** Depth of the item within a tree, starting at zero for top-level items. */
@@ -49,15 +44,15 @@ type RenderItemArgs<T> = {
     isExpanded?: boolean | undefined;
 };
 
-/** Arguments passed to a {@link HeaderRenderer} when rendering one section header. */
-type RenderHeaderArgs<S> = {
+/** Arguments passed to a {@link ListSectionRenderer} when rendering one section header. */
+type ListSectionRenderArgs<S> = {
     section: S;
 };
 
 /** Renders the contents of one cell of a collection view. */
-type ItemRenderer<T> = (args: RenderItemArgs<T>) => ReactNode;
+type ListItemRenderer<T> = (args: ListItemRenderArgs<T>) => ReactNode;
 /** Renders the contents of one section header of a collection view. */
-type HeaderRenderer<S> = (args: RenderHeaderArgs<S>) => ReactNode;
+type ListSectionRenderer<S> = (args: ListSectionRenderArgs<S>) => ReactNode;
 
 type ItemSizeProps = {
     estimatedItemHeight?: number | undefined;
@@ -76,16 +71,16 @@ type ExpansionProps = {
 };
 
 type SourceProps<T, S> = {
-    items?: Item<T>[] | undefined;
-    sections?: Section<S, T>[] | undefined;
+    items?: ListItem<T>[] | undefined;
+    sections?: ListSection<S, T>[] | undefined;
 };
 
 /** One column of a {@link ColumnView}, pairing Gtk.ColumnViewColumn props with a cell renderer. */
-type Column<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter" | "id" | "title"> & {
+type ColumnViewColumn<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter" | "id" | "title"> & {
     /** Stable identifier, also used to address the column through sorting props. */
     id: string;
     title: string;
-    renderCell: ItemRenderer<T>;
+    renderCell: ListItemRenderer<T>;
     /** Whether clicking the column header sorts by it. */
     sortable?: boolean | undefined;
     headerMenu?: ReactNode;
@@ -95,8 +90,8 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
     ExpansionProps &
     SourceProps<T, S> &
     Omit<ItemSizeProps, "estimatedItemWidth"> & {
-        columns: Column<T>[];
-        renderHeader?: HeaderRenderer<S> | null | undefined;
+        columns: ColumnViewColumn<T>[];
+        renderHeader?: ListSectionRenderer<S> | null | undefined;
         /** Id of the column the view is sorted by, making sorting controlled. */
         sortColumn?: string | null | undefined;
         sortOrder?: Gtk.SortType | null | undefined;
@@ -119,11 +114,11 @@ type DropDownOwnProps<T, S> = SourceProps<T, S> & {
     /** Id of the currently selected item, making the selection controlled. */
     selectedId?: string | null | undefined;
     onSelectionChanged?: ((id: string) => void) | null | undefined;
-    renderItem?: ItemRenderer<T> | null | undefined;
+    renderItem?: ListItemRenderer<T> | null | undefined;
     /** Renderer for items in the open popup list, falling back to renderItem when omitted. */
-    renderListItem?: ItemRenderer<T> | null | undefined;
+    renderListItem?: ListItemRenderer<T> | null | undefined;
     /** Renderer for section headers in the popup list. */
-    renderHeader?: HeaderRenderer<S> | null | undefined;
+    renderHeader?: ListSectionRenderer<S> | null | undefined;
 };
 
 type DropDownWidgetProps<Widget, T, S> = Omit<
@@ -141,8 +136,8 @@ type DropDownProps<T = unknown, S = unknown> = DropDownWidgetProps<GtkDropDownPr
 
 type GridViewOwnProps<T> = ItemSizeProps &
     SelectionProps & {
-        items?: Item<T>[] | undefined;
-        renderItem: ItemRenderer<T>;
+        items?: ListItem<T>[] | undefined;
+        renderItem: ListItemRenderer<T>;
     };
 
 /**
@@ -157,8 +152,8 @@ type ListViewOwnProps<T, S> = ItemSizeProps &
     SelectionProps &
     ExpansionProps &
     SourceProps<T, S> & {
-        renderItem: ItemRenderer<T>;
-        renderHeader?: HeaderRenderer<S> | null | undefined;
+        renderItem: ListItemRenderer<T>;
+        renderHeader?: ListSectionRenderer<S> | null | undefined;
     };
 
 /**
@@ -173,34 +168,20 @@ type ListViewProps<T = unknown, S = unknown> = Omit<
 > &
 ListViewOwnProps<T, S>;
 
-/** Props for {@link SizeGroup}. */
-type SizeGroupProps = {
-    /** How the group equalizes sizes: horizontal, vertical, or both. */
-    mode?: Gtk.SizeGroupMode | null | undefined;
-    ref?: Ref<Gtk.SizeGroup | null>;
-    children?: ReactNode;
-};
-
-/** Adds a single widget, rendered by the given component, to the enclosing {@link SizeGroup}. */
-type SizeGroupChildProps<C extends ElementType> = ChildProps<C>;
-
 export {
     type SelectionProps,
     type ExpansionProps,
-    type ChildProps,
     type DropDownOwnProps,
     type DropDownWidgetProps,
-    type Item,
-    type Section,
-    type RenderItemArgs,
-    type RenderHeaderArgs,
-    type ItemRenderer,
-    type HeaderRenderer,
-    type Column,
+    type ListItem,
+    type ListSection,
+    type ListItemRenderArgs,
+    type ListSectionRenderArgs,
+    type ListItemRenderer,
+    type ListSectionRenderer,
+    type ColumnViewColumn,
     type ColumnViewProps,
     type DropDownProps,
     type GridViewProps,
     type ListViewProps,
-    type SizeGroupProps,
-    type SizeGroupChildProps,
 };

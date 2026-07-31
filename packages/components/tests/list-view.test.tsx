@@ -1,4 +1,4 @@
-import type { RenderItemArgs } from "@gtkx/components";
+import type { ListItemRenderer } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { screen, within } from "@gtkx/testing";
@@ -55,6 +55,8 @@ const createItems = (a: number, b: number, c: number) => [
     { id: "2", value: { count: b } },
     { id: "3", value: { count: c } },
 ];
+
+const renderCount: ListItemRenderer<{ count: number }> = ({ item }) => <GtkLabel>{String(item.count)}</GtkLabel>;
 
 describe("render - ListView (1)", () => {
     describe("GtkListView", () => {
@@ -254,13 +256,11 @@ describe("render - ListView (7)", () => {
         });
 
         it("preserves order with frequent value updates", async () => {
-            type Item = { count: number };
-            const renderItem = ({ item }: RenderItemArgs<Item>) => <GtkLabel>{String(item.count)}</GtkLabel>;
-            const { ref, rerender } = await renderListView(createItems(0, 0, 0), { renderItem });
+            const { ref, rerender } = await renderListView(createItems(0, 0, 0), { renderItem: renderCount });
             expect(collectLabelTexts(ref.current)).toEqual(["0", "0", "0"]);
 
             for (let i = 1; i <= 10; i++) {
-                await rerender(createItems(i, i * 2, i * 3), { renderItem });
+                await rerender(createItems(i, i * 2, i * 3), { renderItem: renderCount });
                 expect(collectLabelTexts(ref.current)).toEqual([String(i), String(i * 2), String(i * 3)]);
             }
         });

@@ -23,7 +23,7 @@ type DetachInfo = {
 
 /**
  * Customizes how one element type places children and applies props. Every hook receives the
- * GObject instance and a private per-node `context` built once by `createContext`. A slot hook
+ * GObject instance and a private per-node `context` built once by `initialize`. A slot hook
  * claims a child by returning a non-`undefined` value; that value, or `resolve`, is the object
  * the container adopts for the child. `update` returns the prop names it consumed so those props
  * are not also set as plain GObject properties. `create` builds the GObject for types whose
@@ -32,7 +32,7 @@ type DetachInfo = {
  */
 type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     create?: (props: Props) => GObject.Object;
-    createContext?: (object: T) => unknown;
+    initialize?: (object: T) => unknown;
     attach?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown;
     reorder?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown;
     detach?: (object: T, child: GObject.Object, info: DetachInfo) => void;
@@ -53,14 +53,14 @@ type ModuleExport = { module: string; export: string };
  * its type, an optional component that wraps the generated element, the base props interface its
  * generated props extend, and the GObject properties to leave out of the generated props (those a
  * behavior already writes from children, such as the `child` and `content` properties). `component`,
- * `props` and `omitProps` are inert at runtime; they are read only by codegen.
+ * `props` and `omittedProps` are inert at runtime; they are read only by codegen.
  */
 type ElementConfig<T extends GObject.Object = GObject.Object> = {
     lazy?: boolean;
     behaviors?: ElementBehavior<T>[];
     component?: ModuleExport;
     props?: ModuleExport;
-    omitProps?: string[];
+    omittedProps?: string[];
 };
 
 /**
@@ -79,15 +79,15 @@ const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], isPrepend
 };
 
 const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, isPrepended = false): ElementConfig => {
-    const { behaviors, lazy, omitProps, ...rest } = added;
+    const { behaviors, lazy, omittedProps, ...rest } = added;
     const entry: ElementConfig = { ...base, ...rest };
 
     if (behaviors !== undefined) {
         entry.behaviors = mergeBehaviors(base, behaviors as ElementBehavior[], isPrepended);
     }
 
-    if (omitProps !== undefined) {
-        entry.omitProps = [...(base.omitProps ?? []), ...omitProps];
+    if (omittedProps !== undefined) {
+        entry.omittedProps = [...(base.omittedProps ?? []), ...omittedProps];
     }
 
     if (lazy === true) {

@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
 import { memo, useLayoutEffect, useState, useSyncExternalStore } from "react";
-import type { HeaderRenderer, Item, ItemRenderer, RenderItemArgs } from "../types.js";
+import type { ListItem, ListItemRenderArgs, ListItemRenderer, ListSectionRenderer } from "../types.js";
 import type { Collection } from "./collection.js";
 import { getId } from "./collection-model.js";
 
@@ -56,34 +56,34 @@ type ItemBodyOptions = {
     position: number | undefined;
     row: Gtk.TreeListRow | null;
     isRowExpanded: boolean | undefined;
-    render: ItemRenderer<never>;
+    render: ListItemRenderer<never>;
     collection: Collection;
     expandedIds: string[] | null | undefined;
 };
 
 type ItemCellProps = {
     entry: CellEntry<Gtk.ListItem>;
-    render: ItemRenderer<never>;
+    render: ListItemRenderer<never>;
     collection: Collection;
     expandedIds: string[] | null | undefined;
 };
 
 type ItemPortalsProps = {
     store: CellStore<Gtk.ListItem>;
-    render: ItemRenderer<never>;
+    render: ListItemRenderer<never>;
     collection: Collection;
     expandedIds?: string[] | null | undefined;
 };
 
 type HeaderCellProps = {
     entry: CellEntry<Gtk.ListHeader>;
-    render: HeaderRenderer<never>;
+    render: ListSectionRenderer<never>;
     collection: Collection;
 };
 
 type HeaderPortalsProps = {
     store: CellStore<Gtk.ListHeader>;
-    render: HeaderRenderer<never>;
+    render: ListSectionRenderer<never>;
     collection: Collection;
 };
 
@@ -246,14 +246,14 @@ function useHeaderCells(size: CellSize): CellStore<Gtk.ListHeader> {
     return useCellStore(isListHeader, size);
 }
 
-function isRowWanted(options: ItemBodyOptions, item: Item): boolean {
+function isRowWanted(options: ItemBodyOptions, item: ListItem): boolean {
     const { expandedIds } = options;
 
     return expandedIds == null ? options.isRowExpanded === true : expandedIds.includes(item.id);
 }
 
-function itemArgs(item: Item, options: ItemBodyOptions): RenderItemArgs<unknown> {
-    const args: RenderItemArgs<unknown> = { item: item.value, index: options.position ?? 0 };
+function itemArgs(item: ListItem, options: ItemBodyOptions): ListItemRenderArgs<unknown> {
+    const args: ListItemRenderArgs<unknown> = { item: item.value, index: options.position ?? 0 };
     const row = options.row;
 
     if (row === null) {
@@ -269,7 +269,7 @@ function itemArgs(item: Item, options: ItemBodyOptions): RenderItemArgs<unknown>
     return args;
 }
 
-function wrapExpander(item: Item, row: Gtk.TreeListRow | null, content: ReactNode): ReactNode {
+function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: ReactNode): ReactNode {
     const expander: ReactNode =
         row === null
             ? (
@@ -297,7 +297,7 @@ function itemBody(options: ItemBodyOptions): ReactNode {
         return null;
     }
 
-    const render = options.render as ItemRenderer<unknown>;
+    const render = options.render as ListItemRenderer<unknown>;
 
     return wrapExpander(item, options.row, render(itemArgs(item, options)));
 }
@@ -315,7 +315,7 @@ function ItemCellImpl({ entry, render, collection, expandedIds }: ItemCellProps)
 function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNode {
     const item = useSyncExternalStore(entry.subscribe, entry.getItem);
     const id = getId(item);
-    const renderHeader = render as HeaderRenderer<unknown>;
+    const renderHeader = render as ListSectionRenderer<unknown>;
     const body = id === null ? null : renderHeader({ section: collection.sectionFor(id) });
 
     return createPortal(body, entry.cell, entry.key);

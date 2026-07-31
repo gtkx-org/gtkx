@@ -256,3 +256,27 @@ describe("ApiReference — search", () => {
         expect(reference.search({ query: "button", limit: -1 })).toHaveLength(1);
     });
 });
+
+describe("symbols", () => {
+    it("enumerates without a query, which search cannot do", () => {
+        expect(reference.search({ query: "" })).toEqual([]);
+        expect(reference.symbols().length).toBeGreaterThan(500);
+    });
+
+    it("lists every JSX element", () => {
+        const elements = reference.symbols({ kinds: ["element"] });
+        expect(elements.every((symbol) => symbol.kind === "element")).toBe(true);
+        expect(elements.map((symbol) => symbol.name)).toContain("GtkButton");
+    });
+
+    it("narrows to one namespace", () => {
+        const adw = reference.symbols({ namespace: "Adw" });
+        expect(adw.length).toBeGreaterThan(0);
+        expect(adw.every((symbol) => symbol.namespace === "Adw")).toBe(true);
+    });
+
+    it("orders namespaces before names", () => {
+        const names = reference.symbols({ namespace: "Adw", kinds: ["element"] }).map((symbol) => symbol.name);
+        expect(names).toEqual([...names].toSorted((a, b) => a.localeCompare(b)));
+    });
+});

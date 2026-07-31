@@ -1,4 +1,4 @@
-import type { Item, RenderItemArgs } from "@gtkx/components";
+import type { ListItem, ListItemRenderer } from "@gtkx/components";
 import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
@@ -49,7 +49,7 @@ const acItems = namedRows([
     ["3", "C"],
 ]);
 
-const demoFullTree: Item<DemoItem>[] = [
+const demoFullTree: ListItem<DemoItem>[] = [
     leafNode("demo-intro", "GTK Demo"),
     categoryNode("cat-Benchmark", "Benchmark", [
         childNode("demo-frames", "Frames"),
@@ -306,7 +306,7 @@ function categoryNode(id: string, name: string, children: ReturnType<typeof chil
     return { id, value: { name }, children };
 }
 
-function parentWith(children: Item<DemoItem>[]): FixtureInput<DemoItem> {
+function parentWith(children: ListItem<DemoItem>[]): FixtureInput<DemoItem> {
     return [{ id: "parent", value: { name: "Parent" }, children }];
 }
 
@@ -329,8 +329,8 @@ const expectItemsRerender = async (config: {
 };
 
 const expectParentChildRenders = async (
-    parentProps: Partial<Item<DemoItem>>,
-    childProps: Partial<Item<DemoItem>>,
+    parentProps: Partial<ListItem<DemoItem>>,
+    childProps: Partial<ListItem<DemoItem>>,
 ): Promise<void> => {
     const { ref } = await renderListView(
         [
@@ -351,8 +351,8 @@ const buildFilterTree = (options: {
     count: number;
     isCategory: (i: number) => boolean;
     children: (i: number) => ReturnType<typeof childNode>[];
-}): Item<DemoItem>[] => {
-    const tree: Item<DemoItem>[] = [];
+}): ListItem<DemoItem>[] => {
+    const tree: ListItem<DemoItem>[] = [];
 
     for (let i = 0; i < options.count; i++) {
         if (options.isCategory(i)) {
@@ -365,7 +365,7 @@ const buildFilterTree = (options: {
     return tree;
 };
 
-const buildLargeCategoryTree = (): Item<DemoItem>[] =>
+const buildLargeCategoryTree = (): ListItem<DemoItem>[] =>
     buildFilterTree({
         count: 38,
         isCategory: (i) => i % 5 === 1,
@@ -375,7 +375,7 @@ const buildLargeCategoryTree = (): Item<DemoItem>[] =>
             ),
     });
 
-const buildViewportCategoryTree = (): Item<DemoItem>[] =>
+const buildViewportCategoryTree = (): ListItem<DemoItem>[] =>
     buildFilterTree({
         count: 40,
         isCategory: (i) => i % 4 === 0,
@@ -392,11 +392,11 @@ const expandAppearance = async (): Promise<RefObject<Gtk.ListView>> => {
     return ref;
 };
 
-function filterLeaf(id: string, name: string): Item<FilterItem> {
+function filterLeaf(id: string, name: string): ListItem<FilterItem> {
     return { id, value: { type: "leaf", name } };
 }
 
-function filterCategory(id: string, name: string, children: [string, string][]): Item<FilterItem> {
+function filterCategory(id: string, name: string, children: [string, string][]): ListItem<FilterItem> {
     return {
         id,
         value: { type: "category", name },
@@ -413,7 +413,7 @@ const expectFilteredToDelta = async ({ ref, rerender }: ListViewFixture<FilterIt
     await expectRowTexts(ref, ["Delta", "D-Two"]);
 };
 
-const renderExpandedState = ({ item, isExpanded }: RenderItemArgs<{ name: string }>) => (
+const renderExpandedState: ListItemRenderer<{ name: string }> = ({ item, isExpanded }) => (
     <GtkLabel>{`${item.name}:${String(isExpanded)}`}</GtkLabel>
 );
 
@@ -501,7 +501,7 @@ describe("render - ListView (tree) (4)", () => {
         });
 
         it("receives depth in renderItem", async () => {
-            const renderItem = vi.fn(({ item, depth }: RenderItemArgs<{ name: string }>) => (
+            const renderItem = vi.fn<ListItemRenderer<{ name: string }>>(({ item, depth }) => (
                 <GtkLabel>{`${item.name} - depth: ${String(depth)}`}</GtkLabel>
             ));
 

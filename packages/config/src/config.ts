@@ -157,7 +157,7 @@ const elementConfigSchema = z.object({
     component: moduleExportSchema.optional(),
     props: moduleExportSchema.optional(),
     lazy: z.boolean({ error: "must be a boolean" }).optional(),
-    omitProps: z
+    omittedProps: z
         .array(
             z.string({ error: "must be a non-empty property name" }).min(1, {
                 error: "must be a non-empty property name",
@@ -278,8 +278,8 @@ const resolveElementComponents = (elements: Config["elements"]): Record<string, 
 const resolveElementProps = (elements: Config["elements"]): Record<string, ModuleExport> =>
     elementEntryValues(elements, (entry) => entry.props);
 
-const resolveOmitProps = (elements: Config["elements"]): Record<string, string[]> =>
-    elementEntryValues(elements, (entry) => entry.omitProps);
+const resolveOmittedProps = (elements: Config["elements"]): Record<string, string[]> =>
+    elementEntryValues(elements, (entry) => entry.omittedProps);
 
 const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
@@ -298,7 +298,7 @@ export {
     resolveLazyElements,
     resolveElementComponents,
     resolveElementProps,
-    resolveOmitProps,
+    resolveOmittedProps,
     resolveConfig,
     type ResolvedReactCompilerOptions,
     type Config,

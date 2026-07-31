@@ -1,3 +1,4 @@
+import { resolveStore } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -32,24 +33,6 @@ const readVersion = (packageJsonPath: string): string => {
     return parsed.version ?? "0.0.0";
 };
 
-const readSubexports = (packageDir: string): string[] => {
-    const parsed = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")) as {
-        exports?: Record<string, unknown>;
-    };
-
-    return Object.keys(parsed.exports ?? {})
-        .filter((key) => key.startsWith("./") && key !== "./package.json")
-        .map((key) => key.slice(2));
-};
-
-/** Resolves the `@gtkx/react` subexport names for a project without requiring runtime/native to be installed. */
-const resolveReactSubexports = (dir: string): string[] => {
-    const require = createRequire(pathToFileURL(join(dir, "__gtkx_resolver__.js")).href);
-    const react = resolvePackage(require, dir, "@gtkx/react");
-
-    return react === null ? [] : readSubexports(react.dir);
-};
-
 const resolvePackage = (require: NodeJS.Require, dir: string, packageName: string): ResolvedPackage | null => {
     try {
         const real = realpathSync(require.resolve(`${packageName}/package.json`));
@@ -69,36 +52,28 @@ const resolvePackage = (require: NodeJS.Require, dir: string, packageName: strin
     }
 };
 
+// Where the jsx store would live when @gtkx/react is absent, so a stale one can still be cleared.
+const siblingStore = (giDir: string): string => join(dirname(giDir), "jsx");
+
 const resolveCodegenStore = (dir: string): CodegenStore => {
     const require = createRequire(pathToFileURL(join(dir, "__gtkx_resolver__.js")).href);
-    const runtime = resolvePackage(require, dir, "@gtkx/runtime");
 
-    if (runtime === null) {
-        throw new Error("Cannot resolve @gtkx/runtime from the project; is it installed?");
-    }
-
-    const native = resolvePackage(require, dir, "@gtkx/native");
-
-    if (native === null) {
+    if (resolvePackage(require, dir, "@gtkx/native") === null) {
         throw new Error("Cannot resolve @gtkx/native from the project; is it installed?");
     }
 
-    const react = resolvePackage(require, dir, "@gtkx/react");
-    const reactRuntime = resolvePackage(require, dir, "react");
-    const nodeModules = join(dir, "node_modules");
+    const store = resolveStore(dir);
+    const hasReactRuntime = resolvePackage(require, dir, "react") !== null;
 
     return {
-        giStoreDir: join(nodeModules, ".gtkx", "gi"),
-        giLinkDir: join(nodeModules, "@gtkx", "gi"),
-        jsxStoreDir: join(nodeModules, ".gtkx", "jsx"),
-        jsxLinkDir: join(nodeModules, "@gtkx", "jsx"),
-        runtimeVersion: runtime.version,
+        giStoreDir: store.gi.storeDir,
+        giLinkDir: store.gi.linkDir,
+        jsxStoreDir: store.jsx?.storeDir ?? siblingStore(store.gi.storeDir),
+        jsxLinkDir: store.jsx?.linkDir ?? siblingStore(store.gi.linkDir),
+        runtimeVersion: store.gi.version,
         react:
-            react !== null && reactRuntime !== null
-                ? {
-                        version: react.version,
-                        subexports: readSubexports(react.dir),
-                    }
+            hasReactRuntime && store.jsx !== null
+                ? { version: store.jsx.version, subexports: store.reactSubexports }
                 : null,
     };
 };
@@ -109,4 +84,4 @@ const resolveCodegenContext = async (cwd: string, mode?: string): Promise<Codege
     return { root: cwd, config, configFile };
 };
 
-export { resolveReactSubexports, resolveCodegenStore, resolveCodegenContext, type CodegenStore, type CodegenContext };
+export { resolveCodegenStore, resolveCodegenContext, type CodegenStore, type CodegenContext };

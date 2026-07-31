@@ -1,4 +1,4 @@
-import { type Column, ColumnView } from "@gtkx/components";
+import { ColumnView, type ColumnViewColumn } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
@@ -338,7 +338,7 @@ const SCRIPT_NAMES: Map<number, string> = new Map([
 
 const characters = parseUcdData();
 
-const ucdCodepointColumn: Column<UcdEntry> = {
+const ucdCodepointColumn: ColumnViewColumn<UcdEntry> = {
     id: "codepoint",
     title: "Codepoint",
     sortable: true,
@@ -347,7 +347,7 @@ const ucdCodepointColumn: Column<UcdEntry> = {
     ),
 };
 
-const ucdCharColumn: Column<UcdEntry> = {
+const ucdCharColumn: ColumnViewColumn<UcdEntry> = {
     id: "char",
     title: "Char",
     renderCell: ({ item }) => (
@@ -355,7 +355,7 @@ const ucdCharColumn: Column<UcdEntry> = {
     ),
 };
 
-const ucdNameColumn: Column<UcdEntry> = {
+const ucdNameColumn: ColumnViewColumn<UcdEntry> = {
     id: "name",
     title: "Name",
     resizable: true,
@@ -546,7 +546,7 @@ function buildCharacterData(): CharacterData {
     return { sections, flat: sections.flatMap((section) => section.entries) };
 }
 
-function inscriptionColumn(id: string, title: string, label: (item: UcdEntry) => string): Column<UcdEntry> {
+function inscriptionColumn(id: string, title: string, label: (item: UcdEntry) => string): ColumnViewColumn<UcdEntry> {
     return {
         id,
         title,

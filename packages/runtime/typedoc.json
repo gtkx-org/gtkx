@@ -1,7 +1,9 @@
 {
     "intentionallyNotExported": [
+        "ApplicationLike",
         "EmitArg",
         "ErrorLike",
+        "FinishResult",
         "MixinReceiver",
         "RegisterClassOptions",
         "SignalConnectSpec",

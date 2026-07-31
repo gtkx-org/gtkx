@@ -1,4 +1,4 @@
-import type { ResolvedReactCompilerOptions } from "@gtkx/config";
+import type { ResolvedReactCompilerOptions } from "@gtkx/config/internal";
 import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 import { transformAsync } from "@babel/core";
 import babelPresetTypescriptNs from "@babel/preset-typescript";

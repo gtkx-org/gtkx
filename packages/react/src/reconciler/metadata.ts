@@ -1,6 +1,6 @@
 import { TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
 import { getOrInsert } from "@gtkx/utils";
-import { CONSTRUCT_ONLY_PROPS, CONSTRUCT_PROPS, DEFAULT_PROPS, SIGNALS, userEventSignals } from "virtual:gtkx-config";
+import { constructOnlyProps, constructProps, defaultProps, signals, userEventSignals } from "virtual:gtkx-config";
 import { deferredProps, type ElementBehavior, ELEMENTS } from "./registry.js";
 
 type TypeInfo = {
@@ -58,10 +58,10 @@ const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
 };
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
-    Object.assign(info.signals, SIGNALS[ancestor] ?? {});
+    Object.assign(info.signals, signals[ancestor] ?? {});
     addAll(info.userEventSignals, userEventSignals[ancestor]);
-    addAll(info.constructOnly, CONSTRUCT_ONLY_PROPS[ancestor]);
-    addAll(info.construct, CONSTRUCT_PROPS[ancestor]);
+    addAll(info.constructOnly, constructOnlyProps[ancestor]);
+    addAll(info.construct, constructProps[ancestor]);
     info.behaviors.push(...(ELEMENTS[ancestor]?.behaviors ?? []));
 };
 
@@ -108,7 +108,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     info.lazy = chain.some((ancestor) => ELEMENTS[ancestor]?.lazy === true);
 
     for (const ancestor of chain.toReversed()) {
-        Object.assign(info.defaults, DEFAULT_PROPS[ancestor] ?? {});
+        Object.assign(info.defaults, defaultProps[ancestor] ?? {});
     }
 
     return info;

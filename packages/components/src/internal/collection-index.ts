@@ -1,4 +1,4 @@
-import type { Item, Section } from "../types.js";
+import type { ListItem, ListSection } from "../types.js";
 
 type Level = {
     key: string;
@@ -12,7 +12,7 @@ type CollectionIndex = {
     groups: Level[];
     children: Map<string, Level>;
     has: (id: string) => boolean;
-    itemFor: (id: string) => Item | undefined;
+    itemFor: (id: string) => ListItem | undefined;
     sectionFor: (id: string) => unknown;
     positionFor: (id: string) => number;
 };
@@ -21,18 +21,18 @@ type IndexState = {
     isTree: boolean;
     groups: Level[];
     children: Map<string, Level>;
-    itemsById: Map<string, Item>;
-    sections: Section[] | undefined;
+    itemsById: Map<string, ListItem>;
+    sections: ListSection[] | undefined;
     positions: Map<string, number> | null;
     starts: number[] | null;
 };
 
 const ROOT_LEVEL_KEY = "";
 
-const hasChildren = (item: Item): boolean => item.children !== undefined && item.children.length > 0;
+const hasChildren = (item: ListItem): boolean => item.children !== undefined && item.children.length > 0;
 const childLevelKey = (id: string): string => `child:${id}`;
 
-function collectChildren(state: IndexState, level: Level, item: Item): void {
+function collectChildren(state: IndexState, level: Level, item: ListItem): void {
     if (!state.isTree) {
         return;
     }
@@ -48,7 +48,7 @@ function collectChildren(state: IndexState, level: Level, item: Item): void {
     state.children.set(key, collectLevel(state, key, item.children ?? []));
 }
 
-function collectLevel(state: IndexState, key: string, items: Item[]): Level {
+function collectLevel(state: IndexState, key: string, items: ListItem[]): Level {
     const level: Level = { key, ids: [], isExpandable: [] };
 
     for (const item of items) {
@@ -118,7 +118,7 @@ function sectionFor(state: IndexState, id: string): unknown {
     return sections[sectionAt(state.starts, position)]?.value;
 }
 
-function buildGroups(state: IndexState, source: Item[], sections: Section[] | undefined): Level[] {
+function buildGroups(state: IndexState, source: ListItem[], sections: ListSection[] | undefined): Level[] {
     if (sections === undefined) {
         return [collectLevel(state, ROOT_LEVEL_KEY, source)];
     }
@@ -126,7 +126,7 @@ function buildGroups(state: IndexState, source: Item[], sections: Section[] | un
     return sections.map((section) => collectLevel(state, section.id, section.data));
 }
 
-function isTreeSource(source: Item[], sections: Section[] | undefined, isFlat: boolean): boolean {
+function isTreeSource(source: ListItem[], sections: ListSection[] | undefined, isFlat: boolean): boolean {
     if (sections !== undefined || isFlat) {
         return false;
     }
@@ -135,8 +135,8 @@ function isTreeSource(source: Item[], sections: Section[] | undefined, isFlat: b
 }
 
 function createCollectionIndex(
-    items: Item[] | undefined,
-    sections: Section[] | undefined,
+    items: ListItem[] | undefined,
+    sections: ListSection[] | undefined,
     isFlat: boolean,
 ): CollectionIndex {
     const source = items ?? [];

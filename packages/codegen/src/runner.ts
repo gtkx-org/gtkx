@@ -1,8 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { GiStoreOptions } from "./store/gi-store.js";
-import type { JsxStoreOptions } from "./store/jsx-store.js";
 import type { OmittedProps } from "./store/jsx/omitted-props.js";
+import type { StoreOptions } from "./store/store-fs.js";
 import { checkModules } from "./compile.js";
 import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
@@ -18,26 +17,34 @@ type GlCodegenOptions = {
     resolveFrom: string;
 };
 
+/** What to generate and where to write it. */
 type CodegenRunnerOptions = {
-    libraries?: string[];
-    girPath?: string[];
-    gi?: GiStoreOptions;
-    jsx?: JsxStoreOptions | undefined;
+    /** GIR library identifiers such as `"Gtk-4.0"`, or `"*"` for every library found on the GIR path. */
+    libraries: string[];
+    /** Directories to search for `.gir` files. */
+    girPath: string[];
+    /** Where to write and link the `@gtkx/gi` store. */
+    gi: StoreOptions;
+    /** Where to write and link the `@gtkx/jsx` store; omit to generate the gi store alone. */
+    jsx?: StoreOptions | undefined;
+    /** Subexport names of the installed `@gtkx/react`, whose element config shapes the jsx store. */
     reactSubexports?: string[];
     userComponents?: Record<string, ModuleExport>;
     userLazyElements?: string[];
     userProps?: Record<string, ModuleExport>;
-    userOmitProps?: OmittedProps;
-    gl?: GlCodegenOptions;
+    userOmittedProps?: OmittedProps;
+    /** Regenerates both stores even when their fingerprints are fresh. */
     force?: boolean;
 };
 
+/** What a `runCodegen` run produced. */
 type CodegenRunnerResult = {
+    /** Whether either store was rewritten; false means both were already fresh. */
     regenerated: boolean;
     namespaces: number;
     intrinsicElements: number;
+    /** Wall-clock duration of the run, in milliseconds. */
     duration: number;
-    gl?: GlGenerationReport | undefined;
 };
 
 type StoreResult = {
@@ -47,17 +54,17 @@ type StoreResult = {
 };
 
 /**
- * Runs the `@gtkx` code generators, producing the `@gtkx/gi`, `@gtkx/jsx`, and `@gtkx/gl` bindings from the
- * configured GObject-introspection libraries and OpenGL registry. The gi store is regenerated only when its
- * fingerprint is stale unless `options.force` is set, then the jsx store is regenerated when the gi store or
- * the React element config changed; the OpenGL modules are regenerated whenever `options.gl` is provided.
+ * Writes and links a project's `@gtkx/gi` and `@gtkx/jsx` stores from the given GObject-Introspection
+ * libraries. The gi store is rewritten only when its GIR inputs changed, and the jsx store only when the gi
+ * store or the React element config changed, unless `options.force` is set. Pass the spread of
+ * `resolveStore(projectRoot)` for everything but `libraries` and `girPath`.
  *
- * @param options - What to generate and where to write it.
+ * @param options What to generate and where to write it.
  * @returns A summary of what was regenerated and how long the run took.
+ * @throws If `girPath` is empty, which would otherwise generate nothing and report success.
  */
 const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerResult> => {
     const start = Date.now();
-    const gl = options.gl === undefined ? undefined : emitGlModules(options.gl);
     const store = await emitStores(options);
 
     return {
@@ -65,11 +72,10 @@ const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerR
         namespaces: store.namespaces,
         intrinsicElements: store.intrinsicElements,
         duration: Date.now() - start,
-        gl,
     };
 };
 
-const emitGlModules = (options: GlCodegenOptions): GlGenerationReport => {
+const runGlCodegen = (options: GlCodegenOptions): GlGenerationReport => {
     const { files, report } = generateGlModules({
         registryPath: options.registryPath,
         overrideExports: options.overrideExports,
@@ -97,19 +103,19 @@ const jsxUserOptions = (
     userComponents: Record<string, ModuleExport>;
     userLazyElements: string[];
     userProps: Record<string, ModuleExport>;
-    userOmitProps: OmittedProps;
+    userOmittedProps: OmittedProps;
 } => ({
     reactSubexports: options.reactSubexports ?? [],
     userComponents: options.userComponents ?? {},
     userLazyElements: options.userLazyElements ?? [],
     userProps: options.userProps ?? {},
-    userOmitProps: options.userOmitProps ?? {},
+    userOmittedProps: options.userOmittedProps ?? {},
 });
 
 const emitJsxStore = async (input: {
     options: CodegenRunnerOptions;
-    jsx: JsxStoreOptions;
-    gi: GiStoreOptions;
+    jsx: StoreOptions;
+    gi: StoreOptions;
     loadLibrary: () => Library;
     giRegenerated: boolean;
     namespaces: number;
@@ -135,8 +141,8 @@ const emitJsxStore = async (input: {
 
 const emitStoresWithConfig = async (config: {
     options: CodegenRunnerOptions;
-    gi: GiStoreOptions;
-    jsx: JsxStoreOptions | undefined;
+    gi: StoreOptions;
+    jsx: StoreOptions | undefined;
     libraries: string[];
     girPath: string[];
 }): Promise<StoreResult> => {
@@ -159,11 +165,12 @@ const emitStoresWithConfig = async (config: {
 const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
     const { gi, jsx, libraries, girPath } = options;
 
-    if (gi === undefined || libraries === undefined || girPath === undefined) {
-        return { regenerated: false, namespaces: 0, intrinsicElements: 0 };
+    if (girPath.length === 0) {
+        throw new Error("codegen needs at least one GIR search path; pass the result of resolveGirPath");
     }
 
     return emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
 };
 
-export { runCodegen, type GlCodegenOptions, type CodegenRunnerOptions, type CodegenRunnerResult };
+export type { GlGenerationReport } from "./khronos/pipeline.js";
+export { runCodegen, runGlCodegen, type GlCodegenOptions, type CodegenRunnerOptions, type CodegenRunnerResult };

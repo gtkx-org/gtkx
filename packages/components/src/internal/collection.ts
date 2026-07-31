@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { Item } from "../types.js";
+import type { ListItem } from "../types.js";
 import type { CollectionIndex } from "./collection-index.js";
 import type { CollectionModel } from "./collection-model.js";
 import { getId } from "./collection-model.js";
@@ -9,7 +9,7 @@ type Collection = {
     isTree: boolean;
     model: Gtk.FlattenListModel;
     treeModel: () => Gtk.TreeListModel | null;
-    itemFor: (id: string) => Item | undefined;
+    itemFor: (id: string) => ListItem | undefined;
     sectionFor: (id: string) => unknown;
     idAt: (position: number) => string | null;
     positionFor: (id: string) => number;

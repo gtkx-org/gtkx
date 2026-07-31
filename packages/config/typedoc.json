@@ -1,3 +1,7 @@
 {
-    "intentionallyNotExported": ["LoadConfigOptions", "ReactCompilerOptions", "configSchema"]
+    "intentionallyNotExported": [
+        "LoadConfigOptions",
+        "ResolvedReactCompilerOptions",
+        "configSchema"
+    ]
 }

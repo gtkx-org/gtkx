@@ -21,7 +21,7 @@ type JsxFingerprintInput = {
     components: Record<string, ModuleExport>;
     lazyElements: string[];
     props: Record<string, ModuleExport>;
-    omitProps: Record<string, string[]>;
+    omittedProps: Record<string, string[]>;
 };
 
 /** The freshness sentinel of the `@gtkx/jsx` store, derived from the React element config. */
@@ -116,7 +116,7 @@ const hasMatchingRecordedInputs = (sentinel: GiFingerprint, libraries: string[],
 const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
     sortStrings(Object.keys(map)).map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
 
-const serializeOmitProps = (map: Record<string, string[]>): [string, string][] =>
+const serializeOmittedProps = (map: Record<string, string[]>): [string, string][] =>
     sortStrings(Object.keys(map)).map((type) => [type, sortAlpha(map[type] ?? [])]);
 
 const hashJsx = (input: JsxFingerprintInput): string =>
@@ -128,7 +128,7 @@ const hashJsx = (input: JsxFingerprintInput): string =>
                 serializeModuleExports(input.components),
                 sortStrings(input.lazyElements),
                 serializeModuleExports(input.props),
-                serializeOmitProps(input.omitProps),
+                serializeOmittedProps(input.omittedProps),
             ]),
         )
         .digest("hex");

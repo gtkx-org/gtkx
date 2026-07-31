@@ -5,9 +5,6 @@
     },
     "references": [
       {
-        "path": "../react/tsconfig.lib.json"
-      },
-      {
         "path": "../create-gtkx/tsconfig.lib.json"
       },
       {

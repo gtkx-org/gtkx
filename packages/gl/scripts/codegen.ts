@@ -1,4 +1,4 @@
-import { runCodegen } from "@gtkx/codegen";
+import { runGlCodegen } from "@gtkx/codegen/internal";
 import { createLogger } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -21,12 +21,7 @@ const glSrcDir = join(scriptDir, "..", "src");
 const outputDir = join(glSrcDir, "generated");
 const EXPORT_PATTERN = /^export (?:async )?(?:function|const|type|interface|class) ([A-Za-z_$][\w$]*)/gm;
 const overrideExports = overrideExportNames(join(glSrcDir, "overrides.ts"));
-
-const result = await runCodegen({
-    gl: { registryPath, overrideExports, outputDir, resolveFrom: join(scriptDir, "..") },
-});
-
-const report = result.gl;
+const report = runGlCodegen({ registryPath, overrideExports, outputDir, resolveFrom: join(scriptDir, "..") });
 const exclusionCounts: Map<string, number> = new Map();
 
 function overrideExportNames(path: string): Set<string> {
@@ -42,10 +37,6 @@ function overrideExportNames(path: string): Set<string> {
     }
 
     return names;
-}
-
-if (report === undefined) {
-    throw new Error("gl codegen produced no report");
 }
 
 for (const exclusion of report.exclusions) {

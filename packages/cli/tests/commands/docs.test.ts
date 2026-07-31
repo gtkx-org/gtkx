@@ -1,4 +1,5 @@
-import { resolveGirPath, resolveLibraries, writeDocs } from "@gtkx/codegen";
+import { resolveGirPath, resolveLibraries } from "@gtkx/codegen";
+import { writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
 import { describe, expect, it, vi } from "vitest";
 import { docs } from "../../src/commands/docs.js";
@@ -19,7 +20,7 @@ const docsCall = (overrides: Record<string, unknown>): Record<string, unknown> =
     libraries: ["Gtk-4.0"],
     girPath: ["/usr/share/gir-1.0"],
     props: {},
-    omitProps: {},
+    omittedProps: {},
     ...overrides,
 });
 
@@ -60,7 +61,7 @@ function mockedNamespaces() {
     ];
 }
 
-function mockedMergeOmitProps(...maps: Record<string, string[]>[]): Record<string, string[]> {
+function mockedMergeOmittedProps(...maps: Record<string, string[]>[]): Record<string, string[]> {
     const merged: Record<string, string[]> = {};
 
     for (const map of maps) {
@@ -73,9 +74,17 @@ function mockedMergeOmitProps(...maps: Record<string, string[]>[]): Record<strin
 vi.mock("@gtkx/codegen", () => ({
     resolveGirPath: vi.fn(() => ["/usr/share/gir-1.0"]),
     resolveLibraries: vi.fn(() => ["Gtk-4.0"]),
-    mergeOmitProps: vi.fn(mockedMergeOmitProps),
+    resolveStore: vi.fn(() => ({
+        gi: { storeDir: "/project/node_modules/.gtkx/gi", linkDir: "", version: "0.0.0" },
+        jsx: null,
+        reactSubexports: [],
+    })),
+    mergeOmittedProps: vi.fn(mockedMergeOmittedProps),
     readBuiltinElements: vi.fn(() =>
-        Promise.resolve({ components: {}, lazyElements: [], props: {}, omitProps: {} })),
+        Promise.resolve({ components: {}, lazyElements: [], props: {}, omittedProps: {} })),
+}));
+
+vi.mock("@gtkx/codegen/internal", () => ({
     writeDocs: vi.fn(() => ({ regenerated: true, namespaces: mockedNamespaces() })),
 }));
 

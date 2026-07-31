@@ -7,23 +7,15 @@ export {
     type ApiSearchOptions,
     type ApiSymbol,
     type ApiSymbolKind,
+    type ApiSymbolQuery,
     loadApiReference,
 } from "./docs/api-reference.js";
-export {
-    type DocsElementLink,
-    type DocsNamespace,
-    type DocsOptions,
-    type DocsResult,
-    writeDocs,
-} from "./docs/pipeline.js";
 export { resolveGirPath } from "./gir/gir-path.js";
-export { discoverGirNamespaces, resolveLibraries } from "./gir/libraries.js";
-export {
-    type BuiltinElement,
-    type BuiltinElements,
-    type ModuleExport,
-    readBuiltinElements,
-} from "./react/element-config.js";
-export { runCodegen } from "./runner.js";
+export { discoverGirNamespaces, type LibrarySelection, resolveLibraries } from "./gir/libraries.js";
+export { type BuiltinElements, type ModuleExport, readBuiltinElements } from "./react/element-config.js";
+export { type CodegenRunnerOptions, type CodegenRunnerResult, runCodegen } from "./runner.js";
 export type { ElementProps } from "./store/jsx/element-prop-imports.js";
-export { mergeOmitProps, type OmittedProps } from "./store/jsx/omitted-props.js";
+export { type GeneratedElement, readGeneratedElements } from "./store/jsx/generated-elements.js";
+export { mergeOmittedProps, type OmittedProps } from "./store/jsx/omitted-props.js";
+export { type ResolvedStore, resolveStore } from "./store/resolve-store.js";
+export type { StoreOptions } from "./store/store-fs.js";

@@ -1,6 +1,9 @@
 {
     "$schema": "https://typedoc.org/schema.json",
-    "entryPoints": ["dist/index.d.ts", "dist/adw/index.d.ts"],
+    "entryPoints": [
+        "dist/index.d.ts",
+        "dist/adw/index.d.ts"
+    ],
     "tsconfig": "../../website/tsconfig.typedoc.json",
     "intentionallyNotExported": [
         "ColumnViewOwnProps",
@@ -8,8 +11,7 @@
         "DropDownComponent",
         "DropDownWidgetProps",
         "GridViewOwnProps",
-        "ListViewOwnProps",
-        "SizeGroupComponent"
+        "ListViewOwnProps"
     ],
     "readme": "none"
 }

@@ -4,7 +4,7 @@ import {
     resolveElementComponents,
     resolveElementProps,
     resolveLazyElements,
-    resolveOmitProps,
+    resolveOmittedProps,
 } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { rmSync } from "node:fs";
@@ -89,7 +89,7 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
     userComponents: resolveElementComponents(elements),
     userProps: resolveElementProps(elements),
     userLazyElements: resolveLazyElements(elements),
-    userOmitProps: resolveOmitProps(elements),
+    userOmittedProps: resolveOmittedProps(elements),
 });
 
 const disabledCodegenResult = (configFile: string): RunCodegenResult => ({

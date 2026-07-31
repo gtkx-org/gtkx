@@ -1,19 +1,19 @@
 import {
     type ElementProps,
-    mergeOmitProps,
+    mergeOmittedProps,
     type OmittedProps,
     readBuiltinElements,
     resolveGirPath,
     resolveLibraries,
-    writeDocs,
+    resolveStore,
 } from "@gtkx/codegen";
+import { writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
-import { resolveOmitProps } from "@gtkx/config/internal";
+import { resolveOmittedProps } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { resolveReactSubexports } from "../codegen/store-resolver.js";
+import { resolve } from "node:path";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const docs = defineCommand({
@@ -72,7 +72,7 @@ const docs = defineCommand({
             outDir,
             basePath: args["base-path"],
             props: builtin.props,
-            omitProps: mergeOmitProps(builtin.omitProps, resolveOmitProps(config.elements)),
+            omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
             force: args.force,
         });
 
@@ -91,16 +91,16 @@ const docs = defineCommand({
     },
 });
 
-const resolveDocsElements = async (cwd: string): Promise<{ props: ElementProps; omitProps: OmittedProps }> => {
-    const giStoreDir = join(cwd, "node_modules", ".gtkx", "gi");
+const resolveDocsElements = async (cwd: string): Promise<{ props: ElementProps; omittedProps: OmittedProps }> => {
+    const { gi, reactSubexports } = resolveStore(cwd);
 
-    if (!existsSync(giStoreDir)) {
-        return { props: {}, omitProps: {} };
+    if (!existsSync(gi.storeDir)) {
+        return { props: {}, omittedProps: {} };
     }
 
-    const { props, omitProps } = await readBuiltinElements(resolveReactSubexports(cwd), giStoreDir);
+    const { props, omittedProps } = await readBuiltinElements(reactSubexports, gi.storeDir);
 
-    return { props, omitProps };
+    return { props, omittedProps };
 };
 
 export { docs };

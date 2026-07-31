@@ -1,5 +1,4 @@
-import type { RenderItemArgs } from "@gtkx/components";
-import type { ReactNode } from "react";
+import type { ListItemRenderer } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { screen } from "@gtkx/testing";
 import { expect, vi } from "vitest";
@@ -32,7 +31,7 @@ const expectAllVisibleOnce = (...texts: string[]): void => {
 };
 
 const namedLabelRenderItem = () =>
-    vi.fn(({ item }: RenderItemArgs<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>);
+    vi.fn<ListItemRenderer<{ name: string }>>(({ item }) => <GtkLabel>{item.name}</GtkLabel>);
 
 const renderTestItemWithSpy = async (): Promise<ReturnType<typeof namedLabelRenderItem>> => {
     const renderItem = namedLabelRenderItem();
@@ -59,7 +58,7 @@ const namedRows = (entries: [string, string][]): NamedRow[] =>
 const counterRows = (entries: [string, string, number][]): CounterRow[] =>
     entries.map(([id, name, count]) => ({ id, value: { name, count } }));
 
-const renderCounterCell = ({ item }: RenderItemArgs<{ name: string; count: number }>): ReactNode => (
+const renderCounterCell: ListItemRenderer<{ name: string; count: number }> = ({ item }) => (
     <GtkLabel>{`${item.name}: ${String(item.count)}`}</GtkLabel>
 );
 

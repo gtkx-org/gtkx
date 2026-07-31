@@ -1,4 +1,4 @@
-import { ColumnView, type RenderItemArgs } from "@gtkx/components";
+import { ColumnView, type ListItemRenderer } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, getWidgetNodeText, render, screen, within } from "@gtkx/testing";
@@ -19,7 +19,12 @@ import {
     namedRows,
     RAPID_REORDER_ORDERS,
 } from "./helpers/list-collection-render.js";
-import { type Column, firstSecondItems, firstSecondThirdItems, renderColumnView } from "./helpers/list-fixtures.js";
+import {
+    type ColumnViewColumn,
+    firstSecondItems,
+    firstSecondThirdItems,
+    renderColumnView,
+} from "./helpers/list-fixtures.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
@@ -50,20 +55,20 @@ const estimatedSizeItems = Array.from({ length: 20 }, (_, index) => ({
     value: { name: `Item ${String(index)}` },
 }));
 
-const employeeColumns: Column<Employee>[] = [
+const employeeColumns: ColumnViewColumn<Employee>[] = [
     {
         id: "name",
         title: "Name",
         expand: true,
         sortable: true,
-        renderCell: ({ item }: RenderItemArgs<Employee>) => <GtkLabel>{item.name}</GtkLabel>,
+        renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
     },
     {
         id: "salary",
         title: "Salary",
         expand: true,
         sortable: true,
-        renderCell: ({ item }: RenderItemArgs<Employee>) => <GtkLabel>{`$${String(item.salary)}`}</GtkLabel>,
+        renderCell: ({ item }) => <GtkLabel>{`$${String(item.salary)}`}</GtkLabel>,
     },
 ];
 
@@ -105,9 +110,9 @@ const columnViewView = async (items: Parameters<typeof renderColumnView>[0]): Pr
     return { texts: () => getColumnViewItemTexts(ref.current), rerender };
 };
 
-const labelCell = ({ item }: RenderItemArgs<{ name: string }>) => <GtkLabel>{item.name}</GtkLabel>;
+const labelCell: ListItemRenderer<{ name: string }> = ({ item }) => <GtkLabel>{item.name}</GtkLabel>;
 
-const titleColumns = (titles: string[]): Column<{ name: string }>[] =>
+const titleColumns = (titles: string[]): ColumnViewColumn<{ name: string }>[] =>
     titles.map((title) => ({ id: title, title, renderCell: labelCell }));
 
 const renderTitledColumnView = async (titles: string[]): Promise<TitledColumnViewFixture> => {
@@ -126,11 +131,11 @@ const renderAbcThenReorder = async (nextTitles: string[]): Promise<TitledColumnV
     return fixture;
 };
 
-const orderedColumns = (ids: string[]): Column<{ name: string }>[] =>
+const orderedColumns = (ids: string[]): ColumnViewColumn<{ name: string }>[] =>
     ids.map((id) => ({
         id,
         title: id,
-        renderCell: ({ item }: RenderItemArgs<{ name: string }>) => <GtkLabel>{`${id}:${item.name}`}</GtkLabel>,
+        renderCell: ({ item }) => <GtkLabel>{`${id}:${item.name}`}</GtkLabel>,
     }));
 
 const generateEmployees = (count: number): Employee[] => {
@@ -436,7 +441,7 @@ describe("render - ColumnView (5)", () => {
         });
 
         it("updates sort indicator when props change", async () => {
-            const columns: Column<{ name: string }>[] = [
+            const columns: ColumnViewColumn<{ name: string }>[] = [
                 { id: "name", title: "Name", renderCell: labelCell },
                 { id: "age", title: "Age", renderCell: labelCell },
             ];
@@ -609,19 +614,19 @@ describe("render - ColumnView (12)", () => {
 describe("render - ColumnView (13)", () => {
     describe("item reordering (4)", () => {
         it("preserves React declaration order after sorting resets", async () => {
-            type Item = {
+            type ListItem = {
                 id: string;
                 name: string;
                 salary: number;
             };
 
-            const items: Item[] = [
+            const items: ListItem[] = [
                 { id: "3", name: "Charlie", salary: 60_000 },
                 { id: "1", name: "Alice", salary: 50_000 },
                 { id: "2", name: "Bob", salary: 55_000 },
             ];
 
-            const columns: Column<Item>[] = [
+            const columns: ColumnViewColumn<ListItem>[] = [
                 {
                     id: "name",
                     title: "Name",
@@ -636,7 +641,7 @@ describe("render - ColumnView (13)", () => {
                 },
             ];
 
-            const sortBy = (sortColumn: SortColumn, sortOrder: Gtk.SortType): Item[] => {
+            const sortBy = (sortColumn: SortColumn, sortOrder: Gtk.SortType): ListItem[] => {
                 if (!sortColumn) {
                     return items;
                 }
@@ -644,7 +649,7 @@ describe("render - ColumnView (13)", () => {
                 return items.toSorted((a, b) => compareBySort(a, b, sortColumn, sortOrder));
             };
 
-            const toRows = (rows: Item[]) => rows.map((item) => ({ id: item.id, value: item }));
+            const toRows = (rows: ListItem[]) => rows.map((item) => ({ id: item.id, value: item }));
             const createRows = (sortColumn: SortColumn) => toRows(sortBy(sortColumn, Gtk.SortType.ASCENDING));
 
             const createOptions = (sortColumn: SortColumn) => ({
@@ -688,9 +693,9 @@ describe("render - ColumnView (14)", () => {
         });
 
         it("preserves order when updating a single item value", async () => {
-            type Item = { name: string; count: number };
+            type ListItem = { name: string; count: number };
 
-            const columns: Column<Item>[] = [
+            const columns: ColumnViewColumn<ListItem>[] = [
                 {
                     id: "name",
                     title: "Name",

@@ -1,5 +1,6 @@
+import type { SettingsSchema, SettingValue } from "@gtkx/react/internal";
 import * as Gio from "@gtkx/gi/gio";
-import { type SettingsSchema, type SettingValue, useSetting } from "@gtkx/react";
+import { useSetting } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { expectSettingRoundTrip, resetSettingsKey } from "../helpers/settings.js";

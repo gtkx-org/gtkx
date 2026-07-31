@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useLayoutEffect, useMemo, useState } from "react";
-import type { ExpansionProps, Item, Section, SelectionProps } from "../types.js";
+import type { ExpansionProps, ListItem, ListSection, SelectionProps } from "../types.js";
 import type { Collection } from "./collection.js";
 import { createCollectionIndex } from "./collection-index.js";
 import { createCollectionModel } from "./collection-model.js";
@@ -9,8 +9,8 @@ import { useExpansion } from "./expansion.js";
 import { useSelection } from "./selection.js";
 
 type CollectionDataOptions = {
-    items?: Item[] | undefined;
-    sections?: Section[] | undefined;
+    items?: ListItem[] | undefined;
+    sections?: ListSection[] | undefined;
     flat?: boolean | undefined;
 };
 

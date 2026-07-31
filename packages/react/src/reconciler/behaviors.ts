@@ -142,7 +142,7 @@ const list = <P extends GObject.Object, I, H = void>(
     const { add } = hooks;
 
     return {
-        createContext: (): ListState => ({ snapshot: [], entries: [] }),
+        initialize: (): ListState => ({ snapshot: [], entries: [] }),
         update: (object, _prev, next, context) => {
             const state = context as ListState;
             const raw = next[prop];
@@ -190,7 +190,7 @@ const deferred = <P extends GObject.Object, V>(
     canApply?: CanApply<P, V>,
 ): ElementBehavior<P> => ({
     deferred: [prop],
-    createContext: (): DeferredState => ({ desired: undefined, present: false, applied: undefined }),
+    initialize: (): DeferredState => ({ desired: undefined, present: false, applied: undefined }),
     update: (_object, _prev, next, context) => {
         const state = context as DeferredState;
         state.desired = next[prop];
@@ -312,7 +312,7 @@ const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedInserter>(
             removeWrappedRow(Wrapper, parent, child, info.context as RowCache);
         },
     }),
-    createContext: (): RowCache => new WeakMap(),
+    initialize: (): RowCache => new WeakMap(),
 });
 
 export {

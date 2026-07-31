@@ -6,10 +6,10 @@ import { pathToFileURL } from "node:url";
 import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.ts";
 
 /**
- * Options accepted by the {@link gtkx} Vitest plugin. Every headless display
+ * Options accepted by the GTKX Vitest plugin. Every headless display
  * setting is optional and falls back to a built-in default when omitted.
  */
-type GtkxPluginOptions = Partial<HeadlessOptions>;
+type PluginOptions = Partial<HeadlessOptions>;
 
 const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 
@@ -20,7 +20,7 @@ const workerPreloadUrl = (): URL => {
     return pathToFileURL(path);
 };
 
-const headlessPreloadSpecifier = (options: GtkxPluginOptions): string => {
+const headlessPreloadSpecifier = (options: PluginOptions): string => {
     const url = workerPreloadUrl();
 
     for (const [key, value] of Object.entries(options)) {
@@ -44,7 +44,7 @@ const workerSetupPath = (): string => {
  * @param options Headless display settings (size, compositor) forwarded to each worker.
  * @returns A Vitest config plugin.
  */
-const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
+const gtkx = (options: PluginOptions = {}): Plugin =>
     createConfigPlugin({
         name: "gtkx:vitest",
         config() {
@@ -69,4 +69,4 @@ const gtkx = (options: GtkxPluginOptions = {}): Plugin =>
 
 export default gtkx;
 export { type CompositorId, type HeadlessOptions } from "./headless-display.ts";
-export { type GtkxPluginOptions };
+export { type PluginOptions };
