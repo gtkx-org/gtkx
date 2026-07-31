@@ -167,6 +167,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "@typescript-eslint/consistent-generic-constructors": ["error", "type-annotation"],
     "@typescript-eslint/consistent-type-definitions": ["error", "type"],
     "@typescript-eslint/naming-convention": ["error", ...NAMING_CONVENTION],
+    "@typescript-eslint/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
     "@typescript-eslint/non-nullable-type-assertion-style": "off",
     "@typescript-eslint/restrict-template-expressions": [
         "error",

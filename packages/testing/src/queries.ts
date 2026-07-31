@@ -5,11 +5,11 @@ import type {
     Matcher,
     MatcherOptions,
     NormalizerFn,
-    NormalizerOptions,
     QueryFamilies,
 } from "./types.js";
 import { buildQueries, type BuiltQueries, type QueryAllBy } from "./build-queries.js";
 import { multipleFoundError, notFoundError } from "./errors.js";
+import { getDefaultNormalizer } from "./normalize.js";
 import { type Container, findAll, traverse } from "./traversal.js";
 import {
     getWidgetAccessibleName,
@@ -225,31 +225,6 @@ const findAllByDisplayValue: BuiltinQueries["findAllByDisplayValue"] = builtinQu
  * or the timeout elapses. Rejects when none or more than one matches.
  */
 const findByDisplayValue: BuiltinQueries["findByDisplayValue"] = builtinQueries.findByDisplayValue;
-
-/**
- * Builds the default text normalizer, which optionally trims surrounding whitespace and collapses
- * runs of whitespace into single spaces.
- * @param options Toggles for trimming and whitespace collapsing.
- * @returns A function that normalizes a string for comparison against a matcher.
- */
-const getDefaultNormalizer = ({
-    trim = true,
-    collapseWhitespace = true,
-}: NormalizerOptions = {}): NormalizerFn => {
-    return (text: string): string => {
-        let result = text;
-
-        if (trim) {
-            result = result.trim();
-        }
-
-        if (collapseWhitespace) {
-            result = result.replaceAll(/\s+/g, " ");
-        }
-
-        return result;
-    };
-};
 
 const buildNormalizer = (options?: MatcherOptions): NormalizerFn => {
     const { normalizer, trim, collapseWhitespace } = options ?? {};
@@ -584,7 +559,6 @@ export {
     getByDisplayValue,
     findAllByDisplayValue,
     findByDisplayValue,
-    getDefaultNormalizer,
     queryAllByRole,
     queryAllByLabelText,
     queryAllByText,

@@ -1,6 +1,7 @@
 /// <reference types="@vitest/expect" />
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { getDefaultNormalizer } from "./normalize.js";
 import { formatRole } from "./role-helpers.js";
 import {
     type CheckedState,
@@ -26,6 +27,16 @@ import {
 
 /** The expected value for a text matcher: an exact string or a regular expression. */
 type TextExpectation = string | RegExp;
+
+/** Options controlling how `toHaveTextContent` normalizes the text it reads. */
+type TextContentOptions = {
+    /**
+     * When true (the default), trim the text and collapse runs of whitespace into single spaces
+     * before comparing. When false, only replace non-breaking spaces with regular ones.
+     */
+    normalizeWhitespace?: boolean | undefined;
+};
+
 /** The expected value for a style class: an exact class name or a regular expression. */
 type ClassExpectation = string | RegExp;
 type MatcherResult = { pass: boolean; message: () => string };
@@ -35,9 +46,15 @@ type StateMatcher = (received: unknown) => MatcherResult;
 type TextMatcherContext = { matcherName: string; widget: Gtk.Widget; actual: string | null };
 type ClassArguments = { expected: ClassExpectation[]; isExact: boolean };
 
+type TextContentMatcher = (
+    received: unknown,
+    expected?: TextExpectation,
+    options?: TextContentOptions,
+) => MatcherResult;
+
 type MatcherImplementations = {
     toHaveDisplayValue: TextMatcher;
-    toHaveTextContent: TextMatcher;
+    toHaveTextContent: TextContentMatcher;
     toHaveAccessibleName: TextMatcher;
     toHaveAccessibleDescription: TextMatcher;
     toHaveAccessibleErrorMessage: TextMatcher;
@@ -68,7 +85,6 @@ type ExpectExtend = { extend: (m: MatcherImplementations) => void };
 
 const registration = { isRegistered: false };
 const displayValueMatcher: TextMatcher = textMatcher("toHaveDisplayValue", getWidgetDisplayValue, "exact");
-const toHaveTextContent: TextMatcher = textMatcher("toHaveTextContent", getWidgetTextContent, "substring");
 const toHaveAccessibleName: TextMatcher = textMatcher("toHaveAccessibleName", getWidgetAccessibleName, "exact");
 
 const toHaveAccessibleDescription: TextMatcher = textMatcher(
@@ -318,6 +334,30 @@ function textMatcher(
     };
 }
 
+function normalizeTextContent(text: string, options?: TextContentOptions): string {
+    if (options?.normalizeWhitespace === false) {
+        return text.replaceAll("\u{A0}", " ");
+    }
+
+    return getDefaultNormalizer()(text);
+}
+
+function readTextContent(widget: Gtk.Widget, options?: TextContentOptions): string | null {
+    const text = getWidgetTextContent(widget);
+
+    return text === null ? null : normalizeTextContent(text, options);
+}
+
+function toHaveTextContent(
+    received: unknown,
+    expected?: TextExpectation,
+    options?: TextContentOptions,
+): MatcherResult {
+    const read = (widget: Gtk.Widget): string | null => readTextContent(widget, options);
+
+    return textMatcher("toHaveTextContent", read, "substring")(received, expected);
+}
+
 function notApplicable(matcherName: string, stateName: string, widget: Gtk.Widget): Error {
     return new Error(
         `${matcherName}: widget does not expose a ${stateName} ` +
@@ -545,9 +585,9 @@ const registerMatchers = (): void => {
 
 declare module "@vitest/expect" {
     /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
-    interface Assertion {
+    interface WidgetMatchers {
         toHaveDisplayValue(expected?: TextExpectation): void;
-        toHaveTextContent(expected?: TextExpectation): void;
+        toHaveTextContent(expected?: TextExpectation, options?: TextContentOptions): void;
         toHaveAccessibleName(expected?: TextExpectation): void;
         toHaveAccessibleDescription(expected?: TextExpectation): void;
         toHaveAccessibleErrorMessage(expected?: TextExpectation): void;
@@ -574,34 +614,8 @@ declare module "@vitest/expect" {
         toHaveObjectProperty(name: string, expected?: unknown): void;
     }
 
-    interface AsymmetricMatchersContaining {
-        toHaveDisplayValue(expected?: TextExpectation): void;
-        toHaveTextContent(expected?: TextExpectation): void;
-        toHaveAccessibleName(expected?: TextExpectation): void;
-        toHaveAccessibleDescription(expected?: TextExpectation): void;
-        toHaveAccessibleErrorMessage(expected?: TextExpectation): void;
-        toHavePlaceholderText(expected?: TextExpectation): void;
-        toHaveSelection(expected?: TextExpectation): void;
-        toBeChecked(): void;
-        toBePartiallyChecked(): void;
-        toBePressed(): void;
-        toBeExpanded(): void;
-        toBeSelected(): void;
-        toBeDisabled(): void;
-        toBeEnabled(): void;
-        toBeVisible(): void;
-        toBeRooted(): void;
-        toBeEmpty(): void;
-        toBeInvalid(): void;
-        toBeValid(): void;
-        toBeRequired(): void;
-        toHaveFocus(): void;
-        toHaveValue(expected?: number | string): void;
-        toHaveRole(expected: Gtk.AccessibleRole): void;
-        toContainElement(descendant: Gtk.Widget | null): void;
-        toHaveClass(...args: (ClassExpectation | { exact: boolean })[]): void;
-        toHaveObjectProperty(name: string, expected?: unknown): void;
-    }
+    interface Assertion extends WidgetMatchers {}
+    interface AsymmetricMatchersContaining extends WidgetMatchers {}
     /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }
 
@@ -635,5 +649,6 @@ export {
     matchers,
     registerMatchers,
     type ClassExpectation,
+    type TextContentOptions,
     type TextExpectation,
 };

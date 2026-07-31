@@ -13,6 +13,26 @@ describe("jest-dom-style text matchers", () => {
         expect(label).not.toHaveTextContent("goodbye");
     });
 
+    it("toHaveTextContent collapses whitespace by default", async () => {
+        await render(<GtkLabel>{"  Hello \n\t world  "}</GtkLabel>);
+        const label = await screen.findByText("Hello world");
+        expect(label).toHaveTextContent("Hello world");
+    });
+
+    it("toHaveTextContent keeps the raw whitespace when normalization is off", async () => {
+        await render(<GtkLabel>{"  Hello \n\t world  "}</GtkLabel>);
+        const label = await screen.findByText("Hello world");
+        expect(label).not.toHaveTextContent("Hello world", { normalizeWhitespace: false });
+        expect(label).toHaveTextContent("Hello \n\t world", { normalizeWhitespace: false });
+    });
+
+    it("toHaveTextContent turns a non-breaking space into a regular one either way", async () => {
+        await render(<GtkLabel>{"Hello\u{A0}world"}</GtkLabel>);
+        const label = await screen.findByText("Hello world");
+        expect(label).toHaveTextContent("Hello world");
+        expect(label).toHaveTextContent("Hello world", { normalizeWhitespace: false });
+    });
+
     it("toHaveAccessibleName matches a button's accessible name", async () => {
         await render(<GtkButton label="Save" />);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" });
