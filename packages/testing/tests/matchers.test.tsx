@@ -1,34 +1,31 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
-import { GtkAdjustment, GtkButton, GtkCheckButton, GtkEntry, GtkLabel, GtkScale, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkButton, GtkCheckButton, GtkEntry, GtkScale, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { describe, expect, it } from "vitest";
 import { render, screen } from "../src/index.js";
+import { expectRejection, renderLabel } from "./widget-fixtures.js";
 
 describe("jest-dom-style text matchers", () => {
     it("toHaveTextContent matches a label's visible text", async () => {
-        await render(<GtkLabel>Hello world</GtkLabel>);
-        const label = await screen.findByText("Hello world");
+        const label = await renderLabel("Hello world");
         expect(label).toHaveTextContent("Hello");
         expect(label).toHaveTextContent(/world/);
         expect(label).not.toHaveTextContent("goodbye");
     });
 
     it("toHaveTextContent collapses whitespace by default", async () => {
-        await render(<GtkLabel>{"  Hello \n\t world  "}</GtkLabel>);
-        const label = await screen.findByText("Hello world");
+        const label = await renderLabel("  Hello \n\t world  ", "Hello world");
         expect(label).toHaveTextContent("Hello world");
     });
 
     it("toHaveTextContent keeps the raw whitespace when normalization is off", async () => {
-        await render(<GtkLabel>{"  Hello \n\t world  "}</GtkLabel>);
-        const label = await screen.findByText("Hello world");
+        const label = await renderLabel("  Hello \n\t world  ", "Hello world");
         expect(label).not.toHaveTextContent("Hello world", { normalizeWhitespace: false });
         expect(label).toHaveTextContent("Hello \n\t world", { normalizeWhitespace: false });
     });
 
     it("toHaveTextContent turns a non-breaking space into a regular one either way", async () => {
-        await render(<GtkLabel>{"Hello\u{A0}world"}</GtkLabel>);
-        const label = await screen.findByText("Hello world");
+        const label = await renderLabel("Hello\u{A0}world", "Hello world");
         expect(label).toHaveTextContent("Hello world");
         expect(label).toHaveTextContent("Hello world", { normalizeWhitespace: false });
     });
@@ -91,11 +88,10 @@ describe("jest-dom-style state and value matchers", () => {
     });
 
     it("throws for a boolean state matcher on a widget without that state", async () => {
-        await render(<GtkLabel>plain</GtkLabel>);
-        const label = await screen.findByText("plain");
+        const label = await renderLabel("plain");
 
-        expect(() => {
+        expectRejection(() => {
             expect(label).toBeChecked();
-        }).toThrow(/does not expose a checked state/);
+        }, /does not expose a checked state/);
     });
 });
