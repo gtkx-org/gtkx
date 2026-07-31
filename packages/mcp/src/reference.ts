@@ -114,11 +114,7 @@ const loadReference = async (root: string): Promise<LoadedReference> => {
 
     const libraries = resolveLibraries(config.libraries, girPath);
     const reference = loadApiReference({ libraries, girPath });
-
-    const watched = [
-        ...(configFile === undefined ? [] : [watchFile(resolve(root, configFile))]),
-        ...reference.girFiles.map((file) => watchFile(file)),
-    ];
+    const watched = [watchFile(resolve(root, configFile)), ...reference.girFiles.map((file) => watchFile(file))];
 
     return { reference, watched };
 };
