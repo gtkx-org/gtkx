@@ -13,9 +13,6 @@
       },
       {
         "path": "../../packages/config/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/testing/tsconfig.lib.json"
       }
     ]
 }
