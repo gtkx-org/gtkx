@@ -73,8 +73,10 @@ function isValueSafeRecord(scope: Scope, namespaceName: string, record: GirRecor
     }
 
     scope.seen.add(key);
+    const isSafe = record.fields.every((field) => isValueSafeField(scope, field));
+    scope.seen.delete(key);
 
-    return record.fields.every((field) => isValueSafeField(scope, field));
+    return isSafe;
 }
 
 /**
