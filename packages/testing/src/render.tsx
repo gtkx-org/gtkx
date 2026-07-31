@@ -97,7 +97,7 @@ const resolveContainer = (container: RenderOptions["container"]): ResolvedContai
     }
 
     const window = new Gtk.Window({ defaultWidth: HARNESS_WINDOW_WIDTH, defaultHeight: HARNESS_WINDOW_HEIGHT });
-    window.setTitlebar(new Gtk.HeaderBar({ showTitleButtons: false }));
+    window.setDecorated(false);
 
     return { containerInfo: window, window };
 };
