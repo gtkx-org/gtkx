@@ -448,11 +448,9 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
-      - name: Install dependencies and build the benchmark prerequisites
+      - name: Install dependencies
         shell: bash
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build
+        run: pnpm install --frozen-lockfile
 
       - name: Run the TypeScript benchmarks under CodSpeed
         uses: CodSpeedHQ/action@f22792bfac16f3e14eb9fbea76f4a48e9cc22b93 # v4.19.1
