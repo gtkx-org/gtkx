@@ -27,15 +27,15 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
     return join(giStoreDir, namespace, "index.js");
 };
 
-const canResolveGiStoreLinks = (giStoreDir: string): boolean =>
-    existsSync(join(giStoreDir, "node_modules", "@gtkx", "gi", "package.json"));
+const isStoreResolvable = (storeDir: string, packageName: string): boolean =>
+    existsSync(join(storeDir, "node_modules", "@gtkx", packageName, "package.json"));
 
 const isGiStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
     if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
         return true;
     }
 
-    if (!canResolveGiStoreLinks(store.giStoreDir)) {
+    if (!isStoreResolvable(store.giStoreDir, "gi")) {
         return true;
     }
 
@@ -47,7 +47,7 @@ const isReactStoreStale = (store: CodegenStore): boolean => {
         return false;
     }
 
-    if (!existsSync(store.jsxLinkDir)) {
+    if (!existsSync(store.jsxLinkDir) || !isStoreResolvable(store.jsxStoreDir, "jsx")) {
         return true;
     }
 

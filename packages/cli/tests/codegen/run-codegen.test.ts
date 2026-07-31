@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 
@@ -43,13 +43,21 @@ const writeConfig = (
     writeFileSync(join(cwd, "gtkx.config.ts"), `${body}\n`);
 };
 
+const writeStoreManifest = (cwd: string, name: "gi" | "jsx") => {
+    const storeDir = join(cwd, "node_modules", ".gtkx", name);
+    mkdirSync(storeDir, { recursive: true });
+    writeFileSync(join(storeDir, "package.json"), JSON.stringify({ name: `@gtkx/${name}`, version: "0.0.0" }));
+    const selfLink = join(storeDir, "node_modules", "@gtkx", name);
+    mkdirSync(dirname(selfLink), { recursive: true });
+    rmSync(selfLink, { recursive: true, force: true });
+    symlinkSync(relative(dirname(selfLink), storeDir), selfLink, "dir");
+    mkdirSync(join(cwd, "node_modules", "@gtkx", name), { recursive: true });
+};
+
 const writeGiBarrel = (cwd: string, namespace: string) => {
     mkdirSync(join(cwd, "node_modules", ".gtkx", "gi", namespace), { recursive: true });
     writeFileSync(join(cwd, "node_modules", ".gtkx", "gi", namespace, "index.js"), "");
-    mkdirSync(join(cwd, "node_modules", "@gtkx", "gi"), { recursive: true });
-    const linkDir = join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "gi");
-    mkdirSync(linkDir, { recursive: true });
-    writeFileSync(join(linkDir, "package.json"), JSON.stringify({ name: "@gtkx/gi", version: "0.0.0" }));
+    writeStoreManifest(cwd, "gi");
 };
 
 const writeDefaultGiBarrels = (cwd: string) => {
@@ -63,7 +71,7 @@ const writeJsxStore = (cwd: string) => {
     mkdirSync(join(dir, "gtk"), { recursive: true });
     writeFileSync(join(dir, "metadata.js"), "");
     writeFileSync(join(dir, "gtk", "gtk.js"), "");
-    mkdirSync(join(cwd, "node_modules", "@gtkx", "jsx"), { recursive: true });
+    writeStoreManifest(cwd, "jsx");
 };
 
 const installReactProject = (cwd: string) => {
@@ -254,6 +262,27 @@ describe("ensureGenerated — store links", () => {
             force: true,
         });
 
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+
+    it("regenerates when the bundled jsx store links are pruned", async () => {
+        installReactProject(cwd);
+        writeJsxStore(cwd);
+        writeFingerprint(cwd);
+
+        rmSync(join(cwd, "node_modules", ".gtkx", "jsx", "node_modules", "@gtkx", "jsx"), {
+            recursive: true,
+            force: true,
+        });
+
+        expect(await ensureGenerated(cwd)).toBe(true);
+    });
+
+    it("regenerates when a store manifest is pruned but its modules remain", async () => {
+        installReactProject(cwd);
+        writeJsxStore(cwd);
+        writeFingerprint(cwd);
+        rmSync(join(cwd, "node_modules", ".gtkx", "jsx", "package.json"), { force: true });
         expect(await ensureGenerated(cwd)).toBe(true);
     });
 });
