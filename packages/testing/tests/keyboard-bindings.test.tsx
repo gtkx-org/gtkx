@@ -4,6 +4,7 @@ import { GtkAdjustment, GtkListView, GtkScale, GtkTextView } from "@gtkx/jsx/gtk
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen, userEvent } from "../src/index.js";
+import { bufferText, caretOffset } from "./text-buffer-helpers.js";
 
 const setupLabelItem = (listItem: GObject.Object): void => {
     if (!(listItem instanceof Gtk.ListItem)) {
@@ -34,19 +35,6 @@ const stringLabelFactory = (): Gtk.SignalListItemFactory => {
     return factory;
 };
 
-const bufferText = (view: Gtk.TextView): string => {
-    const buffer = view.getBuffer();
-    const [start, end] = buffer.getBounds();
-
-    return buffer.getText(start, end, true);
-};
-
-const caretOffset = (view: Gtk.TextView): number => {
-    const buffer = view.getBuffer();
-
-    return buffer.getIterAtMark(buffer.getInsert()).getOffset();
-};
-
 async function renderFocusedScale() {
     await render(
         <GtkScale
@@ -54,7 +42,7 @@ async function renderFocusedScale() {
         />,
     );
 
-    const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
+    const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
     scale.grabFocus();
 
     return scale;
@@ -62,7 +50,7 @@ async function renderFocusedScale() {
 
 async function renderFocusedTextView() {
     await render(<GtkTextView />);
-    const view = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
+    const view = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
     view.getBuffer().setEnableUndo(true);
     view.grabFocus();
 

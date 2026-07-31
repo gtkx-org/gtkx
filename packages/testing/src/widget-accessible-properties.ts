@@ -11,8 +11,18 @@ type WidgetValue = {
 };
 
 type ValueTriplet = { now: number | null; min: number | null; max: number | null };
+/** A widget's checked state: on, off, or the mixed state of an inconsistent check button. */
+type CheckedState = "checked" | "unchecked" | "mixed";
 
 const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
+
+const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set<Gtk.AccessibleRole>([
+    Gtk.AccessibleRole.ROW,
+    Gtk.AccessibleRole.LIST_ITEM,
+    Gtk.AccessibleRole.GRID_CELL,
+    Gtk.AccessibleRole.OPTION,
+    Gtk.AccessibleRole.TREE_ITEM,
+]);
 
 const callStringGetter = (widget: Gtk.Widget, method: string): string | null => {
     const fn: unknown = Reflect.get(widget, method);
@@ -129,6 +139,49 @@ const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
     return getLabelText(widget);
 };
 
+const getChildren = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
+    let child = widget.getFirstChild();
+
+    while (child) {
+        yield child;
+        child = child.getNextSibling();
+    }
+};
+
+const textContentParts = (widget: Gtk.Widget): string[] => {
+    const own = getWidgetNodeText(widget);
+
+    if (own !== null) {
+        return [own];
+    }
+
+    return [...getChildren(widget)].flatMap((child) => textContentParts(child));
+};
+
+const getWidgetTextContent = (widget: Gtk.Widget): string | null => {
+    const parts = textContentParts(widget);
+
+    return parts.length > 0 ? parts.join(" ") : null;
+};
+
+const isComboBoxFaceCandidate = (widget: Gtk.Widget): boolean =>
+    !(widget instanceof Gtk.Popover) && widget.getChildVisible();
+
+const comboBoxChildFaceText = (child: Gtk.Widget): string | null =>
+    isComboBoxFaceCandidate(child) ? getWidgetLabelText(child) ?? comboBoxFaceText(child) : null;
+
+const comboBoxFaceText = (widget: Gtk.Widget): string | null => {
+    for (const child of getChildren(widget)) {
+        const text = comboBoxChildFaceText(child);
+
+        if (text !== null) {
+            return text;
+        }
+    }
+
+    return null;
+};
+
 const tabPanelTitle = (widget: Gtk.Widget): string | null => {
     const parent = widget.getParent();
 
@@ -144,6 +197,12 @@ const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
 
     if (role === Gtk.AccessibleRole.TAB_PANEL) {
         return tabPanelTitle(widget);
+    }
+
+    const labelledByText = getWidgetLabelledByText(widget);
+
+    if (labelledByText) {
+        return labelledByText;
     }
 
     const accessibleLabel = readAccessibleString(widget, "accessibleLabel");
@@ -176,7 +235,15 @@ const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
         return null;
     }
 
-    return callStringGetter(widget, "getPlaceholderText");
+    const fromGetter = callStringGetter(widget, "getPlaceholderText");
+
+    if (fromGetter !== null) {
+        return fromGetter;
+    }
+
+    const fromAccessor: unknown = Reflect.get(widget, "placeholderText");
+
+    return typeof fromAccessor === "string" && fromAccessor !== "" ? fromAccessor : null;
 };
 
 const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
@@ -184,23 +251,87 @@ const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
         return readEditableText(widget);
     }
 
+    if (widget.getAccessibleRole() === Gtk.AccessibleRole.COMBO_BOX) {
+        return comboBoxFaceText(widget);
+    }
+
     return null;
 };
 
-const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
-    if (widget instanceof Gtk.CheckButton) {
-        return widget.getActive();
+const hasDisplayValue = (widget: Gtk.Widget): boolean => {
+    const role = widget.getAccessibleRole();
+
+    return (EDITABLE_ROLES.has(role) && isEditable(widget)) || role === Gtk.AccessibleRole.COMBO_BOX;
+};
+
+const isWidgetDisabled = (widget: Gtk.Widget): boolean => !widget.isSensitive();
+
+const hasZeroOpacityAncestor = (widget: Gtk.Widget): boolean => {
+    let current: Gtk.Widget | null = widget;
+
+    while (current) {
+        if (current.getOpacity() === 0) {
+            return true;
+        }
+
+        current = current.getParent();
     }
 
-    if (widget instanceof Gtk.Switch) {
-        return widget.getActive();
+    return false;
+};
+
+const isWidgetVisible = (widget: Gtk.Widget): boolean => widget.isVisible() && !hasZeroOpacityAncestor(widget);
+
+const getWidgetRequiredState = (widget: Gtk.Widget): boolean | null =>
+    readAccessibleBoolean(widget, "accessibleRequired");
+
+const readTextViewSelection = (view: Gtk.TextView): string | null => {
+    const buffer = view.getBuffer();
+    const [hasSelection, start, end] = buffer.getSelectionBounds();
+
+    return hasSelection ? buffer.getText(start, end, true) : null;
+};
+
+const readEditableSelection = (editable: Gtk.Editable): string | null => {
+    const [hasSelection, start, end] = editable.getSelectionBounds();
+
+    return hasSelection ? editable.getChars(start, end) : null;
+};
+
+const getWidgetSelection = (widget: Gtk.Widget): string | null => {
+    if (widget instanceof Gtk.TextView) {
+        return readTextViewSelection(widget);
     }
 
-    if (widget instanceof Gtk.ToggleButton && widget.getAccessibleRole() === Gtk.AccessibleRole.RADIO) {
-        return widget.getActive();
+    if (widget instanceof Gtk.Editable) {
+        return readEditableSelection(widget);
     }
 
     return null;
+};
+
+const checkedFromActive = (isActive: boolean): CheckedState => (isActive ? "checked" : "unchecked");
+
+const isCheckableToggle = (widget: Gtk.Widget): boolean =>
+    widget instanceof Gtk.Switch ||
+    (widget instanceof Gtk.ToggleButton && widget.getAccessibleRole() === Gtk.AccessibleRole.RADIO);
+
+const getWidgetCheckedState = (widget: Gtk.Widget): CheckedState | null => {
+    if (widget instanceof Gtk.CheckButton) {
+        return widget.getInconsistent() ? "mixed" : checkedFromActive(widget.getActive());
+    }
+
+    if (isCheckableToggle(widget)) {
+        return checkedFromActive(Reflect.get(widget, "active") === true);
+    }
+
+    return null;
+};
+
+const isWidgetChecked = (widget: Gtk.Widget): boolean | null => {
+    const state = getWidgetCheckedState(widget);
+
+    return state === null || state === "mixed" ? null : state === "checked";
 };
 
 const getWidgetPressedState = (widget: Gtk.Widget): boolean | null => {
@@ -224,11 +355,11 @@ const getWidgetExpandedState = (widget: Gtk.Widget): boolean | null => {
 };
 
 const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
-    if (widget instanceof Gtk.ListBoxRow) {
+    if (widget instanceof Gtk.ListBoxRow || widget instanceof Gtk.FlowBoxChild) {
         return widget.isSelected();
     }
 
-    if (widget.getAccessibleRole() === Gtk.AccessibleRole.ROW) {
+    if (SELECTABLE_ROLES.has(widget.getAccessibleRole())) {
         return (widget.getStateFlags() & Gtk.StateFlags.SELECTED) !== 0;
     }
 
@@ -346,6 +477,28 @@ const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
     return texts.length > 0 ? texts.join(" ") : null;
 };
 
+const isTooltipUsedAsName = (widget: Gtk.Widget): boolean =>
+    readAccessibleString(widget, "accessibleLabel") === null &&
+    getWidgetNodeText(widget) === null &&
+    collectLabels(widget).length === 0;
+
+const getWidgetDescribedByText = (widget: Gtk.Widget): string | null => {
+    const targets = readAccessibleWidgets(widget, "accessibleDescribedBy");
+    const texts = targets === null ? [] : collectAccessibleNames(targets);
+
+    if (texts.length > 0) {
+        return texts.join(" ");
+    }
+
+    const description = readAccessibleString(widget, "accessibleDescription");
+
+    if (description !== null) {
+        return description;
+    }
+
+    return isTooltipUsedAsName(widget) ? null : callStringGetter(widget, "getTooltipText");
+};
+
 const isInaccessible = (widget: Gtk.Widget): boolean => {
     let current: Gtk.Widget | null = widget;
 
@@ -366,12 +519,20 @@ const isInaccessible = (widget: Gtk.Widget): boolean => {
 
 export {
     getWidgetNodeText,
+    getWidgetTextContent,
     getWidgetLabelText,
     getWidgetAccessibleName,
     getWidgetName,
     getWidgetPlaceholderText,
     getWidgetDisplayValue,
+    hasDisplayValue,
+    isWidgetDisabled,
+    isWidgetVisible,
+    getWidgetRequiredState,
+    getWidgetSelection,
+    getWidgetDescribedByText,
     getWidgetCheckedState,
+    isWidgetChecked,
     getWidgetPressedState,
     getWidgetExpandedState,
     getWidgetSelectedState,
@@ -384,5 +545,6 @@ export {
     getWidgetOwnLabel,
     getWidgetLabelledByText,
     isInaccessible,
+    type CheckedState,
     type WidgetValue,
 };

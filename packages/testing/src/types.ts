@@ -13,6 +13,11 @@ type MatcherFunction = (content: string, widget: Gtk.Widget) => boolean;
 type Matcher = string | number | RegExp | MatcherFunction;
 /** Normalizes a widget's text before it is compared against a matcher. */
 type NormalizerFn = (text: string) => string;
+/**
+ * A widget class usable as a query's `as` constraint, such as `Gtk.Button`. Abstract classes and
+ * generated GInterface pseudo-classes are accepted.
+ */
+type WidgetType<T extends Gtk.Widget = Gtk.Widget> = abstract new (...args: never[]) => T;
 
 /** Options controlling the default text normalizer. */
 type NormalizerOptions = {
@@ -35,7 +40,7 @@ type WaitForOptions = {
 };
 
 /** Options controlling text matching and, for asynchronous queries, polling behavior. */
-type MatcherOptions = {
+type MatcherOptions<T extends Gtk.Widget = Gtk.Widget> = {
     /** When true (the default), require an exact match; when false, match case-insensitively as a substring. */
     exact?: boolean | undefined;
     /** Custom normalizer replacing the default; cannot be combined with `trim` or `collapseWhitespace`. */
@@ -46,6 +51,8 @@ type MatcherOptions = {
     collapseWhitespace?: boolean | undefined;
     /** Whether to include a suggested better query in error messages. */
     suggest?: boolean | undefined;
+    /** Restricts matches to instances of this widget class, and narrows the query's return type to it. */
+    as?: WidgetType<T> | undefined;
 } & WaitForOptions;
 
 /** Constraints on a widget's numeric range value used by role queries. */
@@ -59,7 +66,7 @@ type ByRoleValue = {
 };
 
 /** Options for role queries: an accessible name matcher plus accessible state and value constraints. */
-type ByRoleOptions = MatcherOptions & {
+type ByRoleOptions<T extends Gtk.Widget = Gtk.Widget> = MatcherOptions<T> & {
     name?: Matcher | undefined;
     checked?: boolean | undefined;
     pressed?: boolean | undefined;
@@ -87,6 +94,43 @@ type BoundQuery<Q extends Query> = Q extends (container: Container, ...args: inf
     : never;
 
 type BoundCustomQueries<Q extends QueryMap> = { [K in keyof Q]: BoundQuery<Q[K]> };
+
+type QueryFamilyReturns<T extends Gtk.Widget> = {
+    queryBy: T | null;
+    queryAllBy: T[];
+    getBy: T;
+    getAllBy: T[];
+    findBy: Promise<T>;
+    findAllBy: Promise<T[]>;
+};
+
+type QueryKind = "role" | "text" | "name" | "value";
+
+type QueryArgs<Kind extends QueryKind, T extends Gtk.Widget> = Kind extends "role"
+    ? [role: Gtk.AccessibleRole, options?: ByRoleOptions<T>]
+    : Kind extends "name"
+        ? [name: Matcher, options?: MatcherOptions<T>]
+        : Kind extends "value"
+            ? [value: Matcher, options?: MatcherOptions<T>]
+            : [text: Matcher, options?: MatcherOptions<T>];
+
+/**
+ * One query family (`queryBy`, `getBy`, `findBy` and their `All` variants) for a single suffix.
+ * Each member takes an explicit widget type, as Testing Library's queries do, and also infers it
+ * from an `as` option.
+ */
+type QueryFamily<Suffix extends string, Kind extends QueryKind, Head extends unknown[]> = {
+    [K in keyof QueryFamilyReturns<Gtk.Widget> as `${K & string}${Suffix}`]: <T extends Gtk.Widget = Gtk.Widget>(
+        ...args: [...Head, ...QueryArgs<Kind, T>]
+    ) => QueryFamilyReturns<T>[K];
+};
+
+type QueryFamilies<Head extends unknown[]> = QueryFamily<"Role", "role", Head> &
+    QueryFamily<"LabelText", "text", Head> &
+    QueryFamily<"Text", "text", Head> &
+    QueryFamily<"Name", "name", Head> &
+    QueryFamily<"PlaceholderText", "text", Head> &
+    QueryFamily<"DisplayValue", "value", Head>;
 
 /**
  * Options for {@link render}: the container and base element to mount into, an optional wrapper,
@@ -169,9 +213,11 @@ export {
     type MatcherOptions,
     type ByRoleValue,
     type ByRoleOptions,
+    type WidgetType,
     type WrapperComponent,
     type QueryMap,
     type BoundCustomQueries,
+    type QueryFamilies,
     type RenderOptions,
     type DebugUtilities,
     type ScreenshotResult,

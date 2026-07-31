@@ -12,7 +12,7 @@ describe("userEvent.slide", () => {
             />,
         );
 
-        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
+        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
         await userEvent.slide(scale, 45);
         expect(scale.getValue()).toBe(45);
         await userEvent.slide(scale, 999);
@@ -64,7 +64,7 @@ describe("userEvent.scroll", () => {
 describe("userEvent.drag", () => {
     it("refuses to silently no-op on a built-in Gtk.Range slider", async () => {
         await render(<GtkScale adjustment={<GtkAdjustment value={0} lower={0} upper={100} />} />);
-        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
+        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
         await expect(userEvent.drag(scale, 50, 0)).rejects.toThrow(/userEvent.slide/);
     });
 });

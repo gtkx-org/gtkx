@@ -39,6 +39,19 @@ const getAllControllers = <T extends Gtk.EventController>(
     return controllers;
 };
 
+const getController = <T extends Gtk.EventController>(
+    widget: Gtk.Widget,
+    controllerType: ControllerConstructor<T>,
+): T => {
+    const [controller] = getAllControllers(widget, controllerType);
+
+    if (controller === undefined) {
+        throw new Error(`No ${controllerType.name} controller is attached to the widget`);
+    }
+
+    return controller;
+};
+
 const getOrCreateControllers = <T extends Gtk.EventController>(
     widget: Gtk.Widget,
     controllerType: ControllerConstructor<T>,
@@ -55,4 +68,11 @@ const getOrCreateControllers = <T extends Gtk.EventController>(
     return [controller];
 };
 
-export { queryAllControllers, queryController, getAllControllers, getOrCreateControllers, type ControllerConstructor };
+export {
+    queryAllControllers,
+    queryController,
+    getAllControllers,
+    getController,
+    getOrCreateControllers,
+    type ControllerConstructor,
+};

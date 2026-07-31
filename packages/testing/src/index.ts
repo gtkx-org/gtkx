@@ -5,7 +5,7 @@ export type { BoundQueries, RenderResult, Screen } from "./bound-queries.js";
 export type { Config, ConfigFn } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";
-export type { TextExpectation } from "./matchers.js";
+export type { ClassExpectation, TextExpectation } from "./matchers.js";
 export { matchers, registerMatchers } from "./matchers.js";
 export type { PrettyWidgetOptions } from "./pretty-widget.js";
 export { logWidget, prettyWidget } from "./pretty-widget.js";
@@ -59,6 +59,7 @@ export type { Container } from "./traversal.js";
 export type {
     ByRoleOptions,
     ByRoleValue,
+    WidgetType,
     Matcher,
     MatcherFunction,
     MatcherOptions,
@@ -73,6 +74,13 @@ export type {
     WindowSelector,
     WrapperComponent,
 } from "./types.js";
+export type { ControllerConstructor } from "./user-event/controller.js";
+export {
+    getAllControllers,
+    getController,
+    queryAllControllers,
+    queryController,
+} from "./user-event/controller.js";
 export type {
     DragOffset,
     DragOptions,
@@ -90,5 +98,6 @@ export {
     getWidgetErrorMessage,
     getWidgetInvalidState,
     getWidgetNodeText,
+    getWidgetTextContent,
 } from "./widget-accessible-properties.js";
 export { within } from "./within.js";

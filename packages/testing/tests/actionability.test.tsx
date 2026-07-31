@@ -139,7 +139,7 @@ describe("userEvent actionability - insensitive adjustment targets", () => {
 
     it("rejects slide on an insensitive scale without changing its value", async () => {
         await render(<GtkScale sensitive={false} />);
-        const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
+        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
         const before = scale.getValue();
         await expect(userEvent.slide(scale, 45)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
         expect(scale.getValue()).toBe(before);

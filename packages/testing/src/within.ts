@@ -26,7 +26,7 @@ const within = <Q extends QueryMap = Record<never, never>>(
     container: Container,
     queries?: Q,
 ): BoundQueries & BoundCustomQueries<Q> => ({
-    ...bindCustomQueries(builtinQueries, container),
+    ...(bindCustomQueries(builtinQueries, container) as BoundQueries),
     ...(queries ? bindCustomQueries(queries, container) : ({} as BoundCustomQueries<Q>)),
 });
 

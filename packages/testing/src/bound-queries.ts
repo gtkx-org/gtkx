@@ -1,14 +1,13 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
-import type { builtinQueries } from "./queries.js";
 import type { Container } from "./traversal.js";
-import type { BoundCustomQueries, DebugUtilities, QueryMap } from "./types.js";
+import type { BoundCustomQueries, DebugUtilities, QueryFamilies, QueryMap } from "./types.js";
 
 /**
  * The set of built-in queries (getBy, findBy, queryBy, and their All variants)
  * bound to a specific container.
  */
-type BoundQueries = BoundCustomQueries<typeof builtinQueries>;
+type BoundQueries = QueryFamilies<[]>;
 /**
  * The global screen object's shape: built-in queries scoped to the current
  * toplevels, plus debug utilities.
