@@ -19,6 +19,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "registerWrapperClass",
     "getSignalBaseName",
     "fromNative",
+    "toNative",
     "alloc",
     "read",
     "write",

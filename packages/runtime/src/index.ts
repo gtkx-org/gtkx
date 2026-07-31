@@ -4,7 +4,7 @@ export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type ApplicationLike, onExit, quit, quitApplication, runApplication } from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { installMixins, type Mixin } from "./mixin.js";
-export { fromNative } from "./native-value.js";
+export { fromNative, toNative } from "./native-value.js";
 export { getObjectProperty, newObjectWithProperties, setObjectProperty } from "./object.js";
 export { type FinishResult, promisify } from "./promisify.js";
 export { registerClass } from "./register-class.js";
