@@ -130,6 +130,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
 };
 
 const STATIC_HEADLESS_ENV = {
+    G_DEBUG: "fatal-criticals",
     GDK_BACKEND: "wayland",
     GDK_DISABLE: "vulkan",
     GDK_DEBUG: "no-vsync",

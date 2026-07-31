@@ -494,11 +494,16 @@ fn write_value_to_pointer_writes_boxed() {
         let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
 
-        let slot = write_value_into_slot(
+        let (slot, transfer) = helpers::write_owned_value_into_slot(
             &env,
             &boxed(Ownership::Borrowed),
             std::ptr::null_mut(),
             object_value_of(&env, original),
+        );
+
+        assert!(
+            transfer.is_some(),
+            "a transfer-none write hands its copy back to be adopted"
         );
         assert_slot_holds_copy_then_free(slot, original, type_);
     });
@@ -545,13 +550,13 @@ fn write_value_to_pointer_writes_null_when_src_is_null() {
 }
 
 #[test]
-fn write_value_to_pointer_frees_previous_pointer_in_slot() {
+fn write_value_to_pointer_leaves_the_previous_pointer_alone() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
         let previous = helpers::allocate_test_boxed(type_);
 
-        let slot = write_value_into_slot(
+        let (slot, transfer) = helpers::write_owned_value_into_slot(
             &env,
             &boxed(Ownership::Borrowed),
             previous,
@@ -560,7 +565,11 @@ fn write_value_to_pointer_frees_previous_pointer_in_slot() {
         assert!(!slot.is_null());
         assert_ne!(slot, original);
         assert_ne!(slot, previous);
+        assert!(transfer.is_some());
 
+        // A transfer-none write never acquired the displaced pointer, so it is still the caller's to
+        // free; freeing it here would abort under ASan if the codec had already released it.
+        free_rgba(type_, previous);
         free_rgba(type_, slot);
         free_rgba(type_, original);
     });

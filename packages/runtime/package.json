@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/runtime",
-    "version": "1.0.0-rc.2",
+    "version": "1.0.0-rc.3",
     "description": "FFI runtime the generated GTKX bindings call into: type descriptors, GValue marshalling, signals, GObject lifecycle",
     "keywords": [
         "gtkx",

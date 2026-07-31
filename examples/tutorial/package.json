@@ -23,16 +23,16 @@
         "flatpak:build": "bash flatpak/build.sh"
     },
     "dependencies": {
-        "@gtkx/components": "^1.0.0-rc.2",
-        "@gtkx/css": "^1.0.0-rc.2",
-        "@gtkx/react": "^1.0.0-rc.2",
+        "@gtkx/components": "^1.0.0-rc.3",
+        "@gtkx/css": "^1.0.0-rc.3",
+        "@gtkx/react": "^1.0.0-rc.3",
         "react": "^19.2.8",
         "zustand": "^5.0.14"
     },
     "devDependencies": {
-        "@gtkx/cli": "^1.0.0-rc.2",
-        "@gtkx/config": "^1.0.0-rc.2",
-        "@gtkx/testing": "^1.0.0-rc.2",
+        "@gtkx/cli": "^1.0.0-rc.3",
+        "@gtkx/config": "^1.0.0-rc.3",
+        "@gtkx/testing": "^1.0.0-rc.3",
         "@types/node": "^26.1.2",
         "@types/react": "^19.2.17",
         "esbuild": "^0.28.1",

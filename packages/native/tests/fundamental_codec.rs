@@ -440,7 +440,7 @@ fn write_value_to_pointer_writes_fundamental() {
         let pspec = create_param_spec();
         let before = unsafe { param_spec_refcount(pspec) };
 
-        let slot = helpers::write_value_into_slot(
+        let (slot, transfer) = helpers::write_owned_value_into_slot(
             &env,
             &fundamental(Ownership::Borrowed),
             std::ptr::null_mut(),
@@ -449,13 +449,17 @@ fn write_value_to_pointer_writes_fundamental() {
 
         assert_eq!(slot, pspec);
         assert_eq!(unsafe { param_spec_refcount(pspec) }, before + 1);
+        assert!(
+            transfer.is_some(),
+            "a transfer-none write hands its reference back to be adopted"
+        );
 
         release_param_spec_refs(pspec, 2);
     });
 }
 
 #[test]
-fn write_value_to_pointer_unrefs_previous_fundamental() {
+fn write_value_to_pointer_leaves_the_previous_fundamental_ref_alone() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let old = create_param_spec();
@@ -465,7 +469,7 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
         let old_before = unsafe { param_spec_refcount(old) };
         let new_before = unsafe { param_spec_refcount(new) };
 
-        let slot = helpers::write_value_into_slot(
+        let (slot, transfer) = helpers::write_owned_value_into_slot(
             &env,
             &fundamental(Ownership::Borrowed),
             old,
@@ -474,15 +478,17 @@ fn write_value_to_pointer_unrefs_previous_fundamental() {
 
         assert_eq!(slot, new);
         assert_eq!(unsafe { param_spec_refcount(new) }, new_before + 1);
-        assert_eq!(unsafe { param_spec_refcount(old) }, old_before - 1);
+        assert!(transfer.is_some());
+        // A transfer-none write never acquired the displaced reference, so it must not drop it.
+        assert_eq!(unsafe { param_spec_refcount(old) }, old_before);
 
         release_param_spec_refs(new, 2);
-        release_param_spec_refs(old, 1);
+        release_param_spec_refs(old, 2);
     });
 }
 
 #[test]
-fn write_value_to_pointer_null_releases_previous_fundamental() {
+fn write_value_to_pointer_null_leaves_the_previous_fundamental_alone() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let pspec = create_param_spec();
@@ -490,7 +496,7 @@ fn write_value_to_pointer_null_releases_previous_fundamental() {
         unsafe { helpers::param_spec_ref(pspec) };
         let before = unsafe { param_spec_refcount(pspec) };
 
-        let slot = helpers::write_value_into_slot(
+        let (slot, transfer) = helpers::write_owned_value_into_slot(
             &env,
             &fundamental(Ownership::Borrowed),
             pspec,
@@ -498,8 +504,9 @@ fn write_value_to_pointer_null_releases_previous_fundamental() {
         );
 
         assert!(slot.is_null());
-        assert_eq!(unsafe { param_spec_refcount(pspec) }, before - 1);
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
+        assert!(transfer.is_none());
 
-        release_param_spec_refs(pspec, 1);
+        release_param_spec_refs(pspec, 2);
     });
 }

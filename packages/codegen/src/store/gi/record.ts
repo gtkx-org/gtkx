@@ -3,7 +3,6 @@ import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
-import { isClassStructRecord } from "./class-struct-record.js";
 import { renderSourceGtype } from "./gtype-binding.js";
 import { renderRecordConstructor, renderRecordConstructorPropsInterface } from "./record-constructor.js";
 import { renderRecordFieldAccessor } from "./record-field-accessor.js";
@@ -18,15 +17,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
         return;
     }
 
-    if (record.isVtable) {
-        return;
-    }
-
     if (record.name.length === 0) {
-        return;
-    }
-
-    if (isClassStructRecord(context.namespace.name, record)) {
         return;
     }
 

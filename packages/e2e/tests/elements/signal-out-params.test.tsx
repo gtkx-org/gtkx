@@ -191,6 +191,7 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
     it("advances the caller's TextIter in place through the shared boxed inout", async () => {
         const { view, buffer, snippet, location } = await renderSnippetView("abc");
         view.emit("push-snippet", snippet, location);
+        globalThis.gc?.();
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("abc");
         expect(location.getOffset()).toBe(3);
     });
@@ -203,6 +204,7 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
         });
 
         view.emit("push-snippet", snippet, location);
+        globalThis.gc?.();
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("helloX");
     });
 
@@ -217,6 +219,7 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
         });
 
         view.emit("push-snippet", snippet, location);
+        globalThis.gc?.();
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false)).toBe("helloX");
     });
 });

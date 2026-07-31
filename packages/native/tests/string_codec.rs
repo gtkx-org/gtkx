@@ -325,7 +325,9 @@ fn a_struct_handle_owns_the_strings_written_into_its_fields() {
     helpers::run(|| {
         let block = unsafe { glib::ffi::g_malloc0(16) };
         let handle = Handle::owned_struct(block);
-        let fields = handle.field_store();
+        let fields = handle
+            .field_store()
+            .expect("a struct handle owns its field transfers");
         let first = unsafe { glib::ffi::g_strdup(c"first".as_ptr()) }.cast::<c_void>();
         let second = unsafe { glib::ffi::g_strdup(c"second".as_ptr()) }.cast::<c_void>();
 
@@ -343,19 +345,14 @@ fn a_struct_handle_owns_the_strings_written_into_its_fields() {
 }
 
 #[test]
-fn every_handle_kind_owns_the_strings_written_into_its_fields() {
+fn a_boxed_handle_leaves_its_field_strings_to_its_own_free_function() {
     helpers::run(|| {
         let (boxed, _) = helpers::owned_rgba_boxed();
         let handle = Handle::from(boxed);
-        let field = unsafe { glib::ffi::g_strdup(c"field".as_ptr()) }.cast::<c_void>();
 
-        handle
-            .field_store()
-            .adopt(0, PendingTransfer::new(field, ReleaseKind::GFree));
-        drain_g_freed();
+        assert!(handle.field_store().is_none());
 
         drop(handle);
-        assert!(drain_g_freed().contains(&(field as usize)));
     });
 }
 
@@ -419,7 +416,7 @@ fn a_transfer_none_field_write_is_owned_by_the_handle() {
 }
 
 #[test]
-fn a_transfer_none_field_write_on_a_boxed_handle_does_not_leak() {
+fn a_transfer_none_field_write_on_a_boxed_handle_is_left_to_its_free_function() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let (boxed, _) = helpers::owned_rgba_boxed();
@@ -429,8 +426,11 @@ fn a_transfer_none_field_write_on_a_boxed_handle_does_not_leak() {
         let written = unsafe { ffi::Slot::new(handle.as_ptr()).load() };
         drain_g_freed();
 
+        // A boxed handle is released by its own free function, which already owns whatever its
+        // fields point at; adopting the write as well would free the same pointer twice.
         drop(handle);
-        assert!(drain_g_freed().contains(&(written as usize)));
+        assert!(!drain_g_freed().contains(&(written as usize)));
+        unsafe { glib::ffi::g_free(written) };
     });
 }
 

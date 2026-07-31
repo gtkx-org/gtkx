@@ -9,7 +9,6 @@ import {
     type ListType,
     type TypeId,
 } from "../gir/type-id.js";
-import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { gtypeTsType } from "../store/gi/gtype-binding.js";
 
 type ReferenceName = {
@@ -31,11 +30,7 @@ const willEmitEntity = (type: EntityType): boolean => {
             return type.value.introspectable && type.value.name.length > 0;
         }
         case "record": {
-            return (
-                type.value.introspectable &&
-                type.value.name.length > 0 &&
-                !isClassStructRecord(type.namespace.name, type.value)
-            );
+            return type.value.introspectable && type.value.name.length > 0;
         }
         case "alias":
         case "class":

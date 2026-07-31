@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/testing",
-    "version": "1.0.0-rc.2",
+    "version": "1.0.0-rc.3",
     "description": "Testing Library-style queries, user events, and screenshots for GTK4 widget trees rendered by GTKX",
     "keywords": [
         "gtkx",

@@ -175,13 +175,6 @@ const elementsSchema = z.object({
     config: z.record(z.string(), elementConfigSchema).optional(),
 });
 
-const classStructsSchema = z.array(
-    z.string({ error: "must be a qualified GIR record name" }).min(1, {
-        error: "must be a qualified GIR record name",
-    }),
-    { error: "must be an array of qualified GIR record names" },
-);
-
 const configSchema = z.object({
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
@@ -189,7 +182,6 @@ const configSchema = z.object({
     reactCompiler: reactCompilerSchema.optional(),
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
     userEventSignals: userEventSignalsSchema.optional(),
-    classStructs: classStructsSchema.optional(),
     elements: elementsSchema.optional(),
 });
 
@@ -289,8 +281,6 @@ const resolveElementProps = (elements: Config["elements"]): Record<string, Modul
 const resolveOmitProps = (elements: Config["elements"]): Record<string, string[]> =>
     elementEntryValues(elements, (entry) => entry.omitProps);
 
-const resolveClassStructs = (classStructs: Config["classStructs"]): string[] => classStructs ?? [];
-
 const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
@@ -311,7 +301,6 @@ export {
     resolveElementComponents,
     resolveElementProps,
     resolveOmitProps,
-    resolveClassStructs,
     resolveConfig,
     type ResolvedReactCompilerOptions,
     type Config,

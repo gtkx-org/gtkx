@@ -49,7 +49,7 @@ const overrideFiles = (): string[] => {
         .map((entry: Dirent) => join(entry.parentPath, entry.name));
 };
 
-const hashGi = (girFiles: string[], libraries: string[], girPath: string[], classStructs: string[]): string => {
+const hashGi = (girFiles: string[], libraries: string[], girPath: string[]): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
@@ -57,7 +57,6 @@ const hashGi = (girFiles: string[], libraries: string[], girPath: string[], clas
     hash.update("\n");
     hash.update(sortAlpha(girPath));
     hash.update("\n");
-    hash.update(sortAlpha(classStructs));
     const hashedFiles = sortStrings([...girFiles, ...overrideFiles()]);
 
     for (const file of hashedFiles) {
@@ -74,9 +73,8 @@ const computeGiFingerprint = (
     girFiles: string[],
     libraries: string[],
     girPath: string[],
-    classStructs: string[] = [],
 ): GiFingerprint => ({
-    value: hashGi(girFiles, libraries, girPath, classStructs),
+    value: hashGi(girFiles, libraries, girPath),
     girFiles,
     libraries,
     girPath,
@@ -86,7 +84,6 @@ const isGiStoreFresh = (
     giStoreDir: string,
     libraries: string[],
     girPath: string[],
-    classStructs: string[] = [],
 ): boolean => {
     const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
 
@@ -107,7 +104,7 @@ const isGiStoreFresh = (
     }
 
     try {
-        return hashGi(sentinel.girFiles, sentinel.libraries, girPath, classStructs) === sentinel.value;
+        return hashGi(sentinel.girFiles, sentinel.libraries, girPath) === sentinel.value;
     } catch {
         return false;
     }

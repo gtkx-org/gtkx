@@ -2,14 +2,12 @@ import type { Library } from "./gir/library.js";
 import { computeGiFingerprint } from "./fingerprint.js";
 import { namespaceDirectory } from "./gir/namespace.js";
 import { type GiNamespaceInput, type GiStoreOptions, writeGiStore } from "./store/gi-store.js";
-import { setClassStructs } from "./store/gi/class-struct-record.js";
 import { generateNamespaceModule } from "./store/gi/pipeline.js";
 
 type GiCodegenOptions = {
     gi: GiStoreOptions;
     libraries: string[];
     girPath: string[];
-    classStructs: string[];
 };
 
 /**
@@ -19,15 +17,14 @@ type GiCodegenOptions = {
  * @returns The number of namespaces written.
  */
 const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
-    const { gi, libraries, girPath, classStructs } = options;
-    setClassStructs(classStructs);
+    const { gi, libraries, girPath } = options;
 
     const namespaces: GiNamespaceInput[] = Array.from(library.namespaces.values(), (namespace) => ({
         directory: namespaceDirectory(namespace),
         rawSource: generateNamespaceModule(namespace, library),
     }));
 
-    const fingerprint = computeGiFingerprint(library.girFiles, [...libraries], [...girPath], [...classStructs]);
+    const fingerprint = computeGiFingerprint(library.girFiles, [...libraries], [...girPath]);
     writeGiStore(gi, namespaces, fingerprint);
 
     return library.namespaces.size;

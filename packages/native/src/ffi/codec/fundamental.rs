@@ -1,3 +1,5 @@
+use anyhow::bail;
+
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
 use crate::handle::{Fundamental, Handle, RefFn, UnrefFn};
@@ -98,6 +100,18 @@ impl PtrWriter for FundamentalCodec {
         init: SlotInit,
     ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
+        if self.inline {
+            bail!("Cannot write the inline fundamental field: its size is unknown")
+        }
+        if self.ownership.is_borrowed() {
+            return store_acquired_slot(
+                slot,
+                value,
+                "Fundamental field write",
+                |new_ptr| unsafe { ref_fn.map_or(new_ptr, |f| f(new_ptr)) },
+                ref_fn.and(unref_fn).map(ffi::ReleaseKind::Fundamental),
+            );
+        }
         swap_owned_slot(
             slot,
             value,

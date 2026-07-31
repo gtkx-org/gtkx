@@ -21,6 +21,7 @@ import {
 } from "../gir/type-id.js";
 import { isRecordInout } from "../store/gi/param-marshal.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
+import { isValueMarshalable } from "../store/gi/value-marshalable.js";
 import {
     type ListDescriptorName,
     type Ownership,
@@ -535,9 +536,10 @@ const structExpression = (
 ): string => {
     const { size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
     const wrapperClass = context.qualify(resolved.namespace.name, resolved.value.name);
+    const isCopyable = isValueMarshalable(context, resolved.namespace.name, resolved.value);
 
     return tStruct(ownership, {
-        size: size > 0 ? size : undefined,
+        size: isCopyable && size > 0 ? size : undefined,
         wrapperClass,
         callerAllocated: options.callerAllocated,
         inline: options.inline,

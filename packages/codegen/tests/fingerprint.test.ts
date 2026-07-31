@@ -19,11 +19,6 @@ describe("computeGiFingerprint", () => {
         const base = computeGiFingerprint([], ["Gtk-4.0"], ["/usr/share/gir-1.0"]).value;
         expect(computeGiFingerprint([], ["Gtk-4.0"], ["/opt/gir-1.0"]).value).not.toBe(base);
     });
-
-    it("changes when the declared class structs change", () => {
-        const base = computeGiFingerprint([], ["Gtk-4.0"], []).value;
-        expect(computeGiFingerprint([], ["Gtk-4.0"], [], ["Gtk.EditableClass"]).value).not.toBe(base);
-    });
 });
 
 describe("computeJsxFingerprint", () => {

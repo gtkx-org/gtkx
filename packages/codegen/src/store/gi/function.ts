@@ -7,7 +7,6 @@ import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js
 import { renderJsDoc } from "../../writer/doc.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
-import { hasClassStructReference } from "./class-struct-record.js";
 import {
     planCallArgs,
     renderMethodBody,
@@ -63,7 +62,6 @@ const canEmitNamespaceFunction = (context: ModuleContext, fn: GirFunction): bool
     !isMovedOntoEmittedMember(context, fn) &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
-    !hasClassStructReference(context, fn) &&
     !hasCallerAllocatedArrayLength(context.library, fn);
 
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {

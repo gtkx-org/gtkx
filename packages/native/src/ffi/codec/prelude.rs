@@ -109,6 +109,32 @@ pub(super) fn write_return_object_ptr<F>(
     unsafe { ret.store(owned) };
 }
 
+// A transfer-none write gives us no claim on the pointer already in the slot, so the displaced value
+// must be left alone rather than released; the copy we store is handed back for the record to adopt.
+pub(super) fn store_acquired_slot<A>(
+    slot: ffi::Slot,
+    value: Unknown<'_>,
+    label: &str,
+    acquire: A,
+    release: Option<ffi::ReleaseKind>,
+) -> anyhow::Result<Option<ffi::PendingTransfer>>
+where
+    A: FnOnce(*mut c_void) -> *mut c_void,
+{
+    let new_ptr = value::handle_ptr(value, label)?;
+    let owned = if new_ptr.is_null() {
+        new_ptr
+    } else {
+        acquire(new_ptr)
+    };
+    unsafe { slot.store(owned) };
+    if owned.is_null() {
+        return Ok(None);
+    }
+
+    Ok(release.map(|release| ffi::PendingTransfer::new(owned, release)))
+}
+
 pub(super) fn swap_owned_slot<A, R>(
     slot: ffi::Slot,
     value: Unknown<'_>,

@@ -5,7 +5,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts"
+        "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
+        "test:asan": "tsx ../../scripts/asan-e2e.ts"
     },
     "devDependencies": {
         "@codspeed/vitest-plugin": "^5.7.1",
@@ -17,5 +18,20 @@
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "react": "catalog:"
+    },
+    "nx": {
+        "targets": {
+            "test:asan": {
+                "cache": false,
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/vitest:build",
+                    "@gtkx/cli:build",
+                    "@gtkx/components:build",
+                    "@gtkx/css:build",
+                    "@gtkx/gl:build"
+                ]
+            }
+        }
     }
 }

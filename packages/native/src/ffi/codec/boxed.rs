@@ -19,6 +19,31 @@ pub struct BoxedCodec {
     pub inline: bool,
 }
 
+// A GValue slot already holds an initialized value whose contents are owned, so it is unset before
+// being re-initialized to the source's type and deep-copied into.
+unsafe fn write_inline_value(
+    slot: ffi::Slot,
+    src_ptr: *mut c_void,
+) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+    let dest = slot.as_ptr().cast::<glib::gobject_ffi::GValue>();
+    let src = src_ptr.cast::<glib::gobject_ffi::GValue>();
+    let src_type = unsafe { (*src).g_type };
+
+    if src_type == glib::Type::INVALID.into_glib() {
+        bail!("Cannot write an uninitialized GValue into the inline boxed field 'GValue'")
+    }
+
+    unsafe {
+        if (*dest).g_type != glib::Type::INVALID.into_glib() {
+            glib::gobject_ffi::g_value_unset(dest);
+        }
+        glib::gobject_ffi::g_value_init(dest, src_type);
+        glib::gobject_ffi::g_value_copy(src, dest);
+    }
+
+    Ok(None)
+}
+
 impl BoxedCodec {
     pub fn type_(&self) -> anyhow::Result<Option<glib::Type>> {
         if let Some(type_) = glib::Type::from_name(&self.type_name) {
@@ -74,6 +99,16 @@ impl BoxedCodec {
                 "Cannot write null into the inline boxed field '{}'",
                 self.type_name
             )
+        }
+        // Copying the bytes of an inline boxed aliases whatever they point at, so a type that owns
+        // references needs its own copy-into-place operation; GValue has one and GClosure does not.
+        match self.type_name.as_str() {
+            "GValue" => return unsafe { write_inline_value(slot, src_ptr) },
+            "GClosure" => bail!(
+                "Cannot write the inline boxed field 'GClosure': it has no copy-into-place operation, \
+                 so the reference count of the closure already in the slot cannot be preserved"
+            ),
+            _ => {}
         }
         unsafe {
             std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), slot.as_ptr().cast::<u8>(), size);
@@ -184,6 +219,15 @@ impl PtrWriter for BoxedCodec {
         let Some(type_) = self.type_()? else {
             return write_object_ptr(slot, value, "Boxed field write");
         };
+        if self.ownership.is_borrowed() {
+            return store_acquired_slot(
+                slot,
+                value,
+                "Boxed field write",
+                |new_ptr| unsafe { Boxed::boxed_copy(type_, new_ptr) },
+                Some(ffi::ReleaseKind::BoxedFree(type_)),
+            );
+        }
         swap_owned_slot(
             slot,
             value,

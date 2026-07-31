@@ -7,8 +7,9 @@ import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { renderSourceGtype } from "./gtype-binding.js";
-import { emitFieldWrite, isEmittableField } from "./record-field-accessor.js";
+import { emitFieldWrite, isEmittableField, isInlineField } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
+import { isConstructibleRecord } from "./value-marshalable.js";
 
 type WritableFieldSlot = RecordFieldSlot & { field: GirField & { type: TypeId } };
 
@@ -24,7 +25,7 @@ const renderRecordConstructorPropsInterface = (
 ): string => {
     const head = `export interface ${className}ConstructorProps`;
 
-    if (isOpaque(record)) {
+    if (isOpaque(record) || !isConstructibleRecord(context, context.namespace.name, record)) {
         return renderBracedOrEmpty(head, "");
     }
 
@@ -68,7 +69,7 @@ const renderRecordConstructor = (
 ): string => {
     const superCall = isErrorSubclass ? ["super();"] : [];
 
-    if (isOpaque(record)) {
+    if (isOpaque(record) || !isConstructibleRecord(context, context.namespace.name, record)) {
         return renderOpaqueConstructor(className, superCall);
     }
 
@@ -103,7 +104,11 @@ const allocArgs = (context: ModuleContext, record: GirRecord, size: number): str
 
 const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): string => {
     context.addRuntimeImport("t");
-    const descriptor = context.hoistDescriptor(renderDescriptor(context, entry.field.type, "none"));
+
+    const descriptor = context.hoistDescriptor(
+        renderDescriptor(context, entry.field.type, "none", { isInline: isInlineField(context, entry.field) }),
+    );
+
     const name = toCamelIdentifier(entry.field.name);
 
     const write = emitFieldWrite(context, {

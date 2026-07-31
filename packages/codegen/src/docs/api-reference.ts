@@ -5,7 +5,6 @@ import type { GirRecord } from "../gir/record.js";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
-import { isClassStructRecord } from "../store/gi/class-struct-record.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
@@ -138,10 +137,6 @@ const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
 
 const recordEntry = (namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
     if (!record.introspectable || record.isVtable || record.name.length === 0) {
-        return undefined;
-    }
-
-    if (isClassStructRecord(namespace.name, record)) {
         return undefined;
     }
 

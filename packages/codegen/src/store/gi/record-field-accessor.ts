@@ -9,9 +9,9 @@ import { tStruct } from "../../analysis/descriptor.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock } from "../../writer/emit.js";
-import { isClassStructRef } from "./class-struct-record.js";
 import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
+import { isValueMarshalable } from "./value-marshalable.js";
 
 type FieldWriteSpec = {
     descriptor: string;
@@ -91,11 +91,27 @@ type AccessorOptions = {
     fieldType: TypeId;
 };
 
+// An inline record field is read and written through its own bytes, so it can only be exposed when
+// those bytes are copyable; a pointer field is marshalled as a handle and is always fine.
+const isMarshalableField = (context: ModuleContext, field: GirField): boolean => {
+    if (field.cType?.endsWith("*") === true) {
+        return true;
+    }
+
+    const type = field.type === undefined ? undefined : context.library.typeFor(field.type);
+
+    if (type?.kind !== "record") {
+        return true;
+    }
+
+    return isValueMarshalable(context, type.namespace.name, type.value);
+};
+
 const isEmittableField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
     !field.private &&
     field.type !== undefined &&
     !isInlineCallbackRef(context.library, field.type) &&
-    !isClassStructRef(context, field.type);
+    isMarshalableField(context, field);
 
 const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): string => {
     const { descriptor, slot, targetExpr, valueExpr } = spec;
@@ -192,8 +208,10 @@ const renderRecordFieldAccessor = (
 
     // A record field whose C type is the record itself rather than a pointer to it holds the value
     // in place, so its own address is the value and no word may be loaded out of it.
-    const isInline = resolveInlineStructFields(context, field.type, field.cType) !== undefined;
-    const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none", { isInline }));
+    const descriptor = context.hoistDescriptor(
+        renderDescriptor(context, field.type, "none", { isInline: isInlineField(context, field) }),
+    );
+
     const tsType = renderTsType(context, field.type, false);
 
     const accessorOptions: AccessorOptions = {
@@ -245,6 +263,11 @@ const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean =>
         }
     }
 };
+
+// A field whose record is embedded by value is read and written through its own bytes, so the
+// constructor and the setter have to describe it the same way.
+const isInlineField = (context: ModuleContext, field: GirField): boolean =>
+    field.type !== undefined && resolveInlineStructFields(context, field.type, field.cType) !== undefined;
 
 const resolveInlineStructFields = (
     context: ModuleContext,
@@ -604,4 +627,11 @@ const setterBlock = (options: AccessorOptions): string =>
         setterBody(options.context, options.descriptor, options.slot),
     );
 
-export { isEmittableField, emitFieldWrite, resolveRecordFieldEntry, renderRecordFieldAccessor, type RecordFieldEntry };
+export {
+    isEmittableField,
+    isInlineField,
+    emitFieldWrite,
+    resolveRecordFieldEntry,
+    renderRecordFieldAccessor,
+    type RecordFieldEntry,
+};
