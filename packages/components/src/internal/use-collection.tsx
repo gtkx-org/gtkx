@@ -36,13 +36,19 @@ function useCollectionData(options: CollectionDataOptions): Collection {
 
 function useCollection(options: CollectionOptions): CollectionResult {
     const collection = useCollectionData(options);
-    useExpansion({ collection, expandedIds: options.expandedIds, onExpandedChange: options.onExpandedChange });
+
+    const onItemsChanged = useExpansion({
+        collection,
+        expandedIds: options.expandedIds,
+        onExpandedChange: options.onExpandedChange,
+    });
 
     const selection = useSelection({
         collection,
         selectedIds: options.selectedIds,
         onSelectionChanged: options.onSelectionChanged,
         selectionMode: options.selectionMode,
+        onItemsChanged,
     });
 
     return { collection, selection };
