@@ -102,7 +102,18 @@ import { DropDown } from "@gtkx/components";
 />
 ```
 
-The backing widget comes from the `component` prop. Leave it out for a plain `Gtk.DropDown`, or pass `AdwComboRow` to present the same choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does.
+`ComboRow<T, S>` from `@gtkx/components/adw` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does:
+
+```tsx
+import { ComboRow } from "@gtkx/components/adw";
+
+<ComboRow
+    title="Theme"
+    items={THEMES.map((theme) => ({ id: theme, value: theme }))}
+    selectedId={theme}
+    onSelectionChanged={(id) => setTheme(id)}
+/>
+```
 
 ## Layout components
 

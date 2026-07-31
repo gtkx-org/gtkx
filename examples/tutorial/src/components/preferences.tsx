@@ -1,5 +1,5 @@
-import { DropDown } from "@gtkx/components";
-import { AdwComboRow, AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
+import { ComboRow } from "@gtkx/components/adw";
+import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
@@ -21,8 +21,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
         <AdwPreferencesDialog onClosed={onClose} title="Preferences">
             <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
                 <AdwPreferencesGroup title="Appearance">
-                    <DropDown
-                        component={AdwComboRow}
+                    <ComboRow
                         title="Theme"
                         items={[
                             { id: "default", value: "Follow system" },
@@ -36,8 +35,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title="Tasks">
-                    <DropDown
-                        component={AdwComboRow}
+                    <ComboRow
                         title="Sort order"
                         items={[
                             { id: "manual", value: "Manual" },

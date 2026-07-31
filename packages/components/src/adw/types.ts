@@ -1,7 +1,14 @@
 import type * as Adw from "@gtkx/gi/adw";
-import type { AdwToastProps } from "@gtkx/jsx/adw";
+import type { AdwComboRowProps, AdwToastProps } from "@gtkx/jsx/adw";
 import type { ReactNode, RefObject } from "react";
+import type { DropDownWidgetProps } from "../types.js";
 
+/**
+ * Props for {@link ComboRow}. Combines the underlying Adw.ComboRow props with the declarative
+ * collection props: flat items or grouped sections, controlled single selection, and renderers
+ * for the row display, popup rows, and popup section headers.
+ */
+type ComboRowProps<T = unknown, S = unknown> = DropDownWidgetProps<AdwComboRowProps, T, S>;
 /**
  * Describes a toast raised through {@link useToast}: the construct-time properties of an
  * `Adw.Toast` plus its `button-clicked` and `dismissed` handlers.
@@ -29,4 +36,10 @@ type ToastProviderProps = {
     children?: ReactNode | undefined;
 };
 
-export { type ToastOptions, type ToastController, type ToastOverlayController, type ToastProviderProps };
+export {
+    type ComboRowProps,
+    type ToastOptions,
+    type ToastController,
+    type ToastOverlayController,
+    type ToastProviderProps,
+};

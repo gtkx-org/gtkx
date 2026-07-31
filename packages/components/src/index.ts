@@ -18,5 +18,4 @@ export type {
     Section,
     SizeGroupChildProps,
     SizeGroupProps,
-    WidgetProps,
 } from "./types.js";

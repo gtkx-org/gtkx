@@ -4,8 +4,9 @@
     "tsconfig": "../../website/tsconfig.typedoc.json",
     "intentionallyNotExported": [
         "ColumnViewOwnProps",
+        "ComboRowComponent",
         "DropDownComponent",
-        "DropDownOwnProps",
+        "DropDownWidgetProps",
         "GridViewOwnProps",
         "ListViewOwnProps",
         "SizeGroupComponent"

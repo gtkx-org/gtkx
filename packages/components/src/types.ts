@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import type {
     GtkColumnViewColumnProps,
     GtkColumnViewProps,
-    GtkDropDown,
+    GtkDropDownProps,
     GtkGridViewProps,
     GtkListViewProps,
 } from "@gtkx/jsx/gtk";
@@ -12,11 +12,6 @@ import type { ComponentPropsWithRef, ElementType, ReactNode, Ref } from "react";
 type ChildProps<C extends ElementType> = {
     component: C;
 } & ComponentPropsWithRef<C>;
-
-/** Props of a component whose backing widget defaults to one type but can be swapped through `component`. */
-type WidgetProps<C extends ElementType, Own = unknown, ExtraOmit extends string = never> = Own & {
-    component?: C;
-} & Omit<ComponentPropsWithRef<C>, ExtraOmit | keyof Own>;
 
 /**
  * A single item in a collection model, identified by a stable id and holding an
@@ -131,15 +126,18 @@ type DropDownOwnProps<T, S> = SourceProps<T, S> & {
     renderHeader?: HeaderRenderer<S> | null | undefined;
 };
 
+type DropDownWidgetProps<Widget, T, S> = Omit<
+    Widget,
+    "model" | "factory" | "listFactory" | "headerFactory" | keyof DropDownOwnProps<T, S>
+> &
+DropDownOwnProps<T, S>;
+
 /**
- * Props for {@link DropDown}. The backing widget is chosen through the `component` prop, defaulting to
- * GtkDropDown, and its own props combine with the declarative collection props.
+ * Props for {@link DropDown}. Combines the underlying Gtk.DropDown props with the declarative
+ * collection props: flat items or grouped sections, controlled single selection, and renderers
+ * for the collapsed display, popup rows, and popup section headers.
  */
-type DropDownProps<T = unknown, S = unknown, C extends ElementType = typeof GtkDropDown> = WidgetProps<
-    C,
-    DropDownOwnProps<T, S>,
-    "model" | "factory" | "listFactory" | "headerFactory"
->;
+type DropDownProps<T = unknown, S = unknown> = DropDownWidgetProps<GtkDropDownProps, T, S>;
 
 type GridViewOwnProps<T> = ItemSizeProps &
     SelectionProps & {
@@ -190,7 +188,8 @@ export {
     type SelectionProps,
     type ExpansionProps,
     type ChildProps,
-    type WidgetProps,
+    type DropDownOwnProps,
+    type DropDownWidgetProps,
     type Item,
     type Section,
     type RenderItemArgs,

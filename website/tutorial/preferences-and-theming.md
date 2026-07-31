@@ -283,8 +283,8 @@ The menu item shows `Ctrl+,` along its right edge automatically, because it read
 Create `src/components/preferences.tsx`:
 
 ```tsx
-import { DropDown } from "@gtkx/components";
-import { AdwComboRow, AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
+import { ComboRow } from "@gtkx/components/adw";
+import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
@@ -306,8 +306,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
         <AdwPreferencesDialog onClosed={onClose} title="Preferences">
             <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
                 <AdwPreferencesGroup title="Appearance">
-                    <DropDown
-                        component={AdwComboRow}
+                    <ComboRow
                         title="Theme"
                         items={[
                             { id: "default", value: "Follow system" },
@@ -321,8 +320,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title="Tasks">
-                    <DropDown
-                        component={AdwComboRow}
+                    <ComboRow
                         title="Sort order"
                         items={[
                             { id: "manual", value: "Manual" },
@@ -348,7 +346,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`DropDown` from `@gtkx/components` takes a `component` prop naming what it renders into. A bare `GtkDropDown` is the plain widget; `AdwComboRow` presents the same choice as a row inside a preferences group, which is what belongs here. `selectedId` drives the selection and `onSelectionChanged` reports the id the user picked: the controlled-widget pairing from [Completing, Starring, and Deleting](/tutorial/completing-and-deleting), with a settings key on the other end instead of the store.
+`ComboRow` from `@gtkx/components/adw` presents a choice as a row inside a preferences group, which is what belongs here; `DropDown` from `@gtkx/components` is the same collection API rendered as a plain `Gtk.DropDown`. `selectedId` drives the selection and `onSelectionChanged` reports the id the user picked: the controlled-widget pairing from [Completing, Starring, and Deleting](/tutorial/completing-and-deleting), with a settings key on the other end instead of the store.
 
 `AdwSpinRow` takes its bounds through a `GtkAdjustment` in the `adjustment` slot, the same JSX-valued-prop shape as `topBar` and `prefix`. The adjustment carries the value, the floor, the ceiling, and the step, so the row itself takes none of them. The lead time it sets has no effect yet: the sweep that reads it arrives in [Reminders That Reach the Desktop](/tutorial/reminders).
 
