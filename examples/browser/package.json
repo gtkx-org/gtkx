@@ -17,8 +17,7 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
-        "@gtkx/config": "workspace:*",
-        "@gtkx/testing": "workspace:*"
+        "@gtkx/config": "workspace:*"
     },
     "nx": {
         "targets": {

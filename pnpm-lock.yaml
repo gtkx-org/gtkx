@@ -125,9 +125,6 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
 
   examples/gtk-demo:
     dependencies:
@@ -187,9 +184,6 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
 
   packages/cli:
     dependencies:
