@@ -86,7 +86,7 @@ function getText(result: { content: { type: string }[] }): string {
 }
 
 function stubLoadedReference(reference: FakeReference = fakeReference): void {
-    loadConfigMock.mockResolvedValue({ config: {} });
+    loadConfigMock.mockResolvedValue({ config: {}, configFile: "gtkx.config.ts" });
     loadApiReferenceMock.mockReturnValue(reference);
 }
 
@@ -226,8 +226,8 @@ describe("createReferenceProvider — caching", () => {
 
 describe("createReferenceProvider — failures and reloads", () => {
     it("rejects when codegen is disabled and retries after the backoff window", async () => {
-        loadConfigMock.mockResolvedValueOnce({ config: { codegen: false } });
-        loadConfigMock.mockResolvedValueOnce({ config: {} });
+        loadConfigMock.mockResolvedValueOnce({ config: { codegen: false }, configFile: "gtkx.config.ts" });
+        loadConfigMock.mockResolvedValueOnce({ config: {}, configFile: "gtkx.config.ts" });
         loadApiReferenceMock.mockReturnValue(fakeReference);
 
         await withFrozenClock(async (setNow) => {
@@ -242,7 +242,7 @@ describe("createReferenceProvider — failures and reloads", () => {
     });
 
     it("rejects when no GIR search paths are available", async () => {
-        loadConfigMock.mockResolvedValue({ config: {} });
+        loadConfigMock.mockResolvedValue({ config: {}, configFile: "gtkx.config.ts" });
         resolveGirPathMock.mockReturnValueOnce([]);
         const failing = createReferenceProvider(() => "/project");
         await expect(failing.get()).rejects.toThrow(/No GIR search paths available/);
