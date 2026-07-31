@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 
@@ -48,8 +48,9 @@ const writeStoreManifest = (cwd: string, name: "gi" | "jsx") => {
     mkdirSync(storeDir, { recursive: true });
     writeFileSync(join(storeDir, "package.json"), JSON.stringify({ name: `@gtkx/${name}`, version: "0.0.0" }));
     const selfLink = join(storeDir, "node_modules", "@gtkx", name);
-    mkdirSync(selfLink, { recursive: true });
-    writeFileSync(join(selfLink, "package.json"), JSON.stringify({ name: `@gtkx/${name}`, version: "0.0.0" }));
+    mkdirSync(dirname(selfLink), { recursive: true });
+    rmSync(selfLink, { recursive: true, force: true });
+    symlinkSync(relative(dirname(selfLink), storeDir), selfLink, "dir");
     mkdirSync(join(cwd, "node_modules", "@gtkx", name), { recursive: true });
 };
 
@@ -283,28 +284,6 @@ describe("ensureGenerated — store links", () => {
         writeFingerprint(cwd);
         rmSync(join(cwd, "node_modules", ".gtkx", "jsx", "package.json"), { force: true });
         expect(await ensureGenerated(cwd)).toBe(true);
-    });
-});
-
-describe("ensureGenerated — requireProject", () => {
-    let cwd: string;
-
-    beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-require-project-"));
-    });
-
-    afterEach(() => {
-        rmSync(cwd, { recursive: true, force: true });
-    });
-
-    it("fails instead of reporting success when no gtkx.config.ts resolves", async () => {
-        installRuntimePackage(cwd);
-        await expect(ensureGenerated(cwd, { requireProject: true })).rejects.toThrow("No gtkx.config.ts found");
-    });
-
-    it("still generates for a project that has one", async () => {
-        installReactProject(cwd);
-        expect(await ensureGenerated(cwd, { requireProject: true })).toBe(true);
     });
 });
 

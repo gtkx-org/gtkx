@@ -27,11 +27,7 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
     return join(giStoreDir, namespace, "index.js");
 };
 
-// A store is only reachable as a package through its own manifest and the self-link that resolves
-// `@gtkx/<name>` from inside it. `npm install` prunes both as extraneous while leaving the generated
-// modules in place, so the emitted entry points have to be checked, not just the modules behind them.
 const isStoreResolvable = (storeDir: string, packageName: string): boolean =>
-    existsSync(join(storeDir, "package.json")) &&
     existsSync(join(storeDir, "node_modules", "@gtkx", packageName, "package.json"));
 
 const isGiStoreStale = (store: CodegenStore, libraries: string[]): boolean => {

@@ -13,7 +13,7 @@ import { resolve } from "node:path";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
-import { type CodegenContext, type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
+import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
 type RunCodegenOptions = {
     cwd?: string;
@@ -54,10 +54,6 @@ type RunOptionsInput = {
     inputs: CodegenInputs | null;
     resolved: LoadedConfig;
 };
-
-const PROJECT_MISSING_MESSAGE =
-    "No gtkx.config.ts found from this directory, so there is no project to generate bindings for. " +
-    "Run the command from the project that declares the GIR libraries, or point at it with `--cwd`.";
 
 const GIR_PATH_MISSING_MESSAGE =
     "No GIR search paths available. Install gobject-introspection " +
@@ -208,30 +204,15 @@ const getRunOptions = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCo
     return { cwd: root, mode, inputs, resolved };
 };
 
-// Preflight runs for projects that may not use codegen at all, so it stays silent when none resolves; a
-// command asked to generate bindings has nothing to report as up to date and fails instead.
-const resolveRequestedContext = async (
-    cwd: string,
-    options: { mode?: string; requireProject?: boolean },
-): Promise<CodegenContext | null> => {
-    const context = await resolveCodegenContext(cwd, options.mode);
-
-    if (context === null && options.requireProject === true) {
-        throw new Error(PROJECT_MISSING_MESSAGE);
-    }
-
-    return context;
-};
-
 const ensureGenerated = async (
     cwd: string,
-    options: { announce?: boolean; mode?: string; requireProject?: boolean } = {},
+    options: { announce?: boolean; mode?: string } = {},
 ): Promise<boolean> => {
     if (options.announce && process.env.GTKX_DISABLE_PREFLIGHT === "1") {
         return false;
     }
 
-    const context = await resolveRequestedContext(cwd, options);
+    const context = await resolveCodegenContext(cwd, options.mode);
 
     if (!context) {
         return false;

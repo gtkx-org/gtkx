@@ -57,11 +57,7 @@ describe("codegen command (default — conditional)", () => {
 
     it("delegates to ensureGenerated and reports a regeneration", async () => {
         await run({ cwd: "/custom/dir" });
-
-        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"), {
-            requireProject: true,
-        });
-
+        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(runCodegenMock).not.toHaveBeenCalled();
         expect(collectLogged(state.stderrSpy)).toContain("regenerated stale bindings");
     });
@@ -70,12 +66,6 @@ describe("codegen command (default — conditional)", () => {
         ensureGeneratedMock.mockResolvedValueOnce(false);
         await run({});
         expect(collectLogged(state.stderrSpy)).toContain("bindings up to date");
-    });
-
-    it("surfaces the failure when there is no project to generate for", async () => {
-        ensureGeneratedMock.mockRejectedValueOnce(new Error("No gtkx.config.ts found from this directory"));
-        await expect(run({})).rejects.toThrow("No gtkx.config.ts found");
-        expect(collectLogged(state.stderrSpy)).not.toContain("bindings up to date");
     });
 
     it("cleans up and reports a shared store when codegen is disabled", async () => {
