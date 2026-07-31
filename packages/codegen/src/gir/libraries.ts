@@ -1,14 +1,15 @@
-import type { Config } from "@gtkx/config";
-import { GIR_LIBRARY_PATTERN, LIBRARIES_WILDCARD } from "@gtkx/config/internal";
 import { sortStrings } from "@gtkx/utils";
 import { readdirSync } from "node:fs";
 
 type GirNamespace = { name: string; version: string; identifier: string };
+type LibrarySelection = typeof LIBRARIES_WILDCARD | string[] | undefined;
 
+const LIBRARIES_WILDCARD = "*";
+const GIR_LIBRARY_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 const DEFAULT_LIBRARIES: string[] = ["Gtk-4.0"];
 const GIR_FILE_SUFFIX = ".gir";
 
-const resolveLibraries = (libraries: Config["libraries"], girPath: string[]): string[] => {
+const resolveLibraries = (libraries: LibrarySelection, girPath: string[]): string[] => {
     if (libraries === undefined) {
         return [...DEFAULT_LIBRARIES];
     }
@@ -99,4 +100,4 @@ const compareVersions = (a: string, b: string): number => {
     return 0;
 };
 
-export { resolveLibraries, discoverGirNamespaces };
+export { resolveLibraries, discoverGirNamespaces, type LibrarySelection };
