@@ -10,6 +10,7 @@ type SelectionOptions = {
     selectedIds?: string[] | null | undefined;
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     selectionMode?: Gtk.SelectionMode | null | undefined;
+    onItemsChanged: () => void;
 };
 
 type LastSelection = {
@@ -21,6 +22,7 @@ type SelectionElementProps = {
     ref: (value: Gtk.SelectionModel | null) => void;
     model: Gio.ListModel;
     onSelectionChanged: () => void;
+    onItemsChanged: () => void;
 };
 
 function getSelectedIds(selection: Gtk.SelectionModel, collection: Collection): string[] {
@@ -153,6 +155,7 @@ function useSelection(options: SelectionOptions): ReactElement {
         onSelectionChanged: () => {
             reportSelection(selection, collection, last, onSelectionChanged);
         },
+        onItemsChanged: options.onItemsChanged,
     });
 }
 

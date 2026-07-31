@@ -1,6 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { RefObject } from "react";
-import { useSignal } from "@gtkx/react";
 import { useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import type { Collection } from "./collection.js";
 import { eachRow } from "./collection.js";
@@ -102,7 +101,7 @@ function runControlledExpansion(
     report();
 }
 
-function useExpansion(options: ExpansionOptions): void {
+function useExpansion(options: ExpansionOptions): () => void {
     const { collection, expandedIds, onExpandedChange } = options;
     const [last] = useState<LastExpansion>(newLastExpansion);
     const expanding = useRef(false);
@@ -111,13 +110,13 @@ function useExpansion(options: ExpansionOptions): void {
         reportWhenIdle(collection, last, expanding, onExpandedChange);
     });
 
-    useSignal(collection.isTree ? collection.model : null, "items-changed", () => {
-        reportWhenIdle(collection, last, expanding, onExpandedChange);
-    });
-
     useLayoutEffect(() => {
         runControlledExpansion(collection, expandedIds, expanding, report);
     }, [collection, expandedIds]);
+
+    return () => {
+        reportWhenIdle(collection, last, expanding, onExpandedChange);
+    };
 }
 
 export { useExpansion, type ExpansionOptions };

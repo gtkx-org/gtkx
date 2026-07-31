@@ -12,12 +12,16 @@
         ".": {
             "entry": [
                 "gtkx.config.ts",
-                "gtkx.config.base.ts",
-                "scripts/**/*.ts"
+                "gtkx.config.base.ts"
             ],
             "ignoreDependencies": [
                 "@gtkx/runtime",
                 "@gtkx/native"
+            ]
+        },
+        "scripts": {
+            "entry": [
+                "**/*.ts"
             ]
         },
         "website": {
@@ -65,9 +69,6 @@
                 "src/gtkx-env.d.ts!",
                 "src/app.tsx!",
                 "src/index.tsx!"
-            ],
-            "ignoreDependencies": [
-                "@gtkx/testing"
             ]
         }
     }

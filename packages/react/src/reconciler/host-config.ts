@@ -32,7 +32,7 @@ import {
     type TextNode,
 } from "./node.js";
 import { isRootElement, type RootElement } from "./root-element.js";
-import { beginSuppression, disconnectAllHandlers, endSuppression } from "./signals.js";
+import { disconnectAllHandlers } from "./signals.js";
 import {
     didUpdateTextSurgically,
     enclosingHost,
@@ -88,15 +88,10 @@ const hostConfig = {
     getRootHostContext: (): Record<string, never> => HOST_CONTEXT,
     getChildHostContext: (parent: Record<string, never>): Record<string, never> => parent,
     getPublicInstance: (instance: Instance): object => getPublicInstance(instance),
-    prepareForCommit: (): null => {
-        beginSuppression();
-
-        return null;
-    },
+    prepareForCommit: (): null => null,
     resetAfterCommit: (): void => {
         flushTextHosts();
         flushBehaviors();
-        endSuppression();
     },
     preparePortalMount: (): void => undefined,
     clearContainer: (): void => undefined,

@@ -85,6 +85,7 @@ const ADW_ENTRYPOINT_MESSAGE =
 
 const IGNORES = [
     "**/*.vue",
+    ".claude/**",
     "examples/tutorial/**",
     "packages/native/npm/**",
     "packages/native/target/**",
@@ -189,6 +190,9 @@ const SOURCE_RULES: Linter.RulesRecord = {
         { type: "natural", order: "asc", ignoreCase: true, newlinesBetween: "ignore" },
     ],
     "perfectionist/sort-named-imports": ["error", { type: "natural", order: "asc", ignoreCase: true }],
+    "react-hooks/exhaustive-deps": "error",
+    "react-hooks/incompatible-library": "error",
+    "react-hooks/unsupported-syntax": "error",
     "sonarjs/cognitive-complexity": "off",
     "sonarjs/prefer-read-only-props": "off",
     "unicorn/filename-case": ["error", { case: "kebabCase" }],

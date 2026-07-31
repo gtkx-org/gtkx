@@ -3,40 +3,20 @@ import { camelCase } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
-type SuppressionCounter = {
-    beginSuppression: () => void;
-    endSuppression: () => void;
-    endSuppressionNow: () => void;
-    isSuppressed: () => boolean;
-};
-
 const NOTIFY_DETAIL_PREFIX = "notify::";
-const suppressionCounter: SuppressionCounter = createSuppressionCounter();
-const beginSuppression: () => void = suppressionCounter.beginSuppression;
-const endSuppression: () => void = suppressionCounter.endSuppression;
-const endSuppressionNow: () => void = suppressionCounter.endSuppressionNow;
-const isSuppressed: () => boolean = suppressionCounter.isSuppressed;
+const writeState: { depth: number } = { depth: 0 };
 
-function createSuppressionCounter(): SuppressionCounter {
-    let depth = 0;
+const isApplyingWrite = (): boolean => writeState.depth > 0;
 
-    const release = (): void => {
-        if (depth > 0) {
-            depth -= 1;
-        }
-    };
+const applyWrite = <T>(write: () => T): T => {
+    writeState.depth += 1;
 
-    return {
-        beginSuppression: () => {
-            depth += 1;
-        },
-        endSuppression: () => {
-            queueMicrotask(release);
-        },
-        endSuppressionNow: release,
-        isSuppressed: () => depth > 0,
-    };
-}
+    try {
+        return write();
+    } finally {
+        writeState.depth = Math.max(0, writeState.depth - 1);
+    }
+};
 
 const getNotifyProperty = (signal: string): string | null =>
     signal.startsWith(NOTIFY_DETAIL_PREFIX) ? camelCase(signal.slice(NOTIFY_DETAIL_PREFIX.length)) : null;
@@ -56,7 +36,7 @@ const invokeHandler = (
 
 const wrapHandler = (target: SignalTarget, record: HandlerRecord, notifyProperty: string | null): SignalHandler =>
     (...args: unknown[]): unknown => {
-        if (record.blockable && isSuppressed()) {
+        if (record.blockable && isApplyingWrite()) {
             return undefined;
         }
 
@@ -104,9 +84,8 @@ const disconnectAllHandlers = (target: SignalTarget): void => {
 };
 
 export {
-    beginSuppression,
-    endSuppression,
-    endSuppressionNow,
+    applyWrite,
+    isApplyingWrite,
     connectHandler,
     disconnectHandler,
     disconnectAllHandlers,

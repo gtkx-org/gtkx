@@ -4,7 +4,6 @@ import { createLogger, type Logger } from "@gtkx/utils";
 import { ConcurrentRoot } from "react-reconciler/constants.js";
 import { type Container, reconciler } from "./host-config.js";
 import { rootElement } from "./root-element.js";
-import { endSuppressionNow } from "./signals.js";
 
 type OpaqueRoot = { [opaqueRoot]: true };
 
@@ -59,12 +58,10 @@ function createErrorHandlerSlot(): ErrorHandlerSlot {
 const setReconcilerErrorHandler = (handler: ErrorHandler): ErrorHandler | null => errorHandlerSlot.set(handler);
 
 const rethrowUncaughtRenderError = (error: unknown): never => {
-    endSuppressionNow();
     throw error;
 };
 
 const logCaughtRenderError = (error: unknown): void => {
-    endSuppressionNow();
     log.error("caught render error", error);
 };
 

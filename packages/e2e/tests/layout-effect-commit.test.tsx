@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkCheckButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, type RootElement, rootElement } from "@gtkx/react";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
@@ -59,16 +59,18 @@ describe("layout effects during commit (2)", () => {
         const containerB: RootElement = { ...rootElement };
         const rootA = createRoot(containerA);
         const rootB = createRoot(containerB);
-        const buttonB = createRef<Gtk.Button>();
-        const onClickedB = vi.fn();
+        const checkB = createRef<Gtk.CheckButton>();
+        const onToggledB = vi.fn();
 
         await act(() => {
-            rootB.render(<GtkButton ref={buttonB} label="b" onClicked={onClickedB} />);
+            rootB.render(<GtkCheckButton ref={checkB} label="b" onToggled={onToggledB} />);
         });
+
+        onToggledB.mockClear();
 
         const CrossRootEmitter = () => {
             useLayoutEffect(() => {
-                buttonB.current?.emit("clicked");
+                checkB.current?.emit("toggled");
             }, []);
 
             return <GtkLabel>a</GtkLabel>;
@@ -78,7 +80,7 @@ describe("layout effects during commit (2)", () => {
             rootA.render(<CrossRootEmitter />);
         });
 
-        expect(onClickedB).toHaveBeenCalledTimes(1);
+        expect(onToggledB).toHaveBeenCalledTimes(1);
 
         await act(() => {
             rootA.unmount();

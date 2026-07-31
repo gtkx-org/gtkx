@@ -15,6 +15,7 @@ import {
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
+import { applyWrite } from "./signals.js";
 import { markTextDirty } from "./text.js";
 
 type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
@@ -69,8 +70,14 @@ const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
     markTextDirty(node);
 };
 
+const writeSlot = (parent: ElementNode, entry: PlacedChild, value: GObject.Object | null): void => {
+    applyWrite(() => {
+        Reflect.set(parent.object, entry.slot, value);
+    });
+};
+
 const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
-    Reflect.set(parent.object, entry.slot, entry.object);
+    writeSlot(parent, entry, entry.object);
     wireBufferView(entry.node, parent);
     entry.behavior = null;
     entry.attached = true;
@@ -98,7 +105,7 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
     return true;
 };
 
-const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
+const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
     const ctx: AttachContext = { parent, entry, index, sibling };
 
     for (const behavior of typeInfoFor(parent.typeName).behaviors) {
@@ -112,6 +119,12 @@ const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sib
     }
 };
 
+const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
+    applyWrite(() => {
+        runAttach(parent, entry, index, sibling);
+    });
+};
+
 const detachInfo = (entry: PlacedChild, context: unknown): DetachInfo => ({
     slot: entry.slot,
     adopted: entry.adopted,
@@ -119,23 +132,30 @@ const detachInfo = (entry: PlacedChild, context: unknown): DetachInfo => ({
     context,
 });
 
-const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
-    if (!entry.attached) {
-        return;
-    }
-
-    entry.attached = false;
+const runDetach = (parent: ElementNode, entry: PlacedChild): void => {
     const behavior = entry.behavior;
 
     if (behavior === null) {
         if (entry.slot !== DEFAULT_SLOT) {
-            Reflect.set(parent.object, entry.slot, null);
+            writeSlot(parent, entry, null);
         }
 
         return;
     }
 
     behavior.detach?.(parent.object, entry.object, detachInfo(entry, getOrCreateContext(parent, behavior)));
+};
+
+const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
+    if (!entry.attached) {
+        return;
+    }
+
+    entry.attached = false;
+
+    applyWrite(() => {
+        runDetach(parent, entry);
+    });
 };
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {

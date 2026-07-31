@@ -116,28 +116,6 @@
                     }
                 ]
             },
-            "test": {
-                "command": "vitest run --project scripts",
-                "cache": true,
-                "dependsOn": [
-                    "codegen",
-                    "@gtkx/vitest:build"
-                ],
-                "inputs": [
-                    "{workspaceRoot}/scripts/**/*",
-                    "{workspaceRoot}/vitest.config.ts",
-                    "{workspaceRoot}/packages/*/vitest.config.ts",
-                    "{workspaceRoot}/packages/utils/src/**/*",
-                    "{workspaceRoot}/packages/vitest/src/**/*",
-                    "sharedGlobals",
-                    {
-                        "externalDependencies": [
-                            "vitest",
-                            "verdaccio"
-                        ]
-                    }
-                ]
-            },
             "lint:knip": {
                 "command": "knip",
                 "cache": true,

@@ -25,6 +25,10 @@ type UseSignalOptions = {
  * Each emission runs the handler from the latest render, so it does not have to be stable and a
  * changing handler never reconnects the signal.
  *
+ * On React 19.2 this does not hold inside a component wrapped in `memo` or `forwardRef`, where every emission
+ * runs the handler captured on the first render. Keep the calling component unwrapped, or read the values the
+ * handler needs off the GObject itself. React fixes this on the 19.3 line.
+ *
  * @param object The GObject (or ref to one) to connect to.
  * @param signal The signal name, optionally with a detail suffix.
  * @param handler The callback invoked when the signal is emitted.

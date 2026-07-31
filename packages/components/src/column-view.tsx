@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, GtkColumnViewColumn, GtkCustomSorter, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
-import { useProperty, useSignal } from "@gtkx/react";
+import { useSignal } from "@gtkx/react";
 import { omit } from "@gtkx/utils";
 import { useLayoutEffect, useRef } from "react";
 import type { CellSize } from "./internal/cells.js";
@@ -120,7 +120,7 @@ const syncSort = (
 
 const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns: Column<never>[]): void => {
     const sorting = useRef(false);
-    const sorter = useProperty(view, "sorter");
+    const sorter = view?.getSorter() ?? null;
     const columnSorter = sorter instanceof Gtk.ColumnViewSorter ? sorter : null;
 
     useSignal(columnSorter, "changed", (): void => {

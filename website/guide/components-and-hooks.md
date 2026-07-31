@@ -271,6 +271,14 @@ useSignal(windowRef, "notify::fullscreened", () => setFullscreened(windowRef.cur
 });
 ```
 
+On React 19.2, keeping the latest handler does not work inside a component wrapped in `memo` or `forwardRef`: every emission runs the handler captured on the first render, so props and state the handler closes over stay frozen at their mount values. React refreshes the handler only for plain function components on that line, and fixes the other two on the 19.3 line. Until then, either leave the component that calls `useSignal` unwrapped, or read what the handler needs off the GObject rather than from the enclosing closure:
+
+```ts
+useSignal(adjustment, "value-changed", () => {
+    setPosition(adjustment.value);
+});
+```
+
 ## Next
 
 Continue with [Modals and Portals](/guide/modals-and-portals) for the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The worked dialog walkthrough lives in the tutorial's [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts#mounting-dialogs) chapter.

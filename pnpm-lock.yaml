@@ -125,9 +125,6 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
 
   examples/gtk-demo:
     dependencies:
@@ -187,9 +184,6 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
 
   packages/cli:
     dependencies:
@@ -605,6 +599,8 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  scripts: {}
 
   website:
     devDependencies:
