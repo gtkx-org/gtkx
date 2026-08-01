@@ -12,7 +12,7 @@ import sourceCode from "./video-player.tsx?raw";
 
 type VideoPlayerContextValue = {
     videoFile: Gio.File | null;
-    fullscreened: boolean;
+    isFullscreen: boolean;
     logoPaintable: Gdk.Texture;
     bbbPaintable: Gdk.Texture;
     handleOpen: () => void;
@@ -90,12 +90,12 @@ const useVideoPlayerContext = (): VideoPlayerContextValue => {
 
 function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
-    const [fullscreened, setFullscreened] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const logoPaintable = Gdk.Texture.newFromResource(gtkLogoCursorPath);
     const bbbPaintable = Gdk.Texture.newFromResource(bbbPngPath);
 
     useSignal(window, "notify::fullscreened", () => {
-        setFullscreened(window.current?.isFullscreen() ?? false);
+        setIsFullscreen(window.current?.isFullscreen() ?? false);
     }, {
         isImmediate: true,
     });
@@ -120,7 +120,7 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
 
     const value = {
         videoFile,
-        fullscreened,
+        isFullscreen,
         logoPaintable,
         bbbPaintable,
         handleOpen,
@@ -134,7 +134,7 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
 }
 
 function VideoPlayerTitlebar() {
-    const { fullscreened, logoPaintable, bbbPaintable, handleOpen, handleLogo, handleBBB, handleFullscreen } =
+    const { isFullscreen, logoPaintable, bbbPaintable, handleOpen, handleLogo, handleBBB, handleFullscreen } =
         useVideoPlayerContext();
 
     return (
@@ -153,7 +153,7 @@ function VideoPlayerTitlebar() {
             end={(
                 <GtkButton
                     name="fullscreen-button"
-                    iconName={fullscreened ? "view-restore-symbolic" : "view-fullscreen-symbolic"}
+                    iconName={isFullscreen ? "view-restore-symbolic" : "view-fullscreen-symbolic"}
                     accessibleLabel="Fullscreen"
                     onClicked={handleFullscreen}
                 />

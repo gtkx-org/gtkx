@@ -323,7 +323,7 @@ function GLAreaDemo() {
                     label="Quit"
                     hexpand
                     onClicked={() => {
-                        parentWindow.destroy();
+                        parentWindow?.destroy();
                     }}
                 />
             </GtkBox>

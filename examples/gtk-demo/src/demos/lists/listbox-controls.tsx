@@ -34,23 +34,23 @@ type LabelRef = RefCallback<Gtk.Widget | null>;
 type LabeledRowProps = {
     labelText: string;
     labelRef: LabelRef;
-    useUnderline?: boolean;
-    activatable?: boolean;
+    hasUnderline?: boolean;
+    isActivatable?: boolean;
     children: ReactNode;
 };
 
 type SwitchRowProps = {
     labelRef: LabelRef;
     switchRef: React.RefObject<Gtk.Switch | null>;
-    switchActive: boolean;
-    setSwitchActive: Dispatch<SetStateAction<boolean>>;
+    isSwitchActive: boolean;
+    setIsSwitchActive: Dispatch<SetStateAction<boolean>>;
 };
 
 type CheckRowProps = {
     labelRef: LabelRef;
     checkRef: React.RefObject<Gtk.CheckButton | null>;
-    checkActive: boolean;
-    setCheckActive: Dispatch<SetStateAction<boolean>>;
+    isCheckActive: boolean;
+    setIsCheckActive: Dispatch<SetStateAction<boolean>>;
 };
 
 type ClickHereRowProps = {
@@ -63,8 +63,8 @@ type RowToggles = {
     switchRef: React.RefObject<Gtk.Switch | null>;
     checkRef: React.RefObject<Gtk.CheckButton | null>;
     imageRef: React.RefObject<Gtk.Image | null>;
-    setSwitchActive: Dispatch<SetStateAction<boolean>>;
-    setCheckActive: Dispatch<SetStateAction<boolean>>;
+    setIsSwitchActive: Dispatch<SetStateAction<boolean>>;
+    setIsCheckActive: Dispatch<SetStateAction<boolean>>;
     setImageOpacity: Dispatch<SetStateAction<number>>;
 };
 
@@ -87,9 +87,9 @@ function nextOpacity(opacity: number) {
 
 function activateRow(row: Gtk.ListBoxRow, toggles: RowToggles) {
     if (toggles.switchRef.current?.isAncestor(row)) {
-        toggles.setSwitchActive((previous) => !previous);
+        toggles.setIsSwitchActive((previous) => !previous);
     } else if (toggles.checkRef.current?.isAncestor(row)) {
-        toggles.setCheckActive((previous) => !previous);
+        toggles.setIsCheckActive((previous) => !previous);
     } else if (toggles.imageRef.current?.isAncestor(row)) {
         toggles.setImageOpacity(nextOpacity);
     }
@@ -112,12 +112,12 @@ function collectLabel(setLabels: Dispatch<SetStateAction<Gtk.Widget[]>>): LabelR
     };
 }
 
-const LabeledRow = ({ labelText, labelRef, useUnderline, activatable, children }: LabeledRowProps) => (
-    <GtkListBoxRow selectable={false} activatable={activatable}>
+const LabeledRow = ({ labelText, labelRef, hasUnderline, isActivatable, children }: LabeledRowProps) => (
+    <GtkListBoxRow selectable={false} activatable={isActivatable}>
         <GtkBox>
             <GtkLabel
                 ref={labelRef}
-                useUnderline={useUnderline}
+                useUnderline={hasUnderline}
                 xalign={0}
                 halign={Gtk.Align.START}
                 valign={Gtk.Align.CENTER}
@@ -130,16 +130,16 @@ const LabeledRow = ({ labelText, labelRef, useUnderline, activatable, children }
     </GtkListBoxRow>
 );
 
-const SwitchRow = ({ labelRef, switchRef, switchActive, setSwitchActive }: SwitchRowProps) => (
+const SwitchRow = ({ labelRef, switchRef, isSwitchActive, setIsSwitchActive }: SwitchRowProps) => (
     <LabeledRow labelText="Switch" labelRef={labelRef}>
         <GtkSwitch
             name="switch"
             ref={switchRef}
             halign={Gtk.Align.END}
             valign={Gtk.Align.CENTER}
-            active={switchActive}
+            active={isSwitchActive}
             onStateSet={() => {
-                setSwitchActive((previous) => !previous);
+                setIsSwitchActive((previous) => !previous);
 
                 return Gdk.EVENT_STOP;
             }}
@@ -147,7 +147,7 @@ const SwitchRow = ({ labelRef, switchRef, switchActive, setSwitchActive }: Switc
     </LabeledRow>
 );
 
-const CheckRow = ({ labelRef, checkRef, checkActive, setCheckActive }: CheckRowProps) => (
+const CheckRow = ({ labelRef, checkRef, isCheckActive, setIsCheckActive }: CheckRowProps) => (
     <LabeledRow labelText="Check" labelRef={labelRef}>
         <GtkCheckButton
             name="check"
@@ -156,9 +156,9 @@ const CheckRow = ({ labelRef, checkRef, checkActive, setCheckActive }: CheckRowP
             valign={Gtk.Align.CENTER}
             marginStart={10}
             marginEnd={10}
-            active={checkActive}
+            active={isCheckActive}
             onToggled={() => {
-                setCheckActive((previous) => !previous);
+                setIsCheckActive((previous) => !previous);
             }}
         />
     </LabeledRow>
@@ -181,15 +181,15 @@ const ClickHereRow = ({ labelRef, imageRef, imageOpacity }: ClickHereRowProps) =
 );
 
 function Group1List({ labelRef }: { labelRef: LabelRef }) {
-    const [switchActive, setSwitchActive] = useState(false);
-    const [checkActive, setCheckActive] = useState(true);
+    const [isSwitchActive, setIsSwitchActive] = useState(false);
+    const [isCheckActive, setIsCheckActive] = useState(true);
     const [imageOpacity, setImageOpacity] = useState(0);
     const switchRef = useRef<Gtk.Switch | null>(null);
     const checkRef = useRef<Gtk.CheckButton | null>(null);
     const imageRef = useRef<Gtk.Image | null>(null);
 
     const handleRowActivated = (row: Gtk.ListBoxRow) => {
-        activateRow(row, { switchRef, checkRef, imageRef, setSwitchActive, setCheckActive, setImageOpacity });
+        activateRow(row, { switchRef, checkRef, imageRef, setIsSwitchActive, setIsCheckActive, setImageOpacity });
     };
 
     return (
@@ -202,14 +202,14 @@ function Group1List({ labelRef }: { labelRef: LabelRef }) {
             <SwitchRow
                 labelRef={labelRef}
                 switchRef={switchRef}
-                switchActive={switchActive}
-                setSwitchActive={setSwitchActive}
+                isSwitchActive={isSwitchActive}
+                setIsSwitchActive={setIsSwitchActive}
             />
             <CheckRow
                 labelRef={labelRef}
                 checkRef={checkRef}
-                checkActive={checkActive}
-                setCheckActive={setCheckActive}
+                isCheckActive={isCheckActive}
+                setIsCheckActive={setIsCheckActive}
             />
             <ClickHereRow labelRef={labelRef} imageRef={imageRef} imageOpacity={imageOpacity} />
         </GtkListBox>
@@ -221,7 +221,7 @@ const valueAdjustment = () => <GtkAdjustment value={50} upper={100} stepIncremen
 const Group2List = ({ labelRef }: { labelRef: LabelRef }) => {
     return (
         <GtkListBox name="group-2-list" selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
-            <LabeledRow labelText="_Scale" labelRef={labelRef} useUnderline activatable={false}>
+            <LabeledRow labelText="_Scale" labelRef={labelRef} hasUnderline isActivatable={false}>
                 <GtkScale
                     name="scale"
                     halign={Gtk.Align.END}
@@ -231,7 +231,7 @@ const Group2List = ({ labelRef }: { labelRef: LabelRef }) => {
                     adjustment={valueAdjustment()}
                 />
             </LabeledRow>
-            <LabeledRow labelText="S_pinbutton" labelRef={labelRef} useUnderline activatable={false}>
+            <LabeledRow labelText="S_pinbutton" labelRef={labelRef} hasUnderline isActivatable={false}>
                 <GtkSpinButton
                     name="spin"
                     halign={Gtk.Align.END}
@@ -239,7 +239,7 @@ const Group2List = ({ labelRef }: { labelRef: LabelRef }) => {
                     adjustment={valueAdjustment()}
                 />
             </LabeledRow>
-            <LabeledRow labelText="_Dropdown" labelRef={labelRef} useUnderline activatable={false}>
+            <LabeledRow labelText="_Dropdown" labelRef={labelRef} hasUnderline isActivatable={false}>
                 <DropDown
                     name="dropdown"
                     halign={Gtk.Align.END}
@@ -252,7 +252,7 @@ const Group2List = ({ labelRef }: { labelRef: LabelRef }) => {
                     ]}
                 />
             </LabeledRow>
-            <LabeledRow labelText="_Entry" labelRef={labelRef} useUnderline activatable={false}>
+            <LabeledRow labelText="_Entry" labelRef={labelRef} hasUnderline isActivatable={false}>
                 <GtkEntry name="entry" halign={Gtk.Align.END} valign={Gtk.Align.CENTER} placeholderText="Type here…" />
             </LabeledRow>
         </GtkListBox>

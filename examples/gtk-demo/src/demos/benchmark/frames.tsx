@@ -3,21 +3,15 @@ import * as GLib from "@gtkx/gi/glib";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkBox, GtkHeaderBar, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkHeaderBar, GtkLabel, type GtkWidgetProps } from "@gtkx/jsx/gtk";
 import { createElementComponent } from "@gtkx/react/internal";
 import { registerClass } from "@gtkx/runtime";
 import { randomInt } from "node:crypto";
-import { createContext, type ReactNode, type Ref, useContext, useEffect, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./frames.tsx?raw";
 
-type ColorWidgetProps = {
-    name?: string;
-    hexpand?: boolean;
-    vexpand?: boolean;
-    ref?: Ref<ColorWidget>;
-};
-
+type ColorWidgetProps = GtkWidgetProps<ColorWidget>;
 type FramesContextValue = ReturnType<typeof useFramesState>;
 
 const COLOR_WIDGET_TYPE_NAME = "GtkxFramesColorWidget";

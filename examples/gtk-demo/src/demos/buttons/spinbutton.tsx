@@ -45,7 +45,7 @@ const spinbuttonDemo: Demo = {
     keywords: ["GtkEntry"],
     component: SpinButtonDemo,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 const parseDecimal = (text: string): number => {

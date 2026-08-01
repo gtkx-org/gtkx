@@ -75,7 +75,7 @@ const sizegroupDemo: Demo = {
     keywords: [],
     component: SizeGroupDemo,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 const groupedDropdowns = (dropdowns: Dropdowns): Gtk.Widget[] =>
@@ -133,15 +133,15 @@ const OptionsFrame = ({ frame, ...state }: OptionsFrameProps) => (
 );
 
 function SizeGroupDemo() {
-    const [groupingEnabled, setGroupingEnabled] = useState(true);
+    const [isGroupingEnabled, setIsGroupingEnabled] = useState(true);
     const [selection, setSelection] = useState<Selection>(INITIAL_SELECTION);
     const [dropdowns, setDropdowns] = useState<Dropdowns>({});
 
     const handleToggle = (button: Gtk.CheckButton) => {
-        setGroupingEnabled(button.getActive());
+        setIsGroupingEnabled(button.getActive());
     };
 
-    const mode = groupingEnabled ? Gtk.SizeGroupMode.HORIZONTAL : Gtk.SizeGroupMode.NONE;
+    const mode = isGroupingEnabled ? Gtk.SizeGroupMode.HORIZONTAL : Gtk.SizeGroupMode.NONE;
     const state = { selection, dropdowns, setSelection, setDropdowns };
 
     return (
@@ -161,7 +161,7 @@ function SizeGroupDemo() {
                 name="enable-grouping-check"
                 label="_Enable grouping"
                 useUnderline
-                active={groupingEnabled}
+                active={isGroupingEnabled}
                 onToggled={handleToggle}
             />
         </GtkBox>

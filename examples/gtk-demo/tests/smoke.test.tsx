@@ -218,11 +218,11 @@ function stubPageSetupDialog(): ReturnType<typeof vi.fn> {
 }
 
 function dialogOnlyTitles(): Set<string> {
-    return new Set(demos.filter((d) => d.dialogOnly).map((d) => parseTitle(d.title).displayTitle));
+    return new Set(demos.filter((d) => d.isDialogOnly).map((d) => parseTitle(d.title).displayTitle));
 }
 
 function countWindowDemos(): number {
-    return demos.filter((d) => d.component && !d.dialogOnly).length;
+    return demos.filter((d) => d.component && !d.isDialogOnly).length;
 }
 
 const exerciseSearchBar = async (model: Gtk.SelectionModel): Promise<void> => {

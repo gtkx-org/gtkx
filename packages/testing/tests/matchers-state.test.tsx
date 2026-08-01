@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkBox, GtkButton, GtkCheckButton, GtkEntry, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen } from "../src/index.js";
+import { render, screen, waitFor } from "../src/index.js";
 import {
     expectRejection,
     renderButton,
@@ -103,7 +103,10 @@ describe("emptiness, validity and focus matchers", () => {
     it("toHaveFocus reflects the focused widget", async () => {
         const entry = await renderEntry("focused");
         entry.grabFocus();
-        expect(entry).toHaveFocus();
+
+        await waitFor(() => {
+            expect(entry).toHaveFocus();
+        });
     });
 });
 

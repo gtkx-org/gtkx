@@ -33,8 +33,8 @@ type DemoShellProps = WrapperArgs & {
 type DemoShellSizing = {
     defaultWidth: number;
     defaultHeight: number;
-    resizable: boolean;
-    deletable: boolean;
+    isResizable: boolean;
+    isDeletable: boolean;
 };
 
 const nextApplicationId = createApplicationIdFactory("org.gtkx.gtkdemo");
@@ -103,8 +103,8 @@ function demoShellSizing(demo: Demo | undefined): DemoShellSizing {
     return {
         defaultWidth: demo?.defaultWidth ?? 800,
         defaultHeight: demo?.defaultHeight ?? 600,
-        resizable: demo?.resizable ?? true,
-        deletable: demo?.deletable ?? true,
+        isResizable: demo?.isResizable ?? true,
+        isDeletable: demo?.isDeletable ?? true,
     };
 }
 
@@ -134,8 +134,8 @@ const DemoShell = ({ windowRef, onClose, Provider, Titlebar, demo, children }: D
                     title={demoShellTitle(demo, windowTitle)}
                     defaultWidth={sizing.defaultWidth}
                     defaultHeight={sizing.defaultHeight}
-                    resizable={sizing.resizable}
-                    deletable={sizing.deletable}
+                    resizable={sizing.isResizable}
+                    deletable={sizing.isDeletable}
                     cssClasses={demo?.windowCssClasses}
                     defaultWidget={defaultWidget}
                     titlebar={titlebar}

@@ -7,7 +7,7 @@ import { useDemo } from "../../context/demo-context.js";
 import sourceCode from "./password-entry.tsx?raw";
 
 type PasswordEntryContextValue = {
-    passwordsMatch: boolean;
+    arePasswordsMatching: boolean;
     handlePasswordNotify: (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => void;
     handleConfirmNotify: (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => void;
 };
@@ -27,8 +27,8 @@ const passwordEntryDemo: Demo = {
     provider: PasswordEntryProvider,
     sourceCode,
     windowTitle: "Choose a Password",
-    resizable: false,
-    deletable: false,
+    isResizable: false,
+    isDeletable: false,
 };
 
 function usePasswordEntryContext(): PasswordEntryContextValue {
@@ -44,7 +44,7 @@ function usePasswordEntryContext(): PasswordEntryContextValue {
 function PasswordEntryProvider({ children }: DemoProviderProps) {
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
-    const isPasswordsMatch = password.length > 0 && password === confirm;
+    const arePasswordsMatching = password.length > 0 && password === confirm;
 
     const handlePasswordNotify = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
         if (pspec.getName() === "text") {
@@ -59,7 +59,7 @@ function PasswordEntryProvider({ children }: DemoProviderProps) {
     };
 
     const value = {
-        passwordsMatch: isPasswordsMatch,
+        arePasswordsMatching,
         handlePasswordNotify,
         handleConfirmNotify,
     };
@@ -68,7 +68,7 @@ function PasswordEntryProvider({ children }: DemoProviderProps) {
 }
 
 function PasswordEntryTitlebar({ onClose }: DemoProps) {
-    const { passwordsMatch } = usePasswordEntryContext();
+    const { arePasswordsMatching } = usePasswordEntryContext();
     const { setDefaultWidget } = useDemo();
 
     return (
@@ -81,7 +81,7 @@ function PasswordEntryTitlebar({ onClose }: DemoProps) {
                     label="_Done"
                     useUnderline
                     cssClasses={["suggested-action"]}
-                    sensitive={passwordsMatch}
+                    sensitive={arePasswordsMatching}
                     onClicked={onClose}
                 />
             )}

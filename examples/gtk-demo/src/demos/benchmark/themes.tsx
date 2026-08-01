@@ -12,7 +12,7 @@ import sourceCode from "./themes.tsx?raw";
 
 type Theme = {
     name: string;
-    dark: boolean;
+    isDark: boolean;
 };
 
 type OriginalSettingsRef = React.RefObject<{ themeName: string; colorScheme: Adw.ColorScheme } | null>;
@@ -29,10 +29,10 @@ type ThemesControls = {
 type ThemesContextValue = ReturnType<typeof useThemesCycling>;
 
 const THEMES: Theme[] = [
-    { name: "Adwaita", dark: false },
-    { name: "Adwaita", dark: true },
-    { name: "HighContrast", dark: false },
-    { name: "HighContrastInverse", dark: false },
+    { name: "Adwaita", isDark: false },
+    { name: "Adwaita", isDark: true },
+    { name: "HighContrast", isDark: false },
+    { name: "HighContrastInverse", isDark: false },
 ];
 
 const FPS_POLL_MS = 500;
@@ -49,7 +49,7 @@ const themesDemo: Demo = {
     titlebar: ThemesTitlebar,
     provider: ThemesProvider,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 const restoreOriginalSettings = (originalSettingsRef: OriginalSettingsRef) => {
@@ -64,9 +64,9 @@ const restoreOriginalSettings = (originalSettingsRef: OriginalSettingsRef) => {
 };
 
 const colorSchemeFor = (theme: Theme): Adw.ColorScheme =>
-    theme.dark ? Adw.ColorScheme.FORCE_DARK : Adw.ColorScheme.FORCE_LIGHT;
+    theme.isDark ? Adw.ColorScheme.FORCE_DARK : Adw.ColorScheme.FORCE_LIGHT;
 
-const titleFor = (theme: Theme): string => (theme.dark ? `${theme.name} (dark)` : theme.name);
+const titleFor = (theme: Theme): string => (theme.isDark ? `${theme.name} (dark)` : theme.name);
 
 const applyTheme = (theme: Theme, settings: Gtk.Settings, window: Gtk.Window | null): void => {
     settings.gtkThemeName = theme.name;

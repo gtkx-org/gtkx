@@ -41,8 +41,8 @@ type SchemaKeysListViewProps = {
 };
 
 type Settings2ContextValue = {
-    searchMode: boolean;
-    setSearchMode: (isEnabled: boolean) => void;
+    isSearchActive: boolean;
+    setIsSearchActive: (isEnabled: boolean) => void;
     setSearchText: (text: string) => void;
     filteredSchemaKeys: SchemaKeys[];
     keysState: KeysState;
@@ -301,7 +301,7 @@ function useSettings2Context(): Settings2ContextValue {
 
 function ListViewSettings2Provider({ children }: DemoProviderProps) {
     const [searchText, setSearchText] = useState("");
-    const [searchMode, setSearchMode] = useState(false);
+    const [isSearchActive, setIsSearchActive] = useState(false);
     const keysState = useRef(new Map<string, string>());
 
     const handleSearchChanged = (entry: Gtk.SearchEntry) => {
@@ -319,8 +319,8 @@ function ListViewSettings2Provider({ children }: DemoProviderProps) {
     };
 
     const value = {
-        searchMode,
-        setSearchMode,
+        isSearchActive,
+        setIsSearchActive,
         setSearchText,
         filteredSchemaKeys,
         keysState,
@@ -333,7 +333,7 @@ function ListViewSettings2Provider({ children }: DemoProviderProps) {
 }
 
 function ListViewSettings2Titlebar() {
-    const { searchMode, setSearchMode, setSearchText } = useSettings2Context();
+    const { isSearchActive, setIsSearchActive, setSearchText } = useSettings2Context();
 
     return (
         <GtkHeaderBar
@@ -341,9 +341,9 @@ function ListViewSettings2Titlebar() {
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"
-                    active={searchMode}
+                    active={isSearchActive}
                     onToggled={(btn) => {
-                        setSearchMode(btn.getActive());
+                        setIsSearchActive(btn.getActive());
                         setSearchText("");
                     }}
                 />
@@ -353,12 +353,12 @@ function ListViewSettings2Titlebar() {
 }
 
 function ListViewSettings2Demo() {
-    const { searchMode, filteredSchemaKeys, keysState, handleSearchChanged, handleStopSearch, handleValueEdit } =
+    const { isSearchActive, filteredSchemaKeys, keysState, handleSearchChanged, handleStopSearch, handleValueEdit } =
         useSettings2Context();
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkSearchBar name="search-bar" searchModeEnabled={searchMode}>
+            <GtkSearchBar name="search-bar" searchModeEnabled={isSearchActive}>
                 <GtkSearchEntry
                     name="search-entry"
                     onSearchChanged={handleSearchChanged}

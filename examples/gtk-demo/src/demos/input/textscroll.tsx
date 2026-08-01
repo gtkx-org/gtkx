@@ -9,7 +9,7 @@ type TickAutoScrollArgs = {
     buffer: Gtk.TextBuffer;
     markName: string;
     countRef: React.RefObject<number>;
-    scrollToEnd: boolean;
+    isScrollToEnd: boolean;
 };
 
 const textscrollDemo: Demo = {
@@ -60,13 +60,13 @@ function hasReachedScrollLimit(count: number, isScrollToEnd: boolean) {
     return (isScrollToEnd && count > 150) || (!isScrollToEnd && count > 40);
 }
 
-function tickAutoScroll({ textView, buffer, markName, countRef, scrollToEnd }: TickAutoScrollArgs) {
+function tickAutoScroll({ textView, buffer, markName, countRef, isScrollToEnd }: TickAutoScrollArgs) {
     const count = ++countRef.current;
     const iter = buffer.getEndIter();
-    buffer.insert(iter, buildScrollLine(count, scrollToEnd), -1);
-    scrollMarkOnscreen(textView, buffer, markName, scrollToEnd);
+    buffer.insert(iter, buildScrollLine(count, isScrollToEnd), -1);
+    scrollMarkOnscreen(textView, buffer, markName, isScrollToEnd);
 
-    if (hasReachedScrollLimit(count, scrollToEnd)) {
+    if (hasReachedScrollLimit(count, isScrollToEnd)) {
         countRef.current = 0;
     }
 }
@@ -86,7 +86,7 @@ function startAutoScroll(
 
     const timeoutId = setInterval(
         () => {
-            tickAutoScroll({ textView, buffer, markName, countRef, scrollToEnd: isScrollToEnd });
+            tickAutoScroll({ textView, buffer, markName, countRef, isScrollToEnd });
         },
         isScrollToEnd ? 50 : 100,
     );
@@ -96,14 +96,14 @@ function startAutoScroll(
     };
 }
 
-function AutoScrollTextView({ scrollToEnd }: { scrollToEnd: boolean }) {
+function AutoScrollTextView({ isScrollToEnd }: { isScrollToEnd: boolean }) {
     const textViewRef = useRef<Gtk.TextView | null>(null);
     const countRef = useRef(0);
-    useEffect(() => startAutoScroll(textViewRef.current, countRef, scrollToEnd), [scrollToEnd]);
+    useEffect(() => startAutoScroll(textViewRef.current, countRef, isScrollToEnd), [isScrollToEnd]);
 
     return (
         <GtkScrolledWindow hexpand>
-            <GtkTextView ref={textViewRef} name={scrollToEnd ? "text-view-end" : "text-view-scroll"} />
+            <GtkTextView ref={textViewRef} name={isScrollToEnd ? "text-view-end" : "text-view-scroll"} />
         </GtkScrolledWindow>
     );
 }
@@ -111,8 +111,8 @@ function AutoScrollTextView({ scrollToEnd }: { scrollToEnd: boolean }) {
 function TextScrollDemo() {
     return (
         <GtkBox homogeneous spacing={6}>
-            <AutoScrollTextView scrollToEnd />
-            <AutoScrollTextView scrollToEnd={false} />
+            <AutoScrollTextView isScrollToEnd />
+            <AutoScrollTextView isScrollToEnd={false} />
         </GtkBox>
     );
 }

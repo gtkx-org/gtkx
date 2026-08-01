@@ -3,7 +3,7 @@ import { AST_NODE_TYPES, ESLintUtils, type TSESLint, type TSESTree } from "@type
 type MessageIds = "missingPrefix" | "notBoolean" | "negated";
 type Options = [{ mirrors?: string[]; mirrorProperties?: string[] }];
 type Context = TSESLint.RuleContext<MessageIds, Options>;
-type Shape = "boolean" | "other" | "unknown";
+type Shape = "boolean" | "predicate" | "other" | "unknown";
 type Exemptions = { types: Set<string>; properties: Set<string> };
 
 const PREFIX = /^(is|are|has|have|can|should|did|will|was|were|requires)[A-Z0-9]/;
@@ -83,13 +83,21 @@ const getUnionShape = (node: TSESTree.TSUnionType): Shape => {
     return members.some((member) => isBooleanNode(member)) ? "unknown" : "other";
 };
 
+// A function is named for what it does, so a boolean-returning one needs no prefix: `onKeyPressed`
+// and `canGoBack` are both fine. Only a boolean value answers a question and must read as one.
+const getFunctionShape = (node: TSESTree.TSFunctionType): Shape => {
+    const returns = getAnnotationShape(node.returnType);
+
+    return returns === "boolean" ? "predicate" : returns;
+};
+
 const getTypeShape = (node: TSESTree.TypeNode): Shape => {
     if (isBooleanNode(node)) {
         return "boolean";
     }
 
     if (node.type === AST_NODE_TYPES.TSFunctionType) {
-        return getAnnotationShape(node.returnType);
+        return getFunctionShape(node);
     }
 
     if (node.type === AST_NODE_TYPES.TSUnionType) {

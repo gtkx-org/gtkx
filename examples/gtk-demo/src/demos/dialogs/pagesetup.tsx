@@ -11,13 +11,17 @@ const pageSetupDemo: Demo = {
     keywords: ["GtkPageSetup"],
     component: PageSetupDemo,
     sourceCode,
-    dialogOnly: true,
+    isDialogOnly: true,
 };
 
 function PageSetupDemo({ onClose }: DemoProps) {
     const parentWindow = useParentWindow();
 
     useEffect(() => {
+        if (!parentWindow) {
+            return;
+        }
+
         const settings = new Gtk.PrintSettings();
 
         Gtk.printRunPageSetupDialogAsync(parentWindow, null, settings, () => {

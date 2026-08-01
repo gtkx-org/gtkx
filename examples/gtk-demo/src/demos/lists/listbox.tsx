@@ -36,7 +36,7 @@ type Message = {
 
 type MessageRowProps = {
     message: Message;
-    expanded: boolean;
+    isExpanded: boolean;
     onToggleExpand: (id: number) => void;
     onFavorite: (id: number) => void;
     onReshare: (id: number) => void;
@@ -50,7 +50,7 @@ type MessageExtraButtonsProps = {
 };
 
 type MessageActionsProps = MessageExtraButtonsProps & {
-    expanded: boolean;
+    isExpanded: boolean;
     onToggleExpand: (id: number) => void;
 };
 
@@ -253,7 +253,7 @@ const MessageExtraButtons = ({ message, extraButtonsRef, onFavorite, onReshare }
 
 const MessageActions = ({
     message,
-    expanded,
+    isExpanded,
     extraButtonsRef,
     onToggleExpand,
     onFavorite,
@@ -263,7 +263,7 @@ const MessageActions = ({
         <GtkBox spacing={6}>
             <GtkButton
                 name="expand-button"
-                label={expanded ? "Hide" : "Expand"}
+                label={isExpanded ? "Hide" : "Expand"}
                 receivesDefault
                 hasFrame={false}
                 onClicked={() => {
@@ -280,9 +280,9 @@ const MessageActions = ({
     </GtkGridLayoutChild>
 );
 
-const MessageDetails = ({ message, expanded }: { message: Message; expanded: boolean }) => (
+const MessageDetails = ({ message, isExpanded }: { message: Message; isExpanded: boolean }) => (
     <GtkGridLayoutChild column={1} row={4}>
-        <GtkRevealer name="details-revealer" revealChild={expanded}>
+        <GtkRevealer name="details-revealer" revealChild={isExpanded}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkBox marginTop={2} marginBottom={2} spacing={8}>
                     <GtkLabel visible={message.nReshares !== 0} useMarkup>
@@ -301,7 +301,7 @@ const MessageDetails = ({ message, expanded }: { message: Message; expanded: boo
     </GtkGridLayoutChild>
 );
 
-const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }: MessageRowProps) => {
+const MessageRow = ({ message, isExpanded, onToggleExpand, onFavorite, onReshare }: MessageRowProps) => {
     const extraButtonsRef = useRef<Gtk.Box>(null);
 
     const handleStateFlagsChanged = (_previousFlags: Gtk.StateFlags, row: Gtk.Widget) => {
@@ -319,13 +319,13 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
                 <MessageResentBy message={message} />
                 <MessageActions
                     message={message}
-                    expanded={expanded}
+                    isExpanded={isExpanded}
                     extraButtonsRef={extraButtonsRef}
                     onToggleExpand={onToggleExpand}
                     onFavorite={onFavorite}
                     onReshare={onReshare}
                 />
-                <MessageDetails message={message} expanded={expanded} />
+                <MessageDetails message={message} isExpanded={isExpanded} />
             </GtkGrid>
         </GtkListBoxRow>
     );
@@ -370,7 +370,7 @@ function ListBoxDemo() {
                         <MessageRow
                             key={message.id}
                             message={message}
-                            expanded={expandedIds.has(message.id)}
+                            isExpanded={expandedIds.has(message.id)}
                             onToggleExpand={handleToggleExpand}
                             onFavorite={handleFavorite}
                             onReshare={handleReshare}

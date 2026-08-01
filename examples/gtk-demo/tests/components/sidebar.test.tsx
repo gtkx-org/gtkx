@@ -35,7 +35,7 @@ const noop = vi.fn();
 
 const ContextProbeWrapper = ({ children }: { children: ReactNode }) => (
     <DemoProvider demos={[intro, buttonDemo, expanderDemo]}>
-        <Sidebar searchMode={false} onSearchChanged={noop} />
+        <Sidebar isSearchActive={false} onSearchChanged={noop} />
         {children}
     </DemoProvider>
 );
@@ -44,7 +44,7 @@ describe("Sidebar", () => {
     it("renders the Buttons category node grouping its two child demos", async () => {
         await render(
             <DemoProvider demos={[intro, buttonDemo, expanderDemo, standaloneDemo]}>
-                <Sidebar searchMode={false} onSearchChanged={noop} />
+                <Sidebar isSearchActive={false} onSearchChanged={noop} />
             </DemoProvider>,
         );
 
@@ -58,7 +58,7 @@ describe("Sidebar", () => {
     it("renders top-level demos by their display title", async () => {
         await render(
             <DemoProvider demos={[intro, standaloneDemo]}>
-                <Sidebar searchMode={false} onSearchChanged={noop} />
+                <Sidebar isSearchActive={false} onSearchChanged={noop} />
             </DemoProvider>,
         );
 
@@ -70,7 +70,7 @@ describe("Sidebar", () => {
     it("opens the sidebar search bar when search mode is enabled", async () => {
         await render(
             <DemoProvider demos={[intro, buttonDemo, expanderDemo]}>
-                <Sidebar searchMode={true} onSearchChanged={noop} />
+                <Sidebar isSearchActive={true} onSearchChanged={noop} />
             </DemoProvider>,
         );
 

@@ -50,7 +50,7 @@ describe("themesDemo", () => {
         expect(themesDemo.title).toBe("Benchmark/Themes");
         expect(themesDemo.description.length).toBeGreaterThan(0);
         expect(typeof themesDemo.sourceCode).toBe("string");
-        expect(themesDemo.resizable).toBe(false);
+        expect(themesDemo.isResizable).toBe(false);
         expect(themesDemo.component).toBeTypeOf("function");
     });
 

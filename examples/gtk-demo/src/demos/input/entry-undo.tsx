@@ -14,7 +14,7 @@ const entryUndoDemo: Demo = {
     keywords: [],
     component: EntryUndoDemo,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 function EntryUndoDemo() {

@@ -14,7 +14,7 @@ const shortcutTriggersDemo: Demo = {
     component: ShortcutTriggersDemo,
     sourceCode,
     defaultWidth: 200,
-    resizable: false,
+    isResizable: false,
 };
 
 const logAction = (message: string): Gtk.ShortcutAction =>

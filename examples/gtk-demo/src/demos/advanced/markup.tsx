@@ -14,14 +14,14 @@ import sourceCode from "./markup.tsx?raw";
 import markupContent from "./markup.txt?raw";
 
 type MarkupStackProps = {
-    showSource: boolean;
+    isShowingSource: boolean;
     formattedViewRef: React.RefObject<Gtk.TextView | null>;
     sourceViewRef: React.RefObject<Gtk.TextView | null>;
     onFormattedRealized: (self: Gtk.Widget) => void;
 };
 
 type MarkupContextValue = {
-    showSource: boolean;
+    isShowingSource: boolean;
     handleSourceToggle: (isActive: boolean) => void;
     applyMarkup: () => void;
     formattedViewRef: React.RefObject<Gtk.TextView | null>;
@@ -73,10 +73,10 @@ const syncMarkupFromSource = (sourceView: Gtk.TextView | null, markupRef: React.
     markupRef.current = buffer.getText(startIter, endIter, false);
 };
 
-const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedRealized }: MarkupStackProps) => (
+const MarkupStack = ({ isShowingSource, formattedViewRef, sourceViewRef, onFormattedRealized }: MarkupStackProps) => (
     <GtkStack
         name="markup-stack"
-        visibleChildName={showSource ? "source" : "formatted"}
+        visibleChildName={isShowingSource ? "source" : "formatted"}
         vexpand
         hexpand
         transitionType={Gtk.StackTransitionType.NONE}
@@ -132,7 +132,7 @@ const useMarkupContext = (): MarkupContextValue => {
 function MarkupProvider({ children }: DemoProviderProps) {
     const formattedViewRef = useRef<Gtk.TextView | null>(null);
     const sourceViewRef = useRef<Gtk.TextView | null>(null);
-    const [showSource, setShowSource] = useState(false);
+    const [isShowingSource, setIsShowingSource] = useState(false);
     const markupRef = useRef(SAMPLE_MARKUP);
 
     const applyMarkup = () => {
@@ -140,16 +140,16 @@ function MarkupProvider({ children }: DemoProviderProps) {
     };
 
     const handleSourceToggle = (isActive: boolean) => {
-        if (!isActive && showSource) {
+        if (!isActive && isShowingSource) {
             syncMarkupFromSource(sourceViewRef.current, markupRef);
             applyMarkup();
         }
 
-        setShowSource(isActive);
+        setIsShowingSource(isActive);
     };
 
     const value = {
-        showSource,
+        isShowingSource,
         handleSourceToggle,
         applyMarkup,
         formattedViewRef,
@@ -161,14 +161,14 @@ function MarkupProvider({ children }: DemoProviderProps) {
 }
 
 function MarkupTitlebar() {
-    const { showSource, handleSourceToggle } = useMarkupContext();
+    const { isShowingSource, handleSourceToggle } = useMarkupContext();
 
     return (
         <GtkHeaderBar
             start={(
                 <GtkCheckButton
                     label="Source"
-                    active={showSource}
+                    active={isShowingSource}
                     valign={Gtk.Align.CENTER}
                     onToggled={(btn) => {
                         handleSourceToggle(btn.getActive());
@@ -180,7 +180,7 @@ function MarkupTitlebar() {
 }
 
 function MarkupDemo() {
-    const { showSource, formattedViewRef, sourceViewRef, markupRef } = useMarkupContext();
+    const { isShowingSource, formattedViewRef, sourceViewRef, markupRef } = useMarkupContext();
 
     const onFormattedRealized = (self: Gtk.Widget) => {
         applyMarkupToView(self as Gtk.TextView, markupRef.current);
@@ -188,7 +188,7 @@ function MarkupDemo() {
 
     return (
         <MarkupStack
-            showSource={showSource}
+            isShowingSource={isShowingSource}
             formattedViewRef={formattedViewRef}
             sourceViewRef={sourceViewRef}
             onFormattedRealized={onFormattedRealized}

@@ -63,7 +63,7 @@ type ComputeTextLayoutArgs = {
     fontOptions: FontOptions;
     fontDesc: Pango.FontDescription;
     text: string;
-    hintMetrics: boolean;
+    shouldHintMetrics: boolean;
 };
 
 type FontRenderingControlsProps = {
@@ -76,7 +76,7 @@ type CheckCellProps = {
     column: number;
     row: number;
     label: string;
-    active: boolean;
+    isActive: boolean;
     onToggled: (button: Gtk.CheckButton) => void;
 };
 
@@ -92,16 +92,16 @@ type MeasurementInputs = {
     text: string;
     fontDesc: Pango.FontDescription;
     hintStyle: HintStyle;
-    antialias: boolean;
-    hintMetrics: boolean;
+    isAntialiased: boolean;
+    shouldHintMetrics: boolean;
     scale: number;
 };
 
 type OverlayState = {
-    showPixels: boolean;
-    showOutlines: boolean;
-    showExtents: boolean;
-    showGrid: boolean;
+    shouldShowPixels: boolean;
+    shouldShowOutlines: boolean;
+    shouldShowExtents: boolean;
+    shouldShowGrid: boolean;
 };
 
 type OverlayAnimation = {
@@ -113,8 +113,8 @@ type OverlayAnimation = {
 };
 
 type OverlayAlphaFlags = {
-    showPixels: boolean;
-    showOutlines: boolean;
+    shouldShowPixels: boolean;
+    shouldShowOutlines: boolean;
 };
 
 type StartOverlayAnimationArgs = OverlayAlphaFlags & {
@@ -267,13 +267,13 @@ const setupGridLayout = (
 };
 
 const withMeasurementContext = <T,>(inputs: MeasurementInputs, body: (pangoContext: Pango.Context) => T): T => {
-    const fontOptions = createGridFontOptions(inputs.hintStyle, inputs.antialias, inputs.hintMetrics);
+    const fontOptions = createGridFontOptions(inputs.hintStyle, inputs.isAntialiased, inputs.shouldHintMetrics);
     const target = ImageSurface.create(Format.ARGB32, 1, 1);
     const cr = Context.create(target);
     cr.setFontOptions(fontOptions);
     const pangoContext = PangoCairo.createContext(cr);
     PangoCairo.contextSetFontOptions(pangoContext, fontOptions);
-    pangoContext.setRoundGlyphPositions(inputs.hintMetrics);
+    pangoContext.setRoundGlyphPositions(inputs.shouldHintMetrics);
 
     try {
         return body(pangoContext);
@@ -325,19 +325,19 @@ const renderSmallSurface = ({
     fontOptions,
     fontDesc,
     ch,
-    hintMetrics,
+    shouldHintMetrics,
 }: {
     small: ReturnType<Context["getTarget"]>;
     fontOptions: FontOptions;
     fontDesc: Pango.FontDescription;
     ch: string;
-    hintMetrics: boolean;
+    shouldHintMetrics: boolean;
 }): { iter: Pango.LayoutIter } | null => {
     const smallCr = Context.create(small);
     smallCr.setFontOptions(fontOptions);
     const smallCtx = PangoCairo.createContext(smallCr);
     PangoCairo.contextSetFontOptions(smallCtx, fontOptions);
-    smallCtx.setRoundGlyphPositions(hintMetrics);
+    smallCtx.setRoundGlyphPositions(shouldHintMetrics);
     const smallLayout = Pango.Layout.new(smallCtx);
     smallLayout.setFontDescription(fontDesc);
     smallLayout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
@@ -403,15 +403,15 @@ function useFontRenderingState() {
     const [text, setText] = useState(DEFAULT_TEXT);
     const [fontDesc, setFontDesc] = useState(() => Pango.FontDescription.fromString("Sans 12"));
     const [hintStyle, setHintStyle] = useState<HintStyle>(HintStyle.NONE);
-    const [antialias, setAntialias] = useState(true);
-    const [hintMetrics, setHintMetrics] = useState(false);
+    const [isAntialiased, setIsAntialiased] = useState(true);
+    const [shouldHintMetrics, setShouldHintMetrics] = useState(false);
     const [scale, setScale] = useState(7);
 
     const [overlays, setOverlays] = useState<OverlayState>({
-        showPixels: true,
-        showOutlines: false,
-        showExtents: false,
-        showGrid: false,
+        shouldShowPixels: true,
+        shouldShowOutlines: false,
+        shouldShowExtents: false,
+        shouldShowGrid: false,
     });
 
     const pixelAlphaRef = useRef(1);
@@ -431,10 +431,10 @@ function useFontRenderingState() {
         setFontDesc,
         hintStyle,
         setHintStyle,
-        antialias,
-        setAntialias,
-        hintMetrics,
-        setHintMetrics,
+        isAntialiased,
+        setIsAntialiased,
+        shouldHintMetrics,
+        setShouldHintMetrics,
         scale,
         setScale,
         overlays,
@@ -452,12 +452,12 @@ const easeOutCubic = (t: number) => {
     return p * p * p + 1;
 };
 
-const targetPixelAlphaFor = ({ showPixels, showOutlines }: OverlayAlphaFlags): number => {
-    if (showPixels && showOutlines) {
+const targetPixelAlphaFor = ({ shouldShowPixels, shouldShowOutlines }: OverlayAlphaFlags): number => {
+    if (shouldShowPixels && shouldShowOutlines) {
         return 0.5;
     }
 
-    if (showPixels) {
+    if (shouldShowPixels) {
         return 1;
     }
 
@@ -465,15 +465,15 @@ const targetPixelAlphaFor = ({ showPixels, showOutlines }: OverlayAlphaFlags): n
 };
 
 const startOverlayAnimation = ({
-    showPixels,
-    showOutlines,
+    shouldShowPixels,
+    shouldShowOutlines,
     pixelAlphaRef,
     outlineAlphaRef,
     animationRef,
     setIsAnimating,
 }: StartOverlayAnimationArgs) => {
-    const targetPixelAlpha = targetPixelAlphaFor({ showPixels, showOutlines });
-    const targetOutlineAlpha = showOutlines ? 1 : 0;
+    const targetPixelAlpha = targetPixelAlphaFor({ shouldShowPixels, shouldShowOutlines });
+    const targetOutlineAlpha = shouldShowOutlines ? 1 : 0;
     const startPixelAlpha = pixelAlphaRef.current;
     const startOutlineAlpha = outlineAlphaRef.current;
 
@@ -551,14 +551,14 @@ function useOverlayAnimation(state: FontRenderingState) {
         }
 
         startOverlayAnimation({
-            showPixels: overlays.showPixels,
-            showOutlines: overlays.showOutlines,
+            shouldShowPixels: overlays.shouldShowPixels,
+            shouldShowOutlines: overlays.shouldShowOutlines,
             pixelAlphaRef,
             outlineAlphaRef,
             animationRef,
             setIsAnimating,
         });
-    }, [overlays.showPixels, overlays.showOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef]);
+    }, [overlays.shouldShowPixels, overlays.shouldShowOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef]);
 
     useTickCallback(isAnimating ? drawingAreaRef : null, (widget, frameClock) =>
         shouldKeepOverlayAnimating({
@@ -580,7 +580,7 @@ const drawSmallSurface = (ctx: DrawTextModeContext) => {
     smallCr.setFontOptions(fontOptions);
     const smallContext = PangoCairo.createContext(smallCr);
     PangoCairo.contextSetFontOptions(smallContext, fontOptions);
-    smallContext.setRoundGlyphPositions(state.hintMetrics);
+    smallContext.setRoundGlyphPositions(state.shouldHintMetrics);
     const smallLayout = Pango.Layout.new(smallContext);
     smallLayout.setFontDescription(state.fontDesc);
     smallLayout.setText(state.text || " ", -1);
@@ -632,7 +632,7 @@ const drawOverlays = (
     cr.translate(overlayInfo.offsetX, overlayInfo.offsetY);
     cr.setLineWidth(1);
 
-    if (state.overlays.showGrid) {
+    if (state.overlays.shouldShowGrid) {
         drawPixelGrid({
             cr,
             scale,
@@ -643,7 +643,7 @@ const drawOverlays = (
         });
     }
 
-    if (state.overlays.showExtents) {
+    if (state.overlays.shouldShowExtents) {
         drawExtents({ cr, scale, logicalRect, baseline, inkPixel });
     }
 
@@ -697,7 +697,7 @@ const drawOutlineLayer = (ctx: DrawTextModeContext) => {
     outlineCr.setFontOptions(fontOptions);
     const outlineCtx = PangoCairo.createContext(outlineCr);
     PangoCairo.contextSetFontOptions(outlineCtx, fontOptions);
-    outlineCtx.setRoundGlyphPositions(state.hintMetrics);
+    outlineCtx.setRoundGlyphPositions(state.shouldHintMetrics);
     const outlineLayout = Pango.Layout.new(outlineCtx);
     outlineLayout.setFontDescription(state.fontDesc);
     outlineLayout.setText(state.text || " ", -1);
@@ -713,14 +713,22 @@ const drawOutlineLayer = (ctx: DrawTextModeContext) => {
     outlineSurface.finish();
 };
 
-const computeTextLayout = ({ cr, width, height, fontOptions, fontDesc, text, hintMetrics }: ComputeTextLayoutArgs) => {
+const computeTextLayout = ({
+    cr,
+    width,
+    height,
+    fontOptions,
+    fontDesc,
+    text,
+    shouldHintMetrics,
+}: ComputeTextLayoutArgs) => {
     const target = cr.getTarget();
     const offscreen = Surface.createSimilar(target, Content.COLOR_ALPHA, width, height);
     const offCr = Context.create(offscreen);
     offCr.setFontOptions(fontOptions);
     const context = PangoCairo.createContext(offCr);
     PangoCairo.contextSetFontOptions(context, fontOptions);
-    context.setRoundGlyphPositions(hintMetrics);
+    context.setRoundGlyphPositions(shouldHintMetrics);
     const layout = Pango.Layout.new(context);
     layout.setFontDescription(fontDesc);
     layout.setText(text || " ", -1);
@@ -738,12 +746,12 @@ const computeTextLayout = ({ cr, width, height, fontOptions, fontDesc, text, hin
 };
 
 function useDrawTextMode(state: FontRenderingState) {
-    const { fontDesc, text, hintStyle, antialias, hintMetrics } = state;
+    const { fontDesc, text, hintStyle, isAntialiased, shouldHintMetrics } = state;
 
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
         cr.setSourceRgb(1, 1, 1);
         cr.paint();
-        const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
+        const fontOptions = createGridFontOptions(hintStyle, isAntialiased, shouldHintMetrics);
 
         const { inkPixel, logicalRect, baseline, target } = computeTextLayout({
             cr,
@@ -752,7 +760,7 @@ function useDrawTextMode(state: FontRenderingState) {
             fontOptions,
             fontDesc,
             text,
-            hintMetrics,
+            shouldHintMetrics,
         });
 
         const surfaceWidth = inkPixel.width + 20;
@@ -779,17 +787,17 @@ function useDrawTextMode(state: FontRenderingState) {
 }
 
 function useDrawGridMode(state: FontRenderingState) {
-    const { fontDesc, text, hintStyle, antialias, hintMetrics, scale } = state;
+    const { fontDesc, text, hintStyle, isAntialiased, shouldHintMetrics, scale } = state;
 
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-        const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
+        const fontOptions = createGridFontOptions(hintStyle, isAntialiased, shouldHintMetrics);
         const target = cr.getTarget();
         const tmpSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, 1, 1);
         const tmpCr = Context.create(tmpSurface);
         tmpCr.setFontOptions(fontOptions);
         const context = PangoCairo.createContext(tmpCr);
         PangoCairo.contextSetFontOptions(context, fontOptions);
-        context.setRoundGlyphPositions(hintMetrics);
+        context.setRoundGlyphPositions(shouldHintMetrics);
         const layoutSetup = setupGridLayout(context, fontDesc, text);
 
         if (!layoutSetup) {
@@ -800,7 +808,7 @@ function useDrawGridMode(state: FontRenderingState) {
         const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
         const surfaceHeight = logicalRect.height * 4;
         const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
-        const smallSetup = renderSmallSurface({ small, fontOptions, fontDesc, ch, hintMetrics });
+        const smallSetup = renderSmallSurface({ small, fontOptions, fontDesc, ch, shouldHintMetrics });
 
         if (!smallSetup) {
             small.finish();
@@ -906,9 +914,9 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
     );
 };
 
-const CheckCell = ({ column, row, label, active, onToggled }: CheckCellProps) => (
+const CheckCell = ({ column, row, label, isActive, onToggled }: CheckCellProps) => (
     <GtkGridLayoutChild column={column} row={row}>
-        <GtkCheckButton label={label} useUnderline active={active} onToggled={onToggled} />
+        <GtkCheckButton label={label} useUnderline active={isActive} onToggled={onToggled} />
     </GtkGridLayoutChild>
 );
 
@@ -917,7 +925,7 @@ const OverlayCheck = ({ state, column, row, label, field }: OverlayCheckProps) =
         column={column}
         row={row}
         label={label}
-        active={state.overlays[field]}
+        isActive={state.overlays[field]}
         onToggled={(btn) => {
             state.setOverlays((o) => ({ ...o, [field]: btn.getActive() }));
         }}
@@ -926,13 +934,13 @@ const OverlayCheck = ({ state, column, row, label, field }: OverlayCheckProps) =
 
 const FontRenderingOverlayChecks = ({ state }: { state: FontRenderingState }) => (
     <>
-        <OverlayCheck state={state} column={3} row={0} label="Show _Pixels" field="showPixels" />
-        <OverlayCheck state={state} column={3} row={1} label="Show _Outline" field="showOutlines" />
+        <OverlayCheck state={state} column={3} row={0} label="Show _Pixels" field="shouldShowPixels" />
+        <OverlayCheck state={state} column={3} row={1} label="Show _Outline" field="shouldShowOutlines" />
     </>
 );
 
 const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => {
-    const { hintStyle, setHintStyle, antialias, setAntialias, hintMetrics, setHintMetrics } = state;
+    const { hintStyle, setHintStyle, isAntialiased, setIsAntialiased, shouldHintMetrics, setShouldHintMetrics } = state;
 
     return (
         <>
@@ -960,18 +968,18 @@ const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => 
                 column={4}
                 row={1}
                 label="_Antialias"
-                active={antialias}
+                isActive={isAntialiased}
                 onToggled={(btn) => {
-                    setAntialias(btn.getActive());
+                    setIsAntialiased(btn.getActive());
                 }}
             />
             <CheckCell
                 column={5}
                 row={1}
                 label="Hint _Metrics"
-                active={hintMetrics}
+                isActive={shouldHintMetrics}
                 onToggled={(btn) => {
-                    setHintMetrics(btn.getActive());
+                    setShouldHintMetrics(btn.getActive());
                 }}
             />
         </>
@@ -980,8 +988,8 @@ const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => 
 
 const FontRenderingExtraOverlays = ({ state }: { state: FontRenderingState }) => (
     <>
-        <OverlayCheck state={state} column={6} row={0} label="Show _Extents" field="showExtents" />
-        <OverlayCheck state={state} column={6} row={1} label="Show _Grid" field="showGrid" />
+        <OverlayCheck state={state} column={6} row={0} label="Show _Extents" field="shouldShowExtents" />
+        <OverlayCheck state={state} column={6} row={1} label="Show _Grid" field="shouldShowGrid" />
     </>
 );
 
@@ -1038,14 +1046,14 @@ const useFontRendering = (): FontRenderingContextValue => {
 
 function FontRenderingProvider({ children }: DemoProviderProps) {
     const state = useFontRenderingState();
-    const { mode, text, fontDesc, hintStyle, antialias, hintMetrics, scale, setScale } = state;
+    const { mode, text, fontDesc, hintStyle, isAntialiased, shouldHintMetrics, scale, setScale } = state;
     useOverlayAnimation(state);
     const drawTextMode = useDrawTextMode(state);
     const drawGridMode = useDrawGridMode(state);
     const drawFunc = mode === "text" ? drawTextMode : drawGridMode;
 
     const naturalSize = (() => {
-        const inputs: MeasurementInputs = { text, fontDesc, hintStyle, antialias, hintMetrics, scale };
+        const inputs: MeasurementInputs = { text, fontDesc, hintStyle, isAntialiased, shouldHintMetrics, scale };
 
         return mode === "text" ? measureTextSurface(inputs) : measureGridSurface(inputs);
     })();

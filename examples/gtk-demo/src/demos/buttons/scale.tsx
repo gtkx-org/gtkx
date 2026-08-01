@@ -20,7 +20,7 @@ const scaleDemo: Demo = {
     keywords: ["gtkscale"],
     component: ScaleDemo,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (

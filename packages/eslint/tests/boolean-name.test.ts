@@ -10,6 +10,8 @@ ruleTester.run("boolean-name", booleanName, {
         { code: "type Options = {\n    requiresVirtualSeat: boolean;\n};\n" },
         { code: "type Options = {\n    isVisible: boolean | undefined;\n};\n" },
         { code: "type Options = {\n    isMatch: () => boolean;\n};\n" },
+        { code: "type Options = {\n    matches: () => boolean;\n};\n" },
+        { code: "type Options = {\n    onKeyPressed: (key: number) => boolean;\n};\n" },
         { code: "type Options = {\n    name: string;\n};\n" },
         { code: "type Options = {\n    pending: Promise<void>;\n};\n" },
         { code: "type Options = {\n    value: boolean | string;\n};\n" },
@@ -41,10 +43,6 @@ ruleTester.run("boolean-name", booleanName, {
         },
         {
             code: "type Options = {\n    visible: boolean | undefined;\n};\n",
-            errors: [{ messageId: "missingPrefix" }],
-        },
-        {
-            code: "type Options = {\n    matches: () => boolean;\n};\n",
             errors: [{ messageId: "missingPrefix" }],
         },
         {

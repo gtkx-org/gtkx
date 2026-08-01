@@ -13,7 +13,7 @@ const themingStyleClassesDemo: Demo = {
     keywords: [],
     component: ThemingStyleClassesDemo,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 function ThemingStyleClassesDemo() {

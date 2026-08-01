@@ -62,7 +62,7 @@ type DndHandlerArgs = {
     contextMenu: ContextMenuState | null;
     setContextMenu: (m: ContextMenuState | null) => void;
     setEditState: (e: EditState | null) => void;
-    setTrashHovering: (isHovering: boolean) => void;
+    setIsTrashHovering: (isHovering: boolean) => void;
     refs: DndRefs;
 };
 
@@ -96,8 +96,8 @@ type DndCanvasControllersProps = {
 
 type DndTrashZoneProps = {
     boxRef: React.RefObject<Gtk.Box | null>;
-    trashHovering: boolean;
-    setTrashHovering: (isHovering: boolean) => void;
+    isTrashHovering: boolean;
+    setIsTrashHovering: (isHovering: boolean) => void;
     onTrashDrop: (value: GObject.Value) => boolean;
 };
 
@@ -398,7 +398,7 @@ function useDndState() {
     const [items, setItems] = useState<CanvasItem[]>(() => createInitialItems());
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [editState, setEditState] = useState<EditState | null>(null);
-    const [trashHovering, setTrashHovering] = useState(false);
+    const [isTrashHovering, setIsTrashHovering] = useState(false);
     const trashVisibility = useImperativeDragVisibility<Gtk.Box>();
     const refs = useDndRefs();
 
@@ -408,7 +408,7 @@ function useDndState() {
         contextMenu,
         setContextMenu,
         setEditState,
-        setTrashHovering,
+        setIsTrashHovering,
         refs,
     });
 
@@ -421,8 +421,8 @@ function useDndState() {
         setContextMenu,
         editState,
         setEditState,
-        trashHovering,
-        setTrashHovering,
+        isTrashHovering,
+        setIsTrashHovering,
         trashVisibility,
         refs,
         handlers,
@@ -623,7 +623,7 @@ const didApplyCanvasDrop = ({ setItems, refs, value, x, y }: CanvasDropArgs): bo
 
 const didApplyTrashDrop = (
     setItems: SetItems,
-    setTrashHovering: (isHovering: boolean) => void,
+    setIsTrashHovering: (isHovering: boolean) => void,
     value: GObject.Value,
 ): boolean => {
     const itemId = value.getString();
@@ -632,7 +632,7 @@ const didApplyTrashDrop = (
         setItems((prev) => prev.filter((item) => item.id !== itemId));
     }
 
-    setTrashHovering(false);
+    setIsTrashHovering(false);
 
     return true;
 };
@@ -664,12 +664,12 @@ const didApplyItemColorDrop = (setItems: SetItems, itemId: string, value: GObjec
 };
 
 function useDropHandlers(args: DndHandlerArgs) {
-    const { setItems, setTrashHovering, refs } = args;
+    const { setItems, setIsTrashHovering, refs } = args;
 
     const didHandleCanvasDrop = (value: GObject.Value, x: number, y: number) =>
         didApplyCanvasDrop({ setItems, refs, value, x, y });
 
-    const didHandleTrashDrop = (value: GObject.Value) => didApplyTrashDrop(setItems, setTrashHovering, value);
+    const didHandleTrashDrop = (value: GObject.Value) => didApplyTrashDrop(setItems, setIsTrashHovering, value);
 
     const didHandleItemColorDrop = (itemId: string, value: GObject.Value) =>
         didApplyItemColorDrop(setItems, itemId, value);
@@ -825,7 +825,7 @@ const loadTrashPaintable = (): Gtk.Svg => {
     return Gtk.Svg.newFromBytes(bytes);
 };
 
-const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, onTrashDrop }: DndTrashZoneProps) => {
+const DndTrashZone = ({ boxRef, isTrashHovering, setIsTrashHovering, onTrashDrop }: DndTrashZoneProps) => {
     const [svg] = useState(loadTrashPaintable);
 
     const attachFrameClockAndPlay = (image: Gtk.Widget) => {
@@ -849,21 +849,21 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, onTrashDrop }: 
                 visible={false}
                 cssClasses={[
                     css`padding: 12px;`,
-                    trashHovering ? css`background-color: alpha(@error_color, 0.2); border-radius: 12px;` : "",
+                    isTrashHovering ? css`background-color: alpha(@error_color, 0.2); border-radius: 12px;` : "",
                 ]}
                 controllers={(
                     <GtkDropTarget
                         types={[GObject.TYPE_STRING]}
                         actions={Gdk.DragAction.MOVE}
                         onEnter={() => {
-                            setTrashHovering(true);
+                            setIsTrashHovering(true);
                             svg.setState(1);
                             svg.play();
 
                             return Gdk.DragAction.MOVE;
                         }}
                         onLeave={() => {
-                            setTrashHovering(false);
+                            setIsTrashHovering(false);
                             svg.setState(0);
                             svg.play();
                         }}
@@ -942,8 +942,8 @@ function DndDemo() {
                 {dnd.editingItem && <DndItemEditor dnd={dnd} editingItem={dnd.editingItem} />}
                 <DndTrashZone
                     boxRef={dnd.trashVisibility.ref}
-                    trashHovering={dnd.trashHovering}
-                    setTrashHovering={dnd.setTrashHovering}
+                    isTrashHovering={dnd.isTrashHovering}
+                    setIsTrashHovering={dnd.setIsTrashHovering}
                     onTrashDrop={dnd.handlers.didHandleTrashDrop}
                 />
             </GtkFixed>

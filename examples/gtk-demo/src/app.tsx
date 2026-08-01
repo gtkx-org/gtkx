@@ -36,8 +36,8 @@ type DemoWindowProps = {
 type DemoWindowSizing = {
     defaultWidth: number;
     defaultHeight: number;
-    resizable: boolean;
-    deletable: boolean;
+    isResizable: boolean;
+    isDeletable: boolean;
 };
 
 type ShortcutsDialogProps = {
@@ -46,7 +46,7 @@ type ShortcutsDialogProps = {
 
 type AppHeaderBarProps = {
     hasDemo: boolean;
-    searchMode: boolean;
+    isSearchActive: boolean;
     onRun: () => void;
     onSearchToggle: (isActive: boolean) => void;
 };
@@ -68,7 +68,7 @@ type AboutDialogProps = {
 };
 
 type MainWindowBodyProps = {
-    searchMode: boolean;
+    isSearchActive: boolean;
     notebookPage: number;
     onSearchToggle: () => void;
     onKeyboardShortcuts: () => void;
@@ -150,8 +150,8 @@ function demoWindowSizing(demo: DemoDefinition): DemoWindowSizing {
     return {
         defaultWidth: demo.defaultWidth ?? -1,
         defaultHeight: demo.defaultHeight ?? -1,
-        resizable: demo.resizable ?? true,
-        deletable: demo.deletable ?? true,
+        isResizable: demo.isResizable ?? true,
+        isDeletable: demo.isDeletable ?? true,
     };
 }
 
@@ -161,7 +161,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const windowRef = useRef<Gtk.Window>(null);
     const hostWindowRef = useMemo<RefObject<Gtk.Window | null>>(() => ({ current: hostWindow }), [hostWindow]);
 
-    if (!currentDemo?.component) {
+    if (!hostWindow || !currentDemo?.component) {
         return null;
     }
 
@@ -169,7 +169,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const DemoTitlebar = currentDemo.titlebar;
     const DemoStateProvider = currentDemo.provider ?? PassthroughProvider;
 
-    if (currentDemo.dialogOnly) {
+    if (currentDemo.isDialogOnly) {
         return (
             <DemoStateProvider window={hostWindowRef} onClose={onClose}>
                 <DemoComponent onClose={onClose} window={hostWindowRef} />
@@ -190,8 +190,8 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
                     title={demoWindowTitle(currentDemo, windowTitle)}
                     defaultWidth={sizing.defaultWidth}
                     defaultHeight={sizing.defaultHeight}
-                    resizable={sizing.resizable}
-                    deletable={sizing.deletable}
+                    resizable={sizing.isResizable}
+                    deletable={sizing.isDeletable}
                     cssClasses={currentDemo.windowCssClasses}
                     defaultWidget={defaultWidget}
                     titlebar={titlebar}
@@ -223,7 +223,7 @@ const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
     </AdwShortcutsDialog>
 );
 
-const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderBarProps) => (
+const AppHeaderBar = ({ hasDemo, isSearchActive, onRun, onSearchToggle }: AppHeaderBarProps) => (
     <GtkHeaderBar
         start={(
             <>
@@ -238,7 +238,7 @@ const AppHeaderBar = ({ hasDemo, searchMode, onRun, onSearchToggle }: AppHeaderB
                     name="search-toggle"
                     tooltipText="Search"
                     iconName="edit-find-symbolic"
-                    active={searchMode}
+                    active={isSearchActive}
                     onToggled={(btn: Gtk.ToggleButton) => {
                         onSearchToggle(btn.getActive());
                     }}
@@ -355,21 +355,21 @@ const useDemoWindows = () => {
 };
 
 function useMainWindowChrome() {
-    const [searchMode, setSearchMode] = useState(false);
+    const [isSearchActive, setIsSearchActive] = useState(false);
     const [notebookPage, setNotebookPage] = useState(0);
     const [showAbout, setShowAbout] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
 
     return {
-        searchMode,
-        setSearchMode,
+        isSearchActive,
+        setIsSearchActive,
         notebookPage,
         setNotebookPage,
         showAbout,
         showShortcuts,
 
         toggleSearch: () => {
-            setSearchMode((prev) => !prev);
+            setIsSearchActive((prev) => !prev);
         },
 
         openAbout: () => {
@@ -391,7 +391,7 @@ function useMainWindowChrome() {
 }
 
 const MainWindowBody = ({
-    searchMode,
+    isSearchActive,
     notebookPage,
     onSearchToggle,
     onKeyboardShortcuts,
@@ -415,7 +415,7 @@ const MainWindowBody = ({
             />
         )}
     >
-        <Sidebar searchMode={searchMode} onSearchChanged={onSearchChanged} />
+        <Sidebar isSearchActive={isSearchActive} onSearchChanged={onSearchChanged} />
         <AppNotebook page={notebookPage} onSwitchPage={onNotebookPageChange} />
     </GtkBox>
 );
@@ -436,7 +436,7 @@ const renderMainWindowActions = ({ onKeyboardShortcuts, onShowAbout }: MainWindo
 const MainWindowContent = ({ chrome, demoWindows, onCloseWindow, onSearchChanged }: MainWindowContentProps) => (
     <>
         <MainWindowBody
-            searchMode={chrome.searchMode}
+            isSearchActive={chrome.isSearchActive}
             notebookPage={chrome.notebookPage}
             onSearchToggle={chrome.toggleSearch}
             onKeyboardShortcuts={chrome.openShortcuts}
@@ -479,9 +479,9 @@ const MainWindow = () => {
             titlebar={(
                 <AppHeaderBar
                     hasDemo={!!currentDemo?.component}
-                    searchMode={chrome.searchMode}
+                    isSearchActive={chrome.isSearchActive}
                     onRun={handleRun}
-                    onSearchToggle={chrome.setSearchMode}
+                    onSearchToggle={chrome.setIsSearchActive}
                 />
             )}
             onCloseRequest={quit}

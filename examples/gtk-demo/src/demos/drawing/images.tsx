@@ -88,7 +88,7 @@ const SymbolicIconPanel = () => {
 
 const StatefulIconPanel = () => {
     const [svg] = useState(() => loadSvgPaintable(statefulSvgPath));
-    const [state, setState] = useState(false);
+    const [isOn, setIsOn] = useState(false);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
@@ -97,9 +97,9 @@ const StatefulIconPanel = () => {
             </ImagesPanel>
             <GtkSwitch
                 halign={Gtk.Align.START}
-                active={state}
+                active={isOn}
                 onStateSet={(value) => {
-                    setState(value);
+                    setIsOn(value);
                     svg.setState(value ? 1 : 0);
 
                     return Gdk.EVENT_STOP;
@@ -163,7 +163,7 @@ const VideoColumn = ({ widgetPaintable }: { widgetPaintable: Gtk.WidgetPaintable
 function ImagesDemo() {
     const parentWindow = useParentWindow();
     const [gifPaintable] = useState(createGifPaintable);
-    const [insensitive, setInsensitive] = useState(false);
+    const [isInsensitive, setIsInsensitive] = useState(false);
     const widgetPaintable = useMemo(() => Gtk.WidgetPaintable.new(parentWindow), [parentWindow]);
 
     return (
@@ -175,7 +175,7 @@ function ImagesDemo() {
             marginTop={16}
             marginBottom={16}
         >
-            <GtkBox name="image-strip" spacing={16} sensitive={!insensitive}>
+            <GtkBox name="image-strip" spacing={16} sensitive={!isInsensitive}>
                 <ResourcesColumn gifPaintable={gifPaintable} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <StatefulIconPanel />
@@ -192,7 +192,7 @@ function ImagesDemo() {
                 hexpand
                 vexpand
                 onToggled={(btn) => {
-                    setInsensitive(btn.getActive());
+                    setIsInsensitive(btn.getActive());
                 }}
             />
         </GtkBox>

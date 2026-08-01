@@ -13,7 +13,7 @@ describe("pageSetupDemo metadata", () => {
         expect(typeof pageSetupDemo.sourceCode).toBe("string");
         expect(pageSetupDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(pageSetupDemo.component).toBeTypeOf("function");
-        expect(pageSetupDemo.dialogOnly).toBe(true);
+        expect(pageSetupDemo.isDialogOnly).toBe(true);
     });
 });
 

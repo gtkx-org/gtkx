@@ -11,7 +11,7 @@ const spinnerDemo: Demo = {
     keywords: ["gtkspinner"],
     component: SpinnerDemo,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 function SpinnerDemo() {

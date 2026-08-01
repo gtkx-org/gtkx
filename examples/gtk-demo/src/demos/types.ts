@@ -21,10 +21,10 @@ type Demo = {
     sourceCode?: string;
     defaultWidth?: number;
     defaultHeight?: number;
-    dialogOnly?: boolean;
+    isDialogOnly?: boolean;
     windowTitle?: string;
-    resizable?: boolean;
-    deletable?: boolean;
+    isResizable?: boolean;
+    isDeletable?: boolean;
     windowCssClasses?: string[];
 };
 

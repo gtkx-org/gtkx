@@ -17,7 +17,7 @@ const panesDemo: Demo = {
     sourceCode,
     defaultWidth: 330,
     defaultHeight: 250,
-    resizable: false,
+    isResizable: false,
 };
 
 const renderLabel = (label: string) => (

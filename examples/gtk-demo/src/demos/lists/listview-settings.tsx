@@ -81,7 +81,7 @@ type KeyEditContext = {
 };
 
 type SettingsColumnViewProps = {
-    keySearchActive: boolean;
+    isKeySearchActive: boolean;
     onSearchChanged: (entry: Gtk.SearchEntry) => void;
     onStopSearch: () => void;
     filteredKeyInfos: KeyInfo[];
@@ -321,7 +321,7 @@ function filterKeyInfos(keyInfos: KeyInfo[], searchText: string): KeyInfo[] {
 function useListViewSettingsState() {
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [keyInfos, setKeyInfos] = useState<KeyInfo[]>([]);
-    const [keySearchActive, setKeySearchActive] = useState(false);
+    const [isKeySearchActive, setIsKeySearchActive] = useState(false);
     const [keySearchText, setKeySearchText] = useState("");
 
     const handleSchemaSelected = (ids: string[]) => {
@@ -340,15 +340,15 @@ function useListViewSettingsState() {
     };
 
     const handleStopSearch = () => {
-        setKeySearchActive(false);
+        setIsKeySearchActive(false);
         setKeySearchText("");
     };
 
     return {
         selectedNodeId,
         setKeyInfos,
-        keySearchActive,
-        setKeySearchActive,
+        isKeySearchActive,
+        setIsKeySearchActive,
         setKeySearchText,
         handleSchemaSelected,
         filteredKeyInfos: filterKeyInfos(keyInfos, keySearchText),
@@ -495,7 +495,7 @@ const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: strin
 };
 
 const SettingsColumnView = ({
-    keySearchActive,
+    isKeySearchActive,
     onSearchChanged,
     onStopSearch,
     filteredKeyInfos,
@@ -509,7 +509,7 @@ const SettingsColumnView = ({
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkSearchBar name="search-bar" searchModeEnabled={keySearchActive}>
+            <GtkSearchBar name="search-bar" searchModeEnabled={isKeySearchActive}>
                 <GtkSearchEntry name="search-entry" onSearchChanged={onSearchChanged} onStopSearch={onStopSearch} />
             </GtkSearchBar>
             <GtkScrolledWindow hexpand vexpand>
@@ -560,9 +560,9 @@ function ListViewSettingsTitlebar() {
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"
-                    active={state.keySearchActive}
+                    active={state.isKeySearchActive}
                     onToggled={(btn) => {
-                        state.setKeySearchActive(btn.getActive());
+                        state.setIsKeySearchActive(btn.getActive());
                         state.setKeySearchText("");
                     }}
                 />
@@ -583,7 +583,7 @@ function ListViewSettingsDemo() {
             startChild={<SchemaSidebar onSelectionChanged={state.handleSchemaSelected} />}
             endChild={(
                 <SettingsColumnView
-                    keySearchActive={state.keySearchActive}
+                    isKeySearchActive={state.isKeySearchActive}
                     onSearchChanged={state.handleKeySearchChanged}
                     onStopSearch={state.handleStopSearch}
                     filteredKeyInfos={state.filteredKeyInfos}

@@ -16,7 +16,7 @@ const tabsDemo: Demo = {
     sourceCode,
     defaultWidth: 330,
     defaultHeight: 130,
-    resizable: false,
+    isResizable: false,
 };
 
 function createTabArray() {

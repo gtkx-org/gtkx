@@ -13,7 +13,7 @@ const printingDemo: Demo = {
     keywords: [],
     component: PrintingDemo,
     sourceCode,
-    dialogOnly: true,
+    isDialogOnly: true,
 };
 
 const runPrintOperation = (parentWindow: Gtk.Window | null, source: string, onDone: () => void) => {

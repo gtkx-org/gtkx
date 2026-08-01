@@ -24,7 +24,7 @@ describe("printingDemo metadata", () => {
         expect(typeof printingDemo.sourceCode).toBe("string");
         expect(printingDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(printingDemo.component).toBeTypeOf("function");
-        expect(printingDemo.dialogOnly).toBe(true);
+        expect(printingDemo.isDialogOnly).toBe(true);
     });
 
     it("declares an empty keywords list matching the official header", () => {

@@ -16,7 +16,7 @@ describe("scaleDemo", () => {
         expect(scaleDemo.title).toBe("Scales");
         expect(scaleDemo.description.length).toBeGreaterThan(0);
         expect(typeof scaleDemo.sourceCode).toBe("string");
-        expect(scaleDemo.resizable).toBe(false);
+        expect(scaleDemo.isResizable).toBe(false);
     });
 
     it("renders three labelled scale rows configured with the demo defaults", async () => {

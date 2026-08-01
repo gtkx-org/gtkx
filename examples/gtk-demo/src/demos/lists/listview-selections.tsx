@@ -51,7 +51,7 @@ type SuggestionState = {
     selected: number;
     setQuery: (value: string) => void;
     setSelected: (updater: (current: number) => number) => void;
-    setOpen: (isOpen: boolean) => void;
+    setIsOpen: (isOpen: boolean) => void;
 };
 
 type Device = (typeof devices)[number];
@@ -172,7 +172,7 @@ const listviewSelectionsDemo: Demo = {
     component: ListViewSelectionsDemo,
     sourceCode,
     windowTitle: "Selections",
-    resizable: false,
+    isResizable: false,
 };
 
 function logError(error: unknown) {
@@ -240,7 +240,7 @@ function didAcceptSuggestion(state: SuggestionState, entry: Gtk.Entry | null, in
 
     entry.setText(word);
     entry.setPosition(-1);
-    state.setOpen(false);
+    state.setIsOpen(false);
 
     return true;
 }
@@ -257,7 +257,7 @@ function handleSuggestionChanged(state: SuggestionState, entry: Gtk.Entry): void
     const text = entry.getText();
     state.setQuery(text);
     state.setSelected(() => -1);
-    state.setOpen(findSuggestions(state.words, text).length > 0);
+    state.setIsOpen(findSuggestions(state.words, text).length > 0);
 }
 
 function didHandleSuggestionKey(state: SuggestionState, entry: Gtk.Entry | null, keyval: number): boolean {
@@ -281,7 +281,7 @@ function didHandleSuggestionKey(state: SuggestionState, entry: Gtk.Entry | null,
             return didAcceptSuggestion(state, entry, state.selected);
         }
         case Gdk.KEY_Escape: {
-            state.setOpen(false);
+            state.setIsOpen(false);
 
             return Gdk.EVENT_STOP;
         }
@@ -369,13 +369,13 @@ const SuggestionEntry = ({ words, placeholder, name }: SuggestionEntryProps) => 
     const listBoxRef = useRef<Gtk.ListBox | null>(null);
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState(-1);
-    const [open, setOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const matches = findSuggestions(words, query);
-    const state: SuggestionState = { words, matches, selected, setQuery, setSelected, setOpen };
+    const state: SuggestionState = { words, matches, selected, setQuery, setSelected, setIsOpen };
 
     useEffect(() => {
-        syncPopoverVisibility(popoverRef.current, open);
-    }, [open]);
+        syncPopoverVisibility(popoverRef.current, isOpen);
+    }, [isOpen]);
 
     useEffect(() => {
         syncSelectedRow(listBoxRef.current, selected);
@@ -395,7 +395,7 @@ const SuggestionEntry = ({ words, placeholder, name }: SuggestionEntryProps) => 
             }}
             onKeyPressed={(keyval) => didHandleSuggestionKey(state, entryRef.current, keyval)}
             onClosed={() => {
-                setOpen(false);
+                setIsOpen(false);
             }}
             onRowActivated={(index) => didAcceptSuggestion(state, entryRef.current, index)}
         />
@@ -600,14 +600,14 @@ function selectFontById(id: string, setFontIndex: (index: number) => void): void
 
 const FontsSelector = () => {
     const [fontIndex, setFontIndex] = useState(0);
-    const [enableFontSearch, setEnableFontSearch] = useState(false);
+    const [isFontSearchEnabled, setIsFontSearchEnabled] = useState(false);
 
     return (
         <>
             <DropDown
                 name="fonts-dropdown"
                 selectedId={getFontFamilies()[fontIndex] ?? ""}
-                enableSearch={enableFontSearch}
+                enableSearch={isFontSearchEnabled}
                 onSelectionChanged={(id) => {
                     selectFontById(id, setFontIndex);
                 }}
@@ -628,9 +628,9 @@ const FontsSelector = () => {
                 name="enable-search-check"
                 label="Enable search"
                 marginStart={20}
-                active={enableFontSearch}
+                active={isFontSearchEnabled}
                 onToggled={(btn) => {
-                    setEnableFontSearch(btn.getActive());
+                    setIsFontSearchEnabled(btn.getActive());
                 }}
             />
         </>

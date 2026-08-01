@@ -9,7 +9,7 @@ import sourceCode from "./gestures.tsx?raw";
 type GestureState = {
     swipeX: number;
     swipeY: number;
-    longPressed: boolean;
+    isLongPressed: boolean;
 };
 
 type DrawGesturesArgs = {
@@ -48,12 +48,12 @@ function useGesturesHandlers(gestureStateRef: React.RefObject<GestureState>, que
     };
 
     const handleLongPressPressed = () => {
-        gestureStateRef.current.longPressed = true;
+        gestureStateRef.current.isLongPressed = true;
         queueDraw();
     };
 
     const handleLongPressEnd = () => {
-        gestureStateRef.current.longPressed = false;
+        gestureStateRef.current.isLongPressed = false;
         queueDraw();
     };
 
@@ -68,7 +68,7 @@ const drawGestures = (cr: Context, args: DrawGesturesArgs) => {
         drawRotateZoom(cr, { width, height, rotate, zoom });
     }
 
-    if (state.longPressed) {
+    if (state.isLongPressed) {
         drawLongPress(cr, width, height);
     }
 };
@@ -157,7 +157,7 @@ const GestureControllers = ({ handlers, queueDraw, setRotate, setZoom }: Gesture
 );
 
 function GesturesDemo() {
-    const gestureStateRef = useRef<GestureState>({ swipeX: 0, swipeY: 0, longPressed: false });
+    const gestureStateRef = useRef<GestureState>({ swipeX: 0, swipeY: 0, isLongPressed: false });
     const rotateRef = useRef<Gtk.GestureRotate | null>(null);
     const zoomRef = useRef<Gtk.GestureZoom | null>(null);
     const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);

@@ -21,7 +21,7 @@ type ErrorStatesState = ReturnType<typeof useErrorStatesState>;
 type ValidateDetailsArgs = {
     detailsEntry: Gtk.Entry | null;
     moreDetailsEntry: Gtk.Entry | null;
-    setMoreDetailsError: (hasError: boolean) => void;
+    setHasMoreDetailsError: (hasError: boolean) => void;
 };
 
 type LevelStateArgs = {
@@ -52,7 +52,7 @@ type EntryRowProps = {
 type MoreDetailsRowProps = {
     moreDetailsEntry: Gtk.Entry | null;
     setMoreDetailsEntry: (e: Gtk.Entry | null) => void;
-    moreDetailsError: boolean;
+    hasMoreDetailsError: boolean;
     onChange: () => void;
 };
 
@@ -82,12 +82,12 @@ const errorstatesDemo: Demo = {
     keywords: [],
     component: ErrorstatesDemo,
     sourceCode,
-    dialogOnly: true,
+    isDialogOnly: true,
 };
 
 function useErrorStatesState() {
     const [showError, setShowError] = useState(false);
-    const [moreDetailsError, setMoreDetailsError] = useState(false);
+    const [hasMoreDetailsError, setHasMoreDetailsError] = useState(false);
     const [errorLabel, setErrorLabel] = useState<Gtk.Label | null>(null);
     const [detailsEntry, setDetailsEntry] = useState<Gtk.Entry | null>(null);
     const [moreDetailsEntry, setMoreDetailsEntry] = useState<Gtk.Entry | null>(null);
@@ -97,8 +97,8 @@ function useErrorStatesState() {
     return {
         showError,
         setShowError,
-        moreDetailsError,
-        setMoreDetailsError,
+        hasMoreDetailsError,
+        setHasMoreDetailsError,
         errorLabel,
         setErrorLabel,
         detailsEntry,
@@ -112,10 +112,10 @@ function useErrorStatesState() {
     };
 }
 
-const validateMoreDetails = ({ detailsEntry, moreDetailsEntry, setMoreDetailsError }: ValidateDetailsArgs) => {
+const validateMoreDetails = ({ detailsEntry, moreDetailsEntry, setHasMoreDetailsError }: ValidateDetailsArgs) => {
     const detailsText = detailsEntry?.getText() ?? "";
     const moreDetailsText = moreDetailsEntry?.getText() ?? "";
-    setMoreDetailsError(moreDetailsText.length > 0 && detailsText.length === 0);
+    setHasMoreDetailsError(moreDetailsText.length > 0 && detailsText.length === 0);
 };
 
 const syncModeStateForLevel = ({ modeSwitch, value, setShowError }: LevelStateArgs) => {
@@ -140,14 +140,14 @@ const applyModeState = ({ shouldEnable, sw, levelScale, setShowError }: ModeStat
 };
 
 function useErrorStatesHandlers(state: ErrorStatesState) {
-    const { detailsEntry, moreDetailsEntry, modeSwitch, levelScale, setMoreDetailsError, setShowError } = state;
+    const { detailsEntry, moreDetailsEntry, modeSwitch, levelScale, setHasMoreDetailsError, setShowError } = state;
 
     const handleDetailsChange = () => {
-        validateMoreDetails({ detailsEntry, moreDetailsEntry, setMoreDetailsError });
+        validateMoreDetails({ detailsEntry, moreDetailsEntry, setHasMoreDetailsError });
     };
 
     const handleMoreDetailsChange = () => {
-        validateMoreDetails({ detailsEntry, moreDetailsEntry, setMoreDetailsError });
+        validateMoreDetails({ detailsEntry, moreDetailsEntry, setHasMoreDetailsError });
     };
 
     const handleLevelChange = (value: number) => {
@@ -201,7 +201,7 @@ const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowPr
 const MoreDetailsEntryRow = ({
     moreDetailsEntry,
     setMoreDetailsEntry,
-    moreDetailsError,
+    hasMoreDetailsError,
     onChange,
 }: MoreDetailsRowProps) => (
     <>
@@ -214,10 +214,10 @@ const MoreDetailsEntryRow = ({
                     setMoreDetailsEntry(node);
                 }}
                 valign={Gtk.Align.BASELINE}
-                cssClasses={moreDetailsError ? ["error"] : []}
-                tooltipText={moreDetailsError ? "Must have details first" : ""}
+                cssClasses={hasMoreDetailsError ? ["error"] : []}
+                tooltipText={hasMoreDetailsError ? "Must have details first" : ""}
                 accessibleInvalid={
-                    moreDetailsError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE
+                    hasMoreDetailsError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE
                 }
                 onChanged={onChange}
             />
@@ -326,7 +326,7 @@ function ErrorstatesDemo({ onClose }: DemoProps) {
                     <MoreDetailsEntryRow
                         moreDetailsEntry={state.moreDetailsEntry}
                         setMoreDetailsEntry={state.setMoreDetailsEntry}
-                        moreDetailsError={state.moreDetailsError}
+                        hasMoreDetailsError={state.hasMoreDetailsError}
                         onChange={handlers.handleMoreDetailsChange}
                     />
                     <LevelScaleRow

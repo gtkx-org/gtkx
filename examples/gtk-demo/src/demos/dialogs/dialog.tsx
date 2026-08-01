@@ -42,7 +42,7 @@ const dialogDemo: Demo = {
     keywords: ["GtkMessageDialog"],
     component: DialogDemo,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 const DialogEntryField = ({

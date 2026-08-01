@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
-import { type ElementType, type ReactNode, type Ref, use, useLayoutEffect, useState } from "react";
+import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
-import { ParentWindowContext } from "../hooks/use-parent-window.js";
+import { useParentWindow } from "../hooks/use-parent-window.js";
 import { rootElement } from "../reconciler/root-element.js";
 import { createPortal } from "../reconciler/root.js";
 
@@ -11,7 +11,7 @@ type DialogComponentProps = {
 
 const createDialogComponent = (Component: ElementType): ((props: DialogComponentProps) => ReactNode) => {
     return ({ ref, ...rest }: DialogComponentProps): ReactNode => {
-        const parent = use(ParentWindowContext);
+        const parent = useParentWindow();
         const [dialog, setDialog] = useState<Adw.Dialog | null>(null);
 
         useLayoutEffect(() => {

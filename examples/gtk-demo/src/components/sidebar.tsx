@@ -5,7 +5,7 @@ import type { TreeItem } from "../demos/types.js";
 import { useDemo } from "../context/demo-context.js";
 
 type SidebarProps = {
-    searchMode: boolean;
+    isSearchActive: boolean;
     onSearchChanged: (text: string) => void;
 };
 
@@ -48,7 +48,7 @@ const renderItem: ListItemRenderer<TreeItem> = ({ item }) => {
     return <GtkInscription text={text} natChars={25} textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END} />;
 };
 
-const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
+const Sidebar = ({ isSearchActive, onSearchChanged }: SidebarProps) => {
     const { filteredTreeItems, currentDemo, setCurrentDemo, searchQuery, demos } = useDemo();
     const items = filteredTreeItems.map((item) => treeItemToData(item));
     const expandedIds = collectExpandableIds(items);
@@ -71,7 +71,7 @@ const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkSearchBar name="sidebar-search-bar" searchModeEnabled={searchMode}>
+            <GtkSearchBar name="sidebar-search-bar" searchModeEnabled={isSearchActive}>
                 <GtkSearchEntry
                     text={searchQuery}
                     onSearchChanged={(entry: Gtk.SearchEntry) => {

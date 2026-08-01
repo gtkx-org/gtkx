@@ -11,7 +11,7 @@ describe("spinnerDemo metadata", () => {
         expect(typeof spinnerDemo.sourceCode).toBe("string");
         expect(spinnerDemo.description.length).toBeGreaterThan(0);
         expect(spinnerDemo.keywords).toContain("gtkspinner");
-        expect(spinnerDemo.resizable).toBe(false);
+        expect(spinnerDemo.isResizable).toBe(false);
     });
 });
 

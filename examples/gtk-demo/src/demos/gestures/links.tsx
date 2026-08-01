@@ -14,7 +14,7 @@ const linksDemo: Demo = {
     keywords: [],
     component: LinksDemo,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 function LinksDemo() {

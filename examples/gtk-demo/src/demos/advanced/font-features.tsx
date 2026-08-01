@@ -93,7 +93,7 @@ type SliderEntryRowProps = {
     onValueChanged: (value: number) => void;
     displayText: string;
     onEntryActivate: (entry: Gtk.Entry) => void;
-    sensitive?: boolean;
+    isSensitive?: boolean;
 };
 
 type ColorRowProps = {
@@ -823,7 +823,7 @@ const FontFeaturesGrid = ({ state, handlers }: { state: FontFeaturesState; handl
                 onValueChanged={setSize}
                 displayText={String(Math.round(size * 10) / 10)}
                 onEntryActivate={handlers.handleSizeEntry}
-                sensitive={viewMode !== "waterfall"}
+                isSensitive={viewMode !== "waterfall"}
             />
             <SliderEntryRow
                 row={1}
@@ -943,7 +943,7 @@ const SliderScaleCell = (props: SliderEntryRowProps) => (
             onValueChanged={(scale) => {
                 props.onValueChanged(scale.getValue());
             }}
-            sensitive={props.sensitive}
+            sensitive={props.isSensitive}
         />
     </GtkGridLayoutChild>
 );
@@ -964,7 +964,7 @@ const SliderEntryRow = (props: SliderEntryRowProps) => (
                 valign={Gtk.Align.BASELINE}
                 text={props.displayText}
                 onActivate={props.onEntryActivate}
-                sensitive={props.sensitive}
+                sensitive={props.isSensitive}
             />
         </GtkGridLayoutChild>
     </>

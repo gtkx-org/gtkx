@@ -97,7 +97,7 @@ const hypertextDemo: Demo = {
     sourceCode,
     defaultWidth: 330,
     defaultHeight: 330,
-    resizable: false,
+    isResizable: false,
 };
 
 function isExecutable(path: string): boolean {

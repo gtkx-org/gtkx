@@ -15,7 +15,7 @@ const stackDemo: Demo = {
     keywords: [],
     component: StackDemo,
     sourceCode,
-    resizable: false,
+    isResizable: false,
 };
 
 function StackDemo() {

@@ -790,7 +790,7 @@ function useColorsState() {
     const [colorLimit, setColorLimit] = useState<ColorLimit>(4096);
     const [sortMode, setSortMode] = useState<SortMode>("unsorted");
     const [displayFactory, setDisplayFactory] = useState<DisplayFactory>("colors");
-    const [showSelectionInfo, setShowSelectionInfo] = useState(false);
+    const [shouldShowSelectionInfo, setShouldShowSelectionInfo] = useState(false);
     const [refillToken, setRefillToken] = useState(0);
 
     return {
@@ -800,8 +800,8 @@ function useColorsState() {
         setSortMode,
         displayFactory,
         setDisplayFactory,
-        showSelectionInfo,
-        setShowSelectionInfo,
+        shouldShowSelectionInfo,
+        setShouldShowSelectionInfo,
         refillToken,
         bumpRefillToken: () => {
             setRefillToken((t) => t + 1);
@@ -927,9 +927,9 @@ const ColorsHeaderStart = () => {
                 name="selection-toggle"
                 iconName="emblem-important-symbolic"
                 tooltipText="Show selection info"
-                active={state.showSelectionInfo}
+                active={state.shouldShowSelectionInfo}
                 onToggled={(btn) => {
-                    state.setShowSelectionInfo(btn.getActive());
+                    state.setShouldShowSelectionInfo(btn.getActive());
                 }}
             />
             <GtkButton label="_Refill" useUnderline onClicked={computed.handleRefill} />
@@ -1063,7 +1063,7 @@ function ListViewColorsDemo() {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkRevealer name="selection-revealer" revealChild={state.showSelectionInfo}>
+            <GtkRevealer name="selection-revealer" revealChild={state.shouldShowSelectionInfo}>
                 <SelectionInfoPanel selectedColors={computed.selectedColors} averageColor={computed.averageColor} />
             </GtkRevealer>
             <ColorsGridOverlay />

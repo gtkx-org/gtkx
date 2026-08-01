@@ -19,7 +19,7 @@ import { useDemo } from "../../context/demo-context.js";
 import sourceCode from "./listview-words.tsx?raw";
 
 type FilterState = {
-    canceled: boolean;
+    wasCanceled: boolean;
 };
 
 type FilterStep = {
@@ -151,7 +151,7 @@ function collectMatches(step: FilterStep, end: number) {
 }
 
 function runFilterStep(step: FilterStep) {
-    if (step.ctx.canceled) {
+    if (step.ctx.wasCanceled) {
         return;
     }
 
@@ -185,16 +185,16 @@ function selectFilteredWords(words: string[], searchText: string, result: Filter
 
 function useFilteredWords(words: string[], searchText: string) {
     const [result, setResult] = useState<FilterResult | null>(null);
-    const filterRef = useRef<FilterState>({ canceled: false });
+    const filterRef = useRef<FilterState>({ wasCanceled: false });
 
     useEffect(() => {
-        filterRef.current.canceled = true;
+        filterRef.current.wasCanceled = true;
 
         if (searchText === "") {
             return;
         }
 
-        const ctx: FilterState = { canceled: false };
+        const ctx: FilterState = { wasCanceled: false };
         filterRef.current = ctx;
 
         setTimeout(() => {
@@ -211,7 +211,7 @@ function useFilteredWords(words: string[], searchText: string) {
         }, 0);
 
         return () => {
-            ctx.canceled = true;
+            ctx.wasCanceled = true;
         };
     }, [words, searchText]);
 

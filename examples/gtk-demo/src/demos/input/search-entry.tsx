@@ -8,8 +8,8 @@ import sourceCode from "./search-entry.tsx?raw";
 type SearchEntryContextValue = {
     searchText: string;
     setSearchText: (value: string) => void;
-    searchMode: boolean;
-    setSearchMode: (isEnabled: boolean) => void;
+    isSearchActive: boolean;
+    setIsSearchActive: (isEnabled: boolean) => void;
     handleToggleButtonClicked: (btn: Gtk.ToggleButton) => void;
 };
 
@@ -29,7 +29,7 @@ const searchEntryDemo: Demo = {
     provider: SearchEntryProvider,
     sourceCode,
     windowTitle: "Type to Search",
-    resizable: false,
+    isResizable: false,
     defaultWidth: 200,
 };
 
@@ -45,17 +45,17 @@ function useSearchEntryContext(): SearchEntryContextValue {
 
 function SearchEntryProvider({ children }: DemoProviderProps) {
     const [searchText, setSearchText] = useState("");
-    const [searchMode, setSearchMode] = useState(false);
+    const [isSearchActive, setIsSearchActive] = useState(false);
 
     const handleToggleButtonClicked = (btn: Gtk.ToggleButton) => {
-        setSearchMode(btn.getActive());
+        setIsSearchActive(btn.getActive());
     };
 
     const value = {
         searchText,
         setSearchText,
-        searchMode,
-        setSearchMode,
+        isSearchActive,
+        setIsSearchActive,
         handleToggleButtonClicked,
     };
 
@@ -63,14 +63,14 @@ function SearchEntryProvider({ children }: DemoProviderProps) {
 }
 
 function SearchEntryTitlebar() {
-    const { searchMode, handleToggleButtonClicked } = useSearchEntryContext();
+    const { isSearchActive, handleToggleButtonClicked } = useSearchEntryContext();
 
     return (
         <GtkHeaderBar
             end={(
                 <GtkToggleButton
                     iconName="system-search-symbolic"
-                    active={searchMode}
+                    active={isSearchActive}
                     onToggled={handleToggleButtonClicked}
                 />
             )}
@@ -79,17 +79,17 @@ function SearchEntryTitlebar() {
 }
 
 function SearchEntryDemo() {
-    const { searchText, setSearchText, searchMode, setSearchMode } = useSearchEntryContext();
+    const { searchText, setSearchText, isSearchActive, setIsSearchActive } = useSearchEntryContext();
     const parentWindow = useParentWindow();
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
             <GtkSearchBar
-                searchModeEnabled={searchMode}
+                searchModeEnabled={isSearchActive}
                 showCloseButton={false}
                 keyCaptureWidget={parentWindow}
                 onNotifySearchModeEnabled={(enabled) => {
-                    setSearchMode(enabled ?? false);
+                    setIsSearchActive(enabled ?? false);
                 }}
             >
                 <GtkSearchEntry
