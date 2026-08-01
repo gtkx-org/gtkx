@@ -1,24 +1,6 @@
 <script setup lang="ts">
-import Callout from "../components/Callout.vue";
+import snippets from "virtual:gtkx-snippets";
 import CodeBlock from "../components/CodeBlock.vue";
-
-const appCode = `<AdwToolbarView topBar={<AdwHeaderBar />}>
-  <GtkScale
-    adjustment={<GtkAdjustment upper={100} />}
-    drawValue
-  />
-</AdwToolbarView>`;
-
-const configCode = `import { defineConfig } from "@gtkx/config";
-
-export default defineConfig({
-  libraries: ["Gtk-4.0", "Adw-1", "WebKit-6.0"],
-  applicationId: "com.example.myapp",
-});`;
-
-const ecosystemCode = `import { css } from "@gtkx/css";
-import { readFile } from "node:fs/promises";
-import { useState } from "react";`;
 </script>
 
 <template>
@@ -37,7 +19,7 @@ import { useState } from "react";`;
           system, emitting typed bindings for exactly those namespaces.
         </p>
       </div>
-      <CodeBlock title="gtkx.config.ts" :code="configCode" lang="ts" />
+      <CodeBlock title="gtkx.config.ts" :snippet="snippets.config" />
     </div>
 
     <div class="how__step  how__step--rev">
@@ -49,7 +31,7 @@ import { useState } from "react";`;
           so a header bar or an adjustment is an element too, not an object you build on the side.
         </p>
       </div>
-      <CodeBlock title="src/app.tsx" :code="appCode" lang="tsx" />
+      <CodeBlock title="src/app.tsx" :snippet="snippets.app" />
     </div>
 
     <div class="how__step">
@@ -61,7 +43,7 @@ import { useState } from "react";`;
           Styling is Emotion.
         </p>
       </div>
-      <CodeBlock title="src/app.tsx" :code="ecosystemCode" lang="tsx" />
+      <CodeBlock title="src/app.tsx" :snippet="snippets.ecosystem" />
     </div>
   </section>
 </template>

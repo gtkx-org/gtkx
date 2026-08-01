@@ -1,31 +1,31 @@
 <script setup lang="ts">
+import type { HighlightedSnippet } from "virtual:gtkx-snippets";
 import { computed, ref } from "vue";
-import { tokenizeCode } from "../highlight";
 import Icon from "./Icon.vue";
 
 const props = withDefaults(
     defineProps<{
         code?: string;
+        snippet?: HighlightedSnippet;
         lang?: string;
         title?: string;
         variant?: "code" | "terminal";
-        showLineNumbers?: boolean;
         frame?: boolean;
     }>(),
-    { lang: "bash", variant: "code", showLineNumbers: false, frame: true },
+    { lang: "bash", variant: "code", frame: true },
 );
 
 const isTerminal = computed(() => props.variant === "terminal");
-const lines = computed(() => (props.code != null ? String(props.code).replace(/\n$/, "").split("\n") : null));
-const tokenLines = computed(() => (!isTerminal.value && props.code != null ? tokenizeCode(props.code) : null));
+const source = computed(() => props.snippet?.code ?? props.code ?? null);
+const lines = computed(() => (props.code != null ? props.code.replace(/\n$/, "").split("\n") : null));
 const hasHead = computed(() => (isTerminal.value && props.frame) || props.title != null);
-const hasFloatingCopy = computed(() => !hasHead.value && props.code != null);
+const hasFloatingCopy = computed(() => !hasHead.value && source.value != null);
 
 const copied = ref(false);
 let resetTimer: ReturnType<typeof setTimeout> | undefined;
 const copy = async (): Promise<void> => {
-    if (props.code == null) return;
-    const text = String(props.code);
+    const text = source.value;
+    if (text == null) return;
     try {
         await navigator.clipboard.writeText(text);
     } catch {
@@ -54,7 +54,7 @@ const copy = async (): Promise<void> => {
       </span>
       <span class="cb__title">{{ title || lang }}</span>
       <button
-        v-if="code != null"
+        v-if="source != null"
         type="button"
         class="cb__copy"
         :aria-label="copied ? 'Copied' : 'Copy to clipboard'"
@@ -73,7 +73,8 @@ const copy = async (): Promise<void> => {
       <Icon :name="copied ? 'check' : 'copy'" :size="14" />
     </button>
     <span class="visually-hidden" role="status" aria-live="polite">{{ copied ? "Copied to clipboard" : "" }}</span>
-    <pre class="cb__pre"><code class="cb__code"><template v-if="tokenLines"><div v-for="(ln, i) in tokenLines" :key="i" class="cb__line"><span v-if="showLineNumbers" class="cb__ln">{{ i + 1 }}</span><span class="cb__txt"><span v-for="(tk, j) in ln" :key="j" :class="tk.c ? `tok-${tk.c}` : undefined">{{ tk.t }}</span></span></div></template><template v-else-if="lines"><div v-for="(ln, i) in lines" :key="i" class="cb__line"><span v-if="showLineNumbers" class="cb__ln">{{ i + 1 }}</span><span v-if="isTerminal" class="cb__prompt" aria-hidden="true">$</span><span class="cb__txt">{{ ln || " " }}</span></div></template><slot v-else /></code></pre>
+    <div v-if="snippet" class="cb__shiki" v-html="snippet.html" />
+    <pre v-else class="cb__pre"><code class="cb__code"><template v-if="lines"><div v-for="(ln, i) in lines" :key="i" class="cb__line"><span v-if="isTerminal" class="cb__prompt" aria-hidden="true">$</span><span class="cb__txt">{{ ln || " " }}</span></div></template><slot v-else /></code></pre>
   </div>
 </template>
 
@@ -173,13 +174,22 @@ const copy = async (): Promise<void> => {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.cb__pre {
+.cb__pre,
+.cb__shiki :deep(.shiki) {
   margin: 0;
   padding: 1rem 1.2rem;
   font-size: var(--text-sm);
   line-height: 1.6;
   color: var(--text-1);
   overflow-x: auto;
+}
+.cb__shiki :deep(.shiki code) {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  padding: 0;
+  background: none;
+  font-size: inherit;
 }
 .cb--terminal .cb__pre {
   color: rgba(235, 235, 245, 0.88);
@@ -196,14 +206,6 @@ const copy = async (): Promise<void> => {
 .cb__line {
   display: flex;
   min-height: 1.6em;
-}
-.cb__ln {
-  width: 2.2em;
-  flex: none;
-  text-align: right;
-  padding-right: 1em;
-  color: var(--text-3);
-  user-select: none;
 }
 .cb__prompt {
   color: var(--red-400);

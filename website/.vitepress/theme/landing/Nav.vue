@@ -30,7 +30,8 @@ const links = [
     </nav>
     <div class="nav__actions">
       <IconButton label="Dark theme" :aria-pressed="isDark" @click="toggle">
-        <Icon :name="isDark ? 'sun' : 'moon'" />
+        <Icon class="nav__sun" name="sun" />
+        <Icon class="nav__moon" name="moon" />
       </IconButton>
       <IconButton label="GTKX on GitHub" :href="REPO_URL"><Icon name="github" /></IconButton>
       <IconButton
@@ -100,6 +101,13 @@ const links = [
   display: flex;
   align-items: center;
   gap: 0.4rem;
+}
+.nav__sun,
+html.dark .nav__moon {
+  display: none;
+}
+html.dark .nav__sun {
+  display: inline;
 }
 .nav__burger {
   display: none;

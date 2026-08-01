@@ -69,26 +69,6 @@
     }
 }
 
-.tok-kw {
-    color: var(--accent-text);
-}
-.tok-tag {
-    color: var(--text-brand);
-}
-.tok-str {
-    color: var(--syntax-string);
-}
-.tok-fn {
-    color: var(--text-1);
-}
-.tok-punct {
-    color: var(--text-2);
-}
-.tok-comment {
-    color: var(--text-3);
-    font-style: italic;
-}
-
 .l-code {
     font-family: var(--font-mono);
     font-size: 0.9em;

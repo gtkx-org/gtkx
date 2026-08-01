@@ -1,103 +1,11 @@
 <script setup lang="ts">
+import snippets from "virtual:gtkx-snippets";
 import Button from "../components/Button.vue";
 import CodeBlock from "../components/CodeBlock.vue";
 import Icon from "../components/Icon.vue";
 import { REPO_URL } from "./content";
 
 const cmd = "npm create gtkx@rc";
-
-type Tok = { t: string; c?: string };
-type Line = { indent?: number; toks: Tok[] };
-
-const code: Line[] = [
-    { toks: [{ c: "kw", t: "import" }, { t: " {" }] },
-    {
-        indent: 1,
-        toks: [
-            { c: "tag", t: "GtkApplication" },
-            { t: ", " },
-            { c: "tag", t: "GtkApplicationWindow" },
-            { t: ", " },
-            { c: "tag", t: "GtkLabel" },
-            { t: "," },
-        ],
-    },
-    { toks: [{ t: "} " }, { c: "kw", t: "from" }, { t: " " }, { c: "str", t: '"@gtkx/jsx/gtk"' }, { t: ";" }] },
-    {
-        toks: [
-            { c: "kw", t: "import" },
-            { t: " { " },
-            { c: "fn", t: "createRoot" },
-            { t: " } " },
-            { c: "kw", t: "from" },
-            { t: " " },
-            { c: "str", t: '"@gtkx/react"' },
-            { t: ";" },
-        ],
-    },
-    { toks: [] },
-    { toks: [{ c: "kw", t: "const" }, { t: " " }, { c: "fn", t: "App" }, { t: " = () => (" }] },
-    {
-        indent: 1,
-        toks: [
-            { c: "punct", t: "<" },
-            { c: "tag", t: "GtkApplication" },
-            { c: "punct", t: ">" },
-        ],
-    },
-    {
-        indent: 2,
-        toks: [
-            { c: "punct", t: "<" },
-            { c: "tag", t: "GtkApplicationWindow" },
-            { t: " title=" },
-            { c: "str", t: '"My App"' },
-            { c: "punct", t: ">" },
-        ],
-    },
-    {
-        indent: 3,
-        toks: [
-            { c: "punct", t: "<" },
-            { c: "tag", t: "GtkLabel" },
-            { c: "punct", t: ">" },
-            { t: "Hello from GTKX 👋" },
-            { c: "punct", t: "</" },
-            { c: "tag", t: "GtkLabel" },
-            { c: "punct", t: ">" },
-        ],
-    },
-    {
-        indent: 2,
-        toks: [
-            { c: "punct", t: "</" },
-            { c: "tag", t: "GtkApplicationWindow" },
-            { c: "punct", t: ">" },
-        ],
-    },
-    {
-        indent: 1,
-        toks: [
-            { c: "punct", t: "</" },
-            { c: "tag", t: "GtkApplication" },
-            { c: "punct", t: ">" },
-        ],
-    },
-    { toks: [{ t: ");" }] },
-    { toks: [] },
-    {
-        toks: [
-            { c: "fn", t: "createRoot" },
-            { t: "()." },
-            { c: "fn", t: "render" },
-            { t: "(" },
-            { c: "punct", t: "<" },
-            { c: "tag", t: "App" },
-            { c: "punct", t: " />" },
-            { t: ");" },
-        ],
-    },
-];
 </script>
 
 <template>
@@ -124,14 +32,7 @@ const code: Line[] = [
         </div>
       </div>
       <div class="hero__col hero__visual">
-        <CodeBlock title="src/index.tsx">
-          <div class="hero__code">
-            <div v-for="(ln, i) in code" :key="i" class="hcl" :style="{ paddingLeft: `${(ln.indent ?? 0) * 1.3}em` }">
-              <span v-if="!ln.toks.length">&nbsp;</span>
-              <span v-for="(tk, j) in ln.toks" :key="j" :class="tk.c ? `tok-${tk.c}` : undefined">{{ tk.t }}</span>
-            </div>
-          </div>
-        </CodeBlock>
+        <CodeBlock title="src/index.tsx" :snippet="snippets.hero" />
         <div id="install" class="hero__install">
           <CodeBlock variant="terminal" :frame="false" :code="cmd" />
         </div>
@@ -195,17 +96,8 @@ const code: Line[] = [
   flex-direction: column;
   gap: 1rem;
 }
-.hero__code {
-  font-size: var(--text-sm);
-  line-height: 1.7;
-  white-space: pre;
-  width: max-content;
-}
-.hcl {
-  min-height: 1.7em;
-}
 @media (max-width: 480px) {
-  .hero__code {
+  .hero__visual :deep(.shiki) {
     font-size: var(--text-xs);
   }
 }

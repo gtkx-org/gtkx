@@ -78,7 +78,6 @@
     --code-bg: var(--gray-50);
     --code-text: var(--red-700);
     --kbd-bg: var(--gray-100);
-    --syntax-string: #1a7047;
 
     --gradient-brand: linear-gradient(135deg, #e03a3e 0%, #b81c25 100%);
     --gradient-hero: linear-gradient(120deg, #ff6b6b 0%, #e03a3e 42%, #b81c25 100%);
@@ -223,7 +222,6 @@ html.dark {
     --code-bg: var(--gray-950);
     --code-text: var(--red-300);
     --kbd-bg: var(--gray-800);
-    --syntax-string: var(--green-500);
 
     --gradient-glow: radial-gradient(60% 60% at 50% 0%, rgba(224, 58, 62, 0.34) 0%, rgba(224, 58, 62, 0) 70%);
 
