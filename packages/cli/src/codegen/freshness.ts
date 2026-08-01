@@ -27,15 +27,12 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
     return join(giStoreDir, namespace, "index.js");
 };
 
-const isStoreResolvable = (storeDir: string, packageName: string): boolean =>
-    existsSync(join(storeDir, "node_modules", "@gtkx", packageName, "package.json"));
+// The manifest is what makes the store resolvable as a package, and npm's prune of a generated store
+// removes the link while leaving the directory behind, so both have to be checked.
+const hasManifest = (storeDir: string): boolean => existsSync(join(storeDir, "package.json"));
 
 const isGiStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
-    if (!existsSync(store.giLinkDir) || !existsSync(store.giStoreDir)) {
-        return true;
-    }
-
-    if (!isStoreResolvable(store.giStoreDir, "gi")) {
+    if (!existsSync(store.giLinkDir) || !hasManifest(store.giStoreDir)) {
         return true;
     }
 
@@ -47,7 +44,7 @@ const isReactStoreStale = (store: CodegenStore): boolean => {
         return false;
     }
 
-    if (!existsSync(store.jsxLinkDir) || !isStoreResolvable(store.jsxStoreDir, "jsx")) {
+    if (!existsSync(store.jsxLinkDir) || !hasManifest(store.jsxStoreDir)) {
         return true;
     }
 

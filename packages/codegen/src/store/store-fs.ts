@@ -89,7 +89,6 @@ const writeStore = (params: WriteStoreParams): void => {
             writeFileSync(join(tmp, raw.relativePath), raw.content);
         }
 
-        symlinkRelative(join(tmp, "node_modules", ...params.manifest.name.split("/")), tmp);
         swapStore(tmp, params.storeDir, params.linkDir);
     } finally {
         rmSync(tmp, { recursive: true, force: true });

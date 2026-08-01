@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 
@@ -47,10 +47,6 @@ const writeStoreManifest = (cwd: string, name: "gi" | "jsx") => {
     const storeDir = join(cwd, "node_modules", ".gtkx", name);
     mkdirSync(storeDir, { recursive: true });
     writeFileSync(join(storeDir, "package.json"), JSON.stringify({ name: `@gtkx/${name}`, version: "0.0.0" }));
-    const selfLink = join(storeDir, "node_modules", "@gtkx", name);
-    mkdirSync(dirname(selfLink), { recursive: true });
-    rmSync(selfLink, { recursive: true, force: true });
-    symlinkSync(relative(dirname(selfLink), storeDir), selfLink, "dir");
     mkdirSync(join(cwd, "node_modules", "@gtkx", name), { recursive: true });
 };
 
@@ -251,28 +247,18 @@ describe("ensureGenerated — store links", () => {
         rmSync(cwd, { recursive: true, force: true });
     });
 
-    it("regenerates when the bundled gi store links are pruned", async () => {
+    it("regenerates when the gi store link is pruned", async () => {
         installReactProject(cwd);
         writeJsxStore(cwd);
-
-        rmSync(join(cwd, "node_modules", ".gtkx", "gi", "node_modules", "@gtkx", "gi"), {
-            recursive: true,
-            force: true,
-        });
-
+        rmSync(join(cwd, "node_modules", "@gtkx", "gi"), { recursive: true, force: true });
         expect(await ensureGenerated(cwd)).toBe(true);
     });
 
-    it("regenerates when the bundled jsx store links are pruned", async () => {
+    it("regenerates when the jsx store link is pruned", async () => {
         installReactProject(cwd);
         writeJsxStore(cwd);
         writeFingerprint(cwd);
-
-        rmSync(join(cwd, "node_modules", ".gtkx", "jsx", "node_modules", "@gtkx", "jsx"), {
-            recursive: true,
-            force: true,
-        });
-
+        rmSync(join(cwd, "node_modules", "@gtkx", "jsx"), { recursive: true, force: true });
         expect(await ensureGenerated(cwd)).toBe(true);
     });
 
