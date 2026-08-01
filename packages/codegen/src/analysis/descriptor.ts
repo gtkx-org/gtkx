@@ -64,23 +64,23 @@ type BoxedOptions = {
     ownership: Ownership;
     sharedLibrary: string | undefined;
     getTypeFnName: string;
-    callerAllocated: boolean;
-    inline?: boolean;
+    isCallerAllocated: boolean;
+    isInline?: boolean;
     size: number | undefined;
 };
 
 type StructOptions = {
     size: number | string | undefined;
     wrapperClass: string | undefined;
-    callerAllocated: boolean;
-    inline?: boolean;
+    isCallerAllocated: boolean;
+    isInline?: boolean;
 };
 
 type FundamentalOptions = {
     ownership: Ownership;
     typeName: string | undefined;
     wrapperClass: string | undefined;
-    inline?: boolean | undefined;
+    isInline?: boolean | undefined;
 };
 
 type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
@@ -165,8 +165,8 @@ const tBoxed = (glibName: string, options: BoxedOptions): string =>
                 ? undefined
                 : `sharedLibrary: ${sourceStringLiteral(options.sharedLibrary)}`,
             `getTypeFnName: ${sourceStringLiteral(options.getTypeFnName)}`,
-            options.callerAllocated ? "callerAllocated: true" : undefined,
-            options.inline === true ? "inline: true" : undefined,
+            options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
+            options.isInline === true ? "isInline: true" : undefined,
             options.size === undefined ? undefined : `size: ${String(options.size)}`,
         ]),
     ]);
@@ -177,13 +177,13 @@ const tStruct = (ownership: Ownership, options: StructOptions): string =>
         optionsObject([
             options.size === undefined ? undefined : `size: ${String(options.size)}`,
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
-            options.callerAllocated ? "callerAllocated: true" : undefined,
-            options.inline === true ? "inline: true" : undefined,
+            options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
+            options.isInline === true ? "isInline: true" : undefined,
         ]),
     ]);
 
 const tInlineStruct = (): string =>
-    tStruct("borrowed", { size: undefined, wrapperClass: undefined, callerAllocated: false });
+    tStruct("borrowed", { size: undefined, wrapperClass: undefined, isCallerAllocated: false });
 
 const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: FundamentalOptions): string =>
     call("fundamental", [
@@ -194,7 +194,7 @@ const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: 
             `ownership: ${sourceStringLiteral(options.ownership)}`,
             options.typeName === undefined ? undefined : `typeName: ${sourceStringLiteral(options.typeName)}`,
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
-            options.inline === true ? "inline: true" : undefined,
+            options.isInline === true ? "isInline: true" : undefined,
         ]),
     ]);
 
@@ -252,9 +252,9 @@ const tBind = (args: BindArgs): string =>
 const tFn = (
     lib: string,
     cIdentifier: string,
-    spec: { args: string; returns: string; throws: boolean },
+    spec: { args: string; returns: string; canThrow: boolean },
 ): string => {
-    const throwsEntry = spec.throws ? ", throws: true" : "";
+    const throwsEntry = spec.canThrow ? ", canThrow: true" : "";
 
     return call("fn", [
         sourceStringLiteral(lib),

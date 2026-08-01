@@ -30,7 +30,7 @@ const writeJsxStore = (
             peerDependencies: { "@gtkx/gi": "*", "@gtkx/react": "*", react: "*" },
         }),
         rawFiles,
-        configEnv: true,
+        requiresEnvReference: true,
     });
 };
 

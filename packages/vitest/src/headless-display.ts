@@ -27,14 +27,14 @@ type EnvSnapshot = Record<string, string | undefined>;
 type CompositorDescriptor = {
     socket: string;
     env: Record<string, string>;
-    needsVirtualSeat: boolean;
+    requiresVirtualSeat: boolean;
     start: (runtimeDir: string, width: string, height: string) => ChildProcess;
 };
 
 type SpawnedCompositor = {
     child: ChildProcess;
     socket: string;
-    needsVirtualSeat: boolean;
+    requiresVirtualSeat: boolean;
 };
 
 type WaitForSocketOptions = {
@@ -81,7 +81,7 @@ const hasWestonFakeSeat = createWestonFakeSeatProbe();
 const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
     sway: {
         socket: "wayland-1",
-        needsVirtualSeat: true,
+        requiresVirtualSeat: true,
         env: {
             WLR_BACKENDS: "headless",
             WLR_RENDERER: "pixman",
@@ -111,7 +111,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
     },
     weston: {
         socket: "wayland-0",
-        needsVirtualSeat: false,
+        requiresVirtualSeat: false,
         env: {},
         start: (_runtimeDir, width, height) =>
             spawnWithParentDeathSignal(
@@ -219,14 +219,14 @@ const startCompositor = (runtimeDir: string, options: HeadlessOptions, env: EnvS
     return {
         child: descriptor.start(runtimeDir, width, height),
         socket: descriptor.socket,
-        needsVirtualSeat: descriptor.needsVirtualSeat,
+        requiresVirtualSeat: descriptor.requiresVirtualSeat,
     };
 };
 
 const noVirtualSeat = (): void => undefined;
 
 const attachVirtualSeat = (compositor: SpawnedCompositor, socketPath: string): Promise<() => void> =>
-    compositor.needsVirtualSeat ? startVirtualSeat(socketPath) : Promise.resolve(noVirtualSeat);
+    compositor.requiresVirtualSeat ? startVirtualSeat(socketPath) : Promise.resolve(noVirtualSeat);
 
 const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
     writeFileSync(

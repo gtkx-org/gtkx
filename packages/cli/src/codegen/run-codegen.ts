@@ -17,7 +17,7 @@ import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 type RunCodegenOptions = {
     cwd?: string;
     mode?: string | undefined;
-    force?: boolean;
+    isForced?: boolean;
     inputs?: CodegenInputs;
     resolved?: LoadedConfig;
 };
@@ -28,7 +28,7 @@ type LoadedConfig = {
 };
 
 type RunCodegenResult = {
-    regenerated: boolean;
+    isRegenerated: boolean;
     namespaces: number;
     intrinsicElements: number;
     duration: number;
@@ -44,7 +44,7 @@ type CodegenOptionsInput = {
     elements: Config["elements"];
 };
 
-type PreparedCodegen = CodegenInputs & { force: boolean };
+type PreparedCodegen = CodegenInputs & { isForced: boolean };
 
 type RunOptionsInput = {
     root: string;
@@ -93,7 +93,7 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
 });
 
 const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
-    regenerated: false,
+    isRegenerated: false,
     namespaces: 0,
     intrinsicElements: 0,
     duration: 0,
@@ -118,9 +118,9 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
         throw new Error(GIR_PATH_MISSING_MESSAGE);
     }
 
-    const isForce = options.force === true || isCodegenStale({ girPath, libraries, store });
+    const isForced = options.isForced === true || isCodegenStale({ girPath, libraries, store });
 
-    return { girPath, libraries, store, force: isForce };
+    return { girPath, libraries, store, isForced };
 };
 
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
@@ -133,9 +133,9 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         return disabledCodegenResult(configFile);
     }
 
-    const { girPath, libraries, store, force } = prepareCodegen(options, cwd, config);
+    const { girPath, libraries, store, isForced } = prepareCodegen(options, cwd, config);
 
-    if (options.force) {
+    if (options.isForced) {
         clearGeneratedStores(store);
     }
 
@@ -146,11 +146,11 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
             girPath,
             elements: config.elements,
         }),
-        force,
+        isForced,
     });
 
     return {
-        regenerated: result.regenerated,
+        isRegenerated: result.isRegenerated,
         namespaces: result.namespaces,
         intrinsicElements: result.intrinsicElements,
         duration: result.duration,
@@ -182,8 +182,8 @@ const resolveInputsOrNull = (cwd: string, config: Config): CodegenInputs | null 
     }
 };
 
-const maybeAnnounceStale = (announce: boolean | undefined, inputs: CodegenInputs | null): void => {
-    if (!announce) {
+const maybeAnnounceStale = (shouldAnnounce: boolean | undefined, inputs: CodegenInputs | null): void => {
+    if (!shouldAnnounce) {
         return;
     }
 
@@ -202,9 +202,9 @@ const getRunOptions = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCo
 
 const ensureGenerated = async (
     cwd: string,
-    options: { announce?: boolean; mode?: string } = {},
+    options: { shouldAnnounce?: boolean; mode?: string } = {},
 ): Promise<boolean> => {
-    if (options.announce && process.env.GTKX_DISABLE_PREFLIGHT === "1") {
+    if (options.shouldAnnounce && process.env.GTKX_DISABLE_PREFLIGHT === "1") {
         return false;
     }
 
@@ -218,11 +218,11 @@ const ensureGenerated = async (
     }
 
     const inputs = resolveInputsOrNull(context.root, context.config);
-    maybeAnnounceStale(options.announce, inputs);
+    maybeAnnounceStale(options.shouldAnnounce, inputs);
     const resolved = { config: context.config, configFile: context.configFile };
     const result = await runCodegen(getRunOptions({ root: context.root, mode: options.mode, inputs, resolved }));
 
-    return result.regenerated;
+    return result.isRegenerated;
 };
 
 const resolveConfigWatch = async (

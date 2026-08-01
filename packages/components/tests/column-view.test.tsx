@@ -60,14 +60,14 @@ const employeeColumns: ColumnViewColumn<Employee>[] = [
         id: "name",
         title: "Name",
         expand: true,
-        sortable: true,
+        isSortable: true,
         renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
     },
     {
         id: "salary",
         title: "Salary",
         expand: true,
-        sortable: true,
+        isSortable: true,
         renderCell: ({ item }) => <GtkLabel>{`$${String(item.salary)}`}</GtkLabel>,
     },
 ];
@@ -630,13 +630,13 @@ describe("render - ColumnView (13)", () => {
                 {
                     id: "name",
                     title: "Name",
-                    sortable: true,
+                    isSortable: true,
                     renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
                 },
                 {
                     id: "salary",
                     title: "Salary",
-                    sortable: true,
+                    isSortable: true,
                     renderCell: ({ item }) => <GtkLabel>{String(item.salary)}</GtkLabel>,
                 },
             ];

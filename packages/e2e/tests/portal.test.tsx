@@ -67,10 +67,10 @@ const renderPortalWindow = (title: string, portalKey?: string) =>
         { container: rootElement },
     );
 
-function OptionalPortal({ showPortal }: { showPortal: boolean }) {
+function OptionalPortal({ shouldShowPortal }: { shouldShowPortal: boolean }) {
     const app = useApplication();
 
-    return <>{showPortal && createPortal(<GtkApplicationWindow title="Portal" />, app)}</>;
+    return <>{shouldShowPortal && createPortal(<GtkApplicationWindow title="Portal" />, app)}</>;
 }
 
 function TitledPortal({ title }: { title: string }) {
@@ -139,7 +139,7 @@ describe("createPortal (2)", () => {
 
         const { rerender } = await render(
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
-                <OptionalPortal showPortal={true} />
+                <OptionalPortal shouldShowPortal={true} />
             </GtkApplication>,
             { container: rootElement },
         );
@@ -148,7 +148,7 @@ describe("createPortal (2)", () => {
 
         await rerender(
             <GtkApplication applicationId={appId} flags={APP_FLAGS}>
-                <OptionalPortal showPortal={false} />
+                <OptionalPortal shouldShowPortal={false} />
             </GtkApplication>,
         );
 

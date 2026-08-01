@@ -15,23 +15,23 @@ function CountLabel({ count }: { count: number }) {
     );
 }
 
-function MiddleSegmentLabel({ showMiddle }: { showMiddle: boolean }) {
+function MiddleSegmentLabel({ shouldShowMiddle }: { shouldShowMiddle: boolean }) {
     return (
         <GtkLabel>
             Start
-            {showMiddle && " Middle"}
+            {shouldShowMiddle && " Middle"}
             {" "}
             End
         </GtkLabel>
     );
 }
 
-function OptionalTextLabel({ showText }: { showText: boolean }) {
-    return <GtkLabel>{showText && "Gone soon"}</GtkLabel>;
+function OptionalTextLabel({ shouldShowText }: { shouldShowText: boolean }) {
+    return <GtkLabel>{shouldShowText && "Gone soon"}</GtkLabel>;
 }
 
-function PropOrChildrenLabel({ useProp }: { useProp: boolean }) {
-    return useProp ? <GtkLabel label="From prop" /> : <GtkLabel>From children</GtkLabel>;
+function PropOrChildrenLabel({ shouldUseProp }: { shouldUseProp: boolean }) {
+    return shouldUseProp ? <GtkLabel label="From prop" /> : <GtkLabel>From children</GtkLabel>;
 }
 
 describe("render - Label text children (1)", () => {
@@ -48,27 +48,27 @@ describe("render - Label text children (1)", () => {
     });
 
     it("keeps order when a middle segment toggles", async () => {
-        const { rerender } = await render(<MiddleSegmentLabel showMiddle={false} />);
+        const { rerender } = await render(<MiddleSegmentLabel shouldShowMiddle={false} />);
         expect(screen.getByText("Start End")).toBeDefined();
-        await rerender(<MiddleSegmentLabel showMiddle={true} />);
+        await rerender(<MiddleSegmentLabel shouldShowMiddle={true} />);
         expect(screen.getByText("Start Middle End")).toBeDefined();
-        await rerender(<MiddleSegmentLabel showMiddle={false} />);
+        await rerender(<MiddleSegmentLabel shouldShowMiddle={false} />);
         expect(screen.getByText("Start End")).toBeDefined();
     });
 });
 
 describe("render - Label text children (2)", () => {
     it("clears the label when the last text child is removed", async () => {
-        const { rerender } = await render(<OptionalTextLabel showText={true} />);
+        const { rerender } = await render(<OptionalTextLabel shouldShowText={true} />);
         expect(screen.getByText("Gone soon")).toBeDefined();
-        await rerender(<OptionalTextLabel showText={false} />);
+        await rerender(<OptionalTextLabel shouldShowText={false} />);
         expect(screen.queryByText("Gone soon")).toBeNull();
     });
 
     it("keeps the label prop when text children are replaced by it", async () => {
-        const { rerender } = await render(<PropOrChildrenLabel useProp={false} />);
+        const { rerender } = await render(<PropOrChildrenLabel shouldUseProp={false} />);
         expect(screen.getByText("From children")).toBeDefined();
-        await rerender(<PropOrChildrenLabel useProp={true} />);
+        await rerender(<PropOrChildrenLabel shouldUseProp={true} />);
         expect(screen.getByText("From prop")).toBeDefined();
     });
 

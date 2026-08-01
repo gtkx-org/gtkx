@@ -4,8 +4,8 @@ const GTKX_CONFIG_VIRTUAL_ID = "virtual:gtkx-config";
 const RESOLVED_GTKX_CONFIG_VIRTUAL_ID = `\0${GTKX_CONFIG_VIRTUAL_ID}`;
 const METADATA_SPECIFIER = "@gtkx/jsx/metadata";
 
-const lazyElementConfig = (lazyElements: string[]): Record<string, { lazy: true }> =>
-    Object.fromEntries(lazyElements.map((type) => [type, { lazy: true }]));
+const lazyElementConfig = (lazyElements: string[]): Record<string, { isLazy: boolean }> =>
+    Object.fromEntries(lazyElements.map((type) => [type, { isLazy: true }]));
 
 const renderConfigModule = (config: ResolvedConfig): string => {
     const lazyJson = JSON.stringify(lazyElementConfig(config.lazyElements));

@@ -730,7 +730,7 @@ function useStoreCountLabel(model: Gio.ListModel, labelRef: React.RefObject<Gtk.
         () => {
             labelRef.current?.setLabel(formatItemCount(model.getNItems()));
         },
-        { immediate: true },
+        { isImmediate: true },
     );
 }
 
@@ -751,7 +751,7 @@ function useStoreProgressBar(
         bar.setVisible(itemCount > 0 && itemCount < colorLimit);
     }, [model, colorLimit, progressBarRef]);
 
-    useSignal(model, "items-changed", update, { immediate: true });
+    useSignal(model, "items-changed", update, { isImmediate: true });
 
     useEffect(() => {
         update();
@@ -780,7 +780,7 @@ function useSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
     useSignal(selection, "selection-changed", () => {
         setSelectedColors(collectSelectedColors(selection));
     }, {
-        immediate: true,
+        isImmediate: true,
     });
 
     return selectedColors;

@@ -4,7 +4,7 @@ import { dispatch } from "../../src/mcp/handlers.js";
 import { WidgetRegistry } from "../../src/mcp/widget-registry.js";
 import { type FakeWidgetOverrides, makeFakeWidget } from "./fake-widget.js";
 
-type PrettyWidgetOptions = { getId?: (widget: unknown) => string; highlight?: boolean; maxDepth?: number };
+type PrettyWidgetOptions = { getId?: (widget: unknown) => string; shouldHighlight?: boolean; maxDepth?: number };
 
 type FakeApp = {
     getWindows: () => { getTitle?: () => string | null }[];
@@ -125,7 +125,7 @@ describe("widget.getTree", () => {
         const [container, options] = prettyWidget.mock.calls[0] ?? [];
         expect(container).toBeDefined();
         expect(options?.getId).toBeTypeOf("function");
-        expect(options?.highlight).toBe(false);
+        expect(options?.shouldHighlight).toBe(false);
     });
 
     it("resolves tree ids through the registry", async () => {
@@ -143,7 +143,7 @@ describe("widget.getTree", () => {
         const widget = makeWidget({});
         const rootId = registerWidget(registry, widget);
         await dispatch("widget.getTree", { rootId }, { app: makeApp() as never, registry });
-        expect(prettyWidget).toHaveBeenCalledWith(widget, expect.objectContaining({ highlight: false }));
+        expect(prettyWidget).toHaveBeenCalledWith(widget, expect.objectContaining({ shouldHighlight: false }));
     });
 
     it("passes maxDepth through to the renderer", async () => {

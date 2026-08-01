@@ -28,7 +28,7 @@ type SignalMapSpec = {
     context: ModuleContext;
     klass: GirClass;
     className: string;
-    parentlessExtendsObject: boolean;
+    isParentlessObjectSubclass: boolean;
     suffix: string;
     renderEntry: (context: ModuleContext, signal: GirCallable) => string;
 };
@@ -66,7 +66,7 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
 
     const connectDefault = isRootObject
         ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");"
-        : "default:\n    return super.connect(signal, handler, after);";
+        : "default:\n    return super.connect(signal, handler, isAfter);";
 
     const emitDefault = isRootObject
         ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");"
@@ -78,7 +78,10 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
     const emitSwitch = `switch (getSignalBaseName(sigName)) {\n${emitBody}\n}`;
 
     return [
-        renderBlock(`connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number`, connectSwitch),
+        renderBlock(
+            `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, isAfter?: boolean): number`,
+            connectSwitch,
+        ),
         renderBlock("emit(sigName: string, ...args: unknown[]): unknown", emitSwitch),
     ];
 };
@@ -89,7 +92,7 @@ const renderSignalDeclarations = (
     className: string,
     isParentlessObjectSubclass: boolean,
 ): string[] => {
-    const base = { context, klass, className, parentlessExtendsObject: isParentlessObjectSubclass };
+    const base = { context, klass, className, isParentlessObjectSubclass };
 
     const declarations = [
         renderSignalMap({ ...base, suffix: SIGNALS_SUFFIX, renderEntry: renderSignalHandlerType }),
@@ -110,8 +113,8 @@ const renderSignalDeclarations = (
 };
 
 const renderSignalMap = (spec: SignalMapSpec): string => {
-    const { context, klass, className, parentlessExtendsObject, suffix, renderEntry } = spec;
-    const extendsRefs = signalMapParentRefs(context, klass, parentlessExtendsObject, suffix);
+    const { context, klass, className, isParentlessObjectSubclass, suffix, renderEntry } = spec;
+    const extendsRefs = signalMapParentRefs(context, klass, isParentlessObjectSubclass, suffix);
     const extendsClause = extendsRefs.length === 0 ? "" : ` extends ${extendsRefs.join(", ")}`;
 
     const signalEntries = collectClassSignals(context, klass).map((signal) => {
@@ -177,8 +180,8 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
 
     const lines = [
         `__signals__?: ${map};`,
-        `connect<K extends keyof ${map}>(signal: K, handler: ${map}[K], after?: boolean): number;`,
-        `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, after?: boolean): number;`,
+        `connect<K extends keyof ${map}>(signal: K, handler: ${map}[K], isAfter?: boolean): number;`,
+        `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, isAfter?: boolean): number;`,
         `emit<K extends keyof ${emitMap}>(sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
         "emit(sigName: string, ...args: unknown[]): unknown;",
     ];
@@ -193,7 +196,7 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
             }
         };
 
-        chainable(["on", "once", "addEventListener"], ", after?: boolean");
+        chainable(["on", "once", "addEventListener"], ", isAfter?: boolean");
         chainable(["off", "removeEventListener"], "");
     }
 
@@ -216,8 +219,8 @@ const renderResultType = (
         library: context.library,
         signal,
         renderType: (ref, nullable) => renderTsType(context, ref, nullable),
-        includeCallerAllocated: shouldIncludeCallerAllocated,
-        optOut: isOptOut,
+        shouldIncludeCallerAllocated,
+        isOptOut,
     });
 
 const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): string => {
@@ -237,7 +240,7 @@ const nonVarargParameters = (signal: GirCallable): GirParameter[] =>
 
 const renderConnectCase = (context: ModuleContext, signal: GirCallable): string => {
     const callback = renderCallback(context, signal);
-    const body = `return connectSignal(this, signal, { callback: ${callback}, handler, after: after ?? false });`;
+    const body = `return connectSignal(this, signal, { callback: ${callback}, handler, isAfter: isAfter ?? false });`;
 
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };
@@ -260,7 +263,7 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
         const value = renderCallerOutAllocation(context, parameter);
 
         return {
-            literal: `{ type: ${descriptor}, direction: "out", callerAllocated: true, value: ${value} }`,
+            literal: `{ type: ${descriptor}, direction: "out", isCallerAllocated: true, value: ${value} }`,
             nextArgIndex: argIndex,
         };
     }
@@ -268,7 +271,7 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
     if (isRecordInout(context, parameter)) {
         return {
             literal:
-                `{ type: ${descriptor}, direction: "inout", callerAllocated: true, ` +
+                `{ type: ${descriptor}, direction: "inout", isCallerAllocated: true, ` +
                 `value: args[${String(argIndex)}] }`,
             nextArgIndex: argIndex + 1,
         };

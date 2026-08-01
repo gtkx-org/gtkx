@@ -8,8 +8,8 @@ function context(overrides: Partial<TemplateContext> = {}): TemplateContext {
         name: "my-app",
         applicationId: "com.example.MyApp",
         title: "My App",
-        includeTesting: false,
-        typescript: true,
+        shouldIncludeTesting: false,
+        isTypescript: true,
         importExtension: ".js",
         ...overrides,
     };
@@ -34,7 +34,7 @@ describe("renderFile", () => {
     });
 
     it("leaves the package.json template free of a test script", async () => {
-        const output = await renderFile("package.json", { ...baseContext, includeTesting: true });
+        const output = await renderFile("package.json", { ...baseContext, shouldIncludeTesting: true });
         expect(output).not.toContain("vitest");
     });
 
@@ -44,13 +44,13 @@ describe("renderFile", () => {
     });
 
     it("includes the typecheck script only for the TypeScript variant", async () => {
-        expect(await renderFile("package.json", context({ typescript: true }))).toContain('"typecheck"');
-        expect(await renderFile("package.json", context({ typescript: false }))).not.toContain('"typecheck"');
+        expect(await renderFile("package.json", context({ isTypescript: true }))).toContain('"typecheck"');
+        expect(await renderFile("package.json", context({ isTypescript: false }))).not.toContain('"typecheck"');
     });
 
     it("targets the language-specific test glob in vitest.config", async () => {
-        expect(await renderFile("vitest.config.ts", context({ typescript: true }))).toContain("{ts,tsx}");
-        expect(await renderFile("vitest.config.ts", context({ typescript: false }))).toContain("{js,jsx}");
+        expect(await renderFile("vitest.config.ts", context({ isTypescript: true }))).toContain("{ts,tsx}");
+        expect(await renderFile("vitest.config.ts", context({ isTypescript: false }))).toContain("{js,jsx}");
     });
 
     it("declares node and react types without the dom lib", async () => {

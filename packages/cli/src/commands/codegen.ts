@@ -36,7 +36,7 @@ const codegen = defineCommand({
         }
 
         const startedAt = Date.now();
-        const result = await runCodegen({ cwd, force: true });
+        const result = await runCodegen({ cwd, isForced: true });
         syncSchemaEnv(cwd);
         const lines = formatCodegenResult(result, Date.now() - startedAt);
 

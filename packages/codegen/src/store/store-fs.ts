@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { compileStore } from "./compile-store.js";
 
@@ -41,8 +41,10 @@ type WriteStoreParams = {
     files: StoreFile[];
     manifest: Manifest;
     rawFiles?: RawFile[];
-    configEnv?: boolean;
+    requiresEnvReference?: boolean;
 };
+
+const STORE_DIR_MODE = 0o755;
 
 const subpathExport = (stem: string): { types: string; default: string } => ({
     types: `./${stem}.d.ts`,
@@ -77,7 +79,7 @@ const writeStore = (params: WriteStoreParams): void => {
             storeDir: tmp,
             files: params.files,
             packageName: params.manifest.name,
-            ...(params.configEnv !== undefined && { configEnv: params.configEnv }),
+            ...(params.requiresEnvReference !== undefined && { requiresEnvReference: params.requiresEnvReference }),
         });
 
         writePackageJson(tmp, params.manifest);
@@ -125,8 +127,10 @@ const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => 
 
 const createTempStore = (storeDir: string): string => {
     mkdirSync(dirname(storeDir), { recursive: true });
+    const tmp = mkdtempSync(`${storeDir}.tmp-`);
+    chmodSync(tmp, STORE_DIR_MODE);
 
-    return mkdtempSync(`${storeDir}.tmp-`);
+    return tmp;
 };
 
 export { subpathExport, buildManifest, writeStore, type StoreOptions, type RawFile };

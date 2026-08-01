@@ -50,11 +50,11 @@ describe("renderConfigModule", () => {
     it("exports the user's lazy elements as part of the merged element config", () => {
         const resolved = resolveConfig({
             applicationId: "org.gtk.Test",
-            elements: { config: { GtkFoo: { lazy: true } } },
+            elements: { config: { GtkFoo: { isLazy: true } } },
         });
 
         const source = renderConfigModule(resolved);
-        expect(source.split("\n")).toContain('export const elements = {"GtkFoo":{"lazy":true}};');
+        expect(source.split("\n")).toContain('export const elements = {"GtkFoo":{"isLazy":true}};');
     });
 
     it("exports the metadata re-export, application id, signals, and elements", () => {

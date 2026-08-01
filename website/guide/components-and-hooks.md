@@ -61,7 +61,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 ### ColumnView
 
-`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnViewColumn` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `sortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
+`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnViewColumn` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `isSortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
 
 ```tsx
 import { ColumnView, type ColumnViewColumn } from "@gtkx/components";
@@ -72,7 +72,7 @@ const columns: ColumnViewColumn<Employee>[] = [
         id: "name",
         title: "Name",
         expand: true,
-        sortable: true,
+        isSortable: true,
         renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
     },
 ];
@@ -280,13 +280,13 @@ useBindSetting({ schema, key: "window-width", object: windowRef, property: "defa
 useBindSetting({ schema, key: "window-height", object: windowRef, property: "defaultHeight" });
 ```
 
-**`useSignal(object, signal, handler, options?)`** connects a handler to any GObject signal for the component's lifetime, reconnecting if the object changes and keeping the latest handler without re-subscribing. Signal names are typed from the bindings, including detailed forms like `"notify::label"`. The handler receives the signal's own arguments and nothing else: unlike a JSX `on*` prop, it is not passed the emitting object, which you already hold. Options are `after` (run after the default handler) and `immediate` (invoke once right after connecting, useful for syncing initial state):
+**`useSignal(object, signal, handler, options?)`** connects a handler to any GObject signal for the component's lifetime, reconnecting if the object changes and keeping the latest handler without re-subscribing. Signal names are typed from the bindings, including detailed forms like `"notify::label"`. The handler receives the signal's own arguments and nothing else: unlike a JSX `on*` prop, it is not passed the emitting object, which you already hold. Options are `isAfter` (run after the default handler) and `isImmediate` (invoke once right after connecting, useful for syncing initial state):
 
 ```ts
 import { useSignal } from "@gtkx/react";
 
 useSignal(windowRef, "notify::fullscreened", () => setFullscreened(windowRef.current?.isFullscreen() ?? false), {
-    immediate: true,
+    isImmediate: true,
 });
 ```
 

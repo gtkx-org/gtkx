@@ -33,10 +33,10 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         omittedProps: ["content"],
     }),
     AdwViewStackPage: {
-        lazy: true,
+        isLazy: true,
     },
     AdwTabPage: {
-        lazy: true,
+        isLazy: true,
     },
     AdwPreferencesRow: {
         props: preferencesRowProps,

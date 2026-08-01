@@ -61,7 +61,7 @@ import { rootElement } from "@gtkx/react";
 await render(<App />, { container: rootElement });
 ```
 
-Queries search every open toplevel by default, so dialogs and popovers are always findable, and widget animations are disabled by default so tests never wait on transitions (pass `animations: true` to opt back in). `render` takes further options: `wrapper` for context providers, `baseElement`, strict mode, error callbacks, and custom `queries`. See the [`render` reference](/reference/@gtkx/testing/).
+Queries search every open toplevel by default, so dialogs and popovers are always findable, and widget animations are disabled by default so tests never wait on transitions (pass `areAnimationsEnabled: true` to opt back in). `render` takes further options: `wrapper` for context providers, `baseElement`, strict mode, error callbacks, and custom `queries`. See the [`render` reference](/reference/@gtkx/testing/).
 
 The returned `RenderResult` carries every query bound to the render, plus the render's container, unmount, and rerender handles and the debug helpers described below. You rarely destructure it, because `screen` proxies to the most recent render and is the idiomatic way to query. `within(container)` binds the same queries to any subtree when you need to scope a search, and `renderHook(callback)` renders a hook into a throwaway `Gtk.Box` for testing hooks in isolation.
 

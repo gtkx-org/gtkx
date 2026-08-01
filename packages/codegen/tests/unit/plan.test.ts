@@ -24,28 +24,28 @@ const okPlan = (input: GlCommand, policy: GlPlanPolicy = NO_POLICY): CommandPlan
 
 describe("parseCType", () => {
     it("parses a plain scalar", () => {
-        expect(parseCType("GLenum")).toEqual({ base: "GLenum", pointers: 0, constData: false });
+        expect(parseCType("GLenum")).toEqual({ base: "GLenum", pointers: 0, isConstData: false });
     });
 
     it("parses a const data pointer", () => {
-        expect(parseCType("const GLfloat *")).toEqual({ base: "GLfloat", pointers: 1, constData: true });
+        expect(parseCType("const GLfloat *")).toEqual({ base: "GLfloat", pointers: 1, isConstData: true });
     });
 
     it("parses a mutable output pointer", () => {
-        expect(parseCType("GLuint *")).toEqual({ base: "GLuint", pointers: 1, constData: false });
+        expect(parseCType("GLuint *")).toEqual({ base: "GLuint", pointers: 1, isConstData: false });
     });
 
     it("parses a const string array", () => {
-        expect(parseCType("const GLchar *const*")).toEqual({ base: "GLchar", pointers: 2, constData: true });
+        expect(parseCType("const GLchar *const*")).toEqual({ base: "GLchar", pointers: 2, isConstData: true });
     });
 
     it("parses void pointers", () => {
-        expect(parseCType("const void *")).toEqual({ base: "void", pointers: 1, constData: true });
-        expect(parseCType("void *")).toEqual({ base: "void", pointers: 1, constData: false });
+        expect(parseCType("const void *")).toEqual({ base: "void", pointers: 1, isConstData: true });
+        expect(parseCType("void *")).toEqual({ base: "void", pointers: 1, isConstData: false });
     });
 
     it("strips struct tags from foreign handles", () => {
-        expect(parseCType("struct _cl_context *")).toEqual({ base: "_cl_context", pointers: 1, constData: false });
+        expect(parseCType("struct _cl_context *")).toEqual({ base: "_cl_context", pointers: 1, isConstData: false });
     });
 });
 

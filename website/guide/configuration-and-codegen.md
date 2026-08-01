@@ -36,7 +36,7 @@ For sharing a base config across packages, `mergeConfig(base, override)` deep-me
 
 **`userEventSignals`** maps GLib type names to signal names that represent user interaction, such as `{ GtkEditable: ["changed"] }`. While a React commit is applying your props, these signals are suppressed on the committing tree, so a handler like `onChanged` only ever reports the user editing the widget and never echoes a programmatic write React itself performed. A built-in table covers GTK4 and Adwaita; entries you add here are unioned with it, and the type name may be a class or an interface, applying to every type that inherits or implements it.
 
-**`elements`** carries per-element configuration keyed by GLib type name. Its `behaviors` key points at a module of custom `behaviors` and `lazy` flags, covered in [Customizing elements](#advanced-customizing-elements) below; that module is imported by your app at runtime. Its `config` key holds the entries codegen reads: `component` and `props` override what a generated element renders and extends, and `omittedProps` lists properties to leave out of an element's generated props.
+**`elements`** carries per-element configuration keyed by GLib type name. Its `behaviors` key points at a module of custom `behaviors` and `isLazy` flags, covered in [Customizing elements](#advanced-customizing-elements) below; that module is imported by your app at runtime. Its `config` key holds the entries codegen reads: `component` and `props` override what a generated element renders and extends, and `omittedProps` lists properties to leave out of an element's generated props.
 
 **`classStructs`** lists qualified GIR record names to treat as class structs, such as `["Pango.AttrClass"]`. A class struct is a vtable rather than data, so it is never bound: the record gets no class, and any function mentioning one is left out. GIR marks them with `glib:is-gtype-struct-for` and codegen follows that, plus a built-in list of the few the annotation cannot cover (`GObject.TypeClass` and `GObject.TypeInterface` are what it points at, and `GObject.EnumClass`, `GObject.FlagsClass`, `GObject.TypePluginClass`, `Pango.AttrClass` and `Gtk.EditableClass` predate it). Names you add here extend that list, for a library that ships an unannotated vtable of its own.
 
@@ -174,7 +174,7 @@ declare module "@gtkx/jsx/gtk" {
 }
 ```
 
-Every widget element then accepts a `cursorName` prop and the reconciler calls `setCursorFromName` whenever the value changes. A behavior declared on a type covers every element descending from it, which is how the built-in `controllers` behavior on `GtkWidget` reaches all widgets. Your behaviors are consulted before the built-in ones, so you can also override how an existing slot or prop behaves. The same map's `lazy: true` marks a type whose GObject its parent container creates (a page or layout child), so its element defers construction until the parent adopts it.
+Every widget element then accepts a `cursorName` prop and the reconciler calls `setCursorFromName` whenever the value changes. A behavior declared on a type covers every element descending from it, which is how the built-in `controllers` behavior on `GtkWidget` reaches all widgets. Your behaviors are consulted before the built-in ones, so you can also override how an existing slot or prop behaves. The same map's `isLazy: true` marks a type whose GObject its parent container creates (a page or layout child), so its element defers construction until the parent adopts it.
 
 ## Next
 

@@ -104,7 +104,7 @@ function refreshExpandable(current: LevelState, level: Level): void {
     const next: Map<string, boolean> = new Map();
 
     for (const [index, id] of level.ids.entries()) {
-        const isWanted = level.isExpandable[index] ?? false;
+        const isWanted = level.expandableFlags[index] ?? false;
         const previous = current.canExpand.get(id);
         next.set(id, isWanted);
 
@@ -144,7 +144,7 @@ function pruneObjects(state: ModelState, index: CollectionIndex): void {
     }
 
     for (const id of state.objects.keys()) {
-        if (!index.has(id)) {
+        if (!index.hasId(id)) {
             state.objects.delete(id);
         }
     }

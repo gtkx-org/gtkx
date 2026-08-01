@@ -34,7 +34,7 @@ type RenderListViewOptions<T> = ListViewFixtureOptions & {
     renderItem?: ListItemRenderer<T>;
     expandedIds?: string[];
     onExpandedChange?: (ids: string[]) => void;
-    expandAll?: boolean;
+    shouldExpandAll?: boolean;
 };
 
 type RenderGridViewOptions<T> = ListViewFixtureOptions & {
@@ -65,7 +65,7 @@ type RenderColumnViewOptions<T> = {
     onSelectionChanged?: (ids: string[]) => void;
     expandedIds?: string[];
     onExpandedChange?: (ids: string[]) => void;
-    expandAll?: boolean;
+    shouldExpandAll?: boolean;
     sortColumn?: string | null;
     sortOrder?: Gtk.SortType;
     onSortChanged?: (column: string | null, order: Gtk.SortType) => void;
@@ -150,7 +150,7 @@ const renderListView = async <T = NamedValue>(
 
     const draw = (data: FixtureInput<T>, opts: RenderListViewOptions<T>): ReactNode => {
         const { renderItem = renderNamed } = opts;
-        const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
+        const expandedIds = opts.shouldExpandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
 
         return withScrollWrapper(
             opts,
@@ -213,7 +213,7 @@ const renderColumnView = async <T = NamedValue>(
 
     const draw = (data: FixtureInput<T>, opts: RenderColumnViewOptions<T>): ReactNode => {
         const { columns = defaultColumns } = opts;
-        const expandedIds = opts.expandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
+        const expandedIds = opts.shouldExpandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
 
         return withScrollWrapper(
             { minContentHeight: opts.minContentHeight ?? 500, minContentWidth: opts.minContentWidth },

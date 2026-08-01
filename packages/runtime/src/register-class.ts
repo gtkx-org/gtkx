@@ -239,7 +239,7 @@ function propertyVfuncs(klass: AnyClass, accessors: PropertyAccessor[]): Discove
 
 function markValueCallerAllocated(argDescriptors: Descriptor[]): Descriptor[] {
     return argDescriptors.map((arg, index) =>
-        index === VALUE_ARG_INDEX ? { ...arg, callerAllocated: true } : arg);
+        index === VALUE_ARG_INDEX ? { ...arg, isCallerAllocated: true } : arg);
 }
 
 function buildPropertyVfunc(

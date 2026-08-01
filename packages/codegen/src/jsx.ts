@@ -21,12 +21,12 @@ type RunJsxCodegenOptions = {
     userLazyElements: string[];
     userProps: Record<string, ModuleExport>;
     userOmittedProps: OmittedProps;
-    giRegenerated: boolean;
-    force: boolean;
+    isGiRegenerated: boolean;
+    isForced: boolean;
 };
 
 type RunJsxCodegenResult = {
-    regenerated: boolean;
+    isRegenerated: boolean;
     intrinsicElementCount: number;
 };
 
@@ -45,11 +45,11 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         omittedProps,
     };
 
-    if (!options.force && !options.giRegenerated) {
-        const { fresh, intrinsicElementCount } = jsxStoreFreshness(options.jsx.storeDir, fingerprintInput);
+    if (!options.isForced && !options.isGiRegenerated) {
+        const { isFresh, intrinsicElementCount } = jsxStoreFreshness(options.jsx.storeDir, fingerprintInput);
 
-        if (fresh) {
-            return { regenerated: false, intrinsicElementCount };
+        if (isFresh) {
+            return { isRegenerated: false, intrinsicElementCount };
         }
     }
 
@@ -69,7 +69,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         { relativePath: ELEMENTS_FILENAME, content: renderGeneratedElements(elements) },
     ]);
 
-    return { regenerated: true, intrinsicElementCount };
+    return { isRegenerated: true, intrinsicElementCount };
 };
 
 export { runJsxCodegen, type RunJsxCodegenOptions, type RunJsxCodegenResult };

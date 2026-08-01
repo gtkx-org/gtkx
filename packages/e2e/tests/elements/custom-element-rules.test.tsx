@@ -52,13 +52,13 @@ describe("custom element rules from gtkx.config.ts", () => {
     it("clears a declared container prop when its child unmounts", async () => {
         const frameRef = createRef<Gtk.Frame>();
 
-        const App = ({ withLabel }: { withLabel: boolean }) => (
-            <GtkFrame ref={frameRef} labelSlot={withLabel ? <GtkLabel>Section</GtkLabel> : null} />
+        const App = ({ hasLabel }: { hasLabel: boolean }) => (
+            <GtkFrame ref={frameRef} labelSlot={hasLabel ? <GtkLabel>Section</GtkLabel> : null} />
         );
 
-        const { rerender } = await render(<App withLabel={true} />);
+        const { rerender } = await render(<App hasLabel={true} />);
         expect(frameRef.current?.getLabelWidget()).not.toBeNull();
-        await rerender(<App withLabel={false} />);
+        await rerender(<App hasLabel={false} />);
         expect(frameRef.current?.getLabelWidget()).toBeNull();
     });
 });

@@ -31,8 +31,8 @@ const serializeWidget = (
         role: testing.formatRole(widget.getAccessibleRole()),
         name: widget.getName() || null,
         text: testing.getWidgetNodeText(widget),
-        sensitive: widget.getSensitive(),
-        visible: widget.getVisible(),
+        isSensitive: widget.getSensitive(),
+        isVisible: widget.getVisible(),
         cssClasses: widget.getCssClasses(),
         children,
     };

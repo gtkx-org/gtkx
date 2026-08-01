@@ -19,7 +19,7 @@ type ReferenceName = {
 type TsTypeTarget = {
     containerStyle: "map" | "record";
     callbackType: string;
-    byteArrayAsNumber: boolean;
+    shouldRenderByteArrayAsNumber: boolean;
     renderNamed: (resolved: GirType | undefined, name: ReferenceName) => string;
     renderGtype: () => string;
 };
@@ -101,7 +101,7 @@ const renderContainerType = (
 };
 
 const renderSequenceType = (library: Library, target: TsTypeTarget, type: CArrayType | ListType): string => {
-    if (type.kind === "list" && type.flavor === "gbytearray" && target.byteArrayAsNumber) {
+    if (type.kind === "list" && type.flavor === "gbytearray" && target.shouldRenderByteArrayAsNumber) {
         return "number[]";
     }
 
@@ -127,7 +127,7 @@ const renderNamedType = (
 const moduleTarget = (context: ModuleContext): TsTypeTarget => ({
     containerStyle: "map",
     callbackType: "((...args: any[]) => any)",
-    byteArrayAsNumber: true,
+    shouldRenderByteArrayAsNumber: true,
     renderNamed: (_resolved, name) => context.qualify(name.namespaceName, name.typeName),
     renderGtype: () => gtypeTsType(context),
 });
@@ -146,7 +146,7 @@ const recordTypeTarget = (
     const target: TsTypeTarget = {
         containerStyle: "record",
         callbackType: "((...args: unknown[]) => unknown)",
-        byteArrayAsNumber: false,
+        shouldRenderByteArrayAsNumber: false,
         renderNamed: (resolved, name) => {
             if (resolved?.kind === "alias") {
                 return resolved.value.target === undefined

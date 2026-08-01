@@ -3,7 +3,7 @@ import type { ListItem, ListSection } from "../types.js";
 type Level = {
     key: string;
     ids: string[];
-    isExpandable: boolean[];
+    expandableFlags: boolean[];
 };
 
 type CollectionIndex = {
@@ -11,7 +11,7 @@ type CollectionIndex = {
     size: number;
     groups: Level[];
     children: Map<string, Level>;
-    has: (id: string) => boolean;
+    hasId: (id: string) => boolean;
     itemFor: (id: string) => ListItem | undefined;
     sectionFor: (id: string) => unknown;
     positionFor: (id: string) => number;
@@ -38,7 +38,7 @@ function collectChildren(state: IndexState, level: Level, item: ListItem): void 
     }
 
     const canExpand = hasChildren(item);
-    level.isExpandable.push(canExpand);
+    level.expandableFlags.push(canExpand);
 
     if (!canExpand) {
         return;
@@ -49,7 +49,7 @@ function collectChildren(state: IndexState, level: Level, item: ListItem): void 
 }
 
 function collectLevel(state: IndexState, key: string, items: ListItem[]): Level {
-    const level: Level = { key, ids: [], isExpandable: [] };
+    const level: Level = { key, ids: [], expandableFlags: [] };
 
     for (const item of items) {
         level.ids.push(item.id);
@@ -158,7 +158,7 @@ function createCollectionIndex(
         size: state.itemsById.size,
         groups: state.groups,
         children: state.children,
-        has: (id) => state.itemsById.has(id),
+        hasId: (id) => state.itemsById.has(id),
         itemFor: (id) => state.itemsById.get(id),
         sectionFor: (id) => sectionFor(state, id),
         positionFor: (id) => positionFor(state, id),

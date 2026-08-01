@@ -170,9 +170,9 @@ type RenderOptions<Q extends QueryMap = Record<never, never>> = {
     /** Component wrapped around the rendered element, such as a context provider. */
     wrapper?: WrapperComponent | undefined;
     /** Render inside React StrictMode. */
-    reactStrictMode?: boolean | undefined;
+    isReactStrictMode?: boolean | undefined;
     /** Enable widget animations during the test. */
-    animations?: boolean | undefined;
+    areAnimationsEnabled?: boolean | undefined;
     /** Called for errors caught by React error boundaries. */
     onCaughtError?: ((error: unknown, errorInfo: ErrorInfo) => void) | undefined;
     /** Called for errors React recovered from automatically. */

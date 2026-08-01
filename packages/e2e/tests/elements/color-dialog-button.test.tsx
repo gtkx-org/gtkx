@@ -84,13 +84,13 @@ describe("render - ColorDialogButton (3)", () => {
     it("updates withAlpha when the slot element changes", async () => {
         const ref = createRef<Gtk.ColorDialogButton>();
 
-        function App({ withAlpha }: { withAlpha: boolean }) {
-            return <GtkColorDialogButton ref={ref} dialog={<GtkColorDialog withAlpha={withAlpha} />} />;
+        function App({ hasAlpha }: { hasAlpha: boolean }) {
+            return <GtkColorDialogButton ref={ref} dialog={<GtkColorDialog withAlpha={hasAlpha} />} />;
         }
 
-        await render(<App withAlpha={true} />);
+        await render(<App hasAlpha={true} />);
         expect(ref.current?.getDialog()).toHaveObjectProperty("withAlpha", true);
-        await render(<App withAlpha={false} />);
+        await render(<App hasAlpha={false} />);
         expect(ref.current?.getDialog()).toHaveObjectProperty("withAlpha", false);
     });
 });

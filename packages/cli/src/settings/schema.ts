@@ -11,7 +11,7 @@ import { renderEnvModule } from "./render.js";
 
 type SchemaEnvResult = {
     path: string;
-    written: boolean;
+    isWritten: boolean;
 };
 
 const SCHEMA_SUFFIX = ".gschema.xml";
@@ -155,7 +155,7 @@ const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEnvResult
     const path = schemaEnvPath(rootDir);
     const isWritten = didWriteChanges(path, content);
 
-    return { path, written: isWritten };
+    return { path, isWritten };
 };
 
 export {

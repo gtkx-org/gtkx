@@ -1,12 +1,14 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
+import { GtkLabel, GtkNotebook, GtkNotebookPage, type GtkNotebookPageElementProps } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { buildPlainNotebook } from "../helpers/notebook-render.js";
 import { renderChildren } from "../helpers/render-children.js";
 
-const renderPage = async (pageProps: { tabLabel: string; tabExpand?: boolean; tabFill?: boolean }) => {
+type NotebookPageMetadata = Pick<GtkNotebookPageElementProps, "tabLabel" | "tabExpand" | "tabFill">;
+
+const renderPage = async (pageProps: NotebookPageMetadata) => {
     const notebookRef = createRef<Gtk.Notebook>();
     const contentRef = createRef<Gtk.Label>();
 
@@ -86,19 +88,19 @@ describe("render - NotebookPage (4)", () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
 
-        function App({ showContent }: { showContent: boolean }) {
+        function App({ shouldShowContent }: { shouldShowContent: boolean }) {
             return (
                 <GtkNotebook ref={notebookRef}>
                     <GtkNotebookPage tabLabel="Tab">
-                        {showContent ? <GtkLabel ref={contentRef}>Content</GtkLabel> : null}
+                        {shouldShowContent ? <GtkLabel ref={contentRef}>Content</GtkLabel> : null}
                     </GtkNotebookPage>
                 </GtkNotebook>
             );
         }
 
-        await render(<App showContent={false} />);
+        await render(<App shouldShowContent={false} />);
         expect(notebookRef.current?.getNPages()).toBe(0);
-        await render(<App showContent={true} />);
+        await render(<App shouldShowContent={true} />);
         expect(notebookRef.current?.getNPages()).toBe(1);
         const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(page).toHaveObjectProperty("tabLabel", "Tab");

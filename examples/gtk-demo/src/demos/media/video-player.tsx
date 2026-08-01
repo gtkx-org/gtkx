@@ -97,7 +97,7 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     useSignal(window, "notify::fullscreened", () => {
         setFullscreened(window.current?.isFullscreen() ?? false);
     }, {
-        immediate: true,
+        isImmediate: true,
     });
 
     const handleOpen = () => {

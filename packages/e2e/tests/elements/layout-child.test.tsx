@@ -44,10 +44,10 @@ function MovableCellApp({ gridRef, column }: { gridRef: RefObject<Gtk.Grid | nul
     );
 }
 
-function OptionalCellApp({ gridRef, show }: { gridRef: RefObject<Gtk.Grid | null>; show: boolean }) {
+function OptionalCellApp({ gridRef, shouldShow }: { gridRef: RefObject<Gtk.Grid | null>; shouldShow: boolean }) {
     return (
         <GtkGrid ref={gridRef}>
-            {show && (
+            {shouldShow && (
                 <GtkGridLayoutChild column={0} row={0}>
                     <GtkLabel>A</GtkLabel>
                 </GtkGridLayoutChild>
@@ -82,12 +82,18 @@ function ResetTransformApp({
     );
 }
 
-function ClippedOverlayApp({ overlayRef, clip }: { overlayRef: RefObject<Gtk.Overlay | null>; clip: boolean }) {
+function ClippedOverlayApp({
+    overlayRef,
+    shouldClip,
+}: {
+    overlayRef: RefObject<Gtk.Overlay | null>;
+    shouldClip: boolean;
+}) {
     return (
         <GtkOverlay
             ref={overlayRef}
             overlays={[
-                <GtkOverlayLayoutChild key="a" clipOverlay={clip}>
+                <GtkOverlayLayoutChild key="a" clipOverlay={shouldClip}>
                     <GtkButton label="Clipped" />
                 </GtkOverlayLayoutChild>,
             ]}
@@ -97,11 +103,11 @@ function ClippedOverlayApp({ overlayRef, clip }: { overlayRef: RefObject<Gtk.Ove
     );
 }
 
-function TransientOverlayApp({ labelRef, show }: { labelRef: RefObject<Gtk.Label | null>; show: boolean }) {
+function TransientOverlayApp({ labelRef, shouldShow }: { labelRef: RefObject<Gtk.Label | null>; shouldShow: boolean }) {
     return (
         <GtkOverlay
             overlays={
-                show && (
+                shouldShow && (
                     <GtkOverlayLayoutChild>
                         <GtkButton label="Transient" />
                     </GtkOverlayLayoutChild>
@@ -113,12 +119,18 @@ function TransientOverlayApp({ labelRef, show }: { labelRef: RefObject<Gtk.Label
     );
 }
 
-function RemovableOverlayApp({ overlayRef, show }: { overlayRef: RefObject<Gtk.Overlay | null>; show: boolean }) {
+function RemovableOverlayApp({
+    overlayRef,
+    shouldShow,
+}: {
+    overlayRef: RefObject<Gtk.Overlay | null>;
+    shouldShow: boolean;
+}) {
     return (
         <GtkOverlay
             ref={overlayRef}
             overlays={
-                show
+                shouldShow
                     ? [
                             <GtkOverlayLayoutChild key="a">
                                 <GtkButton label="Removable" />
@@ -202,9 +214,9 @@ describe("render - GtkGridLayoutChild (2)", () => {
 
     it("removes a child when it unmounts", async () => {
         const gridRef = createRef<Gtk.Grid>();
-        const { rerender } = await render(<OptionalCellApp gridRef={gridRef} show={true} />);
+        const { rerender } = await render(<OptionalCellApp gridRef={gridRef} shouldShow={true} />);
         expect(gridRef.current?.getChildAt(0, 0)).not.toBeNull();
-        await rerender(<OptionalCellApp gridRef={gridRef} show={false} />);
+        await rerender(<OptionalCellApp gridRef={gridRef} shouldShow={false} />);
         expect(gridRef.current?.getChildAt(0, 0)).toBeNull();
     });
 });
@@ -279,12 +291,12 @@ describe("render - GtkOverlayLayoutChild (1)", () => {
 
     it("toggles clipOverlay in place", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
-        const { rerender } = await render(<ClippedOverlayApp overlayRef={overlayRef} clip={false} />);
+        const { rerender } = await render(<ClippedOverlayApp overlayRef={overlayRef} shouldClip={false} />);
         const overlay = overlayRef.current as Gtk.Overlay;
         const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Clipped" });
         const addOverlay = vi.spyOn(overlay, "addOverlay");
         expect(overlay.getClipOverlay(button)).toBe(false);
-        await rerender(<ClippedOverlayApp overlayRef={overlayRef} clip={true} />);
+        await rerender(<ClippedOverlayApp overlayRef={overlayRef} shouldClip={true} />);
         expect(overlay.getClipOverlay(button)).toBe(true);
         expect(addOverlay).not.toHaveBeenCalled();
     });
@@ -293,20 +305,20 @@ describe("render - GtkOverlayLayoutChild (1)", () => {
 describe("render - GtkOverlayLayoutChild (2)", () => {
     it("keeps the main child mounted when an overlay appears and disappears", async () => {
         const labelRef = createRef<Gtk.Label>();
-        const { rerender } = await render(<TransientOverlayApp labelRef={labelRef} show={false} />);
+        const { rerender } = await render(<TransientOverlayApp labelRef={labelRef} shouldShow={false} />);
         const label = labelRef.current;
         expect(label).not.toBeNull();
-        await rerender(<TransientOverlayApp labelRef={labelRef} show={true} />);
+        await rerender(<TransientOverlayApp labelRef={labelRef} shouldShow={true} />);
         expect(labelRef.current).toBe(label);
-        await rerender(<TransientOverlayApp labelRef={labelRef} show={false} />);
+        await rerender(<TransientOverlayApp labelRef={labelRef} shouldShow={false} />);
         expect(labelRef.current).toBe(label);
     });
 
     it("removes an overlay when it unmounts", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
-        const { rerender } = await render(<RemovableOverlayApp overlayRef={overlayRef} show={true} />);
+        const { rerender } = await render(<RemovableOverlayApp overlayRef={overlayRef} shouldShow={true} />);
         expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Removable" })).not.toBeNull();
-        await rerender(<RemovableOverlayApp overlayRef={overlayRef} show={false} />);
+        await rerender(<RemovableOverlayApp overlayRef={overlayRef} shouldShow={false} />);
         expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Removable" })).toBeNull();
     });
 });

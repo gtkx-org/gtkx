@@ -11,7 +11,7 @@ import { useSelection } from "./selection.js";
 type CollectionDataOptions = {
     items?: ListItem[] | undefined;
     sections?: ListSection[] | undefined;
-    flat?: boolean | undefined;
+    isFlat?: boolean | undefined;
 };
 
 type CollectionOptions = CollectionDataOptions & SelectionProps & ExpansionProps;
@@ -22,9 +22,9 @@ type CollectionResult = {
 };
 
 function useCollectionData(options: CollectionDataOptions): Collection {
-    const { items, sections, flat } = options;
+    const { items, sections, isFlat } = options;
     const [gtk] = useState(createCollectionModel);
-    const index = useMemo(() => createCollectionIndex(items, sections, flat === true), [items, sections, flat]);
+    const index = useMemo(() => createCollectionIndex(items, sections, isFlat === true), [items, sections, isFlat]);
     const collection = useMemo(() => createCollection(gtk, index), [gtk, index]);
 
     useLayoutEffect(() => {

@@ -23,7 +23,7 @@ type IntrinsicElementEntry = {
 };
 
 type PropNameCollector = {
-    keep: (property: GirProperty) => boolean;
+    shouldKeep: (property: GirProperty) => boolean;
     seen: Set<string>;
     names: string[];
 };
@@ -114,10 +114,10 @@ const collectSignals = (sources: GirClass[]): [string, string][] => {
 };
 
 const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollector): void => {
-    const { keep, seen, names } = collector;
+    const { shouldKeep, seen, names } = collector;
 
     for (const property of source.properties) {
-        if (!keep(property)) {
+        if (!shouldKeep(property)) {
             continue;
         }
 
@@ -133,7 +133,7 @@ const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollect
 };
 
 const collectPropNames = (sources: GirClass[], shouldKeep: (property: GirProperty) => boolean): string[] => {
-    const collector: PropNameCollector = { keep: shouldKeep, seen: new Set<string>(), names: [] };
+    const collector: PropNameCollector = { shouldKeep, seen: new Set<string>(), names: [] };
 
     for (const source of sources) {
         collectPropNamesFromSource(source, collector);

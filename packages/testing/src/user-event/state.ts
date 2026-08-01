@@ -1,8 +1,8 @@
 type UserEventState = {
     modifierState: number;
-    mouseLeftDown: boolean;
+    isMouseLeftDown: boolean;
 };
 
-const createInitialState = (): UserEventState => ({ modifierState: 0, mouseLeftDown: false });
+const createInitialState = (): UserEventState => ({ modifierState: 0, isMouseLeftDown: false });
 
 export { createInitialState, type UserEventState };

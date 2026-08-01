@@ -37,7 +37,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
         return {
             tree: testing.prettyWidget(container, {
                 getId: (w) => registry.getOrCreateId(w),
-                highlight: false,
+                shouldHighlight: false,
                 ...((params.maxDepth !== undefined) && { maxDepth: params.maxDepth }),
             }),
         };

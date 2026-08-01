@@ -418,7 +418,7 @@ describe("validateConfig (elements.config)", () => {
             validateWithAppId({
                 elements: {
                     config: {
-                        GtkButton: { component: { module: "@example/wrappers", export: "withButton" }, lazy: true },
+                        GtkButton: { component: { module: "@example/wrappers", export: "withButton" }, isLazy: true },
                     },
                 },
             });
@@ -464,7 +464,7 @@ describe("validateConfig (elements.config)", () => {
     });
 
     it("collects the omitted props of every element entry", () => {
-        const elements = { config: { GtkButton: { omittedProps: ["child"] }, GtkLabel: { lazy: true } } };
+        const elements = { config: { GtkButton: { omittedProps: ["child"] }, GtkLabel: { isLazy: true } } };
         expect(resolveOmittedProps(elements)).toEqual({ GtkButton: ["child"] });
     });
 });

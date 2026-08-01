@@ -80,29 +80,29 @@ describe("act / async callback", () => {
 describe("act / IS_REACT_ACT_ENVIRONMENT", () => {
     it("sets the flag inside a sync callback and restores it once the act settles", async () => {
         const before = disableActEnvironment();
-        let insideEnv: boolean | undefined;
+        let isInsideEnv: boolean | undefined;
 
         await act(() => {
-            insideEnv = getIsReactActEnvironment();
+            isInsideEnv = getIsReactActEnvironment();
         });
 
-        expect(insideEnv).toBe(true);
+        expect(isInsideEnv).toBe(true);
         expectActEnvironmentRestored(before);
     });
 
     it("keeps the flag set across an async callback and restores it on settle", async () => {
         const before = disableActEnvironment();
-        let envBeforeAwait: boolean | undefined;
-        let envAfterAwait: boolean | undefined;
+        let wasEnvSetBeforeAwait: boolean | undefined;
+        let wasEnvSetAfterAwait: boolean | undefined;
 
         await act(async () => {
-            envBeforeAwait = getIsReactActEnvironment();
+            wasEnvSetBeforeAwait = getIsReactActEnvironment();
             await Promise.resolve();
-            envAfterAwait = getIsReactActEnvironment();
+            wasEnvSetAfterAwait = getIsReactActEnvironment();
         });
 
-        expect(envBeforeAwait).toBe(true);
-        expect(envAfterAwait).toBe(true);
+        expect(wasEnvSetBeforeAwait).toBe(true);
+        expect(wasEnvSetAfterAwait).toBe(true);
         expectActEnvironmentRestored(before);
     });
 

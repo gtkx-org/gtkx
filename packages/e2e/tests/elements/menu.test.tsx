@@ -117,10 +117,10 @@ const LabeledItemApp = ({ menuRef, label }: { menuRef: MenuRef; label: string })
     <SingleEntryApp menuRef={menuRef} entry={{ label, action: "win.item" }} />
 );
 
-const RemovableItemApp = ({ menuRef, showItem }: { menuRef: MenuRef; showItem: boolean }) => (
+const RemovableItemApp = ({ menuRef, shouldShowItem }: { menuRef: MenuRef; shouldShowItem: boolean }) => (
     <GtkPopoverMenu
         ref={menuRef}
-        menuModel={<GMenu items={showItem ? [{ label: "Removable", action: "win.r" }] : []} />}
+        menuModel={<GMenu items={shouldShowItem ? [{ label: "Removable", action: "win.r" }] : []} />}
     />
 );
 
@@ -151,10 +151,10 @@ const setupDeepMenu = async () => {
     return { ref, rerender };
 };
 
-const GrowingSubmenuApp = ({ menuRef, extra }: { menuRef: MenuRef; extra: boolean }) => {
+const GrowingSubmenuApp = ({ menuRef, hasExtraItem }: { menuRef: MenuRef; hasExtraItem: boolean }) => {
     const submenu: MenuItem[] = [{ label: "Cut", action: "win.cut" }];
 
-    if (extra) {
+    if (hasExtraItem) {
         submenu.push({ label: "Copy", action: "win.copy" });
     }
 
@@ -207,9 +207,9 @@ describe("render - Menu item updates", () => {
 
     it("removes an item when it leaves the items array", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
-        await render(<RemovableItemApp menuRef={ref} showItem={true} />);
+        await render(<RemovableItemApp menuRef={ref} shouldShowItem={true} />);
         expect(requireModel(ref.current).getNItems()).toBe(1);
-        await render(<RemovableItemApp menuRef={ref} showItem={false} />);
+        await render(<RemovableItemApp menuRef={ref} shouldShowItem={false} />);
         expect(requireModel(ref.current).getNItems()).toBe(0);
     });
 });
@@ -290,10 +290,10 @@ describe("render - Menu submenus", () => {
 
     it("adds items to a submenu when its entries grow", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
-        await render(<GrowingSubmenuApp menuRef={ref} extra={false} />);
+        await render(<GrowingSubmenuApp menuRef={ref} hasExtraItem={false} />);
         const submenu = requireLink(submenuAt(requireModel(ref.current), 0));
         expect(submenu.getNItems()).toBe(1);
-        await render(<GrowingSubmenuApp menuRef={ref} extra={true} />);
+        await render(<GrowingSubmenuApp menuRef={ref} hasExtraItem={true} />);
         const grownSubmenu = requireLink(submenuAt(requireModel(ref.current), 0));
         expect(grownSubmenu.getNItems()).toBe(2);
     });

@@ -33,16 +33,16 @@ function SwappedChildApp({
     windowRef,
     firstRef,
     secondRef,
-    first,
+    isFirst,
 }: {
     windowRef: RefObject<Gtk.ApplicationWindow | null>;
     firstRef: RefObject<Gtk.Label | null>;
     secondRef: RefObject<Gtk.Label | null>;
-    first: boolean;
+    isFirst: boolean;
 }) {
     return (
         <GtkApplicationWindow ref={windowRef}>
-            {first
+            {isFirst
                 ? (
                         <GtkLabel ref={firstRef} key="first">
                             First
@@ -134,17 +134,17 @@ describe("render - Window (3)", () => {
             const ref = createRef<Gtk.ApplicationWindow>();
             const appId = uniqueAppId();
 
-            function App({ show }: { show: boolean }) {
-                return show ? <GtkApplicationWindow ref={ref} title="Destroy" /> : null;
+            function App({ shouldShow }: { shouldShow: boolean }) {
+                return shouldShow ? <GtkApplicationWindow ref={ref} title="Destroy" /> : null;
             }
 
-            const { rerender } = await render(<App show={true} />, appId);
+            const { rerender } = await render(<App shouldShow={true} />, appId);
             const windowId = ref.current;
             expect(windowId).toBeDefined();
 
             await rerender(
                 <GtkApplication applicationId={appId} flags={APP_FLAGS}>
-                    <App show={false} />
+                    <App shouldShow={false} />
                 </GtkApplication>,
             );
         });
@@ -173,7 +173,7 @@ describe("render - Window (4)", () => {
             const appId = uniqueAppId();
 
             const { rerender } = await render(
-                <SwappedChildApp windowRef={windowRef} firstRef={label1Ref} secondRef={label2Ref} first={true} />,
+                <SwappedChildApp windowRef={windowRef} firstRef={label1Ref} secondRef={label2Ref} isFirst={true} />,
                 appId,
             );
 
@@ -185,7 +185,7 @@ describe("render - Window (4)", () => {
                         windowRef={windowRef}
                         firstRef={label1Ref}
                         secondRef={label2Ref}
-                        first={false}
+                        isFirst={false}
                     />
                 </GtkApplication>,
             );

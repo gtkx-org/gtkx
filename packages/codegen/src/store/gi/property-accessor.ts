@@ -15,7 +15,7 @@ type ResolvedAccessor = {
     jsName: string;
     tsType: string;
     hasGetter: boolean;
-    writable: boolean;
+    isWritable: boolean;
     getterMember: string | undefined;
     getterMethod: GirFunction | undefined;
     setterMember: string | undefined;
@@ -148,7 +148,7 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
     const ownType = resolveOwnType(context, property, getterMethod, setterMethod);
     const tsType = resolveTsType(args.inheritedType, ownType);
 
-    return { jsName, tsType, hasGetter, writable: isWritable, getterMember, getterMethod, setterMember };
+    return { jsName, tsType, hasGetter, isWritable, getterMember, getterMethod, setterMember };
 };
 
 const resolveOwnerAccessor = (
@@ -195,7 +195,7 @@ const renderResolvedPropertyAccessor = (
     property: GirProperty,
     accessor: ResolvedAccessor,
 ): string => {
-    const { jsName, tsType, hasGetter, writable, getterMember, getterMethod, setterMember } = accessor;
+    const { jsName, tsType, hasGetter, isWritable, getterMember, getterMethod, setterMember } = accessor;
     const blocks: string[] = [];
 
     if (hasGetter) {
@@ -203,7 +203,7 @@ const renderResolvedPropertyAccessor = (
         blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getterBody));
     }
 
-    if (writable) {
+    if (isWritable) {
         const setterBody =
             setterMember === undefined ? renderGenericSetBody(context, property) : `this.${setterMember}(value);`;
 
@@ -217,10 +217,10 @@ const renderPropertyAccessor = (args: PropertyAccessorArgs): string | undefined 
     withAccessor(args, (accessor) => renderResolvedPropertyAccessor(args.context, args.property, accessor));
 
 const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | undefined =>
-    withAccessor(args, ({ jsName, tsType, hasGetter, writable }) => {
+    withAccessor(args, ({ jsName, tsType, hasGetter, isWritable }) => {
         const doc = renderJsDoc(args.property.doc);
 
-        if (hasGetter && writable) {
+        if (hasGetter && isWritable) {
             return `${doc}${jsName}: ${tsType};`;
         }
 

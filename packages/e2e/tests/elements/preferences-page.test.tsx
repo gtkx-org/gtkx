@@ -2,13 +2,13 @@ import { AdwActionRow, AdwPreferencesGroup, AdwPreferencesPage } from "@gtkx/jsx
 import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
-function App({ showBehavior }: { showBehavior: boolean }) {
+function App({ shouldShowBehavior }: { shouldShowBehavior: boolean }) {
     return (
         <AdwPreferencesPage>
             <AdwPreferencesGroup title="Appearance">
                 <AdwActionRow title="Dark Mode" />
             </AdwPreferencesGroup>
-            {showBehavior && (
+            {shouldShowBehavior && (
                 <AdwPreferencesGroup title="Behavior">
                     <AdwActionRow title="Autosave" />
                 </AdwPreferencesGroup>
@@ -36,9 +36,9 @@ describe("render - PreferencesPage", () => {
     });
 
     it("removes a preference group when unmounted", async () => {
-        const { rerender } = await render(<App showBehavior={true} />);
+        const { rerender } = await render(<App shouldShowBehavior={true} />);
         expect(await screen.findByText("Autosave")).toBeDefined();
-        await rerender(<App showBehavior={false} />);
+        await rerender(<App shouldShowBehavior={false} />);
         expect(screen.queryByText("Autosave")).toBeNull();
         expect(await screen.findByText("Dark Mode")).toBeDefined();
     });

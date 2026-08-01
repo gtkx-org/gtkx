@@ -10,7 +10,7 @@ type OutputStream = {
 type LoggerOptions = {
     namespace?: string | undefined;
     stream?: OutputStream | undefined;
-    debugEnabled?: boolean | undefined;
+    isDebugEnabled?: boolean | undefined;
 };
 
 const BASE_PREFIX = "[gtkx]";
@@ -62,13 +62,13 @@ function getPrefix(namespace: string | undefined): string {
 class Logger {
     private stream: OutputStream;
     private prefix: string;
-    private debugEnabled: boolean;
+    private isDebugEnabled: boolean;
     private colors: Colors;
 
     constructor(options: LoggerOptions = {}) {
         this.stream = options.stream ?? process.stderr;
         this.prefix = getPrefix(options.namespace);
-        this.debugEnabled = options.debugEnabled ?? isDebugEnabled(options.namespace, process.argv, process.env);
+        this.isDebugEnabled = options.isDebugEnabled ?? isDebugEnabled(options.namespace, process.argv, process.env);
         this.colors = getColors(this.stream);
     }
 
@@ -90,7 +90,7 @@ class Logger {
     }
 
     debug(message: string, ...rest: unknown[]): void {
-        if (!this.debugEnabled) {
+        if (!this.isDebugEnabled) {
             return;
         }
 

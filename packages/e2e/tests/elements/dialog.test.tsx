@@ -78,12 +78,12 @@ describe("Dialog - render prop and lifecycle", () => {
     it("does not fire onClose when React unmounts the dialog", async () => {
         const onClose = vi.fn();
 
-        const App = ({ open }: { open: boolean }) => (
-            <InApp>{open ? <AdwAlertDialog onClosed={onClose} heading="Unmounted" /> : null}</InApp>
+        const App = ({ isOpen }: { isOpen: boolean }) => (
+            <InApp>{isOpen ? <AdwAlertDialog onClosed={onClose} heading="Unmounted" /> : null}</InApp>
         );
 
-        const { rerender } = await render(<App open={true} />);
-        await rerender(<App open={false} />);
+        const { rerender } = await render(<App isOpen={true} />);
+        await rerender(<App isOpen={false} />);
         expect(onClose).not.toHaveBeenCalled();
     });
 });

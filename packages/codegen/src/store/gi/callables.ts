@@ -34,7 +34,7 @@ type CallableMemberOptions = {
     resolveName: (callable: GirFunction) => string | undefined;
     isStatic: boolean;
     returnTypeOverride?: string | undefined;
-    allowRuntimeOverride?: boolean;
+    canUseRuntimeOverride?: boolean;
 };
 
 type StaticEntryOptions = {
@@ -159,9 +159,9 @@ const runtimeOverrideMember = (
     callable: GirFunction,
     name: string,
     doc: string,
-    allow: boolean | undefined,
+    canUseRuntimeOverride: boolean | undefined,
 ): string | undefined => {
-    if (allow !== true) {
+    if (canUseRuntimeOverride !== true) {
         return undefined;
     }
 
@@ -183,7 +183,7 @@ const renderCallableMember = (
 
     const { cIdentifier, name } = resolved;
     const doc = renderJsDoc(callable.doc);
-    const override = runtimeOverrideMember(callable, name, doc, options.allowRuntimeOverride);
+    const override = runtimeOverrideMember(callable, name, doc, options.canUseRuntimeOverride);
 
     if (override !== undefined) {
         return override;
@@ -240,7 +240,7 @@ const renderInstanceMethod = (
     renderCallableMember(context, callable, {
         resolveName: (member) => nameOverride ?? methodExportName(member),
         isStatic: false,
-        allowRuntimeOverride: true,
+        canUseRuntimeOverride: true,
     });
 
 const resolveInstanceMember = (

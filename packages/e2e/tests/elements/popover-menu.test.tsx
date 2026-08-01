@@ -83,12 +83,12 @@ describe("render - PopoverMenu actions", () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
         const appId = uniqueAppId();
 
-        function App({ enabled }: { enabled: boolean }) {
+        function App({ isEnabled }: { isEnabled: boolean }) {
             return (
                 <GtkApplication applicationId={appId} flags={APP_FLAGS}>
                     <GtkApplicationWindow
                         ref={windowRef}
-                        actions={enabled && (
+                        actions={isEnabled && (
                             <GSimpleAction name="toggle" onActivate={vi.fn()} />
                         )}
                     />
@@ -96,9 +96,9 @@ describe("render - PopoverMenu actions", () => {
             );
         }
 
-        const { rerender } = await render(<App enabled={true} />, { container: rootElement });
+        const { rerender } = await render(<App isEnabled={true} />, { container: rootElement });
         expect(windowRef.current?.hasAction("toggle")).toBe(true);
-        await rerender(<App enabled={false} />);
+        await rerender(<App isEnabled={false} />);
         expect(windowRef.current?.hasAction("toggle")).toBe(false);
     });
 });

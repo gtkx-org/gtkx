@@ -143,7 +143,7 @@ const mergeGroupAlias = (aliases: Map<string, string>, scalar: GlScalar, group: 
         return;
     }
 
-    if (scalar.groupBearing !== true) {
+    if (scalar.isGroupBearing !== true) {
         return;
     }
 

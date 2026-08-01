@@ -71,9 +71,9 @@ const registerFreshnessTests = (): void => {
         const { gi } = giOptions("rerun");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         const first = await runCodegen(options);
-        expect(first.regenerated).toBe(true);
+        expect(first.isRegenerated).toBe(true);
         const second = await runCodegen(options);
-        expect(second.regenerated).toBe(false);
+        expect(second.isRegenerated).toBe(false);
         expect(second.namespaces).toBe(0);
     });
 
@@ -81,8 +81,8 @@ const registerFreshnessTests = (): void => {
         const { gi } = giOptions("forced");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         await runCodegen(options);
-        const result = await runCodegen({ ...options, force: true });
-        expect(result.regenerated).toBe(true);
+        const result = await runCodegen({ ...options, isForced: true });
+        expect(result.isRegenerated).toBe(true);
         expect(result.namespaces).toBeGreaterThan(0);
         expect(existsSync(join(gi.storeDir, "glib", "glib.js"))).toBe(true);
     });
@@ -98,7 +98,7 @@ const registerFreshnessTests = (): void => {
         );
 
         const rerun = await runCodegen(options);
-        expect(rerun.regenerated).toBe(true);
+        expect(rerun.isRegenerated).toBe(true);
     });
 };
 

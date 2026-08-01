@@ -13,8 +13,8 @@ type RenderedClickButton = {
 
 type DragAndDropPairOptions = {
     onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"];
-    sourceSensitive?: boolean;
-    withDragSource?: boolean;
+    isSourceSensitive?: boolean;
+    hasDragSource?: boolean;
 };
 
 type RenderedDragAndDropPair = {
@@ -35,9 +35,9 @@ async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<R
         <GtkBox>
             <GtkLabel
                 name="drag-source"
-                sensitive={options.sourceSensitive ?? true}
+                sensitive={options.isSourceSensitive ?? true}
                 controllers={
-                    options.withDragSource === false ? undefined : <GtkDragSource actions={Gdk.DragAction.COPY} />
+                    options.hasDragSource === false ? undefined : <GtkDragSource actions={Gdk.DragAction.COPY} />
                 }
             >
                 Drag me

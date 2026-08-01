@@ -136,11 +136,11 @@ const computeJsxFingerprint = (input: JsxFingerprintInput, intrinsicElementCount
 const jsxStoreFreshness = (
     jsxStoreDir: string,
     input: JsxFingerprintInput,
-): { fresh: boolean; intrinsicElementCount: number } => {
+): { isFresh: boolean; intrinsicElementCount: number } => {
     const sentinelPath = join(jsxStoreDir, FINGERPRINT_FILENAME);
 
     if (!existsSync(sentinelPath)) {
-        return { fresh: false, intrinsicElementCount: 0 };
+        return { isFresh: false, intrinsicElementCount: 0 };
     }
 
     let sentinel: JsxFingerprint;
@@ -148,12 +148,12 @@ const jsxStoreFreshness = (
     try {
         sentinel = JSON.parse(readFileSync(sentinelPath, "utf8")) as JsxFingerprint;
     } catch {
-        return { fresh: false, intrinsicElementCount: 0 };
+        return { isFresh: false, intrinsicElementCount: 0 };
     }
 
     return sentinel.value === hashJsx(input)
-        ? { fresh: true, intrinsicElementCount: sentinel.intrinsicElementCount }
-        : { fresh: false, intrinsicElementCount: 0 };
+        ? { isFresh: true, intrinsicElementCount: sentinel.intrinsicElementCount }
+        : { isFresh: false, intrinsicElementCount: 0 };
 };
 
 export {

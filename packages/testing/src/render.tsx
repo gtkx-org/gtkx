@@ -165,7 +165,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     options?: RenderOptions<Q>,
 ): Promise<RenderResult<Q>> => {
     installErrorHandler();
-    applyEnableAnimations(options?.animations === true);
+    applyEnableAnimations(options?.areAnimationsEnabled === true);
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
     const resolved = resolveContainer(options?.container);
@@ -184,7 +184,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     const wrap = (node: ReactNode): ReactNode => {
         const wrapped = Wrapper ? <Wrapper>{node}</Wrapper> : node;
 
-        return options?.reactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
+        return options?.isReactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
     };
 
     await update(wrap(element), root);

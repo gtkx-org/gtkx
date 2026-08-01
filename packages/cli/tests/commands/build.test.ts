@@ -22,7 +22,12 @@ describe("build", () => {
 
     it("runs codegen preflight and builds with the default entry", async () => {
         await runCommand(build, { rawArgs: [] });
-        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true, mode: "production" });
+
+        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), {
+            shouldAnnounce: true,
+            mode: "production",
+        });
+
         expect(buildMock).toHaveBeenCalledOnce();
         const buildCall = buildMock.mock.calls[0];
 

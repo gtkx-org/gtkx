@@ -5,7 +5,7 @@ import { getOrInsert } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 
 type ContentKind = "label" | "buffer" | "tag" | "anchor";
-type HandlerRecord = { signal: string; handler: SignalHandler; wrapped: SignalHandler; blockable: boolean };
+type HandlerRecord = { signal: string; handler: SignalHandler; wrapped: SignalHandler; isBlockable: boolean };
 type Dispatch = (fn: () => unknown) => unknown;
 
 type SignalTarget = {
@@ -21,7 +21,7 @@ type PlacedChild = {
     adopted: GObject.Object | null;
     slot: string;
     behavior: ElementBehavior | null;
-    attached: boolean;
+    isAttached: boolean;
 };
 
 type ElementNode = SignalTarget & {

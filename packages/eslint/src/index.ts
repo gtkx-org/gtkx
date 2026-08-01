@@ -28,6 +28,52 @@ const TYPE_ONLY_DEPS = ["@types/ejs", "@types/node", "@types/react"];
 const DEPENDENCY_CHECKS = { checkObsoleteDependencies: false };
 const CLI_OPTIONAL_DEPS = ["@gtkx/native", "@gtkx/react", "@gtkx/testing", "vitest"];
 
+const UPSTREAM_BOOLEANS = [
+    "IS_REACT_ACT_ENVIRONMENT",
+    "cssMinify",
+    "exact",
+    "external",
+    "globals",
+    "minify",
+    "noExternal",
+    "private",
+    "skipSelf",
+    "ssr",
+    "ssrEmitAssets",
+];
+
+const BOOLEAN_NAME_MIRRORS = [
+    "AccessibleProps",
+    "BasicValueMap",
+    "ByRoleOptions",
+    "CodegenArgs",
+    "Config",
+    "CreateCommandArgs",
+    "DocsArgs",
+    "FakeWidgetOverrides",
+    "GirAlias",
+    "GirCallable",
+    "GirCallback",
+    "GirClass",
+    "GirConstant",
+    "GirEnum",
+    "GirField",
+    "GirFunction",
+    "GirNamespace",
+    "GirParameter",
+    "GirProperty",
+    "GirRecord",
+    "GirReturnValue",
+    "ListItem",
+    "MatcherContext",
+    "MatcherOptions",
+    "MatcherResult",
+    "NormalizerOptions",
+    "RenderGridViewOptions",
+    "SupervisedChild",
+    "TextContentOptions",
+];
+
 const NX_CONFIGS: FlatConfig[] = [
     {
         files: SOURCES,
@@ -176,6 +222,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "@typescript-eslint/switch-exhaustiveness-check": "error",
     curly: ["error", "all"],
     "gtkx/accessor-naming": "error",
+    "gtkx/boolean-name": ["error", { mirrors: BOOLEAN_NAME_MIRRORS, mirrorProperties: UPSTREAM_BOOLEANS }],
     "gtkx/cognitive-complexity": ["error", { max: 5 }],
     "gtkx/module-section-order": "error",
     "gtkx/no-inline-exports": "error",

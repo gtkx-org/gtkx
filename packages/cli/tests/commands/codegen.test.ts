@@ -86,7 +86,7 @@ describe("codegen command (--force)", () => {
         await run({ force: true, cwd: "/custom/dir" });
         const options = firstRunCodegenOptions();
         expect(options.cwd).toContain("custom/dir");
-        expect(omit(options, ["cwd"])).toEqual({ force: true });
+        expect(omit(options, ["cwd"])).toEqual({ isForced: true });
         expect(syncSchemaEnvMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(ensureGeneratedMock).not.toHaveBeenCalled();
         const logged = collectLogged(state.stderrSpy);

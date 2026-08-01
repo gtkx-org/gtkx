@@ -36,7 +36,7 @@ Entrypoint: `packages/react/src/index.ts`
 | `useParentWindow` | function | `() => Gtk.Window` | `packages/react/src/hooks/use-parent-window.ts:10` | Returns the `Gtk.Window` of the nearest window ancestor, throwing if used outside one. |
 | `useProperty<T extends GObject.Object, P extends PropertyName<T>>` | function | `<T extends GObject.Object, P extends PropertyName<T>>(object: RefProp<T>, propertyName: P & string) => T[P] \| undefined` | `packages/react/src/hooks/use-property.ts:16` | Subscribes to a GObject property and returns its current value, re-rendering when the property changes. |
 | `useSetting<K extends SettingsSchemaKeys, P extends keyof K>` | function | `<K extends SettingsSchemaKeys, P extends keyof K>(schema: SettingsSchema<K>, key: P & string) => [SettingValue<K, P>, (value: SettingValue<K, P>) => void]` | `packages/react/src/hooks/use-setting.ts:22` | Reads and writes a single key of a GSettings schema, re-rendering when the stored value changes. |
-| `useSignal<T extends GObject.Object, S extends SignalName<T> & string>` | function | `<T extends GObject.Object, S extends SignalName<T> & string>(object: RefProp<T>, signal: S, handler: TypedSignalHandler<T, S>, { after, immediate }?: UseSignalOptions) => void` | `packages/react/src/hooks/use-signal.ts:43` | Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the object changes. |
+| `useSignal<T extends GObject.Object, S extends SignalName<T> & string>` | function | `<T extends GObject.Object, S extends SignalName<T> & string>(object: RefProp<T>, signal: S, handler: TypedSignalHandler<T, S>, { isAfter, isImmediate }?: UseSignalOptions) => void` | `packages/react/src/hooks/use-signal.ts:43` | Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the object changes. |
 
 ### `AccessibleProps` members
 
@@ -108,7 +108,7 @@ Entrypoint: `packages/react/src/config.ts`
 | `defineElements` | function | `(elements: Record<string, ElementConfig<never>>) => Record<string, ElementConfig<never>>` | `packages/react/src/reconciler/registry.ts:155` | Identity helper that types the module named by `elements.behaviors` in `gtkx.config.ts`, enabling editor autocompletion and type checking. |
 | `DetachInfo` | type | `{ slot: string; adopted: GObject.Object \| null; props: Props; context: unknown; }` | `packages/react/src/reconciler/registry.ts:23` | Per-child values a slot hook receives while removing one child. |
 | `ElementBehavior<T extends GObject.Object = GObject.Object>` | type | `{ create?: (props: Props) => GObject.Object; initialize?: (object: T) => unknown; attach?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown; reorder?: (object: T, child: GObject.Object, info: PlaceInfo) =>…` | `packages/react/src/reconciler/registry.ts:40` | Customizes how one element type places children and applies props. |
-| `ElementConfig<T extends GObject.Object = GObject.Object>` | type | `{ lazy?: boolean; behaviors?: ElementBehavior<T>[]; component?: ModuleExport; props?: ModuleExport; omittedProps?: string[]; }` | `packages/react/src/reconciler/registry.ts:77` | How one GLib type is rendered. |
+| `ElementConfig<T extends GObject.Object = GObject.Object>` | type | `{ isLazy?: boolean; behaviors?: ElementBehavior<T>[]; component?: ModuleExport; props?: ModuleExport; omittedProps?: string[]; }` | `packages/react/src/reconciler/registry.ts:77` | How one GLib type is rendered. |
 | `ELEMENTS` | const | `Record<string, ElementConfig<GObject.Object>>` | `packages/react/src/reconciler/registry.ts:94` | Every registered element config, keyed by GLib type name. |
 | `mergeElementConfigs` | function | `(...maps: Record<string, ElementConfig<never>>[]) => Record<string, ElementConfig>` | `packages/react/src/reconciler/registry.ts:129` | Merges maps of ElementConfig keyed by GLib type name into one, concatenating each type's behaviors and omitted props in the order the maps… |
 | `PlaceInfo` | type | `{ slot: string; index: number; sibling: GObject.Object \| null; adopted: GObject.Object \| null; props: Props; context: unknown; }` | `packages/react/src/reconciler/registry.ts:7` | Per-child values a slot hook receives while placing or moving one child. |
@@ -145,7 +145,7 @@ Entrypoint: `packages/react/src/config.ts`
 | --- | --- | --- |
 | `behaviors` | property | `ElementBehavior<T>[]` |
 | `component` | property | `ModuleExport` |
-| `lazy` | property | `boolean` |
+| `isLazy` | property | `boolean` |
 | `omittedProps` | property | `string[]` |
 | `props` | property | `ModuleExport` |
 
@@ -2733,7 +2733,7 @@ Entrypoint: `packages/components/src/index.ts`
 | Export | Kind | Signature | Declared in | Docs |
 | --- | --- | --- | --- | --- |
 | `ColumnView<T = unknown, S = unknown>` | function | `<T = unknown, S = unknown>(props: ColumnViewProps<T, S>) => ReactNode` | `packages/components/src/column-view.tsx:175` | Renders a Gtk.ColumnView from declarative items or sections and a columns array, with controlled selection, expansion, and sorting, per-col… |
-| `ColumnViewColumn<T = unknown>` | type | `Omit<GtkColumnViewColumnProps, "factory" \| "sorter" \| "id" \| "title"> & { id: string; title: string; renderCell: ListItemRenderer<T>; sortable?: boolean \| undefined; headerMenu?: ReactNode; }` | `packages/components/src/types.ts:98` | One column of a ColumnView, pairing Gtk.ColumnViewColumn props with a cell renderer. |
+| `ColumnViewColumn<T = unknown>` | type | `Omit<GtkColumnViewColumnProps, "factory" \| "sorter" \| "id" \| "title"> & { id: string; title: string; renderCell: ListItemRenderer<T>; isSortable?: boolean \| undefined; headerMenu?: ReactNode; }` | `packages/components/src/types.ts:98` | One column of a ColumnView, pairing Gtk.ColumnViewColumn props with a cell renderer. |
 | `ColumnViewProps<T = unknown, S = unknown>` | type | `Omit< GtkColumnViewProps, "columns" \| "model" \| "headerFactory" \| keyof ColumnViewOwnProps<T, S> > & ColumnViewOwnProps<T, S>` | `packages/components/src/types.ts:134` | Props for ColumnView. |
 | `DropDown` | function | `DropDownComponent` | `packages/components/src/drop-down.tsx:14` | Renders a `Gtk.DropDown` backed by a collection model, with customizable renderers for the collapsed display, popup rows, and popup section… |
 | `DropDownProps<T = unknown, S = unknown>` | type | `DropDownWidgetProps<GtkDropDownProps, T, S>` | `packages/components/src/types.ts:166` | Props for DropDown. |
@@ -2835,10 +2835,10 @@ Entrypoint: `packages/codegen/src/index.ts`
 | `ApiSymbolQuery` | type | `{ namespace?: string; kinds?: ApiSymbolKind[]; }` | `packages/codegen/src/docs/api-reference.ts:29` | Narrows an `ApiReference.symbols` enumeration. |
 | `BuiltinElements` | type | `{ components: Record<string, ModuleExport>; lazyElements: string[]; props: Record<string, ModuleExport>; omittedProps: OmittedProps; }` | `packages/codegen/src/react/element-config.ts:8` | The framework's built-in element config, split into the maps codegen consumes. |
 | `CodegenRunnerOptions` | type | `{ libraries: string[]; girPath: string[]; gi: StoreOptions; jsx?: StoreOptions \| undefined; reactSubexports?: string[]; userComponents?: Record<string, ModuleExport>; userLazyElements?: string[]; userProps?: Record<stri…` | `packages/codegen/src/runner.ts:27` | What to generate and where to write it. |
-| `CodegenRunnerResult` | type | `{ regenerated: boolean; namespaces: number; intrinsicElements: number; duration: number; }` | `packages/codegen/src/runner.ts:51` | What a `runCodegen` run produced. |
+| `CodegenRunnerResult` | type | `{ isRegenerated: boolean; namespaces: number; intrinsicElements: number; duration: number; }` | `packages/codegen/src/runner.ts:51` | What a `runCodegen` run produced. |
 | `discoverGirNamespaces` | function | `(girPath: string[]) => string[]` | `packages/codegen/src/gir/libraries.ts:90` | Every GIR library installed on the search path, as sorted `Name-Version` identifiers. |
 | `ElementProps` | type | `Record<string, { module: string; export: string; }>` | `packages/codegen/src/store/jsx/element-prop-imports.ts:4` | Base props interface each element extends, keyed by GLib type name (the module exports it). |
-| `GeneratedElement` | type | `{ namespace: string; directory: string; glibName: string; mountable: boolean; }` | `packages/codegen/src/store/jsx/generated-elements.ts:7` | One element the `@gtkx/jsx` store binds. |
+| `GeneratedElement` | type | `{ namespace: string; directory: string; glibName: string; isMountable: boolean; }` | `packages/codegen/src/store/jsx/generated-elements.ts:7` | One element the `@gtkx/jsx` store binds. |
 | `LibrarySelection` | type | `typeof LIBRARIES_WILDCARD \| string[] \| undefined` | `packages/codegen/src/gir/libraries.ts:6` | A `libraries` config value: an explicit list, `"*"` for everything installed, or absent for the default. |
 | `loadApiReference` | function | `(options: ApiReferenceOptions) => ApiReference` | `packages/codegen/src/docs/api-reference.ts:168` | Loads the GIR data for the given libraries and indexes every symbol and JSX element in it. |
 | `mergeOmittedProps` | function | `(...maps: OmittedProps[]) => OmittedProps` | `packages/codegen/src/store/jsx/omitted-props.ts:18` | Merges omitted-prop maps keyed by GLib type name, concatenating the names each map contributes. |
@@ -2922,9 +2922,9 @@ Entrypoint: `packages/codegen/src/index.ts`
 
 | Member | Kind | Signature |
 | --- | --- | --- |
-| `force` | property | `boolean` |
 | `gi` | property | `StoreOptions` |
 | `girPath` | property | `string[]` |
+| `isForced` | property | `boolean` |
 | `jsx` | property | `StoreOptions \| undefined` |
 | `libraries` | property | `string[]` |
 | `reactSubexports` | property | `string[]` |
@@ -2939,8 +2939,8 @@ Entrypoint: `packages/codegen/src/index.ts`
 | --- | --- | --- |
 | `duration` | property | `number` |
 | `intrinsicElements` | property | `number` |
+| `isRegenerated` | property | `boolean` |
 | `namespaces` | property | `number` |
-| `regenerated` | property | `boolean` |
 
 ### `GeneratedElement` members
 
@@ -2948,7 +2948,7 @@ Entrypoint: `packages/codegen/src/index.ts`
 | --- | --- | --- |
 | `directory` | property | `string` |
 | `glibName` | property | `string` |
-| `mountable` | property | `boolean` |
+| `isMountable` | property | `boolean` |
 | `namespace` | property | `string` |
 
 ### `ModuleExport` members
@@ -3045,7 +3045,7 @@ Entrypoint: `packages/testing/src/index.ts`
 | `PointerInput` | type | `"click" \| "down" \| "up" \| "[MouseLeft]" \| "[MouseLeft>]" \| "[/MouseLeft]"` | `packages/testing/src/user-event/pointer.ts:11` | A pointer action token: a full click (`click`, `[MouseLeft]`), a button press (`down`, `[MouseLeft>]`), or a button release (`up`, `[/Mouse… |
 | `prettyRoles` | function | `(container: Container) => string` | `packages/testing/src/role-helpers.ts:86` | Formats the accessible roles in a container's tree as a readable string, listing each role together with its widgets and their accessible n… |
 | `prettyWidget` | function | `(container: Container, options?: PrettyWidgetOptions) => string` | `packages/testing/src/pretty-widget.ts:203` | Renders a widget tree as an indented, HTML-like string showing each widget's tag, accessible attributes, and text content. |
-| `PrettyWidgetOptions` | type | `{ maxLength?: number; highlight?: boolean; getId?: WidgetIdResolver; maxDepth?: number; }` | `packages/testing/src/pretty-widget.ts:14` | Options controlling how a widget tree is rendered to a string by prettyWidget and logWidget. |
+| `PrettyWidgetOptions` | type | `{ maxLength?: number; shouldHighlight?: boolean; getId?: WidgetIdResolver; maxDepth?: number; }` | `packages/testing/src/pretty-widget.ts:14` | Options controlling how a widget tree is rendered to a string by prettyWidget and logWidget. |
 | `queryAllByDisplayValue` | function | `(container: Container, value: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:522` | Finds every widget whose current display value matches. |
 | `queryAllByLabelText` | function | `(container: Container, text: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:456` | Finds every widget associated with a label whose text matches: a Gtk.Label mnemonic target, the widget's own accessible label, or its label… |
 | `queryAllByName` | function | `(container: Container, name: Matcher, options?: MatcherOptions) => Gtk.Widget[]` | `packages/testing/src/queries.ts:488` | Finds every widget whose widget name matches. |
@@ -3065,7 +3065,7 @@ Entrypoint: `packages/testing/src/index.ts`
 | `renderHook<Result>` | function | `{ <Result>(callback: () => Result, options?: RenderHookOptions<undefined>): Promise<RenderHookResult<Result, undefined>>; <Result, Props>(callback: (props: Props) => Result, options: RenderHookOptions<Props>): Promise<R…` | `packages/testing/src/render-hook.tsx:13` | Renders a test component that calls the given hook, exposing its latest return value along with rerender and unmount controls. |
 | `RenderHookOptions<Props>` | type | `{ wrapper?: WrapperComponent; } & (undefined extends Props ? { initialProps?: Props; } : { initialProps: Props; })` | `packages/testing/src/types.ts:222` | Options for renderHook: an optional wrapper and the initial props (required unless the props type permits undefined). |
 | `RenderHookResult<Result, Props>` | type | `{ result: { current: Result }; rerender: (newProps?: Props) => Promise<void>; unmount: () => Promise<void>; }` | `packages/testing/src/types.ts:236` | The result of renderHook: the latest hook return value plus functions to rerender with new props and to unmount. |
-| `RenderOptions<Q extends QueryMap = Record<never, never>>` | type | `{ container?: Gtk.Widget \| RootElement \| undefined; baseElement?: Container \| undefined; wrapper?: WrapperComponent \| undefined; reactStrictMode?: boolean \| undefined; animations?: boolean \| undefined; onCaughtError?: (…` | `packages/testing/src/types.ts:165` | Options for render: the container and base element to mount into, an optional wrapper, React behavior toggles, error callbacks, and custom… |
+| `RenderOptions<Q extends QueryMap = Record<never, never>>` | type | `{ container?: Gtk.Widget \| RootElement \| undefined; baseElement?: Container \| undefined; wrapper?: WrapperComponent \| undefined; isReactStrictMode?: boolean \| undefined; areAnimationsEnabled?: boolean \| undefined; onCau…` | `packages/testing/src/types.ts:165` | Options for render: the container and base element to mount into, an optional wrapper, React behavior toggles, error callbacks, and custom… |
 | `RenderResult<Q extends QueryMap = Record<never, never>>` | type | `BoundQueries & BoundCustomQueries<Q> & DebugUtilities & { container: Gtk.Widget; baseElement: Container; unmount: () => Promise<void>; rerender: (element: ReactNode) => Promise<void>; }` | `packages/testing/src/bound-queries.ts:23` | The result of a render call: queries scoped to the rendered tree, debug utilities, and controls for updating or tearing down the render. |
 | `screen` | const | `Screen` | `packages/testing/src/screen.ts:21` | Queries and debug utilities bound to the most recent render, scoped to the current toplevel windows. |
 | `Screen` | type | `BoundQueries & DebugUtilities` | `packages/testing/src/bound-queries.ts:15` | The global screen object's shape: built-in queries scoped to the current toplevels, plus debug utilities. |
@@ -3074,10 +3074,10 @@ Entrypoint: `packages/testing/src/index.ts`
 | `ScreenshotResult` | type | `{ data: string; mimeType: string; width: number; height: number; }` | `packages/testing/src/types.ts:195` | A captured screenshot: base64-encoded image data, its MIME type, and pixel dimensions. |
 | `ScrollDelta` | type | `{ x?: number; y?: number; }` | `packages/testing/src/user-event/adjustment.ts:5` | A scroll distance in pixels along each axis. |
 | `Suggestion` | type | `{ queryName: Method; queryMethod: string; variant: Variant; toString: () => string; }` | `packages/testing/src/suggestions.ts:22` | A suggested query for reaching a widget, including its family, variant, method name, and a `toString` that renders the full call. |
-| `TabOptions` | type | `{ shift?: boolean; }` | `packages/testing/src/user-event/keyboard.ts:10` | Options for `userEvent.tab`. |
+| `TabOptions` | type | `{ isShiftHeld?: boolean; }` | `packages/testing/src/user-event/keyboard.ts:10` | Options for `userEvent.tab`. |
 | `TextContentOptions` | type | `{ normalizeWhitespace?: boolean \| undefined; }` | `packages/testing/src/matchers.ts:32` | Options controlling how `toHaveTextContent` normalizes the text it reads. |
 | `TextExpectation` | type | `string \| RegExp` | `packages/testing/src/matchers.ts:29` | The expected value for a text matcher: an exact string or a regular expression. |
-| `TypeOptions` | type | `{ skipClick?: boolean \| undefined; initialSelectionStart?: number \| undefined; initialSelectionEnd?: number \| undefined; }` | `packages/testing/src/user-event/text.ts:9` | Options for `userEvent.type`. |
+| `TypeOptions` | type | `{ shouldFocus?: boolean \| undefined; initialSelectionStart?: number \| undefined; initialSelectionEnd?: number \| undefined; }` | `packages/testing/src/user-event/text.ts:9` | Options for `userEvent.type`. |
 | `userEvent` | const | `UserEvent` | `packages/testing/src/user-event/index.ts:75` | High-level helpers that drive widgets by dispatching the same events and gestures GTK4 delivers when someone clicks, types, or drags. |
 | `UserEvent` | type | `{ click: typeof click; dblClick: typeof dblClick; tripleClick: typeof tripleClick; tab: typeof tab; type: typeof type; clear: typeof clear; copy: typeof copy; cut: typeof cut; paste: typeof paste; selectOptions: typeof…` | `packages/testing/src/user-event/index.ts:15` | The set of user interaction helpers exposed by userEvent, covering clicks, typing, keyboard, pointer, gestures, selection, and scrolling. |
 | `Variant` | type | `"get" \| "getAll" \| "query" \| "queryAll" \| "find" \| "findAll"` | `packages/testing/src/suggestions.ts:14` | The query variant a suggestion targets. |
@@ -3173,9 +3173,9 @@ Entrypoint: `packages/testing/src/index.ts`
 | Member | Kind | Signature |
 | --- | --- | --- |
 | `getId` | method | `WidgetIdResolver` |
-| `highlight` | property | `boolean` |
 | `maxDepth` | property | `number` |
 | `maxLength` | property | `number` |
+| `shouldHighlight` | property | `boolean` |
 
 ### `RenderHookResult<Result, Props>` members
 
@@ -3189,13 +3189,13 @@ Entrypoint: `packages/testing/src/index.ts`
 
 | Member | Kind | Signature |
 | --- | --- | --- |
-| `animations` | property | `boolean \| undefined` |
+| `areAnimationsEnabled` | property | `boolean \| undefined` |
 | `baseElement` | property | `Container \| undefined` |
 | `container` | property | `RootElement \| Gtk.Widget \| undefined` |
+| `isReactStrictMode` | property | `boolean \| undefined` |
 | `onCaughtError` | property | `((error: unknown, errorInfo: ErrorInfo) => void) \| undefined` |
 | `onRecoverableError` | property | `((error: unknown, errorInfo: ErrorInfo) => void) \| undefined` |
 | `queries` | property | `Q \| undefined` |
-| `reactStrictMode` | property | `boolean \| undefined` |
 | `wrapper` | property | `WrapperComponent \| undefined` |
 
 ### `screen` members
@@ -3271,7 +3271,7 @@ Entrypoint: `packages/testing/src/index.ts`
 
 | Member | Kind | Signature |
 | --- | --- | --- |
-| `shift` | property | `boolean` |
+| `isShiftHeld` | property | `boolean` |
 
 ### `TextContentOptions` members
 
@@ -3285,7 +3285,7 @@ Entrypoint: `packages/testing/src/index.ts`
 | --- | --- | --- |
 | `initialSelectionEnd` | property | `number \| undefined` |
 | `initialSelectionStart` | property | `number \| undefined` |
-| `skipClick` | property | `boolean \| undefined` |
+| `shouldFocus` | property | `boolean \| undefined` |
 
 ### `userEvent` members
 

@@ -99,7 +99,7 @@ describe("render - AlertDialog responses (2)", () => {
                 heading="Test"
                 responses={[
                     { id: "enabled", label: "Enabled" },
-                    { id: "disabled", label: "Disabled", enabled: false },
+                    { id: "disabled", label: "Disabled", isEnabled: false },
                 ]}
             />,
             options(),
@@ -140,13 +140,13 @@ describe("render - AlertDialog responses (3)", () => {
     it("updates response enabled state", async () => {
         const ref = createRef<Adw.AlertDialog>();
 
-        function App({ enabled }: { enabled: boolean }) {
-            return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", enabled }]} />;
+        function App({ isEnabled }: { isEnabled: boolean }) {
+            return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", isEnabled }]} />;
         }
 
-        await render(<App enabled={true} />, options());
+        await render(<App isEnabled={true} />, options());
         expect(ref.current?.getResponseEnabled("test")).toBe(true);
-        await render(<App enabled={false} />, options());
+        await render(<App isEnabled={false} />, options());
         expect(ref.current?.getResponseEnabled("test")).toBe(false);
     });
 });

@@ -271,7 +271,7 @@ describe("userEvent actionability - insensitive gesture targets", () => {
 
     it("rejects dragAndDrop from an insensitive source without invoking onDrop", async () => {
         const handleDrop = vi.fn().mockReturnValue(true);
-        const { source, target } = await renderDragAndDropPair({ onDrop: handleDrop, sourceSensitive: false });
+        const { source, target } = await renderDragAndDropPair({ onDrop: handleDrop, isSourceSensitive: false });
         await expect(userEvent.dragAndDrop(source, target, "payload")).rejects.toThrow(NOT_SENSITIVE_PATTERN);
         expect(handleDrop).not.toHaveBeenCalled();
     });

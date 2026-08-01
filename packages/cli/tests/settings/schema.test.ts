@@ -59,7 +59,7 @@ describe("emitSchemaEnv", () => {
         writeDataSchema("com.example.app.gschema.xml");
         const result = emitSchemaEnv(fixture.root, DATA_DIR);
         expect(result.path).toBe(schemaEnvPath(fixture.root));
-        expect(result.written).toBe(true);
+        expect(result.isWritten).toBe(true);
         const content = readFileSync(result.path, "utf8");
         expect(content).toContain("declare module \"#data/com.example.app.gschema.xml\" {");
         expect(content).toContain("\"enabled\": \"b\";");
@@ -96,8 +96,8 @@ describe("emitSchemaEnv (incremental writes and diagnostics)", () => {
         const first = emitSchemaEnv(fixture.root, DATA_DIR);
         const stamped = statSync(first.path).mtimeMs;
         const second = emitSchemaEnv(fixture.root, DATA_DIR);
-        expect(first.written).toBe(true);
-        expect(second.written).toBe(false);
+        expect(first.isWritten).toBe(true);
+        expect(second.isWritten).toBe(false);
         expect(statSync(second.path).mtimeMs).toBe(stamped);
     });
 

@@ -28,8 +28,8 @@ type SupervisorState = {
     watchers: FSWatcher[];
     fork: ForkRunner;
     child: SupervisedChild | null;
-    shuttingDown: boolean;
-    restarting: boolean;
+    isShuttingDown: boolean;
+    isRestarting: boolean;
     capturedChildExit: number | undefined;
 };
 
@@ -72,11 +72,11 @@ const captureShutdownExit = (state: SupervisorState, code: number | null, signal
 const handleChildExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
     state.child = null;
 
-    if (state.restarting) {
+    if (state.isRestarting) {
         return;
     }
 
-    if (state.shuttingDown) {
+    if (state.isShuttingDown) {
         captureShutdownExit(state, code, signal);
 
         return;
@@ -101,12 +101,12 @@ const launch = (state: SupervisorState): void => {
     });
 };
 
-const isRestartBlocked = (state: SupervisorState): boolean => state.restarting || state.shuttingDown;
+const isRestartBlocked = (state: SupervisorState): boolean => state.isRestarting || state.isShuttingDown;
 
 const relaunchAfterExit = (state: SupervisorState): void => {
-    state.restarting = false;
+    state.isRestarting = false;
 
-    if (state.shuttingDown) {
+    if (state.isShuttingDown) {
         return;
     }
 
@@ -121,20 +121,20 @@ const restart = async (state: SupervisorState): Promise<void> => {
         return;
     }
 
-    state.restarting = true;
+    state.isRestarting = true;
     info("gtkx.config.ts changed; regenerating bindings...");
 
     try {
         await watch.regenerate();
     } catch (error_) {
         error("Codegen failed; keeping the current dev runner. Fix the error and save again.", error_);
-        state.restarting = false;
+        state.isRestarting = false;
 
         return;
     }
 
-    if (state.shuttingDown) {
-        state.restarting = false;
+    if (state.isShuttingDown) {
+        state.isRestarting = false;
 
         return;
     }
@@ -142,7 +142,7 @@ const restart = async (state: SupervisorState): Promise<void> => {
     const current = state.child;
 
     if (current === null) {
-        state.restarting = false;
+        state.isRestarting = false;
         launch(state);
 
         return;
@@ -164,7 +164,7 @@ const scheduleRestart = (state: SupervisorState, timer: DebounceTimer): void => 
 };
 
 const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: string | Buffer | null): boolean => {
-    if (filename === null || state.shuttingDown) {
+    if (filename === null || state.isShuttingDown) {
         return false;
     }
 
@@ -222,7 +222,7 @@ const closeWatchers = (state: SupervisorState): void => {
 
 const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promise<void> =>
     new Promise<void>((resolve) => {
-        state.shuttingDown = true;
+        state.isShuttingDown = true;
         closeWatchers(state);
 
         if (!state.child) {
@@ -261,8 +261,8 @@ const runDevSupervisor = async (
         watchers: [],
         fork,
         child: null,
-        shuttingDown: false,
-        restarting: false,
+        isShuttingDown: false,
+        isRestarting: false,
         capturedChildExit: undefined,
     };
 

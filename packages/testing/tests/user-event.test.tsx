@@ -317,11 +317,11 @@ describe("userEvent.type", () => {
         expect(editableText(entry)).toBe("Goodbye World");
     });
 
-    it("skips grabFocus when skipClick is set", async () => {
+    it("skips grabFocus when shouldFocus is false", async () => {
         await render(<GtkEntry />);
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         const grabFocus = vi.spyOn(entry, "grabFocus");
-        await userEvent.type(entry, "typed", { skipClick: true });
+        await userEvent.type(entry, "typed", { shouldFocus: false });
         expect(grabFocus).not.toHaveBeenCalled();
         expect(editableText(entry)).toBe("typed");
     });
@@ -381,7 +381,7 @@ describe("userEvent.tab", () => {
         expect(hasWidgetFocus(second)).toBe(true);
     });
 
-    it("moves focus backward with shift option", async () => {
+    it("moves focus backward with isShiftHeld option", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
@@ -391,7 +391,7 @@ describe("userEvent.tab", () => {
 
         const second = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
         second.grabFocus();
-        await userEvent.tab(second, { shift: true });
+        await userEvent.tab(second, { isShiftHeld: true });
         const first = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
         expect(hasWidgetFocus(first)).toBe(true);
     });
@@ -766,7 +766,7 @@ describe("userEvent.dragAndDrop", () => {
     });
 
     it("throws when the source has no DragSource controller", async () => {
-        const { source, target } = await renderDragAndDropPair({ onDrop: () => true, withDragSource: false });
+        const { source, target } = await renderDragAndDropPair({ onDrop: () => true, hasDragSource: false });
         await expect(userEvent.dragAndDrop(source, target, "payload")).rejects.toThrow(/DragSource/);
     });
 });

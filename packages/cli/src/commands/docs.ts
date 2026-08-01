@@ -66,17 +66,17 @@ const docs = defineCommand({
         const outDir = resolve(cwd, args.out);
         const builtin = await resolveDocsElements(cwd);
 
-        const { regenerated, namespaces } = writeDocs({
+        const { isRegenerated, namespaces } = writeDocs({
             libraries,
             girPath,
             outDir,
             basePath: args["base-path"],
             props: builtin.props,
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
-            force: args.force,
+            isForced: args.force,
         });
 
-        if (!regenerated) {
+        if (!isRegenerated) {
             info(`docs: pages in ${outDir} are up to date`);
 
             return;

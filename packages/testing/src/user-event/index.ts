@@ -22,7 +22,7 @@ type UserEvent = {
     dblClick: typeof dblClick;
     /** Emits a three-press click gesture on the widget. */
     tripleClick: typeof tripleClick;
-    /** Moves focus within the widget's root, forward by default and backward with `shift`. */
+    /** Moves focus within the widget's root, forward by default and backward with `isShiftHeld`. */
     tab: typeof tab;
     /** Focuses an editable widget, applies any initial selection, and inserts the text at the cursor. */
     type: typeof type;

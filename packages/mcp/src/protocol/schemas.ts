@@ -11,8 +11,8 @@ type SerializedWidget = {
     role: string;
     name: string | null;
     text: string | null;
-    sensitive: boolean;
-    visible: boolean;
+    isSensitive: boolean;
+    isVisible: boolean;
     cssClasses: string[];
     children: SerializedWidget[];
 };

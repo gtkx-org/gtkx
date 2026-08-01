@@ -44,13 +44,13 @@ type CodegenRunnerOptions = {
     /** Props the project drops from the generated element props, keyed by GLib type name. */
     userOmittedProps?: OmittedProps;
     /** Regenerates both stores even when their fingerprints are fresh. */
-    force?: boolean;
+    isForced?: boolean;
 };
 
 /** What a `runCodegen` run produced. */
 type CodegenRunnerResult = {
     /** Whether either store was rewritten; false means both were already fresh. */
-    regenerated: boolean;
+    isRegenerated: boolean;
     /** How many namespaces the gi store was written with, zero when it was already fresh. */
     namespaces: number;
     /** How many JSX elements the jsx store binds, zero when no jsx store was requested. */
@@ -60,7 +60,7 @@ type CodegenRunnerResult = {
 };
 
 type StoreResult = {
-    regenerated: boolean;
+    isRegenerated: boolean;
     namespaces: number;
     intrinsicElements: number;
 };
@@ -68,7 +68,7 @@ type StoreResult = {
 /**
  * Writes and links a project's `@gtkx/gi` and `@gtkx/jsx` stores from the given GObject-Introspection
  * libraries. The gi store is rewritten only when its GIR inputs changed, and the jsx store only when the gi
- * store or the React element config changed, unless `options.force` is set. Pass the spread of
+ * store or the React element config changed, unless `options.isForced` is set. Pass the spread of
  * `resolveStore(projectRoot)` for everything but `libraries` and `girPath`.
  *
  * @param options What to generate and where to write it.
@@ -80,7 +80,7 @@ const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerR
     const store = await emitStores(options);
 
     return {
-        regenerated: store.regenerated,
+        isRegenerated: store.isRegenerated,
         namespaces: store.namespaces,
         intrinsicElements: store.intrinsicElements,
         duration: Date.now() - start,
@@ -129,10 +129,10 @@ const emitJsxStore = async (input: {
     jsx: StoreOptions;
     gi: StoreOptions;
     loadLibrary: () => Library;
-    giRegenerated: boolean;
+    isGiRegenerated: boolean;
     namespaces: number;
 }): Promise<StoreResult> => {
-    const { options, jsx, gi, loadLibrary, giRegenerated, namespaces } = input;
+    const { options, jsx, gi, loadLibrary, isGiRegenerated, namespaces } = input;
     const { runJsxCodegen } = await import("./jsx.js");
 
     const jsxResult = await runJsxCodegen({
@@ -140,12 +140,12 @@ const emitJsxStore = async (input: {
         jsx,
         giStoreDir: gi.storeDir,
         ...jsxUserOptions(options),
-        giRegenerated,
-        force: options.force === true,
+        isGiRegenerated,
+        isForced: options.isForced === true,
     });
 
     return {
-        regenerated: giRegenerated || jsxResult.regenerated,
+        isRegenerated: isGiRegenerated || jsxResult.isRegenerated,
         namespaces,
         intrinsicElements: jsxResult.intrinsicElementCount,
     };
@@ -161,17 +161,17 @@ const emitStoresWithConfig = async (config: {
     const { options, gi, jsx, libraries, girPath } = config;
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
-    const isGiRegenerated = options.force === true || !isGiStoreFresh(gi.storeDir, libraries, girPath);
+    const isGiRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, libraries, girPath);
 
     const namespaces = isGiRegenerated
         ? runGiCodegen(loadLibrary(), { gi, libraries, girPath })
         : 0;
 
     if (jsx === undefined) {
-        return { regenerated: isGiRegenerated, namespaces, intrinsicElements: 0 };
+        return { isRegenerated: isGiRegenerated, namespaces, intrinsicElements: 0 };
     }
 
-    return emitJsxStore({ options, jsx, gi, loadLibrary, giRegenerated: isGiRegenerated, namespaces });
+    return emitJsxStore({ options, jsx, gi, loadLibrary, isGiRegenerated, namespaces });
 };
 
 const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {

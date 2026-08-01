@@ -80,14 +80,14 @@ fn enum_and_flags_descriptors_pick_integer_storage_by_sign() {
     let signed_enum = Descriptor::Enum {
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn_name: "gtk_orientation_get_type".to_owned(),
-        signed: true,
+        is_signed: true,
     };
     assert!(matches!(codec(signed_enum), Codec::EnumFlags(_)));
 
     let unsigned_flags = Descriptor::Flags {
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn_name: "gtk_state_flags_get_type".to_owned(),
-        signed: false,
+        is_signed: false,
     };
     assert!(matches!(codec(unsigned_flags), Codec::EnumFlags(_)));
 }
@@ -111,17 +111,17 @@ fn string_object_boxed_struct_and_fundamental_descriptors_map_to_their_codecs() 
         shared_library: None,
         get_type_fn_name: None,
         free_fn_name: None,
-        caller_allocated: Some(true),
+        is_caller_allocated: Some(true),
         size: Some(16),
-        inline: None,
+        is_inline: None,
     };
     assert!(matches!(codec(boxed), Codec::Boxed(_)));
 
     let struct_ = Descriptor::Struct {
         ownership: Ownership::Borrowed,
         size: Some(8),
-        caller_allocated: None,
-        inline: None,
+        is_caller_allocated: None,
+        is_inline: None,
     };
     assert!(matches!(codec(struct_), Codec::Struct(_)));
 
@@ -130,7 +130,7 @@ fn string_object_boxed_struct_and_fundamental_descriptors_map_to_their_codecs() 
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "g_param_spec_ref".to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
-        inline: None,
+        is_inline: None,
         type_name: None,
     };
     assert!(matches!(codec(fundamental), Codec::Fundamental(_)));

@@ -41,7 +41,7 @@ function defaultOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
         name: "test-app",
         applicationId: "org.test.app",
         packageManager: "pnpm",
-        includeTesting: false,
+        shouldIncludeTesting: false,
         ...overrides,
     };
 }
@@ -51,7 +51,7 @@ function run(overrides: Partial<CreateOptions> = {}): Promise<void> {
 }
 
 function runNonInteractive(overrides: Partial<CreateOptions> = {}): Promise<void> {
-    return scaffold(defaultOptions({ interactive: false, ...overrides }));
+    return scaffold(defaultOptions({ isInteractive: false, ...overrides }));
 }
 
 function read(path: string): string {
@@ -69,8 +69,8 @@ function lastError(): string {
 function partialOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
     return {
         applicationId: "org.test.app",
-        includeTesting: false,
-        interactive: true,
+        shouldIncludeTesting: false,
+        isInteractive: true,
         ...overrides,
     };
 }
@@ -139,14 +139,14 @@ beforeEach(() => {
 });
 
 describe("scaffold (directory structure)", () => {
-    it("creates the src and tests directories when includeTesting=true", async () => {
-        await run({ includeTesting: true });
+    it("creates the src and tests directories when shouldIncludeTesting=true", async () => {
+        await run({ shouldIncludeTesting: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/src`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/tests`)).toBe(true);
     });
 
-    it("skips the tests directory when includeTesting=false", async () => {
+    it("skips the tests directory when shouldIncludeTesting=false", async () => {
         await run();
         expect(vol.existsSync(`${TEST_DIR}/test-app/tests`)).toBe(false);
     });
@@ -154,14 +154,14 @@ describe("scaffold (directory structure)", () => {
 
 describe("scaffold (top-level generated files)", () => {
     it("writes package.json with the project name", async () => {
-        await run({ includeTesting: true });
+        await run({ shouldIncludeTesting: true });
         const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.name).toBe("test-app");
         expect(content.scripts.test).toContain("vitest");
     });
 
-    it("omits the test script from package.json when includeTesting=false", async () => {
-        await run({ includeTesting: false });
+    it("omits the test script from package.json when shouldIncludeTesting=false", async () => {
+        await run({ shouldIncludeTesting: false });
         const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.scripts.test).toBeUndefined();
     });
@@ -197,12 +197,12 @@ describe("scaffold (src/* generated files)", () => {
         expect(app).not.toContain('import { applicationId } from "virtual:gtkx-config";');
     });
 
-    it("writes vitest.config.ts when includeTesting=true", async () => {
-        await run({ includeTesting: true });
+    it("writes vitest.config.ts when shouldIncludeTesting=true", async () => {
+        await run({ shouldIncludeTesting: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
     });
 
-    it("omits vitest.config.ts when includeTesting=false", async () => {
+    it("omits vitest.config.ts when shouldIncludeTesting=false", async () => {
         await run();
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(false);
     });
@@ -223,7 +223,7 @@ describe("scaffold (src/* generated files)", () => {
 
 describe("scaffold (JavaScript variant)", () => {
     it("emits .jsx sources and a .js config instead of the TypeScript files", async () => {
-        await run({ typescript: false, includeTesting: true });
+        await run({ isTypescript: false, shouldIncludeTesting: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app/src/app.jsx`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/src/index.jsx`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/gtkx.config.js`)).toBe(true);
@@ -234,25 +234,25 @@ describe("scaffold (JavaScript variant)", () => {
     });
 
     it("omits the TypeScript-only files", async () => {
-        await run({ typescript: false });
+        await run({ isTypescript: false });
         expect(vol.existsSync(`${TEST_DIR}/test-app/tsconfig.json`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/src/gtkx-env.d.ts`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/node_modules/.gtkx/env.d.ts`)).toBe(false);
     });
 
     it("wires the entry import to the .jsx source", async () => {
-        await run({ typescript: false });
+        await run({ isTypescript: false });
         expect(read(`${TEST_DIR}/test-app/src/index.jsx`)).toContain('from "./app.jsx"');
     });
 
     it("omits the typecheck script from package.json", async () => {
-        await run({ typescript: false });
+        await run({ isTypescript: false });
         const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.scripts.typecheck).toBeUndefined();
     });
 
     it("drops typescript and @types/react from the installed dev dependencies", async () => {
-        await run({ typescript: false, includeTesting: true });
+        await run({ isTypescript: false, shouldIncludeTesting: true });
         const devCall = addDependencyMock.mock.calls[1];
         expect(devCall?.[0]).toEqual([pin("@gtkx/cli"), pin("@gtkx/config"), "vite", pin("@gtkx/testing"), "vitest"]);
     });
@@ -260,7 +260,7 @@ describe("scaffold (JavaScript variant)", () => {
 
 describe("scaffold (dependency installation)", () => {
     it("invokes install twice: pinned production deps then dev deps with silent flag", async () => {
-        await run({ includeTesting: true });
+        await run({ shouldIncludeTesting: true });
         expect(addDependencyMock).toHaveBeenCalledTimes(2);
         const [prodCall, devCall] = addDependencyMock.mock.calls;
         expect(prodCall?.[0]).toEqual([pin("@gtkx/css"), pin("@gtkx/runtime"), pin("@gtkx/react"), "react"]);
@@ -332,7 +332,7 @@ describe("scaffold (git initialization)", () => {
 
 describe("scaffold (next steps)", () => {
     it("prints the package-manager-specific dev command and the compositor note for vitest", async () => {
-        await run({ packageManager: "npm", includeTesting: true });
+        await run({ packageManager: "npm", shouldIncludeTesting: true });
         const note = lastNote();
         expect(note).toContain("cd test-app");
         expect(note).toContain("npm run dev");
@@ -340,16 +340,16 @@ describe("scaffold (next steps)", () => {
     });
 
     it("prints the pnpm dev command", async () => {
-        await run({ packageManager: "pnpm", includeTesting: false });
+        await run({ packageManager: "pnpm", shouldIncludeTesting: false });
         expect(lastNote()).toContain("pnpm dev");
     });
 
     it("prints the yarn dev command", async () => {
-        await run({ packageManager: "yarn", includeTesting: false });
+        await run({ packageManager: "yarn", shouldIncludeTesting: false });
         expect(lastNote()).toContain("yarn dev");
     });
 
-    it("omits the compositor note when includeTesting=false", async () => {
+    it("omits the compositor note when shouldIncludeTesting=false", async () => {
         await run();
         expect(lastNote()).not.toContain("weston");
     });
@@ -406,7 +406,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
     });
 
     it("resolves defaults from a partial non-TTY invocation without prompting", async () => {
-        await scaffold({ name: "test-app", interactive: false });
+        await scaffold({ name: "test-app", isInteractive: false });
         expect(clack.text).not.toHaveBeenCalled();
         expect(clack.select).not.toHaveBeenCalled();
         expect(clack.confirm).not.toHaveBeenCalled();
@@ -424,7 +424,7 @@ describe("scaffold (overwrite)", () => {
         vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
         vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
         vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
-        await run({ overwrite: true });
+        await run({ shouldOverwrite: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
@@ -433,7 +433,7 @@ describe("scaffold (overwrite)", () => {
     it("empties an existing directory when --overwrite is set", async () => {
         vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
         vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
-        await run({ overwrite: true });
+        await run({ shouldOverwrite: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
     });

@@ -68,13 +68,13 @@ describe("render - NavigationPage (2)", () => {
     it("removes page when unmounted", async () => {
         const viewRef = createRef<Adw.NavigationView>();
 
-        function App({ showPage }: { showPage: boolean }) {
+        function App({ shouldShowPage }: { shouldShowPage: boolean }) {
             return (
                 <AdwNavigationView ref={viewRef}>
                     <AdwNavigationPage tag="permanent" title="Permanent">
                         <GtkLabel>Always Here</GtkLabel>
                     </AdwNavigationPage>
-                    {showPage && (
+                    {shouldShowPage && (
                         <AdwNavigationPage tag="removable" title="Removable">
                             <GtkLabel>Maybe Here</GtkLabel>
                         </AdwNavigationPage>
@@ -83,9 +83,9 @@ describe("render - NavigationPage (2)", () => {
             );
         }
 
-        await render(<App showPage={true} />);
+        await render(<App shouldShowPage={true} />);
         expect(viewRef.current?.findPage("removable")).not.toBeNull();
-        await render(<App showPage={false} />);
+        await render(<App shouldShowPage={false} />);
         expect(viewRef.current?.findPage("removable")).toBeNull();
     });
 });

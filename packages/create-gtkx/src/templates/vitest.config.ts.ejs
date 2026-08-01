@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
     plugins: [gtkx()],
     test: {
-        include: ["tests/**/*.test.{<%= typescript ? "ts,tsx" : "js,jsx" %>}"],
+        include: ["tests/**/*.test.{<%= isTypescript ? "ts,tsx" : "js,jsx" %>}"],
         bail: 1,
     },
 });

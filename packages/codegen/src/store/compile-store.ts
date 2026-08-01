@@ -6,7 +6,7 @@ type CompileStoreParams = {
     storeDir: string;
     files: SourceModule[];
     packageName: string;
-    configEnv?: boolean;
+    requiresEnvReference?: boolean;
 };
 
 const EMIT_OPTIONS = {
@@ -31,14 +31,14 @@ const writeEnvReference = (storeDir: string): (() => void) => {
 const compileStore = (params: CompileStoreParams): void => {
     const fileNames = params.files.map((file) => file.fileName);
 
-    const removeEnvReference = params.configEnv === true
+    const removeEnvReference = params.requiresEnvReference === true
         ? writeEnvReference(params.storeDir)
         : (): void => undefined;
 
     try {
         compileProject({
             projectDir: params.storeDir,
-            fileNames: params.configEnv === true ? [ENV_REFERENCE_FILE, ...fileNames] : fileNames,
+            fileNames: params.requiresEnvReference === true ? [ENV_REFERENCE_FILE, ...fileNames] : fileNames,
             compilerOptions: EMIT_OPTIONS,
             label: `the generated ${params.packageName} store`,
         });

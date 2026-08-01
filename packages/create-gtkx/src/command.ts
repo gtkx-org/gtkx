@@ -104,10 +104,10 @@ const runCreate = async (args: CreateCommandArgs): Promise<void> => {
             name: args.name,
             applicationId: args["application-id"],
             packageManager,
-            typescript: args.typescript,
-            includeTesting: args.vitest,
-            interactive: isInteractive,
-            overwrite: args.overwrite,
+            isTypescript: args.typescript,
+            shouldIncludeTesting: args.vitest,
+            isInteractive,
+            shouldOverwrite: args.overwrite,
         });
     } catch (error) {
         settleScaffoldFailure(error);

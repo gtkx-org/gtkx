@@ -90,7 +90,7 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
         elementCType: elementNode === undefined ? undefined : attr(elementNode, "c:type"),
         lengthParameterIndex: intAttr(arrayNode, "length"),
         fixedSize: intAttr(arrayNode, "fixed-size"),
-        zeroTerminated: isAttrTrue(arrayNode, "zero-terminated", true),
+        isZeroTerminated: isAttrTrue(arrayNode, "zero-terminated", true),
     };
 
     return context.addContainer(carray);

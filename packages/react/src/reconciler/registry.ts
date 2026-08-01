@@ -76,7 +76,7 @@ type ModuleExport = {
  */
 type ElementConfig<T extends GObject.Object = GObject.Object> = {
     /** The element has no GObject of its own; its parent container creates one, as it does for pages. */
-    lazy?: boolean;
+    isLazy?: boolean;
     /** Behaviors bound to the type, consulted in registration order and inherited by its subtypes. */
     behaviors?: ElementBehavior<T>[];
     /** Component that wraps the generated element. */
@@ -102,7 +102,7 @@ const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], isPrepend
 };
 
 const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, isPrepended = false): ElementConfig => {
-    const { behaviors, lazy, omittedProps, ...rest } = added;
+    const { behaviors, isLazy, omittedProps, ...rest } = added;
     const entry: ElementConfig = { ...base, ...rest };
 
     if (behaviors !== undefined) {
@@ -113,8 +113,8 @@ const mergeConfigEntry = (base: ElementConfig, added: ElementConfig<never>, isPr
         entry.omittedProps = [...(base.omittedProps ?? []), ...omittedProps];
     }
 
-    if (lazy === true) {
-        entry.lazy = true;
+    if (isLazy === true) {
+        entry.isLazy = true;
     }
 
     return entry;
@@ -140,10 +140,10 @@ const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>>[]): R
 
 const registerElements = (
     map: Record<string, ElementConfig<never>>,
-    options: { prepend?: boolean } = {},
+    options: { isPrepended?: boolean } = {},
 ): void => {
     for (const [type, config] of Object.entries(map)) {
-        ELEMENTS[type] = mergeConfigEntry(ELEMENTS[type] ?? {}, config, options.prepend === true);
+        ELEMENTS[type] = mergeConfigEntry(ELEMENTS[type] ?? {}, config, options.isPrepended === true);
     }
 };
 

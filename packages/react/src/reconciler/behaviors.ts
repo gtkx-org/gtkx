@@ -23,7 +23,7 @@ type ListHooks<P extends GObject.Object, I, H> = {
 
 type ListEntry = { item: unknown; handle: unknown };
 type ListState = { snapshot: unknown[]; entries: ListEntry[] };
-type DeferredState = { desired: unknown; present: boolean; applied: unknown };
+type DeferredState = { desired: unknown; isPresent: boolean; applied: unknown };
 type CanApply<P extends GObject.Object, V> = (object: P, value: V) => boolean;
 type ChildSetter = GObject.Object & { setChild: (child: Gtk.Widget | null) => void };
 type ContentSetter<C extends Gtk.Widget> = GObject.Object & { setContent: (content: C | null) => void };
@@ -162,7 +162,7 @@ const flushDeferred = <P extends GObject.Object, V>(
 ): void => {
     const state = context as DeferredState;
 
-    if (!state.present || Object.is(state.applied, state.desired)) {
+    if (!state.isPresent || Object.is(state.applied, state.desired)) {
         return;
     }
 
@@ -182,11 +182,11 @@ const deferred = <P extends GObject.Object, V>(
     canApply?: CanApply<P, V>,
 ): ElementBehavior<P> => ({
     deferred: [prop],
-    initialize: (): DeferredState => ({ desired: undefined, present: false, applied: undefined }),
+    initialize: (): DeferredState => ({ desired: undefined, isPresent: false, applied: undefined }),
     update: (_object, _prev, next, context) => {
         const state = context as DeferredState;
         state.desired = next[prop];
-        state.present = next[prop] !== undefined;
+        state.isPresent = next[prop] !== undefined;
 
         return [prop];
     },

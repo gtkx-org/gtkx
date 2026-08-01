@@ -6,14 +6,14 @@ import { renderTsType } from "../../analysis/ts-type.js";
 
 type WrapReturnOptions = {
     ref: TypeId | undefined;
-    nullable: boolean;
+    isNullable: boolean;
     valueExpression: string;
 };
 
 const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["gtype", "bigint64", "biguint64"]);
 
 const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): string => {
-    const { ref, nullable, valueExpression } = options;
+    const { ref, isNullable, valueExpression } = options;
 
     if (ref === undefined) {
         return valueExpression;
@@ -27,7 +27,7 @@ const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): st
 
     switch (type.kind) {
         case "primitive": {
-            return wrapPrimitive(type.category, nullable, valueExpression);
+            return wrapPrimitive(type.category, isNullable, valueExpression);
         }
         case "varargs": {
             return `(${valueExpression} as unknown[])`;
@@ -39,7 +39,7 @@ const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): st
             return `(${valueExpression} as number)`;
         }
         case "alias": {
-            return wrapAlias(context, type.value.target, nullable, valueExpression);
+            return wrapAlias(context, type.value.target, isNullable, valueExpression);
         }
         case "carray":
         case "class":
@@ -65,7 +65,7 @@ const wrapAlias = (
 ): string =>
     target === undefined
         ? valueExpression
-        : wrapReturnValue(context, { ref: target, nullable: isNullable, valueExpression });
+        : wrapReturnValue(context, { ref: target, isNullable, valueExpression });
 
 const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
     context.addRuntimeImport("fromNative");

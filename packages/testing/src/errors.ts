@@ -125,7 +125,7 @@ const buildElementError = (container: Container, headLines: string[]): Error => 
 
     const lines = expensiveErrorDiagnostics.isDisabled
         ? headLines
-        : [...headLines, "", prettyWidget(container, { highlight: false })];
+        : [...headLines, "", prettyWidget(container, { shouldHighlight: false })];
 
     return config.getElementError(lines.join("\n"), container);
 };
@@ -160,7 +160,7 @@ const multipleFoundError = (container: Container, descriptor: QueryDescriptor, m
     ];
 
     if (!expensiveErrorDiagnostics.isDisabled) {
-        const renderedMatches = matches.map((widget) => prettyWidget(widget, { highlight: false }));
+        const renderedMatches = matches.map((widget) => prettyWidget(widget, { shouldHighlight: false }));
         headLines.push("", "Here are the matching elements:", "", ...renderedMatches);
     }
 

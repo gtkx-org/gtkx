@@ -7,7 +7,7 @@ import type { Props } from "./registry.js";
 import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
 import { applyWrite } from "./signals.js";
 
-type OffsetResult = { found: boolean; offset: number };
+type OffsetResult = { wasFound: boolean; offset: number };
 
 type BufferBuild = {
     buffer: Gtk.TextBuffer;
@@ -76,14 +76,14 @@ const isTagElement = (node: ContentChild): node is ElementNode =>
 
 const stepOffset = (node: ContentChild, target: TextNode, offset: number): OffsetResult => {
     if (node === target) {
-        return { found: true, offset };
+        return { wasFound: true, offset };
     }
 
     if (isTagElement(node)) {
         return getOffset(node.content, target, offset);
     }
 
-    return { found: false, offset: offset + contentTextLength(node) };
+    return { wasFound: false, offset: offset + contentTextLength(node) };
 };
 
 const getOffset = (nodes: ContentChild[], target: TextNode, start: number): OffsetResult => {
@@ -92,14 +92,14 @@ const getOffset = (nodes: ContentChild[], target: TextNode, start: number): Offs
     for (const node of nodes) {
         const step = stepOffset(node, target, offset);
 
-        if (step.found) {
+        if (step.wasFound) {
             return step;
         }
 
         offset = step.offset;
     }
 
-    return { found: false, offset };
+    return { wasFound: false, offset };
 };
 
 const enclosingTagNodes = (node: TextNode): ElementNode[] => {
@@ -379,7 +379,7 @@ const didUpdateTextSurgically = (host: ElementNode, node: TextNode, oldText: str
 
     const located = getOffset(host.content, node, 0);
 
-    if (!located.found) {
+    if (!located.wasFound) {
         return false;
     }
 

@@ -85,7 +85,7 @@ vi.mock("@gtkx/codegen", () => ({
 }));
 
 vi.mock("@gtkx/codegen/internal", () => ({
-    writeDocs: vi.fn(() => ({ regenerated: true, namespaces: mockedNamespaces() })),
+    writeDocs: vi.fn(() => ({ isRegenerated: true, namespaces: mockedNamespaces() })),
 }));
 
 vi.mock("@gtkx/config", () => ({
@@ -108,7 +108,7 @@ describe("docs command", () => {
         expect(writeDocsMock).toHaveBeenCalledWith(docsCall({
             outDir: stringContaining("custom/dir/docs/reference"),
             basePath: "/reference",
-            force: false,
+            isForced: false,
         }));
 
         expect(collectLogged(state.stderrSpy)).toContain("wrote 3 element pages across 2 namespaces");
@@ -125,12 +125,12 @@ describe("docs command", () => {
         expect(writeDocsMock).toHaveBeenCalledWith(docsCall({
             outDir: stringContaining("custom/dir/site/elements"),
             basePath: "/elements",
-            force: true,
+            isForced: true,
         }));
     });
 
     it("reports up to date when nothing was regenerated", async () => {
-        writeDocsMock.mockReturnValueOnce({ regenerated: false, namespaces: [] });
+        writeDocsMock.mockReturnValueOnce({ isRegenerated: false, namespaces: [] });
         await run({});
         expect(collectLogged(state.stderrSpy)).toContain("up to date");
     });

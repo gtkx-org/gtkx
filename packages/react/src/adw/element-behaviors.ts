@@ -332,8 +332,8 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                         dialog.setResponseAppearance(response.id, response.appearance);
                     }
 
-                    if (response.enabled !== undefined) {
-                        dialog.setResponseEnabled(response.id, response.enabled);
+                    if (response.isEnabled !== undefined) {
+                        dialog.setResponseEnabled(response.id, response.isEnabled);
                     }
                 },
                 remove: (dialog, response) => {

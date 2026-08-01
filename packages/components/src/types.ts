@@ -103,7 +103,7 @@ type ColumnViewColumn<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | 
     /** Renders the contents of this column's cell for one item. */
     renderCell: ListItemRenderer<T>;
     /** Makes the column header clickable, reporting the choice through `onSortChanged`. */
-    sortable?: boolean | undefined;
+    isSortable?: boolean | undefined;
     /** Menu element popped up as the column header's context menu, on a right-click. */
     headerMenu?: ReactNode;
 };

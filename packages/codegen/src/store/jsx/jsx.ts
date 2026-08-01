@@ -109,7 +109,7 @@ const generateJsxSection = (
     addReactBuiltin(imports, "ReactNode");
     addReactBuiltin(imports, "Ref");
     const interfaceResult = renderInterfacePropBlocks(library, targetNamespace.name, options);
-    let isNeedsReactElement = interfaceResult.needsReactElement;
+    let requiresReactElement = interfaceResult.requiresReactElement;
     const propBlocks: string[] = [...interfaceResult.blocks];
 
     const blockContext: RenderPropBlockContext = {
@@ -124,13 +124,13 @@ const generateJsxSection = (
         const { block, objectPropNames } = renderPropBlock(library, entry, blockContext);
 
         if (objectPropNames.length > 0) {
-            isNeedsReactElement = true;
+            requiresReactElement = true;
         }
 
         propBlocks.push(block);
     }
 
-    if (isNeedsReactElement) {
+    if (requiresReactElement) {
         addReactBuiltin(imports, "ReactElement");
     }
 
@@ -152,11 +152,11 @@ const renderInterfacePropBlocks = (
     library: Library,
     targetNamespaceName: string,
     options: GenerateJsxOptions,
-): { blocks: string[]; needsReactElement: boolean; hasContainerProps: HasContainerProps } => {
+): { blocks: string[]; requiresReactElement: boolean; hasContainerProps: HasContainerProps } => {
     const { imports, intrinsicElements } = options;
     const context: InterfaceBlockContext = { library, targetNamespaceName, imports, hasContainerProps };
     const blocks: string[] = [];
-    let isNeedsReactElement = false;
+    let requiresReactElement = false;
 
     for (const iface of collectInterfacePropsClasses(
         library,
@@ -173,13 +173,13 @@ const renderInterfacePropBlocks = (
         const { block, objectPropNames } = renderInterfacePropsBlock(iface, glibName, context);
 
         if (objectPropNames.length > 0) {
-            isNeedsReactElement = true;
+            requiresReactElement = true;
         }
 
         blocks.push(block);
     }
 
-    return { blocks, needsReactElement: isNeedsReactElement, hasContainerProps };
+    return { blocks, requiresReactElement, hasContainerProps };
 };
 
 const registerCrossNsProps = (

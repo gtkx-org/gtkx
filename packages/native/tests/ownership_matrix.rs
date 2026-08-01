@@ -146,49 +146,49 @@ fn rgba_type_name() -> String {
     gdk::RGBA::static_type().name().to_string()
 }
 
-fn boxed(ownership: Ownership, size: Option<u32>, inline: bool) -> Descriptor {
+fn boxed(ownership: Ownership, size: Option<u32>, is_inline: bool) -> Descriptor {
     Descriptor::Boxed {
         ownership,
         type_name: rgba_type_name(),
         shared_library: None,
         get_type_fn_name: None,
         free_fn_name: None,
-        caller_allocated: Some(false),
+        is_caller_allocated: Some(false),
         size,
-        inline: Some(inline),
+        is_inline: Some(is_inline),
     }
 }
 
-fn named_boxed(type_name: &str, size: Option<u32>, inline: bool) -> Descriptor {
+fn named_boxed(type_name: &str, size: Option<u32>, is_inline: bool) -> Descriptor {
     Descriptor::Boxed {
         ownership: Ownership::Borrowed,
         type_name: type_name.to_owned(),
         shared_library: None,
         get_type_fn_name: None,
         free_fn_name: None,
-        caller_allocated: Some(false),
+        is_caller_allocated: Some(false),
         size,
-        inline: Some(inline),
+        is_inline: Some(is_inline),
     }
 }
 
-fn struct_of(ownership: Ownership, size: Option<u32>, inline: bool) -> Descriptor {
+fn struct_of(ownership: Ownership, size: Option<u32>, is_inline: bool) -> Descriptor {
     Descriptor::Struct {
         ownership,
         size,
-        caller_allocated: Some(false),
-        inline: Some(inline),
+        is_caller_allocated: Some(false),
+        is_inline: Some(is_inline),
     }
 }
 
-fn fundamental(ownership: Ownership, ref_fn_name: &str, inline: bool) -> Descriptor {
+fn fundamental(ownership: Ownership, ref_fn_name: &str, is_inline: bool) -> Descriptor {
     Descriptor::Fundamental {
         ownership,
         shared_library: GOBJECT.to_owned(),
         ref_fn_name: ref_fn_name.to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
         type_name: None,
-        inline: Some(inline),
+        is_inline: Some(is_inline),
     }
 }
 
@@ -274,9 +274,9 @@ fn d_boxed_caller_allocated() -> Descriptor {
         shared_library: None,
         get_type_fn_name: None,
         free_fn_name: None,
-        caller_allocated: Some(true),
+        is_caller_allocated: Some(true),
         size: Some(RGBA_SIZE),
-        inline: Some(false),
+        is_inline: Some(false),
     }
 }
 
@@ -287,9 +287,9 @@ fn d_boxed_free_fn() -> Descriptor {
         shared_library: Some(GLIB.to_owned()),
         get_type_fn_name: None,
         free_fn_name: Some("g_free".to_owned()),
-        caller_allocated: Some(false),
+        is_caller_allocated: Some(false),
         size: None,
-        inline: Some(false),
+        is_inline: Some(false),
     }
 }
 
@@ -317,8 +317,8 @@ fn d_struct_caller_allocated() -> Descriptor {
     Descriptor::Struct {
         ownership: Ownership::Borrowed,
         size: Some(RGBA_SIZE),
-        caller_allocated: Some(true),
-        inline: Some(false),
+        is_caller_allocated: Some(true),
+        is_inline: Some(false),
     }
 }
 
@@ -447,7 +447,7 @@ fn d_enum() -> Descriptor {
     Descriptor::Enum {
         shared_library: GTK.to_owned(),
         get_type_fn_name: "gtk_orientation_get_type".to_owned(),
-        signed: false,
+        is_signed: false,
     }
 }
 
@@ -455,7 +455,7 @@ fn d_flags() -> Descriptor {
     Descriptor::Flags {
         shared_library: GTK.to_owned(),
         get_type_fn_name: "gtk_state_flags_get_type".to_owned(),
-        signed: false,
+        is_signed: false,
     }
 }
 

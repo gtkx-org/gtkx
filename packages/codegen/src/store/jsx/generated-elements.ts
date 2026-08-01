@@ -15,7 +15,7 @@ type GeneratedElement = {
      * Whether the element can be rendered. An abstract GType is bound for its props and metadata but
      * exports no component, because `g_object_new` on one is a fatal GObject error.
      */
-    mountable: boolean;
+    isMountable: boolean;
 };
 
 const ELEMENTS_FILENAME = "elements.json";
@@ -26,7 +26,7 @@ const collectGeneratedElements = (intrinsicElements: GlibNamedClass[]): Generate
             namespace: entry.namespace.name,
             directory: namespaceDirectory(entry.namespace),
             glibName: entry.glibName,
-            mountable: !entry.klass.isAbstract,
+            isMountable: !entry.klass.isAbstract,
         }))
         .toSorted((a, b) => a.glibName.localeCompare(b.glibName));
 

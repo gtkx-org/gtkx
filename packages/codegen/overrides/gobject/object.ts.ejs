@@ -9,34 +9,34 @@ declare module "../gobject.js" {
 
         disconnect(handlerId: number): void;
 
-        on(sigName: string, callback: (...args: unknown[]) => unknown, after?: boolean): Object;
+        on(sigName: string, callback: (...args: unknown[]) => unknown, isAfter?: boolean): Object;
 
-        once(sigName: string, callback: (...args: unknown[]) => unknown, after?: boolean): Object;
+        once(sigName: string, callback: (...args: unknown[]) => unknown, isAfter?: boolean): Object;
 
         off(sigName: string, callback: (...args: unknown[]) => unknown): Object;
 
-        addEventListener(sigName: string, callback: (...args: unknown[]) => unknown, after?: boolean): Object;
+        addEventListener(sigName: string, callback: (...args: unknown[]) => unknown, isAfter?: boolean): Object;
 
         removeEventListener(sigName: string, callback: (...args: unknown[]) => unknown): Object;
     }
 }
 
 type GObjectWithConnect = GObject & {
-    connect(sigName: string, callback: Listener, after?: boolean): number;
+    connect(sigName: string, callback: Listener, isAfter?: boolean): number;
 };
 
 GObject.prototype.disconnect = function disconnect(handlerId: number): void {
     signalHandlerDisconnect(this, BigInt(handlerId));
 };
 
-function onImpl(this: GObjectWithConnect, sigName: string, callback: Listener, after?: boolean): GObject {
-    onSignal(this, sigName, callback, after);
+function onImpl(this: GObjectWithConnect, sigName: string, callback: Listener, isAfter?: boolean): GObject {
+    onSignal(this, sigName, callback, isAfter);
     return this;
 }
 GObject.prototype.on = onImpl;
 
-function onceImpl(this: GObjectWithConnect, sigName: string, callback: Listener, after?: boolean): GObject {
-    onceSignal(this, sigName, callback, after);
+function onceImpl(this: GObjectWithConnect, sigName: string, callback: Listener, isAfter?: boolean): GObject {
+    onceSignal(this, sigName, callback, isAfter);
     return this;
 }
 GObject.prototype.once = onceImpl;

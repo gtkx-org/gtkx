@@ -9,10 +9,10 @@ import { wrapEvent } from "./event-wrapper.js";
 /** Options for `userEvent.tab`. */
 type TabOptions = {
     /** Move focus backward instead of forward. */
-    shift?: boolean;
+    isShiftHeld?: boolean;
 };
 
-type KeyAction = { keyval: number; press: boolean };
+type KeyAction = { keyval: number; isPress: boolean };
 type ParseStep = { actions: KeyAction[]; next: number };
 
 const KEY_MAP: Record<string, number> = {
@@ -59,10 +59,10 @@ const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
 };
 
-/** Moves focus within the widget's root, forward by default and backward when `shift` is set. */
+/** Moves focus within the widget's root, forward by default and backward when `isShiftHeld` is set. */
 const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
     wrapEvent(widget, () => {
-        const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
+        const direction = options?.isShiftHeld ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
         const root = widget.getRoot();
 
         if (root) {
@@ -70,7 +70,7 @@ const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
         }
     });
 
-const parseKeyToken = (token: string): { keyval: number; press: boolean; release: boolean } => {
+const parseKeyToken = (token: string): { keyval: number; isPress: boolean; isRelease: boolean } => {
     let keyName = token;
     let isPress = true;
     let isRelease = true;
@@ -89,7 +89,7 @@ const parseKeyToken = (token: string): { keyval: number; press: boolean; release
         throw new Error(`Unknown key: {${keyName}}`);
     }
 
-    return { keyval, press: isPress, release: isRelease };
+    return { keyval, isPress, isRelease };
 };
 
 const parseCharAt = (input: string, i: number): ParseStep => {
@@ -97,8 +97,8 @@ const parseCharAt = (input: string, i: number): ParseStep => {
 
     return {
         actions: [
-            { keyval, press: true },
-            { keyval, press: false },
+            { keyval, isPress: true },
+            { keyval, isPress: false },
         ],
         next: i + 1,
     };
@@ -111,15 +111,15 @@ const parseBraceAt = (input: string, i: number): ParseStep | null => {
         return null;
     }
 
-    const { keyval, press, release } = parseKeyToken(input.slice(i + 1, endBrace));
+    const { keyval, isPress, isRelease } = parseKeyToken(input.slice(i + 1, endBrace));
     const actions: KeyAction[] = [];
 
-    if (press) {
-        actions.push({ keyval, press: true });
+    if (isPress) {
+        actions.push({ keyval, isPress: true });
     }
 
-    if (release) {
-        actions.push({ keyval, press: false });
+    if (isRelease) {
+        actions.push({ keyval, isPress: false });
     }
 
     return { actions, next: endBrace + 1 };
@@ -153,7 +153,7 @@ const updateModifierState = (state: UserEventState, action: KeyAction): void => 
         return;
     }
 
-    if (action.press) {
+    if (action.isPress) {
         state.modifierState |= mask;
     } else {
         state.modifierState &= ~mask;
@@ -269,13 +269,13 @@ const applyKeyAction = async (
     action: KeyAction,
 ): Promise<void> => {
     updateModifierState(state, action);
-    const signalName = action.press ? "key-pressed" : "key-released";
+    const signalName = action.isPress ? "key-pressed" : "key-released";
 
     for (const controller of controllers) {
         controller.emit(signalName, action.keyval, 0, state.modifierState);
     }
 
-    if (action.press) {
+    if (action.isPress) {
         await handleKeyPress(widget, action.keyval, state.modifierState);
     }
 };

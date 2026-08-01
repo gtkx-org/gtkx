@@ -10,12 +10,12 @@ const SpacedBox = ({ boxRef, spacing }: BoxRef & { spacing: number }) => (
     <GtkBox ref={boxRef} layoutManager={<GtkBoxLayout spacing={spacing} />} />
 );
 
-const OptionalLayoutBox = ({ boxRef, show }: BoxRef & { show: boolean }) => (
-    <GtkBox ref={boxRef} layoutManager={show ? <GtkBoxLayout spacing={8} /> : null} />
+const OptionalLayoutBox = ({ boxRef, shouldShow }: BoxRef & { shouldShow: boolean }) => (
+    <GtkBox ref={boxRef} layoutManager={shouldShow ? <GtkBoxLayout spacing={8} /> : null} />
 );
 
-const SwitchableLayoutBox = ({ boxRef, useGrid }: BoxRef & { useGrid: boolean }) => (
-    <GtkBox ref={boxRef} layoutManager={useGrid ? <GtkGridLayout /> : <GtkBoxLayout spacing={4} />} />
+const SwitchableLayoutBox = ({ boxRef, shouldUseGrid }: BoxRef & { shouldUseGrid: boolean }) => (
+    <GtkBox ref={boxRef} layoutManager={shouldUseGrid ? <GtkGridLayout /> : <GtkBoxLayout spacing={4} />} />
 );
 
 describe("render - layoutManager prop wiring", () => {
@@ -68,18 +68,18 @@ describe("render - layoutManager prop lifecycle", () => {
 
     it("clears the layout manager slot when the wrapper element is unmounted", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const { rerender } = await render(<OptionalLayoutBox boxRef={boxRef} show={true} />);
+        const { rerender } = await render(<OptionalLayoutBox boxRef={boxRef} shouldShow={true} />);
         expect(boxRef.current?.getLayoutManager()).toBeInstanceOf(Gtk.BoxLayout);
-        await rerender(<OptionalLayoutBox boxRef={boxRef} show={false} />);
+        await rerender(<OptionalLayoutBox boxRef={boxRef} shouldShow={false} />);
         const remaining = boxRef.current?.getLayoutManager();
         expect(remaining).not.toBeInstanceOf(Gtk.BoxLayout);
     });
 
     it("replaces an existing layout manager when a new one mounts", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const { rerender } = await render(<SwitchableLayoutBox boxRef={boxRef} useGrid={false} />);
+        const { rerender } = await render(<SwitchableLayoutBox boxRef={boxRef} shouldUseGrid={false} />);
         expect(boxRef.current?.getLayoutManager()).toBeInstanceOf(Gtk.BoxLayout);
-        await rerender(<SwitchableLayoutBox boxRef={boxRef} useGrid={true} />);
+        await rerender(<SwitchableLayoutBox boxRef={boxRef} shouldUseGrid={true} />);
         expect(boxRef.current?.getLayoutManager()).toBeInstanceOf(Gtk.GridLayout);
     });
 });

@@ -15,7 +15,7 @@ type PrettyWidgetOptions = {
     /** Truncates the output once it exceeds this many characters. */
     maxLength?: number;
     /** Whether to apply ANSI color highlighting; defaults to the terminal capabilities. */
-    highlight?: boolean;
+    shouldHighlight?: boolean;
     /** Resolves an `id` attribute to show for each widget. */
     getId?: WidgetIdResolver;
     /** Stops descending past this depth, replacing deeper children with a summary line. */
@@ -77,7 +77,7 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
     return [...idAttrs, ...otherAttrs];
 };
 
-const shouldHighlight = (): boolean => {
+const isHighlightSupported = (): boolean => {
     if (typeof process === "undefined") {
         return false;
     }
@@ -207,8 +207,8 @@ const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): 
         return "";
     }
 
-    const isHighlight = options.highlight ?? shouldHighlight();
-    const colors = createColors(isHighlight);
+    const shouldHighlight = options.shouldHighlight ?? isHighlightSupported();
+    const colors = createColors(shouldHighlight);
     let output = "";
 
     for (const root of roots(container)) {

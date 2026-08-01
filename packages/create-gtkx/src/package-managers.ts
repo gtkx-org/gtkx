@@ -1,9 +1,9 @@
 type PackageManager = (typeof PACKAGE_MANAGERS)[number]["value"];
 
 const PACKAGE_MANAGERS = [
-    { value: "pnpm", label: "pnpm", devCommand: "pnpm dev", installCommand: "pnpm install", recommended: true },
-    { value: "npm", label: "npm", devCommand: "npm run dev", installCommand: "npm install", recommended: false },
-    { value: "yarn", label: "yarn", devCommand: "yarn dev", installCommand: "yarn install", recommended: false },
+    { value: "pnpm", label: "pnpm", devCommand: "pnpm dev", installCommand: "pnpm install", isRecommended: true },
+    { value: "npm", label: "npm", devCommand: "npm run dev", installCommand: "npm install", isRecommended: false },
+    { value: "yarn", label: "yarn", devCommand: "yarn dev", installCommand: "yarn install", isRecommended: false },
 ] as const;
 
 const PACKAGE_MANAGER_VALUES: PackageManager[] = PACKAGE_MANAGERS.map((manager) => manager.value);

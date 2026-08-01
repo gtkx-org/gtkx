@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, GtkColumnViewColumn, GtkCustomSorter, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
@@ -77,7 +77,7 @@ const getSortTarget = (view: Gtk.ColumnView | null, sortColumn: string | null | 
 };
 
 const applySort = (
-    sorting: { current: boolean },
+    sorting: RefObject<boolean>,
     view: Gtk.ColumnView,
     column: Gtk.ColumnViewColumn | null,
     order: Gtk.SortType | null | undefined,
@@ -93,7 +93,7 @@ const applySort = (
 
 const emitSortChanged = (
     sorter: Gtk.ColumnViewSorter | null,
-    sorting: { current: boolean },
+    sorting: RefObject<boolean>,
     sort: SortProps,
 ): void => {
     if (sorter === null || sorting.current) {
@@ -104,7 +104,7 @@ const emitSortChanged = (
 };
 
 const syncSort = (
-    sorting: { current: boolean },
+    sorting: RefObject<boolean>,
     view: Gtk.ColumnView | null,
     sortColumn: string | null | undefined,
     sortOrder: Gtk.SortType | null | undefined,
@@ -136,14 +136,14 @@ const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns:
 
 const ColumnCells = ({ column, collection, expandedIds, size }: ColumnCellsProps): ReactNode => {
     const cells = useItemCells(size);
-    const rest = omit(column, ["id", "renderCell", "sortable"]);
+    const rest = omit(column, ["id", "renderCell", "isSortable"]);
 
     return (
         <>
             <GtkColumnViewColumn
                 id={column.id}
                 factory={<GtkSignalListItemFactory {...cells.handlers} />}
-                sorter={column.sortable === true ? <GtkCustomSorter /> : null}
+                sorter={column.isSortable === true ? <GtkCustomSorter /> : null}
                 {...rest}
             />
             <ItemPortals

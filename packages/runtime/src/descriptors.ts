@@ -42,9 +42,9 @@ type TypeDescriptor = BigUint64Descriptor & { type: true };
 /** How a boxed value is stored, and where its GType and free function are resolved from. */
 type BoxedOptions = {
     /** The caller owns the storage the callee fills, so a decoded value is borrowed instead of copied. */
-    callerAllocated?: boolean;
+    isCallerAllocated?: boolean;
     /** The value is embedded in the containing struct rather than reached through a pointer. */
-    inline?: boolean;
+    isInline?: boolean;
     /** Whether a decoded value is owned by the caller; defaults to `"borrowed"`. */
     ownership?: Ownership;
     /** Library `getTypeFnName` and `freeFnName` are resolved in. */
@@ -86,15 +86,15 @@ type FundamentalOptions = {
     /** Class a decoded value is wrapped in, instead of the one registered for `typeName`. */
     wrapperClass?: AnyClass;
     /** The value is embedded in the containing struct rather than reached through a pointer. */
-    inline?: boolean;
+    isInline?: boolean;
 };
 
 /** How a plain C struct is stored and wrapped. */
 type StructOptions = {
     /** The caller owns the storage the callee fills, so a decoded value is borrowed instead of copied. */
-    callerAllocated?: boolean;
+    isCallerAllocated?: boolean;
     /** The value is embedded in the containing struct rather than reached through a pointer. */
-    inline?: boolean;
+    isInline?: boolean;
     /** Byte size of the struct, needed to copy it rather than borrow the pointer. */
     size?: number;
     /** Class a decoded value is wrapped in, instead of the one registered for its GType. */
@@ -142,14 +142,14 @@ const enumT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): En
     kind: "enum",
     sharedLibrary,
     getTypeFnName: typeFnName,
-    signed: isSigned,
+    isSigned,
 });
 
 const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): FlagsDescriptor => ({
     kind: "flags",
     sharedLibrary,
     getTypeFnName: typeFnName,
-    signed: isSigned,
+    isSigned,
 });
 
 const applyBoxedNames = (result: BoxedDescriptor, options: BoxedOptions): void => {
@@ -169,12 +169,12 @@ const applyBoxedNames = (result: BoxedDescriptor, options: BoxedOptions): void =
 const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void => {
     applyBoxedNames(result, options);
 
-    if (options.callerAllocated) {
-        result.callerAllocated = true;
+    if (options.isCallerAllocated) {
+        result.isCallerAllocated = true;
     }
 
-    if (options.inline) {
-        result.inline = true;
+    if (options.isInline) {
+        result.isInline = true;
     }
 
     if (options.size !== undefined) {
@@ -205,12 +205,12 @@ const structT = (ownership: Ownership = "borrowed", options: StructOptions = {})
         result.wrapperClass = options.wrapperClass;
     }
 
-    if (options.callerAllocated) {
-        result.callerAllocated = true;
+    if (options.isCallerAllocated) {
+        result.isCallerAllocated = true;
     }
 
-    if (options.inline) {
-        result.inline = true;
+    if (options.isInline) {
+        result.isInline = true;
     }
 
     return result;
@@ -233,8 +233,8 @@ const fundamentalT = (
         result.wrapperClass = options.wrapperClass;
     }
 
-    if (options.inline) {
-        result.inline = true;
+    if (options.isInline) {
+        result.isInline = true;
     }
 
     return result;

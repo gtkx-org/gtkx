@@ -101,12 +101,12 @@ pub enum Descriptor {
     Enum {
         shared_library: String,
         get_type_fn_name: String,
-        signed: bool,
+        is_signed: bool,
     },
     Flags {
         shared_library: String,
         get_type_fn_name: String,
-        signed: bool,
+        is_signed: bool,
     },
     Boolean,
     String {
@@ -125,15 +125,15 @@ pub enum Descriptor {
         shared_library: Option<String>,
         get_type_fn_name: Option<String>,
         free_fn_name: Option<String>,
-        caller_allocated: Option<bool>,
+        is_caller_allocated: Option<bool>,
         size: Option<u32>,
-        inline: Option<bool>,
+        is_inline: Option<bool>,
     },
     Struct {
         ownership: Ownership,
         size: Option<u32>,
-        caller_allocated: Option<bool>,
-        inline: Option<bool>,
+        is_caller_allocated: Option<bool>,
+        is_inline: Option<bool>,
     },
     Fundamental {
         ownership: Ownership,
@@ -141,7 +141,7 @@ pub enum Descriptor {
         ref_fn_name: String,
         unref_fn_name: String,
         type_name: Option<String>,
-        inline: Option<bool>,
+        is_inline: Option<bool>,
     },
     Array {
         #[napi(ts_type = "Descriptor")]
@@ -203,22 +203,22 @@ impl Descriptor {
             Self::Enum {
                 shared_library,
                 get_type_fn_name,
-                signed,
+                is_signed,
             } => Self::enum_flags(
                 EnumFlagsKind::Enum,
                 shared_library,
                 get_type_fn_name,
-                signed,
+                is_signed,
             ),
             Self::Flags {
                 shared_library,
                 get_type_fn_name,
-                signed,
+                is_signed,
             } => Self::enum_flags(
                 EnumFlagsKind::Flags,
                 shared_library,
                 get_type_fn_name,
-                signed,
+                is_signed,
             ),
             Self::String { ownership, length } => Codec::String(StringCodec {
                 ownership,
@@ -231,29 +231,29 @@ impl Descriptor {
                 shared_library,
                 get_type_fn_name,
                 free_fn_name,
-                caller_allocated,
+                is_caller_allocated,
                 size,
-                inline,
+                is_inline,
             } => Codec::Boxed(BoxedCodec {
                 ownership,
                 type_name,
                 shared_library,
                 get_type_fn_name,
                 free_fn_name,
-                caller_allocated: caller_allocated.unwrap_or(false),
+                caller_allocated: is_caller_allocated.unwrap_or(false),
                 size: size.map(|n| n as usize),
-                inline: inline.unwrap_or(false),
+                inline: is_inline.unwrap_or(false),
             }),
             Self::Struct {
                 ownership,
                 size,
-                caller_allocated,
-                inline,
+                is_caller_allocated,
+                is_inline,
             } => Codec::Struct(StructCodec {
                 ownership,
                 size: size.map(|n| n as usize),
-                caller_allocated: caller_allocated.unwrap_or(false),
-                inline: inline.unwrap_or(false),
+                caller_allocated: is_caller_allocated.unwrap_or(false),
+                inline: is_inline.unwrap_or(false),
             }),
             Self::Fundamental {
                 ownership,
@@ -261,13 +261,13 @@ impl Descriptor {
                 ref_fn_name,
                 unref_fn_name,
                 type_name: _,
-                inline,
+                is_inline,
             } => Codec::Fundamental(FundamentalCodec {
                 ownership,
                 shared_library,
                 ref_fn_name,
                 unref_fn_name,
-                inline: inline.unwrap_or(false),
+                inline: is_inline.unwrap_or(false),
             }),
             nested => nested.into_nested_codec()?,
         })
@@ -338,13 +338,13 @@ impl Descriptor {
         kind: EnumFlagsKind,
         shared_library: String,
         get_type_fn_name: String,
-        signed: bool,
+        is_signed: bool,
     ) -> Codec {
         Codec::EnumFlags(EnumFlagsCodec {
             kind,
             shared_library,
             get_type_fn_name,
-            storage: if signed {
+            storage: if is_signed {
                 IntegerCodec::I32
             } else {
                 IntegerCodec::U32

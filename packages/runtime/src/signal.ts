@@ -40,7 +40,7 @@ type SignalConnectSpec = {
     /** Called on each emission with the signal's own arguments, without the leading emitter. */
     handler: SignalHandler;
     /** When true, run the handler after the class's default handler instead of before it. */
-    after: boolean;
+    isAfter: boolean;
 };
 
 /** One argument of a signal emission: how to marshal it, plus the value to marshal. */
@@ -122,12 +122,12 @@ function connectBind(type: bigint, signal: string, callback: CallbackDescriptor)
  * @param spec Callback descriptor, handler function, and whether to run after the default handler.
  */
 function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
-    const { callback, handler, after } = spec;
+    const { callback, handler, isAfter } = spec;
     const wrapped = wrapCallback(handler, callback, "emitter");
     const type: bigint = (instance as TypedClass).__type__;
     const connect = connectBind(type, signal, callback);
 
-    return connect(getHandle(instance), signal, wrapped, after ? 1 : 0) as number;
+    return connect(getHandle(instance), signal, wrapped, isAfter ? 1 : 0) as number;
 }
 
 function blockMatchedSignalHandlers(instance: object, signal: string): void {

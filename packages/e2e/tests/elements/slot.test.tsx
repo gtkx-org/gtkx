@@ -37,13 +37,18 @@ describe("render - Slot (1)", () => {
     it("clears slot when child removed", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
 
-        function App({ showTitle }: { showTitle: boolean }) {
-            return <GtkHeaderBar ref={headerBarRef} titleWidget={showTitle ? <GtkLabel>Title</GtkLabel> : undefined} />;
+        function App({ shouldShowTitle }: { shouldShowTitle: boolean }) {
+            return (
+                <GtkHeaderBar
+                    ref={headerBarRef}
+                    titleWidget={shouldShowTitle ? <GtkLabel>Title</GtkLabel> : undefined}
+                />
+            );
         }
 
-        await render(<App showTitle />);
+        await render(<App shouldShowTitle />);
         expect(headerBarRef.current?.getTitleWidget()).not.toBeNull();
-        await render(<App showTitle={false} />);
+        await render(<App shouldShowTitle={false} />);
         expect(headerBarRef.current?.getTitleWidget()).toBeNull();
     });
 });
@@ -54,12 +59,12 @@ describe("render - Slot (2)", () => {
         const label1Ref = createRef<Gtk.Label>();
         const label2Ref = createRef<Gtk.Label>();
 
-        function App({ first }: { first: boolean }) {
+        function App({ isFirst }: { isFirst: boolean }) {
             return (
                 <GtkHeaderBar
                     ref={headerBarRef}
                     titleWidget={
-                        first
+                        isFirst
                             ? (
                                     <GtkLabel ref={label1Ref} key="first">
                                         First Title
@@ -75,9 +80,9 @@ describe("render - Slot (2)", () => {
             );
         }
 
-        await render(<App first={true} />);
+        await render(<App isFirst={true} />);
         expect(headerBarRef.current).toHaveObjectProperty("titleWidget", label1Ref.current);
-        await render(<App first={false} />);
+        await render(<App isFirst={false} />);
         expect(headerBarRef.current).toHaveObjectProperty("titleWidget", label2Ref.current);
     });
 

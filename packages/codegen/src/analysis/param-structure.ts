@@ -14,8 +14,8 @@ type HandlerResultOptions = {
     library: Library;
     signal: GirCallable;
     renderType: (ref: TypeId | undefined, isNullable: boolean) => string;
-    includeCallerAllocated: boolean;
-    optOut: boolean;
+    shouldIncludeCallerAllocated: boolean;
+    isOptOut: boolean;
 };
 
 const isInputParameter = (options: {
@@ -197,9 +197,9 @@ const foldOutParamShape = (primary: string | undefined, outTypes: string[]): str
 const isHandlerOutParameter = (options: {
     library: Library;
     parameter: GirParameter;
-    includeCallerAllocated: boolean;
+    shouldIncludeCallerAllocated: boolean;
 }): boolean => {
-    const { library, parameter, includeCallerAllocated } = options;
+    const { library, parameter, shouldIncludeCallerAllocated } = options;
 
     if (parameter.isVarargs) {
         return false;
@@ -213,7 +213,7 @@ const isHandlerOutParameter = (options: {
         return true;
     }
 
-    return includeCallerAllocated && isCallerAllocatedOut(parameter);
+    return shouldIncludeCallerAllocated && isCallerAllocatedOut(parameter);
 };
 
 const scalarResultType = (primary: string | undefined, isOptOut: boolean): string => {
@@ -225,18 +225,18 @@ const scalarResultType = (primary: string | undefined, isOptOut: boolean): strin
 };
 
 const renderHandlerResultType = (options: HandlerResultOptions): string => {
-    const { library, signal, renderType, includeCallerAllocated, optOut } = options;
+    const { library, signal, renderType, shouldIncludeCallerAllocated, isOptOut } = options;
 
     const primary = shouldOmitPrimaryReturn(library, signal.returnValue)
         ? undefined
         : renderType(signal.returnValue.type, signal.returnValue.nullable);
 
     const outTypes = signal.parameters
-        .filter((parameter) => isHandlerOutParameter({ library, parameter, includeCallerAllocated }))
+        .filter((parameter) => isHandlerOutParameter({ library, parameter, shouldIncludeCallerAllocated }))
         .map((parameter) => renderType(parameter.type, parameter.nullable));
 
     if (outTypes.length === 0) {
-        return scalarResultType(primary, optOut);
+        return scalarResultType(primary, isOptOut);
     }
 
     return foldOutParamShape(primary, outTypes);

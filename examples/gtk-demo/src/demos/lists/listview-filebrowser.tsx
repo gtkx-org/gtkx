@@ -135,7 +135,7 @@ function useDirectoryFiles(currentPath: string) {
         setFiles(sortFileItems(collectDirectoryItems(dirList)));
     };
 
-    useSignal(dirList, "notify::loading", refresh, { immediate: true });
+    useSignal(dirList, "notify::loading", refresh, { isImmediate: true });
     useSignal(dirList, "items-changed", refresh);
 
     return files;

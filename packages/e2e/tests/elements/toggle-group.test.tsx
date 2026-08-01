@@ -6,7 +6,7 @@ import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
 
-type Toggle = { id: string; label: string; enabled?: boolean };
+type Toggle = { id: string; label: string; isEnabled?: boolean };
 
 const LIST_GRID_TOGGLES = (
     <>
@@ -33,7 +33,7 @@ const THREE_VIEW_GROUP = (
 const buildToggleGroup = (ref: RefObject<Adw.ToggleGroup | null>) => (toggles: Toggle[]) => (
     <AdwToggleGroup ref={ref}>
         {toggles.map((toggle) => (
-            <AdwToggle key={toggle.id} name={toggle.id} label={toggle.label} enabled={toggle.enabled ?? true} />
+            <AdwToggle key={toggle.id} name={toggle.id} label={toggle.label} enabled={toggle.isEnabled ?? true} />
         ))}
     </AdwToggleGroup>
 );

@@ -16,21 +16,21 @@ type FnSpec = {
     /** Descriptor for the C return value, packed first when output arguments are also returned. */
     returns: Descriptor;
     /** The function takes a trailing `GError**`, whose contents are thrown as an error on return. */
-    throws?: boolean;
+    canThrow?: boolean;
 };
 
 type ArgSpec = {
     arg: Arg;
     isRef: boolean;
     isCallerAllocated: boolean;
-    consumesInput: boolean;
+    requiresInput: boolean;
     inputIndex: number;
     isOutParam: boolean;
 };
 
 const buildNativeArgTypes = (args: Arg[], canThrow: boolean): Descriptor[] => {
     const nativeArgTypes = args.map((argSpec) =>
-        argSpec.direction !== undefined && argSpec.callerAllocated !== true ? refT(argSpec.type) : argSpec.type,
+        argSpec.direction !== undefined && argSpec.isCallerAllocated !== true ? refT(argSpec.type) : argSpec.type,
     );
 
     if (canThrow) {
@@ -47,15 +47,15 @@ const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
 
     return args.map((arg) => {
         const isRef = isRefArg(arg);
-        const isConsumesInput = !isRef || isInoutArg(arg);
-        const isOutParam = isOutputArg(arg) && arg.consumed !== true;
+        const requiresInput = !isRef || isInoutArg(arg);
+        const isOutParam = isOutputArg(arg) && arg.isConsumed !== true;
 
         return {
             arg,
             isRef,
             isCallerAllocated: isCallerAllocatedArg(arg),
-            consumesInput: isConsumesInput,
-            inputIndex: isConsumesInput ? inputCursor++ : -1,
+            requiresInput,
+            inputIndex: requiresInput ? inputCursor++ : -1,
             isOutParam,
         };
     });
@@ -67,19 +67,19 @@ const resolveCallerAllocated = (inputs: unknown[], inputIndex: number): unknown 
     return wrapper == null ? wrapper : getHandle(wrapper);
 };
 
-const buildRefValue = (isInputConsumed: boolean, inputs: unknown[], inputIndex: number): Ref => ({
-    value: isInputConsumed ? inputs[inputIndex] : null,
+const buildRefValue = (requiresInput: boolean, inputs: unknown[], inputIndex: number): Ref => ({
+    value: requiresInput ? inputs[inputIndex] : null,
 });
 
 const buildNativeValue = (spec: ArgSpec, inputs: unknown[]): unknown => {
-    const { arg, isRef, isCallerAllocated, consumesInput, inputIndex } = spec;
+    const { arg, isRef, isCallerAllocated, requiresInput, inputIndex } = spec;
 
     if (isCallerAllocated) {
         return resolveCallerAllocated(inputs, inputIndex);
     }
 
     if (isRef) {
-        return buildRefValue(consumesInput, inputs, inputIndex);
+        return buildRefValue(requiresInput, inputs, inputIndex);
     }
 
     if (arg.type.kind === "callback") {
@@ -109,8 +109,8 @@ const readOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknow
 };
 
 function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
-    const { args, returns: returnDescriptor, throws = false } = spec;
-    const nativeArgTypes = buildNativeArgTypes(args, throws);
+    const { args, returns: returnDescriptor, canThrow = false } = spec;
+    const nativeArgTypes = buildNativeArgTypes(args, canThrow);
     const nativeFn = bind(sharedLibrary, symbol, nativeArgTypes, returnDescriptor);
     const hasPrimary = returnDescriptor.kind !== "void";
     const plans = buildArgSpecs(args);
@@ -121,7 +121,7 @@ function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: un
         return packTupleResult(readOutParams(plans, inputs, nativeValues), primary, hasPrimary);
     };
 
-    if (throws) {
+    if (canThrow) {
         return (...inputs) => {
             const nativeValues = buildNativeValues(plans, inputs);
             const errorRef: Ref = { value: null };

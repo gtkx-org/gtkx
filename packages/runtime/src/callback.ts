@@ -40,7 +40,7 @@ const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, sourc
 };
 
 const isCallerAllocatedOut = (descriptor: Descriptor): boolean =>
-    (descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.callerAllocated === true;
+    (descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.isCallerAllocated === true;
 
 const collectRefArg = (
     descriptor: RefDescriptor,

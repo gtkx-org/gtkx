@@ -12,7 +12,7 @@ import {
 } from "./e2e-registry.js";
 import { assertPublishedShape, type PackageManifest } from "./publish-manifest.js";
 
-type ConsumerVariant = { appName: string; applicationId: string; typescript: boolean };
+type ConsumerVariant = { appName: string; applicationId: string; isTypescript: boolean };
 
 type Packument = {
     "dist-tags": { latest?: string };
@@ -20,8 +20,8 @@ type Packument = {
 };
 
 const CONSUMER_VARIANTS: ConsumerVariant[] = [
-    { appName: "release-e2e-ts", applicationId: "com.gtkx.release-e2e-ts", typescript: true },
-    { appName: "release-e2e-js", applicationId: "com.gtkx.release-e2e-js", typescript: false },
+    { appName: "release-e2e-ts", applicationId: "com.gtkx.release-e2e-ts", isTypescript: true },
+    { appName: "release-e2e-js", applicationId: "com.gtkx.release-e2e-js", isTypescript: false },
 ];
 
 function runCapture(command: string, args: string[]): Promise<string> {
@@ -160,7 +160,7 @@ async function verifyPublishedShapes(inspectDir: string): Promise<void> {
 }
 
 async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, variant: ConsumerVariant): Promise<void> {
-    const language = variant.typescript ? "TypeScript" : "JavaScript";
+    const language = variant.isTypescript ? "TypeScript" : "JavaScript";
 
     const scaffoldArgs = [
         "create",
@@ -174,7 +174,7 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
         "--vitest",
     ];
 
-    if (!variant.typescript) {
+    if (!variant.isTypescript) {
         scaffoldArgs.push("--no-typescript");
     }
 
@@ -183,7 +183,7 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
     await runAsync("npm", ["run", "build"], { cwd: appDir, env });
     await verifyBuiltAppStarts(appDir);
 
-    if (variant.typescript) {
+    if (variant.isTypescript) {
         await runAsync("npm", ["run", "typecheck"], { cwd: appDir, env });
     }
 

@@ -36,7 +36,7 @@ const invokeHandler = (
 
 const wrapHandler = (target: SignalTarget, record: HandlerRecord, notifyProperty: string | null): SignalHandler =>
     (...args: unknown[]): unknown => {
-        if (record.blockable && isApplyingWrite()) {
+        if (record.isBlockable && isApplyingWrite()) {
             return undefined;
         }
 
@@ -58,7 +58,7 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
 
     const isBlockable = isBlockableSignal(typeInfoFor(target.typeName), signal);
     const notifyProperty = getNotifyProperty(signal);
-    const record: HandlerRecord = { signal, handler, wrapped: (): undefined => undefined, blockable: isBlockable };
+    const record: HandlerRecord = { signal, handler, wrapped: (): undefined => undefined, isBlockable };
     record.wrapped = wrapHandler(target, record, notifyProperty);
     target.object.on(signal, record.wrapped);
     target.handlers.set(prop, record);

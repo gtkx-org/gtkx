@@ -10,7 +10,7 @@
         "dev": "gtkx dev",
         "build": "gtkx build",
         "codegen": "gtkx codegen",
-<% if (typescript) { -%>
+<% if (isTypescript) { -%>
         "typecheck": "gtkx codegen && tsc --noEmit",
 <% } -%>
         "start": "node dist/bundle.js"

@@ -1,6 +1,6 @@
 declare global {
     var gtkxHeadlessTeardown: (() => void) | undefined;
-    var gtkxHeadlessShutdownInstalled: boolean | undefined;
+    var isGtkxHeadlessShutdownInstalled: boolean | undefined;
 }
 
 const defineGlobal = (key: string, value: unknown): void => {
@@ -14,9 +14,9 @@ const setHeadlessTeardown = (teardown: (() => void) | undefined): void => {
 const headlessTeardown = (): (() => void) | undefined => globalThis.gtkxHeadlessTeardown;
 
 const setHeadlessShutdownInstalled = (installed: boolean | undefined): void => {
-    defineGlobal("gtkxHeadlessShutdownInstalled", installed);
+    defineGlobal("isGtkxHeadlessShutdownInstalled", installed);
 };
 
-const isHeadlessShutdownInstalled = (): boolean => globalThis.gtkxHeadlessShutdownInstalled === true;
+const isHeadlessShutdownInstalled = (): boolean => globalThis.isGtkxHeadlessShutdownInstalled === true;
 
 export { setHeadlessTeardown, headlessTeardown, setHeadlessShutdownInstalled, isHeadlessShutdownInstalled };

@@ -14,7 +14,7 @@ const page = (outDir: string, path: string): string => readFileSync(join(outDir,
 
 const registerNamespaceIndexTests = (): void => {
     it("generates namespaces with Gtk first and one link per element", () => {
-        expect(defaultResult.regenerated).toBe(true);
+        expect(defaultResult.isRegenerated).toBe(true);
         const names = defaultResult.namespaces.map((namespace) => namespace.name);
         expect(names[0]).toBe("Gtk");
         expect(names).toContain("Gio");
@@ -108,10 +108,10 @@ const registerSignalAndMethodTests = (): void => {
 
     it("skips regeneration while fresh and honors force", () => {
         const fresh = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir });
-        expect(fresh.regenerated).toBe(false);
+        expect(fresh.isRegenerated).toBe(false);
         expect(fresh.namespaces).toEqual(defaultResult.namespaces);
-        const forced = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir, force: true });
-        expect(forced.regenerated).toBe(true);
+        const forced = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir, isForced: true });
+        expect(forced.isRegenerated).toBe(true);
         expect(forced.namespaces).toEqual(defaultResult.namespaces);
     });
 };
@@ -155,7 +155,7 @@ describe("writeDocs with a custom base path", () => {
             basePath: "/docs/elements",
         });
 
-        expect(result.regenerated).toBe(true);
+        expect(result.isRegenerated).toBe(true);
         const gtk = result.namespaces.find((namespace) => namespace.name === "Gtk");
         expect(gtk?.link).toBe("/docs/elements/gtk/");
         expect(existsSync(join(outDir, "manifest.json"))).toBe(true);

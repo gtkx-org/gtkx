@@ -48,7 +48,7 @@ type ResolvedConfig = {
     userEventSignals: Record<string, string[]>;
     /** Path of the module exporting per-element configs, or `null` when none is configured. */
     elements: string | null;
-    /** GLib type names of the elements marked `lazy`, whose GObject their parent container creates. */
+    /** GLib type names of the elements marked `isLazy`, whose GObject their parent container creates. */
     lazyElements: string[];
 };
 
@@ -171,7 +171,7 @@ const elementConfigSchema = z.object({
     /** Base props interface the generated element props extend. */
     props: moduleExportSchema.optional(),
     /** Marks the element as having no GObject of its own, its parent container creating one instead. */
-    lazy: z.boolean({ error: "must be a boolean" }).optional(),
+    isLazy: z.boolean({ error: "must be a boolean" }).optional(),
     /** GObject properties to leave out of the generated element props, such as those a behavior fills. */
     omittedProps: z
         .array(
@@ -292,7 +292,7 @@ const resolveElementsModule = (behaviors: string | undefined, root: string | und
 
 const resolveLazyElements = (elements: Config["elements"]): string[] =>
     Object.entries(elements?.config ?? {})
-        .filter(([, entry]) => entry.lazy === true)
+        .filter(([, entry]) => entry.isLazy === true)
         .map(([type]) => type);
 
 const elementEntryValues = <T>(

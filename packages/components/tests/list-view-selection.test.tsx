@@ -235,7 +235,7 @@ describe("render - ListView - selection (5)", () => {
                         hideExpander: true,
                     })),
                 })),
-                { expandAll: true, onSelectionChanged },
+                { shouldExpandAll: true, onSelectionChanged },
             );
 
             const listView = ref.current;

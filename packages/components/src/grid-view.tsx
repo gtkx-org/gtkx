@@ -23,7 +23,7 @@ function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
     const { renderItem, estimatedItemHeight, estimatedItemWidth } = props;
     const rest = omit(props, GRID_VIEW_PROPS);
     const size = { width: estimatedItemWidth ?? -1, height: estimatedItemHeight ?? -1 };
-    const { collection, selection } = useCollection({ ...props, flat: true });
+    const { collection, selection } = useCollection({ ...props, isFlat: true });
     const itemCells = useItemCells(size);
 
     return (

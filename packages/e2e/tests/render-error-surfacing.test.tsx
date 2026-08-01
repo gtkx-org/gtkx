@@ -5,7 +5,7 @@ import { Component, type ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
 type BoundaryProps = { children: ReactNode };
-type BoundaryState = { failed: boolean };
+type BoundaryState = { hasFailed: boolean };
 
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -15,13 +15,13 @@ const Exploding = (): ReactNode => {
 
 class Boundary extends Component<BoundaryProps, BoundaryState> {
     public static getDerivedStateFromError(): BoundaryState {
-        return { failed: true };
+        return { hasFailed: true };
     }
 
-    public override state: BoundaryState = { failed: false };
+    public override state: BoundaryState = { hasFailed: false };
 
     public override render(): ReactNode {
-        return this.state.failed ? <GtkLabel>recovered</GtkLabel> : this.props.children;
+        return this.state.hasFailed ? <GtkLabel>recovered</GtkLabel> : this.props.children;
     }
 }
 

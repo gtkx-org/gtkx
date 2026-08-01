@@ -14,10 +14,10 @@ type CreateOptions = {
     name?: string | undefined;
     applicationId?: string | undefined;
     packageManager?: PackageManager | undefined;
-    typescript?: boolean | undefined;
-    includeTesting?: boolean | undefined;
-    interactive?: boolean | undefined;
-    overwrite?: boolean | undefined;
+    isTypescript?: boolean | undefined;
+    shouldIncludeTesting?: boolean | undefined;
+    isInteractive?: boolean | undefined;
+    shouldOverwrite?: boolean | undefined;
 };
 
 type ResolvedOptions = {
@@ -25,15 +25,15 @@ type ResolvedOptions = {
     name: string;
     applicationId: string;
     packageManager: PackageManager;
-    typescript: boolean;
-    includeTesting: boolean;
+    isTypescript: boolean;
+    shouldIncludeTesting: boolean;
 };
 
 type InstallDependenciesOptions = {
     cwd: string;
     packageManager: PackageManager;
     dependencies: string[];
-    dev: boolean;
+    isDev: boolean;
 };
 
 type InstallAllOptions = {
@@ -100,16 +100,16 @@ const isDirEmpty = (dir: string): boolean => {
 };
 
 const getDevDependencies = ({
-    typescript,
-    includeTesting,
-}: Pick<ResolvedOptions, "typescript" | "includeTesting">): string[] => {
+    isTypescript,
+    shouldIncludeTesting,
+}: Pick<ResolvedOptions, "isTypescript" | "shouldIncludeTesting">): string[] => {
     const devDeps = [...DEV_DEPENDENCIES];
 
-    if (typescript) {
+    if (isTypescript) {
         devDeps.push(...TYPESCRIPT_DEV_DEPENDENCIES);
     }
 
-    if (includeTesting) {
+    if (shouldIncludeTesting) {
         devDeps.push(...TESTING_DEV_DEPENDENCIES);
     }
 
@@ -202,7 +202,7 @@ const packageManagerHint = (
         return "detected";
     }
 
-    if (manager.recommended) {
+    if (manager.isRecommended) {
         return "recommended";
     }
 
@@ -277,8 +277,8 @@ const validateResolvedOptions = (name: string, applicationId: string): void => {
 };
 
 const confirmOverwrite = async (target: string, options: CreateOptions): Promise<boolean> => {
-    if (!options.interactive) {
-        return options.overwrite === true;
+    if (!options.isInteractive) {
+        return options.shouldOverwrite === true;
     }
 
     return guardCancellation(
@@ -308,7 +308,7 @@ const resolveTarget = async (options: CreateOptions): Promise<string> => {
         return formatTargetDir(options.name);
     }
 
-    if (!options.interactive) {
+    if (!options.isInteractive) {
         return fail("Project directory is required");
     }
 
@@ -320,7 +320,7 @@ const resolveApplicationId = async (options: CreateOptions, name: string): Promi
         return options.applicationId;
     }
 
-    return options.interactive ? promptApplicationId(name) : suggestApplicationId(name);
+    return options.isInteractive ? promptApplicationId(name) : suggestApplicationId(name);
 };
 
 const resolvePackageManager = async (options: CreateOptions): Promise<PackageManager> => {
@@ -328,7 +328,7 @@ const resolvePackageManager = async (options: CreateOptions): Promise<PackageMan
         return options.packageManager;
     }
 
-    if (options.interactive) {
+    if (options.isInteractive) {
         return promptPackageManager();
     }
 
@@ -336,19 +336,19 @@ const resolvePackageManager = async (options: CreateOptions): Promise<PackageMan
 };
 
 const resolveTypeScript = async (options: CreateOptions): Promise<boolean> => {
-    if (options.typescript !== undefined) {
-        return options.typescript;
+    if (options.isTypescript !== undefined) {
+        return options.isTypescript;
     }
 
-    return options.interactive ? promptTypeScript() : true;
+    return options.isInteractive ? promptTypeScript() : true;
 };
 
 const resolveIncludeTesting = async (options: CreateOptions): Promise<boolean> => {
-    if (options.includeTesting !== undefined) {
-        return options.includeTesting;
+    if (options.shouldIncludeTesting !== undefined) {
+        return options.shouldIncludeTesting;
     }
 
-    return options.interactive ? promptTesting() : true;
+    return options.isInteractive ? promptTesting() : true;
 };
 
 const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
@@ -360,18 +360,18 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
     await handleTargetDirectory(root, target, options);
     const packageManager = await resolvePackageManager(options);
     const isTypescript = await resolveTypeScript(options);
-    const isIncludeTesting = await resolveIncludeTesting(options);
+    const shouldIncludeTesting = await resolveIncludeTesting(options);
 
-    return { target, name, applicationId, packageManager, typescript: isTypescript, includeTesting: isIncludeTesting };
+    return { target, name, applicationId, packageManager, isTypescript, shouldIncludeTesting };
 };
 
 const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
     if (TESTING_TEMPLATES.has(templateRelativePath)) {
-        return resolved.includeTesting;
+        return resolved.shouldIncludeTesting;
     }
 
     if (TYPESCRIPT_TEMPLATES.has(templateRelativePath)) {
-        return resolved.typescript;
+        return resolved.isTypescript;
     }
 
     return true;
@@ -392,15 +392,15 @@ const addTestScript = (root: string): void => {
 };
 
 const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<void> => {
-    const { name, applicationId, typescript, includeTesting } = resolved;
+    const { name, applicationId, isTypescript, shouldIncludeTesting } = resolved;
 
     const context: TemplateContext = {
         name,
         applicationId,
         title: titleFromName(name),
-        includeTesting,
-        typescript,
-        importExtension: typescript ? ".js" : ".jsx",
+        shouldIncludeTesting,
+        isTypescript,
+        importExtension: isTypescript ? ".js" : ".jsx",
     };
 
     mkdirSync(root, { recursive: true });
@@ -410,19 +410,19 @@ const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise
             continue;
         }
 
-        const destination = join(root, toDestinationPath(template, typescript));
+        const destination = join(root, toDestinationPath(template, isTypescript));
         mkdirSync(dirname(destination), { recursive: true });
         writeFileSync(destination, await renderFile(template, context));
     }
 
-    if (includeTesting) {
+    if (shouldIncludeTesting) {
         addTestScript(root);
     }
 };
 
 const installDependencies = async (options: InstallDependenciesOptions): Promise<void> => {
-    const { cwd, packageManager, dependencies, dev } = options;
-    await addDependency(dependencies, { cwd, packageManager, dev, silent: true });
+    const { cwd, packageManager, dependencies, isDev } = options;
+    await addDependency(dependencies, { cwd, packageManager, dev: isDev, silent: true });
 };
 
 const pin = (names: string[]): string[] => names.map((dependency) => pinGtkxDependency(dependency, selfVersion));
@@ -433,8 +433,8 @@ const installAllDependencies = async (options: InstallAllOptions): Promise<void>
     spinner.start("Installing dependencies...");
 
     try {
-        await installDependencies({ cwd: root, packageManager, dependencies: pin(DEPENDENCIES), dev: false });
-        await installDependencies({ cwd: root, packageManager, dependencies: pin(devDependencies), dev: true });
+        await installDependencies({ cwd: root, packageManager, dependencies: pin(DEPENDENCIES), isDev: false });
+        await installDependencies({ cwd: root, packageManager, dependencies: pin(devDependencies), isDev: true });
         spinner.stop("Dependencies installed");
     } catch (error) {
         spinner.stop("Failed to install dependencies");
@@ -468,7 +468,7 @@ const initializeGitRepo = async (root: string): Promise<void> => {
 const printNextSteps = (resolved: ResolvedOptions): void => {
     const devCmd = getDevCommand(resolved.packageManager);
     const cdStep = resolved.target === "." ? "" : `cd ${resolved.target}\n`;
-    const testingNote = resolved.includeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
+    const testingNote = resolved.shouldIncludeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
     p.note(`${cdStep}${devCmd}${testingNote}`, "Next steps");
 };
 
@@ -489,7 +489,7 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
         devDependencies: devDeps,
     });
 
-    if (resolved.typescript) {
+    if (resolved.isTypescript) {
         writeInitialEnvModule(root);
     }
 

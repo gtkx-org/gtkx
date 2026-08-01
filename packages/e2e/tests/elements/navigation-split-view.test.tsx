@@ -24,10 +24,10 @@ describe("render - NavigationSplitView", () => {
     it("clears the content page when unmounted", async () => {
         const viewRef = createRef<Adw.NavigationSplitView>();
 
-        function App({ showContent }: { showContent: boolean }) {
+        function App({ shouldShowContent }: { shouldShowContent: boolean }) {
             return (
                 <AdwNavigationSplitView ref={viewRef}>
-                    {showContent && (
+                    {shouldShowContent && (
                         <AdwNavigationPage tag="content" title="Content">
                             <GtkLabel>Split Content</GtkLabel>
                         </AdwNavigationPage>
@@ -36,9 +36,9 @@ describe("render - NavigationSplitView", () => {
             );
         }
 
-        const { rerender } = await render(<App showContent={true} />);
+        const { rerender } = await render(<App shouldShowContent={true} />);
         expect(viewRef.current?.getContent()).not.toBeNull();
-        await rerender(<App showContent={false} />);
+        await rerender(<App shouldShowContent={false} />);
         expect(viewRef.current?.getContent()).toBeNull();
     });
 });

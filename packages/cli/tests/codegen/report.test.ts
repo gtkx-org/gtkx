@@ -3,7 +3,7 @@ import type { RunCodegenResult } from "../../src/codegen/run-codegen.js";
 import { formatCodegenResult } from "../../src/codegen/report.js";
 
 const result = (overrides: Partial<RunCodegenResult> = {}): RunCodegenResult => ({
-    regenerated: true,
+    isRegenerated: true,
     namespaces: 2,
     intrinsicElements: 142,
     duration: 250,

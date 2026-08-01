@@ -275,7 +275,7 @@ const propertyMeta = (property: GirProperty, accessor: ResolvedAccessor, origin:
         meta.push("construct-only");
     }
 
-    if (!accessor.writable) {
+    if (!accessor.isWritable) {
         meta.push("read-only");
     } else if (!accessor.hasGetter) {
         meta.push("write-only");
@@ -500,7 +500,7 @@ const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord },
 };
 
 const fieldMeta = (field: ResolvedRecordField): string =>
-    [`\`${field.tsType}\``, ...(field.writable ? [] : ["read-only"])].join(" · ");
+    [`\`${field.tsType}\``, ...(field.isWritable ? [] : ["read-only"])].join(" · ");
 
 const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: Set<string>): string[] => {
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);

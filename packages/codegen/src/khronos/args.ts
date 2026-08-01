@@ -52,7 +52,7 @@ type BuildArgOptions = {
 const OUT_PLAN_KINDS: Set<string> = new Set(["ref-out", "ref-array-out", "ref-fixed-out", "string-out"]);
 
 const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
-    group !== undefined && scalar.groupBearing === true ? group : scalar.tsAlias;
+    group !== undefined && scalar.isGroupBearing === true ? group : scalar.tsAlias;
 
 const paramIndexByName = (command: GlCommand, name: string): number => {
     const index = command.params.findIndex((param) => param.name === name);

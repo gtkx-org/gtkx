@@ -424,7 +424,7 @@ function toggleableColumn(spec: KeyInfoColumnSpec, columnVisibility: ColumnVisib
         id: spec.id,
         title: spec.title,
         resizable: true,
-        sortable: spec.isSortable,
+        isSortable: spec.isSortable,
         expand: spec.isExpanding,
         visible: columnVisibility[spec.id],
         headerMenu: columnVisibilityMenu,

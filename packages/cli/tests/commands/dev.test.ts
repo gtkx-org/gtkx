@@ -43,7 +43,12 @@ describe("dev command", () => {
 
     it("runs preflight codegen and hands off to the supervisor with the resolved entry", async () => {
         await runDev("src/main.tsx");
-        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), { announce: true, mode: "development" });
+
+        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), {
+            shouldAnnounce: true,
+            mode: "development",
+        });
+
         expect(resolveConfigWatchMock).toHaveBeenCalledExactlyOnceWith(expect.any(String), "development");
         expect(runDevSupervisorMock).toHaveBeenCalledOnce();
         const [entryPath, cwd, watch] = runDevSupervisorMock.mock.calls[0] ?? [];

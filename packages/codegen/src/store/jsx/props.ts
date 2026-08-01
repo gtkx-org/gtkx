@@ -231,8 +231,8 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
         library: types.library,
         signal,
         renderType: (ref, nullable) => renderReactPropType(types, ref, nullable),
-        includeCallerAllocated: false,
-        optOut: true,
+        shouldIncludeCallerAllocated: false,
+        isOptOut: true,
     });
 
     return `(${params.join(", ")}) => ${result}`;

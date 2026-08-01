@@ -32,7 +32,7 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
     const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
     const ret = renderReturnDescriptor(context, fn);
 
-    return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, throws: fn.throws });
+    return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, canThrow: fn.throws });
 };
 
 const isMovedOntoEmittedMember = (context: ModuleContext, fn: GirFunction): boolean => {

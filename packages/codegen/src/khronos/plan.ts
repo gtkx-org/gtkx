@@ -5,13 +5,13 @@ type GlScalar = {
     descriptor: string;
     tsAlias: string;
     viewType?: string;
-    groupBearing?: boolean;
+    isGroupBearing?: boolean;
 };
 
 type ParsedCType = {
     base: string;
     pointers: number;
-    constData: boolean;
+    isConstData: boolean;
 };
 
 type ParamPlan =
@@ -61,10 +61,10 @@ type CommandPlan =
 type ParamOutcome = { plan: ParamPlan } | { reason: GlExclusionReason };
 
 const GL_SCALARS: Map<string, GlScalar> = new Map([
-    ["GLenum", { descriptor: tScalar("uint32"), tsAlias: "GLenum", viewType: "Uint32Array", groupBearing: true }],
+    ["GLenum", { descriptor: tScalar("uint32"), tsAlias: "GLenum", viewType: "Uint32Array", isGroupBearing: true }],
     [
         "GLbitfield",
-        { descriptor: tScalar("uint32"), tsAlias: "GLbitfield", viewType: "Uint32Array", groupBearing: true },
+        { descriptor: tScalar("uint32"), tsAlias: "GLbitfield", viewType: "Uint32Array", isGroupBearing: true },
     ],
     ["GLuint", { descriptor: tScalar("uint32"), tsAlias: "GLuint", viewType: "Uint32Array" }],
     ["GLint", { descriptor: tScalar("int32"), tsAlias: "GLint", viewType: "Int32Array" }],
@@ -96,7 +96,7 @@ const parseCType = (cType: string): ParsedCType => {
         .filter((token) => token.length > 0 && token !== "const" && token !== "struct")
         .join(" ");
 
-    return { base, pointers, constData: isConstData };
+    return { base, pointers, isConstData };
 };
 
 const isCompsize = (len: string): boolean => len.includes("COMPSIZE(");
@@ -158,11 +158,11 @@ const charStringOutLen = (command: GlCommand, param: GlParam, parsed: ParsedCTyp
 };
 
 const planCharParam = (command: GlCommand, param: GlParam, parsed: ParsedCType): ParamOutcome => {
-    if (parsed.pointers === 1 && parsed.constData) {
+    if (parsed.pointers === 1 && parsed.isConstData) {
         return { plan: { kind: "string-in" } };
     }
 
-    if (parsed.pointers === 2 && parsed.constData) {
+    if (parsed.pointers === 2 && parsed.isConstData) {
         return { plan: { kind: "string-array-in" } };
     }
 
@@ -191,7 +191,7 @@ const planScalarParam = (
         return { plan: { kind: "scalar", scalar } };
     }
 
-    if (parsed.pointers === 1 && parsed.constData) {
+    if (parsed.pointers === 1 && parsed.isConstData) {
         return { plan: { kind: "array-in", scalar } };
     }
 

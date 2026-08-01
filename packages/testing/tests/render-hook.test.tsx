@@ -140,18 +140,18 @@ describe("renderHook wrapper option", () => {
 
     it("applies a user wrapper around the hook so it can supply context", async () => {
         const Ctx = createContext<string>("default");
-        const rendered: { wrapper: boolean } = { wrapper: false };
+        const rendered: { didRenderWrapper: boolean } = { didRenderWrapper: false };
 
         const ContextWrapper = ({ children }: { children: ReactNode }) => {
             useLayoutEffect(() => {
-                rendered.wrapper = true;
+                rendered.didRenderWrapper = true;
             });
 
             return <Ctx.Provider value="from-wrapper">{children}</Ctx.Provider>;
         };
 
         const { result } = await renderHook(() => useContext(Ctx), { wrapper: ContextWrapper });
-        expect(rendered.wrapper).toBe(true);
+        expect(rendered.didRenderWrapper).toBe(true);
         expect(result.current).toBe("from-wrapper");
     });
 });

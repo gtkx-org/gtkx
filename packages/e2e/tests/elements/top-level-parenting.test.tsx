@@ -38,18 +38,18 @@ const ParentedTree = ({
 const PortaledChild = ({
     parentRef,
     childRef,
-    parented,
+    isParented,
 }: {
     parentRef: RefObject<Gtk.Window | null>;
     childRef: RefObject<Gtk.Window | null>;
-    parented: boolean;
+    isParented: boolean;
 }) => (
     <ParentedTree parentRef={parentRef}>
         {(parent) =>
             createPortal(
                 <GtkWindow
                     ref={childRef}
-                    transientFor={parented ? parent : null}
+                    transientFor={isParented ? parent : null}
                     defaultWidth={50}
                     defaultHeight={50}
                 />,
@@ -63,7 +63,7 @@ describe("explicit top-level parenting", () => {
         const parentRef = createRef<Gtk.Window>();
         const childRef = createRef<Gtk.Window>();
 
-        await render(<PortaledChild parentRef={parentRef} childRef={childRef} parented={true} />, {
+        await render(<PortaledChild parentRef={parentRef} childRef={childRef} isParented={true} />, {
             container: rootElement,
         });
 
@@ -77,12 +77,12 @@ describe("explicit top-level parenting", () => {
         const childRef = createRef<Gtk.Window>();
 
         const { rerender } = await render(
-            <PortaledChild parentRef={parentRef} childRef={childRef} parented={true} />,
+            <PortaledChild parentRef={parentRef} childRef={childRef} isParented={true} />,
             { container: rootElement },
         );
 
         expect(childRef.current).toHaveObjectProperty("transientFor", parentRef.current);
-        await rerender(<PortaledChild parentRef={parentRef} childRef={childRef} parented={false} />);
+        await rerender(<PortaledChild parentRef={parentRef} childRef={childRef} isParented={false} />);
         expect(childRef.current?.getTransientFor()).toBeNull();
     });
 

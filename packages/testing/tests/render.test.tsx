@@ -155,7 +155,7 @@ describe("render lifecycle", () => {
 });
 
 describe("render options", () => {
-    it("double-invokes renders under reactStrictMode", async () => {
+    it("double-invokes renders under isReactStrictMode", async () => {
         let plain = 0;
 
         const Plain = () => {
@@ -174,7 +174,7 @@ describe("render options", () => {
             return <GtkButton label="strict" />;
         };
 
-        await render(<Strict />, { reactStrictMode: true });
+        await render(<Strict />, { isReactStrictMode: true });
         expect(strict).toBe(2);
     });
 

@@ -7,8 +7,8 @@ import { wrapEvent } from "./event-wrapper.js";
 
 /** Options for `userEvent.type`. */
 type TypeOptions = {
-    /** Do not focus the widget before typing. */
-    skipClick?: boolean | undefined;
+    /** Focus the widget before typing; defaults to true. */
+    shouldFocus?: boolean | undefined;
     /** Select from this offset before typing, replacing the selected range with the typed text. */
     initialSelectionStart?: number | undefined;
     /** End offset of the initial selection (defaults to the start offset). */
@@ -132,14 +132,14 @@ const runEditableEvent = (
     });
 
 /**
- * Focuses the widget unless `skipClick` is set, applies any initial selection, and inserts the text
+ * Focuses the widget unless `shouldFocus` is false, applies any initial selection, and inserts the text
  * at the cursor.
  *
  * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
  */
 const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
     runEditableEvent(widget, "Cannot type into element", (editable) => {
-        if (!options?.skipClick) {
+        if (options?.shouldFocus ?? true) {
             editable.grabFocus();
         }
 

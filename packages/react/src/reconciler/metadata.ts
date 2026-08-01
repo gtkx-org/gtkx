@@ -9,7 +9,7 @@ type TypeInfo = {
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
     deferred: Set<string>;
-    lazy: boolean;
+    isLazy: boolean;
     hasFlush: boolean;
     hasMount: boolean;
     constructOnly: Set<string>;
@@ -92,7 +92,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
         userEventSignals: new Set(),
         behaviors: [],
         deferred: new Set(),
-        lazy: false,
+        isLazy: false,
         hasFlush: false,
         hasMount: false,
         constructOnly: new Set(),
@@ -105,7 +105,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     }
 
     resolveBehaviorFlags(info);
-    info.lazy = chain.some((ancestor) => ELEMENTS[ancestor]?.lazy === true);
+    info.isLazy = chain.some((ancestor) => ELEMENTS[ancestor]?.isLazy === true);
 
     for (const ancestor of chain.toReversed()) {
         Object.assign(info.defaults, defaultProps[ancestor] ?? {});

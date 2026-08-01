@@ -66,8 +66,8 @@ describe("render - LevelBar (2)", () => {
     it("removes offsets when array changes", async () => {
         const ref = createRef<Gtk.LevelBar>();
 
-        function App({ showExtra }: { showExtra: boolean }) {
-            const offsets = showExtra
+        function App({ shouldShowExtra }: { shouldShowExtra: boolean }) {
+            const offsets = shouldShowExtra
                 ? [
                         { name: "always", value: 0.5 },
                         { name: "extra", value: 0.75 },
@@ -77,10 +77,10 @@ describe("render - LevelBar (2)", () => {
             return <GtkLevelBar ref={ref} offsets={offsets} />;
         }
 
-        await render(<App showExtra={true} />);
+        await render(<App shouldShowExtra={true} />);
         expect(ref.current?.getOffsetValue("always")[0]).toBe(true);
         expect(ref.current?.getOffsetValue("extra")[0]).toBe(true);
-        await render(<App showExtra={false} />);
+        await render(<App shouldShowExtra={false} />);
         expect(ref.current?.getOffsetValue("always")[0]).toBe(true);
         expect(ref.current?.getOffsetValue("extra")[0]).toBe(false);
     });

@@ -56,19 +56,19 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: internal("GtkTextChildAnchorProps"),
     },
     GtkGridLayoutChild: {
-        lazy: true,
+        isLazy: true,
     },
     GtkFixedLayoutChild: {
-        lazy: true,
+        isLazy: true,
     },
     GtkOverlayLayoutChild: {
-        lazy: true,
+        isLazy: true,
     },
     GtkStackPage: {
-        lazy: true,
+        isLazy: true,
     },
     GtkNotebookPage: {
-        lazy: true,
+        isLazy: true,
     },
     GActionGroup: {
         props: internal("GActionGroupProps"),

@@ -1,6 +1,9 @@
+import type { GtkColorDialogProps, GtkFontDialogProps } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type ReactElement, type RefObject } from "react";
 import { expect } from "vitest";
+
+type DialogSlotProps = Pick<GtkColorDialogProps & GtkFontDialogProps, "title" | "modal">;
 
 type DialogButtonDialog = {
     getTitle(): string | null;
@@ -13,7 +16,7 @@ type DialogButtonWidget = {
 
 type DialogButtonFactory<Widget extends DialogButtonWidget> = (
     ref: RefObject<Widget | null>,
-    dialogProps: { title?: string; modal?: boolean },
+    dialogProps: DialogSlotProps,
 ) => ReactElement;
 
 const expectDialogTitleTracksProp = async <Widget extends DialogButtonWidget>(

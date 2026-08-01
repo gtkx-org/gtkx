@@ -74,13 +74,13 @@ describe("render - FontDialogButton (3)", () => {
     it("updates useFont when prop changes", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
 
-        function App({ useFont }: { useFont: boolean }) {
-            return <GtkFontDialogButton ref={ref} useFont={useFont} />;
+        function App({ shouldUseFont }: { shouldUseFont: boolean }) {
+            return <GtkFontDialogButton ref={ref} useFont={shouldUseFont} />;
         }
 
-        await render(<App useFont={false} />);
+        await render(<App shouldUseFont={false} />);
         expect(ref.current).toHaveObjectProperty("useFont", false);
-        await render(<App useFont={true} />);
+        await render(<App shouldUseFont={true} />);
         expect(ref.current).toHaveObjectProperty("useFont", true);
     });
 
@@ -94,13 +94,13 @@ describe("render - FontDialogButton (3)", () => {
     it("updates useSize when prop changes", async () => {
         const ref = createRef<Gtk.FontDialogButton>();
 
-        function App({ useSize }: { useSize: boolean }) {
-            return <GtkFontDialogButton ref={ref} useSize={useSize} />;
+        function App({ shouldUseSize }: { shouldUseSize: boolean }) {
+            return <GtkFontDialogButton ref={ref} useSize={shouldUseSize} />;
         }
 
-        await render(<App useSize={false} />);
+        await render(<App shouldUseSize={false} />);
         expect(ref.current).toHaveObjectProperty("useSize", false);
-        await render(<App useSize={true} />);
+        await render(<App shouldUseSize={true} />);
         expect(ref.current).toHaveObjectProperty("useSize", true);
     });
 

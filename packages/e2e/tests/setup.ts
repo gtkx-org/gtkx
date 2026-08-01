@@ -23,16 +23,16 @@ const setIsReactActEnvironment = (value: boolean | undefined): void => {
 };
 
 const registerReactActEnvironment = (): void => {
-    let previousIsReactActEnvironment: boolean | undefined;
+    let wasReactActEnvironment: boolean | undefined;
 
     beforeAll(() => {
         callArgs(GTK_LIB, "gtk_init", [], { kind: "void" });
-        previousIsReactActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
+        wasReactActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
         setIsReactActEnvironment(true);
     });
 
     afterAll(() => {
-        setIsReactActEnvironment(previousIsReactActEnvironment);
+        setIsReactActEnvironment(wasReactActEnvironment);
     });
 };
 

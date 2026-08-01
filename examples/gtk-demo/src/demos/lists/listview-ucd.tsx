@@ -341,7 +341,7 @@ const characters = parseUcdData();
 const ucdCodepointColumn: ColumnViewColumn<UcdEntry> = {
     id: "codepoint",
     title: "Codepoint",
-    sortable: true,
+    isSortable: true,
     renderCell: ({ item }) => (
         <GtkInscription text={item.codepointStr} cssClasses={["monospace"]} marginTop={4} marginBottom={4} />
     ),

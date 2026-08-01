@@ -98,10 +98,10 @@ describe("a project that declares Gtk-4.0 without Adw-1", () => {
             girPath: GIR_PATH,
             gi,
             jsx,
-            force: true,
+            isForced: true,
         });
 
-        expect(result.regenerated).toBe(true);
+        expect(result.isRegenerated).toBe(true);
         expect(result.namespaces).toBeGreaterThan(0);
         expect(result.intrinsicElements).toBeGreaterThan(0);
     });

@@ -55,14 +55,14 @@ const alignDescriptor = {
     kind: "enum",
     sharedLibrary: "libgtk-4.so.1",
     getTypeFnName: "gtk_align_get_type",
-    signed: false,
+    isSigned: false,
 } as const;
 
 const bindingFlagsDescriptor = {
     kind: "flags",
     sharedLibrary: "libgobject-2.0.so.0",
     getTypeFnName: "g_binding_flags_get_type",
-    signed: false,
+    isSigned: false,
 } as const;
 
 const paramDescriptor = t.fundamental("libgobject-2.0.so.0", "g_param_spec_ref", "g_param_spec_unref", {
@@ -199,7 +199,7 @@ describe("toValue — primitives", () => {
 describe("toValue — enums and flags", () => {
     it("builds an enum value from library/getTypeFnName descriptor", () => {
         const v = toValue(
-            { kind: "enum", sharedLibrary: "libgtk-4.so.1", getTypeFnName: "gtk_align_get_type", signed: false },
+            { kind: "enum", sharedLibrary: "libgtk-4.so.1", getTypeFnName: "gtk_align_get_type", isSigned: false },
             Gtk.Align.CENTER,
         );
 
@@ -212,7 +212,7 @@ describe("toValue — enums and flags", () => {
                 kind: "enum",
                 sharedLibrary: "libgobject-2.0.so.0",
                 getTypeFnName: "g_binding_flags_get_type",
-                signed: false,
+                isSigned: false,
             },
             3,
         );
@@ -226,7 +226,7 @@ describe("toValue — enums and flags", () => {
                 kind: "flags",
                 sharedLibrary: "libgobject-2.0.so.0",
                 getTypeFnName: "g_binding_flags_get_type",
-                signed: false,
+                isSigned: false,
             },
             5,
         );
@@ -370,14 +370,14 @@ describe("newValueForDescriptor — GType resolution from an FFI descriptor", ()
             kind: "enum",
             sharedLibrary: "libgtk-4.so.1",
             getTypeFnName: "gtk_align_get_type",
-            signed: false,
+            isSigned: false,
         } as const;
 
         const flags = {
             kind: "flags",
             sharedLibrary: "libgobject-2.0.so.0",
             getTypeFnName: "g_binding_flags_get_type",
-            signed: false,
+            isSigned: false,
         } as const;
 
         expect(gtypeOfEmpty(align)).toBe(callGetType("libgtk-4.so.1", "gtk_align_get_type"));

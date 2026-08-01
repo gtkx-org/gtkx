@@ -45,8 +45,8 @@ type DragInstancePatch = {
 
 type SavedDragState = {
     instance: DragInstancePatch;
-    ownsStartPoint: boolean;
-    ownsOffset: boolean;
+    hasOwnStartPoint: boolean;
+    hasOwnOffset: boolean;
     previousStartPoint: DragInstancePatch["getStartPoint"];
     previousOffset: DragInstancePatch["getOffset"];
 };
@@ -131,13 +131,13 @@ const longPress = (widget: Gtk.Widget, x = 0, y = 0): Promise<void> =>
 const restoreDragState = (saved: SavedDragState): void => {
     const { instance } = saved;
 
-    if (saved.ownsStartPoint) {
+    if (saved.hasOwnStartPoint) {
         instance.getStartPoint = saved.previousStartPoint;
     } else {
         delete instance.getStartPoint;
     }
 
-    if (saved.ownsOffset) {
+    if (saved.hasOwnOffset) {
         instance.getOffset = saved.previousOffset;
     } else {
         delete instance.getOffset;
@@ -149,8 +149,8 @@ const patchDragState = (controller: Gtk.GestureDrag, start: DragOffset, offset: 
 
     const saved: SavedDragState = {
         instance,
-        ownsStartPoint: Object.hasOwn(instance, "getStartPoint"),
-        ownsOffset: Object.hasOwn(instance, "getOffset"),
+        hasOwnStartPoint: Object.hasOwn(instance, "getStartPoint"),
+        hasOwnOffset: Object.hasOwn(instance, "getOffset"),
         previousStartPoint: instance.getStartPoint,
         previousOffset: instance.getOffset,
     };

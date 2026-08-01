@@ -29,7 +29,7 @@ type DocsOptions = {
     basePath?: string;
     props?: ElementProps;
     omittedProps?: OmittedProps;
-    force?: boolean;
+    isForced?: boolean;
 };
 
 type DocsManifest = {
@@ -45,7 +45,7 @@ type Page = { path: string; content: string };
 type NamespacePages = { docs: DocsNamespace; pages: Page[] };
 
 type DocsResult = {
-    regenerated: boolean;
+    isRegenerated: boolean;
     namespaces: DocsNamespace[];
 };
 
@@ -193,7 +193,7 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
 };
 
 const cachedDocsResult = (options: DocsOptions, manifestPath: string): DocsResult | undefined => {
-    if (options.force === true || !isGiStoreFresh(options.outDir, options.libraries, options.girPath)) {
+    if (options.isForced === true || !isGiStoreFresh(options.outDir, options.libraries, options.girPath)) {
         return undefined;
     }
 
@@ -203,7 +203,7 @@ const cachedDocsResult = (options: DocsOptions, manifestPath: string): DocsResul
 
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as DocsManifest;
 
-    return { regenerated: false, namespaces: manifest.namespaces };
+    return { isRegenerated: false, namespaces: manifest.namespaces };
 };
 
 const writePages = (outDir: string, pages: Page[]): void => {
@@ -238,7 +238,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
         JSON.stringify(computeGiFingerprint(library.girFiles, options.libraries, options.girPath)),
     );
 
-    return { regenerated: true, namespaces };
+    return { isRegenerated: true, namespaces };
 };
 
 export { writeDocs, type DocsElementLink, type DocsNamespace, type DocsOptions, type DocsResult };

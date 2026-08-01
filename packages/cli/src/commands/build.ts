@@ -21,7 +21,7 @@ const build = defineCommand({
     async run({ args }) {
         const { cwd, entry } = resolveEntry(args);
         info(`Building ${entry}`);
-        await ensureGenerated(cwd, { announce: true, mode: BUILD_MODE });
+        await ensureGenerated(cwd, { shouldAnnounce: true, mode: BUILD_MODE });
 
         await buildApp({
             entry,

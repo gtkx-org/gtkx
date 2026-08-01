@@ -12,7 +12,7 @@ type CArrayType = {
     elementCType: string | undefined;
     lengthParameterIndex: number | undefined;
     fixedSize: number | undefined;
-    zeroTerminated: boolean;
+    isZeroTerminated: boolean;
 };
 
 type ListType = {
@@ -47,7 +47,7 @@ const LIST_FLAVOR_BY_NAME = {
 } as const;
 
 const hasUnknownArrayLength = (ref: CArrayType): boolean =>
-    !ref.zeroTerminated && ref.lengthParameterIndex === undefined && ref.fixedSize === undefined;
+    !ref.isZeroTerminated && ref.lengthParameterIndex === undefined && ref.fixedSize === undefined;
 
 export {
     hasUnknownArrayLength,

@@ -9,8 +9,8 @@ import {
     renderGeneratedElements,
 } from "../../src/store/jsx/generated-elements.js";
 
-const BUTTON: GeneratedElement = { namespace: "Gtk", directory: "gtk", glibName: "GtkButton", mountable: true };
-const WIDGET: GeneratedElement = { namespace: "Gtk", directory: "gtk", glibName: "GtkWidget", mountable: false };
+const BUTTON: GeneratedElement = { namespace: "Gtk", directory: "gtk", glibName: "GtkButton", isMountable: true };
+const WIDGET: GeneratedElement = { namespace: "Gtk", directory: "gtk", glibName: "GtkWidget", isMountable: false };
 
 describe("readGeneratedElements", () => {
     let storeDir: string;
@@ -34,8 +34,8 @@ describe("readGeneratedElements", () => {
 
     it("distinguishes mountable elements from abstract ones", () => {
         writeInventory([BUTTON, WIDGET]);
-        const mountable = readGeneratedElements(storeDir).filter((element) => element.mountable);
-        expect(mountable.map((element) => element.glibName)).toEqual(["GtkButton"]);
+        const mountableElements = readGeneratedElements(storeDir).filter((element) => element.isMountable);
+        expect(mountableElements.map((element) => element.glibName)).toEqual(["GtkButton"]);
     });
 
     it("returns nothing when the store has no inventory", () => {

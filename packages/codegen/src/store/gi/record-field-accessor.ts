@@ -28,7 +28,7 @@ type AdmittedField = {
 type RecordFieldEntry = {
     jsName: string;
     tsType: string;
-    writable: boolean;
+    isWritable: boolean;
     doc: string | undefined;
 };
 
@@ -178,7 +178,7 @@ const resolveRecordFieldEntry = (
     return {
         jsName: admitted.jsName,
         tsType: renderTsType(context, admitted.field.type, false),
-        writable: admitted.field.writable,
+        isWritable: admitted.field.writable,
         doc: admitted.field.doc,
     };
 };
@@ -565,7 +565,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
         elementDescriptor: tStruct("borrowed", {
             size: `${lengthExpr} * ${String(elementSize)}`,
             wrapperClass: undefined,
-            callerAllocated: false,
+            isCallerAllocated: false,
         }),
         offset: slot.byteOffset,
         lengthExpr,
@@ -597,7 +597,7 @@ const getterBlock = (options: AccessorOptions): string => {
 
         const wrapped = wrapReturnValue(context, {
             ref: fieldType,
-            nullable: false,
+            isNullable: false,
             valueExpression,
         });
 

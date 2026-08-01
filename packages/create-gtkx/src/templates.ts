@@ -7,8 +7,8 @@ type TemplateContext = {
     name: string;
     applicationId: string;
     title: string;
-    includeTesting: boolean;
-    typescript: boolean;
+    shouldIncludeTesting: boolean;
+    isTypescript: boolean;
     importExtension: string;
 };
 

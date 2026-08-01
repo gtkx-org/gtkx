@@ -8,15 +8,15 @@ import { describe, expect, it } from "vitest";
 function ReorderablePageApp({
     notebookRef,
     contentRef,
-    reorderable,
+    isReorderable,
 }: {
     notebookRef: RefObject<Gtk.Notebook | null>;
     contentRef: RefObject<Gtk.Label | null>;
-    reorderable: boolean;
+    isReorderable: boolean;
 }) {
     return (
         <GtkNotebook ref={notebookRef}>
-            <GtkNotebookPage tabLabel="Page" reorderable={reorderable}>
+            <GtkNotebookPage tabLabel="Page" reorderable={isReorderable}>
                 <GtkLabel ref={contentRef}>Content</GtkLabel>
             </GtkNotebookPage>
         </GtkNotebook>
@@ -65,14 +65,14 @@ describe("render - page adoption > NotebookPage", () => {
         const contentRef = createRef<Gtk.Label>();
 
         const { rerender } = await render(
-            <ReorderablePageApp notebookRef={notebookRef} contentRef={contentRef} reorderable={true} />,
+            <ReorderablePageApp notebookRef={notebookRef} contentRef={contentRef} isReorderable={true} />,
         );
 
         let page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(page).toHaveObjectProperty("reorderable", true);
 
         await rerender(
-            <ReorderablePageApp notebookRef={notebookRef} contentRef={contentRef} reorderable={false} />,
+            <ReorderablePageApp notebookRef={notebookRef} contentRef={contentRef} isReorderable={false} />,
         );
 
         page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);

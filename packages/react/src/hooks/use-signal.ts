@@ -22,9 +22,9 @@ type TypedSignalHandler<T extends GObject.Object, S extends string> = S extends 
 /** Options for {@link useSignal}. */
 type UseSignalOptions = {
     /** Runs the handler after the object's own default handler rather than before it. */
-    after?: boolean;
+    isAfter?: boolean;
     /** Invokes the handler once, with no arguments, as soon as the signal is connected. */
-    immediate?: boolean;
+    isImmediate?: boolean;
 };
 
 /**
@@ -38,13 +38,13 @@ type UseSignalOptions = {
  * handler needs off the GObject itself. React fixes this on the 19.3 line.
  *
  * @param signal The signal name, optionally with a `::detail` suffix.
- * @param options `after` runs the handler after the default handler; `immediate` also invokes it on connect.
+ * @param options `isAfter` runs the handler after the default handler; `isImmediate` also invokes it on connect.
  */
 function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
     object: RefProp<T>,
     signal: S,
     handler: TypedSignalHandler<T, S>,
-    { after = false, immediate = false }: UseSignalOptions = {},
+    { isAfter = false, isImmediate = false }: UseSignalOptions = {},
 ): void {
     const emit = useEffectEvent(handler as SignalHandler);
 
@@ -55,16 +55,16 @@ function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
             return;
         }
 
-        resolved.on(signal, emit, after);
+        resolved.on(signal, emit, isAfter);
 
-        if (immediate) {
+        if (isImmediate) {
             emit();
         }
 
         return () => {
             resolved.off(signal, emit);
         };
-    }, [object, signal, after, immediate]);
+    }, [object, signal, isAfter, isImmediate]);
 }
 
 export { useSignal, type SignalName, type TypedSignalHandler };

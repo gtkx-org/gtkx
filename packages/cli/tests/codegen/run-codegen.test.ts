@@ -85,7 +85,7 @@ const announceLogs = async (cwd: string): Promise<string> => {
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
     try {
-        await ensureGenerated(cwd, { announce: true });
+        await ensureGenerated(cwd, { shouldAnnounce: true });
 
         return stderrSpy.mock.calls.map((call) => String(call[0])).join("");
     } finally {
@@ -95,8 +95,8 @@ const announceLogs = async (cwd: string): Promise<string> => {
 
 vi.mock("@gtkx/codegen", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@gtkx/codegen")>()),
-    runCodegen: (options: { force?: boolean }) =>
-        Promise.resolve({ regenerated: options.force === true, namespaces: 1, intrinsicElements: 0, duration: 1 }),
+    runCodegen: (options: { isForced?: boolean }) =>
+        Promise.resolve({ isRegenerated: options.isForced === true, namespaces: 1, intrinsicElements: 0, duration: 1 }),
 }));
 
 describe("runCodegen", () => {
@@ -135,7 +135,7 @@ describe("runCodegen", () => {
         writeDefaultGiBarrels(cwd);
         const giStale = join(cwd, "node_modules", ".gtkx", "gi", "stale.js");
         writeFileSync(giStale, "");
-        const result = await runCodegen({ cwd, force: true });
+        const result = await runCodegen({ cwd, isForced: true });
         expect(existsSync(giStale)).toBe(false);
         expect(result.namespaces).toBe(1);
     });
@@ -161,20 +161,20 @@ describe("ensureGenerated — announce path", () => {
 
     it("returns silently when GTKX_DISABLE_PREFLIGHT=1", async () => {
         process.env.GTKX_DISABLE_PREFLIGHT = "1";
-        expect(await ensureGenerated(cwd, { announce: true })).toBe(false);
+        expect(await ensureGenerated(cwd, { shouldAnnounce: true })).toBe(false);
     });
 
     it("rejects when there is no gtkx.config.ts", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installRuntimePackage(cwd);
-        await expect(ensureGenerated(cwd, { announce: true })).rejects.toThrow(/invalid `applicationId`/);
+        await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("propagates non-NotFound config errors", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installRuntimePackage(cwd);
         writeConfig(cwd, "export default { libraries: [] };");
-        await expect(ensureGenerated(cwd, { announce: true })).rejects.toThrow();
+        await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow();
     });
 
     it("runs codegen when the gi store is missing", async () => {

@@ -68,7 +68,7 @@ describe("render - controlled editable text", () => {
 
     it("appends successive characters typed without refocusing", async () => {
         const entry = await typeIntoControlled(directText);
-        await userEvent.type(entry, "d", { skipClick: true });
+        await userEvent.type(entry, "d", { shouldFocus: false });
         expect(entry).toHaveObjectProperty("text", "abcd");
     });
 });

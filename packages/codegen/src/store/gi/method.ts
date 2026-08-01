@@ -23,7 +23,7 @@ import { hasUnknownArrayLength, type TypeId } from "../../gir/type-id.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
 import { isCollectibleCallerOut, isHandlePassedInPlace, isHandlePassing } from "./param-marshal.js";
 
-type PromisifiedStep = { sawOptional: boolean; expression: string | undefined };
+type PromisifiedStep = { hasSeenOptional: boolean; expression: string | undefined };
 
 type PromisifyContext = {
     context: ModuleContext;
@@ -44,8 +44,8 @@ type CallArgPlan = {
 
 type ParamDescriptorOptions = {
     direction?: "out" | "inout";
-    callerAllocated?: boolean;
-    consumed?: boolean;
+    isCallerAllocated?: boolean;
+    isConsumed?: boolean;
 };
 
 type ArgIndexOptions = {
@@ -94,7 +94,7 @@ const renderInputParameters = (
     isOptionalExtra: (parameter: GirParameter) => boolean,
 ): string => {
     const parts: string[] = [];
-    let isSawOptional = false;
+    let hasSeenOptional = false;
 
     for (const { parameter, index } of inputParameters(context.library, fn)) {
         if (shouldSkip(parameter)) {
@@ -104,10 +104,10 @@ const renderInputParameters = (
         const name = parameterIdentifier(parameter, index);
 
         if (isParameterOptional(parameter, isOptionalExtra)) {
-            isSawOptional = true;
+            hasSeenOptional = true;
         }
 
-        parts.push(formatParameterPart(name, parameterAnnotation(context, fn, parameter), isSawOptional));
+        parts.push(formatParameterPart(name, parameterAnnotation(context, fn, parameter), hasSeenOptional));
     }
 
     return parts.join(", ");
@@ -139,36 +139,36 @@ const classifyPromisifiedParameter = (
     promisify: PromisifyContext,
     parameter: GirParameter,
     index: number,
-    state: { cancellableIndex: number; sawOptional: boolean },
+    state: { cancellableIndex: number; hasSeenOptional: boolean },
 ): PromisifiedStep => {
     if (parameter.isVarargs) {
-        return { sawOptional: state.sawOptional, expression: undefined };
+        return { hasSeenOptional: state.hasSeenOptional, expression: undefined };
     }
 
     if (index === state.cancellableIndex) {
-        return { sawOptional: true, expression: undefined };
+        return { hasSeenOptional: true, expression: undefined };
     }
 
     if (shouldSkipPromisifiedParameter(promisify, parameter, index)) {
-        return { sawOptional: state.sawOptional, expression: undefined };
+        return { hasSeenOptional: state.hasSeenOptional, expression: undefined };
     }
 
-    const isSawOptional = state.sawOptional || parameter.optional;
+    const hasSeenOptional = state.hasSeenOptional || parameter.optional;
 
-    return { sawOptional: isSawOptional, expression: promisifiedArgument(promisify, parameter, index, isSawOptional) };
+    return { hasSeenOptional, expression: promisifiedArgument(promisify, parameter, index, hasSeenOptional) };
 };
 
 const collectPromisifiedArguments = (promisify: PromisifyContext, cancellableIndex: number): string[] => {
     const expressions: string[] = [];
-    let isSawOptional = false;
+    let hasSeenOptional = false;
 
     for (const [index, parameter] of promisify.asyncFn.parameters.entries()) {
         const step = classifyPromisifiedParameter(promisify, parameter, index, {
             cancellableIndex,
-            sawOptional: isSawOptional,
+            hasSeenOptional,
         });
 
-        isSawOptional = step.sawOptional;
+        hasSeenOptional = step.hasSeenOptional;
 
         if (step.expression !== undefined) {
             expressions.push(step.expression);
@@ -298,12 +298,12 @@ const paramDescriptorLiteral = (descriptor: string, options: ParamDescriptorOpti
         parts.push(`direction: ${sourceStringLiteral(options.direction)}`);
     }
 
-    if (options.callerAllocated === true) {
-        parts.push("callerAllocated: true");
+    if (options.isCallerAllocated === true) {
+        parts.push("isCallerAllocated: true");
     }
 
-    if (options.consumed === true) {
-        parts.push("consumed: true");
+    if (options.isConsumed === true) {
+        parts.push("isConsumed: true");
     }
 
     return `{ ${parts.join(", ")} }`;
@@ -407,7 +407,7 @@ const planInoutArgument = (
     return planInoutParam(context, parameter, {
         index,
         argIndex: planContext.argIndex,
-        consumed: folded.has(index),
+        isConsumed: folded.has(index),
         lengthSource,
     });
 };
@@ -436,7 +436,7 @@ const planOutParam = (
     const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, argIndex);
 
     return {
-        paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", consumed: isConsumed }),
+        paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", isConsumed }),
         inputExpr: undefined,
     };
 };
@@ -474,7 +474,7 @@ const planCallerOut = (
         const classExpression = context.qualify(name.namespaceName, name.typeName);
 
         return {
-            paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", callerAllocated: true }),
+            paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", isCallerAllocated: true }),
             inputExpr: `new ${classExpression}()`,
         };
     }
@@ -488,17 +488,21 @@ const planInoutParam = (
     options: {
         index: number;
         argIndex: ArgIndexOptions;
-        consumed: boolean;
+        isConsumed: boolean;
         lengthSource?: { source: GirParameter; index: number } | undefined;
     },
 ): CallArgPlan => {
-    const { index, argIndex, consumed, lengthSource } = options;
+    const { index, argIndex, isConsumed, lengthSource } = options;
 
     if (isHandlePassedInPlace(context, parameter)) {
         const descriptor = renderDescriptor(context, parameter.type, "none", argIndex);
 
         return {
-            paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", callerAllocated: true, consumed }),
+            paramLiteral: paramDescriptorLiteral(descriptor, {
+                direction: "inout",
+                isCallerAllocated: true,
+                isConsumed,
+            }),
             inputExpr: parameterIdentifier(parameter, index),
         };
     }
@@ -506,7 +510,7 @@ const planInoutParam = (
     const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, argIndex);
 
     return {
-        paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", consumed }),
+        paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", isConsumed }),
         inputExpr:
             lengthSource === undefined
                 ? parameterCallExpression(context, parameter, index)

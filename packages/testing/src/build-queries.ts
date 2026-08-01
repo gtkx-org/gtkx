@@ -39,7 +39,7 @@ const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
     return {};
 };
 
-const extractSuggestOption = (args: unknown[]): boolean | undefined => {
+const extractShouldSuggest = (args: unknown[]): boolean | undefined => {
     const last = args.at(-1);
 
     if (last && typeof last === "object" && !(last instanceof RegExp)) {
@@ -54,12 +54,11 @@ const maybeThrowSuggestion = (options: {
     match: Gtk.Widget;
     queryName: Method;
     variant: Variant;
-    suggest: boolean | undefined;
+    shouldSuggest: boolean | undefined;
 }): void => {
-    const { container, match, queryName, variant, suggest } = options;
-    const shouldSuggest = suggest ?? getConfig().throwSuggestions;
+    const { container, match, queryName, variant, shouldSuggest } = options;
 
-    if (!shouldSuggest) {
+    if (!(shouldSuggest ?? getConfig().throwSuggestions)) {
         return;
     }
 
@@ -141,7 +140,13 @@ const wrapSingleWithSuggestion =
             const match = query(container, ...args);
 
             if (match) {
-                maybeThrowSuggestion({ container, match, queryName, variant, suggest: extractSuggestOption(args) });
+                maybeThrowSuggestion({
+                    container,
+                    match,
+                    queryName,
+                    variant,
+                    shouldSuggest: extractShouldSuggest(args),
+                });
             }
 
             return match;
@@ -159,7 +164,7 @@ const wrapAllWithSuggestion =
                     match: first,
                     queryName,
                     variant,
-                    suggest: extractSuggestOption(args),
+                    shouldSuggest: extractShouldSuggest(args),
                 });
             }
 
@@ -197,7 +202,14 @@ const buildQueries = <Args extends unknown[]>(
 
     const getByWithSuggestion: (container: Container, ...args: Args) => Gtk.Widget = (container, ...args) => {
         const match = getBy(container, ...args);
-        maybeThrowSuggestion({ container, match, queryName, variant: "get", suggest: extractSuggestOption(args) });
+
+        maybeThrowSuggestion({
+            container,
+            match,
+            queryName,
+            variant: "get",
+            shouldSuggest: extractShouldSuggest(args),
+        });
 
         return match;
     };

@@ -10,8 +10,8 @@ type Pair = {
     next: TSESTree.Node;
     anchor: Anchor;
     blankLines: number;
-    boundary: boolean;
-    contiguous: boolean;
+    isBoundary: boolean;
+    isContiguous: boolean;
 };
 
 type Violation = {
@@ -98,8 +98,8 @@ const getPair = (previous: TSESTree.Node, next: TSESTree.Node, source: SourceCod
         next,
         anchor,
         blankLines: anchor.loc.start.line - previous.loc.end.line - 1,
-        boundary: isSectioned && isKnown && !isSameSection,
-        contiguous: isSectioned && isSameSection && previousSection !== undefined && CONTIGUOUS.has(previousSection),
+        isBoundary: isSectioned && isKnown && !isSameSection,
+        isContiguous: isSectioned && isSameSection && previousSection !== undefined && CONTIGUOUS.has(previousSection),
     };
 };
 
@@ -133,10 +133,10 @@ const padWith = (
     };
 
 const requiresPadding = (pair: Pair): boolean =>
-    !pair.contiguous && (pair.boundary || isPadded(pair.previous) || isPadded(pair.next));
+    !pair.isContiguous && (pair.isBoundary || isPadded(pair.previous) || isPadded(pair.next));
 
 const getReason = (pair: Pair): string => {
-    if (pair.boundary) {
+    if (pair.isBoundary) {
         return `${String(getSection(pair.next))} section`;
     }
 

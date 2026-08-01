@@ -2,7 +2,7 @@ import type { ModuleExport } from "@gtkx/react/internal";
 import { readdirSync } from "node:fs";
 import type { OmittedProps } from "../store/jsx/omitted-props.js";
 
-type BuiltinElement = { component?: ModuleExport; lazy?: boolean; props?: ModuleExport; omittedProps?: string[] };
+type BuiltinElement = { component?: ModuleExport; isLazy?: boolean; props?: ModuleExport; omittedProps?: string[] };
 
 /** The framework's built-in element config, split into the maps codegen consumes. */
 type BuiltinElements = {
@@ -64,7 +64,7 @@ const applyBuiltinElement = (target: BuiltinElements, type: string, config: Buil
         target.omittedProps[type] = [...(target.omittedProps[type] ?? []), ...config.omittedProps];
     }
 
-    if (config.lazy === true) {
+    if (config.isLazy === true) {
         target.lazyElements.push(type);
     }
 };

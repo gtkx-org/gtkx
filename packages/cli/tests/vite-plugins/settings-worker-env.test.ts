@@ -35,7 +35,7 @@ const hasGlibCompileSchemas = (): boolean => {
     }
 };
 
-const writeProject = (root: string, options: { dataDir: string | null; schema: boolean }): void => {
+const writeProject = (root: string, options: { dataDir: string | null; hasSchema: boolean }): void => {
     const imports = options.dataDir === null ? {} : { imports: { "#data/*": `./${options.dataDir}/*` } };
     writeFileSync(join(root, "package.json"), JSON.stringify({ name: "worker-env-fixture", ...imports }));
 
@@ -46,7 +46,7 @@ const writeProject = (root: string, options: { dataDir: string | null; schema: b
     const dataDir = join(root, options.dataDir);
     mkdirSync(dataDir, { recursive: true });
 
-    if (options.schema) {
+    if (options.hasSchema) {
         writeFileSync(join(dataDir, "com.example.worker.gschema.xml"), SCHEMA_XML);
     }
 };
@@ -105,7 +105,7 @@ describe("gtkxSettingsWorkerEnv", () => {
     it.skipIf(!hasGlibCompileSchemas())(
         "compiles the project schemas before the workers start and points them at the result",
         () => {
-            writeProject(root, { dataDir: "data", schema: true });
+            writeProject(root, { dataDir: "data", hasSchema: true });
             const result = callConfig(root);
             const schemaDir = result?.test?.env?.GSETTINGS_SCHEMA_DIR;
             expect(schemaDir).toMatch(/gtkx-schemas-/);
@@ -116,24 +116,24 @@ describe("gtkxSettingsWorkerEnv", () => {
 
     it.skipIf(!hasGlibCompileSchemas())("prepends the compiled dir to an existing GSETTINGS_SCHEMA_DIR", () => {
         process.env.GSETTINGS_SCHEMA_DIR = "/existing/dir";
-        writeProject(root, { dataDir: "data", schema: true });
+        writeProject(root, { dataDir: "data", hasSchema: true });
         expect(callConfig(root)?.test?.env?.GSETTINGS_SCHEMA_DIR).toMatch(/^.*gtkx-schemas-.*:\/existing\/dir$/);
     });
 
     it.skipIf(!hasGlibCompileSchemas())("wraps compile failures for malformed schema XML", () => {
-        writeProject(root, { dataDir: "data", schema: false });
+        writeProject(root, { dataDir: "data", hasSchema: false });
         writeFileSync(join(root, "data", "com.example.broken.gschema.xml"), "<schemalist><schema id=");
         expect(() => callConfig(root)).toThrow(/glib-compile-schemas failed for /);
     });
 
     it("leaves the config untouched when the project declares no data directory", () => {
-        writeProject(root, { dataDir: null, schema: false });
+        writeProject(root, { dataDir: null, hasSchema: false });
         expect(callConfig(root)).toBeUndefined();
         expect(process.env.GTKX_DEV_SCHEMA_DIR).toBeUndefined();
     });
 
     it("leaves the config untouched when the data directory holds no schemas", () => {
-        writeProject(root, { dataDir: "data", schema: false });
+        writeProject(root, { dataDir: "data", hasSchema: false });
         expect(callConfig(root)).toBeUndefined();
         expect(process.env.GTKX_DEV_SCHEMA_DIR).toBeUndefined();
     });

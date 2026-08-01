@@ -32,14 +32,14 @@ const renderOrderedLabelBox = async () => {
     return { boxRef, rerender };
 };
 
-function RemovableChildBox({ showChild }: { showChild: boolean }) {
+function RemovableChildBox({ shouldShowChild }: { shouldShowChild: boolean }) {
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL}>{showChild && <GtkLabel>Removable</GtkLabel>}</GtkBox>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>{shouldShowChild && <GtkLabel>Removable</GtkLabel>}</GtkBox>
     );
 }
 
-function RemovableChildFrame({ showChild }: { showChild: boolean }) {
-    return <GtkFrame>{showChild && <GtkLabel>Child</GtkLabel>}</GtkFrame>;
+function RemovableChildFrame({ shouldShowChild }: { shouldShowChild: boolean }) {
+    return <GtkFrame>{shouldShowChild && <GtkLabel>Child</GtkLabel>}</GtkFrame>;
 }
 
 function TextBox({ text }: { text: string }) {
@@ -50,10 +50,10 @@ function TextBox({ text }: { text: string }) {
     );
 }
 
-function OptionalTextBox({ showText }: { showText: boolean }) {
+function OptionalTextBox({ shouldShowText }: { shouldShowText: boolean }) {
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkLabel>{showText && "Removable Text"}</GtkLabel>
+            <GtkLabel>{shouldShowText && "Removable Text"}</GtkLabel>
         </GtkBox>
     );
 }
@@ -87,16 +87,16 @@ describe("host-config - children (1)", () => {
 describe("host-config - children (2)", () => {
     describe("removing children", () => {
         it("removes child from parent", async () => {
-            const { rerender } = await render(<RemovableChildBox showChild={true} />);
+            const { rerender } = await render(<RemovableChildBox shouldShowChild={true} />);
             await screen.findByText("Removable");
-            await rerender(<RemovableChildBox showChild={false} />);
+            await rerender(<RemovableChildBox shouldShowChild={false} />);
             expect(screen.queryByText("Removable")).toBeNull();
         });
 
         it("clears child on single-child widget", async () => {
-            const { rerender } = await render(<RemovableChildFrame showChild={true} />);
+            const { rerender } = await render(<RemovableChildFrame shouldShowChild={true} />);
             await screen.findByText("Child");
-            await rerender(<RemovableChildFrame showChild={false} />);
+            await rerender(<RemovableChildFrame shouldShowChild={false} />);
             expect(screen.queryByText("Child")).toBeNull();
         });
     });
@@ -137,17 +137,17 @@ describe("host-config - children (4)", () => {
         it("removes root level window", async () => {
             const appId = uniqueAppId();
 
-            function App({ showWindow }: { showWindow: boolean }): ReactNode {
+            function App({ shouldShowWindow }: { shouldShowWindow: boolean }): ReactNode {
                 return (
                     <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-                        {showWindow ? <GtkApplicationWindow title="Window" /> : null}
+                        {shouldShowWindow ? <GtkApplicationWindow title="Window" /> : null}
                     </GtkApplication>
                 );
             }
 
-            const { rerender } = await render(<App showWindow={true} />, { container: rootElement });
+            const { rerender } = await render(<App shouldShowWindow={true} />, { container: rootElement });
             expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Window" })).toBeDefined();
-            await rerender(<App showWindow={false} />);
+            await rerender(<App shouldShowWindow={false} />);
 
             await waitFor(() => {
                 expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Window" })).toBeNull();
@@ -295,9 +295,9 @@ describe("host-config - text instances (1)", () => {
 
 describe("host-config - text instances (2)", () => {
     it("clears label text when text child removed", async () => {
-        const { rerender } = await render(<OptionalTextBox showText={true} />);
+        const { rerender } = await render(<OptionalTextBox shouldShowText={true} />);
         await screen.findByText("Removable Text");
-        await rerender(<OptionalTextBox showText={false} />);
+        await rerender(<OptionalTextBox shouldShowText={false} />);
         expect(screen.queryByText("Removable Text")).toBeNull();
     });
 

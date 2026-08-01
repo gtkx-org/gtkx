@@ -173,7 +173,7 @@ const ShowcaseColumns = ({
         id: "name",
         title: "Name",
         expand: true,
-        sortable: true,
+        isSortable: true,
         renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
         headerMenu: sectionedMenu("name", [sortActions("name")]),
     },
@@ -181,7 +181,7 @@ const ShowcaseColumns = ({
         id: "role",
         title: "Role",
         fixedWidth: 100,
-        sortable: true,
+        isSortable: true,
         renderCell: ({ item }) => <GtkLabel>{item.role}</GtkLabel>,
         headerMenu: sectionedMenu("role", [sortActions("role"), [{ id: "hide", label: "Hide Column" }]]),
     },
@@ -189,7 +189,7 @@ const ShowcaseColumns = ({
         id: "salary",
         title: "Salary",
         fixedWidth: 100,
-        sortable: true,
+        isSortable: true,
         renderCell: ({ item }) => <GtkLabel>{item.salary.toString()}</GtkLabel>,
         headerMenu: sectionedMenu("salary", [sortActions("salary"), [{ id: "hide", label: "Hide Column" }]]),
     },
@@ -429,14 +429,14 @@ describe("render - ColumnViewColumn (7)", () => {
         it("clears the header menu when the slot is removed", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            function App({ showMenu }: { showMenu: boolean }) {
+            function App({ hasMenu }: { hasMenu: boolean }) {
                 return (
                     <ScrollWrapper>
                         <ColumnView
                             ref={columnViewRef}
                             columns={[
                                 defaultColumn("name", "Name", {
-                                    headerMenu: showMenu
+                                    headerMenu: hasMenu
                                         ? flatMenu("name", [{ id: "action", label: "Action" }])
                                         : undefined,
                                 }),
@@ -446,9 +446,9 @@ describe("render - ColumnViewColumn (7)", () => {
                 );
             }
 
-            await render(<App showMenu={true} />);
+            await render(<App hasMenu={true} />);
             expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getHeaderMenu()).not.toBeNull();
-            await render(<App showMenu={false} />);
+            await render(<App hasMenu={false} />);
             expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getHeaderMenu()).toBeNull();
         });
     });
@@ -482,13 +482,13 @@ describe("render - ColumnViewColumn (9)", () => {
         it("removes a column and its header menu together", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            function App({ showColumn }: { showColumn: boolean }) {
+            function App({ hasColumn }: { hasColumn: boolean }) {
                 return (
                     <ScrollWrapper>
                         <ColumnView
                             ref={columnViewRef}
                             columns={[
-                                ...(showColumn
+                                ...(hasColumn
                                     ? [
                                             defaultColumn("name", "Name", {
                                                 headerMenu: flatMenu("name", [{ id: "action", label: "Action" }]),
@@ -502,9 +502,9 @@ describe("render - ColumnViewColumn (9)", () => {
                 );
             }
 
-            await render(<App showColumn={true} />);
+            await render(<App hasColumn={true} />);
             expect(columnViewRef.current?.getColumns()).toHaveObjectProperty("nItems", 2);
-            await render(<App showColumn={false} />);
+            await render(<App hasColumn={false} />);
             expect(columnViewRef.current?.getColumns()).toHaveObjectProperty("nItems", 1);
         });
     });

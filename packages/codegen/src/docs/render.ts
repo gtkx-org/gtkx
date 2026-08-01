@@ -45,8 +45,8 @@ const renderDocsHandlerResultType = (library: Library, signal: GirCallable): str
         library,
         signal,
         renderType: (ref, nullable) => renderDocsType(library, ref, nullable),
-        includeCallerAllocated: false,
-        optOut: true,
+        shouldIncludeCallerAllocated: false,
+        isOptOut: true,
     });
 
 const renderDocsHandlerParameters = (library: Library, signal: GirCallable): string[] =>
@@ -69,16 +69,16 @@ const stripDocMedia = (markdown: string): string =>
         .replaceAll(/<video[\s\S]*?(?:<\/video>|\/>)/g, "")
         .replaceAll(/<img[^>]*>/g, "");
 
-const demoteLine = (line: string, isInFence: boolean): { text: string; inFence: boolean } => {
+const demoteLine = (line: string, isInFence: boolean): { text: string; isInFence: boolean } => {
     if (FENCE_LINE.test(line)) {
-        return { text: line, inFence: !isInFence };
+        return { text: line, isInFence: !isInFence };
     }
 
     if (isInFence) {
-        return { text: line, inFence: isInFence };
+        return { text: line, isInFence };
     }
 
-    return { text: HEADING_LINE.test(line) ? `#${line}` : line, inFence: isInFence };
+    return { text: HEADING_LINE.test(line) ? `#${line}` : line, isInFence };
 };
 
 const demoteHeadings = (markdown: string): string => {
@@ -87,7 +87,7 @@ const demoteHeadings = (markdown: string): string => {
 
     for (const line of markdown.split("\n")) {
         const result = demoteLine(line, isInFence);
-        isInFence = result.inFence;
+        isInFence = result.isInFence;
         lines.push(result.text);
     }
 

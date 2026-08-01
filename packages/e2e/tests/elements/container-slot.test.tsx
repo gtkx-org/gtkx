@@ -83,17 +83,17 @@ const expectIndividualChildRemoval = async (
 
 function SwapKeyedApp({
     headerBarRef,
-    showBack,
+    shouldShowBack,
 }: {
     headerBarRef: RefObject<Gtk.HeaderBar | null>;
-    showBack: boolean;
+    shouldShowBack: boolean;
 }) {
     return (
         <GtkHeaderBar
             ref={headerBarRef}
             start={(
                 <>
-                    {showBack ? <GtkButton key="back" label="Back" /> : <GtkButton key="search" label="Search" />}
+                    {shouldShowBack ? <GtkButton key="back" label="Back" /> : <GtkButton key="search" label="Search" />}
                     <GtkButton label="Delete" />
                 </>
             )}
@@ -213,17 +213,17 @@ describe("render - ContainerProp (4)", () => {
             const prefixRef = createRef<Gtk.Label>();
             const alwaysRef = createRef<Gtk.Label>();
 
-            function App({ showPrefix }: { showPrefix: boolean }) {
+            function App({ shouldShowPrefix }: { shouldShowPrefix: boolean }) {
                 return actionRowInListBox(rowRef, {
-                    prefix: showPrefix ? <GtkLabel ref={prefixRef}>Prefix</GtkLabel> : null,
+                    prefix: shouldShowPrefix ? <GtkLabel ref={prefixRef}>Prefix</GtkLabel> : null,
                     suffix: <GtkLabel ref={alwaysRef}>Always</GtkLabel>,
                 });
             }
 
-            const { rerender } = await render(<App showPrefix={true} />);
+            const { rerender } = await render(<App shouldShowPrefix={true} />);
             expect(prefixRef.current).not.toBeNull();
             expect(alwaysRef.current).not.toBeNull();
-            await rerender(<App showPrefix={false} />);
+            await rerender(<App shouldShowPrefix={false} />);
             expect(prefixRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
         });
@@ -345,7 +345,7 @@ describe("render - ContainerProp (9)", () => {
         it("removes nested rows when unmounted", async () => {
             const expanderRef = createRef<Adw.ExpanderRow>();
 
-            function App({ showRow }: { showRow: boolean }) {
+            function App({ shouldShowRow }: { shouldShowRow: boolean }) {
                 return (
                     <AdwExpanderRow
                         ref={expanderRef}
@@ -353,16 +353,16 @@ describe("render - ContainerProp (9)", () => {
                         rows={(
                             <>
                                 <AdwActionRow title="Always" />
-                                {showRow && <AdwActionRow title="Conditional" />}
+                                {shouldShowRow && <AdwActionRow title="Conditional" />}
                             </>
                         )}
                     />
                 );
             }
 
-            const { rerender } = await render(<App showRow={true} />);
+            const { rerender } = await render(<App shouldShowRow={true} />);
             expect(expanderRef.current).not.toBeNull();
-            await rerender(<App showRow={false} />);
+            await rerender(<App shouldShowRow={false} />);
             expect(expanderRef.current).not.toBeNull();
         });
 
@@ -463,20 +463,20 @@ describe("render - ContainerProp (12)", () => {
             const startRef = createRef<Gtk.Label>();
             const alwaysRef = createRef<Gtk.Label>();
 
-            function App({ showStart }: { showStart: boolean }) {
+            function App({ shouldShowStart }: { shouldShowStart: boolean }) {
                 return (
                     <GtkHeaderBar
                         ref={headerBarRef}
                         titleWidget={<GtkLabel ref={alwaysRef}>Always</GtkLabel>}
-                        start={showStart ? <GtkLabel ref={startRef}>Start</GtkLabel> : null}
+                        start={shouldShowStart ? <GtkLabel ref={startRef}>Start</GtkLabel> : null}
                     />
                 );
             }
 
-            const { rerender } = await render(<App showStart={true} />);
+            const { rerender } = await render(<App shouldShowStart={true} />);
             expect(startRef.current).not.toBeNull();
             expect(alwaysRef.current).not.toBeNull();
-            await rerender(<App showStart={false} />);
+            await rerender(<App shouldShowStart={false} />);
             expect(startRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
         });
@@ -501,7 +501,7 @@ describe("render - ContainerProp (14)", () => {
     describe("GtkHeaderBar (start/end) (4)", () => {
         it("swaps keyed children in start without duplication", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
-            const { rerender } = await render(<SwapKeyedApp headerBarRef={headerBarRef} showBack={false} />);
+            const { rerender } = await render(<SwapKeyedApp headerBarRef={headerBarRef} shouldShowBack={false} />);
             const headerBar = headerBarRef.current;
 
             if (headerBar === null) {
@@ -510,9 +510,9 @@ describe("render - ContainerProp (14)", () => {
 
             const buttonCount = (): number => within(headerBar).getAllByRole(Gtk.AccessibleRole.BUTTON).length;
             const initialCount = buttonCount();
-            await rerender(<SwapKeyedApp headerBarRef={headerBarRef} showBack={true} />);
+            await rerender(<SwapKeyedApp headerBarRef={headerBarRef} shouldShowBack={true} />);
             expect(buttonCount()).toBe(initialCount);
-            await rerender(<SwapKeyedApp headerBarRef={headerBarRef} showBack={false} />);
+            await rerender(<SwapKeyedApp headerBarRef={headerBarRef} shouldShowBack={false} />);
             expect(buttonCount()).toBe(initialCount);
         });
     });
@@ -602,16 +602,16 @@ describe("render - ContainerProp (18)", () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
             const contentRef = createRef<Gtk.Label>();
 
-            function App({ showTop }: { showTop: boolean }) {
+            function App({ shouldShowTop }: { shouldShowTop: boolean }) {
                 return (
-                    <AdwToolbarView ref={toolbarRef} topBar={showTop ? <AdwHeaderBar /> : null}>
+                    <AdwToolbarView ref={toolbarRef} topBar={shouldShowTop ? <AdwHeaderBar /> : null}>
                         <GtkLabel ref={contentRef}>Content</GtkLabel>
                     </AdwToolbarView>
                 );
             }
 
-            const { rerender } = await render(<App showTop={false} />);
-            await rerender(<App showTop={true} />);
+            const { rerender } = await render(<App shouldShowTop={false} />);
+            await rerender(<App shouldShowTop={true} />);
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });

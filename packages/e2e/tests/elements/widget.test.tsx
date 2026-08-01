@@ -113,8 +113,8 @@ function ClickButton({ onClicked }: { onClicked?: (() => void) | undefined }) {
     return <GtkButton onClicked={onClicked} label="Click" />;
 }
 
-function OptionalClickButton({ onClicked, mounted }: { onClicked: () => void; mounted: boolean }) {
-    return mounted ? <GtkButton onClicked={onClicked} label="Click" /> : null;
+function OptionalClickButton({ onClicked, isMounted }: { onClicked: () => void; isMounted: boolean }) {
+    return isMounted ? <GtkButton onClicked={onClicked} label="Click" /> : null;
 }
 
 const renderInApp = (window: ReactNode) =>
@@ -426,10 +426,10 @@ describe("widget - signals (2)", () => {
 
         it("disconnects handler when widget unmounted", async () => {
             const handleClick = vi.fn();
-            const { rerender } = await render(<OptionalClickButton onClicked={handleClick} mounted={true} />);
+            const { rerender } = await render(<OptionalClickButton onClicked={handleClick} isMounted={true} />);
             const button = await findClickButton();
             await expectClickCallCount(button, handleClick, 1);
-            await rerender(<OptionalClickButton onClicked={handleClick} mounted={false} />);
+            await rerender(<OptionalClickButton onClicked={handleClick} isMounted={false} />);
             expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON)).toBeNull();
         });
     });
@@ -441,15 +441,15 @@ describe("widget - signals (3)", () => {
             const handler1 = vi.fn();
             const handler2 = vi.fn();
 
-            function App({ useHandler1 }: { useHandler1: boolean }) {
-                return <GtkButton onClicked={useHandler1 ? handler1 : handler2} label="Click" />;
+            function App({ shouldUseHandler1 }: { shouldUseHandler1: boolean }) {
+                return <GtkButton onClicked={shouldUseHandler1 ? handler1 : handler2} label="Click" />;
             }
 
-            const { rerender } = await render(<App useHandler1={true} />);
+            const { rerender } = await render(<App shouldUseHandler1={true} />);
             const button = await findClickButton();
             await expectClickCallCount(button, handler1, 1);
             expect(handler2).not.toHaveBeenCalled();
-            await rerender(<App useHandler1={false} />);
+            await rerender(<App shouldUseHandler1={false} />);
             await expectClickCallCount(button, handler2, 1);
             expect(handler1).toHaveBeenCalledTimes(1);
         });
@@ -916,11 +916,11 @@ describe("widget - AboutDialog (2)", () => {
             const ref = createRef<Gtk.AboutDialog>();
             const appId = uniqueAppId();
 
-            function App({ show }: { show: boolean }) {
+            function App({ shouldShow }: { shouldShow: boolean }) {
                 return (
                     <GtkApplication applicationId={appId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
                         <GtkApplicationWindow>
-                            {show
+                            {shouldShow
                                 ? createPortal(<GtkAboutDialog ref={ref} programName="Unmount Test" />, rootElement)
                                 : null}
                         </GtkApplicationWindow>
@@ -928,10 +928,10 @@ describe("widget - AboutDialog (2)", () => {
                 );
             }
 
-            const { rerender } = await baseRender(<App show={true} />, { container: rootElement });
+            const { rerender } = await baseRender(<App shouldShow={true} />, { container: rootElement });
             const handle = ref.current;
             expect(handle).toBeDefined();
-            await rerender(<App show={false} />);
+            await rerender(<App shouldShow={false} />);
         });
     });
 });

@@ -14,8 +14,8 @@ type ShutdownState = {
     forceKillMs: number;
     coalesceWindowMs: number;
     firstSignal: NodeJS.Signals | null;
-    exited: boolean;
-    coalescing: boolean;
+    hasExited: boolean;
+    isCoalescing: boolean;
     forceTimer: NodeJS.Timeout | null;
     coalesceTimer: NodeJS.Timeout | null;
 };
@@ -37,11 +37,11 @@ const clearTimers = (state: ShutdownState): void => {
 };
 
 const finish = (state: ShutdownState, signal: NodeJS.Signals, isGraceful: boolean): void => {
-    if (state.exited) {
+    if (state.hasExited) {
         return;
     }
 
-    state.exited = true;
+    state.hasExited = true;
     clearTimers(state);
     const { exitCode } = state.options;
     const defaultCode = isGraceful ? 0 : exitCodeForSignal(signal);
@@ -62,10 +62,10 @@ const beginShutdown = (state: ShutdownState, signal: NodeJS.Signals): void => {
     state.firstSignal = signal;
 
     if (state.coalesceWindowMs > 0) {
-        state.coalescing = true;
+        state.isCoalescing = true;
 
         state.coalesceTimer = setTimeout(() => {
-            state.coalescing = false;
+            state.isCoalescing = false;
         }, state.coalesceWindowMs);
 
         state.coalesceTimer.unref();
@@ -90,7 +90,7 @@ const handle = (state: ShutdownState, signal: NodeJS.Signals): void => {
         return;
     }
 
-    if (state.coalescing) {
+    if (state.isCoalescing) {
         return;
     }
 
@@ -104,8 +104,8 @@ function installGracefulShutdown(options: GracefulShutdownOptions): void {
         forceKillMs: options.forceKillAfterMs ?? DEFAULT_FORCE_KILL_TIMEOUT_MS,
         coalesceWindowMs: options.coalesceWindowMs ?? DEFAULT_COALESCE_WINDOW_MS,
         firstSignal: null,
-        exited: false,
-        coalescing: false,
+        hasExited: false,
+        isCoalescing: false,
         forceTimer: null,
         coalesceTimer: null,
     };

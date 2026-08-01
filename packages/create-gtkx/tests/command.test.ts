@@ -27,7 +27,7 @@ describe("runCreate — delegation", () => {
                 name: "my-app",
                 applicationId: "com.example.myapp",
                 packageManager: "pnpm",
-                includeTesting: true,
+                shouldIncludeTesting: true,
             }),
         );
     });
@@ -40,38 +40,38 @@ describe("runCreate — delegation", () => {
                 name: undefined,
                 applicationId: undefined,
                 packageManager: undefined,
-                typescript: undefined,
-                includeTesting: undefined,
-                overwrite: undefined,
+                isTypescript: undefined,
+                shouldIncludeTesting: undefined,
+                shouldOverwrite: undefined,
             }),
         );
     });
 });
 
 describe("runCreate — flag mapping", () => {
-    it("maps --no-typescript to typescript: false", async () => {
+    it("maps --no-typescript to isTypescript: false", async () => {
         await runCreate({ name: "my-app", typescript: false });
-        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: false }));
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ isTypescript: false }));
     });
 
-    it("forwards typescript: true when explicitly requested", async () => {
+    it("forwards isTypescript: true when explicitly requested", async () => {
         await runCreate({ name: "my-app", typescript: true });
-        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: true }));
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ isTypescript: true }));
     });
 
     it("disables interactive mode when --no-interactive is set", async () => {
         await runCreate({ name: "my-app", "no-interactive": true });
-        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ interactive: false }));
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ isInteractive: false }));
     });
 
     it("disables interactive mode when --yes is set", async () => {
         await runCreate({ name: "my-app", yes: true });
-        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ interactive: false }));
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ isInteractive: false }));
     });
 
     it("forwards the overwrite flag", async () => {
         await runCreate({ name: "my-app", "no-interactive": true, overwrite: true });
-        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ overwrite: true }));
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ shouldOverwrite: true }));
     });
 
     it("rejects an unknown package manager before scaffolding", async () => {
@@ -87,10 +87,10 @@ describe("scaffoldCommand", () => {
         expect(scaffoldCommand.args).toHaveProperty("typescript");
     });
 
-    it("parses --no-typescript into typescript: false through citty", async () => {
+    it("parses --no-typescript into isTypescript: false through citty", async () => {
         scaffoldMock.mockClear();
         await runCommand(scaffoldCommand, { rawArgs: ["my-app", "--no-typescript", "--no-interactive"] });
         expect(scaffoldMock).toHaveBeenCalledTimes(1);
-        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ typescript: false }));
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ isTypescript: false }));
     });
 });

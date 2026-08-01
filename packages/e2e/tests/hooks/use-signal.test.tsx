@@ -108,12 +108,12 @@ describe("useSignal (targets)", () => {
 });
 
 describe("useSignal (options and lifecycle) (1)", () => {
-    it("invokes the handler immediately when immediate is set", async () => {
+    it("invokes the handler immediately when isImmediate is set", async () => {
         const button = new Gtk.Button();
         const handler = vi.fn();
 
         await renderHook(() => {
-            useSignal(button, "clicked", handler, { immediate: true });
+            useSignal(button, "clicked", handler, { isImmediate: true });
         });
 
         expect(handler).toHaveBeenCalledTimes(1);

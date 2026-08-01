@@ -6,7 +6,7 @@ type AlertDialogResponse = {
     id: string;
     label: string;
     appearance?: Adw.ResponseAppearance;
-    enabled?: boolean;
+    isEnabled?: boolean;
 };
 
 type AdwAlertDialogProps = {
