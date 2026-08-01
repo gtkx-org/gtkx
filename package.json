@@ -7,7 +7,6 @@
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "scripts": {
-        "api-surface": "nx run api-surface",
         "bench": "nx run-many -t bench",
         "build": "nx run-many -t build",
         "codegen": "nx run-many -t codegen",
@@ -23,32 +22,6 @@
     "nx": {
         "includedScripts": [],
         "targets": {
-            "api-surface": {
-                "command": "tsx ./scripts/api-surface.ts",
-                "cache": true,
-                "dependsOn": [
-                    "codegen",
-                    "@gtkx/gl:codegen"
-                ],
-                "inputs": [
-                    "{workspaceRoot}/tsconfig.json",
-                    "{workspaceRoot}/tsconfig.base.json",
-                    "{workspaceRoot}/scripts/api-surface.ts",
-                    "{workspaceRoot}/packages/*/package.json",
-                    "{workspaceRoot}/packages/*/env.d.ts",
-                    "{workspaceRoot}/packages/*/src/**/*.{ts,tsx,d.ts}",
-                    "sharedGlobals",
-                    {
-                        "externalDependencies": [
-                            "typescript",
-                            "tsx"
-                        ]
-                    }
-                ],
-                "outputs": [
-                    "{workspaceRoot}/docs/api-surface.md"
-                ]
-            },
             "codegen": {
                 "command": "NODE_OPTIONS=--conditions=source tsx packages/cli/src/cli.ts codegen",
                 "cache": false,
