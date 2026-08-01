@@ -25,4 +25,4 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
     return library.namespaces.size;
 };
 
-export { runGiCodegen, type GiCodegenOptions };
+export { runGiCodegen };

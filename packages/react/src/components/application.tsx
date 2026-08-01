@@ -59,4 +59,5 @@ const createApplicationComponent = (
     };
 };
 
+/** @internal */
 export { createApplicationComponent };

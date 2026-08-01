@@ -45,4 +45,5 @@ const createWindowComponent = (Component: ElementType): ((props: WindowComponent
     };
 };
 
+/** @internal */
 export { createWindowComponent };

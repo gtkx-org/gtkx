@@ -241,4 +241,4 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     return { isRegenerated: true, namespaces };
 };
 
-export { writeDocs, type DocsElementLink, type DocsNamespace, type DocsOptions, type DocsResult };
+export { writeDocs };

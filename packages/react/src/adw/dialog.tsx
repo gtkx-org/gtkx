@@ -32,4 +32,5 @@ const createDialogComponent = (Component: ElementType): ((props: DialogComponent
     };
 };
 
+/** @internal */
 export { createDialogComponent };

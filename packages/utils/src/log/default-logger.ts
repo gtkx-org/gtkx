@@ -18,4 +18,6 @@ function debug(message: string, ...rest: unknown[]): void {
     logger.debug(message, ...rest);
 }
 
-export { logger, info, warn, error, debug };
+export { logger, info, warn, error };
+/** @internal */
+export { debug };

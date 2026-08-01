@@ -97,4 +97,4 @@ const readBuiltinElements = async (reactSubexports: string[], giStoreDir: string
 };
 
 export type { ModuleExport } from "@gtkx/react/internal";
-export { readBuiltinElements, type BuiltinElement, type BuiltinElements };
+export { readBuiltinElements, type BuiltinElements };

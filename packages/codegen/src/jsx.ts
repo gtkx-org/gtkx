@@ -72,4 +72,4 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
     return { isRegenerated: true, intrinsicElementCount };
 };
 
-export { runJsxCodegen, type RunJsxCodegenOptions, type RunJsxCodegenResult };
+export { runJsxCodegen };

@@ -1,6 +1,10 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "ignoreExportsUsedInFile": true,
+    "includeEntryExports": true,
+    "tags": [
+        "-internal"
+    ],
     "ignore": [
         "packages/native/index.js"
     ],
@@ -8,6 +12,20 @@
         "^@gtkx/gi(/.*)?$",
         "^@gtkx/jsx(/.*)?$"
     ],
+    "ignoreIssues": {
+        "**/gtkx.config.ts": [
+            "exports"
+        ],
+        "packages/e2e/elements.ts": [
+            "exports"
+        ],
+        "packages/react/src/prop-types.ts": [
+            "types"
+        ],
+        "packages/react/src/adw/prop-types.ts": [
+            "types"
+        ]
+    },
     "workspaces": {
         ".": {
             "entry": [
@@ -35,9 +53,16 @@
             ]
         },
         "packages/components": {
+            "includeEntryExports": false,
             "entry": [
                 "gtkx.config.ts!"
             ]
+        },
+        "packages/create-gtkx": {
+            "includeEntryExports": false
+        },
+        "packages/css": {
+            "includeEntryExports": false
         },
         "packages/e2e": {
             "entry": [
@@ -45,7 +70,14 @@
                 "elements.ts"
             ]
         },
+        "packages/gl": {
+            "includeEntryExports": false
+        },
+        "packages/native": {
+            "includeEntryExports": false
+        },
         "packages/testing": {
+            "includeEntryExports": false,
             "entry": [
                 "gtkx.config.ts!"
             ]
@@ -58,6 +90,7 @@
             ]
         },
         "packages/vitest": {
+            "includeEntryExports": false,
             "entry": [
                 "src/worker-preload.ts!",
                 "src/worker-setup.ts!"

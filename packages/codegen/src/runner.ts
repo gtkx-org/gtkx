@@ -184,5 +184,4 @@ const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> =
     return emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
 };
 
-export type { GlGenerationReport } from "./khronos/pipeline.js";
-export { runCodegen, runGlCodegen, type GlCodegenOptions, type CodegenRunnerOptions, type CodegenRunnerResult };
+export { runCodegen, runGlCodegen, type CodegenRunnerOptions, type CodegenRunnerResult };

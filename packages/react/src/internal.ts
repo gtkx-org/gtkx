@@ -1,16 +1,15 @@
 import "./bootstrap.js";
 
+/** @internal */
 export { createApplicationComponent } from "./components/application.js";
 export { createElementComponent } from "./components/element.js";
+/** @internal */
 export { createWindowComponent } from "./components/window.js";
-export { ApplicationContext } from "./hooks/use-application.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
-export { useObjectValue } from "./hooks/use-object-value.js";
 export type * from "./prop-types.js";
 export type { ModuleExport } from "./reconciler/registry.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/root.js";
 export { applyWrite } from "./reconciler/signals.js";
 export { getAccessibleMetadata } from "./utils/accessible-metadata.js";
-export { type RefProp, resolveRefProp } from "./utils/ref-prop.js";
 export type { SettingsSchema, SettingsSchemaKeys, SettingValue } from "./utils/settings.js";

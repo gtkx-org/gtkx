@@ -1,7 +1,6 @@
 export * from "./array/index.ts";
 export * from "./class/index.ts";
 export * from "./error/index.ts";
-export * from "./function/index.ts";
 export * from "./log/index.ts";
 export * from "./map/index.ts";
 export * from "./object/index.ts";
