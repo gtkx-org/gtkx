@@ -2,6 +2,7 @@ import type { ErrorInfo, ReactNode, ReactPortal } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import { createLogger, type Logger } from "@gtkx/utils";
 import { ConcurrentRoot } from "react-reconciler/constants.js";
+import { injectIntoDevTools } from "./devtools.js";
 import { type Container, reconciler } from "./host-config.js";
 import { rootElement } from "./root-element.js";
 
@@ -61,6 +62,8 @@ const logCaughtRenderError = (error: unknown): void => {
 };
 
 const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks): OpaqueRoot => {
+    injectIntoDevTools(reconciler);
+
     const container = reconciler.createContainer(
         containerInfo,
         ConcurrentRoot,

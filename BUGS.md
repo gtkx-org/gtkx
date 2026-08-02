@@ -205,6 +205,47 @@ Verified: `Gtk.NoSelection` over a subclass with 1,000,000 items reports 1,000,0
 
 ---
 
+## 9. Fast Refresh never applies anything
+
+**Severity:** blocker, and the most serious entry here. Hot reload is a headline feature of `gtkx dev`, it has never worked, and it reports success every time.
+
+**Repro:** in any project, run `gtkx dev`, then edit a component's rendered text.
+
+**Actual:** the log prints
+
+```
+[gtkx] File changed: src/app.tsx
+[gtkx] Running Fast Refresh...
+[gtkx] Fast Refresh complete
+```
+
+and the running window does not change. Confirmed against the widget tree: the widget keeps its id and its old text. Reproduces in this repository's own `examples/hello-world`, so it is not project-specific.
+
+**Cause:** `@gtkx/react` never calls `reconciler.injectIntoDevTools()`. `react-reconciler` does not register itself with `__REACT_DEVTOOLS_GLOBAL_HOOK__`; the host renderer has to do it, the way React DOM does.
+
+`react-refresh` only records a renderer when the injected payload carries `scheduleRefresh` and `setRefreshHandler` (`react-refresh-runtime.development.js:178`). With no injection, nothing is recorded, so `performReactRefresh()` walks an empty set of roots and returns `{updatedFamilies:{}, staleFamilies:{}}` without an error. Instrumented on rc.4:
+
+```
+[probe] mounted roots: 0
+[probe] hook present: true renderers: 0
+[probe] performReactRefresh -> {"updatedFamilies":{},"staleFamilies":{}}
+```
+
+Everything else in the pipeline was already correct and was ruled out during the investigation: the SWC transform emits `$RefreshReg$`/`$RefreshSig$`, the per-module registration header is injected, both component families register on mount and again on re-execution, and `react-refresh/runtime` is a single shared instance.
+
+**Fix applied:** `packages/react/src/reconciler/devtools.ts` injects the renderer once, from `openContainer`, guarded on the hook being present so a production app with no DevTools hook is unaffected. `bundleType` follows `NODE_ENV`.
+
+After the fix the same probe reports `mounted roots: 1`, and editing a component updates the live window in place, preserving the widget and its React state:
+
+```
+Label id="2"  ->  "State preserved across refresh"
+Label id="3"  ->  "Count: 1"      (incremented before the edit, survived it)
+```
+
+**Note:** `refresh-globals.ts` evaluates twice, once in the dev runner and once through Vite's SSR graph, so `injectIntoGlobalHook` runs twice. It is harmless because both evaluations share one `react-refresh/runtime` instance, but the double call is unintended.
+
+---
+
 ## Verified working
 
 Recorded so nobody re-tests them:
