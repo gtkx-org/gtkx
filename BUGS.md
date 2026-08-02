@@ -317,7 +317,16 @@ Adding `new Adw.ApplicationWindow({ application })` to that same remote applicat
 
 **Fix applied:** `runApplication` now returns `{ isPrimary }`. A remote instance forwards activation to the primary and reports `isPrimary: false`, and the application component gates its children on that, so no window is ever attached to a remote application. The second instance exits `0` and the primary stays up and is raised.
 
-**Still open:** `runApplication` never passes `argv`, so GApplication's own command-line options, including `--gapplication-service`, are inert. That matters for D-Bus activation, where the service file's `Exec` conventionally carries that flag.
+**Related, also fixed:** `runApplication` never looked at `argv`, so `--gapplication-service` was inert and the app activated on startup no matter how it was launched. Any D-Bus start popped a window, including starts meant only to query actions.
+
+`runApplication` now takes `{ isService }`. In service mode it registers, holds the runtime alive, and does not activate; the application component sets `G_APPLICATION_IS_SERVICE` and gates its children on the `activate` signal, so the user interface is built when a caller activates rather than at startup. Verified over the session bus:
+
+```
+before Activate:  node /com/gtkx/hello_world { interface org.gtk.Application { ... }; };
+after  Activate:  node /com/gtkx/hello_world { interface org.gtk.Application { ... }; node window { }; };
+```
+
+`g_application_run()` is still never called, because it would block Node's event loop; GTKX drives the GLib main context from a libuv prepare callback instead. Options other than `--gapplication-service` remain unparsed.
 
 ---
 

@@ -33,6 +33,16 @@ type RunApplicationResult = {
     isPrimary: boolean;
 };
 
+/** How {@link runApplication} should start the application it registers. */
+type RunApplicationOptions = {
+    /**
+     * Registers without activating, for a process started in D-Bus service mode with
+     * `--gapplication-service`. The application waits for a caller to activate it
+     * instead of presenting a window on startup.
+     */
+    isService?: boolean | undefined;
+};
+
 const shutdownCallbacks: (() => void)[] = [];
 /**
  * Runs every registered exit callback and shuts down the native runtime. Safe to
@@ -80,7 +90,10 @@ const onExit = (callback: () => void): void => {
  * @param application The application to register and activate.
  * @returns The run result, whose `isPrimary` reports whether this process may build a user interface.
  */
-const runApplication = (application: ApplicationLike): RunApplicationResult => {
+const runApplication = (
+    application: ApplicationLike,
+    options: RunApplicationOptions = {},
+): RunApplicationResult => {
     if (!application.getIsRegistered()) {
         application.register(null);
     }
@@ -98,6 +111,12 @@ const runApplication = (application: ApplicationLike): RunApplicationResult => {
     application.on("shutdown", () => {
         keepAlive(false);
     });
+
+    if (options.isService === true) {
+        keepAlive(true);
+
+        return { isPrimary: true };
+    }
 
     application.activate();
 
@@ -130,4 +149,12 @@ const quitApplication = (application: ApplicationLike): void => {
     application.run([]);
 };
 
-export { onExit, quit, runApplication, quitApplication, type ApplicationLike, type RunApplicationResult };
+export {
+    onExit,
+    quit,
+    runApplication,
+    quitApplication,
+    type ApplicationLike,
+    type RunApplicationOptions,
+    type RunApplicationResult,
+};

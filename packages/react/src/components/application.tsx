@@ -1,6 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gio from "@gtkx/gi/gio";
 import { quitApplication, runApplication } from "@gtkx/runtime";
 import { pickBy } from "@gtkx/utils";
+import process from "node:process";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
 import { ApplicationContext } from "../hooks/use-application.js";
@@ -13,6 +15,33 @@ type ApplicationComponentProps = {
 };
 
 const POST_ACTIVATE_PROPS = new Set(["menubar"]);
+const SERVICE_MODE_ARGUMENT = "--gapplication-service";
+
+const isServiceLaunch = (): boolean => process.argv.includes(SERVICE_MODE_ARGUMENT);
+
+const enterServiceMode = (application: Gtk.Application, setActivated: (isActivated: boolean) => void): void => {
+    application.setFlags(application.getFlags() | Gio.ApplicationFlags.IS_SERVICE);
+
+    application.on("activate", () => {
+        setActivated(true);
+    });
+};
+
+const startApplication = (
+    application: Gtk.Application,
+    setActivated: (isActivated: boolean) => void,
+): void => {
+    const isService = isServiceLaunch();
+
+    if (isService) {
+        enterServiceMode(application, setActivated);
+        runApplication(application, { isService });
+
+        return;
+    }
+
+    setActivated(runApplication(application, { isService }).isPrimary);
+};
 
 const useApplicationLifecycle = (
     application: Gtk.Application | null,
@@ -23,7 +52,7 @@ const useApplicationLifecycle = (
             return;
         }
 
-        setActivated(runApplication(application).isPrimary);
+        startApplication(application, setActivated);
 
         return () => {
             quitApplication(application);
