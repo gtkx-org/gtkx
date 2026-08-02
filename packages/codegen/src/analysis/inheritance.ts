@@ -8,6 +8,7 @@ import type { ModuleContext } from "../writer/context.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterface } from "../gir/ancestry.js";
 import { methodExportName } from "../store/gi/method.js";
 import { resolveAccessorType } from "../store/gi/property-accessor.js";
+import { vfuncMemberNames } from "../store/gi/vtable.js";
 import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
 
@@ -221,24 +222,44 @@ const mergeOmissionName = (
     return ancestor.returnType !== returnType || ancestor.arity !== arity ? name : undefined;
 };
 
-const collectInterfaceMergeOmissions = (
+const classChainVfuncNames = (context: ModuleContext, klass: GirClass): Set<string> => {
+    const names: Set<string> = new Set(vfuncMemberNames(context, context.namespace.name, klass));
+
+    forEachAncestor(context, klass, (ancestor) => {
+        for (const name of vfuncMemberNames(context, ancestor.namespaceName, ancestor.klass)) {
+            names.add(name);
+        }
+    });
+
+    return names;
+};
+
+const methodMergeOmissions = (context: ModuleContext, klass: GirClass, iface: GirClass): string[] => {
+    const ancestors = ancestorClassMethodSignatures(context, klass);
+
+    return iface.methods
+        .map((method) => mergeOmissionName(context, method, ancestors))
+        .filter((name): name is string => name !== undefined);
+};
+
+const vfuncMergeOmissions = (
     context: ModuleContext,
     klass: GirClass,
     iface: { klass: GirClass; namespaceName: string },
 ): string[] => {
-    const ancestors = ancestorClassMethodSignatures(context, klass);
-    const omissions: string[] = [];
+    const claimed = classChainVfuncNames(context, klass);
 
-    for (const method of iface.klass.methods) {
-        const name = mergeOmissionName(context, method, ancestors);
-
-        if (name !== undefined) {
-            omissions.push(name);
-        }
-    }
-
-    return omissions;
+    return vfuncMemberNames(context, iface.namespaceName, iface.klass).filter((name) => claimed.has(name));
 };
+
+const collectInterfaceMergeOmissions = (
+    context: ModuleContext,
+    klass: GirClass,
+    iface: { klass: GirClass; namespaceName: string },
+): string[] => [
+    ...methodMergeOmissions(context, klass, iface.klass),
+    ...vfuncMergeOmissions(context, klass, iface),
+];
 
 const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, string> => {
     const types: Map<string, string> = new Map();

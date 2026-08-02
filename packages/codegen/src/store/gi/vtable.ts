@@ -1,8 +1,9 @@
-import { pascalCase, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import { pascalCase, sourceStringLiteral } from "@gtkx/utils";
 import type { GirCallback } from "../../gir/callback.js";
 import type { GirClass } from "../../gir/class.js";
 import type { GirField } from "../../gir/field.js";
 import type { GirParameter } from "../../gir/parameter.js";
+import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import {
     isInlineCallbackRef,
@@ -10,36 +11,48 @@ import {
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
-import { renderBraced } from "../../writer/emit.js";
+import {
+    handlerParameters,
+    parameterIdentifier,
+    renderHandlerParameters,
+    renderHandlerResultType,
+} from "../../analysis/param-structure.js";
+import { renderTsType } from "../../analysis/ts-type.js";
+import { renderJsDoc } from "../../writer/doc.js";
+import { renderBlock, renderBraced } from "../../writer/emit.js";
 import { computeRecordFieldSlots } from "./record-layout.js";
 
 type VtableKind = "class" | "interface";
+type VfuncMemberMode = "signature" | "implementation";
 
-type RenderVtableSlotDescriptorOptions = {
+type VtableSlot = {
     key: string;
-    structName: string;
-    kind: VtableKind;
     field: GirField;
     callback: GirCallback;
     byteOffset: number;
     vtableSize: number;
 };
 
-const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
-    if (klass.glibTypeStruct === undefined) {
-        return undefined;
-    }
-
-    const structName = pascalCase(klass.glibTypeStruct);
-    const kind: VtableKind = klass.isInterface ? "interface" : "class";
-    const entries = vtableEntries(context, structName, kind, klass.glibTypeStruct);
-
-    if (entries.length === 0) {
-        return undefined;
-    }
-
-    return renderBraced(entries.join("\n"));
+type Vtable = {
+    structName: string;
+    kind: VtableKind;
+    slots: VtableSlot[];
 };
+
+const PADDING_FIELD_NAME = /^(?:reserved|padding)\d*$/i;
+
+const UNCALLABLE_SLOT_KEYS: Set<string> = new Set([
+    "vfuncConstructed",
+    "vfuncDispose",
+    "vfuncFinalize",
+    "vfuncGetProperty",
+    "vfuncSetProperty",
+]);
+
+const vfuncMemberName = (fieldName: string): string => `vfunc${pascalCase(fieldName)}`;
+
+const isPaddingField = (field: GirField): boolean =>
+    field.name.startsWith("_") || PADDING_FIELD_NAME.test(field.name);
 
 const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallback | undefined => {
     if (field.type === undefined) {
@@ -60,15 +73,19 @@ const vtableSlotEntry = (
     field: GirField,
     claimedNames: Set<string>,
 ): { key: string; callback: GirCallback } | undefined => {
+    if (field.name === "constructor" || isPaddingField(field)) {
+        return undefined;
+    }
+
     const callback = vtableCallbackType(context, field);
 
     if (callback === undefined) {
         return undefined;
     }
 
-    const key = toCamelIdentifier(field.name);
+    const key = vfuncMemberName(field.name);
 
-    if (key === "constructor" || claimedNames.has(key)) {
+    if (claimedNames.has(key)) {
         return undefined;
     }
 
@@ -79,40 +96,129 @@ const vtableSlotEntry = (
     return { key, callback };
 };
 
-const vtableEntries = (context: ModuleContext, structName: string, kind: VtableKind, typeStruct: string): string[] => {
-    const resolved = context.library.resolveType(context.namespace.name, typeStruct);
-
-    if (resolved?.kind !== "record") {
-        return [];
-    }
-
-    const { slots, size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
-    const entries: string[] = [];
+const collectVtableSlots = (context: ModuleContext, fields: GirField[], isUnion: boolean): VtableSlot[] => {
+    const { slots, size } = computeRecordFieldSlots(context, fields, isUnion);
+    const entries: VtableSlot[] = [];
     const claimedNames: Set<string> = new Set();
 
     for (const { field, slot } of slots) {
         const entry = vtableSlotEntry(context, field, claimedNames);
 
-        if (entry === undefined) {
-            continue;
+        if (entry !== undefined) {
+            claimedNames.add(entry.key);
+            entries.push({ ...entry, field, byteOffset: slot.byteOffset, vtableSize: size });
         }
-
-        claimedNames.add(entry.key);
-
-        entries.push(
-            renderVtableSlotDescriptor(context, {
-                key: entry.key,
-                structName,
-                kind,
-                field,
-                callback: entry.callback,
-                byteOffset: slot.byteOffset,
-                vtableSize: size,
-            }),
-        );
     }
 
     return entries;
+};
+
+const collectVtable = (context: ModuleContext, namespaceName: string, klass: GirClass): Vtable | undefined => {
+    const typeStruct = klass.glibTypeStruct;
+    const resolved = typeStruct === undefined ? undefined : context.library.resolveType(namespaceName, typeStruct);
+
+    if (typeStruct === undefined || resolved?.kind !== "record") {
+        return undefined;
+    }
+
+    const slots = collectVtableSlots(context, resolved.value.fields, resolved.value.isUnion);
+
+    if (slots.length === 0) {
+        return undefined;
+    }
+
+    return {
+        structName: pascalCase(typeStruct),
+        kind: klass.isInterface ? "interface" : "class",
+        slots,
+    };
+};
+
+const vfuncMemberNames = (context: ModuleContext, namespaceName: string, klass: GirClass): string[] =>
+    collectVtable(context, namespaceName, klass)?.slots.map((slot) => slot.key) ?? [];
+
+const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | undefined => {
+    const vtable = collectVtable(context, context.namespace.name, klass);
+
+    if (vtable === undefined) {
+        return undefined;
+    }
+
+    const entries = vtable.slots.map((slot) => renderVtableSlotDescriptor(context, vtable, slot));
+
+    return renderBraced(entries.join("\n"));
+};
+
+const renderVfuncMembers = (
+    context: ModuleContext,
+    klass: GirClass,
+    ownerRef: string,
+    mode: VfuncMemberMode,
+): string[] => {
+    const vtable = collectVtable(context, context.namespace.name, klass);
+
+    if (vtable === undefined) {
+        return [];
+    }
+
+    if (mode === "implementation") {
+        context.addRuntimeImport("callVfunc");
+    }
+
+    return vtable.slots
+        .filter((slot) => isCallableSlot(context, slot))
+        .map((slot) => renderVfuncMember(context, ownerRef, slot, mode));
+};
+
+const hasUnannotatedPointerParam = (context: ModuleContext, slot: VtableSlot): boolean => {
+    const [, ...parameters] = slot.callback.parameters;
+
+    return parameters.some(
+        (parameter) =>
+            parameter.direction === "in" &&
+            parameter.cType?.endsWith("*") === true &&
+            isScalarRef(context.library, parameter.type),
+    );
+};
+
+const isCallableSlot = (context: ModuleContext, slot: VtableSlot): boolean =>
+    !UNCALLABLE_SLOT_KEYS.has(slot.key) && !hasUnannotatedPointerParam(context, slot);
+
+const renderVfuncMember = (
+    context: ModuleContext,
+    ownerRef: string,
+    slot: VtableSlot,
+    mode: VfuncMemberMode,
+): string => {
+    const [, ...parameters] = slot.callback.parameters;
+
+    const renderType = (ref: TypeId | undefined, isNullable: boolean): string =>
+        renderTsType(context, ref, isNullable);
+
+    const signature = renderHandlerParameters(parameters, renderType).join(", ");
+
+    const returnType = renderHandlerResultType({
+        library: context.library,
+        signal: { ...slot.callback, parameters },
+        renderType,
+        shouldIncludeCallerAllocated: true,
+        isOptOut: false,
+    });
+
+    const header = `${slot.key}(${signature}): ${returnType}`;
+    const doc = renderJsDoc(slot.callback.doc);
+
+    if (mode === "signature") {
+        return `${doc}${header};`;
+    }
+
+    const inputs = handlerParameters(parameters).map((parameter, index) =>
+        parameterIdentifier(parameter, index));
+
+    const call = `callVfunc(${ownerRef}, ${sourceStringLiteral(slot.key)}, this, [${inputs.join(", ")}])`;
+    const body = returnType === "void" ? `${call};` : `return ${call} as ${returnType};`;
+
+    return `${doc}${renderBlock(header, body)}`;
 };
 
 const isUnsupportedOutParam = (context: ModuleContext, param: GirParameter): boolean =>
@@ -146,8 +252,8 @@ const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): bo
     return !isInlineCallbackRef(context.library, callback.returnValue.type);
 };
 
-const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtableSlotDescriptorOptions): string => {
-    const { key, structName, kind, field, callback, byteOffset, vtableSize } = options;
+const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot: VtableSlot): string => {
+    const { key, field, callback, byteOffset, vtableSize } = slot;
 
     const argDescriptors = callback.parameters
         .map((param) => renderParamDescriptor(context, param, param.type))
@@ -160,8 +266,8 @@ const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtabl
     );
 
     const lines = [
-        `kind: ${sourceStringLiteral(kind)} as const,`,
-        `className: ${sourceStringLiteral(structName)},`,
+        `kind: ${sourceStringLiteral(vtable.kind)} as const,`,
+        `className: ${sourceStringLiteral(vtable.structName)},`,
         `vfuncName: ${sourceStringLiteral(field.name)},`,
         `byteOffset: ${String(byteOffset)},`,
         `vtableSize: ${String(vtableSize)},`,
@@ -172,4 +278,4 @@ const renderVtableSlotDescriptor = (context: ModuleContext, options: RenderVtabl
     return `${key}: ${renderBraced(lines.join("\n"))},`;
 };
 
-export { renderVfuncMetadata };
+export { renderVfuncMetadata, renderVfuncMembers, vfuncMemberNames };

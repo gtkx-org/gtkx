@@ -272,6 +272,9 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
+      '@gtkx/runtime':
+        specifier: workspace:*
+        version: link:../runtime
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
@@ -285,9 +288,6 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
-      '@gtkx/runtime':
-        specifier: workspace:*
-        version: link:../runtime
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing

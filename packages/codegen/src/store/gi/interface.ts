@@ -24,7 +24,7 @@ import {
 } from "./property-accessor.js";
 import { appendInterfaceRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
-import { renderVfuncMetadata } from "./vtable.js";
+import { renderVfuncMembers, renderVfuncMetadata } from "./vtable.js";
 
 type InterfaceMemberRenderers = {
     renderMethod: (
@@ -166,11 +166,13 @@ const renderInterfaceMembers = (
     return [...methodMembers, ...propertyMembers];
 };
 
-const renderInterfaceTypeMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] =>
-    renderInterfaceMembers(context, iface, callables, {
+const renderInterfaceTypeMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] => [
+    ...renderInterfaceMembers(context, iface, callables, {
         renderMethod: renderInstanceMethodSignature,
         renderProperty: renderPropertyAccessorSignature,
-    });
+    }),
+    ...renderVfuncMembers(context, iface, pascalCase(iface.name), "signature"),
+];
 
 const renderInterfaceClass = (
     context: ModuleContext,
@@ -216,6 +218,7 @@ const renderInterfaceInstanceMembers = (context: ModuleContext, iface: GirClass,
         renderMethod: renderClassInstanceMember,
         renderProperty: renderPropertyAccessor,
     }),
+    ...renderVfuncMembers(context, iface, pascalCase(iface.name), "implementation"),
     ...renderSignalMembers(context, iface),
 ];
 

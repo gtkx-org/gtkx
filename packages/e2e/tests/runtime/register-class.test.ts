@@ -82,13 +82,13 @@ describe("registerClass — interface vtable isolation", () => {
         plain.append(new GObject({}));
 
         class FirstStore extends Gio.ListStore {
-            override getNItems(): number {
+            override vfuncGetNItems(): number {
                 return 111;
             }
         }
 
         class SecondStore extends Gio.ListStore {
-            override getNItems(): number {
+            override vfuncGetNItems(): number {
                 return 222;
             }
         }
@@ -110,7 +110,7 @@ describe("registerClass — vfunc dispatch", () => {
         class CustomWidget extends Gtk.Widget {
             snapshotCount = 0;
 
-            snapshot(): void {
+            override vfuncSnapshot(): void {
                 this.snapshotCount++;
             }
         }
@@ -127,7 +127,7 @@ describe("registerClass — vfunc dispatch", () => {
         const parserFinishedCalls: number[] = [];
 
         class CustomWidget extends Gtk.Widget {
-            parserFinished(): void {
+            override vfuncParserFinished(): void {
                 parserFinishedCalls.push(1);
             }
         }
@@ -149,7 +149,7 @@ describe("registerClass — vfunc self argument convention", () => {
         const observed: { positionalArgs: unknown[]; thisRef: unknown }[] = [];
 
         class CustomWidget extends Gtk.Widget {
-            parserFinished(...args: unknown[]): void {
+            override vfuncParserFinished(...args: unknown[]): void {
                 observed.push({ positionalArgs: args, thisRef: this });
             }
         }
@@ -176,7 +176,7 @@ describe("registerClass — vfunc argument and return marshalling", () => {
         const observed: unknown[] = [];
 
         class CustomBuffer extends Gtk.TextBuffer {
-            insertText(iter: Gtk.TextIter): void {
+            override vfuncInsertText(iter: Gtk.TextIter): void {
                 observed.push(iter);
             }
         }
@@ -194,18 +194,18 @@ describe("registerClass — vfunc argument and return marshalling", () => {
         const returned = new ReturnedItem();
 
         class ReturningModel extends Gtk.StringList {
-            override getNItems(): number {
+            override vfuncGetNItems(): number {
                 return 1;
             }
 
-            override getItem(position: number): GObject | null {
+            override vfuncGetItem(position: number): GObject | null {
                 return position === 0 ? returned : null;
             }
         }
 
         registerClass(ReturningModel, { typeName: uniqueName("GtkxVfuncReturnsObject") });
         const model = new ReturningModel();
-        const viaVtable = Gtk.StringList.prototype.getItem.call(model, 0);
+        const viaVtable = model.getItem(0);
         expect(viaVtable).toBe(returned);
     });
 });
@@ -213,14 +213,14 @@ describe("registerClass — vfunc argument and return marshalling", () => {
 describe("registerClass — caller-allocated and scalar out parameters", () => {
     it("fills a caller-allocated out boxed parameter from the handler's return value", () => {
         class CustomChooser extends Gtk.ColorButton {
-            override getRgba(): Gdk.RGBA {
+            override vfuncGetRgba(): Gdk.RGBA {
                 return new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1 });
             }
         }
 
         registerClass(CustomChooser, { typeName: uniqueName("GtkxVfuncCallerOutBoxed") });
         const chooser = new CustomChooser();
-        const result = Gtk.ColorButton.prototype.getRgba.call(chooser);
+        const result = chooser.getRgba();
         expect(result.red).toBeCloseTo(0.5);
         expect(result.green).toBeCloseTo(0.25);
         expect(result.blue).toBeCloseTo(0.75);
@@ -229,44 +229,44 @@ describe("registerClass — caller-allocated and scalar out parameters", () => {
 
     it("writes scalar out parameters from the handler's returned tuple", () => {
         class CustomWidget extends Gtk.Widget {
-            override measure(): [number, number, number, number] {
+            override vfuncMeasure(): [number, number, number, number] {
                 return [42, 48, -1, -1];
             }
         }
 
         registerClass(CustomWidget, { typeName: uniqueName("GtkxVfuncScalarOut") });
         const widget = new CustomWidget();
-        const result = Gtk.Widget.prototype.measure.call(widget, Gtk.Orientation.HORIZONTAL, -1);
+        const result = widget.measure(Gtk.Orientation.HORIZONTAL, -1);
         expect(result).toEqual([42, 48, -1, -1]);
     });
 });
 
 describe("registerClass — construct-time vtable slots", () => {
-    it("rejects overriding the `constructed` slot", () => {
+    it("rejects overriding the `vfuncConstructed` slot", () => {
         const name = uniqueName("GtkxConstructedRejected");
 
         class CustomObject extends GObject {
-            constructed(): void {
+            override vfuncConstructed(): void {
                 throw new Error("constructed must never be dispatched");
             }
         }
 
         expect(() => registerClass(CustomObject, { typeName: name })).toThrow(
-            /construct-time vtable slot 'constructed'/,
+            /construct-time vtable slot 'vfuncConstructed'/,
         );
     });
 
-    it("rejects overriding the `setProperty` slot", () => {
+    it("rejects overriding the `vfuncSetProperty` slot", () => {
         const name = uniqueName("GtkxSetPropertyRejected");
 
         class CustomObject extends GObject {
-            override setProperty(): void {
+            override vfuncSetProperty(): void {
                 throw new Error("setProperty must never be dispatched");
             }
         }
 
         expect(() => registerClass(CustomObject, { typeName: name })).toThrow(
-            /construct-time vtable slot 'setProperty'/,
+            /construct-time vtable slot 'vfuncSetProperty'/,
         );
     });
 });

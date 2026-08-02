@@ -1,5 +1,5 @@
 import type { Descriptor, Ref } from "@gtkx/native";
-import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg, isRefArg } from "./arg.js";
+import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, requiresInputArg } from "./arg.js";
 import { bind } from "./bind.js";
 import { wrapCallbackValue } from "./callback.js";
 import { boxedT, refT } from "./descriptors.js";
@@ -28,6 +28,8 @@ type ArgSpec = {
     isOutParam: boolean;
 };
 
+type NativeCallable = (...values: unknown[]) => unknown;
+
 const buildNativeArgTypes = (args: Arg[], canThrow: boolean): Descriptor[] => {
     const nativeArgTypes = args.map((argSpec) =>
         argSpec.direction !== undefined && argSpec.isCallerAllocated !== true ? refT(argSpec.type) : argSpec.type,
@@ -47,7 +49,7 @@ const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
 
     return args.map((arg) => {
         const isRef = isRefArg(arg);
-        const requiresInput = !isRef || isInoutArg(arg);
+        const requiresInput = requiresInputArg(arg);
         const isOutParam = isOutputArg(arg) && arg.isConsumed !== true;
 
         return {
@@ -108,10 +110,8 @@ const readOutParams = (plans: ArgSpec[], inputs: unknown[], nativeValues: unknow
     return outParams;
 };
 
-function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
+function fromNativeCallable(nativeFn: NativeCallable, spec: FnSpec): (...inputs: unknown[]) => unknown {
     const { args, returns: returnDescriptor, canThrow = false } = spec;
-    const nativeArgTypes = buildNativeArgTypes(args, canThrow);
-    const nativeFn = bind(sharedLibrary, symbol, nativeArgTypes, returnDescriptor);
     const hasPrimary = returnDescriptor.kind !== "void";
     const plans = buildArgSpecs(args);
 
@@ -140,4 +140,10 @@ function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: un
     };
 }
 
-export { fn };
+function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
+    const nativeArgTypes = buildNativeArgTypes(spec.args, spec.canThrow ?? false);
+
+    return fromNativeCallable(bind(sharedLibrary, symbol, nativeArgTypes, spec.returns), spec);
+}
+
+export { buildNativeArgTypes, fn, fromNativeCallable };

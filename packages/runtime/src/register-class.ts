@@ -14,14 +14,9 @@ import {
     type PropertySpec,
     toNativeProperties,
 } from "./properties.js";
-import {
-    getClassType,
-    getInterfaceVfuncRegistry,
-    getVfuncRegistry,
-    registerClassType,
-    type VfuncDescriptor,
-} from "./registry.js";
+import { getClassType, markDerivedClass, registerClassType, type VfuncDescriptor } from "./registry.js";
 import { TYPE_INVALID, typeInterfaces } from "./type.js";
+import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor } from "./vfunc.js";
 
 /** What {@link registerClass} adds to the new GType beyond the vtable slots it discovers on the class. */
 type RegisterClassOptions = {
@@ -41,7 +36,12 @@ type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
 type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
 type InterfaceVfuncBinding = { gtype: bigint; vtableSize: number; vfuncs: DiscoveredInterfaceVfunc[] };
 
-const UNSUPPORTED_CONSTRUCT_VFUNCS: Set<string> = new Set(["constructed", "setProperty", "getProperty"]);
+const UNSUPPORTED_CONSTRUCT_VFUNCS: Set<string> = new Set([
+    "vfuncConstructed",
+    "vfuncSetProperty",
+    "vfuncGetProperty",
+]);
+
 const VALUE_ARG_INDEX = 2;
 
 /**
@@ -74,6 +74,7 @@ function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptio
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings, properties);
     const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
     registerClassType(klass, newType);
+    markDerivedClass(klass);
 
     return klass;
 }
@@ -199,30 +200,10 @@ function discoverInterfaceVfuncs(
     interfaceGtype: bigint,
     claimedMethodNames: Set<string>,
 ): DiscoveredInterfaceVfunc[] {
-    const vfuncRegistry = getInterfaceVfuncRegistry(interfaceGtype);
-
-    if (!vfuncRegistry) {
-        return [];
-    }
-
     return collectDiscoveredVfuncs(
         klass,
-        (methodName) => {
-            const entry = vfuncRegistry[methodName];
-
-            return entry?.kind === "interface" ? entry : undefined;
-        },
+        (methodName) => findInterfaceVfuncDescriptor(interfaceGtype, methodName),
         claimedMethodNames,
-    );
-}
-
-function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDescriptor<"class"> | null {
-    return (
-        walkClassChain(getParentClass(klass), (cls) => {
-            const entry = getVfuncRegistry(cls)?.[methodName];
-
-            return entry?.kind === "class" ? entry : undefined;
-        }) ?? null
     );
 }
 
@@ -232,8 +213,8 @@ function propertyVfuncs(klass: AnyClass, accessors: PropertyAccessor[]): Discove
     }
 
     return [
-        buildPropertyVfunc(klass, "getProperty", makeGetProperty(accessors), true),
-        buildPropertyVfunc(klass, "setProperty", makeSetProperty(accessors), false),
+        buildPropertyVfunc(klass, "vfuncGetProperty", makeGetProperty(accessors), true),
+        buildPropertyVfunc(klass, "vfuncSetProperty", makeSetProperty(accessors), false),
     ];
 }
 
