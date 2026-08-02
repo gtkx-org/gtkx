@@ -301,6 +301,7 @@ const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedInserter>(
 });
 
 export {
+    childMatcher,
     slot,
     value,
     list,

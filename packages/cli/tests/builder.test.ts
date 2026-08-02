@@ -96,6 +96,7 @@ describe("build (plugin order)", () => {
             "gtkx:resources",
             "gtkx:css",
             "gtkx:react-compiler",
+            "gtkx:worker",
             "gtkx:built-url",
             "gtkx:native",
         ]);
@@ -115,6 +116,7 @@ describe("build (plugin order)", () => {
             "gtkx:resources",
             "gtkx:css",
             "gtkx:react-compiler",
+            "gtkx:worker",
             "gtkx:built-url",
             "gtkx:native",
         ]);

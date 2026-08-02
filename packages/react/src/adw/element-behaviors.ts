@@ -5,13 +5,14 @@ import {
     addRemoveSlot,
     adoptedChildrenSlot,
     boxSlot,
+    childMatcher,
     childSetterSlot,
     contentSetterSlot,
     deferred,
     list,
     slot,
 } from "../reconciler/behaviors.js";
-import { type ElementConfig, forTypes, registerElements } from "../reconciler/registry.js";
+import { type ElementBehavior, type ElementConfig, forTypes, registerElements } from "../reconciler/registry.js";
 import { BUILTIN_ELEMENTS, CHILD_SETTER_TYPES, CONTENT_SETTER_TYPES } from "./element-config.js";
 
 type AdwChildSetter =
@@ -71,7 +72,71 @@ const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
     },
 );
 
+const sidebarSections = slot<Adw.Sidebar, Adw.SidebarSection>("children", "AdwSidebarSection", {
+    attach: (sidebar, section, info) => {
+        sidebar.insert(section, info.index);
+    },
+    detach: (sidebar, section) => {
+        sidebar.remove(section);
+    },
+    reorder: (sidebar, section, info) => {
+        sidebar.remove(section);
+        sidebar.insert(section, info.index);
+    },
+});
+
+const sidebarItems = slot<Adw.SidebarSection, Adw.SidebarItem>("children", "AdwSidebarItem", {
+    attach: (section, item, info) => {
+        section.insert(item, info.index);
+    },
+    detach: (section, item) => {
+        section.remove(item);
+    },
+    reorder: (section, item, info) => {
+        section.remove(item);
+        section.insert(item, info.index);
+    },
+});
+
+const isWidget = childMatcher("GtkWidget");
+
+const multiLayoutSlots: ElementBehavior<Adw.MultiLayoutView> = {
+    attach: (view, child, info) => {
+        if (info.slot === "children" || !isWidget(child)) {
+            return;
+        }
+
+        view.setChild(info.slot, child as Gtk.Widget);
+
+        return true;
+    },
+};
+
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
+    AdwSidebar: {
+        behaviors: [sidebarSections],
+    },
+    AdwViewSwitcherSidebar: {
+        behaviors: [sidebarSections],
+    },
+    AdwSidebarSection: {
+        behaviors: [sidebarItems],
+    },
+    AdwMultiLayoutView: {
+        behaviors: [
+            addRemoveSlot<Adw.Layout, Adw.MultiLayoutView>(
+                "layouts",
+                "AdwLayout",
+                (view, layout) => {
+                    view.addLayout(layout);
+                },
+                (view, layout) => {
+                    view.removeLayout(layout);
+                },
+            ),
+            multiLayoutSlots,
+        ],
+    },
     ...forTypes(CHILD_SETTER_TYPES, {
         behaviors: [childSetter],
     }),

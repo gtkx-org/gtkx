@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { basename, dirname, join, resolve } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
+import { writeBuildAllowance } from "./build-allowance.js";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { isKnownPackageManager, PACKAGE_MANAGERS, type PackageManager } from "./package-managers.js";
 import { isValidProjectName } from "./project-name.js";
@@ -480,6 +481,7 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     const projectSpinner = p.spinner();
     projectSpinner.start("Creating project structure...");
     await scaffoldProject(root, resolved);
+    writeBuildAllowance(root, resolved.packageManager);
     projectSpinner.stop("Project structure created");
 
     await installAllDependencies({

@@ -43,15 +43,22 @@ describe("gtkxBuiltUrl", () => {
     it("renderBuiltUrl with assetBase resolves relative to process.execPath", () => {
         const result = callConfig(gtkxBuiltUrl("../share/gtkx"), {});
         const out = result?.experimental.renderBuiltUrl("logo.png", { type: "asset" }) as { runtime: string };
-        expect(out.runtime).toContain('require("path").join');
-        expect(out.runtime).toContain("process.execPath");
-        expect(out.runtime).toContain('"../share/gtkx"');
-        expect(out.runtime).toContain('"logo.png"');
+        expect(out.runtime).toBe(
+            'decodeURIComponent(new URL("../share/gtkx/logo.png", `file://${process.execPath}`).pathname)',
+        );
+    });
+
+    it("renderBuiltUrl never emits require, which an ESM bundle cannot evaluate", () => {
+        for (const assetBase of ["../share/gtkx", undefined]) {
+            const result = callConfig(gtkxBuiltUrl(assetBase), {});
+            const out = result?.experimental.renderBuiltUrl("logo.png", { type: "asset" }) as { runtime: string };
+            expect(out.runtime).not.toContain("require(");
+        }
     });
 
     it("renderBuiltUrl without assetBase uses import.meta.url", () => {
         const result = callConfig(gtkxBuiltUrl(), {});
         const out = result?.experimental.renderBuiltUrl("logo.png", { type: "asset" }) as { runtime: string };
-        expect(out.runtime).toBe('new URL("./logo.png", import.meta.url).pathname');
+        expect(out.runtime).toBe('decodeURIComponent(new URL("./logo.png", import.meta.url).pathname)');
     });
 });

@@ -9,8 +9,11 @@
         "resolveJsonModule": true,
         "lib": ["esnext"],
         "types": ["node", "react"],
-        "outDir": "out-tsc",
-        "rootDir": "src"
+        "noEmit": true
     },
+<% if (shouldIncludeTesting) { -%>
+    "include": ["src/**/*", "tests/**/*"]
+<% } else { -%>
     "include": ["src/**/*"]
+<% } -%>
 }

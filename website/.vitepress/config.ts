@@ -138,7 +138,17 @@ export default defineConfig({
 
         const index = sources.map((s) => `- [${s.text}](${url}/${s.file})`).join("\n");
         const header = `# ${title}\n\n> ${description}\n`;
-        await writeFile(join(siteConfig.outDir, "llms.txt"), `${header}\n## Documentation\n\n${index}\n`);
+
+        const optional = [
+            `- [API Reference](${url}/reference/): generated TypeScript API for every published package`,
+            ...typedocSidebar.map((entry) => `- [${entry.text}](${url}${entry.link})`),
+            `- [Blog](${url}/blog/)`,
+        ].join("\n");
+
+        await writeFile(
+            join(siteConfig.outDir, "llms.txt"),
+            `${header}\n## Documentation\n\n${index}\n\n## Optional\n\n${optional}\n`,
+        );
 
         await writeFile(
             join(siteConfig.outDir, "llms-full.txt"),

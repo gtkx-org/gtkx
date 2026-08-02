@@ -1,11 +1,12 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
 import type { CollectionIndex, Level } from "./collection-index.js";
 import { childLevelKey, ROOT_LEVEL_KEY } from "./collection-index.js";
 
 type LevelState = {
-    store: Gio.ListStore;
+    store: LazyLevelStore;
     ids: string[];
     canExpand: Map<string, boolean>;
 };
@@ -20,7 +21,6 @@ type ModelState = {
     root: Gio.ListStore;
     rootModels: GObject.Object[];
     model: Gtk.FlattenListModel;
-    objects: Map<string, Gtk.StringObject>;
     levels: Map<string, LevelState>;
     tree: Gtk.TreeListModel | null;
 };
@@ -31,27 +31,24 @@ type CollectionModel = {
     sync: (index: CollectionIndex) => void;
 };
 
-const OBJECT_CACHE_MAX = 1 << 20;
+const RESIDENT_OBJECT_MAX = 8192;
+const registration = { isDone: false };
 
-const newStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
+const newRootStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
+
+function ensureRegistered(): void {
+    if (registration.isDone) {
+        return;
+    }
+
+    registration.isDone = true;
+    registerClass(LazyLevelStore, { typeName: "GtkxLazyLevelStore" });
+}
 
 function getId(value: GObject.Object | null): string | null {
     const item = value instanceof Gtk.TreeListRow ? value.getItem() : value;
 
     return item instanceof Gtk.StringObject ? item.getString() : null;
-}
-
-function objectFor(state: ModelState, id: string): Gtk.StringObject {
-    const existing = state.objects.get(id);
-
-    if (existing !== undefined) {
-        return existing;
-    }
-
-    const created = Gtk.StringObject.new(id);
-    state.objects.set(id, created);
-
-    return created;
 }
 
 function commonPrefix(previous: string[], next: string[], max: number): number {
@@ -94,7 +91,7 @@ function levelFor(state: ModelState, key: string): LevelState {
         return existing;
     }
 
-    const created: LevelState = { store: newStore(), ids: [], canExpand: new Map() };
+    const created: LevelState = { store: new LazyLevelStore(), ids: [], canExpand: new Map() };
     state.levels.set(key, created);
 
     return created;
@@ -124,8 +121,8 @@ function didSpliceLevel(state: ModelState, level: Level): boolean {
         return false;
     }
 
-    current.store.splice(range.start, range.removed, range.added.map((id) => objectFor(state, id)));
     current.ids = [...level.ids];
+    current.store.replaceIds(current.ids, range.start, range.removed, range.added.length);
 
     return true;
 }
@@ -134,18 +131,6 @@ function dropUnvisited(state: ModelState, visited: Set<string>): void {
     for (const key of state.levels.keys()) {
         if (!visited.has(key)) {
             state.levels.delete(key);
-        }
-    }
-}
-
-function pruneObjects(state: ModelState, index: CollectionIndex): void {
-    if (state.objects.size <= OBJECT_CACHE_MAX) {
-        return;
-    }
-
-    for (const id of state.objects.keys()) {
-        if (!index.hasId(id)) {
-            state.objects.delete(id);
         }
     }
 }
@@ -190,6 +175,16 @@ function syncRoot(state: ModelState, index: CollectionIndex): void {
     state.rootModels = next;
 }
 
+function refreshExpandableLevels(state: ModelState, index: CollectionIndex, levels: Level[]): void {
+    if (!index.isTree) {
+        return;
+    }
+
+    for (const level of levels) {
+        refreshExpandable(levelFor(state, level.key), level);
+    }
+}
+
 function syncModel(state: ModelState, index: CollectionIndex): void {
     const levels = [...index.groups, ...index.children.values()];
     const visited: Set<string> = new Set();
@@ -202,31 +197,20 @@ function syncModel(state: ModelState, index: CollectionIndex): void {
 
     if (didChange || visited.size !== state.levels.size) {
         dropUnvisited(state, visited);
-        pruneObjects(state, index);
     }
 
     syncRoot(state, index);
     refreshExpandableLevels(state, index, levels);
 }
 
-function refreshExpandableLevels(state: ModelState, index: CollectionIndex, levels: Level[]): void {
-    if (!index.isTree) {
-        return;
-    }
-
-    for (const level of levels) {
-        refreshExpandable(levelFor(state, level.key), level);
-    }
-}
-
 function createCollectionModel(): CollectionModel {
-    const root = newStore();
+    ensureRegistered();
+    const root = newRootStore();
 
     const state: ModelState = {
         root,
         rootModels: [],
         model: Gtk.FlattenListModel.new(root),
-        objects: new Map(),
         levels: new Map(),
         tree: null,
     };
@@ -238,6 +222,58 @@ function createCollectionModel(): CollectionModel {
             syncModel(state, index);
         },
     };
+}
+
+class LazyLevelStore extends Gio.ListStore {
+    ids: string[] = [];
+    objects: Map<string, Gtk.StringObject> = new Map();
+
+    private evictOverflow(): void {
+        if (this.objects.size <= RESIDENT_OBJECT_MAX) {
+            return;
+        }
+
+        const live = new Set(this.ids);
+
+        for (const id of this.objects.keys()) {
+            if (!live.has(id)) {
+                this.objects.delete(id);
+            }
+        }
+    }
+
+    override getItemType(): bigint {
+        return GObject.TYPE_OBJECT;
+    }
+
+    override getNItems(): number {
+        return this.ids.length;
+    }
+
+    override getItem(position: number): GObject.Object | null {
+        const id = this.ids[position];
+
+        if (id === undefined) {
+            return null;
+        }
+
+        const existing = this.objects.get(id);
+
+        if (existing !== undefined) {
+            return existing;
+        }
+
+        const created = Gtk.StringObject.new(id);
+        this.objects.set(id, created);
+        this.evictOverflow();
+
+        return created;
+    }
+
+    replaceIds(next: string[], start: number, removed: number, added: number): void {
+        this.ids = next;
+        this.itemsChanged(start, removed, added);
+    }
 }
 
 export { createCollectionModel, getId, type CollectionModel };
