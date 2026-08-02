@@ -19,6 +19,7 @@ type CallbackScope = "call" | "notified" | "async" | "forever";
 type GirParameter = {
     name: string;
     type: TypeId | undefined;
+    cType: string | undefined;
     direction: ParameterDirection;
     transferOwnership: ParameterTransfer;
     nullable: boolean;
@@ -65,6 +66,7 @@ const hasOptionalAttr = (node: RawNode): boolean =>
 const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => ({
     name: nameAttr(node),
     type: typeRefFromNode(node, context),
+    cType: attr(getChild(node, "type"), "c:type"),
     direction: parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction"),
     transferOwnership: transferOwnership(node),
     nullable: hasNullableAttr(node),

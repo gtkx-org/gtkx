@@ -30,7 +30,7 @@ import { renderPropertyDeclarations } from "./properties.js";
 import { renderResolvedPropertyAccessor, resolveAccessor, type ResolvedAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
-import { renderVfuncMetadata } from "./vtable.js";
+import { renderVfuncMembers, renderVfuncMetadata } from "./vtable.js";
 
 type ImplementedRef = {
     typeRef: string;
@@ -151,6 +151,10 @@ const renderClassMembers = (
         claimedNames,
         className,
     });
+
+    for (const member of renderVfuncMembers(context, klass, className, "implementation")) {
+        members.push(member);
+    }
 
     const inheritedPropertyTypes = collectInheritedPropertyTypes(context, klass);
     const accessors: ResolvedAccessor[] = [];

@@ -1,4 +1,3 @@
-import type { AnyClass } from "@gtkx/utils";
 import {
     type ExternalObject,
     getType,
@@ -7,6 +6,7 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
     setWrapper,
 } from "@gtkx/native";
+import { type AnyClass, walkClassChain } from "@gtkx/utils";
 import type { Mixin, MixinReceiver } from "./mixin.js";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
 
@@ -47,6 +47,8 @@ const composedClassRegistry: Map<bigint, AnyClass> = new Map();
 const handleMap: WeakMap<object, ExternalObject<Handle>> = new WeakMap();
 const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
 const interfaceVfuncRegistry: Map<bigint, VfuncRegistry> = new Map();
+const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
+const derivedClasses: WeakSet<AnyClass> = new WeakSet();
 
 function setClassType(cls: AnyClass, type: bigint): void {
     (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
@@ -83,9 +85,35 @@ function registerClassType(cls: AnyClass, type: bigint): void {
 function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistry): void {
     registerClassType(cls, type);
 
+    if (type !== TYPE_INVALID) {
+        wrapperClasses.add(cls);
+    }
+
     if (vfuncs) {
         registerVfuncRegistry(cls, vfuncs);
     }
+}
+
+function markDerivedClass(cls: AnyClass): void {
+    derivedClasses.add(cls);
+}
+
+function resolveAncestorType(ancestor: AnyClass): bigint | undefined {
+    if (derivedClasses.has(ancestor) || !wrapperClasses.has(ancestor)) {
+        return undefined;
+    }
+
+    return getClassType(ancestor);
+}
+
+function resolveWrapperType(instance: object): bigint {
+    const cls = instance.constructor as AnyClass | undefined;
+
+    if (cls === undefined) {
+        return TYPE_INVALID;
+    }
+
+    return walkClassChain(cls, (ancestor) => resolveAncestorType(ancestor)) ?? TYPE_INVALID;
 }
 
 /**
@@ -228,6 +256,7 @@ function resolveComposedClass(runtimeType: bigint): AnyClass | null {
     }
 
     setClassType(composed, runtimeType);
+    wrapperClasses.add(composed);
     composedClassRegistry.set(runtimeType, composed);
 
     return composed;
@@ -258,13 +287,16 @@ function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
     return instance;
 }
 
+function instanceClassName(instance: object): string {
+    return (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
+}
+
 /** Returns the native handle bound to a wrapper instance, throwing if none is set. */
 function getHandle(instance: object): ExternalObject<Handle> {
     const handle = handleMap.get(instance);
 
     if (handle === undefined) {
-        const name = (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
-        throw new Error(`No native handle associated with ${name}`);
+        throw new Error(`No native handle associated with ${instanceClassName(instance)}`);
     }
 
     return handle;
@@ -308,6 +340,7 @@ function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
 export {
     getClassType,
     getInstanceType,
+    markDerivedClass,
     registerClassType,
     registerWrapperClass,
     registerInterface,
@@ -319,6 +352,8 @@ export {
     setHandle,
     getVfuncRegistry,
     getInterfaceVfuncRegistry,
+    instanceClassName,
+    resolveWrapperType,
     type StaticBase,
     type VfuncDescriptor,
     type VfuncRegistry,

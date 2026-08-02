@@ -10,9 +10,7 @@ type Measurement = [number, number, number, number];
 const LABEL_TEXT = "hello world";
 const uniqueName = createTypeNameFactory("_");
 
-const measureWidth = (label: Gtk.Label): Measurement =>
-    Gtk.Widget.prototype.measure.call(label, Gtk.Orientation.HORIZONTAL, -1);
-
+const measureWidth = (label: Gtk.Label): Measurement => label.measure(Gtk.Orientation.HORIZONTAL, -1);
 const plainWidth = (): number => measureWidth(new Gtk.Label({ label: LABEL_TEXT }))[0];
 
 const menuWith = <T extends Gio.Menu>(menu: T, items: number): T => {
@@ -26,10 +24,10 @@ const menuWith = <T extends Gio.Menu>(menu: T, items: number): T => {
 describe("callParent — class vtable slots", () => {
     it("runs the parent implementation and returns its scalar out parameters", () => {
         class MeasuringLabel extends Gtk.Label {
-            override measure(orientation: Gtk.Orientation, forSize: number): Measurement {
+            override vfuncMeasure(orientation: Gtk.Orientation, forSize: number): Measurement {
                 const [minimum, natural] = callParent(
                     MeasuringLabel,
-                    "measure",
+                    "vfuncMeasure",
                     this,
                     orientation,
                     forSize,
@@ -47,32 +45,44 @@ describe("callParent — class vtable slots", () => {
 
     it("runs the parent implementation of a slot with a primary return value", () => {
         class CountingMenu extends Gio.Menu {
-            override getNItems(): number {
-                return (callParent(CountingMenu, "getNItems", this) as number) + 100;
+            override vfuncGetNItems(): number {
+                return (callParent(CountingMenu, "vfuncGetNItems", this) as number) + 100;
             }
         }
 
         registerClass(CountingMenu, { typeName: uniqueName("GtkxChainUpCountingMenu") });
         const plain = menuWith(new Gio.Menu(), 3);
         const counting = menuWith(new CountingMenu(), 3);
-        expect(Gio.MenuModel.prototype.getNItems.call(plain)).toBe(3);
-        expect(Gio.MenuModel.prototype.getNItems.call(counting)).toBe(103);
+        expect(plain.getNItems()).toBe(3);
+        expect(counting.getNItems()).toBe(103);
     });
 });
 
 describe("callParent — hierarchy depth", () => {
     it("reaches exactly one level up in a two-level hierarchy", () => {
         class InnerLabel extends Gtk.Label {
-            override measure(orientation: Gtk.Orientation, forSize: number): Measurement {
-                const [minimum, natural] = callParent(InnerLabel, "measure", this, orientation, forSize) as Measurement;
+            override vfuncMeasure(orientation: Gtk.Orientation, forSize: number): Measurement {
+                const [minimum, natural] = callParent(
+                    InnerLabel,
+                    "vfuncMeasure",
+                    this,
+                    orientation,
+                    forSize,
+                ) as Measurement;
 
                 return [minimum + 10, natural + 10, -1, -1];
             }
         }
 
         class OuterLabel extends InnerLabel {
-            override measure(orientation: Gtk.Orientation, forSize: number): Measurement {
-                const [minimum, natural] = callParent(OuterLabel, "measure", this, orientation, forSize) as Measurement;
+            override vfuncMeasure(orientation: Gtk.Orientation, forSize: number): Measurement {
+                const [minimum, natural] = callParent(
+                    OuterLabel,
+                    "vfuncMeasure",
+                    this,
+                    orientation,
+                    forSize,
+                ) as Measurement;
 
                 return [minimum + 10, natural + 10, -1, -1];
             }
@@ -89,8 +99,8 @@ describe("callParent — hierarchy depth", () => {
 describe("callParent — interface vtable slots", () => {
     it("runs the interface implementation the parent type carries", () => {
         class CountingStore extends Gio.ListStore {
-            override getNItems(): number {
-                return (callParent(CountingStore, "getNItems", this) as number) + 100;
+            override vfuncGetNItems(): number {
+                return (callParent(CountingStore, "vfuncGetNItems", this) as number) + 100;
             }
         }
 
@@ -114,7 +124,7 @@ describe("callParent — rejected calls", () => {
         registerClass(CustomApplication, { typeName: uniqueName("GtkxChainUpApplication") });
         const application = new CustomApplication({});
 
-        expect(() => callParent(CustomApplication, "runMainloop", application)).toThrow(
+        expect(() => callParent(CustomApplication, "vfuncRunMainloop", application)).toThrow(
             /ApplicationClass\.run_mainloop.*provides no implementation/,
         );
     });
@@ -132,7 +142,7 @@ describe("callParent — rejected calls", () => {
         class UnregisteredLabel extends Gtk.Label {}
 
         expect(() =>
-            callParent(UnregisteredLabel, "measure", new Gtk.Label({}), Gtk.Orientation.HORIZONTAL, -1),
+            callParent(UnregisteredLabel, "vfuncMeasure", new Gtk.Label({}), Gtk.Orientation.HORIZONTAL, -1),
         ).toThrow(/UnregisteredLabel was never passed to registerClass/);
     });
 
@@ -140,7 +150,7 @@ describe("callParent — rejected calls", () => {
         class ArityLabel extends Gtk.Label {}
         registerClass(ArityLabel, { typeName: uniqueName("GtkxChainUpArityLabel") });
 
-        expect(() => callParent(ArityLabel, "measure", new ArityLabel({}), Gtk.Orientation.HORIZONTAL)).toThrow(
+        expect(() => callParent(ArityLabel, "vfuncMeasure", new ArityLabel({}), Gtk.Orientation.HORIZONTAL)).toThrow(
             /WidgetClass\.measure expects 2 arguments, received 1/,
         );
     });
@@ -149,17 +159,15 @@ describe("callParent — rejected calls", () => {
 describe("callParent — caller-allocated out parameters", () => {
     it("includes the caller-allocated slot in the result tuple", () => {
         class BorderedView extends Gtk.TreeView {
-            override getBorder(border: Gtk.Border): [boolean, Gtk.Border] {
-                return callParent(BorderedView, "getBorder", this, border) as [boolean, Gtk.Border];
+            override vfuncGetBorder(border: Gtk.Border): [boolean, Gtk.Border] {
+                return callParent(BorderedView, "vfuncGetBorder", this, border) as [boolean, Gtk.Border];
             }
         }
 
         registerClass(BorderedView, { typeName: uniqueName("BorderedView") });
-
         const view = new BorderedView();
         const border = new Gtk.Border();
-        const result = view.getBorder(border);
-
+        const result = view.vfuncGetBorder(border);
         expect(result).toHaveLength(2);
         expect(result[1]).toBe(border);
     });

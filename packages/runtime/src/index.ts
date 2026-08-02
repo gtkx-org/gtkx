@@ -20,8 +20,6 @@ export { fromNative, toNative } from "./native-value.js";
 /** @public */
 export { getObjectProperty, newObjectWithProperties, setObjectProperty } from "./object.js";
 /** @public */
-export { callParent } from "./parent-vfunc.js";
-/** @public */
 export { promisify } from "./promisify.js";
 /** @public */
 export { registerClass } from "./register-class.js";
@@ -78,5 +76,7 @@ export {
 } from "./type.js";
 /** @public */
 export { getBoxedValue, setBoxedValue } from "./value.js";
+/** @public */
+export { callParent, callVfunc } from "./vfunc-call.js";
 /** @public */
 export { alloc, type ExternalObject, type Handle, read, setWrapper, write } from "@gtkx/native";

@@ -168,17 +168,23 @@ const parameterIdentifier = (parameter: GirParameter, index: number): string => 
     return toCamelIdentifier(parameter.name);
 };
 
+const handlerParameters = (
+    parameters: GirParameter[],
+    shouldExclude: (parameter: GirParameter) => boolean = () => false,
+): GirParameter[] =>
+    parameters.filter(
+        (parameter) => !parameter.isVarargs && !isOutParameter(parameter) && !shouldExclude(parameter),
+    );
+
 const renderHandlerParameters = (
     parameters: GirParameter[],
     renderType: (ref: TypeId | undefined, isNullable: boolean) => string,
     shouldExclude: (parameter: GirParameter) => boolean = () => false,
 ): string[] =>
-    parameters
-        .filter((parameter) => !parameter.isVarargs && !isOutParameter(parameter) && !shouldExclude(parameter))
-        .map(
-            (parameter, index) =>
-                `${parameterIdentifier(parameter, index)}: ${renderType(parameter.type, parameter.nullable)}`,
-        );
+    handlerParameters(parameters, shouldExclude).map(
+        (parameter, index) =>
+            `${parameterIdentifier(parameter, index)}: ${renderType(parameter.type, parameter.nullable)}`,
+    );
 
 const foldOutParamShape = (primary: string | undefined, outTypes: string[]): string => {
     if (primary !== undefined) {
@@ -250,6 +256,7 @@ export {
     hasCallerAllocatedArrayLength,
     foldedLengthIndices,
     parameterIdentifier,
+    handlerParameters,
     renderHandlerParameters,
     foldOutParamShape,
     renderHandlerResultType,

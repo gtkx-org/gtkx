@@ -242,15 +242,15 @@ class LazyLevelStore extends Gio.ListStore {
         }
     }
 
-    override getItemType(): bigint {
+    override vfuncGetItemType(): bigint {
         return GObject.TYPE_OBJECT;
     }
 
-    override getNItems(): number {
+    override vfuncGetNItems(): number {
         return this.ids.length;
     }
 
-    override getItem(position: number): GObject.Object | null {
+    override vfuncGetItem(position: number): GObject.Object | null {
         const id = this.ids[position];
 
         if (id === undefined) {
