@@ -23,8 +23,7 @@ const useApplicationLifecycle = (
             return;
         }
 
-        runApplication(application);
-        setActivated(true);
+        setActivated(runApplication(application).isPrimary);
 
         return () => {
             quitApplication(application);

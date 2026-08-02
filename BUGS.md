@@ -246,6 +246,81 @@ Label id="3"  ->  "Count: 1"      (incremented before the edit, survived it)
 
 ---
 
+## 10. `screenshot()` misdiagnoses a display that is not presenting frames
+
+**Severity:** medium, but it lands squarely on the MCP agent workflow, which is a headline use case.
+
+**Symptom:** `gtkx_take_screenshot` against a live session fails with
+
+```
+Timed out after 1000ms.
+Widget produced no render content (realized=true mapped=true visible=true)
+```
+
+The message points at the widget, so it reads as an application bug. The widget is fine.
+
+**Cause:** `packages/testing/src/screenshot.ts` captures through `Gtk.WidgetPaintable`, which serves the widget's last *presented* render node. When the compositor is not presenting the surface, no frame callback arrives, the frame clock never ticks, and the cached node is never regenerated. Measured against a GNOME Wayland session with nothing viewing the window:
+
+```
+[t+0.5s] frameCounter=0 fps=0.00 mapped=true
+[t+8s]   frameCounter=0 fps=0.00 mapped=true
+```
+
+Eight seconds, repeated `queueDraw()` between samples, and the frame counter never leaves zero.
+
+The first capture after the window maps succeeds, because GTK snapshots synchronously at map time. Any later invalidation, an explicit `queueDraw()` or a tree change from Fast Refresh, drops that cached node permanently:
+
+```
+[baseline]                    toNode=node
+[action] queueDraw
+[after-invalidate]            toNode=NULL
+[action] requestPhase(PAINT)
+[after-requestPhase-1400ms]   toNode=NULL
+```
+
+`GdkFrameClock.requestPhase(PAINT)` does not recover it either. Only a compositor frame can, and none is coming.
+
+This is why screenshots work under the `@gtkx/vitest` headless compositor (sway and weston do present) and why they start failing on a live session immediately after the first hot reload.
+
+**Fix:** the retry loop cannot help here, so it should stop pretending. Check `widget.getFrameClock()?.getFrameCounter()`; when it has not advanced, fail immediately with the real reason, that the display is not presenting frames to this window, rather than burning the timeout and blaming the widget. Capturing without depending on a presented frame would be better still, but the accurate diagnosis is the part that matters.
+
+---
+
+## 11. A second instance on the same application ID segfaults
+
+**Severity:** high. The crash is indistinguishable from an application bug, and it is hit by the ordinary mistake of running a build while `gtkx dev` is up.
+
+**Repro:**
+
+```sh
+pnpm exec gtkx dev &        # holds dev.example.App
+pnpm exec gtkx build
+node dist/bundle.js
+echo $?
+```
+
+**Actual:** exit `139` (SIGSEGV), with no output at all, not even the GDK warnings the same binary prints on a clean run. With the dev instance stopped, the identical bundle runs correctly.
+
+GApplication's remote-instance path is supposed to register, forward activation to the primary instance, and exit cleanly. Instead the process dies on a signal, so the user sees a crash with nothing to go on.
+
+**Cause:** isolated to window construction, not registration. Registering and activating a remote application is fine on its own:
+
+```
+[dup] isRemote=true
+[dup] activated
+[dup] alive after present   <- reached only without a window
+```
+
+Adding `new Adw.ApplicationWindow({ application })` to that same remote application segfaults immediately. GTK builds its `GtkApplicationImpl` during `startup`, which never runs for a remote instance, so attaching a window dereferences it.
+
+`runApplication` registered and then activated unconditionally, and the React tree went on to build a window regardless of which instance it was in.
+
+**Fix applied:** `runApplication` now returns `{ isPrimary }`. A remote instance forwards activation to the primary and reports `isPrimary: false`, and the application component gates its children on that, so no window is ever attached to a remote application. The second instance exits `0` and the primary stays up and is raised.
+
+**Still open:** `runApplication` never passes `argv`, so GApplication's own command-line options, including `--gapplication-service`, are inert. That matters for D-Bus activation, where the service file's `Exec` conventionally carries that flag.
+
+---
+
 ## Verified working
 
 Recorded so nobody re-tests them:

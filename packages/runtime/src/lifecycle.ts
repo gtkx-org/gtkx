@@ -9,6 +9,8 @@ import { blockMatchedSignalHandlers } from "./signal.js";
 type ApplicationLike = {
     /** Returns whether the application has already been registered. */
     getIsRegistered(): boolean;
+    /** Returns whether another process owns the application ID, making this one a remote instance. */
+    getIsRemote?(): boolean;
     /** Registers the application with the session, returning whether it succeeded. */
     register(cancellable: null): boolean;
     /** Emits `activate`, bringing up the application's initial user interface. */
@@ -23,6 +25,12 @@ type ApplicationLike = {
     removeWindow?(window: object): void;
     /** Connects a handler to the application's `activate` or `shutdown` signal. */
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
+};
+
+/** What {@link runApplication} reports about the process it just registered. */
+type RunApplicationResult = {
+    /** Whether this process owns the application ID and may build a user interface. */
+    isPrimary: boolean;
 };
 
 const shutdownCallbacks: (() => void)[] = [];
@@ -64,9 +72,25 @@ const onExit = (callback: () => void): void => {
  * Registers the application if needed and activates it, keeping the runtime alive
  * while it is active and releasing it on shutdown.
  *
+ * When another process already owns the application ID, this one registers as a
+ * remote instance: activation is forwarded to the primary and no user interface
+ * may be built here, because a remote application has no `GtkApplicationImpl` and
+ * attaching a window to it crashes.
+ *
  * @param application The application to register and activate.
+ * @returns The run result, whose `isPrimary` reports whether this process may build a user interface.
  */
-const runApplication = (application: ApplicationLike): void => {
+const runApplication = (application: ApplicationLike): RunApplicationResult => {
+    if (!application.getIsRegistered()) {
+        application.register(null);
+    }
+
+    if (application.getIsRemote?.() === true) {
+        application.activate();
+
+        return { isPrimary: false };
+    }
+
     application.on("activate", () => {
         keepAlive(true);
     });
@@ -75,11 +99,9 @@ const runApplication = (application: ApplicationLike): void => {
         keepAlive(false);
     });
 
-    if (!application.getIsRegistered()) {
-        application.register(null);
-    }
-
     application.activate();
+
+    return { isPrimary: true };
 };
 
 /**
@@ -108,4 +130,4 @@ const quitApplication = (application: ApplicationLike): void => {
     application.run([]);
 };
 
-export { onExit, quit, runApplication, quitApplication, type ApplicationLike };
+export { onExit, quit, runApplication, quitApplication, type ApplicationLike, type RunApplicationResult };
