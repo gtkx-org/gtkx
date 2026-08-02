@@ -74,17 +74,42 @@ cd demo && pnpm exec tsc --noEmit --listFiles | grep -E '/(src|tests)/'
 
 ---
 
-## 3. The scaffolded `tsconfig.json` emits into the project and excludes nothing
+## 3. Scaffolded projects become a pnpm workspace root with no `packages:` key
 
-**Severity:** low on its own, higher once a project acquires any build directory.
+**Severity:** high. Every pnpm-scaffolded GTKX app is in this state, and the failure it causes is unbounded memory in an unrelated command.
 
-The generated `tsconfig.json` set `"outDir": "out-tsc"` while the generated `.gitignore` listed only `node_modules/`, `dist/`, and `*.log`, so any `tsc` run without `--noEmit` left an untracked build directory behind.
+**Symptom as first seen:** `pnpm exec tsc --noEmit` in a scaffolded project exhausts the heap, at the default limit and still at `--max-old-space-size=8192`, once a `flatpak-builder` output directory exists in the tree. Removing the directory fixes it. Adding that directory to the tsconfig `exclude` does not.
 
-**Fix applied:** `outDir` and `rootDir` are gone in favor of `noEmit`, so nothing is emitted and there is no directory to ignore.
+**The symptom is misleading: TypeScript is never reached.** Same project, same tree, with the offending directory present:
 
-That removal exposed a second problem. TypeScript's implicit exclusion of `outDir` went with it, and the template carried no `exclude` at all. A project that later grows a build directory inside the tree gets a `tsc` that exhausts an 8 GB heap: reproduced with a `flatpak-builder` output directory in a scaffolded project, where `tsc --noEmit` OOMs and moving the directory away fixes it. Bisecting identified the directory, but adding it to `exclude` did **not** help and the 62 MB Node binary inside it was not the trigger, so the mechanism is still unidentified.
+```
+pnpm exec tsc --noEmit             FATAL heap OOM, signal 6, 57.6s, 6.9 GB
+pnpm exec node -e "…"              FATAL heap OOM, signal 6, 65.0s, 6.6 GB   (no tsc at all)
+./node_modules/.bin/tsc --noEmit   exit 0, 0.08s, 173 MB                     (no pnpm)
+```
 
-The template now ships `"exclude": ["node_modules", "dist"]`. Build output belongs outside the source tree regardless, which is what TableStar does now.
+**Cause:** `pnpm exec` runs a dependency-status check before spawning anything. That check globs the workspace, and it passes the raw `packages:` field from `pnpm-workspace.yaml` straight through. When the file exists but has no `packages:` key the value is `undefined`, so pnpm falls back to its recursive default `[".", "**"]` and crawls `**/package.{json,yaml,json5}`, ignoring only `node_modules` and `bower_components`, with `followSymbolicLinks` left at its default of true.
+
+`flatpak build-init` leaves exactly one symlink in every output directory, `build-dir/var/run -> /run`, so the crawl walks out of the project. The memory is consumed resolving symlinks, not files: 150,000 plain directories behind the link finish in 0.93s, while 150,000 symlinks exhaust the heap.
+
+`packages/create-gtkx/src/build-allowance.ts` created the file with only an `allowBuilds:` key, which is what made a plain app a workspace root without ever selecting its packages.
+
+**Repro**, with no tsc anywhere in the command:
+
+```sh
+mkdir -p mini/src mini/build-dir/var && cd mini
+printf '{"name":"mini","version":"0.0.0","private":true}\n' > package.json
+printf 'allowBuilds:\n  esbuild: true\n' > pnpm-workspace.yaml
+pnpm install --ignore-scripts
+ln -s /run build-dir/var/run
+NODE_OPTIONS=--max-old-space-size=512 pnpm exec node -e "console.log('ok')"
+```
+
+**Fix applied:** `writePnpmAllowance` now writes `packages:\n  - '.'` when the file has no `packages:` key. Verified: with the symlink still present, the same command goes from a signal 6 abort to `ok` in 0.21s, and a freshly scaffolded project survives both `pnpm exec node` and `pnpm exec tsc --noEmit`.
+
+**Two corrections to earlier entries in this file.** The `exclude` previously added to the scaffolder's `tsconfig.json` template did not fix this and has been reverted; it never named the offending directory and could not have, because tsconfig is not read by the process that died. The template's `include` is what keeps TypeScript's own wildcard walk inside `src/`, and that walk has an independent symlink-following blowup of its own that only fires when a tsconfig has neither `files` nor `include`. Keeping `include` is therefore deliberate, not incidental.
+
+Also worth recording: `--max-old-space-size` could never have helped diagnose this, because TypeScript 7.0.2 is a statically linked Go binary that the JS shim `execve`s into, so V8 flags do not reach it.
 
 ---
 

@@ -6,6 +6,8 @@ const BUILT_DEPENDENCIES = ["@swc/core", "esbuild"];
 const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
 const PACKAGE_JSON_FILE = "package.json";
 const SAFE_YAML_KEY = /^[A-Za-z][A-Za-z0-9-]*$/;
+const PACKAGES_KEY = /^packages:/m;
+const PNPM_PACKAGES_BLOCK = "packages:\n  - '.'\n";
 
 const quoteYamlKey = (name: string): string => (SAFE_YAML_KEY.test(name) ? name : `'${name}'`);
 const endWithNewline = (value: string): string => (value.endsWith("\n") ? value : `${value}\n`);
@@ -20,8 +22,9 @@ const writeManifest = (root: string, manifest: Record<string, unknown>): void =>
 const writePnpmAllowance = (root: string): void => {
     const path = join(root, PNPM_WORKSPACE_FILE);
     const entries = BUILT_DEPENDENCIES.map((name) => `  ${quoteYamlKey(name)}: true`).join("\n");
-    const block = `allowBuilds:\n${entries}\n`;
     const existing = existsSync(path) ? readFileSync(path, "utf8") : "";
+    const packages = PACKAGES_KEY.test(existing) ? "" : PNPM_PACKAGES_BLOCK;
+    const block = `${packages}allowBuilds:\n${entries}\n`;
     writeFileSync(path, existing.length === 0 ? block : `${endWithNewline(existing)}${block}`);
 };
 
