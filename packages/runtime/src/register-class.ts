@@ -14,14 +14,9 @@ import {
     type PropertySpec,
     toNativeProperties,
 } from "./properties.js";
-import {
-    getClassType,
-    getInterfaceVfuncRegistry,
-    getVfuncRegistry,
-    registerClassType,
-    type VfuncDescriptor,
-} from "./registry.js";
+import { getClassType, registerClassType, type VfuncDescriptor } from "./registry.js";
 import { TYPE_INVALID, typeInterfaces } from "./type.js";
+import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor } from "./vfunc.js";
 
 /** What {@link registerClass} adds to the new GType beyond the vtable slots it discovers on the class. */
 type RegisterClassOptions = {
@@ -199,30 +194,10 @@ function discoverInterfaceVfuncs(
     interfaceGtype: bigint,
     claimedMethodNames: Set<string>,
 ): DiscoveredInterfaceVfunc[] {
-    const vfuncRegistry = getInterfaceVfuncRegistry(interfaceGtype);
-
-    if (!vfuncRegistry) {
-        return [];
-    }
-
     return collectDiscoveredVfuncs(
         klass,
-        (methodName) => {
-            const entry = vfuncRegistry[methodName];
-
-            return entry?.kind === "interface" ? entry : undefined;
-        },
+        (methodName) => findInterfaceVfuncDescriptor(interfaceGtype, methodName),
         claimedMethodNames,
-    );
-}
-
-function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDescriptor<"class"> | null {
-    return (
-        walkClassChain(getParentClass(klass), (cls) => {
-            const entry = getVfuncRegistry(cls)?.[methodName];
-
-            return entry?.kind === "class" ? entry : undefined;
-        }) ?? null
     );
 }
 

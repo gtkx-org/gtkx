@@ -14,7 +14,7 @@ fn execute_call<'e>(
     descriptor: &CallDescriptor,
     values: &[Unknown<'e>],
 ) -> anyhow::Result<Unknown<'e>> {
-    let symbol_name = &descriptor.symbol_name;
+    let label = &descriptor.label;
     let return_codec = &descriptor.return_codec;
     let arg_codecs = &descriptor.arg_codecs;
 
@@ -25,7 +25,7 @@ fn execute_call<'e>(
         .map(|(i, (codec, &value))| {
             codec
                 .encode(env, value)
-                .with_context(|| format!("encoding arg {i} of {symbol_name}"))
+                .with_context(|| format!("encoding arg {i} of {label}"))
         })
         .collect::<anyhow::Result<Vec<ffi::Stash>>>()?;
 
@@ -36,14 +36,14 @@ fn execute_call<'e>(
 
     anyhow::ensure!(
         descriptor.native_arg_count == ffi_args.len(),
-        "{symbol_name}: the call interface declares {} native arguments but {} were marshalled",
+        "{label}: the call interface declares {} native arguments but {} were marshalled",
         descriptor.native_arg_count,
         ffi_args.len()
     );
 
     let result = return_codec
         .call_cif(&descriptor.cif, descriptor.symbol()?, &ffi_args)
-        .with_context(|| format!("calling {symbol_name}"))?;
+        .with_context(|| format!("calling {label}"))?;
 
     for stash in &stashes {
         stash.disarm_pending_transfer();
@@ -53,7 +53,7 @@ fn execute_call<'e>(
 
     let return_value = return_codec
         .decode_with_context(env, &result, &stashes, arg_codecs)
-        .with_context(|| format!("decoding return value of {symbol_name}"));
+        .with_context(|| format!("decoding return value of {label}"));
 
     release_sized_array_return(return_codec, &result);
 
@@ -113,7 +113,7 @@ pub fn call<'env>(
             Status::InvalidArg,
             format!(
                 "{}: expected {} arguments, received {}",
-                descriptor.symbol_name,
+                descriptor.label,
                 descriptor.arg_codecs.len(),
                 parsed_values.len()
             ),
@@ -131,7 +131,10 @@ mod tests {
 
     fn descriptor(symbol: &str, arg_codecs: Vec<Codec>, return_codec: Codec) -> CallDescriptor {
         crate::api::bind::prepare(
-            "libgtk-4.so.1".to_owned(),
+            crate::api::bind::CallTarget::Symbol {
+                library_name: "libgtk-4.so.1".to_owned(),
+                symbol_name: symbol.to_owned(),
+            },
             symbol.to_owned(),
             arg_codecs,
             return_codec,

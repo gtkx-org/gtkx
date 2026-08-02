@@ -6,6 +6,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use crate::api::vtable::{query_type, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
@@ -289,65 +290,18 @@ impl ClassRegistration {
             anyhow::bail!("Type name '{}' is already registered", self.name);
         }
 
-        let mut query = gobject_ffi::GTypeQuery {
-            type_: 0,
-            type_name: std::ptr::null(),
-            class_size: 0,
-            instance_size: 0,
-        };
-        unsafe { gobject_ffi::g_type_query(self.parent_type.into_glib(), &raw mut query) };
-        if query.type_ == 0 {
-            anyhow::bail!("parent type could not be queried");
-        }
-        Ok(query)
-    }
-
-    fn validate_vfunc_offset(
-        byte_offset: usize,
-        pointer_align: usize,
-        pointer_size: usize,
-        class_size: Option<u32>,
-        label: &str,
-    ) -> anyhow::Result<()> {
-        if !byte_offset.is_multiple_of(pointer_align) {
-            anyhow::bail!(
-                "{label} byte_offset {byte_offset} is not aligned to a pointer ({pointer_align})"
-            );
-        }
-        let end = byte_offset
-            .checked_add(pointer_size)
-            .ok_or_else(|| anyhow::anyhow!("{label} byte_offset overflow"))?;
-        if let Some(class_size) = class_size
-            && end > class_size as usize
-        {
-            anyhow::bail!("{label} byte_offset {byte_offset} exceeds class size {class_size}");
-        }
-        Ok(())
+        query_type(self.parent_type)
+            .ok_or_else(|| anyhow::anyhow!("parent type could not be queried"))
     }
 
     fn validate_layout(&self, query: &gobject_ffi::GTypeQuery) -> anyhow::Result<()> {
-        let pointer_align = align_of::<*mut c_void>();
-        let pointer_size = size_of::<*mut c_void>();
-
         for vfunc in &self.vfuncs {
-            Self::validate_vfunc_offset(
-                vfunc.byte_offset,
-                pointer_align,
-                pointer_size,
-                Some(query.class_size),
-                "vfunc",
-            )?;
+            validate_vfunc_offset(vfunc.byte_offset, Some(query.class_size), "vfunc")?;
         }
 
         for iface in &self.interfaces {
             for vfunc in &iface.vfuncs {
-                Self::validate_vfunc_offset(
-                    vfunc.byte_offset,
-                    pointer_align,
-                    pointer_size,
-                    iface.vtable_size,
-                    "interface vfunc",
-                )?;
+                validate_vfunc_offset(vfunc.byte_offset, iface.vtable_size, "interface vfunc")?;
             }
         }
         Ok(())
@@ -604,22 +558,6 @@ mod tests {
     }
 
     #[test]
-    fn validate_vfunc_offset_accepts_aligned_offset_within_bounds() {
-        ClassRegistration::validate_vfunc_offset(8, 8, 8, Some(64), "vfunc")
-            .expect("aligned in-bounds offset should validate");
-    }
-
-    #[test]
-    fn validate_vfunc_offset_rejects_unaligned_offset() {
-        assert!(ClassRegistration::validate_vfunc_offset(4, 8, 8, Some(64), "vfunc").is_err());
-    }
-
-    #[test]
-    fn validate_vfunc_offset_rejects_offset_beyond_class_size() {
-        assert!(ClassRegistration::validate_vfunc_offset(64, 8, 8, Some(64), "vfunc").is_err());
-    }
-
-    #[test]
     fn validate_layout_bounds_interface_offsets_against_the_declared_vtable_size() {
         let registration = ClassRegistration {
             name: gstring("GtkxRegisterClassBoundedInterfaceType"),
@@ -656,10 +594,5 @@ mod tests {
             .validate_layout(&query)
             .expect_err("an interface offset past the vtable must be rejected");
         assert!(error.to_string().contains("exceeds class size 16"));
-    }
-
-    #[test]
-    fn validate_vfunc_offset_rejects_end_overflow() {
-        assert!(ClassRegistration::validate_vfunc_offset(usize::MAX, 8, 8, None, "vfunc").is_err());
     }
 }

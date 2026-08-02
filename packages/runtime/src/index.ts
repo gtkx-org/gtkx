@@ -20,6 +20,8 @@ export { fromNative, toNative } from "./native-value.js";
 /** @public */
 export { getObjectProperty, newObjectWithProperties, setObjectProperty } from "./object.js";
 /** @public */
+export { callParent } from "./parent-vfunc.js";
+/** @public */
 export { promisify } from "./promisify.js";
 /** @public */
 export { registerClass } from "./register-class.js";

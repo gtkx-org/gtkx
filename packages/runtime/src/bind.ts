@@ -1,4 +1,10 @@
-import { call, type Descriptor, bind as nativeBind } from "@gtkx/native";
+import {
+    type BindVfuncOptions,
+    call,
+    type Descriptor,
+    bind as nativeBind,
+    bindVfunc as nativeBindVfunc,
+} from "@gtkx/native";
 
 function bind(
     sharedLibrary: string,
@@ -7,6 +13,12 @@ function bind(
     returnDescriptor: Descriptor,
 ): (...values: unknown[]) => unknown {
     const descriptor = nativeBind(sharedLibrary, symbol, argDescriptors, returnDescriptor);
+
+    return (...values) => call(descriptor, values);
+}
+
+function bindVfunc(options: BindVfuncOptions): (...values: unknown[]) => unknown {
+    const descriptor = nativeBindVfunc(options);
 
     return (...values) => call(descriptor, values);
 }
@@ -28,4 +40,4 @@ function createBindCache(): (key: string, ...args: Parameters<typeof bind>) => R
     };
 }
 
-export { bind, createBindCache };
+export { bind, bindVfunc, createBindCache };

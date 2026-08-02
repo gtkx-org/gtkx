@@ -11,6 +11,7 @@ pub mod read;
 pub mod register_class;
 pub mod resolve_type;
 pub mod set_wrapper;
+pub mod vtable;
 pub mod write;
 
 pub(crate) fn native_result<T>(context: &str, result: anyhow::Result<T>) -> napi::Result<T> {
