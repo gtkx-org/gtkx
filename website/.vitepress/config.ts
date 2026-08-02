@@ -36,7 +36,7 @@ const guideSidebar = [
     { text: "Configuration and Codegen", link: "/guide/configuration-and-codegen" },
     { text: "Async Operations", link: "/guide/async-operations" },
     { text: "Error Handling", link: "/guide/error-handling" },
-    { text: "Components and Hooks", link: "/guide/components-and-hooks" },
+    { text: "Components", link: "/guide/components" },
     { text: "Modals and Portals", link: "/guide/modals-and-portals" },
     { text: "CSS", link: "/guide/css" },
     { text: "OpenGL", link: "/guide/opengl" },
@@ -45,7 +45,7 @@ const guideSidebar = [
     { text: "API Reference", link: "/reference/" },
 ];
 
-const tutorialSidebar = [{ text: "Tutorial", collapsed: false, items: tutorialItems }];
+const tutorialSidebar = [{ text: "Tutorial", items: tutorialItems }];
 const docItems = [...guideSidebar.filter((item) => !item.link.startsWith("/reference")), ...tutorialItems];
 const isProdBuild = process.argv.includes("build");
 

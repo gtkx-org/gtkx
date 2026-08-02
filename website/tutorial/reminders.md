@@ -203,7 +203,7 @@ Take these in order. Each is a real feature and smaller than the chapter it buil
 
 1. **Show overdue work on the Today row.** `sidebarCounts` counts what is open; add a second count for tasks whose due time has passed and render it as an `error`-styled badge beside the existing one.
 2. **Add a Snooze button to the reminder.** A second `addButtonWithTarget` targeting a new `app.snooze-task` action that pushes the due time out by ten minutes. Removing the id from the notified set is the part that needs thought, since that set lives in a ref inside the hook.
-3. **Add multi-select mode.** A selection state in the UI slice, a header bar that swaps for a selection header while it is on, a `GtkActionBar` at the bottom with batch Complete, Move, and Delete, and store actions taking arrays of ids. Build the selection list with `ListView` from `@gtkx/components` rather than a list box: it recycles rows, so a thousand tasks cost as much as a screenful. See [Components and Hooks](/guide/components-and-hooks).
+3. **Add multi-select mode.** A selection state in the UI slice, a header bar that swaps for a selection header while it is on, a `GtkActionBar` at the bottom with batch Complete, Move, and Delete, and store actions taking arrays of ids. Build the selection list with `ListView` from `@gtkx/components` rather than a list box: it recycles rows, so a thousand tasks cost as much as a screenful. See [Components](/guide/components).
 4. **Add subtasks.** A `parentId` on `Task` turns the flat array into a tree, which touches the model, every selector, the row, and the drag reorder. Finishing it means you can change this app's shape rather than only extend it.
 
 ## Next

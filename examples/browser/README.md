@@ -26,5 +26,5 @@ pnpm --filter browser dev
 ## Learn more
 
 - [Configuration and Codegen](https://gtkx.dev/guide/configuration-and-codegen)
-- [Components and Hooks](https://gtkx.dev/guide/components-and-hooks)
+- [Components](https://gtkx.dev/guide/components)
 - [CSS](https://gtkx.dev/guide/css)

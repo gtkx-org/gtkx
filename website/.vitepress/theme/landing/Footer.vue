@@ -56,7 +56,7 @@ const cols: { h: string; items: Link[] }[] = [
             <span class="footer__word">GTKX</span>
           </div>
           <p class="footer__tag">
-            The React framework for Linux. Build GTK4 and Adwaita apps in TypeScript. Free &amp; open source.
+            The React framework for Linux. Free &amp; open source.
           </p>
         </div>
         <div v-for="c in cols" :key="c.h" class="footer__col">

@@ -8,8 +8,7 @@ import { LICENSE, REPO_URL } from "./content";
   <section id="open-source" class="oss">
     <div class="oss__inner">
       <div class="oss__text">
-        <p class="overline">Free and open source</p>
-        <h2 class="oss__title">Built in the open, on the GNOME stack</h2>
+        <h2 class="oss__title">Built in the open</h2>
         <p class="oss__body">
           GTKX is {{ LICENSE }}-licensed and developed in public. We're open to contributions, and we welcome feedback and questions on GitHub.
         </p>

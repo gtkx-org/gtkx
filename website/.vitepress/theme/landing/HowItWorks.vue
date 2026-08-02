@@ -6,16 +6,14 @@ import CodeBlock from "../components/CodeBlock.vue";
 <template>
   <section id="how" class="how">
     <div class="how__head section-head">
-      <p class="overline">JSX to GObject, typed from your system</p>
-      <h2 class="section-title">How GTKX works</h2>
+      <h2 class="section-title">Written in JSX, rendered as GObjects</h2>
     </div>
 
     <div class="how__step">
       <div class="how__text">
-        <span class="how__num">01</span>
-        <h3 class="how__name">Your app config drives the codegen</h3>
+        <h3 class="how__name">Declare your libraries</h3>
         <p class="how__body">
-          Name the GObject-Introspection libraries you want and codegen reads them off your
+          Name the GIRs you want and codegen reads them off your
           system, emitting typed bindings for exactly those namespaces.
         </p>
       </div>
@@ -24,7 +22,6 @@ import CodeBlock from "../components/CodeBlock.vue";
 
     <div class="how__step  how__step--rev">
       <div class="how__text">
-        <span class="how__num">02</span>
         <h3 class="how__name">If it is a GObject, you can write it in JSX</h3>
         <p class="how__body">
           Element types are GObject type names. Nested GObjects go in props,
@@ -36,14 +33,12 @@ import CodeBlock from "../components/CodeBlock.vue";
 
     <div class="how__step">
       <div class="how__text">
-        <span class="how__num">03</span>
-        <h3 class="how__name">Harness the full power of the Node ecosystem</h3>
+        <h3 class="how__name">Vanilla Node, real npm</h3>
         <p class="how__body">
-          GTKX runs on vanilla Node. So all npm packages work, and so does React.
-          Styling is Emotion.
+          Your app is a plain Node program, so every npm package and Node API is available to it.
         </p>
       </div>
-      <CodeBlock title="src/app.tsx" :snippet="snippets.ecosystem" />
+      <CodeBlock title="package.json" :snippet="snippets.ecosystem" />
     </div>
   </section>
 </template>
@@ -73,19 +68,12 @@ import CodeBlock from "../components/CodeBlock.vue";
 .how__step--rev .how__text {
   order: 2;
 }
-.how__num {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-brand);
-  letter-spacing: 0.04em;
-}
 .how__name {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--text-xl);
   letter-spacing: -0.02em;
-  margin: 0.5rem 0 0.7rem;
+  margin: 0 0 0.7rem;
   color: var(--text-1);
 }
 .how__body {

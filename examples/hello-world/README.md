@@ -26,4 +26,4 @@ pnpm --filter hello-world dev
 ## Learn more
 
 - [Getting Started](https://gtkx.dev/guide/getting-started)
-- [Components and Hooks](https://gtkx.dev/guide/components-and-hooks)
+- [Components](https://gtkx.dev/guide/components)

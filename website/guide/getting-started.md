@@ -49,7 +49,7 @@ This launches the app in dev mode. The generated starter is a counter: a window 
 
 ## The dev loop
 
-`npm run dev` runs `gtkx dev`. It brings your generated bindings up to date (see [Configuration and Codegen](/guide/configuration-and-codegen#staleness-and-regeneration)), then loads your entry module through a Vite dev server and watches your files. Saving a component patches it into the window that is already open through Fast Refresh; a change Fast Refresh cannot patch restarts the app for you. Leave the command running while you work.
+`npm run dev` runs `gtkx dev`. It brings your generated bindings up to date (see [Configuration and Codegen](/guide/configuration-and-codegen)), then loads your entry module through a Vite dev server and watches your files. Saving a component patches it into the window that is already open through Fast Refresh; a change Fast Refresh cannot patch restarts the app for you. Leave the command running while you work.
 
 When you are ready to ship, `npm run build` bundles the app to `dist/bundle.js`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 runtime libraries, plus Adwaita once you bind it. Turning it into an installable program with a desktop entry and icons is covered in [Appendix B: Making It a Real Application](/tutorial/packaging).
 

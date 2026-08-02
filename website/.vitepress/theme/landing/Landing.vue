@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Closing from "./Closing.vue";
-import Ecosystem from "./Ecosystem.vue";
 import Features from "./Features.vue";
 import Footer from "./Footer.vue";
 import Hero from "./Hero.vue";
@@ -21,7 +20,6 @@ import Showcase from "./Showcase.vue";
     <Nav />
     <main id="main">
       <Hero />
-      <Ecosystem />
       <Features />
       <HowItWorks />
       <Platform />

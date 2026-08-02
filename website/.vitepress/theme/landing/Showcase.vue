@@ -3,10 +3,9 @@ import Icon from "../components/Icon.vue";
 </script>
 
 <template>
-  <section class="show">
+  <section id="tutorial" class="show">
     <div class="show__head section-head">
-      <p class="overline">A rich and detailed tutorial</p>
-      <h2 class="show__title section-title">Meet Tasks, GTKX's reference app</h2>
+      <h2 class="show__title section-title">A comprehensive tutorial</h2>
       <p class="section-sub">
         The docs walk you through creating Tasks, a complete GNOME app: adaptive split view, GSettings,
         notifications, and shipped as a Flatpak.

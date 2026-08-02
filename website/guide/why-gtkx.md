@@ -33,4 +33,4 @@ At runtime, the native Rust core acquires the default GLib main context on the N
 - [Getting Started](/guide/getting-started): scaffold an app and run the dev loop.
 - [Configuration and Codegen](/guide/configuration-and-codegen): how `gtkx.config.ts` drives codegen, and how GIR becomes the typed JSX prop model behind every intrinsic element.
 - [Tutorial](/tutorial/): build Tasks, a complete GNOME task manager, from your first window to Flathub submission.
-- [Components and Hooks](/guide/components-and-hooks): the high-level components in `@gtkx/components` and the hooks in `@gtkx/react`.
+- [Components](/guide/components): the high-level components in `@gtkx/components` and the hooks in `@gtkx/react`.

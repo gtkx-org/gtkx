@@ -9,7 +9,7 @@ head:
 
 # GTKX 1.0 RC1: a flexible React platform for the GNOME stack
 
-<p style="opacity: 0.7; margin-top: -0.5rem;">July 14, 2026</p>
+<p class="post-date">July 14, 2026</p>
 
 GTKX 1.0.0-rc.1 is a ground-up rework of the framework since v0.21.0. What started as a React reconciler for a curated set of GTK4 widgets is now a general platform for driving GLib and GObject from TypeScript: the GObject instances your JSX creates, the entire introspected API surface of the libraries installed on your machine, and the React programming model on top.
 

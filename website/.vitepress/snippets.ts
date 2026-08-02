@@ -34,16 +34,21 @@ const APP = `<AdwToolbarView topBar={<AdwHeaderBar />}>
 </AdwToolbarView>
 `;
 
-const ECOSYSTEM = `import { css } from "@gtkx/css";
-import { readFile } from "node:fs/promises";
-import { useState } from "react";
+const ECOSYSTEM = `{
+  "dependencies": {
+    "@gtkx/react": "*",
+    "react": "*",
+    "zod": "*",
+    "zustand": "*"
+  }
+}
 `;
 
 const SNIPPETS = {
     hero: { lang: "tsx", code: HERO },
     config: { lang: "ts", code: CONFIG },
     app: { lang: "tsx", code: APP },
-    ecosystem: { lang: "tsx", code: ECOSYSTEM },
+    ecosystem: { lang: "json", code: ECOSYSTEM },
 } satisfies Record<string, Snippet>;
 
 export { type Snippet, SNIPPETS };

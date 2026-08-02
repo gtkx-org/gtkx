@@ -5,28 +5,24 @@ import Tabs from "../components/Tabs.vue";
 
 const tab = ref("create");
 
-const STEPS: Record<string, { label: string; blurb: string; cmd: string; out: string[] }> = {
+const STEPS: Record<string, { label: string; cmd: string; out: string[] }> = {
     create: {
         label: "create",
-        blurb: "Scaffold a typed app.",
         cmd: "npm create gtkx@rc",
         out: ["◇ Project structure created", "◇ Dependencies installed", "◇ Git repository initialized"],
     },
     dev: {
         label: "dev",
-        blurb: "Hot-reloading dev server, patched in place.",
         cmd: "gtkx dev",
         out: ["[gtkx] HMR enabled - watching for changes..."],
     },
     build: {
         label: "build",
-        blurb: "One JS bundle in dist/, with the native addon and compiled schemas alongside.",
         cmd: "gtkx build",
         out: ["[gtkx] Building src/index.tsx", "[gtkx] Build complete: dist/bundle.js"],
     },
     codegen: {
         label: "codegen",
-        blurb: "Regenerate typed bindings from your GIR libraries.",
         cmd: "gtkx codegen",
         out: ["[gtkx] codegen: regenerated stale bindings"],
     },
@@ -37,14 +33,12 @@ const active = computed(() => STEPS[tab.value]);
 </script>
 
 <template>
-  <section id="platform" class="platform">
+  <section id="cli" class="platform">
     <div class="platform__head section-head">
-      <p class="overline">A unified CLI for development</p>
-      <h2 class="platform__title section-title">Scaffold, develop, ship: <span class="accent">one tool</span></h2>
+      <h2 class="platform__title section-title">One CLI for the whole lifecycle</h2>
     </div>
     <div class="platform__panel">
       <Tabs v-model="tab" variant="pill" :items="items" controls="platform-cmd" label="CLI command" />
-      <p class="platform__blurb">{{ active.blurb }}</p>
       <div id="platform-cmd" role="tabpanel" :aria-label="`gtkx ${tab}`" class="platform__tabpanel">
         <CodeBlock variant="terminal">
           <div class="tcmd"><span class="tprompt" aria-hidden="true">$</span> {{ active.cmd }}</div>

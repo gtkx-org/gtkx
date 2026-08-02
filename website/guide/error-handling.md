@@ -75,4 +75,4 @@ Promisified methods reject with the same `GLib.Error` objects, so the domain-and
 
 ## Next
 
-Continue with [Components and Hooks](/guide/components-and-hooks) for how GTKX widgets compose and the hooks that drive them.
+Continue with [Components](/guide/components) for how GTKX widgets compose and the hooks that drive them.

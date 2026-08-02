@@ -12,8 +12,8 @@ const menuOpen = ref(false);
 const links = [
     { label: "Features", href: "#features" },
     { label: "How it works", href: "#how" },
-    { label: "Platform", href: "#platform" },
-    { label: "Testing", href: "#testing" },
+    { label: "CLI", href: "#cli" },
+    { label: "Tutorial", href: "#tutorial" },
     { label: "Docs", href: "/guide/why-gtkx" },
 ];
 </script>

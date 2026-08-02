@@ -13,6 +13,18 @@ html.dark {
     --vp-c-brand-3: var(--red-600);
 }
 
+:root:not(.dark) .custom-block.tip code,
+:root:not(.dark) .custom-block.info code,
+:root:not(.dark) .custom-block.note code,
+:root:not(.dark) .custom-block.details code {
+    color: var(--red-800);
+}
+
+.vp-doc .post-date {
+    margin-top: -0.5rem;
+    color: var(--text-2);
+}
+
 .vp-doc h1,
 .vp-doc h2,
 .vp-doc h3,
@@ -20,4 +32,25 @@ html.dark {
 .vp-doc h5,
 .vp-doc h6 {
     font-family: var(--font-display);
+}
+
+.VPSidebarItem.collapsible > .item[role="button"] > .caret {
+    display: none;
+}
+
+.VPSidebarItem.collapsible > .item[role="button"]::after {
+    content: "";
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    margin-right: -7px;
+    background-color: var(--vp-c-text-3);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m9 18l6-6l-6-6'/%3E%3C/svg%3E") no-repeat center;
+    mask-size: 18px 18px;
+    transform: rotate(90deg);
+    transition: transform 0.25s;
+}
+
+.VPSidebarItem.collapsible.collapsed > .item[role="button"]::after {
+    transform: rotate(0);
 }

@@ -45,7 +45,7 @@ const copy = async (): Promise<void> => {
 </script>
 
 <template>
-  <div class="cb" :class="{ 'cb--terminal': isTerminal }">
+  <div class="cb" :class="{ 'cb--terminal': isTerminal, 'cb--flush': hasFloatingCopy }">
     <div v-if="hasHead" class="cb__head">
       <span v-if="isTerminal" class="cb__lights" aria-hidden="true">
         <span class="cb__light" style="background: #ff5f57" />
@@ -63,6 +63,9 @@ const copy = async (): Promise<void> => {
         <Icon :name="copied ? 'check' : 'copy'" :size="14" />
       </button>
     </div>
+    <span class="visually-hidden" role="status" aria-live="polite">{{ copied ? "Copied to clipboard" : "" }}</span>
+    <div v-if="snippet" class="cb__shiki" v-html="snippet.html" />
+    <pre v-else class="cb__pre"><code class="cb__code"><template v-if="lines"><div v-for="(ln, i) in lines" :key="i" class="cb__line"><span v-if="isTerminal" class="cb__prompt" aria-hidden="true">$</span><span class="cb__txt">{{ ln || " " }}</span></div></template><slot v-else /></code></pre>
     <button
       v-if="hasFloatingCopy"
       type="button"
@@ -72,9 +75,6 @@ const copy = async (): Promise<void> => {
     >
       <Icon :name="copied ? 'check' : 'copy'" :size="14" />
     </button>
-    <span class="visually-hidden" role="status" aria-live="polite">{{ copied ? "Copied to clipboard" : "" }}</span>
-    <div v-if="snippet" class="cb__shiki" v-html="snippet.html" />
-    <pre v-else class="cb__pre"><code class="cb__code"><template v-if="lines"><div v-for="(ln, i) in lines" :key="i" class="cb__line"><span v-if="isTerminal" class="cb__prompt" aria-hidden="true">$</span><span class="cb__txt">{{ ln || " " }}</span></div></template><slot v-else /></code></pre>
   </div>
 </template>
 
@@ -127,12 +127,18 @@ const copy = async (): Promise<void> => {
 .cb--terminal .cb__title {
   color: rgba(235, 235, 245, 0.6);
 }
+.cb--flush {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+}
+.cb--flush .cb__pre {
+  flex: 1;
+  padding: 0.7rem 0.4rem 0.7rem 1rem;
+}
 .cb__copy--float {
-  position: absolute;
-  top: 50%;
-  right: 0.5rem;
-  transform: translateY(-50%);
-  z-index: 1;
+  flex: none;
+  margin-right: 0.35rem;
 }
 .cb__copy {
   display: inline-flex;
