@@ -267,10 +267,11 @@ function listenServer(server: Server): Promise<void> {
 }
 
 async function publishInto(env: NodeJS.ProcessEnv): Promise<void> {
+    await stageNativeArtifacts();
+
     const restorePublishedTree = prepareHostOnlyPublish();
 
     try {
-        await stageNativeArtifacts();
         await publishPackages(env);
     } finally {
         restorePublishedTree();
@@ -283,6 +284,8 @@ async function startRegistry(options: StartRegistryOptions = {}): Promise<Regist
     const configPath = join(registryDir, "config.yaml");
     const npmrcPath = join(registryDir, "npmrc");
     writeFileSync(configPath, verdaccioConfig(registryDir));
+    rmSync(join(registryDir, "htpasswd"), { force: true });
+    rmSync(join(registryDir, "storage"), { recursive: true, force: true });
     const server = (await runServer(configPath)) as Server;
 
     try {

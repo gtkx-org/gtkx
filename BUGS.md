@@ -74,11 +74,17 @@ cd demo && pnpm exec tsc --noEmit --listFiles | grep -E '/(src|tests)/'
 
 ---
 
-## 3. `out-tsc` is not gitignored
+## 3. The scaffolded `tsconfig.json` emits into the project and excludes nothing
 
-**Severity:** low.
+**Severity:** low on its own, higher once a project acquires any build directory.
 
-The generated `tsconfig.json` sets `"outDir": "out-tsc"`, and the generated `.gitignore` lists only `node_modules/`, `dist/`, and `*.log`. Any `tsc` invocation without `--noEmit` leaves an untracked build directory in the user's repository. Add `out-tsc/` to the template `.gitignore`.
+The generated `tsconfig.json` set `"outDir": "out-tsc"` while the generated `.gitignore` listed only `node_modules/`, `dist/`, and `*.log`, so any `tsc` run without `--noEmit` left an untracked build directory behind.
+
+**Fix applied:** `outDir` and `rootDir` are gone in favor of `noEmit`, so nothing is emitted and there is no directory to ignore.
+
+That removal exposed a second problem. TypeScript's implicit exclusion of `outDir` went with it, and the template carried no `exclude` at all. A project that later grows a build directory inside the tree gets a `tsc` that exhausts an 8 GB heap: reproduced with a `flatpak-builder` output directory in a scaffolded project, where `tsc --noEmit` OOMs and moving the directory away fixes it. Bisecting identified the directory, but adding it to `exclude` did **not** help and the 62 MB Node binary inside it was not the trigger, so the mechanism is still unidentified.
+
+The template now ships `"exclude": ["node_modules", "dist"]`. Build output belongs outside the source tree regardless, which is what TableStar does now.
 
 ---
 
