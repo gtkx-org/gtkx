@@ -16,3 +16,5 @@ packages/**/README.md
 packages/gl/src/generated/
 packages/native/npm/*/package.json
 website/reference/
+
+.local-registry/

@@ -39,6 +39,15 @@ type RegistryContext = {
     registryDir: string;
 };
 
+type RegistryHandle = RegistryContext & {
+    npmrcPath: string;
+    stop: () => Promise<void>;
+};
+
+type StartRegistryOptions = {
+    registryDir?: string | undefined;
+};
+
 type HeadlessDisplay = {
     startHeadlessDisplay: (options: { size: string; compositor: "sway" | "weston" }) => Promise<() => void>;
     resolveHeadlessOptions: (provided: object) => { size: string; compositor: "sway" | "weston" };
@@ -239,48 +248,66 @@ async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
     await runAsync("nx", ["run-many", "-t", "release"], { env });
 }
 
-async function withRegistry(fn: (ctx: RegistryContext) => Promise<void>): Promise<void> {
-    const registryDir = mkdtempSync(join(tmpdir(), "gtkx-registry-"));
-    const configPath = join(registryDir, "config.yaml");
-    const npmrcPath = join(registryDir, "npmrc");
-    let server: Server | undefined;
-    let restorePublishedTree: (() => void) | undefined;
+function closeServer(server: Server): Promise<void> {
+    return new Promise<void>((resolve) => {
+        server.close(() => {
+            resolve();
+        });
+    });
+}
+
+function listenServer(server: Server): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+
+        server.listen(PORT, () => {
+            resolve();
+        });
+    });
+}
+
+async function publishInto(env: NodeJS.ProcessEnv): Promise<void> {
+    const restorePublishedTree = prepareHostOnlyPublish();
 
     try {
-        writeFileSync(configPath, verdaccioConfig(registryDir));
-        const activeServer = (await runServer(configPath)) as Server;
-        server = activeServer;
+        await stageNativeArtifacts();
+        await publishPackages(env);
+    } finally {
+        restorePublishedTree();
+    }
+}
 
-        await new Promise<void>((resolve, reject) => {
-            activeServer.once("error", reject);
+async function startRegistry(options: StartRegistryOptions = {}): Promise<RegistryHandle> {
+    const registryDir = options.registryDir ?? mkdtempSync(join(tmpdir(), "gtkx-registry-"));
+    mkdirSync(registryDir, { recursive: true });
+    const configPath = join(registryDir, "config.yaml");
+    const npmrcPath = join(registryDir, "npmrc");
+    writeFileSync(configPath, verdaccioConfig(registryDir));
+    const server = (await runServer(configPath)) as Server;
 
-            activeServer.listen(PORT, () => {
-                resolve();
-            });
-        });
-
+    try {
+        await listenServer(server);
         await waitForRegistry();
         const token = await createUserToken();
         writeFileSync(npmrcPath, `registry=${REGISTRY}\n//${HOST}/:_authToken=${token}\n`);
         const env = registryEnv(npmrcPath);
-        restorePublishedTree = prepareHostOnlyPublish();
-        await stageNativeArtifacts();
-        await publishPackages(env);
-        await fn({ env, registry: REGISTRY, registryDir });
+        await publishInto(env);
+
+        return { env, registry: REGISTRY, registryDir, npmrcPath, stop: () => closeServer(server) };
+    } catch (error) {
+        await closeServer(server);
+        throw error;
+    }
+}
+
+async function withRegistry(fn: (ctx: RegistryContext) => Promise<void>): Promise<void> {
+    const handle = await startRegistry();
+
+    try {
+        await fn(handle);
     } finally {
-        restorePublishedTree?.();
-
-        if (server) {
-            const runningServer = server;
-
-            await new Promise<void>((resolve) => {
-                runningServer.close(() => {
-                    resolve();
-                });
-            });
-        }
-
-        rmSync(registryDir, { recursive: true, force: true });
+        await handle.stop();
+        rmSync(handle.registryDir, { recursive: true, force: true });
     }
 }
 
@@ -342,4 +369,14 @@ async function verifyBuiltAppStarts(appDir: string): Promise<void> {
     }
 }
 
-export { ROOT_DIR, PACKAGES_DIR, REGISTRY, runAsync, withRegistry, verifyBuiltAppStarts, type RegistryContext };
+export {
+    ROOT_DIR,
+    PACKAGES_DIR,
+    REGISTRY,
+    runAsync,
+    startRegistry,
+    withRegistry,
+    verifyBuiltAppStarts,
+    type RegistryContext,
+    type RegistryHandle,
+};
