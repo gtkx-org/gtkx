@@ -466,6 +466,8 @@ useEffect(() => {
 
 Neither covers a signal that kills the process outright, such as `SIGTERM` with no handler installed, and nothing can.
 
+**Two different public exports are named `quit`, and the guide points at the one that does less.** `@gtkx/react` exports a `quit` that unmounts the active roots and returns `Gdk.EVENT_STOP`, which is what `onCloseRequest={quit}` wants. `@gtkx/runtime` exports a different `quit` that runs the registered `onExit` callbacks and tears down the native runtime. Same name, different module, different job, and nothing in either signature says so. Building TableStar hit this directly: teardown was registered through `onExit`, the window's handler was bound to the React `quit`, and the callbacks never ran, so the process kept running with an in-flight query silently abandoned. Worth disambiguating in the documentation at least, and worth considering whether the runtime's `quit` should be reachable from the React one.
+
 Found by building TableStar, whose database drivers each run in a worker: the app looked closed and the process never exited.
 
 **Fix:** two parts. Documentation: the shutdown section should say that closing the window ends the GTK side only, and show releasing a Node-side resource next to the existing `onCloseRequest={quit}`. Code, worth considering: either have `quit()` from `@gtkx/react` invoke the runtime's `quit()` so `onExit` fires on the documented shutdown path and behaves as its name suggests, or narrow `onExit`'s documentation to say it only runs on a process exit already in progress and is not a place to release anything holding the loop open.
