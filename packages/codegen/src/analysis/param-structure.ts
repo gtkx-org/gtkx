@@ -122,18 +122,6 @@ const arrayLengthSources = (library: Library, fn: GirFunction): Map<number, numb
     return map;
 };
 
-const hasCallerAllocatedArrayLength = (library: Library, fn: GirFunction): boolean => {
-    for (const arrayIndex of arrayLengthSources(library, fn).values()) {
-        const array = fn.parameters[arrayIndex];
-
-        if (array !== undefined && isCallerAllocatedOut(array)) {
-            return true;
-        }
-    }
-
-    return false;
-};
-
 const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
     const returnType = fn.returnValue.type === undefined ? undefined : library.typeFor(fn.returnValue.type);
 
@@ -253,7 +241,6 @@ export {
     inputParameters,
     closureAndDestroyIndices,
     arrayLengthSources,
-    hasCallerAllocatedArrayLength,
     foldedLengthIndices,
     parameterIdentifier,
     handlerParameters,

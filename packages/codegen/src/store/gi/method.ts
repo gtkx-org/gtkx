@@ -625,6 +625,7 @@ const parameterCallExpression = (
 };
 
 export {
+    constructibleName,
     methodExportName,
     renderMethodSignature,
     renderMethodReturnType,

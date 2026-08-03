@@ -63,10 +63,13 @@ const hasNullableAttr = (node: RawNode): boolean =>
 const hasOptionalAttr = (node: RawNode): boolean =>
     isAttrTrue(node, "optional") || (!isInDirection(node) && isAttrTrue(node, "allow-none"));
 
+const parameterCType = (node: RawNode): string | undefined =>
+    attr(getChild(node, "type"), "c:type") ?? attr(getChild(node, "array"), "c:type");
+
 const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => ({
     name: nameAttr(node),
     type: typeRefFromNode(node, context),
-    cType: attr(getChild(node, "type"), "c:type"),
+    cType: parameterCType(node),
     direction: parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction"),
     transferOwnership: transferOwnership(node),
     nullable: hasNullableAttr(node),

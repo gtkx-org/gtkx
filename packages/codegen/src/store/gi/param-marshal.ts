@@ -68,4 +68,11 @@ const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean => {
     }
 };
 
-export { isHandlePassedInPlace, isCollectibleCallerOut, isRecordCallerOut, isRecordInout, isHandlePassing };
+export {
+    isHandlePassedInPlace,
+    isCollectibleCallerOut,
+    isRecordCallerOut,
+    isRecordInout,
+    isHandlePassing,
+    underlyingType,
+};

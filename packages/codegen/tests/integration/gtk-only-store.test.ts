@@ -1,3 +1,4 @@
+import { toCamelIdentifier } from "@gtkx/utils";
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -17,6 +18,38 @@ const PEER_PACKAGES: [string, string][] = [
 
 const workDir = mkdtempSync(join(tmpdir(), "gtkx-gtk-only-"));
 const projectModules = join(workDir, "node_modules");
+
+const UNMARSHALABLE: [string, string][] = [
+    ["glib", "g_option_context_parse"],
+    ["glib", "g_option_context_parse_strv"],
+    ["glib", "g_prefix_error_literal"],
+    ["glib", "g_base64_encode_step"],
+    ["glib", "g_base64_encode_close"],
+    ["gobject", "g_enum_complete_type_info"],
+    ["gobject", "g_flags_complete_type_info"],
+    ["graphene", "graphene_box_get_vertices"],
+    ["graphene", "graphene_matrix_to_float"],
+    ["gdk", "gdk_texture_downloader_download_bytes_with_planes"],
+    ["pango", "pango_scan_int"],
+    ["pango", "pango_glyph_item_get_logical_widths"],
+    ["pango", "pango_tab_array_get_tabs"],
+    ["harfbuzz", "hb_tag_to_string"],
+    ["harfbuzz", "hb_buffer_serialize_glyphs"],
+];
+
+const MARSHALABLE: [string, string][] = [
+    ["glib", "g_shell_parse_argv"],
+    ["glib", "g_base64_decode_inplace"],
+    ["glib", "g_filename_from_uri"],
+    ["glib", "g_unichar_to_utf8"],
+    ["glib", "g_propagate_error"],
+    ["gio", "g_settings_backend_flatten_tree"],
+    ["gio", "g_tls_password_get_value"],
+    ["pango", "pango_layout_get_log_attrs"],
+    ["pango", "pango_extents_to_pixels"],
+    ["gdk", "gdk_display_map_keyval"],
+    ["gtk", "gtk_gesture_stylus_get_backlog"],
+];
 
 const isolateProject = (): void => {
     const target = join(projectModules, "@gtkx", "react");
@@ -83,6 +116,15 @@ const descriptorFor = (source: string, symbol: string): string => {
     return source.slice(start, source.indexOf("});", start));
 };
 
+const namespaceSource = (storeDir: string, namespaceDir: string): string =>
+    readFileSync(join(storeDir, namespaceDir, `${namespaceDir}.js`), "utf8");
+
+const hasCallableMember = (source: string, cIdentifier: string): boolean => {
+    const identifier = toCamelIdentifier(cIdentifier);
+
+    return source.split(new RegExp(String.raw`\b${identifier}\b`)).length - 1 > 1;
+};
+
 afterAll(() => {
     rmSync(workDir, { recursive: true, force: true });
 });
@@ -126,5 +168,21 @@ describe("a project that declares Gtk-4.0 without Adw-1", () => {
         expect(derived).not.toContain("returns: t.object");
         const root = descriptorFor(source, "gtk_bool_filter_get_expression");
         expect(root).toContain("returns: t.fundamental(");
+    });
+
+    it.each(UNMARSHALABLE)("emits no callable member for %s.%s", (namespaceDir, cIdentifier) => {
+        expect(hasCallableMember(namespaceSource(gi.storeDir, namespaceDir), cIdentifier)).toBe(false);
+    });
+
+    it.each(MARSHALABLE)("keeps the callable member for %s.%s", (namespaceDir, cIdentifier) => {
+        expect(hasCallableMember(namespaceSource(gi.storeDir, namespaceDir), cIdentifier)).toBe(true);
+    });
+
+    it("keeps a throwing callable and the canThrow flag on its descriptor", () => {
+        const source = namespaceSource(gi.storeDir, "glib");
+        const start = source.indexOf('"g_key_file_load_from_file"');
+        expect(start).toBeGreaterThan(-1);
+        expect(source.slice(start, source.indexOf("});", start))).toContain("canThrow: true");
+        expect(hasCallableMember(source, "g_key_file_load_from_file")).toBe(true);
     });
 });

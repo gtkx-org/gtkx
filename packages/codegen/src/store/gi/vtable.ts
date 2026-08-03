@@ -11,6 +11,7 @@ import {
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
+import { isUnmarshalableSlotParam } from "../../analysis/param-capability.js";
 import {
     handlerParameters,
     parameterIdentifier,
@@ -221,17 +222,12 @@ const renderVfuncMember = (
     return `${doc}${renderBlock(header, body)}`;
 };
 
-const isUnsupportedOutParam = (context: ModuleContext, param: GirParameter): boolean =>
-    (param.direction === "out" || param.direction === "inout") &&
-    !param.callerAllocates &&
-    !isScalarRef(context.library, param.type);
-
 const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boolean => {
     if (param.isVarargs) {
         return false;
     }
 
-    if (isUnsupportedOutParam(context, param)) {
+    if (isUnmarshalableSlotParam(context, param)) {
         return false;
     }
 
