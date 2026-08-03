@@ -360,4 +360,33 @@ impl PtrWriter for HashTableCodec {
             encode_and_leak_container(value, "hashtable vfunc return", |v| self.encode(env, v));
         unsafe { ret.store(table) };
     }
+
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+        init: SlotInit,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+        anyhow::ensure!(
+            self.ownership.is_full(),
+            "A transfer-none hash table cannot be written through a pointer: nothing would own the container"
+        );
+        let table = encode_and_leak_container(&Ok(value), "hashtable pointer write", |v| {
+            self.encode(env, v)
+        });
+
+        if !init.is_initialized() {
+            unsafe { slot.store(table) };
+            return Ok(None);
+        }
+
+        let previous = unsafe { slot.swap(table) };
+
+        if !previous.is_null() {
+            ffi::PendingTransfer::new(previous, ffi::ReleaseKind::HashTableUnref).release_now();
+        }
+
+        Ok(None)
+    }
 }

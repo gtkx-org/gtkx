@@ -16,6 +16,7 @@ type HandlerResultOptions = {
     renderType: (ref: TypeId | undefined, isNullable: boolean) => string;
     shouldIncludeCallerAllocated: boolean;
     isOptOut: boolean;
+    shouldExcludeOut?: (parameter: GirParameter) => boolean;
 };
 
 const isInputParameter = (options: {
@@ -108,7 +109,7 @@ const carrayLengthIndex = (library: Library, ref: TypeId | undefined): number | 
     return type.lengthParameterIndex;
 };
 
-const arrayLengthSources = (library: Library, fn: GirFunction): Map<number, number> => {
+const arrayLengthSources = (library: Library, fn: GirCallable): Map<number, number> => {
     const map: Map<number, number> = new Map();
 
     for (const [index, parameter] of fn.parameters.entries()) {
@@ -122,7 +123,7 @@ const arrayLengthSources = (library: Library, fn: GirFunction): Map<number, numb
     return map;
 };
 
-const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
+const returnArrayLengthIndices = (library: Library, fn: GirCallable): Set<number> => {
     const returnType = fn.returnValue.type === undefined ? undefined : library.typeFor(fn.returnValue.type);
 
     if (returnType?.kind !== "carray") {
@@ -138,7 +139,7 @@ const returnArrayLengthIndices = (library: Library, fn: GirFunction): Set<number
     return new Set([lengthIndex]);
 };
 
-const foldedLengthIndices = (library: Library, fn: GirFunction): Set<number> => {
+const foldedLengthIndices = (library: Library, fn: GirCallable): Set<number> => {
     const indices: Set<number> = new Set(arrayLengthSources(library, fn).keys());
 
     for (const index of returnArrayLengthIndices(library, fn)) {
@@ -146,6 +147,20 @@ const foldedLengthIndices = (library: Library, fn: GirFunction): Set<number> => 
     }
 
     return indices;
+};
+
+const foldedLengthParameters = (library: Library, fn: GirCallable): Set<GirParameter> => {
+    const folded: Set<GirParameter> = new Set();
+
+    for (const index of foldedLengthIndices(library, fn)) {
+        const parameter = fn.parameters[index];
+
+        if (parameter !== undefined) {
+            folded.add(parameter);
+        }
+    }
+
+    return folded;
 };
 
 const parameterIdentifier = (parameter: GirParameter, index: number): string => {
@@ -220,13 +235,18 @@ const scalarResultType = (primary: string | undefined, isOptOut: boolean): strin
 
 const renderHandlerResultType = (options: HandlerResultOptions): string => {
     const { library, signal, renderType, shouldIncludeCallerAllocated, isOptOut } = options;
+    const shouldExcludeOut = options.shouldExcludeOut ?? (() => false);
 
     const primary = shouldOmitPrimaryReturn(library, signal.returnValue)
         ? undefined
         : renderType(signal.returnValue.type, signal.returnValue.nullable);
 
     const outTypes = signal.parameters
-        .filter((parameter) => isHandlerOutParameter({ library, parameter, shouldIncludeCallerAllocated }))
+        .filter(
+            (parameter) =>
+                isHandlerOutParameter({ library, parameter, shouldIncludeCallerAllocated }) &&
+                !shouldExcludeOut(parameter),
+        )
         .map((parameter) => renderType(parameter.type, parameter.nullable));
 
     if (outTypes.length === 0) {
@@ -242,6 +262,7 @@ export {
     closureAndDestroyIndices,
     arrayLengthSources,
     foldedLengthIndices,
+    foldedLengthParameters,
     parameterIdentifier,
     handlerParameters,
     renderHandlerParameters,

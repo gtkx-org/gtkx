@@ -27,6 +27,7 @@ const TEXT: &str = "gtkx-written";
 const STALE: &CStr = c"gtkx-stale";
 const REFUSED: &str = "cannot be written to a raw pointer";
 const REFUSED_ARRAY: &str = "transfer-none array cannot be written through a pointer";
+const REFUSED_HASHTABLE: &str = "transfer-none hash table cannot be written through a pointer";
 
 const _: () = assert!(size_of::<gdk::ffi::GdkRGBA>() == BLOCK_SIZE);
 const _: () = assert!(size_of::<glib::gobject_ffi::GValue>() == GVALUE_SIZE as usize);
@@ -856,7 +857,7 @@ const CELLS: &[Cell] = &[
         emitted: 47,
         on_path: 0,
         descriptor: d_hashtable,
-        check: refuses(REFUSED),
+        check: refuses(REFUSED_HASHTABLE),
     },
     Cell {
         name: "callback · field write",

@@ -784,7 +784,7 @@ describe("Library.resolveType", () => {
     });
 });
 
-describe("vtable slots with string-array out parameters", () => {
+describe("vtable slots with array out parameters", () => {
     it("emits local_command_line with its inout argument vector", () => {
         const gio = moduleSource("gio");
         expect(gio).toContain("vfuncLocalCommandLine(arguments_: string[]): [boolean, string[], number]");
@@ -800,10 +800,19 @@ describe("vtable slots with string-array out parameters", () => {
         expect(gtk).toContain("vfuncGetDefaultAttributes(): [string[], string[]]");
     });
 
-    it("still rejects a slot whose out array carries a separate length parameter", () => {
+    it("folds away the length parameter an out array carries, as a call does", () => {
         const gtk = moduleSource("gtk");
-        expect(gtk).not.toMatch(/vfuncGetAttributes\(/);
-        expect(gtk).not.toMatch(/vfuncGetSelection\(/);
+        expect(gtk).toContain("vfuncGetSelection(): [boolean, AccessibleTextRange[]]");
+
+        expect(gtk).toContain(
+            "vfuncGetAttributes(offset: number): [boolean, AccessibleTextRange[], string[], string[]]",
+        );
+    });
+
+    it("folds the length out of a slot whose only out parameters are an array and its length", () => {
+        const pango = moduleSource("pango");
+        expect(pango).toContain("vfuncListFaces(): FontFace[]");
+        expect(pango).toContain("vfuncListSizes(): number[] | null");
     });
 });
 

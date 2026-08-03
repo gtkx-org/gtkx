@@ -11,8 +11,8 @@ import {
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
-import { isUnmarshalableSlotParam } from "../../analysis/param-capability.js";
 import {
+    foldedLengthParameters,
     handlerParameters,
     parameterIdentifier,
     renderHandlerParameters,
@@ -197,6 +197,7 @@ const renderVfuncMember = (
         renderTsType(context, ref, isNullable);
 
     const signature = renderHandlerParameters(parameters, renderType).join(", ");
+    const folded = foldedLengthParameters(context.library, slot.callback);
 
     const returnType = renderHandlerResultType({
         library: context.library,
@@ -204,6 +205,7 @@ const renderVfuncMember = (
         renderType,
         shouldIncludeCallerAllocated: true,
         isOptOut: false,
+        shouldExcludeOut: (parameter) => folded.has(parameter),
     });
 
     const header = `${slot.key}(${signature}): ${returnType}`;
@@ -224,10 +226,6 @@ const renderVfuncMember = (
 
 const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boolean => {
     if (param.isVarargs) {
-        return false;
-    }
-
-    if (isUnmarshalableSlotParam(context, param)) {
         return false;
     }
 

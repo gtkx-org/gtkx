@@ -7,7 +7,7 @@ import { copyValue } from "./value.js";
 
 type Callback = (...args: unknown[]) => unknown;
 type CallbackReceiver = "this" | "emitter" | "none";
-type OutParam = { value: unknown; descriptor: Descriptor };
+type OutParam = { value: unknown; descriptor: Descriptor; argIndex: number };
 
 type CallbackSpec = {
     argDescriptors: Descriptor[];
@@ -46,23 +46,23 @@ const collectRefArg = (
     descriptor: RefDescriptor,
     wrappedValue: unknown,
     inputs: unknown[],
-    outParams: OutParam[],
+    out: { params: OutParam[]; argIndex: number },
 ): void => {
     if (descriptor.inout === true) {
         inputs.push((wrappedValue as { value: unknown }).value);
     }
 
-    outParams.push({ value: wrappedValue, descriptor });
+    out.params.push({ value: wrappedValue, descriptor, argIndex: out.argIndex });
 };
 
 const collectCallbackArg = (
     descriptor: Descriptor | undefined,
     wrappedValue: unknown,
     inputs: unknown[],
-    outParams: OutParam[],
+    out: { params: OutParam[]; argIndex: number },
 ): void => {
     if (descriptor?.kind === "ref") {
-        collectRefArg(descriptor, wrappedValue, inputs, outParams);
+        collectRefArg(descriptor, wrappedValue, inputs, out);
 
         return;
     }
@@ -70,7 +70,7 @@ const collectCallbackArg = (
     inputs.push(wrappedValue);
 
     if (descriptor !== undefined && isCallerAllocatedOut(descriptor)) {
-        outParams.push({ value: wrappedValue, descriptor });
+        out.params.push({ value: wrappedValue, descriptor, argIndex: out.argIndex });
     }
 };
 
@@ -80,24 +80,66 @@ const partitionCallbackArgs = (
     start: number,
 ): { inputs: unknown[]; outParams: OutParam[] } => {
     const inputs: unknown[] = [];
-    const outParams: OutParam[] = [];
+    const params: OutParam[] = [];
 
     for (let i = start; i < effectiveTypes.length; i++) {
-        collectCallbackArg(effectiveTypes[i], wrapped[i], inputs, outParams);
+        collectCallbackArg(effectiveTypes[i], wrapped[i], inputs, { params, argIndex: i });
     }
 
-    return { inputs, outParams };
+    return { inputs, outParams: params };
 };
 
-const writeOutParams = (outParams: OutParam[], outValues: unknown[]): void => {
+const sizeParamIndexFor = (descriptor: Descriptor): number | undefined => {
+    if (descriptor.kind !== "ref") {
+        return undefined;
+    }
+
+    const { innerDescriptor } = descriptor;
+
+    return innerDescriptor.kind === "array" ? innerDescriptor.sizeParamIndex : undefined;
+};
+
+const lengthOutParamIndices = (outParams: OutParam[]): Map<number, number> => {
+    const indices: Map<number, number> = new Map();
+
+    for (const outParam of outParams) {
+        const sizeParamIndex = sizeParamIndexFor(outParam.descriptor);
+
+        if (sizeParamIndex !== undefined) {
+            indices.set(sizeParamIndex, outParam.argIndex);
+        }
+    }
+
+    return indices;
+};
+
+const writeOutParams = (outParams: OutParam[], outValues: unknown[]): Map<number, unknown> => {
+    const written: Map<number, unknown> = new Map();
+
     for (const [position, outParam] of outParams.entries()) {
         const outValue = outValues[position];
+        const { descriptor } = outParam;
+        written.set(outParam.argIndex, outValue);
 
-        if (outParam.descriptor.kind === "ref") {
-            (outParam.value as { value: unknown }).value = outValue;
+        if (descriptor.kind === "ref") {
+            (outParam.value as { value: unknown }).value = toNative(descriptor.innerDescriptor, outValue);
         } else if (outValue != null && outParam.value != null) {
-            fillCallerAllocatedBuffer(outParam.descriptor, outParam.value, outValue);
+            fillCallerAllocatedBuffer(descriptor, outParam.value, outValue);
         }
+    }
+
+    return written;
+};
+
+const writeFoldedLengths = (
+    lengthParams: OutParam[],
+    lengths: Map<number, number>,
+    written: Map<number, unknown>,
+): void => {
+    for (const outParam of lengthParams) {
+        const sourceIndex = lengths.get(outParam.argIndex);
+        const source = sourceIndex === undefined ? undefined : written.get(sourceIndex);
+        (outParam.value as { value: unknown }).value = Array.isArray(source) ? source.length : 0;
     }
 };
 
@@ -115,8 +157,11 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
         return toNative(returnDescriptor, result);
     }
 
-    const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", outParams.length);
-    writeOutParams(outParams, outValues);
+    const lengths = lengthOutParamIndices(outParams);
+    const lengthParams = outParams.filter((outParam) => lengths.has(outParam.argIndex));
+    const valueParams = outParams.filter((outParam) => !lengths.has(outParam.argIndex));
+    const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", valueParams.length);
+    writeFoldedLengths(lengthParams, lengths, writeOutParams(valueParams, outValues));
 
     return toNative(returnDescriptor, primary);
 };

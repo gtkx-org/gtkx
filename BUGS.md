@@ -384,6 +384,26 @@ The transfer-full container is not leaked: `RefCodec::decode_with_context` alrea
 
 ---
 
+## 13. Most out parameters could not be implemented from JavaScript
+
+**Severity:** high. Whole families of vfuncs were absent from the generated surface, so the widgets and models that need them could not be written in GTKX at all.
+
+A vtable slot was dropped outright if any parameter was an out or inout that was not a scalar or a string array. That removed `Gtk.AccessibleText`'s `getAttributes` and `getSelection`, `Gio.MenuModel`'s `getItemAttributes` and `getItemLinks`, `Gio.MenuAttributeIter.getNext`, `Gtk.IMContext`'s preedit and surrounding-text slots, `Gio.ActionGroup.queryAction`, `Pango`'s `listFaces`, `listFamilies` and `listSizes`, `GtkSource.Indenter.indent`, and the async `loadFinish` and `setAttributesFinish` pair.
+
+**Cause:** two gaps, both narrow.
+
+`writeOutParams` assigned the value an implementation returned into the out cell unconverted, so the codec on the other side received a wrapper object where it wanted a handle and failed with `Expected an Object for Boxed field write type, got Object`. Scalars and strings happened to survive that, which is why exactly those had been allowed through. It now converts with `toNative` the way the primary return value always did.
+
+`HashTableCodec` implemented only `write_return_to_ptr`, so writing a table into an out parameter hit the default `PtrWriter` and bailed. It now implements `write_value_to_ptr`, refusing a transfer-none table for the same reason the array codec does: nothing would own the container.
+
+**Fix applied:** the slot guard is gone, and `packages/e2e/tests/runtime/vfunc-out-params.test.ts` drives each shape through the real C vtable rather than by calling the override directly, which proves nothing.
+
+**Also fixed: a slot exposed the array length parameter a call folds away.** `listFaces()` returns `FontFace[]`, but `vfuncListFaces` had demanded `[FontFace[], number]`, and an implementation returning a count that disagreed with its array would have had GTK read that many elements out of a shorter buffer. Both paths now fold the length using the same `<array length="N">` attribute, and the runtime derives it from the array it accompanies, so the two cannot disagree.
+
+The ownership matrix caught the hash-table hole while it was open; its `hashtable · field write` cell now expects the transfer-none refusal instead of the blanket one.
+
+---
+
 ## Verified working
 
 Recorded so nobody re-tests them:
