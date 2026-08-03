@@ -43,8 +43,14 @@ describe("super.vfunc — class vtable slots", () => {
     });
 
     it("invokes the implementation of the wrapper class the instance already is", () => {
-        const label = new Gtk.Label({ label: LABEL_TEXT });
-        const [minimum] = label.vfuncMeasure(Gtk.Orientation.HORIZONTAL, -1);
+        class ProbingLabel extends Gtk.Label {
+            measureThroughSlot(): Measurement {
+                return this.vfuncMeasure(Gtk.Orientation.HORIZONTAL, -1);
+            }
+        }
+
+        registerClass(ProbingLabel, { typeName: uniqueName("GtkxSuperProbingLabel") });
+        const [minimum] = new ProbingLabel({ label: LABEL_TEXT }).measureThroughSlot();
         expect(minimum).toBeGreaterThan(0);
         expect(minimum).toBe(measureWidth(new Gtk.Label({ label: LABEL_TEXT })));
     });
@@ -188,13 +194,17 @@ describe("super.vfunc — recursion", () => {
                     depth.value -= 1;
                 }
             }
+
+            measureThroughWrapperSlot(): Measurement {
+                return super.vfuncMeasure(Gtk.Orientation.HORIZONTAL, -1);
+            }
         }
 
         registerClass(GuardedLabel, { typeName: uniqueName("GtkxSuperGuardedLabel") });
         const width = plainWidth();
         const guarded = new GuardedLabel({ label: LABEL_TEXT });
         expect(measureWidth(guarded)).toBe(width + 10);
-        expect(Gtk.Label.prototype.vfuncMeasure.call(guarded, Gtk.Orientation.HORIZONTAL, -1)[0]).toBe(width);
+        expect(guarded.measureThroughWrapperSlot()[0]).toBe(width);
         expect(depth.value).toBe(0);
     });
 });

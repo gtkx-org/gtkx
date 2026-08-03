@@ -2,24 +2,21 @@ import { type AnyClass, getOrInsert } from "@gtkx/utils";
 import { registerClass } from "./register-class.js";
 import { getClassType } from "./registry.js";
 import { typeName } from "./type.js";
+import { callParent } from "./vfunc-call.js";
 
 type CommandLineResult = [boolean, string[], number];
 
 /**
- * The GIO application surface {@link createApplication} overrides, which `Gio.Application` and
+ * The GIO application surface {@link createApplication} builds on, which `Gio.Application` and
  * every subclass of it satisfies structurally.
  */
 type CommandLineApplication = {
-    /**
-     * Runs GLib's local command line handling: parses the options, registers the application,
-     * forwards or dispatches activation, and returns whether the command line was fully handled,
-     * the arguments left unconsumed, and the exit status.
-     */
-    vfuncLocalCommandLine(argv: string[]): [boolean, string[], number];
-    /** Handles another process taking over the application ID, which quits this one. */
-    vfuncNameLost(): boolean;
     /** Marks the application as quitting, so GLib's own `run` returns without driving a main loop. */
     quit(): void;
+};
+
+type LocalCommandLineApplication = {
+    runLocalCommandLine(argv: string[]): CommandLineResult;
 };
 
 type ShutdownApplication = {
@@ -38,20 +35,24 @@ const derivedTypeName = (base: AnyClass): string => `Gtkx${typeName(getClassType
 
 const buildApplicationClass = (base: AnyClass<CommandLineApplication>): AnyClass<CommandLineApplication> => {
     class DerivedApplication extends base {
-        override vfuncLocalCommandLine(argv: string[]): CommandLineResult {
+        runLocalCommandLine(argv: string[]): CommandLineResult {
+            return this.vfuncLocalCommandLine(argv);
+        }
+
+        protected vfuncLocalCommandLine(argv: string[]): CommandLineResult {
             if (shuttingDownApplications.has(this)) {
                 this.quit();
 
                 return [true, argv, 0];
             }
 
-            return super.vfuncLocalCommandLine(argv);
+            return callParent(DerivedApplication, "vfuncLocalCommandLine", this, argv) as CommandLineResult;
         }
 
-        override vfuncNameLost(): boolean {
+        protected vfuncNameLost(): boolean {
             quitApplications.add(this);
 
-            return super.vfuncNameLost();
+            return callParent(DerivedApplication, "vfuncNameLost", this) as boolean;
         }
 
         override quit(): void {
@@ -66,7 +67,7 @@ const buildApplicationClass = (base: AnyClass<CommandLineApplication>): AnyClass
     return derived;
 };
 
-const isDerivedApplication = (application: object): boolean => {
+const isDerivedApplication = (application: object): application is LocalCommandLineApplication => {
     for (const derived of derivedApplicationClasses) {
         if (application instanceof derived) {
             return true;
@@ -111,4 +112,5 @@ export {
     shutDownThroughRun,
     type ApplicationClass,
     type CommandLineApplication,
+    type LocalCommandLineApplication,
 };

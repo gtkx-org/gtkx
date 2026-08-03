@@ -13,11 +13,11 @@ import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
 import {
     collectInterfaceProperties,
     forEachAncestor,
-    resolveImplementedInterface,
     resolvePrerequisiteReference,
 } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
+import { resolveInterfaces } from "../../gir/ancestry.js";
 import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
@@ -355,13 +355,7 @@ const forEachInterfaceSignal = (
     klass: GirClass,
     consider: (signal: GirCallable) => void,
 ): void => {
-    for (const implementName of klass.implements) {
-        const iface = resolveImplementedInterface(context, implementName);
-
-        if (iface === undefined) {
-            continue;
-        }
-
+    for (const iface of resolveInterfaces(context.library, context.namespace.name, klass.implements)) {
         for (const signal of iface.klass.signals) {
             consider(signal);
         }

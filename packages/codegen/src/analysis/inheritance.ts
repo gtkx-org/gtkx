@@ -5,7 +5,7 @@ import type { Library } from "../gir/library.js";
 import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
-import { ancestorChain, type ResolvedAncestor, resolveInterface } from "../gir/ancestry.js";
+import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
 import { methodExportName } from "../store/gi/method.js";
 import { resolveAccessorType } from "../store/gi/property-accessor.js";
 import { vfuncMemberNames } from "../store/gi/vtable.js";
@@ -46,29 +46,11 @@ const RESERVED_SIGNAL_MEMBERS = new Set([
     "removeEventListener",
 ]);
 
-const resolveImplementedInterface = (
-    context: AncestryContext,
-    name: string,
-    defaultNamespace: string = context.namespace.name,
-): ResolvedAncestor | undefined => resolveInterface(context.library, defaultNamespace, name);
-
 const resolveDirectInterfaces = (
     context: AncestryContext,
     klass: GirClass,
     defaultNamespace: string,
-): ResolvedAncestor[] => {
-    const interfaces: ResolvedAncestor[] = [];
-
-    for (const implementName of klass.implements) {
-        const iface = resolveImplementedInterface(context, implementName, defaultNamespace);
-
-        if (iface !== undefined) {
-            interfaces.push(iface);
-        }
-    }
-
-    return interfaces;
-};
+): ResolvedAncestor[] => resolveInterfaces(context.library, defaultNamespace, klass.implements);
 
 const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
     const resolved = context.library.resolveType(context.namespace.name, name);
@@ -437,7 +419,6 @@ const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string |
 };
 
 export {
-    resolveImplementedInterface,
     resolvePrerequisiteReference,
     forEachAncestor,
     collectInterfaceProperties,

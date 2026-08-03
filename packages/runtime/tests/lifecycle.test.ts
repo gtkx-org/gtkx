@@ -8,7 +8,6 @@ const foreignApplication = (): ApplicationLike => ({
     getIsRegistered: () => false,
     register: () => true,
     activate: vi.fn(),
-    vfuncLocalCommandLine: (argv) => [true, argv, 0],
     run: () => 0,
     on: vi.fn(),
     emit: vi.fn(),

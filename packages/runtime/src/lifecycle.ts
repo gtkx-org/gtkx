@@ -1,5 +1,5 @@
 import { keepAlive, quit as nativeQuit } from "@gtkx/native";
-import { isDerivedApplication, shutDownThroughRun } from "./application-class.js";
+import { isDerivedApplication, type LocalCommandLineApplication, shutDownThroughRun } from "./application-class.js";
 
 /**
  * The GIO and GTK application surface {@link runApplication} and {@link quitApplication} drive, so any
@@ -15,12 +15,6 @@ type ApplicationLike = {
     register(cancellable: null): boolean;
     /** Emits `activate`, bringing up the application's initial user interface. */
     activate(): void;
-    /**
-     * Runs GLib's local command line handling: parses the options, registers the application,
-     * forwards or dispatches activation, and returns whether the command line was fully handled,
-     * the arguments left unconsumed, and the exit status.
-     */
-    vfuncLocalCommandLine(argv: string[]): [boolean, string[], number];
     /**
      * Runs GLib's own `g_application_run`, whose tail emits `shutdown`, destroys the application
      * implementation and clears the registration.
@@ -81,7 +75,7 @@ const onExit = (callback: () => void): void => {
     shutdownCallbacks.push(callback);
 };
 
-const startApplication = (application: ApplicationLike, argv: string[]): number => {
+const startApplication = (application: ApplicationLike & LocalCommandLineApplication, argv: string[]): number => {
     startedApplications.add(application);
 
     application.on("activate", () => {
@@ -92,7 +86,7 @@ const startApplication = (application: ApplicationLike, argv: string[]): number 
         keepAlive(false);
     });
 
-    return application.vfuncLocalCommandLine(argv)[2];
+    return application.runLocalCommandLine(argv)[2];
 };
 
 const restartApplication = (application: ApplicationLike): number => {

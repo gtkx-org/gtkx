@@ -70,7 +70,7 @@ registerClass(PaddedLabel, { typeName: "ExamplePaddedLabel" });
 
 Overrides of slots an interface declares work the same way, as long as the parent type already implements the interface.
 
-Those `vfunc` members are direct vtable invocations, and that is all they are. They exist so an override can chain up; calling one from anywhere else runs the slot again on a live instance, which most slots do not expect.
+Those `vfunc` members are direct vtable invocations, and that is all they are. They exist so an override can chain up, which is why the ones a wrapper class declares are `protected`: `super.vfuncMeasure(...)` inside a subclass is allowed, `label.vfuncMeasure(...)` on a live instance is not. Slots an interface declares stay callable, because a TypeScript interface cannot carry a protected member; calling one runs the slot again on a live instance, which most slots do not expect.
 
 ### Slots with no generated member
 

@@ -290,7 +290,7 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     });
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
-    const referenceProvider = createReferenceProvider(() => appRouter.getProjectRoot() ?? process.cwd());
+    const referenceProvider = createReferenceProvider({ getAppRoot: () => appRouter.getProjectRoot() });
 
     for (const tool of [...buildTools(appRouter), ...buildReferenceTools(referenceProvider)]) {
         registerTool(mcpServer, tool);

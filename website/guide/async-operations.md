@@ -78,6 +78,28 @@ await runWithTimeout(async (cancellable) => {
 });
 ```
 
+## Moving work to a worker
+
+Awaiting a GIO operation keeps the interface responsive because the work happens outside JavaScript. Your own CPU-bound code does not get that for free: GTKX drives the GLib main context from the Node main thread, so a long synchronous function freezes the window for its whole duration. Put that work in a [Node worker thread](https://nodejs.org/api/worker_threads.html) instead.
+
+`gtkx build` emits a chunk for a worker whose URL is written inside the construction:
+
+```ts
+import { Worker } from "node:worker_threads";
+
+const worker = new Worker(new URL("./indexer.ts", import.meta.url));
+worker.on("message", (rows) => setRows(rows));
+```
+
+The specifier has to be relative and has to name the worker source file as it exists on disk, and the `new URL(...)` has to sit directly in the `new Worker(...)` call. This is the only shape the build recognizes. Hoisting the URL to a variable and passing the variable fails the build rather than shipping a bundle whose worker is missing:
+
+```ts
+const WORKER_URL = new URL("./indexer.ts", import.meta.url);
+const worker = new Worker(WORKER_URL); // gtkx build: error
+```
+
+A worker runs no GTK code. It has no GLib main context and no widget tree, so it computes and posts results back, and the main thread renders them.
+
 ## Next
 
 Continue with [Error Handling](/guide/error-handling) for the full story on matching GLib error domains and codes.

@@ -7,17 +7,9 @@ import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
 import type { Props } from "./registry.js";
 import { Prop } from "../components/element.js";
-import {
-    applyAdoptedProps,
-    applyElementProps,
-    assertConstructOnlyUnchanged,
-    flushBehaviors,
-    mountBehaviors,
-    unmountBehaviors,
-} from "./apply-props.js";
+import { applyAdoptedProps, applyElementProps, assertConstructOnlyUnchanged, flushBehaviors } from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
 import { resolveElementNode } from "./instance.js";
-import { typeInfoFor } from "./metadata.js";
 import {
     type AnyNode,
     createElementNode,
@@ -71,18 +63,11 @@ const hostConfig = {
         attachChild(parent, child, null);
     },
     finalizeInitialChildren: (instance: Instance, _type: string, props: Props): boolean => {
-        if (instance.kind !== ELEMENT_KIND) {
-            return false;
-        }
-
-        validateContentMix(instance, props);
-
-        return typeInfoFor(instance.typeName).hasMount;
-    },
-    commitMount: (instance: Instance): void => {
         if (instance.kind === ELEMENT_KIND) {
-            mountBehaviors(instance);
+            validateContentMix(instance, props);
         }
+
+        return false;
     },
     shouldSetTextContent: (): boolean => false,
     getRootHostContext: (): Record<string, never> => HOST_CONTEXT,
@@ -135,7 +120,6 @@ const hostConfig = {
     detachDeletedInstance: (instance: Instance): void => {
         if (instance.kind === ELEMENT_KIND) {
             disconnectAllHandlers(instance);
-            unmountBehaviors(instance);
         } else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
             disconnectAllHandlers(lazyTarget(instance, instance.adopted));
         }

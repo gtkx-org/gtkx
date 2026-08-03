@@ -62,7 +62,6 @@ Every hook receives the GObject instance and a private per-element `context` bui
 - **`resolve`** returns the object the container created for a placed child (a page, a layout child), used by later `reorder` and `detach`.
 - **`update`** runs on every commit with the previous and next props; apply scalar or array props here, and return the prop names you handled so GTKX does not also set them as plain properties.
 - **`flush`** runs just after the surrounding commit settles, for props that must wait until children exist, as `GtkStack`'s `visibleChildName` does.
-- **`mount` / `unmount`** run once the element is created and when it leaves the tree.
 
 Your own behaviors go through the same machinery. GTK4's named-cursor API is a method with no property behind it: `setCursorFromName("pointer")` shows the pointer cursor while hovering a widget, whereas the `cursor` property takes a `Gdk.Cursor` object. Write a module that default-exports a map keyed by GLib type name, giving each type its `behaviors` and wrapping each one in `defineBehavior` with the class it applies to:
 

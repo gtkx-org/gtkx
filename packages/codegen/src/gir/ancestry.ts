@@ -28,6 +28,20 @@ const resolveInterface = (
     return resolved?.kind === "interface" ? getAncestor(resolved) : undefined;
 };
 
+const resolveInterfaces = (library: Library, defaultNamespace: string, names: string[]): ResolvedAncestor[] => {
+    const interfaces: ResolvedAncestor[] = [];
+
+    for (const name of names) {
+        const iface = resolveInterface(library, defaultNamespace, name);
+
+        if (iface !== undefined) {
+            interfaces.push(iface);
+        }
+    }
+
+    return interfaces;
+};
+
 function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
     const visited: Set<string> = new Set();
     let current: ResolvedAncestor | undefined = { klass, namespaceName };
@@ -50,4 +64,4 @@ function* ancestorChain(library: Library, klass: GirClass, namespaceName: string
     }
 }
 
-export { resolveInterface, ancestorChain, type ResolvedAncestor };
+export { resolveInterfaces, ancestorChain, type ResolvedAncestor };

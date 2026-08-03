@@ -833,19 +833,61 @@ describe("vtable slots with array out parameters", () => {
     });
 });
 
+describe("vtable slot member visibility", () => {
+    it("marks a class slot protected, so only a subclass chaining up reaches it", () => {
+        const gtk = moduleSource("gtk");
+        expect(gtk).toContain("protected vfuncMeasure(orientation: Orientation, forSize: number)");
+        expect(gtk).toContain("protected vfuncCloseRequest(): boolean {");
+        expect(moduleSource("gobject")).toContain("protected vfuncConstructed(): void {");
+    });
+
+    it("leaves an interface slot public, which a TypeScript interface has no way to restrict", () => {
+        const gio = moduleSource("gio");
+        expect(gio).toContain("\n    vfuncGetItemType(): bigint;");
+        expect(gio).not.toContain("protected vfuncGetItemType");
+    });
+
+    it("leaves a class slot public when an implemented interface declares the same name", () => {
+        const gio = moduleSource("gio");
+        expect(gio).toContain("\n    vfuncTell(): bigint {");
+        expect(gio).not.toContain("protected vfuncTell");
+        expect(gio).not.toContain("protected vfuncGetInfo");
+    });
+
+    it("drops a slot an ancestor class already declares at the same vtable offset", () => {
+        const gobject = moduleSource("gobject");
+        expect(gobject).toContain("callVfunc(Object, \"vfuncConstructed\", this, [])");
+        expect(gobject).not.toContain("callVfunc(InitiallyUnowned, \"vfuncConstructed\", this, [])");
+    });
+
+    it("keeps a same-named slot an ancestor class declares at a different vtable offset", () => {
+        expect(moduleSource("adw")).toContain("callVfunc(ActionRow, \"vfuncActivate\", this, [])");
+        expect(moduleSource("gtk")).toContain("callVfunc(ListBoxRow, \"vfuncActivate\", this, [])");
+    });
+});
+
 describe("vtable slot members carry their own documentation", () => {
     it("stands the chain-up note alone on a slot GObject-Introspection leaves undocumented", () => {
-        const doc = docCommentBefore(documentedModuleSource("gtk"), "vfuncCloseRequest(): boolean {");
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "protected vfuncCloseRequest(): boolean {");
 
         expect(doc).toBe(
             "Invokes the `close_request` vtable slot. Override it on a class passed to `registerClass` " +
-            "and chain up with `super.vfuncCloseRequest()`; calling it from anywhere else re-enters " +
+            "and chain up with `super.vfuncCloseRequest()`. It is `protected`, so only a subclass " +
+            "chaining up reaches it.",
+        );
+    });
+
+    it("keeps the live-instance warning on an interface slot, which stays callable", () => {
+        const doc = docCommentBefore(documentedModuleSource("gio"), "vfuncGetItemType(): bigint;");
+
+        expect(doc).toContain(
+            "chain up with `super.vfuncGetItemType()`. Calling it from anywhere else re-enters " +
             "the slot on a live instance.",
         );
     });
 
     it("keeps the documentation the vtable field carries ahead of the note", () => {
-        const doc = docCommentBefore(documentedModuleSource("gobject"), "vfuncConstructed(): void {");
+        const doc = docCommentBefore(documentedModuleSource("gobject"), "protected vfuncConstructed(): void {");
         expect(doc).toMatch(/^the `constructed` function is called by `g_object_new\(\)`/);
         expect(doc).toContain("Invokes the `constructed` vtable slot.");
         expect(doc).toContain("chain up with `super.vfuncConstructed()`");
@@ -854,7 +896,7 @@ describe("vtable slot members carry their own documentation", () => {
     it("documents a slot whose callback the field alone describes", () => {
         const doc = docCommentBefore(
             documentedModuleSource("gtk"),
-            "vfuncMeasure(orientation: Orientation, forSize: number)",
+            "protected vfuncMeasure(orientation: Orientation, forSize: number)",
         );
 
         expect(doc).toMatch(/^Called to obtain the minimum and natural size of the widget/);

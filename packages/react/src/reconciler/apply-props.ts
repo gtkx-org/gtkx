@@ -213,18 +213,6 @@ const flushBehaviors = (): void => {
     });
 };
 
-const mountBehaviors = (node: ElementNode): void => {
-    if (!typeInfoFor(node.typeName).hasMount) {
-        return;
-    }
-
-    eachBehavior(node, (behavior, context) => behavior.mount?.(node.object, context));
-};
-
-const unmountBehaviors = (node: ElementNode): void => {
-    eachBehavior(node, (behavior, context) => behavior.unmount?.(node.object, context));
-};
-
 const applyAccessible = (object: GObject.Object, prev: Props, next: Props): void => {
     if (object instanceof Gtk.Widget) {
         applyAccessibleProps(object, prev, next);
@@ -263,8 +251,6 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
 export {
     markFlush,
     flushBehaviors,
-    mountBehaviors,
-    unmountBehaviors,
     applyElementProps,
     applyAdoptedProps,
     assertConstructOnlyUnchanged,

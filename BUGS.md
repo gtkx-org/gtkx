@@ -32,7 +32,7 @@ Run "pnpm approve-builds" to pick which dependencies should be allowed to run sc
 
 Reproduced on every attempt. npm is unaffected: the identical command with `--package-manager npm` completes cleanly.
 
-**Cause:** `packages/create-gtkx/src/templates/package.json.ejs:18` writes
+**Cause:** the shared `package.json` template wrote the same field for every package manager:
 
 ```json
 "allowScripts": {
@@ -41,9 +41,9 @@ Reproduced on every attempt. npm is unaffected: the identical command with `--pa
 }
 ```
 
-`allowScripts` is an npm field. pnpm does not read it. pnpm takes `allowBuilds` in `pnpm-workspace.yaml`, or `pnpm.onlyBuiltDependencies` in `package.json`. So `@swc/core`'s postinstall is gated, pnpm exits non-zero, and the scaffolder aborts its install step.
+`allowScripts` is an npm field. pnpm does not read it. pnpm takes `allowBuilds` in `pnpm-workspace.yaml`, or `pnpm.onlyBuiltDependencies` in `package.json`. So `@swc/core`'s postinstall was gated, pnpm exited non-zero, and the scaffolder aborted its install step.
 
-This repository already knows the right answer: `pnpm-workspace.yaml:33` uses `allowBuilds`. The template just does not emit the pnpm form.
+This repository already knew the right answer: `pnpm-workspace.yaml` uses `allowBuilds`. The template just did not emit the pnpm form.
 
 **Knock-on effects:**
 
@@ -51,7 +51,7 @@ This repository already knows the right answer: `pnpm-workspace.yaml:33` uses `a
 - The suggested recovery (`cd demo && pnpm install`) does not fix it either. pnpm rewrites `pnpm-workspace.yaml` with a placeholder, `'@swc/core': set this to true or false`, that the user has to resolve by hand before any install succeeds.
 - `esbuild` is listed in `allowScripts` but is not in the generated `pnpm-workspace.yaml` placeholder, so the pnpm form needs both entries written explicitly.
 
-**Fix:** emit the package-manager-appropriate build-script allowance. For pnpm, write `allowBuilds` into the generated `pnpm-workspace.yaml`; keep `allowScripts` for npm. The scaffolder already branches on the selected package manager, so this belongs next to that branch rather than in the shared template.
+**Fix applied:** the build allowance left the shared template and moved to `packages/create-gtkx/src/build-allowance.ts`, which writes the form the selected package manager reads: `allowBuilds` in `pnpm-workspace.yaml` for pnpm, `allowScripts` in `package.json` for npm, `dependenciesMeta` for yarn. `esbuild` and `@swc/core` are both named on every path.
 
 ---
 
@@ -68,9 +68,9 @@ cd demo && pnpm exec tsc --noEmit --listFiles | grep -E '/(src|tests)/'
 
 **Actual:** only `src/app.tsx`, `src/gtkx-env.d.ts`, and `src/index.tsx` are checked. `tests/app.test.tsx`, which the same scaffolder just generated, is not.
 
-**Cause:** the generated `tsconfig.json` sets `"include": ["src/**/*"]` with `"rootDir": "src"`, while `--vitest` generates `tests/` and a `test` script. Nothing ever type-checks that directory.
+**Cause:** the generated `tsconfig.json` set `"include": ["src/**/*"]` with `"rootDir": "src"`, while `--vitest` generates `tests/` and a `test` script. Nothing ever type-checked that directory.
 
-**Fix:** when `--vitest` is passed, include `tests` in the program. `rootDir` has to widen or move for that to work, so this is a small restructure of the emitted `tsconfig.json` rather than a one-line include change.
+**Fix applied:** the emitted `tsconfig.json` includes `tests/**/*` alongside `src/**/*` whenever the testing option is on, and sets no `rootDir`.
 
 ---
 
@@ -128,7 +128,7 @@ curl -s https://gtkx.dev/sitemap.xml | grep -c '/reference/'
 
 **Why it matters:** an agent that reads `llms.txt` to answer "what is the signature of `ColumnView`'s renderer" finds no path to the answer and guesses. The GTK4 and Adwaita binding surface is well covered by the MCP server's `gtkx_search_api` and `gtkx_get_api_docs`, but those serve the *generated* bindings only; the hand-written `@gtkx/*` TypeScript API exists solely on the website.
 
-**Fix:** add an `## Optional` section, which is what the llms.txt spec reserves for secondary material, linking a `/reference/` index page, and add the blog. Full expansion of every symbol page into `llms-full.txt` is not necessary; a reachable index is.
+**Fix applied:** `llms.txt` ends with an `## Optional` section, which is what the llms.txt spec reserves for secondary material, linking the `/reference/` index, each package's reference entry, and the blog. `llms-full.txt` still inlines only the guide and tutorial prose; expanding every symbol page into it was not the gap, a reachable index was.
 
 **Assessment of what is there:** the guide and tutorial coverage is complete and genuinely useful. Every guide page and every tutorial chapter is listed, `llms-full.txt` is 318 KB, which is small enough to read whole, and the prose is dense and accurate. The gap is scope, not quality.
 
@@ -161,11 +161,11 @@ require("path").join(require("path").dirname(process.execPath),`share/demo`,`ass
 
 Without `--asset-base` the same build correctly emits `new URL("./assets/probe-...txt", import.meta.url)` and runs.
 
-**Cause:** `packages/cli/src/vite-plugins/built-url.ts:13` and `:17` hardcode `require("path")` into the `renderBuiltUrl` runtime string. Scaffolded projects are `"type": "module"` and the bundle is ESM. Rolldown's automatic `createRequire` shim only covers `require()` it sees while analyzing module source; `renderBuiltUrl` injects its string at render time, after that analysis, so the bare `require` survives into the output.
+**Cause:** `packages/cli/src/vite-plugins/built-url.ts` hardcoded `require("path")` into the `renderBuiltUrl` runtime string. Scaffolded projects are `"type": "module"` and the bundle is ESM. Rolldown's automatic `createRequire` shim only covers `require()` it sees while analyzing module source; `renderBuiltUrl` injects its string at render time, after that analysis, so the bare `require` survived into the output.
 
-**Trigger:** an emitted asset, not a third-party dependency. A project with no assets builds and runs cleanly with `--asset-base`, which is why this does not show up on a bare scaffold.
+**Trigger:** an emitted asset, not a third-party dependency. A project with no assets builds and runs cleanly with `--asset-base`, which is why this did not show up on a bare scaffold.
 
-**Fix:** emit an ESM-safe expression. `process.execPath` is available without `require`, so the join can use `import.meta.dirname`, or the plugin can emit a `node:path` import and reference it.
+**Fix applied:** the plugin resolves both bases through `URL` instead of `path`. With `--asset-base` it emits a `decodeURIComponent(new URL(...).pathname)` against a `file://` URL built from `process.execPath`, and without it the same expression against `import.meta.url`, so nothing in the runtime string needs `require`.
 
 ---
 
@@ -190,25 +190,35 @@ new Worker(new URL(`./probe-worker.js`,import.meta.url)).terminate()
 
 At runtime that URL resolves to a file that does not exist.
 
-`new Worker(new URL(..., import.meta.url))` is the canonical form Vite and Rolldown detect to emit a worker chunk. GTKX's build produces no chunk for it and issues no warning, so the first sign of trouble is a runtime failure in a packaged app.
+`new Worker(new URL(..., import.meta.url))` is the canonical form Vite and Rolldown detect to emit a worker chunk. GTKX's build produced no chunk for it and issued no warning, so the first sign of trouble was a runtime failure in a packaged app.
 
-**Why it matters here:** GTKX drives the GLib main context from a libuv prepare callback on the Node main thread, so synchronous JS blocks GTK for its full duration. Workers are the sanctioned answer, and the build cannot ship one.
+**Two narrower shapes did the same thing after the canonical form started emitting chunks:** a URL hoisted to a module constant and passed to `new Worker` by name, and an inline specifier that does not resolve to a file on disk. Both built with exit 0 and both left the same dangling reference in the bundle, which is the worst of the available outcomes: emitting a chunk is right, refusing the build is defensible, and shipping a bundle that fails at runtime is neither.
 
-**Fix:** either emit worker chunks, or fail the build with a clear error when a worker URL is detected and unsupported. Silently emitting a dangling reference is the worst of the three.
+**Why it matters here:** GTKX drives the GLib main context from a libuv prepare callback on the Node main thread, so synchronous JS blocks GTK for its full duration. Workers are the sanctioned answer, and the build could not ship one.
+
+**Fix applied:** `packages/cli/src/vite-plugins/worker.ts` emits a chunk for the canonical inline form, and now fails the build for the two shapes that still produced a dangling reference. A `new URL(spec, import.meta.url)` bound to a variable that is later passed to `new Worker` is reported by name, with the inline call to write instead. An inline specifier that does not resolve is reported with the file and the specifier, and names the corrected specifier when the same path with a TypeScript extension resolves. Both exit non-zero.
+
+The plugin rewrites, so a rewrite has to be provably right; a regex cannot establish that an identifier's binding is exactly one `new URL` and is never reassigned, shadowed, or conditionally initialized, and a wrong rewrite is the same class of silent breakage. Reporting is safe to approximate in the direction rewriting is not, so the hoisted form is detected (declaration and `new Worker(binding)` both present, both outside strings and comments) and refused rather than followed. Matches inside strings, template literals, and comments are skipped, so neither diagnostic fires on quoted or commented-out code.
+
+The supported form is documented in [Async Operations](https://gtkx.dev/guide/async-operations).
 
 ---
 
-## 7. The `AdwSidebar` and `AdwMultiLayoutView` families render nothing
+## 7. The `AdwSidebar` and `AdwMultiLayoutView` families are still unusable from JSX
 
-**Severity:** high. They type-check, they compile, they mount, and they silently do nothing.
+**Severity:** high. Partially fixed: the runtime half landed, the type half did not, and two of the elements still cannot be populated at all.
 
-`AdwSidebar`, `AdwSidebarSection`, `AdwSidebarItem`, `AdwMultiLayoutView`, `AdwLayout`, and `AdwLayoutSlot` are all generated as mountable JSX elements (`isMountable: true` in the generated `elements.json`). None of them appears anywhere in `packages/react/src`, so none has a registered element behavior.
+`AdwSidebar`, `AdwSidebarSection`, `AdwSidebarItem`, `AdwMultiLayoutView`, `AdwLayout`, and `AdwLayoutSlot` are all generated as mountable JSX elements (`isMountable: true` in the generated `elements.json`). Their child APIs are methods, not properties: `adw_sidebar_insert`, `adw_multi_layout_view_add_layout`. With no behavior to claim the children, the reconciler fell through to setting a named property that does not exist, so children were dropped without an error.
 
-Their child APIs are methods, not properties: `adw_sidebar_append`, `adw_multi_layout_view_add_layout`. With no behavior to claim the children, the reconciler falls through to setting a named property that does not exist, so children are dropped without an error.
+`packages/react/src/adw/element-behaviors.ts` now registers behaviors for part of that: `AdwSidebar` and `AdwViewSwitcherSidebar` take `AdwSidebarSection` children, `AdwSidebarSection` takes `AdwSidebarItem` children, and `AdwMultiLayoutView` takes `AdwLayout` children in a `layouts` slot plus widgets in named slots that map to `setChild`. Three things still reproduce.
 
-`AdwViewSwitcherSidebar` is unaffected because it takes no children and derives its items from a `stack` prop.
+**Still broken 1: the generated props do not declare the slots the behaviors consume.** Element behaviors live in `element-behaviors.ts`, but what codegen emits comes from `element-config.ts`, and that file has no entry for any type in either family. So `AdwSidebarSectionProps` carries no `children`, and `AdwMultiLayoutViewProps` carries no `layouts` and no named slots (it carries only `layoutName` and the inherited widget props). JSX that works at runtime fails `tsc`, which is the same defect from the other side: the element is mountable and the type says it takes nothing.
 
-**Fix:** register behaviors for these types, or exclude them from element generation until they have one. Generating a mountable element with no way to populate it is worse than not generating it.
+**Still broken 2: `AdwLayout` cannot be given content.** `Adw.Layout`'s `content` is construct-only, so the generated class exposes a getter and no setter, and nothing registers a child behavior for `AdwLayout`. Nesting an `AdwLayoutSlot` inside it raises `Adwaita-CRITICAL: Content in AdwLayout cannot be NULL`, which the test harness turns fatal through `G_DEBUG=fatal-criticals`. `AdwLayout` and `AdwLayoutSlot` stay mountable with no JSX way to populate them.
+
+**Still broken 3: `layoutName` is applied before its layout exists.** `AdwMultiLayoutView` sets `layoutName` at the time props are applied, which is before the `AdwLayout` children attach, and Adwaita answers `Layout name ... not found`. `AdwViewStack.visibleChildName` and `AdwToggleGroup.activeName` have the same ordering problem and are gated behind a `deferred` behavior; `layoutName` has none.
+
+**Fix:** declare the slots in `element-config.ts` so the generated props match the behaviors; give `AdwLayout` a behavior that supplies its content at construction, since the property cannot be set afterwards; and defer `layoutName` until the named layout has attached.
 
 ---
 
@@ -357,7 +367,9 @@ before Activate:  node /com/gtkx/hello_world { interface org.gtk.Application { .
 after  Activate:  node /com/gtkx/hello_world { interface org.gtk.Application { ... }; node window { }; };
 ```
 
-`g_application_run()` is not what starts the application, because it would block Node's event loop; GTKX drives the GLib main context from a libuv prepare callback instead, and calls only the `local_command_line` vfunc that `run()` delegates all of its local work to. `quitApplication` does call `run([])`, once every window is detached, because its tail is the only public path that emits `shutdown`, destroys the `GApplicationImpl` and clears `is-registered`. That is safe because GTKX builds every application from a subclass whose `local_command_line` chains up the first time and short-circuits afterwards, so the second pass never re-enters `g_application_parse_command_line`, whose `!priv->options_parsed` assertion would otherwise be followed by a `NULL` `GError` dereference and `SIGSEGV`.
+`g_application_run()` is not what starts the application, because it would block Node's event loop; GTKX drives the GLib main context from a libuv prepare callback instead, and calls only the `local_command_line` vfunc that `run()` delegates all of its local work to. `quitApplication` does call `run([])`, once every window is detached, because its tail is the only public path that emits `shutdown`, destroys the `GApplicationImpl` and clears `is-registered`. That holds because GTKX builds every application from a subclass whose `local_command_line` chains up the first time and short-circuits afterwards, so the second pass does not re-enter `g_application_parse_command_line`, whose `!priv->options_parsed` assertion is followed by a `NULL` `GError` dereference and `SIGSEGV`.
+
+**Correction:** that is an invariant of one loaded copy of `@gtkx/runtime`, not of the process. Both the "already started" record and the shutdown short-circuit are module-scope state, so a process holding two copies of the module has two of each and neither knows what the other did. Entry 16 is a configuration that loads two, and there the assertion does fire.
 
 ---
 
@@ -444,11 +456,52 @@ Remove `codegen: false` from gtkx.config.ts to use the API reference.
 
 The lookup was for TableStar. The error names a project the caller is not working on, and its advice is to edit that project's configuration. `gtkx_list_apps` showed why: one registered app, `com.gtkx.hello-world`, pid 1681987, `projectRoot` `examples/hello-world`. Killing that process made the identical call succeed and return `AdwDialog`.
 
-**Cause:** the server scopes its reference to a registered application's project root. That is right for the tools that drive a live app, and it is listed below as working. But the reference tools are not app tools. Looking up how `AdwDialog` works is what a developer does *before* there is anything to run, so the answer ends up depending on unrelated state: a stale process from another project silently redirects every lookup, and if that project sets `codegen: false` the reference is unavailable outright.
+**Cause:** the server scoped its reference to a registered application's project root. That is right for the tools that drive a live app. But the reference tools are not app tools. Looking up how `AdwDialog` works is what a developer does *before* there is anything to run, so the answer ends up depending on unrelated state: a stale process from another project silently redirects every lookup, and if that project sets `codegen: false` the reference is unavailable outright.
 
-With no app registered the reference does answer, from the server's own root, which happened to have `Adw-1` configured. That is luck rather than intent: a project whose libraries differ from the server's root would get an answer scoped to the wrong surface with nothing to indicate it.
+With no app registered the reference did answer, from the server's own root, which happened to have `Adw-1` configured. That was luck rather than intent: a project whose libraries differ from the server's root would get an answer scoped to the wrong surface with nothing to indicate it.
 
-**Fix:** let the reference tools take an explicit project root, or resolve one from the caller's working directory, and fall back to a registered app only when neither is available. Failing that, name the project in the response rather than only in the error, so a wrong answer is visible.
+**Fix applied:** `gtkx_list_api`, `gtkx_search_api`, and `gtkx_get_api_docs` take an optional `projectRoot`, absolute or relative, and any directory inside a project resolves to it by walking up to the enclosing `gtkx.config.*`. Without the argument the server documents the project containing its own working directory, and falls back to a connected app's root only when that directory is not inside a GTKX project. Every answer ends with the project it was scoped to and how that project was chosen, so a wrong scope is visible instead of silent, and the `codegen: false` message now offers `projectRoot` as the way out rather than telling the caller to edit someone else's configuration. Resources use the same resolution, since a URI carries no project. Documented in [the MCP guide](https://gtkx.dev/guide/mcp).
+
+---
+
+## 16. `gtkx dev` from source never starts the application
+
+**Severity:** high. This is the mode the repository's own guidance prescribes for running the CLI from source, so the documented contributor workflow does not start an app.
+
+**Repro**, from `examples/gtk-demo` with nothing else holding its application ID:
+
+```sh
+../../node_modules/.bin/tsx ../../scripts/run-headless.ts \
+  node --conditions=source --import tsx ../../packages/cli/bin/gtkx.js dev
+```
+
+**Actual:** the application process prints
+
+```
+gtkx: GLib-GIO-CRITICAL: g_application_parse_command_line: assertion '!application->priv->options_parsed' failed
+```
+
+and stops there. No `Connected application ID`, no `HMR enabled - watching for changes...`, and the dev server sits with nothing running until it is killed. A run of the same command under a different harness ended in `SIGSEGV`.
+
+The identical command without the condition,
+
+```sh
+../../node_modules/.bin/tsx ../../scripts/run-headless.ts node ../../packages/cli/bin/gtkx.js dev
+```
+
+reaches `Connected application ID: org.gtkx.gtk-demo`, then `HMR enabled - watching for changes...`, and stays up. Both were run back to back on `30378fb1`.
+
+`CLAUDE.md` prescribes exactly this mode: "running the CLI from source uses `NODE_OPTIONS=--conditions=source`".
+
+**Cause, as far as it is established.** The flags reach the application process: the dev supervisor forks the runner with `child_process.fork` and no `execArgv` override, so the forked `gtkx-dev-runner.js` carries `--conditions=source --import tsx` verbatim, which `pgrep` confirms.
+
+In that process `@gtkx/runtime` is loaded twice. A Node module-load hook over the failing run records both `packages/runtime/src/index.ts`, which is what Node resolves for the CLI, the `.gtkx` store, and `@gtkx/gi`, and `packages/runtime/dist/index.js`, which Vite's SSR module runner resolves when it externalizes the same specifier for the application's own module graph. Every module under `packages/runtime` loads twice, including `lifecycle.ts` and `application-class.ts`, whose module-scope records of which applications have started and which are shutting down are what keep GLib from parsing a command line twice. Two copies means two of each record.
+
+That is the mechanism entry 11 relies on, and duplication defeats it. What is not established is which two call sites parse: an instrumented run recorded the first `local_command_line` call, through the `dist` copy, from the application component, and caught no second one. Read the duplication as confirmed and its link to the assertion as untested.
+
+The application ID matters to the repro. The same command in `examples/hello-world` reached `HMR enabled` while a dev server from another session already held `com.gtkx.hello-world`, so a remote instance does not hit this.
+
+**Fix:** make the process load one copy of the runtime. The supervisor knows what it forks, so it can pass an `execArgv` the runner can survive, and the dev server's SSR resolution has to agree with Node's about what `@gtkx/runtime` is under the `source` condition rather than externalizing it to `dist`.
 
 ---
 
@@ -459,6 +512,6 @@ Recorded so nobody re-tests them:
 - `pnpm create gtkx@1.0.0-rc.4` pins `@gtkx/*` to `^1.0.0-rc.4` and resolves correctly; the `rc` dist-tag is right.
 - `gtkx codegen` regenerates cleanly for `Gtk-4.0`, `Adw-1`, `GtkSource-5`, including the `@gtkx/gi` and `@gtkx/jsx` stores and the symlinks.
 - `tsc --noEmit`, `gtkx build`, and `vitest run` all pass on a fresh scaffold.
-- `gtkx dev` runs against a live GNOME Wayland session and Fast Refresh connects.
-- The MCP server picks up the running app's project root and rescopes its API reference to that project's configured libraries automatically, so one server correctly serves several projects in a session.
-- `gtkx_list_apps`, `gtkx_take_screenshot`, `gtkx_list_api`, `gtkx_search_api`, and `gtkx_get_api_docs` all behave as documented, subject to entry 15 on which project the reference resolves to. The reference pages carry upstream documentation, prop types with defaults, signal signatures, methods, hierarchy, and the correct import line.
+- `gtkx dev` runs against a live GNOME Wayland session and Fast Refresh connects, as long as the CLI is run from `dist` (entry 16).
+- The MCP server serves several projects in one session: each reference call is scoped to the project it names or the one the server was launched in, and apps report their project root when they register (entry 15).
+- `gtkx_list_apps`, `gtkx_list_api`, `gtkx_search_api`, and `gtkx_get_api_docs` all behave as documented. The reference pages carry upstream documentation, prop types with defaults, signal signatures, methods, hierarchy, and the correct import line. `gtkx_take_screenshot` is not on this list: entry 10 is open against it.

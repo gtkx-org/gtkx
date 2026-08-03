@@ -11,7 +11,6 @@ type TypeInfo = {
     deferred: Set<string>;
     isLazy: boolean;
     hasFlush: boolean;
-    hasMount: boolean;
     constructOnly: Set<string>;
     construct: Set<string>;
     defaults: Record<string, unknown>;
@@ -70,10 +69,6 @@ const applyBehaviorFlags = (info: TypeInfo, behavior: ElementBehavior): void => 
         info.hasFlush = true;
     }
 
-    if (behavior.mount !== undefined) {
-        info.hasMount = true;
-    }
-
     addAll(info.deferred, deferredProps(behavior));
 };
 
@@ -94,7 +89,6 @@ const buildTypeInfo = (name: string): TypeInfo => {
         deferred: new Set(),
         isLazy: false,
         hasFlush: false,
-        hasMount: false,
         constructOnly: new Set(),
         construct: new Set(),
         defaults: {},

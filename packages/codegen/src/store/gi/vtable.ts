@@ -19,6 +19,7 @@ import {
     renderHandlerResultType,
 } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
+import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../../gir/ancestry.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBraced } from "../../writer/emit.js";
 import { computeRecordFieldSlots } from "./record-layout.js";
@@ -32,6 +33,14 @@ type VtableSlot = {
     callback: GirCallback;
     byteOffset: number;
     vtableSize: number;
+};
+
+type VfuncMemberOptions = {
+    context: ModuleContext;
+    ownerRef: string;
+    slot: VtableSlot;
+    mode: VfuncMemberMode;
+    isProtected: boolean;
 };
 
 type Vtable = {
@@ -49,13 +58,16 @@ const UNCALLABLE_SLOT_KEYS: Set<string> = new Set([
     "vfuncSetProperty",
 ]);
 
+const PROTECTED_SLOT_NOTE = "It is `protected`, so only a subclass chaining up reaches it.";
+const PUBLIC_SLOT_NOTE = "Calling it from anywhere else re-enters the slot on a live instance.";
+
 const vfuncMemberName = (fieldName: string): string => `vfunc${pascalCase(fieldName)}`;
 
-const vfuncMemberNote = (slot: VtableSlot): string =>
+const vfuncMemberNote = (slot: VtableSlot, isProtected: boolean): string =>
     [
         `Invokes the \`${slot.field.name}\` vtable slot. Override it on a class passed to \`registerClass\``,
-        `and chain up with \`super.${slot.key}()\`; calling it from anywhere else re-enters the slot on a`,
-        "live instance.",
+        `and chain up with \`super.${slot.key}()\`.`,
+        isProtected ? PROTECTED_SLOT_NOTE : PUBLIC_SLOT_NOTE,
     ].join("\n");
 
 const isPaddingField = (field: GirField): boolean =>
@@ -156,6 +168,70 @@ const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | 
     return renderBraced(entries.join("\n"));
 };
 
+const slotIdentity = (slot: VtableSlot): string => `${slot.key}:${String(slot.byteOffset)}`;
+
+const inheritedSlotIdentities = (context: ModuleContext, klass: GirClass): Set<string> => {
+    const identities: Set<string> = new Set();
+    const [, ...ancestors] = [...ancestorChain(context.library, klass, context.namespace.name)];
+
+    for (const ancestor of ancestors) {
+        const vtable = collectVtable(context, ancestor.namespaceName, ancestor.klass);
+        const slots = vtable?.slots ?? [];
+
+        for (const slot of slots) {
+            identities.add(slotIdentity(slot));
+        }
+    }
+
+    return identities;
+};
+
+const addInterfaceSlotKeys = (
+    context: ModuleContext,
+    iface: ResolvedAncestor,
+    keys: Set<string>,
+    seen: Set<string>,
+): void => {
+    const identity = `${iface.namespaceName}.${iface.klass.name}`;
+
+    if (seen.has(identity)) {
+        return;
+    }
+
+    seen.add(identity);
+
+    for (const key of vfuncMemberNames(context, iface.namespaceName, iface.klass)) {
+        keys.add(key);
+    }
+
+    for (const ref of resolveInterfaces(context.library, iface.namespaceName, iface.klass.prerequisites)) {
+        addInterfaceSlotKeys(context, ref, keys, seen);
+    }
+};
+
+const implementedSlotKeys = (context: ModuleContext, klass: GirClass): Set<string> => {
+    const keys: Set<string> = new Set();
+    const seen: Set<string> = new Set();
+
+    for (const ancestor of ancestorChain(context.library, klass, context.namespace.name)) {
+        for (const ref of resolveInterfaces(context.library, ancestor.namespaceName, ancestor.klass.implements)) {
+            addInterfaceSlotKeys(context, ref, keys, seen);
+        }
+    }
+
+    return keys;
+};
+
+const protectedSlotKeys = (context: ModuleContext, klass: GirClass, vtable: Vtable): Set<string> => {
+    if (vtable.kind !== "class") {
+        return new Set();
+    }
+
+    const shared = implementedSlotKeys(context, klass);
+
+    return new Set(vtable.slots.map((slot) => slot.key).filter((key) => !shared.has(key)));
+};
+
 const renderVfuncMembers = (
     context: ModuleContext,
     klass: GirClass,
@@ -172,9 +248,13 @@ const renderVfuncMembers = (
         context.addRuntimeImport("callVfunc");
     }
 
+    const inherited = inheritedSlotIdentities(context, klass);
+    const protectedKeys = protectedSlotKeys(context, klass, vtable);
+
     return vtable.slots
-        .filter((slot) => isCallableSlot(context, slot))
-        .map((slot) => renderVfuncMember(context, ownerRef, slot, mode));
+        .filter((slot) => isCallableSlot(context, slot) && !inherited.has(slotIdentity(slot)))
+        .map((slot) =>
+            renderVfuncMember({ context, ownerRef, slot, mode, isProtected: protectedKeys.has(slot.key) }));
 };
 
 const hasUnannotatedPointerParam = (context: ModuleContext, slot: VtableSlot): boolean => {
@@ -191,12 +271,8 @@ const hasUnannotatedPointerParam = (context: ModuleContext, slot: VtableSlot): b
 const isCallableSlot = (context: ModuleContext, slot: VtableSlot): boolean =>
     !UNCALLABLE_SLOT_KEYS.has(slot.key) && !hasUnannotatedPointerParam(context, slot);
 
-const renderVfuncMember = (
-    context: ModuleContext,
-    ownerRef: string,
-    slot: VtableSlot,
-    mode: VfuncMemberMode,
-): string => {
+const renderVfuncMember = (options: VfuncMemberOptions): string => {
+    const { context, ownerRef, slot, mode, isProtected } = options;
     const [, ...parameters] = slot.callback.parameters;
 
     const renderType = (ref: TypeId | undefined, isNullable: boolean): string =>
@@ -214,8 +290,9 @@ const renderVfuncMember = (
         shouldExcludeOut: (parameter) => folded.has(parameter),
     });
 
-    const header = `${slot.key}(${signature}): ${returnType}`;
-    const doc = renderJsDoc(slot.field.doc ?? slot.callback.doc, vfuncMemberNote(slot));
+    const modifier = isProtected ? "protected " : "";
+    const header = `${modifier}${slot.key}(${signature}): ${returnType}`;
+    const doc = renderJsDoc(slot.field.doc ?? slot.callback.doc, vfuncMemberNote(slot, isProtected));
 
     if (mode === "signature") {
         return `${doc}${header};`;

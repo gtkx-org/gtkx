@@ -19,7 +19,7 @@ The **server half** is the `gtkx-mcp` binary from the `@gtkx/mcp` package. Your 
 
 The **app half** lives inside `gtkx dev`. When your entry module mounts an application, the dev runner starts an MCP client in the app process. It connects to that same socket and registers the app's application ID, process ID, and project root.
 
-If the server is not running yet, the client silently retries every two seconds, so the order never matters: start the agent first or the app first, and they connect whenever both are up. Several apps can register with one server. Every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app; `gtkx_list_apps` and the API-reference tools take none.
+If the server is not running yet, the client silently retries every two seconds, so the order never matters: start the agent first or the app first, and they connect whenever both are up. Several apps can register with one server. Every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app; `gtkx_list_apps` takes none. The API reference tools are development-time and are not tied to a running app: they take an optional `projectRoot` instead.
 
 Clicking, typing, querying, and screenshots all delegate to [`@gtkx/testing`](/guide/testing), loaded through your app's own module graph: `gtkx_click` runs `userEvent.click`, `gtkx_query_widgets` runs the `findAllBy*` queries, and the widget tree is rendered by `prettyWidget`.
 
@@ -134,6 +134,8 @@ Every widget tool call, inspection or interaction, is routed to the app with a 3
 
 The reference tools answer from the same GObject-Introspection data your bindings are generated from, so what they document is exactly what `@gtkx/gi` and `@gtkx/jsx` export: the same camelCase methods, the same promisified async pairs, the same JSX props and `on<Signal>` handlers. They need no running app and no `@gtkx/testing`; the only requirement is a project with codegen enabled, since a `codegen: false` project has no generated bindings to document. They are all read-only.
 
+All three take an optional `projectRoot` alongside their own arguments, which decides the project they answer for.
+
 **`gtkx_list_api`** without arguments returns an overview of every namespace the configured libraries pull in, with symbol and JSX element counts. With a `namespace` it lists all of that namespace's symbols grouped by kind: JSX elements, classes, enums, and the rest.
 
 **`gtkx_search_api`** finds symbols by a case-insensitive substring of their name, with optional `namespace`, `kind`, and `limit` filters. Each match comes back with its namespace, kind, and a one-line summary, ready to feed into `gtkx_get_api_docs`.
@@ -142,9 +144,19 @@ The reference tools answer from the same GObject-Introspection data your binding
 
 Element pages match the ones `gtkx docs` generates: hierarchy, children, props, `on<Signal>` handler props, and `ref` methods (see [generating element reference docs](/guide/configuration-and-codegen#generating-element-reference-docs)). Pages for `@gtkx/gi` symbols cover the rest.
 
-The server resolves which project to document from the first connected app: apps report their project root when they register, and that root's `gtkx.config.ts` decides the libraries. With no app connected, it falls back to its own working directory, which for a stdio server is wherever your MCP client launched it, normally the project directory. The GIR data is parsed once per project and cached, and re-parsed only when `gtkx.config.ts` or the GIR files change, so the first reference call takes a moment and later ones are instant.
+What the reference documents depends on a project, since that project's `gtkx.config.ts` decides which libraries are bound. Pass `projectRoot` to say which one: any directory inside the project works, absolute or relative to the server's working directory, because the lookup walks up to the enclosing `gtkx.config.ts`.
 
-The same pages are also published as MCP resources for clients that work resource-first: `gtkx://reference/index` is the overview, `gtkx://reference/{namespace}` one namespace's symbol list, and `gtkx://reference/{namespace}/{symbol}` one symbol's page, with completion wired up for both namespace and symbol names.
+Without it, the server documents the project containing its own working directory, which for a stdio server is wherever your MCP client launched it, normally the project you are working on. Only when that directory is not inside a GTKX project does it fall back to a connected app's project root, which apps report when they register.
+
+Every answer ends with the project it was scoped to and how that project was chosen, so an answer scoped to the wrong surface is visible rather than silent:
+
+```
+Project: /home/you/tablestar (found from the working directory)
+```
+
+The GIR data is parsed once per project and cached, and re-parsed only when `gtkx.config.ts` or the GIR files change, so the first reference call for a project takes a moment and later ones are instant.
+
+The same pages are also published as MCP resources for clients that work resource-first: `gtkx://reference/index` is the overview, `gtkx://reference/{namespace}` one namespace's symbol list, and `gtkx://reference/{namespace}/{symbol}` one symbol's page, with completion wired up for both namespace and symbol names. A URI carries no project, so resources use the same default: the working directory's project, then a connected app's.
 
 ## Next
 
