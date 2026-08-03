@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PackageManager } from "./package-managers.js";
 
@@ -12,6 +12,18 @@ const PNPM_PACKAGES_BLOCK = "packages:\n  - '.'\n";
 const quoteYamlKey = (name: string): string => (SAFE_YAML_KEY.test(name) ? name : `'${name}'`);
 const endWithNewline = (value: string): string => (value.endsWith("\n") ? value : `${value}\n`);
 
+const readIfPresent = (path: string): string => {
+    try {
+        return readFileSync(path, "utf8");
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+            return "";
+        }
+
+        throw error;
+    }
+};
+
 const readManifest = (root: string): Record<string, unknown> =>
     JSON.parse(readFileSync(join(root, PACKAGE_JSON_FILE), "utf8")) as Record<string, unknown>;
 
@@ -22,7 +34,7 @@ const writeManifest = (root: string, manifest: Record<string, unknown>): void =>
 const writePnpmAllowance = (root: string): void => {
     const path = join(root, PNPM_WORKSPACE_FILE);
     const entries = BUILT_DEPENDENCIES.map((name) => `  ${quoteYamlKey(name)}: true`).join("\n");
-    const existing = existsSync(path) ? readFileSync(path, "utf8") : "";
+    const existing = readIfPresent(path);
     const packages = PACKAGES_KEY.test(existing) ? "" : PNPM_PACKAGES_BLOCK;
     const block = `${packages}allowBuilds:\n${entries}\n`;
     writeFileSync(path, existing.length === 0 ? block : `${endWithNewline(existing)}${block}`);
