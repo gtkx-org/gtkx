@@ -446,17 +446,25 @@ process.on("exit", quit);
 
 `process.on("exit")` fires when the event loop drains or when `process.exit()` is called. A live Worker is precisely what stops the loop draining, so the callback never runs, and using `onExit` to terminate that Worker cannot work. `quit()` from `@gtkx/react` does not close the gap either: it unmounts the active roots and returns `Gdk.EVENT_STOP`, and never reaches the runtime's own `quit()`.
 
-So anything holding the Node loop open has to be released while the loop is still turning, at the point the app decides it is finished. `onCloseRequest` is one such point and needs no new API:
+So anything holding the Node loop open has to be released while the loop is still turning, at the point the application decides it is finished. The right signal for that is `GApplication::shutdown`, reachable from any component under the application element:
 
 ```tsx
-onCloseRequest={() => {
-    closeDatabaseWorkers();
+const application = useApplication();
 
-    return quit();
-}}
+useEffect(() => {
+    const handler = (): void => {
+        closeDatabaseWorkers();
+    };
+
+    application.on("shutdown", handler);
+}, [application]);
 ```
 
-That covers the window-close path. It is worth knowing what it does not cover: `close-request` is a `GtkWindow` signal, so it does not fire for an application-level Quit action, for Ctrl+Q, for `SIGTERM` from the session, or for a D-Bus `Quit`; and in a multi-window app one window closing is not the application shutting down. The robust placement is wherever the application decides to quit, not necessarily a single window's handler.
+`quit()` unmounts every root, unmounting the application element runs its lifecycle cleanup, and that calls `quitApplication`, which detaches the windows, reaches GLib's own shutdown and emits `shutdown`. All of that is synchronous and happens while the loop is still turning, so a handler there can still terminate a worker.
+
+`shutdown` is the right choice over the window's own `close-request` because it fires wherever the application shuts down, not only where one window was closed: an application-level Quit action, Ctrl+Q, and a D-Bus `Quit` all reach it, and in a multi-window app one window closing is not the application ending. Doing the teardown in `onCloseRequest` works for the window path and needs no hook at all, so it is fine for a single-window app, but it is the narrower of the two.
+
+Neither covers a signal that kills the process outright, such as `SIGTERM` with no handler installed, and nothing can.
 
 Found by building TableStar, whose database drivers each run in a worker: the app looked closed and the process never exited.
 
