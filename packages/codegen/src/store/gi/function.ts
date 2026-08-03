@@ -3,7 +3,7 @@ import type { GirFunction } from "../../gir/function.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { tFn } from "../../analysis/descriptor.js";
-import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
+import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
@@ -58,7 +58,7 @@ const canEmitNamespaceFunction = (context: ModuleContext, fn: GirFunction): bool
     !isMovedOntoEmittedMember(context, fn) &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
-    !hasCallerAllocatedArrayLength(context.library, fn);
+    !hasUnmarshalableParam(context, fn);
 
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
     if (!canEmitNamespaceFunction(context, fn)) {

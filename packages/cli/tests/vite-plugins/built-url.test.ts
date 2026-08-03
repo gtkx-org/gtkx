@@ -43,6 +43,7 @@ describe("gtkxBuiltUrl", () => {
     it("renderBuiltUrl with assetBase resolves relative to process.execPath", () => {
         const result = callConfig(gtkxBuiltUrl("../share/gtkx"), {});
         const out = result?.experimental.renderBuiltUrl("logo.png", { type: "asset" }) as { runtime: string };
+
         expect(out.runtime).toBe(
             'decodeURIComponent(new URL("../share/gtkx/logo.png", `file://${process.execPath}`).pathname)',
         );

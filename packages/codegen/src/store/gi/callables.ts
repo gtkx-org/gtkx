@@ -1,7 +1,7 @@
 import { camelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
+import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
@@ -366,7 +366,7 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
     callable.introspectable &&
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
-    !hasCallerAllocatedArrayLength(context.library, callable);
+    !hasUnmarshalableParam(context, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {
     const camel = camelCase(girName);

@@ -163,13 +163,10 @@ describe("super vfunc — a derived class registered as a wrapper", () => {
         }
 
         registerClass(Marked, { typeName: uniqueName("Marked") });
-
         const label = new Marked({ label: "hello world" });
         registerWrapperClass(Marked, getInstanceType(label));
-
         const [minimum, natural] = label.measure(Gtk.Orientation.HORIZONTAL, -1);
         const [plainMinimum] = new Gtk.Label({ label: "hello world" }).measure(Gtk.Orientation.HORIZONTAL, -1);
-
         expect(minimum).toBe(plainMinimum + 10);
         expect(natural).toBe(plainMinimum + 10);
     });

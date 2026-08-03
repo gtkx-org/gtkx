@@ -268,7 +268,6 @@ function listenServer(server: Server): Promise<void> {
 
 async function publishInto(env: NodeJS.ProcessEnv): Promise<void> {
     await stageNativeArtifacts();
-
     const restorePublishedTree = prepareHostOnlyPublish();
 
     try {

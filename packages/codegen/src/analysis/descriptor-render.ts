@@ -724,6 +724,7 @@ export {
     renderDescriptor,
     isScalarRef,
     isCellInout,
+    recordInlineSize,
     renderParamDescriptor,
     renderCallbackType,
     renderSelfDescriptor,
