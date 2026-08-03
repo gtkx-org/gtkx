@@ -17,12 +17,6 @@ const childrenProps = internal("ChildrenProps");
 const breakpointsProps = adw("AdwBreakpointsProps");
 const preferencesRowProps = adw("AdwPreferencesRowProps");
 
-/**
- * The framework's own element configuration for the Adwaita types it customizes: the base props interface each
- * generated element extends, the component that wraps it, the GObject properties left out of its generated
- * props, and whether its GObject is created by its parent. Carries no behaviors, so importing it never
- * reaches the GObject bindings.
- */
 const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     ...forTypes(CHILD_SETTER_TYPES, {
         props: childrenProps,
