@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn, spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type Compositor = "sway" | "weston";
@@ -40,7 +40,7 @@ const wlrKeys = [
 
 const trackedEnvKeys = [...wlrKeys, "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "WAYLAND_DISPLAY"];
 
-const findWestonCall = () => spawnMock.mock.calls.find((call) => call[1].includes("weston"));
+const findWestonCall = () => spawnMock.mock.calls.find((call) => call[1].some((arg) => basename(arg) === "weston"));
 
 const westonHelp = (text: string): SpawnSyncReturns<string> => ({
     pid: 0,

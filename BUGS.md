@@ -709,6 +709,20 @@ gtkx_fire_event { widgetId: "...", signal: "activate" }
 
 ---
 
+## 24. An interrupted test run leaks its headless compositor
+
+**Severity:** medium. Every interrupted run leaves a compositor behind, and they accumulate until the machine runs out of memory.
+
+**Repro:** start a test run under `@gtkx/vitest`, or a Rust suite through `scripts/run-headless.ts`, and kill it before it finishes.
+
+**Actual:** `weston` (or `sway`) keeps running, reparented to whatever subreaper is nearest, along with its own children: `weston-keyboard`, `weston-desktop-shell`, `swaybg`. A day of interrupted runs left several compositors resident.
+
+**Cause:** two independent gaps. `scripts/run-headless.ts` used `spawnSync` with no parent-death handling at all, so killing the runner orphaned `wlheadless-run`'s compositor outright. `@gtkx/vitest` did wrap its spawns in `setpriv --pdeathsig SIGTERM` with a shell trap, but the trap ran `kill -9 "$child"`, which names only the direct child; a compositor's own children survived it.
+
+**Fix:** one `spawnWithParentDeathSignal` in `@gtkx/utils`, used by both. The shell runs the command under `set -m`, so it lands in a process group of its own, and the trap kills that group rather than the single process. Regression tests in `packages/utils/tests/spawn-with-parent-death-signal.test.ts` assert the grandchild dies with the group; they fail against the old script.
+
+---
+
 ## Verified working
 
 Recorded so nobody re-tests them:
