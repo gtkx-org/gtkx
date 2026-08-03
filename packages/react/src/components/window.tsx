@@ -1,12 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
-import { useMergedRef } from "../hooks/use-merged-refs.js";
+import type { ElementType, ReactNode } from "react";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
+import { createPresentedComponent, type PresentedProps } from "../hooks/use-presented-instance.js";
 import { applyWrite } from "../reconciler/signals.js";
 
-type WindowComponentProps = {
-    ref?: Ref<Gtk.Window | null> | undefined;
-};
+type WindowComponentProps = PresentedProps<Gtk.Window>;
 
 const presentWindow = (window: Gtk.Window): void => {
     applyWrite(() => {
@@ -20,30 +18,16 @@ const destroyWindow = (window: Gtk.Window): void => {
     });
 };
 
-const createWindowComponent = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) => {
-    return ({ ref, ...rest }: WindowComponentProps): ReactNode => {
-        const [window, setWindow] = useState<Gtk.Window | null>(null);
-        const mergedRef = useMergedRef(ref, setWindow);
+const usePresentWindow = (): ((window: Gtk.Window) => void) => presentWindow;
 
-        useLayoutEffect(() => {
-            if (!window) {
-                return;
-            }
-
-            presentWindow(window);
-
-            return () => {
-                destroyWindow(window);
-            };
-        }, [window]);
-
-        return (
-            <ParentWindowContext.Provider value={window}>
-                <Component ref={mergedRef} {...rest} />
-            </ParentWindowContext.Provider>
-        );
-    };
-};
+const createWindowComponent = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) =>
+    createPresentedComponent<Gtk.Window>(Component, {
+        usePresent: usePresentWindow,
+        dismiss: destroyWindow,
+        wrap: (element, window) => (
+            <ParentWindowContext.Provider value={window}>{element}</ParentWindowContext.Provider>
+        ),
+    });
 
 /** @internal */
 export { createWindowComponent };
