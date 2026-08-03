@@ -41,8 +41,8 @@ function ensureRegistered(): void {
         return;
     }
 
-    registration.isDone = true;
     registerClass(LazyLevelStore, { typeName: "GtkxLazyLevelStore" });
+    registration.isDone = true;
 }
 
 function getId(value: GObject.Object | null): string | null {
