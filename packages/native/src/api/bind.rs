@@ -46,7 +46,8 @@ pub struct BindVfuncOptions {
     pub byte_offset: u32,
     /// Byte size of the interface's vtable struct, used to bounds-check `byteOffset`. `g_type_query`
     /// reports nothing for an interface type, so the size has to come from the same generated
-    /// metadata the offsets do; a class slot is bounded by the queried class size instead.
+    /// metadata the offsets do, and binding an interface slot without it is rejected. A class slot
+    /// is bounded by the queried class size instead and does not need it.
     pub vtable_size: Option<u32>,
     /// Name the slot is reported under in error messages, such as `WidgetClass.measure`.
     pub label: String,
@@ -132,11 +133,20 @@ fn vfunc_offset_bounds(
     instance_type: glib::Type,
     interface_type: Option<glib::Type>,
     vtable_size: Option<u32>,
-) -> Option<u32> {
-    match interface_type {
-        Some(_) => vtable_size,
-        None => query_type(instance_type).map(|query| query.class_size),
+    label: &str,
+) -> anyhow::Result<Option<u32>> {
+    let Some(interface_type) = interface_type else {
+        return Ok(query_type(instance_type).map(|query| query.class_size));
+    };
+
+    if vtable_size.is_none() {
+        anyhow::bail!(
+            "{label} binds a slot of interface {interface_type} without a vtable size, which \
+             would leave byte_offset bounded only by its alignment"
+        );
     }
+
+    Ok(vtable_size)
 }
 
 /// Precompiles the argument and return marshalling of `symbolName` in `sharedLibrary` into a
@@ -177,13 +187,19 @@ pub fn bind_vfunc(options: BindVfuncOptions) -> Result<External<CallDescriptor>>
         .transpose()?;
     let byte_offset = options.byte_offset as usize;
 
-    native_result(
+    let bounds = native_result(
         "bind_vfunc",
-        validate_vfunc_offset(
-            byte_offset,
-            vfunc_offset_bounds(instance_type, interface_type, options.vtable_size),
+        vfunc_offset_bounds(
+            instance_type,
+            interface_type,
+            options.vtable_size,
             &options.label,
         ),
+    )?;
+
+    native_result(
+        "bind_vfunc",
+        validate_vfunc_offset(byte_offset, bounds, &options.label),
     )?;
 
     let (arg_codecs, return_codec) =

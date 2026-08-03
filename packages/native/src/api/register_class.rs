@@ -54,7 +54,7 @@ pub struct RegisterClassInterface {
     pub r#type: BigInt,
     /// Byte size of the interface's vtable struct, used to bounds-check each vfunc's `byteOffset`.
     /// `g_type_query` reports nothing for an interface type, so the size has to come from the same
-    /// generated metadata the offsets do; when it is omitted the offsets are only alignment-checked.
+    /// generated metadata the offsets do, and registering vfuncs without it is rejected.
     pub vtable_size: Option<u32>,
     /// Interface vfunc implementations to install.
     pub vfuncs: Vec<RegisterClassVfunc>,
@@ -338,6 +338,14 @@ impl ClassRegistration {
         }
 
         for iface in &self.interfaces {
+            if iface.vtable_size.is_none() && !iface.vfuncs.is_empty() {
+                anyhow::bail!(
+                    "interface {} declares vfuncs without a vtable size, which would leave their \
+                     byte offsets bounded only by their alignment",
+                    iface.type_
+                );
+            }
+
             for vfunc in &iface.vfuncs {
                 validate_vfunc_offset(vfunc.byte_offset, iface.vtable_size, "interface vfunc")?;
             }
@@ -725,5 +733,68 @@ mod tests {
             .validate_layout(&query)
             .expect_err("an interface offset past the vtable must be rejected");
         assert!(error.to_string().contains("exceeds class size 16"));
+    }
+
+    #[test]
+    fn validate_layout_rejects_interface_vfuncs_declared_without_a_vtable_size() {
+        let registration = ClassRegistration {
+            name: gstring("GtkxRegisterClassUnboundedInterfaceType"),
+            parent_type: glib::Object::static_type(),
+            vfuncs: Vec::new(),
+            interfaces: vec![ResolvedInterface {
+                type_: glib::Object::static_type(),
+                vtable_size: None,
+                vfuncs: vec![ResolvedVfunc {
+                    byte_offset: 4096,
+                    js_fn: ClosureHandle::from_js_value(
+                        &test_support::fake_env(),
+                        &test_support::napi_mock::to_unknown(
+                            &test_support::fake_env(),
+                            test_support::napi_mock::fake_function(|_| {
+                                test_support::napi_mock::fake_undefined()
+                            }),
+                        ),
+                    )
+                    .expect("a reference to the callback"),
+                    arg_codecs: Vec::new(),
+                    return_codec: Codec::Void(crate::ffi::codec::VoidCodec),
+                }],
+            }],
+            properties: Vec::new(),
+        };
+        let query = gobject_ffi::GTypeQuery {
+            type_: 1,
+            type_name: std::ptr::null(),
+            class_size: 128,
+            instance_size: 128,
+        };
+        let error = registration
+            .validate_layout(&query)
+            .expect_err("an interface vfunc with no vtable size must be rejected");
+        assert!(error.to_string().contains("without a vtable size"));
+    }
+
+    #[test]
+    fn validate_layout_allows_an_interface_that_declares_no_vfuncs_without_a_vtable_size() {
+        let registration = ClassRegistration {
+            name: gstring("GtkxRegisterClassEmptyInterfaceType"),
+            parent_type: glib::Object::static_type(),
+            vfuncs: Vec::new(),
+            interfaces: vec![ResolvedInterface {
+                type_: glib::Object::static_type(),
+                vtable_size: None,
+                vfuncs: Vec::new(),
+            }],
+            properties: Vec::new(),
+        };
+        let query = gobject_ffi::GTypeQuery {
+            type_: 1,
+            type_name: std::ptr::null(),
+            class_size: 128,
+            instance_size: 128,
+        };
+        registration
+            .validate_layout(&query)
+            .expect("an interface with no vfuncs needs no vtable size");
     }
 }
