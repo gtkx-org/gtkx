@@ -127,7 +127,7 @@ fn ptr_slot_stash(ptr: *mut c_void) -> ffi::Stash {
     let storage_ptr = slot.as_mut_ptr().cast::<c_void>();
     ffi::Stash::Storage(ffi::StashStorage::new(
         storage_ptr,
-        ffi::StashData::PtrSlot(slot),
+        ffi::StashData::PtrSlot(slot, None),
     ))
 }
 

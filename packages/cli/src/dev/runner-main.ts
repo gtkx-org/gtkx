@@ -1,11 +1,10 @@
 import { error } from "@gtkx/utils";
 import { resolve } from "node:path";
 import { resolveDataDir } from "../internal/data-dir.js";
+import { DEV_ENTRY_ENV } from "./entry-env.js";
 import { prepareDevIconDir } from "./icon-dir.js";
 import { createDevRunner } from "./runner.js";
 import { prepareDevSchemaDir } from "./schema-dir.js";
-
-const ENTRY_ARG_INDEX = 2;
 
 const main = async (): Promise<void> => {
     if (process.channel) {
@@ -15,10 +14,10 @@ const main = async (): Promise<void> => {
     }
 
     const cwd = process.cwd();
-    const entryArg = process.argv[ENTRY_ARG_INDEX];
+    const entryArg = process.env[DEV_ENTRY_ENV];
 
     if (!entryArg) {
-        error("Missing entry argument");
+        error(`Missing ${DEV_ENTRY_ENV}`);
         process.exit(1);
     }
 

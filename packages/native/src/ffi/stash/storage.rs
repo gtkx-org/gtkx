@@ -236,7 +236,7 @@ pub enum StashData {
     GPtrArray(GPtrArrayData),
     GByteArray(Option<glib::ByteArray>),
     Buffer(Vec<u8>),
-    PtrSlot(Vec<*mut c_void>),
+    PtrSlot(Vec<*mut c_void>, Option<Box<StashStorage>>),
     StrV(glib::StrV),
     HashTable,
 }
@@ -272,6 +272,10 @@ impl StashStorage {
 
     pub fn disarm_pending_transfer(&self) {
         self.pending_transfer.set(Vec::new());
+
+        if let StashData::PtrSlot(_, Some(inner)) = &self.data {
+            inner.disarm_pending_transfer();
+        }
     }
 
     #[inline]
@@ -308,7 +312,7 @@ impl StashStorage {
             | StashData::GArray(_)
             | StashData::GPtrArray(_)
             | StashData::GByteArray(_)
-            | StashData::PtrSlot(_)
+            | StashData::PtrSlot(_, _)
             | StashData::StrV(_)
             | StashData::HashTable => None,
         }
@@ -371,7 +375,7 @@ impl Drop for StashStorage {
             | StashData::ObjectArray(_, _)
             | StashData::CString(_)
             | StashData::Buffer(_)
-            | StashData::PtrSlot(_)
+            | StashData::PtrSlot(_, _)
             | StashData::StrV(_) => {}
         }
     }

@@ -1,5 +1,4 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import * as Gio from "@gtkx/gi/gio";
 import { quitApplication, runApplication } from "@gtkx/runtime";
 import { pickBy } from "@gtkx/utils";
 import process from "node:process";
@@ -15,50 +14,45 @@ type ApplicationComponentProps = {
 };
 
 const POST_ACTIVATE_PROPS = new Set(["menubar"]);
-const SERVICE_MODE_ARGUMENT = "--gapplication-service";
 
-const isServiceLaunch = (): boolean => process.argv.includes(SERVICE_MODE_ARGUMENT);
-
-const enterServiceMode = (application: Gtk.Application, setActivated: (isActivated: boolean) => void): void => {
-    application.setFlags(application.getFlags() | Gio.ApplicationFlags.IS_SERVICE);
-
-    application.on("activate", () => {
-        setActivated(true);
-    });
-};
+const commandLine = (applicationId: string | null): string[] => [
+    applicationId?.split(".").at(-1) ?? "gtkx",
+    ...process.argv.slice(2),
+];
 
 const startApplication = (
     application: Gtk.Application,
     setActivated: (isActivated: boolean) => void,
+    applicationId: string | null,
 ): void => {
-    const isService = isServiceLaunch();
+    application.on("activate", () => {
+        setActivated(true);
+    });
 
-    if (isService) {
-        enterServiceMode(application, setActivated);
-        runApplication(application, { isService });
+    const { exitStatus } = runApplication(application, commandLine(applicationId));
 
-        return;
+    if (exitStatus !== 0) {
+        process.exitCode = exitStatus;
     }
-
-    setActivated(runApplication(application, { isService }).isPrimary);
 };
 
 const useApplicationLifecycle = (
     application: Gtk.Application | null,
     setActivated: (isActivated: boolean) => void,
+    applicationId: string | null,
 ): void => {
     useLayoutEffect(() => {
         if (!application) {
             return;
         }
 
-        startApplication(application, setActivated);
+        startApplication(application, setActivated, applicationId);
 
         return () => {
             quitApplication(application);
             setActivated(false);
         };
-    }, [application, setActivated]);
+    }, [application, setActivated, applicationId]);
 };
 
 const applicationChildren = (application: Gtk.Application | null, children: ReactNode): ReactNode => {
@@ -75,7 +69,7 @@ const createApplicationComponent = (
     return ({ applicationId = defaultApplicationId, children, ref, ...rest }: ApplicationComponentProps): ReactNode => {
         const [application, setApplication] = useState<Gtk.Application | null>(null);
         const [activated, setActivated] = useState(false);
-        useApplicationLifecycle(application, setActivated);
+        useApplicationLifecycle(application, setActivated, applicationId);
         const mergedRef = useMergedRef(ref, setApplication);
         const appliedProps = activated ? rest : pickBy(rest, (_value, key) => !POST_ACTIVATE_PROPS.has(key));
 

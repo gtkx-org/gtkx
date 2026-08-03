@@ -26,6 +26,7 @@ const GTK: &str = "libgtk-4.so.1";
 const TEXT: &str = "gtkx-written";
 const STALE: &CStr = c"gtkx-stale";
 const REFUSED: &str = "cannot be written to a raw pointer";
+const REFUSED_ARRAY: &str = "transfer-none array cannot be written through a pointer";
 
 const _: () = assert!(size_of::<gdk::ffi::GdkRGBA>() == BLOCK_SIZE);
 const _: () = assert!(size_of::<glib::gobject_ffi::GValue>() == GVALUE_SIZE as usize);
@@ -827,28 +828,28 @@ const CELLS: &[Cell] = &[
         emitted: 322,
         on_path: 17,
         descriptor: d_array,
-        check: refuses(REFUSED),
+        check: refuses(REFUSED_ARRAY),
     },
     Cell {
         name: "array · fixed · field write",
         emitted: 83,
         on_path: 21,
         descriptor: d_fixed_array,
-        check: refuses(REFUSED),
+        check: refuses(REFUSED_ARRAY),
     },
     Cell {
         name: "array · sized · field write",
         emitted: 375,
         on_path: 2,
         descriptor: d_sized_array,
-        check: refuses(REFUSED),
+        check: refuses(REFUSED_ARRAY),
     },
     Cell {
         name: "array · gslist · field write",
         emitted: 37,
         on_path: 1,
         descriptor: d_slist,
-        check: refuses(REFUSED),
+        check: refuses(REFUSED_ARRAY),
     },
     Cell {
         name: "hashtable · field write",

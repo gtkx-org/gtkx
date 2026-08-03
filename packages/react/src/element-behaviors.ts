@@ -14,6 +14,7 @@ import { BUILTIN_ELEMENTS, SINGLE_CHILD_TYPES } from "./element-config.js";
 import {
     addRemoveSlot,
     adoptedChildrenSlot,
+    applicationCreator,
     boxSlot,
     childSetterSlot,
     controlledText,
@@ -295,6 +296,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkApplication: {
         behaviors: [
+            applicationCreator(Gtk.Application),
             addRemoveSlot<Gtk.Window, Gtk.Application>(
                 "children",
                 "GtkWindow",

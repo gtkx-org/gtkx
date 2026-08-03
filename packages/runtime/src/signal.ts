@@ -63,13 +63,6 @@ const gSignalEmitv = bind(
     voidT,
 );
 
-const gSignalHandlersBlockMatched = bind(
-    LIB,
-    "g_signal_handlers_block_matched",
-    [objectT("borrowed"), uint32T, uint32T, uint32T, objectT("borrowed"), objectT("borrowed"), objectT("borrowed")],
-    uint32T,
-);
-
 const gSignalHandlerIsConnected = bind(
     LIB,
     "g_signal_handler_is_connected",
@@ -128,11 +121,6 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
     const connect = connectBind(type, signal, callback);
 
     return connect(getHandle(instance), signal, wrapped, isAfter ? 1 : 0) as number;
-}
-
-function blockMatchedSignalHandlers(instance: object, signal: string): void {
-    const signalId = getSignalId(instance, signal);
-    gSignalHandlersBlockMatched(getHandle(instance), 1, signalId, 0, undefined, undefined, undefined);
 }
 
 const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: () => unknown } => {
@@ -196,11 +184,4 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returnDes
     );
 }
 
-export {
-    getSignalBaseName,
-    connectSignal,
-    blockMatchedSignalHandlers,
-    emitSignal,
-    isSignalHandlerConnected,
-    type SignalHandler,
-};
+export { getSignalBaseName, connectSignal, emitSignal, isSignalHandlerConnected, type SignalHandler };

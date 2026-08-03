@@ -26,7 +26,7 @@ fn string_codec() -> StringCodec {
 fn ptr_slot_stash(inner: *mut c_void) -> ffi::Stash {
     let mut slot: Vec<*mut c_void> = vec![inner];
     let raw = slot.as_mut_ptr().cast::<c_void>();
-    ffi::Stash::Storage(StashStorage::new(raw, StashData::PtrSlot(slot)))
+    ffi::Stash::Storage(StashStorage::new(raw, StashData::PtrSlot(slot, None)))
 }
 
 fn u8_array_ref_codec() -> RefCodec {
@@ -605,5 +605,130 @@ fn a_ref_string_buffer_length_beyond_addressable_memory_is_an_error() {
             napi_mock::fake_object(&[("value", napi_mock::fake_null())]),
         );
         assert!(codec.encode(&env, value).is_err());
+    });
+}
+
+fn strv_ref_codec() -> RefCodec {
+    RefCodec::new(
+        Codec::Array(
+            ArrayCodec::new(
+                Box::new(Codec::String(StringCodec {
+                    ownership: Ownership::Full,
+                    length: None,
+                })),
+                ArrayKind::Array,
+                Ownership::Full,
+                None,
+                None,
+                None,
+            )
+            .expect("valid array codec"),
+        ),
+        true,
+    )
+    .expect("Array is a valid Ref inner")
+}
+
+#[test]
+fn encode_non_empty_array_yields_a_pointer_to_the_container() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let value = napi_mock::to_unknown(
+            &env,
+            napi_mock::fake_object(&[(
+                "value",
+                napi_mock::fake_array(&[
+                    napi_mock::fake_string("probe"),
+                    napi_mock::fake_string("--count=7"),
+                ]),
+            )]),
+        );
+
+        let stash = strv_ref_codec()
+            .encode(&env, value)
+            .expect("encoding an inout string array should succeed");
+
+        let slot = stash.as_ptr("ref").expect("expected a pointer stash");
+        let container = unsafe { *slot.cast::<*mut *mut c_char>() };
+        assert!(!container.is_null());
+        assert_ne!(container.cast::<c_void>(), slot);
+
+        let first = unsafe { glib::GStr::from_ptr_lossy(*container) };
+        assert_eq!(first.to_string(), "probe");
+
+        stash.disarm_pending_transfer();
+        unsafe { glib::ffi::g_strfreev(container) };
+    });
+}
+
+#[test]
+fn decode_with_context_reads_the_container_the_callee_left_in_the_slot() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let value = napi_mock::to_unknown(
+            &env,
+            napi_mock::fake_object(&[(
+                "value",
+                napi_mock::fake_array(&[napi_mock::fake_string("before")]),
+            )]),
+        );
+        let ref_codec = strv_ref_codec();
+        let stash = ref_codec
+            .encode(&env, value)
+            .expect("encoding an inout string array should succeed");
+
+        let slot = stash.as_ptr("ref").expect("expected a pointer stash");
+        let replaced = glib::StrV::from(vec!["after"]).into_raw();
+        let discarded = unsafe { *slot.cast::<*mut *mut c_char>() };
+        unsafe { glib::ffi::g_strfreev(discarded) };
+        unsafe { *slot.cast::<*mut *mut c_char>() = replaced };
+        stash.disarm_pending_transfer();
+
+        let decoded = ref_codec
+            .decode_with_context(&env, &stash, &[], &[])
+            .expect("decoding the replaced container should succeed");
+        let items = napi_mock::read_array(decoded.raw()).expect("expected an array value");
+        assert_eq!(items.len(), 1);
+        assert_eq!(napi_mock::read_string(items[0]), Some("after".to_owned()));
+    });
+}
+
+#[test]
+fn encode_length_bounded_array_passes_the_caller_allocated_buffer_itself() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let ref_codec = RefCodec::new(
+            Codec::Array(
+                ArrayCodec::new(
+                    Box::new(Codec::Integer(IntegerCodec::U32)),
+                    ArrayKind::Sized,
+                    Ownership::Borrowed,
+                    Some(0),
+                    None,
+                    None,
+                )
+                .expect("valid sized array codec"),
+            ),
+            false,
+        )
+        .expect("Array is a valid Ref inner");
+
+        let value = napi_mock::to_unknown(
+            &env,
+            napi_mock::fake_object(&[(
+                "value",
+                napi_mock::fake_array(&[napi_mock::fake_double(0.0), napi_mock::fake_double(0.0)]),
+            )]),
+        );
+
+        let stash = ref_codec
+            .encode(&env, value)
+            .expect("encoding a caller-allocated out buffer should succeed");
+        let ffi::Stash::Storage(storage) = &stash else {
+            panic!("expected a Storage stash");
+        };
+
+        assert!(!matches!(storage.data(), StashData::PtrSlot(_, _)));
+        assert_eq!(storage.ptr(), stash.as_ptr("ref").expect("a pointer stash"));
     });
 }

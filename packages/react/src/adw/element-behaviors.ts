@@ -4,6 +4,7 @@ import type { AlertDialogResponse } from "./prop-types.js";
 import {
     addRemoveSlot,
     adoptedChildrenSlot,
+    applicationCreator,
     boxSlot,
     childMatcher,
     childSetterSlot,
@@ -113,6 +114,9 @@ const multiLayoutSlots: ElementBehavior<Adw.MultiLayoutView> = {
 };
 
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
+    AdwApplication: {
+        behaviors: [applicationCreator(Adw.Application)],
+    },
     AdwSidebar: {
         behaviors: [sidebarSections],
     },

@@ -784,6 +784,29 @@ describe("Library.resolveType", () => {
     });
 });
 
+describe("vtable slots with string-array out parameters", () => {
+    it("emits local_command_line with its inout argument vector", () => {
+        const gio = moduleSource("gio");
+        expect(gio).toContain("vfuncLocalCommandLine(arguments_: string[]): [boolean, string[], number]");
+
+        expect(gio).toContain(
+            "argDescriptors: [t.object(\"borrowed\"), " +
+            "t.ref(t.array(t.string(\"full\"), \"array\", \"full\"), true), t.ref(t.int32)],",
+        );
+    });
+
+    it("emits get_default_attributes with both of its out arrays", () => {
+        const gtk = moduleSource("gtk");
+        expect(gtk).toContain("vfuncGetDefaultAttributes(): [string[], string[]]");
+    });
+
+    it("still rejects a slot whose out array carries a separate length parameter", () => {
+        const gtk = moduleSource("gtk");
+        expect(gtk).not.toMatch(/vfuncGetAttributes\(/);
+        expect(gtk).not.toMatch(/vfuncGetSelection\(/);
+    });
+});
+
 describe("identifier naming convention", () => {
     it("exports aliases under their GIR name, never the C-prefixed c:type", () => {
         const glib = moduleSource("glib");

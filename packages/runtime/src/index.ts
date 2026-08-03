@@ -1,16 +1,11 @@
 import "./exit-hook.js";
 
 /** @public */
+export { type CommandLineApplication, deriveApplicationClass } from "./application-class.js";
+/** @public */
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 /** @public */
-export {
-    onExit,
-    quit,
-    quitApplication,
-    runApplication,
-    type RunApplicationOptions,
-    type RunApplicationResult,
-} from "./lifecycle.js";
+export { onExit, quit, quitApplication, runApplication, type RunApplicationResult } from "./lifecycle.js";
 /** @public */
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 /** @public */

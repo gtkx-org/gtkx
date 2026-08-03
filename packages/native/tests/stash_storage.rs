@@ -196,7 +196,7 @@ fn drop_no_op_kinds_do_not_crash() {
     drop(buffer);
     let ptr_storage = StashStorage::new(
         std::ptr::null_mut(),
-        StashData::PtrSlot(vec![std::ptr::null_mut()]),
+        StashData::PtrSlot(vec![std::ptr::null_mut()], None),
     );
     drop(ptr_storage);
 }

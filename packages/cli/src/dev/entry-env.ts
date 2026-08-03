@@ -1,0 +1,3 @@
+const DEV_ENTRY_ENV = "GTKX_DEV_ENTRY";
+
+export { DEV_ENTRY_ENV };

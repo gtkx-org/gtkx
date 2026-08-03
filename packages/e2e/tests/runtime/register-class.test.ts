@@ -246,7 +246,7 @@ describe("registerClass — construct-time vtable slots", () => {
         const name = uniqueName("GtkxConstructedRejected");
 
         class CustomObject extends GObject {
-            override vfuncConstructed(): void {
+            vfuncConstructed(): void {
                 throw new Error("constructed must never be dispatched");
             }
         }
@@ -260,7 +260,7 @@ describe("registerClass — construct-time vtable slots", () => {
         const name = uniqueName("GtkxSetPropertyRejected");
 
         class CustomObject extends GObject {
-            override vfuncSetProperty(): void {
+            vfuncSetProperty(): void {
                 throw new Error("setProperty must never be dispatched");
             }
         }

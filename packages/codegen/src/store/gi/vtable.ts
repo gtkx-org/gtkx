@@ -8,6 +8,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import {
     isInlineCallbackRef,
     isScalarRef,
+    isStrvRef,
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
@@ -224,7 +225,8 @@ const renderVfuncMember = (
 const isUnsupportedOutParam = (context: ModuleContext, param: GirParameter): boolean =>
     (param.direction === "out" || param.direction === "inout") &&
     !param.callerAllocates &&
-    !isScalarRef(context.library, param.type);
+    !isScalarRef(context.library, param.type) &&
+    !isStrvRef(context.library, param.type);
 
 const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boolean => {
     if (param.isVarargs) {
