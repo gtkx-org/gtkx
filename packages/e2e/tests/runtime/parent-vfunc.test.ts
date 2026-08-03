@@ -96,6 +96,24 @@ describe("callParent — hierarchy depth", () => {
     });
 });
 
+describe("callParent — construct-time slots", () => {
+    it("runs the parent implementation of `vfuncConstructed` from inside the override", () => {
+        const order: string[] = [];
+
+        class ChainedLabel extends Gtk.Label {
+            override vfuncConstructed(): void {
+                callParent(ChainedLabel, "vfuncConstructed", this);
+                order.push("after-parent");
+            }
+        }
+
+        registerClass(ChainedLabel, { typeName: uniqueName("GtkxChainUpConstructedLabel") });
+        const label = new ChainedLabel({ label: LABEL_TEXT });
+        expect(order).toEqual(["after-parent"]);
+        expect(measureWidth(label)[0]).toBe(plainWidth());
+    });
+});
+
 describe("callParent — interface vtable slots", () => {
     it("runs the interface implementation the parent type carries", () => {
         class CountingStore extends Gio.ListStore {

@@ -36,6 +36,7 @@ const guideSidebar = [
     { text: "Configuration and Codegen", link: "/guide/configuration-and-codegen" },
     { text: "Async Operations", link: "/guide/async-operations" },
     { text: "Error Handling", link: "/guide/error-handling" },
+    { text: "Subclassing GObject", link: "/guide/subclassing" },
     { text: "Components", link: "/guide/components" },
     { text: "Modals and Portals", link: "/guide/modals-and-portals" },
     { text: "CSS", link: "/guide/css" },

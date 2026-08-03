@@ -74,4 +74,4 @@ export { getBoxedValue, setBoxedValue } from "./value.js";
 /** @public */
 export { callParent, callVfunc } from "./vfunc-call.js";
 /** @public */
-export { alloc, type ExternalObject, type Handle, read, setWrapper, write } from "@gtkx/native";
+export { alloc, type ExternalObject, type Handle, read, write } from "@gtkx/native";

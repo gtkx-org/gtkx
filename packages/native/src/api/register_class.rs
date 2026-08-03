@@ -1,9 +1,9 @@
 use std::ffi::{c_char, c_void};
 
-use glib::translate::IntoGlib as _;
+use glib::translate::{IntoGlib as _, from_glib_none};
 use glib::{self, gobject_ffi};
-use napi::Env;
 use napi::bindgen_prelude::*;
+use napi::{Env, sys};
 use napi_derive::napi;
 
 use crate::api::vtable::{query_type, validate_vfunc_offset};
@@ -12,7 +12,9 @@ use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
-use crate::value::ClosureHandle;
+use crate::host::panic_handler::guard_ffi_boundary;
+use crate::host::{error_reporter, node_env};
+use crate::value::{self, ClosureHandle, pending_wrapper};
 
 pub struct VfuncCallback(ClosureHandle);
 
@@ -276,6 +278,42 @@ impl ResolvedInterface {
     }
 }
 
+unsafe fn associate_pending_wrapper(
+    gobject: *mut gobject_ffi::GObject,
+    wrapper: sys::napi_value,
+    associate: sys::napi_value,
+) -> Result<()> {
+    let env = node_env::env();
+    let object: glib::Object = unsafe { from_glib_none(gobject) };
+    let handle = value::handle_to_unknown(&env, Handle::decoded_gobject(object))?;
+    let wrapper = unsafe { Unknown::from_napi_value(env.raw(), wrapper) }?;
+    let associate: Function<'_, FnArgs<(Unknown<'_>, Unknown<'_>)>, ()> =
+        unsafe { Function::from_napi_value(env.raw(), associate) }?;
+
+    associate.call(FnArgs::from((handle, wrapper)))
+}
+
+unsafe fn adopt_pending_wrapper(instance: *mut gobject_ffi::GTypeInstance) {
+    let leaf_gtype = unsafe { (*(*instance).g_class).g_type };
+    let gobject = instance.cast::<gobject_ffi::GObject>();
+
+    let Some((wrapper, associate)) = pending_wrapper::claim(gobject, leaf_gtype) else {
+        return;
+    };
+
+    if let Err(error) = unsafe { associate_pending_wrapper(gobject, wrapper, associate) } {
+        error_reporter::report_str(&format!(
+            "instance init: binding the wrapper failed: {error}"
+        ));
+    }
+}
+
+unsafe extern "C" fn init_instance(instance: *mut gobject_ffi::GTypeInstance, _class: *mut c_void) {
+    guard_ffi_boundary("instance init", || unsafe {
+        adopt_pending_wrapper(instance);
+    });
+}
+
 struct ClassRegistration {
     name: glib::GString,
     parent_type: glib::Type,
@@ -344,7 +382,7 @@ impl ClassRegistration {
             class_data: std::ptr::null_mut(),
             instance_size,
             n_preallocs: 0,
-            instance_init: None,
+            instance_init: Some(init_instance),
             value_table: std::ptr::null(),
         };
 
@@ -448,6 +486,7 @@ mod tests {
     use glib::translate::FromGlib as _;
 
     use super::*;
+    use crate::ffi::codec::release_construction_ref;
 
     fn gstring(name: &str) -> glib::GString {
         glib::GString::from_string_checked(name.to_owned()).expect("valid type name")
@@ -554,6 +593,98 @@ mod tests {
             assert_ne!(type_, 0);
             let raw = glib::ffi::GType::try_from(type_).expect("GType fits in a usize");
             assert!(unsafe { glib::Type::from_glib(raw) }.is_a(plugin_type));
+        });
+    }
+
+    fn register_subtype(name: &str, parent_type: glib::Type) -> glib::Type {
+        let type_ = ClassRegistration {
+            name: gstring(name),
+            parent_type,
+            vfuncs: Vec::new(),
+            interfaces: Vec::new(),
+            properties: Vec::new(),
+        }
+        .execute()
+        .expect("registration should succeed");
+        let raw = glib::ffi::GType::try_from(type_).expect("GType fits in a usize");
+
+        unsafe { glib::Type::from_glib(raw) }
+    }
+
+    fn register_plain_subtype(name: &str) -> glib::Type {
+        register_subtype(name, glib::Object::static_type())
+    }
+
+    fn pending_values() -> (sys::napi_value, sys::napi_value) {
+        (
+            test_support::napi_mock::fake_object(&[]),
+            test_support::napi_mock::fake_function(|_| test_support::napi_mock::fake_undefined()),
+        )
+    }
+
+    #[test]
+    fn the_installed_instance_init_binds_a_pending_wrapper_before_construction_returns() {
+        node_env::run_installed(|| {
+            let type_ = register_plain_subtype("GtkxRegisterClassPendingWrapperType");
+            let (wrapper, associate) = pending_values();
+            let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper, associate) };
+            let object = glib::Object::with_type(type_);
+
+            assert_eq!(
+                guard.claimed_instance(),
+                Some(glib::prelude::ObjectType::as_ptr(&object))
+            );
+            assert_eq!(test_support::napi_mock::count("napi_call_function"), 1);
+
+            drop(guard);
+            drop(object);
+            test_support::napi_mock::reset();
+            test_support::pump_default_context_until(|| false);
+        });
+    }
+
+    #[test]
+    fn the_installed_instance_init_leaves_an_instance_nobody_is_waiting_for_alone() {
+        node_env::run_installed(|| {
+            let type_ = register_plain_subtype("GtkxRegisterClassUnclaimedType");
+            let object = glib::Object::with_type(type_);
+            let object_ptr = glib::prelude::ObjectType::as_ptr(&object);
+
+            assert!(!unsafe { value::wrapper::has_wrapper(object_ptr) });
+            assert_eq!(test_support::napi_mock::count("napi_call_function"), 0);
+
+            drop(object);
+        });
+    }
+
+    #[test]
+    fn the_wrapper_a_floating_instance_binds_owns_the_reference_construction_hands_back() {
+        node_env::run_installed(|| {
+            let type_ = register_subtype(
+                "GtkxRegisterClassFloatingClaimType",
+                glib::InitiallyUnowned::static_type(),
+            );
+            let (wrapper, associate) = pending_values();
+            let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper, associate) };
+            let instance = unsafe {
+                gobject_ffi::g_object_new_with_properties(
+                    type_.into_glib(),
+                    0,
+                    std::ptr::null_mut(),
+                    std::ptr::null(),
+                )
+            };
+
+            assert_eq!(guard.claimed_instance(), Some(instance));
+            assert_eq!(unsafe { gobject_ffi::g_object_is_floating(instance) }, 0);
+
+            unsafe { release_construction_ref(instance) };
+
+            assert_eq!(unsafe { test_support::get_gobject_refcount(instance) }, 1);
+
+            drop(guard);
+            test_support::napi_mock::reset();
+            test_support::pump_default_context_until(|| false);
         });
     }
 

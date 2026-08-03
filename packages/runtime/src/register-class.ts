@@ -26,6 +26,8 @@ type RegisterClassOptions = {
      * Properties to install on the new type, keyed by canonical name and valued with the
      * `GObject.ParamSpec` describing each. Every property gains dashed, underscored and camelCased
      * prototype accessors that emit `notify` on write, unless the class already defines that name.
+     * A class that defines `vfuncSetProperty` or `vfuncGetProperty` itself backs that direction with
+     * its own method instead of the generated accessor dispatch.
      */
     properties?: Record<string, PropertySpec>;
 };
@@ -36,21 +38,36 @@ type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
 type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
 type InterfaceVfuncBinding = { gtype: bigint; vtableSize: number; vfuncs: DiscoveredInterfaceVfunc[] };
 
-const UNSUPPORTED_CONSTRUCT_VFUNCS: Set<string> = new Set([
-    "vfuncConstructed",
-    "vfuncSetProperty",
-    "vfuncGetProperty",
-]);
+type PropertyVfuncSpec = {
+    methodName: string;
+    isValueOut: boolean;
+    makeDispatch: (accessors: PropertyAccessor[]) => VfuncFn;
+};
 
 const VALUE_ARG_INDEX = 2;
+
+const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
+    { methodName: "vfuncGetProperty", isValueOut: true, makeDispatch: makeGetProperty },
+    { methodName: "vfuncSetProperty", isValueOut: false, makeDispatch: makeSetProperty },
+];
+
+const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec) => spec.methodName));
 
 /**
  * Registers a subclass of a wrapper class as a new GType, wiring up any class and
  * inherited-interface virtual functions it overrides. Throws if the class does not
- * extend a registered wrapper class, has no derivable type name, or overrides an
- * unsupported construct-time vtable slot.
+ * extend a registered wrapper class or has no derivable type name.
+ *
+ * An override of `vfuncConstructed` runs from inside the base constructor, before JavaScript
+ * installs the subclass's field initializers and runs its constructor body, so a field still
+ * reads `undefined` there and reading a `#private` field throws. Declare state the override
+ * touches without an initializer, and assign private state from the constructor body after
+ * `super()`. An instance a native caller creates, through `GObject.newv` or `Gtk.Builder`,
+ * never runs the subclass constructor at all, so its declared fields stay uninitialized for
+ * the object's whole life.
  *
  * @param klass The subclass to register.
+ * @param options What the new GType gains beyond the vtable slots the class overrides.
  * @returns The same class, now registered.
  */
 function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions = {}): T {
@@ -89,6 +106,13 @@ function resolveParentType(klass: AnyClass): bigint {
     );
 }
 
+function getOwnMethod(klass: AnyClass, methodName: string): VfuncFn | undefined {
+    const proto = (klass as { prototype?: object }).prototype;
+    const descriptor = proto === undefined ? undefined : Object.getOwnPropertyDescriptor(proto, methodName);
+
+    return typeof descriptor?.value === "function" ? (descriptor.value as VfuncFn) : undefined;
+}
+
 function ownInstanceMethodNames(klass: AnyClass): string[] {
     const proto = (klass as { prototype?: object }).prototype;
 
@@ -96,13 +120,9 @@ function ownInstanceMethodNames(klass: AnyClass): string[] {
         return [];
     }
 
-    return Object.getOwnPropertyNames(proto).filter((name) => {
-        if (name === "constructor") {
-            return false;
-        }
-
-        return typeof Object.getOwnPropertyDescriptor(proto, name)?.value === "function";
-    });
+    return Object.getOwnPropertyNames(proto).filter(
+        (name) => name !== "constructor" && getOwnMethod(klass, name) !== undefined,
+    );
 }
 
 function buildDiscoveredVfunc<K extends "class" | "interface">(
@@ -154,19 +174,11 @@ function collectDiscoveredVfuncs<K extends "class" | "interface">(
 }
 
 function discoverClassVfuncs(klass: AnyClass): DiscoveredClassVfunc[] {
-    return collectDiscoveredVfuncs(klass, (methodName) => {
-        const descriptor = findClassVfuncDescriptor(klass, methodName);
-
-        if (descriptor && UNSUPPORTED_CONSTRUCT_VFUNCS.has(methodName)) {
-            throw new Error(
-                `registerClass: overriding the GObject construct-time vtable slot '${methodName}' is not ` +
-                "supported; run construct-time initialization in the subclass constructor, after " +
-                "super(...), instead",
-            );
-        }
-
-        return descriptor ?? undefined;
-    });
+    return collectDiscoveredVfuncs(
+        klass,
+        (methodName) => findClassVfuncDescriptor(klass, methodName) ?? undefined,
+        PROPERTY_VFUNC_NAMES,
+    );
 }
 
 function wrapVfunc(
@@ -207,15 +219,23 @@ function discoverInterfaceVfuncs(
     );
 }
 
-function propertyVfuncs(klass: AnyClass, accessors: PropertyAccessor[]): DiscoveredClassVfunc[] {
-    if (accessors.length === 0) {
-        return [];
-    }
+const makeAccessorDispatch = (accessors: PropertyAccessor[], spec: PropertyVfuncSpec): VfuncFn | undefined =>
+    accessors.length === 0 ? undefined : spec.makeDispatch(accessors);
 
-    return [
-        buildPropertyVfunc(klass, "vfuncGetProperty", makeGetProperty(accessors), true),
-        buildPropertyVfunc(klass, "vfuncSetProperty", makeSetProperty(accessors), false),
-    ];
+function propertyVfuncFor(
+    klass: AnyClass,
+    accessors: PropertyAccessor[],
+    spec: PropertyVfuncSpec,
+): DiscoveredClassVfunc | undefined {
+    const fn = getOwnMethod(klass, spec.methodName) ?? makeAccessorDispatch(accessors, spec);
+
+    return fn === undefined ? undefined : buildPropertyVfunc(klass, spec.methodName, fn, spec.isValueOut);
+}
+
+function propertyVfuncs(klass: AnyClass, accessors: PropertyAccessor[]): DiscoveredClassVfunc[] {
+    return PROPERTY_VFUNC_SPECS.map((spec) => propertyVfuncFor(klass, accessors, spec)).filter(
+        (vfunc) => vfunc !== undefined,
+    );
 }
 
 function markValueCallerAllocated(argDescriptors: Descriptor[]): Descriptor[] {

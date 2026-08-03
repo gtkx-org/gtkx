@@ -70,6 +70,53 @@ describe("super.vfunc — class vtable slots", () => {
     });
 });
 
+describe("super.vfunc — construct-time slots", () => {
+    it("reaches each level of a two-level hierarchy while the object is constructed", () => {
+        const order: string[] = [];
+
+        class BaseObject extends GObject {
+            override vfuncConstructed(): void {
+                order.push("Base");
+                super.vfuncConstructed();
+            }
+        }
+
+        class DerivedObject extends BaseObject {
+            override vfuncConstructed(): void {
+                order.push("Derived-pre");
+                super.vfuncConstructed();
+                order.push("Derived-post");
+            }
+        }
+
+        registerClass(BaseObject, { typeName: uniqueName("GtkxSuperConstructedBase") });
+        registerClass(DerivedObject, { typeName: uniqueName("GtkxSuperConstructedDerived") });
+        expect(new DerivedObject()).toBeInstanceOf(BaseObject);
+        expect(order).toEqual(["Derived-pre", "Base", "Derived-post"]);
+    });
+
+    it("reaches the widget implementation the outermost wrapper class carries", () => {
+        const constructed: object[] = [];
+
+        class ConstructedLabel extends Gtk.Label {
+            override vfuncConstructed(): void {
+                super.vfuncConstructed();
+                constructed.push(this);
+            }
+        }
+
+        registerClass(ConstructedLabel, { typeName: uniqueName("GtkxSuperConstructedLabel") });
+        const label = new ConstructedLabel({ label: LABEL_TEXT });
+        expect(constructed).toEqual([label]);
+        const box = new Gtk.Box();
+        box.append(label);
+        expect(label.getParent()).toBe(box);
+        expect(measureWidth(label)).toBe(plainWidth());
+        label.setLabel("still a working label");
+        expect(label.getLabel()).toBe("still a working label");
+    });
+});
+
 describe("super.vfunc — interface vtable slots", () => {
     it("chains up to the implementation the interface vtable carries", () => {
         class CountingStore extends Gio.ListStore {

@@ -43,7 +43,6 @@ type Vtable = {
 const PADDING_FIELD_NAME = /^(?:reserved|padding)\d*$/i;
 
 const UNCALLABLE_SLOT_KEYS: Set<string> = new Set([
-    "vfuncConstructed",
     "vfuncDispose",
     "vfuncFinalize",
     "vfuncGetProperty",
@@ -51,6 +50,13 @@ const UNCALLABLE_SLOT_KEYS: Set<string> = new Set([
 ]);
 
 const vfuncMemberName = (fieldName: string): string => `vfunc${pascalCase(fieldName)}`;
+
+const vfuncMemberNote = (slot: VtableSlot): string =>
+    [
+        `Invokes the \`${slot.field.name}\` vtable slot. Override it on a class passed to \`registerClass\``,
+        `and chain up with \`super.${slot.key}()\`; calling it from anywhere else re-enters the slot on a`,
+        "live instance.",
+    ].join("\n");
 
 const isPaddingField = (field: GirField): boolean =>
     field.name.startsWith("_") || PADDING_FIELD_NAME.test(field.name);
@@ -209,7 +215,7 @@ const renderVfuncMember = (
     });
 
     const header = `${slot.key}(${signature}): ${returnType}`;
-    const doc = renderJsDoc(slot.callback.doc);
+    const doc = renderJsDoc(slot.field.doc ?? slot.callback.doc, vfuncMemberNote(slot));
 
     if (mode === "signature") {
         return `${doc}${header};`;

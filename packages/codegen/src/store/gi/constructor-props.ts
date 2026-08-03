@@ -75,14 +75,7 @@ const renderClassConstructor = (
 const renderRootConstructor = (context: ModuleContext): string => {
     context.addRuntimeImport("getInstanceType");
     context.addRuntimeImport("newObjectWithProperties");
-    context.addRuntimeImport("setHandle");
-    context.addRuntimeImport("setWrapper");
-
-    const body = [
-        "const handle = newObjectWithProperties(getInstanceType(this), props);",
-        "setHandle(this, handle);",
-        "setWrapper(handle, this);",
-    ].join("\n");
+    const body = "newObjectWithProperties(getInstanceType(this), props, this);";
 
     return renderBlock(`constructor(props: ${PROPS_RECORD} = {})`, body);
 };

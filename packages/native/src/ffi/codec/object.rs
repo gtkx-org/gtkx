@@ -7,7 +7,14 @@ use super::prelude::*;
 use crate::handle::Handle;
 use crate::value::wrapper;
 
-unsafe fn acquire_decoded_ref(gobject_ptr: *mut glib::gobject_ffi::GObject, ownership: Ownership) {
+unsafe fn keeps_own_construction_ref(gobject_ptr: *mut glib::gobject_ffi::GObject) -> bool {
+    unsafe { glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast()) }
+}
+
+pub(crate) unsafe fn acquire_decoded_ref(
+    gobject_ptr: *mut glib::gobject_ffi::GObject,
+    ownership: Ownership,
+) {
     if ownership.is_borrowed() {
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
         return;
@@ -17,13 +24,18 @@ unsafe fn acquire_decoded_ref(gobject_ptr: *mut glib::gobject_ffi::GObject, owne
         unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
         return;
     }
-    let pin_until_wrapper_adopts = unsafe {
-        glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast())
-            && !wrapper::has_wrapper(gobject_ptr)
-    };
+    let pin_until_wrapper_adopts =
+        unsafe { keeps_own_construction_ref(gobject_ptr) && !wrapper::has_wrapper(gobject_ptr) };
     if pin_until_wrapper_adopts {
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
     }
+}
+
+pub(crate) unsafe fn release_construction_ref(gobject_ptr: *mut glib::gobject_ffi::GObject) {
+    if unsafe { keeps_own_construction_ref(gobject_ptr) } {
+        return;
+    }
+    unsafe { glib::gobject_ffi::g_object_unref(gobject_ptr) };
 }
 
 unsafe fn tracked_gobject_value(

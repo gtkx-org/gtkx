@@ -353,6 +353,7 @@ export {
     getVfuncRegistry,
     getInterfaceVfuncRegistry,
     instanceClassName,
+    registerWrapper,
     resolveWrapperType,
     type StaticBase,
     type VfuncDescriptor,
