@@ -404,6 +404,26 @@ The ownership matrix caught the hash-table hole while it was open; its `hashtabl
 
 ---
 
+## 14. `gtkx dev` gave the application no command line
+
+**Severity:** high. Every GApplication option is unreachable in development, so anything driven by one can only be tested against a build.
+
+**Repro:**
+
+```sh
+gtkx dev -- --nope
+```
+
+**Actual:** the option never reaches the application. `gtkx build && node dist/bundle.js --nope` prints `Unknown option --nope` and exits 1, so the two paths disagreed about the same command line.
+
+**Cause:** the supervisor forked the dev runner with a literal empty argument list, and `dev` had no way to accept application arguments in the first place. `process.argv.slice(2)` in the child was therefore always empty.
+
+**Fix applied:** `gtkx dev [entry] -- <application arguments>` forwards everything after the separator to the app. The split happens in `cli.ts` before citty parses, because citty treats what follows `--` as ordinary positionals and would otherwise take the first one as the entry file, which resolved `--nope` to a source path and failed with `Does the file exist?`.
+
+**Also fixed: dev outlived an application that refused its command line.** The runner stops when the application emits `shutdown`, but a refused command line never registers, so that signal never came and the dev server sat there with nothing running. It now checks registration after the entry mounts and exits with the status GLib determined, matching a build.
+
+---
+
 ## Verified working
 
 Recorded so nobody re-tests them:

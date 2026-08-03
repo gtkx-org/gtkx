@@ -14,7 +14,7 @@ type SupervisedChild = {
     once(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
 };
 
-type ForkRunner = (modulePath: string, env: NodeJS.ProcessEnv, cwd: string) => SupervisedChild;
+type ForkRunner = (modulePath: string, args: string[], env: NodeJS.ProcessEnv, cwd: string) => SupervisedChild;
 
 type DevWatch = {
     paths: string[];
@@ -25,6 +25,7 @@ type SupervisorState = {
     runnerPath: string;
     entryPath: string;
     cwd: string;
+    args: string[];
     watch: DevWatch | undefined;
     watchers: FSWatcher[];
     fork: ForkRunner;
@@ -34,6 +35,14 @@ type SupervisorState = {
     capturedChildExit: number | undefined;
 };
 
+type DevSupervisorOptions = {
+    entryPath: string;
+    cwd: string;
+    args?: string[] | undefined;
+    watch?: DevWatch | undefined;
+    fork?: ForkRunner | undefined;
+};
+
 type DebounceTimer = { handle: NodeJS.Timeout | null };
 
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
@@ -41,8 +50,8 @@ const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
 const RESTART_EXIT_CODE = 75;
 
-const defaultForkRunner: ForkRunner = (modulePath, env, cwd) =>
-    nodeFork(modulePath, [], { cwd, env, stdio: "inherit", detached: true });
+const defaultForkRunner: ForkRunner = (modulePath, args, env, cwd) =>
+    nodeFork(modulePath, args, { cwd, env, stdio: "inherit", detached: true });
 
 const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => {
     if (!child.killed) {
@@ -96,6 +105,7 @@ const handleChildExit = (state: SupervisorState, code: number | null, signal: No
 const launch = (state: SupervisorState): void => {
     const child = state.fork(
         state.runnerPath,
+        state.args,
         { ...process.env, [DEV_ENTRY_ENV]: state.entryPath },
         state.cwd,
     );
@@ -253,16 +263,14 @@ const installShutdown = (state: SupervisorState): void => {
     });
 };
 
-const runDevSupervisor = async (
-    entryPath: string,
-    cwd: string,
-    watch?: DevWatch,
-    fork: ForkRunner = defaultForkRunner,
-): Promise<never> => {
+const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> => {
+    const { entryPath, cwd, args = [], watch, fork = defaultForkRunner } = options;
+
     const state: SupervisorState = {
         runnerPath: fileURLToPath(DEV_RUNNER_URL),
         entryPath,
         cwd,
+        args,
         watch,
         watchers: [],
         fork,
@@ -279,4 +287,12 @@ const runDevSupervisor = async (
     return new Promise<never>((): void => undefined);
 };
 
-export { RESTART_EXIT_CODE, defaultForkRunner, runDevSupervisor, type SupervisedChild, type ForkRunner, type DevWatch };
+export {
+    RESTART_EXIT_CODE,
+    defaultForkRunner,
+    runDevSupervisor,
+    type DevSupervisorOptions,
+    type DevWatch,
+    type ForkRunner,
+    type SupervisedChild,
+};

@@ -1,8 +1,10 @@
 import { packageVersion } from "@gtkx/utils";
 import { defineCommand, runMain } from "citty";
+import { splitApplicationArgs } from "./internal/application-args.js";
 import { withErrorBoundary } from "./internal/errors.js";
 
 const version = packageVersion(import.meta.url);
+const { cliArgs } = splitApplicationArgs(process.argv.slice(2));
 
 const main = defineCommand({
     meta: {
@@ -39,4 +41,4 @@ const main = defineCommand({
     },
 });
 
-await runMain(main);
+await runMain(main, { rawArgs: cliArgs });

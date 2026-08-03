@@ -4,6 +4,7 @@ import { EventEmitter } from "node:events";
 import { watch as watchFs } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import {
+    type DevWatch,
     type ForkRunner,
     RESTART_EXIT_CODE,
     runDevSupervisor,
@@ -28,12 +29,9 @@ const watchMock = vi.mocked(watchFs);
 
 const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
-const superviseUntilExit = async (
-    entry: string,
-    watch?: Parameters<typeof runDevSupervisor>[2],
-): Promise<boolean> => {
+const superviseUntilExit = async (entry: string, watch?: DevWatch, args?: string[]): Promise<boolean> => {
     try {
-        await runDevSupervisor(entry, TEST_CWD, watch, forkMock);
+        await runDevSupervisor({ entryPath: entry, cwd: TEST_CWD, args, watch, fork: forkMock });
 
         return true;
     } catch {
@@ -41,8 +39,8 @@ const superviseUntilExit = async (
     }
 };
 
-const startWithForkMock = (entry: string, watch?: Parameters<typeof runDevSupervisor>[2]): void => {
-    void superviseUntilExit(entry, watch);
+const startWithForkMock = (entry: string, watch?: DevWatch, args?: string[]): void => {
+    void superviseUntilExit(entry, watch, args);
 };
 
 function queueChild(): FakeChild {
@@ -112,9 +110,9 @@ const setupSupervisorCtx = (): SupervisorContext => {
     return ctx;
 };
 
-const startSupervisor = async (entry = "/abs/src/main.tsx"): Promise<FakeChild> => {
+const startSupervisor = async (entry = "/abs/src/main.tsx", args?: string[]): Promise<FakeChild> => {
     const child = queueChild();
-    startWithForkMock(entry);
+    startWithForkMock(entry, undefined, args);
     await Promise.resolve();
 
     return child;
@@ -179,15 +177,33 @@ describe("runDevSupervisor (startup)", () => {
     it("forks the dev runner with the entry in the environment and the project cwd", async () => {
         await startSupervisor("/abs/src/main.tsx");
         expect(forkMock).toHaveBeenCalledOnce();
-        const [, env, cwd] = forkMock.mock.calls[0] ?? [];
+        const call = forkMock.mock.calls[0] ?? [];
+        const [env, cwd] = [call[2], call[3]];
         expect(env?.GTKX_DEV_ENTRY).toBe("/abs/src/main.tsx");
         expect(cwd).toBe(TEST_CWD);
     });
 
     it("leaves the runner argv free of supervisor arguments", async () => {
         await startSupervisor("/abs/src/main.tsx");
-        const [modulePath] = forkMock.mock.calls[0] ?? [];
+        const [modulePath, args] = forkMock.mock.calls[0] ?? [];
         expect(modulePath).toContain("gtkx-dev-runner.js");
+        expect(args).toEqual([]);
+    });
+
+    it("hands the application its own arguments", async () => {
+        await startSupervisor("/abs/src/main.tsx", ["--count=7", "file.db"]);
+        const [, args] = forkMock.mock.calls[0] ?? [];
+        expect(args).toEqual(["--count=7", "file.db"]);
+    });
+
+    it("keeps handing them over after a restart", async () => {
+        const child = await startSupervisor("/abs/src/main.tsx", ["--count=7"]);
+        queueChild();
+        child.emit("exit", RESTART_EXIT_CODE, null);
+        await flushMicrotasks();
+        expect(forkMock).toHaveBeenCalledTimes(2);
+        const [, args] = forkMock.mock.calls[1] ?? [];
+        expect(args).toEqual(["--count=7"]);
     });
 });
 

@@ -11,7 +11,7 @@ const ensureGeneratedMock = vi.mocked(ensureGenerated);
 const resolveConfigWatchMock = vi.mocked(resolveConfigWatch);
 const runDevSupervisorMock = vi.mocked(runDevSupervisor);
 
-const runDev = (entry?: string): Promise<unknown> => {
+const runDev = (entry?: string, argv?: string[]): Promise<unknown> => {
     const run = dev.run;
 
     if (!run) {
@@ -19,6 +19,10 @@ const runDev = (entry?: string): Promise<unknown> => {
     }
 
     const args = { entry } as DevContext["args"];
+
+    if (argv !== undefined) {
+        vi.spyOn(process, "argv", "get").mockReturnValue(["node", "gtkx", ...argv]);
+    }
 
     return Promise.resolve(run({ rawArgs: [], args, cmd: dev }));
 };
@@ -51,15 +55,49 @@ describe("dev command", () => {
 
         expect(resolveConfigWatchMock).toHaveBeenCalledExactlyOnceWith(expect.any(String), "development");
         expect(runDevSupervisorMock).toHaveBeenCalledOnce();
-        const [entryPath, cwd, watch] = runDevSupervisorMock.mock.calls[0] ?? [];
-        expect(entryPath).toMatch(/src\/main\.tsx$/);
-        expect(typeof cwd).toBe("string");
-        expect(watch).toBe(watchSentinel);
+        const [options] = runDevSupervisorMock.mock.calls[0] ?? [];
+        expect(options?.entryPath).toMatch(/src\/main\.tsx$/);
+        expect(typeof options?.cwd).toBe("string");
+        expect(options?.watch).toBe(watchSentinel);
     });
 
     it("uses src/index.tsx as the default entry when no positional is supplied", async () => {
         await runDev();
-        const [entryPath] = runDevSupervisorMock.mock.calls[0] ?? [];
-        expect(entryPath).toMatch(/src\/index\.tsx$/);
+        const [options] = runDevSupervisorMock.mock.calls[0] ?? [];
+        expect(options?.entryPath).toMatch(/src\/index\.tsx$/);
+    });
+});
+
+describe("dev command — arguments for the application", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it("forwards everything after the separator", async () => {
+        await runDev("src/main.tsx", ["dev", "src/main.tsx", "--", "--count=7", "file.db"]);
+        const [options] = runDevSupervisorMock.mock.calls[0] ?? [];
+        expect(options?.args).toEqual(["--count=7", "file.db"]);
+    });
+
+    it("passes nothing when no separator is present", async () => {
+        await runDev("src/main.tsx", ["dev", "src/main.tsx", "--cwd", "/proj"]);
+        const [options] = runDevSupervisorMock.mock.calls[0] ?? [];
+        expect(options?.args).toEqual([]);
+    });
+
+    it("passes nothing when the separator is last", async () => {
+        await runDev("src/main.tsx", ["dev", "src/main.tsx", "--"]);
+        const [options] = runDevSupervisorMock.mock.calls[0] ?? [];
+        expect(options?.args).toEqual([]);
+    });
+
+    it("keeps a separator that belongs to the application", async () => {
+        await runDev("src/main.tsx", ["dev", "--", "--count=7", "--", "rest"]);
+        const [options] = runDevSupervisorMock.mock.calls[0] ?? [];
+        expect(options?.args).toEqual(["--count=7", "--", "rest"]);
     });
 });

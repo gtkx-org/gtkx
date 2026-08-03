@@ -19,6 +19,7 @@ type HarnessOverrides = {
     applicationId?: string | null;
     configuredApplicationId?: string;
     isBoundary?: (mod: Record<string, unknown>) => boolean;
+    isApplicationRegistered?: boolean;
 };
 
 type HarnessMocks = {
@@ -87,6 +88,7 @@ const buildDeps = (mocks: HarnessMocks, plugins: Plugin[], overrides: HarnessOve
     startMcpClient: mocks.startMcp,
     stopMcpClient: mocks.stopMcp,
     watchApplicationShutdown: mocks.watchAppShutdown,
+    isApplicationRegistered: () => overrides.isApplicationRegistered ?? true,
     installShutdownHandlers: mocks.installShutdownHandlers,
     quitDefaultApplication: mocks.quitDefaultApp,
     performRefresh: mocks.performRefresh,
@@ -221,6 +223,28 @@ describe("createDevRunner (entry loading)", () => {
         const harness = buildHarness();
         await startRunner(harness);
         expect(harness.server.ssrLoadModule).toHaveBeenCalledWith(ENTRY);
+    });
+});
+
+describe("createDevRunner (a command line the application refused)", () => {
+    it("stops the runner instead of watching an application that never registered", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app", isApplicationRegistered: false });
+        const previousExitCode = process.exitCode;
+        process.exitCode = 1;
+        await startRunner(harness);
+        process.exitCode = previousExitCode;
+        expect(harness.server.close).toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(1);
+        expect(harness.watchAppShutdown).not.toHaveBeenCalled();
+        expect(harness.startMcp).not.toHaveBeenCalled();
+        expect(loggedMessages(harness).some((m) => m.includes("refused its command line"))).toBe(true);
+    });
+
+    it("keeps running when the application registered", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app" });
+        await startRunner(harness);
+        expect(harness.server.close).not.toHaveBeenCalled();
+        expect(harness.watchAppShutdown).toHaveBeenCalled();
     });
 });
 
