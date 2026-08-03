@@ -2,28 +2,59 @@ import { onExit, quitApplication, runApplication } from "@gtkx/runtime";
 import { describe, expect, it, vi } from "vitest";
 import type { ApplicationLike } from "../src/lifecycle.js";
 
+type CommandLineOutcome = {
+    isRegistered: boolean;
+    hasActivated: boolean;
+    exitStatus: number;
+};
+
+type FakeApplicationOptions = {
+    outcome?: Partial<CommandLineOutcome>;
+    windows?: object[];
+};
+
 const nativeMock = vi.hoisted(() => ({ quit: vi.fn(), keepAlive: vi.fn() }));
-const signalMock = vi.hoisted(() => ({ blockMatchedSignalHandlers: vi.fn() }));
+const DEFAULT_OUTCOME: CommandLineOutcome = { isRegistered: true, hasActivated: true, exitStatus: 0 };
 
 class FakeApplication implements ApplicationLike {
     private handlers: Record<"activate" | "shutdown", (() => void)[]> = { activate: [], shutdown: [] };
     private isRegistered = false;
+    private outcome: CommandLineOutcome;
 
-    registerCalls = 0;
     activateCalls = 0;
-    quitCalls = 0;
+    registerCalls = 0;
     runCalls = 0;
     shutdownEmits = 0;
-    lastRunArgv: string[] | null = null;
+    lastArgv: string[] | null = null;
     windows: object[];
-    windowsAtRun: number | null = null;
+    windowsAtShutdown: number | null = null;
 
-    constructor(windows: object[] = []) {
+    constructor({ outcome, windows = [] }: FakeApplicationOptions = {}) {
+        this.outcome = { ...DEFAULT_OUTCOME, ...outcome };
         this.windows = [...windows];
     }
 
     getIsRegistered(): boolean {
         return this.isRegistered;
+    }
+
+    vfuncLocalCommandLine(argv: string[]): [boolean, string[], number] {
+        this.lastArgv = argv;
+        this.isRegistered = this.outcome.isRegistered;
+
+        if (this.outcome.hasActivated) {
+            this.activate();
+        }
+
+        return [true, argv, this.outcome.exitStatus];
+    }
+
+    run(argv: string[]): number {
+        this.runCalls++;
+        this.emit("shutdown");
+        this.isRegistered = false;
+
+        return argv.length;
     }
 
     register(): boolean {
@@ -36,20 +67,6 @@ class FakeApplication implements ApplicationLike {
     activate(): void {
         this.activateCalls++;
         this.emit("activate");
-    }
-
-    quit(): void {
-        this.quitCalls++;
-    }
-
-    run(argv: string[]): number {
-        this.runCalls++;
-        this.lastRunArgv = argv;
-        this.windowsAtRun = this.windows.length;
-        this.isRegistered = false;
-        this.emit("shutdown");
-
-        return 0;
     }
 
     getWindows(): object[] {
@@ -67,11 +84,12 @@ class FakeApplication implements ApplicationLike {
     emit(signal: "activate" | "shutdown"): void {
         if (signal === "shutdown") {
             this.shutdownEmits++;
+            this.windowsAtShutdown = this.windows.length;
         }
 
-        const signalHandlers = this.handlers[signal];
+        const handlers = this.handlers[signal];
 
-        for (const handler of signalHandlers) {
+        for (const handler of handlers) {
             handler();
         }
     }
@@ -83,83 +101,105 @@ vi.mock("@gtkx/native", async (importOriginal) => {
     return { ...actual, quit: nativeMock.quit, keepAlive: nativeMock.keepAlive };
 });
 
-vi.mock("../src/signal.js", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../src/signal.js")>();
-
-    return { ...actual, blockMatchedSignalHandlers: signalMock.blockMatchedSignalHandlers };
-});
-
 describe("runApplication and quitApplication — full lifecycle", () => {
-    it("registers, activates, and holds the loop alive until shutdown", () => {
+    it("hands the command line to GLib, activates, and holds the loop alive until shutdown", () => {
         const app = new FakeApplication();
         nativeMock.keepAlive.mockClear();
-        runApplication(app);
-        expect(app.registerCalls).toBe(1);
+        expect(runApplication(app, ["probe", "--flag"])).toEqual({ isPrimary: true, exitStatus: 0 });
+        expect(app.lastArgv).toEqual(["probe", "--flag"]);
         expect(app.activateCalls).toBe(1);
-        expect(app.getIsRegistered()).toBe(true);
         expect(nativeMock.keepAlive).toHaveBeenLastCalledWith(true);
         quitApplication(app);
-        expect(signalMock.blockMatchedSignalHandlers).toHaveBeenCalledWith(app, "activate");
-        expect(app.lastRunArgv).toEqual([]);
         expect(app.shutdownEmits).toBe(1);
-        expect(app.quitCalls).toBe(1);
-        expect(app.getIsRegistered()).toBe(false);
         expect(nativeMock.keepAlive).toHaveBeenLastCalledWith(false);
-        quitApplication(app);
-        expect(app.runCalls).toBe(1);
     });
 
-    it("blocks activate handlers before running the application", () => {
+    it("leaves GLib's own shutdown alone for an application GTKX did not derive", () => {
         const app = new FakeApplication();
-        const order: string[] = [];
-
-        signalMock.blockMatchedSignalHandlers.mockImplementationOnce(() => {
-            order.push("block");
-        });
-
-        const originalRun = app.run.bind(app);
-
-        app.run = (argv: string[]) => {
-            order.push("run");
-
-            return originalRun(argv);
-        };
-
-        runApplication(app);
+        runApplication(app, ["probe"]);
         quitApplication(app);
-        expect(order).toEqual(["block", "run"]);
+        expect(app.runCalls).toBe(0);
+        expect(app.shutdownEmits).toBe(1);
     });
 
-    it("removes every held window before running the application", () => {
-        const app = new FakeApplication([{ id: "w1" }, { id: "w2" }]);
-        runApplication(app);
+    it("shuts down only once", () => {
+        const app = new FakeApplication();
+        runApplication(app, ["probe"]);
+        quitApplication(app);
+        quitApplication(app);
+        expect(app.shutdownEmits).toBe(1);
+    });
+
+    it("removes every held window before shutting down", () => {
+        const app = new FakeApplication({ windows: [{ id: "w1" }, { id: "w2" }] });
+        runApplication(app, ["probe"]);
         quitApplication(app);
         expect(app.windows).toEqual([]);
-        expect(app.windowsAtRun).toBe(0);
+        expect(app.windowsAtShutdown).toBe(0);
+    });
+
+    it("does nothing when the command line left the application unregistered", () => {
+        const app = new FakeApplication({ outcome: { isRegistered: false, hasActivated: false } });
+        runApplication(app, ["probe"]);
+        quitApplication(app);
+        expect(app.shutdownEmits).toBe(0);
     });
 });
 
-describe("runApplication and quitApplication — registration and keepalive", () => {
-    it("does not re-register an already-registered application", () => {
+describe("runApplication — starting an application a second time", () => {
+    it("registers and activates instead of reading the command line again", () => {
         const app = new FakeApplication();
-        app.register();
-        runApplication(app);
+        runApplication(app, ["probe"]);
+        quitApplication(app);
+        app.lastArgv = null;
+        expect(runApplication(app, ["probe", "--flag"])).toEqual({ isPrimary: true, exitStatus: 0 });
+        expect(app.lastArgv).toBeNull();
         expect(app.registerCalls).toBe(1);
+        expect(app.activateCalls).toBe(2);
+        expect(app.getIsRegistered()).toBe(true);
+    });
+
+    it("shuts down again after being started again", () => {
+        const app = new FakeApplication();
+        runApplication(app, ["probe"]);
+        quitApplication(app);
+        runApplication(app, ["probe"]);
+        quitApplication(app);
+        expect(app.shutdownEmits).toBe(2);
+    });
+});
+
+describe("runApplication — registration and keepalive", () => {
+    it("holds the loop alive for a registered application that never activated", () => {
+        const app = new FakeApplication({ outcome: { hasActivated: false } });
+        nativeMock.keepAlive.mockClear();
+
+        expect(runApplication(app, ["probe", "--gapplication-service"])).toEqual({
+            isPrimary: true,
+            exitStatus: 0,
+        });
+
+        expect(app.activateCalls).toBe(0);
+        expect(nativeMock.keepAlive).toHaveBeenCalledTimes(1);
+        expect(nativeMock.keepAlive).toHaveBeenCalledWith(true);
+        app.activate();
+        expect(app.activateCalls).toBe(1);
         quitApplication(app);
     });
 
-    it("does nothing when the application was never registered", () => {
-        const app = new FakeApplication();
-        quitApplication(app);
-        expect(app.runCalls).toBe(0);
-        expect(app.shutdownEmits).toBe(0);
+    it("reports the exit status and stays non-primary when nothing registered", () => {
+        const app = new FakeApplication({
+            outcome: { isRegistered: false, hasActivated: false, exitStatus: 2 },
+        });
+
+        expect(runApplication(app, ["probe", "--nope"])).toEqual({ isPrimary: false, exitStatus: 2 });
         expect(app.activateCalls).toBe(0);
     });
 
     it("forwards keepalive to the native loop on each activation", () => {
         const app = new FakeApplication();
         nativeMock.keepAlive.mockClear();
-        runApplication(app);
+        runApplication(app, ["probe"]);
         app.activate();
         expect(app.activateCalls).toBe(2);
         expect(nativeMock.keepAlive).toHaveBeenCalledWith(true);

@@ -3,6 +3,7 @@ import { fork as nodeFork } from "node:child_process";
 import { type FSWatcher, watch as watchFs } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEV_ENTRY_ENV } from "./entry-env.js";
 
 type SupervisedChild = {
     killed: boolean;
@@ -13,7 +14,7 @@ type SupervisedChild = {
     once(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
 };
 
-type ForkRunner = (modulePath: string, args: string[], cwd: string) => SupervisedChild;
+type ForkRunner = (modulePath: string, env: NodeJS.ProcessEnv, cwd: string) => SupervisedChild;
 
 type DevWatch = {
     paths: string[];
@@ -40,8 +41,8 @@ const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
 const RESTART_EXIT_CODE = 75;
 
-const defaultForkRunner: ForkRunner = (modulePath, args, cwd) =>
-    nodeFork(modulePath, [...args], { cwd, stdio: "inherit", detached: true });
+const defaultForkRunner: ForkRunner = (modulePath, env, cwd) =>
+    nodeFork(modulePath, [], { cwd, env, stdio: "inherit", detached: true });
 
 const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => {
     if (!child.killed) {
@@ -93,7 +94,12 @@ const handleChildExit = (state: SupervisorState, code: number | null, signal: No
 };
 
 const launch = (state: SupervisorState): void => {
-    const child = state.fork(state.runnerPath, [state.entryPath], state.cwd);
+    const child = state.fork(
+        state.runnerPath,
+        { ...process.env, [DEV_ENTRY_ENV]: state.entryPath },
+        state.cwd,
+    );
+
     state.child = child;
 
     child.on("exit", (code, signal) => {

@@ -29,7 +29,9 @@ describe("Root.unmount", () => {
 
         const shutdownHandler = vi.fn();
         app.on("shutdown", shutdownHandler);
+        expect(app.getIsRegistered()).toBe(true);
         await unmount();
         expect(shutdownHandler).toHaveBeenCalledTimes(1);
+        expect(app.getIsRegistered()).toBe(false);
     });
 });

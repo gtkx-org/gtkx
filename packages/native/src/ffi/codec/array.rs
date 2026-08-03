@@ -52,6 +52,13 @@ impl ArrayCodec {
     pub(crate) fn ptr_array_item(&self) -> Option<Box<Codec>> {
         matches!(self.container, ArrayContainerCodec::PtrArray(_)).then(|| self.item_codec.clone())
     }
+
+    fn container_release(&self) -> ffi::ReleaseKind {
+        match &*self.item_codec {
+            Codec::String(item) if item.ownership.is_full() => ffi::ReleaseKind::StrFreeV,
+            _ => ffi::ReleaseKind::GFree,
+        }
+    }
 }
 
 pub(super) fn build_js_array<'e>(
@@ -133,6 +140,34 @@ impl PtrWriter for ArrayCodec {
         let container =
             encode_and_leak_container(value, "array vfunc return", |v| self.encode(env, v));
         unsafe { ret.store(container) };
+    }
+
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+        init: SlotInit,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+        anyhow::ensure!(
+            self.ownership.is_full(),
+            "A transfer-none array cannot be written through a pointer: nothing would own the container"
+        );
+        let container =
+            encode_and_leak_container(&Ok(value), "array pointer write", |v| self.encode(env, v));
+
+        if !init.is_initialized() {
+            unsafe { slot.store(container) };
+            return Ok(None);
+        }
+
+        let previous = unsafe { slot.swap(container) };
+
+        if !previous.is_null() {
+            ffi::PendingTransfer::new(previous, self.container_release()).release_now();
+        }
+
+        Ok(None)
     }
 }
 

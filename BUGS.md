@@ -348,16 +348,16 @@ Adding `new Adw.ApplicationWindow({ application })` to that same remote applicat
 
 **Fix applied:** `runApplication` now returns `{ isPrimary }`. A remote instance forwards activation to the primary and reports `isPrimary: false`, and the application component gates its children on that, so no window is ever attached to a remote application. The second instance exits `0` and the primary stays up and is raised.
 
-**Related, also fixed:** `runApplication` never looked at `argv`, so `--gapplication-service` was inert and the app activated on startup no matter how it was launched. Any D-Bus start popped a window, including starts meant only to query actions.
+**Related, also fixed:** `runApplication` never looked at `argv`, so every GApplication option was inert and the app activated on startup no matter how it was launched. Any D-Bus start popped a window, including starts meant only to query actions.
 
-`runApplication` now takes `{ isService }`. In service mode it registers, holds the runtime alive, and does not activate; the application component sets `G_APPLICATION_IS_SERVICE` and gates its children on the `activate` signal, so the user interface is built when a caller activates rather than at startup. Verified over the session bus:
+`runApplication` now takes the command line and hands it to `local_command_line`, GLib's own implementation, so option parsing, `--help`, `handle-local-options`, registration, remote forwarding, service mode and activation all behave as they do in a C application, and the exit status GLib determined is returned. Nothing about `--gapplication-service` is special-cased: GLib consumes it and sets `G_APPLICATION_IS_SERVICE` itself. The application component gates its children on the `activate` signal on every path, so the user interface is built when the application is activated rather than at startup. Verified over the session bus:
 
 ```
 before Activate:  node /com/gtkx/hello_world { interface org.gtk.Application { ... }; };
 after  Activate:  node /com/gtkx/hello_world { interface org.gtk.Application { ... }; node window { }; };
 ```
 
-`g_application_run()` is still never called, because it would block Node's event loop; GTKX drives the GLib main context from a libuv prepare callback instead. Options other than `--gapplication-service` remain unparsed.
+`g_application_run()` is not what starts the application, because it would block Node's event loop; GTKX drives the GLib main context from a libuv prepare callback instead, and calls only the `local_command_line` vfunc that `run()` delegates all of its local work to. `quitApplication` does call `run([])`, once every window is detached, because its tail is the only public path that emits `shutdown`, destroys the `GApplicationImpl` and clears `is-registered`. That is safe because GTKX builds every application from a subclass whose `local_command_line` chains up the first time and short-circuits afterwards, so the second pass never re-enters `g_application_parse_command_line`, whose `!priv->options_parsed` assertion would otherwise be followed by a `NULL` `GError` dereference and `SIGSEGV`.
 
 ---
 

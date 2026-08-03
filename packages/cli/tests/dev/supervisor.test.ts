@@ -176,12 +176,18 @@ vi.mock("node:fs", async (importActual) => {
 describe("runDevSupervisor (startup)", () => {
     setupSupervisorCtx();
 
-    it("forks the dev runner with the supplied entry and project cwd", async () => {
+    it("forks the dev runner with the entry in the environment and the project cwd", async () => {
         await startSupervisor("/abs/src/main.tsx");
         expect(forkMock).toHaveBeenCalledOnce();
-        const [, args, cwd] = forkMock.mock.calls[0] ?? [];
-        expect(Array.isArray(args) ? args[0] : undefined).toBe("/abs/src/main.tsx");
+        const [, env, cwd] = forkMock.mock.calls[0] ?? [];
+        expect(env?.GTKX_DEV_ENTRY).toBe("/abs/src/main.tsx");
         expect(cwd).toBe(TEST_CWD);
+    });
+
+    it("leaves the runner argv free of supervisor arguments", async () => {
+        await startSupervisor("/abs/src/main.tsx");
+        const [modulePath] = forkMock.mock.calls[0] ?? [];
+        expect(modulePath).toContain("gtkx-dev-runner.js");
     });
 });
 

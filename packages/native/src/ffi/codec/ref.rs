@@ -80,12 +80,15 @@ impl Encoder for RefCodec {
                     && inner.is_array()?
                     && Array::from_unknown(inner)?.len() > 0
                 {
-                    let encoded = array_codec.encode(env, inner)?;
-                    anyhow::ensure!(
-                        matches!(encoded, ffi::Stash::Storage(_)),
-                        "Expected Storage from array encode for Ref<Array>"
-                    );
-                    Ok(encoded)
+                    let ffi::Stash::Storage(storage) = array_codec.encode(env, inner)? else {
+                        bail!("Expected Storage from array encode for Ref<Array>")
+                    };
+
+                    if array_codec.is_length_bounded() {
+                        return Ok(ffi::Stash::Storage(storage));
+                    }
+
+                    Ok(Self::ptr_slot_stash(storage))
                 } else if is_nullish || (inner_type == ValueType::Object && inner.is_array()?) {
                     Ok(Self::null_ptr_stash())
                 } else {
@@ -210,7 +213,7 @@ impl Decoder for RefCodec {
             };
 
             let actual_ptr = match storage.data() {
-                StashData::PtrSlot(_) => unsafe { *(storage.ptr() as *const *mut c_void) },
+                StashData::PtrSlot(_, _) => unsafe { *(storage.ptr() as *const *mut c_void) },
                 _ => storage.ptr(),
             };
 
@@ -221,7 +224,7 @@ impl Decoder for RefCodec {
             let ptr_stash = ffi::Stash::Ptr(actual_ptr);
             let result = array_codec.decode_with_context(env, &ptr_stash, ffi_args, arg_codecs);
 
-            if matches!(storage.data(), StashData::PtrSlot(_))
+            if matches!(storage.data(), StashData::PtrSlot(_, _))
                 && array_codec.ownership.is_full()
                 && array_codec.is_length_bounded()
             {
@@ -249,9 +252,17 @@ impl RefCodec {
     }
 
     fn null_ptr_stash() -> ffi::Stash {
-        let mut slot: Vec<*mut c_void> = vec![std::ptr::null_mut()];
+        Self::slot_stash(std::ptr::null_mut(), None)
+    }
+
+    fn ptr_slot_stash(inner: StashStorage) -> ffi::Stash {
+        Self::slot_stash(inner.ptr(), Some(Box::new(inner)))
+    }
+
+    fn slot_stash(target: *mut c_void, inner: Option<Box<StashStorage>>) -> ffi::Stash {
+        let mut slot: Vec<*mut c_void> = vec![target];
         let ptr = slot.as_mut_ptr().cast::<c_void>();
-        ffi::Stash::Storage(StashStorage::new(ptr, StashData::PtrSlot(slot)))
+        ffi::Stash::Storage(StashStorage::new(ptr, StashData::PtrSlot(slot, inner)))
     }
 
     fn scalar_out_stash(encoded: &ffi::Stash) -> anyhow::Result<ffi::Stash> {

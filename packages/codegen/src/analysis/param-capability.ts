@@ -5,7 +5,7 @@ import type { ModuleContext } from "../writer/context.js";
 import { isCallerAllocatedOut, isInoutParameter } from "../gir/parameter.js";
 import { constructibleName } from "../store/gi/method.js";
 import { isCollectibleCallerOut, isHandlePassedInPlace, underlyingType } from "../store/gi/param-marshal.js";
-import { isScalarRef, recordInlineSize } from "./descriptor-render.js";
+import { isScalarRef, isStrvRef, recordInlineSize } from "./descriptor-render.js";
 
 const POINTER_DEPTH = 1;
 
@@ -154,7 +154,8 @@ const hasUnmarshalableParam = (context: ModuleContext, callable: GirCallable): b
 const isUnmarshalableSlotParam = (context: ModuleContext, parameter: GirParameter): boolean =>
     (parameter.direction === "out" || parameter.direction === "inout") &&
     !parameter.callerAllocates &&
-    !isScalarRef(context.library, parameter.type);
+    !isScalarRef(context.library, parameter.type) &&
+    !isStrvRef(context.library, parameter.type);
 
 export {
     declaredIndirection,

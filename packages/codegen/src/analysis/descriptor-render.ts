@@ -255,8 +255,28 @@ const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
     return type !== undefined && isScalarType(library, type);
 };
 
+const isStringElement = (library: Library, element: TypeId): boolean => {
+    const type = library.typeFor(element);
+
+    return type?.kind === "primitive" && type.category === "string";
+};
+
+const isUnboundedArray = (type: CArrayType): boolean =>
+    type.isZeroTerminated && type.lengthParameterIndex === undefined && type.fixedSize === undefined;
+
+const isStrvRef = (library: Library, ref: TypeId | undefined): boolean => {
+    const type = ref === undefined ? undefined : library.typeFor(ref);
+
+    if (type?.kind !== "carray") {
+        return false;
+    }
+
+    return isUnboundedArray(type) && isStringElement(library, type.element);
+};
+
 const isCellInout = (library: Library, parameter: GirParameter): boolean =>
-    isInoutParameter(parameter) && isScalarRef(library, parameter.type);
+    isInoutParameter(parameter) &&
+    (isScalarRef(library, parameter.type) || isStrvRef(library, parameter.type));
 
 const renderParamDescriptor = (
     context: ModuleContext,
@@ -723,6 +743,7 @@ export {
     shouldOmitPrimaryReturn,
     renderDescriptor,
     isScalarRef,
+    isStrvRef,
     isCellInout,
     recordInlineSize,
     renderParamDescriptor,

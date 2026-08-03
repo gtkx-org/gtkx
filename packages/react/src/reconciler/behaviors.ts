@@ -1,7 +1,14 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
-import { getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
+import {
+    type CommandLineApplication,
+    deriveApplicationClass,
+    getInstanceType,
+    TYPE_INVALID,
+    typeFromName,
+    typeIsA,
+} from "@gtkx/runtime";
+import { type AnyClass, getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 import { applyWrite } from "./signals.js";
 import { hasSameText } from "./text.js";
@@ -300,7 +307,14 @@ const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedInserter>(
     initialize: (): RowCache => new WeakMap(),
 });
 
+const applicationCreator = <P extends GObject.Object & CommandLineApplication>(
+    base: AnyClass<P>,
+): ElementBehavior<P> => ({
+    create: (props) => new (deriveApplicationClass(base) as new (props: Props) => P)(props),
+});
+
 export {
+    applicationCreator,
     childMatcher,
     slot,
     value,

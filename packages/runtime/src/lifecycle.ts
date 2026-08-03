@@ -1,5 +1,5 @@
 import { keepAlive, quit as nativeQuit } from "@gtkx/native";
-import { blockMatchedSignalHandlers } from "./signal.js";
+import { shutDownThroughRun } from "./application-class.js";
 
 /**
  * The GIO and GTK application surface {@link runApplication} and {@link quitApplication} drive, so any
@@ -15,9 +15,16 @@ type ApplicationLike = {
     register(cancellable: null): boolean;
     /** Emits `activate`, bringing up the application's initial user interface. */
     activate(): void;
-    /** Quits the application, so `run` returns at the next main-loop iteration after `shutdown` runs. */
-    quit(): void;
-    /** Runs the application's main loop until it shuts down and returns the exit status. */
+    /**
+     * Runs GLib's local command line handling: parses the options, registers the application,
+     * forwards or dispatches activation, and returns whether the command line was fully handled,
+     * the arguments left unconsumed, and the exit status.
+     */
+    vfuncLocalCommandLine(argv: string[]): [boolean, string[], number];
+    /**
+     * Runs GLib's own `g_application_run`, whose tail emits `shutdown`, destroys the application
+     * implementation and clears the registration.
+     */
     run(argv: string[]): number;
     /** Returns the windows currently attached to the application. */
     getWindows?(): object[];
@@ -25,25 +32,21 @@ type ApplicationLike = {
     removeWindow?(window: object): void;
     /** Connects a handler to the application's `activate` or `shutdown` signal. */
     on(signal: "activate" | "shutdown", handler: () => void): unknown;
+    /** Emits one of the application's own signals. */
+    emit(signal: "shutdown"): unknown;
 };
 
-/** What {@link runApplication} reports about the process it just registered. */
+/** What {@link runApplication} reports about the process it just started. */
 type RunApplicationResult = {
     /** Whether this process owns the application ID and may build a user interface. */
     isPrimary: boolean;
-};
-
-/** How {@link runApplication} should start the application it registers. */
-type RunApplicationOptions = {
-    /**
-     * Registers without activating, for a process started in D-Bus service mode with
-     * `--gapplication-service`. The application waits for a caller to activate it
-     * instead of presenting a window on startup.
-     */
-    isService?: boolean | undefined;
+    /** The status GLib determined for the command line, which the process should exit with. */
+    exitStatus: number;
 };
 
 const shutdownCallbacks: (() => void)[] = [];
+const startedApplications: WeakSet<object> = new WeakSet();
+const shutDownApplications: WeakSet<object> = new WeakSet();
 /**
  * Runs every registered exit callback and shuts down the native runtime. Safe to
  * call more than once; only the first call takes effect.
@@ -78,31 +81,8 @@ const onExit = (callback: () => void): void => {
     shutdownCallbacks.push(callback);
 };
 
-/**
- * Registers the application if needed and activates it, keeping the runtime alive
- * while it is active and releasing it on shutdown.
- *
- * When another process already owns the application ID, this one registers as a
- * remote instance: activation is forwarded to the primary and no user interface
- * may be built here, because a remote application has no `GtkApplicationImpl` and
- * attaching a window to it crashes.
- *
- * @param application The application to register and activate.
- * @returns The run result, whose `isPrimary` reports whether this process may build a user interface.
- */
-const runApplication = (
-    application: ApplicationLike,
-    options: RunApplicationOptions = {},
-): RunApplicationResult => {
-    if (!application.getIsRegistered()) {
-        application.register(null);
-    }
-
-    if (application.getIsRemote?.() === true) {
-        application.activate();
-
-        return { isPrimary: false };
-    }
+const startApplication = (application: ApplicationLike, argv: string[]): number => {
+    startedApplications.add(application);
 
     application.on("activate", () => {
         keepAlive(true);
@@ -112,26 +92,68 @@ const runApplication = (
         keepAlive(false);
     });
 
-    if (options.isService === true) {
-        keepAlive(true);
+    return application.vfuncLocalCommandLine(argv)[2];
+};
 
-        return { isPrimary: true };
-    }
-
+const restartApplication = (application: ApplicationLike): number => {
+    shutDownApplications.delete(application);
+    application.register(null);
     application.activate();
 
-    return { isPrimary: true };
+    return 0;
 };
 
 /**
- * Detaches every window from the application and runs its main loop until it shuts
- * down, so pending shutdown work completes before the process exits. Does nothing
- * when the application was never registered.
+ * Hands `argv` to GLib's own command line handling, which parses the application's options, prints
+ * `--help`, runs `handle-local-options`, registers the application, and either activates it or
+ * forwards the command line to the process that already owns the application ID. The runtime is
+ * held alive while the application is active and released on shutdown.
+ *
+ * `g_application_run()` is not what starts the application, because it would drive its own main loop
+ * and freeze Node; only the local command line handling it delegates to runs here. {@link
+ * quitApplication} calls it once no window holds the application open, to reach the teardown only it
+ * performs.
+ *
+ * GLib parses a given application's command line at most once, so starting an application that has
+ * already run registers and activates it instead of reading `argv` again.
+ *
+ * When another process already owns the application ID, this one registers as a remote instance: no
+ * user interface may be built here, because a remote application has no `GtkApplicationImpl` and
+ * attaching a window to it crashes.
+ *
+ * @param application The application to start.
+ * @param argv The command line, whose first entry names the program as `--help` should print it.
+ * @returns Whether this process may build a user interface, and the status to exit with.
+ */
+const runApplication = (application: ApplicationLike, argv: string[]): RunApplicationResult => {
+    const exitStatus = startedApplications.has(application)
+        ? restartApplication(application)
+        : startApplication(application, argv);
+
+    const isPrimary = application.getIsRegistered() && application.getIsRemote?.() !== true;
+
+    if (isPrimary) {
+        keepAlive(true);
+    }
+
+    return { isPrimary, exitStatus };
+};
+
+/**
+ * Detaches every window from the application and runs GLib's own shutdown, which emits `shutdown`,
+ * destroys the application implementation and releases the D-Bus registration. Does nothing for an
+ * application that is not registered, so a repeated call is a no-op.
+ *
+ * GLib's own shutdown is reachable once per application, and only for one built from
+ * `deriveApplicationClass`, which every application the reconciler builds is: reaching it marks the
+ * application as quitting, which GLib never undoes. Anything else falls back to emitting `shutdown`,
+ * which releases the runtime and leaves the registration for GLib to drop when the application is
+ * finalized.
  *
  * @param application The application to shut down.
  */
 const quitApplication = (application: ApplicationLike): void => {
-    if (!application.getIsRegistered()) {
+    if (!application.getIsRegistered() || shutDownApplications.has(application)) {
         return;
     }
 
@@ -141,20 +163,12 @@ const quitApplication = (application: ApplicationLike): void => {
         application.removeWindow?.(window);
     }
 
-    application.on("shutdown", () => {
-        application.quit();
-    });
+    shutDownThroughRun(application);
 
-    blockMatchedSignalHandlers(application, "activate");
-    application.run([]);
+    if (application.getIsRegistered()) {
+        shutDownApplications.add(application);
+        application.emit("shutdown");
+    }
 };
 
-export {
-    onExit,
-    quit,
-    runApplication,
-    quitApplication,
-    type ApplicationLike,
-    type RunApplicationOptions,
-    type RunApplicationResult,
-};
+export { onExit, quit, runApplication, quitApplication, type ApplicationLike, type RunApplicationResult };
