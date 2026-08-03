@@ -32,6 +32,15 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwTabPage: {
         isLazy: true,
     },
+    AdwLayout: {
+        isLazy: true,
+    },
+    AdwSidebarSection: {
+        props: childrenProps,
+    },
+    AdwMultiLayoutView: {
+        props: adw("AdwMultiLayoutViewProps"),
+    },
     AdwPreferencesRow: {
         props: preferencesRowProps,
     },

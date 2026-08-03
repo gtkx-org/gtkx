@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
 import * as Gtk from "@gtkx/gi/gtk";
-import { drain, kebabCase } from "@gtkx/utils";
+import { drain, isDeepEqual, kebabCase } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
@@ -116,15 +116,35 @@ const constructOnlyChangeError = (typeName: string, name: string): Error =>
         `changes with '${name}' and React will build a new one.`,
     );
 
-const assertConstructOnlyUnchanged = (typeName: string, prev: Props, next: Props): void => {
+const permanentChangeError = (typeName: string, name: string): Error =>
+    new Error(
+        `Cannot change the prop '${name}' of <${typeName}> after it is applied. ` +
+        "Nothing takes back what it already added, so give the element a key that " +
+        `changes with '${name}' and React will build a new one.`,
+    );
+
+const hasAppliedValue = (value: unknown): boolean => (Array.isArray(value) ? value.length > 0 : value !== undefined);
+
+const isConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
+    info.constructOnly.has(name) && !Object.is(change.prev[name], change.next[name]);
+
+const isPermanentChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
+    info.permanent.has(name) &&
+    hasAppliedValue(change.prev[name]) &&
+    !isDeepEqual(change.prev[name], change.next[name]);
+
+const assertPropsCanChange = (typeName: string, prev: Props, next: Props): void => {
     const info = typeInfoFor(typeName);
+    const change: PropChange = { prev, next };
 
     eachChangedName(prev, next, (name) => {
-        if (!info.constructOnly.has(name) || Object.is(prev[name], next[name])) {
-            return;
+        if (isConstructOnlyChange(info, name, change)) {
+            throw constructOnlyChangeError(typeName, name);
         }
 
-        throw constructOnlyChangeError(typeName, name);
+        if (isPermanentChange(info, name, change)) {
+            throw permanentChangeError(typeName, name);
+        }
     });
 };
 
@@ -253,5 +273,5 @@ export {
     flushBehaviors,
     applyElementProps,
     applyAdoptedProps,
-    assertConstructOnlyUnchanged,
+    assertPropsCanChange,
 };

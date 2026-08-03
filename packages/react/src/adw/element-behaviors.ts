@@ -34,6 +34,7 @@ type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;
 type PageHost = Adw.PreferencesDialog | Adw.PreferencesWindow;
 type PrefixSuffixRow = Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow;
 
+const SLOT_SUFFIX = "Slot";
 const childSetter = childSetterSlot<AdwChildSetter>();
 const contentSetter = contentSetterSlot<AdwContentSetter>();
 
@@ -103,15 +104,32 @@ const isWidget = childMatcher("GtkWidget");
 
 const multiLayoutSlots: ElementBehavior<Adw.MultiLayoutView> = {
     attach: (view, child, info) => {
-        if (info.slot === "children" || !isWidget(child)) {
+        const id = getSlotId(info.slot);
+
+        if (id === null || !isWidget(child)) {
             return;
         }
 
-        view.setChild(info.slot, child as Gtk.Widget);
+        view.setChild(id, child as Gtk.Widget);
 
         return true;
     },
 };
+
+const multiLayoutLayouts = slot<Adw.MultiLayoutView, Gtk.Widget>("layouts", "GtkWidget", {
+    attach: (view, content) => {
+        const layout = new Adw.Layout({ content });
+        view.addLayout(layout);
+
+        return layout;
+    },
+    reorder: (_view, _content, info) => info.adopted,
+    detach: (view, _content, info) => {
+        if (info.adopted instanceof Adw.Layout) {
+            view.removeLayout(info.adopted);
+        }
+    },
+});
 
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwApplication: {
@@ -128,17 +146,9 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     AdwMultiLayoutView: {
         behaviors: [
-            addRemoveSlot<Adw.Layout, Adw.MultiLayoutView>(
-                "layouts",
-                "AdwLayout",
-                (view, layout) => {
-                    view.addLayout(layout);
-                },
-                (view, layout) => {
-                    view.removeLayout(layout);
-                },
-            ),
+            multiLayoutLayouts,
             multiLayoutSlots,
+            deferred<Adw.MultiLayoutView, string>("layoutName", (view, name) => view.getLayoutByName(name) !== null),
         ],
     },
     ...forTypes(CHILD_SETTER_TYPES, {
@@ -412,6 +422,14 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         ],
     },
 };
+
+function getSlotId(name: string): string | null {
+    if (name.length <= SLOT_SUFFIX.length || !name.endsWith(SLOT_SUFFIX)) {
+        return null;
+    }
+
+    return name.slice(0, -SLOT_SUFFIX.length);
+}
 
 registerElements(BUILTIN_ELEMENTS);
 registerElements(BUILTIN_BEHAVIORS);

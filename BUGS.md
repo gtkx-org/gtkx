@@ -204,21 +204,31 @@ The supported form is documented in [Async Operations](https://gtkx.dev/guide/as
 
 ---
 
-## 7. The `AdwSidebar` and `AdwMultiLayoutView` families are still unusable from JSX
+## 7. The `AdwSidebar` and `AdwMultiLayoutView` families were unusable from JSX
 
-**Severity:** high. Partially fixed: the runtime half landed, the type half did not, and two of the elements still cannot be populated at all.
+**Severity:** high. The elements mounted without an error and silently dropped everything placed inside them.
 
-`AdwSidebar`, `AdwSidebarSection`, `AdwSidebarItem`, `AdwMultiLayoutView`, `AdwLayout`, and `AdwLayoutSlot` are all generated as mountable JSX elements (`isMountable: true` in the generated `elements.json`). Their child APIs are methods, not properties: `adw_sidebar_insert`, `adw_multi_layout_view_add_layout`. With no behavior to claim the children, the reconciler fell through to setting a named property that does not exist, so children were dropped without an error.
+`AdwSidebar`, `AdwSidebarSection`, `AdwSidebarItem`, `AdwMultiLayoutView`, `AdwLayout`, and `AdwLayoutSlot` are all generated as mountable JSX elements (`isMountable: true` in the generated `elements.json`). Their child APIs are methods, not properties: `adw_sidebar_insert`, `adw_multi_layout_view_add_layout`. With no behavior to claim the children, the reconciler fell through to setting a named property that does not exist, so children went nowhere and nothing reported it.
 
-`packages/react/src/adw/element-behaviors.ts` now registers behaviors for part of that: `AdwSidebar` and `AdwViewSwitcherSidebar` take `AdwSidebarSection` children, `AdwSidebarSection` takes `AdwSidebarItem` children, and `AdwMultiLayoutView` takes `AdwLayout` children in a `layouts` slot plus widgets in named slots that map to `setChild`. Three things still reproduce.
+Each of these had to close before either family worked:
 
-**Still broken 1: the generated props do not declare the slots the behaviors consume.** Element behaviors live in `element-behaviors.ts`, but what codegen emits comes from `element-config.ts`, and that file has no entry for any type in either family. So `AdwSidebarSectionProps` carries no `children`, and `AdwMultiLayoutViewProps` carries no `layouts` and no named slots (it carries only `layoutName` and the inherited widget props). JSX that works at runtime fails `tsc`, which is the same defect from the other side: the element is mountable and the type says it takes nothing.
+**No behavior claimed the children.** Nothing in `packages/react/src/adw/element-behaviors.ts` covered either family, so every child took the missing-property path.
 
-**Still broken 2: `AdwLayout` cannot be given content.** `Adw.Layout`'s `content` is construct-only, so the generated class exposes a getter and no setter, and nothing registers a child behavior for `AdwLayout`. Nesting an `AdwLayoutSlot` inside it raises `Adwaita-CRITICAL: Content in AdwLayout cannot be NULL`, which the test harness turns fatal through `G_DEBUG=fatal-criticals`. `AdwLayout` and `AdwLayoutSlot` stay mountable with no JSX way to populate them.
+**The generated props did not declare the slots a behavior consumes.** Behaviors live in `element-behaviors.ts`, but what codegen emits comes from `element-config.ts`, which had no entry for any type in either family. `AdwSidebarSectionProps` carried no `children`, and `AdwMultiLayoutViewProps` carried only `layoutName` and the inherited widget props, so JSX that ran correctly still failed `tsc`: the element is mountable and the type says it takes nothing.
 
-**Still broken 3: `layoutName` is applied before its layout exists.** `AdwMultiLayoutView` sets `layoutName` at the time props are applied, which is before the `AdwLayout` children attach, and Adwaita answers `Layout name ... not found`. `AdwViewStack.visibleChildName` and `AdwToggleGroup.activeName` have the same ordering problem and are gated behind a `deferred` behavior; `layoutName` has none.
+**`AdwLayout` could not be given content.** `Adw.Layout`'s `content` is construct-only, so the generated class exposes a getter and no setter. Nesting an `AdwLayoutSlot` inside it raised `Adwaita-CRITICAL: Content in AdwLayout cannot be NULL`, which the test harness turns fatal through `G_DEBUG=fatal-criticals`.
 
-**Fix:** declare the slots in `element-config.ts` so the generated props match the behaviors; give `AdwLayout` a behavior that supplies its content at construction, since the property cannot be set afterwards; and defer `layoutName` until the named layout has attached.
+**`layoutName` was applied before its layout existed.** `AdwMultiLayoutView` set it while props were applied, which is before the `AdwLayout` children attach, and Adwaita answered `Layout name ... not found`. `AdwViewStack.visibleChildName` and `AdwToggleGroup.activeName` have the same ordering problem and are gated behind a `deferred` behavior.
+
+**Fix applied:** `packages/react/src/adw/element-behaviors.ts` claims the children. `AdwSidebar` and `AdwViewSwitcherSidebar` take `AdwSidebarSection` children, `AdwSidebarSection` takes `AdwSidebarItem` children, and `AdwMultiLayoutView` takes a `layouts` slot plus widgets in named slots that map to `setChild`.
+
+`element-config.ts` declares `children` on `AdwSidebarSection` and points `AdwMultiLayoutView` at a new `AdwMultiLayoutViewProps` in `packages/react/src/adw/prop-types.ts`. `AdwSidebar` and `AdwViewSwitcherSidebar` need no entry, because they are widgets and `children` already reaches them through `GtkWidgetPropsBase`. The named slots are typed as a `${string}Slot` template index signature, and the behavior strips the suffix, so `sidebarSlot` fills the `AdwLayoutSlot` whose id is `sidebar`. A plain `[slot: string]: ReactNode` index signature cannot be written here: TypeScript checks members inherited from sibling bases against an inherited index signature, and `GtkWidgetProps`'s `onNotifyCanFocus` is not a `ReactNode` (TS2411). The template pattern claims only slot names and leaves excess-property checking intact for real props.
+
+`AdwLayout` is `isLazy`, so codegen emits `AdwLayoutElementProps = Omit<AdwLayoutProps, "content"> & { children?: ReactNode }`, dropping the construct-only `content` and letting children take its place while the parent creates the GObject. The `layouts` slot builds `new Adw.Layout({ content })` from the lazy node's child widget and returns it, so the reconciler adopts the layout and applies `name` to it. `detach` removes the adopted layout and `reorder` returns it, so reinsertion does not tear down and rebuild every layout.
+
+`layoutName` is now `deferred<Adw.MultiLayoutView, string>("layoutName", (view, name) => view.getLayoutByName(name) !== null)`, the same shape the other two use.
+
+`packages/e2e/tests/elements/sidebar.test.tsx` and `packages/e2e/tests/elements/multi-layout-view.test.tsx` mount each family from JSX and assert the children populate: sections and items land in the sidebar and survive a shrink and a mid-list insert, and the layouts, their content, the named slot children, and the deferred `layoutName` all land on the view, including a layout switch on rerender.
 
 ---
 
@@ -287,7 +297,7 @@ Label id="3"  ->  "Count: 1"      (incremented before the edit, survived it)
 
 ---
 
-## 10. `screenshot()` misdiagnoses a display that is not presenting frames
+## 10. `screenshot()` misdiagnosed a display that is not presenting frames
 
 **Severity:** medium, but it lands squarely on the MCP agent workflow, which is a headline use case.
 
@@ -300,7 +310,7 @@ Widget produced no render content (realized=true mapped=true visible=true)
 
 The message points at the widget, so it reads as an application bug. The widget is fine.
 
-**Cause:** `packages/testing/src/screenshot.ts` captures through `Gtk.WidgetPaintable`, which serves the widget's last *presented* render node. When the compositor is not presenting the surface, no frame callback arrives, the frame clock never ticks, and the cached node is never regenerated. Measured against a GNOME Wayland session with nothing viewing the window:
+**Cause:** `packages/testing/src/screenshot.ts` captured through `Gtk.WidgetPaintable`, which serves the widget's last *presented* render node. When the compositor is not presenting the surface, no frame callback arrives, the frame clock never ticks, and the cached node is never regenerated. Measured against a GNOME Wayland session with nothing viewing the window:
 
 ```
 [t+0.5s] frameCounter=0 fps=0.00 mapped=true
@@ -323,7 +333,21 @@ The first capture after the window maps succeeds, because GTK snapshots synchron
 
 This is why screenshots work under the `@gtkx/vitest` headless compositor (sway and weston do present) and why they start failing on a live session immediately after the first hot reload.
 
-**Fix:** the retry loop cannot help here, so it should stop pretending. Check `widget.getFrameClock()?.getFrameCounter()`; when it has not advanced, fail immediately with the real reason, that the display is not presenting frames to this window, rather than burning the timeout and blaming the widget. Capturing without depending on a presented frame would be better still, but the accurate diagnosis is the part that matters.
+Reproduced end to end by hiding the `GdkSurface` behind GTK's back with `window.getNative().getSurface().hide()`: the widget still reports `realized=true mapped=true visible=true`, and any later invalidation makes `Gtk.WidgetPaintable.snapshot()` yield NULL permanently, producing the exact message above.
+
+**Fix applied:** capture no longer depends on a presented frame, and when it genuinely cannot proceed it names the display.
+
+Capture runs in stages: the presented paintable node; failing that, the root's layout is forced with `root.allocate(width, height, -1, null)` and the paintable retried, which regenerates content without any presented frame; failing that, the target's children are snapshotted directly with `snapshotChild`, because a root's own paintable never recovers. Layout, not just paint, is what the frame clock withholds, which is why forcing the allocation is enough. The image is fresh rather than stale: changing a label's text while stalled produced a different image, and reverting the text reproduced the original bytes.
+
+The presentation probe is `Gdk.Surface.getMapped()` and a frame counter that advanced after a requested `UPDATE` phase, judged after 250 ms. The counter alone would misfire, because an idle healthy window's counter is frozen too; requesting a phase advances it within about 120 ms on a presenting display and cannot on a stalled one. The clock is read off the widget's root, not the widget, since an unrealized child has no clock while its window presents normally.
+
+The failures are now distinct. A stalled display throws immediately with "the display is not presenting frames to this window ... this is a display problem, not a widget problem", plus `realized`, `mapped`, `visible`, `surfaceMapped`, `frameCounter`, and the underlying capture error, instead of burning the timeout. A presenting display that painted nothing says the widget itself is empty. Anything else, such as "Widget has no size", says the capture failed for another reason. `renderToPng` renders through an explicit `Graphene.Rect` viewport, so a fallback image keeps the widget's exact dimensions and scale.
+
+**What the fallback does not carry:** a root window's own CSS background lives on the window's own render node, which GTK regenerates only during a real render, so a window captured while the display is stalled has a transparent backdrop. Every widget's own painting is present and current.
+
+**Coverage:** `packages/testing/tests/screenshot-frames.test.tsx` covers the hidden surface and the never-presented window and asserts each diagnosis. The live-session shape, a surface that stays mapped while the compositor withholds frame callbacks, cannot be reproduced under the headless compositor, because weston always presents. It runs the same stalled branch through the frozen-counter check, which is verified here only in the direction that a presenting display advances the counter on request and so raises no false alarm.
+
+No change was needed in `packages/cli/src/mcp/`: `handleScreenshot` passes the widget straight to `testing.screenshot`, `toResponseError` forwards `error.message` verbatim, and `packages/mcp`'s `errorToResult` renders that message as the tool's error text with its line breaks intact. The live application imports `@gtkx/testing` directly, so the new capture path and the new diagnosis reach the agent workflow unchanged.
 
 ---
 
@@ -369,7 +393,7 @@ after  Activate:  node /com/gtkx/hello_world { interface org.gtk.Application { .
 
 `g_application_run()` is not what starts the application, because it would block Node's event loop; GTKX drives the GLib main context from a libuv prepare callback instead, and calls only the `local_command_line` vfunc that `run()` delegates all of its local work to. `quitApplication` does call `run([])`, once every window is detached, because its tail is the only public path that emits `shutdown`, destroys the `GApplicationImpl` and clears `is-registered`. That holds because GTKX builds every application from a subclass whose `local_command_line` chains up the first time and short-circuits afterwards, so the second pass does not re-enter `g_application_parse_command_line`, whose `!priv->options_parsed` assertion is followed by a `NULL` `GError` dereference and `SIGSEGV`.
 
-**Correction:** that is an invariant of one loaded copy of `@gtkx/runtime`, not of the process. Both the "already started" record and the shutdown short-circuit are module-scope state, so a process holding two copies of the module has two of each and neither knows what the other did. Entry 16 is a configuration that loads two, and there the assertion does fire.
+**Correction:** that is an invariant of one loaded copy of `@gtkx/runtime`, not of the process. Both the "already started" record and the shutdown short-circuit are module-scope state, so a process holding two copies of the module has two of each and neither knows what the other did. Entry 16 records a configuration that loaded two, and there the assertion did fire.
 
 ---
 
@@ -464,9 +488,9 @@ With no app registered the reference did answer, from the server's own root, whi
 
 ---
 
-## 16. `gtkx dev` from source never starts the application
+## 16. `gtkx dev` from source never started the application
 
-**Severity:** high. This is the mode the repository's own guidance prescribes for running the CLI from source, so the documented contributor workflow does not start an app.
+**Severity:** high. This is the mode the repository's own guidance prescribes for running the CLI from source, so the documented contributor workflow did not start an app.
 
 **Repro**, from `examples/gtk-demo` with nothing else holding its application ID:
 
@@ -493,15 +517,195 @@ reaches `Connected application ID: org.gtkx.gtk-demo`, then `HMR enabled - watch
 
 `CLAUDE.md` prescribes exactly this mode: "running the CLI from source uses `NODE_OPTIONS=--conditions=source`".
 
-**Cause, as far as it is established.** The flags reach the application process: the dev supervisor forks the runner with `child_process.fork` and no `execArgv` override, so the forked `gtkx-dev-runner.js` carries `--conditions=source --import tsx` verbatim, which `pgrep` confirms.
+**Cause:** the forked dev runner loaded `@gtkx/runtime` twice, from two different files. A `module.registerHooks` resolve and load hook over the failing run recorded both:
 
-In that process `@gtkx/runtime` is loaded twice. A Node module-load hook over the failing run records both `packages/runtime/src/index.ts`, which is what Node resolves for the CLI, the `.gtkx` store, and `@gtkx/gi`, and `packages/runtime/dist/index.js`, which Vite's SSR module runner resolves when it externalizes the same specifier for the application's own module graph. Every module under `packages/runtime` loads twice, including `lifecycle.ts` and `application-class.ts`, whose module-scope records of which applications have started and which are shutting down are what keep GLib from parsing a command line twice. Two copies means two of each record.
+- `packages/runtime/src/index.ts`, which is what Node resolves under the process's `--conditions=source`. Imported by `packages/cli/dist/dev/runner-deps.js` and by every module of the generated `@gtkx/gi` store.
+- `packages/runtime/dist/index.js`, imported by `vite/dist/node/module-runner.js`. Vite's `fetchModule` re-resolves externalized bare ids itself with `resolve.externalConditions`, which defaults to `["node", "module-sync"]` and carries no `source`.
 
-That is the mechanism entry 11 relies on, and duplication defeats it. What is not established is which two call sites parse: an instrumented run recorded the first `local_command_line` call, through the `dist` copy, from the application component, and caught no second one. Read the duplication as confirmed and its link to the assertion as untested.
+The flags do reach the application process: the supervisor forked the runner with `child_process.fork` and no `execArgv` override, so `gtkx-dev-runner.js` carried `--conditions=source --import tsx` verbatim.
+
+Two copies means two `registry.ts` module scopes. `@gtkx/gi` registers the `Gtk.Application` and `Gio.Application` vtable descriptors into the first copy's `vfuncRegistry`, while `createApplication` and `callParent` run in the second, whose registry is empty. With the vtable guard in place that surfaces as `callParent: DerivedApplication inherits no 'vfuncLocalCommandLine' vtable slot`; without it the same divergence produced the `g_application_parse_command_line` critical above, because the started and shutting-down records that `local_command_line` short-circuits on are per copy as well. That is the mechanism entry 11 relies on, and duplication defeats it.
+
+The `@gtkx/gi` store itself stays a single instance, since it declares no `source` export condition and both resolvers land on the same `.js`, which is why the failure is a missing registry entry rather than a duplicate GType.
 
 The application ID matters to the repro. The same command in `examples/hello-world` reached `HMR enabled` while a dev server from another session already held `com.gtkx.hello-world`, so a remote instance does not hit this.
 
-**Fix:** make the process load one copy of the runtime. The supervisor knows what it forks, so it can pass an `execArgv` the runner can survive, and the dev server's SSR resolution has to agree with Node's about what `@gtkx/runtime` is under the `source` condition rather than externalizing it to `dist`.
+**Fix applied:** `defaultForkRunner` in `packages/cli/src/dev/supervisor.ts` removes `--conditions` and `-C` from the forked runner's `execArgv` and from its `NODE_OPTIONS`, in both the `--conditions=x` and the two-argument `--conditions x` spellings, and passes every other flag through. Both channels are required: `child_process.fork` inherits `execArgv`, and `NODE_OPTIONS` is inherited through the environment, which is the spelling `CLAUDE.md` prescribes. `--inspect`, `--expose-gc`, heap sizing, and `--import` belong to the application process and are kept, since `--conditions` is the only flag that changes which file a specifier resolves to.
+
+Both invocation forms now reach `Connected application ID` and `HMR enabled - watching for changes...` and stay up. `packages/cli/tests/dev/supervisor-fork.test.ts` forks a probe that reports which file `@gtkx/runtime` resolves to, under each spelling of the flag and through `NODE_OPTIONS`.
+
+**Where the fix does not belong, tried and rejected.**
+
+Not the runtime. With two copies, `registry.ts`'s class, handle, and vfunc tables, `lifecycle.ts`'s started and shut-down sets, and `registerClass`'s GType registration are all duplicated, and both copies would register the same derived GType name. Nothing inside `packages/runtime/src/` makes two copies of a GObject binding layer correct in one process.
+
+Not the Vite configuration. Passing the host's conditions to `ssr.resolve.externalConditions` does make Vite resolve `@gtkx/runtime` to `src/index.ts`, but `canExternalizeFile` only externalizes extensionless, `.js`, `.mjs`, and `.cjs` paths, so Vite then inlines the TypeScript source into its own graph and there are still two copies. Re-running the repro with that configuration reproduced the same error, with `registry.ts` loaded once by Node. Routing the CLI's own runtime access through `server.ssrLoadModule` does not help either, because `@gtkx/gi` stays externalized and pulls `@gtkx/runtime` in through Node, which just moves the split inside the application graph. Vite can never externalize a `.ts` entry, so the only way to hold one copy is for the application process to carry no custom export conditions.
+
+---
+
+## 17. Typed passwords were readable through the MCP widget tree and the testing pretty-printer
+
+**Severity:** blocker, and the only security defect in this file. Text GTK deliberately hides was handed to anything that read a widget tree, which includes an MCP agent and the output of any failing test.
+
+**Repro:** type into a `GtkPasswordEntry`, an `AdwPasswordEntryRow`, or a `GtkEntry` with `setVisibility(false)`, then call `gtkx_get_widget_tree`, or let a query fail so Testing Library prints the tree.
+
+**Actual:** the typed text appears verbatim as the node's `text`. Measured on each widget with `hunter2` typed in:
+
+```
+GtkPasswordEntry            getText -> "hunter2"
+AdwPasswordEntryRow         getText -> "hunter2"   (beat getTitle)
+GtkEntry(visibility=false)  getText -> "hunter2"
+```
+
+**Cause:** `getWidgetNodeText` in `packages/testing/src/widget-accessible-properties.ts` tried `getLabel`, `getText`, and `getTitle` in that order and returned the first non-empty result, with no regard for `GtkText:visibility` or the widget's input purpose. `getText` precedes `getTitle`, so even a row that has a title reported the password instead of its title. `packages/cli/src/mcp/serialize-widget.ts` puts that string in every node of the tree it sends an agent, and `packages/testing/src/pretty-widget.ts` prints it. `getWidgetDisplayValue` and `getWidgetSelection` leaked the same value onward through the accessible name, the text content, the matcher's `describeWidget` line, `prettyRoles`, and the DisplayValue query suggestion.
+
+**Fix applied:** `packages/testing/src/hidden-text.ts` decides generically whether a widget's text is hidden. It walks the `GtkEditable` delegate chain from a widget and reports the text as hidden when any `GtkText` or `GtkEntry` on that chain has `visibility` false or an input purpose of `PASSWORD` or `PIN`. No class-name special cases and no Adwaita import, so the layering rule holds. Verified against real widgets that this covers `GtkPasswordEntry` (delegate `GtkText`, visibility false, purpose `PASSWORD`), `AdwPasswordEntryRow` with the same delegate shape, `GtkEntry` with `setVisibility(false)`, the inner `GtkText` node the MCP tree serializes directly, and the peek case where `GtkPasswordEntry` flips the delegate's visibility to true but leaves the purpose `PASSWORD`.
+
+`REDACTED_TEXT`, the string `[redacted]`, is exported from `@gtkx/testing`. `getWidgetNodeText` skips the editable text getter for a hidden widget and falls back to its label or title, so an `AdwPasswordEntryRow` still reports its title and stays findable by label or role name, then to the marker when the hidden value is non-empty, then to null. Empty and filled stay distinguishable, and neither the length nor the content escapes. `getWidgetDisplayValue` and `getWidgetSelection` are guarded identically, which covers everything downstream of them.
+
+Author-declared metadata is left alone deliberately. `accessibleLabel`, `accessibleValueText`, `placeholder`, and `tooltip` are strings the application passed as props, not text GTK hides, and suppressing the label would stop an agent from finding the password field to type into.
+
+`packages/testing/tests/hidden-text.test.tsx` and `packages/cli/tests/mcp/hidden-text.test.ts` cover both surfaces. The `cli` Vitest project could not import `@gtkx/testing` at all, because `@gtkx/react` needs `virtual:gtkx-config`, so `packages/cli/vitest.config.ts` now loads `@gtkx/config`'s Vite plugin, `packages/cli/gtkx.config.ts` was added alongside the ones in `components`, `e2e`, and `testing`, and `knip.json` lists it as a `cli` entry.
+
+---
+
+## 18. `gtkx_query_widgets` `by: "name"` did not search accessible names
+
+**Severity:** high for the agent workflow. The obvious query for finding a labeled widget returns nothing, and nothing in the answer says why.
+
+**Repro:** render a button labeled `Save`, then
+
+```
+gtkx_query_widgets { by: "name", value: "Save" }
+```
+
+**Actual:** an empty `widgets` array and no explanation. `by: "name"` resolved to `queryAllByName`, which matches `gtk_widget_get_name`. That is the widget's own name, and GTK falls back to reporting the GType name when nothing set one, so the query that reads as "find the widget called Save" actually asked for a widget whose `gtk_widget_get_name` is `Save` and could realistically only ever have matched something like `GtkButton`. The tool's description, "Find widgets by role, text, name, or label", gives an agent no way to know that.
+
+**Fix applied:** `runNameQuery` in `packages/cli/src/mcp/handlers.ts` searches the widget name, the accessible label, and the rendered text, deduplicated, with the lookups issued in parallel so a miss costs one timeout rather than one per lookup. Every result carries `searched`, a sentence naming exactly what was compared, and for `name` it spells out that `gtk_widget_get_name` reports the GType name such as `GtkButton` when nothing was set. An empty result additionally carries `hint`, naming the query, the value, what was compared, and what to try next. `packages/mcp/src/server.ts` JSON-stringifies the whole result verbatim, so both reach the agent.
+
+`packages/testing/src/queries.ts` was deliberately left alone. `queryAllByName` correctly means `gtk_widget_get_name`, and widening it there would make `getByName("Save")` match both a button and its inner label and throw "multiple found" where it now resolves one widget. A list of matches is the expected shape only in the MCP handler.
+
+**Still open:** the tool description in `packages/mcp/src/server.ts` still reads "Find widgets by role, text, name, or label", and that is what an agent reads before it calls anything. It should say that `name` is the widest match, covering the widget name, the accessible label, and the rendered text, that `text` is the narrow rendered-text match, and that `role` accepts `options.name` for the accessible name. Renaming the `by` enum instead, to `role|text|name|labelText|type` with `name` meaning the accessible name and `type` the GType match, is a wire-format change spanning `packages/mcp/src/protocol/schemas.ts`, `server.ts`, and `handlers.ts`, so it needs a single owner.
+
+---
+
+## 19. `gtkx_take_screenshot` did not capture popovers
+
+**Severity:** medium. An agent that opens a menu and screenshots the window gets a picture with no menu in it and nothing saying anything is missing.
+
+**Repro:** open a `GtkPopover` from a button, then screenshot the window.
+
+**Actual:** the PNG was byte-identical to the one taken with the popover closed, while the popover's own `Gtk.WidgetPaintable` rendered fine at 132x55. A popover lives on its own surface, so it is not part of the window's render node.
+
+**Fix applied:** `captureSnapshot` in `packages/testing/src/screenshot.ts` walks the target's descendants for mapped `Gtk.Popover`s and snapshots each one's paintable translated to its computed bounds origin. `gtk_widget_compute_bounds(popover, window)` does cross the native and surface boundary, returning `(334, 27, 132, 55)` and matching `gdk_popup_get_position_x/y`, so no manual surface transform is needed. Compositing is applied on both capture paths from entry 10.
+
+Rendering moved from `renderTexture(node, null)` to an explicit viewport rectangle, so the image stays exactly the captured widget's rectangle: a popover spilling outside is clipped rather than silently growing the PNG and desynchronizing it from the reported width and height.
+
+`packages/testing/tests/screenshot.test.tsx` asserts that an open popover changes the window image, that a spilling popover is clipped, and that the image stays stable while every popover is closed.
+
+---
+
+## 20. A `list()` prop the library cannot take back appended instead of replacing
+
+**Severity:** high. The wrong value is applied silently, and the test that covered it could not have noticed.
+
+**Repro:** render `<GtkAboutDialog creditSections={A} />`, then rerender it with `creditSections={B}`.
+
+**Actual:** the credits page shows the contents of A and B together. GTK has no counterpart to `gtk_about_dialog_add_credit_section`, so the sections already added stay and the new list is added on top. The test that covered this, `keeps the initial sections when the prop changes`, asserted only `programName` and would have passed whatever the credits contained.
+
+**Cause:** `list()` in `packages/react/src/reconciler/behaviors.ts` tore down the previous entries before applying the new ones, but `teardownList` returned early when the behavior supplied no `remove` hook, and the update then applied the new items regardless.
+
+**Fix applied:** a `list()` with neither a `remove` nor a `clear` hook declares its prop permanent, and the reconciler's pre-commit guard rejects a change to it instead of letting the old value stand and the new one pile on top.
+
+`ElementBehavior` gains `permanent?: string[]` next to `deferred`, and `list()` sets it exactly when both hooks are absent. The fact that a list cannot be torn down is the absence of those hooks, so deriving the declaration there makes the two impossible to disagree: adding a `clear` later drops the guard by itself. Declaring it in the element config would restate what the hooks already say and would not cover behaviors projects define through `defineElements`. `TypeInfo` accumulates `permanent` along the ancestry chain the way it accumulates `deferred`, and `assertConstructOnlyUnchanged` became `assertPropsCanChange` in `packages/react/src/reconciler/apply-props.ts`, checking construct-only props by identity and permanent props by deep equality, each with its own message. `teardownList`'s early return is gone: with no removal hook there is nothing to tear down and the loop simply does not run.
+
+The comparison is `isDeepEqual`, the same one `list()` uses for its snapshot, so `creditSections={[...]}` written inline does not throw on the first re-render, where `Object.is` would have. An absent or empty previous value counts as nothing applied yet, so supplying the list for the first time after mount is allowed, while replacing or removing an applied list throws.
+
+`GtkScale`'s `marks` is not the same shape: it passes `clear: (scale) => scale.clearMarks()`, so it stays replaceable and its existing test still passes. Of every `list()` in the workspace, only `creditSections` and the new `mainOptions` end up permanent; `items`, `widgets`, `vfl`, `actionAccels`, `markedDays`, `offsets`, and Adwaita's `responses` all have a `remove` or a `clear`.
+
+**Also added: `GtkApplication`'s `mainOptions`.** A `list()` calling `gtk_application_add_main_option`, permanent because GLib exposes only `addMainOption` and `addMainOptionEntries`. `MainOption` takes `shortName` as a single character and defaults `flags` and `arg` to `NONE`. The timing works because the behavior's update runs in the reconciler commit and `startApplication` runs in a `useLayoutEffect` afterwards, so an option is registered before GLib parses the command line. That is what `useApplication()` cannot reach, since the application element renders children only after activate.
+
+`packages/e2e/tests/elements/about-dialog.test.tsx` now reads the credits page and asserts each section and person appears once, that changing or removing the list throws, and that an equal array built again on the next render is accepted. `packages/e2e/tests/elements/application.test.tsx` covers `mainOptions`.
+
+---
+
+## 21. `GLib.Variant.newBytestring` truncates binary data at the first NUL
+
+**Severity:** high. Any application storing bytes in a `GVariant`, which is the shape both GNOME's secret storage and GSettings take, loses data with no error.
+
+**Repro:**
+
+```ts
+const v = GLib.Variant.newBytestring([1, 2, 0, 3, 4]);
+console.log(v.getSize(), v.getDataAsBytes().getData(), v.getBytestring());
+```
+
+**Actual:**
+
+```
+3   [1, 2, 0]   [1, 2]
+```
+
+Five bytes went in, two came out plus a terminator.
+
+**Cause:** `g_variant_new_bytestring` takes a NUL-terminated `const gchar *` and calls `strlen` on it. GIR types that parameter as an array of bytes, so the generated signature is `newBytestring(string: number[])` and the descriptor is `t.array(t.uint8, "array", "borrowed")`, which reads like a byte buffer and is not one. Nothing in the name or the type says the value stops at the first zero.
+
+**Working route**, which round trips every byte:
+
+```ts
+const v = GLib.Variant.newFromBytes(GLib.VariantType.new("ay"), GLib.Bytes.new(buf), true);
+v.getDataAsBytes().getData();   // [1, 2, 0, 3, 4]
+```
+
+**Fix:** none applied. `newBytestring` is faithful to the C function, so the gap is that a JavaScript caller has no way to see the constraint. The generated binding should carry it, either in its documentation or by refusing a buffer that contains a zero, and the guide should point at the `newFromBytes` route for binary payloads.
+
+---
+
+## 22. GTKX cannot export a D-Bus object
+
+**Severity:** high. Exporting an object is how an application implements a service, a search provider, or a portal backend, and there is no way to write one.
+
+**Repro:**
+
+```ts
+const conn = Gio.busGetSync(Gio.BusType.SESSION, null);
+const node = Gio.DBusNodeInfo.newForXml(
+    "<node><interface name='com.example.Probe'><method name='Ping'/></interface></node>",
+);
+const info = node.lookupInterface("com.example.Probe");
+conn.registerObject("/com/example/Probe", info, () => console.log("called"), null, null);
+await conn.call(conn.getUniqueName(), "/com/example/Probe", "com.example.Probe", "Ping",
+    null, null, Gio.DBusCallFlags.NONE, 2000, null);
+```
+
+**Actual:** `registerObject` returns a registration id, and the interface even appears in the path's introspection XML, so it reads as a success. The call answers
+
+```
+GDBus.Error:org.freedesktop.DBus.Error.UnknownMethod: Object does not exist at path “/com/example/Probe”
+```
+
+and the JavaScript function is never invoked. Registering with explicit `null` closures produces the identical error, so the function was silently dropped rather than rejected.
+
+**Cause:** `Gio.DBusConnection.registerObject` and `registerObjectWithClosures2` are both generated, and each takes `GObject.Closure | null` for the method-call, get-property, and set-property handlers. GTKX cannot build a `GObject.Closure` from a JavaScript function. `Closure`'s only statics are `newObject(sizeofClosure, object)` and `newSimple(sizeofClosure, data)`, neither of which binds a callback; `new GObject.Closure()` yields an empty struct and provokes `g_closure_unref: assertion 'old_flags.flags.ref_count > 0' failed`; `CClosure` exposes only marshallers, and `g_cclosure_new` is not generated. `registerObjectWithClosures`, the first spelling, is not generated at all, and nothing in `packages/runtime/src/` handles `GClosure`.
+
+**Fix:** GTKX already marshals JavaScript functions into C callbacks for signals and for vtable slots, so what is missing is a `GClosure` whose marshaller dispatches into that machinery, accepted wherever a `GObject.Closure` parameter appears. Until then the call should refuse a value it cannot marshal rather than reporting an id for an object it did not export.
+
+---
+
+## 23. `gtkx_fire_event` reports success for a signal that never fires
+
+**Severity:** medium. The tool answers `Fired event` whether or not anything happened, so an agent cannot tell a real emission from a no-op.
+
+**Repro:** take the widget id of a button inside a closed `GtkPopover`, then
+
+```
+gtkx_fire_event { widgetId: "...", signal: "activate" }
+```
+
+**Actual:** `Fired event`, and `clicked` is never emitted. The button is `realized=false mapped=false`, and `gtk_button_real_activate` bails on an unrealized widget. With the popover open the same call does emit `clicked`, but only after GTK's activate animation of roughly 250 ms, so the emission is asynchronous even when it works.
+
+**Cause:** the handler for `widget.fireEvent` in `packages/cli/src/mcp/handlers.ts` returns `{ success: true }` unconditionally, and the tool in `packages/mcp/src/server.ts` discards the payload and returns the fixed text `Fired event`. There is no channel through which widget state could reach the caller.
+
+**Fix:** forward the handler's payload, and have it report the widget's realized and mapped state, so an agent can see that the signal reached a widget that could not act on it.
 
 ---
 
@@ -512,6 +716,9 @@ Recorded so nobody re-tests them:
 - `pnpm create gtkx@1.0.0-rc.4` pins `@gtkx/*` to `^1.0.0-rc.4` and resolves correctly; the `rc` dist-tag is right.
 - `gtkx codegen` regenerates cleanly for `Gtk-4.0`, `Adw-1`, `GtkSource-5`, including the `@gtkx/gi` and `@gtkx/jsx` stores and the symlinks.
 - `tsc --noEmit`, `gtkx build`, and `vitest run` all pass on a fresh scaffold.
-- `gtkx dev` runs against a live GNOME Wayland session and Fast Refresh connects, as long as the CLI is run from `dist` (entry 16).
+- `gtkx dev` runs against a live GNOME Wayland session and Fast Refresh connects. Running the CLI from source starts the application too (entry 16), verified under the headless compositor.
 - The MCP server serves several projects in one session: each reference call is scoped to the project it names or the one the server was launched in, and apps report their project root when they register (entry 15).
-- `gtkx_list_apps`, `gtkx_list_api`, `gtkx_search_api`, and `gtkx_get_api_docs` all behave as documented. The reference pages carry upstream documentation, prop types with defaults, signal signatures, methods, hierarchy, and the correct import line. `gtkx_take_screenshot` is not on this list: entry 10 is open against it.
+- `gtkx_list_apps`, `gtkx_list_api`, `gtkx_search_api`, and `gtkx_get_api_docs` all behave as documented. The reference pages carry upstream documentation, prop types with defaults, signal signatures, methods, hierarchy, and the correct import line.
+- `gtkx_take_screenshot` captures the window, including any open popover (entries 10 and 19), and names the display rather than the widget when it cannot. The shape not exercised here is a live session whose compositor withholds frame callbacks from a mapped surface; see entry 10.
+- `gtkx_get_widget_tree` and the testing pretty-printer no longer carry text GTK hides (entry 17).
+- `gtkx_query_widgets` and `gtkx_fire_event` are not on this list: entry 18 leaves the tool's description wrong, and entry 23 is open against `gtkx_fire_event`.

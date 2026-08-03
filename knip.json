@@ -84,9 +84,11 @@
         },
         "packages/cli": {
             "entry": [
+                "gtkx.config.ts!",
                 "src/global.d.ts!",
                 "tests/dev/fixtures/supervisor-harness.ts",
-                "tests/dev/fixtures/graceful-child.mjs"
+                "tests/dev/fixtures/graceful-child.mjs",
+                "tests/dev/fixtures/resolve-probe.mjs"
             ]
         },
         "packages/vitest": {

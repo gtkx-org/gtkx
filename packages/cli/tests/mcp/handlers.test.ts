@@ -13,6 +13,11 @@ type FakeApp = {
 type TextMatches = { widgets: { text: string | null }[] };
 type ChildMatches = { widgets: { children: unknown[] }[] };
 
+type WidgetTarget = {
+    widget: never;
+    dispatchWidget: (method: string, params: Record<string, unknown>) => Promise<unknown>;
+};
+
 const hoisted = vi.hoisted(() => ({
     findAllByRole: vi.fn(),
     findAllByText: vi.fn(),
@@ -61,6 +66,24 @@ const registerWidget = (registry: WidgetRegistry, widget: never): string => {
 const dispatchQuery = (params: Record<string, unknown>, registry = new WidgetRegistry()): Promise<unknown> =>
     dispatch("widget.query", params, { app: makeApp() as never, registry });
 
+const dispatchMatchingNameQuery = (value: string): Promise<unknown> => {
+    findAllByName.mockResolvedValueOnce([makeWidget()]);
+
+    return dispatchQuery({ by: "name", value });
+};
+
+const makeWidgetTarget = (overrides: FakeWidgetOverrides = {}): WidgetTarget => {
+    const widget = makeWidget(overrides);
+    const registry = new WidgetRegistry();
+    const id = registerWidget(registry, widget);
+
+    return {
+        widget,
+        dispatchWidget: (method, params) =>
+            dispatch(method, { widgetId: id, ...params }, { app: makeApp() as never, registry }),
+    };
+};
+
 vi.mock("@gtkx/testing", () => ({
     findAllByRole: hoisted.findAllByRole,
     findAllByText: hoisted.findAllByText,
@@ -81,6 +104,10 @@ vi.mock("@gtkx/gi/gtk", () => ({
 
 beforeEach(() => {
     vi.clearAllMocks();
+    findAllByRole.mockResolvedValue([]);
+    findAllByText.mockResolvedValue([]);
+    findAllByName.mockResolvedValue([]);
+    findAllByLabelText.mockResolvedValue([]);
 });
 
 describe("dispatch (method routing)", () => {
@@ -177,18 +204,16 @@ describe("widget.query", () => {
         expect(findAllByRole).not.toHaveBeenCalled();
     });
 
-    it("routes text/name/labelText through the matching testing helper", async () => {
+    it("routes text and labelText through the matching testing helper", async () => {
         const widget = makeWidget();
-        findAllByText.mockResolvedValueOnce([widget]);
-        findAllByName.mockResolvedValueOnce([widget]);
-        findAllByLabelText.mockResolvedValueOnce([widget]);
         const registry = new WidgetRegistry();
+        findAllByText.mockResolvedValueOnce([widget]);
         await dispatchQuery({ by: "text", value: "Hi" }, registry);
-        await dispatchQuery({ by: "name", value: "btn" }, registry);
+        findAllByLabelText.mockResolvedValueOnce([widget]);
         await dispatchQuery({ by: "labelText", value: "Submit" }, registry);
         expect(findAllByText).toHaveBeenCalledWith(expect.anything(), "Hi", undefined);
-        expect(findAllByName).toHaveBeenCalledWith(expect.anything(), "btn", undefined);
         expect(findAllByLabelText).toHaveBeenCalledWith(expect.anything(), "Submit", undefined);
+        expect(findAllByName).not.toHaveBeenCalled();
     });
 
     it("returns shallow match summaries without descendants", async () => {
@@ -210,16 +235,68 @@ describe("widget.query", () => {
     });
 });
 
+describe("widget.query by name", () => {
+    it("finds a widget by its accessible label when no widget name matches", async () => {
+        const row = makeWidget({ getLabel: () => "Name", type: "AdwEntryRow" });
+        findAllByLabelText.mockResolvedValueOnce([row]);
+        const result = (await dispatchQuery({ by: "name", value: "Name" })) as TextMatches;
+        expect(result.widgets).toHaveLength(1);
+        expect(result.widgets[0]?.text).toBe("Name");
+    });
+
+    it("finds a widget by its rendered text when no widget name matches", async () => {
+        findAllByText.mockResolvedValueOnce([makeWidget({ getLabel: () => "Save" })]);
+        const result = (await dispatchQuery({ by: "name", value: "Save" })) as TextMatches;
+        expect(result.widgets[0]?.text).toBe("Save");
+    });
+
+    it("compares the widget name, the accessible label, and the rendered text", async () => {
+        await dispatchQuery({ by: "name", value: "Name" });
+        expect(findAllByName).toHaveBeenCalledWith(expect.anything(), "Name", undefined);
+        expect(findAllByLabelText).toHaveBeenCalledWith(expect.anything(), "Name", undefined);
+        expect(findAllByText).toHaveBeenCalledWith(expect.anything(), "Name", undefined);
+    });
+
+    it("returns a widget once when several lookups match it", async () => {
+        const widget = makeWidget();
+        findAllByName.mockResolvedValueOnce([widget]);
+        findAllByLabelText.mockResolvedValueOnce([widget]);
+        findAllByText.mockResolvedValueOnce([widget]);
+        const result = (await dispatchQuery({ by: "name", value: "dup" })) as { widgets: unknown[] };
+        expect(result.widgets).toHaveLength(1);
+    });
+});
+
+describe("widget.query result description", () => {
+    it("spells out that the name query covers the GType fallback and the accessible label", async () => {
+        const result = (await dispatchMatchingNameQuery("GtkButton")) as { searched: string };
+        expect(result.searched).toContain("gtk_widget_get_name");
+        expect(result.searched).toContain("accessible label");
+    });
+
+    it("describes what a role query compared", async () => {
+        findAllByRole.mockResolvedValueOnce([makeWidget()]);
+        const result = (await dispatchQuery({ by: "role", value: "button" })) as { searched: string };
+        expect(result.searched).toContain("accessible role");
+    });
+
+    it("hints at what was compared when nothing matched", async () => {
+        const result = (await dispatchQuery({ by: "name", value: "Missing" })) as { hint: string };
+        expect(result.hint).toContain("Nothing matched by:\"name\" value:\"Missing\"");
+        expect(result.hint).toContain("gtk_widget_get_name");
+        expect(result.hint).toContain("gtkx_get_widget_tree");
+    });
+
+    it("omits the hint when the query matched", async () => {
+        const result = (await dispatchMatchingNameQuery("hit")) as { hint?: string };
+        expect(result.hint).toBeUndefined();
+    });
+});
+
 describe("widget.getProps", () => {
     it("returns the serialized widget when the id is known", async () => {
-        const widget = makeWidget({ getName: () => "ok" });
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, widget);
-
-        const result = (await dispatch("widget.getProps", { widgetId: id }, { app: makeApp() as never, registry })) as {
-            name: string | null;
-        };
-
+        const { dispatchWidget } = makeWidgetTarget({ getName: () => "ok" });
+        const result = (await dispatchWidget("widget.getProps", {})) as { name: string | null };
         expect(result.name).toBe("ok");
     });
 
@@ -242,34 +319,23 @@ describe("widget.getProps", () => {
 
 describe("widget.click / widget.type / widget.fireEvent", () => {
     it("clicks the resolved widget and reports success", async () => {
-        const widget = makeWidget();
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, widget);
-        const result = await dispatch("widget.click", { widgetId: id }, { app: makeApp() as never, registry });
+        const { widget, dispatchWidget } = makeWidgetTarget();
+        const result = await dispatchWidget("widget.click", {});
         expect(click).toHaveBeenCalledWith(widget);
         expect(result).toEqual({ success: true });
     });
 
     it("clears before typing when clear=true", async () => {
-        const widget = makeWidget();
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, widget);
-        await dispatch("widget.type", { widgetId: id, text: "hi", clear: true }, { app: makeApp() as never, registry });
+        const { widget, dispatchWidget } = makeWidgetTarget();
+        await dispatchWidget("widget.type", { text: "hi", clear: true });
         expect(clear).toHaveBeenCalledWith(widget);
         expect(typeText).toHaveBeenCalledWith(widget, "hi");
     });
 
     it("unwraps typed signal args before firing", async () => {
-        const widget = makeWidget();
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, widget);
-
-        await dispatch(
-            "widget.fireEvent",
-            { widgetId: id, signal: "clicked", args: [{ type: "int", value: 42 }, "plain"] },
-            { app: makeApp() as never, registry },
-        );
-
+        const { widget, dispatchWidget } = makeWidgetTarget();
+        const args = [{ type: "int", value: 42 }, "plain"];
+        await dispatchWidget("widget.fireEvent", { signal: "clicked", args });
         expect(fireEvent).toHaveBeenCalledWith(widget, "clicked", 42, "plain");
     });
 });

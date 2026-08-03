@@ -32,6 +32,17 @@ type AdwBreakpointsProps = {
     breakpoints?: ReactNode | null | undefined;
 } & ChildrenProps;
 
+/** Props of an `Adw.MultiLayoutView` element. */
+type AdwMultiLayoutViewProps = {
+    /** `Adw.Layout` elements added to the view, each holding the content it lays out. */
+    layouts?: ReactNode | null | undefined;
+    /**
+     * Widget the view places in the `Adw.LayoutSlot` whose `id` is the prop name without its `Slot`
+     * suffix, so `sidebarSlot` fills the slot with id `sidebar` in whichever layout is current.
+     */
+    [slot: `${string}Slot`]: ReactNode | null | undefined;
+};
+
 export {
     type AlertDialogResponse,
     type AdwAlertDialogProps,
@@ -39,4 +50,5 @@ export {
     type AdwExpanderRowProps,
     type AdwToolbarViewProps,
     type AdwBreakpointsProps,
+    type AdwMultiLayoutViewProps,
 };

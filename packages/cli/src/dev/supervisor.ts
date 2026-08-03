@@ -49,9 +49,31 @@ const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
 const RESTART_EXIT_CODE = 75;
+const CONDITION_FLAG = /^(?:--conditions|-C)(?:=.*)?$/;
+const SPLIT_CONDITION_FLAG = /^(?:--conditions|-C)$/;
 
-const defaultForkRunner: ForkRunner = (modulePath, args, env, cwd) =>
-    nodeFork(modulePath, args, { cwd, env, stdio: "inherit", detached: true });
+const withoutConditions = (argv: string[]): string[] =>
+    argv.filter(
+        (argument, index) => !CONDITION_FLAG.test(argument) && !SPLIT_CONDITION_FLAG.test(argv[index - 1] ?? ""),
+    );
+
+const getNodeOptions = (env: NodeJS.ProcessEnv): string | undefined => {
+    const options = env.NODE_OPTIONS;
+
+    return options === undefined ? undefined : withoutConditions(options.split(/\s+/)).join(" ");
+};
+
+const defaultForkRunner: ForkRunner = (modulePath, args, env, cwd) => {
+    const nodeOptions = getNodeOptions(env);
+
+    return nodeFork(modulePath, args, {
+        cwd,
+        env: { ...env, ...(nodeOptions !== undefined && { NODE_OPTIONS: nodeOptions }) },
+        stdio: "inherit",
+        detached: true,
+        execArgv: withoutConditions(process.execArgv),
+    });
+};
 
 const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => {
     if (!child.killed) {

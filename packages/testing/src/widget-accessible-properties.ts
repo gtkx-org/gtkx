@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { getAccessibleMetadata } from "@gtkx/react/internal";
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
+import { isTextHidden, REDACTED_TEXT, redactText } from "./hidden-text.js";
 import { descendants } from "./traversal.js";
 
 type WidgetValue = {
@@ -13,7 +14,9 @@ type WidgetValue = {
 type ValueTriplet = { now: number | null; min: number | null; max: number | null };
 type CheckedState = "checked" | "unchecked" | "mixed";
 
-const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
+const EDITABLE_TEXT_GETTER = "getText";
+const DEFAULT_TEXT_GETTERS = ["getLabel", EDITABLE_TEXT_GETTER, "getTitle"];
+const LABELLING_TEXT_GETTERS = DEFAULT_TEXT_GETTERS.filter((getter) => getter !== EDITABLE_TEXT_GETTER);
 
 const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set<Gtk.AccessibleRole>([
     Gtk.AccessibleRole.ROW,
@@ -77,14 +80,8 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
-/**
- * Returns a widget's own text by trying its label, text, and title getters in
- * order, or null when none produce a value.
- *
- * @param widget The widget to read text from.
- */
-const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
-    for (const getter of DEFAULT_TEXT_GETTERS) {
+const readFirstText = (widget: Gtk.Widget, getters: string[]): string | null => {
+    for (const getter of getters) {
         const value = callStringGetter(widget, getter);
 
         if (value) {
@@ -93,6 +90,31 @@ const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
     }
 
     return null;
+};
+
+const getHiddenNodeText = (widget: Gtk.Widget): string | null => {
+    const labelling = readFirstText(widget, LABELLING_TEXT_GETTERS);
+
+    if (labelling !== null) {
+        return labelling;
+    }
+
+    return callStringGetter(widget, EDITABLE_TEXT_GETTER) ? REDACTED_TEXT : null;
+};
+
+/**
+ * Returns a widget's own text by trying its label, text, and title getters in
+ * order, or null when none produce a value. Text the widget hides, such as a
+ * password entry's contents, is reported as `REDACTED_TEXT` instead.
+ *
+ * @param widget The widget to read text from.
+ */
+const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
+    if (isTextHidden(widget)) {
+        return getHiddenNodeText(widget);
+    }
+
+    return readFirstText(widget, DEFAULT_TEXT_GETTERS);
 };
 
 const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
@@ -253,7 +275,7 @@ const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
 
 const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
     if (EDITABLE_ROLES.has(widget.getAccessibleRole()) && isEditable(widget)) {
-        return readEditableText(widget);
+        return redactText(widget, readEditableText(widget));
     }
 
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.COMBO_BOX) {
@@ -309,7 +331,7 @@ const getWidgetSelection = (widget: Gtk.Widget): string | null => {
     }
 
     if (widget instanceof Gtk.Editable) {
-        return readEditableSelection(widget);
+        return redactText(widget, readEditableSelection(widget));
     }
 
     return null;

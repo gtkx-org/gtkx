@@ -21,6 +21,11 @@ type HandlerContext = {
 
 type ValidatedHandler = (ctx: HandlerContext, params: unknown) => Promise<unknown>;
 type WidgetTarget = { testing: TestingModule; widget: Gtk.Widget };
+type WidgetParams = { widgetId?: string | undefined };
+type TargetedHandler<Params> = (ctx: HandlerContext, target: WidgetTarget, params: Params) => Promise<unknown>;
+type QueryParams = ServerRequestParams<"widget.query">;
+type QueryBy = QueryParams["by"];
+type QueryRunner = (testing: TestingModule, app: Gtk.Application, params: QueryParams) => Promise<Gtk.Widget[]>;
 
 const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], ({ registry }) =>
@@ -43,20 +48,14 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
         };
     }),
     "widget.query": validated(ServerRequestParamsSchemas["widget.query"], handleQuery),
-    "widget.getProps": validated(ServerRequestParamsSchemas["widget.getProps"], async ({ registry }, params) => {
-        const { testing, widget } = await widgetTarget(registry, params.widgetId);
-
-        return serializeWidget(widget, (target) => registry.getOrCreateId(target), testing);
-    }),
-    "widget.click": validated(ServerRequestParamsSchemas["widget.click"], async ({ registry }, params) => {
-        const { testing, widget } = await widgetTarget(registry, params.widgetId);
+    "widget.getProps": targeted(ServerRequestParamsSchemas["widget.getProps"], ({ registry }, { testing, widget }) =>
+        Promise.resolve(serializeWidget(widget, (target) => registry.getOrCreateId(target), testing))),
+    "widget.click": targeted(ServerRequestParamsSchemas["widget.click"], async (_ctx, { testing, widget }) => {
         await testing.userEvent.click(widget);
 
         return { success: true };
     }),
-    "widget.type": validated(ServerRequestParamsSchemas["widget.type"], async ({ registry }, params) => {
-        const { testing, widget } = await widgetTarget(registry, params.widgetId);
-
+    "widget.type": targeted(ServerRequestParamsSchemas["widget.type"], async (_ctx, { testing, widget }, params) => {
         if (params.clear) {
             await testing.userEvent.clear(widget);
         }
@@ -65,14 +64,32 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
 
         return { success: true };
     }),
-    "widget.fireEvent": validated(ServerRequestParamsSchemas["widget.fireEvent"], async ({ registry }, params) => {
-        const { testing, widget } = await widgetTarget(registry, params.widgetId);
-        const signalArgs = (params.args ?? []).map((arg) => extractSignalArg(arg));
-        await testing.fireEvent(widget, params.signal, ...signalArgs);
+    "widget.fireEvent": targeted(
+        ServerRequestParamsSchemas["widget.fireEvent"],
+        async (_ctx, { testing, widget }, params) => {
+            const signalArgs = (params.args ?? []).map((arg) => extractSignalArg(arg));
+            await testing.fireEvent(widget, params.signal, ...signalArgs);
 
-        return { success: true };
-    }),
+            return { success: true };
+        },
+    ),
     "widget.screenshot": validated(ServerRequestParamsSchemas["widget.screenshot"], handleScreenshot),
+};
+
+const QUERY_RUNNERS: Record<QueryBy, QueryRunner> = {
+    role: runRoleQuery,
+    text: runTextQuery,
+    name: runNameQuery,
+    labelText: runLabelTextQuery,
+};
+
+const SEARCHED_BY: Record<QueryBy, string> = {
+    role: "the accessible role, narrowed by any options given",
+    text: "the text the widget renders",
+    name:
+        "the widget name (gtk_widget_get_name, which reports the GType name such as \"GtkButton\" when no name " +
+        "was set), the accessible label, and the text the widget renders",
+    labelText: "the accessible label, the labelled-by relation, and the label whose mnemonic targets the widget",
 };
 
 function validated<Params>(
@@ -88,6 +105,14 @@ function validated<Params>(
 
         return handler(ctx, parsed.data);
     };
+}
+
+function targeted<Params extends WidgetParams>(
+    schema: ParamsSchema<Params>,
+    handler: TargetedHandler<Params>,
+): ValidatedHandler {
+    return validated(schema, async (ctx, params) =>
+        handler(ctx, await widgetTarget(ctx.registry, params.widgetId), params));
 }
 
 const widgetTarget = async (registry: WidgetRegistry, widgetId: string | undefined): Promise<WidgetTarget> => ({
@@ -133,42 +158,58 @@ const matchesOrEmpty = async (find: () => Promise<Gtk.Widget[]>): Promise<Gtk.Wi
     }
 };
 
-async function handleQuery(
-    { app, registry }: HandlerContext,
-    params: ServerRequestParams<"widget.query">,
-): Promise<unknown> {
-    const testing = await loadTestingModule();
-    let widgets: Gtk.Widget[] = [];
+function runRoleQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
+    const roleValue = resolveRole(params.value);
 
-    switch (params.by) {
-        case "role": {
-            const roleValue = resolveRole(params.value);
-
-            if (roleValue === undefined) {
-                throw invalidRequestError(
-                    `Unknown accessible role "${String(params.value)}"; use the lowercase role shown in the ` +
-                    "widget tree, e.g. \"button\", \"list\", \"list_item\", or \"checkbox\".",
-                );
-            }
-
-            widgets = await matchesOrEmpty(() => testing.findAllByRole(app, roleValue, params.options));
-            break;
-        }
-        case "text": {
-            widgets = await matchesOrEmpty(() => testing.findAllByText(app, String(params.value), params.options));
-            break;
-        }
-        case "name": {
-            widgets = await matchesOrEmpty(() => testing.findAllByName(app, String(params.value), params.options));
-            break;
-        }
-        case "labelText": {
-            widgets = await matchesOrEmpty(() => testing.findAllByLabelText(app, String(params.value), params.options));
-            break;
-        }
+    if (roleValue === undefined) {
+        throw invalidRequestError(
+            `Unknown accessible role "${String(params.value)}"; use the lowercase role shown in the ` +
+            "widget tree, e.g. \"button\", \"list\", \"list_item\", or \"checkbox\".",
+        );
     }
 
-    return { widgets: widgets.map((w) => serializeWidget(w, (widget) => registry.getOrCreateId(widget), testing, 0)) };
+    return matchesOrEmpty(() => testing.findAllByRole(app, roleValue, params.options));
+}
+
+function runTextQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
+    return matchesOrEmpty(() => testing.findAllByText(app, String(params.value), params.options));
+}
+
+function runLabelTextQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
+    return matchesOrEmpty(() => testing.findAllByLabelText(app, String(params.value), params.options));
+}
+
+async function runNameQuery(
+    testing: TestingModule,
+    app: Gtk.Application,
+    params: QueryParams,
+): Promise<Gtk.Widget[]> {
+    const value = String(params.value);
+
+    const matches = await Promise.all([
+        matchesOrEmpty(() => testing.findAllByName(app, value, params.options)),
+        matchesOrEmpty(() => testing.findAllByLabelText(app, value, params.options)),
+        matchesOrEmpty(() => testing.findAllByText(app, value, params.options)),
+    ]);
+
+    return [...new Set(matches.flat())];
+}
+
+const emptyQueryHint = (params: QueryParams): string =>
+    `Nothing matched by:"${params.by}" value:"${String(params.value)}", which compared ${SEARCHED_BY[params.by]}. ` +
+    "Call gtkx_get_widget_tree to see what is mounted; by:\"name\" is the widest match, and by:\"role\" accepts " +
+    "options.name to match the accessible name of a known role.";
+
+async function handleQuery({ app, registry }: HandlerContext, params: QueryParams): Promise<unknown> {
+    const testing = await loadTestingModule();
+    const widgets = await QUERY_RUNNERS[params.by](testing, app, params);
+    const resolveId = (widget: Gtk.Widget): string => registry.getOrCreateId(widget);
+
+    return {
+        widgets: widgets.map((widget) => serializeWidget(widget, resolveId, testing, 0)),
+        searched: SEARCHED_BY[params.by],
+        ...(widgets.length === 0 && { hint: emptyQueryHint(params) }),
+    };
 }
 
 const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Widget => {

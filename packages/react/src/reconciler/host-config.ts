@@ -7,7 +7,7 @@ import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
 import type { Props } from "./registry.js";
 import { Prop } from "../components/element.js";
-import { applyAdoptedProps, applyElementProps, assertConstructOnlyUnchanged, flushBehaviors } from "./apply-props.js";
+import { applyAdoptedProps, applyElementProps, assertPropsCanChange, flushBehaviors } from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
 import { resolveElementNode } from "./instance.js";
 import {
@@ -175,14 +175,14 @@ function createPriorityTracker(): PriorityTracker {
 
 const updateInstance = (instance: Instance, prev: Props, next: Props): void => {
     if (instance.kind === ELEMENT_KIND) {
-        assertConstructOnlyUnchanged(instance.typeName, prev, next);
+        assertPropsCanChange(instance.typeName, prev, next);
         applyElementProps(instance, prev, next);
 
         return;
     }
 
     if (instance.kind === LAZY_KIND && instance.adopted !== null) {
-        assertConstructOnlyUnchanged(instance.typeName, prev, next);
+        assertPropsCanChange(instance.typeName, prev, next);
         applyAdoptedProps(lazyTarget(instance, instance.adopted), prev, next);
         instance.props = next;
     }

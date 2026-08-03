@@ -1,11 +1,13 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import type {
     ActionAccel,
     CreditSection,
     DragSourceIcon,
     LevelBarOffset,
+    MainOption,
     MenuItem,
     ScaleMark,
     VflConstraints,
@@ -315,6 +317,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     application.setAccelsForAction(item.detailedActionName, []);
                 },
             }),
+            list<Gtk.Application, MainOption>("mainOptions", {
+                add: (application, option) => {
+                    addMainOption(application, option);
+                },
+            }),
         ],
     },
     GtkAboutDialog: {
@@ -392,6 +399,17 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
 function layoutChild(parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null {
     return parent.getLayoutManager()?.getLayoutChild(child) ?? null;
 }
+
+const addMainOption = (application: Gtk.Application, option: MainOption): void => {
+    application.addMainOption(
+        option.longName,
+        option.shortName?.codePointAt(0) ?? 0,
+        option.flags ?? GLib.OptionFlags.NONE,
+        option.arg ?? GLib.OptionArg.NONE,
+        option.description,
+        option.argDescription ?? null,
+    );
+};
 
 const buildMenu = (items: MenuItem[]): Gio.Menu => {
     const menu = Gio.Menu.new();

@@ -125,41 +125,48 @@ const teardownList = <P extends GObject.Object, I, H>(
         return;
     }
 
-    const remove = hooks.remove;
-
-    if (remove === undefined) {
-        return;
-    }
-
     for (const entry of entries) {
-        remove(object, entry.item as I, entry.handle as H);
+        hooks.remove?.(object, entry.item as I, entry.handle as H);
     }
+};
+
+const listUpdate = <P extends GObject.Object, I, H>(
+    prop: string,
+    hooks: ListHooks<P, I, H>,
+): NonNullable<ElementBehavior<P>["update"]> => {
+    const { add } = hooks;
+
+    return (object, _prev, next, context) => {
+        const state = context as ListState;
+        const raw = next[prop];
+        const items: unknown[] = Array.isArray(raw) ? raw : [];
+
+        if (isDeepEqual(state.snapshot, items)) {
+            return [prop];
+        }
+
+        teardownList(object, state.entries, hooks);
+        state.entries = items.map((item) => ({ item, handle: add?.(object, item as I) }));
+        state.snapshot = structuredClone(items);
+
+        return [prop];
+    };
 };
 
 const list = <P extends GObject.Object, I, H = void>(
     prop: string,
     hooks: ListHooks<P, I, H>,
 ): ElementBehavior<P> => {
-    const { add } = hooks;
-
-    return {
+    const behavior: ElementBehavior<P> = {
         initialize: (): ListState => ({ snapshot: [], entries: [] }),
-        update: (object, _prev, next, context) => {
-            const state = context as ListState;
-            const raw = next[prop];
-            const items: unknown[] = Array.isArray(raw) ? raw : [];
-
-            if (isDeepEqual(state.snapshot, items)) {
-                return [prop];
-            }
-
-            teardownList(object, state.entries, hooks);
-            state.entries = items.map((item) => ({ item, handle: add?.(object, item as I) }));
-            state.snapshot = structuredClone(items);
-
-            return [prop];
-        },
+        update: listUpdate(prop, hooks),
     };
+
+    if (hooks.remove === undefined && hooks.clear === undefined) {
+        behavior.permanent = [prop];
+    }
+
+    return behavior;
 };
 
 const flushDeferred = <P extends GObject.Object, V>(
