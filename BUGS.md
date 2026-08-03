@@ -472,6 +472,35 @@ Found by building TableStar, whose database drivers each run in a worker: the ap
 
 **Fix:** two parts. Documentation: the shutdown section should say that closing the window ends the GTK side only, and show releasing a Node-side resource next to the existing `onCloseRequest={quit}`. Code, worth considering: either have `quit()` from `@gtkx/react` invoke the runtime's `quit()` so `onExit` fires on the documented shutdown path and behaves as its name suggests, or narrow `onExit`'s documentation to say it only runs on a process exit already in progress and is not a place to release anything holding the loop open.
 
+---
+
+## 16. The API reference answers for whichever app happens to be running
+
+**Severity:** medium. The reference is a development-time tool, and it is least available exactly when it is most useful.
+
+**Repro:** leave any GTKX app registered with the MCP server, then ask for a symbol from a different project.
+
+```
+gtkx_get_api_docs { symbol: "AdwDialog", kind: "element" }
+```
+
+**Actual**, with a `gtkx dev` for `examples/hello-world` still running from an unrelated task hours earlier:
+
+```
+codegen is disabled for the project at /home/eugenio/gtkx/examples/hello-world,
+so there are no generated bindings to document.
+Remove `codegen: false` from gtkx.config.ts to use the API reference.
+```
+
+The lookup was for TableStar. The error names a project the caller is not working on, and its advice is to edit that project's configuration. `gtkx_list_apps` showed why: one registered app, `com.gtkx.hello-world`, pid 1681987, `projectRoot` `examples/hello-world`. Killing that process made the identical call succeed and return `AdwDialog`.
+
+**Cause:** the server scopes its reference to a registered application's project root. That is right for the tools that drive a live app, and it is listed below as working. But the reference tools are not app tools. Looking up how `AdwDialog` works is what a developer does *before* there is anything to run, so the answer ends up depending on unrelated state: a stale process from another project silently redirects every lookup, and if that project sets `codegen: false` the reference is unavailable outright.
+
+With no app registered the reference does answer, from the server's own root, which happened to have `Adw-1` configured. That is luck rather than intent: a project whose libraries differ from the server's root would get an answer scoped to the wrong surface with nothing to indicate it.
+
+**Fix:** let the reference tools take an explicit project root, or resolve one from the caller's working directory, and fall back to a registered app only when neither is available. Failing that, name the project in the response rather than only in the error, so a wrong answer is visible.
+
+---
 ## Verified working
 
 Recorded so nobody re-tests them:
@@ -481,4 +510,4 @@ Recorded so nobody re-tests them:
 - `tsc --noEmit`, `gtkx build`, and `vitest run` all pass on a fresh scaffold.
 - `gtkx dev` runs against a live GNOME Wayland session and Fast Refresh connects.
 - The MCP server picks up the running app's project root and rescopes its API reference to that project's configured libraries automatically, so one server correctly serves several projects in a session.
-- `gtkx_list_apps`, `gtkx_take_screenshot`, `gtkx_list_api`, `gtkx_search_api`, and `gtkx_get_api_docs` all behave as documented. The reference pages carry upstream documentation, prop types with defaults, signal signatures, methods, hierarchy, and the correct import line.
+- `gtkx_list_apps`, `gtkx_take_screenshot`, `gtkx_list_api`, `gtkx_search_api`, and `gtkx_get_api_docs` all behave as documented, subject to entry 16 on which project the reference resolves to. The reference pages carry upstream documentation, prop types with defaults, signal signatures, methods, hierarchy, and the correct import line.
