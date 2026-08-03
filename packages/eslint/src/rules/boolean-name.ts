@@ -83,8 +83,6 @@ const getUnionShape = (node: TSESTree.TSUnionType): Shape => {
     return members.some((member) => isBooleanNode(member)) ? "unknown" : "other";
 };
 
-// A function is named for what it does, so a boolean-returning one needs no prefix: `onKeyPressed`
-// and `canGoBack` are both fine. Only a boolean value answers a question and must read as one.
 const getFunctionShape = (node: TSESTree.TSFunctionType): Shape => {
     const returns = getAnnotationShape(node.returnType);
 

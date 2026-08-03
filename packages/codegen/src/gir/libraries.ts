@@ -5,7 +5,6 @@ type GirNamespace = { name: string; version: string; identifier: string };
 /** A `libraries` config value: an explicit list, `"*"` for everything installed, or absent for the default. */
 type LibrarySelection = typeof LIBRARIES_WILDCARD | string[] | undefined;
 
-/** The `libraries` value that stands for every GIR library installed on the search path. */
 const LIBRARIES_WILDCARD = "*";
 const GIR_LIBRARY_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 const DEFAULT_LIBRARIES: string[] = ["Gtk-4.0"];
