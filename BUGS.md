@@ -424,9 +424,9 @@ gtkx dev -- --nope
 
 ---
 
-## 15. Nothing tells you the process outlives the window
+## 15. Nothing tells you the process outlives the window, and the hook that looks right does not fire
 
-**Severity:** medium. Not a crash, and not GTKX's doing in the strict sense, but it is a papercut the docs currently walk users into.
+**Severity:** medium. Not a crash, and the underlying behavior is Node's, not GTKX's. The trap is that the obvious remedy silently does nothing.
 
 **Repro:** follow the getting-started guide, wire `onCloseRequest={quit}`, then add anything that holds Node's event loop open. A `node:worker_threads` Worker is the obvious case, but an HTTP server, a file watcher, or a bare `setInterval` all do it.
 
@@ -436,15 +436,31 @@ gtkx dev
 
 **Actual:** closing the window unmounts the tree and quits the GApplication, and the process stays alive. Under `gtkx dev` it reads as a hung dev server. Packaged, it is a stray process still owning the application ID, so the next launch takes the remote-instance path, which is the same road as entry 11.
 
-**Cause:** a live `Worker` refs the libuv loop until it is terminated. That is ordinary Node behavior and GTKX does not cause it. What GTKX contributes is that the documented shutdown story stops at GTK. `website/guide/getting-started.md` explains that `quit()` unmounts every root and that unmounting the application element quits the application, which is true and complete as far as GTK is concerned, and it is where a reader stops looking. Nothing says the process may still be running afterwards, or where to release anything Node-side.
+**Cause:** a live `Worker` refs the libuv loop until it is terminated. That is ordinary Node behavior and GTKX does not cause it. What GTKX contributes is that the documented shutdown story stops at GTK: `website/guide/getting-started.md` explains that `quit()` unmounts every root and that unmounting the application element quits the application, which is true and complete as far as GTK is concerned, and it is where a reader stops looking.
 
-`onExit` from `@gtkx/runtime` is exactly the hook for this, and it is public: `packages/runtime/src/index.ts` exports it and it reaches `dist/index.d.ts`. But it appears nowhere in the prose documentation, in neither the guide nor the tutorial, so it is only discoverable by reading the generated API reference and already knowing what to look for.
+**`onExit` is not the answer, and that is the sharp edge.** It reads like the general shutdown hook, and its own documentation says it runs "once when the process quits, before the native runtime is torn down". But the only thing that invokes it is `packages/runtime/src/exit-hook.ts`, which is a single line:
 
-This lands hardest on the thing GTKX advertises. The pitch is that a GNOME app can harness the Node and npm ecosystem, and the moment a reader takes that up, the documented shutdown path stops being sufficient. Found by building TableStar, whose database drivers each run in a worker: the app looked closed and the process never exited.
+```ts
+process.on("exit", quit);
+```
 
-**Fix:** documentation, not code. The shutdown section should say that closing the window ends the GTK side only, and that anything holding the Node loop open belongs in `onExit`. A one-line example next to the existing `onCloseRequest={quit}` would cover it. Worth stating in the workers or async part of the guide too, since that is where a reader will be when it becomes relevant.
+`process.on("exit")` fires when the event loop drains or when `process.exit()` is called. A live Worker is precisely what stops the loop draining, so the callback never runs, and using `onExit` to terminate that Worker cannot work. `quit()` from `@gtkx/react` does not close the gap either: it unmounts the active roots and returns `Gdk.EVENT_STOP`, and never reaches the runtime's own `quit()`.
 
----
+So anything holding the Node loop open has to be released while the loop is still turning, at the point the app decides it is finished. `onCloseRequest` is one such point and needs no new API:
+
+```tsx
+onCloseRequest={() => {
+    closeDatabaseWorkers();
+
+    return quit();
+}}
+```
+
+That covers the window-close path. It is worth knowing what it does not cover: `close-request` is a `GtkWindow` signal, so it does not fire for an application-level Quit action, for Ctrl+Q, for `SIGTERM` from the session, or for a D-Bus `Quit`; and in a multi-window app one window closing is not the application shutting down. The robust placement is wherever the application decides to quit, not necessarily a single window's handler.
+
+Found by building TableStar, whose database drivers each run in a worker: the app looked closed and the process never exited.
+
+**Fix:** two parts. Documentation: the shutdown section should say that closing the window ends the GTK side only, and show releasing a Node-side resource next to the existing `onCloseRequest={quit}`. Code, worth considering: either have `quit()` from `@gtkx/react` invoke the runtime's `quit()` so `onExit` fires on the documented shutdown path and behaves as its name suggests, or narrow `onExit`'s documentation to say it only runs on a process exit already in progress and is not a place to release anything holding the loop open.
 
 ## Verified working
 
