@@ -2,12 +2,14 @@ import type { ExternalObject, Handle, RegisterClassProperty } from "@gtkx/native
 import type { AnyClass } from "@gtkx/utils";
 import { camelCase } from "@gtkx/utils";
 import { bind } from "./bind.js";
+import { stringT } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_T } from "./library.js";
 import { getHandle } from "./registry.js";
 import { fromValue, intoValue } from "./value.js";
 
 type PropertyAccessor = {
     name: string;
+    propertyName: string;
     storage: symbol;
     pspec: object;
 };
@@ -18,7 +20,9 @@ type NotifyingObject = { notify?: (propertyName: string) => void };
 
 const FIRST_PROPERTY_ID = 1;
 const paramSpecDefaultValue = bind(LIB, "g_param_spec_get_default_value", [PARAM_T], VALUE_T);
+const paramSpecName = bind(LIB, "g_param_spec_get_name", [PARAM_T], stringT("borrowed"));
 
+const getPropertyName = (pspec: PropertySpec): string => paramSpecName(getHandle(pspec)) as string;
 const underscoreCase = (name: string): string => name.replaceAll("-", "_");
 const accessorNames = (name: string): string[] => [...new Set([name, underscoreCase(name), camelCase(name)])];
 
@@ -48,7 +52,7 @@ function defineAccessor(prototype: object, accessor: PropertyAccessor, alias: st
             }
 
             this[accessor.storage] = value;
-            (this as NotifyingObject).notify?.(accessor.name);
+            (this as NotifyingObject).notify?.(accessor.propertyName);
         },
     });
 }
@@ -91,7 +95,13 @@ function buildAccessors(klass: AnyClass, properties: Record<string, PropertySpec
     const accessors: PropertyAccessor[] = [];
 
     for (const [name, pspec] of Object.entries(properties)) {
-        const accessor: PropertyAccessor = { name, storage: Symbol(`gtkx:property:${name}`), pspec };
+        const accessor: PropertyAccessor = {
+            name,
+            propertyName: getPropertyName(pspec),
+            storage: Symbol(`gtkx:property:${name}`),
+            pspec,
+        };
+
         installAccessors(klass, accessor);
         accessors.push(accessor);
     }

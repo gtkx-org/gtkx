@@ -8,6 +8,7 @@ use crate::handle::Handle;
 mod closure;
 mod view;
 
+pub mod pending_wrapper;
 pub mod wrapper;
 
 pub use closure::ClosureHandle;

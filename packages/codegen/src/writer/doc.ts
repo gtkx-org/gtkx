@@ -14,12 +14,16 @@ const renderJsDocLines = (lines: string[]): string => {
     return `/**\n${body}\n */\n`;
 };
 
-const renderJsDoc = (doc: string | undefined): string => {
-    if (doc === undefined || doc.length === 0) {
-        return "";
-    }
+const docLines = (doc: string | undefined): string[] =>
+    doc === undefined || doc.length === 0 ? [] : escapeCommentTerminators(gtkDocToMarkdown(doc)).split("\n");
 
-    return renderJsDocLines(escapeCommentTerminators(gtkDocToMarkdown(doc)).split("\n"));
+const appendNote = (lines: string[], note: string): string[] =>
+    lines.length === 0 ? note.split("\n") : [...lines, "", ...note.split("\n")];
+
+const renderJsDoc = (doc: string | undefined, note?: string): string => {
+    const lines = note === undefined ? docLines(doc) : appendNote(docLines(doc), note);
+
+    return lines.length === 0 ? "" : renderJsDocLines(lines);
 };
 
 export { renderJsDoc };

@@ -241,36 +241,6 @@ describe("registerClass — caller-allocated and scalar out parameters", () => {
     });
 });
 
-describe("registerClass — construct-time vtable slots", () => {
-    it("rejects overriding the `vfuncConstructed` slot", () => {
-        const name = uniqueName("GtkxConstructedRejected");
-
-        class CustomObject extends GObject {
-            vfuncConstructed(): void {
-                throw new Error("constructed must never be dispatched");
-            }
-        }
-
-        expect(() => registerClass(CustomObject, { typeName: name })).toThrow(
-            /construct-time vtable slot 'vfuncConstructed'/,
-        );
-    });
-
-    it("rejects overriding the `vfuncSetProperty` slot", () => {
-        const name = uniqueName("GtkxSetPropertyRejected");
-
-        class CustomObject extends GObject {
-            vfuncSetProperty(): void {
-                throw new Error("setProperty must never be dispatched");
-            }
-        }
-
-        expect(() => registerClass(CustomObject, { typeName: name })).toThrow(
-            /construct-time vtable slot 'vfuncSetProperty'/,
-        );
-    });
-});
-
 describe("registerClass — construct-time initialization", () => {
     it("runs initialization from the subclass constructor with a live handle", () => {
         const name = uniqueName("GtkxConstructorInit");

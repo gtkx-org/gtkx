@@ -297,11 +297,28 @@ const matchAll = (sources: string[], pattern: RegExp): string[] =>
 
 const stripDocComments = (source: string): string => source.replaceAll(/\/\*\*[\s\S]*?\*\//g, "");
 
-const moduleSource = (directory: string): string => {
+const documentedModuleSource = (directory: string): string => {
     const found = giModules.find((entry) => entry.directory === directory);
     expect(found, `expected generated module for ${directory}`).toBeDefined();
 
-    return stripDocComments(found?.source ?? "");
+    return found?.source ?? "";
+};
+
+const moduleSource = (directory: string): string => stripDocComments(documentedModuleSource(directory));
+
+const unwrapDocComment = (block: string): string =>
+    block
+        .split("\n")
+        .map((line) => line.replace(/^\s*\/?\*+\/?\s?/, ""))
+        .join(" ")
+        .replaceAll(/\s+/g, " ")
+        .trim();
+
+const docCommentBefore = (source: string, anchor: string): string => {
+    const index = source.indexOf(anchor);
+    expect(index, `expected ${anchor} in the generated module`).toBeGreaterThan(-1);
+
+    return unwrapDocComment(source.slice(source.lastIndexOf("/**", index), index));
 };
 
 const registerModuleLevelPromisifyTests = (): void => {
@@ -813,6 +830,35 @@ describe("vtable slots with array out parameters", () => {
         const pango = moduleSource("pango");
         expect(pango).toContain("vfuncListFaces(): FontFace[]");
         expect(pango).toContain("vfuncListSizes(): number[] | null");
+    });
+});
+
+describe("vtable slot members carry their own documentation", () => {
+    it("stands the chain-up note alone on a slot GObject-Introspection leaves undocumented", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "vfuncCloseRequest(): boolean {");
+
+        expect(doc).toBe(
+            "Invokes the `close_request` vtable slot. Override it on a class passed to `registerClass` " +
+            "and chain up with `super.vfuncCloseRequest()`; calling it from anywhere else re-enters " +
+            "the slot on a live instance.",
+        );
+    });
+
+    it("keeps the documentation the vtable field carries ahead of the note", () => {
+        const doc = docCommentBefore(documentedModuleSource("gobject"), "vfuncConstructed(): void {");
+        expect(doc).toMatch(/^the `constructed` function is called by `g_object_new\(\)`/);
+        expect(doc).toContain("Invokes the `constructed` vtable slot.");
+        expect(doc).toContain("chain up with `super.vfuncConstructed()`");
+    });
+
+    it("documents a slot whose callback the field alone describes", () => {
+        const doc = docCommentBefore(
+            documentedModuleSource("gtk"),
+            "vfuncMeasure(orientation: Orientation, forSize: number)",
+        );
+
+        expect(doc).toMatch(/^Called to obtain the minimum and natural size of the widget/);
+        expect(doc).toContain("chain up with `super.vfuncMeasure()`");
     });
 });
 

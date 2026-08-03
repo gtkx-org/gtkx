@@ -1,21 +1,9 @@
-import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
+import { type Descriptor, type ExternalObject, type Handle, newObject } from "@gtkx/native";
 import { bind } from "./bind.js";
-import { biguint64T, objectT, sizedArrayT, stringT, uint32T, voidT } from "./descriptors.js";
-import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
-import { getHandle } from "./registry.js";
+import { objectT, stringT, voidT } from "./descriptors.js";
+import { LIB, VALUE_T } from "./library.js";
+import { getHandle, registerWrapper } from "./registry.js";
 import { fromValue, newValueForDescriptor, toValue } from "./value.js";
-
-const gObjectNewWithProperties = bind(
-    LIB,
-    "g_object_new_with_properties",
-    [
-        biguint64T,
-        uint32T,
-        sizedArrayT(stringT("borrowed"), 1, "borrowed"),
-        sizedArrayT(VALUE_T, 1, "borrowed", VALUE_SIZE),
-    ],
-    objectT("full"),
-);
 
 const gObjectGetProperty = bind(
     LIB,
@@ -33,14 +21,21 @@ const gObjectSetProperty = bind(
 
 /**
  * Constructs a new GObject of the given type, setting the supplied construct
- * properties. Entries whose value is `undefined` or not a `[descriptor, value]`
- * pair are skipped.
+ * properties, and binds `wrapper` to it. Entries whose value is `undefined` or
+ * not a `[descriptor, value]` pair are skipped. A type registered with
+ * `registerClass` binds the wrapper before its `constructed` slot runs, so an
+ * override of that slot already sees a usable instance.
  *
  * @param gtype The GType of the object to construct.
  * @param props Property names mapped to `[descriptor, value]` pairs.
+ * @param wrapper The wrapper instance to bind to the new object.
  * @returns The handle of the newly created object.
  */
-function newObjectWithProperties(gtype: bigint, props: Record<string, unknown>): ExternalObject<Handle> {
+function newObjectWithProperties(
+    gtype: bigint,
+    props: Record<string, unknown>,
+    wrapper: object,
+): ExternalObject<Handle> {
     const names: string[] = [];
     const values: ExternalObject<Handle>[] = [];
 
@@ -61,7 +56,9 @@ function newObjectWithProperties(gtype: bigint, props: Record<string, unknown>):
         values.push(toValue(descriptor, value));
     }
 
-    return gObjectNewWithProperties(gtype, names.length, names, values) as ExternalObject<Handle>;
+    newObject(gtype, names, values, wrapper, registerWrapper);
+
+    return getHandle(wrapper);
 }
 
 /**
