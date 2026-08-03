@@ -424,57 +424,7 @@ gtkx dev -- --nope
 
 ---
 
-## 15. Nothing tells you the process outlives the window, and the hook that looks right does not fire
-
-**Severity:** medium. Not a crash, and the underlying behavior is Node's, not GTKX's. The trap is that the obvious remedy silently does nothing.
-
-**Repro:** follow the getting-started guide, wire `onCloseRequest={quit}`, then add anything that holds Node's event loop open. A `node:worker_threads` Worker is the obvious case, but an HTTP server, a file watcher, or a bare `setInterval` all do it.
-
-```sh
-gtkx dev
-```
-
-**Actual:** closing the window unmounts the tree and quits the GApplication, and the process stays alive. Under `gtkx dev` it reads as a hung dev server. Packaged, it is a stray process still owning the application ID, so the next launch takes the remote-instance path, which is the same road as entry 11.
-
-**Cause:** a live `Worker` refs the libuv loop until it is terminated. That is ordinary Node behavior and GTKX does not cause it. What GTKX contributes is that the documented shutdown story stops at GTK: `website/guide/getting-started.md` explains that `quit()` unmounts every root and that unmounting the application element quits the application, which is true and complete as far as GTK is concerned, and it is where a reader stops looking.
-
-**`onExit` is not the answer, and that is the sharp edge.** It reads like the general shutdown hook, and its own documentation says it runs "once when the process quits, before the native runtime is torn down". But the only thing that invokes it is `packages/runtime/src/exit-hook.ts`, which is a single line:
-
-```ts
-process.on("exit", quit);
-```
-
-`process.on("exit")` fires when the event loop drains or when `process.exit()` is called. A live Worker is precisely what stops the loop draining, so the callback never runs, and using `onExit` to terminate that Worker cannot work. `quit()` from `@gtkx/react` does not close the gap either: it unmounts the active roots and returns `Gdk.EVENT_STOP`, and never reaches the runtime's own `quit()`.
-
-So anything holding the Node loop open has to be released while the loop is still turning, at the point the application decides it is finished. The right signal for that is `GApplication::shutdown`, reachable from any component under the application element:
-
-```tsx
-const application = useApplication();
-
-useEffect(() => {
-    const handler = (): void => {
-        closeDatabaseWorkers();
-    };
-
-    application.on("shutdown", handler);
-}, [application]);
-```
-
-`quit()` unmounts every root, unmounting the application element runs its lifecycle cleanup, and that calls `quitApplication`, which detaches the windows, reaches GLib's own shutdown and emits `shutdown`. All of that is synchronous and happens while the loop is still turning, so a handler there can still terminate a worker.
-
-`shutdown` is the right choice over the window's own `close-request` because it fires wherever the application shuts down, not only where one window was closed: an application-level Quit action, Ctrl+Q, and a D-Bus `Quit` all reach it, and in a multi-window app one window closing is not the application ending. Doing the teardown in `onCloseRequest` works for the window path and needs no hook at all, so it is fine for a single-window app, but it is the narrower of the two.
-
-Neither covers a signal that kills the process outright, such as `SIGTERM` with no handler installed, and nothing can.
-
-**Two different public exports are named `quit`, and the guide points at the one that does less.** `@gtkx/react` exports a `quit` that unmounts the active roots and returns `Gdk.EVENT_STOP`, which is what `onCloseRequest={quit}` wants. `@gtkx/runtime` exports a different `quit` that runs the registered `onExit` callbacks and tears down the native runtime. Same name, different module, different job, and nothing in either signature says so. Building TableStar hit this directly: teardown was registered through `onExit`, the window's handler was bound to the React `quit`, and the callbacks never ran, so the process kept running with an in-flight query silently abandoned. Worth disambiguating in the documentation at least, and worth considering whether the runtime's `quit` should be reachable from the React one.
-
-Found by building TableStar, whose database drivers each run in a worker: the app looked closed and the process never exited.
-
-**Fix:** two parts. Documentation: the shutdown section should say that closing the window ends the GTK side only, and show releasing a Node-side resource next to the existing `onCloseRequest={quit}`. Code, worth considering: either have `quit()` from `@gtkx/react` invoke the runtime's `quit()` so `onExit` fires on the documented shutdown path and behaves as its name suggests, or narrow `onExit`'s documentation to say it only runs on a process exit already in progress and is not a place to release anything holding the loop open.
-
----
-
-## 16. The API reference answers for whichever app happens to be running
+## 15. The API reference answers for whichever app happens to be running
 
 **Severity:** medium. The reference is a development-time tool, and it is least available exactly when it is most useful.
 
@@ -501,6 +451,7 @@ With no app registered the reference does answer, from the server's own root, wh
 **Fix:** let the reference tools take an explicit project root, or resolve one from the caller's working directory, and fall back to a registered app only when neither is available. Failing that, name the project in the response rather than only in the error, so a wrong answer is visible.
 
 ---
+
 ## Verified working
 
 Recorded so nobody re-tests them:
@@ -510,4 +461,4 @@ Recorded so nobody re-tests them:
 - `tsc --noEmit`, `gtkx build`, and `vitest run` all pass on a fresh scaffold.
 - `gtkx dev` runs against a live GNOME Wayland session and Fast Refresh connects.
 - The MCP server picks up the running app's project root and rescopes its API reference to that project's configured libraries automatically, so one server correctly serves several projects in a session.
-- `gtkx_list_apps`, `gtkx_take_screenshot`, `gtkx_list_api`, `gtkx_search_api`, and `gtkx_get_api_docs` all behave as documented, subject to entry 16 on which project the reference resolves to. The reference pages carry upstream documentation, prop types with defaults, signal signatures, methods, hierarchy, and the correct import line.
+- `gtkx_list_apps`, `gtkx_take_screenshot`, `gtkx_list_api`, `gtkx_search_api`, and `gtkx_get_api_docs` all behave as documented, subject to entry 15 on which project the reference resolves to. The reference pages carry upstream documentation, prop types with defaults, signal signatures, methods, hierarchy, and the correct import line.
