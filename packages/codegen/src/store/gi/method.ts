@@ -433,7 +433,10 @@ const planOutParam = (
     argIndex: ArgIndexOptions,
     isConsumed: boolean,
 ): CallArgPlan => {
-    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, argIndex);
+    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+        ...argIndex,
+        hasOutIndirection: true,
+    });
 
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", isConsumed }),
@@ -507,7 +510,10 @@ const planInoutParam = (
         };
     }
 
-    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, argIndex);
+    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+        ...argIndex,
+        hasOutIndirection: true,
+    });
 
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", isConsumed }),
