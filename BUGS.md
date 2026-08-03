@@ -361,6 +361,29 @@ after  Activate:  node /com/gtkx/hello_world { interface org.gtk.Application { .
 
 ---
 
+## 12. Out arrays of inline structs are read as arrays of pointers
+
+**Severity:** blocker. Calling any of the affected methods segfaults the process.
+
+**Repro:**
+
+```ts
+const [, keys] = Gdk.Display.getDefault().mapKeyval(Gdk.KEY_a);
+console.log(keys[0].keycode);
+```
+
+**Actual:** `SIGSEGV` on the field read. `new Gtk.Label({ label: "hello" }).getLayout().getLogAttrs()` and `Gtk.Gesture.getBacklog` fail the same way; `Gtk.AccessibleText`'s `getAttributes` and `getSelection` vfuncs carry the same shape.
+
+**Cause:** GIR writes an out array's element `c:type` with one extra `*`, which belongs to the out indirection rather than to the element. `gdk_display_map_keyval` declares `<array c:type="GdkKeymapKey**"><type name="KeymapKey" c:type="GdkKeymapKey*"/></array>`, so the element looks like a pointer even though the callee returns a packed array of 12-byte structs. Codegen's `inlineElementSize` bailed on any element `c:type` containing a `*`, so it emitted no element size, and the native array codec fell through to its pointer-array path and read 8-byte pointers out of struct storage.
+
+The same convention holds across every GIR in the workspace: for `out` and `inout` parameters that are not `caller-allocates`, the element `c:type` always carries exactly one star more than the element's real indirection, and `caller-allocates` out arrays never do.
+
+**Fix applied:** the descriptor renderer now discounts that star when the parameter sits behind a ref, so an out array of inline records emits its element size and the codec walks the buffer by stride. `packages/e2e/tests/native/inline-struct-out-arrays.test.ts` covers the keymap round trip and the log-attr layout.
+
+The transfer-full container is not leaked: `RefCodec::decode_with_context` already frees length-bounded out arrays.
+
+---
+
 ## Verified working
 
 Recorded so nobody re-tests them:
