@@ -1,7 +1,7 @@
 import "./exit-hook.js";
 
 /** @public */
-export { type CommandLineApplication, deriveApplicationClass } from "./application-class.js";
+export { type ApplicationClass, type CommandLineApplication, createApplication } from "./application-class.js";
 /** @public */
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 /** @public */

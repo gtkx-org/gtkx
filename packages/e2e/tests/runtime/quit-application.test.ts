@@ -2,15 +2,20 @@ import { quitApplication, runApplication } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { countSignal, createApplication, createPlainApplication } from "../helpers/application.js";
 
-describe("quitApplication — an application GTKX did not derive", () => {
-    it("releases an application built straight from Gio.Application", () => {
+describe("runApplication — an application GTKX did not derive", () => {
+    it("refuses to start an application built straight from Gio.Application", () => {
+        const application = createPlainApplication();
+        const activations = countSignal(application, "activate");
+        expect(() => runApplication(application, ["probe"])).toThrow(/not built by GTKX/);
+        expect(application.getIsRegistered()).toBe(false);
+        expect(activations()).toBe(0);
+    });
+
+    it("leaves an unregistered foreign application untouched when quit", () => {
         const application = createPlainApplication();
         const shutdowns = countSignal(application, "shutdown");
-        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: true, exitStatus: 0 });
         quitApplication(application);
-        expect(shutdowns()).toBe(1);
-        quitApplication(application);
-        expect(shutdowns()).toBe(1);
+        expect(shutdowns()).toBe(0);
     });
 });
 

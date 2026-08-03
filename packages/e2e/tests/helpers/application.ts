@@ -1,10 +1,9 @@
 import * as Gio from "@gtkx/gi/gio";
-import { deriveApplicationClass } from "@gtkx/runtime";
+import { type ApplicationClass, createApplication as deriveApplication } from "@gtkx/runtime";
 import { createAppIdFactory } from "./unique-name.js";
 
 type ApplicationSignal = "activate" | "shutdown";
 
-const DerivedApplication = deriveApplicationClass(Gio.Application) as typeof Gio.Application;
 const uniqueAppId = createAppIdFactory("org.gtkx.application");
 
 const applicationProps = (): Gio.ApplicationConstructorProps => ({
@@ -12,7 +11,11 @@ const applicationProps = (): Gio.ApplicationConstructorProps => ({
     flags: Gio.ApplicationFlags.NON_UNIQUE,
 });
 
-const createApplication = (): Gio.Application => new DerivedApplication(applicationProps());
+const createApplicationFrom = <T extends Gio.Application>(
+    base: ApplicationClass<T, Gio.ApplicationConstructorProps>,
+): T => deriveApplication(base, applicationProps());
+
+const createApplication = (): Gio.Application => createApplicationFrom(Gio.Application);
 const createPlainApplication = (): Gio.Application => new Gio.Application(applicationProps());
 
 const countSignal = (application: Gio.Application, signal: ApplicationSignal): (() => number) => {
@@ -25,4 +28,4 @@ const countSignal = (application: Gio.Application, signal: ApplicationSignal): (
     return () => emissions;
 };
 
-export { applicationProps, countSignal, createApplication, createPlainApplication, DerivedApplication };
+export { applicationProps, countSignal, createApplication, createApplicationFrom, createPlainApplication };

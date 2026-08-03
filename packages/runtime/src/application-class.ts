@@ -6,7 +6,7 @@ import { typeName } from "./type.js";
 type CommandLineResult = [boolean, string[], number];
 
 /**
- * The GIO application surface {@link deriveApplicationClass} overrides, which `Gio.Application` and
+ * The GIO application surface {@link createApplication} overrides, which `Gio.Application` and
  * every subclass of it satisfies structurally.
  */
 type CommandLineApplication = {
@@ -25,6 +25,9 @@ type CommandLineApplication = {
 type ShutdownApplication = {
     run(argv: string[]): number;
 };
+
+/** An application class together with the construct properties it accepts. */
+type ApplicationClass<T extends CommandLineApplication, P> = AnyClass<T> & (new (props: P) => T);
 
 const derivedClasses: WeakMap<AnyClass, AnyClass> = new WeakMap();
 const derivedApplicationClasses: Set<AnyClass> = new Set();
@@ -87,16 +90,25 @@ const shutDownThroughRun = (application: ShutdownApplication): void => {
     }
 };
 
-/**
- * Derives, once per base class, an application class whose command line handling GTKX may drive a
- * second time. GLib parses an application's command line at most once per instance and crashes on a
- * second parse, so only an application built from this class can reach the teardown that unregisters
- * it from D-Bus. Every application the reconciler builds is one.
- *
- * @param base The application class to derive from, such as `Gtk.Application`.
- * @returns The derived class, registered as its own GType.
- */
 const deriveApplicationClass = <T extends CommandLineApplication>(base: AnyClass<T>): AnyClass<T> =>
     getOrInsert(derivedClasses, base, () => buildApplicationClass(base)) as AnyClass<T>;
 
-export { deriveApplicationClass, shutDownThroughRun, type CommandLineApplication };
+/**
+ * Constructs an application GTKX can shut down. GLib parses an application's command line at most
+ * once per instance and crashes on a second parse, so {@link runApplication} and
+ * {@link quitApplication} only accept an application built here.
+ *
+ * @param base The application class to construct, such as `Gtk.Application`.
+ * @param props Construct properties, passed through unchanged.
+ * @returns An instance of a class derived from `base`, registered once per base class as its own GType.
+ */
+const createApplication = <T extends CommandLineApplication, P>(base: ApplicationClass<T, P>, props: P): T =>
+    new (deriveApplicationClass(base) as new (props: P) => T)(props);
+
+export {
+    createApplication,
+    isDerivedApplication,
+    shutDownThroughRun,
+    type ApplicationClass,
+    type CommandLineApplication,
+};

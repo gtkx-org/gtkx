@@ -1,5 +1,5 @@
 import { keepAlive, quit as nativeQuit } from "@gtkx/native";
-import { shutDownThroughRun } from "./application-class.js";
+import { isDerivedApplication, shutDownThroughRun } from "./application-class.js";
 
 /**
  * The GIO and GTK application surface {@link runApplication} and {@link quitApplication} drive, so any
@@ -126,6 +126,14 @@ const restartApplication = (application: ApplicationLike): number => {
  * @returns Whether this process may build a user interface, and the status to exit with.
  */
 const runApplication = (application: ApplicationLike, argv: string[]): RunApplicationResult => {
+    if (!isDerivedApplication(application)) {
+        throw new Error(
+            "runApplication: this application was not built by GTKX, so its command line cannot be " +
+            "parsed and it cannot be shut down safely; render <GtkApplication> or <AdwApplication>, " +
+            "or construct it with createApplication from @gtkx/runtime",
+        );
+    }
+
     const exitStatus = startedApplications.has(application)
         ? restartApplication(application)
         : startApplication(application, argv);
@@ -144,11 +152,9 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
  * destroys the application implementation and releases the D-Bus registration. Does nothing for an
  * application that is not registered, so a repeated call is a no-op.
  *
- * GLib's own shutdown is reachable once per application, and only for one built from
- * `deriveApplicationClass`, which every application the reconciler builds is: reaching it marks the
- * application as quitting, which GLib never undoes. Anything else falls back to emitting `shutdown`,
- * which releases the runtime and leaves the registration for GLib to drop when the application is
- * finalized.
+ * GLib's own shutdown is reachable once per application: reaching it marks the application as
+ * quitting, which GLib never undoes. An application that has already quit falls back to emitting
+ * `shutdown`, which releases the runtime and leaves the registration for GLib to drop at finalize.
  *
  * @param application The application to shut down.
  */
