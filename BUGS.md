@@ -424,6 +424,28 @@ gtkx dev -- --nope
 
 ---
 
+## 15. Nothing tells you the process outlives the window
+
+**Severity:** medium. Not a crash, and not GTKX's doing in the strict sense, but it is a papercut the docs currently walk users into.
+
+**Repro:** follow the getting-started guide, wire `onCloseRequest={quit}`, then add anything that holds Node's event loop open. A `node:worker_threads` Worker is the obvious case, but an HTTP server, a file watcher, or a bare `setInterval` all do it.
+
+```sh
+gtkx dev
+```
+
+**Actual:** closing the window unmounts the tree and quits the GApplication, and the process stays alive. Under `gtkx dev` it reads as a hung dev server. Packaged, it is a stray process still owning the application ID, so the next launch takes the remote-instance path, which is the same road as entry 11.
+
+**Cause:** a live `Worker` refs the libuv loop until it is terminated. That is ordinary Node behavior and GTKX does not cause it. What GTKX contributes is that the documented shutdown story stops at GTK. `website/guide/getting-started.md` explains that `quit()` unmounts every root and that unmounting the application element quits the application, which is true and complete as far as GTK is concerned, and it is where a reader stops looking. Nothing says the process may still be running afterwards, or where to release anything Node-side.
+
+`onExit` from `@gtkx/runtime` is exactly the hook for this, and it is public: `packages/runtime/src/index.ts` exports it and it reaches `dist/index.d.ts`. But it appears nowhere in the prose documentation, in neither the guide nor the tutorial, so it is only discoverable by reading the generated API reference and already knowing what to look for.
+
+This lands hardest on the thing GTKX advertises. The pitch is that a GNOME app can harness the Node and npm ecosystem, and the moment a reader takes that up, the documented shutdown path stops being sufficient. Found by building TableStar, whose database drivers each run in a worker: the app looked closed and the process never exited.
+
+**Fix:** documentation, not code. The shutdown section should say that closing the window ends the GTK side only, and that anything holding the Node loop open belongs in `onExit`. A one-line example next to the existing `onCloseRequest={quit}` would cover it. Worth stating in the workers or async part of the guide too, since that is where a reader will be when it becomes relevant.
+
+---
+
 ## Verified working
 
 Recorded so nobody re-tests them:
