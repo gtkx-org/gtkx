@@ -10,6 +10,7 @@ import {
     runDevSupervisor,
     type SupervisedChild,
 } from "../../src/dev/supervisor.js";
+import { collectLogged } from "../stderr-text.js";
 
 type ExitListener = (code: number | null, signal: NodeJS.Signals | null) => void;
 type WatchedSignal = "SIGINT" | "SIGTERM" | "SIGHUP";
@@ -118,6 +119,23 @@ const startSupervisor = async (entry = "/abs/src/main.tsx", args?: string[]): Pr
     return child;
 };
 
+const signalSupervisedChild = async (signal: WatchedSignal): Promise<FakeChild> => {
+    const child = await startSupervisor();
+    process.emit(signal, signal);
+    await flushMicrotasks();
+
+    return child;
+};
+
+const startWithKillSpy = async (): Promise<{ child: FakeChild; processKillSpy: MockInstance<typeof process.kill> }> => {
+    const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
+    const child = await startSupervisor();
+    child.pid = 12_345;
+    child.exitCode = null;
+
+    return { child, processKillSpy };
+};
+
 const startWithWatch = async (
     regenerate: () => Promise<void>,
 ): Promise<{ child: FakeChild; fireConfigChange: () => void }> => {
@@ -216,7 +234,7 @@ describe("runDevSupervisor (child exit handling)", () => {
         child.emit("exit", RESTART_EXIT_CODE, null);
         expect(forkMock).toHaveBeenCalledTimes(2);
         expect(ctx.exitSpy).not.toHaveBeenCalled();
-        const logged = ctx.stderrSpy.mock.calls.map((call) => String(call[0])).join("");
+        const logged = collectLogged(ctx.stderrSpy);
         expect(logged).toContain("Restarting dev runner");
     });
 
@@ -237,24 +255,18 @@ describe("runDevSupervisor (signal forwarding — per-signal)", () => {
     const ctx = setupSupervisorCtx();
 
     it("forwards SIGINT to the running child process", async () => {
-        const child = await startSupervisor();
-        process.emit("SIGINT", "SIGINT");
-        await flushMicrotasks();
+        const child = await signalSupervisedChild("SIGINT");
         expect(child.kill).toHaveBeenCalledWith("SIGINT");
         expect(ctx.exitSpy).not.toHaveBeenCalled();
     });
 
     it("forwards SIGTERM to the running child process", async () => {
-        const child = await startSupervisor();
-        process.emit("SIGTERM", "SIGTERM");
-        await flushMicrotasks();
+        const child = await signalSupervisedChild("SIGTERM");
         expect(child.kill).toHaveBeenCalledWith("SIGTERM");
     });
 
     it("forwards SIGHUP to the running child process", async () => {
-        const child = await startSupervisor();
-        process.emit("SIGHUP", "SIGHUP");
-        await flushMicrotasks();
+        const child = await signalSupervisedChild("SIGHUP");
         expect(child.kill).toHaveBeenCalledWith("SIGHUP");
     });
 });
@@ -263,18 +275,14 @@ describe("runDevSupervisor (signal forwarding — exit propagation)", () => {
     const ctx = setupSupervisorCtx();
 
     it("exits 0 when the child shuts down cleanly on SIGINT", async () => {
-        const child = await startSupervisor();
-        process.emit("SIGINT", "SIGINT");
-        await flushMicrotasks();
+        const child = await signalSupervisedChild("SIGINT");
         child.emit("exit", 0, null);
         await flushMicrotasks();
         expect(ctx.exitSpy).toHaveBeenCalledWith(0);
     });
 
     it("propagates the child's exit code through the shutdown helper", async () => {
-        const child = await startSupervisor();
-        process.emit("SIGINT", "SIGINT");
-        await flushMicrotasks();
+        const child = await signalSupervisedChild("SIGINT");
         child.emit("exit", 7, null);
         await flushMicrotasks();
         expect(ctx.exitSpy).toHaveBeenCalledWith(7);
@@ -298,9 +306,7 @@ describe("runDevSupervisor (signal forwarding — exit propagation)", () => {
     });
 
     it("falls back to exitCodeForSignal when the child exits via signal during shutdown", async () => {
-        const child = await startSupervisor();
-        process.emit("SIGTERM", "SIGTERM");
-        await flushMicrotasks();
+        const child = await signalSupervisedChild("SIGTERM");
         child.emit("exit", null, "SIGTERM");
         await flushMicrotasks();
         expect(ctx.exitSpy).toHaveBeenCalledWith(143);
@@ -311,9 +317,7 @@ describe("runDevSupervisor (signal forwarding — shutdown ordering)", () => {
     const ctx = setupSupervisorCtx();
 
     it("ignores subsequent child exits once shutting down", async () => {
-        const child = await startSupervisor();
-        process.emit("SIGINT", "SIGINT");
-        await flushMicrotasks();
+        const child = await signalSupervisedChild("SIGINT");
         ctx.exitSpy.mockClear();
         child.emit("exit", 99, null);
         expect(ctx.exitSpy).not.toHaveBeenCalledWith(99);
@@ -324,10 +328,7 @@ describe("runDevSupervisor (signal forwarding — force kill)", () => {
     setupSupervisorCtx();
 
     it("force-kills the child via SIGKILL on a deliberate second SIGINT after the coalesce window", async () => {
-        const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
-        const child = await startSupervisor();
-        child.pid = 12_345;
-        child.exitCode = null;
+        const { child, processKillSpy } = await startWithKillSpy();
         vi.useFakeTimers();
         process.emit("SIGINT", "SIGINT");
         await vi.advanceTimersByTimeAsync(600);
@@ -341,10 +342,7 @@ describe("runDevSupervisor (signal forwarding — force kill)", () => {
     });
 
     it("coalesces a duplicate SIGINT and shuts down without a SIGKILL", async () => {
-        const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
-        const child = await startSupervisor();
-        child.pid = 12_345;
-        child.exitCode = null;
+        const { child, processKillSpy } = await startWithKillSpy();
         process.emit("SIGINT", "SIGINT");
         await flushMicrotasks();
         child.killed = false;

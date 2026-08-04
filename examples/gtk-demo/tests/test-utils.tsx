@@ -4,7 +4,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { render, type RenderResult, screen } from "@gtkx/testing";
+import { render, type RenderResult, screen, userEvent, waitFor } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
 import { expect, vi } from "vitest";
 import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
@@ -66,12 +66,18 @@ const makeIntValue = (n: number): GObject.Value => {
     return value;
 };
 
-const makeRgbaValue = (r: number, g: number, b: number, a: number): GObject.Value => {
+const makeRgba = (r: number, g: number, b: number, a: number): Gdk.RGBA => {
     const rgba = new Gdk.RGBA();
     rgba.red = r;
     rgba.green = g;
     rgba.blue = b;
     rgba.alpha = a;
+
+    return rgba;
+};
+
+const makeRgbaValue = (r: number, g: number, b: number, a: number): GObject.Value => {
+    const rgba = makeRgba(r, g, b, a);
     const value = new GObject.Value();
     value.init(GObject.typeFromName("GdkRGBA"));
     value.setBoxed(rgba);
@@ -241,6 +247,57 @@ const hasBufferTag = (view: Gtk.TextView, tagName: string): boolean => {
     return false;
 };
 
+const findCssLoadedOnMount = async (demo: Demo, needle: string): Promise<string | undefined> => {
+    const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+
+    try {
+        await renderDemo(demo);
+
+        return loadSpy.mock.calls
+            .map(([css]) => css)
+            .find((css) => typeof css === "string" && css.includes(needle));
+    } finally {
+        loadSpy.mockRestore();
+    }
+};
+
+const expectCssReloadedOnEdit = async (demo: Demo, edit: string, needle: string): Promise<void> => {
+    const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+
+    try {
+        await renderDemo(demo);
+        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
+        loadSpy.mockClear();
+        await userEvent.clear(textView);
+        await userEvent.type(textView, edit);
+
+        await waitFor(() => {
+            const loaded = loadSpy.mock.calls.find(([css]) => typeof css === "string" && css.includes(needle));
+            expect(loaded, "expected the buffer edit to be loaded into a CssProvider").toBeDefined();
+        });
+    } finally {
+        loadSpy.mockRestore();
+    }
+};
+
+const activateSearchBar = async (): Promise<{ toggle: Gtk.ToggleButton; bar: Gtk.SearchBar }> => {
+    const toggle = await screen.findByName("search-toggle", { as: Gtk.ToggleButton });
+    await userEvent.click(toggle);
+    const bar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
+
+    await waitFor(() => {
+        expect(bar).toHaveObjectProperty("searchModeEnabled", true);
+    });
+
+    return { toggle, bar };
+};
+
+const openSearchEntry = async (): Promise<Gtk.SearchEntry> => {
+    await activateSearchBar();
+
+    return await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+};
+
 const getChildren = (widget: Gtk.Widget): Gtk.Widget[] => {
     const children: Gtk.Widget[] = [];
 
@@ -252,15 +309,20 @@ const getChildren = (widget: Gtk.Widget): Gtk.Widget[] => {
 };
 
 export {
+    activateSearchBar,
     createApplicationIdFactory,
+    expectCssReloadedOnEdit,
+    findCssLoadedOnMount,
     findInactiveSearchToggle,
     findOpenButton,
     getChildren,
     hasBufferTag,
     makeFileValue,
     makeIntValue,
+    makeRgba,
     makeRgbaValue,
     makeStringValue,
+    openSearchEntry,
     readBufferText,
     renderDemo,
     type RenderDemoOptions,

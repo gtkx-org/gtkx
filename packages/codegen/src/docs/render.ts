@@ -4,6 +4,7 @@ import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirCallable } from "../gir/parameter.js";
+import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import { collectInheritedMethods, conflictRename } from "../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../analysis/param-structure.js";
@@ -20,6 +21,13 @@ type SignatureEntry = {
 };
 
 type OriginSignatureEntry = SignatureEntry & { origin: string | undefined };
+
+type PropertyMetaOptions = {
+    type: string;
+    property: GirProperty;
+    accessNotes: string[];
+    origin: string | undefined;
+};
 
 const DOCS_DEFAULT_VALUES: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
 const FENCE_LINE = /^\s*(```|~~~)/;
@@ -148,6 +156,26 @@ const metaBlock = (name: string, meta: string, doc: string): string => {
     return lines.join("\n");
 };
 
+const propertyMetaLine = ({ type, property, accessNotes, origin }: PropertyMetaOptions): string => {
+    const meta = [`\`${type}\``];
+
+    if (property.defaultValue !== undefined) {
+        meta.push(`default \`${docsDefaultValue(property.defaultValue)}\``);
+    }
+
+    if (property.constructOnly) {
+        meta.push("construct-only");
+    }
+
+    meta.push(...accessNotes);
+
+    if (origin !== undefined) {
+        meta.push(`from \`${origin}\``);
+    }
+
+    return meta.join(" · ");
+};
+
 const signatureBlock = (name: string, signature: string, notes: string[]): string => {
     const lines = [`### \`${name}\``, "", `\`\`\`ts\n${signature}\n\`\`\``];
 
@@ -236,13 +264,13 @@ export {
     renderDocsType,
     renderDocsSignalSignature,
     renderDocsSignalHandlerType,
-    docsDefaultValue,
     docMarkdown,
     firstSentence,
     elementSlug,
     implementsLine,
     joinSections,
     metaBlock,
+    propertyMetaLine,
     signatureBlock,
     namespaceOrder,
     docsSignatureContext,

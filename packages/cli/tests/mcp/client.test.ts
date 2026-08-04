@@ -2,8 +2,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import * as net from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { McpClient } from "../../src/mcp/client.js";
+import { collectLogged } from "../stderr-text.js";
 
 type ServerContext = {
     server: net.Server;
@@ -127,9 +128,6 @@ const createClient = (ctx: ServerContext): McpClient =>
 
 const spyStderr = () => vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
-const stderrText = (stderrSpy: MockInstance<typeof process.stderr.write>): string =>
-    stderrSpy.mock.calls.map((call) => String(call[0])).join("");
-
 function assertLine(line: Record<string, unknown> | undefined): asserts line is Record<string, unknown> {
     if (!line) {
         throw new Error("expected a protocol line to be present");
@@ -237,7 +235,7 @@ describe("McpClient incoming requests", () => {
         const registered = await registerWithStderrSpy(fixture.ctx);
         fixture.ctx.sockets[0]?.write("not json\n");
         await new Promise((resolve) => setTimeout(resolve, 20));
-        expect(stderrText(registered.stderrSpy)).toContain("invalid JSON");
+        expect(collectLogged(registered.stderrSpy)).toContain("invalid JSON");
         registered.stderrSpy.mockRestore();
         registered.client.disconnect();
     });
@@ -300,7 +298,7 @@ describe("McpClient connection failures", () => {
         fixture.ctx.sockets[0]?.destroy();
 
         await vi.waitFor(() => {
-            expect(stderrText(registered.stderrSpy)).toContain("Disconnected");
+            expect(collectLogged(registered.stderrSpy)).toContain("Disconnected");
         });
 
         registered.stderrSpy.mockRestore();

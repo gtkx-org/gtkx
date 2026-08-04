@@ -3,7 +3,8 @@ import { writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
 import { describe, expect, it, vi } from "vitest";
 import { docs } from "../../src/commands/docs.js";
-import { collectLogged, setupLogState } from "./log-state.js";
+import { collectLogged } from "../stderr-text.js";
+import { setupLogState } from "./log-state.js";
 
 type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; cwd?: string };
 type DocsRun = NonNullable<typeof docs.run>;

@@ -22,9 +22,15 @@ const naturalWidth = (widget: Gtk.Widget): number => widget.measure(Gtk.Orientat
 const naturalHeight = (widget: Gtk.Widget): number => widget.measure(Gtk.Orientation.VERTICAL, -1)[1];
 const grouped = (...widgets: (Gtk.Widget | null)[]): Gtk.Widget[] => widgets.filter((widget) => widget !== null);
 
-function GroupedLabels({ count, mode }: GroupedLabelsProps) {
+const useLabelPair = () => {
     const [a, setA] = useState<Gtk.Label | null>(null);
     const [b, setB] = useState<Gtk.Label | null>(null);
+
+    return { a, b, setA, setB };
+};
+
+function GroupedLabels({ count, mode }: GroupedLabelsProps) {
+    const { a, b, setA, setB } = useLabelPair();
 
     return (
         <GtkBox>
@@ -44,8 +50,7 @@ function GroupedLabels({ count, mode }: GroupedLabelsProps) {
 }
 
 function SizedLabels({ mode }: SizedLabelsProps) {
-    const [a, setA] = useState<Gtk.Label | null>(null);
-    const [b, setB] = useState<Gtk.Label | null>(null);
+    const { a, b, setA, setB } = useLabelPair();
 
     return (
         <GtkBox>
@@ -61,8 +66,7 @@ function SizedLabels({ mode }: SizedLabelsProps) {
 }
 
 function FramedLabels() {
-    const [a, setA] = useState<Gtk.Label | null>(null);
-    const [b, setB] = useState<Gtk.Label | null>(null);
+    const { a, b, setA, setB } = useLabelPair();
 
     return (
         <GtkBox>

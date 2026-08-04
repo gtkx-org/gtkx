@@ -37,6 +37,9 @@ const makeLoader = (): ConfigLoader => ({
     resolve: vi.fn(() => Promise.resolve(resolveConfig({ applicationId: "org.gtk.Test" }))),
 });
 
+const makePlugin = (loadConfig: ConfigLoader = makeLoader()): Plugin =>
+    createConfigPlugin({ name: "gtkx-config", loadConfig });
+
 const resolveId = (plugin: Plugin, id: string): string | undefined => {
     const hook = getHookHandler<ResolveIdHook>(plugin.resolveId, "resolveId");
     const result = hook(id, undefined, { isEntry: false });
@@ -58,38 +61,33 @@ const applyConfig = async (plugin: Plugin, root: string): Promise<void> => {
 
 describe("createConfigPlugin", () => {
     it("resolves the public virtual id to the internal resolved id", () => {
-        const plugin = createConfigPlugin({ name: "gtkx-config", loadConfig: makeLoader() });
-        expect(resolveId(plugin, GTKX_CONFIG_VIRTUAL_ID)).toBe(RESOLVED_GTKX_CONFIG_VIRTUAL_ID);
+        expect(resolveId(makePlugin(), GTKX_CONFIG_VIRTUAL_ID)).toBe(RESOLVED_GTKX_CONFIG_VIRTUAL_ID);
     });
 
     it("leaves unrelated ids unresolved", () => {
-        const plugin = createConfigPlugin({ name: "gtkx-config", loadConfig: makeLoader() });
-        expect(resolveId(plugin, "x")).toBeUndefined();
+        expect(resolveId(makePlugin(), "x")).toBeUndefined();
     });
 
     it("ignores load requests for unrelated ids", async () => {
-        const plugin = createConfigPlugin({ name: "gtkx-config", loadConfig: makeLoader() });
-        expect(await load(plugin, "x")).toBeUndefined();
+        expect(await load(makePlugin(), "x")).toBeUndefined();
     });
 
     it("loads the config from process.cwd() when no config hook has run", async () => {
         const loadConfig = makeLoader();
-        const plugin = createConfigPlugin({ name: "gtkx-config", loadConfig });
-        await load(plugin, RESOLVED_GTKX_CONFIG_VIRTUAL_ID);
+        await load(makePlugin(loadConfig), RESOLVED_GTKX_CONFIG_VIRTUAL_ID);
         expect(loadConfig.resolve).toHaveBeenCalledWith(process.cwd());
     });
 
     it("loads the config from the root captured by the config hook", async () => {
         const loadConfig = makeLoader();
-        const plugin = createConfigPlugin({ name: "gtkx-config", loadConfig });
+        const plugin = makePlugin(loadConfig);
         await applyConfig(plugin, "/some/root");
         await load(plugin, RESOLVED_GTKX_CONFIG_VIRTUAL_ID);
         expect(loadConfig.resolve).toHaveBeenCalledWith("/some/root");
     });
 
     it("renders the resolved config exports for the virtual module", async () => {
-        const plugin = createConfigPlugin({ name: "gtkx-config", loadConfig });
-        const source = await load(plugin, RESOLVED_GTKX_CONFIG_VIRTUAL_ID);
+        const source = await load(makePlugin(loadConfig), RESOLVED_GTKX_CONFIG_VIRTUAL_ID);
         expect(source).toContain('export * from "@gtkx/jsx/metadata";');
         expect(source).toContain('export const applicationId = "org.gtk.Demo4";');
     });

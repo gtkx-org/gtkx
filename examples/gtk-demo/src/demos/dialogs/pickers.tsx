@@ -337,17 +337,9 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
 
 const UriPickerRow = ({ uriButtonWidget, setUriButtonWidget, onLaunchUri }: UriRowProps) => (
     <>
-        <GtkGridLayoutChild column={0} row={3}>
-            <GtkLabel
-                useUnderline
-                halign={Gtk.Align.START}
-                valign={Gtk.Align.CENTER}
-                hexpand
-                mnemonicWidget={uriButtonWidget}
-            >
-                _URI:
-            </GtkLabel>
-        </GtkGridLayoutChild>
+        <PickerLabel row={3} target={uriButtonWidget}>
+            _URI:
+        </PickerLabel>
         <GtkGridLayoutChild column={1} row={3}>
             <GtkButton
                 ref={(node) => {

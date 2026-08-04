@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { ChildrenBuilder } from "@gtkx/testing/internal";
 import type { ReactNode, RefObject } from "react";
 import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
-import type { ChildrenBuilder } from "./render-children.js";
 
 type NotebookPageContent = (label: string) => ReactNode;
 

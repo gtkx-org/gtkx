@@ -3,6 +3,9 @@
     "files": ["${configDir}/node_modules/.gtkx/env.d.ts"],
     "references": [
       {
+        "path": "../../packages/utils/tsconfig.lib.json"
+      },
+      {
         "path": "../../packages/react/tsconfig.lib.json"
       },
       {

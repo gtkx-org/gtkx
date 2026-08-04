@@ -86,6 +86,16 @@ type ExpansionProps = {
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
 };
 
+/** Controlled sorting for the views whose headers can sort the collection. */
+type SortProps = {
+    /** Id of the column the view is sorted by, making sorting controlled. */
+    sortColumn?: string | null | undefined;
+    /** Direction `sortColumn` is sorted in, defaulting to ascending. */
+    sortOrder?: Gtk.SortType | null | undefined;
+    /** Called when the user sorts from a header, with the primary column's id, or null, and its order. */
+    onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
+};
+
 /** The data a collection view renders, either as a plain item list or grouped into sections. */
 type SourceProps<T, S> = {
     /** Items to render, nesting through `ListItem.children` for a tree; ignored once `sections` is given. */
@@ -111,18 +121,13 @@ type ColumnViewColumn<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | 
 /** The declarative collection props {@link ColumnView} adds on top of Gtk.ColumnView's own. */
 type ColumnViewOwnProps<T, S> = SelectionProps &
     ExpansionProps &
+    SortProps &
     SourceProps<T, S> &
     Omit<ItemSizeProps, "estimatedItemWidth"> & {
         /** Columns to render, in order; each carries its own cell renderer. */
         columns: ColumnViewColumn<T>[];
         /** Renders the header shown above each section. */
         renderHeader?: ListSectionRenderer<S> | null | undefined;
-        /** Id of the column the view is sorted by, making sorting controlled. */
-        sortColumn?: string | null | undefined;
-        /** Direction `sortColumn` is sorted in, defaulting to ascending. */
-        sortOrder?: Gtk.SortType | null | undefined;
-        /** Called when the user sorts from a header, with the primary column's id, or null, and its order. */
-        onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
     };
 
 /**
@@ -208,6 +213,7 @@ ListViewOwnProps<T, S>;
 export {
     type SelectionProps,
     type ExpansionProps,
+    type SortProps,
     type DropDownOwnProps,
     type DropDownWidgetProps,
     type ListItem,

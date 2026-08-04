@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESLint, type TSESTree } from "@typescript-eslint/utils";
+import { getIdentifierName } from "./identifier-name.js";
 
 type MessageIds = "ofSuffix" | "mixedShape" | "typeSuffix" | "tableSuffix";
 type Kind = "function" | "value" | "type" | "unknown";
@@ -74,9 +75,6 @@ const accessorNaming = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
         };
     },
 });
-
-const getIdentifierName = (node: TSESTree.Node | null | undefined): string | undefined =>
-    node?.type === AST_NODE_TYPES.Identifier ? node.name : undefined;
 
 const getInitKind = (node: TSESTree.Node | null | undefined): Kind =>
     node !== null && node !== undefined && FUNCTION_VALUES.has(node.type) ? "function" : "unknown";

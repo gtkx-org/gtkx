@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { GirFunction } from "../../src/gir/function.js";
-import type { GirNamespace } from "../../src/gir/namespace.js";
 import { hasUnmarshalableParam } from "../../src/analysis/param-capability.js";
 import { ModuleContext } from "../../src/writer/context.js";
-import { library } from "../helpers/library.js";
+import { library, locateCallable } from "../helpers/library.js";
 
 type Located = { context: ModuleContext; callable: GirFunction };
 
@@ -48,25 +47,14 @@ const ACCEPTED: string[] = [
     "gtk_gesture_stylus_get_axes",
 ];
 
-const namespaceCallables = (namespace: GirNamespace): GirFunction[] => {
-    const owners = [...namespace.classes, ...namespace.interfaces, ...namespace.records];
-
-    return [
-        ...namespace.functions,
-        ...owners.flatMap((owner) => [...owner.methods, ...owner.functions, ...owner.constructors]),
-    ];
-};
-
 const locate = (cIdentifier: string): Located => {
-    for (const namespace of library.namespaces.values()) {
-        const callable = namespaceCallables(namespace).find((candidate) => candidate.cIdentifier === cIdentifier);
+    const located = locateCallable(cIdentifier);
 
-        if (callable !== undefined) {
-            return { context: new ModuleContext(namespace, library), callable };
-        }
+    if (located === undefined) {
+        throw new Error(`${cIdentifier} was not found in any loaded namespace`);
     }
 
-    throw new Error(`${cIdentifier} was not found in any loaded namespace`);
+    return { context: new ModuleContext(located.namespace, library), callable: located.callable };
 };
 
 const isRejected = (cIdentifier: string): boolean => {

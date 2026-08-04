@@ -48,6 +48,7 @@ import {
     tUint64,
     tVoid,
 } from "./descriptor.js";
+import { carrayFor, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
 type RenderDescriptorOptions = {
     argIndexOffset?: number;
@@ -124,15 +125,8 @@ const transferOwnership = (transfer: ParameterTransfer): Ownership => {
 const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =>
     transfer === "container" ? "none" : transfer;
 
-const isVoidRef = (library: Library, ref: TypeId | undefined): boolean => {
-    if (ref === undefined) {
-        return true;
-    }
-
-    const type = library.typeFor(ref);
-
-    return type?.kind === "primitive" && type.category === "void";
-};
+const isVoidRef = (library: Library, ref: TypeId | undefined): boolean =>
+    ref === undefined || primitiveCategoryFor(library, ref) === "void";
 
 const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): boolean =>
     ref !== undefined && library.typeFor(ref)?.kind === "callback" && library.nameFor(ref) === undefined;
@@ -262,23 +256,14 @@ const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
     return type !== undefined && isScalarType(library, type);
 };
 
-const isStringElement = (library: Library, element: TypeId): boolean => {
-    const type = library.typeFor(element);
-
-    return type?.kind === "primitive" && type.category === "string";
-};
-
-const isUnboundedArray = (type: CArrayType): boolean =>
-    type.isZeroTerminated && type.lengthParameterIndex === undefined && type.fixedSize === undefined;
-
 const isStrvRef = (library: Library, ref: TypeId | undefined): boolean => {
-    const type = ref === undefined ? undefined : library.typeFor(ref);
+    const type = carrayFor(library, ref);
 
-    if (type?.kind !== "carray") {
+    if (type === undefined) {
         return false;
     }
 
-    return isUnboundedArray(type) && isStringElement(library, type.element);
+    return isUnboundedArray(type) && primitiveCategoryFor(library, type.element) === "string";
 };
 
 const isCellInout = (library: Library, parameter: GirParameter): boolean =>

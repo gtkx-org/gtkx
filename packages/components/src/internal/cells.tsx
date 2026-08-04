@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkTreeExpander } from "@gtkx/jsx/gtk";
+import { GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
 import { memo, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type { ListItem, ListItemRenderArgs, ListItemRenderer, ListSectionRenderer } from "../types.js";
@@ -85,6 +85,11 @@ type HeaderPortalsProps = {
     store: CellStore<Gtk.ListHeader>;
     render: ListSectionRenderer<never>;
     collection: Collection;
+};
+
+type SectionHeaderSlot = {
+    factoryProps: { headerFactory?: ReactElement };
+    portals: ReactNode;
 };
 
 const ItemCell = memo(ItemCellImpl);
@@ -335,11 +340,27 @@ const HeaderPortals = ({ store, render, collection }: HeaderPortalsProps): React
         <HeaderCell key={entry.key} entry={entry} render={render} collection={collection} />
     ));
 
+const useSectionHeader = (
+    render: ListSectionRenderer<never> | null | undefined,
+    collection: Collection,
+    size: CellSize,
+): SectionHeaderSlot => {
+    const store = useHeaderCells(size);
+
+    if (render == null) {
+        return { factoryProps: {}, portals: null };
+    }
+
+    return {
+        factoryProps: { headerFactory: <GtkSignalListItemFactory {...store.handlers} /> },
+        portals: <HeaderPortals store={store} render={render} collection={collection} />,
+    };
+};
+
 export {
     useItemCells,
-    useHeaderCells,
+    useSectionHeader,
     ItemPortals,
-    HeaderPortals,
     type CellSize,
     type CellStore,
 };

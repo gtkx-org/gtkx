@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Message } from "../src/protocol/schemas.js";
-import {
-    collectFirstFrame,
-    connectClient,
-    setupSocketServer,
-    socketCtx,
-    waitForConnection,
-} from "./socket-server-harness.js";
+import { collectFirstFrame, setupSocketServer, socketCtx, startWithConnection } from "./socket-server-harness.js";
 
 describe("ConnectionRegistry", () => {
     describe("ConnectionRegistry send", () => {
@@ -21,14 +15,10 @@ describe("ConnectionRegistry", () => {
         });
 
         it("delivers a message to the connected client", async () => {
-            const { server, socketPath, registry } = socketCtx;
-            await server.start();
-            const connectionPromise = waitForConnection(registry);
-            const client = await connectClient(socketPath);
-            const connection = await connectionPromise;
+            const { client, connection } = await startWithConnection();
 
             const parsed = await collectFirstFrame<Message>(client, () => {
-                registry.send(connection.id, { id: "out-1", result: 42 });
+                socketCtx.registry.send(connection.id, { id: "out-1", result: 42 });
             },
             );
 
@@ -40,11 +30,8 @@ describe("ConnectionRegistry", () => {
         setupSocketServer();
 
         it("rejects in-flight requests and drains the connection when dispose runs", async () => {
-            const { server, socketPath, registry } = socketCtx;
-            await server.start();
-            const connectionPromise = waitForConnection(registry);
-            await connectClient(socketPath);
-            const connection = await connectionPromise;
+            const { registry } = socketCtx;
+            const { connection } = await startWithConnection();
             const pending = connection.send("ping", {}, 5000);
 
             const disconnection: Promise<void> = new Promise((resolve) => {

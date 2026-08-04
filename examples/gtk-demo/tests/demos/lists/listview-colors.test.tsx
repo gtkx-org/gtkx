@@ -54,6 +54,20 @@ const leadingNames = (model: Gtk.MultiSelection): string[] =>
 const isAscending = (values: string[]): boolean =>
     values.every((value, index) => index === 0 || (values[index - 1] ?? "").localeCompare(value) <= 0);
 
+const renderSortableGrid = async (): Promise<{ model: Gtk.MultiSelection; sortDropdown: Gtk.DropDown }> => {
+    await renderDemo(listviewColorsDemo);
+    const model = await findGridModel();
+    const sortDropdown = await screen.findByName("sort-dropdown", { as: Gtk.DropDown });
+
+    return { model, sortDropdown };
+};
+
+const expectSelectionSize = async (model: Gtk.MultiSelection, size: number): Promise<void> => {
+    await waitFor(() => {
+        expect(Number(model.getSelection().getSize())).toBe(size);
+    });
+};
+
 vi.setConfig({ testTimeout: 30_000 });
 
 describe("listviewColorsDemo metadata", () => {
@@ -158,23 +172,14 @@ describe("listviewColorsDemo header actions", () => {
         const model = gridModel(grid);
         grid.grabFocus();
         await userEvent.keyboard(grid, "{ArrowDown} ");
-
-        await waitFor(() => {
-            expect(Number(model.getSelection().getSize())).toBe(1);
-        });
-
+        await expectSelectionSize(model, 1);
         const refill = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Refill" });
         await userEvent.click(refill);
-
-        await waitFor(() => {
-            expect(Number(model.getSelection().getSize())).toBe(0);
-        });
+        await expectSelectionSize(model, 0);
     });
 
     it("reorders the grid model when the sort dropdown selects Name", async () => {
-        await renderDemo(listviewColorsDemo);
-        const model = await findGridModel();
-        const sortDropdown = await screen.findByName("sort-dropdown", { as: Gtk.DropDown });
+        const { model, sortDropdown } = await renderSortableGrid();
         await userEvent.selectOptions(sortDropdown, 1);
 
         await waitFor(() => {
@@ -219,9 +224,7 @@ describe("listviewColorsDemo display modes", () => {
 
 describe("listviewColorsDemo sort modes", () => {
     it.each(sortModeCases)("orders the model per the $label compare function", async ({ index, field }) => {
-        await renderDemo(listviewColorsDemo);
-        const model = await findGridModel();
-        const sortDropdown = await screen.findByName("sort-dropdown", { as: Gtk.DropDown });
+        const { model, sortDropdown } = await renderSortableGrid();
         await userEvent.selectOptions(sortDropdown, index);
 
         await waitFor(() => {
@@ -231,9 +234,7 @@ describe("listviewColorsDemo sort modes", () => {
     });
 
     it("restores the generated order when switching back to unsorted", async () => {
-        await renderDemo(listviewColorsDemo);
-        const model = await findGridModel();
-        const sortDropdown = await screen.findByName("sort-dropdown", { as: Gtk.DropDown });
+        const { model, sortDropdown } = await renderSortableGrid();
         const original = leadingNames(model);
         await userEvent.selectOptions(sortDropdown, 1);
 

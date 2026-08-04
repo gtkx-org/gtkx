@@ -17,11 +17,17 @@ const captureStream = (isTTY?: boolean): Capture => {
     };
 };
 
+const capturingLogger = (): { logger: Logger; written: string[] } => {
+    const stream = captureStream();
+
+    return { logger: new Logger({ stream, isDebugEnabled: false }), written: stream.written };
+};
+
 describe("Logger prefixing", () => {
     it("uses the bare [gtkx] prefix without a namespace", () => {
-        const stream = captureStream();
-        new Logger({ stream, isDebugEnabled: false }).info("hello");
-        expect(stream.written).toEqual(["[gtkx] hello\n"]);
+        const { logger, written } = capturingLogger();
+        logger.info("hello");
+        expect(written).toEqual(["[gtkx] hello\n"]);
     });
 
     it("appends the namespace to the prefix", () => {
@@ -39,35 +45,35 @@ describe("Logger prefixing", () => {
 
 describe("Logger level labels", () => {
     it("writes info with the prefix and no level label", () => {
-        const stream = captureStream();
-        new Logger({ stream, isDebugEnabled: false }).info("hello");
-        expect(stream.written).toEqual(["[gtkx] hello\n"]);
+        const { logger, written } = capturingLogger();
+        logger.info("hello");
+        expect(written).toEqual(["[gtkx] hello\n"]);
     });
 
     it("prefixes warn with a warn level label", () => {
-        const stream = captureStream();
-        new Logger({ stream, isDebugEnabled: false }).warn("careful");
-        expect(stream.written).toEqual(["[gtkx] warn careful\n"]);
+        const { logger, written } = capturingLogger();
+        logger.warn("careful");
+        expect(written).toEqual(["[gtkx] warn careful\n"]);
     });
 
     it("prefixes error with an error level label", () => {
-        const stream = captureStream();
-        new Logger({ stream, isDebugEnabled: false }).error("boom");
-        expect(stream.written).toEqual(["[gtkx] error boom\n"]);
+        const { logger, written } = capturingLogger();
+        logger.error("boom");
+        expect(written).toEqual(["[gtkx] error boom\n"]);
     });
 
     it("appends formatted rest arguments after the message", () => {
-        const stream = captureStream();
-        new Logger({ stream, isDebugEnabled: false }).error("boom", { code: 1 });
-        expect(stream.written).toEqual(['[gtkx] error boom {"code":1}\n']);
+        const { logger, written } = capturingLogger();
+        logger.error("boom", { code: 1 });
+        expect(written).toEqual(['[gtkx] error boom {"code":1}\n']);
     });
 });
 
 describe("Logger debug gating", () => {
     it("suppresses debug when the debug flag is off", () => {
-        const stream = captureStream();
-        new Logger({ stream, isDebugEnabled: false }).debug("trace");
-        expect(stream.written).toEqual([]);
+        const { logger, written } = capturingLogger();
+        logger.debug("trace");
+        expect(written).toEqual([]);
     });
 
     it("writes debug when the debug flag is on", () => {

@@ -12,11 +12,24 @@ import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PR
 type PropDelta = { name: string; value: unknown; prevValue: unknown };
 type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };
 type PropChange = { prev: Props; next: Props };
+type ChangeRejection = { subject: string; stage: string; reason: string };
 
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const NOTIFY_PREFIX = "onNotify";
 const HANDLER_PREFIX = "on";
 const flushDirty: Set<ElementNode> = new Set();
+
+const CONSTRUCT_ONLY_REJECTION: ChangeRejection = {
+    subject: "construct-only prop",
+    stage: "created",
+    reason: "GTK accepts it only while the object is being built",
+};
+
+const PERMANENT_REJECTION: ChangeRejection = {
+    subject: "prop",
+    stage: "applied",
+    reason: "Nothing takes back what it already added",
+};
 
 const isHandlerName = (name: string): boolean => /^on[A-Z]/.test(name);
 
@@ -109,17 +122,10 @@ const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void
     }
 };
 
-const constructOnlyChangeError = (typeName: string, name: string): Error =>
+const propChangeError = (rejection: ChangeRejection, typeName: string, name: string): Error =>
     new Error(
-        `Cannot change the construct-only prop '${name}' of <${typeName}> after it is created. ` +
-        "GTK accepts it only while the object is being built, so give the element a key that " +
-        `changes with '${name}' and React will build a new one.`,
-    );
-
-const permanentChangeError = (typeName: string, name: string): Error =>
-    new Error(
-        `Cannot change the prop '${name}' of <${typeName}> after it is applied. ` +
-        "Nothing takes back what it already added, so give the element a key that " +
+        `Cannot change the ${rejection.subject} '${name}' of <${typeName}> after it is ${rejection.stage}. ` +
+        `${rejection.reason}, so give the element a key that ` +
         `changes with '${name}' and React will build a new one.`,
     );
 
@@ -139,11 +145,11 @@ const assertPropsCanChange = (typeName: string, prev: Props, next: Props): void 
 
     eachChangedName(prev, next, (name) => {
         if (isConstructOnlyChange(info, name, change)) {
-            throw constructOnlyChangeError(typeName, name);
+            throw propChangeError(CONSTRUCT_ONLY_REJECTION, typeName, name);
         }
 
         if (isPermanentChange(info, name, change)) {
-            throw permanentChangeError(typeName, name);
+            throw propChangeError(PERMANENT_REJECTION, typeName, name);
         }
     });
 };

@@ -6,6 +6,14 @@ import { renderDemo } from "../../test-utils.js";
 
 const LABEL_TEXT = "Use Control+z or Control+Shift+z to undo or redo changes";
 
+const typeIntoEntry = async (text: string): Promise<Gtk.Entry> => {
+    await renderDemo(entryUndoDemo);
+    const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
+    await userEvent.type(entry, text);
+
+    return entry;
+};
+
 describe("entryUndoDemo", () => {
     it("exposes the expected metadata", () => {
         expect(entryUndoDemo.id).toBe("entry-undo");
@@ -36,18 +44,14 @@ describe("entryUndoDemo", () => {
 
 describe("entryUndoDemo undo and redo", () => {
     it("undoes the typed text when Control+z is dispatched to the entry", async () => {
-        await renderDemo(entryUndoDemo);
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
-        await userEvent.type(entry, "hello");
+        const entry = await typeIntoEntry("hello");
         expect(screen.getByDisplayValue("hello")).toBe(entry);
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
         expect(screen.queryByDisplayValue("hello")).toBeNull();
     });
 
     it("redoes the typed text when Control+Shift+z is dispatched after an undo", async () => {
-        await renderDemo(entryUndoDemo);
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
-        await userEvent.type(entry, "redo me");
+        const entry = await typeIntoEntry("redo me");
         expect(screen.getByDisplayValue("redo me")).toBe(entry);
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
         expect(screen.queryByDisplayValue("redo me")).toBeNull();
@@ -56,9 +60,7 @@ describe("entryUndoDemo undo and redo", () => {
     });
 
     it("redoes the typed text with the Control+y accelerator after an undo", async () => {
-        await renderDemo(entryUndoDemo);
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
-        await userEvent.type(entry, "control y redo");
+        const entry = await typeIntoEntry("control y redo");
         expect(screen.getByDisplayValue("control y redo")).toBe(entry);
         await userEvent.keyboard(entry, "{Control>}z{/Control}");
         expect(screen.queryByDisplayValue("control y redo")).toBeNull();

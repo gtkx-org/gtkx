@@ -4,6 +4,12 @@ import { describe, expect, it } from "vitest";
 import { expanderDemo } from "../../../src/demos/buttons/expander.js";
 import { renderDemo } from "../../test-utils.js";
 
+const renderExpander = async (): Promise<Gtk.Expander> => {
+    await renderDemo(expanderDemo);
+
+    return await screen.findByName("expander", { as: Gtk.Expander });
+};
+
 describe("expanderDemo", () => {
     it("exposes the expected metadata", () => {
         expect(expanderDemo.id).toBe("expander");
@@ -24,8 +30,7 @@ describe("expanderDemo", () => {
     });
 
     it("flips its own expanded state to true when clicked", async () => {
-        await renderDemo(expanderDemo);
-        const expander = await screen.findByName("expander", { as: Gtk.Expander });
+        const expander = await renderExpander();
         expect(expander).not.toBeExpanded();
         await userEvent.click(expander);
 
@@ -37,8 +42,7 @@ describe("expanderDemo", () => {
     });
 
     it("encloses a non-editable, word-wrapped TextView seeded with the details paragraph", async () => {
-        await renderDemo(expanderDemo);
-        const expander = await screen.findByName("expander", { as: Gtk.Expander });
+        const expander = await renderExpander();
         await userEvent.click(expander);
         const textView = await within(expander).findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
         expect(textView).toBeInstanceOf(Gtk.TextView);

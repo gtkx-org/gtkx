@@ -40,15 +40,14 @@ const renderTestItemWithSpy = async (): Promise<ReturnType<typeof namedLabelRend
     return renderItem;
 };
 
+const prefixedLabel = (prefix: string): ListItemRenderer<NamedValue> => ({ item }) => (
+    <GtkLabel>{`${prefix}: ${item.name}`}</GtkLabel>
+);
+
 const expectRenderItemFunctionUpdate = async (): Promise<void> => {
-    const { rerender } = await renderListView([{ id: "1", value: { name: "Test" } }], {
-        renderItem: ({ item }) => <GtkLabel>{`First: ${item.name}`}</GtkLabel>,
-    });
-
-    await rerender([{ id: "1", value: { name: "Test" } }], {
-        renderItem: ({ item }) => <GtkLabel>{`Second: ${item.name}`}</GtkLabel>,
-    });
-
+    const testItems = [{ id: "1", value: { name: "Test" } }];
+    const { rerender } = await renderListView(testItems, { renderItem: prefixedLabel("First") });
+    await rerender(testItems, { renderItem: prefixedLabel("Second") });
     expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
 };
 

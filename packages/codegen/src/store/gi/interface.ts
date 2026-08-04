@@ -1,6 +1,5 @@
 import { pascalCase } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
-import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import { renderJsDoc } from "../../writer/doc.js";
@@ -9,6 +8,7 @@ import {
     type Callables,
     dedupeCallables,
     generateBindings,
+    type InstanceMemberRenderer,
     type InstanceScope,
     instanceScope,
     renderClassInstanceMember,
@@ -27,12 +27,7 @@ import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 import { renderVfuncMembers, renderVfuncMetadata } from "./vtable.js";
 
 type InterfaceMemberRenderers = {
-    renderMethod: (
-        context: ModuleContext,
-        callable: GirFunction,
-        scope: InstanceScope,
-        nameOverride?: string,
-    ) => string | undefined;
+    renderMethod: InstanceMemberRenderer;
     renderProperty: (args: PropertyAccessorArgs) => string | undefined;
 };
 

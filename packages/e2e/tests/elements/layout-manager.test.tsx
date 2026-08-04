@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkBoxLayout, GtkFixedLayout, GtkGridLayout } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
-import { createRef, type Ref } from "react";
+import { createRef, type ReactElement, type Ref } from "react";
 import { describe, expect, it } from "vitest";
 
 type BoxRef = { boxRef: Ref<Gtk.Box | null> };
@@ -18,36 +18,30 @@ const SwitchableLayoutBox = ({ boxRef, shouldUseGrid }: BoxRef & { shouldUseGrid
     <GtkBox ref={boxRef} layoutManager={shouldUseGrid ? <GtkGridLayout /> : <GtkBoxLayout spacing={4} />} />
 );
 
+const renderLayoutManager = async (layoutManager: ReactElement): Promise<Gtk.LayoutManager | null> => {
+    const boxRef = createRef<Gtk.Box>();
+    await render(<GtkBox ref={boxRef} layoutManager={layoutManager} />);
+
+    return boxRef.current?.getLayoutManager() ?? null;
+};
+
 describe("render - layoutManager prop wiring", () => {
     it("attaches a GtkBoxLayout to the host widget", async () => {
-        const boxRef = createRef<Gtk.Box>();
-
-        await render(
-            <GtkBox
-                ref={boxRef}
-                layoutManager={<GtkBoxLayout orientation={Gtk.Orientation.VERTICAL} spacing={12} />}
-            />,
-        );
-
-        const layout = boxRef.current?.getLayoutManager();
+        const layout = await renderLayoutManager(<GtkBoxLayout orientation={Gtk.Orientation.VERTICAL} spacing={12} />);
         expect(layout).toBeInstanceOf(Gtk.BoxLayout);
         expect(layout).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
         expect(layout).toHaveObjectProperty("spacing", 12);
     });
 
     it("attaches a GtkGridLayout to the host widget", async () => {
-        const boxRef = createRef<Gtk.Box>();
-        await render(<GtkBox ref={boxRef} layoutManager={<GtkGridLayout columnSpacing={6} rowSpacing={4} />} />);
-        const layout = boxRef.current?.getLayoutManager();
+        const layout = await renderLayoutManager(<GtkGridLayout columnSpacing={6} rowSpacing={4} />);
         expect(layout).toBeInstanceOf(Gtk.GridLayout);
         expect(layout).toHaveObjectProperty("columnSpacing", 6);
         expect(layout).toHaveObjectProperty("rowSpacing", 4);
     });
 
     it("attaches a GtkFixedLayout to the host widget", async () => {
-        const boxRef = createRef<Gtk.Box>();
-        await render(<GtkBox ref={boxRef} layoutManager={<GtkFixedLayout />} />);
-        expect(boxRef.current?.getLayoutManager()).toBeInstanceOf(Gtk.FixedLayout);
+        expect(await renderLayoutManager(<GtkFixedLayout />)).toBeInstanceOf(Gtk.FixedLayout);
     });
 });
 

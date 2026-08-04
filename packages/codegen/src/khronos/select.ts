@@ -24,20 +24,28 @@ const addMissing = (target: Map<string, string>, names: string[], value: string)
     }
 };
 
+const applyBlocks = (
+    blocks: GlInterfaceBlock[],
+    selection: GlSelection,
+    apply: (block: GlInterfaceBlock) => void,
+): void => {
+    for (const block of blocks) {
+        if (isBlockApplicable(block, selection)) {
+            apply(block);
+        }
+    }
+};
+
 const applyRequires = (
     feature: GlFeature,
     selection: GlSelection,
     commands: Map<string, string>,
     enums: Map<string, string>,
 ): void => {
-    for (const block of feature.requires) {
-        if (!isBlockApplicable(block, selection)) {
-            continue;
-        }
-
+    applyBlocks(feature.requires, selection, (block) => {
         addMissing(commands, block.commands, feature.name);
         addMissing(enums, block.enums, feature.name);
-    }
+    });
 };
 
 const removeBlock = (block: GlInterfaceBlock, commands: Map<string, string>, enums: Map<string, string>): void => {
@@ -56,13 +64,9 @@ const applyRemoves = (
     commands: Map<string, string>,
     enums: Map<string, string>,
 ): void => {
-    for (const block of feature.removes) {
-        if (!isBlockApplicable(block, selection)) {
-            continue;
-        }
-
+    applyBlocks(feature.removes, selection, (block) => {
         removeBlock(block, commands, enums);
-    }
+    });
 };
 
 const selectSubset = (registry: GlRegistry, selection: GlSelection): GlSubset => {

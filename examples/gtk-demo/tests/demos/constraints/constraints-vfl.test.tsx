@@ -1,11 +1,11 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
+import type { ChildButtons } from "../../../src/demos/constraints/child-buttons.js";
 import { constraintsVflDemo } from "../../../src/demos/constraints/constraints-vfl.js";
 import { renderDemo } from "../../test-utils.js";
 import {
     CHILD_BUTTON_LABELS,
-    type ChildButtons,
     collectConstraints,
     findChildButtons,
     findLabelledChildButtons,

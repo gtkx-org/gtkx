@@ -4,10 +4,10 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwCarousel, AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { getWidgetNodeText, within } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { buildPlainNotebook } from "../helpers/notebook-render.js";
-import { renderChildren } from "../helpers/render-children.js";
 
 type ReorderCase<Container> = {
     build: (ref: RefObject<Container | null>) => (items: string[]) => ReactNode;

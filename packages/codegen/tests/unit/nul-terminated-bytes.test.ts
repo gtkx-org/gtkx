@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { GirFunction } from "../../src/gir/function.js";
-import type { GirNamespace } from "../../src/gir/namespace.js";
 import { nulTerminatedByteParams } from "../../src/analysis/nul-terminated-bytes.js";
-import { library } from "../helpers/library.js";
+import { library, locateCallable } from "../helpers/library.js";
 
 type Expectation = [cIdentifier: string, truncatingParams: string[]];
 
@@ -16,26 +15,7 @@ const EXPECTATIONS: Expectation[] = [
     ["g_compute_checksum_for_data", []],
 ];
 
-const namespaceCallables = (namespace: GirNamespace): GirFunction[] => {
-    const owners = [...namespace.classes, ...namespace.interfaces, ...namespace.records];
-
-    return [
-        ...namespace.functions,
-        ...owners.flatMap((owner) => [...owner.methods, ...owner.functions, ...owner.constructors]),
-    ];
-};
-
-const locate = (cIdentifier: string): GirFunction | undefined => {
-    for (const namespace of library.namespaces.values()) {
-        const callable = namespaceCallables(namespace).find((candidate) => candidate.cIdentifier === cIdentifier);
-
-        if (callable !== undefined) {
-            return callable;
-        }
-    }
-
-    return undefined;
-};
+const locate = (cIdentifier: string): GirFunction | undefined => locateCallable(cIdentifier)?.callable;
 
 describe("nulTerminatedByteParams", () => {
     it.each(EXPECTATIONS)("names the truncating parameters of %s", (cIdentifier, truncatingParams) => {

@@ -35,6 +35,23 @@ const windowCoordsAtOffset = (view: Gtk.TextView, offset: number): [number, numb
     return view.bufferToWindowCoords(Gtk.TextWindowType.WIDGET, rect.x + 1, rect.y + Math.trunc(rect.height / 2));
 };
 
+const renderTextView = async (): Promise<Gtk.TextView> => {
+    await renderDemo(hypertextDemo);
+
+    return await findTextView();
+};
+
+const placeCursorAtWord = async (view: Gtk.TextView, word: string): Promise<number> => {
+    const buffer = view.getBuffer();
+    const offset = readBufferText(view).indexOf(word);
+
+    await act(() => {
+        buffer.placeCursor(buffer.getIterAtOffset(offset));
+    });
+
+    return offset;
+};
+
 const clickOffset = async (view: Gtk.TextView, offset: number): Promise<void> => {
     const [x, y] = windowCoordsAtOffset(view, offset);
 
@@ -65,8 +82,7 @@ describe("hypertextDemo metadata", () => {
 
 describe("hypertextDemo rendering", () => {
     it("renders page 1 with the hypertext and tags introduction", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
+        const textView = await renderTextView();
         expect(screen.getByDisplayValue(/simple /)).toBe(textView);
         expect(screen.getByDisplayValue(/hypertext/)).toBe(textView);
         expect(screen.getByDisplayValue(/can easily be realized with /)).toBe(textView);
@@ -74,8 +90,7 @@ describe("hypertextDemo rendering", () => {
     });
 
     it("embeds the ghost label, the level bar, and the emoji in page 1", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
+        const textView = await renderTextView();
         const levelBar = await screen.findByRole(Gtk.AccessibleRole.METER, { as: Gtk.LevelBar });
         expect(levelBar).toHaveObjectProperty("value", 50);
         expect(levelBar).toHaveObjectProperty("minValue", 0);
@@ -87,45 +102,24 @@ describe("hypertextDemo rendering", () => {
 
 describe("hypertextDemo link navigation", () => {
     it("navigates to the tags definition page when Enter is pressed at the tags link", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
-        const buffer = textView.getBuffer();
-        const tagsOffset = readBufferText(textView).indexOf("tags");
+        const textView = await renderTextView();
+        const tagsOffset = await placeCursorAtWord(textView, "tags");
         expect(tagsOffset).toBeGreaterThan(0);
-
-        await act(() => {
-            buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
-        });
-
         await userEvent.keyboard(textView, "{Enter}");
         expect(await screen.findByDisplayValue(/attribute that can be applied to some range of text/)).toBe(textView);
     });
 
     it("navigates to the hypertext definition page when Enter is pressed at the hypertext link", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
-        const buffer = textView.getBuffer();
-        const linkOffset = readBufferText(textView).indexOf("hypertext");
+        const textView = await renderTextView();
+        const linkOffset = await placeCursorAtWord(textView, "hypertext");
         expect(linkOffset).toBeGreaterThan(0);
-
-        await act(() => {
-            buffer.placeCursor(buffer.getIterAtOffset(linkOffset));
-        });
-
         await userEvent.keyboard(textView, "{Enter}");
         expect(await screen.findByDisplayValue(/Machine-readable text that is not sequential/)).toBe(textView);
     });
 
     it("navigates via the numeric-keypad Enter key at a link", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
-        const buffer = textView.getBuffer();
-        const tagsOffset = readBufferText(textView).indexOf("tags");
-
-        await act(() => {
-            buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
-        });
-
+        const textView = await renderTextView();
+        await placeCursorAtWord(textView, "tags");
         await fireEvent(demoKeyController(textView), "key-pressed", Gdk.KEY_KP_Enter, 0, 0);
         expect(await screen.findByDisplayValue(/attribute that can be applied to some range of text/)).toBe(textView);
     });
@@ -133,24 +127,21 @@ describe("hypertextDemo link navigation", () => {
 
 describe("hypertextDemo click navigation", () => {
     it("follows the hypertext link to the definition page when clicked", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
+        const textView = await renderTextView();
         const linkOffset = readBufferText(textView).indexOf("hypertext");
         await clickOffset(textView, linkOffset);
         expect(await screen.findByDisplayValue(/Machine-readable text that is not sequential/)).toBe(textView);
     });
 
     it("follows the tags link to the definition page when clicked", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
+        const textView = await renderTextView();
         const linkOffset = readBufferText(textView).indexOf("tags");
         await clickOffset(textView, linkOffset);
         expect(await screen.findByDisplayValue(/attribute that can be applied to some range of text/)).toBe(textView);
     });
 
     it("returns to page 1 when the Go back link is clicked on a definition page", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
+        const textView = await renderTextView();
         await clickOffset(textView, readBufferText(textView).indexOf("hypertext"));
         await screen.findByDisplayValue(/Machine-readable text that is not sequential/);
         await clickOffset(textView, readBufferText(textView).indexOf("Go back") + 1);
@@ -161,15 +152,8 @@ describe("hypertextDemo click navigation", () => {
 
 describe("hypertextDemo round trip", () => {
     it("navigates from page 2 (tags) back to page 1 via the Go back link", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
-        const buffer = textView.getBuffer();
-        const tagsOffset = readBufferText(textView).indexOf("tags");
-
-        await act(() => {
-            buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
-        });
-
+        const textView = await renderTextView();
+        await placeCursorAtWord(textView, "tags");
         await userEvent.keyboard(textView, "{Enter}");
         await screen.findByDisplayValue(/attribute that can be applied/);
         const pageTwo = readBufferText(textView);
@@ -188,8 +172,7 @@ describe("hypertextDemo round trip", () => {
 
 describe("hypertextDemo hover cursor", () => {
     it("swaps the text view cursor to a pointer over a link and back to text off it", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
+        const textView = await renderTextView();
         const motion = demoMotionController(textView);
         const [linkX, linkY] = windowCoordsAtOffset(textView, readBufferText(textView).indexOf("tags"));
 
@@ -211,15 +194,8 @@ describe("hypertextDemo hover cursor", () => {
 describe("hypertextDemo speaker icon", () => {
     it("speaks the word when the speaker icon on a definition page is clicked", async () => {
         spawnMock.mockClear();
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
-        const buffer = textView.getBuffer();
-        const tagsOffset = readBufferText(textView).indexOf("tags");
-
-        await act(() => {
-            buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
-        });
-
+        const textView = await renderTextView();
+        await placeCursorAtWord(textView, "tags");
         await userEvent.keyboard(textView, "{Enter}");
         await screen.findByDisplayValue(/attribute that can be applied/);
         const speaker = await screen.findByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
@@ -234,16 +210,14 @@ describe("hypertextDemo speaker icon", () => {
 
 describe("hypertextDemo input edge cases", () => {
     it("ignores non-Enter key presses without changing the page", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
+        const textView = await renderTextView();
         await userEvent.keyboard(textView, "a");
         expect(screen.getByDisplayValue(/Some text to show/)).toBe(textView);
         expect(screen.queryByDisplayValue(/attribute that can be applied/)).toBeNull();
     });
 
     it("does not navigate via Enter when the cursor is not on a link", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
+        const textView = await renderTextView();
         const buffer = textView.getBuffer();
 
         await act(() => {
@@ -256,8 +230,7 @@ describe("hypertextDemo input edge cases", () => {
     });
 
     it("does not navigate when a click lands off any link", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
+        const textView = await renderTextView();
         await clickOffset(textView, 2);
         expect(screen.getByDisplayValue(/Some text to show/)).toBe(textView);
         expect(screen.queryByDisplayValue(/attribute that can be applied/)).toBeNull();

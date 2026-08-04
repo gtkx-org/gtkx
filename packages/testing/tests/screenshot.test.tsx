@@ -3,12 +3,7 @@ import { GtkBox, GtkLabel, GtkMenuButton, GtkPopover } from "@gtkx/jsx/gtk";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { act, render, screen, screenshot } from "../src/index.js";
-
-const decodePngSize = (base64Data: string): { width: number; height: number } => {
-    const bytes = Buffer.from(base64Data, "base64");
-
-    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
-};
+import { decodePngSize } from "./png-helpers.js";
 
 const renderMenuButton = async (popoverRef: RefObject<Gtk.Popover | null>): Promise<void> => {
     await render(

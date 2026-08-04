@@ -1,6 +1,6 @@
+import { cleanup, render } from "@gtkx/testing/internal";
 import { bench, describe } from "vitest";
 import { renderListView } from "../tests/helpers/list-fixtures.js";
-import { cleanup, render } from "../tests/helpers/production-render.js";
 
 const SIZES = [100, 400];
 

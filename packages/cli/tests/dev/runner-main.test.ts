@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { main } from "../../src/dev/runner-main.js";
+import { collectLogged } from "../stderr-text.js";
 
 describe("main (entry resolution)", () => {
     let exitSpy: Mock<typeof process.exit>;
@@ -30,7 +31,7 @@ describe("main (entry resolution)", () => {
         });
 
         await expect(main()).rejects.toThrow("__exit__");
-        const written = stderrSpy.mock.calls.map((call) => String(call[0])).join("");
+        const written = collectLogged(stderrSpy);
         expect(written).toContain("[gtkx] error Missing GTKX_DEV_ENTRY");
         expect(exitSpy).toHaveBeenCalledWith(1);
     });

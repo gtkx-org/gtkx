@@ -2,10 +2,10 @@ import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { GtkButton, GtkTextBuffer, GtkTextChildAnchor, GtkTextMark, GtkTextTag, GtkTextView } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { getBufferText, getTextBuffer } from "../helpers/buffer-text.js";
-import { renderChildren } from "../helpers/render-children.js";
 import { expectNoBufferChangedOnReconcile } from "../helpers/text-buffer-view-render.js";
 
 type RenderedTextBuffer<P> = {

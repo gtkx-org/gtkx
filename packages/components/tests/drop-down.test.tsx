@@ -2,10 +2,10 @@ import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { valueItems } from "./helpers/list-fixtures.js";
-import { renderChildren } from "./helpers/render-children.js";
 import { expectTextPresent } from "./helpers/text-presence.js";
 
 type IdItem = { id: string; value: string };

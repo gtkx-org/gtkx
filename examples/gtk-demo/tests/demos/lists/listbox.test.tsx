@@ -14,9 +14,27 @@ const findRow = async (index: number): Promise<Gtk.ListBoxRow> => {
 
 const findFirstRow = (): Promise<Gtk.ListBoxRow> => findRow(0);
 
+const findDetailsRevealer = (row: Gtk.ListBoxRow): Gtk.Revealer =>
+    within(row).getByName("details-revealer", { as: Gtk.Revealer });
+
 const revealActionButtons = async (row: Gtk.ListBoxRow): Promise<void> => {
     row.setStateFlags(Gtk.StateFlags.PRELIGHT, false);
     await fireEvent(row, "state-flags-changed", Gtk.StateFlags.NORMAL);
+};
+
+const expandFirstRow = async (): Promise<Gtk.ListBoxRow> => {
+    const firstRow = await findFirstRow();
+    await revealActionButtons(firstRow);
+    const expandButton = within(firstRow).getByName("expand-button", { as: Gtk.Button });
+    await userEvent.click(expandButton);
+
+    return firstRow;
+};
+
+const expectRowCount = async (row: Gtk.ListBoxRow, label: RegExp, count: string): Promise<void> => {
+    await waitFor(() => {
+        expect(within(row).getByText(label)).toHaveTextContent(count);
+    });
 };
 
 vi.setConfig({ testTimeout: 60_000 });
@@ -86,7 +104,7 @@ describe("listboxDemo row interaction", () => {
     it("toggles the message details revealer when a row is activated", async () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
-        const revealer = within(firstRow).getByName("details-revealer", { as: Gtk.Revealer });
+        const revealer = findDetailsRevealer(firstRow);
         const isBefore = revealer.getRevealChild();
         await userEvent.click(firstRow);
 
@@ -98,7 +116,7 @@ describe("listboxDemo row interaction", () => {
     it("returns to the initial revealer state after a second activation", async () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
-        const revealer = within(firstRow).getByName("details-revealer", { as: Gtk.Revealer });
+        const revealer = findDetailsRevealer(firstRow);
         const isInitial = revealer.getRevealChild();
         await userEvent.click(firstRow);
         await userEvent.click(firstRow);
@@ -114,7 +132,7 @@ describe("listboxDemo expand / hide button", () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
         const expandButton = within(firstRow).getByName("expand-button", { as: Gtk.Button });
-        const revealer = within(firstRow).getByName("details-revealer", { as: Gtk.Revealer });
+        const revealer = findDetailsRevealer(firstRow);
         expect(expandButton).toHaveObjectProperty("label", "Expand");
         const isBefore = revealer.getRevealChild();
         await userEvent.click(expandButton);
@@ -145,14 +163,8 @@ describe("listboxDemo row state flags", () => {
 describe("listboxDemo favorite and reshare actions", () => {
     it("increments the favorites count shown in the details revealer when Favorite is clicked", async () => {
         await renderDemo(listboxDemo);
-        const firstRow = await findFirstRow();
-        await revealActionButtons(firstRow);
-        const expandButton = within(firstRow).getByName("expand-button", { as: Gtk.Button });
-        await userEvent.click(expandButton);
-
-        await waitFor(() => {
-            expect(within(firstRow).getByText(/Favorites/)).toHaveTextContent("2");
-        });
+        const firstRow = await expandFirstRow();
+        await expectRowCount(firstRow, /Favorites/, "2");
 
         const favoriteButton = within(firstRow).getByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Favorite",
@@ -160,22 +172,13 @@ describe("listboxDemo favorite and reshare actions", () => {
         });
 
         await userEvent.click(favoriteButton);
-
-        await waitFor(() => {
-            expect(within(firstRow).getByText(/Favorites/)).toHaveTextContent("3");
-        });
+        await expectRowCount(firstRow, /Favorites/, "3");
     });
 
     it("increments the reshares count shown in the details revealer when Reshare is clicked", async () => {
         await renderDemo(listboxDemo);
-        const firstRow = await findFirstRow();
-        await revealActionButtons(firstRow);
-        const expandButton = within(firstRow).getByName("expand-button", { as: Gtk.Button });
-        await userEvent.click(expandButton);
-
-        await waitFor(() => {
-            expect(within(firstRow).getByText(/Reshares/)).toHaveTextContent("1");
-        });
+        const firstRow = await expandFirstRow();
+        await expectRowCount(firstRow, /Reshares/, "1");
 
         const reshareButton = within(firstRow).getByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Reshare",
@@ -183,9 +186,6 @@ describe("listboxDemo favorite and reshare actions", () => {
         });
 
         await userEvent.click(reshareButton);
-
-        await waitFor(() => {
-            expect(within(firstRow).getByText(/Reshares/)).toHaveTextContent("2");
-        });
+        await expectRowCount(firstRow, /Reshares/, "2");
     });
 });

@@ -17,6 +17,12 @@ const track = (application: Gio.Application): Gio.Application => {
     return application;
 };
 
+const createTrackedApplication = (): { application: Gio.Application; activations: () => number } => {
+    const application = track(createApplication());
+
+    return { application, activations: countSignal(application, "activate") };
+};
+
 afterEach(() => {
     const applications = [...started];
     started.length = 0;
@@ -28,8 +34,7 @@ afterEach(() => {
 
 describe("runApplication — application options", () => {
     it("parses an application-defined main option and reaches handle-local-options", () => {
-        const application = track(createApplication());
-        const activations = countSignal(application, "activate");
+        const { application, activations } = createTrackedApplication();
         let parsed: number | null = null;
         application.addMainOption("count", 0, GLib.OptionFlags.NONE, GLib.OptionArg.INT, "how many", null);
 
@@ -46,8 +51,7 @@ describe("runApplication — application options", () => {
     });
 
     it("stops startup with the status a handle-local-options handler returns", () => {
-        const application = track(createApplication());
-        const activations = countSignal(application, "activate");
+        const { application, activations } = createTrackedApplication();
         application.on("handle-local-options", () => 3);
         expect(runApplication(application, ["probe"])).toEqual({ isPrimary: false, exitStatus: 3 });
         expect(application.getIsRegistered()).toBe(false);
@@ -55,8 +59,7 @@ describe("runApplication — application options", () => {
     });
 
     it("treats a handle-local-options handler that returns nothing as a zero exit status", () => {
-        const application = track(createApplication());
-        const activations = countSignal(application, "activate");
+        const { application, activations } = createTrackedApplication();
         let hasHandled = false;
 
         application.on("handle-local-options", () => {
@@ -72,15 +75,13 @@ describe("runApplication — application options", () => {
 
 describe("runApplication — launch modes", () => {
     it("activates normally when nothing but the program name is passed", () => {
-        const application = track(createApplication());
-        const activations = countSignal(application, "activate");
+        const { application, activations } = createTrackedApplication();
         expect(runApplication(application, ["probe"])).toEqual({ isPrimary: true, exitStatus: 0 });
         expect(activations()).toBe(1);
     });
 
     it("registers without activating for --gapplication-service", () => {
-        const application = track(createApplication());
-        const activations = countSignal(application, "activate");
+        const { application, activations } = createTrackedApplication();
 
         expect(runApplication(application, ["probe", "--gapplication-service"])).toEqual({
             isPrimary: true,
@@ -95,8 +96,7 @@ describe("runApplication — launch modes", () => {
     });
 
     it("reports a failing exit status for an unknown option without registering", () => {
-        const application = track(createApplication());
-        const activations = countSignal(application, "activate");
+        const { application, activations } = createTrackedApplication();
         expect(runApplication(application, ["probe", "--nope"])).toEqual({ isPrimary: false, exitStatus: 1 });
         expect(application.getIsRegistered()).toBe(false);
         expect(activations()).toBe(0);

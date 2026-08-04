@@ -5,20 +5,18 @@ import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { allExpandableIds, renderListView } from "./helpers/list-fixtures.js";
+import {
+    allExpandableIds,
+    firstSecondItems,
+    firstSecondThirdItems,
+    renderListView,
+} from "./helpers/list-fixtures.js";
 
 type SidebarItem = {
     id: string;
     name: string;
     children?: SidebarItem[];
 };
-
-const TWO_ITEMS = [
-    { id: "1", value: { name: "First" } },
-    { id: "2", value: { name: "Second" } },
-];
-
-const THREE_ITEMS = [...TWO_ITEMS, { id: "3", value: { name: "Third" } }];
 
 const sidebarData: SidebarItem[] = [
     { id: "intro", name: "Introduction" },
@@ -34,7 +32,7 @@ const sidebarData: SidebarItem[] = [
 
 const expectSelectionChangedOnFirstRowClick = async (): Promise<void> => {
     const onSelectionChanged = vi.fn();
-    const { ref } = await renderListView(TWO_ITEMS, { onSelectionChanged });
+    const { ref } = await renderListView(firstSecondItems, { onSelectionChanged });
     await userEvent.selectOptions(ref.current, 0);
     expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
 };
@@ -113,7 +111,7 @@ function SidebarApp({
 describe("render - ListView - selection (1)", () => {
     describe("single (1)", () => {
         it("sets selected item via selected prop", async () => {
-            await renderListView(TWO_ITEMS, { selected: ["2"] });
+            await renderListView(firstSecondItems, { selected: ["2"] });
             expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
@@ -149,13 +147,13 @@ describe("render - ListView - selection (2)", () => {
 describe("render - ListView - selection (3)", () => {
     describe("multiple", () => {
         it("enables multi-select with selectionMode", async () => {
-            await renderListView(TWO_ITEMS, { selectionMode: Gtk.SelectionMode.MULTIPLE });
+            await renderListView(firstSecondItems, { selectionMode: Gtk.SelectionMode.MULTIPLE });
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
         it("sets multiple selected items", async () => {
-            await renderListView(THREE_ITEMS, {
+            await renderListView(firstSecondThirdItems, {
                 selectionMode: Gtk.SelectionMode.MULTIPLE,
                 selected: ["1", "3"],
             });
@@ -167,7 +165,7 @@ describe("render - ListView - selection (3)", () => {
         it("calls onSelectionChanged with array of ids", async () => {
             const onSelectionChanged = vi.fn();
 
-            const { ref } = await renderListView(TWO_ITEMS, {
+            const { ref } = await renderListView(firstSecondItems, {
                 selectionMode: Gtk.SelectionMode.MULTIPLE,
                 onSelectionChanged,
             });
@@ -182,7 +180,7 @@ describe("render - ListView - selection (4)", () => {
     describe("tree - single (1)", () => {
         it("sets selected item via selected prop", async () => {
             const onSelectionChanged = vi.fn();
-            await renderListView(TWO_ITEMS, { selected: ["2"], onSelectionChanged });
+            await renderListView(firstSecondItems, { selected: ["2"], onSelectionChanged });
             expect(onSelectionChanged).toHaveBeenCalledWith(["2"]);
         });
 
@@ -285,12 +283,12 @@ describe("render - ListView - selection (6) > tree - single (3)", () => {
 
 describe("render - ListView - selection (7) > selectionMode + selected together", () => {
     it("keeps the selection when selectionMode and selected change in the same render", async () => {
-        const { ref, rerender } = await renderListView(THREE_ITEMS, {
+        const { ref, rerender } = await renderListView(firstSecondThirdItems, {
             selectionMode: Gtk.SelectionMode.SINGLE,
             selected: ["1"],
         });
 
-        await rerender(THREE_ITEMS, {
+        await rerender(firstSecondThirdItems, {
             selectionMode: Gtk.SelectionMode.MULTIPLE,
             selected: ["1", "3"],
         });

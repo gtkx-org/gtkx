@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { GtkListView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { omit } from "@gtkx/utils";
 import type { ListViewProps } from "./types.js";
-import { HeaderPortals, ItemPortals, useHeaderCells, useItemCells } from "./internal/cells.js";
+import { ItemPortals, useItemCells, useSectionHeader } from "./internal/cells.js";
 import { useCollection } from "./internal/use-collection.js";
 
 const LIST_VIEW_PROPS = [
@@ -29,22 +29,18 @@ function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNo
     const size = { width: estimatedItemWidth ?? -1, height: estimatedItemHeight ?? -1 };
     const { collection, selection } = useCollection(props);
     const itemCells = useItemCells(size);
-    const headerCells = useHeaderCells(size);
+    const header = useSectionHeader(renderHeader, collection, size);
 
     return (
         <>
             <GtkListView
                 model={selection}
                 factory={<GtkSignalListItemFactory {...itemCells.handlers} />}
-                {...(renderHeader != null && {
-                    headerFactory: <GtkSignalListItemFactory {...headerCells.handlers} />,
-                })}
+                {...header.factoryProps}
                 {...rest}
             />
             <ItemPortals store={itemCells} render={renderItem} collection={collection} expandedIds={expandedIds} />
-            {renderHeader != null && (
-                <HeaderPortals store={headerCells} render={renderHeader} collection={collection} />
-            )}
+            {header.portals}
         </>
     );
 }

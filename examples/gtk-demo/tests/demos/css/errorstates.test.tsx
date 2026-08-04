@@ -19,6 +19,23 @@ const renderAndFlagMoreDetails = async (): Promise<DetailEntries> => {
     return { detailsEntry, moreDetailsEntry };
 };
 
+const renderSwitch = async (): Promise<Gtk.Switch> => {
+    await renderDemo(errorstatesDemo);
+
+    return await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
+};
+
+const renderScaleAndSwitch = async (): Promise<{ scale: Gtk.Scale; sw: Gtk.Switch }> => {
+    await renderDemo(errorstatesDemo);
+    const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
+    const sw = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
+
+    return { scale, sw };
+};
+
+const findLevelErrorLabel = async (): Promise<Gtk.Label> =>
+    await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Level too low", as: Gtk.Label });
+
 describe("errorstatesDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(errorstatesDemo.id).toBe("errorstates");
@@ -61,41 +78,27 @@ describe("errorstatesDemo entries", () => {
 
 describe("errorstatesDemo switch and scale", () => {
     it("shows the level-too-low error label and flags the switch invalid when activated with a low level", async () => {
-        await renderDemo(errorstatesDemo);
-        const sw = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
+        const sw = await renderSwitch();
         expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.FALSE);
         await userEvent.click(sw);
-
-        const errorLabel = await screen.findByRole(Gtk.AccessibleRole.LABEL, {
-            name: "Level too low",
-            as: Gtk.Label,
-        });
-
+        const errorLabel = await findLevelErrorLabel();
         expect(errorLabel).toHaveClass("error");
         expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.TRUE);
         expect(getWidgetErrorMessage(sw)).toEqual([errorLabel]);
     });
 
     it("activates the switch through the Control+M keyboard shortcut", async () => {
-        await renderDemo(errorstatesDemo);
-        const sw = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
+        const sw = await renderSwitch();
         sw.grabFocus();
         await userEvent.keyboard(sw, "{Control>}m{/Control}");
         expect(sw).toHaveObjectProperty("active", true);
-
-        const errorLabel = await screen.findByRole(Gtk.AccessibleRole.LABEL, {
-            name: "Level too low",
-            as: Gtk.Label,
-        });
-
+        const errorLabel = await findLevelErrorLabel();
         expect(errorLabel).toHaveClass("error");
         expect(getWidgetInvalidState(sw)).toBe(Gtk.AccessibleInvalidState.TRUE);
     });
 
     it("does not show the error label when the switch is activated with a high level", async () => {
-        await renderDemo(errorstatesDemo);
-        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
-        const sw = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
+        const { scale, sw } = await renderScaleAndSwitch();
         await userEvent.slide(scale, 80);
         await userEvent.click(sw);
         expect(sw).toHaveObjectProperty("state", true);
@@ -104,9 +107,7 @@ describe("errorstatesDemo switch and scale", () => {
     });
 
     it("flips the switch state automatically when the level crosses 50 with the switch already active", async () => {
-        await renderDemo(errorstatesDemo);
-        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
-        const sw = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
+        const { scale, sw } = await renderScaleAndSwitch();
         await userEvent.click(sw);
         await userEvent.slide(scale, 80);
         expect(sw).toHaveObjectProperty("state", true);

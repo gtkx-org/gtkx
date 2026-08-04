@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
+import { collectLogged } from "../stderr-text.js";
 
 const writeFingerprint = (cwd: string, libraries: string[] = ["Gtk-4.0"]) => {
     writeFileSync(
@@ -77,13 +78,19 @@ const installReactProject = (cwd: string) => {
     writeDefaultGiBarrels(cwd);
 };
 
+const installGeneratedProject = (cwd: string) => {
+    installReactProject(cwd);
+    writeJsxStore(cwd);
+    writeFingerprint(cwd);
+};
+
 const announceLogs = async (cwd: string): Promise<string> => {
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
     try {
         await ensureGenerated(cwd, { shouldAnnounce: true });
 
-        return stderrSpy.mock.calls.map((call) => String(call[0])).join("");
+        return collectLogged(stderrSpy);
     } finally {
         stderrSpy.mockRestore();
     }
@@ -209,9 +216,7 @@ describe("ensureGenerated", () => {
     });
 
     it("does nothing when the gi and jsx stores are present", async () => {
-        installReactProject(cwd);
-        writeJsxStore(cwd);
-        writeFingerprint(cwd);
+        installGeneratedProject(cwd);
         expect(await ensureGenerated(cwd)).toBe(false);
     });
 
@@ -255,17 +260,13 @@ describe("ensureGenerated — store links", () => {
     });
 
     it("regenerates when the jsx store link is pruned", async () => {
-        installReactProject(cwd);
-        writeJsxStore(cwd);
-        writeFingerprint(cwd);
+        installGeneratedProject(cwd);
         rmSync(join(cwd, "node_modules", "@gtkx", "jsx"), { recursive: true, force: true });
         expect(await ensureGenerated(cwd)).toBe(true);
     });
 
     it("regenerates when a store manifest is pruned but its modules remain", async () => {
-        installReactProject(cwd);
-        writeJsxStore(cwd);
-        writeFingerprint(cwd);
+        installGeneratedProject(cwd);
         rmSync(join(cwd, "node_modules", ".gtkx", "jsx", "package.json"), { force: true });
         expect(await ensureGenerated(cwd)).toBe(true);
     });

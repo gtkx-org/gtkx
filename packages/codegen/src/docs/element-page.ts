@@ -18,13 +18,13 @@ import { isObjectProp } from "../store/jsx/props.js";
 import {
     classMethodEntries,
     docMarkdown,
-    docsDefaultValue,
     firstSentence,
     implementsLine,
     joinSections,
     metaBlock,
     methodsSectionBlocks,
     originSignatureBlocks,
+    propertyMetaLine,
     renderDocsSignalSignature,
     renderDocsType,
 } from "./render.js";
@@ -124,25 +124,16 @@ const propertyEntry = (
     const isObject = isObjectProp(context.library, property);
     const baseType = renderDocsType(context.library, property.type, false);
     const type = isObject ? `${baseType} | ReactElement` : baseType;
-    const meta: string[] = [`\`${type}\``];
 
-    if (property.defaultValue !== undefined) {
-        meta.push(`default \`${docsDefaultValue(property.defaultValue)}\``);
-    }
+    const accessNotes = isConstructableProperty(property)
+        ? []
+        : [`read-only, observe with \`onNotify${upperFirst(jsName)}\``];
 
-    if (property.constructOnly) {
-        meta.push("construct-only");
-    }
-
-    if (!isConstructableProperty(property)) {
-        meta.push(`read-only, observe with \`onNotify${upperFirst(jsName)}\``);
-    }
-
-    if (owner.origin !== undefined) {
-        meta.push(`from \`${owner.origin}\``);
-    }
-
-    return { name: jsName, meta: meta.join(" · "), doc: docMarkdown(property.doc) };
+    return {
+        name: jsName,
+        meta: propertyMetaLine({ type, property, accessNotes, origin: owner.origin }),
+        doc: docMarkdown(property.doc),
+    };
 };
 
 const propJsName = (property: GirProperty, owner: MemberOwner, seen: Set<string>): string | undefined => {

@@ -27,6 +27,16 @@ const runDev = (entry?: string, argv?: string[]): Promise<unknown> => {
     return Promise.resolve(run({ rawArgs: [], args, cmd: dev }));
 };
 
+const setupMockReset = (): void => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+};
+
 vi.mock("../../src/codegen/run-codegen.js", () => ({
     ensureGenerated: vi.fn(() => Promise.resolve(false)),
     resolveConfigWatch: vi.fn(() => Promise.resolve(watchSentinel)),
@@ -37,13 +47,7 @@ vi.mock("../../src/dev/supervisor.js", () => ({
 }));
 
 describe("dev command", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
+    setupMockReset();
 
     it("runs preflight codegen and hands off to the supervisor with the resolved entry", async () => {
         await runDev("src/main.tsx");
@@ -69,13 +73,7 @@ describe("dev command", () => {
 });
 
 describe("dev command — arguments for the application", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
+    setupMockReset();
 
     it("forwards everything after the separator", async () => {
         await runDev("src/main.tsx", ["dev", "src/main.tsx", "--", "--count=7", "file.db"]);

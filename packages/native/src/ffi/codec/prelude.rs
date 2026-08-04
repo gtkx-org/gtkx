@@ -46,6 +46,25 @@ macro_rules! read_value_non_null {
 }
 pub(super) use read_value_non_null;
 
+macro_rules! read_inlineable_pointer_slot {
+    () => {
+        unsafe fn read_pointer_slot<'e>(
+            &self,
+            env: &'e ::napi::Env,
+            ptr: *const ::std::ffi::c_void,
+            context: &str,
+            transfer: $crate::ffi::codec::Ownership,
+        ) -> ::anyhow::Result<::napi::bindgen_prelude::Unknown<'e>> {
+            if self.inline {
+                return unsafe { self.read_value(env, ptr.cast_mut(), context, transfer) };
+            }
+            let inner_ptr = unsafe { ptr.cast::<*mut ::std::ffi::c_void>().read_unaligned() };
+            unsafe { self.read_value(env, inner_ptr, context, transfer) }
+        }
+    };
+}
+pub(super) use read_inlineable_pointer_slot;
+
 macro_rules! write_return_transferred {
     ($label:expr) => {
         fn write_return_to_ptr(

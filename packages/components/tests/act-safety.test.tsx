@@ -3,7 +3,7 @@ import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderListView, valueItems } from "./helpers/list-fixtures.js";
+import { firstSecondItems, renderListView, valueItems } from "./helpers/list-fixtures.js";
 
 type Category = {
     id: string;
@@ -59,13 +59,10 @@ const expectTreeToggleHasNoActWarning = async (errorSpy: MockInstance<typeof con
 const expectMultiSelectionHasNoActWarning = async (errorSpy: MockInstance<typeof console.error>): Promise<void> => {
     const onSelectionChanged = vi.fn();
 
-    const { ref } = await renderListView(
-        [
-            { id: "1", value: { name: "First" } },
-            { id: "2", value: { name: "Second" } },
-        ],
-        { selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged },
-    );
+    const { ref } = await renderListView(firstSecondItems, {
+        selectionMode: Gtk.SelectionMode.MULTIPLE,
+        onSelectionChanged,
+    });
 
     await userEvent.selectOptions(ref.current, [0, 1]);
     expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);

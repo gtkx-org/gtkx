@@ -6,30 +6,27 @@ import { renderDemo } from "../../test-utils.js";
 
 const MINE = "\u{1F4A3}";
 
-const collectLabels = (widget: Gtk.Widget, out: Gtk.Label[] = []): Gtk.Label[] => {
+const isLabel = (child: Gtk.Widget): child is Gtk.Label => child instanceof Gtk.Label;
+const isImage = (child: Gtk.Widget): child is Gtk.Image => child instanceof Gtk.Image;
+
+const collectDescendants = <T extends Gtk.Widget>(
+    widget: Gtk.Widget,
+    isMatch: (child: Gtk.Widget) => child is T,
+    out: T[] = [],
+): T[] => {
     for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
-        if (child instanceof Gtk.Label) {
+        if (isMatch(child)) {
             out.push(child);
         }
 
-        collectLabels(child, out);
+        collectDescendants(child, isMatch, out);
     }
 
     return out;
 };
 
-const collectImages = (widget: Gtk.Widget, out: Gtk.Image[] = []): Gtk.Image[] => {
-    for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
-        if (child instanceof Gtk.Image) {
-            out.push(child);
-        }
-
-        collectImages(child, out);
-    }
-
-    return out;
-};
-
+const collectLabels = (widget: Gtk.Widget): Gtk.Label[] => collectDescendants(widget, isLabel);
+const collectImages = (widget: Gtk.Widget): Gtk.Image[] => collectDescendants(widget, isImage);
 const cellTexts = (gridView: Gtk.Widget): string[] => collectLabels(gridView).map((label) => label.getLabel());
 
 const mockMinesAt = (indices: number[]): void => {
@@ -45,6 +42,12 @@ const mockMinesAt = (indices: number[]): void => {
 
         return buffer;
     });
+};
+
+const renderGridView = async (): Promise<Gtk.GridView> => {
+    await renderDemo(listviewMinesweeperDemo);
+
+    return await screen.findByName("grid-view", { as: Gtk.GridView });
 };
 
 beforeEach(() => {
@@ -87,8 +90,7 @@ describe("listviewMinesweeperDemo rendering", () => {
 
 describe("listviewMinesweeperDemo gameplay", () => {
     it("reveals the focused cell on a single-press activation (keyboard Enter)", async () => {
-        await renderDemo(listviewMinesweeperDemo);
-        const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
+        const gridView = await renderGridView();
         gridView.grabFocus();
         await userEvent.keyboard(gridView, "{Enter}");
 
@@ -100,8 +102,7 @@ describe("listviewMinesweeperDemo gameplay", () => {
     });
 
     it("restores the revealed cell to '?' after pressing New Game", async () => {
-        await renderDemo(listviewMinesweeperDemo);
-        const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
+        const gridView = await renderGridView();
         await fireEvent(gridView, "activate", 0);
 
         await waitFor(() => {
@@ -122,8 +123,7 @@ describe("listviewMinesweeperDemo gameplay", () => {
 describe("listviewMinesweeperDemo outcomes", () => {
     it("loses when a mine is activated and locks the board against further reveals", async () => {
         mockMinesAt([0, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
-        await renderDemo(listviewMinesweeperDemo);
-        const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
+        const gridView = await renderGridView();
         await fireEvent(gridView, "activate", 0);
 
         await waitFor(() => {
@@ -139,8 +139,7 @@ describe("listviewMinesweeperDemo outcomes", () => {
 
     it("wins when every safe cell is revealed and swaps in the trophy title widget", async () => {
         mockMinesAt([54, 55, 56, 57, 58, 59, 60, 61, 62, 63]);
-        await renderDemo(listviewMinesweeperDemo);
-        const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
+        const gridView = await renderGridView();
         const header = await screen.findByName("minesweeper-header");
 
         for (let position = 0; position < 54; position++) {

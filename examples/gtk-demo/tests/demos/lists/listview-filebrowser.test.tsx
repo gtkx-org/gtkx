@@ -17,6 +17,24 @@ const waitForPopulatedModel = async (grid: Gtk.GridView): Promise<number> =>
         return count;
     });
 
+const findFilesGrid = async (): Promise<Gtk.GridView> => await screen.findByName("files-grid", { as: Gtk.GridView });
+
+const renderPopulatedGrid = async (): Promise<Gtk.GridView> => {
+    await renderDemo(listviewFilebrowserDemo);
+    const grid = await findFilesGrid();
+    await waitForPopulatedModel(grid);
+
+    return grid;
+};
+
+const selectViewMode = async (index: number): Promise<Gtk.ListView> => {
+    await renderDemo(listviewFilebrowserDemo);
+    const switcher = await screen.findByName("view-switcher", { as: Gtk.ListView });
+    await userEvent.selectOptions(switcher, index);
+
+    return switcher;
+};
+
 const orderedNames = (grid: Gtk.GridView): string[] =>
     within(grid)
         .getAllByRole(Gtk.AccessibleRole.LABEL, { as: Gtk.Label })
@@ -77,18 +95,14 @@ describe("listviewFilebrowserDemo file grid", () => {
     });
 
     it("populates the file grid with known entries from the working directory", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
-        await waitForPopulatedModel(grid);
+        const grid = await renderPopulatedGrid();
         expect(await within(grid).findByText("package.json")).toBeInstanceOf(Gtk.Label);
         expect(within(grid).getByText("examples")).toBeInstanceOf(Gtk.Label);
         expect(within(grid).getByText("packages")).toBeInstanceOf(Gtk.Label);
     });
 
     it("sorts directories before files, alphabetically within each group", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
-        await waitForPopulatedModel(grid);
+        const grid = await renderPopulatedGrid();
         const names = orderedNames(grid);
         expect(names.indexOf("examples")).toBeLessThan(names.indexOf("packages"));
         expect(names.indexOf("packages")).toBeLessThan(names.indexOf("package.json"));
@@ -98,15 +112,13 @@ describe("listviewFilebrowserDemo file grid", () => {
 describe("listviewFilebrowserDemo view modes", () => {
     it("starts in list view orientation (horizontal)", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
+        const grid = await findFilesGrid();
         expect(grid).toHaveObjectProperty("orientation", Gtk.Orientation.HORIZONTAL);
     });
 
     it("switches to grid view: vertical orientation, wrapped item labels, and switcher selection", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const switcher = await screen.findByName("view-switcher", { as: Gtk.ListView });
-        await userEvent.selectOptions(switcher, 1);
-        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
+        const switcher = await selectViewMode(1);
+        const grid = await findFilesGrid();
 
         await waitFor(() => {
             expect(grid).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
@@ -118,10 +130,8 @@ describe("listviewFilebrowserDemo view modes", () => {
     });
 
     it("switches to paged view mode rendering the folder and content-type labels", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const switcher = await screen.findByName("view-switcher", { as: Gtk.ListView });
-        await userEvent.selectOptions(switcher, 2);
-        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
+        const switcher = await selectViewMode(2);
+        const grid = await findFilesGrid();
         await waitForPopulatedModel(grid);
         expect(switcher.getModel()).toHaveObjectProperty("selected", 2);
         await within(grid).findByText("packages");
@@ -132,9 +142,7 @@ describe("listviewFilebrowserDemo view modes", () => {
 
 describe("listviewFilebrowserDemo navigation", () => {
     it("navigates to the parent directory when the up button is clicked", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
-        await waitForPopulatedModel(grid);
+        const grid = await renderPopulatedGrid();
         const currentDirName = basename(process.cwd());
         expect(within(grid).queryByText(currentDirName)).toBeNull();
         const upButton = await screen.findByName("up-button", { as: Gtk.Button });
@@ -143,9 +151,7 @@ describe("listviewFilebrowserDemo navigation", () => {
     });
 
     it("navigates into a directory when a directory entry is activated", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const grid = await screen.findByName("files-grid", { as: Gtk.GridView });
-        await waitForPopulatedModel(grid);
+        const grid = await renderPopulatedGrid();
         const position = orderedNames(grid).indexOf("examples");
         expect(position).toBeGreaterThanOrEqual(0);
         grid.grabFocus();

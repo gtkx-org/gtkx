@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
+import { cleanup, render } from "@gtkx/testing/internal";
 import { bench, describe } from "vitest";
-import { cleanup, render } from "../tests/helpers/production-render.js";
 
 const DEPTHS = [25, 100];
 

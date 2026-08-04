@@ -17,12 +17,55 @@ const expandFeatures = async (): Promise<void> => {
     await userEvent.click(expander);
 };
 
-const activateKerningFeature = async (): Promise<Gtk.Label> => {
+const renderExpandedFeatures = async (): Promise<void> => {
     await renderDemo(fontFeaturesDemo);
     await expandFeatures();
-    const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
+};
+
+const findFeatureCheck = async (name: string): Promise<Gtk.Widget> =>
+    await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name });
+
+const findSettingsLabel = async (): Promise<Gtk.Label> => await screen.findByName("settings", { as: Gtk.Label });
+
+const commitEntryValue = async (name: string, value: string): Promise<Gtk.Entry> => {
+    await renderDemo(fontFeaturesDemo);
+    const entry = await screen.findByName(name, { as: Gtk.Entry });
+    await userEvent.clear(entry);
+    await userEvent.type(entry, value);
+    await userEvent.keyboard(entry, "{Enter}");
+
+    return entry;
+};
+
+const renderColorButtons = async (): Promise<{ fg: Gtk.ColorDialogButton; bg: Gtk.ColorDialogButton }> => {
+    await renderDemo(fontFeaturesDemo);
+    const fg = await screen.findByName("foreground-color", { as: Gtk.ColorDialogButton });
+    const bg = await screen.findByName("background-color", { as: Gtk.ColorDialogButton });
+
+    return { fg, bg };
+};
+
+const renderViewToggles = async (): Promise<{ plain: Gtk.ToggleButton; waterfall: Gtk.ToggleButton }> => {
+    await renderDemo(fontFeaturesDemo);
+    const plain = await screen.findByName("plain_toggle", { as: Gtk.ToggleButton });
+    const waterfall = await screen.findByName("waterfall_toggle", { as: Gtk.ToggleButton });
+
+    return { plain, waterfall };
+};
+
+const enterEditMode = async (): Promise<Gtk.Stack> => {
+    await renderDemo(fontFeaturesDemo);
+    const editToggle = await screen.findByName("edit_toggle", { as: Gtk.ToggleButton });
+    await userEvent.click(editToggle);
+
+    return await screen.findByName("stack", { as: Gtk.Stack });
+};
+
+const activateKerningFeature = async (): Promise<Gtk.Label> => {
+    await renderExpandedFeatures();
+    const kerning = await findFeatureCheck("Kerning");
     await userEvent.click(kerning);
-    const settings = await screen.findByName("settings", { as: Gtk.Label });
+    const settings = await findSettingsLabel();
 
     await waitFor(() => {
         expect(settings).toHaveTextContent("kern=1");
@@ -45,9 +88,8 @@ describe("fontFeaturesDemo metadata", () => {
 
 describe("fontFeaturesDemo rendering", () => {
     it("expands the OpenType Features to reveal feature checkboxes", async () => {
-        await renderDemo(fontFeaturesDemo);
-        await expandFeatures();
-        const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
+        await renderExpandedFeatures();
+        const kerning = await findFeatureCheck("Kerning");
         expect(kerning).not.toBeChecked();
     });
 
@@ -66,42 +108,34 @@ describe("fontFeaturesDemo rendering", () => {
 
     it("renders the settings label empty initially", async () => {
         await renderDemo(fontFeaturesDemo);
-        const settings = await screen.findByName("settings", { as: Gtk.Label });
+        const settings = await findSettingsLabel();
         expect(settings).not.toHaveTextContent();
     });
 });
 
 describe("fontFeaturesDemo view mode buttons", () => {
     it("renders Plain and Waterfall toggle buttons with Plain active by default", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const plain = await screen.findByName("plain_toggle", { as: Gtk.ToggleButton });
-        const waterfall = await screen.findByName("waterfall_toggle", { as: Gtk.ToggleButton });
+        const { plain, waterfall } = await renderViewToggles();
         expect(plain).toBePressed();
         expect(waterfall).not.toBePressed();
     });
 
     it("switches to waterfall mode and renders multiple sized labels", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const waterfall = await screen.findByName("waterfall_toggle", { as: Gtk.ToggleButton });
+        const { waterfall } = await renderViewToggles();
         await userEvent.click(waterfall);
         const waterfallLabels = await screen.findAllByName("waterfall-label");
         expect(waterfallLabels).toHaveLength(15);
     });
 
     it("switches back to plain mode", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const plain = await screen.findByName("plain_toggle", { as: Gtk.ToggleButton });
-        const waterfall = await screen.findByName("waterfall_toggle", { as: Gtk.ToggleButton });
+        const { plain, waterfall } = await renderViewToggles();
         await userEvent.click(waterfall);
         await userEvent.click(plain);
         expect(plain).toBePressed();
     });
 
     it("switches to edit mode and shows the TextView in the stack", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const editBtn = await screen.findByName("edit_toggle", { as: Gtk.ToggleButton });
-        await userEvent.click(editBtn);
-        const stack = await screen.findByName("stack", { as: Gtk.Stack });
+        const stack = await enterEditMode();
         expect(stack).toHaveObjectProperty("visibleChildName", "entry");
     });
 });
@@ -137,7 +171,7 @@ describe("fontFeaturesDemo feature toggling", () => {
 
     it("cycles Kerning from active to explicitly-disabled on the second click (kern=0)", async () => {
         const settings = await activateKerningFeature();
-        const kerning = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Kerning" });
+        const kerning = await findFeatureCheck("Kerning");
         await userEvent.click(kerning);
 
         await waitFor(() => {
@@ -146,11 +180,10 @@ describe("fontFeaturesDemo feature toggling", () => {
     });
 
     it("selects a non-default radio value to enable a feature", async () => {
-        await renderDemo(fontFeaturesDemo);
-        await expandFeatures();
-        const liningFigures = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Lining Figures" });
+        await renderExpandedFeatures();
+        const liningFigures = await findFeatureCheck("Lining Figures");
         await userEvent.click(liningFigures);
-        const settings = await screen.findByName("settings", { as: Gtk.Label });
+        const settings = await findSettingsLabel();
 
         await waitFor(() => {
             expect(settings).toHaveTextContent("lnum=1");
@@ -179,20 +212,12 @@ describe("fontFeaturesDemo titlebar", () => {
 
 describe("fontFeaturesDemo size entry", () => {
     it("accepts a valid size entry value", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const sizeEntry = await screen.findByName("size_entry", { as: Gtk.Entry });
-        await userEvent.clear(sizeEntry);
-        await userEvent.type(sizeEntry, "24");
-        await userEvent.keyboard(sizeEntry, "{Enter}");
+        const sizeEntry = await commitEntryValue("size_entry", "24");
         expect(sizeEntry).toHaveDisplayValue("24");
     });
 
     it("ignores out-of-range size values without crashing the preview", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const sizeEntry = await screen.findByName("size_entry", { as: Gtk.Entry });
-        await userEvent.clear(sizeEntry);
-        await userEvent.type(sizeEntry, "9999");
-        await userEvent.keyboard(sizeEntry, "{Enter}");
+        await commitEntryValue("size_entry", "9999");
         const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
         const sizeSlider = sliders[0] as Gtk.Scale;
         expect(sizeSlider.getValue()).toBe(14);
@@ -201,31 +226,19 @@ describe("fontFeaturesDemo size entry", () => {
 
 describe("fontFeaturesDemo letterspacing entry", () => {
     it("accepts a valid letterspacing entry", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const letterspacingEntry = await screen.findByName("letterspacing_entry", { as: Gtk.Entry });
-        await userEvent.clear(letterspacingEntry);
-        await userEvent.type(letterspacingEntry, "512");
-        await userEvent.keyboard(letterspacingEntry, "{Enter}");
+        const letterspacingEntry = await commitEntryValue("letterspacing_entry", "512");
         expect(letterspacingEntry).toHaveDisplayValue("512");
     });
 });
 
 describe("fontFeaturesDemo line-height entry", () => {
     it("accepts a valid line-height entry", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const lineHeightEntry = await screen.findByName("line_height_entry", { as: Gtk.Entry });
-        await userEvent.clear(lineHeightEntry);
-        await userEvent.type(lineHeightEntry, "1.5");
-        await userEvent.keyboard(lineHeightEntry, "{Enter}");
+        const lineHeightEntry = await commitEntryValue("line_height_entry", "1.5");
         expect(lineHeightEntry).toHaveDisplayValue("1.5");
     });
 
     it("ignores invalid line-height values", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const lineHeightEntry = await screen.findByName("line_height_entry", { as: Gtk.Entry });
-        await userEvent.clear(lineHeightEntry);
-        await userEvent.type(lineHeightEntry, "0.1");
-        await userEvent.keyboard(lineHeightEntry, "{Enter}");
+        await commitEntryValue("line_height_entry", "0.1");
         const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
         const lineHeightSlider = sliders[2] as Gtk.Scale;
         expect(lineHeightSlider.getValue()).toBe(1);
@@ -234,9 +247,7 @@ describe("fontFeaturesDemo line-height entry", () => {
 
 describe("fontFeaturesDemo color swap", () => {
     it("swaps the default foreground and background colors on click", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const fg = await screen.findByName("foreground-color", { as: Gtk.ColorDialogButton });
-        const bg = await screen.findByName("background-color", { as: Gtk.ColorDialogButton });
+        const { fg, bg } = await renderColorButtons();
         expect(isRgbaEqual(fg, 0, 0, 0)).toBe(true);
         expect(isRgbaEqual(bg, 1, 1, 1)).toBe(true);
         const swap = await screen.findByName("swap-colors", { as: Gtk.Button });
@@ -250,9 +261,7 @@ describe("fontFeaturesDemo color swap", () => {
     });
 
     it("applies a foreground color change and carries it to the background on swap", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const fg = await screen.findByName("foreground-color", { as: Gtk.ColorDialogButton });
-        const bg = await screen.findByName("background-color", { as: Gtk.ColorDialogButton });
+        const { fg, bg } = await renderColorButtons();
         const red = new Gdk.RGBA();
         red.red = 1;
         red.green = 0;
@@ -316,10 +325,7 @@ describe("fontFeaturesDemo sliders", () => {
 
 describe("fontFeaturesDemo edit mode Escape", () => {
     it("reverts edits and returns to plain view when Escape is pressed", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const editBtn = await screen.findByName("edit_toggle", { as: Gtk.ToggleButton });
-        await userEvent.click(editBtn);
-        const stack = await screen.findByName("stack", { as: Gtk.Stack });
+        const stack = await enterEditMode();
         expect(stack).toHaveObjectProperty("visibleChildName", "entry");
         const textView = await screen.findByName("edit_textview", { as: Gtk.TextView });
         textView.grabFocus();

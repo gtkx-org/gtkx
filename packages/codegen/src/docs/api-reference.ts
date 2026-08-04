@@ -139,6 +139,9 @@ const compareNames = (a: string, b: string): number => {
     return a > b ? 1 : 0;
 };
 
+const symbolKindSet = (kinds: ApiSymbolKind[] | undefined): Set<ApiSymbolKind> | undefined =>
+    kinds === undefined ? undefined : new Set(kinds);
+
 const isQueriedEntry = (
     entry: SymbolEntry,
     namespaceFilter: string | undefined,
@@ -280,29 +283,13 @@ const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, isQual
     return exact.length > 0 ? exact : candidates;
 };
 
-const isSearchFilterMatch = (
-    entry: SymbolEntry,
-    namespaceFilter: string | undefined,
-    kinds: ApiSymbolKind[] | undefined,
-): boolean => {
-    if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) {
-        return false;
-    }
-
-    if (kinds !== undefined && !kinds.includes(entry.kind)) {
-        return false;
-    }
-
-    return true;
-};
-
 const getScoredEntry = (
     entry: SymbolEntry,
     query: string,
     namespaceFilter: string | undefined,
-    kinds: ApiSymbolKind[] | undefined,
+    kinds: Set<ApiSymbolKind> | undefined,
 ): ScoredEntry | undefined => {
-    if (!isSearchFilterMatch(entry, namespaceFilter, kinds)) {
+    if (!isQueriedEntry(entry, namespaceFilter, kinds)) {
         return undefined;
     }
 
@@ -484,7 +471,7 @@ class ApiReference {
     private scoreEntries(
         query: string,
         namespaceFilter: string | undefined,
-        kinds: ApiSymbolKind[] | undefined,
+        kinds: Set<ApiSymbolKind> | undefined,
     ): ScoredEntry[] {
         const scored: ScoredEntry[] = [];
 
@@ -535,7 +522,7 @@ class ApiReference {
     /** Every indexed symbol the query keeps, ordered by namespace (Gtk, then Adw, then alphabetically) and name. */
     symbols(query: ApiSymbolQuery = {}): ApiSymbol[] {
         const namespaceFilter = query.namespace?.toLowerCase();
-        const kinds = query.kinds === undefined ? undefined : new Set(query.kinds);
+        const kinds = symbolKindSet(query.kinds);
 
         return this.entries
             .filter((entry) => isQueriedEntry(entry, namespaceFilter, kinds))
@@ -556,7 +543,7 @@ class ApiReference {
 
         const limit = Math.max(1, Math.floor(options.limit ?? DEFAULT_SEARCH_LIMIT));
         const namespaceFilter = options.namespace?.toLowerCase();
-        const scored = this.scoreEntries(query, namespaceFilter, options.kinds);
+        const scored = this.scoreEntries(query, namespaceFilter, symbolKindSet(options.kinds));
         scored.sort(compareScoredEntries);
 
         return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));

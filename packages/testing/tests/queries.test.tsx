@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAdjustment,
-    GtkBox,
     GtkButton,
     GtkCheckButton,
     GtkEntry,
@@ -48,10 +47,7 @@ import {
     queryByText,
     render,
 } from "../src/index.js";
-
-const VBox = ({ children }: { children: ReactNode }) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>
-);
+import { VBox } from "./widget-fixtures.js";
 
 const renderTwoButtons = () =>
     render(
@@ -515,10 +511,10 @@ describe("queryByText", () => {
 describe("queryAllByText", () => {
     it("returns all matching elements", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkButton label="Same" />
                 <GtkButton label="Same" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const buttons = queryAllByText(container, "Same");
@@ -549,10 +545,10 @@ describe("queryByName", () => {
 describe("queryAllByName", () => {
     it("returns all matching elements", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkEntry name="field" />
                 <GtkEntry name="field" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const entries = queryAllByName(container, "field");

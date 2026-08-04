@@ -11,6 +11,12 @@ const naturalWidths = (dropdowns: Gtk.Widget[]): number[] =>
 
 const areAllEqual = (values: number[]): boolean => values.every((v) => v === values[0]);
 
+const renderDropDowns = async (): Promise<Gtk.Widget[]> => {
+    await renderDemo(sizegroupDemo);
+
+    return await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
+};
+
 describe("sizegroupDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(sizegroupDemo.id).toBe("sizegroup");
@@ -33,8 +39,7 @@ describe("sizegroupDemo frames and labels", () => {
     });
 
     it("renders four GtkDropDowns - one per option row", async () => {
-        await renderDemo(sizegroupDemo);
-        const dropdowns = await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
+        const dropdowns = await renderDropDowns();
         expect(dropdowns).toHaveLength(4);
     });
 
@@ -69,8 +74,7 @@ describe("sizegroupDemo check button", () => {
     });
 
     it("toggling the check button off switches the size group to NONE, unequalising widths", async () => {
-        await renderDemo(sizegroupDemo);
-        const dropdowns = await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
+        const dropdowns = await renderDropDowns();
         const groupedWidths = naturalWidths(dropdowns);
         expect(areAllEqual(groupedWidths)).toBe(true);
 
@@ -92,8 +96,7 @@ describe("sizegroupDemo check button", () => {
 
 describe("sizegroupDemo dropdowns", () => {
     it("initialises each dropdown to the first option of its data set", async () => {
-        await renderDemo(sizegroupDemo);
-        const dropdowns = await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
+        const dropdowns = await renderDropDowns();
         expect(dropdowns).toHaveLength(4);
 
         for (const dropdown of dropdowns) {

@@ -1,19 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel, GtkStack, GtkStackPage } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
-import { createRef, type RefObject, useState } from "react";
+import { renderChildren } from "@gtkx/testing/internal";
+import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
-import { renderChildren } from "../helpers/render-children.js";
-
-const buildIdStack = (ref: RefObject<Gtk.Stack | null>) => (pages: string[]) => (
-    <GtkStack ref={ref}>
-        {pages.map((name) => (
-            <GtkStackPage key={name} name={name}>
-                <GtkLabel>{name}</GtkLabel>
-            </GtkStackPage>
-        ))}
-    </GtkStack>
-);
+import { buildNamedPages, pageNamed } from "../helpers/stack-pages.js";
 
 describe("render - Stack (1)", () => {
     describe("GtkStack", () => {
@@ -49,8 +40,7 @@ describe("render - Stack (1)", () => {
             );
 
             await screen.findByText("Titled Content");
-            const page = stackRef.current?.getPage(stackRef.current.getChildByName("titled") as Gtk.Widget);
-            expect(page).toHaveObjectProperty("title", "Page Title");
+            expect(pageNamed(stackRef.current, "titled")).toHaveObjectProperty("title", "Page Title");
         });
 
         it("adds child page (no name/title)", async () => {
@@ -81,8 +71,7 @@ describe("render - Stack (2)", () => {
             );
 
             await screen.findByText("With Props");
-            const child = stackRef.current?.getChildByName("props-test");
-            const page = stackRef.current?.getPage(child as Gtk.Widget);
+            const page = pageNamed(stackRef.current, "props-test");
             expect(page).toHaveObjectProperty("iconName", "dialog-information");
             expect(page).toHaveObjectProperty("needsAttention", true);
         });
@@ -93,7 +82,7 @@ describe("render - Stack (3)", () => {
     describe("page management", () => {
         it("inserts page before existing page", async () => {
             const stackRef = createRef<Gtk.Stack>();
-            const { rerender } = await renderChildren(["first", "last"], buildIdStack(stackRef));
+            const { rerender } = await renderChildren(["first", "last"], buildNamedPages(stackRef));
             await rerender(["first", "middle", "last"]);
             expect(stackRef.current?.getChildByName("first")).not.toBeNull();
             expect(stackRef.current?.getChildByName("middle")).not.toBeNull();
@@ -102,7 +91,7 @@ describe("render - Stack (3)", () => {
 
         it("removes page", async () => {
             const stackRef = createRef<Gtk.Stack>();
-            const { rerender } = await renderChildren(["a", "b", "c"], buildIdStack(stackRef));
+            const { rerender } = await renderChildren(["a", "b", "c"], buildNamedPages(stackRef));
             await rerender(["a", "c"]);
             expect(stackRef.current?.getChildByName("a")).not.toBeNull();
             expect(stackRef.current?.getChildByName("b")).toBeNull();
@@ -123,12 +112,9 @@ describe("render - Stack (3)", () => {
             }
 
             const { rerender } = await render(<App iconName="dialog-information" />);
-            const child = stackRef.current?.getChildByName("dynamic");
-            let page = stackRef.current?.getPage(child as Gtk.Widget);
-            expect(page).toHaveObjectProperty("iconName", "dialog-information");
+            expect(pageNamed(stackRef.current, "dynamic")).toHaveObjectProperty("iconName", "dialog-information");
             await rerender(<App iconName="dialog-warning" />);
-            page = stackRef.current?.getPage(child as Gtk.Widget);
-            expect(page).toHaveObjectProperty("iconName", "dialog-warning");
+            expect(pageNamed(stackRef.current, "dynamic")).toHaveObjectProperty("iconName", "dialog-warning");
         });
     });
 });

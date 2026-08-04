@@ -6,16 +6,10 @@ import { omit } from "@gtkx/utils";
 import { useLayoutEffect, useRef } from "react";
 import type { CellSize } from "./internal/cells.js";
 import type { Collection } from "./internal/collection.js";
-import type { ColumnViewColumn, ColumnViewProps } from "./types.js";
-import { HeaderPortals, ItemPortals, useHeaderCells, useItemCells } from "./internal/cells.js";
+import type { ColumnViewColumn, ColumnViewProps, SortProps } from "./types.js";
+import { ItemPortals, useItemCells, useSectionHeader } from "./internal/cells.js";
 import { useCollection } from "./internal/use-collection.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
-
-type SortProps = {
-    sortColumn?: string | null | undefined;
-    sortOrder?: Gtk.SortType | null | undefined;
-    onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
-};
 
 type SortTarget = { view: Gtk.ColumnView; column: Gtk.ColumnViewColumn | null };
 
@@ -180,7 +174,7 @@ function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): Rea
     const [view, refCallback] = useWidgetRef<Gtk.ColumnView>(ref);
     const size = { width: -1, height: estimatedItemHeight ?? -1 };
     const { collection, selection } = useCollection(props);
-    const headerCells = useHeaderCells(size);
+    const header = useSectionHeader(renderHeader, collection, size);
     const columnList = columns as ColumnViewColumn<never>[];
     useColumnSorting(view, { sortColumn, sortOrder, onSortChanged }, columnList);
 
@@ -189,16 +183,12 @@ function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): Rea
             <GtkColumnView
                 ref={refCallback}
                 model={selection}
-                {...(renderHeader != null && {
-                    headerFactory: <GtkSignalListItemFactory {...headerCells.handlers} />,
-                })}
+                {...header.factoryProps}
                 {...rest}
             >
                 <ColumnList columns={columnList} collection={collection} expandedIds={expandedIds} size={size} />
             </GtkColumnView>
-            {renderHeader != null && (
-                <HeaderPortals store={headerCells} render={renderHeader} collection={collection} />
-            )}
+            {header.portals}
         </>
     );
 }

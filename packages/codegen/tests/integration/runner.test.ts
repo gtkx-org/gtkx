@@ -3,27 +3,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { runCodegen } from "../../src/index.js";
+import { storeUnit } from "../helpers/store-unit.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-test-"));
 
-const giOptions = (name: string) => {
-    const root = join(workDir, name);
-
-    return {
-        root,
-        gi: {
-            storeDir: join(root, "node_modules", ".gtkx", "gi"),
-            linkDir: join(root, "node_modules", "@gtkx", "gi"),
-            version: "0.0.0",
-        },
-    };
-};
+const projectModules = (name: string): string => join(workDir, name, "node_modules");
 
 const registerStoreWriteTests = (): void => {
     it("writes the gi store with raw modules, barrels, a package.json and the visible alias", async () => {
-        const { gi } = giOptions("gi-only");
+        const gi = storeUnit(projectModules("gi-only"), "gi");
 
         const result = await runCodegen({
             libraries: ["GObject-2.0"],
@@ -43,13 +33,9 @@ const registerStoreWriteTests = (): void => {
     });
 
     it("writes the jsx unit when jsx options are given", async () => {
-        const { root, gi } = giOptions("with-jsx");
-
-        const jsx = {
-            storeDir: join(root, "node_modules", ".gtkx", "jsx"),
-            linkDir: join(root, "node_modules", "@gtkx", "jsx"),
-            version: "0.0.0",
-        };
+        const nodeModules = projectModules("with-jsx");
+        const gi = storeUnit(nodeModules, "gi");
+        const jsx = storeUnit(nodeModules, "jsx");
 
         const result = await runCodegen({
             libraries: ["Gtk-4.0"],
@@ -68,7 +54,7 @@ const registerStoreWriteTests = (): void => {
 
 const registerFreshnessTests = (): void => {
     it("skips regeneration when the store fingerprint is still fresh", async () => {
-        const { gi } = giOptions("rerun");
+        const gi = storeUnit(projectModules("rerun"), "gi");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         const first = await runCodegen(options);
         expect(first.isRegenerated).toBe(true);
@@ -78,7 +64,7 @@ const registerFreshnessTests = (): void => {
     });
 
     it("regenerates when forced", async () => {
-        const { gi } = giOptions("forced");
+        const gi = storeUnit(projectModules("forced"), "gi");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         await runCodegen(options);
         const result = await runCodegen({ ...options, isForced: true });
@@ -88,7 +74,7 @@ const registerFreshnessTests = (): void => {
     });
 
     it("regenerates when the fingerprint no longer matches", async () => {
-        const { gi } = giOptions("stale-fp");
+        const gi = storeUnit(projectModules("stale-fp"), "gi");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         await runCodegen(options);
 

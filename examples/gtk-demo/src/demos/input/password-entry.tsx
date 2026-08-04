@@ -6,10 +6,12 @@ import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import { useDemo } from "../../context/demo-context.js";
 import sourceCode from "./password-entry.tsx?raw";
 
+type TextNotifyHandler = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => void;
+
 type PasswordEntryContextValue = {
     arePasswordsMatching: boolean;
-    handlePasswordNotify: (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => void;
-    handleConfirmNotify: (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => void;
+    handlePasswordNotify: TextNotifyHandler;
+    handleConfirmNotify: TextNotifyHandler;
 };
 
 const PasswordEntryContext = createContext<PasswordEntryContextValue | null>(null);
@@ -41,22 +43,18 @@ function usePasswordEntryContext(): PasswordEntryContextValue {
     return ctx;
 }
 
+const createTextNotifyHandler = (setText: (text: string) => void): TextNotifyHandler => (pspec, self) => {
+    if (pspec.getName() === "text") {
+        setText(self.getText());
+    }
+};
+
 function PasswordEntryProvider({ children }: DemoProviderProps) {
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
     const arePasswordsMatching = password.length > 0 && password === confirm;
-
-    const handlePasswordNotify = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
-        if (pspec.getName() === "text") {
-            setPassword(self.getText());
-        }
-    };
-
-    const handleConfirmNotify = (pspec: GObject.ParamSpec, self: Gtk.PasswordEntry) => {
-        if (pspec.getName() === "text") {
-            setConfirm(self.getText());
-        }
-    };
+    const handlePasswordNotify = createTextNotifyHandler(setPassword);
+    const handleConfirmNotify = createTextNotifyHandler(setConfirm);
 
     const value = {
         arePasswordsMatching,

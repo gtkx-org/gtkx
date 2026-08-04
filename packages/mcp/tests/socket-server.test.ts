@@ -12,9 +12,17 @@ import {
     setupSocketServer,
     socketCtx,
     startWithClient,
+    startWithConnection,
     tryConnect,
-    waitForConnection,
 } from "./socket-server-harness.js";
+
+const collectErrorResponse = async (payload: string): Promise<Response> => {
+    const client = await startWithClient();
+
+    return collectFirstFrame<Response>(client, () => {
+        client.write(payload);
+    });
+};
 
 describe("SocketServer lifecycle", () => {
     setupSocketServer();
@@ -66,15 +74,11 @@ describe("SocketServer connections", () => {
     setupSocketServer();
 
     it("registers a connection and emits a disconnection event", async () => {
-        const { server, socketPath, registry } = socketCtx;
-        await server.start();
-        const connectionPromise = waitForConnection(registry);
-        const client = await connectClient(socketPath);
-        const connection = await connectionPromise;
+        const { client, connection } = await startWithConnection();
         expect(connection.id).toBeTruthy();
 
         const disconnectionPromise: Promise<ProtocolConnection> = new Promise((resolve) => {
-            registry.addEventListener(
+            socketCtx.registry.addEventListener(
                 "disconnection",
                 (event) => {
                     resolve((event as ConnectionEvent).detail);
@@ -135,30 +139,19 @@ describe("SocketServer framing — error responses", () => {
     setupSocketServer();
 
     it("returns an Invalid JSON error response for malformed lines", async () => {
-        const client = await startWithClient();
-        const parsed = await collectFirstFrame<Response>(client, () => client.write("not-json\n"));
+        const parsed = await collectErrorResponse("not-json\n");
         expect(parsed.id).toBe("unknown");
         expect(parsed.error?.message).toContain("Invalid JSON");
     });
 
     it("returns an Invalid message format error for unknown shapes", async () => {
-        const client = await startWithClient();
-
-        const parsed = await collectFirstFrame<Response>(client, () =>
-            client.write(`${JSON.stringify({ random: true })}\n`),
-        );
-
+        const parsed = await collectErrorResponse(`${JSON.stringify({ random: true })}\n`);
         expect(parsed.id).toBe("unknown");
         expect(parsed.error?.message).toContain("Invalid message format");
     });
 
     it("returns an Invalid message format error when a request payload fails schema validation", async () => {
-        const client = await startWithClient();
-
-        const parsed = await collectFirstFrame<Response & { id: unknown }>(client, () =>
-            client.write(`${JSON.stringify({ id: 7, method: "ping" })}\n`),
-        );
-
+        const parsed = await collectErrorResponse(`${JSON.stringify({ id: 7, method: "ping" })}\n`);
         expect(parsed.error?.message).toContain("Invalid message format");
     });
 });

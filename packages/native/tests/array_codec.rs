@@ -1895,22 +1895,28 @@ fn size_from_args_reads_integer_argument() {
     });
 }
 
+fn decode_sized_array_with_ref_size<'e>(
+    env: &'e Env,
+    data: &[i32],
+    ffi_args: &[Stash],
+) -> anyhow::Result<Unknown<'e>> {
+    let descriptor = sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
+    let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
+    let arg_codecs = [Codec::Ref(
+        RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
+    )];
+
+    descriptor.decode_with_context(env, &stash, ffi_args, &arg_codecs)
+}
+
 #[test]
 fn size_from_args_reads_ref_integer_storage() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor =
-            sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
         let data: Vec<i32> = vec![10, 20];
-        let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
         let size_storage = native::ffi::StashStorage::from(vec![2i32]);
         let ffi_args = [Stash::Storage(size_storage)];
-        let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
-        )];
-        let decoded = descriptor
-            .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
-            .unwrap();
+        let decoded = decode_sized_array_with_ref_size(&env, &data, &ffi_args).unwrap();
         assert_eq!(decoded_items(&decoded).len(), 2);
     });
 }
@@ -1919,18 +1925,10 @@ fn size_from_args_reads_ref_integer_storage() {
 fn size_from_args_reads_ref_integer_ptr() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor =
-            sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
         let data: Vec<i32> = vec![10, 20];
-        let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
         let size: i32 = 2;
         let ffi_args = [Stash::Ptr((&raw const size).cast_mut().cast::<c_void>())];
-        let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
-        )];
-        let decoded = descriptor
-            .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
-            .unwrap();
+        let decoded = decode_sized_array_with_ref_size(&env, &data, &ffi_args).unwrap();
         assert_eq!(decoded_items(&decoded).len(), 2);
     });
 }
@@ -1939,19 +1937,9 @@ fn size_from_args_reads_ref_integer_ptr() {
 fn size_from_args_ref_null_ptr_falls_through_to_error() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor =
-            sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
         let data: Vec<i32> = vec![1];
-        let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
         let ffi_args = [Stash::Ptr(std::ptr::null_mut())];
-        let arg_codecs = [Codec::Ref(
-            RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner"),
-        )];
-        assert!(
-            descriptor
-                .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
-                .is_err()
-        );
+        assert!(decode_sized_array_with_ref_size(&env, &data, &ffi_args).is_err());
     });
 }
 

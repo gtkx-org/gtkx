@@ -3,12 +3,7 @@ import { GtkBox, GtkButton, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { describe, expect, it } from "vitest";
 import { captureAndSaveScreenshot, cleanup, render, screen } from "../src/index.js";
-
-const decodePngSize = (base64Data: string): { width: number; height: number } => {
-    const bytes = Buffer.from(base64Data, "base64");
-
-    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
-};
+import { decodePngSize } from "./png-helpers.js";
 
 describe("screen binding", () => {
     it("routes queries through the global toplevel scope", async () => {

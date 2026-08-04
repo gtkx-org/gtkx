@@ -6,7 +6,7 @@ import { omit } from "@gtkx/utils";
 import { useEffectEvent, useLayoutEffect, useRef } from "react";
 import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
 import type { Collection } from "./collection.js";
-import { HeaderPortals, ItemPortals, useHeaderCells, useItemCells } from "./cells.js";
+import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
 import { useCollectionData } from "./use-collection.js";
 import { useWidgetRef } from "./use-widget-ref.js";
 
@@ -157,9 +157,8 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
     const collection = useCollectionData({ items, sections });
     const faceCells = useItemCells({ width: -1, height: -1 });
     const listCells = useItemCells({ width: -1, height: -1 });
-    const headerCells = useHeaderCells({ width: -1, height: -1 });
+    const header = useSectionHeader(renderHeader, collection, { width: -1, height: -1 });
     const handleNotifySelected = useDropDownSelection({ widget, collection, props });
-    const hasHeader = typeof renderHeader === "function";
 
     return (
         <>
@@ -170,7 +169,7 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
                 {...(renderListItem != null && {
                     listFactory: <GtkSignalListItemFactory {...listCells.handlers} />,
                 })}
-                {...(hasHeader && { headerFactory: <GtkSignalListItemFactory {...headerCells.handlers} /> })}
+                {...header.factoryProps}
                 {...rest}
                 onNotifySelected={handleNotifySelected}
             />
@@ -178,7 +177,7 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
             {renderListItem != null && (
                 <ItemPortals store={listCells} render={listRenderer(props)} collection={collection} />
             )}
-            {hasHeader && <HeaderPortals store={headerCells} render={renderHeader} collection={collection} />}
+            {header.portals}
         </>
     );
 }

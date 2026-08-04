@@ -174,19 +174,7 @@ impl Decoder for BoxedCodec {
         })
     }
 
-    unsafe fn read_pointer_slot<'e>(
-        &self,
-        env: &'e Env,
-        ptr: *const c_void,
-        context: &str,
-        transfer: Ownership,
-    ) -> anyhow::Result<Unknown<'e>> {
-        if self.inline {
-            return unsafe { self.read_value(env, ptr.cast_mut(), context, transfer) };
-        }
-        let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
-        unsafe { self.read_value(env, inner_ptr, context, transfer) }
-    }
+    read_inlineable_pointer_slot!();
 
     read_value_non_null!(|self, env, ptr, _transfer| {
         if self.free_fn_name.is_some() || self.caller_allocated {

@@ -27,27 +27,23 @@ type BuiltQueries<Args extends unknown[]> = {
 type FindQuery<Args extends unknown[]> = (container: Container, ...args: Args) => unknown;
 type SingleQuery<Args extends unknown[]> = (container: Container, ...args: Args) => Gtk.Widget | null;
 
-const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
+const getTrailingOptions = (args: unknown[]): MatcherOptions | undefined => {
     const last = args.at(-1);
 
     if (last && typeof last === "object" && !(last instanceof RegExp)) {
-        const { timeout, interval, onTimeout } = last as WaitForOptions;
-
-        return { timeout, interval, onTimeout };
-    }
-
-    return {};
-};
-
-const extractShouldSuggest = (args: unknown[]): boolean | undefined => {
-    const last = args.at(-1);
-
-    if (last && typeof last === "object" && !(last instanceof RegExp)) {
-        return (last as MatcherOptions).suggest;
+        return last;
     }
 
     return undefined;
 };
+
+const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
+    const { timeout, interval, onTimeout } = getTrailingOptions(args) ?? {};
+
+    return { timeout, interval, onTimeout };
+};
+
+const extractShouldSuggest = (args: unknown[]): boolean | undefined => getTrailingOptions(args)?.suggest;
 
 const maybeThrowSuggestion = (options: {
     container: Container;

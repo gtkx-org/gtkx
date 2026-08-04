@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { runCodegen } from "../../src/index.js";
+import { storeUnit } from "../helpers/store-unit.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
@@ -70,16 +71,8 @@ const isolateProject = (): void => {
 };
 
 const storeOptions = () => ({
-    gi: {
-        storeDir: join(projectModules, ".gtkx", "gi"),
-        linkDir: join(projectModules, "@gtkx", "gi"),
-        version: "0.0.0",
-    },
-    jsx: {
-        storeDir: join(projectModules, ".gtkx", "jsx"),
-        linkDir: join(projectModules, "@gtkx", "jsx"),
-        version: "0.0.0",
-    },
+    gi: storeUnit(projectModules, "gi"),
+    jsx: storeUnit(projectModules, "jsx"),
 });
 
 const walkEmittedFiles = (directory: string, collected: string[]): void => {

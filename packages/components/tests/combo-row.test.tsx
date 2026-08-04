@@ -1,3 +1,4 @@
+import type { ComboRowProps } from "@gtkx/components/adw";
 import type * as Adw from "@gtkx/gi/adw";
 import { ComboRow } from "@gtkx/components/adw";
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
@@ -5,49 +6,53 @@ import { render, screen } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";
 import { describe, expect, it } from "vitest";
 
+type ProbeProps = {
+    comboRef: Ref<Adw.ComboRow>;
+};
+
+type ComboShellProps = Omit<ComboRowProps<string, string>, "ref" | "title"> & ProbeProps;
+
 const items = [
     { id: "title", value: "By title" },
     { id: "date", value: "By date" },
     { id: "size", value: "By size" },
 ];
 
-const ComboProbe = ({ selectedId, comboRef }: { selectedId: string; comboRef: Ref<Adw.ComboRow> }): ReactNode => (
+const ComboShell = ({ comboRef, ...props }: ComboShellProps): ReactNode => (
     <GtkListBox>
-        <ComboRow ref={comboRef} title="Sort Order" items={items} selectedId={selectedId} />
+        <ComboRow ref={comboRef} title="Sort Order" {...props} />
     </GtkListBox>
 );
 
-const SectionedComboProbe = ({ comboRef }: { comboRef: Ref<Adw.ComboRow> }): ReactNode => (
-    <GtkListBox>
-        <ComboRow
-            ref={comboRef}
-            title="Sort Order"
-            sections={[
-                {
-                    id: "ascending",
-                    value: "Ascending",
-                    data: [
-                        { id: "title", value: "By title" },
-                        { id: "date", value: "By date" },
-                    ],
-                },
-            ]}
-            selectedId="title"
-            renderHeader={({ section: value }: { section: string }) => <GtkLabel>{value}</GtkLabel>}
-        />
-    </GtkListBox>
+const ComboProbe = ({ selectedId, comboRef }: ProbeProps & { selectedId: string }): ReactNode => (
+    <ComboShell comboRef={comboRef} items={items} selectedId={selectedId} />
 );
 
-const TemplatedComboProbe = ({ comboRef }: { comboRef: Ref<Adw.ComboRow> }): ReactNode => (
-    <GtkListBox>
-        <ComboRow
-            ref={comboRef}
-            title="Sort Order"
-            items={items}
-            selectedId="date"
-            renderItem={({ item: value }) => <GtkLabel>{`Sorted ${value.toLowerCase()}`}</GtkLabel>}
-        />
-    </GtkListBox>
+const SectionedComboProbe = ({ comboRef }: ProbeProps): ReactNode => (
+    <ComboShell
+        comboRef={comboRef}
+        sections={[
+            {
+                id: "ascending",
+                value: "Ascending",
+                data: [
+                    { id: "title", value: "By title" },
+                    { id: "date", value: "By date" },
+                ],
+            },
+        ]}
+        selectedId="title"
+        renderHeader={({ section: value }) => <GtkLabel>{value}</GtkLabel>}
+    />
+);
+
+const TemplatedComboProbe = ({ comboRef }: ProbeProps): ReactNode => (
+    <ComboShell
+        comboRef={comboRef}
+        items={items}
+        selectedId="date"
+        renderItem={({ item: value }) => <GtkLabel>{`Sorted ${value.toLowerCase()}`}</GtkLabel>}
+    />
 );
 
 describe("render - ComboRow", () => {

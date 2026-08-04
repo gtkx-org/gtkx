@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from "@typescript-eslint/utils";
+import { getIdentifierName } from "./identifier-name.js";
 
 type MessageIds = "inlineExport";
 type Declaration = NonNullable<TSESTree.ExportNamedDeclaration["declaration"]>;
@@ -38,16 +39,13 @@ const isInlineExport = (statement: TSESTree.ProgramStatement): statement is Inli
 
 const inlineExportsIn = (program: TSESTree.Program): InlineExport[] => program.body.filter(isInlineExport);
 
-const identifierName = (node: TSESTree.Node): string | undefined =>
-    node.type === AST_NODE_TYPES.Identifier ? node.name : undefined;
-
 const variableNames = (declaration: TSESTree.VariableDeclaration): string[] =>
-    declaration.declarations.map((entry) => identifierName(entry.id)).filter((name) => name !== undefined);
+    declaration.declarations.map((entry) => getIdentifierName(entry.id)).filter((name) => name !== undefined);
 
 const namedDeclarationName = (declaration: Exclude<Declaration, TSESTree.VariableDeclaration>): string | undefined => {
     const id: TSESTree.Node | null = declaration.id;
 
-    return id === null ? undefined : identifierName(id);
+    return id === null ? undefined : getIdentifierName(id);
 };
 
 const getNames = (declaration: Declaration): string[] => {

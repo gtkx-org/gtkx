@@ -2,9 +2,9 @@ import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
-import { renderChildren } from "../helpers/render-children.js";
 
 type Toggle = { id: string; label: string; isEnabled?: boolean };
 

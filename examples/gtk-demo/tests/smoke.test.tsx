@@ -1,13 +1,9 @@
-import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplication } from "@gtkx/jsx/gtk";
-import { rootElement } from "@gtkx/react";
-import { configure, fireEvent, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { configure, fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, beforeAll, describe, expect, it, type MockInstance, vi } from "vitest";
-import { Demo } from "../src/app.js";
 import { parseTitle } from "../src/context/demo-context.js";
 import { demos } from "../src/demos/index.js";
-import { createApplicationIdFactory } from "./test-utils.js";
+import { createAppRenderer } from "./render-app.js";
 
 type PrintOperationRunSpy = MockInstance<Gtk.PrintOperation["run"]>;
 
@@ -29,15 +25,7 @@ type DemoSweep = {
     tally: DemoTally;
 };
 
-const nextApplicationId = createApplicationIdFactory("org.gtkx.gtkdemoe2e");
-
-const renderApp = () =>
-    render(
-        <GtkApplication applicationId={nextApplicationId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-            <Demo />
-        </GtkApplication>,
-        { container: rootElement },
-    );
+const renderApp = createAppRenderer("org.gtkx.gtkdemoe2e");
 
 const toplevelWindows = async (): Promise<Gtk.Window[]> =>
     await screen.findAllByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });

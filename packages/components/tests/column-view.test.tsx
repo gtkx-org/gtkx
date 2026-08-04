@@ -2,7 +2,7 @@ import { ColumnView, type ListItemRenderer } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, getWidgetNodeText, render, screen, within } from "@gtkx/testing";
-import { createRef, useCallback, useMemo, useState } from "react";
+import { createRef, useMemo } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
     type CollectionView,
@@ -18,6 +18,7 @@ import {
     namedLabelRenderItem,
     namedRows,
     RAPID_REORDER_ORDERS,
+    renderCounterCell,
 } from "./helpers/list-collection-render.js";
 import {
     type ColumnViewColumn,
@@ -26,6 +27,7 @@ import {
     renderColumnView,
 } from "./helpers/list-fixtures.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
+import { useSortState } from "./helpers/sort-state.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type TitledColumnViewFixture = {
@@ -209,13 +211,7 @@ function SortableColumnView({
     columnViewRef: React.RefObject<Gtk.ColumnView | null>;
     onRenderOrder?: (ids: string[]) => void;
 }) {
-    const [sortColumn, setSortColumn] = useState<SortColumn>(null);
-    const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
-
-    const handleSortChange = useCallback((column: string | null, order: Gtk.SortType) => {
-        setSortColumn(column as SortColumn);
-        setSortOrder(order);
-    }, []);
+    const { sortColumn, sortOrder, handleSortChange } = useSortState<SortColumn>();
 
     const sortedEmployees = useMemo(() => {
         if (!sortColumn) {
@@ -696,11 +692,7 @@ describe("render - ColumnView (14)", () => {
             type ListItem = { name: string; count: number };
 
             const columns: ColumnViewColumn<ListItem>[] = [
-                {
-                    id: "name",
-                    title: "Name",
-                    renderCell: ({ item }) => <GtkLabel>{`${item.name}: ${String(item.count)}`}</GtkLabel>,
-                },
+                { id: "name", title: "Name", renderCell: renderCounterCell },
             ];
 
             const { ref, rerender } = await renderColumnView(counterBaselineRows(), { columns });

@@ -20,6 +20,8 @@ const result: GlGenerationResult = generateGlModules({
     overrideExports: OVERRIDE_EXPORTS,
 });
 
+const COMMANDS_SOURCE = result.files.get("commands.ts") ?? "";
+
 const DRAW_ELEMENTS_SIGNATURE =
     /drawElements\(\s*mode: PrimitiveType,\s*count: GLsizei,\s*type: DrawElementsType,\s*indices: GLintptr,?\s*\)/;
 
@@ -61,43 +63,40 @@ describe("khronos generation counts", () => {
 
 describe("khronos generation surface", () => {
     it("emits prefix-stripped typed wrappers", () => {
-        const commands = result.files.get("commands.ts") ?? "";
-
-        expect(commands).toContain(
+        expect(COMMANDS_SOURCE).toContain(
             "export function clearColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat): void",
         );
 
-        expect(commands).toContain("export function createShader(type: ShaderType): GLuint");
-        expect(commands).toContain("return glCreateShader(type) as GLuint;");
+        expect(COMMANDS_SOURCE).toContain("export function createShader(type: ShaderType): GLuint");
+        expect(COMMANDS_SOURCE).toContain("return glCreateShader(type) as GLuint;");
     });
 
     it("types curated byte-offset parameters as numbers, never views", () => {
-        const commands = result.files.get("commands.ts") ?? "";
-        expect(commands).toContain("pointer: GLintptr");
-        expect(commands).toMatch(DRAW_ELEMENTS_SIGNATURE);
+        expect(COMMANDS_SOURCE).toContain("pointer: GLintptr");
+        expect(COMMANDS_SOURCE).toMatch(DRAW_ELEMENTS_SIGNATURE);
     });
 
     it("passes data parameters as buffers accepting views, offsets, and null", () => {
-        const commands = result.files.get("commands.ts") ?? "";
-        expect(commands).toContain("data: ArrayBufferView | GLintptr | null");
+        expect(COMMANDS_SOURCE).toContain("data: ArrayBufferView | GLintptr | null");
     });
 
     it("returns out-parameters instead of taking cells", () => {
-        const commands = result.files.get("commands.ts") ?? "";
-        expect(commands).toContain("export function genBuffers(n: GLsizei): GLuint[]");
-        expect(commands).toContain("const out0 = { value: new Array<number>(n).fill(0) };");
-        expect(commands).toContain("export function getShaderiv(shader: GLuint, pname: ShaderParameterName): GLint");
+        expect(COMMANDS_SOURCE).toContain("export function genBuffers(n: GLsizei): GLuint[]");
+        expect(COMMANDS_SOURCE).toContain("const out0 = { value: new Array<number>(n).fill(0) };");
 
-        expect(commands).toContain(
+        expect(COMMANDS_SOURCE).toContain(
+            "export function getShaderiv(shader: GLuint, pname: ShaderParameterName): GLint",
+        );
+
+        expect(COMMANDS_SOURCE).toContain(
             "export function getShaderSource(shader: GLuint, bufSize: GLsizei): [GLsizei, string]",
         );
     });
 
     it("derives singular forms from the gen/create/delete families", () => {
-        const commands = result.files.get("commands.ts") ?? "";
-        expect(commands).toContain("export function genBuffer(): GLuint");
-        expect(commands).toContain("export function createQuery(target: QueryTarget): GLuint");
-        expect(commands).toContain("export function deleteVertexArray(name: GLuint): void");
+        expect(COMMANDS_SOURCE).toContain("export function genBuffer(): GLuint");
+        expect(COMMANDS_SOURCE).toContain("export function createQuery(target: QueryTarget): GLuint");
+        expect(COMMANDS_SOURCE).toContain("export function deleteVertexArray(name: GLuint): void");
     });
 });
 

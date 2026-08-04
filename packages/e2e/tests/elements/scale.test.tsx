@@ -1,9 +1,8 @@
+import type { ScaleMark } from "@gtkx/react/internal";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkScale } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-
-type ScaleMark = { value: number; position: Gtk.PositionType; markup?: string | null };
 
 const MIN_MAX_MARKS = [
     { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Min" },

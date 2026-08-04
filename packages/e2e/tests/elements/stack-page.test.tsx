@@ -1,39 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { ComponentProps, RefObject } from "react";
+import type { RefObject } from "react";
 import { GtkLabel, GtkStack, GtkStackPage } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { renderChildren } from "../helpers/render-children.js";
-
-type StackPageProps = ComponentProps<typeof GtkStackPage>;
-
-const renderSinglePage = async (props: StackPageProps): Promise<Gtk.Stack> => {
-    const stackRef = createRef<Gtk.Stack>();
-
-    await render(
-        <GtkStack ref={stackRef}>
-            <GtkStackPage {...props}>
-                <GtkLabel>Content</GtkLabel>
-            </GtkStackPage>
-        </GtkStack>,
-    );
-
-    return stackRef.current as Gtk.Stack;
-};
-
-const pageNamed = (stack: Gtk.Stack | null, name: string): Gtk.StackPage | undefined =>
-    stack?.getPage(stack.getChildByName(name) as Gtk.Widget);
-
-const buildNamedPages = (stackRef: RefObject<Gtk.Stack | null>) => (pages: string[]) => (
-    <GtkStack ref={stackRef}>
-        {pages.map((name) => (
-            <GtkStackPage key={name} name={name}>
-                <GtkLabel>{name}</GtkLabel>
-            </GtkStackPage>
-        ))}
-    </GtkStack>
-);
+import { buildNamedPages, pageNamed, renderSinglePage } from "../helpers/stack-pages.js";
 
 const buildTitledPages = (stackRef: RefObject<Gtk.Stack | null>) => (pages: { key: string; title: string }[]) => (
     <GtkStack ref={stackRef}>

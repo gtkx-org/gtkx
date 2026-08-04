@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESLint, type TSESTree } from "@typescript-eslint/utils";
+import { getIdentifierName } from "./identifier-name.js";
 
 type MessageIds = "missingPrefix" | "notBoolean" | "negated";
 type Options = [{ mirrors?: string[]; mirrorProperties?: string[] }];
@@ -64,9 +65,6 @@ const booleanName = ESLintUtils.RuleCreator.withoutDocs<Options, MessageIds>({
         };
     },
 });
-
-const getIdentifierName = (node: TSESTree.Node | null | undefined): string | undefined =>
-    node?.type === AST_NODE_TYPES.Identifier ? node.name : undefined;
 
 const isBooleanNode = (node: TSESTree.TypeNode): boolean => node.type === AST_NODE_TYPES.TSBooleanKeyword;
 

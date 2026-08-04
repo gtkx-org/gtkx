@@ -3,7 +3,7 @@ import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsDemo } from "../../../src/demos/constraints/constraints.js";
 import { renderDemo } from "../../test-utils.js";
-import { collectConstraints, findChildButtons } from "./constraint-helpers.js";
+import { collectConstraints, collectGuides, findChildButtons } from "./constraint-helpers.js";
 
 type AllocatedLayout = {
     button1: Gtk.Button;
@@ -18,21 +18,6 @@ const getGridLayout = async (): Promise<Gtk.ConstraintLayout> => {
     expect(layout).toBeInstanceOf(Gtk.ConstraintLayout);
 
     return layout as Gtk.ConstraintLayout;
-};
-
-const collectGuides = (layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide[] => {
-    const observer = layout.observeGuides();
-    const guides: Gtk.ConstraintGuide[] = [];
-
-    for (let i = 0; i < observer.getNItems(); i++) {
-        const item = observer.getItem(i);
-
-        if (item instanceof Gtk.ConstraintGuide) {
-            guides.push(item);
-        }
-    }
-
-    return guides;
 };
 
 const boundsIn = (widget: Gtk.Widget, container: Gtk.Widget) => {

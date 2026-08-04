@@ -16,6 +16,12 @@ type ConfigHook = (userConfig: {
 const callConfig = (plugin: ReturnType<typeof gtkxBuiltUrl>, userConfig: Parameters<ConfigHook>[0]) =>
     (plugin.config as ConfigHook)(userConfig);
 
+const renderAssetUrl = (assetBase?: string): { runtime: string } => {
+    const result = callConfig(gtkxBuiltUrl(assetBase), {});
+
+    return result?.experimental.renderBuiltUrl("logo.png", { type: "asset" }) as { runtime: string };
+};
+
 describe("gtkxBuiltUrl", () => {
     it("returns a plugin with the expected name", () => {
         const plugin = gtkxBuiltUrl();
@@ -41,25 +47,18 @@ describe("gtkxBuiltUrl", () => {
     });
 
     it("renderBuiltUrl with assetBase resolves relative to process.execPath", () => {
-        const result = callConfig(gtkxBuiltUrl("../share/gtkx"), {});
-        const out = result?.experimental.renderBuiltUrl("logo.png", { type: "asset" }) as { runtime: string };
-
-        expect(out.runtime).toBe(
+        expect(renderAssetUrl("../share/gtkx").runtime).toBe(
             'decodeURIComponent(new URL("../share/gtkx/logo.png", `file://${process.execPath}`).pathname)',
         );
     });
 
     it("renderBuiltUrl never emits require, which an ESM bundle cannot evaluate", () => {
         for (const assetBase of ["../share/gtkx", undefined]) {
-            const result = callConfig(gtkxBuiltUrl(assetBase), {});
-            const out = result?.experimental.renderBuiltUrl("logo.png", { type: "asset" }) as { runtime: string };
-            expect(out.runtime).not.toContain("require(");
+            expect(renderAssetUrl(assetBase).runtime).not.toContain("require(");
         }
     });
 
     it("renderBuiltUrl without assetBase uses import.meta.url", () => {
-        const result = callConfig(gtkxBuiltUrl(), {});
-        const out = result?.experimental.renderBuiltUrl("logo.png", { type: "asset" }) as { runtime: string };
-        expect(out.runtime).toBe('decodeURIComponent(new URL("./logo.png", import.meta.url).pathname)');
+        expect(renderAssetUrl().runtime).toBe('decodeURIComponent(new URL("./logo.png", import.meta.url).pathname)');
     });
 });

@@ -12,6 +12,7 @@ import type { QueryMap, RenderOptions, ScreenshotOptions, WindowSelector } from 
 import { runInAct } from "./act.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
 import { scheduleAfterLayout } from "./frame-sync.js";
+import { createHarnessWindow } from "./harness-window.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
@@ -37,8 +38,6 @@ type ReconcilerErrorState = {
 
 const reconcilerErrors: ReconcilerErrorState = { lastError: null, isHandlerInstalled: false };
 const activeRenders: Set<ActiveRender> = new Set();
-const HARNESS_WINDOW_WIDTH = 800;
-const HARNESS_WINDOW_HEIGHT = 600;
 
 const flushLayout = (window: Gtk.Window | null): Promise<void> =>
     new Promise((resolve) => {
@@ -96,7 +95,7 @@ const resolveContainer = (container: RenderOptions["container"]): ResolvedContai
         return { containerInfo: container, window: null };
     }
 
-    const window = new Gtk.Window({ defaultWidth: HARNESS_WINDOW_WIDTH, defaultHeight: HARNESS_WINDOW_HEIGHT });
+    const window = createHarnessWindow();
     window.setDecorated(false);
 
     return { containerInfo: window, window };

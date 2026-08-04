@@ -1,9 +1,9 @@
 import type * as Adw from "@gtkx/gi/adw";
 import { AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gtkx/jsx/adw";
 import { render } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
-import { renderChildren } from "../helpers/render-children.js";
 
 const getItemTitles = (sidebar: Adw.Sidebar | null): string[] => {
     const titles: string[] = [];

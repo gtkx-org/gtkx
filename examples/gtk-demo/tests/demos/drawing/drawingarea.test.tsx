@@ -4,6 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { drawingAreaDemo } from "../../../src/demos/drawing/drawingarea.js";
 import { renderDemo } from "../../test-utils.js";
 
+const renderFrames = async (): Promise<{ knockoutFrame: Gtk.Frame; scribbleFrame: Gtk.Frame }> => {
+    await renderDemo(drawingAreaDemo);
+    const knockoutFrame = await screen.findByName("knockout-frame", { as: Gtk.Frame });
+    const scribbleFrame = await screen.findByName("scribble-frame", { as: Gtk.Frame });
+
+    return { knockoutFrame, scribbleFrame };
+};
+
 describe("drawingAreaDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(drawingAreaDemo.id).toBe("drawingarea");
@@ -43,9 +51,7 @@ describe("drawingAreaDemo rendering", () => {
     });
 
     it("renders two GtkDrawingArea widgets each sized 100x100", async () => {
-        await renderDemo(drawingAreaDemo);
-        const knockoutFrame = await screen.findByName("knockout-frame", { as: Gtk.Frame });
-        const scribbleFrame = await screen.findByName("scribble-frame", { as: Gtk.Frame });
+        const { knockoutFrame, scribbleFrame } = await renderFrames();
 
         for (const frame of [knockoutFrame, scribbleFrame]) {
             const area = within(frame).getByRole(Gtk.AccessibleRole.IMG, { as: Gtk.DrawingArea });
@@ -55,9 +61,7 @@ describe("drawingAreaDemo rendering", () => {
     });
 
     it("wraps each drawing area in a vertical-expanding frame", async () => {
-        await renderDemo(drawingAreaDemo);
-        const knockoutFrame = await screen.findByName("knockout-frame", { as: Gtk.Frame });
-        const scribbleFrame = await screen.findByName("scribble-frame", { as: Gtk.Frame });
+        const { knockoutFrame, scribbleFrame } = await renderFrames();
 
         for (const frame of [knockoutFrame, scribbleFrame]) {
             expect(frame).toHaveObjectProperty("vexpand", true);

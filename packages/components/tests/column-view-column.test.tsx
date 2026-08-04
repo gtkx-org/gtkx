@@ -4,10 +4,11 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GMenu, type GMenuProps, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
-import { createRef, useCallback, useMemo, useState } from "react";
+import { renderChildren } from "@gtkx/testing/internal";
+import { createRef, useCallback, useMemo } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { renderChildren } from "./helpers/render-children.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
+import { useSortState } from "./helpers/sort-state.js";
 
 type ColumnExtra = Omit<ColumnViewColumn, "id" | "title" | "renderCell">;
 type MenuItem = NonNullable<GMenuProps["items"]>[number];
@@ -78,6 +79,28 @@ const getColumn = (columnView: Gtk.ColumnView, index: number): Gtk.ColumnViewCol
     return columnView.getColumns().getItem(index) as Gtk.ColumnViewColumn;
 };
 
+const getFirstColumn = (columnViewRef: RefObject<Gtk.ColumnView | null>): Gtk.ColumnViewColumn =>
+    getColumn(columnViewRef.current as Gtk.ColumnView, 0);
+
+const getHeaderMenuItemCount = (columnViewRef: RefObject<Gtk.ColumnView | null>): number | undefined =>
+    getFirstColumn(columnViewRef).getHeaderMenu()?.getNItems();
+
+const nameMenuColumnView = (
+    columnViewRef: RefObject<Gtk.ColumnView | null>,
+    headerMenu: ReactElement | undefined,
+): ReactNode => (
+    <ScrollWrapper>
+        <ColumnView ref={columnViewRef} columns={[defaultColumn("name", "Name", { headerMenu })]} />
+    </ScrollWrapper>
+);
+
+const renderNameMenuColumn = async (
+    columnViewRef: RefObject<Gtk.ColumnView | null>,
+    headerMenu: ReactElement,
+): Promise<void> => {
+    await render(nameMenuColumnView(columnViewRef, headerMenu));
+};
+
 const expectHeaderMenuItemCounts = (
     columnViewRef: RefObject<Gtk.ColumnView | null>,
     expectedCounts: (number | null)[],
@@ -111,21 +134,14 @@ const renderNameAndRoleColumns = async (
     );
 };
 
-const buildColumnMenu = (columnViewRef: RefObject<Gtk.ColumnView | null>) => (items: string[]) => (
-    <ScrollWrapper>
-        <ColumnView
-            ref={columnViewRef}
-            columns={[
-                defaultColumn("name", "Name", {
-                    headerMenu: flatMenu(
-                        "name",
-                        items.map((label) => ({ id: label, label })),
-                    ),
-                }),
-            ]}
-        />
-    </ScrollWrapper>
-);
+const buildColumnMenu = (columnViewRef: RefObject<Gtk.ColumnView | null>) => (items: string[]) =>
+    nameMenuColumnView(
+        columnViewRef,
+        flatMenu(
+            "name",
+            items.map((label) => ({ id: label, label })),
+        ),
+    );
 
 const sortShowcasePeople = (sortColumn: ShowcaseSortColumn, sortOrder: Gtk.SortType): ShowcasePerson[] => {
     if (!sortColumn) {
@@ -196,14 +212,7 @@ const ShowcaseColumns = ({
 ];
 
 function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.ColumnView | null> }) {
-    const [sortColumn, setSortColumn] = useState<ShowcaseSortColumn>(null);
-    const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
-
-    const handleSortChange = useCallback((column: string | null, order: Gtk.SortType) => {
-        setSortColumn(column as ShowcaseSortColumn);
-        setSortOrder(order);
-    }, []);
-
+    const { sortColumn, sortOrder, handleSortChange } = useSortState<ShowcaseSortColumn>();
     const sortedPeople = useMemo(() => sortShowcasePeople(sortColumn, sortOrder), [sortColumn, sortOrder]);
 
     const sortActions = useCallback(
@@ -237,7 +246,7 @@ describe("render - ColumnViewColumn (1)", () => {
         it("sets column title", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             await renderColumns(columnViewRef, [defaultColumn("col", "My Column")]);
-            const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
+            const column = getFirstColumn(columnViewRef);
             expect(column).toHaveObjectProperty("title", "My Column");
         });
 
@@ -248,7 +257,7 @@ describe("render - ColumnViewColumn (1)", () => {
                 { id: "expand", title: "Expandable", expand: true, renderCell: cellRenderer },
             ]);
 
-            const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
+            const column = getFirstColumn(columnViewRef);
             expect(column).toHaveObjectProperty("expand", true);
         });
     });
@@ -263,7 +272,7 @@ describe("render - ColumnViewColumn (2)", () => {
                 { id: "resize", title: "Resizable", expand: true, resizable: true, renderCell: cellRenderer },
             ]);
 
-            const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
+            const column = getFirstColumn(columnViewRef);
             expect(column).toHaveObjectProperty("resizable", true);
         });
 
@@ -298,9 +307,9 @@ describe("render - ColumnViewColumn (3)", () => {
             }
 
             await render(<App title="Initial" />);
-            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0)).toHaveObjectProperty("title", "Initial");
+            expect(getFirstColumn(columnViewRef)).toHaveObjectProperty("title", "Initial");
             await render(<App title="Updated" />);
-            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0)).toHaveObjectProperty("title", "Updated");
+            expect(getFirstColumn(columnViewRef)).toHaveObjectProperty("title", "Updated");
         });
     });
 });
@@ -339,45 +348,38 @@ describe("render - ColumnViewColumn (5)", () => {
         it("installs a header menu from the headerMenu slot", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(columnViewRef, [
-                defaultColumn("name", "Name", {
-                    headerMenu: flatMenu("name", [
-                        { id: "sort-asc", label: "Sort A-Z" },
-                        { id: "sort-desc", label: "Sort Z-A" },
-                    ]),
-                }),
-            ]);
+            await renderNameMenuColumn(
+                columnViewRef,
+                flatMenu("name", [
+                    { id: "sort-asc", label: "Sort A-Z" },
+                    { id: "sort-desc", label: "Sort Z-A" },
+                ]),
+            );
 
-            const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            expect(column.getHeaderMenu()?.getNItems()).toBe(2);
+            expect(getHeaderMenuItemCount(columnViewRef)).toBe(2);
         });
 
         it("has no header menu without the slot", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             await renderColumns(columnViewRef, [defaultColumn("name", "Name")]);
-            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getHeaderMenu()).toBeNull();
+            expect(getFirstColumn(columnViewRef).getHeaderMenu()).toBeNull();
         });
 
         it("supports sections in the header menu", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(columnViewRef, [
-                defaultColumn("name", "Name", {
-                    headerMenu: sectionedMenu("name", [
-                        [
-                            { id: "sort-asc", label: "Sort A-Z" },
-                            { id: "sort-desc", label: "Sort Z-A" },
-                        ],
-                        [{ id: "hide", label: "Hide Column" }],
-                    ]),
-                }),
-            ]);
+            await renderNameMenuColumn(
+                columnViewRef,
+                sectionedMenu("name", [
+                    [
+                        { id: "sort-asc", label: "Sort A-Z" },
+                        { id: "sort-desc", label: "Sort Z-A" },
+                    ],
+                    [{ id: "hide", label: "Hide Column" }],
+                ]),
+            );
 
-            expect(
-                getColumn(columnViewRef.current as Gtk.ColumnView, 0)
-                    .getHeaderMenu()
-                    ?.getNItems(),
-            ).toBe(2);
+            expect(getHeaderMenuItemCount(columnViewRef)).toBe(2);
         });
     });
 });
@@ -387,39 +389,17 @@ describe("render - ColumnViewColumn (6)", () => {
         it("dynamically adds menu items", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             const { rerender } = await renderChildren(["A"], buildColumnMenu(columnViewRef));
-
-            expect(
-                getColumn(columnViewRef.current as Gtk.ColumnView, 0)
-                    .getHeaderMenu()
-                    ?.getNItems(),
-            ).toBe(1);
-
+            expect(getHeaderMenuItemCount(columnViewRef)).toBe(1);
             await rerender(["A", "B", "C"]);
-
-            expect(
-                getColumn(columnViewRef.current as Gtk.ColumnView, 0)
-                    .getHeaderMenu()
-                    ?.getNItems(),
-            ).toBe(3);
+            expect(getHeaderMenuItemCount(columnViewRef)).toBe(3);
         });
 
         it("dynamically removes menu items", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             const { rerender } = await renderChildren(["A", "B", "C"], buildColumnMenu(columnViewRef));
-
-            expect(
-                getColumn(columnViewRef.current as Gtk.ColumnView, 0)
-                    .getHeaderMenu()
-                    ?.getNItems(),
-            ).toBe(3);
-
+            expect(getHeaderMenuItemCount(columnViewRef)).toBe(3);
             await rerender(["A"]);
-
-            expect(
-                getColumn(columnViewRef.current as Gtk.ColumnView, 0)
-                    .getHeaderMenu()
-                    ?.getNItems(),
-            ).toBe(1);
+            expect(getHeaderMenuItemCount(columnViewRef)).toBe(1);
         });
     });
 });
@@ -428,28 +408,11 @@ describe("render - ColumnViewColumn (7)", () => {
     describe("header menu removal", () => {
         it("clears the header menu when the slot is removed", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
-
-            function App({ hasMenu }: { hasMenu: boolean }) {
-                return (
-                    <ScrollWrapper>
-                        <ColumnView
-                            ref={columnViewRef}
-                            columns={[
-                                defaultColumn("name", "Name", {
-                                    headerMenu: hasMenu
-                                        ? flatMenu("name", [{ id: "action", label: "Action" }])
-                                        : undefined,
-                                }),
-                            ]}
-                        />
-                    </ScrollWrapper>
-                );
-            }
-
-            await render(<App hasMenu={true} />);
-            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getHeaderMenu()).not.toBeNull();
-            await render(<App hasMenu={false} />);
-            expect(getColumn(columnViewRef.current as Gtk.ColumnView, 0).getHeaderMenu()).toBeNull();
+            const actionMenu = flatMenu("name", [{ id: "action", label: "Action" }]);
+            await render(nameMenuColumnView(columnViewRef, actionMenu));
+            expect(getFirstColumn(columnViewRef).getHeaderMenu()).not.toBeNull();
+            await render(nameMenuColumnView(columnViewRef, undefined));
+            expect(getFirstColumn(columnViewRef).getHeaderMenu()).toBeNull();
         });
     });
 });
@@ -517,7 +480,7 @@ describe("render - ColumnViewColumn (13)", () => {
             const columnRef = createRef<Gtk.ColumnViewColumn>();
             await renderColumns(columnViewRef, [{ ...defaultColumn("name", "Name"), ref: columnRef }]);
             expect(columnRef.current).not.toBeNull();
-            expect(columnRef.current).toBe(getColumn(columnViewRef.current as Gtk.ColumnView, 0));
+            expect(columnRef.current).toBe(getFirstColumn(columnViewRef));
         });
     });
 });

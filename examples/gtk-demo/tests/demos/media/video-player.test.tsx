@@ -3,11 +3,21 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type MockInstance, vi } from "vitest";
 import { videoPlayerDemo } from "../../../src/demos/media/video-player.js";
 import { findOpenButton, renderDemo } from "../../test-utils.js";
 
+type SetFileSpy = MockInstance<Gtk.Video["setFile"]>;
+
 const FAKE_VIDEO_PATH = join(tmpdir(), "fake-video.webm");
+
+const findAppliedFile = async (fileSpy: SetFileSpy): Promise<Gio.File> => {
+    await waitFor(() => {
+        expect(fileSpy).toHaveBeenCalled();
+    });
+
+    return fileSpy.mock.calls.at(-1)?.[0] as Gio.File;
+};
 
 const renderAndClickOpenButton = async (): Promise<void> => {
     await renderDemo(videoPlayerDemo);
@@ -113,12 +123,7 @@ describe("videoPlayerDemo video and actions", () => {
             await renderDemo(videoPlayerDemo);
             const logoButton = await screen.findByName("logo-button", { as: Gtk.Button });
             await userEvent.click(logoButton);
-
-            await waitFor(() => {
-                expect(setFileSpy).toHaveBeenCalled();
-            });
-
-            const file = setFileSpy.mock.calls.at(-1)?.[0] as Gio.File;
+            const file = await findAppliedFile(setFileSpy);
             expect(file.getUri()).toMatch(/gtk-logo\.webm$/);
         } finally {
             setFileSpy.mockRestore();
@@ -151,12 +156,7 @@ describe("videoPlayerDemo remote media", () => {
             await renderDemo(videoPlayerDemo);
             const bbbButton = await screen.findByName("bbb-button", { as: Gtk.Button });
             await userEvent.click(bbbButton);
-
-            await waitFor(() => {
-                expect(setFileSpy).toHaveBeenCalled();
-            });
-
-            const file = setFileSpy.mock.calls.at(-1)?.[0] as Gio.File;
+            const file = await findAppliedFile(setFileSpy);
             expect(file.getUri()).toBe("https://download.blender.org/peach/trailer/trailer_400p.ogg");
         } finally {
             setFileSpy.mockRestore();
@@ -178,11 +178,7 @@ describe("videoPlayerDemo open dialog", () => {
                 expect(openSpy).toHaveBeenCalled();
             });
 
-            await waitFor(() => {
-                expect(setFileSpy).toHaveBeenCalled();
-            });
-
-            const file = setFileSpy.mock.calls.at(-1)?.[0] as Gio.File;
+            const file = await findAppliedFile(setFileSpy);
             expect(file.getPath()).toBe(FAKE_VIDEO_PATH);
         } finally {
             openSpy.mockRestore();

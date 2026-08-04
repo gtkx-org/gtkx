@@ -143,6 +143,9 @@ importers:
       '@gtkx/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       react:
         specifier: 'catalog:'
         version: 19.2.8

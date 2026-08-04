@@ -508,5 +508,6 @@ export {
     renderStaticHead,
     renderPlainTypeMembers,
     type Callables,
+    type InstanceMemberRenderer,
     type InstanceScope,
 };

@@ -25,7 +25,7 @@ const findOnPath = (command: string): string | undefined => {
     return undefined;
 };
 
-function resolveExecutable(command: string): string {
+function tryResolveExecutable(command: string): string | undefined {
     if (isAbsolute(command)) {
         return command;
     }
@@ -34,7 +34,11 @@ function resolveExecutable(command: string): string {
         return resolve(command);
     }
 
-    const found = findOnPath(command);
+    return findOnPath(command);
+}
+
+function resolveExecutable(command: string): string {
+    const found = tryResolveExecutable(command);
 
     if (found === undefined) {
         throw new Error(`Cannot find the "${command}" executable on PATH`);
@@ -43,4 +47,4 @@ function resolveExecutable(command: string): string {
     return found;
 }
 
-export { resolveExecutable };
+export { resolveExecutable, tryResolveExecutable };
