@@ -729,7 +729,11 @@ gtkx_fire_event { widgetId: "...", signal: "activate" }
 
 **Cause:** two independent gaps. `scripts/run-headless.ts` used `spawnSync` with no parent-death handling at all, so killing the runner orphaned `wlheadless-run`'s compositor outright. `@gtkx/vitest` did wrap its spawns in `setpriv --pdeathsig SIGTERM` with a shell trap, but the trap ran `kill -9 "$child"`, which names only the direct child; a compositor's own children survived it.
 
-**Fix applied:** one `spawnWithParentDeathSignal` in `@gtkx/utils`, used by both. The shell runs the command under `set -m`, so it lands in a process group of its own, and the trap kills that group rather than the single process. Regression tests in `packages/utils/tests/spawn-with-parent-death-signal.test.ts` assert the grandchild dies with the group; they fail against the old script.
+**Fix applied:** one `spawnWithParentDeathSignal` in `@gtkx/utils`, used by both. Node spawns the wrapper `detached`, so `setsid` makes it a process group leader and every descendant inherits that group; the trap then kills the group rather than the single process.
+
+The first attempt asked the shell for the group instead, with `set -m`, and that is wrong on any system where `/bin/sh` is dash: dash reports `can't access tty; job control turned off` and leaves the background job in the shell's own group, so the group kill names a group that does not exist. It passed locally only because this machine links `/bin/sh` to bash, which does create the group even without a controlling terminal. CI, on `ubuntu-latest`, caught it. Creating the group from Node removes the dependency on the shell entirely, and was verified against both bash and dash.
+
+Regression tests in `packages/utils/tests/spawn-with-parent-death-signal.test.ts` assert that the grandchild dies with the group and that the wrapper leads a group of its own; both fail against either earlier script.
 
 ---
 

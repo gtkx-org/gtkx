@@ -6,8 +6,7 @@ type ParentDeathSpawnOptions = {
     env?: NodeJS.ProcessEnv;
 };
 
-const PARENT_DEATH_SCRIPT =
-    "set -m; trap 'kill -9 -\"$child\" 2>/dev/null' TERM INT HUP; \"$@\" & child=$!; wait \"$child\"";
+const PARENT_DEATH_SCRIPT = "trap 'kill -9 -$$ 2>/dev/null' TERM INT HUP; \"$@\" & child=$!; wait \"$child\"";
 
 function spawnWithParentDeathSignal(
     command: string,
@@ -17,7 +16,7 @@ function spawnWithParentDeathSignal(
     return spawn(
         resolveExecutable("setpriv"),
         ["--pdeathsig", "SIGTERM", "sh", "-c", PARENT_DEATH_SCRIPT, "sh", resolveExecutable(command), ...args],
-        { stdio: options.stdio ?? "ignore", env: options.env ?? process.env },
+        { detached: true, stdio: options.stdio ?? "ignore", env: options.env ?? process.env },
     );
 }
 

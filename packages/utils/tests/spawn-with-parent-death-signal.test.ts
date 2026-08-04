@@ -40,6 +40,18 @@ const pollUntil = async (isSatisfied: () => boolean): Promise<boolean> => {
     return false;
 };
 
+const getProcessGroup = (pid: number): number | null => {
+    try {
+        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
+        const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+        const group = Number(fields[2]);
+
+        return Number.isNaN(group) ? null : group;
+    } catch {
+        return null;
+    }
+};
+
 const readPid = (path: string): number | null => {
     try {
         const text = readFileSync(path, "utf8").trim();
@@ -86,6 +98,13 @@ describe("spawnWithParentDeathSignal", () => {
         wrapper.kill("SIGTERM");
         const hasDied = await pollUntil(() => !isProcessAlive(pid));
         expect(hasDied).toBe(true);
+    });
+
+    it("leads its own process group without relying on the shell's job control", async () => {
+        const { wrapper } = await startGrandchild(fixture);
+        const pid = wrapper.pid ?? 0;
+        expect(pid).toBeGreaterThan(0);
+        expect(getProcessGroup(pid)).toBe(pid);
     });
 
     it("leaves the calling process outside the group it kills", async () => {
