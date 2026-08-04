@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-GTKX is currently in pre-release (1.0.0-rc.x) and not yet recommended for production use. Security updates are applied to the latest release candidate only.
+Security updates are applied to the latest 1.x release.
 
 ## Reporting a Vulnerability
 

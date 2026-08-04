@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/mcp",
-    "version": "1.0.0-rc.4",
+    "version": "1.0.0",
     "description": "Model Context Protocol server that gives an agent the GTKX API reference and control of a running application",
     "keywords": [
         "gtkx",
@@ -54,5 +54,15 @@
         "@gtkx/utils": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.30.0",
         "zod": "catalog:"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint packages/mcp"
+                }
+            }
+        }
     }
 }

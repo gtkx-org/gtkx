@@ -30,13 +30,13 @@ All of this is development tooling. The MCP client is part of the CLI's dev runn
 `@gtkx/testing` must be resolvable from your project. Every widget tool except `gtkx_list_apps` loads it through your app's module graph and fails without it; the API reference tools never touch the app. Projects scaffolded with the testing option already have it. Otherwise install it:
 
 ```bash
-npm install -D @gtkx/testing@rc
+npm install -D @gtkx/testing
 ```
 
 Nothing else is needed on the app side: `gtkx dev` starts the client automatically whenever your entry mounts an application. On the agent side, register `gtkx-mcp` as a stdio server. For Claude Code:
 
 ```bash
-claude mcp add gtkx -- npx -y @gtkx/mcp@rc
+claude mcp add gtkx -- npx -y @gtkx/mcp
 ```
 
 For any other MCP client, the standard `mcpServers` configuration looks like this:
@@ -46,7 +46,7 @@ For any other MCP client, the standard `mcpServers` configuration looks like thi
     "mcpServers": {
         "gtkx": {
             "command": "npx",
-            "args": ["-y", "@gtkx/mcp@rc"]
+            "args": ["-y", "@gtkx/mcp"]
         }
     }
 }

@@ -10,7 +10,7 @@ description: "Draw with OpenGL in a GTKX app using @gtkx/gl: generated OpenGL 4.
 It is a separate install:
 
 ```bash
-npm install @gtkx/gl@rc
+npm install @gtkx/gl
 ```
 
 ## What the package contains

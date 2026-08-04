@@ -1,6 +1,6 @@
 ---
 title: "Getting Started"
-description: "Scaffold a GTKX app with npm create gtkx@rc: what you need installed, what the scaffolder writes, the dev loop, and where the entry point mounts your tree."
+description: "Scaffold a GTKX app with npm create gtkx: what you need installed, what the scaffolder writes, the dev loop, and where the entry point mounts your tree."
 ---
 
 # Getting Started
@@ -24,15 +24,15 @@ Start any new project with the scaffolder:
 ::: code-group
 
 ```bash [npm]
-npm create gtkx@rc
+npm create gtkx
 ```
 
 ```bash [pnpm]
-pnpm create gtkx@rc
+pnpm create gtkx
 ```
 
 ```bash [yarn]
-yarn create gtkx@rc
+yarn create gtkx
 ```
 
 :::
@@ -40,7 +40,7 @@ yarn create gtkx@rc
 It prompts for the project directory, an application ID in reverse-DNS form, your package manager, and whether to include TypeScript and a Vitest testing setup.
 
 ```bash
-npm create gtkx@rc -- my-app --yes --application-id com.example.myapp
+npm create gtkx -- my-app --yes --application-id com.example.myapp
 cd my-app
 npm run dev
 ```

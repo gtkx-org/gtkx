@@ -9,10 +9,10 @@ GTKX ships with a React Testing Library-inspired testing package, which provides
 
 ## Setup
 
-A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx@rc`) ships this config. To add testing to a project scaffolded without it, start with the install:
+A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx`) ships this config. To add testing to a project scaffolded without it, start with the install:
 
 ```bash
-npm install -D @gtkx/testing@rc vitest
+npm install -D @gtkx/testing vitest
 ```
 
 Then point a `test` script at `vitest` and write `vitest.config.ts`:

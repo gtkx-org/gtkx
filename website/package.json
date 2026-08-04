@@ -94,7 +94,11 @@
                     "gtkx:codegen",
                     "@gtkx/gl:codegen",
                     "reference"
-                ]
+                ],
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
             },
             "typecheck": {
                 "dependsOn": [

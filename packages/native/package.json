@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/native",
-    "version": "1.0.0-rc.4",
+    "version": "1.0.0",
     "description": "Rust addon under GTKX that loads shared libraries, marshals values, and tracks GObject handles",
     "keywords": [
         "gtkx",
@@ -70,7 +70,9 @@
                 "{projectRoot}/Cargo.lock",
                 "{projectRoot}/package.json",
                 "{workspaceRoot}/rust-toolchain.toml",
-                { "runtime": "uname -m" }
+                {
+                    "runtime": "uname -m"
+                }
             ],
             "crateTests": [
                 "crate",
@@ -85,7 +87,9 @@
             "build": {
                 "dependsOn": [],
                 "cache": true,
-                "inputs": ["crate"],
+                "inputs": [
+                    "crate"
+                ],
                 "outputs": [
                     "{projectRoot}/index.d.ts",
                     "{projectRoot}/index.js",
@@ -93,47 +97,87 @@
                 ]
             },
             "test": {
-                "dependsOn": ["build", "test:asan", "test:miri"],
+                "dependsOn": [
+                    "build",
+                    "test:asan",
+                    "test:miri"
+                ],
                 "cache": true,
-                "inputs": ["crateTests"],
+                "inputs": [
+                    "crateTests"
+                ],
                 "outputs": []
             },
             "test:asan": {
-                "dependsOn": ["build"],
+                "dependsOn": [
+                    "build"
+                ],
                 "cache": true,
-                "inputs": ["crateTests"],
+                "inputs": [
+                    "crateTests"
+                ],
                 "outputs": []
             },
             "test:miri": {
-                "dependsOn": ["build"],
+                "dependsOn": [
+                    "build"
+                ],
                 "cache": true,
-                "inputs": ["crateTests"],
+                "inputs": [
+                    "crateTests"
+                ],
                 "outputs": []
             },
             "coverage": {
-                "dependsOn": ["build"],
+                "dependsOn": [
+                    "build"
+                ],
                 "cache": true,
-                "inputs": ["crateTests"],
-                "outputs": ["{projectRoot}/coverage/**"]
+                "inputs": [
+                    "crateTests"
+                ],
+                "outputs": [
+                    "{projectRoot}/coverage/**"
+                ]
             },
             "lint:rust": {
                 "cache": true,
-                "inputs": ["crateTests"],
+                "inputs": [
+                    "crateTests"
+                ],
                 "outputs": []
             },
             "create-npm-dirs": {
-                "dependsOn": ["build"],
+                "dependsOn": [
+                    "build"
+                ],
                 "cache": true,
-                "inputs": ["crate"],
-                "outputs": ["{projectRoot}/npm/**"]
+                "inputs": [
+                    "crate"
+                ],
+                "outputs": [
+                    "{projectRoot}/npm/**"
+                ]
             },
             "artifacts": {
-                "dependsOn": ["build", "create-npm-dirs"],
+                "dependsOn": [
+                    "build",
+                    "create-npm-dirs"
+                ],
                 "cache": false
             },
             "release": {
-                "dependsOn": ["artifacts", "create-npm-dirs"],
+                "dependsOn": [
+                    "artifacts",
+                    "create-npm-dirs"
+                ],
                 "cache": false
+            },
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint packages/native"
+                }
             }
         }
     },

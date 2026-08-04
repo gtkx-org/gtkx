@@ -34,15 +34,15 @@ Scaffold the project:
 ::: code-group
 
 ```bash [npm]
-npm create gtkx@rc
+npm create gtkx
 ```
 
 ```bash [pnpm]
-pnpm create gtkx@rc
+pnpm create gtkx
 ```
 
 ```bash [yarn]
-yarn create gtkx@rc
+yarn create gtkx
 ```
 
 :::

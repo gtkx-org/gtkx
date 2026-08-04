@@ -79,7 +79,11 @@
                     "gtkx:codegen",
                     "@gtkx/gl:codegen",
                     "codegen"
-                ]
+                ],
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint examples/browser"
+                }
             }
         }
     }

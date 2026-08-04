@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/config",
-    "version": "1.0.0-rc.4",
+    "version": "1.0.0",
     "description": "gtkx.config.ts schema, loader, and the element-prop mapping language shared across the GTKX toolchain",
     "keywords": [
         "gtkx",
@@ -59,5 +59,15 @@
         "defu": "^6.1.7",
         "vite": "catalog:",
         "zod": "catalog:"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint packages/config"
+                }
+            }
+        }
     }
 }

@@ -31,5 +31,15 @@
     "devDependencies": {
         "@typescript-eslint/rule-tester": "^8.65.0",
         "vitest": "catalog:"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint packages/eslint"
+                }
+            }
+        }
     }
 }

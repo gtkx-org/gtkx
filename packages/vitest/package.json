@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/vitest",
-    "version": "1.0.0-rc.4",
+    "version": "1.0.0",
     "description": "Vitest plugin for GTKX applications with headless Wayland display isolation",
     "keywords": [
         "gtkx",
@@ -54,5 +54,15 @@
     },
     "peerDependencies": {
         "vitest": ">=4"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint packages/vitest"
+                }
+            }
+        }
     }
 }

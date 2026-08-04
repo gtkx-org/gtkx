@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/css",
-    "version": "1.0.0-rc.4",
+    "version": "1.0.0",
     "description": "Emotion-flavored CSS-in-JS that compiles to real GTK4 CSS and installs it on the default display",
     "keywords": [
         "gtkx",
@@ -53,5 +53,15 @@
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
         "@types/stylis": "^4.2.7"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint packages/css"
+                }
+            }
+        }
     }
 }

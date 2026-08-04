@@ -4,7 +4,7 @@ description: "Put an Adwaita window with a header bar on screen, and learn what 
 
 # Your First Window
 
-You have a scaffolded project that runs. Replace its contents with the first piece of Tasks: an application, a window, and a header bar. If you skipped ahead, start at [the introduction](/tutorial/) and come back once `npm create gtkx@rc` has finished.
+You have a scaffolded project that runs. Replace its contents with the first piece of Tasks: an application, a window, and a header bar. If you skipped ahead, start at [the introduction](/tutorial/) and come back once `npm create gtkx` has finished.
 
 ## What the scaffolder made
 

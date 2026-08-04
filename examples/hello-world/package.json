@@ -78,7 +78,11 @@
                     "gtkx:codegen",
                     "@gtkx/gl:codegen",
                     "codegen"
-                ]
+                ],
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint examples/hello-world"
+                }
             }
         }
     }
