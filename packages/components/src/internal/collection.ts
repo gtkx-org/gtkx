@@ -7,6 +7,7 @@ import { getId } from "./collection-model.js";
 
 type Collection = {
     isTree: boolean;
+    structureKey: string;
     model: Gtk.FlattenListModel;
     treeModel: () => Gtk.TreeListModel | null;
     itemFor: (id: string) => ListItem | undefined;
@@ -91,6 +92,7 @@ function positionFor(gtk: CollectionModel, index: CollectionIndex, id: string): 
 function createCollection(gtk: CollectionModel, index: CollectionIndex): Collection {
     return {
         isTree: index.isTree,
+        structureKey: index.structureKey,
         model: gtk.model,
         treeModel: () => (index.isTree ? gtk.treeModel() : null),
         itemFor: index.itemFor,

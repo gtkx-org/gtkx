@@ -723,6 +723,22 @@ gtkx_fire_event { widgetId: "...", signal: "activate" }
 
 ---
 
+## 25. A shortcut bound the documented way cannot be pressed from a test
+
+**Severity:** blocker for any app that uses the recommended binding. GTKX documents `actionAccels` on the application as the way to bind a shortcut, and `userEvent.keyboard` cannot reliably reach one.
+
+**Repro:** bind `<Control>f` through `<GtkApplication actionAccels={{ "win.find": ["<Control>f"] }}>`, focus a `GtkLabel` or any widget with a class shortcut on the same key, and press it with `userEvent.keyboard("{Control>}f{/Control}")`.
+
+**Actual:** the action never runs. The focused widget's own shortcut wins.
+
+**Cause:** `packages/testing/src/user-event/keyboard.ts` walked only the target's `GtkEditable` delegate and its ancestor chain, dispatching any `GtkShortcutController` it found. GTK does attach the accelerator table to the window as a controller named `gtk-application-shortcuts`, so an accel did fire whenever nothing nearer claimed the key first. That made the gap look intermittent rather than structural. It is neither: the app controller is `scope=GLOBAL, phase=CAPTURE` and surfaces through `gtk-shortcut-manager-capture`, while widget class shortcuts are `phase=BUBBLE`. Capture runs root-to-target before bubble runs target-to-root, so real GTK fires the accel first and the walk had the order inverted.
+
+**Fix:** `didDispatchShortcuts` now tries application accelerators first, then the delegate, then ancestors. The accel path resolves the window through `getRoot()`, reads `getAccelsForAction()` for each entry in `listActionDescriptions()`, matches in keyval plus modifier space through `Gtk.acceleratorParse`, and activates through `Gio.Action.parseDetailedName`.
+
+`getActionsForAccel` is the natural one-call lookup and is deliberately not used: it emits a GLib critical for any accel string it cannot parse, and `G_DEBUG=fatal-criticals` turns that into a dead test worker.
+
+---
+
 ## Verified working
 
 Recorded so nobody re-tests them:

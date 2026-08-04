@@ -8,6 +8,7 @@ type Level = {
 
 type CollectionIndex = {
     isTree: boolean;
+    structureKey: string;
     size: number;
     groups: Level[];
     children: Map<string, Level>;
@@ -28,6 +29,8 @@ type IndexState = {
 };
 
 const ROOT_LEVEL_KEY = "";
+const FIELD_SEPARATOR = "\u{0}";
+const ID_SEPARATOR = "\u{1}";
 
 const hasChildren = (item: ListItem): boolean => item.children !== undefined && item.children.length > 0;
 const childLevelKey = (id: string): string => `child:${id}`;
@@ -126,6 +129,29 @@ function buildGroups(state: IndexState, source: ListItem[], sections: ListSectio
     return sections.map((section) => collectLevel(state, section.id, section.data));
 }
 
+function pushLevelKey(parts: string[], level: Level): void {
+    parts.push(
+        level.key,
+        String(level.ids.length),
+        level.ids.join(ID_SEPARATOR),
+        level.expandableFlags.join(ID_SEPARATOR),
+    );
+}
+
+function getStructureKey(state: IndexState): string {
+    const parts: string[] = [String(state.isTree), String(state.groups.length)];
+
+    for (const level of state.groups) {
+        pushLevelKey(parts, level);
+    }
+
+    for (const level of state.children.values()) {
+        pushLevelKey(parts, level);
+    }
+
+    return parts.join(FIELD_SEPARATOR);
+}
+
 function isTreeSource(source: ListItem[], sections: ListSection[] | undefined, isFlat: boolean): boolean {
     if (sections !== undefined || isFlat) {
         return false;
@@ -155,6 +181,7 @@ function createCollectionIndex(
 
     return {
         isTree: state.isTree,
+        structureKey: getStructureKey(state),
         size: state.itemsById.size,
         groups: state.groups,
         children: state.children,

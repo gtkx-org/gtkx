@@ -2,8 +2,9 @@ import type * as Gio from "@gtkx/gi/gio";
 import type { ReactElement } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkMultiSelection, GtkNoSelection, GtkSingleSelection } from "@gtkx/jsx/gtk";
-import { useEffectEvent, useLayoutEffect, useState } from "react";
+import { useState } from "react";
 import type { Collection } from "./collection.js";
+import { useControlledSync } from "./controlled-sync.js";
 
 type SelectionOptions = {
     collection: Collection;
@@ -16,6 +17,13 @@ type SelectionOptions = {
 type LastSelection = {
     selection: Gtk.SelectionModel | null;
     key: string | null;
+};
+
+type SelectionContext = {
+    selection: Gtk.SelectionModel | null;
+    collection: Collection;
+    last: LastSelection;
+    onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
 };
 
 type SelectionElementProps = {
@@ -85,26 +93,26 @@ function applySelection(selection: Gtk.SelectionModel, collection: Collection, i
     applyMultiSelection(selection, positions);
 }
 
-function reportSelection(
-    selection: Gtk.SelectionModel | null,
-    collection: Collection,
-    last: LastSelection,
-    onSelectionChanged: ((ids: string[]) => void) | null | undefined,
-): void {
-    if (selection === null) {
-        return;
-    }
-
-    const ids = getSelectedIds(selection, collection);
+function reportSelection(context: SelectionContext, ids: string[]): void {
     const key = ids.join(" ");
 
-    if (last.selection === selection && last.key === key) {
+    if (context.last.selection === context.selection && context.last.key === key) {
         return;
     }
 
-    last.selection = selection;
-    last.key = key;
-    onSelectionChanged?.(ids);
+    context.last.selection = context.selection;
+    context.last.key = key;
+    context.onSelectionChanged?.(ids);
+}
+
+function hasSelectionDrifted(ids: string[], selectedIds: string[]): boolean {
+    if (ids.length !== selectedIds.length) {
+        return true;
+    }
+
+    const actual: Set<string> = new Set(ids);
+
+    return selectedIds.some((id) => !actual.has(id));
 }
 
 function selectionElement(mode: Gtk.SelectionMode | null | undefined, props: SelectionElementProps): ReactElement {
@@ -119,16 +127,37 @@ function selectionElement(mode: Gtk.SelectionMode | null | undefined, props: Sel
     return <GtkSingleSelection {...props} autoselect={false} canUnselect />;
 }
 
-function syncSelection(
-    selection: Gtk.SelectionModel | null,
-    collection: Collection,
-    selectedIds: string[] | null | undefined,
-): void {
-    if (selection === null || selectedIds == null) {
+function applyControlledSelection(context: SelectionContext, selectedIds: string[] | null | undefined): void {
+    const { selection, collection } = context;
+
+    if (selection === null) {
         return;
     }
 
-    applySelection(selection, collection, selectedIds);
+    if (selectedIds != null) {
+        applySelection(selection, collection, selectedIds);
+    }
+
+    reportSelection(context, getSelectedIds(selection, collection));
+}
+
+function observeSelection(
+    context: SelectionContext,
+    selectedIds: string[] | null | undefined,
+    onDrift: () => void,
+): void {
+    const { selection, collection } = context;
+
+    if (selection === null) {
+        return;
+    }
+
+    const ids = getSelectedIds(selection, collection);
+    reportSelection(context, ids);
+
+    if (selectedIds != null && hasSelectionDrifted(ids, selectedIds)) {
+        onDrift();
+    }
 }
 
 function newLastSelection(): LastSelection {
@@ -139,21 +168,22 @@ function useSelection(options: SelectionOptions): ReactElement {
     const { collection, selectedIds, onSelectionChanged, selectionMode } = options;
     const [selection, setSelection] = useState<Gtk.SelectionModel | null>(null);
     const [last] = useState<LastSelection>(newLastSelection);
+    const context: SelectionContext = { selection, collection, last, onSelectionChanged };
 
-    const report = useEffectEvent((): void => {
-        reportSelection(selection, collection, last, onSelectionChanged);
+    const markDrift = useControlledSync({
+        ids: selectedIds,
+        structureKey: collection.structureKey,
+        widget: selection,
+        apply: (ids) => {
+            applyControlledSelection(context, ids);
+        },
     });
-
-    useLayoutEffect(() => {
-        syncSelection(selection, collection, selectedIds);
-        report();
-    }, [selection, collection, selectedIds]);
 
     return selectionElement(selectionMode, {
         ref: setSelection,
         model: collection.model,
         onSelectionChanged: () => {
-            reportSelection(selection, collection, last, onSelectionChanged);
+            observeSelection(context, selectedIds, markDrift);
         },
         onItemsChanged: options.onItemsChanged,
     });
