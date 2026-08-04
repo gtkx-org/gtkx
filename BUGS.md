@@ -719,7 +719,7 @@ gtkx_fire_event { widgetId: "...", signal: "activate" }
 
 **Cause:** two independent gaps. `scripts/run-headless.ts` used `spawnSync` with no parent-death handling at all, so killing the runner orphaned `wlheadless-run`'s compositor outright. `@gtkx/vitest` did wrap its spawns in `setpriv --pdeathsig SIGTERM` with a shell trap, but the trap ran `kill -9 "$child"`, which names only the direct child; a compositor's own children survived it.
 
-**Fix:** one `spawnWithParentDeathSignal` in `@gtkx/utils`, used by both. The shell runs the command under `set -m`, so it lands in a process group of its own, and the trap kills that group rather than the single process. Regression tests in `packages/utils/tests/spawn-with-parent-death-signal.test.ts` assert the grandchild dies with the group; they fail against the old script.
+**Fix applied:** one `spawnWithParentDeathSignal` in `@gtkx/utils`, used by both. The shell runs the command under `set -m`, so it lands in a process group of its own, and the trap kills that group rather than the single process. Regression tests in `packages/utils/tests/spawn-with-parent-death-signal.test.ts` assert the grandchild dies with the group; they fail against the old script.
 
 ---
 
@@ -733,7 +733,7 @@ gtkx_fire_event { widgetId: "...", signal: "activate" }
 
 **Cause:** `packages/testing/src/user-event/keyboard.ts` walked only the target's `GtkEditable` delegate and its ancestor chain, dispatching any `GtkShortcutController` it found. GTK does attach the accelerator table to the window as a controller named `gtk-application-shortcuts`, so an accel did fire whenever nothing nearer claimed the key first. That made the gap look intermittent rather than structural. It is neither: the app controller is `scope=GLOBAL, phase=CAPTURE` and surfaces through `gtk-shortcut-manager-capture`, while widget class shortcuts are `phase=BUBBLE`. Capture runs root-to-target before bubble runs target-to-root, so real GTK fires the accel first and the walk had the order inverted.
 
-**Fix:** `didDispatchShortcuts` now tries application accelerators first, then the delegate, then ancestors. The accel path resolves the window through `getRoot()`, reads `getAccelsForAction()` for each entry in `listActionDescriptions()`, matches in keyval plus modifier space through `Gtk.acceleratorParse`, and activates through `Gio.Action.parseDetailedName`.
+**Fix applied:** `didDispatchShortcuts` now tries application accelerators first, then the delegate, then ancestors. The accel path resolves the window through `getRoot()`, reads `getAccelsForAction()` for each entry in `listActionDescriptions()`, matches in keyval plus modifier space through `Gtk.acceleratorParse`, and activates through `Gio.Action.parseDetailedName`.
 
 `getActionsForAccel` is the natural one-call lookup and is deliberately not used: it emits a GLib critical for any accel string it cannot parse, and `G_DEBUG=fatal-criticals` turns that into a dead test worker.
 
@@ -749,7 +749,7 @@ gtkx_fire_event { widgetId: "...", signal: "activate" }
 
 **Cause:** `stripMnemonic` already existed in `packages/testing/src/widget-accessible-properties.ts` but was reachable from one path only, `namingLabelText`, and gated on `widget instanceof Gtk.Label`. A widget's own label was read raw by three other paths: `readFirstText` (feeding `getWidgetNodeText`, the MCP widget tree and the pretty-printer), `getWidgetLabelText` (feeding `getByText`), and `collectMnemonicMatch` in `queries.ts` (feeding `getByLabelText` through a label's mnemonic widget). `getWidgetAccessibleName` returns the widget's own text before it ever reaches the stripping path, so the mnemonic won.
 
-**Fix:** strip whenever a widget's own naming text is read and its `use-underline` property is set, which covers `getLabel` and `getTitle` while leaving an editable's `getText` content alone. `use-underline` is carried by six Gtk widgets and seven Adw ones, including `AdwPreferencesRow`, so `AdwActionRow` and `AdwEntryRow` titles are covered too.
+**Fix applied:** strip whenever a widget's own naming text is read and its `use-underline` property is set, which covers `getLabel` and `getTitle` while leaving an editable's `getText` content alone. `use-underline` is carried by six Gtk widgets and seven Adw ones, including `AdwPreferencesRow`, so `AdwActionRow` and `AdwEntryRow` titles are covered too.
 
 The `gtk-demo` suite had assertions written against the leaked names: `_Refill`, `_OK`, `_Open`, `_Copy`, `_Foreground` and the rest, across eleven files. Those now assert the drawn name. The one assertion that legitimately reads the raw GObject `label` property keeps its underscore.
 
