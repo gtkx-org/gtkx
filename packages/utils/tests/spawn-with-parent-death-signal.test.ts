@@ -1,5 +1,5 @@
 import type { ChildProcess } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -52,6 +52,16 @@ const getProcessGroup = (pid: number): number | null => {
     }
 };
 
+const getProcessState = (pid: number): string | null => {
+    try {
+        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
+
+        return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0] ?? null;
+    } catch {
+        return null;
+    }
+};
+
 const readPid = (path: string): number | null => {
     try {
         const text = readFileSync(path, "utf8").trim();
@@ -95,9 +105,15 @@ describe("spawnWithParentDeathSignal", () => {
     it("kills the whole process group, not just the direct child", async () => {
         const { wrapper, pid } = await startGrandchild(fixture);
         expect(isProcessAlive(pid)).toBe(true);
-        wrapper.kill("SIGTERM");
+        const wrapperPid = wrapper.pid ?? 0;
+        const groups = `wrapperPgid=${String(getProcessGroup(wrapperPid))} childPgid=${String(getProcessGroup(pid))}`;
+        const didSignal = wrapper.kill("SIGTERM");
         const hasDied = await pollUntil(() => !isProcessAlive(pid));
-        expect(hasDied).toBe(true);
+        const outcome = `sh=${realpathSync("/bin/sh")} signalled=${String(didSignal)} ${groups} ` +
+            `wrapperExit=${String(wrapper.exitCode)}/${String(wrapper.signalCode)} ` +
+            `childState=${String(getProcessState(pid))}`;
+
+        expect(hasDied, outcome).toBe(true);
     });
 
     it("leads its own process group without relying on the shell's job control", async () => {
