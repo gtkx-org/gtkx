@@ -54,15 +54,19 @@ function setClassType(cls: AnyClass, type: bigint): void {
     (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
 }
 
-function getClassType(cls: AnyClass): bigint {
-    const proto: object = cls.prototype;
+function getClassType(cls: AnyClass | undefined): bigint {
+    const proto: object | undefined = cls?.prototype;
 
-    return Object.hasOwn(proto, "__type__") ? (proto as TypedClass).__type__ : TYPE_INVALID;
+    if (proto === undefined || !Object.hasOwn(proto, "__type__")) {
+        return TYPE_INVALID;
+    }
+
+    return (proto as TypedClass).__type__;
 }
 
-/** Returns the GType tag of the given wrapper instance. */
+/** Returns the GType tag of the given wrapper instance, or the invalid type when it has no class. */
 function getInstanceType(instance: object): bigint {
-    return getClassType(instance.constructor as AnyClass);
+    return getClassType(instance.constructor as AnyClass | undefined);
 }
 
 function registerClassType(cls: AnyClass, type: bigint): void {
@@ -302,9 +306,12 @@ function getHandle(instance: object): ExternalObject<Handle> {
     return handle;
 }
 
-/** Returns the native handle bound to an instance, or undefined when there is none or the instance is null. */
+/**
+ * Returns the native handle bound to an instance, or undefined when the instance is null or
+ * undefined, throwing when a value that should carry a handle has none.
+ */
 function tryGetHandle(instance: object | null | undefined): ExternalObject<Handle> | undefined {
-    return instance == null ? undefined : handleMap.get(instance);
+    return instance == null ? undefined : getHandle(instance);
 }
 
 /** Associates a native handle with a wrapper instance. */

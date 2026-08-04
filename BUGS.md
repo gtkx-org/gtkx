@@ -689,7 +689,15 @@ and the JavaScript function is never invoked. Registering with explicit `null` c
 
 **Cause:** `Gio.DBusConnection.registerObject` and `registerObjectWithClosures2` are both generated, and each takes `GObject.Closure | null` for the method-call, get-property, and set-property handlers. GTKX cannot build a `GObject.Closure` from a JavaScript function. `Closure`'s only statics are `newObject(sizeofClosure, object)` and `newSimple(sizeofClosure, data)`, neither of which binds a callback; `new GObject.Closure()` yields an empty struct and provokes `g_closure_unref: assertion 'old_flags.flags.ref_count > 0' failed`; `CClosure` exposes only marshallers, and `g_cclosure_new` is not generated. `registerObjectWithClosures`, the first spelling, is not generated at all, and nothing in `packages/runtime/src/` handles `GClosure`.
 
-**Fix:** GTKX already marshals JavaScript functions into C callbacks for signals and for vtable slots, so what is missing is a `GClosure` whose marshaller dispatches into that machinery, accepted wherever a `GObject.Closure` parameter appears. Until then the call should refuse a value it cannot marshal rather than reporting an id for an object it did not export.
+**Fix applied:** entirely in JavaScript, with no native change and no new binding generated. `packages/runtime/src/closure.ts` builds the closure with `g_cclosure_new`, reads the libffi trampoline back out of `GCClosure.callback`, refs and sinks, then installs that trampoline through `g_closure_set_marshal`. `g_closure_set_marshal` is marked `introspectable="0"` in the GIR so codegen never emits it, but `t.bind` is a public runtime export and binds any symbol directly. Conversion stays in `packages/runtime/src/value.ts`: `fromValue` per parameter, `intoValue` for the return, both dispatching on the GValue's own runtime GType.
+
+A second defect surfaced on the way and is fixed with it: `tryGetHandle` was `handleMap.get(instance)`, which returned `undefined` for any non-null value carrying no handle. That is what silently turned a JavaScript function into a NULL closure, and it applied to every nullable handle parameter, not just closures. It now throws.
+
+A parameter whose GType is exactly `G_TYPE_VALUE` is handed to the handler as a live `GObject.Value` borrowing the caller's own GValue rather than the copy `fromValue` would make, because `g_object_bind_property_with_closures` and `g_settings_bind_with_mapping_closures` copy `g_value_get_boxed(&params[i])` back after the invoke and a write into a copy would vanish. The borrow is call-scoped and documented on `ClosureCallback`. No D-Bus closure parameter is a `GValue`, so those handlers still receive decoded values.
+
+Only the parameters a callee actually invokes are widened to accept a function. The `G_SIGNAL_MATCH_CLOSURE` functions, `g_object_watch_closure` and the `g_cclosure_marshal_*` family match or marshal an existing closure, so building a fresh one for them would silently never match and leak; they keep plain handle marshalling. `packages/codegen/src/store/gi/closure-invocation.ts` holds the set, and one predicate drives both the type and the emitted argument so they cannot disagree.
+
+*Carried forward:* the destroy pointer installed in `g_cclosure_new`'s `GClosureNotify` slot has the wrong arity; see entry 27.
 
 ---
 
@@ -754,6 +762,22 @@ gtkx_fire_event { widgetId: "...", signal: "activate" }
 **Fix applied:** strip whenever a widget's own naming text is read and its `use-underline` property is set, which covers `getLabel` and `getTitle` while leaving an editable's `getText` content alone. `use-underline` is carried by six Gtk widgets and seven Adw ones, including `AdwPreferencesRow`, so `AdwActionRow` and `AdwEntryRow` titles are covered too.
 
 The `gtk-demo` suite had assertions written against the leaked names: `_Refill`, `_OK`, `_Open`, `_Copy`, `_Foreground` and the rest, across eleven files. Those now assert the drawn name. The one assertion that legitimately reads the raw GObject `label` property keeps its underscore.
+
+---
+
+## 27. Every `GClosure` GTKX builds installs a one-argument destroy where GLib calls a two-argument one
+
+**Severity:** low today, and not fixable from JavaScript. It is a function-pointer type mismatch, so it is undefined behavior rather than a wrong result, and it is invisible on the SysV ABIs this project targets. Control-flow integrity, `-fsanitize=function`, and any ABI that checks arity would trap on it.
+
+**Repro:** any use of the closure support added for entry 22, including `Gio.DBusConnection.registerObject` with a JavaScript handler. `toClosure` in `packages/runtime/src/closure.ts` describes the marshaller with `callbackT(..., { userDataIndex: 5, hasDestroy: true, scope: "notified" })` and hands it to `g_cclosure_new`.
+
+**Actual:** `CallbackCodec::encode` (`packages/native/src/ffi/codec/callback.rs`) puts `ClosureState::destroy as *mut c_void` in the destroy slot, and that function is declared `unsafe extern "C" fn(user_data: *mut c_void)` in `packages/native/src/ffi/closure.rs`. The slot it lands in is `g_cclosure_new`'s `GClosureNotify`, `void (*) (gpointer data, GClosure *closure)`, and GLib calls it with both arguments: `ndata->notify (ndata->data, closure)` in `closure_invoke_notifiers`, `gobject/gclosure.c` of glib 2.88.1. The second argument is passed in a register the callee never reads, so the closure state is still freed correctly.
+
+**Cause:** the JavaScript descriptor layer chooses whether a destroy is installed, never what its signature is. `has_destroy` is a `bool`, and the pointer it selects is fixed in Rust. So the only destroy GTKX can hand to a C API is a `GDestroyNotify`.
+
+There is no JavaScript-only way around it. Every GLib entry point that frees closure user data on finalize types that slot as `GClosureNotify`: `g_cclosure_new`, `g_cclosure_new_swap`, `g_closure_add_finalize_notifier`, and `g_closure_add_invalidate_notifier`. A correctly typed two-argument trampoline can be built from JavaScript with `callbackT([uint64T, CLOSURE_T], voidT, ...)`, but nothing can free the marshaller it would exist to free: `call` scope releases on return, `async` releases after one invocation, `notified` needs the very destroy slot that is missing, `forever` never releases, and no exported native function releases another callback's trampoline. Installing the notifier by hand does not help either, because `g_closure_add_finalize_notifier` takes its data before its function pointer while the callback codec always emits the pointer first.
+
+**Fix:** native. Give the callback codec a destroy entry point declared `extern "C" fn(*mut c_void, *mut c_void)` that forwards to `ClosureState::destroy`, and a descriptor field selecting it, then have `closure.ts` ask for it.
 
 ---
 

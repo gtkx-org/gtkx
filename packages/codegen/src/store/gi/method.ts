@@ -20,10 +20,21 @@ import {
 import { renderTsType } from "../../analysis/ts-type.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
 import { hasUnknownArrayLength, type TypeId } from "../../gir/type-id.js";
+import { areClosuresInvoked } from "./closure-invocation.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
-import { isCollectibleCallerOut, isHandlePassedInPlace, isHandlePassing } from "./param-marshal.js";
+import { isClosureType, isCollectibleCallerOut, isHandlePassedInPlace, isHandlePassing } from "./param-marshal.js";
 
 type PromisifiedStep = { hasSeenOptional: boolean; expression: string | undefined };
+
+type InputParameterOptions = {
+    shouldSkip: (parameter: GirParameter) => boolean;
+    isOptionalExtra: (parameter: GirParameter) => boolean;
+};
+
+type CallExpressionOptions = {
+    fn: GirFunction;
+    isForcedNullable?: boolean | undefined;
+};
 
 type PromisifyContext = {
     context: ModuleContext;
@@ -71,15 +82,34 @@ const arrayLengthArgument = (source: GirParameter, sourceIndex: number): string 
 };
 
 const renderMethodSignature = (context: ModuleContext, fn: GirFunction): string =>
-    renderInputParameters(
-        context,
-        fn,
-        () => false,
-        () => false,
-    );
+    renderInputParameters(context, fn, {
+        shouldSkip: () => false,
+        isOptionalExtra: () => false,
+    });
 
-const parameterAnnotation = (context: ModuleContext, fn: GirFunction, parameter: GirParameter): string =>
-    itemComparatorTsType(context, fn, parameter) ?? renderTsType(context, parameter.type, parameter.nullable);
+const closureAnnotation = (context: ModuleContext, base: string): string => {
+    context.addRuntimeTypeImport("ClosureCallback");
+
+    return `${base} | ClosureCallback`;
+};
+
+const requiresClosureMarshal = (context: ModuleContext, fn: GirFunction, ref: TypeId): boolean =>
+    isClosureType(context, ref) && areClosuresInvoked(fn);
+
+const requiresClosureAnnotation = (context: ModuleContext, fn: GirFunction, parameter: GirParameter): boolean =>
+    parameter.type !== undefined && requiresClosureMarshal(context, fn, parameter.type);
+
+const parameterAnnotation = (context: ModuleContext, fn: GirFunction, parameter: GirParameter): string => {
+    const comparator = itemComparatorTsType(context, fn, parameter);
+
+    if (comparator !== undefined) {
+        return comparator;
+    }
+
+    const base = renderTsType(context, parameter.type, parameter.nullable);
+
+    return requiresClosureAnnotation(context, fn, parameter) ? closureAnnotation(context, base) : base;
+};
 
 const isParameterOptional = (parameter: GirParameter, isOptionalExtra: (parameter: GirParameter) => boolean): boolean =>
     parameter.optional || isOptionalExtra(parameter);
@@ -87,27 +117,23 @@ const isParameterOptional = (parameter: GirParameter, isOptionalExtra: (paramete
 const formatParameterPart = (name: string, annotation: string, isOptional: boolean): string =>
     isOptional ? `${name}?: ${annotation}` : `${name}: ${annotation}`;
 
-const renderInputParameters = (
-    context: ModuleContext,
-    fn: GirFunction,
-    shouldSkip: (parameter: GirParameter) => boolean,
-    isOptionalExtra: (parameter: GirParameter) => boolean,
-): string => {
+const renderInputParameters = (context: ModuleContext, fn: GirFunction, options: InputParameterOptions): string => {
     const parts: string[] = [];
     let hasSeenOptional = false;
 
     for (const { parameter, index } of inputParameters(context.library, fn)) {
-        if (shouldSkip(parameter)) {
+        if (options.shouldSkip(parameter)) {
             continue;
         }
 
         const name = parameterIdentifier(parameter, index);
 
-        if (isParameterOptional(parameter, isOptionalExtra)) {
+        if (isParameterOptional(parameter, options.isOptionalExtra)) {
             hasSeenOptional = true;
         }
 
-        parts.push(formatParameterPart(name, parameterAnnotation(context, fn, parameter), hasSeenOptional));
+        const annotation = parameterAnnotation(context, fn, parameter);
+        parts.push(formatParameterPart(name, annotation, hasSeenOptional));
     }
 
     return parts.join(", ");
@@ -242,7 +268,7 @@ const promisifiedArgument = (
         return arrayLengthArgument(source, sourceIndex);
     }
 
-    return parameterCallExpression(context, parameter, index, hasSeenOptional);
+    return parameterCallExpression(context, parameter, index, { fn: asyncFn, isForcedNullable: hasSeenOptional });
 };
 
 const findCancellableIndex = (context: ModuleContext, parameters: GirParameter[]): number =>
@@ -253,12 +279,10 @@ const renderPromisifiedSignature = (
     asyncFn: GirFunction,
     finishFn: GirFunction,
 ): { signature: string; returnType: string } => {
-    const signature = renderInputParameters(
-        context,
-        asyncFn,
-        (parameter) => isCallbackParameter(context, parameter),
-        (parameter) => isCancellable(context, parameter),
-    );
+    const signature = renderInputParameters(context, asyncFn, {
+        shouldSkip: (parameter) => isCallbackParameter(context, parameter),
+        isOptionalExtra: (parameter) => isCancellable(context, parameter),
+    });
 
     const finishReturn = renderMethodReturnType(context, finishFn);
 
@@ -405,6 +429,7 @@ const planInoutArgument = (
             : undefined;
 
     return planInoutParam(context, parameter, {
+        fn,
         index,
         argIndex: planContext.argIndex,
         isConsumed: folded.has(index),
@@ -489,13 +514,14 @@ const planInoutParam = (
     context: ModuleContext,
     parameter: GirParameter,
     options: {
+        fn: GirFunction;
         index: number;
         argIndex: ArgIndexOptions;
         isConsumed: boolean;
         lengthSource?: { source: GirParameter; index: number } | undefined;
     },
 ): CallArgPlan => {
-    const { index, argIndex, isConsumed, lengthSource } = options;
+    const { fn, index, argIndex, isConsumed, lengthSource } = options;
 
     if (isHandlePassedInPlace(context, parameter)) {
         const descriptor = renderDescriptor(context, parameter.type, "none", argIndex);
@@ -519,7 +545,7 @@ const planInoutParam = (
         paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", isConsumed }),
         inputExpr:
             lengthSource === undefined
-                ? parameterCallExpression(context, parameter, index)
+                ? parameterCallExpression(context, parameter, index, { fn })
                 : arrayLengthArgument(lengthSource.source, lengthSource.index),
     };
 };
@@ -550,7 +576,7 @@ const planInParam = (
 
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, {}),
-        inputExpr: parameterCallExpression(context, parameter, index),
+        inputExpr: parameterCallExpression(context, parameter, index, { fn }),
     };
 };
 
@@ -564,6 +590,13 @@ const handleArgument = (context: ModuleContext, name: string, isNullable: boolea
     context.addRuntimeImport("getHandle");
 
     return `getHandle(${name})`;
+};
+
+const closureArgument = (context: ModuleContext, name: string, isNullable: boolean): string => {
+    const helper = isNullable ? "tryToClosure" : "toClosure";
+    context.addRuntimeImport(helper);
+
+    return `${helper}(${name})`;
 };
 
 const hashtableArgument = (context: ModuleContext, valueRef: TypeId, name: string): string => {
@@ -610,8 +643,9 @@ const parameterCallExpression = (
     context: ModuleContext,
     parameter: GirParameter,
     index: number,
-    isForcedNullable = false,
+    options: CallExpressionOptions,
 ): string => {
+    const { fn, isForcedNullable = false } = options;
     const name = parameterIdentifier(parameter, index);
     const ref = parameter.type;
 
@@ -620,6 +654,10 @@ const parameterCallExpression = (
     }
 
     const isNullable = parameter.nullable || parameter.optional || isForcedNullable;
+
+    if (requiresClosureMarshal(context, fn, ref)) {
+        return closureArgument(context, name, isNullable);
+    }
 
     if (isHandlePassing(context, ref)) {
         return handleArgument(context, name, isNullable);
