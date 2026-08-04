@@ -1,5 +1,5 @@
 import type { ListItem, ListViewProps } from "@gtkx/components";
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode } from "react";
 import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
@@ -7,6 +7,7 @@ import { act, render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
+import { getSelectionModel, getTreeRow } from "./helpers/selection-model.js";
 
 type Named = { name: string };
 type ControlledProps = Pick<ListViewProps<Named>, "selectedIds" | "expandedIds">;
@@ -29,26 +30,6 @@ const treeItems = (): ListItem<Named>[] => [
 
 const renderName = ({ item }: { item: Named }): ReactNode => <GtkLabel>{item.name}</GtkLabel>;
 
-const getModel = (listRef: RefObject<Gtk.ListView | null>): Gtk.SelectionModel => {
-    const model = listRef.current?.getModel() ?? null;
-
-    if (model === null) {
-        throw new TypeError("Expected the list view to expose a selection model");
-    }
-
-    return model;
-};
-
-const getTreeRow = (model: Gtk.SelectionModel, position: number): Gtk.TreeListRow => {
-    const row = model.getItem(position);
-
-    if (!(row instanceof Gtk.TreeListRow)) {
-        throw new TypeError("Expected a tree list row");
-    }
-
-    return row;
-};
-
 const renderDriftFixture = async (
     items: () => ListItem<Named>[],
     controlled: ControlledProps,
@@ -64,7 +45,7 @@ const renderDriftFixture = async (
     const { rerender } = await render(app(items()));
 
     return {
-        model: getModel(listRef),
+        model: getSelectionModel(listRef),
         rerenderItems: async () => {
             await rerender(app(items()));
         },

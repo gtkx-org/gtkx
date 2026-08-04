@@ -7,6 +7,7 @@ import { render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
+import { getSelectionModel } from "./helpers/selection-model.js";
 
 type Named = { name: string };
 
@@ -51,16 +52,6 @@ const TreeApp = ({ items, expandedIds, listRef }: TreeAppProps): ReactNode => (
         />
     </ScrollWrapper>
 );
-
-const getSelectionModel = (listRef: RefObject<Gtk.ListView | null>): Gtk.SelectionModel => {
-    const model = listRef.current?.getModel() ?? null;
-
-    if (model === null) {
-        throw new TypeError("Expected the list view to expose a selection model");
-    }
-
-    return model;
-};
 
 const expectTreeState = async (
     listRef: RefObject<Gtk.ListView | null>,
