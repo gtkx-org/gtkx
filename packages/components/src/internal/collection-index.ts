@@ -2,8 +2,14 @@ import type { ListItem, ListSection } from "../types.js";
 
 type Level = {
     key: string;
+    parentId: string | null;
     ids: string[];
     expandableFlags: boolean[];
+};
+
+type LevelSeed = {
+    key: string;
+    parentId: string | null;
 };
 
 type CollectionIndex = {
@@ -12,6 +18,7 @@ type CollectionIndex = {
     size: number;
     groups: Level[];
     children: Map<string, Level>;
+    parents: Map<string, string>;
     hasId: (id: string) => boolean;
     itemFor: (id: string) => ListItem | undefined;
     sectionFor: (id: string) => unknown;
@@ -22,6 +29,7 @@ type IndexState = {
     isTree: boolean;
     groups: Level[];
     children: Map<string, Level>;
+    parents: Map<string, string>;
     itemsById: Map<string, ListItem>;
     sections: ListSection[] | undefined;
     positions: Map<string, number> | null;
@@ -47,12 +55,16 @@ function collectChildren(state: IndexState, level: Level, item: ListItem): void 
         return;
     }
 
+    if (level.parentId !== null) {
+        state.parents.set(item.id, level.parentId);
+    }
+
     const key = childLevelKey(item.id);
-    state.children.set(key, collectLevel(state, key, item.children ?? []));
+    state.children.set(key, collectLevel(state, { key, parentId: item.id }, item.children ?? []));
 }
 
-function collectLevel(state: IndexState, key: string, items: ListItem[]): Level {
-    const level: Level = { key, ids: [], expandableFlags: [] };
+function collectLevel(state: IndexState, seed: LevelSeed, items: ListItem[]): Level {
+    const level: Level = { key: seed.key, parentId: seed.parentId, ids: [], expandableFlags: [] };
 
     for (const item of items) {
         level.ids.push(item.id);
@@ -123,10 +135,10 @@ function sectionFor(state: IndexState, id: string): unknown {
 
 function buildGroups(state: IndexState, source: ListItem[], sections: ListSection[] | undefined): Level[] {
     if (sections === undefined) {
-        return [collectLevel(state, ROOT_LEVEL_KEY, source)];
+        return [collectLevel(state, { key: ROOT_LEVEL_KEY, parentId: null }, source)];
     }
 
-    return sections.map((section) => collectLevel(state, section.id, section.data));
+    return sections.map((section) => collectLevel(state, { key: section.id, parentId: null }, section.data));
 }
 
 function pushLevelKey(parts: string[], level: Level): void {
@@ -171,6 +183,7 @@ function createCollectionIndex(
         isTree: isTreeSource(source, sections, isFlat),
         groups: [],
         children: new Map(),
+        parents: new Map(),
         itemsById: new Map(),
         sections,
         positions: null,
@@ -185,6 +198,7 @@ function createCollectionIndex(
         size: state.itemsById.size,
         groups: state.groups,
         children: state.children,
+        parents: state.parents,
         hasId: (id) => state.itemsById.has(id),
         itemFor: (id) => state.itemsById.get(id),
         sectionFor: (id) => sectionFor(state, id),

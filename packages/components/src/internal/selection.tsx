@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkMultiSelection, GtkNoSelection, GtkSingleSelection } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Collection } from "./collection.js";
+import type { ItemsChangeHandler } from "./expansion.js";
 import { useControlledSync } from "./controlled-sync.js";
 
 type SelectionOptions = {
@@ -11,7 +12,7 @@ type SelectionOptions = {
     selectedIds?: string[] | null | undefined;
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     selectionMode?: Gtk.SelectionMode | null | undefined;
-    onItemsChanged: () => void;
+    onItemsChanged: ItemsChangeHandler;
 };
 
 type LastSelection = {
@@ -30,7 +31,7 @@ type SelectionElementProps = {
     ref: (value: Gtk.SelectionModel | null) => void;
     model: Gio.ListModel;
     onSelectionChanged: () => void;
-    onItemsChanged: () => void;
+    onItemsChanged: ItemsChangeHandler;
 };
 
 function getSelectedIds(selection: Gtk.SelectionModel, collection: Collection): string[] {

@@ -1,14 +1,16 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ListItem } from "../types.js";
 import type { CollectionIndex } from "./collection-index.js";
 import type { CollectionModel } from "./collection-model.js";
+import type { TreeExpansion } from "./tree-expansion.js";
 import { getId } from "./collection-model.js";
+import { orderFor } from "./tree-expansion.js";
 
 type Collection = {
     isTree: boolean;
     structureKey: string;
     model: Gtk.FlattenListModel;
+    expansion: TreeExpansion;
     treeModel: () => Gtk.TreeListModel | null;
     itemFor: (id: string) => ListItem | undefined;
     sectionFor: (id: string) => unknown;
@@ -18,46 +20,6 @@ type Collection = {
 };
 
 const ascending = (a: number, b: number): number => a - b;
-
-function visitRow(
-    tree: Gtk.TreeListModel,
-    position: number,
-    visit: (row: Gtk.TreeListRow, id: string | null) => void,
-): void {
-    const row = tree.getRow(position);
-
-    if (row === null) {
-        return;
-    }
-
-    visit(row, getId(row.getItem()));
-}
-
-function eachRow(tree: Gtk.TreeListModel, visit: (row: Gtk.TreeListRow, id: string | null) => void): void {
-    for (let position = 0; position < tree.getNItems(); position++) {
-        visitRow(tree, position, visit);
-    }
-}
-
-function collectWanted(item: GObject.Object | null, position: number, wanted: Set<string>, out: number[]): void {
-    const id = getId(item);
-
-    if (id !== null && wanted.has(id)) {
-        out.push(position);
-    }
-}
-
-function scanPositions(tree: Gtk.TreeListModel, ids: string[]): number[] {
-    const wanted = new Set(ids);
-    const positions: number[] = [];
-    const count = tree.getNItems();
-
-    for (let position = 0; position < count; position++) {
-        collectWanted(tree.getItem(position), position, wanted, positions);
-    }
-
-    return positions;
-}
 
 function indexPositions(index: CollectionIndex, ids: string[]): number[] {
     const positions: number[] = [];
@@ -73,14 +35,23 @@ function indexPositions(index: CollectionIndex, ids: string[]): number[] {
     return positions.toSorted(ascending);
 }
 
-function positionsFor(gtk: CollectionModel, index: CollectionIndex, ids: string[]): number[] {
-    if (!index.isTree) {
-        return indexPositions(index, ids);
+function treePositions(expansion: TreeExpansion, ids: string[]): number[] {
+    const { positions } = orderFor(expansion);
+    const found: number[] = [];
+
+    for (const id of ids) {
+        const position = positions.get(id);
+
+        if (position !== undefined) {
+            found.push(position);
+        }
     }
 
-    const tree = gtk.treeModel();
+    return found.toSorted(ascending);
+}
 
-    return tree === null ? [] : scanPositions(tree, ids);
+function positionsFor(gtk: CollectionModel, index: CollectionIndex, ids: string[]): number[] {
+    return index.isTree ? treePositions(gtk.expansion, ids) : indexPositions(index, ids);
 }
 
 function positionFor(gtk: CollectionModel, index: CollectionIndex, id: string): number {
@@ -94,6 +65,7 @@ function createCollection(gtk: CollectionModel, index: CollectionIndex): Collect
         isTree: index.isTree,
         structureKey: index.structureKey,
         model: gtk.model,
+        expansion: gtk.expansion,
         treeModel: () => (index.isTree ? gtk.treeModel() : null),
         itemFor: index.itemFor,
         sectionFor: index.sectionFor,
@@ -103,4 +75,4 @@ function createCollection(gtk: CollectionModel, index: CollectionIndex): Collect
     };
 }
 
-export { createCollection, eachRow, type Collection };
+export { createCollection, type Collection };

@@ -1,9 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { RefObject } from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { Collection } from "./collection.js";
-import { eachRow } from "./collection.js";
+import type { TreeExpansion } from "./tree-expansion.js";
+import type { TreeOrder } from "./tree-order.js";
+import { childLevelKey } from "./collection-index.js";
 import { useControlledSync } from "./controlled-sync.js";
+import { adoptOrder, markExpanded, orderFor } from "./tree-expansion.js";
+import { buildTreeOrder } from "./tree-order.js";
 
 type ExpansionOptions = {
     collection: Collection;
@@ -11,145 +14,143 @@ type ExpansionOptions = {
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
 };
 
+type ItemsChange = {
+    position: number;
+    removed: number;
+    added: number;
+};
+
+type ItemsChangeHandler = (position: number, removed: number, added: number) => void;
 type LastExpansion = { key: string };
 
 type ExpansionContext = {
     collection: Collection;
     last: LastExpansion;
-    expanding: RefObject<boolean>;
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
-};
-
-type ExpansionScan = {
-    wanted: Set<string> | null;
-    previous: Set<string>;
-    ids: string[];
-    hasDrifted: boolean;
 };
 
 function newLastExpansion(): LastExpansion {
     return { key: "" };
 }
 
-function expandRow(row: Gtk.TreeListRow, id: string | null, wanted: Set<string>): void {
-    const isDesired = id !== null && wanted.has(id);
+function wantedSet(expansion: TreeExpansion, expandedIds: string[]): Set<string> {
+    const wanted: Set<string> = new Set();
 
-    if (row.isExpandable() && row.getExpanded() !== isDesired) {
-        row.setExpanded(isDesired);
+    for (const id of expandedIds) {
+        if (expansion.index.children.has(childLevelKey(id))) {
+            wanted.add(id);
+        }
+    }
+
+    return wanted;
+}
+
+function hasSameExpansion(expanded: Set<string>, wanted: Set<string>): boolean {
+    return expanded.size === wanted.size && wanted.isSubsetOf(expanded);
+}
+
+function toggleWantedRows(
+    tree: Gtk.TreeListModel,
+    expanded: Set<string>,
+    wanted: Set<string>,
+    target: TreeOrder,
+): void {
+    for (const [position, id] of target.ids.entries()) {
+        const isWanted = wanted.has(id);
+
+        if (expanded.has(id) !== isWanted) {
+            tree.getRow(position)?.setExpanded(isWanted);
+        }
     }
 }
 
-function applyExpansion(tree: Gtk.TreeListModel, expandedIds: string[]): void {
-    const wanted = new Set(expandedIds);
+function applyWanted(expansion: TreeExpansion, tree: Gtk.TreeListModel, expandedIds: string[]): void {
+    const wanted = wantedSet(expansion, expandedIds);
 
-    eachRow(tree, (row, id) => {
-        expandRow(row, id, wanted);
-    });
-}
-
-function isRowDrifted(scan: ExpansionScan, id: string, isExpanded: boolean): boolean {
-    if (scan.wanted === null || isExpanded === scan.wanted.has(id)) {
-        return false;
-    }
-
-    return isExpanded || scan.previous.has(id);
-}
-
-function scanRow(scan: ExpansionScan, row: Gtk.TreeListRow, id: string | null): void {
-    if (id === null) {
+    if (hasSameExpansion(expansion.expanded, wanted)) {
         return;
     }
 
-    const isExpanded = row.getExpanded();
+    const target = buildTreeOrder(expansion.index, wanted);
+    expansion.isApplying = true;
 
-    if (isExpanded) {
-        scan.ids.push(id);
+    try {
+        toggleWantedRows(tree, expansion.expanded, wanted, target);
+    } finally {
+        expansion.isApplying = false;
     }
 
-    if (scan.hasDrifted) {
-        return;
-    }
-
-    scan.hasDrifted = isRowDrifted(scan, id, isExpanded);
+    adoptOrder(expansion, target);
 }
 
-function scanWhenIdle(context: ExpansionContext, expandedIds: string[] | null | undefined): ExpansionScan | null {
-    const tree = context.collection.treeModel();
-
-    if (tree === null || context.expanding.current) {
-        return null;
-    }
-
-    const scan: ExpansionScan = {
-        wanted: expandedIds == null ? null : new Set(expandedIds),
-        previous: new Set(context.last.key === "" ? [] : context.last.key.split(" ")),
-        ids: [],
-        hasDrifted: false,
-    };
-
-    eachRow(tree, (row, id) => {
-        scanRow(scan, row, id);
-    });
-
-    return scan;
-}
-
-function reportExpansion(context: ExpansionContext, scan: ExpansionScan): void {
-    const key = scan.ids.join(" ");
+function reportExpansion(context: ExpansionContext): void {
+    const { expandedIds } = orderFor(context.collection.expansion);
+    const key = expandedIds.join(" ");
 
     if (context.last.key === key) {
         return;
     }
 
     context.last.key = key;
-    context.onExpandedChange?.(scan.ids);
+    context.onExpandedChange?.([...expandedIds]);
 }
 
 function applyControlledExpansion(context: ExpansionContext, expandedIds: string[] | null | undefined): void {
     const tree = context.collection.treeModel();
 
-    if (tree === null || expandedIds == null) {
+    if (tree === null) {
         return;
     }
 
-    context.expanding.current = true;
-
-    try {
-        applyExpansion(tree, expandedIds);
-    } finally {
-        context.expanding.current = false;
+    if (expandedIds != null) {
+        applyWanted(context.collection.expansion, tree, expandedIds);
     }
 
-    const scan = scanWhenIdle(context, expandedIds);
+    reportExpansion(context);
+}
 
-    if (scan !== null) {
-        reportExpansion(context, scan);
+function isExpansionIdle(collection: Collection): boolean {
+    const { expansion } = collection;
+
+    return collection.treeModel() !== null && !expansion.isApplying && !expansion.isSyncing;
+}
+
+function didRowDrift(expansion: TreeExpansion, change: ItemsChange): boolean {
+    const id = orderFor(expansion).ids[change.position - 1];
+    const isExpanded = change.removed === 0 && change.added > 0;
+    const isCollapsed = change.added === 0 && change.removed > 0;
+
+    if (id === undefined || isExpanded === isCollapsed) {
+        return false;
     }
+
+    markExpanded(expansion, id, isExpanded);
+
+    return true;
 }
 
 function observeExpansion(
     context: ExpansionContext,
-    expandedIds: string[] | null | undefined,
+    options: ExpansionOptions,
+    change: ItemsChange,
     onDrift: () => void,
 ): void {
-    const scan = scanWhenIdle(context, expandedIds);
-
-    if (scan === null) {
+    if (!isExpansionIdle(context.collection)) {
         return;
     }
 
-    reportExpansion(context, scan);
+    const didDrift = didRowDrift(context.collection.expansion, change);
+    reportExpansion(context);
 
-    if (scan.hasDrifted) {
+    if (didDrift && options.expandedIds != null) {
         onDrift();
     }
 }
 
-function useExpansion(options: ExpansionOptions): () => void {
+function useExpansion(options: ExpansionOptions): ItemsChangeHandler {
     const { collection, expandedIds, onExpandedChange } = options;
     const [last] = useState<LastExpansion>(newLastExpansion);
-    const expanding = useRef(false);
-    const context: ExpansionContext = { collection, last, expanding, onExpandedChange };
+    const context: ExpansionContext = { collection, last, onExpandedChange };
 
     const markDrift = useControlledSync({
         ids: expandedIds,
@@ -159,9 +160,9 @@ function useExpansion(options: ExpansionOptions): () => void {
         },
     });
 
-    return () => {
-        observeExpansion(context, expandedIds, markDrift);
+    return (position, removed, added) => {
+        observeExpansion(context, options, { position, removed, added }, markDrift);
     };
 }
 
-export { useExpansion, type ExpansionOptions };
+export { useExpansion, type ExpansionOptions, type ItemsChangeHandler };

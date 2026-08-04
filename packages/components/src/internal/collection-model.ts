@@ -3,7 +3,9 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass } from "@gtkx/runtime";
 import type { CollectionIndex, Level } from "./collection-index.js";
-import { childLevelKey, ROOT_LEVEL_KEY } from "./collection-index.js";
+import type { TreeExpansion } from "./tree-expansion.js";
+import { childLevelKey, createCollectionIndex, ROOT_LEVEL_KEY } from "./collection-index.js";
+import { adoptIndex, createTreeExpansion, resetExpansion } from "./tree-expansion.js";
 
 type LevelState = {
     store: LazyLevelStore;
@@ -17,22 +19,30 @@ type SpliceRange = {
     added: string[];
 };
 
+type SyncPass = {
+    levels: Level[];
+    rebuilt: Set<string>;
+};
+
 type ModelState = {
     root: Gio.ListStore;
     rootModels: GObject.Object[];
     model: Gtk.FlattenListModel;
     levels: Map<string, LevelState>;
     tree: Gtk.TreeListModel | null;
+    expansion: TreeExpansion;
 };
 
 type CollectionModel = {
     model: Gtk.FlattenListModel;
+    expansion: TreeExpansion;
     treeModel: () => Gtk.TreeListModel | null;
     sync: (index: CollectionIndex) => void;
 };
 
 const RESIDENT_OBJECT_MAX = 8192;
 const STORE_CLASS_KEY = Symbol.for("gtkx.components.lazy-level-store");
+const EMPTY_INDEX = createCollectionIndex(undefined, undefined, true);
 
 const newRootStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
 
@@ -101,7 +111,13 @@ function levelFor(state: ModelState, key: string): LevelState {
     return created;
 }
 
-function refreshExpandable(current: LevelState, level: Level): void {
+function markRebuilt(rebuilt: Set<string>, ids: string[]): void {
+    for (const id of ids) {
+        rebuilt.add(id);
+    }
+}
+
+function refreshExpandable(current: LevelState, level: Level, rebuilt: Set<string>): void {
     const next: Map<string, boolean> = new Map();
 
     for (const [index, id] of level.ids.entries()) {
@@ -111,13 +127,14 @@ function refreshExpandable(current: LevelState, level: Level): void {
 
         if (previous !== undefined && previous !== isWanted) {
             current.store.itemsChanged(index, 1, 1);
+            rebuilt.add(id);
         }
     }
 
     current.canExpand = next;
 }
 
-function didSpliceLevel(state: ModelState, level: Level): boolean {
+function didSpliceLevel(state: ModelState, level: Level, rebuilt: Set<string>): boolean {
     const current = levelFor(state, level.key);
     const range = spliceRange(current.ids, level.ids);
 
@@ -125,6 +142,8 @@ function didSpliceLevel(state: ModelState, level: Level): boolean {
         return false;
     }
 
+    markRebuilt(rebuilt, current.ids.slice(range.start, range.start + range.removed));
+    markRebuilt(rebuilt, range.added);
     current.ids = [...level.ids];
     current.store.replaceIds(current.ids, range.start, range.removed, range.added.length);
 
@@ -177,34 +196,46 @@ function syncRoot(state: ModelState, index: CollectionIndex): void {
 
     state.root.splice(0, state.rootModels.length, next);
     state.rootModels = next;
+    resetExpansion(state.expansion);
 }
 
-function refreshExpandableLevels(state: ModelState, index: CollectionIndex, levels: Level[]): void {
+function refreshExpandableLevels(state: ModelState, index: CollectionIndex, sync: SyncPass): void {
     if (!index.isTree) {
         return;
     }
 
-    for (const level of levels) {
-        refreshExpandable(levelFor(state, level.key), level);
+    for (const level of sync.levels) {
+        refreshExpandable(levelFor(state, level.key), level, sync.rebuilt);
     }
 }
 
-function syncModel(state: ModelState, index: CollectionIndex): void {
-    const levels = [...index.groups, ...index.children.values()];
+function spliceLevels(state: ModelState, sync: SyncPass): void {
     const visited: Set<string> = new Set();
     let didChange = false;
 
-    for (const level of levels) {
-        didChange = didSpliceLevel(state, level) || didChange;
+    for (const level of sync.levels) {
+        didChange = didSpliceLevel(state, level, sync.rebuilt) || didChange;
         visited.add(level.key);
     }
 
     if (didChange || visited.size !== state.levels.size) {
         dropUnvisited(state, visited);
     }
+}
 
-    syncRoot(state, index);
-    refreshExpandableLevels(state, index, levels);
+function syncModel(state: ModelState, index: CollectionIndex): void {
+    const sync: SyncPass = { levels: [...index.groups, ...index.children.values()], rebuilt: new Set() };
+    state.expansion.isSyncing = true;
+
+    try {
+        spliceLevels(state, sync);
+        syncRoot(state, index);
+        refreshExpandableLevels(state, index, sync);
+    } finally {
+        state.expansion.isSyncing = false;
+    }
+
+    adoptIndex(state.expansion, index, sync.rebuilt);
 }
 
 function createCollectionModel(): CollectionModel {
@@ -217,10 +248,12 @@ function createCollectionModel(): CollectionModel {
         model: Gtk.FlattenListModel.new(root),
         levels: new Map(),
         tree: null,
+        expansion: createTreeExpansion(EMPTY_INDEX),
     };
 
     return {
         model: state.model,
+        expansion: state.expansion,
         treeModel: () => state.tree,
         sync: (index) => {
             syncModel(state, index);
