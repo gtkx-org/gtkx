@@ -6,8 +6,8 @@ use napi::bindgen_prelude::FromNapiValue as _;
 use native::ffi;
 use native::ffi::Slot;
 use native::ffi::codec::{
-    BooleanCodec, CallbackCodec, CallbackScope, Codec, Decoder, Encoder, IntegerCodec, Ownership,
-    PtrWriter, ReadCtx, SlotInit, StructCodec, VoidCodec,
+    BooleanCodec, CallbackCodec, CallbackScope, Codec, Decoder, DestroyNotifyKind, Encoder,
+    IntegerCodec, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec, VoidCodec,
 };
 use native::ffi::descriptor::Descriptor;
 use test_support as helpers;
@@ -92,6 +92,7 @@ fn callback_codec() -> CallbackCodec {
         arg_codecs: vec![Codec::Integer(IntegerCodec::I32)],
         return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy: false,
+        destroy_kind: DestroyNotifyKind::default(),
         user_data_index: None,
         scope: CallbackScope::default(),
     }

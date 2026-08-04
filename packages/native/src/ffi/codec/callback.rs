@@ -18,13 +18,34 @@ pub enum CallbackScope {
     Forever,
 }
 
+/// Signature of the destroy the callee is handed: `destroyNotify` is a `GDestroyNotify`, taking the
+/// user data alone, and `closureNotify` is a `GClosureNotify`, taking the user data and the
+/// `GClosure` being finalized.
+#[napi(string_enum = "camelCase")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum DestroyNotifyKind {
+    #[default]
+    DestroyNotify,
+    ClosureNotify,
+}
+
 #[derive(Debug, Clone)]
 pub struct CallbackCodec {
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Box<Codec>,
     pub has_destroy: bool,
+    pub destroy_kind: DestroyNotifyKind,
     pub user_data_index: Option<usize>,
     pub scope: CallbackScope,
+}
+
+impl DestroyNotifyKind {
+    fn entry_point(self) -> *mut c_void {
+        match self {
+            Self::DestroyNotify => ClosureState::destroy as *mut c_void,
+            Self::ClosureNotify => ClosureState::destroy_as_closure_notify as *mut c_void,
+        }
+    }
 }
 
 impl Encoder for CallbackCodec {
@@ -62,7 +83,7 @@ impl Encoder for CallbackCodec {
 
         let destroy = self.has_destroy.then(|| {
             if self.scope == CallbackScope::Notified {
-                ClosureState::destroy as *mut c_void
+                self.destroy_kind.entry_point()
             } else {
                 std::ptr::null_mut()
             }

@@ -369,6 +369,7 @@ fn d_callback() -> Descriptor {
         arg_descriptors: Descriptors(Vec::new()),
         return_descriptor: NestedDescriptor(Box::new(Descriptor::Void)),
         has_destroy: Some(false),
+        destroy_kind: None,
         user_data_index: None,
         scope: None,
     }

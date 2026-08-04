@@ -2,8 +2,9 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi::codec::{
-    BigIntCodec, BoxedCodec, BufferCodec, CallbackCodec, CallbackScope, Codec, Decoder, Encoder,
-    FundamentalCodec, IntegerCodec, Ownership, ReadCtx, RefCodec, StructCodec, VoidCodec,
+    BigIntCodec, BoxedCodec, BufferCodec, CallbackCodec, CallbackScope, Codec, Decoder,
+    DestroyNotifyKind, Encoder, FundamentalCodec, IntegerCodec, Ownership, ReadCtx, RefCodec,
+    StructCodec, VoidCodec,
 };
 use native::ffi::{self, StashData, StashStorage};
 use test_support as helpers;
@@ -14,6 +15,7 @@ fn callback_codec() -> CallbackCodec {
         arg_codecs: Vec::new(),
         return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy: false,
+        destroy_kind: DestroyNotifyKind::default(),
         user_data_index: None,
         scope: CallbackScope::Call,
     }

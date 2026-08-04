@@ -32,17 +32,21 @@ type CollectionModel = {
 };
 
 const RESIDENT_OBJECT_MAX = 8192;
-const registration = { isDone: false };
+const STORE_CLASS_KEY = Symbol.for("gtkx.components.lazy-level-store");
 
 const newRootStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
 
-function ensureRegistered(): void {
-    if (registration.isDone) {
-        return;
+function registeredStoreClass(): typeof LazyLevelStore {
+    const cached: unknown = Reflect.get(globalThis, STORE_CLASS_KEY);
+
+    if (typeof cached === "function") {
+        return cached as typeof LazyLevelStore;
     }
 
     registerClass(LazyLevelStore, { typeName: "GtkxLazyLevelStore" });
-    registration.isDone = true;
+    Reflect.set(globalThis, STORE_CLASS_KEY, LazyLevelStore);
+
+    return LazyLevelStore;
 }
 
 function getId(value: GObject.Object | null): string | null {
@@ -91,7 +95,7 @@ function levelFor(state: ModelState, key: string): LevelState {
         return existing;
     }
 
-    const created: LevelState = { store: new LazyLevelStore(), ids: [], canExpand: new Map() };
+    const created: LevelState = { store: new (registeredStoreClass())(), ids: [], canExpand: new Map() };
     state.levels.set(key, created);
 
     return created;
@@ -204,7 +208,7 @@ function syncModel(state: ModelState, index: CollectionIndex): void {
 }
 
 function createCollectionModel(): CollectionModel {
-    ensureRegistered();
+    registeredStoreClass();
     const root = newRootStore();
 
     const state: ModelState = {
@@ -225,11 +229,12 @@ function createCollectionModel(): CollectionModel {
 }
 
 class LazyLevelStore extends Gio.ListStore {
+    private hasEvictableIds = true;
     ids: string[] = [];
     objects: Map<string, Gtk.StringObject> = new Map();
 
     private evictOverflow(): void {
-        if (this.objects.size <= RESIDENT_OBJECT_MAX) {
+        if (this.objects.size <= RESIDENT_OBJECT_MAX || !this.hasEvictableIds) {
             return;
         }
 
@@ -240,6 +245,8 @@ class LazyLevelStore extends Gio.ListStore {
                 this.objects.delete(id);
             }
         }
+
+        this.hasEvictableIds = false;
     }
 
     override vfuncGetItemType(): bigint {
@@ -272,6 +279,7 @@ class LazyLevelStore extends Gio.ListStore {
 
     replaceIds(next: string[], start: number, removed: number, added: number): void {
         this.ids = next;
+        this.hasEvictableIds = true;
         this.itemsChanged(start, removed, added);
     }
 }

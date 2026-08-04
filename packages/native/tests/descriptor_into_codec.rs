@@ -1,4 +1,6 @@
-use native::ffi::codec::{ArrayKind, BigIntCodec, Codec, FloatCodec, IntegerCodec, Ownership};
+use native::ffi::codec::{
+    ArrayKind, BigIntCodec, Codec, DestroyNotifyKind, FloatCodec, IntegerCodec, Ownership,
+};
 use native::ffi::descriptor::{Descriptor, Descriptors, NestedDescriptor};
 
 fn nested(descriptor: Descriptor) -> NestedDescriptor {
@@ -162,16 +164,51 @@ fn hashtable_descriptor_recurses_into_key_and_value_codecs() {
     assert!(matches!(codec(hashtable), Codec::HashTable(_)));
 }
 
-#[test]
-fn callback_descriptor_recurses_into_argument_and_return_codecs() {
-    let callback = Descriptor::Callback {
+fn callback_descriptor(destroy_kind: Option<DestroyNotifyKind>) -> Descriptor {
+    Descriptor::Callback {
         arg_descriptors: Descriptors(vec![Descriptor::Int32, Descriptor::Boolean]),
         return_descriptor: nested(Descriptor::Void),
         has_destroy: Some(true),
+        destroy_kind,
         user_data_index: Some(1),
         scope: None,
+    }
+}
+
+fn destroy_kind_for(descriptor: Descriptor) -> DestroyNotifyKind {
+    let Codec::Callback(callback) = codec(descriptor) else {
+        panic!("a callback descriptor should convert into a callback codec");
     };
-    assert!(matches!(codec(callback), Codec::Callback(_)));
+
+    callback.destroy_kind
+}
+
+#[test]
+fn callback_descriptor_recurses_into_argument_and_return_codecs() {
+    assert!(matches!(
+        codec(callback_descriptor(None)),
+        Codec::Callback(_)
+    ));
+}
+
+#[test]
+fn a_callback_descriptor_without_a_destroy_kind_asks_for_a_destroy_notify() {
+    assert_eq!(
+        destroy_kind_for(callback_descriptor(None)),
+        DestroyNotifyKind::DestroyNotify
+    );
+}
+
+#[test]
+fn a_callback_descriptor_carries_its_destroy_kind_into_the_codec() {
+    assert_eq!(
+        destroy_kind_for(callback_descriptor(Some(DestroyNotifyKind::ClosureNotify))),
+        DestroyNotifyKind::ClosureNotify
+    );
+    assert_eq!(
+        destroy_kind_for(callback_descriptor(Some(DestroyNotifyKind::DestroyNotify))),
+        DestroyNotifyKind::DestroyNotify
+    );
 }
 
 #[test]

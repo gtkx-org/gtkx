@@ -6,7 +6,9 @@ use napi::Env;
 use napi::bindgen_prelude::Unknown;
 use native::ffi;
 use native::ffi::closure::ClosureState;
-use native::ffi::codec::{CallbackCodec, CallbackScope, Codec, Encoder, VoidCodec};
+use native::ffi::codec::{
+    CallbackCodec, CallbackScope, Codec, DestroyNotifyKind, Encoder, VoidCodec,
+};
 use test_support as helpers;
 use test_support::napi_mock;
 
@@ -15,8 +17,16 @@ fn callback_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
         arg_codecs: Vec::new(),
         return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy,
+        destroy_kind: DestroyNotifyKind::default(),
         user_data_index: Some(0),
         scope,
+    }
+}
+
+fn closure_notify_codec() -> CallbackCodec {
+    CallbackCodec {
+        destroy_kind: DestroyNotifyKind::ClosureNotify,
+        ..callback_codec(true, CallbackScope::Notified)
     }
 }
 
@@ -186,6 +196,42 @@ fn notified_with_destroy_invokes_with_real_destroy_notify() {
             invocation.destroy,
             Some(ClosureState::destroy as *mut c_void)
         );
+    });
+}
+
+#[test]
+fn the_default_destroy_kind_is_the_one_argument_destroy_notify() {
+    assert_eq!(
+        DestroyNotifyKind::default(),
+        DestroyNotifyKind::DestroyNotify
+    );
+}
+
+#[test]
+fn a_closure_notify_destroy_kind_installs_the_two_argument_entry_point() {
+    helpers::run(|| {
+        let invocation = invoke_through_cif(&closure_notify_codec());
+        assert_eq!(invocation.arity, 3);
+        assert_eq!(
+            invocation.destroy,
+            Some(ClosureState::destroy_as_closure_notify as *mut c_void)
+        );
+        assert_ne!(
+            invocation.destroy,
+            Some(ClosureState::destroy as *mut c_void)
+        );
+    });
+}
+
+#[test]
+fn a_closure_notify_destroy_kind_is_still_dropped_by_the_scope() {
+    helpers::run(|| {
+        let codec = CallbackCodec {
+            scope: CallbackScope::Call,
+            ..closure_notify_codec()
+        };
+        let invocation = invoke_through_cif(&codec);
+        assert_eq!(invocation.destroy, Some(std::ptr::null_mut()));
     });
 }
 

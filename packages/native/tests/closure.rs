@@ -431,6 +431,77 @@ fn a_panicking_drop_in_the_destroy_notify_is_reported_and_contained() {
     });
 }
 
+#[test]
+fn the_closure_notify_destroy_releases_the_callback_reference() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (js_fn, _) = counting_function(|_, _| napi_mock::fake_undefined());
+        let state = void_closure(&env, js_fn, false);
+        let deletions_before = napi_mock::count("napi_delete_reference");
+
+        unsafe {
+            ClosureState::destroy_as_closure_notify(
+                Box::into_raw(state).cast(),
+                std::ptr::null_mut(),
+            );
+        }
+
+        assert_eq!(
+            napi_mock::count("napi_delete_reference"),
+            deletions_before + 1
+        );
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn a_closure_notify_destroy_that_lands_mid_invocation_is_deferred_until_it_returns() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let state_ptr = Rc::new(Cell::new(std::ptr::null_mut::<c_void>()));
+        let deletions_during = Rc::new(Cell::new(0usize));
+        let destroyed_from = Rc::clone(&state_ptr);
+        let counted_during = Rc::clone(&deletions_during);
+        let js_fn = napi_mock::fake_function(move |_| {
+            unsafe {
+                ClosureState::destroy_as_closure_notify(
+                    destroyed_from.get(),
+                    std::ptr::dangling_mut(),
+                );
+            }
+            counted_during.set(napi_mock::count("napi_delete_reference"));
+            napi_mock::fake_undefined()
+        });
+        let state = void_closure(&env, js_fn, false);
+        let call: unsafe extern "C" fn() = unsafe { std::mem::transmute(state.code_ptr) };
+        let callback_value =
+            native::ffi::CallbackValue::new_pending_transfer(state.code_ptr, true, None, state);
+        state_ptr.set(callback_value.state_ptr());
+        callback_value.disarm_pending_transfer();
+        drop(callback_value);
+
+        let deletions_before = napi_mock::count("napi_delete_reference");
+        unsafe { call() };
+        assert_eq!(deletions_during.get(), deletions_before);
+        assert_eq!(napi_mock::count("napi_delete_reference"), deletions_before);
+
+        helpers::pump_default_context_until(|| {
+            napi_mock::count("napi_delete_reference") > deletions_before
+        });
+        assert_eq!(
+            napi_mock::count("napi_delete_reference"),
+            deletions_before + 1
+        );
+
+        drain_default_context();
+        assert_eq!(
+            napi_mock::count("napi_delete_reference"),
+            deletions_before + 1
+        );
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
 fn assert_transfer_full_return_yields_null_and_reports(return_codec: Codec, expected: &str) {
     let env = helpers::fake_env();
     let backing = unsafe { glib::ffi::g_malloc0(16) };

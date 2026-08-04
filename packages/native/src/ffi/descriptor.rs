@@ -5,9 +5,9 @@ use napi_derive::napi;
 
 use crate::ffi::codec::{
     ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec, CallbackCodec,
-    CallbackScope, Codec, EnumFlagsCodec, EnumFlagsKind, FloatCodec, FundamentalCodec,
-    HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec, StringCodec, StructCodec,
-    UnicharCodec, VoidCodec,
+    CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
+    FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec, StringCodec,
+    StructCodec, UnicharCodec, VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -165,6 +165,7 @@ pub enum Descriptor {
         #[napi(ts_type = "Descriptor")]
         return_descriptor: NestedDescriptor,
         has_destroy: Option<bool>,
+        destroy_kind: Option<DestroyNotifyKind>,
         user_data_index: Option<u32>,
         scope: Option<CallbackScope>,
     },
@@ -306,6 +307,7 @@ impl Descriptor {
                 arg_descriptors,
                 return_descriptor,
                 has_destroy,
+                destroy_kind,
                 user_data_index,
                 scope,
             } => {
@@ -319,6 +321,7 @@ impl Descriptor {
                         .collect::<Result<Vec<_>>>()?,
                     return_codec: return_descriptor.into_codec()?,
                     has_destroy,
+                    destroy_kind: destroy_kind.unwrap_or_default(),
                     user_data_index,
                     scope: Self::callback_scope(scope, has_destroy, user_data_index),
                 })

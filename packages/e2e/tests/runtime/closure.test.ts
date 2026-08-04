@@ -2,8 +2,9 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { ClosureMarshalError } from "@gtkx/runtime";
+import { ClosureMarshalError, toClosure } from "@gtkx/runtime";
 import { afterEach, describe, expect, it } from "vitest";
+import { forceGC } from "../helpers/native-utils.js";
 
 type ProbeHandlers = {
     methodCall: (...args: never[]) => unknown;
@@ -25,6 +26,7 @@ const INTERFACE_NAME = "com.example.Probe";
 const PROPERTIES_INTERFACE = "org.freedesktop.DBus.Properties";
 const CALL_TIMEOUT_MS = 5000;
 const CHURN_ROUNDS = 25;
+const COLLECTION_ATTEMPTS = 50;
 const registrations: { connection: Gio.DBusConnection; id: number }[] = [];
 
 const getInterfaceInfo = (): Gio.DBusInterfaceInfo => {
@@ -79,6 +81,19 @@ const callPing = async (connection: Gio.DBusConnection): Promise<string> => {
     });
 
     return reply.getChildValue(0).getString()[0];
+};
+
+const buildAndDropClosure = (registry: FinalizationRegistry<string>, label: string): void => {
+    const handler = (): string => label;
+    registry.register(handler, label);
+    toClosure(handler);
+};
+
+const waitForCollection = async (collected: string[]): Promise<void> => {
+    for (let attempt = 0; attempt < COLLECTION_ATTEMPTS && collected.length === 0; attempt++) {
+        forceGC();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
 };
 
 afterEach(() => {
@@ -147,6 +162,20 @@ describe("a GObject.Closure built for every registration", () => {
         }
 
         expect(replies).toEqual(Array.from({ length: CHURN_ROUNDS }, () => "pong"));
+    });
+});
+
+describe("the destroy notify a built GObject.Closure installs", () => {
+    it("releases the handler once nothing holds the closure any more", async () => {
+        const collected: string[] = [];
+
+        const registry: FinalizationRegistry<string> = new FinalizationRegistry((value) => {
+            collected.push(value);
+        });
+
+        buildAndDropClosure(registry, "handler");
+        await waitForCollection(collected);
+        expect(collected).toEqual(["handler"]);
     });
 });
 

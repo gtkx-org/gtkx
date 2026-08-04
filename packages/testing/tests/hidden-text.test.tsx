@@ -6,12 +6,12 @@ import {
     getWidgetNodeText,
     getWidgetTextContent,
     prettyWidget,
+    REDACTED_TEXT,
     render,
     screen,
 } from "../src/index.js";
 
 const SECRET = "hunter2";
-const REDACTED = "[redacted]";
 
 const renderPasswordEntry = async (text: string): Promise<Gtk.Widget> => {
     await render(<GtkPasswordEntry name="password" text={text} />);
@@ -24,32 +24,32 @@ describe("hidden text redaction", () => {
         const entry = await renderPasswordEntry(SECRET);
         const output = prettyWidget(entry);
         expect(output).not.toContain(SECRET);
-        expect(output).toContain(REDACTED);
+        expect(output).toContain(REDACTED_TEXT);
     });
 
     it("redacts a password entry's own text and its subtree text", async () => {
         const entry = await renderPasswordEntry(SECRET);
-        expect(getWidgetNodeText(entry)).toBe(REDACTED);
+        expect(getWidgetNodeText(entry)).toBe(REDACTED_TEXT);
         expect(getWidgetTextContent(entry)).not.toContain(SECRET);
     });
 
     it("marks nothing when a password entry is empty", async () => {
         const entry = await renderPasswordEntry("");
         expect(getWidgetNodeText(entry)).toBeNull();
-        expect(prettyWidget(entry)).not.toContain(REDACTED);
+        expect(prettyWidget(entry)).not.toContain(REDACTED_TEXT);
     });
 
     it("redacts an entry whose text was made invisible", async () => {
         await render(<GtkEntry name="pin" text={SECRET} visibility={false} />);
         const entry = await screen.findByName("pin");
-        expect(getWidgetNodeText(entry)).toBe(REDACTED);
+        expect(getWidgetNodeText(entry)).toBe(REDACTED_TEXT);
         expect(prettyWidget(entry)).not.toContain(SECRET);
     });
 
     it("redacts a visible entry that declares a password input purpose", async () => {
         await render(<GtkEntry name="peeked" text={SECRET} inputPurpose={Gtk.InputPurpose.PASSWORD} />);
         const entry = await screen.findByName("peeked");
-        expect(getWidgetNodeText(entry)).toBe(REDACTED);
+        expect(getWidgetNodeText(entry)).toBe(REDACTED_TEXT);
         expect(prettyWidget(entry)).not.toContain(SECRET);
     });
 
@@ -62,7 +62,7 @@ describe("hidden text redaction", () => {
             delegate.setVisibility(true);
         }
 
-        expect(getWidgetNodeText(entry)).toBe(REDACTED);
+        expect(getWidgetNodeText(entry)).toBe(REDACTED_TEXT);
         expect(prettyWidget(entry)).not.toContain(SECRET);
     });
 
@@ -77,7 +77,7 @@ describe("hidden text redaction", () => {
 describe("hidden text in accessible properties", () => {
     it("redacts the display value of a password entry", async () => {
         const entry = await renderPasswordEntry(SECRET);
-        expect(entry).toHaveDisplayValue(REDACTED);
+        expect(entry).toHaveDisplayValue(REDACTED_TEXT);
     });
 
     it("redacts a selection taken from a password entry", async () => {
@@ -88,7 +88,7 @@ describe("hidden text in accessible properties", () => {
             entry.selectRegion(0, -1);
         }
 
-        expect(entry).toHaveSelection(REDACTED);
+        expect(entry).toHaveSelection(REDACTED_TEXT);
     });
 
     it("keeps the hidden text out of the accessible name", async () => {
@@ -106,6 +106,6 @@ describe("hidden text in accessible properties", () => {
         const entry = await renderPasswordEntry(SECRET);
         const suggestion = getSuggestedQuery(entry, "get", "DisplayValue");
         expect(String(suggestion)).not.toContain(SECRET);
-        expect(String(suggestion)).toContain(REDACTED);
+        expect(String(suggestion)).toContain(REDACTED_TEXT);
     });
 });

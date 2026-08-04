@@ -205,6 +205,22 @@ impl ClosureState {
             });
         });
     }
+
+    /// The same release as [`ClosureState::destroy`], shaped as a `GClosureNotify`,
+    /// `void (*) (gpointer data, GClosure *closure)`, for the notifier slots `g_cclosure_new`,
+    /// `g_closure_add_finalize_notifier` and `g_closure_add_invalidate_notifier` type that way.
+    ///
+    /// # Safety
+    ///
+    /// `user_data` carries every requirement [`ClosureState::destroy`] states, and this forwards to
+    /// it unchanged, so the in-flight and off-thread deferrals hold exactly as documented there.
+    /// `closure` is the `GClosure` being finalized; it is never read, so any value is accepted.
+    pub unsafe extern "C" fn destroy_as_closure_notify(
+        user_data: *mut c_void,
+        _closure: *mut c_void,
+    ) {
+        unsafe { Self::destroy(user_data) };
+    }
 }
 
 struct ClosureArgs<'e> {

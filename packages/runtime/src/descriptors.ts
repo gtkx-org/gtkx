@@ -59,8 +59,10 @@ type BoxedOptions = {
 
 /** How the callee takes a callback's closure, and how long that closure has to stay alive. */
 type CallbackOptions = {
-    /** The callee also takes a `GDestroyNotify`, which frees the closure once it is done with it. */
+    /** The callee also takes a destroy notify, which frees the closure once it is done with it. */
     hasDestroy?: boolean;
+    /** Signature of that destroy notify; defaults to `destroyNotify`, a one-argument `GDestroyNotify`. */
+    destroyKind?: CallbackDescriptor["destroyKind"];
     /** Position of the `user_data` argument carrying the closure; without one it can never be freed. */
     userDataIndex?: number;
     /** Lifetime of the closure; defaults to `notified` when `hasDestroy` is set and `call` otherwise. */
@@ -305,6 +307,10 @@ const callbackT = (
 
     if (options?.hasDestroy !== undefined) {
         result.hasDestroy = options.hasDestroy;
+    }
+
+    if (options?.destroyKind !== undefined) {
+        result.destroyKind = options.destroyKind;
     }
 
     if (options?.userDataIndex !== undefined) {

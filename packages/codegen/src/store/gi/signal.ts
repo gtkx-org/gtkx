@@ -346,7 +346,7 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
     return tCallback(
         callbackArgs,
         returnDescriptor,
-        `{ hasDestroy: true, userDataIndex: ${String(params.length + 1)} }`,
+        `{ hasDestroy: true, destroyKind: "closureNotify", userDataIndex: ${String(params.length + 1)} }`,
     );
 };
 

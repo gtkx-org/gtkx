@@ -32,7 +32,7 @@ pub use bigint::BigIntCodec;
 pub use boolean::BooleanCodec;
 pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;
-pub use callback::{CallbackCodec, CallbackScope};
+pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
 pub use enum_flags::{EnumFlagsCodec, EnumFlagsKind};
 pub use fundamental::FundamentalCodec;
 pub use hashtable::{HashTableCodec, HashTableEntryCodec};
