@@ -56,7 +56,7 @@ const getProcessState = (pid: number): string | null => {
     try {
         const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
 
-        return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0] ?? null;
+        return stat.slice(stat.lastIndexOf(")") + 2).split(" ", 1)[0] ?? null;
     } catch {
         return null;
     }
@@ -70,6 +70,31 @@ const readPid = (path: string): number | null => {
     } catch {
         return null;
     }
+};
+
+const describeOutcome = (wrapper: ChildProcess, pid: number): string => {
+    const wrapperPid = wrapper.pid ?? 0;
+
+    return [
+        `sh=${realpathSync("/bin/sh")}`,
+        `wrapperPgid=${String(getProcessGroup(wrapperPid))}`,
+        `childPgid=${String(getProcessGroup(pid))}`,
+        `wrapperExit=${String(wrapper.exitCode)}/${String(wrapper.signalCode)}`,
+        `childState=${String(getProcessState(pid))}`,
+    ].join(" ");
+};
+
+const cleanUp = (fixture: Fixture): void => {
+    for (const child of fixture.spawned) {
+        child.kill("SIGKILL");
+    }
+
+    for (const directory of fixture.directories) {
+        rmSync(directory, { recursive: true, force: true });
+    }
+
+    fixture.spawned.length = 0;
+    fixture.directories.length = 0;
 };
 
 const startGrandchild = async (fixture: Fixture): Promise<Grandchild> => {
@@ -90,30 +115,15 @@ describe("spawnWithParentDeathSignal", () => {
     const fixture: Fixture = { spawned: [], directories: [] };
 
     afterEach(() => {
-        for (const child of fixture.spawned) {
-            child.kill("SIGKILL");
-        }
-
-        for (const directory of fixture.directories) {
-            rmSync(directory, { recursive: true, force: true });
-        }
-
-        fixture.spawned.length = 0;
-        fixture.directories.length = 0;
+        cleanUp(fixture);
     });
 
     it("kills the whole process group, not just the direct child", async () => {
         const { wrapper, pid } = await startGrandchild(fixture);
         expect(isProcessAlive(pid)).toBe(true);
-        const wrapperPid = wrapper.pid ?? 0;
-        const groups = `wrapperPgid=${String(getProcessGroup(wrapperPid))} childPgid=${String(getProcessGroup(pid))}`;
-        const didSignal = wrapper.kill("SIGTERM");
+        wrapper.kill("SIGTERM");
         const hasDied = await pollUntil(() => !isProcessAlive(pid));
-        const outcome = `sh=${realpathSync("/bin/sh")} signalled=${String(didSignal)} ${groups} ` +
-            `wrapperExit=${String(wrapper.exitCode)}/${String(wrapper.signalCode)} ` +
-            `childState=${String(getProcessState(pid))}`;
-
-        expect(hasDied, outcome).toBe(true);
+        expect(hasDied ? "killed" : describeOutcome(wrapper, pid)).toBe("killed");
     });
 
     it("leads its own process group without relying on the shell's job control", async () => {
