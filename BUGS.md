@@ -656,7 +656,9 @@ const v = GLib.Variant.newFromBytes(GLib.VariantType.new("ay"), GLib.Bytes.new(b
 v.getDataAsBytes().getData();   // [1, 2, 0, 3, 4]
 ```
 
-**Fix:** none applied. `newBytestring` is faithful to the C function, so the gap is that a JavaScript caller has no way to see the constraint. The generated binding should carry it, either in its documentation or by refusing a buffer that contains a zero, and the guide should point at the `newFromBytes` route for binary payloads.
+**Fix applied:** codegen detects the shape from the GIR and appends a note to the binding's documentation naming the affected parameter, so the constraint shows up in an editor tooltip and in the API reference. The shape is an array whose own `c:type` is a char pointer, whose element is a byte, and which carries no length parameter and no fixed size, which is the only way the C side can be relying on the terminator. `arrayCType` is now captured on `CArrayType`; the array's own `c:type` was previously dropped, and the element `c:type` that was kept is absent on exactly these parameters. Across the configured namespaces that names `g_variant_new_bytestring` and `g_strsplit_set`, both verified in the generated store. The guide's codegen page carries the `GLib.Bytes` route.
+
+A runtime guard was considered and not applied: refusing a buffer containing a zero means threading a flag through the descriptor into the Rust codec, and the note reaches the caller at the point of use instead.
 
 ---
 
@@ -705,7 +707,7 @@ gtkx_fire_event { widgetId: "...", signal: "activate" }
 
 **Cause:** the handler for `widget.fireEvent` in `packages/cli/src/mcp/handlers.ts` returns `{ success: true }` unconditionally, and the tool in `packages/mcp/src/server.ts` discards the payload and returns the fixed text `Fired event`. There is no channel through which widget state could reach the caller.
 
-**Fix:** forward the handler's payload, and have it report the widget's realized and mapped state, so an agent can see that the signal reached a widget that could not act on it.
+**Fix applied:** the handler captures `realized`, `mapped`, and `sensitive` before it emits, and returns them with the signal name and a note that says either that a default handler needing a drawn widget will do nothing, or that an animated default handler settles asynchronously so the widget should be read again. `packages/mcp/src/server.ts` JSON-stringifies the result the way the query tool already does, instead of returning the fixed text `Fired event`.
 
 ---
 

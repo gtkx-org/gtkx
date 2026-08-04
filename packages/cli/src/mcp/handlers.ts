@@ -68,9 +68,18 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
         ServerRequestParamsSchemas["widget.fireEvent"],
         async (_ctx, { testing, widget }, params) => {
             const signalArgs = (params.args ?? []).map((arg) => extractSignalArg(arg));
+            const isRealized = widget.getRealized();
+            const isMapped = widget.getMapped();
+            const isSensitive = widget.getSensitive();
             await testing.fireEvent(widget, params.signal, ...signalArgs);
 
-            return { success: true };
+            return {
+                signal: params.signal,
+                isRealized,
+                isMapped,
+                isSensitive,
+                note: emissionNote(isRealized, isMapped),
+            };
         },
     ),
     "widget.screenshot": validated(ServerRequestParamsSchemas["widget.screenshot"], handleScreenshot),
@@ -138,6 +147,21 @@ const extractSignalArg = (arg: unknown): unknown => {
     const isTypedArg = typeof arg === "object" && arg !== null && "type" in arg && "value" in arg;
 
     return isTypedArg ? (arg as { value: unknown }).value : arg;
+};
+
+const emissionNote = (isRealized: boolean, isMapped: boolean): string => {
+    if (isRealized && isMapped) {
+        return (
+            "The signal was emitted. Default handlers that animate, such as a button activate, settle " +
+            "asynchronously, so read the widget again rather than assuming the effect has landed."
+        );
+    }
+
+    return (
+        "The signal was emitted on a widget that is not realized and mapped, so a default handler that " +
+        "requires a drawn widget does nothing. Present the containing window or open the containing " +
+        "popover first, then fire the signal again."
+    );
 };
 
 const resolveRole = (value: string | number): Gtk.AccessibleRole | undefined => {

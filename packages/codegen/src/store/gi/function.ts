@@ -4,9 +4,9 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { tFn } from "../../analysis/descriptor.js";
 import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
+import { callableDoc } from "./callable-doc.js";
 import {
     planCallArgs,
     renderMethodBody,
@@ -81,7 +81,7 @@ const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): voi
     context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
     const declaration = renderNamespaceFunctionDeclaration(context, fn, exportName, bindingName);
-    context.module.appendDeclaration(`${renderJsDoc(fn.doc)}${declaration}`);
+    context.module.appendDeclaration(`${callableDoc(context, fn)}${declaration}`);
 };
 
 const renderNamespaceFunctionDeclaration = (

@@ -2,9 +2,9 @@ import { camelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
+import { callableDoc } from "./callable-doc.js";
 import { renderFnExpression } from "./function.js";
 import { gtypeMemberDeclaration } from "./gtype-binding.js";
 import {
@@ -64,7 +64,7 @@ type PlainTypeMembersOptions = {
 
 const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }) =>
-        `${renderJsDoc(callable.doc)}${memberSignatureText(context, callable, name, { finishFn })};`,
+        `${callableDoc(context, callable)}${memberSignatureText(context, callable, name, { finishFn })};`,
 );
 
 const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer(
@@ -182,7 +182,7 @@ const renderCallableMember = (
     }
 
     const { cIdentifier, name } = resolved;
-    const doc = renderJsDoc(callable.doc);
+    const doc = callableDoc(context, callable);
     const override = runtimeOverrideMember(callable, name, doc, options.canUseRuntimeOverride);
 
     if (override !== undefined) {
@@ -349,7 +349,7 @@ const renderPromisifiedCallable = (
     const prefix = member.isStatic ? "static " : "";
     const header = `${prefix}${member.name}(${signature}): ${returnType}`;
 
-    return `${renderJsDoc(callable.doc)}${renderBlock(header, body)}`;
+    return `${callableDoc(context, callable)}${renderBlock(header, body)}`;
 };
 
 const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {

@@ -261,9 +261,9 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             description: "Emit a GTK4 signal on a widget. Use this for custom interactions.",
             inputSchema: fireEventShape,
             handler: async ({ applicationId, ...params }) => {
-                await appRouter.sendToApp(applicationId, "widget.fireEvent", params);
+                const result = await appRouter.sendToApp(applicationId, "widget.fireEvent", params);
 
-                return textContent("Fired event");
+                return textContent(JSON.stringify(result, null, 2));
             },
         }),
     ];

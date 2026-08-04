@@ -338,6 +338,19 @@ describe("widget.click / widget.type / widget.fireEvent", () => {
         await dispatchWidget("widget.fireEvent", { signal: "clicked", args });
         expect(fireEvent).toHaveBeenCalledWith(widget, "clicked", 42, "plain");
     });
+
+    it("reports the state of a widget that can act on the signal", async () => {
+        const { dispatchWidget } = makeWidgetTarget();
+        const result = await dispatchWidget("widget.fireEvent", { signal: "clicked" });
+        expect(result).toMatchObject({ signal: "clicked", isRealized: true, isMapped: true, isSensitive: true });
+    });
+
+    it("reports that an unrealized widget could not act on the signal", async () => {
+        const { dispatchWidget } = makeWidgetTarget({ getRealized: () => false, getMapped: () => false });
+        const result = await dispatchWidget("widget.fireEvent", { signal: "activate" });
+        expect(result).toMatchObject({ isRealized: false, isMapped: false });
+        expect((result as { note: string }).note).toContain("not realized and mapped");
+    });
 });
 
 describe("widget.screenshot", () => {

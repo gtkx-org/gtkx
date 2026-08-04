@@ -29,6 +29,17 @@ Codegen writes packages into `node_modules/.gtkx` and links them into `node_modu
 - **`@gtkx/gi`** (in `node_modules/.gtkx/gi`) holds the raw introspected API: one lowercased directory per namespace, exposed as subpath exports such as `@gtkx/gi/gtk` and `@gtkx/gi/adw`. These are the classes, enums, and functions you use imperatively, for refs, `Gtk.Orientation.VERTICAL`, and direct method calls. Reach for them for what only the GNOME platform provides, and use the Node standard library for everything else. The generated TypeScript is type-checked and compiled to JavaScript plus `.d.ts` inside the store, which codegen builds in a temporary directory and then renames into place, so a crash never leaves half a package.
 - **`@gtkx/jsx`** (in `node_modules/.gtkx/jsx`) holds the React layer: per-namespace modules exporting one PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a global `React.JSX.IntrinsicElements` augmentation so the elements type-check. It also emits a `metadata` module recording, per element, the signal-handler-to-signal-name map, the construct-only and constructable prop sets, the GIR default values, and the merged element prop rules. The reconciler reads that metadata at runtime through the `virtual:gtkx-config` module the CLI's Vite plugin serves. The same pass that generates your types generates that metadata, so your types and runtime prop application cannot drift.
 
+### Byte arrays that are really C strings
+
+A handful of C functions take a NUL-terminated `const char *` that GIR describes as an array of bytes. The generated signature reads like a byte buffer, `GLib.Variant.newBytestring(string: number[])`, but the C function calls `strlen` on it, so the value stops at the first zero byte and everything after it is dropped with no error.
+
+Codegen detects that shape from the GIR and appends a note to the binding's documentation naming the affected parameter, so the constraint is visible in your editor and in the API reference. For binary payloads, go through `GLib.Bytes` instead:
+
+```ts
+const variant = GLib.Variant.newFromBytes(GLib.VariantType.new("ay"), GLib.Bytes.new(buffer), true);
+variant.getDataAsBytes().getData(); // every byte, including zeros
+```
+
 ## The JSX prop model
 
 Every GIR class whose ancestry reaches `GObject` becomes an intrinsic element, and its props interface is assembled from the GIR according to a small set of rules:

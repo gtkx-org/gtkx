@@ -10,6 +10,7 @@ type CArrayType = {
     kind: "carray";
     element: TypeId;
     elementCType: string | undefined;
+    arrayCType: string | undefined;
     lengthParameterIndex: number | undefined;
     fixedSize: number | undefined;
     isZeroTerminated: boolean;
