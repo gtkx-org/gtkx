@@ -12,6 +12,7 @@ import {
     type ListViewFixture,
     renderListView,
 } from "./helpers/list-fixtures.js";
+import { expectRowTexts, rowTexts } from "./helpers/row-texts.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type Category = {
@@ -242,13 +243,6 @@ const toTreeItems = (categories: (Category & { children: Setting[] })[]): Fixtur
 const expanderByName = (name: string): Gtk.TreeExpander =>
     screen.getByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.TreeExpander });
 
-const rowTexts = (container: Gtk.ListView | null): (string | null)[] =>
-    container === null
-        ? []
-        : within(container)
-                .queryAllByRole(Gtk.AccessibleRole.LABEL)
-                .map((widget) => getWidgetNodeText(widget));
-
 const listRowByName = (name: string): Gtk.TreeListRow => {
     const row = expanderByName(name).getListRow();
 
@@ -266,11 +260,6 @@ const setRowExpandedByName = async (name: string, isExpanded: boolean): Promise<
         row.setExpanded(isExpanded);
     });
 };
-
-const expectRowTexts = (ref: RefObject<Gtk.ListView>, expected: (string | null)[]): Promise<void> =>
-    waitFor(() => {
-        expect(rowTexts(ref.current)).toEqual(expected);
-    });
 
 const expectSettledRowTexts = (ref: RefObject<Gtk.ListView>, expected: (string | null)[]): Promise<void> =>
     waitFor(() => {

@@ -2,11 +2,12 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { useState } from "react";
 import type { Collection } from "./collection.js";
 import type { TreeExpansion } from "./tree-expansion.js";
-import type { TreeOrder } from "./tree-order.js";
-import { childLevelKey } from "./collection-index.js";
+import type { VisibleOrder } from "./tree-order.js";
+import { isCollectionIdle } from "./collection.js";
 import { useControlledSync } from "./controlled-sync.js";
+import { joinParts } from "./keys.js";
 import { adoptOrder, markExpanded, orderFor } from "./tree-expansion.js";
-import { buildTreeOrder } from "./tree-order.js";
+import { buildVisibleOrder } from "./tree-order.js";
 
 type ExpansionOptions = {
     collection: Collection;
@@ -37,8 +38,8 @@ function wantedSet(expansion: TreeExpansion, expandedIds: string[]): Set<string>
     const wanted: Set<string> = new Set();
 
     for (const id of expandedIds) {
-        if (expansion.index.children.has(childLevelKey(id))) {
-            wanted.add(id);
+        for (const key of expansion.index.expandableKeysFor(id)) {
+            wanted.add(key);
         }
     }
 
@@ -53,12 +54,12 @@ function toggleWantedRows(
     tree: Gtk.TreeListModel,
     expanded: Set<string>,
     wanted: Set<string>,
-    target: TreeOrder,
+    target: VisibleOrder,
 ): void {
-    for (const [position, id] of target.ids.entries()) {
-        const isWanted = wanted.has(id);
+    for (const [position, key] of target.keys.entries()) {
+        const isWanted = wanted.has(key);
 
-        if (expanded.has(id) !== isWanted) {
+        if (expanded.has(key) !== isWanted) {
             tree.getRow(position)?.setExpanded(isWanted);
         }
     }
@@ -71,7 +72,7 @@ function applyWanted(expansion: TreeExpansion, tree: Gtk.TreeListModel, expanded
         return;
     }
 
-    const target = buildTreeOrder(expansion.index, wanted);
+    const target = buildVisibleOrder(expansion.index, wanted);
     expansion.isApplying = true;
 
     try {
@@ -84,8 +85,8 @@ function applyWanted(expansion: TreeExpansion, tree: Gtk.TreeListModel, expanded
 }
 
 function reportExpansion(context: ExpansionContext): void {
-    const { expandedIds } = orderFor(context.collection.expansion);
-    const key = expandedIds.join(" ");
+    const { expandedIds, expandedKeys } = orderFor(context.collection.expansion);
+    const key = joinParts(expandedKeys);
 
     if (context.last.key === key) {
         return;
@@ -110,21 +111,19 @@ function applyControlledExpansion(context: ExpansionContext, expandedIds: string
 }
 
 function isExpansionIdle(collection: Collection): boolean {
-    const { expansion } = collection;
-
-    return collection.treeModel() !== null && !expansion.isApplying && !expansion.isSyncing;
+    return collection.treeModel() !== null && isCollectionIdle(collection);
 }
 
 function didRowDrift(expansion: TreeExpansion, change: ItemsChange): boolean {
-    const id = orderFor(expansion).ids[change.position - 1];
+    const key = orderFor(expansion).keys[change.position - 1];
     const isExpanded = change.removed === 0 && change.added > 0;
     const isCollapsed = change.added === 0 && change.removed > 0;
 
-    if (id === undefined || isExpanded === isCollapsed) {
+    if (key === undefined || isExpanded === isCollapsed) {
         return false;
     }
 
-    markExpanded(expansion, id, isExpanded);
+    markExpanded(expansion, key, isExpanded);
 
     return true;
 }

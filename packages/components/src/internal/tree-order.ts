@@ -1,14 +1,14 @@
-import type { CollectionIndex } from "./collection-index.js";
-import { childLevelKey } from "./collection-index.js";
+import type { CollectionIndex, Level, NodeRef } from "./collection-index.js";
 
-type TreeOrder = {
-    ids: string[];
+type VisibleOrder = {
+    keys: string[];
+    expandedKeys: string[];
     expandedIds: string[];
-    positions: Map<string, number>;
+    positions: Map<string, number[]>;
 };
 
 type OrderFrame = {
-    ids: string[];
+    nodes: NodeRef[];
     cursor: number;
 };
 
@@ -16,55 +16,65 @@ type OrderState = {
     index: CollectionIndex;
     expanded: Set<string>;
     stack: OrderFrame[];
-    order: TreeOrder;
+    order: VisibleOrder;
 };
 
-function pushChildLevel(state: OrderState, id: string): void {
-    const level = state.index.children.get(childLevelKey(id));
+function pushPosition(positions: Map<string, number[]>, id: string, position: number): void {
+    const existing = positions.get(id);
 
-    if (level === undefined || level.ids.length === 0) {
+    if (existing === undefined) {
+        positions.set(id, [position]);
+
         return;
     }
 
-    state.stack.push({ ids: level.ids, cursor: 0 });
+    existing.push(position);
 }
 
-function visitId(state: OrderState, id: string): void {
-    const { order } = state;
-    order.positions.set(id, order.ids.length);
-    order.ids.push(id);
+function childLevelFor(state: OrderState, key: string): Level | null {
+    const level = state.index.children.get(key);
 
-    if (!state.expanded.has(id)) {
+    return level === undefined || level.nodes.length === 0 ? null : level;
+}
+
+function visitNode(state: OrderState, node: NodeRef): void {
+    const { order } = state;
+    pushPosition(order.positions, node.id, order.keys.length);
+    order.keys.push(node.key);
+
+    if (!state.expanded.has(node.key)) {
         return;
     }
 
-    order.expandedIds.push(id);
-    pushChildLevel(state, id);
+    const level = childLevelFor(state, node.key);
+
+    if (level === null) {
+        return;
+    }
+
+    order.expandedKeys.push(node.key);
+    order.expandedIds.push(node.id);
+    state.stack.push({ nodes: level.nodes, cursor: 0 });
 }
 
 function advanceFrame(state: OrderState): void {
     const frame = state.stack.at(-1);
-    const id = frame?.ids[frame.cursor];
+    const node = frame?.nodes[frame.cursor];
 
-    if (frame === undefined || id === undefined) {
+    if (frame === undefined || node === undefined) {
         state.stack.pop();
 
         return;
     }
 
     frame.cursor += 1;
-    visitId(state, id);
+    visitNode(state, node);
 }
 
-function buildTreeOrder(index: CollectionIndex, expanded: Set<string>): TreeOrder {
-    const order: TreeOrder = { ids: [], expandedIds: [], positions: new Map() };
-    const [root] = index.groups;
-
-    if (root === undefined) {
-        return order;
-    }
-
-    const state: OrderState = { index, expanded, stack: [{ ids: root.ids, cursor: 0 }], order };
+function buildVisibleOrder(index: CollectionIndex, expanded: Set<string>): VisibleOrder {
+    const order: VisibleOrder = { keys: [], expandedKeys: [], expandedIds: [], positions: new Map() };
+    const frames = index.groups.map((level) => ({ nodes: level.nodes, cursor: 0 }));
+    const state: OrderState = { index, expanded, stack: frames.toReversed(), order };
 
     while (state.stack.length > 0) {
         advanceFrame(state);
@@ -73,4 +83,4 @@ function buildTreeOrder(index: CollectionIndex, expanded: Set<string>): TreeOrde
     return order;
 }
 
-export { buildTreeOrder, type TreeOrder };
+export { buildVisibleOrder, type VisibleOrder };

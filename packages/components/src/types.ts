@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
  * arbitrary value. Nested items form a tree.
  */
 type ListItem<T = unknown> = {
-    /** Stable identifier used to track the item across updates and selection. */
+    /** Stable identifier used to track the item across updates and selection, naming every row that carries it. */
     id: string;
     /** Payload handed to the cell renderer as `ListItemRenderArgs.item`. */
     value: T;
@@ -70,9 +70,12 @@ type ItemSizeProps = {
 
 /** Controlled selection shared by the multi-item collection views. */
 type SelectionProps = {
-    /** Ids of the items to keep selected; omitting it leaves the view's own selection alone. */
+    /**
+     * Ids of the items to keep selected; omitting it leaves the view's own selection alone. An id repeated in
+     * several branches of a tree names every matching row, and a single-selection view takes the first of them.
+     */
     selectedIds?: string[] | null | undefined;
-    /** Called with the ids of every selected item whenever the selection changes, and once on mount. */
+    /** Called with one id per selected row whenever the selection changes, and once on mount. */
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     /** How much the user may select, one item at a time unless `MULTIPLE` or `NONE` is given. */
     selectionMode?: Gtk.SelectionMode | null | undefined;
@@ -80,9 +83,12 @@ type SelectionProps = {
 
 /** Controlled expansion for the views that turn nested `ListItem.children` into a tree. */
 type ExpansionProps = {
-    /** Ids of the items to keep expanded; omitting it leaves the rows' own expanded state alone. */
+    /**
+     * Ids of the items to keep expanded; omitting it leaves the rows' own expanded state alone. An id repeated in
+     * several branches names every matching row, so all of them expand together.
+     */
     expandedIds?: string[] | null | undefined;
-    /** Called with the ids of every expanded row whenever expansion changes. */
+    /** Called with one id per expanded row, in visible order, whenever expansion changes. */
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
 };
 

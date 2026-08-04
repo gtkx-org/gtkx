@@ -1,12 +1,11 @@
 import type { CollectionIndex } from "./collection-index.js";
-import type { TreeOrder } from "./tree-order.js";
-import { childLevelKey } from "./collection-index.js";
-import { buildTreeOrder } from "./tree-order.js";
+import type { VisibleOrder } from "./tree-order.js";
+import { buildVisibleOrder } from "./tree-order.js";
 
 type TreeExpansion = {
     index: CollectionIndex;
     expanded: Set<string>;
-    order: TreeOrder | null;
+    order: VisibleOrder | null;
     isApplying: boolean;
     isSyncing: boolean;
 };
@@ -15,19 +14,19 @@ function createTreeExpansion(index: CollectionIndex): TreeExpansion {
     return { index, expanded: new Set(), order: null, isApplying: false, isSyncing: false };
 }
 
-function orderFor(expansion: TreeExpansion): TreeOrder {
-    expansion.order ??= buildTreeOrder(expansion.index, expansion.expanded);
+function orderFor(expansion: TreeExpansion): VisibleOrder {
+    expansion.order ??= buildVisibleOrder(expansion.index, expansion.expanded);
 
     return expansion.order;
 }
 
-function adoptOrder(expansion: TreeExpansion, order: TreeOrder): void {
-    expansion.expanded = new Set(order.expandedIds);
+function adoptOrder(expansion: TreeExpansion, order: VisibleOrder): void {
+    expansion.expanded = new Set(order.expandedKeys);
     expansion.order = order;
 }
 
-function hasAncestorIn(index: CollectionIndex, id: string, roots: Set<string>): boolean {
-    let current: string | undefined = id;
+function hasAncestorIn(index: CollectionIndex, key: string, roots: Set<string>): boolean {
+    let current: string | undefined = key;
 
     while (current !== undefined) {
         if (roots.has(current)) {
@@ -43,9 +42,9 @@ function hasAncestorIn(index: CollectionIndex, id: string, roots: Set<string>): 
 function dropSubtrees(expansion: TreeExpansion, roots: Set<string>): void {
     const kept: Set<string> = new Set();
 
-    for (const id of expansion.expanded) {
-        if (!hasAncestorIn(expansion.index, id, roots)) {
-            kept.add(id);
+    for (const key of expansion.expanded) {
+        if (!hasAncestorIn(expansion.index, key, roots)) {
+            kept.add(key);
         }
     }
 
@@ -53,33 +52,21 @@ function dropSubtrees(expansion: TreeExpansion, roots: Set<string>): void {
     expansion.order = null;
 }
 
-function markExpanded(expansion: TreeExpansion, id: string, isExpanded: boolean): void {
+function markExpanded(expansion: TreeExpansion, key: string, isExpanded: boolean): void {
     if (isExpanded) {
-        expansion.expanded.add(id);
+        expansion.expanded.add(key);
         expansion.order = null;
 
         return;
     }
 
-    expansion.expanded.delete(id);
-    dropSubtrees(expansion, new Set([id]));
+    expansion.expanded.delete(key);
+    dropSubtrees(expansion, new Set([key]));
 }
 
 function resetExpansion(expansion: TreeExpansion): void {
     expansion.expanded = new Set();
     expansion.order = null;
-}
-
-function keptExpandable(expansion: TreeExpansion, index: CollectionIndex): Set<string> {
-    const kept: Set<string> = new Set();
-
-    for (const id of expansion.expanded) {
-        if (index.children.has(childLevelKey(id))) {
-            kept.add(id);
-        }
-    }
-
-    return kept;
 }
 
 function adoptIndex(expansion: TreeExpansion, index: CollectionIndex, rebuilt: Set<string>): void {
@@ -89,10 +76,8 @@ function adoptIndex(expansion: TreeExpansion, index: CollectionIndex, rebuilt: S
         return;
     }
 
-    expansion.expanded = keptExpandable(expansion, index);
-    expansion.order = null;
     dropSubtrees(expansion, rebuilt);
-    expansion.expanded = new Set(orderFor(expansion).expandedIds);
+    expansion.expanded = new Set(orderFor(expansion).expandedKeys);
 }
 
 export {

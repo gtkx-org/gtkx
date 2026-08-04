@@ -1,28 +1,34 @@
 import type { ListItem, ListSection } from "../types.js";
+import { joinParts } from "./keys.js";
+
+type NodeRef = {
+    id: string;
+    key: string;
+    levelKey: string;
+};
 
 type Level = {
     key: string;
-    parentId: string | null;
-    ids: string[];
+    parentKey: string | null;
+    nodes: NodeRef[];
     expandableFlags: boolean[];
 };
 
 type LevelSeed = {
     key: string;
-    parentId: string | null;
+    parentKey: string | null;
+    section: ListSection | undefined;
 };
 
 type CollectionIndex = {
     isTree: boolean;
     structureKey: string;
-    size: number;
     groups: Level[];
     children: Map<string, Level>;
     parents: Map<string, string>;
-    hasId: (id: string) => boolean;
-    itemFor: (id: string) => ListItem | undefined;
-    sectionFor: (id: string) => unknown;
-    positionFor: (id: string) => number;
+    itemFor: (key: string) => ListItem | undefined;
+    sectionFor: (levelKey: string) => unknown;
+    expandableKeysFor: (id: string) => string[];
 };
 
 type IndexState = {
@@ -30,20 +36,39 @@ type IndexState = {
     groups: Level[];
     children: Map<string, Level>;
     parents: Map<string, string>;
-    itemsById: Map<string, ListItem>;
-    sections: ListSection[] | undefined;
-    positions: Map<string, number> | null;
-    starts: number[] | null;
+    itemsByKey: Map<string, ListItem>;
+    expandableKeys: Map<string, string[]>;
+    sectionValues: Map<string, unknown>;
 };
 
 const ROOT_LEVEL_KEY = "";
-const FIELD_SEPARATOR = "\u{0}";
-const ID_SEPARATOR = "\u{1}";
+const NO_KEYS: string[] = [];
 
 const hasChildren = (item: ListItem): boolean => item.children !== undefined && item.children.length > 0;
-const childLevelKey = (id: string): string => `child:${id}`;
 
-function collectChildren(state: IndexState, level: Level, item: ListItem): void {
+const nodeKeyFor = (levelKey: string, id: string, ordinal: number): string =>
+    `${levelKey}${joinParts([id, String(ordinal)])}`;
+
+function takeOrdinal(ordinals: Map<string, number>, id: string): number {
+    const used = ordinals.get(id) ?? 0;
+    ordinals.set(id, used + 1);
+
+    return used;
+}
+
+function pushKey(table: Map<string, string[]>, id: string, key: string): void {
+    const existing = table.get(id);
+
+    if (existing === undefined) {
+        table.set(id, [key]);
+
+        return;
+    }
+
+    existing.push(key);
+}
+
+function collectChildren(state: IndexState, level: Level, node: NodeRef, item: ListItem): void {
     if (!state.isTree) {
         return;
     }
@@ -55,103 +80,55 @@ function collectChildren(state: IndexState, level: Level, item: ListItem): void 
         return;
     }
 
-    if (level.parentId !== null) {
-        state.parents.set(item.id, level.parentId);
+    if (level.parentKey !== null) {
+        state.parents.set(node.key, level.parentKey);
     }
 
-    const key = childLevelKey(item.id);
-    state.children.set(key, collectLevel(state, { key, parentId: item.id }, item.children ?? []));
+    pushKey(state.expandableKeys, node.id, node.key);
+    const seed: LevelSeed = { key: node.key, parentKey: node.key, section: undefined };
+    state.children.set(node.key, collectLevel(state, seed, item.children ?? []));
 }
 
 function collectLevel(state: IndexState, seed: LevelSeed, items: ListItem[]): Level {
-    const level: Level = { key: seed.key, parentId: seed.parentId, ids: [], expandableFlags: [] };
+    const level: Level = { key: seed.key, parentKey: seed.parentKey, nodes: [], expandableFlags: [] };
+    const ordinals: Map<string, number> = new Map();
+
+    if (seed.section !== undefined) {
+        state.sectionValues.set(seed.key, seed.section.value);
+    }
 
     for (const item of items) {
-        level.ids.push(item.id);
-        state.itemsById.set(item.id, item);
-        collectChildren(state, level, item);
+        const key = nodeKeyFor(seed.key, item.id, takeOrdinal(ordinals, item.id));
+        const node: NodeRef = { id: item.id, key, levelKey: seed.key };
+        level.nodes.push(node);
+        state.itemsByKey.set(node.key, item);
+        collectChildren(state, level, node, item);
     }
 
     return level;
 }
 
-function buildPositions(state: IndexState): void {
-    const positions: Map<string, number> = new Map();
-    const starts: number[] = [];
-    let offset = 0;
-
-    for (const level of state.groups) {
-        starts.push(offset);
-
-        for (const id of level.ids) {
-            positions.set(id, offset);
-            offset += 1;
-        }
-    }
-
-    state.positions = positions;
-    state.starts = starts;
-}
-
-function positionFor(state: IndexState, id: string): number {
-    if (state.isTree) {
-        return -1;
-    }
-
-    if (state.positions === null) {
-        buildPositions(state);
-    }
-
-    return state.positions?.get(id) ?? -1;
-}
-
-function sectionAt(starts: number[], position: number): number {
-    let low = 0;
-    let high = starts.length - 1;
-
-    while (low < high) {
-        const middle = Math.ceil((low + high) / 2);
-
-        if ((starts[middle] ?? 0) <= position) {
-            low = middle;
-        } else {
-            high = middle - 1;
-        }
-    }
-
-    return low;
-}
-
-function sectionFor(state: IndexState, id: string): unknown {
-    const sections = state.sections;
-    const position = positionFor(state, id);
-
-    if (sections === undefined || position < 0 || state.starts === null) {
-        return undefined;
-    }
-
-    return sections[sectionAt(state.starts, position)]?.value;
-}
-
 function buildGroups(state: IndexState, source: ListItem[], sections: ListSection[] | undefined): Level[] {
     if (sections === undefined) {
-        return [collectLevel(state, { key: ROOT_LEVEL_KEY, parentId: null }, source)];
+        return [collectLevel(state, { key: ROOT_LEVEL_KEY, parentKey: null, section: undefined }, source)];
     }
 
-    return sections.map((section) => collectLevel(state, { key: section.id, parentId: null }, section.data));
+    const ordinals: Map<string, number> = new Map();
+
+    return sections.map((section) => {
+        const key = nodeKeyFor(ROOT_LEVEL_KEY, section.id, takeOrdinal(ordinals, section.id));
+
+        return collectLevel(state, { key, parentKey: null, section }, section.data);
+    });
 }
 
 function pushLevelKey(parts: string[], level: Level): void {
-    parts.push(
-        level.key,
-        String(level.ids.length),
-        level.ids.join(ID_SEPARATOR),
-        level.expandableFlags.join(ID_SEPARATOR),
-    );
+    const ids = level.nodes.map((node) => node.id);
+    parts.push(joinParts([level.key, String(level.nodes.length), joinParts(ids), level.expandableFlags.join(",")]));
 }
 
 function getStructureKey(state: IndexState): string {
-    const parts: string[] = [String(state.isTree), String(state.groups.length)];
+    const parts: string[] = [joinParts([String(state.isTree), String(state.groups.length)])];
 
     for (const level of state.groups) {
         pushLevelKey(parts, level);
@@ -161,7 +138,7 @@ function getStructureKey(state: IndexState): string {
         pushLevelKey(parts, level);
     }
 
-    return parts.join(FIELD_SEPARATOR);
+    return parts.join("");
 }
 
 function isTreeSource(source: ListItem[], sections: ListSection[] | undefined, isFlat: boolean): boolean {
@@ -184,10 +161,9 @@ function createCollectionIndex(
         groups: [],
         children: new Map(),
         parents: new Map(),
-        itemsById: new Map(),
-        sections,
-        positions: null,
-        starts: null,
+        itemsByKey: new Map(),
+        expandableKeys: new Map(),
+        sectionValues: new Map(),
     };
 
     state.groups = buildGroups(state, source, sections);
@@ -195,15 +171,13 @@ function createCollectionIndex(
     return {
         isTree: state.isTree,
         structureKey: getStructureKey(state),
-        size: state.itemsById.size,
         groups: state.groups,
         children: state.children,
         parents: state.parents,
-        hasId: (id) => state.itemsById.has(id),
-        itemFor: (id) => state.itemsById.get(id),
-        sectionFor: (id) => sectionFor(state, id),
-        positionFor: (id) => positionFor(state, id),
+        itemFor: (key) => state.itemsByKey.get(key),
+        sectionFor: (levelKey) => state.sectionValues.get(levelKey),
+        expandableKeysFor: (id) => state.expandableKeys.get(id) ?? NO_KEYS,
     };
 }
 
-export { createCollectionIndex, childLevelKey, ROOT_LEVEL_KEY, type CollectionIndex, type Level };
+export { createCollectionIndex, ROOT_LEVEL_KEY, type CollectionIndex, type Level, type NodeRef };

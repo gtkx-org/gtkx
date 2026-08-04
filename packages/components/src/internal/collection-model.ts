@@ -2,21 +2,15 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass } from "@gtkx/runtime";
-import type { CollectionIndex, Level } from "./collection-index.js";
+import type { CollectionIndex, Level, NodeRef } from "./collection-index.js";
 import type { TreeExpansion } from "./tree-expansion.js";
-import { childLevelKey, createCollectionIndex, ROOT_LEVEL_KEY } from "./collection-index.js";
+import { createCollectionIndex, ROOT_LEVEL_KEY } from "./collection-index.js";
+import { splicePlan } from "./splice-plan.js";
 import { adoptIndex, createTreeExpansion, resetExpansion } from "./tree-expansion.js";
 
 type LevelState = {
     store: LazyLevelStore;
-    ids: string[];
     canExpand: Map<string, boolean>;
-};
-
-type SpliceRange = {
-    start: number;
-    removed: number;
-    added: string[];
 };
 
 type SyncPass = {
@@ -43,6 +37,7 @@ type CollectionModel = {
 const RESIDENT_OBJECT_MAX = 8192;
 const STORE_CLASS_KEY = Symbol.for("gtkx.components.lazy-level-store");
 const EMPTY_INDEX = createCollectionIndex(undefined, undefined, true);
+const NODES: WeakMap<GObject.Object, NodeRef> = new WeakMap();
 
 const newRootStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
 
@@ -59,43 +54,14 @@ function registeredStoreClass(): typeof LazyLevelStore {
     return LazyLevelStore;
 }
 
-function getId(value: GObject.Object | null): string | null {
+function nodeRefFor(value: GObject.Object | null): NodeRef | null {
     const item = value instanceof Gtk.TreeListRow ? value.getItem() : value;
 
-    return item instanceof Gtk.StringObject ? item.getString() : null;
-}
-
-function commonPrefix(previous: string[], next: string[], max: number): number {
-    let count = 0;
-
-    while (count < max && previous[count] === next[count]) {
-        count += 1;
-    }
-
-    return count;
-}
-
-function commonSuffix(previous: string[], next: string[], max: number): number {
-    let count = 0;
-
-    while (count < max && previous[previous.length - 1 - count] === next[next.length - 1 - count]) {
-        count += 1;
-    }
-
-    return count;
-}
-
-function spliceRange(previous: string[], next: string[]): SpliceRange | null {
-    const shared = Math.min(previous.length, next.length);
-    const start = commonPrefix(previous, next, shared);
-
-    if (start === previous.length && start === next.length) {
+    if (item === null) {
         return null;
     }
 
-    const tail = commonSuffix(previous, next, shared - start);
-
-    return { start, removed: previous.length - start - tail, added: next.slice(start, next.length - tail) };
+    return NODES.get(item) ?? null;
 }
 
 function levelFor(state: ModelState, key: string): LevelState {
@@ -105,29 +71,29 @@ function levelFor(state: ModelState, key: string): LevelState {
         return existing;
     }
 
-    const created: LevelState = { store: new (registeredStoreClass())(), ids: [], canExpand: new Map() };
+    const created: LevelState = { store: new (registeredStoreClass())(), canExpand: new Map() };
     state.levels.set(key, created);
 
     return created;
 }
 
-function markRebuilt(rebuilt: Set<string>, ids: string[]): void {
-    for (const id of ids) {
-        rebuilt.add(id);
+function markRebuilt(rebuilt: Set<string>, nodes: NodeRef[]): void {
+    for (const node of nodes) {
+        rebuilt.add(node.key);
     }
 }
 
 function refreshExpandable(current: LevelState, level: Level, rebuilt: Set<string>): void {
     const next: Map<string, boolean> = new Map();
 
-    for (const [index, id] of level.ids.entries()) {
+    for (const [index, node] of level.nodes.entries()) {
         const isWanted = level.expandableFlags[index] ?? false;
-        const previous = current.canExpand.get(id);
-        next.set(id, isWanted);
+        const previous = current.canExpand.get(node.key);
+        next.set(node.key, isWanted);
 
         if (previous !== undefined && previous !== isWanted) {
             current.store.itemsChanged(index, 1, 1);
-            rebuilt.add(id);
+            rebuilt.add(node.key);
         }
     }
 
@@ -136,16 +102,17 @@ function refreshExpandable(current: LevelState, level: Level, rebuilt: Set<strin
 
 function didSpliceLevel(state: ModelState, level: Level, rebuilt: Set<string>): boolean {
     const current = levelFor(state, level.key);
-    const range = spliceRange(current.ids, level.ids);
+    const plan = splicePlan(current.store.nodes, [...level.nodes], state.expansion.expanded);
 
-    if (range === null) {
+    if (plan === null) {
         return false;
     }
 
-    markRebuilt(rebuilt, current.ids.slice(range.start, range.start + range.removed));
-    markRebuilt(rebuilt, range.added);
-    current.ids = [...level.ids];
-    current.store.replaceIds(current.ids, range.start, range.removed, range.added.length);
+    markRebuilt(rebuilt, plan.rebuilt);
+
+    for (const step of plan.steps) {
+        current.store.replaceNodes(step.nodes, step.start, step.removed, step.added);
+    }
 
     return true;
 }
@@ -159,13 +126,13 @@ function dropUnvisited(state: ModelState, visited: Set<string>): void {
 }
 
 function childStoreFor(state: ModelState, object: GObject.Object): Gio.ListStore | null {
-    const id = getId(object);
+    const node = nodeRefFor(object);
 
-    if (id === null) {
+    if (node === null) {
         return null;
     }
 
-    return state.levels.get(childLevelKey(id))?.store ?? null;
+    return state.levels.get(node.key)?.store ?? null;
 }
 
 function ensureTree(state: ModelState): Gtk.TreeListModel {
@@ -262,24 +229,33 @@ function createCollectionModel(): CollectionModel {
 }
 
 class LazyLevelStore extends Gio.ListStore {
-    private hasEvictableIds = true;
-    ids: string[] = [];
+    private hasEvictableObjects = true;
+    nodes: NodeRef[] = [];
     objects: Map<string, Gtk.StringObject> = new Map();
 
     private evictOverflow(): void {
-        if (this.objects.size <= RESIDENT_OBJECT_MAX || !this.hasEvictableIds) {
+        if (this.objects.size <= RESIDENT_OBJECT_MAX || !this.hasEvictableObjects) {
             return;
         }
 
-        const live = new Set(this.ids);
+        const live: Set<string> = new Set(this.nodes.map((node) => node.key));
 
-        for (const id of this.objects.keys()) {
-            if (!live.has(id)) {
-                this.objects.delete(id);
+        for (const key of this.objects.keys()) {
+            if (!live.has(key)) {
+                this.objects.delete(key);
             }
         }
 
-        this.hasEvictableIds = false;
+        this.hasEvictableObjects = false;
+    }
+
+    private mint(node: NodeRef): Gtk.StringObject {
+        const created = Gtk.StringObject.new(node.id);
+        this.objects.set(node.key, created);
+        NODES.set(created, node);
+        this.evictOverflow();
+
+        return created;
     }
 
     override vfuncGetItemType(): bigint {
@@ -287,34 +263,24 @@ class LazyLevelStore extends Gio.ListStore {
     }
 
     override vfuncGetNItems(): number {
-        return this.ids.length;
+        return this.nodes.length;
     }
 
     override vfuncGetItem(position: number): GObject.Object | null {
-        const id = this.ids[position];
+        const node = this.nodes[position];
 
-        if (id === undefined) {
+        if (node === undefined) {
             return null;
         }
 
-        const existing = this.objects.get(id);
-
-        if (existing !== undefined) {
-            return existing;
-        }
-
-        const created = Gtk.StringObject.new(id);
-        this.objects.set(id, created);
-        this.evictOverflow();
-
-        return created;
+        return this.objects.get(node.key) ?? this.mint(node);
     }
 
-    replaceIds(next: string[], start: number, removed: number, added: number): void {
-        this.ids = next;
-        this.hasEvictableIds = true;
+    replaceNodes(next: NodeRef[], start: number, removed: number, added: number): void {
+        this.nodes = next;
+        this.hasEvictableObjects = true;
         this.itemsChanged(start, removed, added);
     }
 }
 
-export { createCollectionModel, getId, type CollectionModel };
+export { createCollectionModel, nodeRefFor, type CollectionModel };

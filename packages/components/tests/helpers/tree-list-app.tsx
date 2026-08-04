@@ -27,6 +27,7 @@ type TreeListState = {
     items: ListItem<TreeName>[];
     expandedIds: string[];
     selectedIds?: string[] | undefined;
+    onExpandedChange?: ((ids: string[]) => void) | undefined;
 };
 
 type TreeListAppProps = TreeListState & {
@@ -46,15 +47,9 @@ const treeBranch = (id: string, children: ListItem<TreeName>[]): ListItem<TreeNa
     children,
 });
 
-const TreeListApp = ({ items, expandedIds, selectedIds, listRef }: TreeListAppProps): ReactNode => (
+const TreeListApp = ({ listRef, ...state }: TreeListAppProps): ReactNode => (
     <ScrollWrapper minContentHeight={600}>
-        <ListView<TreeName>
-            ref={listRef}
-            items={items}
-            expandedIds={expandedIds}
-            selectedIds={selectedIds}
-            renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
-        />
+        <ListView<TreeName> ref={listRef} {...state} renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>} />
     </ScrollWrapper>
 );
 
