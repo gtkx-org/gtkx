@@ -735,6 +735,8 @@ The first attempt asked the shell for the group instead, with `set -m`, and that
 
 Regression tests in `packages/utils/tests/spawn-with-parent-death-signal.test.ts` assert that the grandchild dies with the group and that the wrapper leads a group of its own; both fail against either earlier script.
 
+Liveness there is read from `/proc/<pid>/stat` rather than from `process.kill(pid, 0)`, which reports a zombie as alive. The group kill takes the grandchild's parent with it, so the grandchild is reparented to whatever PID 1 the environment has, and a PID 1 that does not reap orphans leaves it a zombie indefinitely. That is what a container running the suite under `bash -c` does, and it made the fix look broken in CI while the process had in fact been killed.
+
 ---
 
 ## 25. A shortcut bound the documented way cannot be pressed from a test

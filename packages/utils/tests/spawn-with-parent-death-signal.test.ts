@@ -11,14 +11,20 @@ type Grandchild = { wrapper: ChildProcess; pid: number };
 const POLL_INTERVAL_MS = 20;
 const POLL_TIMEOUT_MS = 2000;
 
-const isProcessAlive = (pid: number): boolean => {
+const getProcessState = (pid: number): string | null => {
     try {
-        process.kill(pid, 0);
+        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
 
-        return true;
+        return stat.slice(stat.lastIndexOf(")") + 2).split(" ", 1)[0] ?? null;
     } catch {
-        return false;
+        return null;
     }
+};
+
+const isProcessAlive = (pid: number): boolean => {
+    const state = getProcessState(pid);
+
+    return state !== null && state !== "Z";
 };
 
 const delay = (ms: number): Promise<void> =>
@@ -47,16 +53,6 @@ const getProcessGroup = (pid: number): number | null => {
         const group = Number(fields[2]);
 
         return Number.isNaN(group) ? null : group;
-    } catch {
-        return null;
-    }
-};
-
-const getProcessState = (pid: number): string | null => {
-    try {
-        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
-
-        return stat.slice(stat.lastIndexOf(")") + 2).split(" ", 1)[0] ?? null;
     } catch {
         return null;
     }
