@@ -12,7 +12,7 @@ const findPasswordFields = async (): Promise<{ password: Gtk.PasswordEntry; conf
 };
 
 const findDoneButton = async (): Promise<Gtk.Button> =>
-    screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Done", as: Gtk.Button });
+    screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Done", as: Gtk.Button });
 
 const findInnerText = (widget: Gtk.Widget): Gtk.Text | null => {
     if (widget instanceof Gtk.Text) {
@@ -135,7 +135,7 @@ describe("passwordEntryDemo window setup", () => {
         await renderDemo(passwordEntryDemo);
         const header = await screen.findByName("password-entry-header", { as: Gtk.HeaderBar });
         expect(header).toHaveObjectProperty("showTitleButtons", false);
-        const done = within(header).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Done" });
+        const done = within(header).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Done" });
         expect(done).toBe(await findDoneButton());
     });
 });

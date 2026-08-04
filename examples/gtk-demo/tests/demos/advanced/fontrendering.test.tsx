@@ -18,12 +18,12 @@ async function activateGridMode(): Promise<Gtk.ToggleButton> {
 
 async function toggleExtentsAndGridOverlays(): Promise<{ extents: Gtk.CheckButton; grid: Gtk.CheckButton }> {
     const extents = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-        name: "Show _Extents",
+        name: "Show Extents",
         as: Gtk.CheckButton,
     });
 
     const grid = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-        name: "Show _Grid",
+        name: "Show Grid",
         as: Gtk.CheckButton,
     });
 
@@ -106,12 +106,12 @@ describe("fontRenderingDemo overlay checks", () => {
         await renderDemo(fontRenderingDemo);
 
         const showPixels = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Pixels",
+            name: "Show Pixels",
             as: Gtk.CheckButton,
         });
 
         const showOutline = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Outline",
+            name: "Show Outline",
             as: Gtk.CheckButton,
         });
 
@@ -123,7 +123,7 @@ describe("fontRenderingDemo overlay checks", () => {
         await renderDemo(fontRenderingDemo);
 
         const showPixels = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Pixels",
+            name: "Show Pixels",
             as: Gtk.CheckButton,
         });
 
@@ -135,12 +135,12 @@ describe("fontRenderingDemo overlay checks", () => {
         await renderDemo(fontRenderingDemo);
 
         const antialias = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "_Antialias",
+            name: "Antialias",
             as: Gtk.CheckButton,
         });
 
         const hintMetrics = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Hint _Metrics",
+            name: "Hint Metrics",
             as: Gtk.CheckButton,
         });
 
@@ -321,7 +321,7 @@ describe("fontRenderingDemo overlay animation", () => {
         const result = await renderDemo(fontRenderingDemo);
 
         const showOutline = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Outline",
+            name: "Show Outline",
             as: Gtk.CheckButton,
         });
 
@@ -334,7 +334,7 @@ describe("fontRenderingDemo overlay animation", () => {
         const result = await renderDemo(fontRenderingDemo);
 
         const showPixels = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Pixels",
+            name: "Show Pixels",
             as: Gtk.CheckButton,
         });
 

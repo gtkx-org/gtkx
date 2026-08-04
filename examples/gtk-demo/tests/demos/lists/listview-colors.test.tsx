@@ -73,7 +73,7 @@ describe("listviewColorsDemo header bar", () => {
     it("hosts the refill button and the three drop-downs inside the header bar", async () => {
         await renderDemo(listviewColorsDemo);
         const headerBar = await screen.findByName("header-bar", { as: Gtk.HeaderBar });
-        const refill = await within(headerBar).findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Refill" });
+        const refill = await within(headerBar).findByRole(Gtk.AccessibleRole.BUTTON, { name: "Refill" });
         expect(refill).toBeInstanceOf(Gtk.Button);
         expect(await within(headerBar).findByName("limit-dropdown")).toBeInstanceOf(Gtk.DropDown);
         expect(await within(headerBar).findByName("sort-dropdown")).toBeInstanceOf(Gtk.DropDown);
@@ -163,7 +163,7 @@ describe("listviewColorsDemo header actions", () => {
             expect(Number(model.getSelection().getSize())).toBe(1);
         });
 
-        const refill = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Refill" });
+        const refill = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Refill" });
         await userEvent.click(refill);
 
         await waitFor(() => {

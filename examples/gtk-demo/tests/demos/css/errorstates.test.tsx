@@ -12,8 +12,8 @@ type DetailEntries = {
 
 const renderAndFlagMoreDetails = async (): Promise<DetailEntries> => {
     await renderDemo(errorstatesDemo);
-    const detailsEntry = await screen.findByLabelText("_Details", { as: Gtk.Entry });
-    const moreDetailsEntry = screen.getByLabelText("More D_etails", { as: Gtk.Entry });
+    const detailsEntry = await screen.findByLabelText("Details", { as: Gtk.Entry });
+    const moreDetailsEntry = screen.getByLabelText("More Details", { as: Gtk.Entry });
     await userEvent.type(moreDetailsEntry, "filled in");
 
     return { detailsEntry, moreDetailsEntry };

@@ -12,7 +12,7 @@ const tempDirRef = { path: "" };
 
 async function renderDemoAndClickOpen() {
     await renderDemo(listviewWordsDemo);
-    const openButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
+    const openButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Open", as: Gtk.Button });
     await userEvent.click(openButton);
 }
 
@@ -47,7 +47,7 @@ describe("listviewWordsDemo metadata", () => {
 describe("listviewWordsDemo layout", () => {
     it("installs a header bar with an Open button", async () => {
         await renderDemo(listviewWordsDemo);
-        const openButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
+        const openButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Open", as: Gtk.Button });
         expect(openButton).toHaveObjectProperty("useUnderline", true);
     });
 

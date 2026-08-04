@@ -12,8 +12,8 @@ const openDialog = async (buttonName: string, dialogName: string): Promise<Adw.A
     return screen.findByName(dialogName, { as: Adw.AlertDialog });
 };
 
-const openMessageDialog = (): Promise<Adw.AlertDialog> => openDialog("_Message Dialog", "message-dialog");
-const openInteractiveDialog = (): Promise<Adw.AlertDialog> => openDialog("_Interactive Dialog", "interactive-dialog");
+const openMessageDialog = (): Promise<Adw.AlertDialog> => openDialog("Message Dialog", "message-dialog");
+const openInteractiveDialog = (): Promise<Adw.AlertDialog> => openDialog("Interactive Dialog", "interactive-dialog");
 
 describe("dialogDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -28,8 +28,8 @@ describe("dialogDemo metadata", () => {
 
     it("renders the Message Dialog button, the Interactive Dialog button and two empty entries", async () => {
         await renderDemo(dialogDemo);
-        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Message Dialog" });
-        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Interactive Dialog" });
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Message Dialog" });
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Interactive Dialog" });
         expect(await screen.findByName("demo-entry-1")).toHaveDisplayValue("");
         expect(await screen.findByName("demo-entry-2")).toHaveDisplayValue("");
     });
@@ -50,7 +50,7 @@ describe("dialogDemo message dialog", () => {
         await renderDemo(dialogDemo);
 
         const messageButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-            name: "_Message Dialog",
+            name: "Message Dialog",
             as: Gtk.Button,
         });
 

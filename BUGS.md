@@ -739,6 +739,22 @@ gtkx_fire_event { widgetId: "...", signal: "activate" }
 
 ---
 
+## 26. Access keys leak into every computed accessible name
+
+**Severity:** blocker for a HIG-compliant app. GNOME requires an access key on every labelled control, and adding one breaks the app's own tests and misreports its accessibility.
+
+**Repro:** render `<GtkButton label="_Add Connection" useUnderline />`, then query it.
+
+**Actual:** `getByRole("button", { name: "Add Connection" })` finds nothing, `toHaveAccessibleName("Add Connection")` fails, and `gtkx_get_widget_tree` reports `_Add Connection`. GTK's own accessible name for that button is `Add Connection`, so GTKX disagreed with what a screen reader announces.
+
+**Cause:** `stripMnemonic` already existed in `packages/testing/src/widget-accessible-properties.ts` but was reachable from one path only, `namingLabelText`, and gated on `widget instanceof Gtk.Label`. A widget's own label was read raw by three other paths: `readFirstText` (feeding `getWidgetNodeText`, the MCP widget tree and the pretty-printer), `getWidgetLabelText` (feeding `getByText`), and `collectMnemonicMatch` in `queries.ts` (feeding `getByLabelText` through a label's mnemonic widget). `getWidgetAccessibleName` returns the widget's own text before it ever reaches the stripping path, so the mnemonic won.
+
+**Fix:** strip whenever a widget's own naming text is read and its `use-underline` property is set, which covers `getLabel` and `getTitle` while leaving an editable's `getText` content alone. `use-underline` is carried by six Gtk widgets and seven Adw ones, including `AdwPreferencesRow`, so `AdwActionRow` and `AdwEntryRow` titles are covered too.
+
+The `gtk-demo` suite had assertions written against the leaked names: `_Refill`, `_OK`, `_Open`, `_Copy`, `_Foreground` and the rest, across eleven files. Those now assert the drawn name. The one assertion that legitimately reads the raw GObject `label` property keeps its underscore.
+
+---
+
 ## Verified working
 
 Recorded so nobody re-tests them:

@@ -106,7 +106,7 @@ describe("themesDemo cycling lifecycle", () => {
         const { cycle, alert, header, window } = await activateCycleAndAwaitAlert();
         expect(window).toHaveObjectProperty("title", null);
         expect(queryFpsLabel(header)).toBeNull();
-        await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_OK" }));
+        await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "OK" }));
 
         await waitFor(() => {
             expect(screen.queryByName("warning-dialog")).toBeNull();
@@ -123,7 +123,7 @@ describe("themesDemo cycling lifecycle", () => {
 
     it("does not start cycling when the warning is cancelled", async () => {
         const { alert, header, window } = await activateCycleAndAwaitAlert();
-        await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Cancel" }));
+        await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Cancel" }));
 
         await waitFor(() => {
             expect(screen.queryByName("warning-dialog")).toBeNull();
@@ -136,7 +136,7 @@ describe("themesDemo cycling lifecycle", () => {
 
     it("stops cycling, clears the fps readout, and unpresses the toggle when unchecked", async () => {
         const { cycle, alert, header } = await activateCycleAndAwaitAlert();
-        await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_OK" }));
+        await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "OK" }));
 
         await waitFor(() => {
             expect(cycle).toBePressed();

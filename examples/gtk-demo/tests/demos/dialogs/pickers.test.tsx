@@ -61,10 +61,10 @@ describe("pickersDemo rendering", () => {
 
     it("renders the labelled rows for color, font, file and URI via mnemonic labels", async () => {
         await renderDemo(pickersDemo);
-        expect(await screen.findByLabelText("_Color:")).toBeInstanceOf(Gtk.ColorDialogButton);
-        expect(await screen.findByLabelText("_Font:")).toBeInstanceOf(Gtk.FontDialogButton);
-        expect(await screen.findByLabelText("_File:")).toBeInstanceOf(Gtk.Button);
-        expect(await screen.findByLabelText("_URI:")).toBeInstanceOf(Gtk.Button);
+        expect(await screen.findByLabelText("Color:")).toBeInstanceOf(Gtk.ColorDialogButton);
+        expect(await screen.findByLabelText("Font:")).toBeInstanceOf(Gtk.FontDialogButton);
+        expect(await screen.findByLabelText("File:")).toBeInstanceOf(Gtk.Button);
+        expect(await screen.findByLabelText("URI:")).toBeInstanceOf(Gtk.Button);
     });
 });
 

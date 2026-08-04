@@ -214,7 +214,7 @@ const findInactiveSearchToggle = async (): Promise<Gtk.ToggleButton> => {
 };
 
 const findOpenButton = async (): Promise<Gtk.Button> =>
-    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
+    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Open", as: Gtk.Button });
 
 const readBufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();

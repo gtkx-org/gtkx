@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { sizegroupDemo } from "../../../src/demos/layout/sizegroup.js";
 import { renderDemo } from "../../test-utils.js";
 
-const MNEMONIC_LABELS = ["_Foreground", "_Background", "_Dashing", "_Line ends"] as const;
+const MNEMONIC_LABELS = ["Foreground", "Background", "Dashing", "Line ends"] as const;
 
 const naturalWidths = (dropdowns: Gtk.Widget[]): number[] =>
     dropdowns.map((d) => d.measure(Gtk.Orientation.HORIZONTAL, -1)[1]);
@@ -55,7 +55,7 @@ describe("sizegroupDemo frames and labels", () => {
 describe("sizegroupDemo check button", () => {
     it("starts with grouping enabled so every dropdown shares one requested width", async () => {
         await renderDemo(sizegroupDemo);
-        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: true });
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Enable grouping", checked: true });
         const dropdowns = await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
         const widths = naturalWidths(dropdowns);
         expect(widths.every((w) => w > 0)).toBe(true);
@@ -75,17 +75,17 @@ describe("sizegroupDemo check button", () => {
         expect(areAllEqual(groupedWidths)).toBe(true);
 
         const check = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "_Enable grouping",
+            name: "Enable grouping",
             checked: true,
         });
 
         await userEvent.click(check);
-        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: false });
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Enable grouping", checked: false });
         const ungroupedWidths = naturalWidths(dropdowns);
         expect(areAllEqual(ungroupedWidths)).toBe(false);
         expect(Math.max(...ungroupedWidths)).toBe(groupedWidths[0]);
         await userEvent.click(check);
-        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "_Enable grouping", checked: true });
+        await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Enable grouping", checked: true });
         expect(areAllEqual(naturalWidths(dropdowns))).toBe(true);
     });
 });

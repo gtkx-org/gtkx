@@ -54,7 +54,7 @@ describe("paintableSvgDemo rendering", () => {
     it("packs the open button into a HeaderBar titlebar", async () => {
         await renderDemo(paintableSvgDemo);
         const headerBar = await screen.findByName("paintable-svg-header", { as: Gtk.HeaderBar });
-        const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
+        const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Open", as: Gtk.Button });
         expect(openButton).toBeInstanceOf(Gtk.Button);
     });
 

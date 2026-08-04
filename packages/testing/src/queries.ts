@@ -28,6 +28,7 @@ import {
     getWidgetValue,
     isInaccessible,
     isWidgetChecked,
+    namingLabelText,
 } from "./widget-accessible-properties.js";
 
 /** The built-in queries in their unbound form, each taking the container to search as its first argument. */
@@ -411,7 +412,7 @@ const collectMnemonicMatch = (
         return null;
     }
 
-    const labelText = widget.getLabel();
+    const labelText = namingLabelText(widget);
 
     if (!labelText || !isTextMatch(labelText, text, widget, options)) {
         return null;

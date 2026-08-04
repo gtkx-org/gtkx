@@ -80,12 +80,23 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
+const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
+
+const isUnderlineUsed = (widget: Gtk.Widget): boolean => {
+    const fn: unknown = Reflect.get(widget, "getUseUnderline");
+
+    return typeof fn === "function" && (fn as () => boolean).call(widget);
+};
+
+const readNamingText = (widget: Gtk.Widget, getter: string, value: string): string =>
+    getter !== EDITABLE_TEXT_GETTER && isUnderlineUsed(widget) ? stripMnemonic(value) : value;
+
 const readFirstText = (widget: Gtk.Widget, getters: string[]): string | null => {
     for (const getter of getters) {
         const value = callStringGetter(widget, getter);
 
         if (value) {
-            return value;
+            return readNamingText(widget, getter, value);
         }
     }
 
@@ -117,8 +128,6 @@ const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
     return readFirstText(widget, DEFAULT_TEXT_GETTERS);
 };
 
-const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
-
 const namingLabelText = (widget: Gtk.Widget): string | null => {
     const text = getLabelText(widget);
 
@@ -126,7 +135,7 @@ const namingLabelText = (widget: Gtk.Widget): string | null => {
         return null;
     }
 
-    return widget instanceof Gtk.Label && widget.getUseUnderline() ? stripMnemonic(text) : text;
+    return isUnderlineUsed(widget) ? stripMnemonic(text) : text;
 };
 
 const isNamingLabelRole = (role: Gtk.AccessibleRole, shouldIncludePresentation: boolean): boolean =>
@@ -157,7 +166,7 @@ const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
         return null;
     }
 
-    return getLabelText(widget);
+    return namingLabelText(widget);
 };
 
 const getChildren = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
@@ -556,6 +565,7 @@ const isInaccessible = (widget: Gtk.Widget): boolean => {
 };
 
 export {
+    namingLabelText,
     getWidgetNodeText,
     getWidgetTextContent,
     getWidgetLabelText,
