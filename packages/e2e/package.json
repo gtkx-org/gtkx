@@ -10,10 +10,12 @@
     },
     "devDependencies": {
         "@codspeed/vitest-plugin": "^5.7.1",
+        "@gtkx/cli": "workspace:*",
         "@gtkx/config": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
+        "@gtkx/mcp": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",

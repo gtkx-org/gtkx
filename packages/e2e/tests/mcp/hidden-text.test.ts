@@ -1,8 +1,8 @@
 import type { SerializedWidget } from "@gtkx/mcp/internal";
+import { serializeWidget, type WidgetFormatting } from "@gtkx/cli/internal";
 import * as Gtk from "@gtkx/gi/gtk";
 import { formatRole, getWidgetNodeText, prettyWidget } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-import { serializeWidget, type WidgetFormatting } from "../../src/mcp/serialize-widget.js";
 
 const SECRET = "hunter2";
 const REDACTED = "[redacted]";

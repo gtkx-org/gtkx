@@ -29,6 +29,12 @@
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "exports": {
+        "./env": "./env.d.ts",
+        "./internal": {
+            "source": "./src/internal.ts",
+            "types": "./dist/internal.d.ts",
+            "default": "./dist/internal.js"
+        },
         "./package.json": "./package.json",
         "./refresh-runtime": {
             "source": "./src/refresh-runtime.ts",
@@ -39,8 +45,7 @@
             "source": "./src/vitest-plugin.ts",
             "types": "./dist/vitest-plugin.d.ts",
             "default": "./dist/vitest-plugin.js"
-        },
-        "./env": "./env.d.ts"
+        }
     },
     "bin": {
         "gtkx": "bin/gtkx.js"
