@@ -16,7 +16,8 @@ const PARAM_REF_PATTERN = /(?<!\w)@(\w+)/g;
 const FUNCTION_REF_PATTERN = /\b([a-z_][a-z0-9_]*)\(\)/g;
 const HTML_COMMENT_PATTERN = /<!--[\s\S]*?-->/g;
 const DOCBOOK_TAG_PATTERN = /<\/?(?:itemizedlist|listitem|para|literal|link|informalexample|programlisting)[\s>]/;
-const DOCBOOK_LISTING_PATTERN = /<programlisting>([\s\S]*?)<\/programlisting>/g;
+const DOCBOOK_LISTING_OPEN = "<programlisting>";
+const DOCBOOK_LISTING_CLOSE = "</programlisting>";
 const DOCBOOK_EXAMPLE_PATTERN = /<\/?informalexample>\s*/g;
 const DOCBOOK_ITEM_OPEN_PATTERN = /<listitem>\s*(?:<para>\s*)?/g;
 const DOCBOOK_ITEM_CLOSE_PATTERN = /(?:<\/para>\s*)?<\/listitem>\s*/g;
@@ -69,9 +70,10 @@ const renderCodeFence = (body: string): string => {
     return `\`\`\`${fence}\n${code}\n\`\`\``;
 };
 
+const renderListing = (code: string): string => `\n\`\`\`\n${code.trim()}\n\`\`\`\n`;
+
 const replaceDocBookTags = (text: string): string =>
-    text
-        .replaceAll(DOCBOOK_LISTING_PATTERN, (_match, code: string) => `\n\`\`\`\n${code.trim()}\n\`\`\`\n`)
+    replaceDelimited(text, [DOCBOOK_LISTING_OPEN, DOCBOOK_LISTING_CLOSE], renderListing)
         .replaceAll(DOCBOOK_EXAMPLE_PATTERN, "\n")
         .replaceAll(DOCBOOK_ITEM_OPEN_PATTERN, "\n- ")
         .replaceAll(DOCBOOK_ITEM_CLOSE_PATTERN, "\n")
@@ -88,29 +90,45 @@ const docBookToMarkdown = (text: string): string => {
     return replaceDocBookTags(text).replaceAll(BLANK_LINE_RUN_PATTERN, "\n\n").trim();
 };
 
-const protectCodeBlocks = (raw: string, protect: (value: string) => string): string => {
+const replaceDelimited = (raw: string, bounds: [string, string], render: (body: string) => string): string => {
+    const [open, close] = bounds;
     let result = "";
     let cursor = 0;
 
     while (cursor < raw.length) {
-        const open = raw.indexOf(CODE_BLOCK_OPEN, cursor);
+        const start = raw.indexOf(open, cursor);
 
-        if (open === -1) {
+        if (start === -1) {
             break;
         }
 
-        const close = raw.indexOf(CODE_BLOCK_CLOSE, open + CODE_BLOCK_OPEN.length);
+        const end = raw.indexOf(close, start + open.length);
 
-        if (close === -1) {
+        if (end === -1) {
             break;
         }
 
-        result += raw.slice(cursor, open);
-        result += protect(renderCodeFence(raw.slice(open + CODE_BLOCK_OPEN.length, close)));
-        cursor = close + CODE_BLOCK_CLOSE.length;
+        result += raw.slice(cursor, start);
+        result += render(raw.slice(start + open.length, end));
+        cursor = end + close.length;
     }
 
     return result + raw.slice(cursor);
+};
+
+const protectCodeBlocks = (raw: string, protect: (value: string) => string): string =>
+    replaceDelimited(raw, [CODE_BLOCK_OPEN, CODE_BLOCK_CLOSE], (body) => protect(renderCodeFence(body)));
+
+const stripHtmlComments = (text: string): string => {
+    let current = text;
+    let previous = "";
+
+    while (current !== previous) {
+        previous = current;
+        current = current.replaceAll(HTML_COMMENT_PATTERN, "");
+    }
+
+    return current;
 };
 
 const gtkDocToMarkdown = (raw: string, identifiers?: Map<string, string>): string => {
@@ -136,7 +154,7 @@ const gtkDocToMarkdown = (raw: string, identifiers?: Map<string, string>): strin
 
     text = text.replaceAll(PARAM_REF_PATTERN, (_match, name: string) => protect(renderParamRef(name, identifiers)));
     text = text.replaceAll(FUNCTION_REF_PATTERN, (_match, name: string) => protect(`\`${name}()\``));
-    text = text.replaceAll(HTML_COMMENT_PATTERN, "");
+    text = stripHtmlComments(text);
 
     for (let index = stash.length - 1; index >= 0; index -= 1) {
         const value = stash[index] ?? "";
