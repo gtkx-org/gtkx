@@ -1,4 +1,8 @@
 {
+    "entryPoints": [
+        "./dist/index.d.ts",
+        "./dist/config.d.ts"
+    ],
     "intentionallyNotExported": [
         "Container",
         "SettingValue",
