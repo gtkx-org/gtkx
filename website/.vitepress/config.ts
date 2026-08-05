@@ -73,6 +73,12 @@ const frontmatterHead = (frontmatter: Record<string, unknown>): HeadConfig[] => 
     return Array.isArray(existing) ? (existing as HeadConfig[]) : [];
 };
 
+const getPageImage = (frontmatter: Record<string, unknown>): string =>
+    typeof frontmatter.image === "string" ? `${url}${frontmatter.image}` : ogImage;
+
+const getOgType = (relativePath: string): string =>
+    relativePath !== "blog/index.md" && relativePath.startsWith("blog/") ? "article" : "website";
+
 export default defineConfig({
     title,
     description,
@@ -98,11 +104,8 @@ export default defineConfig({
         ["link", { rel: "manifest", href: "/site.webmanifest" }],
         ["meta", { name: "theme-color", content: "#e03a3e" }],
         ...fontPreloads,
-        ["meta", { property: "og:type", content: "website" }],
         ["meta", { property: "og:site_name", content: title }],
-        ["meta", { property: "og:image", content: ogImage }],
         ["meta", { name: "twitter:card", content: "summary_large_image" }],
-        ["meta", { name: "twitter:image", content: ogImage }],
     ],
 
     transformPageData(pageData) {
@@ -111,14 +114,18 @@ export default defineConfig({
         const pageUrl = route ? `${url}/${route}` : `${url}/`;
         const pageTitle = isHome ? pageData.title : `${pageData.title} | ${title}`;
         const pageDescription = pageData.description || description;
+        const pageImage = getPageImage(pageData.frontmatter);
 
         const head: HeadConfig[] = [
             ["link", { rel: "canonical", href: pageUrl }],
+            ["meta", { property: "og:type", content: getOgType(pageData.relativePath) }],
             ["meta", { property: "og:url", content: pageUrl }],
             ["meta", { property: "og:title", content: pageTitle }],
             ["meta", { property: "og:description", content: pageDescription }],
+            ["meta", { property: "og:image", content: pageImage }],
             ["meta", { name: "twitter:title", content: pageTitle }],
             ["meta", { name: "twitter:description", content: pageDescription }],
+            ["meta", { name: "twitter:image", content: pageImage }],
         ];
 
         pageData.frontmatter.head = [...frontmatterHead(pageData.frontmatter), ...head];

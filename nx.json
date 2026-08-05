@@ -44,13 +44,19 @@
                     "targetName": "build",
                     "configName": "tsconfig.lib.json"
                 }
-            }
+            },
+            "exclude": [
+                "packages/eslint/tests/fixtures/**"
+            ]
         },
         {
             "plugin": "@nx/eslint/plugin",
             "options": {
                 "targetName": "lint"
-            }
+            },
+            "exclude": [
+                "packages/eslint/tests/fixtures/**"
+            ]
         },
         {
             "plugin": "@nx/vitest",

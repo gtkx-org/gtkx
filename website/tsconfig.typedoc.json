@@ -8,5 +8,5 @@
         "skipLibCheck": true,
         "resolveJsonModule": true
     },
-    "include": ["../packages/*/dist/**/*.d.ts", "../packages/native/*.d.ts"]
+    "include": ["../packages/*/dist/**/*.d.ts", "../packages/*/env.d.ts", "../packages/native/*.d.ts"]
 }

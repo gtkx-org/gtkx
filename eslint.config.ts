@@ -1,2 +1,4 @@
 import { config } from "@gtkx/eslint";
-export default config(import.meta.dirname);
+import api from "./api.json" with { type: "json" };
+
+export default config(import.meta.dirname, api);
