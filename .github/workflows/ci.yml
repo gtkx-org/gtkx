@@ -271,7 +271,12 @@ jobs:
             set -e
             export DEBIAN_FRONTEND=noninteractive
             codename=$(. /etc/os-release; echo "$VERSION_CODENAME")
-            sed -i "s|http://archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g" /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+            for sources in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources; do
+              if [ -e "$sources" ]; then
+                sed -i "s|http://archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g" "$sources"
+              fi
+            done
+            grep -rq "azure.archive.ubuntu.com" /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null
             printf "deb http://azure.archive.ubuntu.com/ubuntu %s-proposed main\n" "$codename" > /etc/apt/sources.list.d/proposed.list
             printf "Package: *\nPin: release a=%s-proposed\nPin-Priority: 100\n\nPackage: src:gtk4\nPin: release a=%s-proposed\nPin-Priority: 600\n" "$codename" "$codename" > /etc/apt/preferences.d/gtk4-proposed
             apt-get update -qq
