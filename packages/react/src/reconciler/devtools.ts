@@ -11,8 +11,7 @@ const DEVELOPMENT_BUNDLE: BundleType = 1;
 const PRODUCTION_BUNDLE: BundleType = 0;
 const injection = { isDone: false };
 
-const hasDevToolsHook = (): boolean =>
-    (globalThis as unknown as Record<string, unknown>).__REACT_DEVTOOLS_GLOBAL_HOOK__ !== undefined;
+const hasDevToolsHook = (): boolean => Reflect.get(globalThis, "__REACT_DEVTOOLS_GLOBAL_HOOK__") !== undefined;
 
 const bundleType = (): BundleType =>
     process.env.NODE_ENV === "production" ? PRODUCTION_BUNDLE : DEVELOPMENT_BUNDLE;
