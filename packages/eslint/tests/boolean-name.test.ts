@@ -23,18 +23,11 @@ ruleTester.run("boolean-name", booleanName, {
         { code: "const count = 1;\n" },
         { code: "const entry = items.get(id);\n" },
         { code: "let isReady: boolean | undefined;\n" },
-        {
-            code: "type GirClass = {\n    throws: boolean;\n};\n",
-            options: [{ mirrors: ["GirClass"] }],
-        },
-        {
-            code: "interface GirClass {\n    throws: boolean;\n}\n",
-            options: [{ mirrors: ["GirClass"] }],
-        },
-        {
-            code: "type Manifest = {\n    private: boolean;\n};\n",
-            options: [{ mirrorProperties: ["private"] }],
-        },
+        { code: "type A = {\n    isDone?: true;\n};\n" },
+        { code: "type B = {\n    shouldHideExpander?: true;\n};\n" },
+        { code: "type C = {\n    isOff: false;\n};\n" },
+        { code: "type D = {\n    isDone?: true | undefined;\n};\n" },
+        { code: "declare const B: unique symbol;\ntype E = {\n    [B]: true;\n};\n" },
     ],
     invalid: [
         {
@@ -82,8 +75,19 @@ ruleTester.run("boolean-name", booleanName, {
             errors: [{ messageId: "negated" }],
         },
         {
-            code: "type Options = {\n    visible: boolean;\n};\n",
-            options: [{ mirrors: ["GirClass"], mirrorProperties: ["private"] }],
+            code: "type Options = {\n    throws: boolean;\n    private: boolean;\n};\n",
+            errors: [{ messageId: "missingPrefix" }, { messageId: "missingPrefix" }],
+        },
+        {
+            code: "type GirClass = {\n    throws: boolean;\n};\n",
+            errors: [{ messageId: "missingPrefix" }],
+        },
+        {
+            code: "interface GirClass {\n    throws: boolean;\n}\n",
+            errors: [{ messageId: "missingPrefix" }],
+        },
+        {
+            code: "type Manifest = {\n    private: boolean;\n};\n",
             errors: [{ messageId: "missingPrefix" }],
         },
     ],

@@ -34,7 +34,7 @@ ruleTester.run("module-section-order", moduleSectionOrder, {
         { code: ordered },
         { code: "const A = 1;\nconst b = () => A;\n" },
         { code: "export const A = 1;\nexport function b() { return A; }\n" },
-        { code: "export default 1;\nconst A = 1;\n" },
+        { code: "const A = 1;\nexport default A;\n" },
         { code: "declare module \"x\" {}\nconst A = 1;\n" },
         { code: "import \"./side-effect.js\";\nconst A = 1;\n" },
     ],
@@ -49,6 +49,10 @@ ruleTester.run("module-section-order", moduleSectionOrder, {
         },
         {
             code: "export { a };\nconst a = 1;\n",
+            errors: [{ messageId: "outOfOrder", data: { section: "constants", blocker: "exports", line: 1 } }],
+        },
+        {
+            code: "export default 1;\nconst A = 1;\n",
             errors: [{ messageId: "outOfOrder", data: { section: "constants", blocker: "exports", line: 1 } }],
         },
         {

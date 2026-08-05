@@ -1,0 +1,16 @@
+{
+    "name": "@fixture/pub",
+    "version": "0.0.0",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "source": "./src/index.ts",
+            "default": "./dist/index.js"
+        },
+        "./internal": {
+            "source": "./src/internal.ts",
+            "default": "./dist/internal.js"
+        }
+    }
+}

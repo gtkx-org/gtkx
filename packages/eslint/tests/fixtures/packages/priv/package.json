@@ -1,0 +1,13 @@
+{
+    "name": "@fixture/priv",
+    "version": "0.0.0",
+    "type": "module",
+    "private": true,
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "source": "./src/index.ts",
+            "default": "./dist/index.js"
+        }
+    }
+}

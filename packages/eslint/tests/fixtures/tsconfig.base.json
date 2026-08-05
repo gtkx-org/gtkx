@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "allowImportingTsExtensions": true,
+        "customConditions": ["source"],
+        "lib": ["esnext"],
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "noEmit": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "target": "es2025",
+        "types": []
+    }
+}
