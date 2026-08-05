@@ -64,11 +64,14 @@ function readInstalledProperty(pspec: ExternalObject<Handle>): InstalledProperty
 
 function findInstalledProperty(gtype: bigint, name: string): InstalledProperty | undefined {
     const klass = typeClassRef(gtype) as ExternalObject<Handle>;
-    const pspec = findPropertySpec(klass, name);
-    const installed = pspec === null ? undefined : readInstalledProperty(pspec);
-    typeClassUnref(klass);
 
-    return installed;
+    try {
+        const pspec = findPropertySpec(klass, name);
+
+        return pspec === null ? undefined : readInstalledProperty(pspec);
+    } finally {
+        typeClassUnref(klass);
+    }
 }
 
 function constructPropertyFor(gtype: bigint, name: string, jsValue: unknown): ConstructProperty | undefined {
@@ -174,7 +177,10 @@ function resolveAccessor(
         throw new RangeError(`registerClass: no property registered for id ${String(propertyId)}`);
     }
 
-    return interfaceAccessorFor(dispatch, pspec);
+    const created = interfaceAccessorFor(dispatch, pspec);
+    dispatch.accessors[propertyId - FIRST_PROPERTY_ID] = created;
+
+    return created;
 }
 
 function callMember(instance: object, member: string, args: unknown[]): unknown {
