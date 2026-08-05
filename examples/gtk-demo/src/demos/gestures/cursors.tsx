@@ -194,7 +194,7 @@ const CursorRow = ({ info }: { info: CursorInfo }) => {
         <GtkListBoxRow activatable={false}>
             <GtkBox spacing={10} marginStart={10} marginEnd={10} marginTop={10} marginBottom={10}>
                 <CursorPreview info={info} />
-                <GtkLabel halign={Gtk.Align.START} valign={Gtk.Align.BASELINE} hexpand xalign={0}>
+                <GtkLabel halign={Gtk.Align.START} valign={Gtk.Align.BASELINE_FILL} hexpand xalign={0}>
                     {info.name}
                 </GtkLabel>
                 <CursorFrame cursor={cursors[0]} tooltip={tooltips[0]} />

@@ -142,6 +142,7 @@ describe("cursorsDemo previews", () => {
 
 describe("cursorsDemo css registration", () => {
     it("adds exactly one cursors CssProvider at user priority for the default display", async () => {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
 
         try {

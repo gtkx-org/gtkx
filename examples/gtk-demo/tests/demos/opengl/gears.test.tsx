@@ -1,3 +1,4 @@
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -20,7 +21,7 @@ describe("gearsDemo", () => {
     it("renders a GtkGLArea configured with an ES context and a depth buffer", async () => {
         await renderDemo(gearsDemo);
         const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
-        expect(glArea).toHaveObjectProperty("useEs", true);
+        expect(glArea).toHaveObjectProperty("allowedApis", Gdk.GLAPI.GLES);
         expect(glArea).toHaveObjectProperty("hasDepthBuffer", true);
     });
 

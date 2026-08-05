@@ -65,6 +65,7 @@ describe("constraintsInteractiveDemo dragging", () => {
         await waitFor(() => {
             const dividerLeft = findDividerLeftConstant(layout);
             expect(dividerLeft).not.toBeNull();
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             expect(button1.getAllocatedWidth()).toBe((dividerLeft as number) - 8);
         });
     });

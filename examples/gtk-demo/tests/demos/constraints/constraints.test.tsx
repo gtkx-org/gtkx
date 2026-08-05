@@ -45,6 +45,7 @@ const renderAndAllocate = async (): Promise<AllocatedLayout> => {
     const container = await screen.findByName("container", { as: Gtk.Box });
 
     await waitFor(() => {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         expect(button3.getAllocatedWidth()).toBeGreaterThan(0);
     });
 
@@ -116,10 +117,12 @@ describe("constraintsDemo layout", () => {
 describe("constraintsDemo geometry", () => {
     it("resolves the constraints into the intended allocations", async () => {
         const { button1, button2, button3, container } = await renderAndAllocate();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const containerWidth = container.getAllocatedWidth();
         const b1 = boundsIn(button1, container);
         const b2 = boundsIn(button2, container);
         const b3 = boundsIn(button3, container);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         expect(button1.getAllocatedWidth()).toBe(button2.getAllocatedWidth());
         expect(b1.getX()).toBe(8);
         expect(b2.getX() + b2.getWidth()).toBe(containerWidth - 8);
@@ -131,7 +134,9 @@ describe("constraintsDemo geometry", () => {
 
     it("recomputes the layout when the window is resized", async () => {
         const { button1, button2, button3, container } = await renderAndAllocate();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const initialContainerWidth = container.getAllocatedWidth();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const initialButton1Width = button1.getAllocatedWidth();
         const widerWidth = initialContainerWidth + 240;
         const root = container.getRoot();
@@ -143,11 +148,15 @@ describe("constraintsDemo geometry", () => {
         root.setDefaultSize(widerWidth, 400);
 
         await waitFor(() => {
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             expect(container.getAllocatedWidth()).toBe(widerWidth);
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         expect(button3.getAllocatedWidth()).toBe(widerWidth - 16);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         expect(button1.getAllocatedWidth()).toBeGreaterThan(initialButton1Width);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         expect(button1.getAllocatedWidth()).toBe(button2.getAllocatedWidth());
     });
 });

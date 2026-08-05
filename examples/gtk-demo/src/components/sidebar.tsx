@@ -12,7 +12,7 @@ type SidebarProps = {
 type SidebarItemData = {
     id: string;
     value: TreeItem;
-    hideExpander?: true;
+    shouldHideExpander?: true;
     children?: SidebarItemData[];
 };
 
@@ -20,7 +20,7 @@ const EMPTY_SELECTION: string[] = [];
 
 function treeItemToData(item: TreeItem): SidebarItemData {
     if (item.type === "demo") {
-        return { id: `demo-${item.demo.id}`, value: item, hideExpander: true };
+        return { id: `demo-${item.demo.id}`, value: item, shouldHideExpander: true };
     }
 
     return {

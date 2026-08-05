@@ -677,8 +677,8 @@ const computeViewTransform = (rotation: ViewRotation): number[] => {
 
 const renderGearsFrame = ({ glState, area, rotation, angle }: RenderFrameParams): void => {
     const scale = area.getScaleFactor();
-    const width = area.getAllocatedWidth() * scale;
-    const height = area.getAllocatedHeight() * scale;
+    const width = area.getWidth() * scale;
+    const height = area.getHeight() * scale;
     const projection = mat4Perspective(Math.PI / 3, width / height, 1, 1024);
     gl.viewport(0, 0, width, height);
     gl.clearColor(0, 0, 0, 0);
@@ -755,7 +755,7 @@ function GearsDemo() {
                 <GtkGLArea
                     name="gl-area"
                     ref={handleGLAreaRef}
-                    useEs
+                    allowedApis={Gdk.GLAPI.GLES}
                     hasDepthBuffer
                     hexpand
                     vexpand

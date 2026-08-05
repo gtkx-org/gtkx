@@ -875,7 +875,7 @@ const applyRgba = (value: Gdk.RGBA | null, apply: (color: Gdk.RGBA) => void) => 
 const ColorRow = ({ row, label, name, rgba, onChanged }: ColorRowProps) => (
     <>
         <GtkGridLayoutChild column={0} row={row}>
-            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
+            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE_FILL}>
                 {label}
             </GtkLabel>
         </GtkGridLayoutChild>
@@ -885,7 +885,7 @@ const ColorRow = ({ row, label, name, rgba, onChanged }: ColorRowProps) => (
                 rgba={rgba}
                 dialog={<GtkColorDialog />}
                 onNotifyRgba={onChanged}
-                valign={Gtk.Align.BASELINE}
+                valign={Gtk.Align.BASELINE_FILL}
             />
         </GtkGridLayoutChild>
     </>
@@ -939,7 +939,7 @@ const SliderScaleCell = (props: SliderEntryRowProps) => (
         <GtkScale
             hexpand
             widthRequest={100}
-            valign={Gtk.Align.BASELINE}
+            valign={Gtk.Align.BASELINE_FILL}
             adjustment={(
                 <GtkAdjustment
                     value={props.value}
@@ -960,7 +960,7 @@ const SliderScaleCell = (props: SliderEntryRowProps) => (
 const SliderEntryRow = (props: SliderEntryRowProps) => (
     <>
         <GtkGridLayoutChild column={0} row={props.row}>
-            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
+            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE_FILL}>
                 {props.label}
             </GtkLabel>
         </GtkGridLayoutChild>
@@ -970,7 +970,7 @@ const SliderEntryRow = (props: SliderEntryRowProps) => (
                 name={props.entryName}
                 widthChars={4}
                 maxWidthChars={4}
-                valign={Gtk.Align.BASELINE}
+                valign={Gtk.Align.BASELINE_FILL}
                 text={props.displayText}
                 onActivate={props.onEntryActivate}
                 sensitive={props.isSensitive}
@@ -1199,7 +1199,7 @@ const FontFeaturesPreviewControlsRow = ({
                     name="plain_toggle"
                     label="Plain"
                     active={viewMode === "plain"}
-                    valign={Gtk.Align.BASELINE}
+                    valign={Gtk.Align.BASELINE_FILL}
                     onToggled={handlePlainToggled}
                 />
                 <GtkToggleButton
@@ -1207,7 +1207,7 @@ const FontFeaturesPreviewControlsRow = ({
                     label="Waterfall"
                     group={plainToggle}
                     active={viewMode === "waterfall"}
-                    valign={Gtk.Align.BASELINE}
+                    valign={Gtk.Align.BASELINE_FILL}
                     onToggled={handleWaterfallToggled}
                 />
             </GtkBox>

@@ -77,6 +77,7 @@ const installProvider = ({ textViewRef, errorTagRef, warningTagRef, provider, de
     const display = Gdk.DisplayManager.get().getDefaultDisplay();
 
     if (display) {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         Gtk.StyleContext.addProviderForDisplay(display, provider, 0xFF_FF_FF_FF);
     }
 
@@ -84,6 +85,7 @@ const installProvider = ({ textViewRef, errorTagRef, warningTagRef, provider, de
 
     return () => {
         if (display) {
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             Gtk.StyleContext.removeProviderForDisplay(display, provider);
         }
     };

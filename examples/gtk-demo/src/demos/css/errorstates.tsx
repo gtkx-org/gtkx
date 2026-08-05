@@ -172,7 +172,7 @@ const FieldLabel = ({ row, target, children }: FieldLabelProps) => (
         <GtkLabel
             useUnderline
             halign={Gtk.Align.END}
-            valign={Gtk.Align.BASELINE}
+            valign={Gtk.Align.BASELINE_FILL}
             cssClasses={["dim-label"]}
             mnemonicWidget={target}
         >
@@ -191,7 +191,7 @@ const DetailsEntryRow = ({ detailsEntry, setDetailsEntry, onChange }: EntryRowPr
                 ref={(node) => {
                     setDetailsEntry(node);
                 }}
-                valign={Gtk.Align.BASELINE}
+                valign={Gtk.Align.BASELINE_FILL}
                 onChanged={onChange}
             />
         </GtkGridLayoutChild>
@@ -213,7 +213,7 @@ const MoreDetailsEntryRow = ({
                 ref={(node) => {
                     setMoreDetailsEntry(node);
                 }}
-                valign={Gtk.Align.BASELINE}
+                valign={Gtk.Align.BASELINE_FILL}
                 cssClasses={hasMoreDetailsError ? ["error"] : []}
                 tooltipText={hasMoreDetailsError ? "Must have details first" : ""}
                 accessibleInvalid={
@@ -236,7 +236,7 @@ const LevelScaleRow = ({ levelScale, setLevelScale, onValueChanged }: LevelScale
                     setLevelScale(node);
                 }}
                 orientation={Gtk.Orientation.HORIZONTAL}
-                valign={Gtk.Align.BASELINE}
+                valign={Gtk.Align.BASELINE_FILL}
                 drawValue={false}
                 adjustment={<GtkAdjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
                 onValueChanged={(scale) => {
@@ -254,7 +254,7 @@ const ModeErrorLabel = ({ setErrorLabel }: ModeErrorLabelProps) => (
                 setErrorLabel(node);
             }}
             halign={Gtk.Align.START}
-            valign={Gtk.Align.BASELINE}
+            valign={Gtk.Align.BASELINE_FILL}
             cssClasses={["error"]}
         >
             Level too low
@@ -276,7 +276,7 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                         setModeSwitch(node);
                     }}
                     halign={Gtk.Align.START}
-                    valign={Gtk.Align.BASELINE}
+                    valign={Gtk.Align.BASELINE_FILL}
                     accessibleKeyShortcuts="Control+M"
                     accessibleInvalid={showError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE}
                     accessibleErrorMessage={showError && errorLabel ? [errorLabel] : undefined}

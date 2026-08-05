@@ -40,7 +40,7 @@ type NodeIdSource = {
 type SchemaTreeItemData = {
     id: string;
     value: string;
-    hideExpander?: true;
+    shouldHideExpander?: true;
     children?: SchemaTreeItemData[];
 };
 
@@ -298,7 +298,7 @@ function loadKeysForNode(nodeId: string): KeyInfo[] {
 
 function schemaNodeToItem(node: SchemaTreeNode): SchemaTreeItemData {
     if (node.children.length === 0) {
-        return { id: node.nodeId, value: node.schemaId, hideExpander: true };
+        return { id: node.nodeId, value: node.schemaId, shouldHideExpander: true };
     }
 
     return {

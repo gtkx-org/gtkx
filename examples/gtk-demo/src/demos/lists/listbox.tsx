@@ -164,15 +164,15 @@ const MessageAvatar = ({ message }: { message: Message }) => (
 const MessageHeader = ({ message }: { message: Message }) => (
     <GtkGridLayoutChild column={1} row={0}>
         <GtkBox hexpand baselinePosition={Gtk.BaselinePosition.TOP}>
-            <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE}>
-                <GtkLabel valign={Gtk.Align.BASELINE} attributes={boldAttrs}>
+            <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE_FILL}>
+                <GtkLabel valign={Gtk.Align.BASELINE_FILL} attributes={boldAttrs}>
                     {message.senderName}
                 </GtkLabel>
             </GtkButton>
-            <GtkLabel valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]}>
+            <GtkLabel valign={Gtk.Align.BASELINE_FILL} cssClasses={["dim-label"]}>
                 {message.senderNick}
             </GtkLabel>
-            <GtkLabel hexpand xalign={1} valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]}>
+            <GtkLabel hexpand xalign={1} valign={Gtk.Align.BASELINE_FILL} cssClasses={["dim-label"]}>
                 {formatShortTime(message.time)}
             </GtkLabel>
         </GtkBox>

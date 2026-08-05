@@ -1,3 +1,4 @@
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -29,10 +30,11 @@ describe("shadertoyDemo", () => {
         const glArea = await screen.findByName("shadertoy-gl-area", { as: Gtk.GLArea });
 
         await waitFor(() => {
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             expect(glArea.getAllocatedWidth()).toBeGreaterThan(0);
         });
 
-        expect(glArea).toHaveObjectProperty("useEs", true);
+        expect(glArea).toHaveObjectProperty("allowedApis", Gdk.GLAPI.GLES);
     });
 
     it("seeds the source editor with the Alien Planet fragment shader", async () => {

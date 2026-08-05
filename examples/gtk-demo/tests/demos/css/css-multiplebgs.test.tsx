@@ -50,6 +50,7 @@ describe("cssMultiplebgsDemo", () => {
 describe("cssMultiplebgsDemo css provider", () => {
     it("loads the default CSS into a CssProvider added to the display on mount", async () => {
         const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
 
         try {
