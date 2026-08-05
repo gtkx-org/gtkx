@@ -17,7 +17,7 @@
         "@stylistic/eslint-plugin": "^5.10.0",
         "@typescript-eslint/eslint-plugin": "^8.65.0",
         "@typescript-eslint/utils": "^8.65.0",
-        "@vitest/eslint-plugin": "^1.6.24",
+        "@vitest/eslint-plugin": "^1.6.25",
         "eslint": "^10.8.0",
         "eslint-plugin-perfectionist": "^5.10.0",
         "eslint-plugin-promise": "^7.3.0",
