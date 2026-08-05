@@ -164,7 +164,7 @@
         "react": "catalog:",
         "tsx": "^4.23.1",
         "typescript": "catalog:",
-        "verdaccio": "^6.9.0",
+        "verdaccio": "^6.9.2",
         "vitest": "catalog:"
     },
     "engines": {
