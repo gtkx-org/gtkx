@@ -38,10 +38,24 @@ type CollectionModel = {
 
 const RESIDENT_OBJECT_MAX = 8192;
 const STORE_CLASS_KEY = Symbol.for("gtkx.components.lazy-level-store");
+const NODES_KEY = Symbol.for("gtkx.components.lazy-level-store.nodes");
 const EMPTY_INDEX = createCollectionIndex(undefined, undefined, true);
-const NODES: WeakMap<GObject.Object, NodeRef> = new WeakMap();
+const NODES = sharedNodes();
 
 const newRootStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
+
+function sharedNodes(): WeakMap<GObject.Object, NodeRef> {
+    const cached: unknown = Reflect.get(globalThis, NODES_KEY);
+
+    if (cached instanceof WeakMap) {
+        return cached as WeakMap<GObject.Object, NodeRef>;
+    }
+
+    const created: WeakMap<GObject.Object, NodeRef> = new WeakMap();
+    Reflect.set(globalThis, NODES_KEY, created);
+
+    return created;
+}
 
 function registeredStoreClass(): typeof LazyLevelStore {
     const cached: unknown = Reflect.get(globalThis, STORE_CLASS_KEY);
