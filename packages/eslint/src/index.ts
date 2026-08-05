@@ -150,6 +150,8 @@ const SOURCE_EXTENDS = [
 
 const SOURCE_RULES: Linter.RulesRecord = {
     "@stylistic/max-len": ["error", { code: 120 }],
+    "unicorn/consistent-boolean-name": "off",
+    "unicorn/single-line-block-comment-style": "off",
     "@stylistic/comma-dangle": [
         "error",
         {
@@ -276,10 +278,6 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
     {
         files: ["packages/cli/src/**/*.ts", "packages/utils/src/process/**/*.ts"],
         rules: { "unicorn/no-process-exit": "off" },
-    },
-    {
-        files: ["packages/runtime/src/type.ts"],
-        rules: { "unicorn/consistent-boolean-name": "off" },
     },
     ...scopeTo(TESTS, [vitest.configs.recommended]),
     { files: TESTS, rules: TEST_RULES },
