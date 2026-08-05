@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { closeSync, ftruncateSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import type { PackageManager } from "./package-managers.js";
 
@@ -10,11 +10,17 @@ const PNPM_PACKAGES_BLOCK = "packages:\n  - '.'\n";
 
 const quoteYamlKey = (name: string): string => (SAFE_YAML_KEY.test(name) ? name : `'${name}'`);
 
-const readManifest = (root: string): Record<string, unknown> =>
-    JSON.parse(readFileSync(join(root, PACKAGE_JSON_FILE), "utf8")) as Record<string, unknown>;
+const updateManifest = (root: string, mutate: (manifest: Record<string, unknown>) => void): void => {
+    const descriptor = openSync(join(root, PACKAGE_JSON_FILE), "r+");
 
-const writeManifest = (root: string, manifest: Record<string, unknown>): void => {
-    writeFileSync(join(root, PACKAGE_JSON_FILE), `${JSON.stringify(manifest, null, 4)}\n`);
+    try {
+        const manifest = JSON.parse(readFileSync(descriptor, "utf8")) as Record<string, unknown>;
+        mutate(manifest);
+        ftruncateSync(descriptor);
+        writeSync(descriptor, `${JSON.stringify(manifest, null, 4)}\n`, 0);
+    } finally {
+        closeSync(descriptor);
+    }
 };
 
 const writePnpmAllowance = (root: string): void => {
@@ -23,15 +29,15 @@ const writePnpmAllowance = (root: string): void => {
 };
 
 const writeNpmAllowance = (root: string): void => {
-    const manifest = readManifest(root);
-    manifest.allowScripts = Object.fromEntries(BUILT_DEPENDENCIES.map((name) => [name, true]));
-    writeManifest(root, manifest);
+    updateManifest(root, (manifest) => {
+        manifest.allowScripts = Object.fromEntries(BUILT_DEPENDENCIES.map((name) => [name, true]));
+    });
 };
 
 const writeYarnAllowance = (root: string): void => {
-    const manifest = readManifest(root);
-    manifest.dependenciesMeta = Object.fromEntries(BUILT_DEPENDENCIES.map((name) => [name, { built: true }]));
-    writeManifest(root, manifest);
+    updateManifest(root, (manifest) => {
+        manifest.dependenciesMeta = Object.fromEntries(BUILT_DEPENDENCIES.map((name) => [name, { built: true }]));
+    });
 };
 
 const writeBuildAllowance = (root: string, packageManager: PackageManager): void => {
