@@ -2,9 +2,10 @@ import type { Plugin } from "vite";
 import { posix } from "node:path";
 
 const EXECUTABLE_URL_BASE = "`file://${process.execPath}`";
+const LEADING_SLASHES = /^\/+/;
 
 const executableRelativeUrl = (target: string): string => {
-    const specifier = JSON.stringify(target);
+    const specifier = JSON.stringify(target.replace(LEADING_SLASHES, "./"));
 
     return `decodeURIComponent(new URL(${specifier}, ${EXECUTABLE_URL_BASE}).pathname)`;
 };

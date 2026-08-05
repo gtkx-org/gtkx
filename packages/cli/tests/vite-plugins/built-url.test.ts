@@ -52,6 +52,12 @@ describe("gtkxBuiltUrl", () => {
         );
     });
 
+    it("renderBuiltUrl keeps an absolute assetBase under the executable's directory", () => {
+        expect(renderAssetUrl("/resources").runtime).toBe(
+            'decodeURIComponent(new URL("./resources/logo.png", `file://${process.execPath}`).pathname)',
+        );
+    });
+
     it("renderBuiltUrl never emits require, which an ESM bundle cannot evaluate", () => {
         for (const assetBase of ["../share/gtkx", undefined]) {
             expect(renderAssetUrl(assetBase).runtime).not.toContain("require(");
