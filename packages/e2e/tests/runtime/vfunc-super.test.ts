@@ -123,6 +123,31 @@ describe("super.vfunc — construct-time slots", () => {
     });
 });
 
+describe("vfunc — interface vtable slots a wrapper class already carries", () => {
+    it("calls the implementation the wrapper class carries for an inherited interface", () => {
+        class MyBox extends Gtk.Box {}
+        registerClass(MyBox, { typeName: uniqueName("GtkxInheritedBox") });
+        const box = new MyBox();
+        box.vfuncSetId("frame");
+        expect(box.vfuncGetId()).toBe("frame");
+        expect(box.getBuildableId()).toBe("frame");
+    });
+
+    it("chains up to the widget implementation of an inherited interface slot", () => {
+        class TaggedBox extends Gtk.Box {
+            override vfuncSetId(id: string): void {
+                super.vfuncSetId(`${id}-tagged`);
+            }
+        }
+
+        registerClass(TaggedBox, { typeName: uniqueName("GtkxTaggedBox") });
+        const box = new TaggedBox();
+        box.vfuncSetId("frame");
+        expect(box.getBuildableId()).toBe("frame-tagged");
+        expect(box.vfuncGetId()).toBe("frame-tagged");
+    });
+});
+
 describe("super.vfunc — interface vtable slots", () => {
     it("chains up to the implementation the interface vtable carries", () => {
         class CountingStore extends Gio.ListStore {
@@ -154,8 +179,10 @@ describe("super.vfunc — caller-allocated out parameters", () => {
     it("passes the caller-allocated record through and returns it in the tuple", () => {
         const seen: Gtk.Border[] = [];
 
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         class BorderedView extends Gtk.TreeView {
             override vfuncGetBorder(border: Gtk.Border): [boolean, Gtk.Border] {
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 const [isSet, filled] = super.vfuncGetBorder(border);
                 seen.push(filled);
 
@@ -226,5 +253,27 @@ describe("super vfunc — a derived class registered as a wrapper", () => {
         const [plainMinimum] = new Gtk.Label({ label: "hello world" }).measure(Gtk.Orientation.HORIZONTAL, -1);
         expect(minimum).toBe(plainMinimum + 10);
         expect(natural).toBe(plainMinimum + 10);
+    });
+});
+
+describe("vfunc — slots that take a GError", () => {
+    it("throws what the slot writes into the trailing GError", () => {
+        const socket = new Gio.Socket({
+            family: Gio.SocketFamily.INVALID,
+            type: Gio.SocketType.STREAM,
+            protocol: 0,
+        });
+
+        expect(() => socket.vfuncInit(null)).toThrow(/Unknown family was specified/);
+    });
+
+    it("returns normally out of a slot that writes no error", () => {
+        const socket = new Gio.Socket({
+            family: Gio.SocketFamily.IPV4,
+            type: Gio.SocketType.STREAM,
+            protocol: 0,
+        });
+
+        expect(socket.vfuncInit(null)).toBe(true);
     });
 });

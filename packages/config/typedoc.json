@@ -1,4 +1,8 @@
 {
+    "entryPoints": [
+        "./dist/index.d.ts",
+        "./dist/vite-plugin.d.ts"
+    ],
     "intentionallyNotExported": [
         "LoadConfigOptions",
         "ResolvedReactCompilerOptions",

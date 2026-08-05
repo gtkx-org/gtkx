@@ -1,6 +1,6 @@
 import type { Plugin } from "vite";
 import { describe, expect, it, vi } from "vitest";
-import type { ConfigLoader } from "../src/internal.js";
+import type { ConfigLoader } from "../src/index.js";
 import { resolveConfig } from "../src/config.js";
 import { GTKX_CONFIG_VIRTUAL_ID, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "../src/virtual.js";
 import createConfigPlugin from "../src/vite-plugin.js";

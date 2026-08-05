@@ -3,17 +3,21 @@ import * as Gio from "@gtkx/gi/gio";
 import {
     Object as GObject,
     ParamFlags,
+    paramSpecBoxed,
     paramSpecInt,
+    paramSpecPointer,
     paramSpecString,
     TYPE_INT,
     TYPE_OBJECT,
     TYPE_STRING,
+    typeFromName,
     Value,
 } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { registerClass } from "@gtkx/runtime";
+import { registerClass, TYPE_POINTER } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
+import { stringValue } from "./helpers.js";
 
 const uniqueName = createTypeNameFactory("_");
 
@@ -21,14 +25,6 @@ const intValue = (n: number): Value => {
     const value = new Value();
     value.init(TYPE_INT);
     value.setInt(n);
-
-    return value;
-};
-
-const stringValue = (text: string): Value => {
-    const value = new Value();
-    value.init(TYPE_STRING);
-    value.setString(text);
 
     return value;
 };
@@ -76,6 +72,34 @@ const makeSwatchClass = () => {
     return Swatch;
 };
 
+const makeTagsClass = () => {
+    class Tags extends GObject {
+        declare tags: string[] | null;
+    }
+
+    registerClass(Tags, {
+        typeName: uniqueName("GtkxStrvProp"),
+        properties: {
+            tags: paramSpecBoxed("tags", null, null, typeFromName("GStrv"), ParamFlags.READWRITE),
+        },
+    });
+
+    return Tags;
+};
+
+const makeAnchorClass = () => {
+    class Anchor extends GObject {
+        declare target: number | null;
+    }
+
+    registerClass(Anchor, {
+        typeName: uniqueName("GtkxPointerProp"),
+        properties: { target: paramSpecPointer("target", null, null, ParamFlags.READWRITE) },
+    });
+
+    return Anchor;
+};
+
 describe("registerClass — properties", () => {
     it("installs the properties on the new type", () => {
         const Swatch = makeSwatchClass();
@@ -114,6 +138,36 @@ describe("registerClass — properties", () => {
     });
 });
 
+describe("registerClass — properties at construction", () => {
+    it("sets a declared property from the value the constructor is handed", () => {
+        const Swatch = makeSwatchClass();
+        const swatch = new Swatch({ red: 200, label: "set-at-construction" });
+        expect(swatch.red).toBe(200);
+        expect(swatch.label).toBe("set-at-construction");
+    });
+
+    it("reads the construct value back through g_object_get_property", () => {
+        const Swatch = makeSwatchClass();
+        const swatch = new Swatch({ label: "crimson" });
+        const read = new Value();
+        read.init(TYPE_STRING);
+        swatch.getProperty("label", read);
+        expect(read.getString()).toBe("crimson");
+    });
+
+    it("takes the pspec's own name and the camelCased one alike", () => {
+        const Tint = makeTintClass();
+        expect(new Tint({ "tint-level": 5 }).tintLevel).toBe(5);
+        expect(new Tint({ tintLevel: 6 }).tintLevel).toBe(6);
+    });
+
+    it("leaves a name the type installs no property under alone", () => {
+        const Swatch = makeSwatchClass();
+        const swatch = new Swatch({ green: 7 });
+        expect(swatch.red).toBe(0);
+    });
+});
+
 describe("registerClass — property notifications", () => {
     it("emits notify exactly once when the property is set through g_object_set_property", () => {
         const Swatch = makeSwatchClass();
@@ -122,6 +176,43 @@ describe("registerClass — property notifications", () => {
         swatch.setProperty("red", intValue(99));
         expect(seen).toEqual(["red"]);
         expect(swatch.red).toBe(99);
+    });
+});
+
+describe("registerClass — properties a pointer or string-array type backs", () => {
+    it("round-trips a string array through the GValue the property is served from", () => {
+        const Tags = makeTagsClass();
+        const source = new Tags({ tags: ["alpha", "beta"] });
+        expect(source.tags).toEqual(["alpha", "beta"]);
+        const carried = new Value();
+        carried.init(typeFromName("GStrv"));
+        source.getProperty("tags", carried);
+        const target = new Tags();
+        target.setProperty("tags", carried);
+        expect(target.tags).toEqual(["alpha", "beta"]);
+    });
+
+    it("serves a pointer property holding nothing and takes it back", () => {
+        const Anchor = makeAnchorClass();
+        const anchor = new Anchor();
+        const read = new Value();
+        read.init(TYPE_POINTER);
+        anchor.getProperty("target", read);
+        expect(read.getPointer()).toBe(0);
+        anchor.setProperty("target", read);
+        expect(anchor.target).toBeNull();
+    });
+
+    it("refuses a pointer JavaScript cannot hand back to GLib", () => {
+        const Anchor = makeAnchorClass();
+        const anchor = new Anchor();
+        anchor.target = 1;
+        const read = new Value();
+        read.init(TYPE_POINTER);
+
+        expect(() => {
+            anchor.getProperty("target", read);
+        }).toThrow(/G_TYPE_POINTER non-null values/);
     });
 });
 

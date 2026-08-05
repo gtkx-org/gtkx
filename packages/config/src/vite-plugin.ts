@@ -2,7 +2,9 @@ import type { Plugin, UserConfig } from "vite";
 import { type ConfigLoader, createConfigLoader } from "./loader.ts";
 import { GTKX_CONFIG_VIRTUAL_ID, renderConfigModule, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "./virtual.ts";
 
+/** State the plugin carries from Vite's `config` hook to the virtual module it serves. */
 type PluginState = {
+    /** Project root taken from Vite's `config` hook, undefined when the user config leaves it unset. */
     root: string | undefined;
 };
 
@@ -21,9 +23,16 @@ const loadVirtualModule = async (
     return renderConfigModule(await loadConfig.resolve(state.root ?? process.cwd()));
 };
 
+/**
+ * Creates a Vite plugin serving `virtual:gtkx-config`, the module carrying the project's resolved
+ * `gtkx.config.ts`.
+ */
 const createConfigPlugin = (options: {
+    /** Name the plugin is registered under in Vite. */
     name: string;
+    /** Loader the configuration is resolved through, defaulting to a fresh caching loader. */
     loadConfig?: ConfigLoader;
+    /** Extra Vite configuration contributed from the plugin's `config` hook. */
     config?: () => Omit<UserConfig, "plugins">;
 }): Plugin => {
     const loadConfig = options.loadConfig ?? createConfigLoader();

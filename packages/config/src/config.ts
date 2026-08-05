@@ -33,7 +33,6 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
  * Compiler, codegen, and user event signal settings.
  */
 type Config = z.infer<typeof configSchema>;
-/** A named export referenced as plain data, so codegen can emit an import for it without loading the module. */
 type ModuleExport = z.infer<typeof moduleExportSchema>;
 type ElementConfigEntry = z.infer<typeof elementConfigSchema>;
 
@@ -55,7 +54,9 @@ const LIBRARIES_WILDCARD = "*";
 const GIR_LIBRARY_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
+/** Compilation modes `babel-plugin-react-compiler` accepts. */
 const COMPILATION_MODES = ["infer", "syntax", "annotation", "all"] as const;
+/** Panic thresholds `babel-plugin-react-compiler` accepts. */
 const PANIC_THRESHOLDS = ["none", "critical_errors", "all_errors"] as const;
 const REACT_COMPILER_TARGET = "19";
 const COMPILATION_MODE_SET: Set<string> = new Set(COMPILATION_MODES);
@@ -178,6 +179,7 @@ const elementsSchema = z.object({
     config: z.record(z.string(), elementConfigSchema).optional(),
 });
 
+/** Schema every `gtkx.config.ts` is validated against, and the source of the {@link Config} type. */
 const configSchema = z.object({
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),

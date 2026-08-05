@@ -118,6 +118,7 @@ describe("registerClass — vfunc dispatch", () => {
         registerClass(CustomWidget, { typeName: name });
         const customGtype = typeFromName(name);
         expect(customGtype).not.toBe(0n);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const instance = GObject.newv(customGtype, []);
         expect(instance).toBeInstanceOf(CustomWidget);
     });
@@ -135,6 +136,7 @@ describe("registerClass — vfunc dispatch", () => {
         registerClass(CustomWidget, { typeName: name });
         const customGtype = typeFromName(name);
         expect(customGtype).not.toBe(0n);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const instance = GObject.newv(customGtype, []);
         expect(isInstanceOfType(getHandle(instance), typeFromName("GtkBuildable"))).toBe(true);
         const builder = Gtk.Builder.new();
@@ -212,6 +214,7 @@ describe("registerClass — vfunc argument and return marshalling", () => {
 
 describe("registerClass — caller-allocated and scalar out parameters", () => {
     it("fills a caller-allocated out boxed parameter from the handler's return value", () => {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         class CustomChooser extends Gtk.ColorButton {
             override vfuncGetRgba(): Gdk.RGBA {
                 return new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1 });
@@ -220,6 +223,7 @@ describe("registerClass — caller-allocated and scalar out parameters", () => {
 
         registerClass(CustomChooser, { typeName: uniqueName("GtkxVfuncCallerOutBoxed") });
         const chooser = new CustomChooser();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const result = chooser.getRgba();
         expect(result.red).toBeCloseTo(0.5);
         expect(result.green).toBeCloseTo(0.25);

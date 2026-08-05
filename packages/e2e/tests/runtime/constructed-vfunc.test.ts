@@ -192,6 +192,7 @@ describe("vfuncConstructed — the subclass state an instance created from C nev
         }
 
         registerClass(NewvFieldObject, { typeName: name });
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const instance = GObject.newv(typeFromName(name), []);
         expect(instance).toBeInstanceOf(NewvFieldObject);
         expect((instance as NewvFieldObject).marker).toBeUndefined();
@@ -266,6 +267,7 @@ describe("vfuncConstructed — instances created from C", () => {
         }
 
         registerClass(NewvObject, { typeName: name });
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const instance = GObject.newv(typeFromName(name), []);
         expect(instance).toBeInstanceOf(NewvObject);
         expect(seen).toHaveLength(1);
@@ -305,6 +307,7 @@ describe("vfuncConstructed — a C-created instance inside a JavaScript construc
         class InterleavedOuter extends GObject {
             override vfuncConstructed(): void {
                 super.vfuncConstructed();
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 nested.push(GObject.newv(typeFromName(name), []));
             }
         }

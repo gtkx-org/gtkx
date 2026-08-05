@@ -86,6 +86,7 @@ describe("listener records that outlive their emitter's disposal", () => {
     });
 
     it("off() does not disconnect a handler destroyed by GtkNativeDialog.destroy()", () => {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const dialog = new Gtk.FileChooserNative();
         const handler = vi.fn();
         dialog.on("response", handler);
