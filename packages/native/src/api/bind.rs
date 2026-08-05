@@ -147,15 +147,15 @@ fn interface_offset_bounds(
     interface_type: glib::Type,
     vtable_size: Option<u32>,
     label: &str,
-) -> anyhow::Result<Option<u32>> {
-    if vtable_size.is_none() {
+) -> anyhow::Result<u32> {
+    let Some(size) = vtable_size else {
         anyhow::bail!(
             "{label} binds a slot of interface {interface_type} without a vtable size, which \
              would leave byte_offset bounded only by its alignment"
         );
-    }
+    };
 
-    Ok(vtable_size)
+    Ok(size)
 }
 
 fn vfunc_offset_bounds(
@@ -169,7 +169,7 @@ fn vfunc_offset_bounds(
         }
         VfuncVtable::Interface { interface_type, .. }
         | VfuncVtable::DefaultInterface(interface_type) => {
-            interface_offset_bounds(interface_type, vtable_size, label)
+            interface_offset_bounds(interface_type, vtable_size, label).map(Some)
         }
     }
 }
