@@ -5,7 +5,7 @@ use libffi::middle::{Builder, Cif, CodePtr};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use super::vtable::{query_type, resolve_vfunc_slot, validate_vfunc_offset};
+use super::vtable::{VfuncVtable, query_type, resolve_vfunc_slot, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
 use crate::ffi::codec::{Codec, Encoder as _};
 use crate::ffi::descriptor::Descriptor;
@@ -17,8 +17,7 @@ pub(crate) enum CallTarget {
         symbol_name: String,
     },
     Vfunc {
-        instance_type: glib::Type,
-        interface_type: Option<glib::Type>,
+        vtable: VfuncVtable,
         byte_offset: usize,
     },
 }
@@ -38,8 +37,10 @@ pub struct CallDescriptor {
 /// implementation the parent provides rather than the override installed on the subclass.
 #[napi(object, object_to_js = false)]
 pub struct BindVfuncOptions {
-    /// `GType` whose class structure the slot is read from.
-    pub instance_type: BigInt,
+    /// `GType` whose class structure the slot is read from. Omitted to read the slot out of
+    /// `interfaceType`'s own default vtable instead, which holds what the interface installs by
+    /// default and is exactly what a class adopting the interface without filling the slot carries.
+    pub instance_type: Option<BigInt>,
     /// `GType` of the interface owning the slot, omitted when the slot lives in the class struct.
     pub interface_type: Option<BigInt>,
     /// Byte offset of the slot within the class (or interface) struct.
@@ -74,15 +75,9 @@ impl CallDescriptor {
                 anyhow::Ok(CodePtr(symbol as *mut c_void))
             })?,
             CallTarget::Vfunc {
-                instance_type,
-                interface_type,
+                vtable,
                 byte_offset,
-            } => CodePtr(resolve_vfunc_slot(
-                *instance_type,
-                *interface_type,
-                *byte_offset,
-                &self.label,
-            )?),
+            } => CodePtr(resolve_vfunc_slot(*vtable, *byte_offset, &self.label)?),
         };
         let _ = self.symbol.set(resolved);
 
@@ -129,16 +124,30 @@ fn into_codecs(
     Ok((arg_codecs, return_descriptor.into_codec()?))
 }
 
-fn vfunc_offset_bounds(
-    instance_type: glib::Type,
+fn vfunc_vtable(
+    instance_type: Option<glib::Type>,
     interface_type: Option<glib::Type>,
+    label: &str,
+) -> anyhow::Result<VfuncVtable> {
+    match (instance_type, interface_type) {
+        (Some(instance_type), Some(interface_type)) => Ok(VfuncVtable::Interface {
+            instance_type,
+            interface_type,
+        }),
+        (Some(instance_type), None) => Ok(VfuncVtable::Class(instance_type)),
+        (None, Some(interface_type)) => Ok(VfuncVtable::DefaultInterface(interface_type)),
+        (None, None) => anyhow::bail!(
+            "{label} binds a slot with neither an instance type nor an interface type to read it \
+             from"
+        ),
+    }
+}
+
+fn interface_offset_bounds(
+    interface_type: glib::Type,
     vtable_size: Option<u32>,
     label: &str,
 ) -> anyhow::Result<Option<u32>> {
-    let Some(interface_type) = interface_type else {
-        return Ok(query_type(instance_type).map(|query| query.class_size));
-    };
-
     if vtable_size.is_none() {
         anyhow::bail!(
             "{label} binds a slot of interface {interface_type} without a vtable size, which \
@@ -147,6 +156,22 @@ fn vfunc_offset_bounds(
     }
 
     Ok(vtable_size)
+}
+
+fn vfunc_offset_bounds(
+    vtable: VfuncVtable,
+    vtable_size: Option<u32>,
+    label: &str,
+) -> anyhow::Result<Option<u32>> {
+    match vtable {
+        VfuncVtable::Class(instance_type) => {
+            Ok(query_type(instance_type).map(|query| query.class_size))
+        }
+        VfuncVtable::Interface { interface_type, .. }
+        | VfuncVtable::DefaultInterface(interface_type) => {
+            interface_offset_bounds(interface_type, vtable_size, label)
+        }
+    }
 }
 
 /// Precompiles the argument and return marshalling of `symbolName` in `sharedLibrary` into a
@@ -174,12 +199,17 @@ pub fn bind(
 }
 
 /// Precompiles a call to the virtual function slot at `byteOffset` of `instanceType`'s class
-/// structure, or of the `interfaceType` vtable that class carries, into a reusable call descriptor
-/// that `call` can invoke. The slot's function pointer is read on the first call, so a slot the
-/// type leaves empty fails only when it is called.
+/// structure, of the `interfaceType` vtable that class carries, or of `interfaceType`'s own default
+/// vtable when no `instanceType` is given, into a reusable call descriptor that `call` can invoke.
+/// The slot's function pointer is read on the first call, so a slot the type leaves empty fails
+/// only when it is called.
 #[napi(catch_unwind)]
 pub fn bind_vfunc(options: BindVfuncOptions) -> Result<External<CallDescriptor>> {
-    let instance_type = type_from_bigint(&options.instance_type, "bind_vfunc: instance")?;
+    let instance_type = options
+        .instance_type
+        .as_ref()
+        .map(|type_| type_from_bigint(type_, "bind_vfunc: instance"))
+        .transpose()?;
     let interface_type = options
         .interface_type
         .as_ref()
@@ -187,14 +217,14 @@ pub fn bind_vfunc(options: BindVfuncOptions) -> Result<External<CallDescriptor>>
         .transpose()?;
     let byte_offset = options.byte_offset as usize;
 
+    let vtable = native_result(
+        "bind_vfunc",
+        vfunc_vtable(instance_type, interface_type, &options.label),
+    )?;
+
     let bounds = native_result(
         "bind_vfunc",
-        vfunc_offset_bounds(
-            instance_type,
-            interface_type,
-            options.vtable_size,
-            &options.label,
-        ),
+        vfunc_offset_bounds(vtable, options.vtable_size, &options.label),
     )?;
 
     native_result(
@@ -207,8 +237,7 @@ pub fn bind_vfunc(options: BindVfuncOptions) -> Result<External<CallDescriptor>>
 
     Ok(External::new(prepare(
         CallTarget::Vfunc {
-            instance_type,
-            interface_type,
+            vtable,
             byte_offset,
         },
         options.label,
@@ -252,8 +281,7 @@ mod tests {
 
             let descriptor = prepare(
                 CallTarget::Vfunc {
-                    instance_type: glib::Object::static_type(),
-                    interface_type: None,
+                    vtable: VfuncVtable::Class(glib::Object::static_type()),
                     byte_offset: std::mem::offset_of!(glib::gobject_ffi::GObjectClass, finalize),
                 },
                 "ObjectClass.finalize".to_owned(),

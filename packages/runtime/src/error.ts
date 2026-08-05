@@ -18,6 +18,7 @@ type ErrorLike = Error & {
  * matches wrapped GLib errors belonging to a specific error domain.
  */
 type ErrorDomain<T extends Record<string, number>> = T & {
+    /** Backs `instanceof`, matching a wrapped GLib error whose domain is this one. */
     [Symbol.hasInstance]: (value: unknown) => value is ErrorLike;
 };
 

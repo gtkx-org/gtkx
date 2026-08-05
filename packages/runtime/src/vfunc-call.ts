@@ -12,7 +12,7 @@ import {
     instanceClassName,
     resolveWrapperType,
 } from "./registry.js";
-import { TYPE_INVALID, typeInterfaces, typeParent } from "./type.js";
+import { TYPE_INVALID, typeInterfaces, typeIsA, typeParent } from "./type.js";
 import { type AnyVfuncDescriptor, findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs } from "./vfunc.js";
 
 type Invoker = (instance: object, inputs: unknown[]) => unknown;
@@ -26,26 +26,34 @@ function toNativeInput(arg: Arg, input: unknown): unknown {
     return isCallerAllocatedArg(arg) ? input : toNative(arg.type, input);
 }
 
-function buildInvoker(slot: ResolvedSlot, instanceType: bigint, caller: string): Invoker {
+function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, caller: string): Invoker {
     const { descriptor, interfaceType } = slot;
     const args = vfuncArgs(descriptor);
+    const canThrow = descriptor.canThrow === true;
     const label = `${descriptor.className}.${descriptor.vfuncName}`;
     const [, ...inputArgs] = args.filter(requiresInputArg);
 
     const options: BindVfuncOptions = {
-        instanceType,
         byteOffset: descriptor.byteOffset,
         vtableSize: descriptor.vtableSize,
         label,
-        argDescriptors: buildNativeArgTypes(args, false),
+        argDescriptors: buildNativeArgTypes(args, canThrow),
         returnDescriptor: descriptor.returnDescriptor,
     };
+
+    if (instanceType !== undefined) {
+        options.instanceType = instanceType;
+    }
 
     if (interfaceType !== undefined) {
         options.interfaceType = interfaceType;
     }
 
-    const shaped = fromNativeCallable(bindVfunc(options), { args, returns: descriptor.returnDescriptor });
+    const shaped = fromNativeCallable(bindVfunc(options), {
+        args,
+        returns: descriptor.returnDescriptor,
+        canThrow,
+    });
 
     return (instance, inputs) => {
         if (inputs.length !== inputArgs.length) {
@@ -155,7 +163,11 @@ function resolveOwnerSlot(owner: AnyClass, key: string): ResolvedSlot {
     return { descriptor, interfaceType };
 }
 
-function resolveInstanceType(key: string, instance: object): bigint {
+function requiresDefaultVtable(slot: ResolvedSlot, instanceType: bigint): boolean {
+    return slot.interfaceType !== undefined && !typeIsA(instanceType, slot.interfaceType);
+}
+
+function resolveInstanceType(key: string, instance: object, slot: ResolvedSlot): bigint | undefined {
     const instanceType = resolveWrapperType(instance);
 
     if (instanceType === TYPE_INVALID) {
@@ -163,7 +175,7 @@ function resolveInstanceType(key: string, instance: object): bigint {
         throw new Error(`callVfunc: cannot call '${key}' because ${name} descends from no registered wrapper class`);
     }
 
-    return instanceType;
+    return requiresDefaultVtable(slot, instanceType) ? undefined : instanceType;
 }
 
 /**
@@ -171,10 +183,13 @@ function resolveInstanceType(key: string, instance: object): bigint {
  * `vfunc`-prefixed members the generated bindings emit. The slot is read from the nearest generated
  * wrapper class in the instance's class chain rather than from the instance's own type, so an
  * override reaching it through `super` runs the implementation it replaced instead of re-entering
- * itself. Arguments and the return value follow the same convention an override uses: pure out
- * parameters are left out and returned instead, and a slot with several outputs returns them as a
- * tuple. Throws if the owner declares no such slot, the instance descends from no wrapper class, or
- * the resolved type leaves the slot empty.
+ * itself. When that wrapper class does not carry the interface the slot belongs to, because a class
+ * registered below it adopted the interface, the slot comes from the interface's own default vtable
+ * instead, which holds exactly what the adopting class replaced. Arguments and the return value
+ * follow the same convention an override uses: pure out parameters are left out and returned
+ * instead, and a slot with several outputs returns them as a tuple. Throws if the owner declares no
+ * such slot, the instance descends from no wrapper class, or the resolved vtable leaves the slot
+ * empty.
  *
  * @param owner The wrapper class or interface declaring the slot.
  * @param key Name of the generated member, such as `vfuncMeasure`.
@@ -182,10 +197,11 @@ function resolveInstanceType(key: string, instance: object): bigint {
  * @param inputs The arguments the slot receives.
  */
 function callVfunc(owner: AnyClass, key: string, instance: object, inputs: unknown[]): unknown {
-    const instanceType = resolveInstanceType(key, instance);
+    const slot = resolveOwnerSlot(owner, key);
+    const instanceType = resolveInstanceType(key, instance, slot);
 
     const invoker = cachedInvoker(vfuncInvokers, owner, `${key}:${String(instanceType)}`, () =>
-        buildInvoker(resolveOwnerSlot(owner, key), instanceType, "callVfunc"));
+        buildInvoker(slot, instanceType, "callVfunc"));
 
     return invoker(instance, inputs);
 }

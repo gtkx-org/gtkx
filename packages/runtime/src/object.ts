@@ -2,6 +2,7 @@ import { type Descriptor, type ExternalObject, type Handle, newObject } from "@g
 import { bind } from "./bind.js";
 import { objectT, stringT, voidT } from "./descriptors.js";
 import { LIB, VALUE_T } from "./library.js";
+import { type ConstructProperty, constructPropertyFor } from "./properties.js";
 import { getHandle, registerWrapper } from "./registry.js";
 import { fromValue, newValueForDescriptor, toValue } from "./value.js";
 
@@ -19,15 +20,30 @@ const gObjectSetProperty = bind(
     voidT,
 );
 
+const isDescribedEntry = (entry: unknown): entry is [Descriptor, unknown] =>
+    Array.isArray(entry) && entry.length === 2 && typeof (entry[0] as Partial<Descriptor>).kind === "string";
+
+function constructPropertyForEntry(gtype: bigint, name: string, entry: unknown): ConstructProperty | undefined {
+    if (isDescribedEntry(entry)) {
+        const [descriptor, value] = entry;
+
+        return value === undefined ? undefined : { name, value: toValue(descriptor, value) };
+    }
+
+    return entry === undefined ? undefined : constructPropertyFor(gtype, name, entry);
+}
+
 /**
  * Constructs a new GObject of the given type, setting the supplied construct
- * properties, and binds `wrapper` to it. Entries whose value is `undefined` or
- * not a `[descriptor, value]` pair are skipped. A type registered with
- * `registerClass` binds the wrapper before its `constructed` slot runs, so an
- * override of that slot already sees a usable instance.
+ * properties, and binds `wrapper` to it. An entry carrying a `[descriptor, value]`
+ * pair is marshalled through the descriptor; any other entry is marshalled through
+ * the `GObject.ParamSpec` the type installs under that name, dashed or camelCased,
+ * and is skipped when the type installs none. Entries whose value is `undefined` are
+ * skipped. A type registered with `registerClass` binds the wrapper before its
+ * `constructed` slot runs, so an override of that slot already sees a usable instance.
  *
  * @param gtype The GType of the object to construct.
- * @param props Property names mapped to `[descriptor, value]` pairs.
+ * @param props Property names mapped to `[descriptor, value]` pairs or to plain values.
  * @param wrapper The wrapper instance to bind to the new object.
  * @returns The handle of the newly created object.
  */
@@ -40,20 +56,12 @@ function newObjectWithProperties(
     const values: ExternalObject<Handle>[] = [];
 
     for (const name in props) {
-        const entry: unknown = props[name];
+        const property = constructPropertyForEntry(gtype, name, props[name]);
 
-        if (!Array.isArray(entry)) {
-            continue;
+        if (property !== undefined) {
+            names.push(property.name);
+            values.push(property.value);
         }
-
-        const [descriptor, value] = entry as [Descriptor, unknown];
-
-        if (value === undefined) {
-            continue;
-        }
-
-        names.push(name);
-        values.push(toValue(descriptor, value));
     }
 
     newObject(gtype, names, values, wrapper, registerWrapper);

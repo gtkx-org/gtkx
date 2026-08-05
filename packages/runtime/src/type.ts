@@ -15,6 +15,7 @@ import { LIB } from "./library.js";
 
 /** Object tagged with its GLib type through a `__type__` GType field. */
 type TypedClass = {
+    /** GType the object's class is registered under. */
     __type__: bigint;
 };
 

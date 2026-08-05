@@ -122,6 +122,7 @@ function tryToClosure(value: unknown): ExternalObject<Handle> | undefined {
 
 /** Thrown when a value passed where a `GObject.Closure` is expected cannot be marshalled into one. */
 class ClosureMarshalError extends TypeError {
+    /** Name callers match on when the error is caught as a plain `TypeError`. */
     public override name = "ClosureMarshalError";
 }
 

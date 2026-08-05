@@ -3,6 +3,16 @@ use std::ffi::c_void;
 use glib::translate::IntoGlib as _;
 use glib::{self, gobject_ffi};
 
+#[derive(Clone, Copy)]
+pub(crate) enum VfuncVtable {
+    Class(glib::Type),
+    Interface {
+        instance_type: glib::Type,
+        interface_type: glib::Type,
+    },
+    DefaultInterface(glib::Type),
+}
+
 pub(crate) fn query_type(type_: glib::Type) -> Option<gobject_ffi::GTypeQuery> {
     let mut query = gobject_ffi::GTypeQuery {
         type_: 0,
@@ -62,13 +72,7 @@ fn peek_interface_vtable(
     Ok(vtable)
 }
 
-#[allow(clippy::cast_ptr_alignment)]
-pub(crate) fn resolve_vfunc_slot(
-    instance_type: glib::Type,
-    interface_type: Option<glib::Type>,
-    byte_offset: usize,
-    label: &str,
-) -> anyhow::Result<*mut c_void> {
+fn ref_class(instance_type: glib::Type, label: &str) -> anyhow::Result<*mut c_void> {
     let class_ptr = unsafe { gobject_ffi::g_type_class_ref(instance_type.into_glib()) };
 
     if class_ptr.is_null() {
@@ -78,30 +82,16 @@ pub(crate) fn resolve_vfunc_slot(
         );
     }
 
-    let slot = read_slot(class_ptr, instance_type, interface_type, byte_offset, label);
-
-    if slot.is_err() {
-        unsafe { gobject_ffi::g_type_class_unref(class_ptr) };
-    }
-
-    slot
+    Ok(class_ptr)
 }
 
 #[allow(clippy::cast_ptr_alignment)]
 fn read_slot(
-    class_ptr: *mut c_void,
-    instance_type: glib::Type,
-    interface_type: Option<glib::Type>,
+    vtable: *mut c_void,
     byte_offset: usize,
+    source: &str,
     label: &str,
 ) -> anyhow::Result<*mut c_void> {
-    let vtable = match interface_type {
-        Some(interface_type) => {
-            peek_interface_vtable(class_ptr, instance_type, interface_type, label)?
-        }
-        None => class_ptr,
-    };
-
     let slot = unsafe {
         vtable
             .cast::<u8>()
@@ -111,13 +101,85 @@ fn read_slot(
     };
 
     if slot.is_null() {
-        anyhow::bail!(
-            "{label}: type '{}' provides no implementation",
-            instance_type.name()
-        );
+        anyhow::bail!("{label}: {source} provides no implementation");
     }
 
     Ok(slot)
+}
+
+fn resolve_class_slot(
+    instance_type: glib::Type,
+    byte_offset: usize,
+    label: &str,
+) -> anyhow::Result<*mut c_void> {
+    let class_ptr = ref_class(instance_type, label)?;
+    let source = format!("type '{}'", instance_type.name());
+    let slot = read_slot(class_ptr, byte_offset, &source, label);
+
+    if slot.is_err() {
+        unsafe { gobject_ffi::g_type_class_unref(class_ptr) };
+    }
+
+    slot
+}
+
+fn resolve_interface_slot(
+    instance_type: glib::Type,
+    interface_type: glib::Type,
+    byte_offset: usize,
+    label: &str,
+) -> anyhow::Result<*mut c_void> {
+    let class_ptr = ref_class(instance_type, label)?;
+    let source = format!("type '{}'", instance_type.name());
+    let slot = peek_interface_vtable(class_ptr, instance_type, interface_type, label)
+        .and_then(|vtable| read_slot(vtable, byte_offset, &source, label));
+
+    if slot.is_err() {
+        unsafe { gobject_ffi::g_type_class_unref(class_ptr) };
+    }
+
+    slot
+}
+
+fn resolve_default_interface_slot(
+    interface_type: glib::Type,
+    byte_offset: usize,
+    label: &str,
+) -> anyhow::Result<*mut c_void> {
+    let vtable = unsafe { gobject_ffi::g_type_default_interface_ref(interface_type.into_glib()) };
+
+    if vtable.is_null() {
+        anyhow::bail!(
+            "{label}: interface '{}' has no default vtable",
+            interface_type.name()
+        );
+    }
+
+    let source = format!("interface '{}'", interface_type.name());
+    let slot = read_slot(vtable, byte_offset, &source, label);
+
+    if slot.is_err() {
+        unsafe { gobject_ffi::g_type_default_interface_unref(vtable) };
+    }
+
+    slot
+}
+
+pub(crate) fn resolve_vfunc_slot(
+    vtable: VfuncVtable,
+    byte_offset: usize,
+    label: &str,
+) -> anyhow::Result<*mut c_void> {
+    match vtable {
+        VfuncVtable::Class(instance_type) => resolve_class_slot(instance_type, byte_offset, label),
+        VfuncVtable::Interface {
+            instance_type,
+            interface_type,
+        } => resolve_interface_slot(instance_type, interface_type, byte_offset, label),
+        VfuncVtable::DefaultInterface(interface_type) => {
+            resolve_default_interface_slot(interface_type, byte_offset, label)
+        }
+    }
 }
 
 #[cfg(test)]

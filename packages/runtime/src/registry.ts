@@ -33,6 +33,12 @@ type VfuncDescriptor<K extends "class" | "interface"> = {
     argDescriptors: NativeRegisterClassVfunc["argDescriptors"];
     /** Descriptor for the value the slot returns. */
     returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
+    /**
+     * The slot takes a trailing `GError**` that `VfuncDescriptor.argDescriptors` leaves out, the
+     * way GIR leaves it out of a callable's parameters. A call through the slot has to append it
+     * or it passes one argument fewer than the implementation reads.
+     */
+    canThrow?: boolean;
 };
 
 /**
@@ -41,12 +47,40 @@ type VfuncDescriptor<K extends "class" | "interface"> = {
  */
 type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
 
+/**
+ * How one property an interface declares reaches the vtable, given as the interface's own accessor
+ * members. A direction introspection does not route through a vtable slot is left out, and the
+ * property owns that direction's state itself.
+ */
+type InterfaceProperty = {
+    /** Member reading the slot the property's value comes from, such as `getEnabled`. */
+    getter?: string;
+    /** Member writing the slot the property's value goes to, such as `setActionName`. */
+    setter?: string;
+};
+
+/** What an interface's vtable struct looks like, for the classes that adopt the interface. */
+type InterfaceLayout = {
+    /**
+     * Byte size of the whole vtable struct. `g_type_query` reports nothing for an interface, so a
+     * class can only take an interface whose size introspection describes.
+     */
+    vtableSize: number;
+    /** The slots the struct declares, keyed by the JavaScript method name that fills each one. */
+    vfuncs?: VfuncRegistry;
+    /**
+     * The properties a vtable slot backs, keyed by canonical property name, so a class adopting the
+     * interface answers `g_object_get` and `g_object_set` with what the slot holds.
+     */
+    properties?: Record<string, InterfaceProperty>;
+};
+
 const classRegistry: Map<bigint, AnyClass> = new Map();
 const interfaceMixinRegistry: Map<bigint, Mixin> = new Map();
 const composedClassRegistry: Map<bigint, AnyClass> = new Map();
 const handleMap: WeakMap<object, ExternalObject<Handle>> = new WeakMap();
 const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
-const interfaceVfuncRegistry: Map<bigint, VfuncRegistry> = new Map();
+const interfaceLayoutRegistry: Map<bigint, InterfaceLayout> = new Map();
 const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
 const derivedClasses: WeakSet<AnyClass> = new WeakSet();
 
@@ -122,14 +156,14 @@ function resolveWrapperType(instance: object): bigint {
 
 /**
  * Registers a GInterface, associating its GType with a mixin used to compose the
- * interface onto wrapper classes and an optional virtual function registry.
+ * interface onto wrapper classes and, when introspection describes its vtable, that layout.
  * @param cls Class carrying the interface's GType tag.
  * @param type GType of the interface.
  * @param mixin Mixin that applies the interface to a wrapper class.
- * @param vfuncs Vtable slots the interface exposes, so `registerClass` can bind the ones an
- * implementing class overrides.
+ * @param layout The interface's vtable struct, so `registerClass` can bind the slots an
+ * implementing class overrides and take over the ones it leaves alone.
  */
-function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry): void {
+function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, layout?: InterfaceLayout): void {
     if (type === TYPE_INVALID) {
         return;
     }
@@ -137,8 +171,8 @@ function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: V
     setClassType(cls, type);
     interfaceMixinRegistry.set(type, mixin);
 
-    if (vfuncs) {
-        registerInterfaceVfuncRegistry(type, vfuncs);
+    if (layout) {
+        interfaceLayoutRegistry.set(type, layout);
     }
 }
 
@@ -206,12 +240,16 @@ function resolveWrapperClass(type: bigint): AnyClass | null {
     return null;
 }
 
+function getInterfaceMixin(type: bigint): Mixin | undefined {
+    return interfaceMixinRegistry.get(type);
+}
+
 function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, applied: Set<bigint>): AnyClass {
     if (applied.has(type) || typeIsA(baseType, type)) {
         return cls;
     }
 
-    const mixin = interfaceMixinRegistry.get(type);
+    const mixin = getInterfaceMixin(type);
 
     if (mixin === undefined) {
         return cls;
@@ -332,16 +370,16 @@ function getVfuncRegistry(cls: object): VfuncRegistry | undefined {
     return vfuncRegistry.get(cls);
 }
 
-function registerInterfaceVfuncRegistry(type: bigint, registry: VfuncRegistry): void {
-    if (type === TYPE_INVALID) {
-        return;
-    }
-
-    interfaceVfuncRegistry.set(type, registry);
+function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
+    return interfaceLayoutRegistry.get(type)?.vfuncs;
 }
 
-function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
-    return interfaceVfuncRegistry.get(type);
+function getInterfaceVtableSize(type: bigint): number | undefined {
+    return interfaceLayoutRegistry.get(type)?.vtableSize;
+}
+
+function getInterfaceProperties(type: bigint): Record<string, InterfaceProperty> | undefined {
+    return interfaceLayoutRegistry.get(type)?.properties;
 }
 
 export {
@@ -358,10 +396,14 @@ export {
     tryGetHandle,
     setHandle,
     getVfuncRegistry,
+    getInterfaceMixin,
+    getInterfaceProperties,
     getInterfaceVfuncRegistry,
+    getInterfaceVtableSize,
     instanceClassName,
     registerWrapper,
     resolveWrapperType,
+    type InterfaceProperty,
     type StaticBase,
     type VfuncDescriptor,
     type VfuncRegistry,

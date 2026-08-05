@@ -19,7 +19,7 @@ export { getObjectProperty, newObjectWithProperties, setObjectProperty } from ".
 /** @public */
 export { promisify } from "./promisify.js";
 /** @public */
-export { registerClass } from "./register-class.js";
+export { type Interface, registerClass } from "./register-class.js";
 /** @public */
 export {
     getHandle,

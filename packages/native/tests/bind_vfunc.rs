@@ -50,7 +50,7 @@ fn values<'e>(env: &'e Env, items: &[napi::sys::napi_value]) -> Array<'e> {
 
 fn menu_is_mutable_options(instance_type: glib::Type) -> BindVfuncOptions {
     BindVfuncOptions {
-        instance_type: gtype(instance_type),
+        instance_type: Some(gtype(instance_type)),
         interface_type: None,
         byte_offset: offset(offset_of!(gio::ffi::GMenuModelClass, is_mutable)),
         vtable_size: None,
@@ -112,7 +112,7 @@ fn reports_a_null_class_slot() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = bind_vfunc(BindVfuncOptions {
-            instance_type: gtype(gio::Application::static_type()),
+            instance_type: Some(gtype(gio::Application::static_type())),
             interface_type: None,
             byte_offset: offset(offset_of!(gio::ffi::GApplicationClass, run_mainloop)),
             vtable_size: None,
@@ -151,7 +151,7 @@ fn calls_an_interface_slot_through_the_parent_class() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = bind_vfunc(BindVfuncOptions {
-            instance_type: gtype(gio::SimpleActionGroup::static_type()),
+            instance_type: Some(gtype(gio::SimpleActionGroup::static_type())),
             interface_type: Some(gtype(gio::ActionGroup::static_type())),
             byte_offset: offset(offset_of!(gio::ffi::GActionGroupInterface, has_action)),
             vtable_size: Some(offset(size_of::<gio::ffi::GActionGroupInterface>())),
@@ -185,7 +185,7 @@ fn reports_a_type_that_does_not_carry_the_interface() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = bind_vfunc(BindVfuncOptions {
-            instance_type: gtype(glib::Object::static_type()),
+            instance_type: Some(gtype(glib::Object::static_type())),
             interface_type: Some(gtype(gio::ActionGroup::static_type())),
             byte_offset: offset(offset_of!(gio::ffi::GActionGroupInterface, has_action)),
             vtable_size: Some(offset(size_of::<gio::ffi::GActionGroupInterface>())),
@@ -214,6 +214,116 @@ fn reports_a_type_that_does_not_carry_the_interface() {
         assert!(
             message.contains("does not implement interface"),
             "unexpected error: {message}"
+        );
+    });
+}
+
+fn default_has_action_options() -> BindVfuncOptions {
+    BindVfuncOptions {
+        instance_type: None,
+        interface_type: Some(gtype(gio::ActionGroup::static_type())),
+        byte_offset: offset(offset_of!(gio::ffi::GActionGroupInterface, has_action)),
+        vtable_size: Some(offset(size_of::<gio::ffi::GActionGroupInterface>())),
+        label: "ActionGroupInterface.has_action".to_owned(),
+        arg_descriptors: vec![borrowed_object(), borrowed_string()],
+        return_descriptor: Descriptor::Boolean,
+    }
+}
+
+#[test]
+fn calls_the_implementation_an_interface_installs_by_default() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = bind_vfunc(default_has_action_options())
+            .expect("binding a slot of the default vtable should succeed");
+        let group = gio::SimpleActionGroup::new();
+        group.add_action(&gio::SimpleAction::new("frob", None));
+
+        let result = call(
+            &env,
+            &descriptor,
+            values(
+                &env,
+                &[
+                    object_value(&env, group.as_ptr().cast::<c_void>()),
+                    napi_mock::fake_string("frob"),
+                ],
+            ),
+        )
+        .expect("calling the default implementation should succeed");
+
+        assert_eq!(napi_mock::read_bool(result.raw()), Some(true));
+    });
+}
+
+#[test]
+fn reports_the_interface_when_its_default_vtable_leaves_the_slot_empty() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = bind_vfunc(BindVfuncOptions {
+            instance_type: None,
+            interface_type: Some(gtype(gio::ListModel::static_type())),
+            byte_offset: offset(offset_of!(gio::ffi::GListModelInterface, get_n_items)),
+            vtable_size: Some(offset(size_of::<gio::ffi::GListModelInterface>())),
+            label: "ListModelInterface.get_n_items".to_owned(),
+            arg_descriptors: vec![borrowed_object()],
+            return_descriptor: Descriptor::Uint32,
+        })
+        .expect("binding an empty default slot should succeed");
+        let store = gio::ListStore::new::<glib::Object>();
+
+        let Err(error) = call(
+            &env,
+            &descriptor,
+            values(&env, &[object_value(&env, store.as_ptr().cast::<c_void>())]),
+        ) else {
+            panic!("an empty default slot must be reported rather than called");
+        };
+
+        let message = error.to_string();
+        assert!(
+            message.contains("interface 'GListModel'"),
+            "unexpected error: {message}"
+        );
+        assert!(
+            message.contains("provides no implementation"),
+            "unexpected error: {message}"
+        );
+    });
+}
+
+#[test]
+fn rejects_a_slot_named_by_neither_an_instance_type_nor_an_interface_type() {
+    helpers::run(|| {
+        let mut options = default_has_action_options();
+        options.interface_type = None;
+
+        let Err(error) = bind_vfunc(options) else {
+            panic!("a slot with no vtable to read it from must be rejected");
+        };
+
+        assert!(
+            error
+                .to_string()
+                .contains("neither an instance type nor an interface type"),
+            "unexpected error: {error}"
+        );
+    });
+}
+
+#[test]
+fn rejects_a_default_interface_slot_without_a_vtable_size() {
+    helpers::run(|| {
+        let mut options = default_has_action_options();
+        options.vtable_size = None;
+
+        let Err(error) = bind_vfunc(options) else {
+            panic!("a default interface slot with no vtable size must be rejected");
+        };
+
+        assert!(
+            error.to_string().contains("without a vtable size"),
+            "unexpected error: {error}"
         );
     });
 }
@@ -249,7 +359,7 @@ fn rejects_a_class_offset_past_the_queried_class_size() {
 fn rejects_an_interface_offset_past_the_declared_vtable_size() {
     helpers::run(|| {
         let Err(error) = bind_vfunc(BindVfuncOptions {
-            instance_type: gtype(gio::SimpleActionGroup::static_type()),
+            instance_type: Some(gtype(gio::SimpleActionGroup::static_type())),
             interface_type: Some(gtype(gio::ActionGroup::static_type())),
             byte_offset: offset(offset_of!(gio::ffi::GActionGroupInterface, has_action)),
             vtable_size: Some(16),

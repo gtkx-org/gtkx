@@ -140,6 +140,14 @@ function fromNativeCallable(nativeFn: NativeCallable, spec: FnSpec): (...inputs:
     };
 }
 
+/**
+ * Binds a symbol in a shared library to a callable that marshals its inputs and packs output
+ * arguments into the result. When the spec sets `canThrow`, the reported `GError` is thrown.
+ *
+ * @param sharedLibrary Shared library the symbol is looked up in.
+ * @param symbol Name of the C symbol to bind.
+ * @param spec Argument and return descriptors the call is marshalled through.
+ */
 function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
     const nativeArgTypes = buildNativeArgTypes(spec.args, spec.canThrow ?? false);
 
