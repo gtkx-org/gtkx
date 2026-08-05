@@ -118,7 +118,15 @@ const withListModel = (Base: typeof GObject): typeof GObject =>
     };
 
 function createToplevelAdopter(): Toplevel & Gdk.Toplevel {
-    const top = new Toplevel({ display: Gdk.Display.getDefault() }) as Toplevel & Gdk.Toplevel;
+    const display = Gdk.Display.getDefault();
+
+    if (display === null) {
+        throw new Error("Expected a default GdkDisplay");
+    }
+
+    const clockSource = Gdk.Surface.newToplevel(display);
+    const top = new Toplevel({ display, frameClock: clockSource.getFrameClock() }) as Toplevel & Gdk.Toplevel;
+    liveSurfaces.append(clockSource);
     liveSurfaces.append(top);
 
     return top;
