@@ -76,6 +76,46 @@ const registerClassPageTests = (): void => {
     });
 };
 
+const registerClassDocTests = (): void => {
+    it("documents method parameters and return values", () => {
+        const page = pageFor("Gtk.Button");
+        expect(page).toContain("**Parameters**");
+        expect(page).toContain("- `label`: a string");
+        expect(page).toContain("**Returns** the child widget of `button`");
+    });
+
+    it("keeps the signature fence free of the generated JSDoc", () => {
+        const page = pageFor("Gtk.Button");
+        expect(page).not.toContain("```ts\n/**");
+        expect(page).not.toContain("@param");
+    });
+
+    it("marks a deprecated class and its deprecated properties", () => {
+        const page = pageFor("Gtk.Assistant");
+        expect(page).toContain("> **Deprecated since 4.10.** This widget will be removed in GTK 5");
+        const properties = page.slice(page.indexOf("### `useHeaderBar`"));
+        expect(properties).toContain("deprecated since 4.10");
+    });
+
+    it("documents the virtual methods a subclass overrides", () => {
+        const page = pageFor("Gtk.Widget");
+        expect(page).toContain("## Implementing");
+        expect(page).toContain("call `super.<slot>(...)`");
+        expect(page).toContain("### `vfuncMeasure`");
+
+        expect(page).toContain(
+            "vfuncMeasure(orientation: Gtk.Orientation, forSize: number): [number, number, number, number]",
+        );
+    });
+
+    it("takes a slot description from the virtual method when the vtable field has none", () => {
+        const page = pageFor("Gtk.Accessible");
+        const slot = page.slice(page.indexOf("### `vfuncGetAccessibleParent`"));
+        expect(slot).toContain("vfuncGetAccessibleParent(): Gtk.Accessible | null");
+        expect(slot).toContain("accessible parent");
+    });
+};
+
 const registerPromisifiedPageTests = (): void => {
     it("renders promisified static async members on class pages", () => {
         const page = pageFor("Gio.DBusConnection");
@@ -95,7 +135,7 @@ const registerPromisifiedPageTests = (): void => {
     });
 };
 
-const registerSymbolPageTests = (): void => {
+const registerInterfacePageTests = (): void => {
     it("renders an interface page with prerequisites", () => {
         const page = pageFor("Gtk.Orientable");
         expect(page).toContain("# Gtk.Orientable");
@@ -103,6 +143,34 @@ const registerSymbolPageTests = (): void => {
         expect(page).toContain("### `orientation`");
     });
 
+    it("documents the vtable slots an implementer of an interface fills", () => {
+        const page = pageFor("Gio.ListModel");
+        expect(page).toContain("## Implementing");
+        expect(page).toContain("declare `implements Gio.ListModelImpl`");
+        expect(page).toContain("pass `Gio.ListModel` in the `implements` option of `registerClass`");
+        expect(page).toContain("### `vfuncGetItem`");
+        expect(page).toContain("vfuncGetItem(position: number): GObject.Object | null");
+        expect(page).toContain("### `vfuncGetNItems`");
+    });
+
+    it("says on the interface page that a slot may be left to the interface", () => {
+        expect(pageFor("Gio.ListModel")).toContain(
+            "Every slot is optional, and one the class leaves out keeps whatever the interface installs by default.",
+        );
+    });
+
+    it("leaves the implementing section off an interface without vtable slots", () => {
+        expect(pageFor("Gtk.Orientable")).not.toContain("## Implementing");
+    });
+
+    it("words the implementing intro for the kind of symbol the page documents", () => {
+        expect(pageFor("Gio.ListModel")).toContain("declare `implements Gio.ListModelImpl`");
+        expect(pageFor("Gtk.Button")).toContain("A subclass declared with `registerClass`");
+        expect(pageFor("Gtk.Button")).not.toContain("declare `implements Gtk.ButtonImpl`");
+    });
+};
+
+const registerSymbolPageTests = (): void => {
     it("renders an element page for JSX element names", () => {
         const page = pageFor("GtkButton");
         expect(page).toContain("# GtkButton");
@@ -118,6 +186,17 @@ const registerSymbolPageTests = (): void => {
         expect(page).toContain("| Member | Value | Description |");
         expect(page).toContain("| `HORIZONTAL` | `0` |");
         expect(page).toContain("Members are accessed as `Gtk.Orientation.<member>`.");
+    });
+
+    it("keeps enum member descriptions whole and unmangled", () => {
+        expect(pageFor("Gtk.InputPurpose")).toContain(
+            "| `PASSWORD` | `8` | Like GTK_INPUT_PURPOSE_FREE_FORM, but characters are hidden |",
+        );
+
+        expect(pageFor("Gtk.AccessibleProperty")).toContain(
+            "| `SORT` | `14` | Indicates if items in a table or grid are sorted in ascending or descending " +
+            "order. Value type: AccessibleSort |",
+        );
     });
 
     it("renders a record page with constructors, fields, and methods", () => {
@@ -223,7 +302,9 @@ describe("ApiReference — namespaces", () => {
 
 describe("ApiReference — lookup", () => {
     registerClassPageTests();
+    registerClassDocTests();
     registerPromisifiedPageTests();
+    registerInterfacePageTests();
     registerSymbolPageTests();
     registerLookupResolutionTests();
 });

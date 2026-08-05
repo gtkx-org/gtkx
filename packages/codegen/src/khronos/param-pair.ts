@@ -6,7 +6,7 @@ type ParamPair = {
     param: GlParam | undefined;
 };
 
-const paramPairAt = (plan: CommandPlan & { ok: true }, index: number): ParamPair => ({
+const paramPairAt = (plan: CommandPlan & { isOk: true }, index: number): ParamPair => ({
     paramPlan: plan.params[index],
     param: plan.command.params[index],
 });

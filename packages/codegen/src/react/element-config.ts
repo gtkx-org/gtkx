@@ -1,4 +1,4 @@
-import type { ModuleExport } from "@gtkx/react/internal";
+import type { ModuleExport } from "@gtkx/react/config";
 import { readdirSync } from "node:fs";
 import type { OmittedProps } from "../store/jsx/omitted-props.js";
 
@@ -96,5 +96,5 @@ const readBuiltinElements = async (reactSubexports: string[], giStoreDir: string
     return result;
 };
 
-export type { ModuleExport } from "@gtkx/react/internal";
+export type { ModuleExport } from "@gtkx/react/config";
 export { readBuiltinElements, type BuiltinElements };

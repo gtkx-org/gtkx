@@ -1,4 +1,5 @@
 import { toCamelIdentifier } from "@gtkx/utils";
+import type { GirAnnotations } from "../../gir/annotations.js";
 import type { GirField } from "../../gir/field.js";
 import type { FieldSlot } from "../../gir/size.js";
 import type { TypeId } from "../../gir/type-id.js";
@@ -9,6 +10,7 @@ import { tStruct } from "../../analysis/descriptor.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock } from "../../writer/emit.js";
+import { annotationSpec } from "./doc-spec.js";
 import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
 import { isValueMarshalable } from "./value-marshalable.js";
@@ -30,6 +32,7 @@ type RecordFieldEntry = {
     tsType: string;
     isWritable: boolean;
     doc: string | undefined;
+    annotations: GirAnnotations;
 };
 
 type InlineFieldVisit = {
@@ -104,6 +107,8 @@ const isMarshalableField = (context: ModuleContext, field: GirField): boolean =>
 
     return isValueMarshalable(context, type.namespace.name, type.value);
 };
+
+const fieldDoc = (field: GirField): string => renderJsDoc(field.doc, undefined, annotationSpec(field.annotations));
 
 const isEmittableField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
     !field.private &&
@@ -180,6 +185,7 @@ const resolveRecordFieldEntry = (
         tsType: renderTsType(context, admitted.field.type, false),
         isWritable: admitted.field.writable,
         doc: admitted.field.doc,
+        annotations: admitted.field.annotations,
     };
 };
 
@@ -196,7 +202,7 @@ const renderRecordFieldAccessor = (
     }
 
     const { field, jsName } = admitted;
-    const doc = renderJsDoc(field.doc);
+    const doc = fieldDoc(field);
     const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });
 
     if (structArray !== undefined) {
@@ -627,6 +633,7 @@ const setterBlock = (options: AccessorOptions): string =>
     );
 
 export {
+    fieldDoc,
     isEmittableField,
     isInlineField,
     emitFieldWrite,

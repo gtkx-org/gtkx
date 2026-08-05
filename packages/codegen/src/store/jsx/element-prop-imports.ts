@@ -2,9 +2,7 @@ type ElementPropTypeRef = { type: string; module: string; export: string };
 
 /** Base props interface each element extends, keyed by GLib type name (the module exports it). */
 type ElementProps = Record<string, {
-    /** Specifier the props interface is imported from. */
     module: string;
-    /** Identifier the module exports it under. */
     export: string;
 }>;
 

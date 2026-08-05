@@ -50,3 +50,64 @@ describe("gtkDocToMarkdown", () => {
         expect(gtkDocToMarkdown("Reach a@b for 100% coverage of a#tag.")).toBe("Reach a@b for 100% coverage of a#tag.");
     });
 });
+
+describe("gtkDocToMarkdown reference fixes", () => {
+    it("renames parameter references to the identifier the signature declares", () => {
+        expect(gtkDocToMarkdown("Pass @keyboard_mode.", new Map([["keyboard_mode", "keyboardMode"]]))).toBe(
+            "Pass `keyboardMode`.",
+        );
+    });
+
+    it("leaves a parameter reference the map does not cover as written", () => {
+        expect(gtkDocToMarkdown("its @user_destroy will be called", new Map([["sort_func", "sortFunc"]]))).toBe(
+            "its `user_destroy` will be called",
+        );
+    });
+
+    it("resolves old-style signal and property references to member paths", () => {
+        expect(gtkDocToMarkdown("See the #GSocketClient::event signal.")).toBe(
+            "See the `GSocketClient.event` signal.",
+        );
+
+        expect(gtkDocToMarkdown("set the #GApplication:resource-base-path property")).toBe(
+            "set the `GApplication.resourceBasePath` property",
+        );
+    });
+
+    it("unescapes a backslash-escaped percent instead of reading it as a constant", () => {
+        expect(gtkDocToMarkdown(String.raw`modifiers: \%f and \%u`)).toBe("modifiers: %f and %u");
+    });
+
+    it("drops HTML comment separators without merging them into the reference", () => {
+        expect(gtkDocToMarkdown("by providing #GCallback<!-- -->s")).toBe("by providing `GCallback`s");
+    });
+
+    it("camel-cases identifier links and appends parentheses", () => {
+        expect(gtkDocToMarkdown("use [id@webkit_feature_get_status]")).toBe("use `webkitFeatureGetStatus()`");
+    });
+});
+
+describe("gtkDocToMarkdown DocBook conversion", () => {
+    it("converts DocBook lists to Markdown bullets", () => {
+        const input =
+            "<itemizedlist><listitem><para>one</para></listitem><listitem><para>two</para></listitem></itemizedlist>";
+
+        expect(gtkDocToMarkdown(input)).toBe("- one\n- two");
+    });
+
+    it("converts DocBook literals and links", () => {
+        expect(gtkDocToMarkdown('<link linkend="GdkPixbufLoader-area-prepared">area_prepared</link>')).toBe(
+            "area_prepared",
+        );
+
+        expect(gtkDocToMarkdown("<para>Use <literal>none</literal> to disable.</para>")).toBe(
+            "Use `none` to disable.",
+        );
+    });
+
+    it("converts DocBook informal examples to fenced blocks", () => {
+        expect(gtkDocToMarkdown("<informalexample><programlisting>a = 1;</programlisting></informalexample>")).toBe(
+            "```\na = 1;\n```",
+        );
+    });
+});

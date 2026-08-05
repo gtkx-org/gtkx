@@ -1,3 +1,4 @@
+/** A fundamental C type GIR can name, collapsed to the marshalling category GTKX treats it as. */
 type PrimitiveCategory =
     | "void" |
     "boolean" |

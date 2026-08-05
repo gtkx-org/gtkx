@@ -14,6 +14,7 @@ import {
     emittedArgIndices,
     foldedLengthIndices,
     foldOutParamShape,
+    type InputParameter,
     inputParameters,
     parameterIdentifier,
 } from "../../analysis/param-structure.js";
@@ -144,9 +145,21 @@ const isReturnedOutParameter = (context: ModuleContext, parameter: GirParameter)
     (isCallerAllocatedOut(parameter) && isCollectibleCallerOut(context, parameter)) ||
     isInoutParameter(parameter);
 
-const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string => {
+const returnedOutParameters = (context: ModuleContext, fn: GirFunction): InputParameter[] => {
     const folded = foldedLengthIndices(context.library, fn);
-    const outs = fn.parameters.filter((p, index) => isReturnedOutParameter(context, p) && !folded.has(index));
+    const result: InputParameter[] = [];
+
+    for (const [index, parameter] of fn.parameters.entries()) {
+        if (isReturnedOutParameter(context, parameter) && !folded.has(index)) {
+            result.push({ parameter, index });
+        }
+    }
+
+    return result;
+};
+
+const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string => {
+    const outs = returnedOutParameters(context, fn);
 
     const primary = shouldOmitPrimaryReturn(context.library, fn.returnValue)
         ? undefined
@@ -156,7 +169,7 @@ const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string
         return primary ?? "void";
     }
 
-    const outTypes = outs.map((parameter) => renderTsType(context, parameter.type, parameter.nullable));
+    const outTypes = outs.map(({ parameter }) => renderTsType(context, parameter.type, parameter.nullable));
 
     return foldOutParamShape(primary, outTypes);
 };
@@ -670,9 +683,11 @@ const parameterCallExpression = (
 
 export {
     constructibleName,
+    isCallbackParameter,
     methodExportName,
     renderMethodSignature,
     renderMethodReturnType,
+    returnedOutParameters,
     renderPromisifiedBody,
     finishCallExpression,
     renderPromisifiedSignature,

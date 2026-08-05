@@ -4,14 +4,14 @@ import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderJsDoc } from "../../writer/doc.js";
+import { annotationSpec } from "./doc-spec.js";
 
 const TRUE_VALUES: Set<string> = new Set(["true", "1"]);
 const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["bigint64", "biguint64", "gtype"]);
 
 const generateConstant = (context: ModuleContext, constant: GirConstant): void => {
-    context.module.appendDeclaration(
-        `${renderJsDoc(constant.doc)}export const ${constant.name} = ${constantLiteral(context, constant)};`,
-    );
+    const doc = renderJsDoc(constant.doc, undefined, annotationSpec(constant.annotations));
+    context.module.appendDeclaration(`${doc}export const ${constant.name} = ${constantLiteral(context, constant)};`);
 };
 
 const constantLiteral = (context: ModuleContext, constant: GirConstant): string => {

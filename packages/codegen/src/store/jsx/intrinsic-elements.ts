@@ -4,9 +4,13 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import { ancestorChain } from "../../gir/ancestry.js";
 
+/** A GIR class paired with the GLib type name it is bound under. */
 type GlibNamedClass = {
+    /** GLib type name, such as `"GtkButton"`, falling back to the C type when the GIR declares none. */
     glibName: string;
+    /** Parsed class the name belongs to. */
     klass: GirClass;
+    /** Namespace declaring the class. */
     namespace: GirNamespace;
 };
 

@@ -66,7 +66,7 @@ const mergeBitfield = (readExpr: string, valueExpr: string, mask: number, shift:
 
 const fieldLayoutInput = (context: ModuleContext, field: GirField, visited: Set<string>): FieldLayoutInput => {
     if (field.inlineMembers !== undefined) {
-        const layout = inlineMemberLayout(context, field.inlineMembers, field.inlineIsUnion, visited);
+        const layout = inlineMemberLayout(context, field.inlineMembers, field.isInlineUnion, visited);
 
         return { layout, bits: undefined };
     }

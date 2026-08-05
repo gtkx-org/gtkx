@@ -34,7 +34,16 @@ type ApiSymbolQuery = {
 };
 
 /** What an indexed symbol is: one of the GIR symbol kinds, or a JSX element. */
-type ApiSymbolKind = GiSymbolEntry["kind"] | "element";
+type ApiSymbolKind =
+    "alias" |
+    "callback" |
+    "class" |
+    "constant" |
+    "element" |
+    "enum" |
+    "function" |
+    "interface" |
+    "record";
 
 /** An indexed symbol, without its reference page. */
 type ApiSymbol = {
@@ -93,16 +102,30 @@ type ApiSearchOptions = {
     limit?: number;
 };
 
+/** An indexed JSX element, carrying the widget class its page renders from. */
 type ElementEntry = {
+    /** Discriminant marking the entry as a JSX element rather than a GIR symbol. */
     kind: "element";
+    /** GIR namespace declaring the widget class. */
     namespace: GirNamespace;
+    /** Element name, which is the class's GLib type name such as `GtkButton`. */
     name: string;
+    /** Documentation text carried by the widget class's GIR node. */
     doc: string | undefined;
+    /** The widget class the element is generated from. */
     element: GlibNamedClass;
 };
 
+/** Anything the index holds: a GIR symbol or a JSX element. */
 type SymbolEntry = GiSymbolEntry | ElementEntry;
-type ScoredEntry = { score: number; entry: SymbolEntry };
+
+/** A search hit: an indexed entry and how well its name answered the query. */
+type ScoredEntry = {
+    /** Match strength, ranked best first: an exact name, then a prefix, then a substring. */
+    score: number;
+    /** The entry that matched. */
+    entry: SymbolEntry;
+};
 
 /** Every kind the reference indexes, in the order a namespace overview groups its symbols. */
 const API_SYMBOL_KINDS: ApiSymbolKind[] = [
@@ -342,6 +365,7 @@ class ApiReference {
     private props: ElementProps;
     private omittedProps: OmittedProps;
 
+    /** Indexes every symbol and JSX element in the GIR data the options point at. */
     constructor(options: ApiReferenceOptions) {
         this.libraries = options.libraries;
         this.props = options.props ?? {};

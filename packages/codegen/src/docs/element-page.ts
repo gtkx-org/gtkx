@@ -1,11 +1,12 @@
-import { sortStringsBy, toCamelIdentifier, upperFirst } from "@gtkx/utils";
+import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
+import type { HandwrittenProp } from "./handwritten-props.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
+import { annotationSpec } from "../store/gi/doc-spec.js";
 import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
-import { buildGirIndex, type GirIndex } from "../store/jsx/gir-index.js";
 import {
     getGlibName,
     type GlibNamedClass,
@@ -15,23 +16,30 @@ import {
 } from "../store/jsx/intrinsic-elements.js";
 import { isOmittedProp } from "../store/jsx/omitted-props.js";
 import { isObjectProp } from "../store/jsx/props.js";
+import { handwrittenPropsFor } from "./handwritten-props.js";
 import {
+    annotationNotes,
     classMethodEntries,
     docMarkdown,
     firstSentence,
     implementsLine,
     joinSections,
-    metaBlock,
+    type MetaDocEntry,
     methodsSectionBlocks,
     originSignatureBlocks,
+    type OriginSignatureEntry,
     propertyMetaLine,
     renderDocsSignalSignature,
     renderDocsType,
+    signalTags,
+    sortedMetaBlocks,
 } from "./render.js";
 
+/** Shared state an element's reference page renders from. */
 type ElementPageContext = {
+    /** Parsed GIR the element, its ancestors, and the interfaces it implements are read from. */
     library: Library;
-    girIndex: GirIndex;
+    /** Resolves a GLib type name to the URL of its page, undefined when it has none. */
     linkFor: (glibName: string) => string | undefined;
 };
 
@@ -42,23 +50,10 @@ type MemberOwner = {
     glibName: string | undefined;
 };
 
-type PropEntry = {
-    name: string;
-    meta: string;
-    doc: string;
-};
-
-type SignalEntry = {
-    name: string;
-    signature: string;
-    doc: string;
-    origin: string | undefined;
-};
-
 const createElementPageContext = (
     library: Library,
     linkFor: (glibName: string) => string | undefined,
-): ElementPageContext => ({ library, girIndex: buildGirIndex(library), linkFor });
+): ElementPageContext => ({ library, linkFor });
 
 const frontmatter = (entry: GlibNamedClass): string => {
     const sentence = firstSentence(entry.klass.doc);
@@ -120,7 +115,7 @@ const propertyEntry = (
     owner: MemberOwner,
     property: GirProperty,
     jsName: string,
-): PropEntry => {
+): MetaDocEntry => {
     const isObject = isObjectProp(context.library, property);
     const baseType = renderDocsType(context.library, property.type, false);
     const type = isObject ? `${baseType} | ReactElement` : baseType;
@@ -133,7 +128,32 @@ const propertyEntry = (
         name: jsName,
         meta: propertyMetaLine({ type, property, accessNotes, origin: owner.origin }),
         doc: docMarkdown(property.doc),
+        tags: annotationSpec(property.annotations),
     };
+};
+
+const handwrittenPropMeta = (prop: HandwrittenProp, owner: MemberOwner): string =>
+    [`\`${prop.type}\``, ...(owner.origin === undefined ? [] : [`from \`${owner.origin}\``])].join(" · ");
+
+const handwrittenPropEntries = (owner: MemberOwner, seen: Set<string>): MetaDocEntry[] => {
+    const declared = owner.glibName === undefined ? undefined : elementPropTypeFor(owner.glibName);
+
+    if (declared === undefined) {
+        return [];
+    }
+
+    const entries: MetaDocEntry[] = [];
+
+    for (const prop of handwrittenPropsFor(declared.export)) {
+        if (seen.has(prop.name)) {
+            continue;
+        }
+
+        seen.add(prop.name);
+        entries.push({ name: prop.name, meta: handwrittenPropMeta(prop, owner), doc: prop.doc });
+    }
+
+    return entries;
 };
 
 const propJsName = (property: GirProperty, owner: MemberOwner, seen: Set<string>): string | undefined => {
@@ -152,8 +172,8 @@ const propJsName = (property: GirProperty, owner: MemberOwner, seen: Set<string>
     return jsName;
 };
 
-const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen: Set<string>): PropEntry[] => {
-    const entries: PropEntry[] = [];
+const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen: Set<string>): MetaDocEntry[] => {
+    const entries: MetaDocEntry[] = [...handwrittenPropEntries(owner, seen)];
 
     for (const property of owner.klass.properties) {
         const jsName = propJsName(property, owner, seen);
@@ -166,8 +186,8 @@ const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen:
     return entries;
 };
 
-const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): PropEntry[] => {
-    const entries: PropEntry[] = [];
+const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): MetaDocEntry[] => {
+    const entries: MetaDocEntry[] = [];
 
     for (const owner of memberOwners(entry, context)) {
         entries.push(...ownerPropEntries(context, owner, seen));
@@ -191,9 +211,7 @@ const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfTy
         return ["## Props", intro];
     }
 
-    const sorted = sortStringsBy(entries, (item) => item.name);
-
-    return ["## Props", intro, ...sorted.map((item) => metaBlock(item.name, item.meta, item.doc))];
+    return ["## Props", intro, ...sortedMetaBlocks(entries)];
 };
 
 const ownerSignalEntries = (
@@ -201,8 +219,8 @@ const ownerSignalEntries = (
     owner: MemberOwner,
     selfType: string,
     seen: Set<string>,
-): SignalEntry[] => {
-    const entries: SignalEntry[] = [];
+): OriginSignatureEntry[] => {
+    const entries: OriginSignatureEntry[] = [];
 
     for (const signal of owner.klass.signals) {
         const name = signalHandlerName(signal.name);
@@ -217,6 +235,7 @@ const ownerSignalEntries = (
             name,
             signature: renderDocsSignalSignature(context.library, signal, selfType),
             doc: docMarkdown(signal.doc),
+            tags: signalTags(signal, true),
             origin: owner.origin,
         });
     }
@@ -226,7 +245,7 @@ const ownerSignalEntries = (
 
 const signalsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
     const seen: Set<string> = new Set();
-    const entries: SignalEntry[] = [];
+    const entries: OriginSignatureEntry[] = [];
 
     for (const owner of memberOwners(entry, context)) {
         entries.push(...ownerSignalEntries(context, owner, selfType, seen));
@@ -257,6 +276,7 @@ const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): 
         frontmatter(entry),
         `# ${entry.glibName}`,
         docMarkdown(entry.klass.doc),
+        ...annotationNotes(entry.klass.annotations),
         importBlock(entry),
         ...hierarchySection(entry, context),
         ...propsSection(entry, context, selfType),

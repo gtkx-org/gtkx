@@ -7,15 +7,21 @@ const NO_POLICY: GlPlanPolicy = { byteOffsetParams: new Set(), singleValuedQueri
 const command = (name: string, returnCType: string, params: GlParam[]): GlCommand => ({
     name,
     returnCType,
+    returnKinds: [],
     params,
 });
 
-const param = (name: string, cType: string, extra?: Partial<GlParam>): GlParam => ({ name, cType, ...extra });
+const param = (name: string, cType: string, extra?: Partial<GlParam>): GlParam => ({
+    name,
+    cType,
+    kinds: [],
+    ...extra,
+});
 
-const okPlan = (input: GlCommand, policy: GlPlanPolicy = NO_POLICY): CommandPlan & { ok: true } => {
+const okPlan = (input: GlCommand, policy: GlPlanPolicy = NO_POLICY): CommandPlan & { isOk: true } => {
     const plan = planCommand(input, policy);
 
-    if (!plan.ok) {
+    if (!plan.isOk) {
         throw new Error(`Expected ${input.name} to plan, got exclusion: ${plan.reason}`);
     }
 
@@ -106,9 +112,9 @@ describe("planCommand outputs", () => {
         ]);
 
         const excluded = planCommand(query, NO_POLICY);
-        expect(excluded.ok).toBe(false);
+        expect(excluded.isOk).toBe(false);
 
-        if (excluded.ok) {
+        if (excluded.isOk) {
             return;
         }
 
@@ -156,9 +162,9 @@ describe("planCommand exclusions", () => {
             NO_POLICY,
         );
 
-        expect(computed.ok).toBe(false);
+        expect(computed.isOk).toBe(false);
 
-        if (computed.ok) {
+        if (computed.isOk) {
             return;
         }
 
@@ -172,9 +178,9 @@ describe("planCommand exclusions", () => {
             NO_POLICY,
         );
 
-        expect(callback.ok).toBe(false);
+        expect(callback.isOk).toBe(false);
 
-        if (callback.ok) {
+        if (callback.isOk) {
             return;
         }
 

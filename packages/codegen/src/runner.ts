@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ModuleExport } from "./react/element-config.js";
 import type { OmittedProps } from "./store/jsx/omitted-props.js";
 import type { StoreOptions } from "./store/store-fs.js";
 import { checkModules } from "./compile.js";
@@ -7,14 +8,6 @@ import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
-
-/** A named export in a module, referenced as plain data (the module is never imported at runtime). */
-type ModuleExport = {
-    /** Specifier the export is imported from. */
-    module: string;
-    /** Identifier the module exports it under. */
-    export: string;
-};
 
 type GlCodegenOptions = {
     registryPath: string;

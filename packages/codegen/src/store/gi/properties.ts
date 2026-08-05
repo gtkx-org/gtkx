@@ -3,11 +3,12 @@ import type { ModuleContext } from "../../writer/context.js";
 import { collectInterfaceProperties } from "../../analysis/inheritance.js";
 import { renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
-import { type ResolvedAccessor, resolveOwnerAccessor } from "./property-accessor.js";
+import { propertyDoc, type ResolvedAccessor, resolveOwnerAccessor } from "./property-accessor.js";
 
 const PROPERTIES_SUFFIX = "Properties";
 
-const propertyEntry = (accessor: ResolvedAccessor): string => `${accessor.jsName}: ${accessor.tsType};`;
+const propertyEntry = (accessor: ResolvedAccessor): string =>
+    `${propertyDoc(accessor.property)}${accessor.jsName}: ${accessor.tsType};`;
 
 const interfaceEntries = (context: ModuleContext, klass: GirClass): string[] => {
     const entries: string[] = [];

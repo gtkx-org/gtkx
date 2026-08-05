@@ -22,6 +22,7 @@ import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
+import { annotationSpec, handlerSpec } from "./doc-spec.js";
 import { isRecordCallerOut, isRecordInout } from "./param-marshal.js";
 
 type SignalMapSpec = {
@@ -117,24 +118,26 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
     const extendsRefs = signalMapParentRefs(context, klass, isParentlessObjectSubclass, suffix);
     const extendsClause = extendsRefs.length === 0 ? "" : ` extends ${extendsRefs.join(", ")}`;
 
-    const signalEntries = collectClassSignals(context, klass).map((signal) => {
-        const entry = `${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`;
-
-        return suffix === SIGNALS_SUFFIX ? `${renderJsDoc(signal.doc)}${entry}` : entry;
-    });
+    const signalEntries = collectClassSignals(context, klass).map(
+        (signal) => `${signalDoc(signal)}${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`,
+    );
 
     const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
 
     return renderBracedOrEmpty(`export interface ${className}${suffix}${extendsClause}`, entries.join("\n"));
 };
 
+const signalDoc = (signal: GirCallable): string =>
+    renderJsDoc(signal.doc, undefined, handlerSpec(signal, signal.parameters));
+
 const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
     const notifyValue = `${gobjectObjectMapRef(context, suffix)}["notify"]`;
 
-    return collectNotifyDetails(context, klass).map((name) => {
-        const detailedSignal = `notify::${name}`;
+    return collectNotifyDetails(context, klass).map((property) => {
+        const detailedSignal = `notify::${property.name}`;
+        const doc = renderJsDoc(property.doc, undefined, annotationSpec(property.annotations));
 
-        return `${sourceStringLiteral(detailedSignal)}: ${notifyValue};`;
+        return `${doc}${sourceStringLiteral(detailedSignal)}: ${notifyValue};`;
     });
 };
 
@@ -414,10 +417,10 @@ const collectInheritedMemberNames = (
 const collectInheritedSignalNames = (context: ModuleContext, klass: GirClass): Set<string> =>
     collectInheritedMemberNames(context, klass, (source) => source.signals);
 
-const collectNotifyDetails = (context: ModuleContext, klass: GirClass): string[] => {
+const collectNotifyDetails = (context: ModuleContext, klass: GirClass): GirProperty[] => {
     const inherited = collectInheritedMemberNames(context, klass, (source) => source.properties);
     const seen: Set<string> = new Set();
-    const result: string[] = [];
+    const result: GirProperty[] = [];
 
     const consider = (property: GirProperty): void => {
         const name = camelCase(property.name);
@@ -427,7 +430,7 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): string[]
         }
 
         seen.add(name);
-        result.push(property.name);
+        result.push(property);
     };
 
     for (const property of klass.properties) {

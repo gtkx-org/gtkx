@@ -14,13 +14,23 @@ import {
 import { parseGirFile, type RawNode } from "./parse.js";
 import { splitOptionalNamespace } from "./type-ref.js";
 
+/** The types belonging to one namespace, addressed by the id half of a {@link TypeId}. */
 type TypeTable = {
+    /** Parsed type in each slot, still `undefined` while only a forward reference to it has been seen. */
     types: (GirType | undefined)[];
+    /** Declared name of each slot, `undefined` for anonymous types such as containers and inline callbacks. */
     names: (string | undefined)[];
+    /** Slot id each named type occupies, so repeated references resolve to the same id. */
     index: Map<string, number>;
 };
 
-type DiscoveredNamespace = { header: NamespaceHeader; shell: GirNamespace };
+/** A namespace whose header has been read and whose shell is registered, before its body is parsed. */
+type DiscoveredNamespace = {
+    /** Attributes and includes read from the namespace's GIR file. */
+    header: NamespaceHeader;
+    /** Empty namespace registered for the header, populated once every header is known. */
+    shell: GirNamespace;
+};
 
 const INTERNAL_NS_ID = 0;
 
@@ -50,6 +60,10 @@ const locateGirFile = (identifier: string, girPath: string[]): string => {
     throw new Error(`GIR file ${filename} not found on girPath. Tried: ${tried}`);
 };
 
+/**
+ * The parsed GIR universe: every requested namespace plus everything those namespaces include,
+ * with types resolvable across namespace boundaries.
+ */
 class Library {
     private static drive(library: Library, libraries: string[], girPath: string[]): void {
         const { discovered, girFiles } = library.discoverNamespaces(libraries, girPath);
@@ -65,6 +79,13 @@ class Library {
         library.girFilesValue = girFiles;
     }
 
+    /**
+     * Parses the named GIR libraries along with every namespace they transitively include.
+     *
+     * @param libraries GIR identifiers to load, such as `Gtk-4.0`.
+     * @param girPath Directories searched, in order, for each `.gir` file.
+     * @returns A library holding every namespace that was parsed.
+     */
     static load(libraries: string[], girPath: string[]): Library {
         const library = new Library();
         this.drive(library, libraries, girPath);
@@ -79,6 +100,7 @@ class Library {
     private typeTables: TypeTable[] = [];
     private girFilesValue: string[] = [];
 
+    /** Creates a library with no namespaces loaded; {@link Library.load} builds a populated one. */
     constructor() {
         this.typeTables[INTERNAL_NS_ID] = { types: [], names: [], index: new Map() };
         this.namespaceById[INTERNAL_NS_ID] = undefined;
@@ -301,19 +323,38 @@ class Library {
         return { discovered, girFiles };
     }
 
+    /** The loaded namespaces, keyed by their GIR name such as `Gtk`. */
     public get namespaces(): Map<string, GirNamespace> {
         return this.namespacesByName;
     }
 
+    /** Paths of the `.gir` files that were read, in the order they were discovered. */
     public get girFiles(): string[] {
         return this.girFilesValue;
     }
 
+    /**
+     * Reads the type a {@link TypeId} points at.
+     *
+     * @param tid The type id to dereference.
+     * @returns The parsed type, or `undefined` when nothing has been parsed into that slot.
+     */
     typeFor(tid: TypeId): GirType | undefined {
         return this.typeTables[tid.nsId]?.types[tid.id];
     }
 
-    nameFor(tid: TypeId): { namespaceName: string; typeName: string } | undefined {
+    /**
+     * Reads the name a {@link TypeId} was registered under.
+     *
+     * @param tid The type id to name.
+     * @returns The namespace and type name, or `undefined` for an anonymous type.
+     */
+    nameFor(tid: TypeId): {
+        /** GIR namespace to qualify the type with, such as `Gtk`. */
+        namespaceName: string;
+        /** Unqualified type name as GIR declares it, such as `Widget`. */
+        typeName: string;
+    } | undefined {
         const typeName = this.typeTables[tid.nsId]?.names[tid.id];
         const namespaceName = this.nsNameById[tid.nsId];
 
@@ -324,6 +365,14 @@ class Library {
         return { namespaceName, typeName };
     }
 
+    /**
+     * Looks up a type by the name a GIR file writes, resolving an unqualified name against the
+     * namespace it appears in and a `Namespace.Type` name against the loaded namespaces.
+     *
+     * @param currentNamespaceName Namespace the name is written in.
+     * @param name Type name, optionally qualified with a namespace prefix.
+     * @returns The parsed type, or `undefined` when the name is unknown or only a forward reference to it exists.
+     */
     resolveType(currentNamespaceName: string, name: string): GirType | undefined {
         const currentNsId = this.nsIdByName.get(currentNamespaceName);
 

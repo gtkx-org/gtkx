@@ -10,6 +10,11 @@ type InputParameter = {
     index: number;
 };
 
+type DocumentedParameter = {
+    name: string;
+    doc: string;
+};
+
 type HandlerResultOptions = {
     library: Library;
     signal: GirCallable;
@@ -179,6 +184,49 @@ const handlerParameters = (
         (parameter) => !parameter.isVarargs && !isOutParameter(parameter) && !shouldExclude(parameter),
     );
 
+const documentedParameters = (
+    library: Library,
+    fn: GirFunction,
+    shouldSkip: (parameter: GirParameter) => boolean = () => false,
+    renames?: Map<string, string>,
+): DocumentedParameter[] =>
+    inputParameters(library, fn)
+        .filter(({ parameter }) => !shouldSkip(parameter))
+        .map(({ parameter, index }) => ({
+            name: renames?.get(parameter.name) ?? parameterIdentifier(parameter, index),
+            doc: parameter.doc ?? "",
+        }))
+        .filter((entry) => entry.doc.length > 0);
+
+const documentedHandlerParameters = (
+    parameters: GirParameter[],
+    shouldExclude: (parameter: GirParameter) => boolean = () => false,
+): DocumentedParameter[] =>
+    handlerParameters(parameters, shouldExclude)
+        .map((parameter, index) => ({ name: parameterIdentifier(parameter, index), doc: parameter.doc ?? "" }))
+        .filter((entry) => entry.doc.length > 0);
+
+const handlerRenames = (parameters: GirParameter[]): Map<string, string> => {
+    const renames: Map<string, string> = new Map();
+
+    for (const [index, parameter] of parameters.entries()) {
+        renames.set(parameter.name, parameterIdentifier(parameter, index));
+    }
+
+    return renames;
+};
+
+const parameterRenames = (fn: GirFunction): Map<string, string> => {
+    const renames = handlerRenames(fn.parameters);
+    const instance = fn.instance;
+
+    if (instance !== undefined && instance.name.length > 0) {
+        renames.set(instance.name, "this");
+    }
+
+    return renames;
+};
+
 const renderHandlerParameters = (
     parameters: GirParameter[],
     renderType: (ref: TypeId | undefined, isNullable: boolean) => string,
@@ -264,8 +312,14 @@ export {
     foldedLengthIndices,
     foldedLengthParameters,
     parameterIdentifier,
+    documentedParameters,
+    documentedHandlerParameters,
+    handlerRenames,
+    parameterRenames,
     handlerParameters,
     renderHandlerParameters,
     foldOutParamShape,
     renderHandlerResultType,
+    type DocumentedParameter,
+    type InputParameter,
 };

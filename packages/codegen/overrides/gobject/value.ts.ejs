@@ -1,6 +1,13 @@
 import { getBoxedValue, getHandle, setBoxedValue } from "@gtkx/runtime";
 import { type Type, Value } from "../gobject.js";
 
+/**
+ * Allocates a `Value`, initializes it to `gtype`, and hands it to `populate` to fill in.
+ *
+ * @param gtype GType the value holds.
+ * @param populate Called with the initialized value to write the contents.
+ * @returns The populated value.
+ */
 export const buildValue = (gtype: Type, populate: (value: Value) => void): Value => {
     const value = new Value();
     value.init(gtype);

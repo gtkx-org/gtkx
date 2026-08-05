@@ -5,6 +5,7 @@ type RuntimeOverride = {
     signature: string;
     returnType: string;
     body: string;
+    renames?: [string, string][];
 };
 
 const RUNTIME_OVERRIDES: Map<string, RuntimeOverride> = new Map([
@@ -23,16 +24,22 @@ const RUNTIME_OVERRIDES: Map<string, RuntimeOverride> = new Map([
             signature: "boxed: object | null",
             returnType: "void",
             body: 'throw new Error("g_value_set_boxed: runtime override not installed");',
+            renames: [["v_boxed", "boxed"]],
         },
     ],
 ]);
 
-const renderRuntimeOverride = (callable: GirFunction, memberName: string): string | undefined => {
-    if (callable.cIdentifier === undefined) {
-        return undefined;
-    }
+const runtimeOverrideFor = (callable: GirFunction): RuntimeOverride | undefined =>
+    callable.cIdentifier === undefined ? undefined : RUNTIME_OVERRIDES.get(callable.cIdentifier);
 
-    const override = RUNTIME_OVERRIDES.get(callable.cIdentifier);
+const runtimeOverrideRenames = (callable: GirFunction): Map<string, string> | undefined => {
+    const renames = runtimeOverrideFor(callable)?.renames;
+
+    return renames === undefined ? undefined : new Map(renames);
+};
+
+const renderRuntimeOverride = (callable: GirFunction, memberName: string): string | undefined => {
+    const override = runtimeOverrideFor(callable);
 
     if (override === undefined) {
         return undefined;
@@ -43,4 +50,4 @@ const renderRuntimeOverride = (callable: GirFunction, memberName: string): strin
     return `${memberName}${generics}(${override.signature}): ${override.returnType} {\n    ${override.body}\n}`;
 };
 
-export { renderRuntimeOverride };
+export { renderRuntimeOverride, runtimeOverrideRenames };

@@ -8,6 +8,7 @@ import { ancestorChain } from "../../gir/ancestry.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
+import { propertyDoc } from "./property-accessor.js";
 
 const PROPS_RECORD = "Record<string, unknown>";
 
@@ -47,7 +48,8 @@ const renderConstructorPropsInterface = (context: ModuleContext, klass: GirClass
 
     const lines = collectConstructableProps(context, klass).map(
         (property) =>
-            `${toCamelIdentifier(property.name)}?: ${renderTsType(context, property.type, true)} | undefined;`,
+            `${propertyDoc(property)}${toCamelIdentifier(property.name)}?: ` +
+            `${renderTsType(context, property.type, true)} | undefined;`,
     );
 
     return renderBracedOrEmpty(`export interface ${className}ConstructorProps${extendsClause}`, lines.join("\n"));

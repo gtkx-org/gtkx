@@ -99,13 +99,6 @@ const registerSignalAndMethodTests = (): void => {
         );
     });
 
-    it("demotes upstream doc headings and strips media markup", () => {
-        const button = page(defaultOutDir, join("gtk", "button.md"));
-        expect(button).toContain("## CSS nodes");
-        expect(button).not.toContain("<picture");
-        expect(button).not.toContain("<img");
-    });
-
     it("skips regeneration while fresh and honors force", () => {
         const fresh = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir });
         expect(fresh.isRegenerated).toBe(false);
@@ -113,6 +106,44 @@ const registerSignalAndMethodTests = (): void => {
         const forced = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir, isForced: true });
         expect(forced.isRegenerated).toBe(true);
         expect(forced.namespaces).toEqual(defaultResult.namespaces);
+    });
+};
+
+const registerElementDocTests = (): void => {
+    it("documents signal handler parameters and return values", () => {
+        const label = page(defaultOutDir, join("gtk", "label.md"));
+        const handler = label.slice(label.indexOf("### `onActivateLink`"));
+        expect(handler).toContain("**Parameters**");
+        expect(handler).toContain("- `uri`: the URI that is activated");
+        expect(handler).toContain("- `self`: The instance the signal was emitted on.");
+        expect(handler).toContain("**Returns**");
+        expect(handler).toContain("the link has been activated");
+    });
+
+    it("marks a deprecated element and its deprecated props", () => {
+        const assistant = page(defaultOutDir, join("gtk", "assistant.md"));
+        expect(assistant).toContain("> **Deprecated since 4.10.** This widget will be removed in GTK 5");
+        const useHeaderBar = assistant.slice(assistant.indexOf("### `useHeaderBar`"));
+        expect(useHeaderBar).toContain("deprecated since 4.10");
+        const apply = assistant.slice(assistant.indexOf("### `onApply`"));
+        expect(apply.slice(0, apply.indexOf("### `on", 1))).toContain("**Deprecated since 4.10.**");
+    });
+
+    it("demotes upstream doc headings and strips media markup", () => {
+        const button = page(defaultOutDir, join("gtk", "button.md"));
+        expect(button).toContain("## CSS nodes");
+        expect(button).not.toContain("<picture");
+        expect(button).not.toContain("<img");
+    });
+
+    it("keeps DocBook and media markup off every page", () => {
+        for (const element of ["button", "window", "label", "picture", "text-view"]) {
+            const rendered = page(defaultOutDir, join("gtk", `${element}.md`));
+            expect(rendered).not.toContain("<picture");
+            expect(rendered).not.toContain("<video");
+            expect(rendered).not.toContain("<itemizedlist");
+            expect(rendered).not.toContain("<listitem");
+        }
     });
 };
 
@@ -124,23 +155,43 @@ describe("writeDocs", () => {
     registerNamespaceIndexTests();
     registerElementPageTests();
     registerSignalAndMethodTests();
+    registerElementDocTests();
 });
 
-describe("writeDocs with omitted props", () => {
+describe("writeDocs with element props", () => {
     const outDir = join(workDir, "omitted");
 
-    it("leaves the omitted props out of the element page", () => {
-        writeDocs({
-            libraries: ["Gtk-4.0"],
-            girPath: GIR_PATH,
-            outDir,
-            omittedProps: { GtkButton: ["child"] },
-        });
+    const result = writeDocs({
+        libraries: ["Gtk-4.0"],
+        girPath: GIR_PATH,
+        outDir,
+        omittedProps: { GtkButton: ["child"] },
+        props: {
+            GtkWidget: { module: "@gtkx/react", export: "GtkWidgetProps" },
+            GtkHeaderBar: { module: "@gtkx/react", export: "GtkHeaderBarProps" },
+        },
+    });
 
+    it("leaves the omitted props out of the element page", () => {
+        expect(result.isRegenerated).toBe(true);
         const button = page(outDir, join("gtk", "button.md"));
         expect(button).not.toContain("### `child`");
         expect(button).toContain("### `label`");
         expect(page(outDir, join("gtk", "frame.md"))).toContain("### `child`");
+    });
+
+    it("documents the element props GTKX adds alongside the GObject properties", () => {
+        const widget = page(outDir, join("gtk", "widget.md"));
+        expect(widget).toContain("### `children`");
+        expect(widget).toContain("Elements attached to the element's default child slot");
+        expect(widget).toContain("### `controllers`");
+        expect(widget).toContain("`Gtk.EventController` elements added to the widget.");
+        expect(widget).toContain("### `actionGroups`");
+        const headerBar = page(outDir, join("gtk", "header-bar.md"));
+        expect(headerBar).toContain("### `start`");
+        expect(headerBar).toContain("Widgets packed at the start of the bar.");
+        expect(headerBar).toContain("### `end`");
+        expect(headerBar).toContain("Widgets packed at the end of the bar.");
     });
 });
 
