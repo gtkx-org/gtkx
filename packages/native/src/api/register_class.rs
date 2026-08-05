@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::ffi::c_void;
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 
 use glib::translate::{IntoGlib as _, from_glib_none};
 use glib::{self, gobject_ffi};
@@ -222,9 +222,10 @@ impl ResolvedProperty {
 fn retain_closure(state: Box<ClosureState>) {
     let address = Box::into_raw(state) as usize;
 
-    if let Ok(mut retained) = RETAINED_CLOSURES.lock() {
-        retained.push(address);
-    }
+    RETAINED_CLOSURES
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .push(address);
 }
 
 impl ResolvedVfunc {
