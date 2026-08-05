@@ -29,9 +29,8 @@ type AdwChildSetter =
     Adw.ToastOverlay |
     Adw.Toggle;
 
-type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.Flap | Adw.OverlaySplitView | Adw.Window;
+type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.OverlaySplitView | Adw.Window;
 type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;
-type PageHost = Adw.PreferencesDialog | Adw.PreferencesWindow;
 type PrefixSuffixRow = Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow;
 
 const SLOT_SUFFIX = "Slot";
@@ -63,14 +62,14 @@ const prefixSuffix = [
     }),
 ];
 
-const pageHostChildren = addRemoveSlot<Adw.PreferencesPage, PageHost>(
+const preferencesDialogChildren = addRemoveSlot<Adw.PreferencesPage, Adw.PreferencesDialog>(
     "children",
     "AdwPreferencesPage",
-    (host, page) => {
-        host.add(page);
+    (dialog, page) => {
+        dialog.add(page);
     },
-    (host, page) => {
-        host.remove(page);
+    (dialog, page) => {
+        dialog.remove(page);
     },
 );
 
@@ -151,6 +150,18 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             deferred<Adw.MultiLayoutView, string>("layoutName", (view, name) => view.getLayoutByName(name) !== null),
         ],
     },
+    AdwClampScrollable: {
+        behaviors: [
+            slot<Adw.ClampScrollable, Gtk.Scrollable & Gtk.Widget>("children", "GtkScrollable", {
+                attach: (clamp, child) => {
+                    clamp.setChild(child);
+                },
+                detach: (clamp) => {
+                    clamp.setChild(null);
+                },
+            }),
+        ],
+    },
     ...forTypes(CHILD_SETTER_TYPES, {
         behaviors: [childSetter],
     }),
@@ -204,7 +215,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 "actions",
                 "GtkWidget",
                 (row, child) => {
-                    row.addAction(child);
+                    row.addSuffix(child);
                 },
                 (row, child) => {
                     row.remove(child);
@@ -215,11 +226,8 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwNavigationSplitView: {
         behaviors: [contentSetterSlot<Adw.NavigationSplitView, Adw.NavigationPage>("AdwNavigationPage")],
     },
-    AdwLeaflet: {
-        behaviors: [boxSlot<Adw.Leaflet | Adw.WrapBox>()],
-    },
     AdwWrapBox: {
-        behaviors: [boxSlot<Adw.Leaflet | Adw.WrapBox>()],
+        behaviors: [boxSlot<Adw.WrapBox>()],
     },
     AdwCarousel: {
         behaviors: [
@@ -249,10 +257,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         ],
     },
     AdwPreferencesDialog: {
-        behaviors: [pageHostChildren],
-    },
-    AdwPreferencesWindow: {
-        behaviors: [pageHostChildren],
+        behaviors: [preferencesDialogChildren],
     },
     AdwPreferencesGroup: {
         behaviors: [
@@ -264,20 +269,6 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 },
                 (group, child) => {
                     group.remove(child);
-                },
-            ),
-        ],
-    },
-    AdwSqueezer: {
-        behaviors: [
-            addRemoveSlot<Gtk.Widget, Adw.Squeezer>(
-                "children",
-                "GtkWidget",
-                (squeezer, child) => {
-                    squeezer.add(child);
-                },
-                (squeezer, child) => {
-                    squeezer.remove(child);
                 },
             ),
         ],

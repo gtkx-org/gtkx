@@ -4,7 +4,6 @@ const SINGLE_CHILD_TYPES: string[] = [
     "GtkAspectFrame",
     "GtkButton",
     "GtkCheckButton",
-    "GtkComboBox",
     "GtkDragIcon",
     "GtkExpander",
     "GtkFlowBoxChild",
@@ -71,7 +70,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         isLazy: true,
     },
     GActionGroup: {
-        props: internal("GActionGroupProps"),
+        props: internal("ActionGroupProps"),
     },
     GtkWidget: {
         props: internal("GtkWidgetProps"),
@@ -96,10 +95,10 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: internal("ChildrenProps"),
     },
     GActionMap: {
-        props: internal("GActionMapProps"),
+        props: internal("ActionMapProps"),
     },
     GMenu: {
-        props: internal("GMenuProps"),
+        props: internal("MenuProps"),
     },
     GtkColumnView: {
         props: internal("ChildrenProps"),
@@ -112,6 +111,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     },
     GtkSizeGroup: {
         props: internal("GtkSizeGroupProps"),
+        component: internal("createRootPortalComponent"),
     },
     GtkConstraintLayout: {
         props: internal("GtkConstraintLayoutProps"),

@@ -3,6 +3,7 @@ import type { SignalHandler } from "@gtkx/runtime";
 import { useEffectEvent, useLayoutEffect } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
+/** The signal map `T` declares, from signal name to handler signature. */
 type Signals<T extends GObject.Object> = NonNullable<T["__signals__"]>;
 /** Every signal name `T` declares, on its own or narrowed by a `::detail` suffix. */
 type SignalName<T extends GObject.Object> = keyof Signals<T> | `${keyof Signals<T> & string}::${string}`;

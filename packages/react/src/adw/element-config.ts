@@ -3,7 +3,6 @@ import { type ElementConfig, forTypes, internal, type ModuleExport } from "../re
 const CHILD_SETTER_TYPES: string[] = [
     "AdwBin",
     "AdwClamp",
-    "AdwClampScrollable",
     "AdwNavigationPage",
     "AdwSplitButton",
     "AdwStatusPage",

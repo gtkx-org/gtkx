@@ -3,6 +3,7 @@ import { kebabCase } from "@gtkx/utils";
 import type { RefProp } from "../utils/ref-prop.js";
 import { useObjectValue } from "./use-object-value.js";
 
+/** The property map `T` declares, from camelCase property name to value type. */
 type Properties<T extends GObject.Object> = NonNullable<T["__properties__"]>;
 /** Every property `T` declares that is also readable off the instance, in camelCase. */
 type PropertyName<T extends GObject.Object> = keyof Properties<T> & keyof T;

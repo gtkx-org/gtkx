@@ -2,33 +2,51 @@ import type * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
 import type { ChildrenProps } from "../prop-types.js";
 
+/** One button in an `Adw.AlertDialog`'s `responses` prop. */
 type AlertDialogResponse = {
+    /** Name the dialog reports on `onResponse` when this button is chosen. */
     id: string;
+    /** Text shown on the button. */
     label: string;
+    /** Styling the button is given, such as suggested or destructive; defaults to the plain appearance. */
     appearance?: Adw.ResponseAppearance;
+    /** Whether the button can be activated; defaults to true. */
     isEnabled?: boolean;
 };
 
+/** Props of an `Adw.AlertDialog` element. */
 type AdwAlertDialogProps = {
+    /** Buttons the dialog offers, added and removed as the list changes. */
     responses?: AlertDialogResponse[] | null | undefined;
 } & ChildrenProps;
 
+/** Props of an `Adw.PreferencesRow` element. */
 type AdwPreferencesRowProps = {
+    /** Widgets added at the start of the row, before its title. */
     prefix?: ReactNode | null | undefined;
+    /** Widgets added at the end of the row. */
     suffix?: ReactNode | null | undefined;
 };
 
+/** Props of an `Adw.ExpanderRow` element. */
 type AdwExpanderRowProps = {
+    /** Widgets added to the area the row reveals when it expands. */
     rows?: ReactNode | null | undefined;
+    /** Widgets added to the row's header, beside the expander arrow. */
     actions?: ReactNode | null | undefined;
 } & AdwPreferencesRowProps;
 
+/** Props of an `Adw.ToolbarView` element, whose `children` is the content the bars surround. */
 type AdwToolbarViewProps = {
+    /** Widgets stacked above the content. */
     topBar?: ReactNode | null | undefined;
+    /** Widgets stacked below the content. */
     bottomBar?: ReactNode | null | undefined;
 } & ChildrenProps;
 
+/** Props of an element that hosts breakpoints, such as `Adw.Window` or `Adw.BreakpointBin`. */
 type AdwBreakpointsProps = {
+    /** `Adw.Breakpoint` elements added to the element, each applying while its condition holds. */
     breakpoints?: ReactNode | null | undefined;
 } & ChildrenProps;
 

@@ -1,26 +1,46 @@
 import * as GLib from "@gtkx/gi/glib";
 
+/** JavaScript type every GVariant basic type code unpacks to. */
 type BasicValueMap = {
+    /** Boolean, held as a single byte reading 0 or 1. */
+    // eslint-disable-next-line gtkx/boolean-name
     b: boolean;
+    /** Unsigned byte. */
     y: number;
+    /** Signed 16-bit integer. */
     n: number;
+    /** Unsigned 16-bit integer. */
     q: number;
+    /** Signed 32-bit integer. */
     i: number;
+    /** Unsigned 32-bit integer. */
     u: number;
+    /** Index into the file descriptor list a message carries. */
     h: number;
+    /** Double precision floating point number. */
     d: number;
+    /** Signed 64-bit integer. */
     x: bigint;
+    /** Unsigned 64-bit integer. */
     t: bigint;
+    /** UTF-8 string, under no further constraint on what it holds. */
     s: string;
+    /** D-Bus object path. */
     o: string;
+    /** GVariant type signature. */
     g: string;
+    /** Boxed variant holding a value of any type. */
     v: GLib.Variant;
 };
 
+/** Single-character code of one of the GVariant basic types in {@link BasicValueMap}. */
 type BasicCode = keyof BasicValueMap;
+/** Parses the element type of an array, yielding the array type it produces and the rest of the string. */
 type ParseArray<S extends string> = Parse<S> extends [infer V, infer R extends string] ? [V[], R] : never;
+/** Parses the element type of a maybe, yielding the nullable type it produces and the rest of the string. */
 type ParseMaybe<S extends string> = Parse<S> extends [infer V, infer R extends string] ? [V | null, R] : never;
 
+/** Collects tuple member types into `Acc` up to the closing parenthesis, yielding them and the rest of the string. */
 type ParseTuple<S extends string, Acc extends unknown[]> = S extends `)${infer Rest}`
     ? [Acc, Rest]
     : [Parse<S>] extends [never]
@@ -29,8 +49,10 @@ type ParseTuple<S extends string, Acc extends unknown[]> = S extends `)${infer R
                 ? ParseTuple<R, [...Acc, V]>
                 : never;
 
+/** Types a dictionary entry key can hold. */
 type DictKey = string | number | bigint | boolean;
 
+/** Parses the key and value types of a dictionary entry, yielding them and the rest of the string after its brace. */
 type ParsePair<S extends string> =
     Parse<S> extends [infer K, infer R1 extends string]
         ? Parse<R1> extends [infer V, infer R2 extends string]
@@ -42,16 +64,26 @@ type ParsePair<S extends string> =
             : never
         : never;
 
+/**
+ * Parses a dictionary entry into the collection an array of those entries unpacks to, a record for string keys and a
+ * `Map` otherwise, plus the rest of the string.
+ */
 type ParseDict<S extends string> =
     ParsePair<S> extends [infer K, infer V, infer R extends string]
         ? [[K] extends [string] ? Record<string, V> : Map<K, V>, R]
         : never;
 
+/** Parses a standalone dictionary entry into a key and value pair, yielding it and the rest of the string. */
 type ParseEntry<S extends string> =
     ParsePair<S> extends [infer K, infer V, infer R extends string] ? [[K, V], R] : never;
 
+/** Parses what follows an `a` as a dictionary when it opens an entry, and as a plain array otherwise. */
 type ParseArrayOrDict<S extends string> = S extends `{${infer Rest}` ? ParseDict<Rest> : ParseArray<S>;
 
+/**
+ * Parses the type at the head of `S`, yielding the JavaScript type it unpacks to and the rest of the string, or
+ * `never` when the string is malformed.
+ */
 type Parse<S extends string> = S extends `a${infer Rest}`
     ? ParseArrayOrDict<Rest>
     : S extends `m${infer Rest}`
@@ -66,6 +98,7 @@ type Parse<S extends string> = S extends `a${infer Rest}`
                         : never
                     : never;
 
+/** JavaScript type a variant of type string `S` unpacks to, or `unknown` when `S` is not one complete type. */
 type VariantValue<S extends string> = [Parse<S>] extends [never]
     ? unknown
     : Parse<S> extends [infer V, ""]

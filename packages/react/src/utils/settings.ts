@@ -3,8 +3,9 @@ import { packVariant, parseVariantType, unpackVariant, type VariantValue } from 
 
 /** Maps each key of a GSettings schema to its kind: a GVariant type string, or `enum` or `flags`. */
 type SettingsSchemaKeys = Record<string, string>;
+/** Value type a key kind stands for: `number` for `enum` and `flags`, otherwise the unpacked GVariant. */
 type SettingKindValue<S extends string> = S extends "enum" | "flags" ? number : VariantValue<S>;
-/** The JavaScript type key `P` holds: `number` for `enum` and `flags`, otherwise the unpacked GVariant. */
+/** Value type of key `P`, looked up by its kind in schema `K`, that reads and writes of that key take. */
 type SettingValue<K extends SettingsSchemaKeys, P extends keyof K> = SettingKindValue<K[P] & string>;
 
 /** A GSettings schema, as described by the modules GTKX generates from a project's `.gschema.xml` files. */

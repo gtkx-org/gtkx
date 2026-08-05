@@ -103,19 +103,19 @@ type GtkWidgetProps = {
 } & ChildrenProps;
 
 /** Props of an action group placed in a widget's `actionGroups` slot. */
-type GActionGroupProps = {
+type ActionGroupProps = {
     /** Prefix the group's actions are addressed by, such as `win`; defaults to the empty string. */
     prefix?: string | null | undefined;
 };
 
 /** Props of an element implementing `Gio.ActionMap`. */
-type GActionMapProps = {
+type ActionMapProps = {
     /** `Gio.Action` elements added to the map, removed again by their `name`. */
     actions?: ReactNode | null | undefined;
 };
 
 /** Props of a `Gio.Menu` element. */
-type GMenuProps = {
+type MenuProps = {
     /** Entries the menu is rebuilt from whenever they change. */
     items?: MenuItem[] | null | undefined;
 };
@@ -229,9 +229,9 @@ export {
     type DragSourceIcon,
     type ChildrenProps,
     type GtkWidgetProps,
-    type GActionGroupProps,
-    type GActionMapProps,
-    type GMenuProps,
+    type ActionGroupProps,
+    type ActionMapProps,
+    type MenuProps,
     type GtkShortcutControllerProps,
     type GtkOverlayProps,
     type GtkTextChildAnchorProps,
