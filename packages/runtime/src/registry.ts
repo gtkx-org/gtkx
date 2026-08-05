@@ -348,7 +348,7 @@ function getHandle(instance: object): ExternalObject<Handle> {
  * Returns the native handle bound to an instance, or undefined when the instance is null or
  * undefined, throwing when a value that should carry a handle has none.
  */
-function tryGetHandle(instance: object | null | undefined): ExternalObject<Handle> | undefined {
+function handleFor(instance: object | null | undefined): ExternalObject<Handle> | undefined {
     return instance == null ? undefined : getHandle(instance);
 }
 
@@ -393,7 +393,7 @@ export {
     getWrapperClass,
     resolveWrapperClass,
     getHandle,
-    tryGetHandle,
+    handleFor,
     setHandle,
     getVfuncRegistry,
     getInterfaceMixin,

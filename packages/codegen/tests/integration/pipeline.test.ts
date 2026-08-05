@@ -44,7 +44,7 @@ const DBUS_CONNECTION_NEW_SIGNATURE =
 
 const DBUS_CONNECTION_NEW_PROMISIFY_CALL =
     "return promisify(gDbusConnectionNew, this.newFinish.bind(this), cancellable, " +
-    "getHandle(stream), guid, flags, tryGetHandle(observer));";
+    "getHandle(stream), guid, flags, handleFor(observer));";
 
 const SHOW_URI_FULL_CALLBACK_SIGNATURE =
     "export function showUriFull(parent: Window | null, uri: string, timestamp: number, " +

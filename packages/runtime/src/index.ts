@@ -29,7 +29,7 @@ export {
     registerWrapperClass,
     type StaticBase,
     setHandle,
-    tryGetHandle,
+    handleFor,
     wrapHandle,
 } from "./registry.js";
 /** @public */

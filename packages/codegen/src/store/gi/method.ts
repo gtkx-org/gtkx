@@ -595,9 +595,9 @@ const planInParam = (
 
 const handleArgument = (context: ModuleContext, name: string, isNullable: boolean): string => {
     if (isNullable) {
-        context.addRuntimeImport("tryGetHandle");
+        context.addRuntimeImport("handleFor");
 
-        return `tryGetHandle(${name})`;
+        return `handleFor(${name})`;
     }
 
     context.addRuntimeImport("getHandle");
@@ -614,9 +614,9 @@ const closureArgument = (context: ModuleContext, name: string, isNullable: boole
 
 const hashtableArgument = (context: ModuleContext, valueRef: TypeId, name: string): string => {
     if (isHandlePassing(context, valueRef)) {
-        context.addRuntimeImport("tryGetHandle");
+        context.addRuntimeImport("handleFor");
 
-        return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, tryGetHandle(v)]) : null`;
+        return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, handleFor(v)]) : null`;
     }
 
     return `${name} ? globalThis.Array.from(${name}) : null`;
