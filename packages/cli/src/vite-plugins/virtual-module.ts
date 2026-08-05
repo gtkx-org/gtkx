@@ -2,6 +2,7 @@ type VirtualResolveContext = {
     resolve: (
         source: string,
         importer?: string,
+        // eslint-disable-next-line gtkx/boolean-name
         options?: { skipSelf?: boolean } & Record<string, unknown>,
     ) => Promise<{ id: string; external?: boolean | "absolute" | "relative" } | null>;
 };

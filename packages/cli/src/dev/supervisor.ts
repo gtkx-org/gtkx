@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { DEV_ENTRY_ENV } from "./entry-env.js";
 
 type SupervisedChild = {
+    // eslint-disable-next-line gtkx/boolean-name
     killed: boolean;
     pid?: number | undefined;
     exitCode: number | null;

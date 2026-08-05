@@ -21,6 +21,7 @@ import {
 } from "./generated/enums.js";
 
 type LengthQuery = (id: GLuint, pname: GLenum) => GLint;
+/** Arguments the driver hands the raw debug callback: source, type, id, severity, message length, and text. */
 type DebugCallbackArgs = [GLenum, GLenum, GLuint, GLenum, number, string];
 
 /**
@@ -41,7 +42,7 @@ type DebugMessage = {
 
 /**
  * Callback invoked for each GL debug message reported by the driver.
- * @param message The message reported by the driver.
+ * @param message - The message reported by the driver.
  */
 type DebugMessageCallback = (message: DebugMessage) => void;
 

@@ -7,19 +7,17 @@ type CreateCommandArgs = {
     name?: string | undefined;
     "application-id"?: string | undefined;
     "package-manager"?: string | undefined;
+    // eslint-disable-next-line gtkx/boolean-name
     typescript?: boolean | undefined;
+    // eslint-disable-next-line gtkx/boolean-name
     vitest?: boolean | undefined;
+    // eslint-disable-next-line gtkx/boolean-name
     yes?: boolean | undefined;
     "no-interactive"?: boolean | undefined;
+    // eslint-disable-next-line gtkx/boolean-name
     overwrite?: boolean | undefined;
 };
 
-/**
- * Citty command definition for the CLI `create` subcommand. It declares the
- * scaffolder's arguments (target name, application ID, package manager,
- * TypeScript and Vitest toggles, prompt behavior, and overwrite) and runs the
- * scaffolder to generate a new GTKX application.
- */
 const scaffoldCommand = defineCommand({
     meta: {
         name: "create",

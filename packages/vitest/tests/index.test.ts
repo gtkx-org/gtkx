@@ -6,6 +6,7 @@ type InputConfig = { root?: string; test?: { setupFiles?: string | string[] } };
 
 type WorkerConfig = {
     test?: {
+        // eslint-disable-next-line gtkx/boolean-name
         globals?: boolean;
         execArgv?: string[];
         setupFiles?: string[];

@@ -6,13 +6,17 @@ type ViteConfigSnapshot = {
     build: {
         ssr: string;
         outDir: string;
+        // eslint-disable-next-line gtkx/boolean-name
         minify: boolean;
+        // eslint-disable-next-line gtkx/boolean-name
         cssMinify: boolean;
         assetsInlineLimit: number;
+        // eslint-disable-next-line gtkx/boolean-name
         ssrEmitAssets: boolean;
         rolldownOptions: { output: { entryFileNames: string } };
     };
     define: Record<string, string>;
+    // eslint-disable-next-line gtkx/boolean-name
     ssr: { noExternal: boolean };
 };
 

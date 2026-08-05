@@ -19,12 +19,12 @@ type ListItem<T = unknown> = {
     value: T;
     /** Child items nested under this one, which turn a plain item list into a tree. */
     children?: ListItem<T>[] | undefined;
-    /** Hides the tree expander arrow even when the item has children. */
-    hideExpander?: boolean | undefined;
-    /** Adds indentation matching the item's depth in the tree. */
-    indentForDepth?: boolean | undefined;
-    /** Reserves indentation space for an expander icon. */
-    indentForIcon?: boolean | undefined;
+    /** Hides the tree expander arrow even when the item has children, through `hide-expander`. */
+    shouldHideExpander?: boolean | undefined;
+    /** Adds indentation matching the item's depth in the tree, through `indent-for-depth`. */
+    shouldIndentForDepth?: boolean | undefined;
+    /** Reserves indentation space for an expander icon, through `indent-for-icon`. */
+    shouldIndentForIcon?: boolean | undefined;
 };
 
 /** A group of items rendered under a shared section header. */

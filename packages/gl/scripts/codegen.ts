@@ -19,24 +19,42 @@ const registryPath = join(
 
 const glSrcDir = join(scriptDir, "..", "src");
 const outputDir = join(glSrcDir, "generated");
-const EXPORT_PATTERN = /^export (?:async )?(?:function|const|type|interface|class) ([A-Za-z_$][\w$]*)/gm;
+const EXPORT_BLOCK_PATTERN = /^export \{([^}]*)\}/gm;
 const overrideExports = overrideExportNames(join(glSrcDir, "overrides.ts"));
 const report = runGlCodegen({ registryPath, overrideExports, outputDir, resolveFrom: join(scriptDir, "..") });
 const exclusionCounts: Map<string, number> = new Map();
+
+function exportSpecifierNames(specifiers: string): string[] {
+    return specifiers
+        .split(",")
+        .map((specifier) => specifier.trim().split(/\s+/).at(-1) ?? "")
+        .filter((name) => name.length > 0);
+}
 
 function overrideExportNames(path: string): Set<string> {
     const source = readFileSync(path, "utf8");
     const names: Set<string> = new Set();
 
-    for (const match of source.matchAll(EXPORT_PATTERN)) {
-        const name = match[1];
+    for (const match of source.matchAll(EXPORT_BLOCK_PATTERN)) {
+        const specifiers = exportSpecifierNames(match[1] ?? "");
 
-        if (name !== undefined) {
+        for (const name of specifiers) {
             names.add(name);
         }
     }
 
     return names;
+}
+
+function summarizeCounts(counts: Map<string, number>): string {
+    return [...counts]
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([reason, count]) => `${reason} ${String(count)}`)
+        .join(", ");
+}
+
+function summarizeEnumExclusions(exclusions: { token: string; reason: string }[]): string {
+    return exclusions.map((exclusion) => `${exclusion.token}: ${exclusion.reason}`).join(", ");
 }
 
 for (const exclusion of report.exclusions) {
@@ -50,5 +68,13 @@ log.info(
 
 log.info(
     `commands: ${String(report.selectedCommands)} selected, ${String(report.emittedCommands)} emitted, ` +
-    `${String(report.derivedSingulars)} derived singulars, ${String(report.exclusions.length)} excluded`,
+    `${String(report.derivedSingulars)} derived singulars, ${String(report.exclusions.length)} excluded ` +
+    `(${summarizeCounts(exclusionCounts)})`,
 );
+
+log.info(
+    `enums: ${String(report.enumExclusions.length)} skipped ` +
+    `(${summarizeEnumExclusions(report.enumExclusions)})`,
+);
+
+log.info(`core profile: ${String(report.coreRemovals.length)} symbols removed`);

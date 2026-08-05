@@ -8,7 +8,7 @@ import { firstSecondItems, renderListView, valueItems } from "./helpers/list-fix
 type Category = {
     id: string;
     value: { name: string };
-    children: { id: string; value: { name: string }; hideExpander: true }[];
+    children: { id: string; value: { name: string }; shouldHideExpander: true }[];
 };
 
 const tree: Category[] = [
@@ -16,8 +16,8 @@ const tree: Category[] = [
         id: "cat-a",
         value: { name: "Category A" },
         children: [
-            { id: "a-1", value: { name: "Alpha" }, hideExpander: true },
-            { id: "a-2", value: { name: "Beta" }, hideExpander: true },
+            { id: "a-1", value: { name: "Alpha" }, shouldHideExpander: true },
+            { id: "a-2", value: { name: "Beta" }, shouldHideExpander: true },
         ],
     },
 ];

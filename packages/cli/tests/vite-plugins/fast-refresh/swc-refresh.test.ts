@@ -10,11 +10,13 @@ type TransformHook = Extract<Plugin["transform"], (...args: never[]) => unknown>
 type TransformContext = ThisParameterType<TransformHook>;
 type TransformOptions = Parameters<TransformHook>[2];
 type TransformResult = { code: string; map?: unknown } | null | undefined;
+// eslint-disable-next-line gtkx/boolean-name
 type TransformFn = (code: string, id: string, options?: { ssr?: boolean }) => Promise<TransformResult>;
 
 type RuntimeTransformFn = (
     code: string,
     id: string,
+    // eslint-disable-next-line gtkx/boolean-name
     options?: { ssr?: boolean },
 ) => { code: string; map: null } | undefined;
 

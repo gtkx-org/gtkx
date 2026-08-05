@@ -18,7 +18,7 @@ const PARENT_CHILD_COUNT = 20;
 const children: ListItem<TreeName>[] = Array.from({ length: CHILD_COUNT }, (_, index) => {
     const id = `c-${String(index)}`;
 
-    return { id, value: { name: id }, hideExpander: true };
+    return { id, value: { name: id }, shouldHideExpander: true };
 });
 
 const items: ListItem<TreeName>[] = [{ id: "p", value: { name: "p" }, children }];

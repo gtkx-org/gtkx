@@ -1,5 +1,6 @@
+import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
-import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
+import { createConfigLoader } from "@gtkx/config/internal";
 import { error, info, sortStrings } from "@gtkx/utils";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

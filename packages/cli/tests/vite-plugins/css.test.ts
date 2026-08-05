@@ -22,6 +22,7 @@ const setupAssetsTmpDir = (): TmpDirRef => {
 };
 
 const callResolveId = async (
+    // eslint-disable-next-line gtkx/boolean-name
     resolve: (source: string) => Promise<{ id: string; external?: boolean } | null>,
     source: string,
 ): Promise<string | undefined | null> => {

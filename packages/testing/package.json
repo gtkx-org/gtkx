@@ -55,7 +55,8 @@
     "dependencies": {
         "@gtkx/runtime": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "@gtkx/utils": "workspace:*"
+        "@gtkx/utils": "workspace:*",
+        "@vitest/expect": "^4.1.10"
     },
     "peerDependencies": {
         "@types/react": "^19.2",
@@ -65,7 +66,6 @@
         "@gtkx/config": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "@types/react": "catalog:",
-        "@vitest/expect": "^4.1.10",
         "vitest": "catalog:"
     },
     "nx": {

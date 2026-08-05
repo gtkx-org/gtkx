@@ -21,8 +21,11 @@ import { type Container, TOPLEVELS, traverse } from "./traversal.js";
 import { resetClipboard } from "./user-event/index.js";
 import { within } from "./within.js";
 
+/** A mounted render tracked so cleanup can unmount it. */
 type ActiveRender = {
+    /** Root that rerenders drive and that cleanup tears the tree down through. */
     root: ReconcilerRoot;
+    /** Harness window created for the render, null when it renders into a container the caller supplied. */
     window: Gtk.Window | null;
 };
 

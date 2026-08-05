@@ -236,7 +236,7 @@ const toTreeItems = (categories: (Category & { children: Setting[] })[]): Fixtur
         children: category.children.map((setting) => ({
             id: setting.id,
             value: setting,
-            hideExpander: true,
+            shouldHideExpander: true,
         })),
     }));
 
@@ -288,7 +288,7 @@ function leafNode(id: string, name: string) {
 }
 
 function childNode(id: string, name: string) {
-    return { id, value: { name }, hideExpander: true as const };
+    return { id, value: { name }, shouldHideExpander: true as const };
 }
 
 function categoryNode(id: string, name: string, children: ReturnType<typeof childNode>[]) {
@@ -392,7 +392,7 @@ function filterCategory(id: string, name: string, children: [string, string][]):
         children: children.map(([childId, childName]) => ({
             id: childId,
             value: { type: "leaf", name: childName },
-            hideExpander: true,
+            shouldHideExpander: true,
         })),
     };
 }
@@ -610,16 +610,16 @@ describe("render - ListView (tree) (10)", () => {
 
 describe("render - ListView (tree) (11)", () => {
     describe("tree item properties", () => {
-        it("supports indentForDepth property", async () => {
-            await expectParentChildRenders({ indentForDepth: false }, { indentForDepth: true });
+        it("supports shouldIndentForDepth property", async () => {
+            await expectParentChildRenders({ shouldIndentForDepth: false }, { shouldIndentForDepth: true });
         });
 
-        it("supports indentForIcon property", async () => {
-            await expectParentChildRenders({ indentForIcon: true }, { indentForIcon: false });
+        it("supports shouldIndentForIcon property", async () => {
+            await expectParentChildRenders({ shouldIndentForIcon: true }, { shouldIndentForIcon: false });
         });
 
-        it("supports hideExpander property", async () => {
-            await expectParentChildRenders({ hideExpander: false }, { hideExpander: true });
+        it("supports shouldHideExpander property", async () => {
+            await expectParentChildRenders({ shouldHideExpander: false }, { shouldHideExpander: true });
         });
     });
 });

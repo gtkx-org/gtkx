@@ -1,4 +1,4 @@
-import type { ConfigLoader } from "@gtkx/config/internal";
+import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
 import { discoverGirNamespaces, resolveGirPath } from "@gtkx/codegen";
 import { createConfigLoader } from "@gtkx/config/internal";

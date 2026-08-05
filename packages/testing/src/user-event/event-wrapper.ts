@@ -14,7 +14,9 @@ const canDisplayDeliverActivation = (window: Gtk.Window): boolean =>
     window.getDisplay().getDefaultSeat() !== null;
 
 const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): string | null => {
-    if (root.getAllocatedWidth() === 0) {
+    const [, allocation] = root.computeBounds(root);
+
+    if (allocation.getWidth() === 0) {
         return WINDOW_NOT_ALLOCATED;
     }
 

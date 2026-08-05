@@ -8,8 +8,10 @@ import { createCollectionIndex, ROOT_LEVEL_KEY } from "./collection-index.js";
 import { splicePlan } from "./splice-plan.js";
 import { adoptIndex, createTreeExpansion, resetExpansion } from "./tree-expansion.js";
 
+type LevelStore = Gio.ListModel & LazyLevelStore;
+
 type LevelState = {
-    store: LazyLevelStore;
+    store: LevelStore;
     canExpand: Map<string, boolean>;
 };
 
@@ -48,7 +50,7 @@ function registeredStoreClass(): typeof LazyLevelStore {
         return cached as typeof LazyLevelStore;
     }
 
-    registerClass(LazyLevelStore, { typeName: "GtkxLazyLevelStore" });
+    registerClass(LazyLevelStore, { typeName: "GtkxLazyLevelStore", implements: [Gio.ListModel] });
     Reflect.set(globalThis, STORE_CLASS_KEY, LazyLevelStore);
 
     return LazyLevelStore;
@@ -71,7 +73,7 @@ function levelFor(state: ModelState, key: string): LevelState {
         return existing;
     }
 
-    const created: LevelState = { store: new (registeredStoreClass())(), canExpand: new Map() };
+    const created: LevelState = { store: new (registeredStoreClass())() as LevelStore, canExpand: new Map() };
     state.levels.set(key, created);
 
     return created;
@@ -125,7 +127,7 @@ function dropUnvisited(state: ModelState, visited: Set<string>): void {
     }
 }
 
-function childStoreFor(state: ModelState, object: GObject.Object): Gio.ListStore | null {
+function childStoreFor(state: ModelState, object: GObject.Object): Gio.ListModel | null {
     const node = nodeRefFor(object);
 
     if (node === null) {
@@ -228,8 +230,9 @@ function createCollectionModel(): CollectionModel {
     };
 }
 
-class LazyLevelStore extends Gio.ListStore {
+class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
     private hasEvictableObjects = true;
+    declare itemsChanged: Gio.ListModel["itemsChanged"];
     nodes: NodeRef[] = [];
     objects: Map<string, Gtk.StringObject> = new Map();
 
@@ -258,15 +261,15 @@ class LazyLevelStore extends Gio.ListStore {
         return created;
     }
 
-    override vfuncGetItemType(): bigint {
+    vfuncGetItemType(): bigint {
         return GObject.TYPE_OBJECT;
     }
 
-    override vfuncGetNItems(): number {
+    vfuncGetNItems(): number {
         return this.nodes.length;
     }
 
-    override vfuncGetItem(position: number): GObject.Object | null {
+    vfuncGetItem(position: number): GObject.Object | null {
         const node = this.nodes[position];
 
         if (node === undefined) {

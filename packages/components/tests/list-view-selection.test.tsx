@@ -47,11 +47,11 @@ const toSidebarListItems = (items: SidebarItem[]) =>
     items.map((item) => ({
         id: item.id,
         value: item,
-        hideExpander: !item.children,
+        shouldHideExpander: !item.children,
         children: item.children?.map((child) => ({
             id: child.id,
             value: child,
-            hideExpander: true,
+            shouldHideExpander: true,
         })),
     }));
 
@@ -230,7 +230,7 @@ describe("render - ListView - selection (5)", () => {
                     children: group.children.map((child) => ({
                         id: child.id,
                         value: { name: child.name },
-                        hideExpander: true,
+                        shouldHideExpander: true,
                     })),
                 })),
                 { shouldExpandAll: true, onSelectionChanged },

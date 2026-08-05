@@ -5,6 +5,7 @@ type BuildStartHook = (this: {
 }) => void;
 
 type TransformHook = (code: string, id: string) => string | null | undefined;
+// eslint-disable-next-line gtkx/boolean-name
 type ResolveIdHook = (id: string) => { id: string; external: boolean } | null;
 type NativePlugin = ReturnType<(typeof import("../../src/vite-plugins/native.js"))["gtkxNative"]>;
 

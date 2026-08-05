@@ -3,9 +3,7 @@ import type { ReactNode } from "react";
 import { createRoot, type Root } from "@gtkx/react";
 import { createHarnessWindow } from "./harness-window.js";
 
-/** The result of a production {@link render} call. */
 type ProductionRenderResult = {
-    /** Re-renders the tree with a new element, reusing the same root. */
     rerender: (element: ReactNode) => Promise<void>;
 };
 
@@ -25,14 +23,6 @@ const settle = async (): Promise<void> => {
     }
 };
 
-/**
- * Renders a React element into a presented harness window and settles the main
- * loop, without React's act environment. Use it from benchmarks and other code
- * running against a production React build, where `act` is unavailable.
- *
- * @param element The React element to render.
- * @returns A result whose `rerender` updates the tree through the same root.
- */
 const render = async (element: ReactNode): Promise<ProductionRenderResult> => {
     const window = createHarnessWindow();
     const root = createRoot(window);
@@ -49,10 +39,6 @@ const render = async (element: ReactNode): Promise<ProductionRenderResult> => {
     };
 };
 
-/**
- * Unmounts every tree started by {@link render}, destroys the harness windows,
- * and settles the main loop.
- */
 const cleanup = async (): Promise<void> => {
     for (const active of activeRenders) {
         active.root.unmount();

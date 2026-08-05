@@ -283,9 +283,9 @@ function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: Reac
             : (
                     <GtkTreeExpander
                         listRow={row}
-                        hideExpander={item.hideExpander ?? false}
-                        indentForDepth={item.indentForDepth ?? true}
-                        indentForIcon={item.indentForIcon ?? true}
+                        hideExpander={item.shouldHideExpander ?? false}
+                        indentForDepth={item.shouldIndentForDepth ?? true}
+                        indentForIcon={item.shouldIndentForIcon ?? true}
                     >
                         {content}
                     </GtkTreeExpander>

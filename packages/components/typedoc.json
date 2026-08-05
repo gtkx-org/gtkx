@@ -1,9 +1,9 @@
 {
-    "$schema": "https://typedoc.org/schema.json",
     "entryPoints": [
-        "dist/index.d.ts",
-        "dist/adw/index.d.ts"
+        "./dist/index.d.ts",
+        "./dist/adw/index.d.ts"
     ],
+    "$schema": "https://typedoc.org/schema.json",
     "tsconfig": "../../website/tsconfig.typedoc.json",
     "intentionallyNotExported": [
         "ColumnViewOwnProps",

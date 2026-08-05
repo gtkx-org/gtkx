@@ -10,9 +10,24 @@ import { getConfig } from "./config.js";
 import { descendants } from "./traversal.js";
 import { waitFor } from "./wait-for.js";
 
-type FrameProbe = { counter: bigint | null; startedAt: number };
+/** The window's frame clock progress, used to tell a stalled display from an empty widget. */
+type FrameProbe = {
+    /** Baseline later readings are compared against, `null` until the window has a frame clock. */
+    counter: bigint | null;
+    /** Milliseconds timestamp of when the frame clock first reported a counter, which stalling is measured from. */
+    startedAt: number;
+};
+
+/** Why a capture produced no image: the widget reported no size, or it painted nothing. */
 type CaptureFailure = "no-size" | "no-content";
-type CaptureState = { probe: FrameProbe; failure: CaptureFailure | null };
+
+/** What a capture attempt observed, carried across retries so the failure can be explained. */
+type CaptureState = {
+    /** Frame clock progress for the whole capture, updated by every attempt. */
+    probe: FrameProbe;
+    /** The failure the last attempt hit, or `null` while none has occurred. */
+    failure: CaptureFailure | null;
+};
 
 type CaptureResult =
     { status: "captured"; result: ScreenshotResult } |

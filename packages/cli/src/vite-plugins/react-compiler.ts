@@ -1,8 +1,9 @@
+import type { ConfigLoader } from "@gtkx/config";
 import type { ResolvedReactCompilerOptions } from "@gtkx/config/internal";
 import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 import { transformAsync } from "@babel/core";
 import babelPresetTypescriptNs from "@babel/preset-typescript";
-import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
+import { createConfigLoader } from "@gtkx/config/internal";
 import babelPluginReactCompilerNs from "babel-plugin-react-compiler";
 
 type ReactCompilerState = {

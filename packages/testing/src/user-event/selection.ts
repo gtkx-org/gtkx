@@ -57,8 +57,6 @@ const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void =>
 
     if (widget instanceof Gtk.DropDown) {
         widget.setSelected(selection);
-    } else if (widget instanceof Gtk.ComboBox) {
-        widget.setActive(selection);
     }
 };
 
@@ -136,11 +134,12 @@ const runSelectionEvent = (
 
 /**
  * Selects the items at the given positions through a list, grid, or column view's selection model,
- * by setting the active item of a drop-down or combo box, or by selecting list box rows. An empty
- * array clears a view's selection.
+ * by setting the selected item of a drop-down, or by selecting list box rows. An empty array clears
+ * a view's selection.
  *
- * @throws When a view has no selection model, when a combo box is given more than one position, or
- * when the widget is neither a view nor something with the combo box or list role.
+ * @throws When a view has no selection model, when a widget with the combo box role is given more
+ * than one position, or when the widget is neither a view nor something with the combo box or list
+ * role.
  */
 const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, selectInListView, selectByRole);

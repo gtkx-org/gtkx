@@ -6,6 +6,7 @@ import { docs } from "../../src/commands/docs.js";
 import { collectLogged } from "../stderr-text.js";
 import { setupLogState } from "./log-state.js";
 
+// eslint-disable-next-line gtkx/boolean-name
 type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; cwd?: string };
 type DocsRun = NonNullable<typeof docs.run>;
 type DocsContext = Parameters<DocsRun>[0];

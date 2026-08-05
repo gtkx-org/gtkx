@@ -1,4 +1,4 @@
-/// <reference types="@vitest/expect" />
+import type { SyncExpectationResult } from "@vitest/expect";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getDefaultNormalizer } from "./normalize.js";
@@ -34,15 +34,21 @@ type TextContentOptions = {
      * When true (the default), trim the text and collapse runs of whitespace into single spaces
      * before comparing. When false, only replace non-breaking spaces with regular ones.
      */
+    // eslint-disable-next-line gtkx/boolean-name
     normalizeWhitespace?: boolean | undefined;
 };
 
 /** The expected value for a style class: an exact class name or a regular expression. */
 type ClassExpectation = string | RegExp;
 /** The outcome of a matcher: whether it passed, and the failure text built on demand. */
-type MatcherResult = { pass: boolean; message: () => string };
+type MatcherResult = Pick<SyncExpectationResult, "message" | "pass">;
+
 /** The matcher state bound as `this`, supplying the test runner's deep equality check. */
-type MatcherContext = { equals: (actual: unknown, expected: unknown) => boolean };
+type MatcherContext = {
+    /** Compares a received value against an expected one, resolving asymmetric matchers. */
+    equals: (actual: unknown, expected: unknown) => boolean;
+};
+
 /** Compares text read from the received widget; with no expected value, asserts the text is non-empty. */
 type TextMatcher = (received: unknown, expected?: TextExpectation) => MatcherResult;
 /** Asserts a single state of the received widget, taking no expected value. */
@@ -654,6 +660,7 @@ declare module "@vitest/expect" {
         toHaveValue(expected?: number | string): void;
         toHaveRole(expected: Gtk.AccessibleRole): void;
         toContainElement(descendant: Gtk.Widget | null): void;
+        // eslint-disable-next-line gtkx/boolean-name
         toHaveClass(...args: (ClassExpectation | { exact: boolean })[]): void;
         toHaveObjectProperty(name: string, expected?: unknown): void;
     }
