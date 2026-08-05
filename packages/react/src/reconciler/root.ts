@@ -16,8 +16,11 @@ type RootErrorCallbacks = {
 
 type ReconcilerRootOptions = RootErrorCallbacks & { containerInfo: Container };
 
+/** A render root whose updates and teardown the caller drives, with error handling left to it. */
 type ReconcilerRoot = {
+    /** Mounts an element tree into the container, or updates the tree already mounted there. */
     update: (element: ReactNode) => void;
+    /** Hands the root to `teardown`, then stops {@link quit} from unmounting the container. */
     unmount: (teardown: (root: ReconcilerRoot) => Promise<void>) => Promise<void>;
 };
 

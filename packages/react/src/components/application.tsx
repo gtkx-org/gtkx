@@ -6,6 +6,7 @@ import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState }
 import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
+import { createRootPortalComponent } from "./root-portal.js";
 
 type ApplicationComponentProps = {
     applicationId?: string | null | undefined;
@@ -63,7 +64,7 @@ const applicationChildren = (application: Gtk.Application | null, children: Reac
     return <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>;
 };
 
-const createApplicationComponent = (
+const createApplicationElement = (
     Component: ElementType,
 ): ((props: ApplicationComponentProps) => ReactNode) => {
     return ({ applicationId = defaultApplicationId, children, ref, ...rest }: ApplicationComponentProps): ReactNode => {
@@ -80,6 +81,9 @@ const createApplicationComponent = (
         );
     };
 };
+
+const createApplicationComponent = (Component: ElementType): ((props: unknown) => ReactNode) =>
+    createRootPortalComponent(createApplicationElement(Component));
 
 /** @internal */
 export { createApplicationComponent };
