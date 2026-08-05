@@ -55,12 +55,15 @@
                 "dependsOn": [
                     "gtkx:codegen",
                     "@gtkx/cli:build",
+                    "@gtkx/codegen:build",
                     "@gtkx/components:build",
                     "@gtkx/config:build",
                     "@gtkx/css:build",
+                    "@gtkx/gl:build",
                     "@gtkx/react:build",
                     "@gtkx/runtime:build",
-                    "@gtkx/testing:build"
+                    "@gtkx/testing:build",
+                    "@gtkx/vitest:build"
                 ],
                 "inputs": [
                     "default",
