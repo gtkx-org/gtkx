@@ -54,7 +54,13 @@
                 "cache": true,
                 "dependsOn": [
                     "gtkx:codegen",
-                    "^build"
+                    "@gtkx/cli:build",
+                    "@gtkx/components:build",
+                    "@gtkx/config:build",
+                    "@gtkx/css:build",
+                    "@gtkx/react:build",
+                    "@gtkx/runtime:build",
+                    "@gtkx/testing:build"
                 ],
                 "inputs": [
                     "default",
