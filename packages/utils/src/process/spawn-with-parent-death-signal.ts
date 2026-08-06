@@ -6,7 +6,8 @@ type ParentDeathSpawnOptions = {
     env?: NodeJS.ProcessEnv;
 };
 
-const PARENT_DEATH_SCRIPT = "trap 'kill -9 -$$ 2>/dev/null' TERM INT HUP; \"$@\" & child=$!; wait \"$child\"";
+const PARENT_DEATH_SCRIPT =
+    "set -m; trap 'kill -9 -- -$child 2>/dev/null' TERM INT HUP; \"$@\" & child=$!; wait \"$child\"";
 
 function spawnWithParentDeathSignal(
     command: string,
