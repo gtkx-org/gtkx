@@ -116,12 +116,12 @@ function refreshExpandable(current: LevelState, level: Level, rebuilt: Set<strin
     current.canExpand = next;
 }
 
-function didSpliceLevel(state: ModelState, level: Level, rebuilt: Set<string>): boolean {
+function spliceLevel(state: ModelState, level: Level, rebuilt: Set<string>): void {
     const current = levelFor(state, level.key);
     const plan = splicePlan(current.store.nodes, [...level.nodes], state.expansion.expanded);
 
     if (plan === null) {
-        return false;
+        return;
     }
 
     markRebuilt(rebuilt, plan.rebuilt);
@@ -129,8 +129,6 @@ function didSpliceLevel(state: ModelState, level: Level, rebuilt: Set<string>): 
     for (const step of plan.steps) {
         current.store.replaceNodes(step.nodes, step.start, step.removed, step.added);
     }
-
-    return true;
 }
 
 function dropUnvisited(state: ModelState, visited: Set<string>): void {
@@ -194,14 +192,13 @@ function refreshExpandableLevels(state: ModelState, index: CollectionIndex, sync
 
 function spliceLevels(state: ModelState, sync: SyncPass): void {
     const visited: Set<string> = new Set();
-    let didChange = false;
 
     for (const level of sync.levels) {
-        didChange = didSpliceLevel(state, level, sync.rebuilt) || didChange;
+        spliceLevel(state, level, sync.rebuilt);
         visited.add(level.key);
     }
 
-    if (didChange || visited.size !== state.levels.size) {
+    if (visited.size !== state.levels.size) {
         dropUnvisited(state, visited);
     }
 }

@@ -61,9 +61,6 @@ const defaultItemContent = (value: unknown): ReactNode =>
 const defaultRenderItem = ({ item }: ListItemRenderArgs<unknown>): ReactNode => defaultItemContent(item);
 const faceRenderer = (props: DropDownBaseProps): ListItemRenderer<never> => props.renderItem ?? defaultRenderItem;
 
-const listRenderer = (props: DropDownBaseProps): ListItemRenderer<never> =>
-    props.renderListItem ?? props.renderItem ?? defaultRenderItem;
-
 const resolvePosition = (
     widget: SelectableWidget,
     collection: Collection,
@@ -175,7 +172,7 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
             />
             <ItemPortals store={faceCells} render={faceRenderer(props)} collection={collection} />
             {renderListItem != null && (
-                <ItemPortals store={listCells} render={listRenderer(props)} collection={collection} />
+                <ItemPortals store={listCells} render={renderListItem} collection={collection} />
             )}
             {header.portals}
         </>

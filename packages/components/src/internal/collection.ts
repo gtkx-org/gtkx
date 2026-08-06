@@ -7,7 +7,6 @@ import { nodeRefFor } from "./collection-model.js";
 import { orderFor } from "./tree-expansion.js";
 
 type Collection = {
-    isTree: boolean;
     structureKey: string;
     model: Gtk.FlattenListModel;
     expansion: TreeExpansion;
@@ -44,7 +43,6 @@ function isCollectionIdle(collection: Collection): boolean {
 
 function createCollection(gtk: CollectionModel, index: CollectionIndex): Collection {
     return {
-        isTree: index.isTree,
         structureKey: index.structureKey,
         model: gtk.model,
         expansion: gtk.expansion,
