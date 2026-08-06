@@ -165,16 +165,12 @@ function interfaceAccessorFor(dispatch: PropertyDispatch, pspec: PropertySpec): 
 function resolveAccessor(
     dispatch: PropertyDispatch,
     propertyId: number,
-    pspec: PropertySpec | undefined,
+    pspec: PropertySpec,
 ): PropertyAccessor {
     const accessor = dispatch.accessors[propertyId - FIRST_PROPERTY_ID];
 
     if (accessor !== undefined) {
         return accessor;
-    }
-
-    if (pspec === undefined) {
-        throw new RangeError(`registerClass: no property registered for id ${String(propertyId)}`);
     }
 
     const created = interfaceAccessorFor(dispatch, pspec);
@@ -226,14 +222,14 @@ function writeCurrent(instance: object, accessor: PropertyAccessor, value: unkno
 }
 
 function makeGetProperty(dispatch: PropertyDispatch) {
-    return function getProperty(this: object, propertyId: number, value: object, pspec?: PropertySpec): void {
+    return function getProperty(this: object, propertyId: number, value: object, pspec: PropertySpec): void {
         const accessor = resolveAccessor(dispatch, propertyId, pspec);
         intoValue(getHandle(value), readCurrent(this, accessor));
     };
 }
 
 function makeSetProperty(dispatch: PropertyDispatch) {
-    return function setProperty(this: object, propertyId: number, value: object, pspec?: PropertySpec): void {
+    return function setProperty(this: object, propertyId: number, value: object, pspec: PropertySpec): void {
         const accessor = resolveAccessor(dispatch, propertyId, pspec);
         writeCurrent(this, accessor, fromValue(getHandle(value)));
     };
