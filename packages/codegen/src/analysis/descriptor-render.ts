@@ -472,10 +472,11 @@ const fundamentalAncestor = (
 const classSelfDescriptor = (
     context: ModuleContext,
     type: Extract<EntityType, { kind: "class" | "interface" }>,
+    ownership: Ownership,
 ): string => {
     const ancestor = fundamentalAncestor(context, type);
 
-    return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
+    return ancestor === undefined ? tObject(ownership) : renderFundamental({ ...ancestor, ownership });
 };
 
 const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): string => {
@@ -492,7 +493,7 @@ const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): s
     }
 
     if (isClassOrInterface(type)) {
-        return classSelfDescriptor(context, type);
+        return classSelfDescriptor(context, type, transferOwnership(instance.transferOwnership));
     }
 
     if (type.kind === "record") {
