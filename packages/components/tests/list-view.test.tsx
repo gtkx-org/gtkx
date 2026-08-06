@@ -32,6 +32,10 @@ type Splice = [number, number, number];
 const branchA: NamedItem = { id: "a", value: { name: "A" }, children: [{ id: "a0", value: { name: "A0" } }] };
 const leafB: NamedItem = { id: "b", value: { name: "B" } };
 const branchB: NamedItem = { id: "b", value: { name: "B" }, children: [{ id: "b0", value: { name: "B0" } }] };
+const leafC: NamedItem = { id: "c", value: { name: "C" } };
+const branchC: NamedItem = { id: "c", value: { name: "C" }, children: [{ id: "c0", value: { name: "C0" } }] };
+const leafD: NamedItem = { id: "d", value: { name: "D" } };
+const branchD: NamedItem = { id: "d", value: { name: "D" }, children: [{ id: "d0", value: { name: "D0" } }] };
 
 const collectionModelFor = (ref: RefObject<Gtk.ListView>): Gtk.FlattenListModel => {
     const selection = ref.current.getModel();
@@ -357,6 +361,25 @@ describe("render - ListView (10)", () => {
 
         it("emits one replacement when a row's expandability flips", async () => {
             await expectSpliceEmissions([branchA, leafB], [branchA, branchB], [[1, 1, 1]]);
+        });
+
+        it("emits one replacement covering a run of adjacent expandability flips", async () => {
+            await expectSpliceEmissions(
+                [branchA, leafB, leafC, leafD],
+                [branchA, branchB, branchC, leafD],
+                [[1, 2, 2]],
+            );
+        });
+
+        it("emits one replacement per run when the flips are not adjacent", async () => {
+            await expectSpliceEmissions(
+                [branchA, leafB, leafC, leafD],
+                [branchA, branchB, leafC, branchD],
+                [
+                    [1, 1, 1],
+                    [3, 1, 1],
+                ],
+            );
         });
     });
 });

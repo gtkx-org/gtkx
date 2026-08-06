@@ -6,8 +6,19 @@ import type { CollectionIndex } from "../src/internal/collection-index.js";
 import type { CollectionModel } from "../src/internal/collection-model.js";
 import { createCollectionIndex } from "../src/internal/collection-index.js";
 import { createCollectionModel } from "../src/internal/collection-model.js";
+import { encodePart } from "../src/internal/keys.js";
+import { adoptOrder } from "../src/internal/tree-expansion.js";
+import { buildVisibleOrder } from "../src/internal/tree-order.js";
 
 type Splice = [number, number, number];
+
+const NARROW_SOURCE_COUNT = 2500;
+const NARROW_TARGET_COUNT = 1250;
+const SCALE_BASE_COUNT = 625;
+const SCALE_FACTOR = 4;
+const SCALE_LIMIT = 8;
+const SCALE_REPEAT_COUNT = 9;
+const SCALE_KEPT_COUNT = 4;
 
 const leaf = (id: string): ListItem => ({ id, value: { name: id } });
 const branch = (id: string, children: ListItem[]): ListItem => ({ id, value: { name: id }, children });
@@ -17,6 +28,14 @@ const leafTailTree = (): ListItem[] => [branch("a", [leaf("a0")]), leaf("b")];
 const branchTailTree = (): ListItem[] => [branch("a", [leaf("a0")]), branch("b", [leaf("b0")])];
 const wideTree = (): ListItem[] => [branch("a", [leaf("a0"), leaf("a1")]), leaf("b")];
 const longTree = (): ListItem[] => [branch("a", [leaf("a0")]), leaf("b"), leaf("c")];
+const stub = (id: string): ListItem => branch(id, [leaf(`${id}-child`)]);
+const nested = (id: string): ListItem => branch(id, [stub(`${id}-child`)]);
+const rootPathAt = (slot: number): string => encodePart("0") + encodePart(String(slot));
+const stubs = (count: number): ListItem[] => Array.from({ length: count }, (_, slot) => stub(`b-${String(slot)}`));
+const leaves = (count: number): ListItem[] => Array.from({ length: count }, (_, slot) => leaf(`l-${String(slot)}`));
+const flipRunSource = (): ListItem[] => [stub("a"), leaf("b"), leaf("c"), leaf("d")];
+const adjacentFlips = (): ListItem[] => [stub("a"), stub("b"), stub("c"), leaf("d")];
+const splitFlips = (): ListItem[] => [stub("a"), stub("b"), leaf("c"), stub("d")];
 
 const syncedModel = (index: CollectionIndex): CollectionModel => {
     const collectionModel = createCollectionModel();
@@ -73,6 +92,39 @@ const expectFlatSplices = (previous: string[], next: string[], expected: Splice[
     expect(collectionModel.model.getNItems()).toBe(next.length);
 };
 
+const expectTreeSplices = (previous: ListItem[], next: ListItem[], expected: Splice[]): void => {
+    const collectionModel = syncedModel(treeIndex(previous));
+    const splices = spliceLog(collectionModel.model);
+    collectionModel.sync(treeIndex(next));
+    expect(splices).toEqual(expected);
+    expect(collectionModel.model.getNItems()).toBe(next.length);
+};
+
+const expandedModel = (items: ListItem[]): CollectionModel => {
+    const index = treeIndex(items);
+    const collectionModel = syncedModel(index);
+    const expandable = new Set(index.children.keys());
+    adoptOrder(collectionModel.expansion, buildVisibleOrder(index, expandable));
+
+    return collectionModel;
+};
+
+const narrowingCost = (count: number): number => {
+    const items = stubs(count);
+    const collectionModel = expandedModel(items);
+    const narrowed = treeIndex(items.slice(0, SCALE_KEPT_COUNT));
+    const start = performance.now();
+    collectionModel.sync(narrowed);
+
+    return performance.now() - start;
+};
+
+const fastestNarrowingCost = (count: number): number => {
+    const runs = Array.from({ length: SCALE_REPEAT_COUNT }, () => narrowingCost(count));
+
+    return Math.min(...runs);
+};
+
 describe("createCollectionModel - sync emissions", () => {
     it("emits nothing for a pure reorder", () => {
         expectFlatSplices(["a", "b", "c"], ["c", "a", "b"], []);
@@ -94,6 +146,48 @@ describe("createCollectionModel - sync emissions", () => {
         collectionModel.sync(treeIndex(branchTailTree()));
         expect(splices).toEqual([[1, 1, 1]]);
         expect(isRowExpandableAt(tree, 1)).toBe(true);
+    });
+
+    it("coalesces a run of adjacent expandability flips into one replacement", () => {
+        expectTreeSplices(flipRunSource(), adjacentFlips(), [[1, 2, 2]]);
+    });
+
+    it("keeps expandability flips separated by a stable slot apart", () => {
+        expectTreeSplices(flipRunSource(), splitFlips(), [
+            [1, 1, 1],
+            [3, 1, 1],
+        ]);
+    });
+
+    it("narrows a large tree with one tail splice and one coalesced replacement", () => {
+        const kept = [stub("b-0"), ...leaves(NARROW_TARGET_COUNT - 1)];
+
+        expectTreeSplices(stubs(NARROW_SOURCE_COUNT), kept, [
+            [NARROW_TARGET_COUNT, NARROW_SOURCE_COUNT - NARROW_TARGET_COUNT, 0],
+            [1, NARROW_TARGET_COUNT - 1, NARROW_TARGET_COUNT - 1],
+        ]);
+    });
+});
+
+describe("createCollectionModel - expansion pruning", () => {
+    it("drops a removed slot's own path and its expanded descendants", () => {
+        const collectionModel = expandedModel([stub("keep"), nested("drop")]);
+        expect(collectionModel.expansion.expanded.has(rootPathAt(1))).toBe(true);
+        collectionModel.sync(treeIndex([stub("keep")]));
+        expect([...collectionModel.expansion.expanded]).toEqual([rootPathAt(0)]);
+    });
+
+    it("drops the expanded subtree of a slot that stops being expandable", () => {
+        const collectionModel = expandedModel([nested("flip"), stub("keep")]);
+        collectionModel.sync(treeIndex([leaf("flip"), stub("keep")]));
+        expect([...collectionModel.expansion.expanded]).toEqual([rootPathAt(1)]);
+    });
+
+    it("narrows in time linear in the number of removed slots", () => {
+        fastestNarrowingCost(SCALE_BASE_COUNT);
+        const base = fastestNarrowingCost(SCALE_BASE_COUNT);
+        const scaled = fastestNarrowingCost(SCALE_BASE_COUNT * SCALE_FACTOR);
+        expect(scaled / base).toBeLessThan(SCALE_LIMIT);
     });
 });
 
