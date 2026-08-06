@@ -45,4 +45,4 @@ const getSection = (node: TSESTree.Node): Section | undefined => {
     return SECTION_BY_TYPE[node.type];
 };
 
-export { ORDER, CONTIGUOUS, rankFor, getSection, type Section };
+export { CONTIGUOUS, rankFor, getSection, type Section };

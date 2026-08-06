@@ -1,8 +1,14 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESLint, type TSESTree } from "@typescript-eslint/utils";
 import ts from "typescript";
-import { getDeclarationKey, isGovernedFile, publicSurfaceFor, type Surface } from "./public-surface.js";
+import {
+    getDeclarationKey,
+    isGovernedFile,
+    publicSurfaceFor,
+    type Surface,
+    type SurfaceOptions,
+} from "./public-surface.js";
 
-type Options = [{ entrypoints: string[]; modules: string[]; root: string }];
+type Options = [SurfaceOptions];
 type MessageIds = "missingJsDoc" | "privateJsDoc";
 type Context = TSESLint.RuleContext<MessageIds, Options>;
 

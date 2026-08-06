@@ -3,7 +3,7 @@ import { getIdentifierName } from "./identifier-name.js";
 
 type MessageIds = "missingPrefix" | "notBoolean" | "negated";
 type Context = TSESLint.RuleContext<MessageIds, []>;
-type Shape = "boolean" | "predicate" | "other" | "unknown";
+type Shape = "boolean" | "other" | "unknown";
 type PropertyNode = TSESTree.PropertyDefinition | TSESTree.TSPropertySignature;
 
 const PREFIX = /^(is|are|has|have|can|should|did|will|was|were|requires)[A-Z0-9]/;
@@ -82,7 +82,7 @@ const getUnionShape = (node: TSESTree.TSUnionType): Shape => {
 const getFunctionShape = (node: TSESTree.TSFunctionType): Shape => {
     const returns = getAnnotationShape(node.returnType);
 
-    return returns === "boolean" ? "predicate" : returns;
+    return returns === "boolean" ? "unknown" : returns;
 };
 
 const getTypeShape = (node: TSESTree.TypeNode): Shape => {

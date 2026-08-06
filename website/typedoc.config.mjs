@@ -1,48 +1,31 @@
 import { readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveEntrypoints } from "../packages/eslint/src/api-entrypoints.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const api = JSON.parse(readFileSync(join(root, "api.json"), "utf8"));
-const packages = new Map();
+const packageDirs = new Map();
 const entryPointsByPackage = new Map();
 
 const byName = (left, right) => left.localeCompare(right);
 
-const splitSpecifier = (specifier) => {
-    const segments = specifier.split("/");
-    const name = specifier.startsWith("@") ? segments.slice(0, 2).join("/") : segments[0];
-
-    return { name, subpath: `.${specifier.slice(name.length)}` };
-};
-
-const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
-
 const readTypedocEntryPoints = (dir) => {
     try {
-        return readJson(join(dir, "typedoc.json")).entryPoints;
+        return JSON.parse(readFileSync(join(dir, "typedoc.json"), "utf8")).entryPoints;
     } catch {
         return;
     }
 };
 
-for (const specifier of api.entrypoints) {
-    const { name, subpath } = splitSpecifier(specifier);
-
-    if (!packages.has(name)) {
-        const dir = join(root, "packages", name.replace(/^@gtkx\//, ""));
-        packages.set(name, { dir, manifest: readJson(join(dir, "package.json")) });
-    }
-
-    const { manifest } = packages.get(name);
-    const condition = manifest.exports[subpath];
-    const types = typeof condition === "string" ? condition : condition.types;
-    entryPointsByPackage.set(name, [...(entryPointsByPackage.get(name) ?? []), types]);
+for (const { dir, name, path } of resolveEntrypoints(root, api.entrypoints, "types")) {
+    packageDirs.set(name, dir);
+    entryPointsByPackage.set(name, [...(entryPointsByPackage.get(name) ?? []), path]);
 }
 
 for (const [name, entryPoints] of entryPointsByPackage) {
-    const { dir } = packages.get(name);
+    const dir = packageDirs.get(name);
     const expected = entryPoints.toSorted(byName);
     const actual = (readTypedocEntryPoints(dir) ?? ["./dist/index.d.ts"]).toSorted(byName);
 
@@ -59,7 +42,7 @@ export default {
     name: "API Reference",
     plugin: ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
     entryPointStrategy: "packages",
-    entryPoints: packages.values().map((entry) => relative(here, entry.dir)).toArray(),
+    entryPoints: packageDirs.values().map((dir) => relative(here, dir)).toArray(),
     packageOptions: {
         entryPoints: ["./dist/index.d.ts"],
         tsconfig: "../../website/tsconfig.typedoc.json",
