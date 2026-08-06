@@ -39,4 +39,3 @@ runs:
         context: .github/docker
         load: true
         tags: gtkx-ci:local
-        cache-from: type=gha,scope=ci-image
