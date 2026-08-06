@@ -11,6 +11,7 @@ export { createPortaledComponent } from "./components/portaled.js";
 export { createWindowComponent } from "./components/window.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
 export type * from "./prop-types.js";
+export { isInSignalDispatch } from "./reconciler/host-config.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/root.js";
 export { applyWrite } from "./reconciler/signals.js";

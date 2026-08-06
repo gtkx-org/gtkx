@@ -45,6 +45,7 @@ type PriorityTracker = {
 const HOST_CONTEXT: Record<string, never> = {};
 const containerNodes: WeakMap<object, ElementNode> = new WeakMap();
 const priority = createPriorityTracker();
+const dispatchState: { depth: number } = { depth: 0 };
 
 const hostConfig = {
     supportsMutation: true,
@@ -218,11 +219,19 @@ const setWidgetVisible = (instance: Instance, isVisible: boolean): void => {
     }
 };
 
+const isInSignalDispatch = (): boolean => dispatchState.depth > 0;
+
 const runDiscrete: Dispatch = (fn) => {
+    dispatchState.depth += 1;
+
     try {
         return priority.withDiscrete(fn);
     } finally {
-        reconciler.flushSyncWork();
+        try {
+            reconciler.flushSyncWork();
+        } finally {
+            dispatchState.depth -= 1;
+        }
     }
 };
 
@@ -254,4 +263,4 @@ const createNode = (type: string, props: Props): Instance => {
     return node;
 };
 
-export { reconciler, type Container };
+export { isInSignalDispatch, reconciler, type Container };
