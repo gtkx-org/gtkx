@@ -179,10 +179,8 @@ describe("super.vfunc — caller-allocated out parameters", () => {
     it("passes the caller-allocated record through and returns it in the tuple", () => {
         const seen: Gtk.Border[] = [];
 
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        class BorderedView extends Gtk.TreeView {
+        class BorderedView extends Gtk.ColumnView {
             override vfuncGetBorder(border: Gtk.Border): [boolean, Gtk.Border] {
-                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 const [isSet, filled] = super.vfuncGetBorder(border);
                 seen.push(filled);
 

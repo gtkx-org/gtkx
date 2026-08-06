@@ -176,8 +176,7 @@ describe("callParent — rejected calls", () => {
 
 describe("callParent — caller-allocated out parameters", () => {
     it("includes the caller-allocated slot in the result tuple", () => {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        class BorderedView extends Gtk.TreeView {
+        class BorderedView extends Gtk.ColumnView {
             override vfuncGetBorder(border: Gtk.Border): [boolean, Gtk.Border] {
                 return callParent(BorderedView, "vfuncGetBorder", this, border) as [boolean, Gtk.Border];
             }

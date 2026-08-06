@@ -1,4 +1,3 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import { Object as GObject, TYPE_OBJECT, typeFromName, typeName, typeParent } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -214,21 +213,20 @@ describe("registerClass — vfunc argument and return marshalling", () => {
 
 describe("registerClass — caller-allocated and scalar out parameters", () => {
     it("fills a caller-allocated out boxed parameter from the handler's return value", () => {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        class CustomChooser extends Gtk.ColorButton {
-            override vfuncGetRgba(): Gdk.RGBA {
-                return new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1 });
+        class BorderedColumnView extends Gtk.ColumnView {
+            override vfuncGetBorder(): [boolean, Gtk.Border] {
+                return [true, new Gtk.Border({ top: 11, bottom: 22, left: 33, right: 44 })];
             }
         }
 
-        registerClass(CustomChooser, { typeName: uniqueName("GtkxVfuncCallerOutBoxed") });
-        const chooser = new CustomChooser();
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const result = chooser.getRgba();
-        expect(result.red).toBeCloseTo(0.5);
-        expect(result.green).toBeCloseTo(0.25);
-        expect(result.blue).toBeCloseTo(0.75);
-        expect(result.alpha).toBeCloseTo(1);
+        registerClass(BorderedColumnView, { typeName: uniqueName("GtkxVfuncCallerOutBoxed") });
+        const view = new BorderedColumnView();
+        const [isSet, border] = view.getBorder();
+        expect(isSet).toBe(true);
+        expect(border.top).toBe(11);
+        expect(border.bottom).toBe(22);
+        expect(border.left).toBe(33);
+        expect(border.right).toBe(44);
     });
 
     it("writes scalar out parameters from the handler's returned tuple", () => {

@@ -57,8 +57,15 @@ const callProbe = async (
 
 const registerProbe = (connection: Gio.DBusConnection, handlers: ProbeHandlers): number => {
     const info = getInterfaceInfo();
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    const id = connection.registerObject(OBJECT_PATH, info, handlers.methodCall, handlers.getProperty, null);
+
+    const id = connection.registerObjectWithClosures2(
+        OBJECT_PATH,
+        info,
+        handlers.methodCall,
+        handlers.getProperty,
+        null,
+    );
+
     registrations.push({ connection, id });
 
     return id;
@@ -67,8 +74,8 @@ const registerProbe = (connection: Gio.DBusConnection, handlers: ProbeHandlers):
 const registerProbeWith = (methodCall: unknown): (() => number) => {
     const connection = Gio.busGetSync(Gio.BusType.SESSION, null);
 
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    return () => connection.registerObject(OBJECT_PATH, getInterfaceInfo(), methodCall as never, null, null);
+    return () =>
+        connection.registerObjectWithClosures2(OBJECT_PATH, getInterfaceInfo(), methodCall as never, null, null);
 };
 
 const answerPing = (...args: unknown[]): void => {
