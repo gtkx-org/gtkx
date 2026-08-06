@@ -1,4 +1,3 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import {
     ColumnView,
     type ColumnViewColumn,
@@ -7,9 +6,10 @@ import {
     type ListItemRenderer,
     ListView,
 } from "@gtkx/components";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { render as testingRender } from "@gtkx/testing";
-import { createRef, type ReactNode, type RefObject } from "react";
+import { createRef, type ReactNode, type RefObject, useState } from "react";
 import { ScrollWrapper } from "./scroll-wrapper.js";
 
 type FixtureRender = (element: ReactNode) => Promise<{ rerender: (element: ReactNode) => Promise<void> }>;
@@ -79,6 +79,24 @@ type ColumnViewFixture<T> = {
     rerender: (items: FixtureInput<T>, options?: RenderColumnViewOptions<T>) => Promise<void>;
 };
 
+type StatefulListViewProps<T> = {
+    listRef: RefObject<Gtk.ListView | null>;
+    items: ListItem<T>[];
+    options: RenderListViewOptions<T>;
+};
+
+type ListViewDraw = <T>(
+    ref: RefObject<Gtk.ListView | null>,
+    data: FixtureInput<T>,
+    opts: RenderListViewOptions<T>,
+) => ReactNode;
+
+type RenderListView = <T = NamedValue>(
+    items: FixtureInput<T>,
+    options?: RenderListViewOptions<T>,
+    render?: FixtureRender,
+) => Promise<ListViewFixture<T>>;
+
 const firstSecondItems: ListItem<NamedValue>[] = [
     { id: "1", value: { name: "First" } },
     { id: "2", value: { name: "Second" } },
@@ -142,35 +160,82 @@ const wireFixture = async <W, T, O extends object>(config: {
     };
 };
 
-const renderListView = async <T = NamedValue>(
-    items: FixtureInput<T>,
-    options: RenderListViewOptions<T> = {},
-    render: FixtureRender = testingRender,
-): Promise<ListViewFixture<T>> => {
+function StatefulListView<T>({ listRef, items, options }: StatefulListViewProps<T>) {
+    const { renderItem = renderNamed } = options;
+    const [selectedIds, setSelectedIds] = useState<string[]>(options.selected ?? []);
+
+    const [expandedIds, setExpandedIds] = useState<string[]>(
+        options.shouldExpandAll ? allExpandableIds(items) : (options.expandedIds ?? []),
+    );
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkLabel>{`selected:${selectedIds.join(",")}`}</GtkLabel>
+            {withScrollWrapper(
+                options,
+                <ListView
+                    ref={listRef}
+                    items={items}
+                    renderItem={renderItem}
+                    expandedIds={expandedIds}
+                    onExpandedChange={(ids) => {
+                        setExpandedIds(ids);
+                        options.onExpandedChange?.(ids);
+                    }}
+                    selectedIds={selectedIds}
+                    onSelectionChanged={(ids) => {
+                        setSelectedIds(ids);
+                        options.onSelectionChanged?.(ids);
+                    }}
+                    selectionMode={options.selectionMode}
+                    estimatedItemHeight={options.estimatedItemHeight}
+                />,
+            )}
+        </GtkBox>
+    );
+}
+
+const wireListView = async <T,>(config: {
+    draw: ListViewDraw;
+    items: FixtureInput<T>;
+    options: RenderListViewOptions<T>;
+    render: FixtureRender;
+}): Promise<ListViewFixture<T>> => {
     const ref = createRef<Gtk.ListView>();
+    const { draw } = config;
 
-    const draw = (data: FixtureInput<T>, opts: RenderListViewOptions<T>): ReactNode => {
-        const { renderItem = renderNamed } = opts;
-        const expandedIds = opts.shouldExpandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
-
-        return withScrollWrapper(
-            opts,
-            <ListView
-                ref={ref}
-                items={toListItems(data)}
-                renderItem={renderItem}
-                expandedIds={expandedIds}
-                onExpandedChange={opts.onExpandedChange}
-                selectedIds={opts.selected}
-                selectionMode={opts.selectionMode}
-                onSelectionChanged={opts.onSelectionChanged}
-                estimatedItemHeight={opts.estimatedItemHeight}
-            />,
-        );
-    };
-
-    return wireFixture({ ref, draw, items, options, render });
+    return wireFixture({ ...config, ref, draw: (data, opts) => draw(ref, data, opts) });
 };
+
+const drawStatefulListView: ListViewDraw = (ref, data, opts) => (
+    <StatefulListView listRef={ref} items={toListItems(data)} options={opts} />
+);
+
+const drawListView: ListViewDraw = (ref, data, opts) => {
+    const { renderItem = renderNamed } = opts;
+    const expandedIds = opts.shouldExpandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
+
+    return withScrollWrapper(
+        opts,
+        <ListView
+            ref={ref}
+            items={toListItems(data)}
+            renderItem={renderItem}
+            expandedIds={expandedIds}
+            onExpandedChange={opts.onExpandedChange}
+            selectedIds={opts.selected}
+            selectionMode={opts.selectionMode}
+            onSelectionChanged={opts.onSelectionChanged}
+            estimatedItemHeight={opts.estimatedItemHeight}
+        />,
+    );
+};
+
+const renderStatefulListView: RenderListView = (items, options = {}, render = testingRender) =>
+    wireListView({ draw: drawStatefulListView, items, options, render });
+
+const renderListView: RenderListView = (items, options = {}, render = testingRender) =>
+    wireListView({ draw: drawListView, items, options, render });
 
 const renderGridView = async <T = NamedValue>(
     items: FixtureInput<T>,
@@ -244,6 +309,7 @@ export {
     firstSecondThirdItems,
     allExpandableIds,
     renderListView,
+    renderStatefulListView,
     renderGridView,
     renderColumnView,
     type FixtureRender,

@@ -71,8 +71,9 @@ type ItemSizeProps = {
 /** Controlled selection shared by the multi-item collection views. */
 type SelectionProps = {
     /**
-     * Ids of the items to keep selected; omitting it leaves the view's own selection alone. An id repeated in
-     * several branches of a tree names every matching row, and a single-selection view takes the first of them.
+     * Ids of the items to keep selected; omitting it keeps nothing selected, and `onSelectionChanged` is how a
+     * user's selection is adopted into it. An id repeated in several branches of a tree names every matching row,
+     * and a single-selection view takes the first of them.
      */
     selectedIds?: string[] | null | undefined;
     /** Called with one id per selected row whenever the selection changes, and once on mount. */
@@ -84,8 +85,9 @@ type SelectionProps = {
 /** Controlled expansion for the views that turn nested `ListItem.children` into a tree. */
 type ExpansionProps = {
     /**
-     * Ids of the items to keep expanded; omitting it leaves the rows' own expanded state alone. An id repeated in
-     * several branches names every matching row, so all of them expand together.
+     * Ids of the items to keep expanded; omitting it keeps every row collapsed, and `onExpandedChange` is how a
+     * user's expansion is adopted into it. An id repeated in several branches names every matching row, so all of
+     * them expand together.
      */
     expandedIds?: string[] | null | undefined;
     /** Called with one id per expanded row, in visible order, whenever expansion changes. */

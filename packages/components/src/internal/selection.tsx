@@ -145,7 +145,7 @@ function applyControlledSelection(context: SelectionContext, selectedIds: string
         return;
     }
 
-    const planned = selectedIds == null ? null : plannedPositions(context, selectedIds);
+    const planned = plannedPositions(context, selectedIds ?? []);
 
     if (planned !== null) {
         applySelection(selection, planned);
@@ -168,11 +168,11 @@ function observeSelection(
     const positions = selectedPositions(selection);
     reportSelection(context, idsAt(collection, positions));
 
-    if (selectedIds == null || !isCollectionIdle(collection)) {
+    if (!isCollectionIdle(collection)) {
         return;
     }
 
-    const planned = plannedPositions(context, selectedIds);
+    const planned = plannedPositions(context, selectedIds ?? []);
 
     if (planned !== null && hasSelectionDrifted(positions, planned)) {
         onDrift();

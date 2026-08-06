@@ -1,9 +1,16 @@
 import type { ListItemRenderer } from "@gtkx/components";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { screen } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { expect, vi } from "vitest";
 import { filterableIds } from "./filterable-items.js";
-import { type FixtureInput, type NamedValue, renderListView } from "./list-fixtures.js";
+import {
+    firstSecondItems,
+    type FixtureInput,
+    type NamedValue,
+    renderListView,
+    renderStatefulListView,
+} from "./list-fixtures.js";
 
 type CollectionView = {
     texts: () => string[];
@@ -40,9 +47,34 @@ const renderTestItemWithSpy = async (): Promise<ReturnType<typeof namedLabelRend
     return renderItem;
 };
 
+const expectRenderItemReceivesData = async (): Promise<void> => {
+    const renderItem = await renderTestItemWithSpy();
+    expect(renderItem).toHaveBeenCalledWith(expect.objectContaining({ item: { name: "Test Item" } }));
+};
+
+const expectSingleItemValueUpdate = async (): Promise<void> => {
+    const { rerender } = await renderListView([{ id: "1", value: { name: "Initial" } }]);
+    expect(screen.queryAllByText("Initial")).toHaveLength(1);
+    await rerender([{ id: "1", value: { name: "Updated" } }]);
+    expect(screen.queryAllByText("Updated")).toHaveLength(1);
+    expect(screen.queryAllByText("Initial")).toHaveLength(0);
+};
+
 const prefixedLabel = (prefix: string): ListItemRenderer<NamedValue> => ({ item }) => (
     <GtkLabel>{`${prefix}: ${item.name}`}</GtkLabel>
 );
+
+const expectMultiSelectionAdopted = async (): Promise<void> => {
+    const { ref } = await renderStatefulListView(firstSecondItems, {
+        selectionMode: Gtk.SelectionMode.MULTIPLE,
+    });
+
+    await userEvent.selectOptions(ref.current, [0, 1]);
+
+    await waitFor(() => {
+        expect(screen.queryAllByText("selected:1,2")).toHaveLength(1);
+    });
+};
 
 const expectRenderItemFunctionUpdate = async (): Promise<void> => {
     const testItems = [{ id: "1", value: { name: "Test" } }];
@@ -130,7 +162,10 @@ export {
     expectAllVisibleOnce,
     namedLabelRenderItem,
     renderTestItemWithSpy,
+    expectMultiSelectionAdopted,
     expectRenderItemFunctionUpdate,
+    expectRenderItemReceivesData,
+    expectSingleItemValueUpdate,
     namedRows,
     renderCounterCell,
     RAPID_REORDER_ORDERS,

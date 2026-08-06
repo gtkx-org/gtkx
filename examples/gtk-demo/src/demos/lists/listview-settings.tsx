@@ -477,6 +477,7 @@ function renderSchemaItem({ item: schemaId }: { item: string }) {
 
 const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: string[]) => void }) => {
     const items = getSchemaTree().map((node) => schemaNodeToItem(node));
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
     return (
         <GtkScrolledWindow>
@@ -484,7 +485,11 @@ const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: strin
                 name="sidebar"
                 tabBehavior={Gtk.ListTabBehavior.ITEM}
                 selectionMode={Gtk.SelectionMode.BROWSE}
-                onSelectionChanged={onSelectionChanged}
+                selectedIds={selectedIds}
+                onSelectionChanged={(ids: string[]) => {
+                    setSelectedIds(ids);
+                    onSelectionChanged(ids);
+                }}
                 cssClasses={["navigation-sidebar"]}
                 expandedIds={collectSchemaExpandableIds(items)}
                 renderItem={renderSchemaItem}

@@ -38,8 +38,8 @@ function wantedSet(expansion: TreeExpansion, expandedIds: string[]): Set<string>
     const wanted: Set<string> = new Set();
 
     for (const id of expandedIds) {
-        for (const key of expansion.index.expandableKeysFor(id)) {
-            wanted.add(key);
+        for (const path of expansion.index.expandablePathsFor(id)) {
+            wanted.add(path);
         }
     }
 
@@ -56,10 +56,10 @@ function toggleWantedRows(
     wanted: Set<string>,
     target: VisibleOrder,
 ): void {
-    for (const [position, key] of target.keys.entries()) {
-        const isWanted = wanted.has(key);
+    for (const [position, path] of target.paths.entries()) {
+        const isWanted = wanted.has(path);
 
-        if (expanded.has(key) !== isWanted) {
+        if (expanded.has(path) !== isWanted) {
             tree.getRow(position)?.setExpanded(isWanted);
         }
     }
@@ -85,8 +85,8 @@ function applyWanted(expansion: TreeExpansion, tree: Gtk.TreeListModel, expanded
 }
 
 function reportExpansion(context: ExpansionContext): void {
-    const { expandedIds, expandedKeys } = orderFor(context.collection.expansion);
-    const key = joinParts(expandedKeys);
+    const { expandedIds, expandedPaths } = orderFor(context.collection.expansion);
+    const key = joinParts(expandedPaths);
 
     if (context.last.key === key) {
         return;
@@ -103,10 +103,7 @@ function applyControlledExpansion(context: ExpansionContext, expandedIds: string
         return;
     }
 
-    if (expandedIds != null) {
-        applyWanted(context.collection.expansion, tree, expandedIds);
-    }
-
+    applyWanted(context.collection.expansion, tree, expandedIds ?? []);
     reportExpansion(context);
 }
 
@@ -115,25 +112,20 @@ function isExpansionIdle(collection: Collection): boolean {
 }
 
 function didRowDrift(expansion: TreeExpansion, change: ItemsChange): boolean {
-    const key = orderFor(expansion).keys[change.position - 1];
+    const path = orderFor(expansion).paths[change.position - 1];
     const isExpanded = change.removed === 0 && change.added > 0;
     const isCollapsed = change.added === 0 && change.removed > 0;
 
-    if (key === undefined || isExpanded === isCollapsed) {
+    if (path === undefined || isExpanded === isCollapsed) {
         return false;
     }
 
-    markExpanded(expansion, key, isExpanded);
+    markExpanded(expansion, path, isExpanded);
 
     return true;
 }
 
-function observeExpansion(
-    context: ExpansionContext,
-    options: ExpansionOptions,
-    change: ItemsChange,
-    onDrift: () => void,
-): void {
+function observeExpansion(context: ExpansionContext, change: ItemsChange, onDrift: () => void): void {
     if (!isExpansionIdle(context.collection)) {
         return;
     }
@@ -141,7 +133,7 @@ function observeExpansion(
     const didDrift = didRowDrift(context.collection.expansion, change);
     reportExpansion(context);
 
-    if (didDrift && options.expandedIds != null) {
+    if (didDrift) {
         onDrift();
     }
 }
@@ -160,7 +152,7 @@ function useExpansion(options: ExpansionOptions): ItemsChangeHandler {
     });
 
     return (position, removed, added) => {
-        observeExpansion(context, options, { position, removed, added }, markDrift);
+        observeExpansion(context, { position, removed, added }, markDrift);
     };
 }
 
