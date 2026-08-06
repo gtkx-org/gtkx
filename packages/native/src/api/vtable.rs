@@ -27,7 +27,7 @@ pub(crate) fn query_type(type_: glib::Type) -> Option<gobject_ffi::GTypeQuery> {
 
 pub(crate) fn validate_vfunc_offset(
     byte_offset: usize,
-    class_size: Option<u32>,
+    class_size: u32,
     label: &str,
 ) -> anyhow::Result<()> {
     let pointer_align = align_of::<*mut c_void>();
@@ -43,9 +43,7 @@ pub(crate) fn validate_vfunc_offset(
         .checked_add(pointer_size)
         .ok_or_else(|| anyhow::anyhow!("{label} byte_offset overflow"))?;
 
-    if let Some(class_size) = class_size
-        && end > class_size as usize
-    {
+    if end > class_size as usize {
         anyhow::bail!("{label} byte_offset {byte_offset} exceeds class size {class_size}");
     }
 
@@ -206,30 +204,23 @@ mod tests {
 
     #[test]
     fn validate_vfunc_offset_accepts_aligned_offset_within_bounds() {
-        validate_vfunc_offset(8, Some(64), "vfunc")
-            .expect("aligned in-bounds offset should validate");
-    }
-
-    #[test]
-    fn validate_vfunc_offset_accepts_any_aligned_offset_without_bounds() {
-        validate_vfunc_offset(4096, None, "vfunc")
-            .expect("an unbounded offset only has to be aligned");
+        validate_vfunc_offset(8, 64, "vfunc").expect("aligned in-bounds offset should validate");
     }
 
     #[test]
     fn validate_vfunc_offset_rejects_unaligned_offset() {
-        assert!(validate_vfunc_offset(4, Some(64), "vfunc").is_err());
+        assert!(validate_vfunc_offset(4, 64, "vfunc").is_err());
     }
 
     #[test]
     fn validate_vfunc_offset_rejects_offset_beyond_class_size() {
-        assert!(validate_vfunc_offset(64, Some(64), "vfunc").is_err());
+        assert!(validate_vfunc_offset(64, 64, "vfunc").is_err());
     }
 
     #[test]
     fn validate_vfunc_offset_rejects_end_overflow() {
         let aligned_max = usize::MAX - (align_of::<*mut c_void>() - 1);
-        let error = validate_vfunc_offset(aligned_max, None, "vfunc")
+        let error = validate_vfunc_offset(aligned_max, 64, "vfunc")
             .expect_err("an offset whose end overflows must be rejected");
 
         assert!(error.to_string().contains("overflow"));

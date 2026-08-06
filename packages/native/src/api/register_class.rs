@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::ffi::c_void;
-use std::sync::{Mutex, PoisonError};
 
 use glib::translate::{IntoGlib as _, from_glib_none};
 use glib::{self, gobject_ffi};
@@ -10,15 +9,13 @@ use napi_derive::napi;
 
 use crate::api::vtable::{query_type, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
-use crate::ffi::closure::ClosureState;
+use crate::ffi::closure::{ClosureData, ClosureState};
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
 use crate::host::panic_handler::guard_ffi_boundary;
 use crate::host::{error_reporter, node_env};
 use crate::value::{self, ClosureHandle, pending_wrapper};
-
-static RETAINED_CLOSURES: Mutex<Vec<usize>> = Mutex::new(Vec::new());
 
 pub struct VfuncCallback(ClosureHandle);
 
@@ -219,25 +216,22 @@ impl ResolvedProperty {
     }
 }
 
-fn retain_closure(state: Box<ClosureState>) {
-    let address = Box::into_raw(state) as usize;
-
-    RETAINED_CLOSURES
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-        .push(address);
-}
-
 impl ResolvedVfunc {
     #[allow(clippy::cast_ptr_alignment)]
-    unsafe fn install_into(self, vtable_base: *mut c_void) {
+    unsafe fn install_into(self, vtable_base: *mut c_void) -> ClosureState {
         let Self {
             byte_offset,
             js_fn,
             arg_codecs,
             return_codec,
         } = self;
-        let state = ClosureState::boxed(js_fn, arg_codecs, return_codec, None, false);
+        let state = ClosureState::new(ClosureData::new(
+            js_fn,
+            arg_codecs,
+            return_codec,
+            None,
+            false,
+        ));
         unsafe {
             let slot = vtable_base
                 .cast::<u8>()
@@ -245,12 +239,13 @@ impl ResolvedVfunc {
                 .cast::<*mut c_void>();
             slot.write(state.code_ptr);
         }
-        retain_closure(state);
+        state
     }
 }
 
 struct InterfaceInit {
     vfuncs: Option<Vec<ResolvedVfunc>>,
+    installed: Vec<ClosureState>,
 }
 
 unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut c_void) {
@@ -261,7 +256,8 @@ unsafe extern "C" fn init_interface_vtable(vtable: *mut c_void, iface_data: *mut
     };
 
     for vfunc in vfuncs {
-        unsafe { vfunc.install_into(vtable) };
+        let state = unsafe { vfunc.install_into(vtable) };
+        data.installed.push(state);
     }
 }
 
@@ -273,6 +269,7 @@ impl ResolvedInterface {
     unsafe fn add_to(self, instance_type: glib::ffi::GType) {
         let data = Box::into_raw(Box::new(InterfaceInit {
             vfuncs: Some(self.vfuncs),
+            installed: Vec::new(),
         }));
 
         let info = gobject_ffi::GInterfaceInfo {
@@ -331,6 +328,7 @@ struct ClassInit {
     vfuncs: Vec<ResolvedVfunc>,
     properties: Vec<ResolvedProperty>,
     interfaces: Vec<glib::Type>,
+    installed: Vec<ClosureState>,
 }
 
 unsafe fn override_property(
@@ -394,17 +392,20 @@ unsafe fn install_properties(
 }
 
 unsafe fn apply_class_init(class_ptr: *mut c_void, class_data: *mut c_void) {
-    let ClassInit {
-        vfuncs,
-        properties,
-        interfaces,
-    } = *unsafe { Box::from_raw(class_data.cast::<ClassInit>()) };
+    let data = unsafe { &mut *class_data.cast::<ClassInit>() };
 
-    for vfunc in vfuncs {
-        unsafe { vfunc.install_into(class_ptr) };
+    for vfunc in std::mem::take(&mut data.vfuncs) {
+        let state = unsafe { vfunc.install_into(class_ptr) };
+        data.installed.push(state);
     }
 
-    unsafe { install_properties(class_ptr, properties, &interfaces) };
+    unsafe {
+        install_properties(
+            class_ptr,
+            std::mem::take(&mut data.properties),
+            &data.interfaces,
+        );
+    }
 }
 
 unsafe extern "C" fn init_class(class_ptr: *mut c_void, class_data: *mut c_void) {
@@ -433,20 +434,24 @@ impl ClassRegistration {
 
     fn validate_layout(&self, query: &gobject_ffi::GTypeQuery) -> anyhow::Result<()> {
         for vfunc in &self.vfuncs {
-            validate_vfunc_offset(vfunc.byte_offset, Some(query.class_size), "vfunc")?;
+            validate_vfunc_offset(vfunc.byte_offset, query.class_size, "vfunc")?;
         }
 
         for iface in &self.interfaces {
-            if iface.vtable_size.is_none() && !iface.vfuncs.is_empty() {
+            let Some(vtable_size) = iface.vtable_size else {
+                if iface.vfuncs.is_empty() {
+                    continue;
+                }
+
                 anyhow::bail!(
                     "interface {} declares vfuncs without a vtable size, which would leave their \
                      byte offsets bounded only by their alignment",
                     iface.type_
                 );
-            }
+            };
 
             for vfunc in &iface.vfuncs {
-                validate_vfunc_offset(vfunc.byte_offset, iface.vtable_size, "interface vfunc")?;
+                validate_vfunc_offset(vfunc.byte_offset, vtable_size, "interface vfunc")?;
             }
         }
         Ok(())
@@ -477,6 +482,7 @@ impl ClassRegistration {
             vfuncs,
             properties,
             interfaces: adopted_interface_types(&interfaces, parent_type),
+            installed: Vec::new(),
         }));
 
         let info = gobject_ffi::GTypeInfo {
@@ -650,6 +656,8 @@ pub fn register_class(
 
 #[cfg(test)]
 mod tests {
+    use std::mem::offset_of;
+
     use glib::prelude::StaticType as _;
     use glib::translate::FromGlib as _;
 
@@ -757,11 +765,7 @@ mod tests {
                 name: gstring("GtkxRegisterClassMissingPrerequisiteType"),
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
-                interfaces: vec![interface_entry(
-                    gtk4::Editable::static_type(),
-                    Some(EDITABLE_VTABLE_SIZE),
-                    Vec::new(),
-                )],
+                interfaces: vec![plain_interface(gtk4::Editable::static_type())],
                 properties: Vec::new(),
             };
             let error = request
@@ -800,7 +804,7 @@ mod tests {
                 name: gstring("GtkxRegisterClassNewInterfaceType"),
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
-                interfaces: vec![list_model_interface(Vec::new())],
+                interfaces: vec![plain_interface(list_model_type())],
                 properties: Vec::new(),
             };
             let type_ = request
@@ -1008,18 +1012,31 @@ mod tests {
             .expect("an interface with no vfuncs needs no vtable size");
     }
 
-    const LIST_MODEL_VTABLE_SIZE: u32 = 40;
-    const LIST_MODEL_SLOT_OFFSETS: [usize; 3] = [16, 24, 32];
-    const SELECTION_MODEL_VTABLE_SIZE: u32 = 88;
-    const SELECTION_MODEL_SLOT_OFFSETS: [usize; 2] = [16, 24];
-    const EDITABLE_VTABLE_SIZE: u32 = 88;
+    fn list_model_vtable_size() -> u32 {
+        u32::try_from(size_of::<gtk4::gio::ffi::GListModelInterface>())
+            .expect("the vtable size fits in a u32")
+    }
+
+    fn list_model_slot_offsets() -> [usize; 3] {
+        [
+            offset_of!(gtk4::gio::ffi::GListModelInterface, get_item_type),
+            offset_of!(gtk4::gio::ffi::GListModelInterface, get_n_items),
+            offset_of!(gtk4::gio::ffi::GListModelInterface, get_item),
+        ]
+    }
+
+    fn selection_model_slot_offsets() -> [usize; 2] {
+        [
+            offset_of!(gtk4::ffi::GtkSelectionModelInterface, is_selected),
+            offset_of!(
+                gtk4::ffi::GtkSelectionModelInterface,
+                get_selection_in_range
+            ),
+        ]
+    }
 
     fn list_model_type() -> glib::Type {
         gtk4::gio::ListModel::static_type()
-    }
-
-    fn list_model_interface(vfuncs: Vec<ResolvedVfunc>) -> ResolvedInterface {
-        interface_entry(list_model_type(), Some(LIST_MODEL_VTABLE_SIZE), vfuncs)
     }
 
     #[test]
@@ -1030,12 +1047,8 @@ mod tests {
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
                 interfaces: vec![
-                    interface_entry(
-                        gtk4::SelectionModel::static_type(),
-                        Some(SELECTION_MODEL_VTABLE_SIZE),
-                        Vec::new(),
-                    ),
-                    interface_entry(list_model_type(), Some(LIST_MODEL_VTABLE_SIZE), Vec::new()),
+                    plain_interface(gtk4::SelectionModel::static_type()),
+                    plain_interface(list_model_type()),
                 ],
                 properties: Vec::new(),
             };
@@ -1056,11 +1069,7 @@ mod tests {
                 name: gstring("GtkxRegisterClassUnlistedPrerequisiteType"),
                 parent_type: glib::Object::static_type(),
                 vfuncs: Vec::new(),
-                interfaces: vec![interface_entry(
-                    gtk4::SelectionModel::static_type(),
-                    Some(SELECTION_MODEL_VTABLE_SIZE),
-                    Vec::new(),
-                )],
+                interfaces: vec![plain_interface(gtk4::SelectionModel::static_type())],
                 properties: Vec::new(),
             };
             let error = request
@@ -1092,11 +1101,11 @@ mod tests {
         test_support::run(|| {
             let registered = registered_type(
                 "GtkxRegisterClassEmptySlotType",
-                vec![list_model_interface(Vec::new())],
+                vec![plain_interface(list_model_type())],
             );
 
             let slots =
-                interface_slot_pointers(registered, list_model_type(), &LIST_MODEL_SLOT_OFFSETS);
+                interface_slot_pointers(registered, list_model_type(), &list_model_slot_offsets());
 
             assert!(slots.iter().all(|slot| slot.is_null()));
         });
@@ -1107,12 +1116,19 @@ mod tests {
         test_support::run(|| {
             let registered = registered_type(
                 "GtkxRegisterClassFilledSlotsType",
-                vec![list_model_interface(vec![void_vfunc(24)])],
+                vec![interface_entry(
+                    list_model_type(),
+                    Some(list_model_vtable_size()),
+                    vec![void_vfunc(offset_of!(
+                        gtk4::gio::ffi::GListModelInterface,
+                        get_n_items
+                    ))],
+                )],
             );
             assert!(registered.is_a(list_model_type()));
 
             let slots =
-                interface_slot_pointers(registered, list_model_type(), &LIST_MODEL_SLOT_OFFSETS);
+                interface_slot_pointers(registered, list_model_type(), &list_model_slot_offsets());
 
             assert!(slots[0].is_null());
             assert!(!slots[1].is_null());
@@ -1126,19 +1142,15 @@ mod tests {
             let registered = registered_type(
                 "GtkxRegisterClassDefaultsType",
                 vec![
-                    list_model_interface(Vec::new()),
-                    interface_entry(
-                        gtk4::SelectionModel::static_type(),
-                        Some(SELECTION_MODEL_VTABLE_SIZE),
-                        Vec::new(),
-                    ),
+                    plain_interface(list_model_type()),
+                    plain_interface(gtk4::SelectionModel::static_type()),
                 ],
             );
 
             let slots = interface_slot_pointers(
                 registered,
                 gtk4::SelectionModel::static_type(),
-                &SELECTION_MODEL_SLOT_OFFSETS,
+                &selection_model_slot_offsets(),
             );
 
             assert!(slots.iter().all(|slot| !slot.is_null()));

@@ -162,14 +162,20 @@ fn vfunc_offset_bounds(
     vtable: VfuncVtable,
     vtable_size: Option<u32>,
     label: &str,
-) -> anyhow::Result<Option<u32>> {
+) -> anyhow::Result<u32> {
     match vtable {
-        VfuncVtable::Class(instance_type) => {
-            Ok(query_type(instance_type).map(|query| query.class_size))
-        }
+        VfuncVtable::Class(instance_type) => query_type(instance_type)
+            .map(|query| query.class_size)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "{label} binds a class slot of type '{}', whose class size g_type_query does \
+                     not report",
+                    instance_type.name()
+                )
+            }),
         VfuncVtable::Interface { interface_type, .. }
         | VfuncVtable::DefaultInterface(interface_type) => {
-            interface_offset_bounds(interface_type, vtable_size, label).map(Some)
+            interface_offset_bounds(interface_type, vtable_size, label)
         }
     }
 }
