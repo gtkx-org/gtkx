@@ -10,6 +10,8 @@ export type {
     ListItem,
     ListItemRenderArgs,
     ListItemRenderer,
+    ListRowProps,
+    ListRowPropsResolver,
     ListSection,
     ListSectionRenderArgs,
     ListSectionRenderer,

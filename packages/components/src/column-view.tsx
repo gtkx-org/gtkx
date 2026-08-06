@@ -7,7 +7,7 @@ import { useLayoutEffect, useRef } from "react";
 import type { CellSize } from "./internal/cells.js";
 import type { Collection } from "./internal/collection.js";
 import type { ColumnViewColumn, ColumnViewProps, SortProps } from "./types.js";
-import { ItemPortals, useItemCells, useSectionHeader } from "./internal/cells.js";
+import { ItemPortals, useItemCells, useRowProps, useSectionHeader } from "./internal/cells.js";
 import { useCollection } from "./internal/use-collection.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
 
@@ -28,6 +28,7 @@ const COLUMN_VIEW_PROPS = [
     "items",
     "sections",
     "renderHeader",
+    "getRowProps",
     "columns",
     "selectedIds",
     "onSelectionChanged",
@@ -163,18 +164,17 @@ const ColumnList = ({ columns, collection, expandedIds, size }: ColumnListProps)
 
 /**
  * Renders a Gtk.ColumnView from declarative items or sections and a columns array,
- * with controlled selection, expansion, and sorting, per-column header menus, and
- * section header rendering.
+ * with controlled selection, expansion, and sorting, per-column header menus,
+ * section header rendering, and per-row props such as a screen-reader label.
  */
 function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode {
-    const { renderHeader, columns, expandedIds, sortColumn, sortOrder, onSortChanged, estimatedItemHeight, ref } =
-        props;
-
+    const { renderHeader, getRowProps, columns, expandedIds, sortColumn, sortOrder, onSortChanged, ref } = props;
     const rest = omit(props, COLUMN_VIEW_PROPS);
+    const size = { width: -1, height: props.estimatedItemHeight ?? -1 };
     const [view, refCallback] = useWidgetRef<Gtk.ColumnView>(ref);
-    const size = { width: -1, height: estimatedItemHeight ?? -1 };
     const { collection, selection } = useCollection(props);
     const header = useSectionHeader(renderHeader, collection, size);
+    const rows = useRowProps(getRowProps, collection, expandedIds);
     const columnList = columns as ColumnViewColumn<never>[];
     useColumnSorting(view, { sortColumn, sortOrder, onSortChanged }, columnList);
 
@@ -184,11 +184,13 @@ function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): Rea
                 ref={refCallback}
                 model={selection}
                 {...header.factoryProps}
+                {...rows.factoryProps}
                 {...rest}
             >
                 <ColumnList columns={columnList} collection={collection} expandedIds={expandedIds} size={size} />
             </GtkColumnView>
             {header.portals}
+            {rows.portals}
         </>
     );
 }

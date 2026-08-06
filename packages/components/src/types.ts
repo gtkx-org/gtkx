@@ -49,6 +49,24 @@ type ListItemRenderArgs<T> = {
     isExpanded?: boolean | undefined;
 };
 
+/**
+ * Properties applied to the row that carries one item's cells. A Gtk.ColumnViewRow is not a widget, so
+ * these are the only handles it offers; anything omitted falls back to the row's own default, which
+ * leaves the accessibility strings unset rather than setting them to an empty string.
+ */
+type ListRowProps = {
+    /** Name a screen reader announces for the row, through `accessible-label`. */
+    accessibleLabel?: string | undefined;
+    /** Longer description a screen reader announces for the row, through `accessible-description`. */
+    accessibleDescription?: string | undefined;
+    /** Whether activating the row emits the view's `activate` signal; rows are activatable by default. */
+    isActivatable?: boolean | undefined;
+    /** Whether the row takes keyboard focus; rows are focusable by default. */
+    isFocusable?: boolean | undefined;
+    /** Whether clicking or keying the row tries to select it; rows are selectable by default. */
+    isSelectable?: boolean | undefined;
+};
+
 /** Arguments passed to a {@link ListSectionRenderer} when rendering one section header. */
 type ListSectionRenderArgs<S> = {
     /** Value of the `ListSection` whose header is being rendered. */
@@ -59,6 +77,8 @@ type ListSectionRenderArgs<S> = {
 type ListItemRenderer<T> = (args: ListItemRenderArgs<T>) => ReactNode;
 /** Renders the contents of one section header of a collection view. */
 type ListSectionRenderer<S> = (args: ListSectionRenderArgs<S>) => ReactNode;
+/** Returns the {@link ListRowProps} to apply to the row displaying one item, re-run whenever the item renders. */
+type ListRowPropsResolver<T> = (args: ListItemRenderArgs<T>) => ListRowProps;
 
 /** Size a collection view requests for each cell before its contents render, keeping scroll estimates steady. */
 type ItemSizeProps = {
@@ -136,17 +156,19 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
         columns: ColumnViewColumn<T>[];
         /** Renders the header shown above each section. */
         renderHeader?: ListSectionRenderer<S> | null | undefined;
+        /** Resolves the props of the row carrying one item's cells, such as its screen-reader label. */
+        getRowProps?: ListRowPropsResolver<T> | null | undefined;
     };
 
 /**
  * Props for {@link ColumnView}. Combines the underlying Gtk.ColumnView props with
  * declarative collection props: flat items or grouped sections, controlled selection
  * and expansion, sorting (sortColumn, sortOrder, onSortChanged), an optional section
- * header renderer, and the columns to render.
+ * header renderer, per-row props, and the columns to render.
  */
 type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
-    "columns" | "model" | "headerFactory" | keyof ColumnViewOwnProps<T, S>
+    "columns" | "model" | "headerFactory" | "rowFactory" | keyof ColumnViewOwnProps<T, S>
 > &
 ColumnViewOwnProps<T, S>;
 
@@ -227,8 +249,10 @@ export {
     type ListItem,
     type ListSection,
     type ListItemRenderArgs,
+    type ListRowProps,
     type ListSectionRenderArgs,
     type ListItemRenderer,
+    type ListRowPropsResolver,
     type ListSectionRenderer,
     type ColumnViewColumn,
     type ColumnViewProps,
