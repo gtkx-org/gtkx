@@ -42,6 +42,9 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         component: internal("createWindowComponent"),
         omittedProps: ["child"],
     },
+    GtkApplicationWindow: {
+        component: internal("createApplicationWindowComponent"),
+    },
     GtkLabel: {
         props: internal("ChildrenProps"),
     },
@@ -111,7 +114,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     },
     GtkSizeGroup: {
         props: internal("GtkSizeGroupProps"),
-        component: internal("createRootPortalComponent"),
+        component: internal("createPortaledComponent"),
     },
     GtkConstraintLayout: {
         props: internal("GtkConstraintLayoutProps"),

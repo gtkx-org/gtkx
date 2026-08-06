@@ -165,7 +165,7 @@ The prop surface follows the GIR and nothing else. A property that is writable, 
 
 Every element takes a `ref` typed to its `@gtkx/gi` class, Gio's callback-and-finish pairs are promises you `await`, and GIR error domains are `instanceof` right-hand sides: `error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED`.
 
-Surfaces that have no parent are elements too. `createPortal(<GtkWindow transientFor={parent} />, rootElement)` puts a second window on screen, and mounting an `AdwDialog` presents it while unmounting closes it, so a modal is a conditional render. The [modals and portals guide](/guide/modals-and-portals) covers both.
+Surfaces that have no parent are elements too. Mounting a `<GtkWindow>` puts a second window on screen, portaled to the top level and transient for the window that rendered it, and mounting an `AdwDialog` presents it while unmounting closes it, so a modal is a conditional render. The [modals and portals guide](/guide/modals-and-portals) covers both.
 
 The coverage claim has a working proof: the [`gtk-demo`](https://github.com/gtkx-org/gtkx/tree/main/examples/gtk-demo) example is a React port of the official GTK4 widget showcase, lists, dialogs, gestures, CSS, and OpenGL included.
 

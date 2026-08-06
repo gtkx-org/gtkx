@@ -18,7 +18,6 @@ import {
     GtkListBox,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { createPortal, rootElement } from "@gtkx/react";
 import { render as baseRender, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";
@@ -61,6 +60,13 @@ const renderSwitchAndClick = async (props: ComponentProps<typeof GtkSwitch>): Pr
     await userEvent.click(switchWidget);
 
     return switchWidget;
+};
+
+const renderStateSetSwitchAndClick = async (): Promise<Mock> => {
+    const handleStateSet = vi.fn(() => Gdk.EVENT_PROPAGATE);
+    await renderSwitchAndClick({ onStateSet: handleStateSet });
+
+    return handleStateSet;
 };
 
 const labelItems = (items: string[]): ReactNode => items.map((item) => <GtkLabel key={item}>{item}</GtkLabel>);
@@ -115,8 +121,15 @@ function OptionalClickButton({ onClicked, isMounted }: { onClicked: () => void; 
     return isMounted ? <GtkButton onClicked={onClicked} label="Click" /> : null;
 }
 
-const renderPortaledDialog = (dialog: ReactNode) =>
-    renderInApp(<GtkApplicationWindow>{createPortal(dialog, rootElement)}</GtkApplicationWindow>);
+const renderDialogInWindow = (dialog: ReactNode) =>
+    renderInApp(<GtkApplicationWindow>{dialog}</GtkApplicationWindow>);
+
+const renderAboutDialog = async (props: ComponentProps<typeof GtkAboutDialog>) => {
+    const ref = createRef<Gtk.AboutDialog>();
+    const result = await renderDialogInWindow(<GtkAboutDialog ref={ref} {...props} />);
+
+    return { ref, ...result };
+};
 
 const renderKeyControllerAndType = async (controllers: ReactNode): Promise<Gtk.Widget> => {
     await render(<GtkButton label="Focus me" canFocus focusable controllers={controllers} />);
@@ -404,8 +417,7 @@ describe("widget - signals (1)", () => {
         });
 
         it("connects onStateSet handler to state-set signal", async () => {
-            const handleStateSet = vi.fn(() => Gdk.EVENT_PROPAGATE);
-            await renderSwitchAndClick({ onStateSet: handleStateSet });
+            const handleStateSet = await renderStateSetSwitchAndClick();
 
             await waitFor(() => {
                 expect(handleStateSet).toHaveBeenCalledTimes(1);
@@ -473,8 +485,7 @@ describe("widget - signals (3)", () => {
 describe("widget - signals (4)", () => {
     describe("signal arguments", () => {
         it("receives signal arguments in callback", async () => {
-            const handleStateSet = vi.fn(() => Gdk.EVENT_PROPAGATE);
-            await renderSwitchAndClick({ onStateSet: handleStateSet });
+            const handleStateSet = await renderStateSetSwitchAndClick();
 
             await waitFor(() => {
                 expect(handleStateSet).toHaveBeenCalledWith(true, expect.any(Gtk.Switch));
@@ -831,32 +842,18 @@ describe("widget - auto-wrapping (4)", () => {
 
 describe("widget - AboutDialog (1)", () => {
     describe("creditSections", () => {
-        it("applies credit sections on mount", async () => {
-            const ref = createRef<Gtk.AboutDialog>();
-
-            await renderPortaledDialog(
-                <GtkAboutDialog
-                    ref={ref}
-                    programName="Test App"
-                    creditSections={[
-                        { sectionName: "Contributors", people: ["Alice", "Bob"] },
-                        { sectionName: "Testers", people: ["Charlie"] },
-                    ]}
-                />,
-            );
-
-            expect(ref.current).not.toBeNull();
-        });
-
-        it("applies empty credit sections array", async () => {
-            const ref = createRef<Gtk.AboutDialog>();
-            await renderPortaledDialog(<GtkAboutDialog ref={ref} programName="Test App" creditSections={[]} />);
-            expect(ref.current).not.toBeNull();
-        });
-
-        it("renders without creditSections prop", async () => {
-            const ref = createRef<Gtk.AboutDialog>();
-            await renderPortaledDialog(<GtkAboutDialog ref={ref} programName="Test App" />);
+        it.each([
+            [
+                "applies credit sections on mount",
+                [
+                    { sectionName: "Contributors", people: ["Alice", "Bob"] },
+                    { sectionName: "Testers", people: ["Charlie"] },
+                ],
+            ],
+            ["applies empty credit sections array", []],
+            ["renders without creditSections prop", undefined],
+        ])("%s", async (_title, creditSections) => {
+            const { ref } = await renderAboutDialog({ programName: "Test App", creditSections });
             expect(ref.current).not.toBeNull();
         });
     });
@@ -865,13 +862,12 @@ describe("widget - AboutDialog (1)", () => {
 describe("widget - AboutDialog (2)", () => {
     describe("lifecycle", () => {
         it("presents dialog on mount", async () => {
-            await renderPortaledDialog(<GtkAboutDialog programName="Lifecycle Test" />);
+            await renderDialogInWindow(<GtkAboutDialog programName="Lifecycle Test" />);
             expect(await screen.findByText(/Lifecycle Test/)).toBeDefined();
         });
 
         it("destroys dialog on unmount", async () => {
-            const ref = createRef<Gtk.AboutDialog>();
-            const { rerender } = await renderPortaledDialog(<GtkAboutDialog ref={ref} programName="Unmount Test" />);
+            const { ref, rerender } = await renderAboutDialog({ programName: "Unmount Test" });
             const handle = ref.current;
             expect(handle).toBeDefined();
             await rerender(<GtkApplicationWindow />);

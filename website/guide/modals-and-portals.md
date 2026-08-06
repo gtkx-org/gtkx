@@ -50,23 +50,18 @@ GTKX uses this mechanism internally. The `ListView`, `GridView`, `ColumnView`, a
 
 `rootElement`, exported from `@gtkx/react`, is a singleton marker object, not a widget. It is the default container of `createRoot()`, which is why the entry point of a GTKX app passes no argument: the marker already names the top of the tree.
 
-Portaling to `rootElement` means "mount this with no GTK4 parent." No attach call is made on the native side; the widget is created top-level. That is exactly what windows and dialogs need, since GTK4 forbids them from being parented into a layout. Relationships between top-level windows are expressed with window properties instead, chiefly `transientFor`:
+Portaling to `rootElement` means "mount this with no GTK4 parent." No attach call is made on the native side; the widget is created top-level. That is exactly what windows and dialogs need, since GTK4 forbids them from being parented into a layout. You never portal a window by hand, though: every window element portals itself. `GtkWindow` mounts at the top level no matter where it sits in your JSX, and `GtkApplicationWindow` mounts into the `Gtk.Application` of its nearest `GtkApplication` ancestor, which registers the window with the application. Rendering a `GtkApplicationWindow` without a `GtkApplication` ancestor throws.
+
+Relationships between top-level windows are expressed with window properties instead, chiefly `transientFor`, and `GtkWindow` fills that in for you as well: when you do not pass the prop, it defaults to the nearest window ancestor in the React tree. A secondary window is just a conditional render:
 
 ```tsx
 import { GtkWindow } from "@gtkx/jsx/gtk";
-import { createPortal, rootElement, useParentWindow } from "@gtkx/react";
 
-const DetachedPreview = ({ open }: { open: boolean }) => {
-    const parent = useParentWindow();
-    if (!open) return null;
-    return createPortal(
-        <GtkWindow title="Preview" transientFor={parent} defaultWidth={480} defaultHeight={360} />,
-        rootElement,
-    );
-};
+const DetachedPreview = ({ open }: { open: boolean }) =>
+    open ? <GtkWindow title="Preview" defaultWidth={480} defaultHeight={360} /> : null;
 ```
 
-The portaled window has no widget parent (`getParent()` returns `null`), but `transientFor` is the hint window managers use to keep it stacked above its owner and center it over it. Setting the prop back to `null` clears the relationship.
+The window has no widget parent (`getParent()` returns `null`), but `transientFor` is the hint window managers use to keep it stacked above its owner and center it over it. Pass the prop yourself to point it at a different window, or pass `null` to make the window fully independent; an explicit value always wins over the default.
 
 ## Declarative dialogs
 
@@ -101,20 +96,16 @@ The `responses` entry shape (`id`, `label`, `appearance`) and the `defaultRespon
 
 ## Multiple windows
 
-Windows carry their lifecycle in the element itself: on mount a window element calls `present()`, and on unmount it destroys the window. So a second window is another conditionally rendered element. Render it as a sibling of your main window under the application, or portal it from wherever the owning state lives:
+Windows carry their lifecycle in the element itself: on mount a window element calls `present()`, and on unmount it destroys the window. So a second window is another conditionally rendered element, mounted from wherever the owning state lives:
 
 ```tsx
 import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
-import { createPortal, useApplication } from "@gtkx/react";
 
-const MirrorWindow = ({ open }: { open: boolean }) => {
-    const app = useApplication();
-    if (!open) return null;
-    return createPortal(<GtkApplicationWindow title="Mirror" defaultWidth={400} defaultHeight={300} />, app);
-};
+const MirrorWindow = ({ open }: { open: boolean }) =>
+    open ? <GtkApplicationWindow title="Mirror" defaultWidth={400} defaultHeight={300} /> : null;
 ```
 
-Targeting the `Gtk.Application` object and targeting `rootElement` both produce a top-level window; use `transientFor` when the extra window should stay stacked above another one, and wire `onCloseRequest` to clear the state that mounted the window, so React stays in charge of when it goes away. Each window provides its own `useParentWindow()` context, so dialogs opened inside a secondary window anchor to that window automatically.
+It does not matter how deep in the tree the element sits: an application window finds its `GtkApplication` ancestor and registers with it, and a plain `GtkWindow` mounts as a standalone toplevel transient for its nearest window ancestor. Wire `onCloseRequest` to clear the state that mounted the window, so React stays in charge of when it goes away. Each window provides its own `useParentWindow()` context, so dialogs opened inside a secondary window anchor to that window automatically.
 
 Every dialog and window element, along with its full prop surface, is covered by the element reference `gtkx docs` generates for your project.
 

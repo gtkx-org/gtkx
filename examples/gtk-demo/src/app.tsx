@@ -19,7 +19,7 @@ import {
     GtkToggleButton,
     GtkWindow,
 } from "@gtkx/jsx/gtk";
-import { createPortal, quit, rootElement, useParentWindow } from "@gtkx/react";
+import { quit, useParentWindow } from "@gtkx/react";
 import * as path from "node:path/posix";
 import { type ComponentType, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
@@ -179,29 +179,25 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
 
     return (
         <DemoStateProvider window={windowRef} onClose={onClose}>
-            {createPortal(
-                <GtkWindow
-                    ref={windowRef}
-                    name="demo-window"
-                    transientFor={hostWindow}
-                    title={demoWindowTitle(currentDemo, windowTitle)}
-                    defaultWidth={sizing.defaultWidth}
-                    defaultHeight={sizing.defaultHeight}
-                    resizable={sizing.isResizable}
-                    deletable={sizing.isDeletable}
-                    cssClasses={currentDemo.windowCssClasses}
-                    defaultWidget={defaultWidget}
-                    titlebar={titlebar}
-                    onCloseRequest={() => {
-                        onClose();
+            <GtkWindow
+                ref={windowRef}
+                name="demo-window"
+                title={demoWindowTitle(currentDemo, windowTitle)}
+                defaultWidth={sizing.defaultWidth}
+                defaultHeight={sizing.defaultHeight}
+                resizable={sizing.isResizable}
+                deletable={sizing.isDeletable}
+                cssClasses={currentDemo.windowCssClasses}
+                defaultWidget={defaultWidget}
+                titlebar={titlebar}
+                onCloseRequest={() => {
+                    onClose();
 
-                        return Gdk.EVENT_STOP;
-                    }}
-                >
-                    <DemoComponent onClose={onClose} window={windowRef} />
-                </GtkWindow>,
-                rootElement,
-            )}
+                    return Gdk.EVENT_STOP;
+                }}
+            >
+                <DemoComponent onClose={onClose} window={windowRef} />
+            </GtkWindow>
         </DemoStateProvider>
     );
 };

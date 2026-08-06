@@ -40,7 +40,7 @@ const renderProbedWindow = async (props: GtkApplicationWindowProps): Promise<Gtk
 };
 
 describe("useParentWindow", () => {
-    it("returns the window provided by createWindowComponent", async () => {
+    it("returns the window provided by the enclosing window element", async () => {
         const windowInstance = await renderProbedWindow({ children: <Probe slot="children" /> });
         expect(windowInstance).not.toBeNull();
         expect(captured.children).toBe(windowInstance);
@@ -68,7 +68,7 @@ describe("useParentWindow", () => {
         expect(captured.actions).toBe(windowInstance);
     });
 
-    it("returns null when there is no createWindowComponent ancestor", async () => {
+    it("returns null when there is no window ancestor", async () => {
         await render(<Probe slot="orphan" />);
         expect(captured.orphan).toBeNull();
     });

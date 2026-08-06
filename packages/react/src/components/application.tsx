@@ -6,7 +6,7 @@ import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState }
 import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
-import { createRootPortalComponent } from "./root-portal.js";
+import { createPortaledComponent } from "./portaled.js";
 
 type ApplicationComponentProps = {
     applicationId?: string | null | undefined;
@@ -83,7 +83,7 @@ const createApplicationElement = (
 };
 
 const createApplicationComponent = (Component: ElementType): ((props: unknown) => ReactNode) =>
-    createRootPortalComponent(createApplicationElement(Component));
+    createPortaledComponent(createApplicationElement(Component));
 
 /** @internal */
 export { createApplicationComponent };
