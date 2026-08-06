@@ -21,4 +21,4 @@ function useImperativeDragVisibility<T extends Gtk.Widget>(): ImperativeDragVisi
     return { ref, show, hide };
 }
 
-export { type ImperativeDragVisibility, useImperativeDragVisibility };
+export { useImperativeDragVisibility };

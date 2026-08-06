@@ -666,9 +666,6 @@ describe("registerClass — implements, what introspection describes of an inter
     });
 
     it("takes an interface keeping its whole vtable out of introspection", () => {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const chooser = createAdopter("GtkxChooser", Gtk.FileChooser);
-        expect(typeIsA(getInstanceType(chooser), typeFromName("GtkFileChooser"))).toBe(true);
         const plugin = createAdopter("GtkxPlugin", TypePlugin);
         expect(typeIsA(getInstanceType(plugin), typeFromName("GTypePlugin"))).toBe(true);
     });

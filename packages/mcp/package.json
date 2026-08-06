@@ -54,15 +54,5 @@
         "@gtkx/utils": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.30.0",
         "zod": "catalog:"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/mcp"
-                }
-            }
-        }
     }
 }

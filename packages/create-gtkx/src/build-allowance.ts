@@ -56,4 +56,4 @@ const writeBuildAllowance = (root: string, packageManager: PackageManager): void
     writeNpmAllowance(root);
 };
 
-export { writeBuildAllowance, BUILT_DEPENDENCIES };
+export { writeBuildAllowance };

@@ -95,15 +95,5 @@
     "peerDependencies": {
         "@types/react": "^19.2",
         "react": "^19.2"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/react"
-                }
-            }
-        }
     }
 }

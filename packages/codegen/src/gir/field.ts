@@ -69,4 +69,4 @@ const collectFields = (node: RawNode, context: ParseContext): GirField[] => [
     ...getChildren(node, "record").map((member) => anonymousMemberFromNode(member, false, context)),
 ];
 
-export { collectFields, fieldFromNode, type GirField };
+export { collectFields, type GirField };

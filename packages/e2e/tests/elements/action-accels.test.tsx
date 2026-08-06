@@ -1,4 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { ActionAccel } from "@gtkx/react/internal";
 import * as Gio from "@gtkx/gi/gio";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
@@ -7,8 +8,6 @@ import { render } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createAppIdFactory } from "../helpers/unique-name.js";
-
-type ActionAccel = { detailedActionName: string; accels: string[] };
 
 type AccelsAppProps = {
     appRef: RefObject<Gtk.Application | null>;

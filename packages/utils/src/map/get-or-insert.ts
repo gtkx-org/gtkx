@@ -15,4 +15,4 @@ function getOrInsert<K, V>(map: GetSet<K, V>, key: K, factory: (key: K) => V): V
     return value;
 }
 
-export { getOrInsert, type GetSet };
+export { getOrInsert };

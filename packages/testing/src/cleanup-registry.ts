@@ -24,4 +24,4 @@ const runCleanup = async (): Promise<void> => {
     }
 };
 
-export { addToCleanupQueue, runCleanup, type CleanupFunction };
+export { addToCleanupQueue, runCleanup };

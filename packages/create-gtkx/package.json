@@ -83,12 +83,6 @@
                     "gtkx:codegen",
                     "copy-templates"
                 ]
-            },
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/create-gtkx"
-                }
             }
         }
     }

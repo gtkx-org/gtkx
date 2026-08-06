@@ -3,12 +3,11 @@ import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
-import type { RenderListViewOptions } from "./helpers/list-fixtures.js";
-import type { TreeListFixture, TreeName } from "./helpers/tree-list-app.js";
+import type { TreeFixture, TreeName, TreeOptions } from "./helpers/tree-fixtures.js";
 import { renderListView, renderStatefulListView } from "./helpers/list-fixtures.js";
 import { expectRowTexts } from "./helpers/row-texts.js";
 import { getSelectionModel, getTreeRow } from "./helpers/selection-model.js";
-import { renderTreeList, treeBranch, treeLeaf } from "./helpers/tree-list-app.js";
+import { treeBranch, treeLeaf } from "./helpers/tree-fixtures.js";
 
 const BOTH_BRANCHES = ["p", "dup"];
 const NESTED_ONLY = ["p"];
@@ -58,10 +57,10 @@ const growingTree = (extra: ListItem<TreeName>[]): ListItem<TreeName>[] => [
     treeLeaf("z"),
 ];
 
-const renderRepeated = (expandedIds: string[], onExpandedChange?: (ids: string[]) => void): Promise<TreeListFixture> =>
-    renderTreeList({ items: repeatedTree(), expandedIds, onExpandedChange });
+const renderRepeated = (options: TreeOptions): Promise<TreeFixture> =>
+    renderListView<TreeName>(repeatedTree(), options);
 
-const renderRepeatedLeaf = (options: RenderListViewOptions<TreeName>) =>
+const renderRepeatedLeaf = (options: TreeOptions) =>
     renderListView<TreeName>(repeatedLeafTree(), { expandedIds: NESTED_ONLY, selected: REPEATED_LEAF, ...options });
 
 const expandRow = async (ref: RefObject<Gtk.ListView | null>, position: number): Promise<void> => {
@@ -85,43 +84,43 @@ const expectSelectedPositions = (ref: RefObject<Gtk.ListView>, expected: number[
 
 describe("render - ListView (tree) - ids repeated in different levels", () => {
     it("gives each repeated branch its own children", async () => {
-        const fixture = await renderRepeated(BOTH_BRANCHES);
-        await expectRowTexts(fixture.listRef, EXPANDED_ROWS);
+        const fixture = await renderRepeated({ expandedIds: BOTH_BRANCHES });
+        await expectRowTexts(fixture.ref, EXPANDED_ROWS);
     });
 
     it("keeps each repeated branch collapsible on its own", async () => {
-        const fixture = await renderRepeated(BOTH_BRANCHES);
-        await fixture.show({ items: repeatedTree(), expandedIds: NESTED_ONLY });
-        await expectRowTexts(fixture.listRef, COLLAPSED_ROWS);
+        const fixture = await renderRepeated({ expandedIds: BOTH_BRANCHES });
+        await fixture.rerender(repeatedTree(), { expandedIds: NESTED_ONLY });
+        await expectRowTexts(fixture.ref, COLLAPSED_ROWS);
     });
 
     it("renders each repeated row from its own item value", async () => {
-        const fixture = await renderTreeList({ items: repeatedValueTree(), expandedIds: NESTED_ONLY });
-        await expectRowTexts(fixture.listRef, ["p", "nested", "root"]);
+        const fixture = await renderListView<TreeName>(repeatedValueTree(), { expandedIds: NESTED_ONLY });
+        await expectRowTexts(fixture.ref, ["p", "nested", "root"]);
     });
 
     it("reports every row an expanded id names", async () => {
         const onExpandedChange = vi.fn();
-        const fixture = await renderRepeated(BOTH_BRANCHES, onExpandedChange);
-        await expectRowTexts(fixture.listRef, EXPANDED_ROWS);
+        const fixture = await renderRepeated({ expandedIds: BOTH_BRANCHES, onExpandedChange });
+        await expectRowTexts(fixture.ref, EXPANDED_ROWS);
         expect(onExpandedChange).toHaveBeenLastCalledWith(COLLAPSED_ROWS);
     });
 });
 
 describe("render - ListView (tree) - ids repeated among siblings", () => {
     it("renders each repeated sibling from its own item value", async () => {
-        const fixture = await renderTreeList({ items: siblingTree(), expandedIds: NOTHING });
-        await expectRowTexts(fixture.listRef, ["one", "two", "three"]);
+        const fixture = await renderListView<TreeName>(siblingTree(), { expandedIds: NOTHING });
+        await expectRowTexts(fixture.ref, ["one", "two", "three"]);
     });
 
     it("gives each repeated sibling branch its own children", async () => {
-        const fixture = await renderTreeList({ items: siblingBranchTree(), expandedIds: DUP_BRANCH });
-        await expectRowTexts(fixture.listRef, ["first", "a", "second", "b"]);
+        const fixture = await renderListView<TreeName>(siblingBranchTree(), { expandedIds: DUP_BRANCH });
+        await expectRowTexts(fixture.ref, ["first", "a", "second", "b"]);
     });
 
     it("keeps repeated sibling branches apart while collapsed", async () => {
-        const fixture = await renderTreeList({ items: siblingBranchTree(), expandedIds: NOTHING });
-        await expectRowTexts(fixture.listRef, ["first", "second"]);
+        const fixture = await renderListView<TreeName>(siblingBranchTree(), { expandedIds: NOTHING });
+        await expectRowTexts(fixture.ref, ["first", "second"]);
     });
 
     it("expands every sibling the toggled row's id names once the report is adopted", async () => {
@@ -133,14 +132,14 @@ describe("render - ListView (tree) - ids repeated among siblings", () => {
 
     it("leaves a childless sibling childless when it shares the branch's id", async () => {
         const items = [namedBranch("d", "withKids", [named("k", "kid")]), named("d", "noKids")];
-        const fixture = await renderTreeList({ items, expandedIds: ["d"] });
-        await expectRowTexts(fixture.listRef, ["withKids", "kid", "noKids"]);
+        const fixture = await renderListView<TreeName>(items, { expandedIds: ["d"] });
+        await expectRowTexts(fixture.ref, ["withKids", "kid", "noKids"]);
     });
 
     it("keeps siblings apart when every id is the empty string", async () => {
         const items = [namedBranch("", "blankBranch", [named("k", "kid")]), named("", "blankLeaf")];
-        const fixture = await renderTreeList({ items, expandedIds: [""] });
-        await expectRowTexts(fixture.listRef, ["blankBranch", "kid", "blankLeaf"]);
+        const fixture = await renderListView<TreeName>(items, { expandedIds: [""] });
+        await expectRowTexts(fixture.ref, ["blankBranch", "kid", "blankLeaf"]);
     });
 
     it("keeps a repeated sibling pair apart from the same id nested elsewhere", async () => {
@@ -150,15 +149,15 @@ describe("render - ListView (tree) - ids repeated among siblings", () => {
             namedBranch("dup", "rootB", [named("y", "yOfB")]),
         ];
 
-        const fixture = await renderTreeList({ items, expandedIds: BOTH_BRANCHES });
-        await expectRowTexts(fixture.listRef, ["P", "underP", "rootA", "xOfA", "rootB", "yOfB"]);
+        const fixture = await renderListView<TreeName>(items, { expandedIds: BOTH_BRANCHES });
+        await expectRowTexts(fixture.ref, ["P", "underP", "rootA", "xOfA", "rootB", "yOfB"]);
     });
 });
 
 describe("render - ListView (tree) - an id repeated across levels", () => {
     it("keeps a root twin away from another branch's children", async () => {
-        const fixture = await renderTreeList({ items: crossLevelTree(), expandedIds: ["a"] });
-        await expectRowTexts(fixture.listRef, ["branchA", "realChild", "rootTwin"]);
+        const fixture = await renderListView<TreeName>(crossLevelTree(), { expandedIds: ["a"] });
+        await expectRowTexts(fixture.ref, ["branchA", "realChild", "rootTwin"]);
     });
 
     it("selects every row the repeated id names across levels", async () => {
@@ -183,8 +182,8 @@ describe("render - ListView (tree) - an id repeated across levels", () => {
             namedBranch("b", "rootB", [named("y", "yLeaf")]),
         ];
 
-        const fixture = await renderTreeList({ items, expandedIds: ["a", "b"], onExpandedChange });
-        await expectRowTexts(fixture.listRef, ["branchA", "nestedB", "xLeaf", "rootB", "yLeaf"]);
+        const fixture = await renderListView<TreeName>(items, { expandedIds: ["a", "b"], onExpandedChange });
+        await expectRowTexts(fixture.ref, ["branchA", "nestedB", "xLeaf", "rootB", "yLeaf"]);
         expect(onExpandedChange).toHaveBeenLastCalledWith(["a", "b", "b"]);
     });
 });
@@ -235,10 +234,10 @@ describe("render - ListView (tree) - reports built from ids that share a joined 
     it("reports an expansion change between id sets that join alike", async () => {
         const onExpandedChange = vi.fn();
         const items = [namedBranch("a b", "AB", [named("c1", "c1")]), namedBranch("a", "A", [named("c2", "c2")])];
-        const fixture = await renderTreeList({ items, expandedIds: ["a"], onExpandedChange });
-        await expectRowTexts(fixture.listRef, ["AB", "A", "c2"]);
-        await fixture.show({ items, expandedIds: ["a b"], onExpandedChange });
-        await expectRowTexts(fixture.listRef, ["AB", "c1", "A"]);
+        const fixture = await renderListView<TreeName>(items, { expandedIds: ["a"], onExpandedChange });
+        await expectRowTexts(fixture.ref, ["AB", "A", "c2"]);
+        await fixture.rerender(items, { expandedIds: ["a b"] });
+        await expectRowTexts(fixture.ref, ["AB", "c1", "A"]);
 
         await waitFor(() => {
             expect(onExpandedChange).toHaveBeenLastCalledWith(["a b"]);

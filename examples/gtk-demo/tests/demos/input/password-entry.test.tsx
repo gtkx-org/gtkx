@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, queryController, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { passwordEntryDemo } from "../../../src/demos/input/password-entry.js";
-import { renderDemo, type RenderDemoOptions } from "../../test-utils.js";
+import { findWidget, renderDemo, type RenderDemoOptions } from "../../test-utils.js";
 
 const findPasswordFields = async (): Promise<{ password: Gtk.PasswordEntry; confirm: Gtk.PasswordEntry }> => {
     const password = await screen.findByName("password-entry", { as: Gtk.PasswordEntry });
@@ -14,29 +14,7 @@ const findPasswordFields = async (): Promise<{ password: Gtk.PasswordEntry; conf
 const findDoneButton = async (): Promise<Gtk.Button> =>
     screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Done", as: Gtk.Button });
 
-const isInnerText = (widget: Gtk.Widget): widget is Gtk.Text => widget instanceof Gtk.Text;
-
-const isPeekImage = (widget: Gtk.Widget): widget is Gtk.Image =>
-    widget instanceof Gtk.Image && widget.getIconName() === "view-reveal-symbolic";
-
-const findDescendant = <T extends Gtk.Widget>(
-    widget: Gtk.Widget,
-    isMatch: (candidate: Gtk.Widget) => candidate is T,
-): T | null => {
-    if (isMatch(widget)) {
-        return widget;
-    }
-
-    for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
-        const found = findDescendant(child, isMatch);
-
-        if (found) {
-            return found;
-        }
-    }
-
-    return null;
-};
+const isPeekImage = (widget: Gtk.Image): boolean => widget.getIconName() === "view-reveal-symbolic";
 
 const typePasswords = async (
     password: string,
@@ -73,8 +51,8 @@ describe("passwordEntryDemo form behavior", () => {
         await renderDemo(passwordEntryDemo);
         const { password } = await findPasswordFields();
         await userEvent.type(password, "s3cret");
-        const innerText = findDescendant(password, isInnerText);
-        const peek = findDescendant(password, isPeekImage);
+        const innerText = findWidget(password, Gtk.Text);
+        const peek = findWidget(password, Gtk.Image, isPeekImage);
         expect(innerText).not.toBeNull();
         expect(peek).not.toBeNull();
         const gesture = queryController(peek as Gtk.Image, Gtk.GestureClick);

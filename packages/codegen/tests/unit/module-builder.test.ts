@@ -14,14 +14,16 @@ describe("ModuleBuilder", () => {
         );
     });
 
-    it("leaves an unclaimed declaration out of the registry", () => {
+    it("rejects one type name claimed by two owners", () => {
         const builder = new ModuleBuilder();
-        builder.appendDeclaration(LIST_MODEL_IMPL);
+        builder.appendDeclaration(LIST_MODEL_IMPL, { name: "ListModelImpl", owner: "Gio.ListModel" });
 
         const declareAgain = (): void => {
-            builder.appendDeclaration(LIST_MODEL_IMPL, { name: "ListModelImpl", owner: "Gio.ListModel" });
+            builder.appendDeclaration(LIST_MODEL_IMPL, { name: "ListModelImpl", owner: "Gtk.SelectionModel" });
         };
 
-        expect(declareAgain).not.toThrow();
+        expect(declareAgain).toThrow(
+            "The generated type 'ListModelImpl' is declared for both Gio.ListModel and Gtk.SelectionModel.",
+        );
     });
 });

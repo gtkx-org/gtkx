@@ -459,10 +459,13 @@ const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot
         `className: ${sourceStringLiteral(vtable.structName)},`,
         `vfuncName: ${sourceStringLiteral(field.name)},`,
         `byteOffset: ${String(byteOffset)},`,
-        `vtableSize: ${String(vtableSize)},`,
-        `argDescriptors: [${argDescriptors}],`,
-        `returnDescriptor: ${returnDescriptor},`,
     ];
+
+    if (vtable.kind === "interface") {
+        lines.push(`vtableSize: ${String(vtableSize)},`);
+    }
+
+    lines.push(`argDescriptors: [${argDescriptors}],`, `returnDescriptor: ${returnDescriptor},`);
 
     if (callback.throws) {
         lines.push("canThrow: true,");

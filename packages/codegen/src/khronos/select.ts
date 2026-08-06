@@ -36,10 +36,7 @@ type GlSubset = {
     removed: GlRemovedSymbol[];
 };
 
-type SelectionState = {
-    commands: Map<string, GlSymbolProvenance>;
-    enums: Map<string, GlSymbolProvenance>;
-    removed: GlRemovedSymbol[];
+type SelectionState = GlSubset & {
     history: Map<string, GlRemoval[]>;
 };
 
@@ -140,12 +137,4 @@ const resolveEnum = (registry: GlRegistry, name: string, api: string): GlEnum =>
     return found;
 };
 
-export {
-    selectSubset,
-    resolveEnum,
-    type GlRemoval,
-    type GlRemovedSymbol,
-    type GlSelection,
-    type GlSubset,
-    type GlSymbolProvenance,
-};
+export { selectSubset, resolveEnum, type GlRemoval, type GlSelection, type GlSubset, type GlSymbolProvenance };

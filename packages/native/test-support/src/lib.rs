@@ -6,7 +6,7 @@ use gtk4::glib::translate::IntoGlib as _;
 use gtk4::glib::{self};
 use gtk4::prelude::{ObjectType as _, StaticType as _};
 use napi::bindgen_prelude::Unknown;
-use napi::{Env, JsValue as _};
+use napi::{Env, JsValue as _, sys};
 use native::Handle;
 use native::ffi::codec::{
     ArrayCodec, ArrayKind, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
@@ -76,6 +76,13 @@ where
     napi_mock::reset();
     free_fixture_boxed();
     result
+}
+
+pub fn pending_values() -> (sys::napi_value, sys::napi_value) {
+    (
+        napi_mock::fake_object(&[]),
+        napi_mock::fake_function(|_| napi_mock::fake_undefined()),
+    )
 }
 
 pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GHashTable {

@@ -3,21 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cursorsDemo } from "../../../src/demos/gestures/cursors.js";
-import { renderDemo } from "../../test-utils.js";
-
-const collectFrames = (widget: Gtk.Widget | null, frames: Gtk.Frame[]): void => {
-    if (!widget) {
-        return;
-    }
-
-    if (widget instanceof Gtk.Frame) {
-        frames.push(widget);
-    }
-
-    for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
-        collectFrames(child, frames);
-    }
-};
+import { collectWidgets, renderDemo } from "../../test-utils.js";
 
 const rowFramesFor = async (name: string): Promise<Gtk.Frame[]> => {
     const label = await screen.findByText(name);
@@ -27,10 +13,7 @@ const rowFramesFor = async (name: string): Promise<Gtk.Frame[]> => {
         row = row.getParent();
     }
 
-    const frames: Gtk.Frame[] = [];
-    collectFrames(row, frames);
-
-    return frames;
+    return row ? collectWidgets(row, Gtk.Frame) : [];
 };
 
 const getSelectionModes = (listBoxes: Gtk.Widget[]): Gtk.SelectionMode[] =>

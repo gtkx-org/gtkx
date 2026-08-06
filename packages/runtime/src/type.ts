@@ -285,6 +285,5 @@ export {
     resolveBoxedType,
     resolveFundamentalType,
     resolveDescriptorType,
-    type ResolvableDescriptor,
     type TypedClass,
 };

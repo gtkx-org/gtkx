@@ -189,8 +189,8 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "gtkx/cognitive-complexity": ["error", { max: 5 }],
     "gtkx/module-section-order": "error",
     "gtkx/no-comments": "error",
-    "gtkx/no-glib-prefix": "error",
     "gtkx/no-inline-exports": "error",
+    "gtkx/no-library-prefix": "error",
     "gtkx/statement-padding": "error",
     "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
     "max-params": ["error", { max: 4 }],
@@ -290,4 +290,4 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
     { files: JS_SOURCES },
 ];
 
-export { config, type PublicApi };
+export { config };

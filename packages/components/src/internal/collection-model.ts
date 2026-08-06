@@ -86,10 +86,6 @@ function slotPathAt(store: LevelStore, slot: number): string {
     return store.path + encodePart(String(slot));
 }
 
-function getSlotPath(ref: SlotRef): string {
-    return slotPathAt(ref.store, ref.slot);
-}
-
 function newLevelStore(path: string): LevelStore {
     const store = new (registeredStoreClass())() as LevelStore;
     store.path = path;
@@ -360,4 +356,4 @@ class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
     }
 }
 
-export { createCollectionModel, getSlotPath, slotRefFor, type CollectionModel };
+export { createCollectionModel, slotRefFor, type CollectionModel, type SlotRef };

@@ -26,4 +26,4 @@ const ASSET_EXTENSIONS = [
 const ASSET_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
 const ASSET_PATH_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})(?:\?.*)?$`, "i");
 
-export { ASSET_EXTENSIONS, ASSET_RE, ASSET_PATH_RE };
+export { ASSET_RE, ASSET_PATH_RE };

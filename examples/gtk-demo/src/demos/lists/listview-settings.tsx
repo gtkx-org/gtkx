@@ -1,4 +1,4 @@
-import { ColumnView, type ColumnViewColumn, ListView } from "@gtkx/components";
+import { ColumnView, type ColumnViewColumn, type ListItem, ListView } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -16,6 +16,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
+import { collectExpandableIds } from "../../collect-expandable-ids.js";
 import sourceCode from "./listview-settings.tsx?raw";
 
 type KeyInfo = {
@@ -35,13 +36,6 @@ type SchemaTreeNode = {
 
 type NodeIdSource = {
     next: number;
-};
-
-type SchemaTreeItemData = {
-    id: string;
-    value: string;
-    shouldHideExpander?: true;
-    children?: SchemaTreeItemData[];
 };
 
 type ListViewSettingsState = ReturnType<typeof useListViewSettingsState>;
@@ -296,7 +290,7 @@ function loadKeysForNode(nodeId: string): KeyInfo[] {
     return schema.listKeys().map((keyName) => readKeyInfo(schema, settings, keyName));
 }
 
-function schemaNodeToItem(node: SchemaTreeNode): SchemaTreeItemData {
+function schemaNodeToItem(node: SchemaTreeNode): ListItem<string> {
     if (node.children.length === 0) {
         return { id: node.nodeId, value: node.schemaId, shouldHideExpander: true };
     }
@@ -399,18 +393,6 @@ function commitKeyInfoEdit({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
     }
 }
 
-function collectSchemaExpandableIds(nodes: SchemaTreeItemData[]): string[] {
-    const ids: string[] = [];
-
-    for (const node of nodes) {
-        if (node.children && node.children.length > 0) {
-            ids.push(node.id, ...collectSchemaExpandableIds(node.children));
-        }
-    }
-
-    return ids;
-}
-
 const renderKeyInfoCell =
     (getText: (keyInfo: KeyInfo) => string, shouldWrap = false) =>
         ({ item }: { item: KeyInfo }) => (
@@ -491,7 +473,7 @@ const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: strin
                     onSelectionChanged(ids);
                 }}
                 cssClasses={["navigation-sidebar"]}
-                expandedIds={collectSchemaExpandableIds(items)}
+                expandedIds={collectExpandableIds(items)}
                 renderItem={renderSchemaItem}
                 items={items}
             />

@@ -45,4 +45,4 @@ const build = async (options: BuildOptions): Promise<void> => {
     await viteBuild({ ...merged, ssr: { ...merged.ssr, noExternal: true } });
 };
 
-export { build, type BuildOptions };
+export { build };

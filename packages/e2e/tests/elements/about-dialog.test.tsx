@@ -1,11 +1,10 @@
+import type { CreditSection } from "@gtkx/react/internal";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAboutDialog } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render, userEvent, within } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
-
-type CreditSection = { sectionName: string; people: string[] };
 
 const SECTIONS: CreditSection[] = [
     { sectionName: "Design", people: ["Ada Lovelace"] },

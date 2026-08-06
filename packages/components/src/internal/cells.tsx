@@ -6,7 +6,7 @@ import { createPortal, useProperty } from "@gtkx/react";
 import { memo, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type { ListItem, ListItemRenderArgs, ListItemRenderer, ListSectionRenderer } from "../types.js";
 import type { Collection } from "./collection.js";
-import { getSlotPath, slotRefFor } from "./collection-model.js";
+import { slotRefFor } from "./collection-model.js";
 
 type CellSize = {
     width: number;
@@ -296,7 +296,7 @@ function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: Reac
 
 function itemBody(options: ItemBodyOptions): ReactNode {
     const ref = slotRefFor(options.item);
-    const item = ref === null ? undefined : options.collection.itemAt(getSlotPath(ref));
+    const item = ref === null ? undefined : options.collection.itemAt(ref);
 
     if (item === undefined) {
         return null;
@@ -362,5 +362,4 @@ export {
     useSectionHeader,
     ItemPortals,
     type CellSize,
-    type CellStore,
 };

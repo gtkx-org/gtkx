@@ -191,7 +191,7 @@ function useSelection(options: SelectionOptions): ReactElement {
 
     const markDrift = useControlledSync({
         ids: selectedIds,
-        structureKey: collection.structureKey,
+        collection,
         widget: selection,
         apply: (ids) => {
             applyControlledSelection(context, ids);
@@ -208,4 +208,4 @@ function useSelection(options: SelectionOptions): ReactElement {
     });
 }
 
-export { useSelection, type SelectionOptions };
+export { useSelection };

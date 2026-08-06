@@ -23,13 +23,13 @@ type CollectionResult = {
 
 function useCollectionData(options: CollectionDataOptions): Collection {
     const { items, sections, isFlat } = options;
-    const [gtk] = useState(createCollectionModel);
+    const [collectionModel] = useState(createCollectionModel);
     const index = useMemo(() => createCollectionIndex(items, sections, isFlat === true), [items, sections, isFlat]);
-    const collection = useMemo(() => createCollection(gtk, index), [gtk, index]);
+    const collection = useMemo(() => createCollection(collectionModel, index), [collectionModel, index]);
 
     useLayoutEffect(() => {
-        gtk.sync(index);
-    }, [gtk, index]);
+        collectionModel.sync(index);
+    }, [collectionModel, index]);
 
     return collection;
 }
@@ -54,4 +54,4 @@ function useCollection(options: CollectionOptions): CollectionResult {
     return { collection, selection };
 }
 
-export { useCollection, useCollectionData, type CollectionDataOptions, type CollectionOptions };
+export { useCollection, useCollectionData };

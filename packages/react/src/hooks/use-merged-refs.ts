@@ -61,4 +61,4 @@ function useMergedRef<T>(first: PossibleRef<T>, second: PossibleRef<T>): RefCall
     return useMemo(() => mergeRefs(first, second), [first, second]);
 }
 
-export { assignRef, mergeRefs, useMergedRef };
+export { useMergedRef };

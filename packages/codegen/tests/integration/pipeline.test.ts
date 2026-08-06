@@ -1,3 +1,4 @@
+/* eslint-disable gtkx/no-library-prefix */
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { GirClass } from "../../src/gir/class.js";

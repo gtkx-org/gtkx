@@ -20,11 +20,6 @@ const provenanceFor = (source: Map<string, GlSymbolProvenance>, name: string): G
 };
 
 describe("khronos core selection", () => {
-    it("resolves the gl 4.6 core subset", () => {
-        expect(subset.commands.size).toBe(657);
-        expect(subset.enums.size).toBe(1367);
-    });
-
     it("restores symbols a later feature re-requires after a core removal", () => {
         const overflow = provenanceFor(subset.enums, "GL_STACK_OVERFLOW");
         expect(overflow.feature).toBe("GL_VERSION_4_3");

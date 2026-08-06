@@ -1,2 +1,2 @@
-export { cleanup, render, type ProductionRenderResult } from "./production.js";
-export { renderChildren, type ChildrenBuilder, type RenderChildrenResult } from "./render-children.js";
+export { cleanup, render } from "./production.js";
+export { renderChildren, type ChildrenBuilder } from "./render-children.js";

@@ -54,15 +54,5 @@
     },
     "peerDependencies": {
         "vitest": ">=4"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/vitest"
-                }
-            }
-        }
     }
 }

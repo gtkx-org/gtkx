@@ -131,12 +131,10 @@ const renderAboutDialog = async (props: ComponentProps<typeof GtkAboutDialog>) =
     return { ref, ...result };
 };
 
-const renderKeyControllerAndType = async (controllers: ReactNode): Promise<Gtk.Widget> => {
+const renderKeyControllerAndType = async (controllers: ReactNode): Promise<void> => {
     await render(<GtkButton label="Focus me" canFocus focusable controllers={controllers} />);
     const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
     await userEvent.keyboard(button, "a");
-
-    return button;
 };
 
 describe("widget - creation (1)", () => {
@@ -867,10 +865,10 @@ describe("widget - AboutDialog (2)", () => {
         });
 
         it("destroys dialog on unmount", async () => {
-            const { ref, rerender } = await renderAboutDialog({ programName: "Unmount Test" });
-            const handle = ref.current;
-            expect(handle).toBeDefined();
+            const { rerender } = await renderAboutDialog({ programName: "Unmount Test" });
+            expect(await screen.findByText(/Unmount Test/)).toBeDefined();
             await rerender(<GtkApplicationWindow />);
+            expect(screen.queryByText(/Unmount Test/)).toBeNull();
         });
     });
 });

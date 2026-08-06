@@ -331,7 +331,6 @@ export {
     parseCType,
     planCommand,
     type GlScalar,
-    type ParsedCType,
     type ParamPlan,
     type ReturnPlan,
     type GlExclusionReason,

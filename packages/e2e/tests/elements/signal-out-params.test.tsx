@@ -16,6 +16,7 @@ type SnippetView = {
 };
 
 const FALSE = 0;
+// eslint-disable-next-line gtkx/no-library-prefix
 const GTK_INPUT_ERROR = -1;
 
 const makeAdjustment = () => Gtk.Adjustment.new(0, 0, 1000, 1, 10, 0);

@@ -4,6 +4,7 @@ import { library } from "../helpers/library.js";
 
 const BUTTON_DOC = "Calls a callback function when the button is clicked.";
 const files = generateJsxFiles(library, { lazyElements: ["GtkStackPage"] });
+// eslint-disable-next-line gtkx/no-library-prefix
 const gtk = files.namespaces.find((entry) => entry.directory === "gtk")?.source ?? "";
 
 const docBefore = (source: string, declaration: string): string => {

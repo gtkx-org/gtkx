@@ -59,15 +59,5 @@
         "defu": "^6.1.7",
         "vite": "catalog:",
         "zod": "catalog:"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/config"
-                }
-            }
-        }
     }
 }

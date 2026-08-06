@@ -1,4 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { MainOption } from "@gtkx/react/internal";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
@@ -8,14 +9,6 @@ import process from "node:process";
 import { createRef, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { createAppIdFactory } from "../helpers/unique-name.js";
-
-type MainOption = {
-    longName: string;
-    shortName?: string;
-    arg?: GLib.OptionArg;
-    description: string;
-    argDescription?: string;
-};
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
 const uniqueAppId = createAppIdFactory("org.gtkx.applicationtest");

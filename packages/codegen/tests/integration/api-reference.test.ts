@@ -265,6 +265,7 @@ describe("ApiReference — namespaces", () => {
         expect(names).toContain("Gtk");
         expect(names).toContain("Adw");
         expect(names).toContain("GLib");
+        // eslint-disable-next-line gtkx/no-library-prefix
         const gtk = summaries.find((summary) => summary.name === "Gtk");
         expect(gtk?.importPath).toBe("@gtkx/gi/gtk");
         expect(gtk?.symbols).toBeGreaterThan(500);

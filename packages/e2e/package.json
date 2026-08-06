@@ -33,12 +33,6 @@
                     "@gtkx/css:build",
                     "@gtkx/gl:build"
                 ]
-            },
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/e2e"
-                }
             }
         }
     }

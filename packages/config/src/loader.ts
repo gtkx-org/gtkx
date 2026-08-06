@@ -82,4 +82,4 @@ const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
     };
 };
 
-export { loadConfig, createConfigLoader, type LoadedConfig, type LoadConfigOptions, type ConfigLoader };
+export { loadConfig, createConfigLoader, type LoadedConfig, type ConfigLoader };

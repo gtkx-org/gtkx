@@ -427,6 +427,5 @@ export {
     collectInheritedMethods,
     conflictRename,
     reservedSignalMemberRename,
-    type OwnedProperty,
     type InheritedMethods,
 };

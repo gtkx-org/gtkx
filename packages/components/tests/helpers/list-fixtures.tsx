@@ -147,9 +147,9 @@ const wireFixture = async <W, T, O extends object>(config: {
     draw: (data: FixtureInput<T>, opts: O) => ReactNode;
     items: FixtureInput<T>;
     options: O;
-    render: FixtureRender;
+    render?: FixtureRender | undefined;
 }): Promise<{ ref: RefObject<W>; rerender: (items: FixtureInput<T>, options?: O) => Promise<void> }> => {
-    const { ref, draw, items, options, render } = config;
+    const { ref, draw, items, options, render = testingRender } = config;
     const { rerender } = await render(draw(items, options));
 
     return {
@@ -199,7 +199,7 @@ const wireListView = async <T,>(config: {
     draw: ListViewDraw;
     items: FixtureInput<T>;
     options: RenderListViewOptions<T>;
-    render: FixtureRender;
+    render?: FixtureRender | undefined;
 }): Promise<ListViewFixture<T>> => {
     const ref = createRef<Gtk.ListView>();
     const { draw } = config;
@@ -231,16 +231,15 @@ const drawListView: ListViewDraw = (ref, data, opts) => {
     );
 };
 
-const renderStatefulListView: RenderListView = (items, options = {}, render = testingRender) =>
+const renderStatefulListView: RenderListView = (items, options = {}, render) =>
     wireListView({ draw: drawStatefulListView, items, options, render });
 
-const renderListView: RenderListView = (items, options = {}, render = testingRender) =>
+const renderListView: RenderListView = (items, options = {}, render) =>
     wireListView({ draw: drawListView, items, options, render });
 
 const renderGridView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderGridViewOptions<T> = {},
-    render: FixtureRender = testingRender,
 ): Promise<GridViewFixture<T>> => {
     const ref = createRef<Gtk.GridView>();
 
@@ -248,7 +247,6 @@ const renderGridView = async <T = NamedValue>(
         ref,
         items,
         options,
-        render,
         draw: (data, opts) => {
             const { renderItem = renderNamed } = opts;
 
@@ -272,7 +270,6 @@ const renderGridView = async <T = NamedValue>(
 const renderColumnView = async <T = NamedValue>(
     items: FixtureInput<T>,
     options: RenderColumnViewOptions<T> = {},
-    render: FixtureRender = testingRender,
 ): Promise<ColumnViewFixture<T>> => {
     const ref = createRef<Gtk.ColumnView>();
     const defaultColumns: ColumnViewColumn<T>[] = [{ id: "name", title: "Name", renderCell: renderNamed }];
@@ -299,7 +296,7 @@ const renderColumnView = async <T = NamedValue>(
         );
     };
 
-    return wireFixture({ ref, draw, items, options, render });
+    return wireFixture({ ref, draw, items, options });
 };
 
 export type { ColumnViewColumn } from "@gtkx/components";
@@ -312,13 +309,8 @@ export {
     renderStatefulListView,
     renderGridView,
     renderColumnView,
-    type FixtureRender,
     type NamedValue,
     type FixtureInput,
     type RenderListViewOptions,
-    type RenderGridViewOptions,
     type ListViewFixture,
-    type GridViewFixture,
-    type RenderColumnViewOptions,
-    type ColumnViewFixture,
 };

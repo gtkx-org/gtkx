@@ -37,12 +37,6 @@ const getTrailingOptions = (args: unknown[]): MatcherOptions | undefined => {
     return undefined;
 };
 
-const extractWaitForOptions = (args: unknown[]): WaitForOptions => {
-    const { timeout, interval, onTimeout } = getTrailingOptions(args) ?? {};
-
-    return { timeout, interval, onTimeout };
-};
-
 const extractShouldSuggest = (args: unknown[]): boolean | undefined => getTrailingOptions(args)?.suggest;
 
 const maybeThrowSuggestion = (options: {
@@ -87,16 +81,13 @@ const findOptions = <Args extends unknown[]>(
     container: Container,
     args: Args,
 ): WaitForOptions => {
-    const userOptions = extractWaitForOptions(args);
-
-    const onTimeout =
-        userOptions.onTimeout ?? ((fallback: Error) => reRunForDiagnostics(query, container, args, fallback));
+    const { timeout, interval, onTimeout } = getTrailingOptions(args) ?? {};
 
     return {
         stackTraceError: new Error("STACK_TRACE_MESSAGE"),
-        onTimeout,
-        timeout: userOptions.timeout,
-        interval: userOptions.interval,
+        onTimeout: onTimeout ?? ((fallback: Error) => reRunForDiagnostics(query, container, args, fallback)),
+        timeout,
+        interval,
     };
 };
 

@@ -1,7 +1,8 @@
 import type { ListItem } from "@gtkx/components";
 import { describe, expect, it } from "vitest";
-import type { TreeListFixture, TreeName } from "./helpers/tree-list-app.js";
-import { expectTreeShape, measureRowCost, renderTreeList } from "./helpers/tree-list-app.js";
+import type { TreeFixture, TreeName } from "./helpers/tree-fixtures.js";
+import { renderListView } from "./helpers/list-fixtures.js";
+import { expectTreeShape, measureRowCost } from "./helpers/tree-fixtures.js";
 
 const CHILD_COUNT = 4;
 const EXPANDED_IDS = ["p-0", "p-1", "p-2"];
@@ -21,8 +22,8 @@ const childItems = (parent: string): ListItem<TreeName>[] =>
 const treeItems = (parents: string[]): ListItem<TreeName>[] =>
     parents.map((parent) => ({ id: parent, value: { name: parent }, children: childItems(parent) }));
 
-const renderExpandedTree = async (items: ListItem<TreeName>[]): Promise<TreeListFixture> => {
-    const fixture = await renderTreeList({ items, expandedIds: EXPANDED_IDS, selectedIds: SELECTED_IDS });
+const renderExpandedTree = async (items: ListItem<TreeName>[]): Promise<TreeFixture> => {
+    const fixture = await renderListView<TreeName>(items, { expandedIds: EXPANDED_IDS, selected: SELECTED_IDS });
     await expectTreeShape(fixture, { rows: EXPANDED_ROW_COUNT, selected: 1n });
 
     return fixture;
@@ -32,7 +33,7 @@ describe("render - ListView (tree) - controlled rescans", () => {
     it("touches no row when only the items array identity changes", async () => {
         const fixture = await renderExpandedTree(treeItems(EXPANDED_IDS));
         const items = treeItems(EXPANDED_IDS);
-        const cost = await measureRowCost(fixture, { items, expandedIds: EXPANDED_IDS, selectedIds: SELECTED_IDS });
+        const cost = await measureRowCost(fixture, items, { expandedIds: EXPANDED_IDS, selected: SELECTED_IDS });
         expect(cost.getRow + cost.treeGetItem).toBe(0);
         expect(cost.setExpanded).toBe(0);
         await expectTreeShape(fixture, { rows: EXPANDED_ROW_COUNT, selected: 1n });
@@ -41,7 +42,7 @@ describe("render - ListView (tree) - controlled rescans", () => {
     it("touches no row when a structure change leaves every surviving row in the wanted state", async () => {
         const fixture = await renderExpandedTree(treeItems(EXPANDED_IDS));
         const items = treeItems(FEWER_PARENT_IDS);
-        const cost = await measureRowCost(fixture, { items, expandedIds: EXPANDED_IDS, selectedIds: SELECTED_IDS });
+        const cost = await measureRowCost(fixture, items, { expandedIds: EXPANDED_IDS, selected: SELECTED_IDS });
         expect(cost.getRow + cost.treeGetItem).toBe(0);
         expect(cost.setExpanded).toBe(0);
         await expectTreeShape(fixture, { rows: FEWER_ROW_COUNT, selected: 1n });
@@ -50,7 +51,7 @@ describe("render - ListView (tree) - controlled rescans", () => {
     it("touches one row per collapse when expandedIds changes without the items changing", async () => {
         const items = treeItems(EXPANDED_IDS);
         const fixture = await renderExpandedTree(items);
-        const cost = await measureRowCost(fixture, { items, expandedIds: COLLAPSED_IDS, selectedIds: SELECTED_IDS });
+        const cost = await measureRowCost(fixture, items, { expandedIds: COLLAPSED_IDS, selected: SELECTED_IDS });
         expect(cost.getRow).toBe(EXPANDED_IDS.length);
         expect(cost.treeGetItem).toBe(0);
         expect(cost.setExpanded).toBe(EXPANDED_IDS.length);

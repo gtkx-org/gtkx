@@ -7,7 +7,7 @@ import { ModuleBuilder } from "../writer/module.js";
 import { asSentence, backtick, backtickList, provenanceLines } from "./notes.js";
 import { GL_SCALARS } from "./plan.js";
 
-type EnumTokenRow = {
+type EnumRow = {
     token: GlEnum;
     exportName: string;
     literal: string;
@@ -62,7 +62,7 @@ const tokenNoteLines = (token: GlEnum): string[] => [
     ...rangeLine(token),
 ];
 
-const enumJsDoc = ({ token, provenance }: EnumTokenRow, docs: GlDocContext): string =>
+const enumJsDoc = ({ token, provenance }: EnumRow, docs: GlDocContext): string =>
     [
         "/**",
         ` * ${backtick(token.name)}.`,
@@ -72,7 +72,7 @@ const enumJsDoc = ({ token, provenance }: EnumTokenRow, docs: GlDocContext): str
         " */",
     ].join("\n");
 
-const renderEnumsModule = (tokens: EnumTokenRow[], docs: GlDocContext): string => {
+const renderEnumsModule = (tokens: EnumRow[], docs: GlDocContext): string => {
     const builder = new ModuleBuilder();
 
     for (const row of tokens) {
@@ -206,4 +206,4 @@ const renderCommandsModule = (
     return `${generatedHeader(docs)}\n\n${builder.toSource()}`;
 };
 
-export { renderEnumsModule, renderTypesModule, renderCommandsModule };
+export { renderEnumsModule, renderTypesModule, renderCommandsModule, type EnumRow };

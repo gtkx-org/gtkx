@@ -474,7 +474,7 @@ describe("userEvent.selectOptions", () => {
             const dropdown = await renderDropDown(["A", "B"]);
 
             await expect(userEvent.selectOptions(dropdown, [0, 1])).rejects.toThrow(
-                "Cannot select multiple options: ComboBox only supports single selection",
+                "Cannot select multiple options: Gtk.DropDown only supports single selection",
             );
         });
     });

@@ -27,8 +27,12 @@ type VfuncDescriptor<K extends "class" | "interface"> = {
     vfuncName: string;
     /** Byte offset of the slot within the struct. */
     byteOffset: number;
-    /** Byte size of the struct, used to bounds-check `VfuncDescriptor.byteOffset`. */
-    vtableSize: number;
+    /**
+     * Byte size of an interface's vtable struct, used to bounds-check `VfuncDescriptor.byteOffset`.
+     * A class struct is bounds-checked against the size `g_type_query` reports for it, so a slot in
+     * one carries no size of its own.
+     */
+    vtableSize?: number;
     /** Descriptor for each argument the slot receives, starting with the instance. */
     argDescriptors: NativeRegisterClassVfunc["argDescriptors"];
     /** Descriptor for the value the slot returns. */
@@ -392,5 +396,4 @@ export {
     type InterfaceProperty,
     type StaticBase,
     type VfuncDescriptor,
-    type VfuncRegistry,
 };

@@ -567,5 +567,4 @@ export {
     queryAllByName,
     queryAllByPlaceholderText,
     queryAllByDisplayValue,
-    type BuiltinQueries,
 };

@@ -68,4 +68,4 @@ function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
     }, [object, signal, isAfter, isImmediate]);
 }
 
-export { useSignal, type SignalName, type TypedSignalHandler };
+export { useSignal };

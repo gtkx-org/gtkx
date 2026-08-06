@@ -6,6 +6,7 @@ import type { GlCommand, GlParam } from "../../src/khronos/model.js";
 import type { CommandPlan, GlScalar, ParamPlan, ReturnPlan } from "../../src/khronos/plan.js";
 import type { GlSymbolProvenance } from "../../src/khronos/select.js";
 import { commandJsDoc, derivedJsDoc, inParamDocLine } from "../../src/khronos/jsdoc.js";
+import { docContext, glProvenance } from "../helpers/khronos.js";
 
 type OkPlan = CommandPlan & { isOk: true };
 
@@ -23,18 +24,6 @@ const KIND_TABLE: Map<string, string> = new Map([
     ["Clamped[0; 1]", "This parameter will get clamped to the 0 to 1 range."],
 ]);
 
-const docContext = (overrides: Partial<GlDocContext> = {}): GlDocContext => ({
-    kinds: KIND_TABLE,
-    types: new Map(),
-    aliasTargets: new Map(),
-    extensionCommands: new Map(),
-    extensionEnums: new Map(),
-    bitmaskGroups: new Set(),
-    emittedCommands: new Set(),
-    groupMembers: new Map(),
-    ...overrides,
-});
-
 const glCommand = (overrides: Partial<GlCommand> & { name: string }): GlCommand => ({
     returnCType: "void",
     returnKinds: [],
@@ -44,13 +33,6 @@ const glCommand = (overrides: Partial<GlCommand> & { name: string }): GlCommand 
 
 const glParam = (overrides: Partial<GlParam> & { name: string; cType: string }): GlParam => ({
     kinds: [],
-    ...overrides,
-});
-
-const glProvenance = (overrides: Partial<GlSymbolProvenance> = {}): GlSymbolProvenance => ({
-    feature: "GL_VERSION_1_0",
-    featureNumber: 1,
-    removals: [],
     ...overrides,
 });
 
@@ -185,7 +167,7 @@ describe("khronos parameter metadata", () => {
             inArg("depth", "GLdouble"),
         ],
         outs: [],
-        docs: docContext(),
+        docs: docContext({ kinds: KIND_TABLE }),
     });
 
     it("appends the description of a kind the registry table knows", () => {

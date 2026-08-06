@@ -1,11 +1,10 @@
 import type { SerializedWidget } from "@gtkx/mcp/internal";
 import { serializeWidget, type WidgetFormatting } from "@gtkx/cli/internal";
 import * as Gtk from "@gtkx/gi/gtk";
-import { formatRole, getWidgetNodeText, prettyWidget } from "@gtkx/testing";
+import { formatRole, getWidgetNodeText, prettyWidget, REDACTED_TEXT } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
 const SECRET = "hunter2";
-const REDACTED = "[redacted]";
 const testing: WidgetFormatting = { formatRole, getWidgetNodeText };
 
 const serialize = (widget: Gtk.Widget): SerializedWidget =>
@@ -27,8 +26,8 @@ describe("serializeWidget with hidden text", () => {
     it("redacts a password entry and the text widget it wraps", () => {
         const tree = serialize(makePasswordEntry(SECRET));
         expect(JSON.stringify(tree)).not.toContain(SECRET);
-        expect(tree.text).toBe(REDACTED);
-        expect(collectText(tree)).toContain(REDACTED);
+        expect(tree.text).toBe(REDACTED_TEXT);
+        expect(collectText(tree)).toContain(REDACTED_TEXT);
     });
 
     it("redacts an entry whose text was made invisible", () => {
@@ -54,6 +53,6 @@ describe("widget tree returned to MCP clients", () => {
     it("redacts a password entry", () => {
         const tree = prettyWidget(makePasswordEntry(SECRET), { shouldHighlight: false });
         expect(tree).not.toContain(SECRET);
-        expect(tree).toContain(REDACTED);
+        expect(tree).toContain(REDACTED_TEXT);
     });
 });

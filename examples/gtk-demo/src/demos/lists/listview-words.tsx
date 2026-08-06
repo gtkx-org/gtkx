@@ -1,3 +1,4 @@
+import type { ListItem } from "@gtkx/components";
 import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { createContext, type RefObject, useContext, useEffect, useRef, useState } from "react";
+import { createContext, type RefObject, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import { useDemo } from "../../context/demo-context.js";
 import sourceCode from "./listview-words.tsx?raw";
@@ -22,31 +23,37 @@ type FilterState = {
     wasCanceled: boolean;
 };
 
+type WordScan = {
+    items: ListItem<string>[];
+    lower: string[];
+};
+
 type FilterStep = {
     ctx: FilterState;
-    words: string[];
-    lower: string;
-    result: string[];
+    scan: WordScan;
+    needle: string;
+    matched: WordScan;
     offset: number;
-    onChunk: (matched: string[], progress: number) => void;
+    onChunk: (matched: WordScan, progress: number) => void;
 };
 
 type FilterResult = {
+    words: WordScan;
     search: string;
-    words: string[];
+    scan: WordScan;
     progress: number;
 };
 
 type WordsContextValue = {
     searchText: string;
     setSearchText: (value: string) => void;
-    filteredWords: string[];
+    filteredItems: ListItem<string>[];
     filterProgress: number;
     handleOpen: () => void;
 };
 
 type WordsListProps = {
-    filteredWords: string[];
+    filteredItems: ListItem<string>[];
     filterProgress: number;
 };
 
@@ -58,6 +65,7 @@ const LOREM_IPSUM =
     "commodi consequat";
 
 const FILTER_CHUNK_SIZE = 50_000;
+const NO_MATCHES: ListItem<string>[] = [];
 const initialWords = loadInitialWords();
 const WordsContext = createContext<WordsContextValue | null>(null);
 
@@ -140,12 +148,25 @@ async function openWordsFile(
     }
 }
 
+function scanWords(words: string[]): WordScan {
+    const scan: WordScan = { items: [], lower: [] };
+
+    for (const word of words) {
+        scan.items.push({ id: word, value: word });
+        scan.lower.push(word.toLowerCase());
+    }
+
+    return scan;
+}
+
 function collectMatches(step: FilterStep, end: number) {
     for (let index = step.offset; index < end; index++) {
-        const word = step.words[index];
+        const item = step.scan.items[index];
+        const lower = step.scan.lower[index];
 
-        if (word?.toLowerCase().includes(step.lower)) {
-            step.result.push(word);
+        if (item !== undefined && lower?.includes(step.needle)) {
+            step.matched.items.push(item);
+            step.matched.lower.push(lower);
         }
     }
 }
@@ -155,10 +176,10 @@ function runFilterStep(step: FilterStep) {
         return;
     }
 
-    const total = step.words.length;
+    const total = step.scan.items.length;
     const end = Math.min(step.offset + FILTER_CHUNK_SIZE, total);
     collectMatches(step, end);
-    step.onChunk([...step.result], total > 0 ? end / total : 1);
+    step.onChunk({ items: [...step.matched.items], lower: [...step.matched.lower] }, total > 0 ? end / total : 1);
 
     if (end < total) {
         setTimeout(() => {
@@ -167,28 +188,36 @@ function runFilterStep(step: FilterStep) {
     }
 }
 
-function selectFilteredWords(words: string[], searchText: string, result: FilterResult | null) {
-    if (searchText === "") {
-        return { filteredWords: words, filterProgress: 1 };
-    }
-
-    if (result === null) {
-        return { filteredWords: words, filterProgress: 0 };
-    }
-
-    if (result.search !== searchText) {
-        return { filteredWords: result.words, filterProgress: 0 };
-    }
-
-    return { filteredWords: result.words, filterProgress: result.progress };
+function canNarrow(previous: FilterResult | null, words: WordScan, searchText: string): previous is FilterResult {
+    return previous?.words === words && previous.progress === 1 && searchText.startsWith(previous.search);
 }
 
-function useFilteredWords(words: string[], searchText: string) {
+function selectFilteredWords(words: WordScan, searchText: string, result: FilterResult | null) {
+    if (searchText === "") {
+        return { filteredItems: words.items, filterProgress: 1 };
+    }
+
+    if (result?.words !== words || result.search !== searchText) {
+        return { filteredItems: NO_MATCHES, filterProgress: 0 };
+    }
+
+    return { filteredItems: result.scan.items, filterProgress: result.progress };
+}
+
+function startFilter(step: Omit<FilterStep, "matched" | "offset">) {
+    setTimeout(() => {
+        runFilterStep({ ...step, matched: { items: [], lower: [] }, offset: 0 });
+    }, 0);
+}
+
+function useFilteredWords(words: WordScan, searchText: string) {
     const [result, setResult] = useState<FilterResult | null>(null);
     const filterRef = useRef<FilterState>({ wasCanceled: false });
+    const lastRef = useRef<FilterResult | null>(null);
 
     useEffect(() => {
         filterRef.current.wasCanceled = true;
+        lastRef.current = canNarrow(lastRef.current, words, searchText) ? lastRef.current : null;
 
         if (searchText === "") {
             return;
@@ -197,18 +226,16 @@ function useFilteredWords(words: string[], searchText: string) {
         const ctx: FilterState = { wasCanceled: false };
         filterRef.current = ctx;
 
-        setTimeout(() => {
-            runFilterStep({
-                ctx,
-                words,
-                lower: searchText.toLowerCase(),
-                result: [],
-                offset: 0,
-                onChunk: (matched, progress) => {
-                    setResult({ search: searchText, words: matched, progress });
-                },
-            });
-        }, 0);
+        startFilter({
+            ctx,
+            scan: lastRef.current?.scan ?? words,
+            needle: searchText.toLowerCase(),
+            onChunk: (matched, progress) => {
+                const next: FilterResult = { words, search: searchText, scan: matched, progress };
+                lastRef.current = next;
+                setResult(next);
+            },
+        });
 
         return () => {
             ctx.wasCanceled = true;
@@ -239,7 +266,7 @@ function renderWord({ item: word }: { item: string }) {
     );
 }
 
-const WordsList = ({ filteredWords, filterProgress }: WordsListProps) => (
+const WordsList = ({ filteredItems, filterProgress }: WordsListProps) => (
     <GtkOverlay
         vexpand
         hexpand
@@ -263,7 +290,7 @@ const WordsList = ({ filteredWords, filterProgress }: WordsListProps) => (
                 hexpand
                 estimatedItemHeight={32}
                 selectionMode={Gtk.SelectionMode.NONE}
-                items={filteredWords.map((word) => ({ id: word, value: word }))}
+                items={filteredItems}
                 renderItem={renderWord}
             />
         </GtkScrolledWindow>
@@ -273,7 +300,8 @@ const WordsList = ({ filteredWords, filterProgress }: WordsListProps) => (
 function ListViewWordsProvider({ window, children }: DemoProviderProps) {
     const [words, setWords] = useState(initialWords);
     const [searchText, setSearchText] = useState("");
-    const { filteredWords, filterProgress } = useFilteredWords(words, searchText);
+    const scan = useMemo(() => scanWords(words), [words]);
+    const { filteredItems, filterProgress } = useFilteredWords(scan, searchText);
 
     const handleOpen = () => {
         void openWordsFile(window, (filePath) => loadWordsFromFile(filePath, setWords, setSearchText));
@@ -282,7 +310,7 @@ function ListViewWordsProvider({ window, children }: DemoProviderProps) {
     const value = {
         searchText,
         setSearchText,
-        filteredWords,
+        filteredItems,
         filterProgress,
         handleOpen,
     };
@@ -297,16 +325,16 @@ function ListViewWordsTitlebar() {
 }
 
 function ListViewWordsDemo() {
-    const { searchText, setSearchText, filteredWords, filterProgress } = useWordsContext();
+    const { searchText, setSearchText, filteredItems, filterProgress } = useWordsContext();
     const { setWindowTitle } = useDemo();
 
     useEffect(() => {
-        setWindowTitle(`${String(filteredWords.length)} lines`);
+        setWindowTitle(`${String(filteredItems.length)} lines`);
 
         return () => {
             setWindowTitle(null);
         };
-    }, [filteredWords.length, setWindowTitle]);
+    }, [filteredItems.length, setWindowTitle]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
@@ -319,7 +347,7 @@ function ListViewWordsDemo() {
                 }}
                 hexpand
             />
-            <WordsList filteredWords={filteredWords} filterProgress={filterProgress} />
+            <WordsList filteredItems={filteredItems} filterProgress={filterProgress} />
         </GtkBox>
     );
 }

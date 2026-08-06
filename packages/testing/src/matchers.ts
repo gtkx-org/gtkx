@@ -668,36 +668,4 @@ declare module "@vitest/expect" {
     /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }
 
-export {
-    toHaveDisplayValue,
-    toHaveTextContent,
-    toHaveAccessibleName,
-    toHaveAccessibleDescription,
-    toHaveAccessibleErrorMessage,
-    toHavePlaceholderText,
-    toHaveSelection,
-    toBeChecked,
-    toBePartiallyChecked,
-    toBePressed,
-    toBeExpanded,
-    toBeSelected,
-    toBeDisabled,
-    toBeEnabled,
-    toBeVisible,
-    toBeRooted,
-    toBeEmpty,
-    toBeInvalid,
-    toBeValid,
-    toBeRequired,
-    toHaveFocus,
-    toHaveValue,
-    toHaveRole,
-    toContainElement,
-    toHaveClass,
-    toHaveObjectProperty,
-    matchers,
-    registerMatchers,
-    type ClassExpectation,
-    type TextContentOptions,
-    type TextExpectation,
-};
+export { matchers, registerMatchers, type ClassExpectation, type TextContentOptions, type TextExpectation };

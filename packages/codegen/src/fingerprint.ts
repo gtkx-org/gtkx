@@ -164,5 +164,4 @@ export {
     jsxStoreFreshness,
     type GiFingerprint,
     type JsxFingerprintInput,
-    type JsxFingerprint,
 };

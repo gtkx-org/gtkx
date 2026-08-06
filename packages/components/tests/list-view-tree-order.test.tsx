@@ -2,10 +2,11 @@ import type { ListItem } from "@gtkx/components";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { act, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-import type { TreeListFixture, TreeName } from "./helpers/tree-list-app.js";
+import type { TreeFixture, TreeName } from "./helpers/tree-fixtures.js";
+import { renderListView } from "./helpers/list-fixtures.js";
 import { rowTexts } from "./helpers/row-texts.js";
 import { getSelectionModel, getTreeRow } from "./helpers/selection-model.js";
-import { renderTreeList, treeBranch, treeLeaf } from "./helpers/tree-list-app.js";
+import { treeBranch, treeLeaf } from "./helpers/tree-fixtures.js";
 
 type WalkState = {
     expandedIds: string[];
@@ -61,10 +62,10 @@ const readRow = (state: WalkState, labels: (string | null)[], model: Gtk.Selecti
     }
 };
 
-const shownWalk = (fixture: TreeListFixture): WalkState => {
+const shownWalk = (fixture: TreeFixture): WalkState => {
     const state: WalkState = { expandedIds: [], ids: [], expanded: [] };
-    const labels = rowTexts(fixture.listRef.current);
-    const model = getSelectionModel(fixture.listRef);
+    const labels = rowTexts(fixture.ref.current);
+    const model = getSelectionModel(fixture.ref);
 
     for (let position = 0; position < model.getNItems(); position++) {
         readRow(state, labels, model, position);
@@ -74,7 +75,7 @@ const shownWalk = (fixture: TreeListFixture): WalkState => {
 };
 
 const expectAgreement = async (
-    fixture: TreeListFixture,
+    fixture: TreeFixture,
     items: ListItem<TreeName>[],
     expandedIds: string[],
 ): Promise<void> => {
@@ -88,13 +89,13 @@ const expectAgreement = async (
 };
 
 const expectShownAgreement = async (
-    fixture: TreeListFixture,
+    fixture: TreeFixture,
     tree: () => ListItem<TreeName>[],
     steps: string[][],
 ): Promise<void> => {
     for (const expandedIds of steps) {
         const items = tree();
-        await fixture.show({ items, expandedIds });
+        await fixture.rerender(items, { expandedIds });
         await expectAgreement(fixture, items, expandedIds);
     }
 };
@@ -102,8 +103,8 @@ const expectShownAgreement = async (
 const expectRenderedAgreement = async (
     tree: () => ListItem<TreeName>[],
     expandedIds: string[],
-): Promise<TreeListFixture> => {
-    const fixture = await renderTreeList({ items: tree(), expandedIds });
+): Promise<TreeFixture> => {
+    const fixture = await renderListView<TreeName>(tree(), { expandedIds });
     await expectAgreement(fixture, tree(), expandedIds);
 
     return fixture;
@@ -145,7 +146,7 @@ describe("render - ListView (tree) - the derived order agrees with GTK after out
         const fixture = await expectRenderedAgreement(nestedTree, DEEP_AND_C);
 
         await act(() => {
-            getTreeRow(getSelectionModel(fixture.listRef), 0).setExpanded(false);
+            getTreeRow(getSelectionModel(fixture.ref), 0).setExpanded(false);
         });
 
         await expectAgreement(fixture, nestedTree(), DEEP_AND_C);
@@ -155,7 +156,7 @@ describe("render - ListView (tree) - the derived order agrees with GTK after out
         const fixture = await expectRenderedAgreement(nestedTree, JUST_C);
 
         await act(() => {
-            getTreeRow(getSelectionModel(fixture.listRef), 0).setExpanded(true);
+            getTreeRow(getSelectionModel(fixture.ref), 0).setExpanded(true);
         });
 
         await expectAgreement(fixture, nestedTree(), JUST_C);

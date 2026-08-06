@@ -1,6 +1,7 @@
 import type { Descriptor } from "@gtkx/native";
 import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
 import type { Arg } from "./arg.js";
+import { isCallerAllocatedOut } from "./callback.js";
 import { getInterfaceVfuncRegistry, getVfuncRegistry, type VfuncDescriptor } from "./registry.js";
 
 type AnyVfuncDescriptor = VfuncDescriptor<"class" | "interface">;
@@ -24,16 +25,12 @@ function findInterfaceVfuncDescriptor(
     return entry?.kind === "interface" ? entry : undefined;
 }
 
-function isCallerAllocatedDescriptor(descriptor: Descriptor): boolean {
-    return (descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.isCallerAllocated === true;
-}
-
 function vfuncArg(descriptor: Descriptor): Arg {
     if (descriptor.kind === "ref") {
         return { type: descriptor.innerDescriptor, direction: descriptor.inout === true ? "inout" : "out" };
     }
 
-    if (isCallerAllocatedDescriptor(descriptor)) {
+    if (isCallerAllocatedOut(descriptor)) {
         return { type: descriptor, direction: "out", isCallerAllocated: true };
     }
 

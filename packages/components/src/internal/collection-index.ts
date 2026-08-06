@@ -1,5 +1,5 @@
 import type { ListItem, ListSection } from "../types.js";
-import { encodePart, joinParts } from "./keys.js";
+import { encodePart } from "./keys.js";
 
 type Level = {
     path: string;
@@ -9,10 +9,9 @@ type Level = {
 
 type CollectionIndex = {
     isTree: boolean;
-    structureKey: string;
     groups: Level[];
     children: Map<string, Level>;
-    itemAt: (path: string) => ListItem | undefined;
+    itemAt: (levelPath: string, slot: number) => ListItem | undefined;
     sectionFor: (levelPath: string) => unknown;
     expandablePathsFor: (id: string) => string[];
 };
@@ -21,7 +20,7 @@ type IndexState = {
     isTree: boolean;
     groups: Level[];
     children: Map<string, Level>;
-    itemsByPath: Map<string, ListItem>;
+    levels: Map<string, Level>;
     expandablePaths: Map<string, string[]>;
     sectionValues: Map<string, unknown>;
 };
@@ -43,10 +42,6 @@ function pushPath(table: Map<string, string[]>, id: string, path: string): void 
 }
 
 function collectChildren(state: IndexState, level: Level, slotPath: string, item: ListItem): void {
-    if (!state.isTree) {
-        return;
-    }
-
     const canExpand = hasChildren(item);
     level.expandableFlags.push(canExpand);
 
@@ -60,11 +55,14 @@ function collectChildren(state: IndexState, level: Level, slotPath: string, item
 
 function collectLevel(state: IndexState, path: string, items: ListItem[]): Level {
     const level: Level = { path, items, expandableFlags: [] };
+    state.levels.set(path, level);
+
+    if (!state.isTree) {
+        return level;
+    }
 
     for (const [slot, item] of items.entries()) {
-        const slotPath = path + encodePart(String(slot));
-        state.itemsByPath.set(slotPath, item);
-        collectChildren(state, level, slotPath, item);
+        collectChildren(state, level, path + encodePart(String(slot)), item);
     }
 
     return level;
@@ -81,25 +79,6 @@ function buildGroups(state: IndexState, source: ListItem[], sections: ListSectio
 
         return collectLevel(state, path, section.data);
     });
-}
-
-function pushLevelKey(parts: string[], level: Level): void {
-    const ids = level.items.map((item) => item.id);
-    parts.push(joinParts([level.path, String(level.items.length), joinParts(ids), level.expandableFlags.join(",")]));
-}
-
-function getStructureKey(state: IndexState): string {
-    const parts: string[] = [joinParts([String(state.isTree), String(state.groups.length)])];
-
-    for (const level of state.groups) {
-        pushLevelKey(parts, level);
-    }
-
-    for (const level of state.children.values()) {
-        pushLevelKey(parts, level);
-    }
-
-    return parts.join("");
 }
 
 function isTreeSource(source: ListItem[], sections: ListSection[] | undefined, isFlat: boolean): boolean {
@@ -121,7 +100,7 @@ function createCollectionIndex(
         isTree: isTreeSource(source, sections, isFlat),
         groups: [],
         children: new Map(),
-        itemsByPath: new Map(),
+        levels: new Map(),
         expandablePaths: new Map(),
         sectionValues: new Map(),
     };
@@ -130,10 +109,9 @@ function createCollectionIndex(
 
     return {
         isTree: state.isTree,
-        structureKey: getStructureKey(state),
         groups: state.groups,
         children: state.children,
-        itemAt: (path) => state.itemsByPath.get(path),
+        itemAt: (levelPath, slot) => state.levels.get(levelPath)?.items[slot],
         sectionFor: (levelPath) => state.sectionValues.get(levelPath),
         expandablePathsFor: (id) => state.expandablePaths.get(id) ?? NO_PATHS,
     };

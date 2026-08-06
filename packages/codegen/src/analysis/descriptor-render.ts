@@ -737,7 +737,6 @@ export {
     shouldOmitPrimaryReturn,
     renderDescriptor,
     isScalarRef,
-    isStrvRef,
     isCellInout,
     recordInlineSize,
     renderParamDescriptor,

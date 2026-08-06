@@ -43,15 +43,5 @@
     },
     "engines": {
         "node": ">=24"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/utils"
-                }
-            }
-        }
     }
 }

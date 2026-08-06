@@ -200,15 +200,15 @@ const getWidgetTextContent = (widget: Gtk.Widget): string | null => {
     return parts.length > 0 ? parts.join(" ") : null;
 };
 
-const isComboBoxFaceCandidate = (widget: Gtk.Widget): boolean =>
+const isDropDownFaceCandidate = (widget: Gtk.Widget): boolean =>
     !(widget instanceof Gtk.Popover) && widget.getChildVisible();
 
-const comboBoxChildFaceText = (child: Gtk.Widget): string | null =>
-    isComboBoxFaceCandidate(child) ? getWidgetLabelText(child) ?? comboBoxFaceText(child) : null;
+const dropDownChildFaceText = (child: Gtk.Widget): string | null =>
+    isDropDownFaceCandidate(child) ? getWidgetLabelText(child) ?? dropDownFaceText(child) : null;
 
-const comboBoxFaceText = (widget: Gtk.Widget): string | null => {
+const dropDownFaceText = (widget: Gtk.Widget): string | null => {
     for (const child of getChildren(widget)) {
-        const text = comboBoxChildFaceText(child);
+        const text = dropDownChildFaceText(child);
 
         if (text !== null) {
             return text;
@@ -288,7 +288,7 @@ const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
     }
 
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.COMBO_BOX) {
-        return comboBoxFaceText(widget);
+        return dropDownFaceText(widget);
     }
 
     return null;
@@ -594,5 +594,4 @@ export {
     getWidgetLabelledByText,
     isInaccessible,
     type CheckedState,
-    type WidgetValue,
 };

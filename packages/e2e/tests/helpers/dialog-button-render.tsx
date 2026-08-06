@@ -44,4 +44,4 @@ const expectDialogModalProp = async <Widget extends DialogButtonWidget>(
     expect(dialog).toHaveObjectProperty("modal", false);
 };
 
-export { expectDialogTitleTracksProp, expectDialogModalProp, type DialogButtonWidget, type DialogButtonFactory };
+export { expectDialogTitleTracksProp, expectDialogModalProp };

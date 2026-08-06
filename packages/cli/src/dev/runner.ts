@@ -178,25 +178,22 @@ const attachApplication = async (
     deps: DevRunnerDeps,
     server: DevServer,
     tracked: { refreshTracker: RefreshTracker; controller: ShutdownController },
-): Promise<boolean> => {
+): Promise<void> => {
     const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS);
 
     if (liveApplicationId === null) {
         deps.log("Entry did not mount an application - MCP client not started.");
 
-        return true;
+        return;
     }
 
     if (!deps.isApplicationRegistered()) {
         deps.log("Application refused its command line - stopping dev runner...");
-        await closeAndExit(deps, tracked.controller, refusedExitCode());
 
-        return false;
+        return closeAndExit(deps, tracked.controller, refusedExitCode());
     }
 
     await connectApplication(deps, server, liveApplicationId, tracked);
-
-    return true;
 };
 
 const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
@@ -210,10 +207,8 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         server.watcher.on("change", onFileChange(server, refreshTrackingDeps, controller));
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
-
-        if (await attachApplication(deps, server, { refreshTracker, controller })) {
-            deps.log("HMR enabled - watching for changes...");
-        }
+        await attachApplication(deps, server, { refreshTracker, controller });
+        deps.log("HMR enabled - watching for changes...");
     },
 });
 

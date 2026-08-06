@@ -3,7 +3,6 @@ use std::panic::AssertUnwindSafe;
 use gtk4::glib;
 use gtk4::glib::translate::IntoGlib as _;
 use gtk4::prelude::StaticType as _;
-use napi::sys;
 use native::value::pending_wrapper;
 use test_support as helpers;
 
@@ -13,13 +12,6 @@ fn object_gtype() -> glib::ffi::GType {
 
 fn binding_gtype() -> glib::ffi::GType {
     glib::Binding::static_type().into_glib()
-}
-
-fn pending_values() -> (sys::napi_value, sys::napi_value) {
-    (
-        helpers::napi_mock::fake_object(&[]),
-        helpers::napi_mock::fake_function(|_| helpers::napi_mock::fake_undefined()),
-    )
 }
 
 #[test]
@@ -35,7 +27,7 @@ fn claim_finds_nothing_when_nothing_is_pending() {
 fn claim_takes_a_matching_entry_exactly_once() {
     helpers::run(|| {
         let (object, object_ptr, _) = helpers::fresh_gobject();
-        let (wrapper, associate) = pending_values();
+        let (wrapper, associate) = helpers::pending_values();
         let guard = unsafe { pending_wrapper::push(object_gtype(), wrapper, associate) };
 
         assert!(guard.claimed_instance().is_none());
@@ -55,7 +47,7 @@ fn claim_takes_a_matching_entry_exactly_once() {
 fn claim_ignores_an_entry_pushed_for_another_type() {
     helpers::run(|| {
         let (object, object_ptr, _) = helpers::fresh_gobject();
-        let (wrapper, associate) = pending_values();
+        let (wrapper, associate) = helpers::pending_values();
         let guard = unsafe { pending_wrapper::push(binding_gtype(), wrapper, associate) };
 
         assert!(pending_wrapper::claim(object_ptr, object_gtype()).is_none());
@@ -70,8 +62,8 @@ fn claim_ignores_an_entry_pushed_for_another_type() {
 fn claim_only_looks_at_the_innermost_entry() {
     helpers::run(|| {
         let (object, object_ptr, _) = helpers::fresh_gobject();
-        let (outer_wrapper, outer_associate) = pending_values();
-        let (inner_wrapper, inner_associate) = pending_values();
+        let (outer_wrapper, outer_associate) = helpers::pending_values();
+        let (inner_wrapper, inner_associate) = helpers::pending_values();
         let outer =
             unsafe { pending_wrapper::push(object_gtype(), outer_wrapper, outer_associate) };
         let inner =
@@ -96,7 +88,7 @@ fn claim_only_looks_at_the_innermost_entry() {
 fn the_guard_removes_its_entry_when_its_scope_returns_early() {
     helpers::run(|| {
         let (object, object_ptr, _) = helpers::fresh_gobject();
-        let (wrapper, associate) = pending_values();
+        let (wrapper, associate) = helpers::pending_values();
 
         let bailed = || -> Option<()> {
             let _guard = unsafe { pending_wrapper::push(object_gtype(), wrapper, associate) };
@@ -114,7 +106,7 @@ fn the_guard_removes_its_entry_when_its_scope_returns_early() {
 fn the_guard_removes_its_entry_when_its_scope_unwinds() {
     helpers::run(|| {
         let (object, object_ptr, _) = helpers::fresh_gobject();
-        let (wrapper, associate) = pending_values();
+        let (wrapper, associate) = helpers::pending_values();
         let previous = std::panic::take_hook();
         std::panic::set_hook(Box::new(|_| {}));
 

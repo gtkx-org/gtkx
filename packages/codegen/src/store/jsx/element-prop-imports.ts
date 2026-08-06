@@ -22,4 +22,4 @@ const elementPropTypeFor = (glibName: string): ElementPropTypeRef | undefined =>
     return ref === undefined ? undefined : { type: glibName, module: ref.module, export: ref.export };
 };
 
-export { setElementProps, elementPropTypeFor, type ElementPropTypeRef, type ElementProps };
+export { setElementProps, elementPropTypeFor, type ElementProps };

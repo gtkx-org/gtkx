@@ -112,4 +112,4 @@ const runCreate = async (args: CreateCommandArgs): Promise<void> => {
     }
 };
 
-export { scaffoldCommand, runCreate, type CreateCommandArgs };
+export { scaffoldCommand, runCreate };

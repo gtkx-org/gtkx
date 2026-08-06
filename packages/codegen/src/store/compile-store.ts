@@ -51,4 +51,4 @@ const compileStore = (params: CompileStoreParams): void => {
     }
 };
 
-export { compileStore, type CompileStoreParams };
+export { compileStore };

@@ -147,4 +147,4 @@ const renderElementComponentExport = (glibName: string, component: ElementCompon
     return `export const ${glibName}: ${annotation} = ${component.export}(${factoryCall});`;
 };
 
-export { generateElementComponentsSection, type ElementComponent, type ElementComponentOverrides };
+export { generateElementComponentsSection, type ElementComponentOverrides };

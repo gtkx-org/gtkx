@@ -5,8 +5,6 @@ import { BIGUINT64, callArgs, GOBJECT_LIB, typeFromName } from "../helpers/nativ
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 
 const G_TYPE_INVALID_NAME = "ThisGTypeDefinitelyDoesNotExist";
-const BUILDABLE_VTABLE_SIZE = 96;
-const EDITABLE_VTABLE_SIZE = 88;
 const uniqueName = createTypeNameFactory("NativeTest");
 
 const queryTypeIsA = (gtype: bigint, target: bigint): unknown =>
@@ -73,21 +71,6 @@ describe("registerClass — interfaces", () => {
         expect(buildableGtype).toBeGreaterThan(0);
 
         const newGtype = registerClass(name, gobjectGtype, {
-            interfaces: [{ type: buildableGtype, vtableSize: BUILDABLE_VTABLE_SIZE, vfuncs: [] }],
-        });
-
-        expect(newGtype).toBeGreaterThan(0);
-        expect(queryTypeIsA(newGtype, buildableGtype)).toBe(true);
-    });
-});
-
-describe("registerClass — interfaces the parent lacks", () => {
-    it("accepts an interface no vtable size describes when it declares no vfuncs", () => {
-        const name = uniqueName("GtkxNativeUnsizedInterface");
-        const gobjectGtype = typeFromName("GObject");
-        const buildableGtype = typeFromName("GtkBuildable");
-
-        const newGtype = registerClass(name, gobjectGtype, {
             interfaces: [{ type: buildableGtype, vfuncs: [] }],
         });
 
@@ -105,7 +88,7 @@ describe("registerClass — interfaces the parent lacks", () => {
 
         const register = (): unknown =>
             registerClass(name, gobjectGtype, {
-                interfaces: [{ type: editableGtype, vtableSize: EDITABLE_VTABLE_SIZE, vfuncs: [] }],
+                interfaces: [{ type: editableGtype, vfuncs: [] }],
             });
 
         expect(register).toThrow(/does not meet prerequisite 'GtkWidget' of interface 'GtkEditable'/);

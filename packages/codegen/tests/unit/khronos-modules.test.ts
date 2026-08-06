@@ -1,41 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { GlDocContext } from "../../src/khronos/doc-context.js";
 import type { GlEnum, GlType } from "../../src/khronos/model.js";
 import type { GlSymbolProvenance } from "../../src/khronos/select.js";
-import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "../../src/khronos/modules.js";
-
-type EnumRow = {
-    token: GlEnum;
-    exportName: string;
-    literal: string;
-    provenance: GlSymbolProvenance;
-};
+import { type EnumRow, renderCommandsModule, renderEnumsModule, renderTypesModule } from "../../src/khronos/modules.js";
+import { docContext, glProvenance } from "../helpers/khronos.js";
 
 const REGISTRY_COMMENT = "Copyright 2013-2026 The Khronos Group Inc.\nSPDX-License-Identifier: Apache-2.0";
-
-const docContext = (overrides: Partial<GlDocContext> = {}): GlDocContext => ({
-    kinds: new Map(),
-    types: new Map(),
-    aliasTargets: new Map(),
-    extensionCommands: new Map(),
-    extensionEnums: new Map(),
-    bitmaskGroups: new Set(),
-    emittedCommands: new Set(),
-    groupMembers: new Map(),
-    ...overrides,
-});
 
 const glEnum = (overrides: Partial<GlEnum> & { name: string }): GlEnum => ({
     value: "0x8295",
     groups: [],
     isBitmask: false,
-    ...overrides,
-});
-
-const glProvenance = (overrides: Partial<GlSymbolProvenance> = {}): GlSymbolProvenance => ({
-    feature: "GL_VERSION_1_0",
-    featureNumber: 1,
-    removals: [],
     ...overrides,
 });
 

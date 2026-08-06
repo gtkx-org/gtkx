@@ -84,4 +84,4 @@ const isValueMarshalable = (context: ModuleContext, namespaceName: string, recor
 const isConstructibleRecord = (context: ModuleContext, namespaceName: string, record: GirRecord): boolean =>
     hasOwnCopySemantics(record) || isValueMarshalable(context, namespaceName, record);
 
-export { hasOwnCopySemantics, isConstructibleRecord, isValueMarshalable };
+export { isConstructibleRecord, isValueMarshalable };

@@ -39,7 +39,7 @@ const dialogDemo: Demo = {
     id: "dialog",
     title: "Dialogs",
     description: "Dialogs are used to pop up transient windows for information and user feedback.",
-    keywords: ["GtkMessageDialog"],
+    keywords: [],
     component: DialogDemo,
     sourceCode,
     isResizable: false,

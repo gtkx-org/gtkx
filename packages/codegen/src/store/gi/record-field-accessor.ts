@@ -639,5 +639,4 @@ export {
     emitFieldWrite,
     resolveRecordFieldEntry,
     renderRecordFieldAccessor,
-    type RecordFieldEntry,
 };

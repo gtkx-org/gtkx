@@ -13,8 +13,8 @@
             A task manager built with GTKX, demonstrating how to build React-based
             GTK4 and Adwaita desktop applications. It shows an adaptive sidebar
             layout, boxed lists, a task editor, GSettings-backed preferences, undo
-            toasts, drag-to-reorder, batch selection, desktop notifications, and
-            local JSON persistence.
+            toasts, drag-to-reorder, desktop notifications, and local JSON
+            persistence.
         </p>
     </description>
     <launchable type="desktop-id">com.gtkx.tutorial.desktop</launchable>

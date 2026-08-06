@@ -19,10 +19,10 @@ const wideTree = (): ListItem[] => [branch("a", [leaf("a0"), leaf("a1")]), leaf(
 const longTree = (): ListItem[] => [branch("a", [leaf("a0")]), leaf("b"), leaf("c")];
 
 const syncedModel = (index: CollectionIndex): CollectionModel => {
-    const gtk = createCollectionModel();
-    gtk.sync(index);
+    const collectionModel = createCollectionModel();
+    collectionModel.sync(index);
 
-    return gtk;
+    return collectionModel;
 };
 
 const spliceLog = (model: Gio.ListModel): Splice[] => {
@@ -35,8 +35,8 @@ const spliceLog = (model: Gio.ListModel): Splice[] => {
     return calls;
 };
 
-const getTree = (gtk: CollectionModel): Gtk.TreeListModel => {
-    const tree = gtk.treeModel();
+const getTree = (collectionModel: CollectionModel): Gtk.TreeListModel => {
+    const tree = collectionModel.treeModel();
 
     if (tree === null) {
         throw new TypeError("Expected the collection model to hold a tree");
@@ -66,11 +66,11 @@ const expandRowAt = (tree: Gtk.TreeListModel, position: number): void => {
 };
 
 const expectFlatSplices = (previous: string[], next: string[], expected: Splice[]): void => {
-    const gtk = syncedModel(flatIndex(previous));
-    const splices = spliceLog(gtk.model);
-    gtk.sync(flatIndex(next));
+    const collectionModel = syncedModel(flatIndex(previous));
+    const splices = spliceLog(collectionModel.model);
+    collectionModel.sync(flatIndex(next));
     expect(splices).toEqual(expected);
-    expect(gtk.model.getNItems()).toBe(next.length);
+    expect(collectionModel.model.getNItems()).toBe(next.length);
 };
 
 describe("createCollectionModel - sync emissions", () => {
@@ -87,11 +87,11 @@ describe("createCollectionModel - sync emissions", () => {
     });
 
     it("emits one replacement when a slot's expandability flips", () => {
-        const gtk = syncedModel(treeIndex(leafTailTree()));
-        const tree = getTree(gtk);
+        const collectionModel = syncedModel(treeIndex(leafTailTree()));
+        const tree = getTree(collectionModel);
         expect(isRowExpandableAt(tree, 1)).toBe(false);
-        const splices = spliceLog(gtk.model);
-        gtk.sync(treeIndex(branchTailTree()));
+        const splices = spliceLog(collectionModel.model);
+        collectionModel.sync(treeIndex(branchTailTree()));
         expect(splices).toEqual([[1, 1, 1]]);
         expect(isRowExpandableAt(tree, 1)).toBe(true);
     });
@@ -99,8 +99,8 @@ describe("createCollectionModel - sync emissions", () => {
 
 describe("createCollectionModel - level stores", () => {
     it("serves each slot's children through the tree model", () => {
-        const gtk = syncedModel(treeIndex(wideTree()));
-        const tree = getTree(gtk);
+        const collectionModel = syncedModel(treeIndex(wideTree()));
+        const tree = getTree(collectionModel);
         expect(tree.getNItems()).toBe(2);
         expandRowAt(tree, 0);
         expect(tree.getNItems()).toBe(4);
@@ -109,11 +109,11 @@ describe("createCollectionModel - level stores", () => {
     });
 
     it("keeps the surviving rows when the tail shrinks", () => {
-        const gtk = syncedModel(treeIndex(longTree()));
-        const tree = getTree(gtk);
+        const collectionModel = syncedModel(treeIndex(longTree()));
+        const tree = getTree(collectionModel);
         expandRowAt(tree, 0);
         expect(tree.getNItems()).toBe(4);
-        gtk.sync(treeIndex(leafTailTree()));
+        collectionModel.sync(treeIndex(leafTailTree()));
         expect(tree.getNItems()).toBe(3);
         expect(isRowExpandedAt(tree, 0)).toBe(true);
     });

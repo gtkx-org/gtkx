@@ -21,4 +21,4 @@ function useProperty<T extends GObject.Object, P extends PropertyName<T>>(
     return useObjectValue(object, `notify::${kebabCase(propertyName)}`, (obj) => obj?.[propertyName]);
 }
 
-export { useProperty, type PropertyName };
+export { useProperty };

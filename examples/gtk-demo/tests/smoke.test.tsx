@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, type MockInstance, vi } fro
 import { parseTitle } from "../src/context/demo-context.js";
 import { demos } from "../src/demos/index.js";
 import { createAppRenderer } from "./render-app.js";
+import { findWidget } from "./test-utils.js";
 
 type PrintOperationRunSpy = MockInstance<Gtk.PrintOperation["run"]>;
 
@@ -45,26 +46,6 @@ const requireOnlyDemoWindow = (windows: Gtk.Window[], title: string): Gtk.Window
     return win;
 };
 
-const firstMatching = (root: Gtk.Widget, isMatch: (w: Gtk.Widget) => boolean): Gtk.Widget | null => {
-    if (isMatch(root)) {
-        return root;
-    }
-
-    let child = root.getFirstChild();
-
-    while (child) {
-        const found = firstMatching(child, isMatch);
-
-        if (found) {
-            return found;
-        }
-
-        child = child.getNextSibling();
-    }
-
-    return null;
-};
-
 const getActionName = (widget: Gtk.Widget): string | null => {
     const getter: unknown = Reflect.get(widget, "getActionName");
 
@@ -94,7 +75,7 @@ const closeDemoWindow = async (window: Gtk.Window): Promise<void> => {
         return;
     }
 
-    const closeButton = firstMatching(window, (w) => getActionName(w) === "window.close");
+    const closeButton = findWidget(window, Gtk.Widget, (w) => getActionName(w) === "window.close");
 
     if (closeButton) {
         await userEvent.click(closeButton);
@@ -106,7 +87,7 @@ const closeDemoWindow = async (window: Gtk.Window): Promise<void> => {
 };
 
 const dismissDialog = async (dialog: Gtk.Widget): Promise<void> => {
-    const close = firstMatching(dialog, (w) => w.getCssClasses().includes("close"));
+    const close = findWidget(dialog, Gtk.Widget, (w) => w.getCssClasses().includes("close"));
 
     if (!close) {
         throw new Error("dialog has no close button");

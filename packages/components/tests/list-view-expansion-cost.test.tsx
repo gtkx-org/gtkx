@@ -1,8 +1,9 @@
 import type { ListItem } from "@gtkx/components";
 import { describe, expect, it } from "vitest";
-import type { TreeListFixture, TreeName } from "./helpers/tree-list-app.js";
+import type { TreeFixture, TreeName } from "./helpers/tree-fixtures.js";
+import { renderListView } from "./helpers/list-fixtures.js";
 import { getSelectionModel } from "./helpers/selection-model.js";
-import { expectTreeShape, measureRowCost, renderTreeList } from "./helpers/tree-list-app.js";
+import { expectTreeShape, measureRowCost } from "./helpers/tree-fixtures.js";
 
 const CHILD_COUNT = 5000;
 const VISIBLE_ROW_COUNT = CHILD_COUNT + 1;
@@ -35,13 +36,13 @@ const manyParents: ListItem<TreeName>[] = Array.from({ length: PARENT_COUNT }, (
 
 const manyParentIds = manyParents.map((parent) => parent.id);
 
-const renderCostFixture = async (expandedIds: string[]): Promise<TreeListFixture> =>
-    renderTreeList({ items, expandedIds, selectedIds: SELECTED_FIRST });
+const renderCostFixture = async (expandedIds: string[]): Promise<TreeFixture> =>
+    renderListView<TreeName>(items, { expandedIds, selected: SELECTED_FIRST });
 
 describe(`render - ListView (tree) - row cost over ${String(VISIBLE_ROW_COUNT)} visible rows`, () => {
     it("expands one row with one getRow and one setExpanded", async () => {
         const fixture = await renderCostFixture(COLLAPSED);
-        const cost = await measureRowCost(fixture, { items, expandedIds: EXPANDED, selectedIds: SELECTED_FIRST });
+        const cost = await measureRowCost(fixture, items, { expandedIds: EXPANDED, selected: SELECTED_FIRST });
         expect(cost.getRow).toBe(1);
         expect(cost.treeGetItem).toBe(0);
         expect(cost.setExpanded).toBe(1);
@@ -52,17 +53,17 @@ describe(`render - ListView (tree) - row cost over ${String(VISIBLE_ROW_COUNT)} 
     it("moves the controlled selection without walking the rows", async () => {
         const fixture = await renderCostFixture(EXPANDED);
         await expectTreeShape(fixture, { rows: VISIBLE_ROW_COUNT, selected: 1n });
-        const cost = await measureRowCost(fixture, { items, expandedIds: EXPANDED, selectedIds: SELECTED_SECOND });
+        const cost = await measureRowCost(fixture, items, { expandedIds: EXPANDED, selected: SELECTED_SECOND });
         expect(cost.getRow).toBe(0);
         expect(cost.treeGetItem).toBe(0);
         expect(cost.setExpanded).toBe(0);
         expect(cost.rowChecks).toBeLessThan(ROW_CHECK_LIMIT);
-        expect(getSelectionModel(fixture.listRef).isSelected(SECOND_POSITION)).toBe(true);
+        expect(getSelectionModel(fixture.ref).isSelected(SECOND_POSITION)).toBe(true);
     });
 
     it("expands many rows at once with one getRow and one setExpanded per changed row", async () => {
-        const fixture = await renderTreeList({ items: manyParents, expandedIds: COLLAPSED });
-        const cost = await measureRowCost(fixture, { items: manyParents, expandedIds: manyParentIds });
+        const fixture = await renderListView<TreeName>(manyParents, { expandedIds: COLLAPSED });
+        const cost = await measureRowCost(fixture, manyParents, { expandedIds: manyParentIds });
         expect(cost.getRow).toBe(PARENT_COUNT);
         expect(cost.treeGetItem).toBe(0);
         expect(cost.setExpanded).toBe(PARENT_COUNT);

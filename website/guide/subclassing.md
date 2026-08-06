@@ -231,9 +231,9 @@ class Sectioned extends (GObject as SplicedBase<Gtk.SectionModel>) implements Gt
         return super.vfuncGetSection(position);
     }
 
-    override vfuncGetItemType(): GObject.Type { /* ... */ }
+    override vfuncGetItemType(): bigint { /* ... */ }
     override vfuncGetNItems(): number { /* ... */ }
-    override vfuncGetItem(position: number): GObject.Object | null { /* ... */ }
+    override vfuncGetItem(position: number): GObject | null { /* ... */ }
 }
 ```
 

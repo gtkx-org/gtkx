@@ -1,3 +1,4 @@
+/* eslint-disable gtkx/no-library-prefix */
 import type * as Gdk from "@gtkx/gi/gdk";
 import type * as GLib from "@gtkx/gi/glib";
 import type * as GObject from "@gtkx/gi/gobject";

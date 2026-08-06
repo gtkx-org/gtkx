@@ -533,48 +533,58 @@ fn adopted_interface_types(
         .collect()
 }
 
+struct UnmetPrerequisite {
+    interface_type: glib::Type,
+    prerequisite: glib::Type,
+}
+
 fn find_unmet_prerequisite(
     iface: &ResolvedInterface,
     parent_type: glib::Type,
     added: &HashSet<glib::Type>,
-) -> Option<glib::Type> {
+) -> Option<UnmetPrerequisite> {
     iface
         .type_
         .interface_prerequisites()
         .into_iter()
         .find(|prerequisite| !parent_type.is_a(*prerequisite) && !added.contains(prerequisite))
+        .map(|prerequisite| UnmetPrerequisite {
+            interface_type: iface.type_,
+            prerequisite,
+        })
 }
 
 fn take_ready_interfaces(
     pending: &mut Vec<ResolvedInterface>,
     parent_type: glib::Type,
     added: &HashSet<glib::Type>,
-) -> Vec<ResolvedInterface> {
-    let (ready, blocked): (Vec<_>, Vec<_>) = std::mem::take(pending)
-        .into_iter()
-        .partition(|iface| find_unmet_prerequisite(iface, parent_type, added).is_none());
+) -> (Vec<ResolvedInterface>, Option<UnmetPrerequisite>) {
+    let mut ready = Vec::with_capacity(pending.len());
+    let mut blocked = Vec::new();
+    let mut unmet = None;
 
-    *pending = blocked;
-    ready
-}
-
-fn unmet_prerequisite_error(
-    pending: &[ResolvedInterface],
-    parent_type: glib::Type,
-    added: &HashSet<glib::Type>,
-) -> anyhow::Error {
-    for iface in pending {
-        if let Some(prerequisite) = find_unmet_prerequisite(iface, parent_type, added) {
-            return anyhow::anyhow!(
-                "register_class: parent type '{}' does not meet prerequisite '{}' of interface '{}'",
-                parent_type.name(),
-                prerequisite.name(),
-                iface.type_.name()
-            );
+    for iface in std::mem::take(pending) {
+        match find_unmet_prerequisite(&iface, parent_type, added) {
+            Some(found) => {
+                unmet.get_or_insert(found);
+                blocked.push(iface);
+            }
+            None => ready.push(iface),
         }
     }
 
-    anyhow::anyhow!("register_class: interfaces could not be ordered by their prerequisites")
+    *pending = blocked;
+
+    (ready, unmet)
+}
+
+fn unmet_prerequisite_error(parent_type: glib::Type, unmet: &UnmetPrerequisite) -> anyhow::Error {
+    anyhow::anyhow!(
+        "register_class: parent type '{}' does not meet prerequisite '{}' of interface '{}'",
+        parent_type.name(),
+        unmet.prerequisite.name(),
+        unmet.interface_type.name()
+    )
 }
 
 fn sort_interfaces(
@@ -586,10 +596,10 @@ fn sort_interfaces(
     let mut sorted: Vec<ResolvedInterface> = Vec::with_capacity(pending.len());
 
     while !pending.is_empty() {
-        let ready = take_ready_interfaces(&mut pending, parent_type, &added);
+        let (ready, unmet) = take_ready_interfaces(&mut pending, parent_type, &added);
 
-        if ready.is_empty() {
-            return Err(unmet_prerequisite_error(&pending, parent_type, &added));
+        if let Some(unmet) = unmet.filter(|_| ready.is_empty()) {
+            return Err(unmet_prerequisite_error(parent_type, &unmet));
         }
 
         added.extend(ready.iter().map(|iface| iface.type_));
@@ -856,18 +866,11 @@ mod tests {
         register_subtype(name, glib::Object::static_type())
     }
 
-    fn pending_values() -> (sys::napi_value, sys::napi_value) {
-        (
-            test_support::napi_mock::fake_object(&[]),
-            test_support::napi_mock::fake_function(|_| test_support::napi_mock::fake_undefined()),
-        )
-    }
-
     #[test]
     fn the_installed_instance_init_binds_a_pending_wrapper_before_construction_returns() {
         node_env::run_installed(|| {
             let type_ = register_plain_subtype("GtkxRegisterClassPendingWrapperType");
-            let (wrapper, associate) = pending_values();
+            let (wrapper, associate) = test_support::pending_values();
             let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper, associate) };
             let object = glib::Object::with_type(type_);
 
@@ -905,7 +908,7 @@ mod tests {
                 "GtkxRegisterClassFloatingClaimType",
                 glib::InitiallyUnowned::static_type(),
             );
-            let (wrapper, associate) = pending_values();
+            let (wrapper, associate) = test_support::pending_values();
             let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper, associate) };
             let instance = unsafe {
                 gobject_ffi::g_object_new_with_properties(

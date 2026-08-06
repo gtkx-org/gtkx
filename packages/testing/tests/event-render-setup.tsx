@@ -114,7 +114,4 @@ export {
     renderDragAndDropPair,
     renderGesturedLabel,
     renderShortcutHost,
-    type RenderedClickButton,
-    type DragAndDropPairOptions,
-    type RenderedDragAndDropPair,
 };

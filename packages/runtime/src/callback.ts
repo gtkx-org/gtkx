@@ -191,4 +191,4 @@ function wrapCallback(fn: Callback, spec: CallbackSpec, receiver: CallbackReceiv
     return (...rawArgs: unknown[]): unknown => runCallback(plan, rawArgs);
 }
 
-export { wrapCallbackValue, wrapCallback };
+export { isCallerAllocatedOut, wrapCallbackValue, wrapCallback };

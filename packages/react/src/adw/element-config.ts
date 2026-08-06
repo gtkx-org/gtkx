@@ -11,7 +11,7 @@ const CHILD_SETTER_TYPES: string[] = [
     "AdwToggle",
 ];
 
-const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwFlap", "AdwOverlaySplitView"];
+const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwOverlaySplitView"];
 const childrenProps = internal("ChildrenProps");
 const breakpointsProps = adw("AdwBreakpointsProps");
 const preferencesRowProps = adw("AdwPreferencesRowProps");
@@ -25,6 +25,10 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: childrenProps,
         omittedProps: ["content"],
     }),
+    AdwClampScrollable: {
+        props: childrenProps,
+        omittedProps: ["child"],
+    },
     AdwViewStackPage: {
         isLazy: true,
     },
@@ -73,9 +77,6 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: childrenProps,
         omittedProps: ["content"],
     },
-    AdwLeaflet: {
-        props: childrenProps,
-    },
     AdwWrapBox: {
         props: childrenProps,
     },
@@ -88,13 +89,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwPreferencesDialog: {
         props: childrenProps,
     },
-    AdwPreferencesWindow: {
-        props: childrenProps,
-    },
     AdwPreferencesGroup: {
-        props: childrenProps,
-    },
-    AdwSqueezer: {
         props: childrenProps,
     },
     AdwTabView: {

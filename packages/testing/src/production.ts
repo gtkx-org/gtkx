@@ -49,4 +49,4 @@ const cleanup = async (): Promise<void> => {
     await settle();
 };
 
-export { render, cleanup, type ProductionRenderResult };
+export { cleanup, render };

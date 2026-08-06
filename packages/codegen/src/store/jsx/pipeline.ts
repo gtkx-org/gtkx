@@ -147,4 +147,4 @@ const generateJsxNamespace = (
     return { source: `${body.join("\n")}\n`, count };
 };
 
-export { generateJsxFiles, type JsxNamespaceFile, type JsxGenerationOptions };
+export { generateJsxFiles, type JsxNamespaceFile };

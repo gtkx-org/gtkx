@@ -14,7 +14,7 @@ The demos live under `src/demos`, grouped by category:
 - **opengl**: `@gtkx/gl` driving `GtkGLArea`, with gears and a Shadertoy player.
 - **advanced**, **input**, **drawing**, **media**, **navigation**, **benchmark**, and **games** cover text rendering and font features, entries and text views, drawing areas and paintables, video playback, stacks and revealers, and a minesweeper.
 
-The shell around them uses `Menu` and `Dialog` from `@gtkx/components`, `@gtkx/css` for styling, portals for demos that open their own windows, and a `GSimpleAction` set wired to a menu and shortcut controller. `tests/` exercises the app with `@gtkx/testing`.
+The shell around them uses `ListView` from `@gtkx/components` for the sidebar, a `GtkWindow` for demos that open their own window, and a `GSimpleAction` set wired to a `GMenu` and a `GtkShortcutController`. `tests/` exercises the app with `@gtkx/testing`.
 
 `gtkx.config.ts` declares `Gtk-4.0`, `Adw-1`, and `GtkSource-5`, with the application ID `org.gtkx.gtk-demo`. The GtkSourceView 5 development package must be installed; see [CONTRIBUTING.md](../../CONTRIBUTING.md#system-dependencies).
 

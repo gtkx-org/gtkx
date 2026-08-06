@@ -26,4 +26,4 @@ const ScrollWrapper = ({
     </GtkScrolledWindow>
 );
 
-export { ScrollWrapper, type ScrollWrapperProps };
+export { ScrollWrapper };

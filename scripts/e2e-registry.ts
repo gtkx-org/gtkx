@@ -380,5 +380,4 @@ export {
     withRegistry,
     verifyBuiltAppStarts,
     type RegistryContext,
-    type RegistryHandle,
 };

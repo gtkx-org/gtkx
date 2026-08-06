@@ -232,4 +232,4 @@ class McpClient {
     }
 }
 
-export { McpClient, type McpClientOptions };
+export { McpClient };

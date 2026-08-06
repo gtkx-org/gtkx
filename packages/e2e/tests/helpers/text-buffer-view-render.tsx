@@ -11,4 +11,4 @@ const expectNoBufferChangedOnReconcile = async (build: BufferChangedViewBuilder)
     expect(onChanged).not.toHaveBeenCalled();
 };
 
-export { expectNoBufferChangedOnReconcile, type BufferChangedViewBuilder };
+export { expectNoBufferChangedOnReconcile };

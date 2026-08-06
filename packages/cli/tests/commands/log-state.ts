@@ -18,4 +18,4 @@ const setupLogState = (): LogState => {
     return state;
 };
 
-export { setupLogState, type LogState };
+export { setupLogState };

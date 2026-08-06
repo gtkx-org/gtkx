@@ -2,17 +2,13 @@ import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { TypeId } from "../gir/type-id.js";
+import type { JsDocParam } from "../writer/doc-tags.js";
 import { type GirCallable, type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
 import { isCellInout, shouldOmitPrimaryReturn } from "./descriptor-render.js";
 
 type InputParameter = {
     parameter: GirParameter;
     index: number;
-};
-
-type DocumentedParameter = {
-    name: string;
-    doc: string;
 };
 
 type HandlerResultOptions = {
@@ -189,7 +185,7 @@ const documentedParameters = (
     fn: GirFunction,
     shouldSkip: (parameter: GirParameter) => boolean = () => false,
     renames?: Map<string, string>,
-): DocumentedParameter[] =>
+): JsDocParam[] =>
     inputParameters(library, fn)
         .filter(({ parameter }) => !shouldSkip(parameter))
         .map(({ parameter, index }) => ({
@@ -201,7 +197,7 @@ const documentedParameters = (
 const documentedHandlerParameters = (
     parameters: GirParameter[],
     shouldExclude: (parameter: GirParameter) => boolean = () => false,
-): DocumentedParameter[] =>
+): JsDocParam[] =>
     handlerParameters(parameters, shouldExclude)
         .map((parameter, index) => ({ name: parameterIdentifier(parameter, index), doc: parameter.doc ?? "" }))
         .filter((entry) => entry.doc.length > 0);
@@ -320,6 +316,5 @@ export {
     renderHandlerParameters,
     foldOutParamShape,
     renderHandlerResultType,
-    type DocumentedParameter,
     type InputParameter,
 };

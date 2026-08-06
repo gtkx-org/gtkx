@@ -33,4 +33,4 @@ const withErrorBoundary = <T extends ArgsDef>(command: CommandDef<T>): CommandDe
     };
 };
 
-export { printError, withErrorBoundary };
+export { withErrorBoundary };

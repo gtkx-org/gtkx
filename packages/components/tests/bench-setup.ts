@@ -6,6 +6,7 @@ type InscriptionProps = LabelConstructorProps & { text?: string | null | undefin
 
 const INSCRIPTION_SINCE_MINOR = 8;
 const COLUMN_ID_SINCE_MINOR = 10;
+// eslint-disable-next-line gtkx/no-library-prefix
 const gtkMinor = Gtk.getMinorVersion();
 const columnIds: WeakMap<object, string> = new WeakMap();
 

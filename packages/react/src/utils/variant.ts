@@ -398,4 +398,4 @@ const packVariant = (node: VariantTypeNode, value: unknown): GLib.Variant => {
     }
 };
 
-export { parseVariantType, unpackVariant, packVariant, type VariantValue, type VariantTypeNode };
+export { parseVariantType, unpackVariant, packVariant, type VariantValue };

@@ -35,4 +35,4 @@ function useContextMenuGesture(options: ContextMenuGestureOptions): ContextMenuG
     return { ref, onPressed, onReleased };
 }
 
-export { type ContextMenuGesture, type ContextMenuGestureOptions, useContextMenuGesture };
+export { useContextMenuGesture };

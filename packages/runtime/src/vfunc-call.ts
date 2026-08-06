@@ -26,20 +26,24 @@ function toNativeInput(arg: Arg, input: unknown): unknown {
     return isCallerAllocatedArg(arg) ? input : toNative(arg.type, input);
 }
 
-function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, caller: string): Invoker {
+function bindOptionsFor(
+    slot: ResolvedSlot,
+    instanceType: bigint | undefined,
+    args: Arg[],
+    label: string,
+): BindVfuncOptions {
     const { descriptor, interfaceType } = slot;
-    const args = vfuncArgs(descriptor);
-    const canThrow = descriptor.canThrow === true;
-    const label = `${descriptor.className}.${descriptor.vfuncName}`;
-    const [, ...inputArgs] = args.filter(requiresInputArg);
 
     const options: BindVfuncOptions = {
         byteOffset: descriptor.byteOffset,
-        vtableSize: descriptor.vtableSize,
         label,
-        argDescriptors: buildNativeArgTypes(args, canThrow),
+        argDescriptors: buildNativeArgTypes(args, descriptor.canThrow === true),
         returnDescriptor: descriptor.returnDescriptor,
     };
+
+    if (descriptor.vtableSize !== undefined) {
+        options.vtableSize = descriptor.vtableSize;
+    }
 
     if (instanceType !== undefined) {
         options.instanceType = instanceType;
@@ -49,7 +53,17 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
         options.interfaceType = interfaceType;
     }
 
-    const shaped = fromNativeCallable(bindVfunc(options), {
+    return options;
+}
+
+function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, caller: string): Invoker {
+    const { descriptor } = slot;
+    const args = vfuncArgs(descriptor);
+    const canThrow = descriptor.canThrow === true;
+    const label = `${descriptor.className}.${descriptor.vfuncName}`;
+    const [, ...inputArgs] = args.filter(requiresInputArg);
+
+    const shaped = fromNativeCallable(bindVfunc(bindOptionsFor(slot, instanceType, args, label)), {
         args,
         returns: descriptor.returnDescriptor,
         canThrow,

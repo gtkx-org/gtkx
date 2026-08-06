@@ -53,15 +53,5 @@
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
         "@types/stylis": "^4.2.7"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/css"
-                }
-            }
-        }
     }
 }

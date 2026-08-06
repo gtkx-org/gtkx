@@ -293,8 +293,5 @@ export {
     tFn,
     type Ownership,
     type ScalarDescriptorName,
-    type BoxedOptions,
-    type StructOptions,
-    type FundamentalOptions,
     type ListDescriptorName,
 };

@@ -161,7 +161,6 @@ const expectFilteredViewReorder = async (renderView: RenderCollectionView): Prom
 export {
     expectAllVisibleOnce,
     namedLabelRenderItem,
-    renderTestItemWithSpy,
     expectMultiSelectionAdopted,
     expectRenderItemFunctionUpdate,
     expectRenderItemReceivesData,
@@ -179,7 +178,4 @@ export {
     expectLargeDatasetReorder,
     expectFilteredViewReorder,
     type CollectionView,
-    type RenderCollectionView,
-    type NamedRow,
-    type CounterRow,
 };

@@ -44,9 +44,13 @@ const selectListViewItems = (
 const isListView = (widget: Gtk.Widget): widget is CollectionWidget =>
     widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
 
-const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void => {
+const selectDropDownOption = (widget: Gtk.Widget, valueArray: number[]): void => {
+    if (!(widget instanceof Gtk.DropDown)) {
+        throw new TypeError("Cannot select options: the COMBO_BOX role is only selectable on Gtk.DropDown");
+    }
+
     if (valueArray.length > 1) {
-        throw new Error("Cannot select multiple options: ComboBox only supports single selection");
+        throw new Error("Cannot select multiple options: Gtk.DropDown only supports single selection");
     }
 
     const [selection] = valueArray;
@@ -55,9 +59,7 @@ const selectComboBoxOption = (widget: Gtk.Widget, valueArray: number[]): void =>
         return;
     }
 
-    if (widget instanceof Gtk.DropDown) {
-        widget.setSelected(selection);
-    }
+    widget.setSelected(selection);
 };
 
 const selectListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
@@ -108,7 +110,7 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     const role = widget.getAccessibleRole();
 
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
-        selectComboBoxOption(widget, valueArray);
+        selectDropDownOption(widget, valueArray);
     } else if (widget instanceof Gtk.ListBox) {
         applyListBoxRows(widget, valueArray, selectListBoxRow);
     }
@@ -137,9 +139,9 @@ const runSelectionEvent = (
  * by setting the selected item of a drop-down, or by selecting list box rows. An empty array clears
  * a view's selection.
  *
- * @throws When a view has no selection model, when a widget with the combo box role is given more
- * than one position, or when the widget is neither a view nor something with the combo box or list
- * role.
+ * @throws When a view has no selection model, when a Gtk.DropDown is given more than one position,
+ * when a widget with the COMBO_BOX role is not a Gtk.DropDown, or when the widget is neither a view
+ * nor something with the COMBO_BOX or LIST role.
  */
 const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, selectInListView, selectByRole);

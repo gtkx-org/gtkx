@@ -154,9 +154,7 @@ const runDetach = (parent: ElementNode, entry: PlacedChild): void => {
     const behavior = entry.behavior;
 
     if (behavior === null) {
-        if (entry.slot !== DEFAULT_SLOT) {
-            writeSlot(parent, entry, null);
-        }
+        writeSlot(parent, entry, null);
 
         return;
     }

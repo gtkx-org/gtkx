@@ -10,7 +10,4 @@ const splitApplicationArgs = (argv: string[]): { cliArgs: string[]; applicationA
     return { cliArgs: argv.slice(0, separator), applicationArgs: argv.slice(separator + 1) };
 };
 
-const applicationArgs = (argv: string[] = process.argv.slice(2)): string[] =>
-    splitApplicationArgs(argv).applicationArgs;
-
-export { applicationArgs, splitApplicationArgs };
+export { splitApplicationArgs };

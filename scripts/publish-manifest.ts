@@ -212,7 +212,6 @@ export {
     hasSourceCondition,
     collectExportTargets,
     assertPublishedShape,
-    type ExportsField,
     type PackageManifest,
     type PublishedPackage,
 };

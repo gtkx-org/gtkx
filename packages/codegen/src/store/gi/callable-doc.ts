@@ -100,4 +100,4 @@ const memberDocOptions = (context: ModuleContext, finishFn: GirFunction | undefi
         ? {}
         : { finishFn, shouldSkipParam: (parameter) => isCallbackParameter(context, parameter) };
 
-export { callableDoc, callableSpec, type CallableDocOptions, memberDocOptions };
+export { callableDoc, callableSpec, memberDocOptions };

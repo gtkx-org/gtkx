@@ -4,7 +4,6 @@
         "./dist/adw/index.d.ts"
     ],
     "$schema": "https://typedoc.org/schema.json",
-    "tsconfig": "../../website/tsconfig.typedoc.json",
     "intentionallyNotExported": [
         "ColumnViewOwnProps",
         "ComboRowComponent",
@@ -12,6 +11,5 @@
         "DropDownWidgetProps",
         "GridViewOwnProps",
         "ListViewOwnProps"
-    ],
-    "readme": "none"
+    ]
 }

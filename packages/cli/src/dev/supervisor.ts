@@ -314,7 +314,6 @@ export {
     RESTART_EXIT_CODE,
     defaultForkRunner,
     runDevSupervisor,
-    type DevSupervisorOptions,
     type DevWatch,
     type ForkRunner,
     type SupervisedChild,

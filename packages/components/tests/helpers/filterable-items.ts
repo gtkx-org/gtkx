@@ -23,4 +23,4 @@ function filterableIds(filter: FilterMode): string[] {
     }).map((item) => item.id);
 }
 
-export { filterableIds, type FilterMode };
+export { filterableIds };

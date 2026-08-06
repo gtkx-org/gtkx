@@ -20,7 +20,6 @@ type AdwChildSetter =
     | Adw.Bin |
     Adw.BreakpointBin |
     Adw.Clamp |
-    Adw.ClampScrollable |
     Adw.Dialog |
     Adw.NavigationPage |
     Adw.SplitButton |

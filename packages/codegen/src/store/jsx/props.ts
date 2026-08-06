@@ -272,4 +272,4 @@ const renderReactPropType = (context: PropTypeRenderContext, ref: TypeId | undef
     return isNullable ? `${base} | null` : base;
 };
 
-export { buildElementPropsEntries, buildInterfacePropsEntries, isObjectProp, reactTarget };
+export { buildElementPropsEntries, buildInterfacePropsEntries, isObjectProp };

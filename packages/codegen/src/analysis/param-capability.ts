@@ -151,9 +151,4 @@ const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParamete
 const hasUnmarshalableParam = (context: ModuleContext, callable: GirCallable): boolean =>
     callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter));
 
-export {
-    declaredIndirection,
-    marshalledIndirection,
-    isUnmarshalableCallParam,
-    hasUnmarshalableParam,
-};
+export { hasUnmarshalableParam };

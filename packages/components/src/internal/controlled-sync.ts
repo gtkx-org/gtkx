@@ -1,14 +1,17 @@
 import { startTransition, useEffectEvent, useLayoutEffect, useState } from "react";
+import type { Collection } from "./collection.js";
 
-type ControlledSyncOptions<T> = {
-    ids: T;
-    structureKey: string;
+type ControlledIds = string[] | null | undefined;
+
+type ControlledSyncOptions = {
+    ids: ControlledIds;
+    collection: Collection;
     widget?: object | null | undefined;
-    apply: (ids: T) => void;
+    apply: (ids: ControlledIds) => void;
 };
 
-function useControlledSync<T>(options: ControlledSyncOptions<T>): () => void {
-    const { ids, structureKey, widget } = options;
+function useControlledSync(options: ControlledSyncOptions): () => void {
+    const { ids, collection, widget } = options;
     const [drift, setDrift] = useState(0);
 
     const markDrift = (): void => {
@@ -17,13 +20,13 @@ function useControlledSync<T>(options: ControlledSyncOptions<T>): () => void {
         });
     };
 
-    const apply = useEffectEvent((next: T): void => {
+    const apply = useEffectEvent((next: ControlledIds): void => {
         options.apply(next);
     });
 
     useLayoutEffect(() => {
         apply(ids);
-    }, [widget, structureKey, ids, drift]);
+    }, [widget, collection, ids, drift]);
 
     return markDrift;
 }

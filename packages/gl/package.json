@@ -84,12 +84,6 @@
                         "dependentTasksOutputFiles": "**/*.ts"
                     }
                 ]
-            },
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/gl"
-                }
             }
         }
     }

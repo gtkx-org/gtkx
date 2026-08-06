@@ -66,7 +66,7 @@ Run `gtkx docs --help` if you need the pages somewhere else or their links roote
 
 Property setting alone cannot express everything GTK4 does. Adding a child is `insertChildAfter` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`; a `GtkScale`'s marks have no property at all, only `addMark` and `clearMarks`. GTKX bridges this with **element behaviors**: a behavior is a small object of React-node lifecycle hooks bound to a GLib type, and the reconciler calls its hooks as elements of that type are created, populated, updated, and removed. A built-in set covers GTK4 and Adwaita (containers for many types, controllers, actions, breakpoints, controlled text on `GtkEditable`, and more); you register your own through the `elements` module, keyed by GLib type name with `defineElements`.
 
-Every hook receives the GObject instance and a private per-element `context` built once by the behavior's `createContext(node)`. The hooks are:
+Every hook receives the GObject instance and a private per-element `context` built once by the behavior's `initialize(object)`. The hooks are:
 
 - **`attach` / `detach`** place and remove a child in a slot. `attach` receives the child plus placement info (`slot`, `index`, `sibling`); returning a non-`undefined` value claims the child, and a returned GObject becomes the object the container adopts (otherwise `resolve` supplies it). A child no behavior claims is set on its named property directly.
 - **`reorder`** moves an already-placed child; without it, a reordered slot is rebuilt.

@@ -415,7 +415,7 @@ const waitForDisplaySockets = async (sockets: DisplaySockets): Promise<void> => 
 
 const killSpawned = (children: ChildProcess[]): void => {
     for (const child of children) {
-        child.kill("SIGTERM");
+        child.kill("SIGKILL");
     }
 };
 

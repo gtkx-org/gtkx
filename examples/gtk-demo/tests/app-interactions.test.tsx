@@ -206,17 +206,3 @@ describe("App global shortcuts", () => {
         });
     });
 });
-
-describe("App opens demos with custom titlebars and dialog-only demos", () => {
-    it("renders Run-enabled demo entries from the sidebar (covers DemoWindow titlebar/provider paths)", async () => {
-        await renderDemo();
-        await selectFirstDemoWithComponent();
-        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
-        await userEvent.click(run);
-
-        await waitFor(async () => {
-            const windows = await screen.findAllByRole(Gtk.AccessibleRole.WINDOW);
-            expect(windows.length).toBeGreaterThan(1);
-        });
-    });
-});

@@ -177,4 +177,4 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
     }
 };
 
-export { compileProject, checkModules, type SourceModule, type CompileProjectParams };
+export { compileProject, checkModules, type SourceModule };

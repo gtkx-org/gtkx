@@ -117,4 +117,4 @@ function installGracefulShutdown(options: GracefulShutdownOptions): void {
     }
 }
 
-export { installGracefulShutdown, type GracefulShutdownOptions };
+export { installGracefulShutdown };

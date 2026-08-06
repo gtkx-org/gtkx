@@ -85,7 +85,6 @@ const disconnectAllHandlers = (target: SignalTarget): void => {
 
 export {
     applyWrite,
-    isApplyingWrite,
     connectHandler,
     disconnectHandler,
     disconnectAllHandlers,

@@ -54,15 +54,5 @@
         "@types/node": "catalog:",
         "fast-xml-parser": "^5.10.1",
         "typescript": "catalog:"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/codegen"
-                }
-            }
-        }
     }
 }

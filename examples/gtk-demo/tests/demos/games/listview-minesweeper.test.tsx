@@ -2,32 +2,15 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listviewMinesweeperDemo } from "../../../src/demos/games/listview-minesweeper.js";
-import { renderDemo } from "../../test-utils.js";
+import { collectWidgets, renderDemo } from "../../test-utils.js";
 
 const MINE = "\u{1F4A3}";
 
-const isLabel = (child: Gtk.Widget): child is Gtk.Label => child instanceof Gtk.Label;
-const isImage = (child: Gtk.Widget): child is Gtk.Image => child instanceof Gtk.Image;
+const cellTexts = (gridView: Gtk.Widget): string[] =>
+    collectWidgets(gridView, Gtk.Label).map((label) => label.getLabel());
 
-const collectDescendants = <T extends Gtk.Widget>(
-    widget: Gtk.Widget,
-    isMatch: (child: Gtk.Widget) => child is T,
-    out: T[] = [],
-): T[] => {
-    for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
-        if (isMatch(child)) {
-            out.push(child);
-        }
-
-        collectDescendants(child, isMatch, out);
-    }
-
-    return out;
-};
-
-const collectLabels = (widget: Gtk.Widget): Gtk.Label[] => collectDescendants(widget, isLabel);
-const collectImages = (widget: Gtk.Widget): Gtk.Image[] => collectDescendants(widget, isImage);
-const cellTexts = (gridView: Gtk.Widget): string[] => collectLabels(gridView).map((label) => label.getLabel());
+const hasTrophy = (header: Gtk.Widget): boolean =>
+    collectWidgets(header, Gtk.Image).some((image) => image.getIconName() === "trophy-gold");
 
 const mockMinesAt = (indices: number[]): void => {
     const values = indices.map((index) => Math.floor(((index + 0.5) / 64) * 2 ** 32));
@@ -84,7 +67,7 @@ describe("listviewMinesweeperDemo rendering", () => {
     it("starts with no trophy in the header (title widget is null while playing)", async () => {
         await renderDemo(listviewMinesweeperDemo);
         const header = await screen.findByName("minesweeper-header");
-        expect(collectImages(header).some((image) => image.getIconName() === "trophy-gold")).toBe(false);
+        expect(hasTrophy(header)).toBe(false);
     });
 });
 
@@ -147,7 +130,7 @@ describe("listviewMinesweeperDemo outcomes", () => {
         }
 
         await waitFor(() => {
-            expect(collectImages(header).some((image) => image.getIconName() === "trophy-gold")).toBe(true);
+            expect(hasTrophy(header)).toBe(true);
         });
 
         const texts = cellTexts(gridView);

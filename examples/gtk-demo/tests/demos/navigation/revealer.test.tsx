@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, waitFor } from "@gtkx/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { revealerDemo } from "../../../src/demos/navigation/revealer.js";
-import { renderDemo } from "../../test-utils.js";
+import { collectWidgets, renderDemo } from "../../test-utils.js";
 
 const REVEALER_COUNT = 9;
 
@@ -40,18 +40,6 @@ const findAllRevealers = async (): Promise<Gtk.Revealer[]> => {
     return revealers;
 };
 
-const collectGridRevealers = (grid: Gtk.Grid): Gtk.Revealer[] => {
-    const revealers: Gtk.Revealer[] = [];
-
-    for (let child = grid.getFirstChild(); child; child = child.getNextSibling()) {
-        if (child instanceof Gtk.Revealer) {
-            revealers.push(child);
-        }
-    }
-
-    return revealers;
-};
-
 describe("revealerDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(revealerDemo.id).toBe("revealer");
@@ -68,7 +56,7 @@ describe("revealerDemo structure", () => {
     it("renders exactly nine GtkRevealer widgets initially hidden", async () => {
         await renderDemo(revealerDemo);
         const grid = await screen.findByName("revealer-grid", { as: Gtk.Grid });
-        const revealers = collectGridRevealers(grid);
+        const revealers = collectWidgets(grid, Gtk.Revealer);
         expect(revealers).toHaveLength(REVEALER_COUNT);
         expect(revealers.some((revealer) => revealer.getRevealChild())).toBe(false);
         expect(revealers.every((revealer) => revealer.getTransitionDuration() === 2000)).toBe(true);

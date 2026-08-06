@@ -2,7 +2,7 @@ import { sanitizeIdentifier, sortStrings, sortStringsBy } from "@gtkx/utils";
 import { buildDocContext, type GlDocContext } from "./doc-context.js";
 import { buildExtensionIndex } from "./extensions.js";
 import { type GlEnum, loadGlRegistry } from "./model.js";
-import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
+import { type EnumRow, renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
 import { paramPairAt } from "./param-pair.js";
 import {
     type CommandPlan,
@@ -53,13 +53,6 @@ type PlannedSelection = {
     okPlans: OkPlan[];
     planFeatures: Map<string, GlSymbolProvenance>;
     exclusions: GlExclusion[];
-};
-
-type EnumRow = {
-    token: GlEnum;
-    exportName: string;
-    literal: string;
-    provenance: GlSymbolProvenance;
 };
 
 type EnumSelection = {

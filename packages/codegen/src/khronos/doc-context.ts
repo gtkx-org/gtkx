@@ -59,4 +59,4 @@ const buildDocContext = (options: BuildDocContextOptions): GlDocContext => {
     };
 };
 
-export { buildDocContext, type BuildDocContextOptions, type GlDocContext, type GlDocEnumRow };
+export { buildDocContext, type GlDocContext };

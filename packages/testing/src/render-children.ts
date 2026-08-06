@@ -22,4 +22,4 @@ async function renderChildren<T>(
     };
 }
 
-export { renderChildren, type ChildrenBuilder, type RenderChildrenResult };
+export { renderChildren, type ChildrenBuilder };

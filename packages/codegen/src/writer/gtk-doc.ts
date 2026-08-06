@@ -131,6 +131,7 @@ const stripHtmlComments = (text: string): string => {
     return current;
 };
 
+// eslint-disable-next-line gtkx/no-library-prefix
 const gtkDocToMarkdown = (raw: string, identifiers?: Map<string, string>): string => {
     const stash: string[] = [];
 

@@ -142,33 +142,7 @@ impl PtrWriter for ArrayCodec {
         unsafe { ret.store(container) };
     }
 
-    fn write_value_to_ptr(
-        &self,
-        env: &Env,
-        slot: ffi::Slot,
-        value: Unknown<'_>,
-        init: SlotInit,
-    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
-        anyhow::ensure!(
-            self.ownership.is_full(),
-            "A transfer-none array cannot be written through a pointer: nothing would own the container"
-        );
-        let container =
-            encode_and_leak_container(&Ok(value), "array pointer write", |v| self.encode(env, v));
-
-        if !init.is_initialized() {
-            unsafe { slot.store(container) };
-            return Ok(None);
-        }
-
-        let previous = unsafe { slot.swap(container) };
-
-        if !previous.is_null() {
-            ffi::PendingTransfer::new(previous, self.container_release()).release_now();
-        }
-
-        Ok(None)
-    }
+    write_container_value_to_ptr!("array", "array pointer write", Self::container_release);
 }
 
 pub(super) fn dup_strings_to_glib(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*mut c_void>> {

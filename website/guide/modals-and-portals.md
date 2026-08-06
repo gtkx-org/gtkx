@@ -18,7 +18,6 @@ createPortal(children: ReactNode, container: GObject.Object | RootElement, key?:
 The container is either any live `GObject.Object` or the special `rootElement` marker described below. That definition is deliberately broad. The most common targets are:
 
 - **A widget you hold a ref to.** The children are attached to that widget exactly as if they had been written as its JSX children, using the same generated container logic (append, insert, reorder) that regular children use.
-- **The `Gtk.Application` object** from `useApplication()`, the natural home for extra windows.
 - **`rootElement`**, the top-level container, for anything that should exist with no GTK4 parent at all.
 
 Portaling into a widget looks like this. The container has to exist before the portal can target it, so capture it in state rather than a plain ref, which makes the portal render as soon as the widget is created:

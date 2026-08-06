@@ -50,8 +50,8 @@ describe("computeJsxFingerprint", () => {
     });
 
     it("is stable regardless of omitted prop order", () => {
-        const a = jsxFingerprint({ omittedProps: { AdwFlap: ["content", "flap"] } });
-        const b = jsxFingerprint({ omittedProps: { AdwFlap: ["flap", "content"] } });
+        const a = jsxFingerprint({ omittedProps: { AdwBottomSheet: ["content", "sheet"] } });
+        const b = jsxFingerprint({ omittedProps: { AdwBottomSheet: ["sheet", "content"] } });
         expect(a).toBe(b);
     });
 

@@ -1,17 +1,11 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import type { ListItem } from "../types.js";
 import type { CollectionIndex } from "./collection-index.js";
-import type { CollectionModel } from "./collection-model.js";
-import type { TreeExpansion } from "./tree-expansion.js";
-import { getSlotPath, slotRefFor } from "./collection-model.js";
+import type { CollectionModel, SlotRef } from "./collection-model.js";
+import { slotRefFor } from "./collection-model.js";
 import { orderFor } from "./tree-expansion.js";
 
-type Collection = {
-    structureKey: string;
-    model: Gtk.FlattenListModel;
-    expansion: TreeExpansion;
-    treeModel: () => Gtk.TreeListModel | null;
-    itemAt: (path: string) => ListItem | undefined;
+type Collection = Pick<CollectionModel, "model" | "expansion" | "treeModel"> & {
+    itemAt: (ref: SlotRef) => ListItem | undefined;
     sectionFor: (levelPath: string) => unknown;
     idAt: (position: number) => string | null;
     positionFor: (id: string) => number;
@@ -19,30 +13,35 @@ type Collection = {
 };
 
 const NO_POSITIONS: number[] = [];
+const NO_MATCHES: number[] = [];
 
 const ascending = (a: number, b: number): number => a - b;
 
-function positionsFor(gtk: CollectionModel, ids: string[]): number[] {
-    const { positions } = orderFor(gtk.expansion);
+function positionsFor(collectionModel: CollectionModel, ids: string[]): number[] {
+    if (ids.length === 0) {
+        return NO_MATCHES;
+    }
+
+    const { positions } = orderFor(collectionModel.expansion);
     const found: Set<number> = new Set(ids.flatMap((id) => positions.get(id) ?? NO_POSITIONS));
 
     return [...found].toSorted(ascending);
 }
 
-function positionFor(gtk: CollectionModel, id: string): number {
-    const [first = -1] = positionsFor(gtk, [id]);
+function positionFor(collectionModel: CollectionModel, id: string): number {
+    const [first = -1] = positionsFor(collectionModel, [id]);
 
     return first;
 }
 
-function idAt(gtk: CollectionModel, index: CollectionIndex, position: number): string | null {
-    const ref = slotRefFor(gtk.model.getItem(position));
+function idAt(collectionModel: CollectionModel, index: CollectionIndex, position: number): string | null {
+    const ref = slotRefFor(collectionModel.model.getItem(position));
 
     if (ref === null) {
         return null;
     }
 
-    return index.itemAt(getSlotPath(ref))?.id ?? null;
+    return index.itemAt(ref.store.path, ref.slot)?.id ?? null;
 }
 
 function isCollectionIdle(collection: Collection): boolean {
@@ -51,17 +50,16 @@ function isCollectionIdle(collection: Collection): boolean {
     return !expansion.isApplying && !expansion.isSyncing;
 }
 
-function createCollection(gtk: CollectionModel, index: CollectionIndex): Collection {
+function createCollection(collectionModel: CollectionModel, index: CollectionIndex): Collection {
     return {
-        structureKey: index.structureKey,
-        model: gtk.model,
-        expansion: gtk.expansion,
-        treeModel: () => (index.isTree ? gtk.treeModel() : null),
-        itemAt: index.itemAt,
+        model: collectionModel.model,
+        expansion: collectionModel.expansion,
+        treeModel: () => (index.isTree ? collectionModel.treeModel() : null),
+        itemAt: (ref) => index.itemAt(ref.store.path, ref.slot),
         sectionFor: index.sectionFor,
-        idAt: (position) => idAt(gtk, index, position),
-        positionFor: (id) => positionFor(gtk, id),
-        positionsFor: (ids) => positionsFor(gtk, ids),
+        idAt: (position) => idAt(collectionModel, index, position),
+        positionFor: (id) => positionFor(collectionModel, id),
+        positionsFor: (ids) => positionsFor(collectionModel, ids),
     };
 }
 

@@ -2,7 +2,7 @@ import { type ExternalObject, type Handle, read } from "@gtkx/native";
 import { bind } from "./bind.js";
 import { boxedT, callbackT, sizedArrayT, structT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { CLOSURE_SIZE, LIB, VALUE_SIZE, VALUE_T } from "./library.js";
-import { getHandle, getInstanceType, getWrapperClass, wrapHandle } from "./registry.js";
+import { getHandle, getInstanceType, getWrapperClass, instanceClassName, wrapHandle } from "./registry.js";
 import { resolveBoxedType, typeIsA } from "./type.js";
 import { fromValue, getValueType, intoValue } from "./value.js";
 
@@ -72,7 +72,7 @@ function describeValue(value: unknown): string {
         return typeof value;
     }
 
-    return (value as { constructor?: { name?: string } }).constructor?.name ?? "object";
+    return instanceClassName(value);
 }
 
 function marshalFor(callback: ClosureCallback): (...args: unknown[]) => void {

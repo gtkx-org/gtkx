@@ -144,7 +144,7 @@ const handwrittenPropEntries = (owner: MemberOwner, seen: Set<string>): MetaDocE
 
     const entries: MetaDocEntry[] = [];
 
-    for (const prop of handwrittenPropsFor(declared.export)) {
+    for (const prop of handwrittenPropsFor(declared)) {
         if (seen.has(prop.name)) {
             continue;
         }

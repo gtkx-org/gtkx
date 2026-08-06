@@ -155,7 +155,6 @@ export {
     RegisterParamsSchema,
     widgetIdParams,
     treeParams,
-    queryOptionsSchema,
     queryParams,
     typeParams,
     fireEventParams,

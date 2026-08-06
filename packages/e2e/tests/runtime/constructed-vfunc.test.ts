@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getWrapper } from "@gtkx/native";
 import { getHandle, registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
+import { newObjectFromNative } from "../helpers/native-object.js";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 
 const uniqueName = createTypeNameFactory("_");
@@ -165,10 +166,10 @@ describe("vfuncConstructed — the subclass state the override cannot see", () =
 
 describe("vfuncConstructed — the subclass state an instance created from C never gets", () => {
     it("never runs the subclass constructor at all", () => {
-        const name = uniqueName("GtkxConstructedNewvFields");
+        const name = uniqueName("GtkxConstructedNativeFields");
         const errors: string[] = [];
 
-        class NewvFieldObject extends GObject {
+        class NativeFieldObject extends GObject {
             #count = 0;
 
             marker = "from the initializer";
@@ -191,13 +192,12 @@ describe("vfuncConstructed — the subclass state an instance created from C nev
             }
         }
 
-        registerClass(NewvFieldObject, { typeName: name });
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const instance = GObject.newv(typeFromName(name), []);
-        expect(instance).toBeInstanceOf(NewvFieldObject);
-        expect((instance as NewvFieldObject).marker).toBeUndefined();
-        expect((instance as NewvFieldObject).assigned).toBe("from constructed");
-        expect((instance as NewvFieldObject).getCount()).toBe(-1);
+        registerClass(NativeFieldObject, { typeName: name });
+        const instance = newObjectFromNative(typeFromName(name));
+        expect(instance).toBeInstanceOf(NativeFieldObject);
+        expect((instance as NativeFieldObject).marker).toBeUndefined();
+        expect((instance as NativeFieldObject).assigned).toBe("from constructed");
+        expect((instance as NativeFieldObject).getCount()).toBe(-1);
         expect(errors).toEqual([expect.stringContaining("Cannot read private member #count")]);
     });
 });
@@ -255,21 +255,20 @@ describe("vfuncConstructed — wrapper identity under nesting", () => {
 });
 
 describe("vfuncConstructed — instances created from C", () => {
-    it("runs against a usable wrapper for an instance GObject.newv creates", () => {
-        const name = uniqueName("GtkxConstructedFromNewv");
+    it("runs against a usable wrapper for an instance created from C", () => {
+        const name = uniqueName("GtkxConstructedFromNative");
         const seen: unknown[] = [];
 
-        class NewvObject extends GObject {
+        class NativeObject extends GObject {
             override vfuncConstructed(): void {
                 super.vfuncConstructed();
                 seen.push(getHandle(this));
             }
         }
 
-        registerClass(NewvObject, { typeName: name });
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const instance = GObject.newv(typeFromName(name), []);
-        expect(instance).toBeInstanceOf(NewvObject);
+        registerClass(NativeObject, { typeName: name });
+        const instance = newObjectFromNative(typeFromName(name));
+        expect(instance).toBeInstanceOf(NativeObject);
         expect(seen).toHaveLength(1);
         expect(seen[0]).toBe(getHandle(instance));
         expect(getWrapper(getHandle(instance))).toBe(instance);
@@ -307,8 +306,7 @@ describe("vfuncConstructed — a C-created instance inside a JavaScript construc
         class InterleavedOuter extends GObject {
             override vfuncConstructed(): void {
                 super.vfuncConstructed();
-                // eslint-disable-next-line @typescript-eslint/no-deprecated
-                nested.push(GObject.newv(typeFromName(name), []));
+                nested.push(newObjectFromNative(typeFromName(name)));
             }
         }
 

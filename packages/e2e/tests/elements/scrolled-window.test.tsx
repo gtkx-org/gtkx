@@ -33,7 +33,6 @@ function App({ text }: { text: string }) {
 describe("render - ScrolledWindow (1)", () => {
     it("creates ScrolledWindow widget", async () => {
         const scrolledWindow = await renderContentWindow({});
-        expect(scrolledWindow).not.toBeNull();
         expect(scrolledWindow).toBeInstanceOf(Gtk.ScrolledWindow);
     });
 

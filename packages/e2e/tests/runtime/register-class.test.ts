@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getHandle, registerClass } from "@gtkx/runtime";
 import { resolveWrapperClass } from "@gtkx/runtime/internal";
 import { describe, expect, it } from "vitest";
+import { newObjectFromNative } from "../helpers/native-object.js";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 import { isInstanceOfType } from "./helpers.js";
 
@@ -117,8 +118,7 @@ describe("registerClass — vfunc dispatch", () => {
         registerClass(CustomWidget, { typeName: name });
         const customGtype = typeFromName(name);
         expect(customGtype).not.toBe(0n);
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const instance = GObject.newv(customGtype, []);
+        const instance = newObjectFromNative(customGtype);
         expect(instance).toBeInstanceOf(CustomWidget);
     });
 
@@ -135,8 +135,7 @@ describe("registerClass — vfunc dispatch", () => {
         registerClass(CustomWidget, { typeName: name });
         const customGtype = typeFromName(name);
         expect(customGtype).not.toBe(0n);
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const instance = GObject.newv(customGtype, []);
+        const instance = newObjectFromNative(customGtype);
         expect(isInstanceOfType(getHandle(instance), typeFromName("GtkBuildable"))).toBe(true);
         const builder = Gtk.Builder.new();
         builder.addFromString(`<interface><object class="${name}" id="customWidget"/></interface>`, -1);

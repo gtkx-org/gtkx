@@ -275,4 +275,4 @@ const dispatch = async (method: string, params: unknown, ctx: HandlerContext): P
     return HANDLERS[method](ctx, params);
 };
 
-export { dispatch, type HandlerContext };
+export { dispatch };

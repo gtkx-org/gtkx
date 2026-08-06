@@ -88,15 +88,5 @@
     },
     "peerDependencies": {
         "react": "^19"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/cli"
-                }
-            }
-        }
     }
 }

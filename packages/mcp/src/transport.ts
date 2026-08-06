@@ -234,7 +234,6 @@ export {
     connectionErrorEvent,
     connectionRequestEvent,
     ProtocolConnection,
-    type ProtocolConnectionEvents,
     type AppConnections,
     type ConnectionEvent,
     type ConnectionErrorEvent,

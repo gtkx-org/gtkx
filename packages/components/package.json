@@ -63,15 +63,5 @@
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "vitest": "catalog:"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/components"
-                }
-            }
-        }
     }
 }

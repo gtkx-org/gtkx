@@ -1,6 +1,7 @@
 import { bind, type Descriptor, type ExternalObject, type Handle, call as nativeCall, read } from "@gtkx/native";
 
 const GOBJECT_REF_COUNT_OFFSET = 8;
+// eslint-disable-next-line gtkx/no-library-prefix
 const GTK_LIB = "libgtk-4.so.1";
 const GOBJECT_LIB = "libgobject-2.0.so.0";
 const BIGUINT64 = { kind: "biguint64" as const };

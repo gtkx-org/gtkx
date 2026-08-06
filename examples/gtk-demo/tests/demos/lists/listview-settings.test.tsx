@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listviewSettingsDemo } from "../../../src/demos/lists/listview-settings.js";
-import { findInactiveSearchToggle, openSearchEntry, renderDemo } from "../../test-utils.js";
+import { collectWidgets, findInactiveSearchToggle, openSearchEntry, renderDemo } from "../../test-utils.js";
 
 type FilteredToZeroState = {
     columnView: Gtk.ColumnView;
@@ -36,21 +36,6 @@ const readColumns = (cv: Gtk.ColumnView): Map<string, Gtk.ColumnViewColumn> => {
     return out;
 };
 
-const collectEditableLabels = (widget: Gtk.Widget, out: Gtk.EditableLabel[] = []): Gtk.EditableLabel[] => {
-    if (widget instanceof Gtk.EditableLabel) {
-        out.push(widget);
-    }
-
-    let child = widget.getFirstChild();
-
-    while (child) {
-        collectEditableLabels(child, out);
-        child = child.getNextSibling();
-    }
-
-    return out;
-};
-
 const itemCount = (cv: Gtk.ColumnView): number => (cv.getModel())?.getNItems() ?? 0;
 
 const findColumnView = async (): Promise<Gtk.ColumnView> =>
@@ -75,7 +60,7 @@ const selectFirstSchemaWithKeys = async (): Promise<Gtk.ColumnView> => {
 };
 
 const booleanEditableIn = (columnView: Gtk.ColumnView): Gtk.EditableLabel | undefined =>
-    collectEditableLabels(columnView).find((e) => e.getText() === "true" || e.getText() === "false");
+    collectWidgets(columnView, Gtk.EditableLabel).find((e) => e.getText() === "true" || e.getText() === "false");
 
 const booleanEditableAtRow = async (sidebar: Gtk.ListView, index: number): Promise<Gtk.EditableLabel | undefined> => {
     await userEvent.selectOptions(sidebar, index);
@@ -298,7 +283,7 @@ describe("listviewSettingsDemo value editing", () => {
         try {
             await renderDemo(listviewSettingsDemo);
             const columnView = await selectFirstSchemaWithKeys();
-            const [target] = collectEditableLabels(columnView);
+            const [target] = collectWidgets(columnView, Gtk.EditableLabel);
             expect(target).toBeDefined();
             const editable = target as Gtk.EditableLabel;
             const errorBellSpy = vi.spyOn(editable, "errorBell");

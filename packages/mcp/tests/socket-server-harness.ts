@@ -140,7 +140,6 @@ export {
     nextRequest,
     setupSocketServer,
     socketCtx,
-    type SocketServerContext,
     startWithClient,
     startWithConnection,
     tryConnect,

@@ -306,6 +306,5 @@ export {
     resolveConfig,
     type ResolvedReactCompilerOptions,
     type Config,
-    type ModuleExport,
     type ResolvedConfig,
 };

@@ -1,11 +1,16 @@
+/* eslint-disable gtkx/no-library-prefix */
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { writeDocs } from "../../src/internal.js";
+import { readBuiltinElements } from "../../src/react/element-config.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const GI_STORE_DIR = join(REPO_ROOT, "node_modules", ".gtkx", "gi");
+const REACT_SUBEXPORTS = ["config", "adw", "adw/config", "internal"];
+const REACT_SURFACE = await readBuiltinElements(REACT_SUBEXPORTS, GI_STORE_DIR);
 const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-docs-test-"));
 const defaultOutDir = join(workDir, "default");
 const defaultResult = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir });
@@ -167,8 +172,8 @@ describe("writeDocs with element props", () => {
         outDir,
         omittedProps: { GtkButton: ["child"] },
         props: {
-            GtkWidget: { module: "@gtkx/react", export: "GtkWidgetProps" },
-            GtkHeaderBar: { module: "@gtkx/react", export: "GtkHeaderBarProps" },
+            GtkWidget: { module: "@gtkx/react/internal", export: "GtkWidgetProps" },
+            GtkHeaderBar: { module: "@gtkx/react/internal", export: "GtkHeaderBarProps" },
         },
     });
 
@@ -192,6 +197,51 @@ describe("writeDocs with element props", () => {
         expect(headerBar).toContain("Widgets packed at the start of the bar.");
         expect(headerBar).toContain("### `end`");
         expect(headerBar).toContain("Widgets packed at the end of the bar.");
+    });
+});
+
+describe("writeDocs with the built-in Adwaita element config", () => {
+    const outDir = join(workDir, "adw");
+
+    const result = writeDocs({
+        libraries: ["Gtk-4.0", "Adw-1"],
+        girPath: GIR_PATH,
+        outDir,
+        props: REACT_SURFACE.props,
+        omittedProps: REACT_SURFACE.omittedProps,
+    });
+
+    it("documents the slots declared in @gtkx/react/adw", () => {
+        expect(result.isRegenerated).toBe(true);
+        const toolbarView = page(outDir, join("adw", "toolbar-view.md"));
+        expect(toolbarView).toContain("### `topBar`");
+        expect(toolbarView).toContain("Widgets stacked above the content.");
+        expect(toolbarView).toContain("### `bottomBar`");
+        expect(toolbarView).toContain("Widgets stacked below the content.");
+        expect(toolbarView).toContain("### `children`");
+        expect(toolbarView).toContain("`ReactNode | null`");
+        const alertDialog = page(outDir, join("adw", "alert-dialog.md"));
+        expect(alertDialog).toContain("### `responses`");
+        expect(alertDialog).toContain("`AlertDialogResponse[] | null`");
+        expect(alertDialog).toContain("Buttons the dialog offers, added and removed as the list changes.");
+    });
+
+    it("documents the props reached through an intersected props type", () => {
+        const expanderRow = page(outDir, join("adw", "expander-row.md"));
+        expect(expanderRow).toContain("### `rows`");
+        expect(expanderRow).toContain("Widgets added to the area the row reveals when it expands.");
+        expect(expanderRow).toContain("### `actions`");
+        expect(expanderRow).toContain("### `prefix`");
+        expect(expanderRow).toContain("Widgets added at the start of the row, before its title.");
+        expect(expanderRow).toContain("### `suffix`");
+    });
+
+    it("documents the multi-layout view's slot index signature", () => {
+        const multiLayoutView = page(outDir, join("adw", "multi-layout-view.md"));
+        expect(multiLayoutView).toContain("### `layouts`");
+        expect(multiLayoutView).toContain("`Adw.Layout` elements added to the view");
+        expect(multiLayoutView).toContain("### `${string}Slot`");
+        expect(multiLayoutView).toContain("so `sidebarSlot` fills the slot with id `sidebar`");
     });
 });
 

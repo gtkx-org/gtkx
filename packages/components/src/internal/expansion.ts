@@ -145,7 +145,7 @@ function useExpansion(options: ExpansionOptions): ItemsChangeHandler {
 
     const markDrift = useControlledSync({
         ids: expandedIds,
-        structureKey: collection.structureKey,
+        collection,
         apply: (ids) => {
             applyControlledExpansion(context, ids);
         },
@@ -156,4 +156,4 @@ function useExpansion(options: ExpansionOptions): ItemsChangeHandler {
     };
 }
 
-export { useExpansion, type ExpansionOptions, type ItemsChangeHandler };
+export { useExpansion, type ItemsChangeHandler };

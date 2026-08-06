@@ -187,5 +187,4 @@ export {
     multipleFoundError,
     suggestionError,
     timeoutError,
-    type QueryDescriptor,
 };

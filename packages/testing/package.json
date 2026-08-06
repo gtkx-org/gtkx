@@ -67,15 +67,5 @@
         "@gtkx/vitest": "workspace:*",
         "@types/react": "catalog:",
         "vitest": "catalog:"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/testing"
-                }
-            }
-        }
     }
 }
