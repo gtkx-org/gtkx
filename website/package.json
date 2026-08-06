@@ -22,11 +22,12 @@
     },
     "nx": {
         "implicitDependencies": [
+            "@gtkx/cli",
+            "@gtkx/codegen",
             "@gtkx/components",
             "@gtkx/config",
             "@gtkx/css",
             "@gtkx/gl",
-            "@gtkx/native",
             "@gtkx/react",
             "@gtkx/runtime",
             "@gtkx/testing",
@@ -68,6 +69,8 @@
                 "inputs": [
                     "default",
                     "^production",
+                    "{workspaceRoot}/api.json",
+                    "{workspaceRoot}/packages/eslint/src/api-entrypoints.ts",
                     {
                         "dependentTasksOutputFiles": "**/*.{d.ts,d.cts,d.mts}",
                         "transitive": true

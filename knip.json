@@ -1,6 +1,5 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
-    "ignoreExportsUsedInFile": true,
     "includeEntryExports": true,
     "tags": [
         "-internal"
@@ -24,6 +23,9 @@
             "types"
         ],
         "packages/react/src/adw/prop-types.ts": [
+            "types"
+        ],
+        "packages/runtime/src/descriptors.ts": [
             "types"
         ]
     },
@@ -85,7 +87,6 @@
         },
         "packages/cli": {
             "entry": [
-                "gtkx.config.ts!",
                 "src/global.d.ts!",
                 "tests/dev/fixtures/supervisor-harness.ts",
                 "tests/dev/fixtures/graceful-child.mjs",

@@ -1,13 +1,5 @@
 name: Setup CI
-description: Pull the CI image, compute the version env vars Nx hashes, and (optionally) restore the cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
-
-inputs:
-  cargo:
-    description: Restore the cargo registry + git cache
-    default: "true"
-  pnpm:
-    description: Restore the pnpm store cache
-    default: "true"
+description: Pull the CI image, compute the version env vars Nx hashes, and restore the cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
 
 runs:
   using: composite
@@ -19,9 +11,7 @@ runs:
       uses: ./.github/actions/compute-cache-env
 
     - name: Setup cargo cache
-      if: inputs.cargo == 'true'
       uses: ./.github/actions/setup-cargo-cache
 
     - name: Setup pnpm cache
-      if: inputs.pnpm == 'true'
       uses: ./.github/actions/setup-pnpm-cache

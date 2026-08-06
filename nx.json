@@ -99,6 +99,7 @@
             "inputs": [
                 "default",
                 "^default",
+                "{workspaceRoot}/api.json",
                 "{workspaceRoot}/eslint.config.ts",
                 "{workspaceRoot}/packages/eslint/src/**/*",
                 "{workspaceRoot}/packages/eslint/package.json",
