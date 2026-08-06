@@ -45,5 +45,6 @@ const withDefaultTransientFor = (Component: ElementType): ((props: WindowCompone
 const createWindowComponent = (Component: ElementType): ((props: unknown) => ReactNode) =>
     createPortaledComponent(withDefaultTransientFor(createPresentedWindowComponent(Component)));
 
+export { createPresentedWindowComponent };
 /** @internal */
-export { createPresentedWindowComponent, createWindowComponent };
+export { createWindowComponent };
