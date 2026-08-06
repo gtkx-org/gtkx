@@ -1,4 +1,3 @@
-import { isInSignalDispatch } from "@gtkx/react/internal";
 import { startTransition, useEffectEvent, useLayoutEffect, useState } from "react";
 
 type ControlledSyncOptions<T> = {
@@ -19,12 +18,6 @@ function useControlledSync<T>(options: ControlledSyncOptions<T>): () => void {
     };
 
     const apply = useEffectEvent((next: T): void => {
-        if (isInSignalDispatch()) {
-            markDrift();
-
-            return;
-        }
-
         options.apply(next);
     });
 
