@@ -59,13 +59,13 @@ type InterfaceProperty = {
     setter?: string;
 };
 
-/** What an interface's vtable struct looks like, for the classes that adopt the interface. */
+/**
+ * What an interface's vtable struct looks like, for the classes that adopt the interface.
+ * `g_type_query` reports no size for an interface, so each slot's generated metadata carries the
+ * struct's byte size to bounds-check the slot's offset; an interface introspection describes no
+ * vtable for simply contributes no slots.
+ */
 type InterfaceLayout = {
-    /**
-     * Byte size of the whole vtable struct. `g_type_query` reports nothing for an interface, so a
-     * class can only take an interface whose size introspection describes.
-     */
-    vtableSize: number;
     /** The slots the struct declares, keyed by the JavaScript method name that fills each one. */
     vfuncs?: VfuncRegistry;
     /**
@@ -344,14 +344,6 @@ function getHandle(instance: object): ExternalObject<Handle> {
     return handle;
 }
 
-/**
- * Returns the native handle bound to an instance, or undefined when the instance is null or
- * undefined, throwing when a value that should carry a handle has none.
- */
-function handleFor(instance: object | null | undefined): ExternalObject<Handle> | undefined {
-    return instance == null ? undefined : getHandle(instance);
-}
-
 /** Associates a native handle with a wrapper instance. */
 function setHandle(instance: object, handle: ExternalObject<Handle>): void {
     handleMap.set(instance, handle);
@@ -374,10 +366,6 @@ function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
     return interfaceLayoutRegistry.get(type)?.vfuncs;
 }
 
-function getInterfaceVtableSize(type: bigint): number | undefined {
-    return interfaceLayoutRegistry.get(type)?.vtableSize;
-}
-
 function getInterfaceProperties(type: bigint): Record<string, InterfaceProperty> | undefined {
     return interfaceLayoutRegistry.get(type)?.properties;
 }
@@ -393,13 +381,11 @@ export {
     getWrapperClass,
     resolveWrapperClass,
     getHandle,
-    handleFor,
     setHandle,
     getVfuncRegistry,
     getInterfaceMixin,
     getInterfaceProperties,
     getInterfaceVfuncRegistry,
-    getInterfaceVtableSize,
     instanceClassName,
     registerWrapper,
     resolveWrapperType,

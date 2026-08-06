@@ -44,7 +44,7 @@ const DBUS_CONNECTION_NEW_SIGNATURE =
 
 const DBUS_CONNECTION_NEW_PROMISIFY_CALL =
     "return promisify(gDbusConnectionNew, this.newFinish.bind(this), cancellable, " +
-    "getHandle(stream), guid, flags, handleFor(observer));";
+    "getHandle(stream), guid, flags, observer == null ? null : getHandle(observer));";
 
 const SHOW_URI_FULL_CALLBACK_SIGNATURE =
     "export function showUriFull(parent: Window | null, uri: string, timestamp: number, " +
@@ -1050,13 +1050,14 @@ describe("interfaces with no slot to fill", () => {
 });
 
 describe("interface vtable registration", () => {
-    it("registers the byte size of the vtable struct introspection describes", () => {
-        expect(moduleSource("gio")).toContain("makeListModel, {\n    vtableSize: 40,");
-        expect(moduleSource("gtk")).toContain("makeSelectionModel, {\n    vtableSize: 88,");
+    it("registers the slots of a vtable struct introspection describes", () => {
+        expect(moduleSource("gio")).toContain("makeListModel, {\n    vfuncs: {");
+        expect(moduleSource("gtk")).toContain("makeSelectionModel, {\n    vfuncs: {");
     });
 
-    it("registers the size of a vtable that declares no slots, and none for one it cannot see", () => {
-        expect(moduleSource("gtk")).toContain("makeOrientable, {\n    vtableSize: 16,\n});");
+    it("registers no layout for a vtable that declares no slots, nor for one it cannot see", () => {
+        expect(moduleSource("gtk")).toContain("registerInterface(Orientable, resolveType(");
+        expect(moduleSource("gtk")).not.toContain("makeOrientable, {");
         expect(moduleSource("gtk")).toContain("registerInterface(Native, resolveType(");
         expect(moduleSource("gtk")).not.toContain("makeNative, {");
         expect(moduleSource("gtk")).not.toContain("makeFileChooser, {");

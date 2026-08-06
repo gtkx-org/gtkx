@@ -13,7 +13,6 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "getHandle",
     "getInstanceType",
     "setHandle",
-    "handleFor",
     "t",
     "createErrorDomain",
     "registerWrapperClass",

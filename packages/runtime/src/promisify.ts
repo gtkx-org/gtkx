@@ -1,4 +1,4 @@
-import { handleFor } from "./registry.js";
+import { getHandle } from "./registry.js";
 
 /**
  * Extracts the value of a completed asynchronous operation from its `GAsyncResult`, throwing when
@@ -57,7 +57,7 @@ const promisify = <R extends object, T>(
         const creationStack =
             process.env.NODE_ENV === "production" ? undefined : new Error("GTKX async operation started here");
 
-        asyncFn(...leading, handleFor(cancellable), (_source: object | null, asyncResult: object) => {
+        asyncFn(...leading, cancellable == null ? null : getHandle(cancellable), (_source: object | null, asyncResult: object) => {
             settle({ finish, creationStack, resolve, reject }, asyncResult);
         });
     });
