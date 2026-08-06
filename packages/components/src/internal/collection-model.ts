@@ -6,7 +6,7 @@ import type { CollectionIndex, Level } from "./collection-index.js";
 import type { TreeExpansion } from "./tree-expansion.js";
 import { createCollectionIndex } from "./collection-index.js";
 import { encodePart } from "./keys.js";
-import { adoptIndex, createTreeExpansion, prunePath, resetExpansion } from "./tree-expansion.js";
+import { adoptIndex, createTreeExpansion, pruneSlots, resetExpansion } from "./tree-expansion.js";
 
 type LevelStore = Gio.ListModel & LazyLevelStore;
 
@@ -18,6 +18,11 @@ type SlotRef = {
 type SyncContext = {
     index: CollectionIndex;
     expansion: TreeExpansion;
+};
+
+type SlotRun = {
+    start: number;
+    length: number;
 };
 
 type ModelState = {
@@ -122,21 +127,16 @@ function growStore(context: SyncContext, store: LevelStore, level: Level): void 
 
 function flipSlot(context: SyncContext, store: LevelStore, slot: number): void {
     const canExpand = !(store.expandableFlags[slot] ?? false);
-    const path = slotPathAt(store, slot);
     store.expandableFlags[slot] = canExpand;
-    prunePath(context.expansion, path);
-    store.childStores[slot] = canExpand ? buildChildStore(context, path) : null;
+    store.childStores[slot] = canExpand ? buildChildStore(context, slotPathAt(store, slot)) : null;
 }
 
-function syncOverlap(context: SyncContext, store: LevelStore, level: Level): Set<number> {
+function collectFlips(store: LevelStore, level: Level): Set<number> {
     const overlap = Math.min(store.refs.length, level.items.length);
     const flipped: Set<number> = new Set();
 
     for (let slot = 0; slot < overlap; slot++) {
-        const canExpand = level.expandableFlags[slot] ?? false;
-
-        if ((store.expandableFlags[slot] ?? false) !== canExpand) {
-            flipSlot(context, store, slot);
+        if ((store.expandableFlags[slot] ?? false) !== (level.expandableFlags[slot] ?? false)) {
             flipped.add(slot);
         }
     }
@@ -144,14 +144,30 @@ function syncOverlap(context: SyncContext, store: LevelStore, level: Level): Set
     return flipped;
 }
 
-function detachSlot(context: SyncContext, store: LevelStore, slot: number): void {
-    const ref = store.refs[slot];
+function syncOverlap(context: SyncContext, store: LevelStore, level: Level): Set<number> {
+    const flipped = collectFlips(store, level);
 
-    if (ref !== undefined) {
-        ref.slot = -1;
+    if (flipped.size === 0) {
+        return flipped;
     }
 
-    prunePath(context.expansion, slotPathAt(store, slot));
+    pruneSlots(context.expansion, store.path, (slot) => flipped.has(slot));
+
+    for (const slot of flipped) {
+        flipSlot(context, store, slot);
+    }
+
+    return flipped;
+}
+
+function detachRefs(store: LevelStore, nextLength: number): void {
+    for (let slot = nextLength; slot < store.refs.length; slot++) {
+        const ref = store.refs[slot];
+
+        if (ref !== undefined) {
+            ref.slot = -1;
+        }
+    }
 }
 
 function shrinkStore(context: SyncContext, store: LevelStore, nextLength: number): void {
@@ -159,10 +175,8 @@ function shrinkStore(context: SyncContext, store: LevelStore, nextLength: number
         return;
     }
 
-    for (let slot = nextLength; slot < store.refs.length; slot++) {
-        detachSlot(context, store, slot);
-    }
-
+    detachRefs(store, nextLength);
+    pruneSlots(context.expansion, store.path, (slot) => slot >= nextLength);
     store.refs.length = nextLength;
     store.objects.length = nextLength;
     store.childStores.length = nextLength;
@@ -181,9 +195,32 @@ function emitTailSplice(store: LevelStore, previousLength: number, nextLength: n
     }
 }
 
+function extendRuns(runs: SlotRun[], slot: number): void {
+    const last = runs.at(-1);
+
+    if (last !== undefined && last.start + last.length === slot) {
+        last.length += 1;
+
+        return;
+    }
+
+    runs.push({ start: slot, length: 1 });
+}
+
+function collectFlipRuns(flipped: Set<number>): SlotRun[] {
+    const runs: SlotRun[] = [];
+    const slots = [...flipped].toSorted((left, right) => left - right);
+
+    for (const slot of slots) {
+        extendRuns(runs, slot);
+    }
+
+    return runs;
+}
+
 function emitFlips(store: LevelStore, flipped: Set<number>): void {
-    for (const slot of flipped) {
-        store.itemsChanged(slot, 1, 1);
+    for (const run of collectFlipRuns(flipped)) {
+        store.itemsChanged(run.start, run.length, run.length);
     }
 }
 

@@ -1,5 +1,6 @@
 import type { CollectionIndex } from "./collection-index.js";
 import type { VisibleOrder } from "./tree-order.js";
+import { decodePartAt } from "./keys.js";
 import { buildVisibleOrder } from "./tree-order.js";
 
 type TreeExpansion = {
@@ -35,6 +36,28 @@ function prunePath(expansion: TreeExpansion, path: string): void {
     expansion.order = null;
 }
 
+function slotAt(candidate: string, levelPath: string): number | null {
+    if (!candidate.startsWith(levelPath)) {
+        return null;
+    }
+
+    const part = decodePartAt(candidate, levelPath.length);
+
+    return part === null || part.length === 0 ? null : Number(part);
+}
+
+function pruneSlots(expansion: TreeExpansion, levelPath: string, isPruned: (slot: number) => boolean): void {
+    for (const candidate of expansion.expanded) {
+        const slot = slotAt(candidate, levelPath);
+
+        if (slot !== null && isPruned(slot)) {
+            expansion.expanded.delete(candidate);
+        }
+    }
+
+    expansion.order = null;
+}
+
 function markExpanded(expansion: TreeExpansion, path: string, isExpanded: boolean): void {
     if (isExpanded) {
         expansion.expanded.add(path);
@@ -62,7 +85,7 @@ export {
     createTreeExpansion,
     markExpanded,
     orderFor,
-    prunePath,
+    pruneSlots,
     resetExpansion,
     type TreeExpansion,
 };
