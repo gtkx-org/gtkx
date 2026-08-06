@@ -1,18 +1,96 @@
 import type { CollectionIndex } from "./collection-index.js";
 import type { VisibleOrder } from "./tree-order.js";
-import { decodePartAt } from "./keys.js";
+import { decodePartAt, encodePart } from "./keys.js";
 import { buildVisibleOrder } from "./tree-order.js";
+
+type SlotKey = {
+    levelPath: string;
+    slot: number;
+};
 
 type TreeExpansion = {
     index: CollectionIndex;
     expanded: Set<string>;
+    slots: Map<string, Set<number>>;
     order: VisibleOrder | null;
     isApplying: boolean;
     isSyncing: boolean;
 };
 
+function getLevelBoundary(path: string): number {
+    let offset = 0;
+    let boundary = 0;
+
+    while (offset < path.length) {
+        const part = decodePartAt(path, offset);
+
+        if (part === null) {
+            return boundary;
+        }
+
+        boundary = offset;
+        offset += encodePart(part).length;
+    }
+
+    return boundary;
+}
+
+function getSlotKey(path: string): SlotKey | null {
+    const boundary = getLevelBoundary(path);
+    const part = decodePartAt(path, boundary);
+
+    if (part === null || part.length === 0) {
+        return null;
+    }
+
+    return { levelPath: path.slice(0, boundary), slot: Number(part) };
+}
+
+function trackPath(slots: Map<string, Set<number>>, path: string): void {
+    const key = getSlotKey(path);
+
+    if (key === null) {
+        return;
+    }
+
+    const level = slots.get(key.levelPath);
+
+    if (level === undefined) {
+        slots.set(key.levelPath, new Set([key.slot]));
+
+        return;
+    }
+
+    level.add(key.slot);
+}
+
+function trackPaths(paths: Iterable<string>): Map<string, Set<number>> {
+    const slots: Map<string, Set<number>> = new Map();
+
+    for (const path of paths) {
+        trackPath(slots, path);
+    }
+
+    return slots;
+}
+
+function dropSubtree(expansion: TreeExpansion, path: string): void {
+    expansion.expanded.delete(path);
+    const level = expansion.slots.get(path);
+
+    if (level === undefined) {
+        return;
+    }
+
+    expansion.slots.delete(path);
+
+    for (const slot of level) {
+        dropSubtree(expansion, path + encodePart(String(slot)));
+    }
+}
+
 function createTreeExpansion(index: CollectionIndex): TreeExpansion {
-    return { index, expanded: new Set(), order: null, isApplying: false, isSyncing: false };
+    return { index, expanded: new Set(), slots: new Map(), order: null, isApplying: false, isSyncing: false };
 }
 
 function orderFor(expansion: TreeExpansion): VisibleOrder {
@@ -23,36 +101,35 @@ function orderFor(expansion: TreeExpansion): VisibleOrder {
 
 function adoptOrder(expansion: TreeExpansion, order: VisibleOrder): void {
     expansion.expanded = new Set(order.expandedPaths);
+    expansion.slots = trackPaths(order.expandedPaths);
     expansion.order = order;
 }
 
 function prunePath(expansion: TreeExpansion, path: string): void {
-    for (const candidate of expansion.expanded) {
-        if (candidate.startsWith(path)) {
-            expansion.expanded.delete(candidate);
-        }
+    const key = getSlotKey(path);
+
+    if (key !== null) {
+        expansion.slots.get(key.levelPath)?.delete(key.slot);
     }
 
+    dropSubtree(expansion, path);
     expansion.order = null;
 }
 
-function slotAt(candidate: string, levelPath: string): number | null {
-    if (!candidate.startsWith(levelPath)) {
-        return null;
+function pruneSlots(expansion: TreeExpansion, levelPath: string, isPruned: (slot: number) => boolean): void {
+    const level = expansion.slots.get(levelPath);
+
+    if (level === undefined) {
+        return;
     }
 
-    const part = decodePartAt(candidate, levelPath.length);
-
-    return part === null || part.length === 0 ? null : Number(part);
-}
-
-function pruneSlots(expansion: TreeExpansion, levelPath: string, isPruned: (slot: number) => boolean): void {
-    for (const candidate of expansion.expanded) {
-        const slot = slotAt(candidate, levelPath);
-
-        if (slot !== null && isPruned(slot)) {
-            expansion.expanded.delete(candidate);
+    for (const slot of level) {
+        if (!isPruned(slot)) {
+            continue;
         }
+
+        level.delete(slot);
+        dropSubtree(expansion, levelPath + encodePart(String(slot)));
     }
 
     expansion.order = null;
@@ -61,6 +138,7 @@ function pruneSlots(expansion: TreeExpansion, levelPath: string, isPruned: (slot
 function markExpanded(expansion: TreeExpansion, path: string, isExpanded: boolean): void {
     if (isExpanded) {
         expansion.expanded.add(path);
+        trackPath(expansion.slots, path);
         expansion.order = null;
 
         return;
@@ -71,6 +149,7 @@ function markExpanded(expansion: TreeExpansion, path: string, isExpanded: boolea
 
 function resetExpansion(expansion: TreeExpansion): void {
     expansion.expanded = new Set();
+    expansion.slots = new Map();
     expansion.order = null;
 }
 

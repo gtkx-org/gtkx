@@ -19,6 +19,10 @@ const SCALE_FACTOR = 4;
 const SCALE_LIMIT = 8;
 const SCALE_REPEAT_COUNT = 9;
 const SCALE_KEPT_COUNT = 4;
+const DEEP_SOURCE_COUNT = 2501;
+const DEEP_KEPT_COUNT = 3;
+const LEVEL_WIDE_COUNT = 3;
+const LEVEL_NARROW_COUNT = 2;
 
 const leaf = (id: string): ListItem => ({ id, value: { name: id } });
 const branch = (id: string, children: ListItem[]): ListItem => ({ id, value: { name: id }, children });
@@ -32,6 +36,13 @@ const stub = (id: string): ListItem => branch(id, [leaf(`${id}-child`)]);
 const nested = (id: string): ListItem => branch(id, [stub(`${id}-child`)]);
 const rootPathAt = (slot: number): string => encodePart("0") + encodePart(String(slot));
 const stubs = (count: number): ListItem[] => Array.from({ length: count }, (_, slot) => stub(`b-${String(slot)}`));
+
+const kids = (id: string, count: number): ListItem[] =>
+    Array.from({ length: count }, (_, slot) => leaf(`${id}-c${String(slot)}`));
+
+const parents = (count: number, width: number): ListItem[] =>
+    Array.from({ length: count }, (_, slot) => branch(`p-${String(slot)}`, kids(`p-${String(slot)}`, width)));
+
 const leaves = (count: number): ListItem[] => Array.from({ length: count }, (_, slot) => leaf(`l-${String(slot)}`));
 const flipRunSource = (): ListItem[] => [stub("a"), leaf("b"), leaf("c"), leaf("d")];
 const adjacentFlips = (): ListItem[] => [stub("a"), stub("b"), stub("c"), leaf("d")];
@@ -109,6 +120,29 @@ const expandedModel = (items: ListItem[]): CollectionModel => {
     return collectionModel;
 };
 
+const expandEveryRow = (collectionModel: CollectionModel, index: CollectionIndex): void => {
+    const tree = getTree(collectionModel);
+    const order = buildVisibleOrder(index, new Set(index.children.keys()));
+    const expandable = new Set(order.expandedPaths);
+
+    for (const [position, path] of order.paths.entries()) {
+        if (expandable.has(path)) {
+            expandRowAt(tree, position);
+        }
+    }
+
+    adoptOrder(collectionModel.expansion, order);
+};
+
+const levelTrimCost = (count: number): number => {
+    const collectionModel = expandedModel(parents(count, LEVEL_WIDE_COUNT));
+    const trimmed = treeIndex(parents(count, LEVEL_NARROW_COUNT));
+    const start = performance.now();
+    collectionModel.sync(trimmed);
+
+    return performance.now() - start;
+};
+
 const narrowingCost = (count: number): number => {
     const items = stubs(count);
     const collectionModel = expandedModel(items);
@@ -119,10 +153,17 @@ const narrowingCost = (count: number): number => {
     return performance.now() - start;
 };
 
-const fastestNarrowingCost = (count: number): number => {
-    const runs = Array.from({ length: SCALE_REPEAT_COUNT }, () => narrowingCost(count));
+const fastestCost = (measure: (count: number) => number, count: number): number => {
+    const runs = Array.from({ length: SCALE_REPEAT_COUNT }, () => measure(count));
 
     return Math.min(...runs);
+};
+
+const expectLinearScaling = (measure: (count: number) => number): void => {
+    fastestCost(measure, SCALE_BASE_COUNT);
+    const base = fastestCost(measure, SCALE_BASE_COUNT);
+    const scaled = fastestCost(measure, SCALE_BASE_COUNT * SCALE_FACTOR);
+    expect(scaled / base).toBeLessThan(SCALE_LIMIT);
 };
 
 describe("createCollectionModel - sync emissions", () => {
@@ -167,6 +208,17 @@ describe("createCollectionModel - sync emissions", () => {
             [1, NARROW_TARGET_COUNT - 1, NARROW_TARGET_COUNT - 1],
         ]);
     });
+
+    it("narrows a fully expanded five thousand row tree with a single emission", () => {
+        const index = treeIndex(stubs(DEEP_SOURCE_COUNT));
+        const collectionModel = syncedModel(index);
+        expandEveryRow(collectionModel, index);
+        expect(collectionModel.model.getNItems()).toBe(DEEP_SOURCE_COUNT * 2);
+        const splices = spliceLog(collectionModel.model);
+        collectionModel.sync(treeIndex(stubs(DEEP_KEPT_COUNT)));
+        expect(splices).toEqual([[DEEP_KEPT_COUNT * 2, (DEEP_SOURCE_COUNT - DEEP_KEPT_COUNT) * 2, 0]]);
+        expect(collectionModel.model.getNItems()).toBe(DEEP_KEPT_COUNT * 2);
+    });
 });
 
 describe("createCollectionModel - expansion pruning", () => {
@@ -184,10 +236,11 @@ describe("createCollectionModel - expansion pruning", () => {
     });
 
     it("narrows in time linear in the number of removed slots", () => {
-        fastestNarrowingCost(SCALE_BASE_COUNT);
-        const base = fastestNarrowingCost(SCALE_BASE_COUNT);
-        const scaled = fastestNarrowingCost(SCALE_BASE_COUNT * SCALE_FACTOR);
-        expect(scaled / base).toBeLessThan(SCALE_LIMIT);
+        expectLinearScaling(narrowingCost);
+    });
+
+    it("trims every expanded level in time linear in the number of levels", () => {
+        expectLinearScaling(levelTrimCost);
     });
 });
 
