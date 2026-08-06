@@ -28,6 +28,8 @@ jobs:
   sonarcloud:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      GTKX_MAX_WORKERS: "4"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,6 +41,7 @@ jobs:
         with:
           command: pnpm coverage
           image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          extra-env: GTKX_MAX_WORKERS
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
