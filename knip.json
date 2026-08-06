@@ -79,6 +79,13 @@
         "packages/native": {
             "includeEntryExports": false
         },
+        "packages/utils": {
+            "entry": [
+                "src/process/process-guard.ts",
+                "tests/fixtures/spawn-driver.mjs",
+                "tests/fixtures/spawn-escapee.mjs"
+            ]
+        },
         "packages/testing": {
             "includeEntryExports": false,
             "entry": [
