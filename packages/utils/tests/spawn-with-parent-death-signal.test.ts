@@ -1,108 +1,88 @@
-import { type ChildProcess, spawn } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import type { ChildProcess } from "node:child_process";
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { spawnWithParentDeathSignal } from "../src/process/index.js";
 
-type Fixture = { spawned: ChildProcess[]; directories: string[]; markers: string[] };
-type Tree = { marker: string; directory: string };
+type Fixture = { spawned: ChildProcess[]; directories: string[] };
+type Grandchild = { wrapper: ChildProcess; pid: number };
 
 const POLL_INTERVAL_MS = 20;
-const POLL_TIMEOUT_MS = 3000;
-const SPAWN_MODULE_URL = pathToFileURL(join(import.meta.dirname, "..", "src", "process", "index.ts")).href;
-const ESCAPEE_SOURCE = "setInterval(() => undefined, 1000);\n";
+const POLL_TIMEOUT_MS = 2000;
 
-const TREE_SOURCE = [
-    'import { spawn } from "node:child_process";',
-    "const [escapee, marker] = process.argv.slice(2);",
-    'spawn(process.execPath, [escapee, marker], { detached: true, stdio: "ignore" }).unref();',
-    "setInterval(() => undefined, 1000);",
-    "",
-].join("\n");
+const getProcessState = (pid: number): string | null => {
+    try {
+        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
 
-const fixture: Fixture = { spawned: [], directories: [], markers: [] };
+        return stat.slice(stat.lastIndexOf(")") + 2).split(" ", 1)[0] ?? null;
+    } catch {
+        return null;
+    }
+};
+
+const isProcessAlive = (pid: number): boolean => {
+    const state = getProcessState(pid);
+
+    return state !== null && state !== "Z";
+};
 
 const delay = (ms: number): Promise<void> =>
     new Promise((resolve) => {
         setTimeout(resolve, ms);
     });
 
-const hasMarker = (entry: string, marker: string): boolean => {
-    try {
-        return readFileSync(`/proc/${entry}/cmdline`, "utf8").split("\0").includes(marker);
-    } catch {
-        return false;
-    }
-};
-
-const getMarkedPids = (marker: string): string[] =>
-    readdirSync("/proc").filter((entry) => /^\d+$/.test(entry) && hasMarker(entry, marker));
-
 const pollUntil = async (isSatisfied: () => boolean): Promise<boolean> => {
     const deadline = Date.now() + POLL_TIMEOUT_MS;
 
-    while (Date.now() < deadline && !isSatisfied()) {
+    while (Date.now() < deadline) {
+        if (isSatisfied()) {
+            return true;
+        }
+
         await delay(POLL_INTERVAL_MS);
     }
 
-    return isSatisfied();
+    return false;
 };
 
-const waitForTree = (tree: Tree): Promise<boolean> => pollUntil(() => getMarkedPids(tree.marker).length > 0);
-const waitForReaping = (tree: Tree): Promise<boolean> => pollUntil(() => getMarkedPids(tree.marker).length === 0);
+const getProcessGroup = (pid: number): number | null => {
+    try {
+        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
+        const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+        const group = Number(fields[2]);
 
-const writeTree = (): Tree => {
-    const directory = mkdtempSync(join(tmpdir(), "gtkx-pdeath-"));
-    fixture.directories.push(directory);
-    const marker = `gtkx-escapee-${String(process.pid)}-${String(fixture.markers.length)}`;
-    fixture.markers.push(marker);
-    writeFileSync(join(directory, "escapee.mjs"), ESCAPEE_SOURCE);
-    writeFileSync(join(directory, "tree.mjs"), TREE_SOURCE);
-
-    return { marker, directory };
-};
-
-const getTreeArgs = (tree: Tree): string[] => [
-    join(tree.directory, "tree.mjs"),
-    join(tree.directory, "escapee.mjs"),
-    tree.marker,
-];
-
-const writeParent = (tree: Tree): string => {
-    const path = join(tree.directory, "parent.mjs");
-
-    writeFileSync(
-        path,
-        [
-            `import { spawnWithParentDeathSignal } from ${JSON.stringify(SPAWN_MODULE_URL)};`,
-            `spawnWithParentDeathSignal(process.execPath, ${JSON.stringify(getTreeArgs(tree))});`,
-            "setInterval(() => undefined, 1000);",
-            "",
-        ].join("\n"),
-    );
-
-    return path;
-};
-
-const killMarked = (marker: string): void => {
-    for (const pid of getMarkedPids(marker)) {
-        try {
-            process.kill(Number(pid), "SIGKILL");
-        } catch {
-            continue;
-        }
+        return Number.isNaN(group) ? null : group;
+    } catch {
+        return null;
     }
 };
 
-const cleanUp = (): void => {
+const readPid = (path: string): number | null => {
+    try {
+        const text = readFileSync(path, "utf8").trim();
+
+        return text.length > 0 ? Number(text) : null;
+    } catch {
+        return null;
+    }
+};
+
+const describeOutcome = (wrapper: ChildProcess, pid: number): string => {
+    const wrapperPid = wrapper.pid ?? 0;
+
+    return [
+        `sh=${realpathSync("/bin/sh")}`,
+        `wrapperPgid=${String(getProcessGroup(wrapperPid))}`,
+        `childPgid=${String(getProcessGroup(pid))}`,
+        `wrapperExit=${String(wrapper.exitCode)}/${String(wrapper.signalCode)}`,
+        `childState=${String(getProcessState(pid))}`,
+    ].join(" ");
+};
+
+const cleanUp = (fixture: Fixture): void => {
     for (const child of fixture.spawned) {
         child.kill("SIGKILL");
-    }
-
-    for (const marker of fixture.markers) {
-        killMarked(marker);
     }
 
     for (const directory of fixture.directories) {
@@ -111,76 +91,50 @@ const cleanUp = (): void => {
 
     fixture.spawned.length = 0;
     fixture.directories.length = 0;
-    fixture.markers.length = 0;
 };
 
-const readStderr = (child: ChildProcess): Promise<string> =>
-    new Promise((resolve) => {
-        let text = "";
-        child.stderr?.setEncoding("utf8");
+const startGrandchild = async (fixture: Fixture): Promise<Grandchild> => {
+    const directory = mkdtempSync(join(tmpdir(), "gtkx-pdeath-"));
+    fixture.directories.push(directory);
+    const pidPath = join(directory, "grandchild.pid");
+    const wrapper = spawnWithParentDeathSignal("sh", ["-c", `sleep 60 & echo $! > ${pidPath}; wait`]);
+    fixture.spawned.push(wrapper);
+    const hasPid = await pollUntil(() => readPid(pidPath) !== null);
+    expect(hasPid).toBe(true);
+    const pid = readPid(pidPath);
+    expect(pid).not.toBeNull();
 
-        child.stderr?.on("data", (chunk: string) => {
-            text += chunk;
-        });
+    return { wrapper, pid: pid ?? 0 };
+};
 
-        child.on("exit", () => {
-            resolve(text);
-        });
+describe("spawnWithParentDeathSignal", () => {
+    const fixture: Fixture = { spawned: [], directories: [] };
+
+    afterEach(() => {
+        cleanUp(fixture);
     });
 
-afterEach(() => {
-    cleanUp();
-});
-
-describe("spawnWithParentDeathSignal reaping", () => {
-    it("kills a descendant that escaped into its own session when the handle is killed", async () => {
-        const tree = writeTree();
-        const child = spawnWithParentDeathSignal(process.execPath, getTreeArgs(tree));
-        fixture.spawned.push(child);
-        expect(await waitForTree(tree)).toBe(true);
-        child.kill("SIGKILL");
-        expect(await waitForReaping(tree)).toBe(true);
+    it("kills the whole process group, not just the direct child", async () => {
+        const { wrapper, pid } = await startGrandchild(fixture);
+        expect(isProcessAlive(pid)).toBe(true);
+        wrapper.kill("SIGTERM");
+        const hasDied = await pollUntil(() => !isProcessAlive(pid));
+        expect(hasDied ? "killed" : describeOutcome(wrapper, pid)).toBe("killed");
     });
 
-    it("kills a descendant that escaped into its own session when the parent dies", async () => {
-        const tree = writeTree();
-        const parent = spawn(process.execPath, [writeParent(tree)], { stdio: "inherit" });
-        fixture.spawned.push(parent);
-        expect(await waitForTree(tree)).toBe(true);
-        parent.kill("SIGKILL");
-        expect(await waitForReaping(tree)).toBe(true);
+    it("leads its own process group without relying on the shell's job control", async () => {
+        const { wrapper } = await startGrandchild(fixture);
+        const pid = wrapper.pid ?? 0;
+        expect(pid).toBeGreaterThan(0);
+        expect(getProcessGroup(pid)).toBe(pid);
     });
 
-    it("leaves the calling process alive once the tree is reaped", async () => {
-        const tree = writeTree();
-        const child = spawnWithParentDeathSignal(process.execPath, getTreeArgs(tree));
-        fixture.spawned.push(child);
-        expect(await waitForTree(tree)).toBe(true);
-        child.kill("SIGKILL");
-        expect(await waitForReaping(tree)).toBe(true);
-        expect(process.kill(process.pid, 0)).toBe(true);
-    });
-});
-
-describe("spawnWithParentDeathSignal wiring", () => {
-    it("propagates the command's exit code", async () => {
-        const child = spawnWithParentDeathSignal(process.execPath, ["-e", "process.exit(42)"]);
-        fixture.spawned.push(child);
-
-        const code = await new Promise<number | null>((resolve) => {
-            child.on("exit", resolve);
-        });
-
-        expect(code).toBe(42);
-    });
-
-    it("forwards a piped stream from the command", async () => {
-        const child = spawnWithParentDeathSignal(process.execPath, ["-e", "process.stderr.write('piped')"], {
-            stdio: ["ignore", "ignore", "pipe"],
-        });
-
-        fixture.spawned.push(child);
-        expect(await readStderr(child)).toBe("piped");
+    it("leaves the calling process outside the group it kills", async () => {
+        const { wrapper, pid } = await startGrandchild(fixture);
+        expect(pid).not.toBe(process.pid);
+        wrapper.kill("SIGTERM");
+        await pollUntil(() => !isProcessAlive(pid));
+        expect(isProcessAlive(process.pid)).toBe(true);
     });
 
     it("throws a named error when the command is not on PATH", () => {
