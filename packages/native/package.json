@@ -53,7 +53,7 @@
     "scripts": {
         "artifacts": "napi artifacts",
         "build": "napi build --platform --release --esm --no-dts-cache --no-const-enum",
-        "coverage": "mkdir -p coverage && tsx ../../scripts/run-headless.ts cargo +nightly llvm-cov clean --workspace && tsx ../../scripts/run-headless.ts cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 70 -- --test-threads=1",
+        "coverage": "mkdir -p coverage && tsx ../../scripts/coverage-target.ts && tsx ../../scripts/run-headless.ts cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 70 -- --test-threads=1",
         "create-npm-dirs": "napi create-npm-dirs",
         "lint:rust": "tsx ../../scripts/cargo-nightly.ts fmt --check && cargo clippy --all-targets -- -D warnings",
         "test:asan": "RUSTFLAGS=\"-Zsanitizer=address\" ASAN_OPTIONS=\"detect_leaks=1:abort_on_error=1:detect_stack_use_after_return=1\" tsx ../../scripts/run-headless.ts cargo +nightly test --target x86_64-unknown-linux-gnu -- --test-threads=1",
@@ -172,12 +172,6 @@
                     "create-npm-dirs"
                 ],
                 "cache": false
-            },
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint packages/native"
-                }
             }
         }
     },
