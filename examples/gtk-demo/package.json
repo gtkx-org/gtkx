@@ -101,9 +101,7 @@
                         "transitive": true
                     }
                 ],
-                "outputs": [
-                    "{projectRoot}/coverage"
-                ],
+                "outputs": [],
                 "dependsOn": [
                     "...",
                     "codegen",
