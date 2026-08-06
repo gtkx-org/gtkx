@@ -1,9 +1,8 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { ElementType, ReactNode, Ref } from "react";
 import { GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
-import { applyWrite } from "@gtkx/react/internal";
 import { omit } from "@gtkx/utils";
-import { useEffectEvent, useLayoutEffect, useRef } from "react";
+import { useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
 import type { Collection } from "./collection.js";
 import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
@@ -24,6 +23,13 @@ type SelectionOptions = {
 };
 
 type NotifySelectedHandler = NonNullable<DropDownBaseProps["onNotifySelected"]>;
+type ApplyState = { isApplying: boolean };
+
+type NotifyContext = {
+    options: SelectionOptions;
+    known: { current: string | null };
+    state: ApplyState;
+};
 
 type KnownSelection = {
     known: { current: string | null };
@@ -42,6 +48,10 @@ const DROP_DOWN_PROPS: string[] = [
     "renderHeader",
     "ref",
 ];
+
+function newApplyState(): ApplyState {
+    return { isApplying: false };
+}
 
 const describeValue = (value: unknown): string => {
     if (typeof value === "string") {
@@ -107,16 +117,32 @@ const reportSelectedNotify = (options: SelectionOptions, tracker: KnownSelection
     reportKnownSelection(tracker, collection.idAt(widget.getSelected()));
 };
 
-const applySelectedPosition = (widget: SelectableWidget, position: number): void => {
-    applyWrite(() => {
+const applySelectedPosition = (widget: SelectableWidget, position: number, state: ApplyState): void => {
+    state.isApplying = true;
+
+    try {
         widget.selected = position;
-    });
+    } finally {
+        state.isApplying = false;
+    }
+};
+
+const dispatchSelectedNotify = (context: NotifyContext, value: number | null, self: SelectableWidget): void => {
+    const { options, known, state } = context;
+
+    if (state.isApplying) {
+        return;
+    }
+
+    reportSelectedNotify(options, { known, onSelectionChanged: options.props.onSelectionChanged });
+    options.props.onNotifySelected?.(value, self);
 };
 
 const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler => {
     const { widget, collection } = options;
     const { selectedId } = options.props;
     const known = useRef<string | null>(null);
+    const [applyState] = useState<ApplyState>(newApplyState);
 
     const syncKnownSelection = useEffectEvent((position: number): void => {
         const effectiveId = collection.idAt(position);
@@ -137,13 +163,12 @@ const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler 
         }
 
         const position = resolvePosition(widget, collection, selectedId);
-        applySelectedPosition(widget, position);
+        applySelectedPosition(widget, position, applyState);
         syncKnownSelection(position);
-    }, [widget, collection, selectedId]);
+    }, [widget, collection, selectedId, applyState]);
 
     return (value, self) => {
-        reportSelectedNotify(options, { known, onSelectionChanged: options.props.onSelectionChanged });
-        options.props.onNotifySelected?.(value, self);
+        dispatchSelectedNotify({ options, known, state: applyState }, value, self);
     };
 };
 
