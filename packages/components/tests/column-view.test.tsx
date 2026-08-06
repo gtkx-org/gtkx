@@ -57,6 +57,8 @@ const estimatedSizeItems = Array.from({ length: 20 }, (_, index) => ({
     value: { name: `Item ${String(index)}` },
 }));
 
+const estimatedSizeVisibleRows = 10;
+
 const employeeColumns: ColumnViewColumn<Employee>[] = [
     {
         id: "name",
@@ -781,18 +783,21 @@ describe("render - ColumnView (columns with inferred item type)", () => {
 describe("render - ColumnView (estimated item size)", () => {
     it("applies estimatedItemHeight to data-row cells and leaves width unconstrained", async () => {
         const columnView = await renderEmptyCells(48);
-        const sized = collectBoxSizeRequests(columnView).filter(([, height]) => height === 48);
-        expect(sized).toHaveLength(estimatedSizeItems.length);
+        const sized = collectBoxSizeRequests(columnView);
+        expect(sized).toHaveLength(estimatedSizeVisibleRows);
 
-        for (const [width] of sized) {
+        for (const [width, height] of sized) {
             expect(width).toBe(-1);
+            expect(height).toBe(48);
         }
     });
 
     it("leaves data-row cells unsized when estimatedItemHeight is absent", async () => {
         const columnView = await renderEmptyCells();
+        const unsized = collectBoxSizeRequests(columnView);
+        expect(unsized).toHaveLength(estimatedSizeItems.length);
 
-        for (const [width, height] of collectBoxSizeRequests(columnView)) {
+        for (const [width, height] of unsized) {
             expect(width).toBe(-1);
             expect(height).toBe(-1);
         }

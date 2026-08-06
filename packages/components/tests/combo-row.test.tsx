@@ -2,7 +2,7 @@ import type { ComboRowProps } from "@gtkx/components/adw";
 import type * as Adw from "@gtkx/gi/adw";
 import { ComboRow } from "@gtkx/components/adw";
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
-import { render, screen } from "@gtkx/testing";
+import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -55,6 +55,14 @@ const TemplatedComboProbe = ({ comboRef }: ProbeProps): ReactNode => (
     />
 );
 
+const openComboList = async (combo: Adw.ComboRow | null): Promise<void> => {
+    if (!combo) {
+        throw new Error("Expected a ComboRow");
+    }
+
+    await userEvent.click(combo);
+};
+
 describe("render - ComboRow", () => {
     it("applies selectedId to the model selection", async () => {
         const ref = createRef<Adw.ComboRow>();
@@ -65,10 +73,14 @@ describe("render - ComboRow", () => {
     it("renders the selected item in the row display", async () => {
         const ref = createRef<Adw.ComboRow>();
         await render(<ComboProbe selectedId="date" comboRef={ref} />);
-        const matches = await screen.findAllByText("By date");
-        expect(matches.length).toBeGreaterThanOrEqual(2);
-        const unselected = await screen.findAllByText("By size");
-        expect(unselected).toHaveLength(1);
+        expect(await screen.findAllByText("By date")).toHaveLength(1);
+        expect(screen.queryAllByText("By size")).toHaveLength(0);
+        await openComboList(ref.current);
+
+        await waitFor(() => {
+            expect(screen.getAllByText("By date").length).toBeGreaterThanOrEqual(2);
+            expect(screen.getAllByText("By size")).toHaveLength(1);
+        });
     });
 
     it("updates the row display when selectedId changes", async () => {
@@ -76,15 +88,26 @@ describe("render - ComboRow", () => {
         const { rerender } = await render(<ComboProbe selectedId="title" comboRef={ref} />);
         await rerender(<ComboProbe selectedId="size" comboRef={ref} />);
         expect(ref.current).toHaveObjectProperty("selected", 2);
-        const matches = await screen.findAllByText("By size");
-        expect(matches.length).toBeGreaterThanOrEqual(2);
+        expect(await screen.findAllByText("By size")).toHaveLength(1);
+        expect(screen.queryAllByText("By title")).toHaveLength(0);
+        await openComboList(ref.current);
+
+        await waitFor(() => {
+            expect(screen.getAllByText("By size").length).toBeGreaterThanOrEqual(2);
+            expect(screen.getAllByText("By title")).toHaveLength(1);
+        });
     });
 
     it("renders a section header through the header factory, not as a popup item", async () => {
         const ref = createRef<Adw.ComboRow>();
         await render(<SectionedComboProbe comboRef={ref} />);
         await screen.findAllByText("By title");
-        expect(screen.queryAllByText("Ascending")).toHaveLength(1);
+        expect(screen.queryAllByText("Ascending")).toHaveLength(0);
+        await openComboList(ref.current);
+
+        await waitFor(() => {
+            expect(screen.getAllByText("Ascending")).toHaveLength(1);
+        });
     });
 
     it("renders custom item templates", async () => {

@@ -73,8 +73,9 @@ describe("sidebarDemo structure", () => {
     });
 
     it("uses a plain GtkLabel for non-welcome pages", async () => {
-        await renderDemo(sidebarDemo);
-        const stack = await findStack();
+        const { sidebar, stack } = await renderSidebarAndStack();
+        expect(within(stack).queryByRole(Gtk.AccessibleRole.LABEL, { name: "Scrolling" })).toBeNull();
+        await clickPageRow(sidebar, "Scrolling");
         const label = await within(stack).findByRole(Gtk.AccessibleRole.LABEL, { name: "Scrolling" });
         expect(label).toBeInstanceOf(Gtk.Label);
     });

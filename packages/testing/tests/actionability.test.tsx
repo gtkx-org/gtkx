@@ -261,6 +261,7 @@ describe("userEvent actionability - timeout error", () => {
 
     it("reports an unmapped widget on a non-visible stack page", async () => {
         const handleClick = vi.fn();
+        const concealedRef = createRef<Gtk.Button>();
 
         await render(
             <GtkStack>
@@ -268,7 +269,7 @@ describe("userEvent actionability - timeout error", () => {
                     <GtkButton label="Shown" />
                 </GtkStackPage>
                 <GtkStackPage name="hidden-page">
-                    <GtkButton label="Concealed" onClicked={handleClick} />
+                    <GtkButton ref={concealedRef} label="Concealed" onClicked={handleClick} />
                 </GtkStackPage>
             </GtkStack>,
         );
@@ -276,7 +277,8 @@ describe("userEvent actionability - timeout error", () => {
         const shown = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Shown" });
         await userEvent.click(shown);
         configure({ actionabilityTimeout: 60 });
-        const concealed = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Concealed" });
+        expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Concealed", hidden: true })).toBeNull();
+        const concealed = concealedRef.current as Gtk.Button;
 
         await expect(userEvent.click(concealed)).rejects.toThrow(
             /<Button role="button"> did not become actionable within 60ms because it is not mapped/,

@@ -111,120 +111,159 @@ const builtinQueries = {
 } as BuiltinQueries;
 
 /**
- * Returns the single widget with a matching accessible role and options, or null when none match.
- * Throws when more than one matches.
+ * Returns the single mapped widget with a matching accessible role and options, or null when none
+ * match. Widgets that are not mapped are never matched. Throws when more than one matches.
  */
 const queryByRole: BuiltinQueries["queryByRole"] = builtinQueries.queryByRole;
-/** Returns every widget with a matching accessible role and options. Throws when none match. */
+/**
+ * Returns every mapped widget with a matching accessible role and options. Widgets that are not
+ * mapped are never matched. Throws when none match.
+ */
 const getAllByRole: BuiltinQueries["getAllByRole"] = builtinQueries.getAllByRole;
 /**
- * Returns the single widget with a matching accessible role and options.
- * Throws when none or more than one matches.
+ * Returns the single mapped widget with a matching accessible role and options. Widgets that are not
+ * mapped are never matched. Throws when none or more than one matches.
  */
 const getByRole: BuiltinQueries["getByRole"] = builtinQueries.getByRole;
 /**
- * Waits for and returns every widget with a matching accessible role and options, retrying until at
- * least one appears or the timeout elapses.
+ * Waits for and returns every mapped widget with a matching accessible role and options, retrying
+ * until at least one appears or the timeout elapses. Widgets that are not mapped are never matched.
  */
 const findAllByRole: BuiltinQueries["findAllByRole"] = builtinQueries.findAllByRole;
 /**
- * Waits for and returns the single widget with a matching accessible role and options, retrying
- * until it appears or the timeout elapses. Rejects when none or more than one matches.
+ * Waits for and returns the single mapped widget with a matching accessible role and options,
+ * retrying until it appears or the timeout elapses. Widgets that are not mapped are never matched.
+ * Rejects when none or more than one matches.
  */
 const findByRole: BuiltinQueries["findByRole"] = builtinQueries.findByRole;
 /**
- * Returns the single widget with matching associated label text, or null when none match.
- * Throws when more than one matches.
+ * Returns the single mapped widget with matching associated label text, or null when none match.
+ * Widgets that are not mapped are never matched. Throws when more than one matches.
  */
 const queryByLabelText: BuiltinQueries["queryByLabelText"] = builtinQueries.queryByLabelText;
-/** Returns every widget with matching associated label text. Throws when none match. */
+/**
+ * Returns every mapped widget with matching associated label text. Widgets that are not mapped are
+ * never matched. Throws when none match.
+ */
 const getAllByLabelText: BuiltinQueries["getAllByLabelText"] = builtinQueries.getAllByLabelText;
-/** Returns the single widget with matching associated label text. Throws when none or more than one matches. */
+/**
+ * Returns the single mapped widget with matching associated label text. Widgets that are not mapped
+ * are never matched. Throws when none or more than one matches.
+ */
 const getByLabelText: BuiltinQueries["getByLabelText"] = builtinQueries.getByLabelText;
 /**
- * Waits for and returns every widget with matching associated label text, retrying until at least
- * one appears or the timeout elapses.
+ * Waits for and returns every mapped widget with matching associated label text, retrying until at
+ * least one appears or the timeout elapses. Widgets that are not mapped are never matched.
  */
 const findAllByLabelText: BuiltinQueries["findAllByLabelText"] = builtinQueries.findAllByLabelText;
 /**
- * Waits for and returns the single widget with matching associated label text, retrying until it
- * appears or the timeout elapses. Rejects when none or more than one matches.
+ * Waits for and returns the single mapped widget with matching associated label text, retrying until
+ * it appears or the timeout elapses. Widgets that are not mapped are never matched. Rejects when
+ * none or more than one matches.
  */
 const findByLabelText: BuiltinQueries["findByLabelText"] = builtinQueries.findByLabelText;
 /**
- * Returns the single widget with matching rendered text content, or null when none match.
- * Throws when more than one matches.
+ * Returns the single mapped widget with matching rendered text content, or null when none match.
+ * Widgets that are not mapped are never matched. Throws when more than one matches.
  */
 const queryByText: BuiltinQueries["queryByText"] = builtinQueries.queryByText;
-/** Returns every widget with matching rendered text content. Throws when none match. */
+/**
+ * Returns every mapped widget with matching rendered text content. Widgets that are not mapped are
+ * never matched. Throws when none match.
+ */
 const getAllByText: BuiltinQueries["getAllByText"] = builtinQueries.getAllByText;
-/** Returns the single widget with matching rendered text content. Throws when none or more than one matches. */
+/**
+ * Returns the single mapped widget with matching rendered text content. Widgets that are not mapped
+ * are never matched. Throws when none or more than one matches.
+ */
 const getByText: BuiltinQueries["getByText"] = builtinQueries.getByText;
 /**
- * Waits for and returns every widget with matching rendered text content, retrying until at least
- * one appears or the timeout elapses.
+ * Waits for and returns every mapped widget with matching rendered text content, retrying until at
+ * least one appears or the timeout elapses. Widgets that are not mapped are never matched.
  */
 const findAllByText: BuiltinQueries["findAllByText"] = builtinQueries.findAllByText;
 /**
- * Waits for and returns the single widget with matching rendered text content, retrying until it
- * appears or the timeout elapses. Rejects when none or more than one matches.
+ * Waits for and returns the single mapped widget with matching rendered text content, retrying until
+ * it appears or the timeout elapses. Widgets that are not mapped are never matched. Rejects when
+ * none or more than one matches.
  */
 const findByText: BuiltinQueries["findByText"] = builtinQueries.findByText;
 /**
- * Returns the single widget with a matching widget name, or null when none match.
- * Throws when more than one matches.
+ * Returns the single mapped widget with a matching widget name, or null when none match. Widgets
+ * that are not mapped are never matched. Throws when more than one matches.
  */
 const queryByName: BuiltinQueries["queryByName"] = builtinQueries.queryByName;
-/** Returns every widget with a matching widget name. Throws when none match. */
+/**
+ * Returns every mapped widget with a matching widget name. Widgets that are not mapped are never
+ * matched. Throws when none match.
+ */
 const getAllByName: BuiltinQueries["getAllByName"] = builtinQueries.getAllByName;
-/** Returns the single widget with a matching widget name. Throws when none or more than one matches. */
+/**
+ * Returns the single mapped widget with a matching widget name. Widgets that are not mapped are
+ * never matched. Throws when none or more than one matches.
+ */
 const getByName: BuiltinQueries["getByName"] = builtinQueries.getByName;
 /**
- * Waits for and returns every widget with a matching widget name, retrying until at least one
- * appears or the timeout elapses.
+ * Waits for and returns every mapped widget with a matching widget name, retrying until at least one
+ * appears or the timeout elapses. Widgets that are not mapped are never matched.
  */
 const findAllByName: BuiltinQueries["findAllByName"] = builtinQueries.findAllByName;
 /**
- * Waits for and returns the single widget with a matching widget name, retrying until it appears or
- * the timeout elapses. Rejects when none or more than one matches.
+ * Waits for and returns the single mapped widget with a matching widget name, retrying until it
+ * appears or the timeout elapses. Widgets that are not mapped are never matched. Rejects when none
+ * or more than one matches.
  */
 const findByName: BuiltinQueries["findByName"] = builtinQueries.findByName;
 /**
- * Returns the single widget with matching placeholder text, or null when none match.
- * Throws when more than one matches.
+ * Returns the single mapped widget with matching placeholder text, or null when none match. Widgets
+ * that are not mapped are never matched. Throws when more than one matches.
  */
 const queryByPlaceholderText: BuiltinQueries["queryByPlaceholderText"] = builtinQueries.queryByPlaceholderText;
-/** Returns every widget with matching placeholder text. Throws when none match. */
+/**
+ * Returns every mapped widget with matching placeholder text. Widgets that are not mapped are never
+ * matched. Throws when none match.
+ */
 const getAllByPlaceholderText: BuiltinQueries["getAllByPlaceholderText"] = builtinQueries.getAllByPlaceholderText;
-/** Returns the single widget with matching placeholder text. Throws when none or more than one matches. */
+/**
+ * Returns the single mapped widget with matching placeholder text. Widgets that are not mapped are
+ * never matched. Throws when none or more than one matches.
+ */
 const getByPlaceholderText: BuiltinQueries["getByPlaceholderText"] = builtinQueries.getByPlaceholderText;
 /**
- * Waits for and returns every widget with matching placeholder text, retrying until at least one
- * appears or the timeout elapses.
+ * Waits for and returns every mapped widget with matching placeholder text, retrying until at least
+ * one appears or the timeout elapses. Widgets that are not mapped are never matched.
  */
 const findAllByPlaceholderText: BuiltinQueries["findAllByPlaceholderText"] = builtinQueries.findAllByPlaceholderText;
 /**
- * Waits for and returns the single widget with matching placeholder text, retrying until it appears
- * or the timeout elapses. Rejects when none or more than one matches.
+ * Waits for and returns the single mapped widget with matching placeholder text, retrying until it
+ * appears or the timeout elapses. Widgets that are not mapped are never matched. Rejects when none
+ * or more than one matches.
  */
 const findByPlaceholderText: BuiltinQueries["findByPlaceholderText"] = builtinQueries.findByPlaceholderText;
 /**
- * Returns the single widget with a matching display value, or null when none match.
- * Throws when more than one matches.
+ * Returns the single mapped widget with a matching display value, or null when none match. Widgets
+ * that are not mapped are never matched. Throws when more than one matches.
  */
 const queryByDisplayValue: BuiltinQueries["queryByDisplayValue"] = builtinQueries.queryByDisplayValue;
-/** Returns every widget with a matching display value. Throws when none match. */
+/**
+ * Returns every mapped widget with a matching display value. Widgets that are not mapped are never
+ * matched. Throws when none match.
+ */
 const getAllByDisplayValue: BuiltinQueries["getAllByDisplayValue"] = builtinQueries.getAllByDisplayValue;
-/** Returns the single widget with a matching display value. Throws when none or more than one matches. */
+/**
+ * Returns the single mapped widget with a matching display value. Widgets that are not mapped are
+ * never matched. Throws when none or more than one matches.
+ */
 const getByDisplayValue: BuiltinQueries["getByDisplayValue"] = builtinQueries.getByDisplayValue;
 /**
- * Waits for and returns every widget with a matching display value, retrying until at least one
- * appears or the timeout elapses.
+ * Waits for and returns every mapped widget with a matching display value, retrying until at least
+ * one appears or the timeout elapses. Widgets that are not mapped are never matched.
  */
 const findAllByDisplayValue: BuiltinQueries["findAllByDisplayValue"] = builtinQueries.findAllByDisplayValue;
 /**
- * Waits for and returns the single widget with a matching display value, retrying until it appears
- * or the timeout elapses. Rejects when none or more than one matches.
+ * Waits for and returns the single mapped widget with a matching display value, retrying until it
+ * appears or the timeout elapses. Widgets that are not mapped are never matched. Rejects when none
+ * or more than one matches.
  */
 const findByDisplayValue: BuiltinQueries["findByDisplayValue"] = builtinQueries.findByDisplayValue;
 
@@ -379,7 +418,8 @@ function nameQueryFamily<Args extends unknown[]>(
 
 /**
  * Finds every widget under the container whose accessible role matches `role` and that satisfies the given options.
- * Widgets excluded from the accessibility tree are skipped unless `options.hidden` is set.
+ * Widgets that are not mapped are never matched, and widgets excluded from the accessibility tree are
+ * skipped unless `options.hidden` is set.
  * @param container Widget subtree to search.
  * @param role Accessible role to match.
  * @param options Additional accessible name, state, and value constraints.
@@ -448,7 +488,7 @@ const collectLabelMatches = (
 
 /**
  * Finds every widget associated with a label whose text matches: a Gtk.Label mnemonic target, the
- * widget's own accessible label, or its labelled-by relation.
+ * widget's own accessible label, or its labelled-by relation. Widgets that are not mapped are never matched.
  * @param container Widget subtree to search.
  * @param text Matcher for the label text.
  * @param options Text matching options.
@@ -465,7 +505,7 @@ function queryAllByLabelText(container: Container, text: Matcher, options?: Matc
 }
 
 /**
- * Finds every widget whose rendered text content matches.
+ * Finds every widget whose rendered text content matches. Widgets that are not mapped are never matched.
  * @param container Widget subtree to search.
  * @param text Matcher for the widget text.
  * @param options Text matching options.
@@ -480,7 +520,7 @@ function queryAllByText(container: Container, text: Matcher, options?: MatcherOp
 }
 
 /**
- * Finds every widget whose widget name matches.
+ * Finds every widget whose widget name matches. Widgets that are not mapped are never matched.
  * @param container Widget subtree to search.
  * @param name Matcher for the widget name.
  * @param options Text matching options.
@@ -494,7 +534,7 @@ function queryAllByName(container: Container, name: Matcher, options?: MatcherOp
 }
 
 /**
- * Finds every widget whose placeholder text matches.
+ * Finds every widget whose placeholder text matches. Widgets that are not mapped are never matched.
  * @param container Widget subtree to search.
  * @param text Matcher for the placeholder text.
  * @param options Text matching options.
@@ -514,7 +554,7 @@ function queryAllByPlaceholderText(
 }
 
 /**
- * Finds every widget whose current display value matches.
+ * Finds every widget whose current display value matches. Widgets that are not mapped are never matched.
  * @param container Widget subtree to search.
  * @param value Matcher for the display value.
  * @param options Text matching options.

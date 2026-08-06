@@ -68,15 +68,6 @@ describe("revealerDemo structure", () => {
         expect(revealers.map((revealer) => revealer.getTransitionType())).toEqual(EXPECTED_TRANSITIONS);
     });
 
-    it("places each revealer's child as a GtkImage with the cool-face icon", async () => {
-        await renderDemo(revealerDemo);
-        const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
-        expect(images).toHaveLength(REVEALER_COUNT);
-        expect(images.every((image) => image instanceof Gtk.Image)).toBe(true);
-        const iconNames = images.map((image) => image.getIconName());
-        expect(iconNames.every((name) => name === "face-cool-symbolic")).toBe(true);
-    });
-
     it("places each revealer at its configured grid cell forming the cross layout", async () => {
         await renderDemo(revealerDemo);
         const grid = await screen.findByName("revealer-grid", { as: Gtk.Grid });
@@ -93,6 +84,21 @@ describe("revealerDemo reveal sequence", () => {
 
     afterEach(() => {
         vi.useRealTimers();
+    });
+
+    it("shows each revealer's child as a GtkImage with the cool-face icon once it is revealed", async () => {
+        await renderDemo(revealerDemo);
+        expect(screen.queryAllByRole(Gtk.AccessibleRole.IMG)).toHaveLength(0);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(690 * 9);
+        });
+
+        const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
+        expect(images).toHaveLength(REVEALER_COUNT);
+        expect(images.every((image) => image instanceof Gtk.Image)).toBe(true);
+        const iconNames = images.map((image) => image.getIconName());
+        expect(iconNames.every((name) => name === "face-cool-symbolic")).toBe(true);
     });
 
     it("reveals every revealer after nine timer ticks", async () => {

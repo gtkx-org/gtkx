@@ -214,7 +214,7 @@ describe("clipboardDemo rendering", () => {
     });
 
     it("includes a GtkColorDialogButton for the Color source page", async () => {
-        await renderDemo(clipboardDemo);
+        await renderSourceType("Color");
         const colorButton = await screen.findByName("color-button");
         expect(colorButton).toBeInstanceOf(Gtk.ColorDialogButton);
     });

@@ -762,13 +762,13 @@ describe("getByRole hidden", () => {
         expect(hiddenIncludedMatches).toHaveLength(2);
     });
 
-    it("excludes not-visible widgets by default", async () => {
+    it("excludes not-visible widgets even when hidden is set, because they are not mapped", async () => {
         const { defaultMatches, hiddenIncludedMatches } = await queryButtonsBesideHidden(
             <GtkButton label="Gone" visible={false} />,
         );
 
         expect(defaultMatches).toHaveLength(1);
-        expect(hiddenIncludedMatches).toHaveLength(2);
+        expect(hiddenIncludedMatches).toHaveLength(1);
     });
 });
 

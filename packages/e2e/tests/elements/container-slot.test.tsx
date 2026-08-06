@@ -316,14 +316,19 @@ describe("render - ContainerProp (8)", () => {
     describe("AdwExpanderRow (rows/actions) (2)", () => {
         it("adds nested rows to ExpanderRow", async () => {
             const rowRef = createRef<Adw.ActionRow>();
-            await render(<AdwExpanderRow title="Settings" rows={<AdwActionRow ref={rowRef} title="Option 1" />} />);
+
+            await render(
+                <AdwExpanderRow expanded title="Settings" rows={<AdwActionRow ref={rowRef} title="Option 1" />} />,
+            );
+
             expect(rowRef.current).not.toBeNull();
-            expect(screen.getByText("Option 1")).toBeDefined();
+            expect(await screen.findByText("Option 1")).toBeDefined();
         });
 
         it("adds multiple rows", async () => {
             await render(
                 <AdwExpanderRow
+                    expanded
                     title="Settings"
                     rows={(
                         <>
@@ -334,8 +339,8 @@ describe("render - ContainerProp (8)", () => {
                 />,
             );
 
-            expect(screen.getByText("Option 1")).toBeDefined();
-            expect(screen.getByText("Option 2")).toBeDefined();
+            expect(await screen.findByText("Option 1")).toBeDefined();
+            expect(await screen.findByText("Option 2")).toBeDefined();
         });
     });
 });

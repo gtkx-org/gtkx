@@ -5,6 +5,14 @@ import { describe, expect, it } from "vitest";
 import { listviewSelectionsDemo } from "../../../src/demos/lists/listview-selections.js";
 import { renderDemo } from "../../test-utils.js";
 
+async function expectListedTwiceAfterOpening(dropdown: Gtk.DropDown, text: string): Promise<void> {
+    await userEvent.click(dropdown);
+
+    await waitFor(() => {
+        expect(within(dropdown).getAllByText(text)).toHaveLength(2);
+    });
+}
+
 async function findVerticalColumnSeparator() {
     const sep = await screen.findByName("column-separator", { as: Gtk.Separator });
     expect(sep).toBeInstanceOf(Gtk.Separator);
@@ -139,7 +147,9 @@ describe("listviewSelectionsDemo dropdown selections", () => {
             expect(times).toHaveObjectProperty("selected", 2);
         });
 
-        expect(within(times).getAllByText("5 minutes")).toHaveLength(2);
+        expect(within(times).getAllByText("5 minutes")).toHaveLength(1);
+        expect(within(times).queryAllByText("1 minute")).toHaveLength(0);
+        await expectListedTwiceAfterOpening(times, "5 minutes");
         expect(within(times).getAllByText("1 minute")).toHaveLength(1);
     });
 
@@ -153,7 +163,8 @@ describe("listviewSelectionsDemo dropdown selections", () => {
             expect(timesSectioned).toHaveObjectProperty("selected", 5);
         });
 
-        expect(within(timesSectioned).getAllByText("20 minutes")).toHaveLength(2);
+        expect(within(timesSectioned).getAllByText("20 minutes")).toHaveLength(1);
+        await expectListedTwiceAfterOpening(timesSectioned, "20 minutes");
     });
 
     it("updates the Devices dropdown selection and its displayed device", async () => {
@@ -166,7 +177,8 @@ describe("listviewSelectionsDemo dropdown selections", () => {
             expect(devices).toHaveObjectProperty("selected", 1);
         });
 
-        expect(within(devices).getAllByText("Headphones")).toHaveLength(2);
+        expect(within(devices).getAllByText("Headphones")).toHaveLength(1);
+        await expectListedTwiceAfterOpening(devices, "Headphones");
     });
 
     it("syncs the font spin value when a font is chosen from the fonts dropdown", async () => {

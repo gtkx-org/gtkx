@@ -14,6 +14,10 @@ const buildDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: s
     <DropDown ref={dropDownRef} items={valueItems(items)} />
 );
 
+const openDropDownList = async (): Promise<void> => {
+    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX));
+};
+
 const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, text: string): Promise<void> => {
     if (dropDown) {
         await userEvent.selectOptions(dropDown, index);
@@ -154,6 +158,7 @@ describe("render - DropDown (3)", () => {
             />,
         );
 
+        await openDropDownList();
         await expectTextPresent("Letters");
         await expectTextPresent("Numbers");
         await expectTextPresent("Alpha");
@@ -162,6 +167,7 @@ describe("render - DropDown (3)", () => {
 
     it("renders no section headers when renderHeader is omitted", async () => {
         await render(<DropDown sections={sections} />);
+        await openDropDownList();
         await screen.findAllByText("Alpha");
         await screen.findAllByText("One");
         expect(screen.queryAllByText("Letters")).toHaveLength(0);

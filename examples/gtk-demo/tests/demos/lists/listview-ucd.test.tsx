@@ -4,6 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 import { listviewUcdDemo } from "../../../src/demos/lists/listview-ucd.js";
 import { renderDemo } from "../../test-utils.js";
 
+const SCROLL_STEP = 200;
+const MAX_SCROLL_STEPS = 40;
+
+const scrollToGlyph = async (columnView: Gtk.ColumnView, glyph: string): Promise<void> => {
+    for (let step = 0; step < MAX_SCROLL_STEPS && screen.queryAllByText(glyph).length === 0; step++) {
+        await userEvent.scroll(columnView, { y: SCROLL_STEP });
+    }
+};
+
 const codepointCells = (): Gtk.Inscription[] =>
     screen.queryAllByText(/^0x[0-9a-f]{4,6}$/, { as: Gtk.Inscription });
 
@@ -67,7 +76,8 @@ describe("listviewUcdDemo column view", () => {
 
     it("renders the glyph for a printable character in the Char column", async () => {
         await renderDemo(listviewUcdDemo);
-        await screen.findByName("column-view");
+        const columnView = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        await scrollToGlyph(columnView, "!");
         expect(await screen.findByText("!")).toHaveTextContent("!");
     });
 });

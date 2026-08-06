@@ -64,7 +64,8 @@ describe("listviewSettings2Demo layout", () => {
     it("places the search entry inside the search bar", async () => {
         await renderDemo(listviewSettings2Demo);
         const bar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
-        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+        expect(within(bar).queryByName("search-entry")).toBeNull();
+        const entry = await openSearchEntry();
         await within(bar).findByName("search-entry");
         expect(entry).toBeInstanceOf(Gtk.SearchEntry);
     });

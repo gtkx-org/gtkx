@@ -44,6 +44,7 @@ describe("markupDemo initial state", () => {
 
     it("populates the source text view buffer with the raw markup content", async () => {
         await renderDemo(markupDemo);
+        await clickSourceToggle();
         const source = await screen.findByName("source-view", { as: Gtk.TextView });
         expect(source).toHaveDisplayValue(/Text sizes:/);
         expect(source).toHaveDisplayValue(/<span size="xx-small">/);
@@ -71,10 +72,10 @@ describe("markupDemo toggle interaction", () => {
         await renderDemo(markupDemo);
         const sourceToggle = await clickSourceToggle();
         const source = await screen.findByName("source-view", { as: Gtk.TextView });
-        const formatted = await screen.findByName("formatted-view", { as: Gtk.TextView });
         await userEvent.clear(source);
         await userEvent.type(source, "Hello <b>World</b>");
         await userEvent.click(sourceToggle);
+        const formatted = await screen.findByName("formatted-view", { as: Gtk.TextView });
         const stack = await screen.findByName("markup-stack", { as: Gtk.Stack });
         expect(stack).toHaveObjectProperty("visibleChildName", "formatted");
         expect(formatted).toHaveDisplayValue(/Hello/);

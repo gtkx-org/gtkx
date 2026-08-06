@@ -93,9 +93,8 @@ describe("listboxDemo resent-by rows", () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
         const secondRow = await findRow(1);
-        const firstBox = (within(firstRow).getAllByText("Resent by")[0] as Gtk.Widget).getParent() as Gtk.Widget;
+        expect(within(firstRow).queryAllByText("Resent by")).toHaveLength(0);
         const secondBox = (within(secondRow).getAllByText("Resent by")[0] as Gtk.Widget).getParent() as Gtk.Widget;
-        expect(firstBox).not.toBeVisible();
         expect(secondBox).toBeVisible();
     });
 });
@@ -149,12 +148,12 @@ describe("listboxDemo row state flags", () => {
     it("reveals the per-row action button box when the row gains prelight", async () => {
         await renderDemo(listboxDemo);
         const firstRow = await findFirstRow();
-        const replyLabel = within(firstRow).getAllByText("Reply")[0] as Gtk.Widget;
-        const actionBox = replyLabel.getParent()?.getParent() as Gtk.Widget;
-        expect(actionBox).not.toBeVisible();
+        expect(within(firstRow).queryAllByText("Reply")).toHaveLength(0);
         await revealActionButtons(firstRow);
 
         await waitFor(() => {
+            const replyLabel = within(firstRow).getAllByText("Reply")[0] as Gtk.Widget;
+            const actionBox = replyLabel.getParent()?.getParent() as Gtk.Widget;
             expect(actionBox).toBeVisible();
         });
     });

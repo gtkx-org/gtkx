@@ -17,7 +17,7 @@ import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
 import { captureAndSaveScreenshot } from "./screenshot.js";
-import { type Container, TOPLEVELS, traverse } from "./traversal.js";
+import { type Container, roots, TOPLEVELS } from "./traversal.js";
 import { resetClipboard } from "./user-event/index.js";
 import { within } from "./within.js";
 
@@ -109,7 +109,7 @@ const firstToplevelWidget = (baseElement: Container): Gtk.Widget => {
         return baseElement;
     }
 
-    const [first] = traverse(baseElement);
+    const [first] = roots(baseElement);
 
     if (first) {
         return first;

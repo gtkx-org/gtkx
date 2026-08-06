@@ -36,6 +36,8 @@ describe("searchEntryDemo rendering", () => {
         expect(screen.getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: false })).toBe(toggle);
         const searchBar = await screen.findByRole(Gtk.AccessibleRole.SEARCH, { as: Gtk.SearchBar });
         expect(searchBar).toHaveObjectProperty("searchModeEnabled", false);
+        expect(screen.queryByRole(Gtk.AccessibleRole.SEARCH_BOX)).toBeNull();
+        await enableSearchMode();
         const searchEntry = await screen.findByRole(Gtk.AccessibleRole.SEARCH_BOX, { as: Gtk.SearchEntry });
         expect(searchEntry).toHaveObjectProperty("text", "");
         expect(await screen.findByText("Searching for:")).toHaveTextContent("Searching for:");

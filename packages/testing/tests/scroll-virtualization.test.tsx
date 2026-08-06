@@ -12,7 +12,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import { render, userEvent, waitFor } from "../src/index.js";
+import { getWidgetNodeText, render, screen, userEvent, waitFor } from "../src/index.js";
 
 type ScrolledFixture = {
     window: Gtk.ScrolledWindow;
@@ -23,6 +23,7 @@ type ScrolledFixture = {
 const ROW_COUNT = 400;
 const GRID_ROW_COUNT = 4000;
 const ROW_PREFIX = "row ";
+const ROW_PATTERN = /^row \d+$/;
 
 const makeStrings = (count: number): string[] =>
     Array.from({ length: count }, (_, index) => `${ROW_PREFIX}${String(index)}`);
@@ -88,6 +89,12 @@ const renderScrolled = async (view: ReactNode, count: number): Promise<ScrolledF
     return { window, adjustment, count };
 };
 
+const getFindableRows = (): number[] =>
+    screen
+        .queryAllByText(ROW_PATTERN)
+        .map((widget) => Number(getWidgetNodeText(widget)?.slice(ROW_PREFIX.length)))
+        .toSorted((left, right) => left - right);
+
 const renderListView = (): Promise<ScrolledFixture> =>
     renderScrolled(<GtkListView model={rowModel(ROW_COUNT)} factory={rowFactory()} />, ROW_COUNT);
 
@@ -145,5 +152,27 @@ describe("userEvent.scroll over virtualized views", () => {
         await userEvent.scroll(fixture.window, { y: 1_000_000 });
         expect(fixture.adjustment.getValue()).toBe(limit);
         expect(getMappedRows(fixture.window).at(-1)).toBe(ROW_COUNT - 1);
+    });
+});
+
+describe("queries over a virtualized view", () => {
+    it("matches exactly the rows a Gtk.ListView shows, never a recycled list item", async () => {
+        const fixture = await renderListView();
+        expect(screen.queryAllByText("row 0")).toHaveLength(1);
+        await userEvent.scroll(fixture.window, { y: 6000 });
+        const mapped = getMappedRows(fixture.window);
+        expect(mapped).not.toContain(0);
+        expect(getFindableRows()).toEqual(mapped);
+        expect(screen.queryAllByText("row 0")).toHaveLength(0);
+    });
+
+    it("brings a row back into reach once it is scrolled into view again", async () => {
+        const fixture = await renderListView();
+        await userEvent.scroll(fixture.window, { y: 6000 });
+        const away = getFindableRows();
+        expect(away).not.toContain(0);
+        await userEvent.scroll(fixture.window, { y: -6000 });
+        expect(getFindableRows()).toContain(0);
+        expect(await screen.findByText("row 0")).toBeDefined();
     });
 });

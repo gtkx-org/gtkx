@@ -139,7 +139,8 @@ describe("listviewSettingsDemo layout", () => {
         await renderDemo(listviewSettingsDemo);
         const searchBar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
         expect(searchBar).toHaveObjectProperty("searchModeEnabled", false);
-        const searchEntry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+        expect(screen.queryByName("search-entry")).toBeNull();
+        const searchEntry = await openSearchEntry();
         expect(searchEntry).toHaveObjectProperty("text", "");
     });
 });

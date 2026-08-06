@@ -67,6 +67,8 @@ describe("stackDemo pages", () => {
 
     it("renders the Page 2 check button inside the stack", async () => {
         const stack = await renderStack();
+        expect(within(stack).queryByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Page 2" })).toBeNull();
+        await clickTab("Page 2");
         const checkButton = await within(stack).findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Page 2" });
         expect(checkButton).toBeInstanceOf(Gtk.CheckButton);
     });

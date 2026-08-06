@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { sortStringsBy } from "@gtkx/utils";
 import { formatRole } from "./role-helpers.js";
-import { type Container, roots } from "./traversal.js";
+import { type Container, descendants, isOnScreen, roots } from "./traversal.js";
 import { getWidgetNodeText } from "./widget-accessible-properties.js";
 
 /** Produces the value of the `id` attribute printed first on a widget's opening tag. */
@@ -67,6 +67,10 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
         attrs.push(["accessible-hidden", "true"]);
     }
 
+    if (!isOnScreen(widget)) {
+        attrs.push(["mapped", "false"]);
+    }
+
     const idAttrs = attrs.filter(([key]) => key === "id");
 
     const otherAttrs = sortStringsBy(
@@ -130,13 +134,43 @@ const countChildren = (widget: Gtk.Widget): number => {
     return count;
 };
 
-const formatHiddenChildrenLine = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
-    const { getId, colors } = ctx;
+const depthLimitReason = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): string => {
+    const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
+
+    return `hidden${hint}`;
+};
+
+const hasMappedDescendant = (widget: Gtk.Widget): boolean => {
+    for (const descendant of descendants(widget)) {
+        if (isOnScreen(descendant)) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const collapseReasonFor = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string | null => {
+    if (!widget.getFirstChild()) {
+        return null;
+    }
+
+    if (!isOnScreen(widget) && !hasMappedDescendant(widget)) {
+        return "not mapped";
+    }
+
+    if (ctx.maxDepth !== undefined && depth >= ctx.maxDepth) {
+        return depthLimitReason(widget, ctx.getId);
+    }
+
+    return null;
+};
+
+const formatCollapsedChildrenLine = (widget: Gtk.Widget, depth: number, colors: Colors, reason: string): string => {
     const indent = INDENT.repeat(depth);
     const count = countChildren(widget);
-    const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
     const plural = count === 1 ? "" : "s";
-    const summary = `… ${String(count)} child widget${plural} hidden${hint}`;
+    const summary = `… ${String(count)} child widget${plural} ${reason}`;
 
     return `${indent}${INDENT}${colors.tag(summary)}\n`;
 };
@@ -154,7 +188,7 @@ const formatChildren = (widget: Gtk.Widget, depth: number, ctx: FormatContext): 
 };
 
 const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
-    const { getId, colors, maxDepth } = ctx;
+    const { getId, colors } = ctx;
     const indent = INDENT.repeat(depth);
     const tag = widget.constructor.name;
     const attrs = formatAttrs(buildAttrs(widget, getId), colors);
@@ -173,8 +207,10 @@ const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): st
         output += `${indent}${INDENT}${text}\n`;
     }
 
-    if (firstChild && maxDepth !== undefined && depth >= maxDepth) {
-        output += formatHiddenChildrenLine(widget, depth, ctx);
+    const collapseReason = collapseReasonFor(widget, depth, ctx);
+
+    if (collapseReason) {
+        output += formatCollapsedChildrenLine(widget, depth, colors, collapseReason);
         output += `${indent}${closeTag}\n`;
 
         return output;

@@ -98,7 +98,7 @@ type ByRoleOptions<T extends Gtk.Widget = Gtk.Widget> = MatcherOptions<T> & {
     description?: Matcher | undefined;
     /** Constraints on the widget's range value, each checked only when given. */
     value?: ByRoleValue | undefined;
-    /** When true, include widgets excluded from the accessibility tree. */
+    /** When true, include widgets excluded from the accessibility tree. Widgets that are not mapped stay excluded. */
     // eslint-disable-next-line gtkx/boolean-name
     hidden?: boolean | undefined;
 };

@@ -47,10 +47,11 @@ const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
 };
 
 /**
- * Groups every widget in a container's tree by its accessible role name.
+ * Groups every mapped widget in a container's tree by its accessible role name. Widgets that are not
+ * mapped are left out.
  *
  * @param container The scope to traverse.
- * @returns A map from role name to the widgets that have that role.
+ * @returns A map from role name to the mapped widgets that have that role.
  */
 const getRoles = (container: Container): Map<string, Gtk.Widget[]> => {
     const roles: Map<string, Gtk.Widget[]> = new Map();
@@ -80,6 +81,7 @@ const formatWidgetPreview = (widget: Gtk.Widget, name: string | null): string =>
 /**
  * Formats the accessible roles in a container's tree as a readable string,
  * listing each role together with its widgets and their accessible names.
+ * Widgets that are not mapped are left out.
  *
  * @param container The scope to inspect.
  */
