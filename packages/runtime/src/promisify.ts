@@ -57,7 +57,9 @@ const promisify = <R extends object, T>(
         const creationStack =
             process.env.NODE_ENV === "production" ? undefined : new Error("GTKX async operation started here");
 
-        asyncFn(...leading, cancellable == null ? null : getHandle(cancellable), (_source: object | null, asyncResult: object) => {
+        const cancellableHandle = cancellable == null ? null : getHandle(cancellable);
+
+        asyncFn(...leading, cancellableHandle, (_source: object | null, asyncResult: object) => {
             settle({ finish, creationStack, resolve, reject }, asyncResult);
         });
     });
