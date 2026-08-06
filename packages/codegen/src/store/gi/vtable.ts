@@ -183,20 +183,6 @@ const resolveVtableRecord = (
     return { typeStruct, record: resolved.value };
 };
 
-const collectVtableSize = (
-    context: ModuleContext,
-    namespaceName: string,
-    klass: GirClass,
-): number | undefined => {
-    const resolved = resolveVtableRecord(context, namespaceName, klass);
-
-    if (resolved === undefined) {
-        return undefined;
-    }
-
-    return computeRecordFieldSlots(context, resolved.record.fields, resolved.record.isUnion).size;
-};
-
 const attachVirtualMethods = (slots: VtableSlot[], klass: GirClass): VtableSlot[] => {
     const byKey: Map<string, GirVirtualMethod> = new Map(
         klass.vfuncs.map((vfunc) => [vfuncMemberName(vfunc.name), vfunc]),
@@ -486,7 +472,6 @@ const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot
 };
 
 export {
-    collectVtableSize,
     hasCallableVfuncSlots,
     renderVfuncMembers,
     renderVfuncMetadata,

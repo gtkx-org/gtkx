@@ -19,7 +19,6 @@ import {
 import {
     getClassType,
     getInterfaceMixin,
-    getInterfaceVtableSize,
     markDerivedClass,
     registerClassType,
     type VfuncDescriptor,
@@ -393,7 +392,7 @@ function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassI
         vfuncs: [...binding.vfuncs],
     };
 
-    const vtableSize = getInterfaceVtableSize(binding.gtype);
+    const vtableSize = binding.vfuncs[0]?.vtableSize;
 
     if (vtableSize !== undefined) {
         nativeInterface.vtableSize = vtableSize;

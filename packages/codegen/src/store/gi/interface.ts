@@ -29,7 +29,6 @@ import {
 import { appendInterfaceRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
 import {
-    collectVtableSize,
     hasCallableVfuncSlots,
     renderVfuncMembers,
     renderVfuncMetadata,
@@ -91,7 +90,6 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
 
     generateBindings(context, callables);
     const gtypeExpr = renderSourceGtype(context, iface);
-    const vtableSize = collectVtableSize(context, context.namespace.name, iface);
     const implRef = appendInterfaceTypes(context, iface, className, callables) ?? "unknown";
     const classCode = renderInterfaceClass(context, { iface, className, callables, gtypeExpr, implRef });
     context.module.appendDeclaration(classCode, context.declaredType(className));
@@ -106,7 +104,7 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
         className,
         makerName: makerName(className),
         gtypeExpr,
-        layout: renderInterfaceLayout(context, iface, callables, vtableSize),
+        layout: renderInterfaceLayout(context, iface, callables),
     });
 };
 
@@ -116,15 +114,15 @@ const renderInterfaceLayout = (
     context: ModuleContext,
     iface: GirClass,
     callables: Callables,
-    vtableSize: number | undefined,
 ): string | undefined => {
-    if (vtableSize === undefined) {
+    const vfuncs = renderVfuncMetadata(context, iface);
+    const properties = renderSlotBackedProperties(context, iface, callables);
+
+    if (vfuncs === undefined && properties === undefined) {
         return undefined;
     }
 
-    const vfuncs = renderVfuncMetadata(context, iface);
-    const properties = renderSlotBackedProperties(context, iface, callables);
-    const entries = [`vtableSize: ${String(vtableSize)},`];
+    const entries: string[] = [];
 
     if (vfuncs !== undefined) {
         entries.push(`vfuncs: ${vfuncs},`);
