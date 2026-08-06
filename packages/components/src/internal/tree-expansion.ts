@@ -21,47 +21,29 @@ function orderFor(expansion: TreeExpansion): VisibleOrder {
 }
 
 function adoptOrder(expansion: TreeExpansion, order: VisibleOrder): void {
-    expansion.expanded = new Set(order.expandedKeys);
+    expansion.expanded = new Set(order.expandedPaths);
     expansion.order = order;
 }
 
-function hasAncestorIn(index: CollectionIndex, key: string, roots: Set<string>): boolean {
-    let current: string | undefined = key;
-
-    while (current !== undefined) {
-        if (roots.has(current)) {
-            return true;
-        }
-
-        current = index.parents.get(current);
-    }
-
-    return false;
-}
-
-function dropSubtrees(expansion: TreeExpansion, roots: Set<string>): void {
-    const kept: Set<string> = new Set();
-
-    for (const key of expansion.expanded) {
-        if (!hasAncestorIn(expansion.index, key, roots)) {
-            kept.add(key);
+function prunePath(expansion: TreeExpansion, path: string): void {
+    for (const candidate of expansion.expanded) {
+        if (candidate.startsWith(path)) {
+            expansion.expanded.delete(candidate);
         }
     }
 
-    expansion.expanded = kept;
     expansion.order = null;
 }
 
-function markExpanded(expansion: TreeExpansion, key: string, isExpanded: boolean): void {
+function markExpanded(expansion: TreeExpansion, path: string, isExpanded: boolean): void {
     if (isExpanded) {
-        expansion.expanded.add(key);
+        expansion.expanded.add(path);
         expansion.order = null;
 
         return;
     }
 
-    expansion.expanded.delete(key);
-    dropSubtrees(expansion, new Set([key]));
+    prunePath(expansion, path);
 }
 
 function resetExpansion(expansion: TreeExpansion): void {
@@ -69,15 +51,9 @@ function resetExpansion(expansion: TreeExpansion): void {
     expansion.order = null;
 }
 
-function adoptIndex(expansion: TreeExpansion, index: CollectionIndex, rebuilt: Set<string>): void {
+function adoptIndex(expansion: TreeExpansion, index: CollectionIndex): void {
     expansion.index = index;
-
-    if (rebuilt.size === 0) {
-        return;
-    }
-
-    dropSubtrees(expansion, rebuilt);
-    expansion.expanded = new Set(orderFor(expansion).expandedKeys);
+    expansion.order = null;
 }
 
 export {
@@ -86,6 +62,7 @@ export {
     createTreeExpansion,
     markExpanded,
     orderFor,
+    prunePath,
     resetExpansion,
     type TreeExpansion,
 };

@@ -3,7 +3,7 @@ import type { ListItem } from "../types.js";
 import type { CollectionIndex } from "./collection-index.js";
 import type { CollectionModel } from "./collection-model.js";
 import type { TreeExpansion } from "./tree-expansion.js";
-import { nodeRefFor } from "./collection-model.js";
+import { getSlotPath, slotRefFor } from "./collection-model.js";
 import { orderFor } from "./tree-expansion.js";
 
 type Collection = {
@@ -11,8 +11,8 @@ type Collection = {
     model: Gtk.FlattenListModel;
     expansion: TreeExpansion;
     treeModel: () => Gtk.TreeListModel | null;
-    itemFor: (key: string) => ListItem | undefined;
-    sectionFor: (levelKey: string) => unknown;
+    itemAt: (path: string) => ListItem | undefined;
+    sectionFor: (levelPath: string) => unknown;
     idAt: (position: number) => string | null;
     positionFor: (id: string) => number;
     positionsFor: (ids: string[]) => number[];
@@ -35,6 +35,16 @@ function positionFor(gtk: CollectionModel, id: string): number {
     return first;
 }
 
+function idAt(gtk: CollectionModel, index: CollectionIndex, position: number): string | null {
+    const ref = slotRefFor(gtk.model.getItem(position));
+
+    if (ref === null) {
+        return null;
+    }
+
+    return index.itemAt(getSlotPath(ref))?.id ?? null;
+}
+
 function isCollectionIdle(collection: Collection): boolean {
     const { expansion } = collection;
 
@@ -47,9 +57,9 @@ function createCollection(gtk: CollectionModel, index: CollectionIndex): Collect
         model: gtk.model,
         expansion: gtk.expansion,
         treeModel: () => (index.isTree ? gtk.treeModel() : null),
-        itemFor: index.itemFor,
+        itemAt: index.itemAt,
         sectionFor: index.sectionFor,
-        idAt: (position) => nodeRefFor(gtk.model.getItem(position))?.id ?? null,
+        idAt: (position) => idAt(gtk, index, position),
         positionFor: (id) => positionFor(gtk, id),
         positionsFor: (ids) => positionsFor(gtk, ids),
     };

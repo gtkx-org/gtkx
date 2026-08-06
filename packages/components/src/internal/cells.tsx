@@ -6,7 +6,7 @@ import { createPortal, useProperty } from "@gtkx/react";
 import { memo, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type { ListItem, ListItemRenderArgs, ListItemRenderer, ListSectionRenderer } from "../types.js";
 import type { Collection } from "./collection.js";
-import { nodeRefFor } from "./collection-model.js";
+import { getSlotPath, slotRefFor } from "./collection-model.js";
 
 type CellSize = {
     width: number;
@@ -295,8 +295,8 @@ function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: Reac
 }
 
 function itemBody(options: ItemBodyOptions): ReactNode {
-    const node = nodeRefFor(options.item);
-    const item = node === null ? undefined : options.collection.itemFor(node.key);
+    const ref = slotRefFor(options.item);
+    const item = ref === null ? undefined : options.collection.itemAt(getSlotPath(ref));
 
     if (item === undefined) {
         return null;
@@ -319,9 +319,9 @@ function ItemCellImpl({ entry, render, collection, expandedIds }: ItemCellProps)
 
 function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNode {
     const item = useSyncExternalStore(entry.subscribe, entry.getItem);
-    const node = nodeRefFor(item);
+    const ref = slotRefFor(item);
     const renderHeader = render as ListSectionRenderer<unknown>;
-    const body = node === null ? null : renderHeader({ section: collection.sectionFor(node.levelKey) });
+    const body = ref === null ? null : renderHeader({ section: collection.sectionFor(ref.store.path) });
 
     return createPortal(body, entry.cell, entry.key);
 }

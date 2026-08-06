@@ -1,8 +1,9 @@
 import type { ListItem } from "@gtkx/components";
-import * as Gtk from "@gtkx/gi/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
 import { act, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import type { TreeListFixture, TreeName } from "./helpers/tree-list-app.js";
+import { rowTexts } from "./helpers/row-texts.js";
 import { getSelectionModel, getTreeRow } from "./helpers/selection-model.js";
 import { renderTreeList, treeBranch, treeLeaf } from "./helpers/tree-list-app.js";
 
@@ -51,22 +52,22 @@ const wantedWalk = (items: ListItem<TreeName>[], expandedIds: string[]): WalkSta
     return state;
 };
 
-const readRow = (state: WalkState, model: Gtk.SelectionModel, position: number): void => {
-    const row = getTreeRow(model, position);
-    const item = row.getItem();
-    const id = item instanceof Gtk.StringObject ? item.getString() : "?";
+const readRow = (state: WalkState, labels: (string | null)[], model: Gtk.SelectionModel, position: number): void => {
+    const id = labels[position] ?? "?";
     state.ids.push(id);
 
-    if (row.getExpanded()) {
+    if (getTreeRow(model, position).getExpanded()) {
         state.expanded.push(id);
     }
 };
 
-const shownWalk = (model: Gtk.SelectionModel): WalkState => {
+const shownWalk = (fixture: TreeListFixture): WalkState => {
     const state: WalkState = { expandedIds: [], ids: [], expanded: [] };
+    const labels = rowTexts(fixture.listRef.current);
+    const model = getSelectionModel(fixture.listRef);
 
     for (let position = 0; position < model.getNItems(); position++) {
-        readRow(state, model, position);
+        readRow(state, labels, model, position);
     }
 
     return state;
@@ -80,7 +81,7 @@ const expectAgreement = async (
     const wanted = wantedWalk(items, expandedIds);
 
     await waitFor(() => {
-        const shown = shownWalk(getSelectionModel(fixture.listRef));
+        const shown = shownWalk(fixture);
         expect(shown.ids).toEqual(wanted.ids);
         expect(shown.expanded).toEqual(wanted.expanded);
     });

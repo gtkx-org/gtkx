@@ -5,12 +5,11 @@ import { act, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import type { RenderListViewOptions } from "./helpers/list-fixtures.js";
 import type { TreeListFixture, TreeName } from "./helpers/tree-list-app.js";
-import { renderListView } from "./helpers/list-fixtures.js";
+import { renderListView, renderStatefulListView } from "./helpers/list-fixtures.js";
 import { expectRowTexts } from "./helpers/row-texts.js";
 import { getSelectionModel, getTreeRow } from "./helpers/selection-model.js";
 import { renderTreeList, treeBranch, treeLeaf } from "./helpers/tree-list-app.js";
 
-const KEY_SEPARATOR = String.fromCodePoint(1);
 const BOTH_BRANCHES = ["p", "dup"];
 const NESTED_ONLY = ["p"];
 const REPEATED_LEAF = ["leaf"];
@@ -48,9 +47,9 @@ const siblingBranchTree = (): ListItem<TreeName>[] => [
     namedBranch("dup", "second", [treeLeaf("b")]),
 ];
 
-const forgedTree = (): ListItem<TreeName>[] => [
+const crossLevelTree = (): ListItem<TreeName>[] => [
     namedBranch("a", "branchA", [named("b", "realChild")]),
-    named(`a${KEY_SEPARATOR}b`, "forged"),
+    named("b", "rootTwin"),
 ];
 
 const growingTree = (extra: ListItem<TreeName>[]): ListItem<TreeName>[] => [
@@ -72,7 +71,7 @@ const expandRow = async (ref: RefObject<Gtk.ListView | null>, position: number):
 };
 
 const renderExpandedBranch = async (leading: ListItem<TreeName>[]) => {
-    const fixture = await renderListView<TreeName>(growingTree(leading));
+    const fixture = await renderStatefulListView<TreeName>(growingTree(leading));
     await expandRow(fixture.ref, leading.length);
 
     return fixture;
@@ -125,11 +124,11 @@ describe("render - ListView (tree) - ids repeated among siblings", () => {
         await expectRowTexts(fixture.listRef, ["first", "second"]);
     });
 
-    it("expands only the sibling whose row was toggled", async () => {
-        const { ref } = await renderListView<TreeName>(siblingBranchTree());
+    it("expands every sibling the toggled row's id names once the report is adopted", async () => {
+        const { ref } = await renderStatefulListView<TreeName>(siblingBranchTree());
         await expectRowTexts(ref, ["first", "second"]);
         await expandRow(ref, 1);
-        await expectRowTexts(ref, ["first", "second", "b"]);
+        await expectRowTexts(ref, ["first", "a", "second", "b"]);
     });
 
     it("leaves a childless sibling childless when it shares the branch's id", async () => {
@@ -156,34 +155,37 @@ describe("render - ListView (tree) - ids repeated among siblings", () => {
     });
 });
 
-describe("render - ListView (tree) - an id spelled like an internal key", () => {
-    it("keeps a forged id away from another branch's children", async () => {
-        const fixture = await renderTreeList({ items: forgedTree(), expandedIds: ["a"] });
-        await expectRowTexts(fixture.listRef, ["branchA", "realChild", "forged"]);
+describe("render - ListView (tree) - an id repeated across levels", () => {
+    it("keeps a root twin away from another branch's children", async () => {
+        const fixture = await renderTreeList({ items: crossLevelTree(), expandedIds: ["a"] });
+        await expectRowTexts(fixture.listRef, ["branchA", "realChild", "rootTwin"]);
     });
 
-    it("keeps an id spelling a whole encoded child key distinct", async () => {
-        const childKey = `1${KEY_SEPARATOR}a1${KEY_SEPARATOR}01${KEY_SEPARATOR}b1${KEY_SEPARATOR}0`;
+    it("selects every row the repeated id names across levels", async () => {
+        const onSelectionChanged = vi.fn();
 
-        const items = [
-            namedBranch("a", "branchA", [named("b", "realChild")]),
-            named(childKey, "forgedFullKey"),
-        ];
+        const { ref } = await renderListView<TreeName>(crossLevelTree(), {
+            expandedIds: ["a"],
+            selectionMode: Gtk.SelectionMode.MULTIPLE,
+            selected: ["b"],
+            onSelectionChanged,
+        });
 
-        const fixture = await renderTreeList({ items, expandedIds: ["a"] });
-        await expectRowTexts(fixture.listRef, ["branchA", "realChild", "forgedFullKey"]);
+        await expectSelectedPositions(ref, [1, 2]);
+        expect(onSelectionChanged).toHaveBeenLastCalledWith(["b", "b"]);
     });
 
-    it("keeps digit-only ids that could pass for length prefixes apart", async () => {
+    it("expands every branch the repeated id names across levels", async () => {
+        const onExpandedChange = vi.fn();
+
         const items = [
-            named("1", "one"),
-            named(`1${KEY_SEPARATOR}1`, "oneSepOne"),
-            named("11", "eleven"),
-            named("", "blank"),
+            namedBranch("a", "branchA", [namedBranch("b", "nestedB", [named("x", "xLeaf")])]),
+            namedBranch("b", "rootB", [named("y", "yLeaf")]),
         ];
 
-        const fixture = await renderTreeList({ items, expandedIds: NOTHING });
-        await expectRowTexts(fixture.listRef, ["one", "oneSepOne", "eleven", "blank"]);
+        const fixture = await renderTreeList({ items, expandedIds: ["a", "b"], onExpandedChange });
+        await expectRowTexts(fixture.listRef, ["branchA", "nestedB", "xLeaf", "rootB", "yLeaf"]);
+        expect(onExpandedChange).toHaveBeenLastCalledWith(["a", "b", "b"]);
     });
 });
 
