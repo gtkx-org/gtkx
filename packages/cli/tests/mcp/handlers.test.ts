@@ -34,7 +34,11 @@ const hoisted = vi.hoisted(() => ({
         return widget.getLabel?.() ?? widget.getText?.() ?? null;
     }),
     listToplevels: vi.fn(() => [] as unknown[]),
+    act: vi.fn((callback: () => unknown) => Promise.resolve(callback())),
     AccessibleRole: { BUTTON: 1, LABEL: 2 },
+    TreeExpander: class TreeExpander {
+        isTreeExpander = true;
+    },
 }));
 
 const {
@@ -55,7 +59,11 @@ const makeApp = (windows: { getTitle?: () => string | null }[] = []): FakeApp =>
     getWindows: () => windows,
 });
 
-const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget(overrides);
+const makeWidget = (overrides: FakeWidgetOverrides = {}): never => {
+    const widget = makeFakeWidget(overrides);
+
+    return overrides.type === "GtkTreeExpander" ? Object.assign(new hoisted.TreeExpander(), widget) : widget;
+};
 
 const registerWidget = (registry: WidgetRegistry, widget: never): string => {
     registry.register(widget);
@@ -85,6 +93,7 @@ const makeWidgetTarget = (overrides: FakeWidgetOverrides = {}): WidgetTarget => 
 };
 
 vi.mock("@gtkx/testing", () => ({
+    act: hoisted.act,
     findAllByRole: hoisted.findAllByRole,
     findAllByText: hoisted.findAllByText,
     findAllByName: hoisted.findAllByName,
@@ -99,6 +108,7 @@ vi.mock("@gtkx/testing", () => ({
 
 vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: hoisted.AccessibleRole,
+    TreeExpander: hoisted.TreeExpander,
     Window: { listToplevels: hoisted.listToplevels },
 }));
 
@@ -323,6 +333,21 @@ describe("widget.click / widget.type / widget.fireEvent", () => {
         const result = await dispatchWidget("widget.click", {});
         expect(click).toHaveBeenCalledWith(widget);
         expect(result).toEqual({ success: true });
+    });
+
+    it("toggles a tree expander through its own action instead of clicking the enclosing row", async () => {
+        const activateAction = vi.fn(() => true);
+        const { dispatchWidget } = makeWidgetTarget({ type: "GtkTreeExpander", activateAction });
+        const result = await dispatchWidget("widget.click", {});
+        expect(activateAction).toHaveBeenCalledWith("listitem.toggle-expand", null);
+        expect(click).not.toHaveBeenCalled();
+        expect(result).toEqual({ success: true });
+    });
+
+    it("toggles a tree expander inside the act environment so React sees the new rows", async () => {
+        const { dispatchWidget } = makeWidgetTarget({ type: "GtkTreeExpander", activateAction: () => true });
+        await dispatchWidget("widget.click", {});
+        expect(hoisted.act).toHaveBeenCalledTimes(1);
     });
 
     it("clears before typing when clear=true", async () => {

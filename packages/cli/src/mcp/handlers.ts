@@ -27,6 +27,8 @@ type QueryParams = ServerRequestParams<"widget.query">;
 type QueryBy = QueryParams["by"];
 type QueryRunner = (testing: TestingModule, app: Gtk.Application, params: QueryParams) => Promise<Gtk.Widget[]>;
 
+const TREE_EXPANDER_TOGGLE_ACTION = "listitem.toggle-expand";
+
 const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], ({ registry }) =>
         Promise.resolve({
@@ -50,8 +52,8 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "widget.query": validated(ServerRequestParamsSchemas["widget.query"], handleQuery),
     "widget.getProps": targeted(ServerRequestParamsSchemas["widget.getProps"], ({ registry }, { testing, widget }) =>
         Promise.resolve(serializeWidget(widget, (target) => registry.getOrCreateId(target), testing))),
-    "widget.click": targeted(ServerRequestParamsSchemas["widget.click"], async (_ctx, { testing, widget }) => {
-        await testing.userEvent.click(widget);
+    "widget.click": targeted(ServerRequestParamsSchemas["widget.click"], async (_ctx, target) => {
+        await clickTarget(target);
 
         return { success: true };
     }),
@@ -123,6 +125,18 @@ function targeted<Params extends WidgetParams>(
     return validated(schema, async (ctx, params) =>
         handler(ctx, await widgetTarget(ctx.registry, params.widgetId), params));
 }
+
+const clickTarget = async ({ testing, widget }: WidgetTarget): Promise<void> => {
+    if (widget instanceof Gtk.TreeExpander) {
+        await testing.act(() => {
+            widget.activateAction(TREE_EXPANDER_TOGGLE_ACTION, null);
+        });
+
+        return;
+    }
+
+    await testing.userEvent.click(widget);
+};
 
 const widgetTarget = async (registry: WidgetRegistry, widgetId: string | undefined): Promise<WidgetTarget> => ({
     testing: await loadTestingModule(),

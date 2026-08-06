@@ -234,7 +234,9 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             name: "gtkx_click",
             title: "Click widget",
             kind: "action",
-            description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
+            description:
+                "Click a widget. Works with buttons, checkboxes, and other interactive widgets. Clicking a " +
+                "tree expander toggles the row's expansion, the same as clicking its arrow.",
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.click", params);
