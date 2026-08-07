@@ -15,7 +15,14 @@ export { installMixins, type Mixin } from "./mixin.js";
 /** @public */
 export { fromNative, toNative } from "./native-value.js";
 /** @public */
-export { getObjectProperty, newObjectWithProperties, setObjectProperty } from "./object.js";
+export {
+    type ConstructBinding,
+    type ConstructBindings,
+    getObjectProperty,
+    newObjectWithProperties,
+    registerConstructProperties,
+    setObjectProperty,
+} from "./object.js";
 /** @public */
 export { promisify } from "./promisify.js";
 /** @public */

@@ -5,6 +5,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "emitSignal",
     "connectSignal",
     "newObjectWithProperties",
+    "registerConstructProperties",
     "getObjectProperty",
     "setObjectProperty",
     "getBoxedValue",

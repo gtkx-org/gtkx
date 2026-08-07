@@ -1,10 +1,4 @@
-import {
-    type BindVfuncOptions,
-    call,
-    type Descriptor,
-    bind as nativeBind,
-    bindVfunc as nativeBindVfunc,
-} from "@gtkx/native";
+import { call, type Descriptor, bind as nativeBind } from "@gtkx/native";
 
 /**
  * Precompiles a call to a C function, marshalling the values it is given through the argument
@@ -28,12 +22,6 @@ function bind(
     return (...values) => call(descriptor, values);
 }
 
-function bindVfunc(options: BindVfuncOptions): (...values: unknown[]) => unknown {
-    const descriptor = nativeBindVfunc(options);
-
-    return (...values) => call(descriptor, values);
-}
-
 function createBindCache(): (key: string, ...args: Parameters<typeof bind>) => ReturnType<typeof bind> {
     const cache: Map<string, ReturnType<typeof bind>> = new Map();
 
@@ -51,4 +39,4 @@ function createBindCache(): (key: string, ...args: Parameters<typeof bind>) => R
     };
 }
 
-export { bind, bindVfunc, createBindCache };
+export { bind, createBindCache };

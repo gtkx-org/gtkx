@@ -21,6 +21,7 @@ type CallbackPlan = {
     returnDescriptor: Descriptor;
     start: number;
     receiver: CallbackReceiver;
+    hasOutParams: boolean;
 };
 
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
@@ -81,12 +82,27 @@ const partitionCallbackArgs = (
 ): { inputs: unknown[]; outParams: OutParam[] } => {
     const inputs: unknown[] = [];
     const params: OutParam[] = [];
+    const collected = { params, argIndex: start };
 
     for (let i = start; i < effectiveTypes.length; i++) {
-        collectCallbackArg(effectiveTypes[i], wrapped[i], inputs, { params, argIndex: i });
+        collected.argIndex = i;
+        collectCallbackArg(effectiveTypes[i], wrapped[i], inputs, collected);
     }
 
     return { inputs, outParams: params };
+};
+
+const hasOutParamArg = (descriptor: Descriptor | undefined): boolean =>
+    descriptor !== undefined && (descriptor.kind === "ref" || isCallerAllocatedOut(descriptor));
+
+const haveOutParamArgs = (effectiveTypes: Descriptor[], start: number): boolean => {
+    for (let i = start; i < effectiveTypes.length; i++) {
+        if (hasOutParamArg(effectiveTypes[i])) {
+            return true;
+        }
+    }
+
+    return false;
 };
 
 const sizeParamIndexFor = (descriptor: Descriptor): number | undefined => {
@@ -146,11 +162,39 @@ const writeFoldedLengths = (
 const getThisArg = (receiver: CallbackReceiver, wrapped: unknown[]): unknown =>
     receiver === "this" ? (wrapped[0] ?? null) : null;
 
+const wrapCallbackArgs = (effectiveTypes: Descriptor[], rawArgs: unknown[]): void => {
+    let index = 0;
+
+    for (const descriptor of effectiveTypes) {
+        rawArgs[index] = fromNative(descriptor, rawArgs[index]);
+        index += 1;
+    }
+};
+
+const trimCallbackInputs = (plan: CallbackPlan, wrapped: unknown[]): unknown[] => {
+    const count = plan.effectiveTypes.length;
+
+    if (wrapped.length > count) {
+        wrapped.length = count;
+    }
+
+    for (let index = 0; index < plan.start; index++) {
+        wrapped.shift();
+    }
+
+    return wrapped;
+};
+
 const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     const { effectiveTypes, returnDescriptor } = plan;
-    const wrapped = effectiveTypes.map((descriptor, i) => fromNative(descriptor, rawArgs[i]));
-    const thisArg = getThisArg(plan.receiver, wrapped);
-    const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, wrapped, plan.start);
+    wrapCallbackArgs(effectiveTypes, rawArgs);
+    const thisArg = getThisArg(plan.receiver, rawArgs);
+
+    if (!plan.hasOutParams) {
+        return toNative(returnDescriptor, plan.fn.apply(thisArg, trimCallbackInputs(plan, rawArgs)));
+    }
+
+    const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, rawArgs, plan.start);
     const result = plan.fn.apply(thisArg, inputs);
 
     if (outParams.length === 0) {
@@ -180,12 +224,16 @@ const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): unknown
     callback == null ? callback : wrapCallback(callback as Callback, spec, "none");
 
 function wrapCallback(fn: Callback, spec: CallbackSpec, receiver: CallbackReceiver): Callback {
+    const effectiveTypes = getEffectiveTypes(spec);
+    const start = receiver === "none" ? 0 : 1;
+
     const plan: CallbackPlan = {
         fn,
-        effectiveTypes: getEffectiveTypes(spec),
+        effectiveTypes,
         returnDescriptor: spec.returnDescriptor,
-        start: receiver === "none" ? 0 : 1,
+        start,
         receiver,
+        hasOutParams: haveOutParamArgs(effectiveTypes, start),
     };
 
     return (...rawArgs: unknown[]): unknown => runCallback(plan, rawArgs);

@@ -10,8 +10,6 @@ import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emi
 import { parentCompanionRef } from "./companion.js";
 import { propertyDoc } from "./property-accessor.js";
 
-const PROPS_RECORD = "Record<string, unknown>";
-
 const constructablePropNames = (klass: GirClass): string[] =>
     klass.properties.filter(isConstructableProperty).map((property) => toCamelIdentifier(property.name));
 
@@ -79,25 +77,27 @@ const renderRootConstructor = (context: ModuleContext): string => {
     context.addRuntimeImport("newObjectWithProperties");
     const body = "newObjectWithProperties(getInstanceType(this), props, this);";
 
-    return renderBlock(`constructor(props: ${PROPS_RECORD} = {})`, body);
+    return renderBlock("constructor(props: object = {})", body);
+};
+
+const renderConstructBindings = (context: ModuleContext, props: GirProperty[]): string => {
+    const entries = props.map((property) => {
+        const descriptor = renderDescriptor(context, property.type, property.transferOwnership);
+        const key = sourceStringLiteral(toCamelIdentifier(property.name));
+
+        return `${key}: [${sourceStringLiteral(property.name)}, ${descriptor}],`;
+    });
+
+    return renderBraced(entries.join("\n"));
 };
 
 const renderTranslatingConstructor = (context: ModuleContext, props: GirProperty[], className: string): string => {
     context.addRuntimeImport("t");
-    const destructured = props.map((property) => toCamelIdentifier(property.name));
-    const pattern = `{ ${[...destructured, "...rest"].join(", ")} }`;
+    context.addRuntimeImport("registerConstructProperties");
+    const bindings = renderConstructBindings(context, props);
+    context.module.appendRegistration(`registerConstructProperties(${className}, ${bindings});`);
 
-    const entries = props.map((property) => {
-        const descriptor = renderDescriptor(context, property.type, property.transferOwnership);
-
-        return `${sourceStringLiteral(property.name)}: [${descriptor}, ${toCamelIdentifier(property.name)}],`;
-    });
-
-    const recordLiteral = renderBraced(entries.join("\n"));
-    const lines = [`const props: ${PROPS_RECORD} = ${recordLiteral};`, "super({ ...props, ...rest });"];
-    const body = lines.join("\n");
-
-    return renderBlock(`constructor(${pattern}: ${className}ConstructorProps = {})`, body);
+    return renderBlock(`constructor(props: ${className}ConstructorProps = {})`, "super(props);");
 };
 
 export { renderConstructorPropsInterface, renderClassConstructor };

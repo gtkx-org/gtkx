@@ -1,7 +1,7 @@
 import type { BindVfuncOptions } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
+import { bindVfunc } from "@gtkx/native";
 import { type Arg, isCallerAllocatedArg, requiresInputArg } from "./arg.js";
-import { bindVfunc } from "./bind.js";
 import { buildNativeArgTypes, fromNativeCallable } from "./fn.js";
 import { toNative } from "./native-value.js";
 import {
