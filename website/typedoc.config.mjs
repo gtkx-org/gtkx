@@ -8,8 +8,12 @@ const root = join(here, "..");
 const api = JSON.parse(readFileSync(join(root, "api.json"), "utf8"));
 const packageDirs = new Map();
 const entryPointsByPackage = new Map();
+const publicModuleNames = {};
 
 const byName = (left, right) => left.localeCompare(right);
+
+const getPackageName = (specifier) =>
+    packageDirs.keys().find((name) => specifier === name || specifier.startsWith(`${name}/`));
 
 const readTypedocEntryPoints = (dir) => {
     try {
@@ -22,6 +26,15 @@ const readTypedocEntryPoints = (dir) => {
 for (const { dir, name, path } of resolveEntrypoints(root, api.entrypoints, "types")) {
     packageDirs.set(name, dir);
     entryPointsByPackage.set(name, [...(entryPointsByPackage.get(name) ?? []), path]);
+}
+
+for (const specifier of api.entrypoints) {
+    const name = getPackageName(specifier);
+
+    if (name !== undefined) {
+        const subpath = specifier.slice(name.length + 1) || "index";
+        publicModuleNames[name] = [...(publicModuleNames[name] ?? []), subpath];
+    }
 }
 
 for (const [name, entryPoints] of entryPointsByPackage) {
@@ -40,7 +53,9 @@ for (const [name, entryPoints] of entryPointsByPackage) {
 export default {
     $schema: "https://typedoc.org/schema.json",
     name: "API Reference",
-    plugin: ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+    plugin: ["typedoc-plugin-markdown", "typedoc-vitepress-theme", "./typedoc-route-safe-router.mjs"],
+    router: "route-safe",
+    publicModuleNames,
     entryPointStrategy: "packages",
     entryPoints: packageDirs.values().map((dir) => relative(here, dir)).toArray(),
     packageOptions: {
