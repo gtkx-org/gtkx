@@ -7,8 +7,9 @@ import type { CollectionModel } from "../src/internal/collection-model.js";
 import { createCollectionIndex } from "../src/internal/collection-index.js";
 import { createCollectionModel } from "../src/internal/collection-model.js";
 import { encodePart } from "../src/internal/keys.js";
+import { trackPaths } from "../src/internal/slots.js";
 import { adoptOrder } from "../src/internal/tree-expansion.js";
-import { buildVisibleOrder } from "../src/internal/tree-order.js";
+import { walkVisible } from "../src/internal/tree-order.js";
 
 type Splice = [number, number, number];
 
@@ -114,22 +115,24 @@ const expectTreeSplices = (previous: ListItem[], next: ListItem[], expected: Spl
 const expandedModel = (items: ListItem[]): CollectionModel => {
     const index = treeIndex(items);
     const collectionModel = syncedModel(index);
-    const expandable = new Set(index.children.keys());
-    adoptOrder(collectionModel.expansion, buildVisibleOrder(index, expandable));
+    const slots = trackPaths(index.children.keys());
+    adoptOrder(collectionModel.expansion, walkVisible({ index, slots }));
 
     return collectionModel;
 };
 
 const expandEveryRow = (collectionModel: CollectionModel, index: CollectionIndex): void => {
     const tree = getTree(collectionModel);
-    const order = buildVisibleOrder(index, new Set(index.children.keys()));
-    const expandable = new Set(order.expandedPaths);
 
-    for (const [position, path] of order.paths.entries()) {
-        if (expandable.has(path)) {
-            expandRowAt(tree, position);
-        }
-    }
+    const order = walkVisible({
+        index,
+        slots: trackPaths(index.children.keys()),
+        visit: (row) => {
+            if (row.isOpen) {
+                expandRowAt(tree, row.position);
+            }
+        },
+    });
 
     adoptOrder(collectionModel.expansion, order);
 };

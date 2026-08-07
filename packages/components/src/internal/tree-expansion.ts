@@ -1,78 +1,18 @@
 import type { CollectionIndex } from "./collection-index.js";
+import type { SlotMap } from "./slots.js";
 import type { VisibleOrder } from "./tree-order.js";
-import { decodePartAt, encodePart } from "./keys.js";
+import { encodePart } from "./keys.js";
+import { getSlotKey, trackPath, trackPaths } from "./slots.js";
 import { buildVisibleOrder } from "./tree-order.js";
-
-type SlotKey = {
-    levelPath: string;
-    slot: number;
-};
 
 type TreeExpansion = {
     index: CollectionIndex;
     expanded: Set<string>;
-    slots: Map<string, Set<number>>;
+    slots: SlotMap;
     order: VisibleOrder | null;
     isApplying: boolean;
     isSyncing: boolean;
 };
-
-function getLevelBoundary(path: string): number {
-    let offset = 0;
-    let boundary = 0;
-
-    while (offset < path.length) {
-        const part = decodePartAt(path, offset);
-
-        if (part === null) {
-            return boundary;
-        }
-
-        boundary = offset;
-        offset += encodePart(part).length;
-    }
-
-    return boundary;
-}
-
-function getSlotKey(path: string): SlotKey | null {
-    const boundary = getLevelBoundary(path);
-    const part = decodePartAt(path, boundary);
-
-    if (part === null) {
-        return null;
-    }
-
-    return { levelPath: path.slice(0, boundary), slot: Number(part) };
-}
-
-function trackPath(slots: Map<string, Set<number>>, path: string): void {
-    const key = getSlotKey(path);
-
-    if (key === null) {
-        return;
-    }
-
-    const level = slots.get(key.levelPath);
-
-    if (level === undefined) {
-        slots.set(key.levelPath, new Set([key.slot]));
-
-        return;
-    }
-
-    level.add(key.slot);
-}
-
-function trackPaths(paths: Iterable<string>): Map<string, Set<number>> {
-    const slots: Map<string, Set<number>> = new Map();
-
-    for (const path of paths) {
-        trackPath(slots, path);
-    }
-
-    return slots;
-}
 
 function dropSubtree(expansion: TreeExpansion, path: string): void {
     expansion.expanded.delete(path);
@@ -94,7 +34,7 @@ function createTreeExpansion(index: CollectionIndex): TreeExpansion {
 }
 
 function orderFor(expansion: TreeExpansion): VisibleOrder {
-    expansion.order ??= buildVisibleOrder(expansion.index, expansion.expanded);
+    expansion.order ??= buildVisibleOrder(expansion.index, expansion.slots);
 
     return expansion.order;
 }

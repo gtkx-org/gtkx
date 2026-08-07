@@ -5,6 +5,7 @@ import type { CollectionModel } from "../src/internal/collection-model.js";
 import type { VisibleOrder } from "../src/internal/tree-order.js";
 import { createCollectionIndex } from "../src/internal/collection-index.js";
 import { createCollectionModel } from "../src/internal/collection-model.js";
+import { trackPaths } from "../src/internal/slots.js";
 import { adoptOrder } from "../src/internal/tree-expansion.js";
 import { buildVisibleOrder } from "../src/internal/tree-order.js";
 
@@ -30,7 +31,7 @@ function newNarrowingCase(narrowed: ListItem[]): NarrowingCase {
     const wide = treeIndex(branches(BRANCH_COUNT));
     const model = createCollectionModel();
     model.sync(wide);
-    const order = buildVisibleOrder(wide, new Set(wide.children.keys()));
+    const order = buildVisibleOrder(wide, trackPaths(wide.children.keys()));
     adoptOrder(model.expansion, order);
 
     return { model, wide, narrow: treeIndex(narrowed), order };

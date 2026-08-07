@@ -2,12 +2,13 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { useState } from "react";
 import type { Collection } from "./collection.js";
 import type { TreeExpansion } from "./tree-expansion.js";
-import type { VisibleOrder } from "./tree-order.js";
+import type { VisibleOrder, WalkOptions } from "./tree-order.js";
 import { isCollectionIdle } from "./collection.js";
 import { useControlledSync } from "./controlled-sync.js";
 import { joinParts } from "./keys.js";
+import { trackPaths } from "./slots.js";
 import { adoptOrder, markExpanded, orderFor } from "./tree-expansion.js";
-import { buildVisibleOrder } from "./tree-order.js";
+import { walkVisible } from "./tree-order.js";
 
 type ExpansionOptions = {
     collection: Collection;
@@ -50,22 +51,26 @@ function hasSameExpansion(expanded: Set<string>, wanted: Set<string>): boolean {
     return expanded.size === wanted.size && wanted.isSubsetOf(expanded);
 }
 
-function toggleWantedRows(
-    tree: Gtk.TreeListModel,
-    expanded: Set<string>,
-    wanted: Set<string>,
-    target: VisibleOrder,
-): void {
-    let position = 0;
+function toggleOptions(expansion: TreeExpansion, tree: Gtk.TreeListModel, wanted: Set<string>): WalkOptions {
+    return {
+        index: expansion.index,
+        slots: trackPaths(wanted),
+        marks: trackPaths(wanted.symmetricDifference(expansion.expanded)),
+        visit: (row) => {
+            if (row.isMarked) {
+                tree.getRow(row.position)?.setExpanded(row.isOpen);
+            }
+        },
+    };
+}
 
-    for (const path of target.paths) {
-        const isWanted = wanted.has(path);
+function walkApplying(expansion: TreeExpansion, options: WalkOptions): VisibleOrder {
+    expansion.isApplying = true;
 
-        if (expanded.has(path) !== isWanted) {
-            tree.getRow(position)?.setExpanded(isWanted);
-        }
-
-        position += 1;
+    try {
+        return walkVisible(options);
+    } finally {
+        expansion.isApplying = false;
     }
 }
 
@@ -76,16 +81,7 @@ function applyWanted(expansion: TreeExpansion, tree: Gtk.TreeListModel, expanded
         return;
     }
 
-    const target = buildVisibleOrder(expansion.index, wanted);
-    expansion.isApplying = true;
-
-    try {
-        toggleWantedRows(tree, expansion.expanded, wanted, target);
-    } finally {
-        expansion.isApplying = false;
-    }
-
-    adoptOrder(expansion, target);
+    adoptOrder(expansion, walkApplying(expansion, toggleOptions(expansion, tree, wanted)));
 }
 
 function reportExpansion(context: ExpansionContext): void {
@@ -115,16 +111,16 @@ function isExpansionIdle(collection: Collection): boolean {
     return collection.treeModel() !== null && isCollectionIdle(collection);
 }
 
-function didRowDrift(expansion: TreeExpansion, change: ItemsChange): boolean {
-    const path = orderFor(expansion).paths[change.position - 1];
+function didRowDrift(collection: Collection, change: ItemsChange): boolean {
+    const path = collection.pathAt(change.position - 1);
     const isExpanded = change.removed === 0 && change.added > 0;
     const isCollapsed = change.added === 0 && change.removed > 0;
 
-    if (path === undefined || isExpanded === isCollapsed) {
+    if (path === null || isExpanded === isCollapsed) {
         return false;
     }
 
-    markExpanded(expansion, path, isExpanded);
+    markExpanded(collection.expansion, path, isExpanded);
 
     return true;
 }
@@ -134,7 +130,7 @@ function observeExpansion(context: ExpansionContext, change: ItemsChange, onDrif
         return;
     }
 
-    const didDrift = didRowDrift(context.collection.expansion, change);
+    const didDrift = didRowDrift(context.collection, change);
     reportExpansion(context);
 
     if (didDrift) {

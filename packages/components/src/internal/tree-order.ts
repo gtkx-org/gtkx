@@ -1,77 +1,88 @@
+import type { ListItem } from "../types.js";
 import type { CollectionIndex, Level } from "./collection-index.js";
+import type { SlotMap } from "./slots.js";
 import { encodePart } from "./keys.js";
 
+type VisibleRow = {
+    level: Level;
+    slot: number;
+    item: ListItem;
+    position: number;
+    isOpen: boolean;
+    isMarked: boolean;
+};
+
 type VisibleOrder = {
-    paths: string[];
     expandedPaths: string[];
     expandedIds: string[];
-    positions: Map<string, number | number[]>;
 };
 
-type OrderFrame = {
+type RowVisitor = (row: VisibleRow) => void;
+
+type WalkOptions = {
+    index: CollectionIndex;
+    slots: SlotMap;
+    marks?: SlotMap | undefined;
+    visit?: RowVisitor | undefined;
+};
+
+type WalkFrame = {
     level: Level;
     cursor: number;
+    open: Set<number> | undefined;
+    marked: Set<number> | undefined;
 };
 
-type OrderState = {
-    index: CollectionIndex;
-    expanded: Set<string>;
-    stack: OrderFrame[];
+type WalkState = {
+    options: WalkOptions;
+    stack: WalkFrame[];
+    row: VisibleRow;
     order: VisibleOrder;
 };
 
-function pushPosition(positions: Map<string, number | number[]>, id: string, position: number): void {
-    const existing = positions.get(id);
+const NO_LEVEL: Level = { path: "", items: [], expandableFlags: [] };
+const NO_ITEM: ListItem = { id: "", value: undefined };
 
-    if (existing === undefined) {
-        positions.set(id, position);
+const getRowPath = (row: VisibleRow): string => row.level.path + encodePart(String(row.slot));
 
+function frameFor(options: WalkOptions, level: Level): WalkFrame {
+    return { level, cursor: 0, open: options.slots.get(level.path), marked: options.marks?.get(level.path) };
+}
+
+function descend(state: WalkState, path: string): void {
+    const child = state.options.index.children.get(path);
+
+    if (child === undefined || child.items.length === 0) {
         return;
     }
 
-    if (Array.isArray(existing)) {
-        existing.push(position);
-
-        return;
-    }
-
-    positions.set(id, [existing, position]);
+    state.order.expandedPaths.push(path);
+    state.order.expandedIds.push(state.row.item.id);
+    state.stack.push(frameFor(state.options, child));
 }
 
-function childLevelFor(state: OrderState, path: string): Level | null {
-    const level = state.index.children.get(path);
-
-    return level === undefined || level.items.length === 0 ? null : level;
-}
-
-function visitSlot(state: OrderState, level: Level, slot: number): void {
-    const item = level.items[slot];
+function visitSlot(state: WalkState, frame: WalkFrame, slot: number): void {
+    const item = frame.level.items[slot];
 
     if (item === undefined) {
         return;
     }
 
-    const path = level.path + encodePart(String(slot));
-    const { order } = state;
-    pushPosition(order.positions, item.id, order.paths.length);
-    order.paths.push(path);
+    const { row } = state;
+    row.level = frame.level;
+    row.slot = slot;
+    row.item = item;
+    row.isOpen = frame.open?.has(slot) ?? false;
+    row.isMarked = frame.marked?.has(slot) ?? false;
+    state.options.visit?.(row);
+    row.position += 1;
 
-    if (!state.expanded.has(path)) {
-        return;
+    if (row.isOpen) {
+        descend(state, getRowPath(row));
     }
-
-    const child = childLevelFor(state, path);
-
-    if (child === null) {
-        return;
-    }
-
-    order.expandedPaths.push(path);
-    order.expandedIds.push(item.id);
-    state.stack.push({ level: child, cursor: 0 });
 }
 
-function advanceFrame(state: OrderState): void {
+function advanceFrame(state: WalkState): void {
     const frame = state.stack.at(-1);
 
     if (frame === undefined || frame.cursor >= frame.level.items.length) {
@@ -82,13 +93,14 @@ function advanceFrame(state: OrderState): void {
 
     const slot = frame.cursor;
     frame.cursor += 1;
-    visitSlot(state, frame.level, slot);
+    visitSlot(state, frame, slot);
 }
 
-function buildVisibleOrder(index: CollectionIndex, expanded: Set<string>): VisibleOrder {
-    const order: VisibleOrder = { paths: [], expandedPaths: [], expandedIds: [], positions: new Map() };
-    const frames = index.groups.map((level) => ({ level, cursor: 0 }));
-    const state: OrderState = { index, expanded, stack: frames.toReversed(), order };
+function walkVisible(options: WalkOptions): VisibleOrder {
+    const order: VisibleOrder = { expandedPaths: [], expandedIds: [] };
+    const row: VisibleRow = { level: NO_LEVEL, slot: 0, item: NO_ITEM, position: 0, isOpen: false, isMarked: false };
+    const frames = options.index.groups.map((level) => frameFor(options, level));
+    const state: WalkState = { options, stack: frames.toReversed(), row, order };
 
     while (state.stack.length > 0) {
         advanceFrame(state);
@@ -97,4 +109,30 @@ function buildVisibleOrder(index: CollectionIndex, expanded: Set<string>): Visib
     return order;
 }
 
-export { buildVisibleOrder, type VisibleOrder };
+function buildVisibleOrder(index: CollectionIndex, slots: SlotMap): VisibleOrder {
+    return walkVisible({ index, slots });
+}
+
+function findPositions(index: CollectionIndex, slots: SlotMap, ids: Set<string>): number[] {
+    const found: number[] = [];
+
+    walkVisible({
+        index,
+        slots,
+        visit: (row) => {
+            if (ids.has(row.item.id)) {
+                found.push(row.position);
+            }
+        },
+    });
+
+    return found;
+}
+
+export {
+    buildVisibleOrder,
+    findPositions,
+    walkVisible,
+    type VisibleOrder,
+    type WalkOptions,
+};

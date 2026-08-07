@@ -1,30 +1,28 @@
 import type { ListItem } from "../types.js";
 import type { CollectionIndex } from "./collection-index.js";
 import type { CollectionModel, SlotRef } from "./collection-model.js";
-import { slotRefFor } from "./collection-model.js";
-import { orderFor } from "./tree-expansion.js";
+import { slotPathAt, slotRefFor } from "./collection-model.js";
+import { findPositions } from "./tree-order.js";
 
 type Collection = Pick<CollectionModel, "model" | "expansion" | "treeModel"> & {
     itemAt: (ref: SlotRef) => ListItem | undefined;
     sectionFor: (levelPath: string) => unknown;
     idAt: (position: number) => string | null;
+    pathAt: (position: number) => string | null;
     positionFor: (id: string) => number;
     positionsFor: (ids: string[]) => number[];
 };
 
 const NO_POSITIONS: number[] = [];
 
-const ascending = (a: number, b: number): number => a - b;
-
 function positionsFor(collectionModel: CollectionModel, ids: string[]): number[] {
     if (ids.length === 0) {
         return NO_POSITIONS;
     }
 
-    const { positions } = orderFor(collectionModel.expansion);
-    const found: Set<number> = new Set(ids.flatMap((id) => positions.get(id) ?? NO_POSITIONS));
+    const { expansion } = collectionModel;
 
-    return [...found].toSorted(ascending);
+    return findPositions(expansion.index, expansion.slots, new Set(ids));
 }
 
 function positionFor(collectionModel: CollectionModel, id: string): number {
@@ -33,14 +31,32 @@ function positionFor(collectionModel: CollectionModel, id: string): number {
     return first;
 }
 
+function refAt(collectionModel: CollectionModel, position: number): SlotRef | null {
+    if (position < 0) {
+        return null;
+    }
+
+    return slotRefFor(collectionModel.model.getItem(position));
+}
+
 function idAt(collectionModel: CollectionModel, index: CollectionIndex, position: number): string | null {
-    const ref = slotRefFor(collectionModel.model.getItem(position));
+    const ref = refAt(collectionModel, position);
 
     if (ref === null) {
         return null;
     }
 
     return index.itemAt(ref.store.path, ref.slot)?.id ?? null;
+}
+
+function pathAt(collectionModel: CollectionModel, position: number): string | null {
+    const ref = refAt(collectionModel, position);
+
+    if (ref === null) {
+        return null;
+    }
+
+    return slotPathAt(ref.store, ref.slot);
 }
 
 function isCollectionIdle(collection: Collection): boolean {
@@ -57,6 +73,7 @@ function createCollection(collectionModel: CollectionModel, index: CollectionInd
         itemAt: (ref) => index.itemAt(ref.store.path, ref.slot),
         sectionFor: index.sectionFor,
         idAt: (position) => idAt(collectionModel, index, position),
+        pathAt: (position) => pathAt(collectionModel, position),
         positionFor: (id) => positionFor(collectionModel, id),
         positionsFor: (ids) => positionsFor(collectionModel, ids),
     };

@@ -392,4 +392,4 @@ class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
     }
 }
 
-export { createCollectionModel, slotRefFor, type CollectionModel, type SlotRef };
+export { createCollectionModel, slotPathAt, slotRefFor, type CollectionModel, type SlotRef };
