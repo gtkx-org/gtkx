@@ -1,5 +1,5 @@
 export { checkError, createErrorDomain } from "./error.js";
-export { readHandleRoundTrips, registerClassType, resolveWrapperClass, wrapHandle } from "./registry.js";
+export { registerClassType, resolveWrapperClass, wrapHandle } from "./registry.js";
 export { resolveType } from "./type.js";
 export {
     fromValue,

@@ -85,7 +85,6 @@ const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
 const interfaceLayoutRegistry: Map<bigint, InterfaceLayout> = new Map();
 const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
 const derivedClasses: WeakSet<AnyClass> = new WeakSet();
-const handleTraffic: { roundTrips: number } = { roundTrips: 0 };
 
 function setClassType(cls: AnyClass, type: bigint): void {
     (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
@@ -316,16 +315,11 @@ function wrapObject(value: unknown): object | null {
     return getOrCreateWrapper(value as ExternalObject<Handle>);
 }
 
-function readHandleRoundTrips(): number {
-    return handleTraffic.roundTrips;
-}
-
 function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
     if (handleMap.has(handle)) {
         return handle;
     }
 
-    handleTraffic.roundTrips += 1;
     const existing = getWrapper(handle);
 
     if (existing) {
@@ -408,7 +402,6 @@ export {
     getInterfaceProperties,
     getInterfaceVfuncRegistry,
     instanceClassName,
-    readHandleRoundTrips,
     registerWrapper,
     resolveWrapperType,
     wrapObject,
