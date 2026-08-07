@@ -257,11 +257,11 @@ const captureStderr = (child: ChildProcess | undefined): StderrCapture => {
 };
 
 const trackChild = (child: ChildProcess, handlers: ChildHandlers): (() => void) => {
-    child.on("exit", handlers.exit);
+    child.on("close", handlers.exit);
     child.on("error", handlers.error);
 
     return () => {
-        child.removeListener("exit", handlers.exit);
+        child.removeListener("close", handlers.exit);
         child.removeListener("error", handlers.error);
     };
 };
