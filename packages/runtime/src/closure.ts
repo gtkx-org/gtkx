@@ -44,7 +44,13 @@ const MARSHAL_T = callbackT(
         uint64T,
     ],
     voidT,
-    { userDataIndex: MARSHAL_DATA_INDEX, hasDestroy: true, destroyKind: "closureNotify", scope: "notified" },
+    {
+        hasUserData: true,
+        userDataIndex: MARSHAL_DATA_INDEX,
+        hasDestroy: true,
+        destroyKind: "closureNotify",
+        scope: "notified",
+    },
 );
 
 const NESTED_VALUE_T = structT("borrowed");

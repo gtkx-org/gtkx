@@ -345,11 +345,13 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
         : renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership);
 
     const callbackArgs = [tObject("borrowed"), ...callbackParamDescriptors, tVoid];
+    const userDataIndex = String(params.length + 1);
+    const destroy = "hasDestroy: true, destroyKind: \"closureNotify\"";
 
     return tCallback(
         callbackArgs,
         returnDescriptor,
-        `{ hasDestroy: true, destroyKind: "closureNotify", userDataIndex: ${String(params.length + 1)} }`,
+        `{ ${destroy}, hasUserData: true, userDataIndex: ${userDataIndex} }`,
     );
 };
 

@@ -317,6 +317,10 @@ const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number
         options.push("hasDestroy: true");
     }
 
+    if (owningParameter.closureIndex !== undefined) {
+        options.push("hasUserData: true");
+    }
+
     if (userDataIndex !== undefined) {
         options.push(`userDataIndex: ${String(userDataIndex)}`);
     }

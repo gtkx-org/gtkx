@@ -601,16 +601,19 @@ describe("codegen GObject item comparators", () => {
             "[boolean, number]",
         );
 
-        expect(source).toContain(`${itemComparatorArgs}, { userDataIndex: 2, scope: "call" })`);
+        expect(source).toContain(`${itemComparatorArgs}, { hasUserData: true, userDataIndex: 2, scope: "call" })`);
         expect(source).toContain(`${itemEqualityArgs}, { scope: "call" })`);
-        expect(source).toContain(`${itemEqualityFullArgs}, { userDataIndex: 2, scope: "call" })`);
+        expect(source).toContain(`${itemEqualityFullArgs}, { hasUserData: true, userDataIndex: 2, scope: "call" })`);
     });
 
     it("types CustomSorter comparator callbacks over borrowed object items", () => {
         const source = giSource("gtk");
         expect(source).toContain(`static new(sortFunc: (${itemComparatorSignature} => number) | null): CustomSorter`);
         expect(source).toContain(`setSortFunc(sortFunc: (${itemComparatorSignature} => number) | null): void`);
-        expect(source).toContain(`${itemComparatorArgs}, { hasDestroy: true, userDataIndex: 2, scope: "notified" })`);
+
+        expect(source).toContain(
+            `${itemComparatorArgs}, { hasDestroy: true, hasUserData: true, userDataIndex: 2, scope: "notified" })`,
+        );
     });
 
     it("keeps raw-pointer comparator callbacks outside GObject item containers", () => {
@@ -618,6 +621,25 @@ describe("codegen GObject item comparators", () => {
         expect(source).toContain("export type CompareDataFunc = (a: number | null, b: number | null) => number;");
         expect(source).toContain("export type EqualFunc = (a: number | null, b: number | null) => boolean;");
         expect(source).not.toContain(itemComparatorSignature);
+    });
+});
+
+describe("codegen type-erased callback parameters", () => {
+    it("drops a callable whose callback is a GCallback the callee hands user data to", () => {
+        const gtk = giSource("gtk");
+        expect(gtk).toContain("class CClosureExpression extends Expression");
+        expect(gtk).not.toContain('"gtk_cclosure_expression_new"');
+        expect(giSource("gio")).not.toContain('"g_cancellable_connect"');
+        expect(giSource("gobject")).not.toContain('"g_signal_group_connect_data"');
+    });
+
+    it("keeps a callback that reads its user data off the argument it is handed", () => {
+        const source = giSource("gdk");
+        expect(source).toContain("gdk_content_register_serializer");
+
+        expect(source).toContain(
+            't.callback([t.object("borrowed")], t.void, { hasDestroy: true, hasUserData: true, scope: "notified" })',
+        );
     });
 });
 

@@ -18,6 +18,7 @@ fn callback_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
         return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy,
         destroy_kind: DestroyNotifyKind::default(),
+        has_user_data: true,
         user_data_index: Some(0),
         scope,
     }
@@ -31,6 +32,14 @@ fn closure_notify_codec() -> CallbackCodec {
 }
 
 fn closureless_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
+    CallbackCodec {
+        has_user_data: false,
+        user_data_index: None,
+        ..callback_codec(has_destroy, scope)
+    }
+}
+
+fn opaque_user_data_codec(has_destroy: bool, scope: CallbackScope) -> CallbackCodec {
     CallbackCodec {
         user_data_index: None,
         ..callback_codec(has_destroy, scope)
@@ -98,7 +107,7 @@ fn invoke_through_cif(codec: &CallbackCodec) -> Invocation {
     encoded.append_libffi_args(&mut args);
     assert_eq!(args.len(), arity);
 
-    let has_user_data = codec.user_data_index.is_some();
+    let has_user_data = codec.has_user_data;
     let target = target_for(arity, has_user_data);
 
     RECORDED.set(None);
@@ -184,6 +193,19 @@ fn a_closureless_callback_is_invoked_with_the_trampoline_alone() {
         assert_eq!(invocation.arity, 1);
         assert_eq!(invocation.user_data, None);
         assert_eq!(invocation.destroy, None);
+    });
+}
+
+#[test]
+fn a_callee_taking_user_data_gets_its_slot_even_when_the_callback_declares_none() {
+    helpers::run(|| {
+        let invocation = invoke_through_cif(&opaque_user_data_codec(true, CallbackScope::Notified));
+        assert_eq!(invocation.arity, 3);
+        assert!(invocation.user_data.is_some());
+        assert_eq!(
+            invocation.destroy,
+            Some(ClosureState::destroy as *mut c_void)
+        );
     });
 }
 

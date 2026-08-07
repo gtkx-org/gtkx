@@ -166,6 +166,7 @@ pub enum Descriptor {
         return_descriptor: NestedDescriptor,
         has_destroy: Option<bool>,
         destroy_kind: Option<DestroyNotifyKind>,
+        has_user_data: Option<bool>,
         user_data_index: Option<u32>,
         scope: Option<CallbackScope>,
     },
@@ -308,11 +309,12 @@ impl Descriptor {
                 return_descriptor,
                 has_destroy,
                 destroy_kind,
+                has_user_data,
                 user_data_index,
                 scope,
             } => {
                 let has_destroy = has_destroy.unwrap_or(false);
-                let user_data_index = user_data_index.map(|n| n as usize);
+                let has_user_data = has_user_data.unwrap_or(false);
                 Codec::Callback(CallbackCodec {
                     arg_codecs: arg_descriptors
                         .0
@@ -322,8 +324,9 @@ impl Descriptor {
                     return_codec: return_descriptor.into_codec()?,
                     has_destroy,
                     destroy_kind: destroy_kind.unwrap_or_default(),
-                    user_data_index,
-                    scope: Self::callback_scope(scope, has_destroy, user_data_index),
+                    has_user_data,
+                    user_data_index: user_data_index.map(|n| n as usize),
+                    scope: Self::callback_scope(scope, has_destroy, has_user_data),
                 })
             }
             Self::Ref {
@@ -358,9 +361,9 @@ impl Descriptor {
     fn callback_scope(
         scope: Option<CallbackScope>,
         has_destroy: bool,
-        user_data_index: Option<usize>,
+        has_user_data: bool,
     ) -> CallbackScope {
-        if user_data_index.is_none() && !has_destroy {
+        if !has_user_data && !has_destroy {
             return CallbackScope::Forever;
         }
         match scope {

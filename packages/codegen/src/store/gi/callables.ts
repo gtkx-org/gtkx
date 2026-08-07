@@ -103,11 +103,7 @@ const renderBinding = (
     context: ModuleContext,
     callable: GirFunction,
 ): { text: string; cIdentifier: string } | undefined => {
-    if (!callable.introspectable) {
-        return undefined;
-    }
-
-    if (callable.shadowedBy !== undefined) {
+    if (!isEmittableCallable(context, callable)) {
         return undefined;
     }
 

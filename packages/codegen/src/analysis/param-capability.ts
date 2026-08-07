@@ -136,8 +136,26 @@ const hasIndirectionMismatch = (context: ModuleContext, parameter: GirParameter)
     return declared !== marshalled;
 };
 
+const isTypeErasedCallback = (context: ModuleContext, parameter: GirParameter): boolean => {
+    if (parameter.closureIndex === undefined) {
+        return false;
+    }
+
+    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+
+    return type?.kind === "callback" && type.value.parameters.length === 0;
+};
+
 const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParameter): boolean => {
-    if (parameter.isVarargs || parameter.direction === "in") {
+    if (parameter.isVarargs) {
+        return false;
+    }
+
+    if (isTypeErasedCallback(context, parameter)) {
+        return true;
+    }
+
+    if (parameter.direction === "in") {
         return false;
     }
 

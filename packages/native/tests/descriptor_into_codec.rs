@@ -170,6 +170,7 @@ fn callback_descriptor(destroy_kind: Option<DestroyNotifyKind>) -> Descriptor {
         return_descriptor: nested(Descriptor::Void),
         has_destroy: Some(true),
         destroy_kind,
+        has_user_data: Some(true),
         user_data_index: Some(1),
         scope: None,
     }

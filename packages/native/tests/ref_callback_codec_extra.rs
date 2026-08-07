@@ -16,6 +16,7 @@ fn callback_codec() -> CallbackCodec {
         return_codec: Box::new(Codec::Void(VoidCodec)),
         has_destroy: false,
         destroy_kind: DestroyNotifyKind::default(),
+        has_user_data: false,
         user_data_index: None,
         scope: CallbackScope::Call,
     }

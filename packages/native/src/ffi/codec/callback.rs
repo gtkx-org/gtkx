@@ -35,6 +35,7 @@ pub struct CallbackCodec {
     pub return_codec: Box<Codec>,
     pub has_destroy: bool,
     pub destroy_kind: DestroyNotifyKind,
+    pub has_user_data: bool,
     pub user_data_index: Option<usize>,
     pub scope: CallbackScope,
 }
@@ -53,7 +54,7 @@ impl Encoder for CallbackCodec {
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         types.push(libffi::Type::pointer());
-        if self.has_user_data() {
+        if self.has_user_data {
             types.push(libffi::Type::pointer());
         }
         if self.has_destroy {
@@ -89,7 +90,7 @@ impl Encoder for CallbackCodec {
             }
         });
 
-        let has_user_data = self.has_user_data();
+        let has_user_data = self.has_user_data;
 
         match self.scope {
             CallbackScope::Call => {
@@ -114,15 +115,11 @@ impl Decoder for CallbackCodec {}
 impl PtrWriter for CallbackCodec {}
 
 impl CallbackCodec {
-    fn has_user_data(&self) -> bool {
-        self.user_data_index.is_some()
-    }
-
     fn null_callback_value(&self) -> ffi::Stash {
         ffi::Stash::Callback(ffi::CallbackValue::new(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
-            self.has_user_data(),
+            self.has_user_data,
             if self.has_destroy {
                 Some(std::ptr::null_mut())
             } else {

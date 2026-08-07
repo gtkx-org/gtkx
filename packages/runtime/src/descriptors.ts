@@ -96,7 +96,9 @@ type CallbackOptions = {
     hasDestroy?: boolean;
     /** Signature of that destroy notify; defaults to `destroyNotify`, a one-argument `GDestroyNotify`. */
     destroyKind?: CallbackDescriptor["destroyKind"];
-    /** Position of the `user_data` argument carrying the closure; without one it can never be freed. */
+    /** The callee also takes a `user_data` pointer; without one the closure can never be freed. */
+    hasUserData?: boolean;
+    /** Position of `user_data` among the callback's own arguments, dropped before the closure is called. */
     userDataIndex?: number;
     /** Lifetime of the closure; defaults to `notified` when `hasDestroy` is set and `call` otherwise. */
     scope?: CallbackDescriptor["scope"];
@@ -382,6 +384,10 @@ const callbackT = (
 
     if (options?.destroyKind !== undefined) {
         result.destroyKind = options.destroyKind;
+    }
+
+    if (options?.hasUserData !== undefined) {
+        result.hasUserData = options.hasUserData;
     }
 
     if (options?.userDataIndex !== undefined) {

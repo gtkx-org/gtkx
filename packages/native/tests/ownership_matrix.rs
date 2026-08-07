@@ -370,6 +370,7 @@ fn d_callback() -> Descriptor {
         return_descriptor: NestedDescriptor(Box::new(Descriptor::Void)),
         has_destroy: Some(false),
         destroy_kind: None,
+        has_user_data: Some(false),
         user_data_index: None,
         scope: None,
     }
