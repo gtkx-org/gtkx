@@ -163,7 +163,7 @@ const list = <P extends GObject.Object, I, H = void>(
     };
 
     if (hooks.remove === undefined && hooks.clear === undefined) {
-        behavior.permanent = [prop];
+        behavior.constructOnly = [prop];
     }
 
     return behavior;

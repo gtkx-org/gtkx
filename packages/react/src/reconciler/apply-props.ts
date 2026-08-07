@@ -12,26 +12,14 @@ import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PR
 type PropDelta = { name: string; value: unknown; prevValue: unknown };
 type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };
 type PropChange = { prev: Props; next: Props };
-type ChangeRejection = { subject: string; stage: string; reason: string };
 
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const NOTIFY_PREFIX = "onNotify";
 const HANDLER_PREFIX = "on";
+const HANDLER_NAME = /^on[A-Z]/;
 const flushDirty: Set<ElementNode> = new Set();
 
-const CONSTRUCT_ONLY_REJECTION: ChangeRejection = {
-    subject: "construct-only prop",
-    stage: "created",
-    reason: "GTK accepts it only while the object is being built",
-};
-
-const PERMANENT_REJECTION: ChangeRejection = {
-    subject: "prop",
-    stage: "applied",
-    reason: "Nothing takes back what it already added",
-};
-
-const isHandlerName = (name: string): boolean => /^on[A-Z]/.test(name);
+const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 
 const signalForProp = (info: TypeInfo, name: string): string => {
     if (name === NOTIFY_PREFIX) {
@@ -114,18 +102,32 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void =
     }
 };
 
-const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void): void => {
-    const names = new Set([...Object.keys(prev), ...Object.keys(next)]);
-
-    for (const name of names) {
+const visitOwnName = (record: Props, name: string, visit: (name: string) => void): void => {
+    if (Object.hasOwn(record, name)) {
         visit(name);
     }
 };
 
-const propChangeError = (rejection: ChangeRejection, typeName: string, name: string): Error =>
+const visitAddedName = (prev: Props, next: Props, name: string, visit: (name: string) => void): void => {
+    if (Object.hasOwn(next, name) && !Object.hasOwn(prev, name)) {
+        visit(name);
+    }
+};
+
+const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void): void => {
+    for (const name in prev) {
+        visitOwnName(prev, name, visit);
+    }
+
+    for (const name in next) {
+        visitAddedName(prev, next, name, visit);
+    }
+};
+
+const propChangeError = (typeName: string, name: string): Error =>
     new Error(
-        `Cannot change the ${rejection.subject} '${name}' of <${typeName}> after it is ${rejection.stage}. ` +
-        `${rejection.reason}, so give the element a key that ` +
+        `Cannot change the construct-only prop '${name}' of <${typeName}> after it is created. ` +
+        "It is only accepted while the element is being built, so give the element a key that " +
         `changes with '${name}' and React will build a new one.`,
     );
 
@@ -134,8 +136,8 @@ const hasAppliedValue = (value: unknown): boolean => (Array.isArray(value) ? val
 const isConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
     info.constructOnly.has(name) && !Object.is(change.prev[name], change.next[name]);
 
-const isPermanentChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
-    info.permanent.has(name) &&
+const isDeclaredConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
+    info.declaredConstructOnly.has(name) &&
     hasAppliedValue(change.prev[name]) &&
     !isDeepEqual(change.prev[name], change.next[name]);
 
@@ -144,12 +146,8 @@ const assertPropsCanChange = (typeName: string, prev: Props, next: Props): void 
     const change: PropChange = { prev, next };
 
     eachChangedName(prev, next, (name) => {
-        if (isConstructOnlyChange(info, name, change)) {
-            throw propChangeError(CONSTRUCT_ONLY_REJECTION, typeName, name);
-        }
-
-        if (isPermanentChange(info, name, change)) {
-            throw propChangeError(PERMANENT_REJECTION, typeName, name);
+        if (isConstructOnlyChange(info, name, change) || isDeclaredConstructOnlyChange(info, name, change)) {
+            throw propChangeError(typeName, name);
         }
     });
 };

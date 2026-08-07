@@ -52,7 +52,7 @@ const expectRejectedSections = async (sections?: CreditSection[]): Promise<void>
     const rerender = await renderDialog(ref, SECTIONS);
 
     await expect(rerender(<CreditedDialog dialogRef={ref} sections={sections} />)).rejects.toThrow(
-        /Cannot change the prop 'creditSections' of <GtkAboutDialog>/,
+        /Cannot change the construct-only prop 'creditSections' of <GtkAboutDialog>/,
     );
 };
 

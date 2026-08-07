@@ -24,6 +24,7 @@ const CONTENT_TYPE_NAMES: { kind: ContentKind; name: string }[] = [
 ];
 
 const getContentTypes = createContentTypeCache();
+const contentKinds: Map<bigint, ContentKind | null> = new Map();
 
 function createContentTypeCache(): () => ContentType[] {
     let cached: ContentType[] | null = null;
@@ -35,7 +36,7 @@ function createContentTypeCache(): () => ContentType[] {
     };
 }
 
-const resolveContentKind = (type: bigint): ContentKind | null => {
+const findContentKind = (type: bigint): ContentKind | null => {
     for (const entry of getContentTypes()) {
         if (entry.type !== TYPE_INVALID && typeIsA(type, entry.type)) {
             return entry.kind;
@@ -43,6 +44,19 @@ const resolveContentKind = (type: bigint): ContentKind | null => {
     }
 
     return null;
+};
+
+const contentKindFor = (type: bigint): ContentKind | null => {
+    const cached = contentKinds.get(type);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const kind = findContentKind(type);
+    contentKinds.set(type, kind);
+
+    return kind;
 };
 
 const constructInput = (info: TypeInfo, props: Props): Props =>
@@ -76,7 +90,7 @@ const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch):
     const type = typeFromName(typeName);
     const object = createObject(typeName, type, constructInput(info, props));
 
-    return createElementNode(typeName, object, dispatch, resolveContentKind(type));
+    return createElementNode(typeName, object, dispatch, contentKindFor(type));
 };
 
 export { resolveElementNode };

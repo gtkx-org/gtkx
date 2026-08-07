@@ -57,11 +57,11 @@ type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     /** Props to withhold from the constructor, leaving them for a later hook to apply. */
     deferred?: string[];
     /**
-     * Props whose applied value nothing can take back, because the library exposes no counterpart to
-     * whatever applied it. Changing one after it has been applied throws instead of silently applying
-     * the new value on top of the old.
+     * Props the behavior can only apply while the element is being built, because the library exposes no
+     * counterpart to whatever applied them. Changing one after it has been applied throws instead of
+     * silently applying the new value on top of the old.
      */
-    permanent?: string[];
+    constructOnly?: string[];
 };
 
 /** A named export in a module, referenced as plain data (the module is never imported at runtime). */

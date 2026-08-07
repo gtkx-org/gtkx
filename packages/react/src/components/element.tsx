@@ -3,35 +3,59 @@ import { createElement, type ElementType, isValidElement, type ReactElement, typ
 import type { Props } from "../reconciler/registry.js";
 
 const Prop = "gtkx:prop";
+const NO_PROP_CHILDREN: ReactNode[] = [];
 
 const hasElement = (value: unknown): boolean =>
     isValidElement(value) || (Array.isArray(value) && value.some((item: unknown) => hasElement(item)));
 
-const routeProp = (key: string, value: unknown, hostProps: Props, propChildren: ReactNode[]): void => {
-    if (key !== "ref" && hasElement(value)) {
+const isRoutedProp = (key: string, value: unknown): boolean =>
+    key !== "children" && key !== "ref" && hasElement(value);
+
+const collectPropChildren = (record: Props): ReactNode[] | null => {
+    let propChildren: ReactNode[] | null = null;
+
+    for (const key in record) {
+        if (!isRoutedProp(key, record[key])) {
+            continue;
+        }
+
+        propChildren ??= [];
+
         propChildren.push(
-            createElement(Prop, { propName: key, key: `${Prop}:${key}` }, value as ReactNode),
+            createElement(Prop, { propName: key, key: `${Prop}:${key}` }, record[key] as ReactNode),
         );
-    } else {
-        hostProps[key] = value;
     }
+
+    return propChildren;
+};
+
+const hostPropsWithout = (record: Props): Props => {
+    const hostProps: Props = {};
+
+    for (const key in record) {
+        if (key !== "children" && !isRoutedProp(key, record[key])) {
+            hostProps[key] = record[key];
+        }
+    }
+
+    return hostProps;
 };
 
 const buildElement = (typeName: string, record: Props): ReactElement => {
     const Host = typeName as ElementType;
-    const hostProps: Props = {};
-    const propChildren: ReactNode[] = [];
+    const propChildren = collectPropChildren(record);
 
-    for (const key in record) {
-        if (key === "children") {
-            continue;
-        }
-
-        routeProp(key, record[key], hostProps, propChildren);
+    if (propChildren === null) {
+        return (
+            <Host {...record}>
+                {NO_PROP_CHILDREN}
+                {record.children as ReactNode}
+            </Host>
+        );
     }
 
     return (
-        <Host {...hostProps}>
+        <Host {...hostPropsWithout(record)}>
             {propChildren}
             {record.children as ReactNode}
         </Host>

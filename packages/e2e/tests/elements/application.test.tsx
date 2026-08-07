@@ -210,7 +210,7 @@ describe("render - Application main options", () => {
         const rerender = await renderOptions(ref, [GREETING_OPTION]);
 
         await expect(rerender([GREETING_OPTION, COLOR_OPTION])).rejects.toThrow(
-            /Cannot change the prop 'mainOptions' of <GtkApplication>/,
+            /Cannot change the construct-only prop 'mainOptions' of <GtkApplication>/,
         );
     });
 
