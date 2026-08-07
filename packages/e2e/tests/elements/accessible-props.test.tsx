@@ -15,6 +15,19 @@ const accessible = (current: Gtk.Accessible | null): Gtk.Accessible => {
 const hasAccessibleProperty = (ref: RefObject<Gtk.Accessible | null>, property: Gtk.AccessibleProperty): boolean =>
     Gtk.testAccessibleHasProperty(accessible(ref.current), property);
 
+const hasAccessibleState = (ref: RefObject<Gtk.Accessible | null>, state: Gtk.AccessibleState): boolean =>
+    Gtk.testAccessibleHasState(accessible(ref.current), state);
+
+describe("accessible props - states GTK collects as boolean or undefined", () => {
+    it("renders accessibleExpanded, accessibleSelected and accessibleVisited without an FFI error", async () => {
+        const ref = createRef<Gtk.Label>();
+        await render(<GtkLabel ref={ref} accessibleExpanded accessibleSelected accessibleVisited />);
+        expect(hasAccessibleState(ref, Gtk.AccessibleState.EXPANDED)).toBe(true);
+        expect(hasAccessibleState(ref, Gtk.AccessibleState.SELECTED)).toBe(true);
+        expect(hasAccessibleState(ref, Gtk.AccessibleState.VISITED)).toBe(true);
+    });
+});
+
 describe("accessible props - GValue marshaling regression (1)", () => {
     it("sets accessibleLabel (string) without crashing", async () => {
         const ref = createRef<Gtk.Button>();

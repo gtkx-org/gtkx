@@ -228,7 +228,7 @@ const flushBehaviors = (): void => {
 };
 
 const applyAccessible = (object: GObject.Object, prev: Props, next: Props): void => {
-    if (object instanceof Gtk.Widget) {
+    if (object instanceof Gtk.Accessible) {
         applyAccessibleProps(object, prev, next);
     }
 };

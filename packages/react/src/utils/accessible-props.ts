@@ -81,7 +81,7 @@ type AccessibleProps = {
     // eslint-disable-next-line gtkx/boolean-name
     accessibleVisited?: boolean | null | undefined;
     /** Descendant that holds the focus while the widget itself keeps it. */
-    accessibleActiveDescendant?: Gtk.Widget | null | undefined;
+    accessibleActiveDescendant?: Gtk.Accessible | null | undefined;
     /** Total number of columns in the table, including any that are not rendered. */
     accessibleColCount?: number | null | undefined;
     /** One-based column position of the cell within its table. */
@@ -91,19 +91,19 @@ type AccessibleProps = {
     /** Number of columns the cell spans. */
     accessibleColSpan?: number | null | undefined;
     /** Widgets whose content or presence this widget controls. */
-    accessibleControls?: Gtk.Widget[] | null | undefined;
+    accessibleControls?: Gtk.Accessible[] | null | undefined;
     /** Widgets that describe this one. */
-    accessibleDescribedBy?: Gtk.Widget[] | null | undefined;
+    accessibleDescribedBy?: Gtk.Accessible[] | null | undefined;
     /** Widgets holding extended detail about this one. */
-    accessibleDetails?: Gtk.Widget[] | null | undefined;
+    accessibleDetails?: Gtk.Accessible[] | null | undefined;
     /** Widgets holding the message that explains why the value is invalid. */
-    accessibleErrorMessage?: Gtk.Widget[] | null | undefined;
+    accessibleErrorMessage?: Gtk.Accessible[] | null | undefined;
     /** Widgets to read next, overriding the default reading order. */
-    accessibleFlowTo?: Gtk.Widget[] | null | undefined;
+    accessibleFlowTo?: Gtk.Accessible[] | null | undefined;
     /** Widgets that label this one. */
-    accessibleLabelledBy?: Gtk.Widget[] | null | undefined;
+    accessibleLabelledBy?: Gtk.Accessible[] | null | undefined;
     /** Widgets this one owns that the widget hierarchy does not already imply. */
-    accessibleOwns?: Gtk.Widget[] | null | undefined;
+    accessibleOwns?: Gtk.Accessible[] | null | undefined;
     /** One-based position of the widget within its set. */
     accessiblePosInSet?: number | null | undefined;
     /** Total number of rows in the table, including any that are not rendered. */
@@ -118,7 +118,7 @@ type AccessibleProps = {
     accessibleSetSize?: number | null | undefined;
 };
 
-type AccessibleValueType = "string" | "boolean" | "int" | "double" | "object" | "list";
+type AccessibleValueType = "string" | "boolean" | "optionalBoolean" | "int" | "double" | "object" | "list";
 
 type AccessiblePropertyDescriptor = {
     kind: "property";
@@ -164,12 +164,12 @@ const ACCESSIBLE_PROP_MAP: Record<keyof AccessibleProps, AccessibleDescriptor> =
     accessibleBusy: buildState(Gtk.AccessibleState.BUSY, "boolean"),
     accessibleChecked: buildState(Gtk.AccessibleState.CHECKED, "int"),
     accessibleDisabled: buildState(Gtk.AccessibleState.DISABLED, "boolean"),
-    accessibleExpanded: buildState(Gtk.AccessibleState.EXPANDED, "int"),
+    accessibleExpanded: buildState(Gtk.AccessibleState.EXPANDED, "optionalBoolean"),
     accessibleHidden: buildState(Gtk.AccessibleState.HIDDEN, "boolean"),
     accessibleInvalid: buildState(Gtk.AccessibleState.INVALID, "int"),
     accessiblePressed: buildState(Gtk.AccessibleState.PRESSED, "int"),
-    accessibleSelected: buildState(Gtk.AccessibleState.SELECTED, "int"),
-    accessibleVisited: buildState(Gtk.AccessibleState.VISITED, "int"),
+    accessibleSelected: buildState(Gtk.AccessibleState.SELECTED, "optionalBoolean"),
+    accessibleVisited: buildState(Gtk.AccessibleState.VISITED, "optionalBoolean"),
     accessibleActiveDescendant: buildRelation(Gtk.AccessibleRelation.ACTIVE_DESCENDANT, "object"),
     accessibleColCount: buildRelation(Gtk.AccessibleRelation.COL_COUNT, "int"),
     accessibleColIndex: buildRelation(Gtk.AccessibleRelation.COL_INDEX, "int"),
@@ -226,6 +226,11 @@ const buildValue = (descriptor: AccessibleDescriptor, jsValue: unknown): GObject
                 v.setBoolean(jsValue as boolean);
             });
         }
+        case "optionalBoolean": {
+            return GObject.buildValue(GObject.TYPE_INT, (v) => {
+                v.setInt(jsValue === true ? 1 : 0);
+            });
+        }
         case "int": {
             return GObject.buildValue(GObject.TYPE_INT, (v) => {
                 v.setInt(jsValue as number);
@@ -242,7 +247,7 @@ const buildValue = (descriptor: AccessibleDescriptor, jsValue: unknown): GObject
             });
         }
         case "list": {
-            const list = Gtk.AccessibleList.newFromList(jsValue as Gtk.Widget[]);
+            const list = Gtk.AccessibleList.newFromList(jsValue as Gtk.Accessible[]);
 
             return GObject.buildValue(Gtk.AccessibleList.prototype.__type__, (v) => {
                 v.setBoxed(list);
