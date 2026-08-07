@@ -19,6 +19,7 @@ const HANDLER_PREFIX = "on";
 const HANDLER_NAME = /^on[A-Z]/;
 const flushDirty: Set<ElementNode> = new Set();
 const accessibleDirty: Map<ElementNode, Props> = new Map();
+const mapWatched: WeakSet<ElementNode> = new WeakSet();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 
@@ -240,9 +241,38 @@ const markAccessible = (node: ElementNode, prev: Props): void => {
     }
 };
 
+const hasAccessibleProp = (props: Props): boolean => {
+    for (const name in props) {
+        if (isAccessibleProp(name)) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const watchMap = (node: ElementNode): void => {
+    const { object } = node;
+
+    if (mapWatched.has(node) || !(object instanceof Gtk.Widget) || !hasAccessibleProp(node.props)) {
+        return;
+    }
+
+    mapWatched.add(node);
+
+    object.connect("map", () => {
+        setTimeout(() => {
+            if (object.getMapped()) {
+                applyAccessible(object, null, node.props);
+            }
+        }, 0);
+    });
+};
+
 const flushAccessible = (): void => {
     for (const [node, prev] of accessibleDirty) {
         applyAccessible(node.object, prev, node.props);
+        watchMap(node);
     }
 
     accessibleDirty.clear();

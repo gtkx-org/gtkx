@@ -1,7 +1,7 @@
 import type * as GtkTypes from "@gtkx/gi/gtk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
+import { render, waitFor } from "@gtkx/testing";
 import { readAccessibleFlag, readAccessibleState, readAccessibleString } from "@gtkx/testing/internal";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -40,5 +40,32 @@ describe("reading accessible attributes from GTK", () => {
         const ref = createRef<GtkTypes.Label>();
         await render(<GtkLabel ref={ref} accessibleChecked={Gtk.AccessibleTristate.MIXED} />);
         expect(readAccessibleState(accessible(ref), Gtk.AccessibleState.CHECKED)).toBe(Gtk.AccessibleTristate.MIXED);
+    });
+});
+
+describe("holding accessible props against GTK's own writes", () => {
+    it("holds accessibleHidden through the initial map", async () => {
+        const ref = createRef<GtkTypes.Label>();
+        await render(<GtkLabel ref={ref} accessibleHidden />);
+
+        await waitFor(() => {
+            expect(readAccessibleFlag(accessible(ref), Gtk.AccessibleState.HIDDEN)).toBe(true);
+        });
+    });
+
+    it("holds accessibleHidden across a hide and show cycle", async () => {
+        const ref = createRef<GtkTypes.Label>();
+
+        function App({ isShown }: { isShown: boolean }) {
+            return <GtkBox visible={isShown}><GtkLabel ref={ref} accessibleHidden /></GtkBox>;
+        }
+
+        const { rerender } = await render(<App isShown />);
+        await rerender(<App isShown={false} />);
+        await rerender(<App isShown />);
+
+        await waitFor(() => {
+            expect(readAccessibleFlag(accessible(ref), Gtk.AccessibleState.HIDDEN)).toBe(true);
+        });
     });
 });
