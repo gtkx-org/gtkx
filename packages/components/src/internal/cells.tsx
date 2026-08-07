@@ -6,6 +6,7 @@ import { createPortal, useProperty } from "@gtkx/react";
 import { setObjectProperty, t } from "@gtkx/runtime";
 import { memo, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type {
+    ExpanderDescriptions,
     ListItem,
     ListItemRenderArgs,
     ListItemRenderer,
@@ -99,6 +100,7 @@ type ItemCellProps = {
     render: ListItemRenderer<never>;
     collection: Collection;
     expandedIds: string[] | null | undefined;
+    expanderDescriptions: ExpanderDescriptions | null | undefined;
 };
 
 type ItemPortalsProps = {
@@ -106,6 +108,7 @@ type ItemPortalsProps = {
     render: ListItemRenderer<never>;
     collection: Collection;
     expandedIds?: string[] | null | undefined;
+    expanderDescriptions?: ExpanderDescriptions | null | undefined;
 };
 
 type ItemRowProps = {
@@ -364,7 +367,26 @@ function useItemSlot(
     return slotFor({ item, position, row, collection, expandedIds });
 }
 
-function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: ReactNode): ReactNode {
+function expanderDescriptionFor(
+    slot: ItemSlot,
+    descriptions: ExpanderDescriptions | null | undefined,
+): string | undefined {
+    const { isExpanded } = slot.args;
+
+    if (descriptions == null || isExpanded === undefined) {
+        return undefined;
+    }
+
+    return isExpanded ? descriptions.collapse : descriptions.expand;
+}
+
+function wrapExpander(
+    slot: ItemSlot,
+    content: ReactNode,
+    descriptions: ExpanderDescriptions | null | undefined,
+): ReactNode {
+    const { item, row } = slot;
+
     const expander: ReactNode =
         row === null
             ? (
@@ -376,6 +398,7 @@ function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: Reac
                         hideExpander={item.shouldHideExpander ?? false}
                         indentForDepth={item.shouldIndentForDepth ?? true}
                         indentForIcon={item.shouldIndentForIcon ?? true}
+                        accessibleDescription={expanderDescriptionFor(slot, descriptions)}
                     >
                         {content}
                     </GtkTreeExpander>
@@ -384,14 +407,18 @@ function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: Reac
     return expander;
 }
 
-function itemBody(slot: ItemSlot | null, render: ListItemRenderer<never>): ReactNode {
+function itemBody(
+    slot: ItemSlot | null,
+    render: ListItemRenderer<never>,
+    descriptions: ExpanderDescriptions | null | undefined,
+): ReactNode {
     if (slot === null) {
         return null;
     }
 
     const renderItem = render as ListItemRenderer<unknown>;
 
-    return wrapExpander(slot.item, slot.row, renderItem(slot.args));
+    return wrapExpander(slot, renderItem(slot.args), descriptions);
 }
 
 function rowText(value: string | undefined): string | null {
@@ -427,9 +454,9 @@ function applyRowProps(host: Gtk.ColumnViewRow, props: ResolvedRowProps): void {
     host.setSelectable(props.isSelectable);
 }
 
-function ItemCellImpl({ entry, render, collection, expandedIds }: ItemCellProps): ReactNode {
+function ItemCellImpl({ entry, render, collection, expandedIds, expanderDescriptions }: ItemCellProps): ReactNode {
     const slot = useItemSlot(entry, collection, expandedIds);
-    const body = itemBody(slot, render);
+    const body = itemBody(slot, render, expanderDescriptions);
 
     return createPortal(body, entry.host, entry.key);
 }
@@ -460,9 +487,22 @@ function usePortalEntries<H extends FactoryHost>(registry: CellRegistry<H>): Cel
     return registry.getEntries();
 }
 
-const ItemPortals = ({ registry, render, collection, expandedIds }: ItemPortalsProps): ReactNode =>
+const ItemPortals = ({
+    registry,
+    render,
+    collection,
+    expandedIds,
+    expanderDescriptions,
+}: ItemPortalsProps): ReactNode =>
     usePortalEntries(registry).map((entry) => (
-        <ItemCell key={entry.key} entry={entry} render={render} collection={collection} expandedIds={expandedIds} />
+        <ItemCell
+            key={entry.key}
+            entry={entry}
+            render={render}
+            collection={collection}
+            expandedIds={expandedIds}
+            expanderDescriptions={expanderDescriptions}
+        />
     ));
 
 const RowPortals = ({ registry, rowProps, collection, expandedIds }: RowPortalsProps): ReactNode =>

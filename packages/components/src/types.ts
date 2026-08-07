@@ -102,6 +102,18 @@ type SelectionProps = {
     selectionMode?: Gtk.SelectionMode | null | undefined;
 };
 
+/**
+ * Wording a screen reader announces for the control that expands and collapses a row. GTK names that control
+ * after the row's own content and reports whether it is expanded, but says nothing about what activating it
+ * does, so these strings supply that and belong in the application's own language.
+ */
+type ExpanderDescriptions = {
+    /** Announced while the row is collapsed, such as "Expand". */
+    expand: string;
+    /** Announced while the row is expanded, such as "Collapse". */
+    collapse: string;
+};
+
 /** Controlled expansion for the views that turn nested `ListItem.children` into a tree. */
 type ExpansionProps = {
     /**
@@ -112,6 +124,12 @@ type ExpansionProps = {
     expandedIds?: string[] | null | undefined;
     /** Called with one id per expanded row, in visible order, whenever expansion changes. */
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
+    /**
+     * Wording announced for the expander of every row that can expand, describing what activating it does.
+     * Omitting it leaves those expanders described only by the row they carry, and rows that cannot expand or
+     * that hide their expander are never described.
+     */
+    expanderDescriptions?: ExpanderDescriptions | null | undefined;
 };
 
 /** Controlled sorting for the views whose headers can sort the collection. */
@@ -242,6 +260,7 @@ ListViewOwnProps<T, S>;
 
 export {
     type SelectionProps,
+    type ExpanderDescriptions,
     type ExpansionProps,
     type SortProps,
     type DropDownOwnProps,

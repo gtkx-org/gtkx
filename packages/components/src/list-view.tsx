@@ -15,6 +15,7 @@ const LIST_VIEW_PROPS = [
     "selectionMode",
     "expandedIds",
     "onExpandedChange",
+    "expanderDescriptions",
     "estimatedItemHeight",
     "estimatedItemWidth",
 ] as const satisfies (keyof ListViewProps)[];
@@ -24,7 +25,8 @@ const LIST_VIEW_PROPS = [
  * controlled selection, controlled tree expansion, and estimated item sizing.
  */
 function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNode {
-    const { renderItem, renderHeader, expandedIds, estimatedItemHeight, estimatedItemWidth } = props;
+    const { renderItem, renderHeader, expandedIds, expanderDescriptions } = props;
+    const { estimatedItemHeight, estimatedItemWidth } = props;
     const rest = omit(props, LIST_VIEW_PROPS);
     const size = { width: estimatedItemWidth ?? -1, height: estimatedItemHeight ?? -1 };
     const { collection, selection } = useCollection(props);
@@ -39,7 +41,13 @@ function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNo
                 {...header.factoryProps}
                 {...rest}
             />
-            <ItemPortals registry={itemCells} render={renderItem} collection={collection} expandedIds={expandedIds} />
+            <ItemPortals
+                registry={itemCells}
+                render={renderItem}
+                collection={collection}
+                expandedIds={expandedIds}
+                expanderDescriptions={expanderDescriptions}
+            />
             {header.portals}
         </>
     );

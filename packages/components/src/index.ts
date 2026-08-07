@@ -6,6 +6,7 @@ export type {
     ColumnViewColumn,
     ColumnViewProps,
     DropDownProps,
+    ExpanderDescriptions,
     GridViewProps,
     ListItem,
     ListItemRenderArgs,

@@ -6,7 +6,7 @@ import { omit } from "@gtkx/utils";
 import { useLayoutEffect, useRef } from "react";
 import type { CellSize } from "./internal/cells.js";
 import type { Collection } from "./internal/collection.js";
-import type { ColumnViewColumn, ColumnViewProps, SortProps } from "./types.js";
+import type { ColumnViewColumn, ColumnViewProps, ExpanderDescriptions, SortProps } from "./types.js";
 import { ItemPortals, useItemCells, useRowProps, useSectionHeader } from "./internal/cells.js";
 import { useCollection } from "./internal/use-collection.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
@@ -17,6 +17,7 @@ type ColumnCellsProps = {
     column: ColumnViewColumn<never>;
     collection: Collection;
     expandedIds: string[] | null | undefined;
+    expanderDescriptions: ExpanderDescriptions | null | undefined;
     size: CellSize;
 };
 
@@ -35,6 +36,7 @@ const COLUMN_VIEW_PROPS = [
     "selectionMode",
     "expandedIds",
     "onExpandedChange",
+    "expanderDescriptions",
     "sortColumn",
     "sortOrder",
     "onSortChanged",
@@ -129,7 +131,7 @@ const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns:
     }, [view, sortColumn, sortOrder, columns]);
 };
 
-const ColumnCells = ({ column, collection, expandedIds, size }: ColumnCellsProps): ReactNode => {
+const ColumnCells = ({ column, collection, expandedIds, expanderDescriptions, size }: ColumnCellsProps): ReactNode => {
     const cells = useItemCells(size);
     const rest = omit(column, ["id", "renderCell", "isSortable"]);
 
@@ -146,18 +148,20 @@ const ColumnCells = ({ column, collection, expandedIds, size }: ColumnCellsProps
                 render={column.renderCell}
                 collection={collection}
                 expandedIds={expandedIds}
+                expanderDescriptions={expanderDescriptions}
             />
         </>
     );
 };
 
-const ColumnList = ({ columns, collection, expandedIds, size }: ColumnListProps): ReactNode =>
+const ColumnList = ({ columns, collection, expandedIds, expanderDescriptions, size }: ColumnListProps): ReactNode =>
     columns.map((column) => (
         <ColumnCells
             key={column.id}
             column={column}
             collection={collection}
             expandedIds={expandedIds}
+            expanderDescriptions={expanderDescriptions}
             size={size}
         />
     ));
@@ -168,7 +172,8 @@ const ColumnList = ({ columns, collection, expandedIds, size }: ColumnListProps)
  * section header rendering, and per-row props such as a screen-reader label.
  */
 function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode {
-    const { renderHeader, rowProps, columns, expandedIds, sortColumn, sortOrder, onSortChanged, ref } = props;
+    const { renderHeader, rowProps, columns, expandedIds, expanderDescriptions } = props;
+    const { sortColumn, sortOrder, onSortChanged, ref } = props;
     const rest = omit(props, COLUMN_VIEW_PROPS);
     const size = { width: -1, height: props.estimatedItemHeight ?? -1 };
     const [view, refCallback] = useWidgetRef<Gtk.ColumnView>(ref);
@@ -187,7 +192,13 @@ function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): Rea
                 {...rows.factoryProps}
                 {...rest}
             >
-                <ColumnList columns={columnList} collection={collection} expandedIds={expandedIds} size={size} />
+                <ColumnList
+                    columns={columnList}
+                    collection={collection}
+                    expandedIds={expandedIds}
+                    expanderDescriptions={expanderDescriptions}
+                    size={size}
+                />
             </GtkColumnView>
             {header.portals}
             {rows.portals}

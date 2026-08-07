@@ -1,4 +1,4 @@
-import { type ListItem, type ListItemRenderer, ListView } from "@gtkx/components";
+import { type ExpanderDescriptions, type ListItem, type ListItemRenderer, ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
 import type { TreeItem } from "../demos/types.js";
@@ -11,6 +11,7 @@ type SidebarProps = {
 };
 
 const EMPTY_SELECTION: string[] = [];
+const EXPANDER_DESCRIPTIONS: ExpanderDescriptions = { expand: "Expand", collapse: "Collapse" };
 
 function treeItemToData(item: TreeItem): ListItem<TreeItem> {
     if (item.type === "demo") {
@@ -71,6 +72,7 @@ const Sidebar = ({ isSearchActive, onSearchChanged }: SidebarProps) => {
                     name="sidebar-list"
                     cssClasses={["navigation-sidebar"]}
                     expandedIds={expandedIds}
+                    expanderDescriptions={EXPANDER_DESCRIPTIONS}
                     selectionMode={Gtk.SelectionMode.SINGLE}
                     selectedIds={selected}
                     onSelectionChanged={handleSelectionChanged}
