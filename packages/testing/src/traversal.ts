@@ -41,6 +41,17 @@ const descendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
     yield* tree;
 };
 
+const relationCandidates = (widget: Gtk.Widget): Gtk.Accessible[] => {
+    const pool: Gtk.Accessible[] = [...widget.listMnemonicLabels(), ...descendants(widget)];
+    const parent = widget.getParent();
+
+    if (parent) {
+        pool.push(...traverseWidgetTree(parent, isAnyWidget));
+    }
+
+    return [...new Set(pool)];
+};
+
 const resolveRoot = (container: QueryContainer): Gtk.Widget | null => {
     if (container instanceof Gtk.Widget) {
         return container;
@@ -93,4 +104,4 @@ const findAll = (container: Container, isMatch: (node: Gtk.Widget) => boolean): 
     return results;
 };
 
-export { TOPLEVELS, descendants, isOnScreen, roots, traverse, findAll, type Container };
+export { TOPLEVELS, descendants, findAll, isOnScreen, relationCandidates, roots, traverse, type Container };

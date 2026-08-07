@@ -1,8 +1,16 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { getAccessibleMetadata } from "@gtkx/react/internal";
+import {
+    readAccessibleBooleanProperty,
+    readAccessibleFlag,
+    readAccessibleRelation,
+    readAccessibleState,
+    readAccessibleNumber as readNativeNumber,
+    readAccessibleString as readNativeString,
+} from "./accessible-native.js";
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
 import { isTextHidden, REDACTED_TEXT, redactText } from "./hidden-text.js";
-import { descendants } from "./traversal.js";
+import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
+import { descendants, relationCandidates } from "./traversal.js";
 
 type WidgetValue = {
     now: number | null;
@@ -38,35 +46,21 @@ const callStringGetter = (widget: Gtk.Widget, method: string): string | null => 
     return value ?? null;
 };
 
-const readAccessibleString = (widget: Gtk.Widget, key: string): string | null => {
-    const value = getAccessibleMetadata(widget, key);
+const readAccessibleString = (widget: Gtk.Widget, property: Gtk.AccessibleProperty): string | null =>
+    readNativeString(widget, property);
 
-    return typeof value === "string" ? value : null;
-};
+const readAccessibleNumber = (widget: Gtk.Widget, property: Gtk.AccessibleProperty): number | null =>
+    readNativeNumber(widget, property);
 
-const readAccessibleNumber = (widget: Gtk.Widget, key: string): number | null => {
-    const value = getAccessibleMetadata(widget, key);
-
-    return typeof value === "number" ? value : null;
-};
-
-const readAccessibleWidgets = (widget: Gtk.Widget, key: string): Gtk.Widget[] | null => {
-    const value = getAccessibleMetadata(widget, key);
-
-    if (!Array.isArray(value)) {
-        return null;
-    }
-
-    const widgets = value.filter((item): item is Gtk.Widget => item instanceof Gtk.Widget);
+const readAccessibleWidgets = (widget: Gtk.Widget, relation: Gtk.AccessibleRelation): Gtk.Widget[] | null => {
+    const targets = readAccessibleRelation(widget, relation, relationCandidates(widget));
+    const widgets = targets.filter((target): target is Gtk.Widget => target instanceof Gtk.Widget);
 
     return widgets.length > 0 ? widgets : null;
 };
 
-const readAccessibleBoolean = (widget: Gtk.Widget, key: string): boolean | null => {
-    const value = getAccessibleMetadata(widget, key);
-
-    return typeof value === "boolean" ? value : null;
-};
+const readAccessibleBoolean = (widget: Gtk.Widget, state: Gtk.AccessibleState): boolean | null =>
+    readAccessibleFlag(widget, state);
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
     if (widget instanceof Gtk.Label) {
@@ -228,25 +222,10 @@ const tabPanelTitle = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
-const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
-    const role = widget.getAccessibleRole();
+const nameFromAuthor = (widget: Gtk.Widget): string | null =>
+    getWidgetLabelledByText(widget) ?? readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
 
-    if (role === Gtk.AccessibleRole.TAB_PANEL) {
-        return tabPanelTitle(widget);
-    }
-
-    const labelledByText = getWidgetLabelledByText(widget);
-
-    if (labelledByText) {
-        return labelledByText;
-    }
-
-    const accessibleLabel = readAccessibleString(widget, "accessibleLabel");
-
-    if (accessibleLabel) {
-        return accessibleLabel;
-    }
-
+const nameFromContent = (widget: Gtk.Widget): string | null => {
     const ownText = getWidgetNodeText(widget);
 
     if (ownText) {
@@ -255,11 +234,27 @@ const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
 
     const childLabels = collectLabels(widget);
 
-    if (childLabels.length > 0) {
-        return childLabels.join(" ");
+    return childLabels.length > 0 ? childLabels.join(" ") : null;
+};
+
+const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
+    const role = widget.getAccessibleRole();
+
+    if (isNameProhibited(role)) {
+        return null;
     }
 
-    return callStringGetter(widget, "getTooltipText");
+    if (role === Gtk.AccessibleRole.TAB_PANEL) {
+        return tabPanelTitle(widget);
+    }
+
+    const authored = isNameFromAuthor(role) ? nameFromAuthor(widget) : null;
+
+    if (authored) {
+        return authored;
+    }
+
+    return nameFromContent(widget) ?? callStringGetter(widget, "getTooltipText");
 };
 
 const getWidgetName = (widget: Gtk.Widget): string | null => {
@@ -319,7 +314,7 @@ const hasZeroOpacityAncestor = (widget: Gtk.Widget): boolean => {
 const isWidgetVisible = (widget: Gtk.Widget): boolean => widget.isVisible() && !hasZeroOpacityAncestor(widget);
 
 const getWidgetRequiredState = (widget: Gtk.Widget): boolean | null =>
-    readAccessibleBoolean(widget, "accessibleRequired");
+    readAccessibleBooleanProperty(widget, Gtk.AccessibleProperty.REQUIRED);
 
 const readTextViewSelection = (view: Gtk.TextView): string | null => {
     const buffer = view.getBuffer();
@@ -403,7 +398,7 @@ const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
 };
 
 const getWidgetLevel = (widget: Gtk.Widget): number | null => {
-    return readAccessibleNumber(widget, "accessibleLevel");
+    return readAccessibleNumber(widget, Gtk.AccessibleProperty.LEVEL);
 };
 
 /**
@@ -412,7 +407,7 @@ const getWidgetLevel = (widget: Gtk.Widget): number | null => {
  * @param widget The widget to read the state from.
  */
 const getWidgetInvalidState = (widget: Gtk.Widget): Gtk.AccessibleInvalidState | null => {
-    const value = readAccessibleNumber(widget, "accessibleInvalid");
+    const value = readAccessibleState(widget, Gtk.AccessibleState.INVALID);
 
     return value ?? null;
 };
@@ -424,14 +419,14 @@ const getWidgetInvalidState = (widget: Gtk.Widget): Gtk.AccessibleInvalidState |
  * @param widget The widget to read the relation from.
  */
 const getWidgetErrorMessage = (widget: Gtk.Widget): Gtk.Widget[] | null =>
-    readAccessibleWidgets(widget, "accessibleErrorMessage");
+    readAccessibleWidgets(widget, Gtk.AccessibleRelation.ERROR_MESSAGE);
 
 const getWidgetBusyState = (widget: Gtk.Widget): boolean | null => {
-    return readAccessibleBoolean(widget, "accessibleBusy");
+    return readAccessibleBoolean(widget, Gtk.AccessibleState.BUSY);
 };
 
 const getWidgetDescription = (widget: Gtk.Widget): string | null => {
-    return readAccessibleString(widget, "accessibleDescription");
+    return readAccessibleString(widget, Gtk.AccessibleProperty.DESCRIPTION);
 };
 
 const adjustmentValue = (adjustment: Gtk.Adjustment): ValueTriplet => ({
@@ -479,7 +474,7 @@ const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
 };
 
 const getWidgetValue = (widget: Gtk.Widget): WidgetValue => {
-    const text = readAccessibleString(widget, "accessibleValueText");
+    const text = readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT);
     const live = getWidgetLiveValue(widget);
 
     if (live) {
@@ -487,15 +482,15 @@ const getWidgetValue = (widget: Gtk.Widget): WidgetValue => {
     }
 
     return {
-        now: readAccessibleNumber(widget, "accessibleValueNow"),
-        min: readAccessibleNumber(widget, "accessibleValueMin"),
-        max: readAccessibleNumber(widget, "accessibleValueMax"),
+        now: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_NOW),
+        min: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MIN),
+        max: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MAX),
         text,
     };
 };
 
 const getWidgetOwnLabel = (widget: Gtk.Widget): string | null => {
-    return readAccessibleString(widget, "accessibleLabel");
+    return readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
 };
 
 const collectAccessibleNames = (targets: Gtk.Widget[]): string[] => {
@@ -504,7 +499,7 @@ const collectAccessibleNames = (targets: Gtk.Widget[]): string[] => {
     for (const target of targets) {
         const text = getWidgetAccessibleName(target);
 
-        if (text !== null) {
+        if (text) {
             texts.push(text);
         }
     }
@@ -512,8 +507,14 @@ const collectAccessibleNames = (targets: Gtk.Widget[]): string[] => {
     return texts;
 };
 
+const isSelfLabelling = (widget: Gtk.Widget, targets: Gtk.Widget[]): boolean => {
+    const own = new Set(descendants(widget));
+
+    return targets.every((target) => own.has(target));
+};
+
 const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
-    const targets = readAccessibleWidgets(widget, "accessibleLabelledBy");
+    const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.LABELLED_BY);
 
     if (targets === null) {
         return null;
@@ -524,20 +525,26 @@ const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
     return texts.length > 0 ? texts.join(" ") : null;
 };
 
+const getWidgetExternalLabelText = (widget: Gtk.Widget): string | null => {
+    const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.LABELLED_BY);
+
+    return targets === null || isSelfLabelling(widget, targets) ? null : getWidgetLabelledByText(widget);
+};
+
 const isTooltipUsedAsName = (widget: Gtk.Widget): boolean =>
-    readAccessibleString(widget, "accessibleLabel") === null &&
+    readAccessibleString(widget, Gtk.AccessibleProperty.LABEL) === null &&
     getWidgetNodeText(widget) === null &&
     collectLabels(widget).length === 0;
 
 const getWidgetDescribedByText = (widget: Gtk.Widget): string | null => {
-    const targets = readAccessibleWidgets(widget, "accessibleDescribedBy");
+    const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.DESCRIBED_BY);
     const texts = targets === null ? [] : collectAccessibleNames(targets);
 
     if (texts.length > 0) {
         return texts.join(" ");
     }
 
-    const description = readAccessibleString(widget, "accessibleDescription");
+    const description = readAccessibleString(widget, Gtk.AccessibleProperty.DESCRIPTION);
 
     if (description !== null) {
         return description;
@@ -550,7 +557,7 @@ const isInaccessible = (widget: Gtk.Widget): boolean => {
     let current: Gtk.Widget | null = widget;
 
     while (current) {
-        if (readAccessibleBoolean(current, "accessibleHidden") === true) {
+        if (readAccessibleBoolean(current, Gtk.AccessibleState.HIDDEN) === true) {
             return true;
         }
 
@@ -587,6 +594,7 @@ export {
     getWidgetDescription,
     getWidgetValue,
     getWidgetOwnLabel,
+    getWidgetExternalLabelText,
     getWidgetLabelledByText,
     isInaccessible,
     type CheckedState,

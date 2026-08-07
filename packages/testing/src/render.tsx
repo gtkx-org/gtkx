@@ -5,6 +5,7 @@ import {
     isRootElement,
     type ReconcilerRoot,
     setReconcilerErrorHandler,
+    settleAccessible,
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import type { RenderResult } from "./bound-queries.js";
@@ -42,10 +43,13 @@ type ReconcilerErrorState = {
 const reconcilerErrors: ReconcilerErrorState = { lastError: null, isHandlerInstalled: false };
 const activeRenders: Set<ActiveRender> = new Set();
 
-const flushLayout = (window: Gtk.Window | null): Promise<void> =>
-    new Promise((resolve) => {
+const flushLayout = async (window: Gtk.Window | null): Promise<void> => {
+    await new Promise<void>((resolve) => {
         scheduleAfterLayout(window, resolve);
     });
+
+    settleAccessible();
+};
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
     await runInAct(() => {

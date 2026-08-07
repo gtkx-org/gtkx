@@ -11,7 +11,7 @@ export { createPortaledComponent } from "./components/portaled.js";
 export { createWindowComponent } from "./components/window.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
 export type * from "./prop-types.js";
+export { settleAccessible } from "./reconciler/apply-props.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/root.js";
-export { getAccessibleMetadata } from "./utils/accessible-metadata.js";
 export type { SettingsSchema, SettingsSchemaKeys, SettingValue } from "./utils/settings.js";

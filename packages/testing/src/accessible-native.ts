@@ -171,6 +171,23 @@ const readAccessibleString = (accessible: Gtk.Accessible, property: Gtk.Accessib
     return checkPropertyString(getHandle(accessible), property, null);
 };
 
+const readAccessibleBooleanProperty = (
+    accessible: Gtk.Accessible,
+    property: Gtk.AccessibleProperty,
+): boolean | null => {
+    if (!Gtk.testAccessibleHasProperty(accessible, property)) {
+        return null;
+    }
+
+    for (const candidate of BOOLEAN_DOMAIN) {
+        if (checkPropertyInt(getHandle(accessible), property, candidate) === null) {
+            return candidate === 1;
+        }
+    }
+
+    return null;
+};
+
 const readAccessibleInt = (accessible: Gtk.Accessible, property: Gtk.AccessibleProperty): number | null => {
     if (!Gtk.testAccessibleHasProperty(accessible, property)) {
         return null;
@@ -192,6 +209,7 @@ const readAccessibleNumber = (accessible: Gtk.Accessible, property: Gtk.Accessib
 };
 
 export {
+    readAccessibleBooleanProperty,
     readAccessibleFlag,
     readAccessibleInt,
     readAccessibleNumber,

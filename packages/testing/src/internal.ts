@@ -1,4 +1,5 @@
 export {
+    readAccessibleBooleanProperty,
     readAccessibleFlag,
     readAccessibleInt,
     readAccessibleNumber,

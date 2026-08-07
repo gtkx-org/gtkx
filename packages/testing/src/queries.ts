@@ -17,7 +17,7 @@ import {
     getWidgetDescription,
     getWidgetDisplayValue,
     getWidgetExpandedState,
-    getWidgetLabelledByText,
+    getWidgetExternalLabelText,
     getWidgetLabelText,
     getWidgetLevel,
     getWidgetName,
@@ -461,6 +461,12 @@ const collectMnemonicMatch = (
     return widget.getMnemonicWidget();
 };
 
+const labellingText = (widget: Gtk.Widget): string | null => {
+    const ownLabel = widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL ? null : getWidgetOwnLabel(widget);
+
+    return ownLabel ?? getWidgetExternalLabelText(widget);
+};
+
 const collectLabelMatches = (
     results: Set<Gtk.Widget>,
     widget: Gtk.Widget,
@@ -473,15 +479,9 @@ const collectLabelMatches = (
         results.add(mnemonicTarget);
     }
 
-    const ownLabel = getWidgetOwnLabel(widget);
+    const labelText = labellingText(widget);
 
-    if (ownLabel !== null && isTextMatch(ownLabel, text, widget, options)) {
-        results.add(widget);
-    }
-
-    const labelledByText = getWidgetLabelledByText(widget);
-
-    if (labelledByText !== null && isTextMatch(labelledByText, text, widget, options)) {
+    if (labelText !== null && isTextMatch(labelText, text, widget, options)) {
         results.add(widget);
     }
 };

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAdjustment,
+    GtkBox,
     GtkButton,
     GtkCheckButton,
     GtkEntry,
@@ -409,10 +410,19 @@ describe("findByRole accessible name", () => {
         expect(button).toBeInstanceOf(Gtk.Button);
     });
 
-    it("prefers accessibleLabel over visible label text", async () => {
+    it("names a button from the label GTK relates it to, ahead of accessibleLabel", async () => {
         const { container } = await render(<GtkButton accessibleLabel="Submit form" label="OK" />);
-        const button = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Submit form" });
+        const button = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "OK" });
         expect(button).toBeInstanceOf(Gtk.Button);
+    });
+
+    it("names a widget from accessibleLabel when GTK relates it to nothing", async () => {
+        const { container } = await render(
+            <GtkBox accessibleLabel="Submit form" accessibleRole={Gtk.AccessibleRole.GROUP} />,
+        );
+
+        const box = await findByRole(container, Gtk.AccessibleRole.GROUP, { name: "Submit form" });
+        expect(box).toBeInstanceOf(Gtk.Box);
     });
 });
 

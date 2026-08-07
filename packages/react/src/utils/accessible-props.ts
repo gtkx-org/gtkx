@@ -1,7 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { Props } from "../reconciler/registry.js";
-import { deleteAccessibleMetadata, setAccessibleMetadata } from "./accessible-metadata.js";
 
 /**
  * Accessibility props available on every widget. Each member maps to a GTK4 accessible attribute
@@ -298,10 +297,8 @@ function resetDescriptor(widget: Gtk.Accessible, descriptor: AccessibleDescripto
 const applyChangedProp = (widget: Gtk.Accessible, name: keyof AccessibleProps, newValue: unknown): void => {
     if (newValue == null) {
         resetDescriptor(widget, ACCESSIBLE_PROP_MAP[name]);
-        deleteAccessibleMetadata(widget, name);
     } else {
         applyDescriptor(widget, ACCESSIBLE_PROP_MAP[name], newValue);
-        setAccessibleMetadata(widget, name, newValue);
     }
 };
 
@@ -325,7 +322,6 @@ const resetRemovedProps = (widget: Gtk.Accessible, oldProps: Props, newProps: Pr
         }
 
         resetDescriptor(widget, ACCESSIBLE_PROP_MAP[name]);
-        deleteAccessibleMetadata(widget, name);
     }
 };
 

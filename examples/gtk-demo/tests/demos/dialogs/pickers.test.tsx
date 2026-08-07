@@ -68,7 +68,7 @@ describe("pickersDemo rendering", () => {
     it("renders the 'None' file label and the www.gtk.org URI launcher button", async () => {
         await renderDemo(pickersDemo);
         expect(await screen.findByText("None")).toHaveTextContent("None");
-        const uriButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Open www.gtk.org" });
+        const uriButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "URI:" });
         expect(uriButton).toHaveTextContent("www.gtk.org");
     });
 
@@ -125,7 +125,7 @@ describe("pickersDemo handlers", () => {
             await renderDemo(pickersDemo);
 
             const uri = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-                name: "Open www.gtk.org",
+                name: "URI:",
                 as: Gtk.Button,
             });
 

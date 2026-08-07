@@ -115,8 +115,8 @@ describe("render - SizeGroup widgets", () => {
 
     it("groups widgets living in separate containers", async () => {
         await expectGroupedWide(<FramedLabels />);
-        expect(within(screen.getByRole(Gtk.AccessibleRole.GROUP, { name: /Frame A/ })).getByText("A")).toBeDefined();
-        expect(within(screen.getByRole(Gtk.AccessibleRole.GROUP, { name: /Frame B/ })).getByText("B")).toBeDefined();
+        expect(within(screen.getByLabelText(/Frame A/)).getByText("A")).toBeDefined();
+        expect(within(screen.getByLabelText(/Frame B/)).getByText("B")).toBeDefined();
     });
 });
 

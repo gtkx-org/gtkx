@@ -20,6 +20,7 @@ const HANDLER_NAME = /^on[A-Z]/;
 const flushDirty: Set<ElementNode> = new Set();
 const accessibleDirty: Map<ElementNode, Props> = new Map();
 const mapWatched: WeakSet<ElementNode> = new WeakSet();
+const pendingMap: Set<ElementNode> = new Set();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 
@@ -261,11 +262,16 @@ const watchMap = (node: ElementNode): void => {
     mapWatched.add(node);
 
     object.connect("map", () => {
-        setTimeout(() => {
-            if (object.getMapped()) {
-                applyAccessible(object, null, node.props);
-            }
-        }, 0);
+        pendingMap.add(node);
+        setTimeout(settleAccessible, 0);
+    });
+};
+
+const settleAccessible = (): void => {
+    drain(pendingMap, (node) => {
+        if (node.object instanceof Gtk.Widget && node.object.getMapped()) {
+            applyAccessible(node.object, null, node.props);
+        }
     });
 };
 
@@ -310,6 +316,7 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
 export {
     markFlush,
     flushAccessible,
+    settleAccessible,
     flushBehaviors,
     applyElementProps,
     applyAdoptedProps,

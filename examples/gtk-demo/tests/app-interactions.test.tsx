@@ -103,8 +103,9 @@ describe("App about menu", () => {
 describe("App notebook", () => {
     it("renders the Info and Source tabs", async () => {
         await renderDemo();
-        const infoTab = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Info" });
-        const sourceTab = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Source" });
+        const tabs = await screen.findAllByRole(Gtk.AccessibleRole.TAB);
+        const [infoTab, sourceTab] = tabs;
+        expect(tabs).toHaveLength(2);
         expect(infoTab).toBeInstanceOf(Gtk.Widget);
         expect(sourceTab).toBeInstanceOf(Gtk.Widget);
         expect(sourceTab).not.toBe(infoTab);
