@@ -8,13 +8,13 @@ image: /tasks-screenshot.png
 
 <p class="post-date">August 4, 2026</p>
 
-GTKX 1.0 is out.
+After months of hard work, GTKX 1.0 is finally out.
 
-GTKX is the React framework for Linux. It renders native GTK4 and Adwaita applications, with no web view and no parallel widget tree: you write JSX, and GTKX creates GObject instances. `GtkApplicationWindow` is a `GtkApplicationWindow`, `cssClasses` sets the widget's `css-classes` property, and `onClicked` connects to the button's `clicked` signal.
+GTKX is the React framework for Linux. It provides the missing declarative layer on top of the already mature GTK4 APIs: you write JSX, and GTKX creates GObject instances.
 
-It exists because the stack leaves a gap on both sides. GtkBuilder XML lays out an interface, but the tree it builds is fixed: keeping it in sync with your application state is imperative code you write yourself, and nothing refreshes the window as you work. Reaching GTK4 from JavaScript has meant GJS, a separate runtime cut off from npm, or wrapping the desktop around a browser. If you know React, GTKX gives you the Linux desktop without shipping one; if you know GTK, it gives you re-rendering, Fast Refresh, and npm without leaving the platform.
+In regular GTK development, GtkBuilder XML lays out an interface, but the tree it builds is fixed: keeping it in sync with your application state is imperative code you write yourself, and nothing refreshes the window as you work. Reaching GTK4 from JavaScript has meant GJS, a separate runtime cut off from npm, or wrapping the desktop around a browser. If you know React, GTKX gives you the Linux desktop without shipping one; if you know GTK, it gives you re-rendering, Fast Refresh, and npm without leaving the platform.
 
-In 1.0, the element surface is generated on your machine from the GObject-Introspection data your development packages already install. Every widget on the system is a typed JSX element, its properties are props, and its signals are handlers, under the names GTK4 documents. Extending the surface is something your project does, not something a GTKX release does. In v0 the surface was published instead: a fixed set of bindings, hand-listed elements, and GTKX's own names where wiring up the toolkit's was inconvenient.
+In 1.0, the element surface is generated on from the GObject-Introspection data your development packages already install. Every widget on the system is a typed JSX element, its properties are props, and its signals are handlers, under the names GTK4 documents. Extending the surface is something your project does, not something a GTKX release does. In v0 the surface was published instead: a fixed set of bindings, hand-listed elements, and GTKX's own names where wiring up the toolkit's was inconvenient.
 
 Around the elements sit a dev loop that patches the running window through Fast Refresh, tests that drive the real accessibility tree, reference docs generated for your project's own surface, and an MCP server that lets an agent read and drive the running app. 1.0 also settles the API the 1.x line builds on.
 
