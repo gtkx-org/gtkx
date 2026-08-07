@@ -160,17 +160,23 @@ describe("queries over a virtualized view", () => {
         const fixture = await renderListView();
         expect(screen.queryAllByText("row 0")).toHaveLength(1);
         await userEvent.scroll(fixture.window, { y: 6000 });
-        const mapped = getMappedRows(fixture.window);
-        expect(mapped).not.toContain(0);
-        expect(getFindableRows()).toEqual(mapped);
+
+        await waitFor(() => {
+            expect(getMappedRows(fixture.window)).not.toContain(0);
+        });
+
+        expect(getFindableRows()).toEqual(getMappedRows(fixture.window));
         expect(screen.queryAllByText("row 0")).toHaveLength(0);
     });
 
     it("brings a row back into reach once it is scrolled into view again", async () => {
         const fixture = await renderListView();
         await userEvent.scroll(fixture.window, { y: 6000 });
-        const away = getFindableRows();
-        expect(away).not.toContain(0);
+
+        await waitFor(() => {
+            expect(getFindableRows()).not.toContain(0);
+        });
+
         await userEvent.scroll(fixture.window, { y: -6000 });
         expect(getFindableRows()).toContain(0);
         expect(await screen.findByText("row 0")).toBeDefined();
