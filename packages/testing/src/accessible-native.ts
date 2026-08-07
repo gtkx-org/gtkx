@@ -9,6 +9,16 @@ type CheckRelation = (...args: unknown[]) => string | null;
 const LIB = "libgtk-4.so.1";
 const MAX_RELATION_TARGETS = 8;
 const relationBindings: Map<number, CheckRelation> = new Map();
+
+const REVERSE_RELATIONS: Partial<Record<Gtk.AccessibleRelation, Gtk.AccessibleRelation>> = {
+    [Gtk.AccessibleRelation.LABELLED_BY]: Gtk.AccessibleRelation.LABEL_FOR,
+    [Gtk.AccessibleRelation.DESCRIBED_BY]: Gtk.AccessibleRelation.DESCRIPTION_FOR,
+    [Gtk.AccessibleRelation.ERROR_MESSAGE]: Gtk.AccessibleRelation.ERROR_MESSAGE_FOR,
+    [Gtk.AccessibleRelation.CONTROLS]: Gtk.AccessibleRelation.CONTROLLED_BY,
+    [Gtk.AccessibleRelation.DETAILS]: Gtk.AccessibleRelation.DETAILS_FOR,
+    [Gtk.AccessibleRelation.FLOW_TO]: Gtk.AccessibleRelation.FLOW_FROM,
+};
+
 const UNDEFINED_VALUE = -1;
 const BOOLEAN_DOMAIN = [0, 1];
 const OPTIONAL_BOOLEAN_DOMAIN = [0, 1, UNDEFINED_VALUE];
@@ -117,15 +127,26 @@ const findRelationSize = (
     return 0;
 };
 
+const possibleTargets = (relation: Gtk.AccessibleRelation, candidates: Gtk.Accessible[]): Gtk.Accessible[] => {
+    const reverse = REVERSE_RELATIONS[relation];
+
+    if (reverse === undefined) {
+        return candidates;
+    }
+
+    return candidates.filter((candidate) => Gtk.testAccessibleHasRelation(candidate, reverse));
+};
+
 const readAccessibleRelation = (
     accessible: Gtk.Accessible,
     relation: Gtk.AccessibleRelation,
-    candidates: Gtk.Accessible[],
+    pool: Gtk.Accessible[],
 ): Gtk.Accessible[] => {
     if (!Gtk.testAccessibleHasRelation(accessible, relation)) {
         return [];
     }
 
+    const candidates = possibleTargets(relation, pool);
     const size = findRelationSize(accessible, relation, candidates);
 
     if (size === 0) {

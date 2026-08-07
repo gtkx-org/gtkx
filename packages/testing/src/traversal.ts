@@ -43,10 +43,10 @@ const descendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
 
 const relationCandidates = (widget: Gtk.Widget): Gtk.Accessible[] => {
     const pool: Gtk.Accessible[] = [...widget.listMnemonicLabels(), ...descendants(widget)];
-    const parent = widget.getParent();
+    const root = widget.getRoot();
 
-    if (parent) {
-        pool.push(...traverseWidgetTree(parent, isAnyWidget));
+    if (root instanceof Gtk.Widget) {
+        pool.push(...traverseWidgetTree(root, isAnyWidget));
     }
 
     return [...new Set(pool)];
