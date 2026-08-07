@@ -28,7 +28,7 @@ const COLUMN_VIEW_PROPS = [
     "items",
     "sections",
     "renderHeader",
-    "getRowProps",
+    "rowProps",
     "columns",
     "selectedIds",
     "onSelectionChanged",
@@ -168,13 +168,13 @@ const ColumnList = ({ columns, collection, expandedIds, size }: ColumnListProps)
  * section header rendering, and per-row props such as a screen-reader label.
  */
 function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): ReactNode {
-    const { renderHeader, getRowProps, columns, expandedIds, sortColumn, sortOrder, onSortChanged, ref } = props;
+    const { renderHeader, rowProps, columns, expandedIds, sortColumn, sortOrder, onSortChanged, ref } = props;
     const rest = omit(props, COLUMN_VIEW_PROPS);
     const size = { width: -1, height: props.estimatedItemHeight ?? -1 };
     const [view, refCallback] = useWidgetRef<Gtk.ColumnView>(ref);
     const { collection, selection } = useCollection(props);
     const header = useSectionHeader(renderHeader, collection, size);
-    const rows = useRowProps(getRowProps, collection, expandedIds);
+    const rows = useRowProps(rowProps, collection, expandedIds);
     const columnList = columns as ColumnViewColumn<never>[];
     useColumnSorting(view, { sortColumn, sortOrder, onSortChanged }, columnList);
 

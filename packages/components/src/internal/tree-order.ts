@@ -5,7 +5,7 @@ type VisibleOrder = {
     paths: string[];
     expandedPaths: string[];
     expandedIds: string[];
-    positions: Map<string, number[]>;
+    positions: Map<string, number | number[]>;
 };
 
 type OrderFrame = {
@@ -20,16 +20,22 @@ type OrderState = {
     order: VisibleOrder;
 };
 
-function pushPosition(positions: Map<string, number[]>, id: string, position: number): void {
+function pushPosition(positions: Map<string, number | number[]>, id: string, position: number): void {
     const existing = positions.get(id);
 
     if (existing === undefined) {
-        positions.set(id, [position]);
+        positions.set(id, position);
 
         return;
     }
 
-    existing.push(position);
+    if (Array.isArray(existing)) {
+        existing.push(position);
+
+        return;
+    }
+
+    positions.set(id, [existing, position]);
 }
 
 function childLevelFor(state: OrderState, path: string): Level | null {

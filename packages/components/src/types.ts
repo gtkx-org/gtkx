@@ -157,7 +157,7 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
         /** Renders the header shown above each section. */
         renderHeader?: ListSectionRenderer<S> | null | undefined;
         /** Resolves the props of the row carrying one item's cells, such as its screen-reader label. */
-        getRowProps?: ListRowPropsResolver<T> | null | undefined;
+        rowProps?: ListRowPropsResolver<T> | null | undefined;
     };
 
 /**

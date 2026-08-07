@@ -14,7 +14,7 @@ type Person = {
 
 type RowFixture = {
     view: () => Gtk.ColumnView;
-    rerender: (items: ListItem<Person>[], getRowProps?: ListRowPropsResolver<Person>) => Promise<void>;
+    rerender: (items: ListItem<Person>[], rowProps?: ListRowPropsResolver<Person>) => Promise<void>;
 };
 
 const flatItems: ListItem<Person>[] = [
@@ -59,7 +59,7 @@ const rowActivatables = (view: Gtk.ColumnView): boolean[] =>
 const drawRowView = (
     ref: RefObject<Gtk.ColumnView | null>,
     items: ListItem<Person>[],
-    getRowProps: ListRowPropsResolver<Person> | undefined,
+    rowProps: ListRowPropsResolver<Person> | undefined,
     expandedIds: string[],
 ): ReactNode => (
     <ScrollWrapper minContentHeight={300}>
@@ -67,7 +67,7 @@ const drawRowView = (
             ref={ref}
             items={items}
             columns={columns}
-            getRowProps={getRowProps}
+            rowProps={rowProps}
             expandedIds={expandedIds}
         />
     </ScrollWrapper>
@@ -75,11 +75,11 @@ const drawRowView = (
 
 const renderRowView = async (
     items: ListItem<Person>[],
-    getRowProps?: ListRowPropsResolver<Person>,
+    rowProps?: ListRowPropsResolver<Person>,
     expandedIds: string[] = [],
 ): Promise<RowFixture> => {
     const ref = createRef<Gtk.ColumnView>();
-    const { rerender } = await render(drawRowView(ref, items, getRowProps, expandedIds));
+    const { rerender } = await render(drawRowView(ref, items, rowProps, expandedIds));
 
     const view = (): Gtk.ColumnView => {
         if (ref.current === null) {
@@ -112,8 +112,8 @@ const defaultRowProps = (): ListRowProps => ({});
 const labelFirstOnly = ({ item }: ListItemRenderArgs<Person>): ListRowProps =>
     item.name === "First" ? { accessibleLabel: "Row: First" } : {};
 
-describe("ColumnView getRowProps", () => {
-    it("leaves every row unlabeled when getRowProps is omitted", async () => {
+describe("ColumnView rowProps", () => {
+    it("leaves every row unlabeled when rowProps is omitted", async () => {
         const { view } = await renderRowView(flatItems);
         expect(rowLabelFlags(view())).toEqual([false, false, false]);
         expect(rowDescriptionFlags(view())).toEqual([false, false, false]);
@@ -133,7 +133,7 @@ describe("ColumnView getRowProps", () => {
     });
 });
 
-describe("ColumnView getRowProps omissions", () => {
+describe("ColumnView rowProps omissions", () => {
     it("leaves the accessibility strings unset when only flags are returned", async () => {
         const { view } = await renderRowView(flatItems, inertRowProps);
         expect(rowLabelFlags(view())).toEqual([false, false, false]);
@@ -155,23 +155,23 @@ describe("ColumnView getRowProps omissions", () => {
     });
 });
 
-describe("ColumnView getRowProps arguments", () => {
+describe("ColumnView rowProps arguments", () => {
     it("receives the same args the cell renderer receives", async () => {
-        const getRowProps = vi.fn<ListRowPropsResolver<Person>>(() => ({}));
-        await renderRowView(flatItems, getRowProps);
-        expect(getRowProps).toHaveBeenCalledWith({ item: { name: "First" }, index: 0 });
-        expect(getRowProps).toHaveBeenCalledWith({ item: { name: "Second" }, index: 1 });
+        const rowProps = vi.fn<ListRowPropsResolver<Person>>(() => ({}));
+        await renderRowView(flatItems, rowProps);
+        expect(rowProps).toHaveBeenCalledWith({ item: { name: "First" }, index: 0 });
+        expect(rowProps).toHaveBeenCalledWith({ item: { name: "Second" }, index: 1 });
     });
 
     it("reports depth and expansion for tree rows", async () => {
-        const getRowProps = vi.fn<ListRowPropsResolver<Person>>(() => ({}));
-        await renderRowView(treeItems, getRowProps, ["1"]);
-        expect(getRowProps).toHaveBeenCalledWith({ item: { name: "Parent" }, index: 0, depth: 0, isExpanded: true });
-        expect(getRowProps).toHaveBeenCalledWith({ item: { name: "Child" }, index: 1, depth: 1 });
+        const rowProps = vi.fn<ListRowPropsResolver<Person>>(() => ({}));
+        await renderRowView(treeItems, rowProps, ["1"]);
+        expect(rowProps).toHaveBeenCalledWith({ item: { name: "Parent" }, index: 0, depth: 0, isExpanded: true });
+        expect(rowProps).toHaveBeenCalledWith({ item: { name: "Child" }, index: 1, depth: 1 });
     });
 });
 
-describe("ColumnView getRowProps flags", () => {
+describe("ColumnView rowProps flags", () => {
     it("applies isFocusable and isActivatable per row", async () => {
         const { view } = await renderRowView(flatItems, ({ item }) => ({
             isFocusable: item.name === "First",
@@ -192,7 +192,7 @@ describe("ColumnView getRowProps flags", () => {
     });
 });
 
-describe("ColumnView getRowProps staleness", () => {
+describe("ColumnView rowProps staleness", () => {
     it("re-resolves row props when an item's value changes without a rebind", async () => {
         const { view, rerender } = await renderRowView(flatItems, focusFirstOnly);
         expect(rowFocusables(view())).toEqual([true, false]);

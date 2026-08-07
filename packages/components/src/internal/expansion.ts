@@ -56,12 +56,16 @@ function toggleWantedRows(
     wanted: Set<string>,
     target: VisibleOrder,
 ): void {
-    for (const [position, path] of target.paths.entries()) {
+    let position = 0;
+
+    for (const path of target.paths) {
         const isWanted = wanted.has(path);
 
         if (expanded.has(path) !== isWanted) {
             tree.getRow(position)?.setExpanded(isWanted);
         }
+
+        position += 1;
     }
 }
 

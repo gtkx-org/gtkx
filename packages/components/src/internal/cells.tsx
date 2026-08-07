@@ -50,7 +50,8 @@ type Roster<H extends RosterHost> = {
     handlers: FactoryHandlers;
     setSize: (size: CellSize) => void;
     subscribe: (onChange: () => void) => () => void;
-    getSnapshot: () => RosterEntry<H>[];
+    getVersion: () => number;
+    getEntries: () => RosterEntry<H>[];
 };
 
 type RosterGuard<H extends RosterHost> = (value: GObject.Object) => value is H;
@@ -66,6 +67,7 @@ type RosterState<H extends RosterHost> = RosterOptions<H> & {
     snapshot: RosterEntry<H>[] | null;
     listeners: Set<() => void>;
     serial: number;
+    version: number;
 };
 
 type ResolvedRowProps = {
@@ -109,14 +111,14 @@ type ItemPortalsProps = {
 
 type ItemRowProps = {
     entry: RosterEntry<Gtk.ColumnViewRow>;
-    getRowProps: ListRowPropsResolver<never>;
+    rowProps: ListRowPropsResolver<never>;
     collection: Collection;
     expandedIds: string[] | null | undefined;
 };
 
 type RowPortalsProps = {
     store: Roster<Gtk.ColumnViewRow>;
-    getRowProps: ListRowPropsResolver<never>;
+    rowProps: ListRowPropsResolver<never>;
     collection: Collection;
     expandedIds: string[] | null | undefined;
 };
@@ -182,6 +184,7 @@ function notifyEntry<H extends RosterHost>(entry: RosterEntry<H>): void {
 
 function notifyRoster<H extends RosterHost>(state: RosterState<H>): void {
     state.snapshot = null;
+    state.version += 1;
 
     for (const listener of state.listeners) {
         listener();
@@ -245,7 +248,7 @@ function subscribeRoster<H extends RosterHost>(state: RosterState<H>, onChange: 
     };
 }
 
-function rosterSnapshot<H extends RosterHost>(state: RosterState<H>): RosterEntry<H>[] {
+function rosterEntries<H extends RosterHost>(state: RosterState<H>): RosterEntry<H>[] {
     state.snapshot ??= state.entries.values().toArray();
 
     return state.snapshot;
@@ -286,6 +289,7 @@ function createRoster<H extends RosterHost>(options: RosterOptions<H>, size: Cel
         snapshot: null,
         listeners: new Set(),
         serial: 0,
+        version: 0,
     };
 
     return {
@@ -294,7 +298,8 @@ function createRoster<H extends RosterHost>(options: RosterOptions<H>, size: Cel
             state.size = next;
         },
         subscribe: (onChange) => subscribeRoster(state, onChange),
-        getSnapshot: () => rosterSnapshot(state),
+        getVersion: () => state.version,
+        getEntries: () => rosterEntries(state),
     };
 }
 
@@ -401,8 +406,8 @@ function rowFlag(value: boolean | undefined): boolean {
     return value ?? true;
 }
 
-function rowPropsFor(slot: ItemSlot | null, getRowProps: ListRowPropsResolver<never>): ResolvedRowProps {
-    const resolve = getRowProps as ListRowPropsResolver<unknown>;
+function rowPropsFor(slot: ItemSlot | null, rowProps: ListRowPropsResolver<never>): ResolvedRowProps {
+    const resolve = rowProps as ListRowPropsResolver<unknown>;
     const props = slot === null ? NO_ROW_PROPS : resolve(slot.args);
 
     return {
@@ -433,9 +438,9 @@ function ItemCellImpl({ entry, render, collection, expandedIds }: ItemCellProps)
     return createPortal(body, entry.host, entry.key);
 }
 
-function ItemRowImpl({ entry, getRowProps, collection, expandedIds }: ItemRowProps): ReactNode {
+function ItemRowImpl({ entry, rowProps, collection, expandedIds }: ItemRowProps): ReactNode {
     const slot = useItemSlot(entry, collection, expandedIds);
-    const props = rowPropsFor(slot, getRowProps);
+    const props = rowPropsFor(slot, rowProps);
 
     useLayoutEffect(() => {
         applyRowProps(entry.host, props);
@@ -454,7 +459,9 @@ function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNo
 }
 
 function usePortalEntries<H extends RosterHost>(store: Roster<H>): RosterEntry<H>[] {
-    return useSyncExternalStore(store.subscribe, store.getSnapshot);
+    useSyncExternalStore(store.subscribe, store.getVersion);
+
+    return store.getEntries();
 }
 
 const ItemPortals = ({ store, render, collection, expandedIds }: ItemPortalsProps): ReactNode =>
@@ -462,12 +469,12 @@ const ItemPortals = ({ store, render, collection, expandedIds }: ItemPortalsProp
         <ItemCell key={entry.key} entry={entry} render={render} collection={collection} expandedIds={expandedIds} />
     ));
 
-const RowPortals = ({ store, getRowProps, collection, expandedIds }: RowPortalsProps): ReactNode =>
+const RowPortals = ({ store, rowProps, collection, expandedIds }: RowPortalsProps): ReactNode =>
     usePortalEntries(store).map((entry) => (
         <ItemRow
             key={entry.key}
             entry={entry}
-            getRowProps={getRowProps}
+            rowProps={rowProps}
             collection={collection}
             expandedIds={expandedIds}
         />
@@ -496,20 +503,20 @@ const useSectionHeader = (
 };
 
 const useRowProps = (
-    getRowProps: ListRowPropsResolver<never> | null | undefined,
+    rowProps: ListRowPropsResolver<never> | null | undefined,
     collection: Collection,
     expandedIds: string[] | null | undefined,
 ): RowSlot => {
     const store = useRoster(ROW_OPTIONS, NO_SIZE);
 
-    if (getRowProps == null) {
+    if (rowProps == null) {
         return { factoryProps: {}, portals: null };
     }
 
     return {
         factoryProps: { rowFactory: <GtkSignalListItemFactory {...store.handlers} /> },
         portals: (
-            <RowPortals store={store} getRowProps={getRowProps} collection={collection} expandedIds={expandedIds} />
+            <RowPortals store={store} rowProps={rowProps} collection={collection} expandedIds={expandedIds} />
         ),
     };
 };
