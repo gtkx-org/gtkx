@@ -209,9 +209,8 @@ function extendRuns(runs: SlotRun[], slot: number): void {
 
 function collectFlipRuns(flipped: Set<number>): SlotRun[] {
     const runs: SlotRun[] = [];
-    const slots = [...flipped].toSorted((left, right) => left - right);
 
-    for (const slot of slots) {
+    for (const slot of flipped) {
         extendRuns(runs, slot);
     }
 
@@ -366,7 +365,7 @@ class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
     childStores: (LevelStore | null)[] = [];
     expandableFlags: boolean[] = [];
 
-    private mint(position: number, ref: SlotRef): Gtk.StringObject {
+    private createItem(position: number, ref: SlotRef): Gtk.StringObject {
         const created = Gtk.StringObject.new("");
         this.objects[position] = created;
         SLOTS.set(created, ref);
@@ -389,7 +388,7 @@ class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
             return null;
         }
 
-        return this.objects[position] ?? this.mint(position, ref);
+        return this.objects[position] ?? this.createItem(position, ref);
     }
 }
 

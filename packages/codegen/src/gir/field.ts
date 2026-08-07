@@ -1,6 +1,6 @@
 import type { ParseContext, TypeId } from "./type-id.js";
-import { annotationsFromNode, type GirAnnotations } from "./annotations.js";
-import { attr, getChild, getChildren, getDoc, intAttr, isAttrTrue, nameAttr, type RawNode } from "./parse.js";
+import { documentedFromNode, type GirAnnotations } from "./annotations.js";
+import { attr, getChild, getChildren, intAttr, isAttrTrue, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 /**
@@ -36,9 +36,7 @@ type GirField = {
 };
 
 const fieldFromNode = (node: RawNode, context: ParseContext): GirField => ({
-    name: nameAttr(node),
-    doc: getDoc(node),
-    annotations: annotationsFromNode(node),
+    ...documentedFromNode(node),
     type: typeRefFromNode(node, context),
     cType: attr(getChild(node, "type"), "c:type"),
     readable: isAttrTrue(node, "readable", true),
@@ -50,9 +48,7 @@ const fieldFromNode = (node: RawNode, context: ParseContext): GirField => ({
 });
 
 const anonymousMemberFromNode = (node: RawNode, isUnion: boolean, context: ParseContext): GirField => ({
-    name: nameAttr(node),
-    doc: getDoc(node),
-    annotations: annotationsFromNode(node),
+    ...documentedFromNode(node),
     type: undefined,
     cType: undefined,
     readable: false,

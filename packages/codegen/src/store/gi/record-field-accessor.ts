@@ -8,9 +8,8 @@ import type { ModuleContext } from "../../writer/context.js";
 import { isInlineCallbackRef, renderDescriptor } from "../../analysis/descriptor-render.js";
 import { tStruct } from "../../analysis/descriptor.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock } from "../../writer/emit.js";
-import { annotationSpec } from "./doc-spec.js";
+import { getDoc } from "./doc-spec.js";
 import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
 import { isValueMarshalable } from "./value-marshalable.js";
@@ -108,8 +107,6 @@ const isMarshalableField = (context: ModuleContext, field: GirField): boolean =>
     return isValueMarshalable(context, type.namespace.name, type.value);
 };
 
-const fieldDoc = (field: GirField): string => renderJsDoc(field.doc, undefined, annotationSpec(field.annotations));
-
 const isEmittableField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
     !field.private &&
     field.type !== undefined &&
@@ -202,7 +199,7 @@ const renderRecordFieldAccessor = (
     }
 
     const { field, jsName } = admitted;
-    const doc = fieldDoc(field);
+    const doc = getDoc(field);
     const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });
 
     if (structArray !== undefined) {
@@ -633,7 +630,6 @@ const setterBlock = (options: AccessorOptions): string =>
     );
 
 export {
-    fieldDoc,
     isEmittableField,
     isInlineField,
     emitFieldWrite,

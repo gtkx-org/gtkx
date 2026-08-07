@@ -24,9 +24,6 @@
         ],
         "packages/react/src/adw/prop-types.ts": [
             "types"
-        ],
-        "packages/runtime/src/descriptors.ts": [
-            "types"
         ]
     },
     "workspaces": {
@@ -103,8 +100,7 @@
         "packages/vitest": {
             "includeEntryExports": false,
             "entry": [
-                "src/worker-preload.ts!",
-                "src/worker-setup.ts!"
+                "src/worker-preload.ts!"
             ]
         },
         "examples/*": {

@@ -34,7 +34,6 @@ const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
         adopted: null,
         slot,
         behavior: null,
-        isAttached: false,
     };
 };
 
@@ -88,7 +87,6 @@ const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
     writeSlot(parent, entry, entry.object);
     wireBufferView(entry.node, parent);
     entry.behavior = null;
-    entry.isAttached = true;
 };
 
 const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
@@ -107,7 +105,6 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
 
     ctx.entry.behavior = behavior;
     adoptedFrom(ctx.parent, ctx.entry, behavior, claim);
-    ctx.entry.isAttached = true;
     applyLazyProps(ctx.entry);
 
     return true;
@@ -163,12 +160,6 @@ const runDetach = (parent: ElementNode, entry: PlacedChild): void => {
 };
 
 const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
-    if (!entry.isAttached) {
-        return;
-    }
-
-    entry.isAttached = false;
-
     applyWrite(() => {
         runDetach(parent, entry);
     });

@@ -1,7 +1,7 @@
 import type { ParseContext, TypeId } from "./type-id.js";
-import { annotationsFromNode, type GirAnnotations } from "./annotations.js";
+import { documentedFromNode, type GirAnnotations } from "./annotations.js";
 import { type ParameterTransfer, transferOwnership } from "./parameter.js";
-import { attr, getDoc, isAttrTrue, nameAttr, type RawNode } from "./parse.js";
+import { attr, isAttrTrue, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 /** A GObject property declared on a class or interface, with the annotations its accessors are generated from. */
@@ -43,9 +43,7 @@ const isConstructableProperty = (property: GirProperty): boolean =>
     property.writable || property.construct || property.constructOnly;
 
 const propertyFromNode = (node: RawNode, context: ParseContext): GirProperty => ({
-    name: nameAttr(node),
-    doc: getDoc(node),
-    annotations: annotationsFromNode(node),
+    ...documentedFromNode(node),
     type: typeRefFromNode(node, context),
     readable: isAttrTrue(node, "readable", true),
     writable: isAttrTrue(node, "writable"),

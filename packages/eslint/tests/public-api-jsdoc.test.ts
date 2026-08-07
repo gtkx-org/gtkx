@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { publicApiJsdoc, type PublicApiJsdocOptions } from "../src/rules/public-api-jsdoc.js";
+import type { SurfaceOptions } from "../src/rules/public-surface.js";
+import { publicApiJsdoc } from "../src/rules/public-api-jsdoc.js";
 import { createRuleTester } from "./rule-tester.js";
 
 const FIXTURES = join(import.meta.dirname, "fixtures");
-const OPTIONS: PublicApiJsdocOptions = [{ entrypoints: ["@fixture/pub"], modules: [], root: FIXTURES }];
+const OPTIONS: [SurfaceOptions] = [{ entrypoints: ["@fixture/pub"], modules: [], root: FIXTURES }];
 
 const ruleTester = createRuleTester({
     languageOptions: {

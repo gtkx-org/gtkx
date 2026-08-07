@@ -2,17 +2,16 @@ import { sourceStringLiteral } from "@gtkx/utils";
 import type { EnumMember, GirEnum } from "../../gir/enum.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { hasAnnotations } from "../../gir/annotations.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { indent } from "../../writer/emit.js";
-import { annotationSpec } from "./doc-spec.js";
+import { getDoc } from "./doc-spec.js";
 
 type KeyedMember = EnumMember & { key: string };
 
 const memberDoc = (member: KeyedMember): string =>
-    renderJsDoc(member.doc, undefined, annotationSpec(member.annotations));
+    getDoc(member);
 
 const enumDoc = (enumeration: GirEnum): string =>
-    renderJsDoc(enumeration.doc, undefined, annotationSpec(enumeration.annotations));
+    getDoc(enumeration);
 
 const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
     if (!enumeration.introspectable) {

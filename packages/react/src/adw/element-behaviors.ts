@@ -10,6 +10,7 @@ import {
     childSetterSlot,
     contentSetterSlot,
     deferred,
+    indexedSlot,
     list,
     slot,
 } from "../reconciler/behaviors.js";
@@ -43,22 +44,26 @@ const breakpoints = slot<BreakpointHost, Adw.Breakpoint>("breakpoints", "AdwBrea
 });
 
 const prefixSuffix = [
-    slot<PrefixSuffixRow, Gtk.Widget>("prefix", "GtkWidget", {
-        attach: (row, child) => {
+    addRemoveSlot<Gtk.Widget, PrefixSuffixRow>(
+        "prefix",
+        "GtkWidget",
+        (row, child) => {
             row.addPrefix(child);
         },
-        detach: (row, child) => {
+        (row, child) => {
             row.remove(child);
         },
-    }),
-    slot<PrefixSuffixRow, Gtk.Widget>("suffix", "GtkWidget", {
-        attach: (row, child) => {
+    ),
+    addRemoveSlot<Gtk.Widget, PrefixSuffixRow>(
+        "suffix",
+        "GtkWidget",
+        (row, child) => {
             row.addSuffix(child);
         },
-        detach: (row, child) => {
+        (row, child) => {
             row.remove(child);
         },
-    }),
+    ),
 ];
 
 const preferencesDialogChildren = addRemoveSlot<Adw.PreferencesPage, Adw.PreferencesDialog>(
@@ -72,32 +77,8 @@ const preferencesDialogChildren = addRemoveSlot<Adw.PreferencesPage, Adw.Prefere
     },
 );
 
-const sidebarSections = slot<Adw.Sidebar, Adw.SidebarSection>("children", "AdwSidebarSection", {
-    attach: (sidebar, section, info) => {
-        sidebar.insert(section, info.index);
-    },
-    detach: (sidebar, section) => {
-        sidebar.remove(section);
-    },
-    reorder: (sidebar, section, info) => {
-        sidebar.remove(section);
-        sidebar.insert(section, info.index);
-    },
-});
-
-const sidebarItems = slot<Adw.SidebarSection, Adw.SidebarItem>("children", "AdwSidebarItem", {
-    attach: (section, item, info) => {
-        section.insert(item, info.index);
-    },
-    detach: (section, item) => {
-        section.remove(item);
-    },
-    reorder: (section, item, info) => {
-        section.remove(item);
-        section.insert(item, info.index);
-    },
-});
-
+const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children", "AdwSidebarSection");
+const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", "AdwSidebarItem");
 const isWidget = childMatcher("GtkWidget");
 
 const multiLayoutSlots: ElementBehavior<Adw.MultiLayoutView> = {
@@ -134,9 +115,6 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [applicationCreator(Adw.Application)],
     },
     AdwSidebar: {
-        behaviors: [sidebarSections],
-    },
-    AdwViewSwitcherSidebar: {
         behaviors: [sidebarSections],
     },
     AdwSidebarSection: {
@@ -205,16 +183,6 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 "GtkWidget",
                 (row, child) => {
                     row.addRow(child);
-                },
-                (row, child) => {
-                    row.remove(child);
-                },
-            ),
-            addRemoveSlot<Gtk.Widget, Adw.ExpanderRow>(
-                "actions",
-                "GtkWidget",
-                (row, child) => {
-                    row.addSuffix(child);
                 },
                 (row, child) => {
                     row.remove(child);
@@ -319,22 +287,26 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwToolbarView: {
         behaviors: [
             contentSetterSlot<Adw.ToolbarView>(),
-            slot<Adw.ToolbarView, Gtk.Widget>("topBar", "GtkWidget", {
-                attach: (view, child) => {
+            addRemoveSlot<Gtk.Widget, Adw.ToolbarView>(
+                "topBar",
+                "GtkWidget",
+                (view, child) => {
                     view.addTopBar(child);
                 },
-                detach: (view, child) => {
+                (view, child) => {
                     view.remove(child);
                 },
-            }),
-            slot<Adw.ToolbarView, Gtk.Widget>("bottomBar", "GtkWidget", {
-                attach: (view, child) => {
+            ),
+            addRemoveSlot<Gtk.Widget, Adw.ToolbarView>(
+                "bottomBar",
+                "GtkWidget",
+                (view, child) => {
                     view.addBottomBar(child);
                 },
-                detach: (view, child) => {
+                (view, child) => {
                     view.remove(child);
                 },
-            }),
+            ),
         ],
     },
     AdwHeaderBar: {

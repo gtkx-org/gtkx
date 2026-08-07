@@ -142,7 +142,7 @@ const ColumnCells = ({ column, collection, expandedIds, size }: ColumnCellsProps
                 {...rest}
             />
             <ItemPortals
-                store={cells}
+                registry={cells}
                 render={column.renderCell}
                 collection={collection}
                 expandedIds={expandedIds}

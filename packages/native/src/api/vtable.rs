@@ -105,6 +105,19 @@ fn read_slot(
     Ok(slot)
 }
 
+fn releasing_on_error(
+    read: impl FnOnce() -> anyhow::Result<*mut c_void>,
+    release: impl FnOnce(),
+) -> anyhow::Result<*mut c_void> {
+    let slot = read();
+
+    if slot.is_err() {
+        release();
+    }
+
+    slot
+}
+
 fn resolve_class_slot(
     instance_type: glib::Type,
     byte_offset: usize,
@@ -112,13 +125,11 @@ fn resolve_class_slot(
 ) -> anyhow::Result<*mut c_void> {
     let class_ptr = ref_class(instance_type, label)?;
     let source = format!("type '{}'", instance_type.name());
-    let slot = read_slot(class_ptr, byte_offset, &source, label);
 
-    if slot.is_err() {
-        unsafe { gobject_ffi::g_type_class_unref(class_ptr) };
-    }
-
-    slot
+    releasing_on_error(
+        || read_slot(class_ptr, byte_offset, &source, label),
+        || unsafe { gobject_ffi::g_type_class_unref(class_ptr) },
+    )
 }
 
 fn resolve_interface_slot(
@@ -129,14 +140,14 @@ fn resolve_interface_slot(
 ) -> anyhow::Result<*mut c_void> {
     let class_ptr = ref_class(instance_type, label)?;
     let source = format!("type '{}'", instance_type.name());
-    let slot = peek_interface_vtable(class_ptr, instance_type, interface_type, label)
-        .and_then(|vtable| read_slot(vtable, byte_offset, &source, label));
 
-    if slot.is_err() {
-        unsafe { gobject_ffi::g_type_class_unref(class_ptr) };
-    }
-
-    slot
+    releasing_on_error(
+        || {
+            peek_interface_vtable(class_ptr, instance_type, interface_type, label)
+                .and_then(|vtable| read_slot(vtable, byte_offset, &source, label))
+        },
+        || unsafe { gobject_ffi::g_type_class_unref(class_ptr) },
+    )
 }
 
 fn resolve_default_interface_slot(
@@ -154,13 +165,11 @@ fn resolve_default_interface_slot(
     }
 
     let source = format!("interface '{}'", interface_type.name());
-    let slot = read_slot(vtable, byte_offset, &source, label);
 
-    if slot.is_err() {
-        unsafe { gobject_ffi::g_type_default_interface_unref(vtable) };
-    }
-
-    slot
+    releasing_on_error(
+        || read_slot(vtable, byte_offset, &source, label),
+        || unsafe { gobject_ffi::g_type_default_interface_unref(vtable) },
+    )
 }
 
 pub(crate) fn resolve_vfunc_slot(

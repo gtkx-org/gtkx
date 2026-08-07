@@ -1,5 +1,5 @@
 import type { ParseContext, TypeId } from "./type-id.js";
-import { annotationsFromNode, type GirAnnotations } from "./annotations.js";
+import { documentedFromNode, type GirAnnotations } from "./annotations.js";
 import {
     attr,
     getChild,
@@ -154,9 +154,7 @@ const parseCallable = (node: RawNode, context: ParseContext): GirCallable => {
     const parameterNodes = getChildren(parametersNode, "parameter");
 
     return {
-        name: nameAttr(node),
-        doc: getDoc(node),
-        annotations: annotationsFromNode(node),
+        ...documentedFromNode(node),
         parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, context)),
         returnValue: returnValueFromNode(getChild(node, "return-value"), context),
         throws: isAttrTrue(node, "throws"),

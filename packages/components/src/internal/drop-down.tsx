@@ -176,7 +176,7 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
     const { component: Component, items, sections, renderListItem, renderHeader, ref } = props;
     const rest = omit(props, DROP_DOWN_PROPS);
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
-    const collection = useCollectionData({ items, sections });
+    const collection = useCollectionData({ items, sections, isFlat: true });
     const faceCells = useItemCells({ width: -1, height: -1 });
     const listCells = useItemCells({ width: -1, height: -1 });
     const header = useSectionHeader(renderHeader, collection, { width: -1, height: -1 });
@@ -195,9 +195,9 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
                 {...rest}
                 onNotifySelected={handleNotifySelected}
             />
-            <ItemPortals store={faceCells} render={faceRenderer(props)} collection={collection} />
+            <ItemPortals registry={faceCells} render={faceRenderer(props)} collection={collection} />
             {renderListItem != null && (
-                <ItemPortals store={listCells} render={renderListItem} collection={collection} />
+                <ItemPortals registry={listCells} render={renderListItem} collection={collection} />
             )}
             {header.portals}
         </>

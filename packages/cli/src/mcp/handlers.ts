@@ -222,12 +222,10 @@ async function runNameQuery(
     app: Gtk.Application,
     params: QueryParams,
 ): Promise<Gtk.Widget[]> {
-    const value = String(params.value);
-
     const matches = await Promise.all([
-        matchesOrEmpty(() => testing.findAllByName(app, value, params.options)),
-        matchesOrEmpty(() => testing.findAllByLabelText(app, value, params.options)),
-        matchesOrEmpty(() => testing.findAllByText(app, value, params.options)),
+        matchesOrEmpty(() => testing.findAllByName(app, String(params.value), params.options)),
+        runLabelTextQuery(testing, app, params),
+        runTextQuery(testing, app, params),
     ]);
 
     return [...new Set(matches.flat())];

@@ -194,11 +194,8 @@ const documentedParameters = (
         }))
         .filter((entry) => entry.doc.length > 0);
 
-const documentedHandlerParameters = (
-    parameters: GirParameter[],
-    shouldExclude: (parameter: GirParameter) => boolean = () => false,
-): JsDocParam[] =>
-    handlerParameters(parameters, shouldExclude)
+const documentedHandlerParameters = (parameters: GirParameter[]): JsDocParam[] =>
+    handlerParameters(parameters)
         .map((parameter, index) => ({ name: parameterIdentifier(parameter, index), doc: parameter.doc ?? "" }))
         .filter((entry) => entry.doc.length > 0);
 
@@ -212,9 +209,8 @@ const handlerRenames = (parameters: GirParameter[]): Map<string, string> => {
     return renames;
 };
 
-const parameterRenames = (fn: GirFunction): Map<string, string> => {
-    const renames = handlerRenames(fn.parameters);
-    const instance = fn.instance;
+const renamesWithInstance = (parameters: GirParameter[], instance: GirParameter | undefined): Map<string, string> => {
+    const renames = handlerRenames(parameters);
 
     if (instance !== undefined && instance.name.length > 0) {
         renames.set(instance.name, "this");
@@ -311,7 +307,7 @@ export {
     documentedParameters,
     documentedHandlerParameters,
     handlerRenames,
-    parameterRenames,
+    renamesWithInstance,
     handlerParameters,
     renderHandlerParameters,
     foldOutParamShape,

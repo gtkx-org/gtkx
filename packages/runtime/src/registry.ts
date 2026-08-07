@@ -18,9 +18,7 @@ type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &
     (C extends new (...args: infer A) => infer R ? new (...args: A) => R : never);
 
 /** One overridable vtable slot: where it sits in the vtable struct and how it is marshalled. */
-type VfuncDescriptor<K extends "class" | "interface"> = {
-    /** Whether the slot lives in a class struct or in an interface vtable. */
-    kind: K;
+type VfuncDescriptor = {
     /** GIR name of the type struct holding the slot, without its namespace, such as `WidgetClass`. */
     className: string;
     /** Name of the slot's field in that struct. */
@@ -49,7 +47,7 @@ type VfuncDescriptor<K extends "class" | "interface"> = {
  * The vtable slots a wrapper class or interface exposes, keyed by the JavaScript method name that
  * overrides each one.
  */
-type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
+type VfuncRegistry = Record<string, VfuncDescriptor>;
 
 /**
  * How one property an interface declares reaches the vtable, given as the interface's own accessor

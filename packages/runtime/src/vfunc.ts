@@ -4,25 +4,12 @@ import type { Arg } from "./arg.js";
 import { isCallerAllocatedOut } from "./callback.js";
 import { getInterfaceVfuncRegistry, getVfuncRegistry, type VfuncDescriptor } from "./registry.js";
 
-type AnyVfuncDescriptor = VfuncDescriptor<"class" | "interface">;
-
-function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDescriptor<"class"> | null {
-    return (
-        walkClassChain(getParentClass(klass), (cls) => {
-            const entry = getVfuncRegistry(cls)?.[methodName];
-
-            return entry?.kind === "class" ? entry : undefined;
-        }) ?? null
-    );
+function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDescriptor | null {
+    return walkClassChain(getParentClass(klass), (cls) => getVfuncRegistry(cls)?.[methodName]) ?? null;
 }
 
-function findInterfaceVfuncDescriptor(
-    interfaceGtype: bigint,
-    methodName: string,
-): VfuncDescriptor<"interface"> | undefined {
-    const entry = getInterfaceVfuncRegistry(interfaceGtype)?.[methodName];
-
-    return entry?.kind === "interface" ? entry : undefined;
+function findInterfaceVfuncDescriptor(interfaceGtype: bigint, methodName: string): VfuncDescriptor | undefined {
+    return getInterfaceVfuncRegistry(interfaceGtype)?.[methodName];
 }
 
 function vfuncArg(descriptor: Descriptor): Arg {
@@ -37,8 +24,8 @@ function vfuncArg(descriptor: Descriptor): Arg {
     return { type: descriptor };
 }
 
-function vfuncArgs(descriptor: AnyVfuncDescriptor): Arg[] {
+function vfuncArgs(descriptor: VfuncDescriptor): Arg[] {
     return descriptor.argDescriptors.map((argDescriptor) => vfuncArg(argDescriptor));
 }
 
-export { findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs, type AnyVfuncDescriptor };
+export { findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs };

@@ -83,13 +83,7 @@ function dropLayerMembers(layer: AnyClass, names: Set<string>): void {
 }
 
 function insertMixinLayer(target: AnyClass, mixin: Mixin, inheritedNames: Set<string>): void {
-    const base = getParentClass(target);
-
-    if (base === null) {
-        return;
-    }
-
-    const layer = mixin(base as AnyClass<MixinReceiver>);
+    const layer = mixin(getParentClass(target) as AnyClass<MixinReceiver>);
     dropLayerMembers(layer, inheritedNames);
     Object.setPrototypeOf(target.prototype, layer.prototype);
     Object.setPrototypeOf(target, layer);

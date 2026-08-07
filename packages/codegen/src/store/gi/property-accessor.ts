@@ -6,10 +6,9 @@ import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import { isEmittableCallable } from "./callables.js";
-import { annotationSpec } from "./doc-spec.js";
+import { getDoc } from "./doc-spec.js";
 import { methodExportName, renderMethodReturnType } from "./method.js";
 
 type ResolvedAccessor = {
@@ -216,7 +215,7 @@ const renderResolvedPropertyAccessor = (
 };
 
 const propertyDoc = (property: GirProperty): string =>
-    renderJsDoc(property.doc, undefined, annotationSpec(property.annotations));
+    getDoc(property);
 
 const renderPropertyAccessor = (args: PropertyAccessorArgs): string | undefined =>
     withAccessor(args, (accessor) => renderResolvedPropertyAccessor(args.context, args.property, accessor));

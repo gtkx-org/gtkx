@@ -1,15 +1,9 @@
 import { AST_NODE_TYPES, ESLintUtils, TSESLint, type TSESTree } from "@typescript-eslint/utils";
 import { getIdentifierName } from "./identifier-name.js";
+import { type MemberNode, memberVisitors } from "./member-node.js";
 
 type MessageIds = "glibPrefix" | "gtkPrefix";
 type Context = TSESLint.RuleContext<MessageIds, []>;
-
-type MemberNode =
-    | TSESTree.AccessorProperty |
-    TSESTree.MethodDefinition |
-    TSESTree.PropertyDefinition |
-    TSESTree.TSMethodSignature |
-    TSESTree.TSPropertySignature;
 
 const BRAND_PREFIX = /^gtkx/i;
 const GLIB_PREFIX = /^G[A-Z][a-z]/;
@@ -38,15 +32,11 @@ const noLibraryPrefix = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
         };
 
         return {
-            AccessorProperty: member,
-            MethodDefinition: member,
+            ...memberVisitors(member),
             // eslint-disable-next-line @typescript-eslint/naming-convention
             "Program:exit": (): void => {
                 reportDeclarations(context);
             },
-            PropertyDefinition: member,
-            TSMethodSignature: member,
-            TSPropertySignature: member,
         };
     },
 });

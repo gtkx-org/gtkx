@@ -3,9 +3,8 @@ import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
-import { annotationSpec } from "../gi/doc-spec.js";
+import { getDoc } from "../gi/doc-spec.js";
 import { elementPropTypeFor } from "./element-prop-imports.js";
 import {
     collectInterfacePropsClasses,
@@ -43,8 +42,6 @@ type RenderPropBlockContext = {
 
 const ACCESSIBLE_INTERFACE_GLIB_NAME = "GtkAccessible";
 const ACCESSIBLE_PROPS_NAME = "AccessibleProps";
-
-const classDoc = (klass: GirClass): string => renderJsDoc(klass.doc, undefined, annotationSpec(klass.annotations));
 
 const addGiNamespace = (imports: ImportsBuilder, namespaceName: string, alias: string): void => {
     if (namespaceName === "") {
@@ -101,7 +98,7 @@ const generateJsxSection = (
 
     const constLines = intrinsicElementConsts.map(
         (entry) =>
-            `${classDoc(entry.klass)}export const ${entry.glibName} = ` +
+            `${getDoc(entry.klass)}export const ${entry.glibName} = ` +
             `${sourceStringLiteral(entry.glibName)} as const;`,
     );
 
@@ -290,7 +287,7 @@ const renderInterfacePropsBlock = (
     addGiNamespace(imports, iface.namespace.name, giNamespaceAlias(iface.namespace.name));
     const selfDefault = `${giNamespaceAlias(iface.namespace.name)}.${iface.klass.name}`;
     const signature = `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`;
-    const block = `${classDoc(iface.klass)}${renderBlock(signature, ownerLines.join("\n"))}`;
+    const block = `${getDoc(iface.klass)}${renderBlock(signature, ownerLines.join("\n"))}`;
 
     return { block, objectPropNames };
 };
@@ -298,7 +295,7 @@ const renderInterfacePropsBlock = (
 const renderJsxAugmentation = (namespaceElements: GlibNamedClass[]): string => {
     const elementLines = namespaceElements
         .filter((entry) => !entry.klass.isAbstract)
-        .map((entry) => `${classDoc(entry.klass)}${entry.glibName}: ${entry.glibName}Props;`)
+        .map((entry) => `${getDoc(entry.klass)}${entry.glibName}: ${entry.glibName}Props;`)
         .join("\n");
 
     const intrinsicInterface = renderBlock("interface IntrinsicElements", elementLines);
@@ -329,7 +326,7 @@ const renderPropBlock = (
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
     const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${entry.klass.name}`;
 
-    const block = `${classDoc(entry.klass)}${renderBlock(
+    const block = `${getDoc(entry.klass)}${renderBlock(
         `export interface ${entry.glibName}Props<Self = ${selfDefault}>${extendsClause}`,
         ownerLines.join("\n"),
     )}`;

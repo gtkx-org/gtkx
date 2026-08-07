@@ -6,15 +6,10 @@ const SHEBANG = "Shebang";
 
 const DIRECTIVE_PATTERNS = [
     /^\/\s*<reference\s/,
-    /^\s*@?(?:ts-expect-error|ts-ignore|ts-nocheck|ts-check)\b/,
-    /^\s*eslint(?:-disable|-enable|-env)?\b/,
-    /^\s*globals\b/,
-    /^\s*@(?:vite-ignore|jsx|jsxImportSource|jsxRuntime)\b/,
-    /^\s*#__PURE__/,
-    /^\s*@__PURE__/,
-    /^\s*prettier-ignore\b/,
+    /^\s*@ts-expect-error\b/,
+    /^\s*eslint(?:-disable|-enable)?\b/,
+    /^\s*@vite-ignore\b/,
     /^\s*(?:v8|c8|istanbul|node)\s+ignore\b/,
-    /^\s*webpack\w*:/,
 ];
 
 const noComments = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({

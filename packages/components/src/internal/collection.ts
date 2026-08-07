@@ -13,13 +13,12 @@ type Collection = Pick<CollectionModel, "model" | "expansion" | "treeModel"> & {
 };
 
 const NO_POSITIONS: number[] = [];
-const NO_MATCHES: number[] = [];
 
 const ascending = (a: number, b: number): number => a - b;
 
 function positionsFor(collectionModel: CollectionModel, ids: string[]): number[] {
     if (ids.length === 0) {
-        return NO_MATCHES;
+        return NO_POSITIONS;
     }
 
     const { positions } = orderFor(collectionModel.expansion);

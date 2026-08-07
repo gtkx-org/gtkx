@@ -39,7 +39,7 @@ function getSlotKey(path: string): SlotKey | null {
     const boundary = getLevelBoundary(path);
     const part = decodePartAt(path, boundary);
 
-    if (part === null || part.length === 0) {
+    if (part === null) {
         return null;
     }
 

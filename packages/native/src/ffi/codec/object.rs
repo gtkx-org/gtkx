@@ -11,10 +11,7 @@ unsafe fn keeps_own_construction_ref(gobject_ptr: *mut glib::gobject_ffi::GObjec
     unsafe { glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast()) }
 }
 
-pub(crate) unsafe fn acquire_decoded_ref(
-    gobject_ptr: *mut glib::gobject_ffi::GObject,
-    ownership: Ownership,
-) {
+unsafe fn acquire_decoded_ref(gobject_ptr: *mut glib::gobject_ffi::GObject, ownership: Ownership) {
     if ownership.is_borrowed() {
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
         return;
@@ -38,7 +35,7 @@ pub(crate) unsafe fn release_construction_ref(gobject_ptr: *mut glib::gobject_ff
     unsafe { glib::gobject_ffi::g_object_unref(gobject_ptr) };
 }
 
-unsafe fn tracked_gobject_value(
+pub(crate) unsafe fn tracked_gobject_value(
     env: &Env,
     gobject_ptr: *mut glib::gobject_ffi::GObject,
     ownership: Ownership,

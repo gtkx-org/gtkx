@@ -8,7 +8,7 @@ use napi::{Env, sys};
 use napi_derive::napi;
 
 use crate::api::vtable::{query_type, validate_vfunc_offset};
-use crate::api::{native_result, type_from_bigint};
+use crate::api::{handle_newtype, native_result, type_from_bigint};
 use crate::ffi::closure::{ClosureData, ClosureState};
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
@@ -61,14 +61,7 @@ pub struct RegisterClassInterface {
     pub vfuncs: Vec<RegisterClassVfunc>,
 }
 
-pub struct PspecHandle(*mut gobject_ffi::GParamSpec);
-
-impl FromNapiValue for PspecHandle {
-    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
-        let external = unsafe { <&External<Handle>>::from_napi_value(env, napi_val)? };
-        Ok(Self(external.as_ptr().cast::<gobject_ffi::GParamSpec>()))
-    }
-}
+handle_newtype!(PspecHandle, *mut gobject_ffi::GParamSpec);
 
 /// A property the registered class installs on its class structure.
 #[napi(object, object_to_js = false)]

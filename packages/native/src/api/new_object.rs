@@ -1,26 +1,18 @@
 use std::ffi::{CString, c_char};
 
-use glib::translate::{IntoGlib as _, from_glib_full};
+use glib::translate::IntoGlib as _;
 use glib::{self, gobject_ffi};
+use napi::Env;
 use napi::bindgen_prelude::*;
-use napi::{Env, sys};
 use napi_derive::napi;
 
-use crate::api::type_from_bigint;
-use crate::ffi::codec::{Ownership, acquire_decoded_ref, release_construction_ref};
-use crate::handle::Handle;
-use crate::value::{self, pending_wrapper};
+use crate::api::{handle_newtype, native_result, type_from_bigint};
+use crate::ffi::codec::{Ownership, release_construction_ref, tracked_gobject_value};
+use crate::value::pending_wrapper;
 
 type Associator<'a> = Function<'a, FnArgs<(Unknown<'a>, Unknown<'a>)>, ()>;
 
-pub struct ValueHandle(*const gobject_ffi::GValue);
-
-impl FromNapiValue for ValueHandle {
-    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
-        let external = unsafe { <&External<Handle>>::from_napi_value(env, napi_val)? };
-        Ok(Self(external.as_ptr().cast::<gobject_ffi::GValue>()))
-    }
-}
+handle_newtype!(ValueHandle, *const gobject_ffi::GValue);
 
 struct ConstructProperties {
     names: Vec<CString>,
@@ -107,9 +99,9 @@ fn associate_constructed(
     wrapper: &Object<'_>,
     associate: &Associator<'_>,
 ) -> Result<()> {
-    unsafe { acquire_decoded_ref(ptr, Ownership::Full) };
-    let object: glib::Object = unsafe { from_glib_full(ptr) };
-    let handle = value::handle_to_unknown(env, Handle::decoded_gobject(object))?;
+    let handle = native_result("new_object", unsafe {
+        tracked_gobject_value(env, ptr, Ownership::Full)
+    })?;
     let wrapper = unsafe { Unknown::from_napi_value(env.raw(), wrapper.raw()) }?;
 
     associate.call(FnArgs::from((handle, wrapper)))

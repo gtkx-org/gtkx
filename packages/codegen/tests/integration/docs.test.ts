@@ -230,7 +230,6 @@ describe("writeDocs with the built-in Adwaita element config", () => {
         const expanderRow = page(outDir, join("adw", "expander-row.md"));
         expect(expanderRow).toContain("### `rows`");
         expect(expanderRow).toContain("Widgets added to the area the row reveals when it expands.");
-        expect(expanderRow).toContain("### `actions`");
         expect(expanderRow).toContain("### `prefix`");
         expect(expanderRow).toContain("Widgets added at the start of the row, before its title.");
         expect(expanderRow).toContain("### `suffix`");

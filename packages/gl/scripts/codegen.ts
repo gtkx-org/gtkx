@@ -53,8 +53,8 @@ function summarizeCounts(counts: Map<string, number>): string {
         .join(", ");
 }
 
-function summarizeEnumExclusions(exclusions: { token: string; reason: string }[]): string {
-    return exclusions.map((exclusion) => `${exclusion.token}: ${exclusion.reason}`).join(", ");
+function summarizeEnumExclusions(tokens: string[]): string {
+    return tokens.map((token) => `${token}: unsafe-integer`).join(", ");
 }
 
 for (const exclusion of report.exclusions) {

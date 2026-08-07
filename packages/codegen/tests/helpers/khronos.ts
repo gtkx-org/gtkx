@@ -15,7 +15,6 @@ const docContext = (overrides: Partial<GlDocContext> = {}): GlDocContext => ({
 
 const glProvenance = (overrides: Partial<GlSymbolProvenance> = {}): GlSymbolProvenance => ({
     feature: "GL_VERSION_1_0",
-    featureNumber: 1,
     removals: [],
     ...overrides,
 });

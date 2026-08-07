@@ -30,6 +30,7 @@ type ReferenceProviderOptions = {
 
 type ReferenceProvider = {
     get(projectRoot?: string): Promise<ScopedReference>;
+    load(project: ResolvedProject): Promise<ScopedReference>;
     resolve(projectRoot?: string): ResolvedProject;
 };
 
@@ -255,14 +256,15 @@ const createReferenceProvider = (options: ReferenceProviderOptions): ReferencePr
     const resolve = (projectRoot?: string): ResolvedProject =>
         resolveProject(getWorkingDirectory(), options.getAppRoot, projectRoot);
 
-    const get = async (projectRoot?: string): Promise<ScopedReference> => {
-        const project = resolve(projectRoot);
+    const load = async (project: ResolvedProject): Promise<ScopedReference> => {
         const loaded = await currentReference(cache, project.root);
 
         return { reference: loaded.reference, root: loaded.root, source: project.source };
     };
 
-    return { get, resolve };
+    const get = (projectRoot?: string): Promise<ScopedReference> => load(resolve(projectRoot));
+
+    return { get, load, resolve };
 };
 
 const projectNote = (project: ResolvedProject): string =>
@@ -281,7 +283,7 @@ const scopedResult = async (
     const resolved = provider.resolve(projectRoot);
 
     try {
-        const scoped = await provider.get(projectRoot);
+        const scoped = await provider.load(resolved);
 
         return withProjectNote(render(scoped.reference), projectNote(scoped));
     } catch (error) {
@@ -562,4 +564,5 @@ export {
     registerReferenceResources,
     type ReferenceApi,
     type ReferenceProvider,
+    type ResolvedProject,
 };

@@ -114,7 +114,6 @@ const readOutParams = (outPlans: ArgSpec[], inputs: unknown[], nativeValues: unk
 };
 
 const isPassThroughPlan = (plan: ArgSpec, index: number): boolean =>
-    plan.requiresInput &&
     plan.inputIndex === index &&
     !plan.isRef &&
     !plan.isCallerAllocated &&
@@ -156,7 +155,7 @@ function fromNativeCallable(
     const outPlans = plans.filter((plan) => plan.isOutParam);
     const arePassThrough = plans.every((plan, index) => isPassThroughPlan(plan, index));
 
-    if (!canThrow && arePassThrough && outPlans.length === 0) {
+    if (!canThrow && arePassThrough) {
         return directCallable(descriptor, returnDescriptor, plans.length);
     }
 

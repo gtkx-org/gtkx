@@ -63,7 +63,7 @@ describe("khronos generation counts", () => {
     });
 
     it("reports the skipped enum token instead of dropping it silently", () => {
-        expect(result.report.enumExclusions).toContainEqual({ token: "GL_TIMEOUT_IGNORED", reason: "unsafe-integer" });
+        expect(result.report.enumExclusions).toContain("GL_TIMEOUT_IGNORED");
         expect(ENUMS_SOURCE).not.toContain("TIMEOUT_IGNORED");
     });
 

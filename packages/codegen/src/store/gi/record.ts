@@ -1,9 +1,8 @@
 import type { GirRecord } from "../../gir/record.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
-import { annotationSpec } from "./doc-spec.js";
+import { getDoc } from "./doc-spec.js";
 import { renderSourceGtype } from "./gtype-binding.js";
 import { renderRecordConstructor, renderRecordConstructorPropsInterface } from "./record-constructor.js";
 import { renderRecordFieldAccessor } from "./record-field-accessor.js";
@@ -35,7 +34,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     const members = renderRecordMembers(context, record, className, callables);
     const body = indentMembers(members);
     const heritage = isErrorSubclass ? " extends globalThis.Error" : "";
-    const doc = renderJsDoc(record.doc, undefined, annotationSpec(record.annotations));
+    const doc = getDoc(record);
 
     context.module.appendDeclaration(
         `${doc}export class ${className}${heritage} {\n${body}\n}`,

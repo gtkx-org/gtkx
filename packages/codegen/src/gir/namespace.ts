@@ -1,10 +1,10 @@
 import type { ParseContext, TypeId } from "./type-id.js";
-import { annotationsFromNode, type GirAnnotations } from "./annotations.js";
+import { documentedFromNode, type GirAnnotations } from "./annotations.js";
 import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, getChild, getChildren, getDoc, nameAttr, type RawNode } from "./parse.js";
+import { attr, getChild, getChildren, nameAttr, type RawNode } from "./parse.js";
 import { type GirRecord, isVtableRecord, recordFromNode } from "./record.js";
 import { typeRefFromNode } from "./type-ref.js";
 
@@ -135,17 +135,13 @@ const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNode, cont
     shell.functions = getChildren(namespaceNode, "function").map((fn) => functionFromNode(fn, context));
 
     shell.constants = getChildren(namespaceNode, "constant").map((constant) => ({
-        name: nameAttr(constant),
-        doc: getDoc(constant),
-        annotations: annotationsFromNode(constant),
+        ...documentedFromNode(constant),
         value: attr(constant, "value") ?? "",
         type: typeRefFromNode(constant, context),
     }));
 
     shell.aliases = getChildren(namespaceNode, "alias").map((alias) => ({
-        name: nameAttr(alias),
-        doc: getDoc(alias),
-        annotations: annotationsFromNode(alias),
+        ...documentedFromNode(alias),
         cType: attr(alias, "c:type"),
         target: typeRefFromNode(alias, context),
         targetCType: attr(getChild(alias, "type"), "c:type"),

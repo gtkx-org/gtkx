@@ -1,14 +1,9 @@
-import { AST_NODE_TYPES, ESLintUtils, type TSESLint, type TSESTree } from "@typescript-eslint/utils";
+import { ESLintUtils, type TSESLint } from "@typescript-eslint/utils";
+import { getIdentifierName } from "./identifier-name.js";
+import { type MemberNode, memberVisitors } from "./member-node.js";
 
 type MessageIds = "dollarBrand";
 type Context = TSESLint.RuleContext<MessageIds, []>;
-
-type MemberNode =
-    | TSESTree.AccessorProperty |
-    TSESTree.MethodDefinition |
-    TSESTree.PropertyDefinition |
-    TSESTree.TSMethodSignature |
-    TSESTree.TSPropertySignature;
 
 const brandNaming = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
     meta: {
@@ -29,24 +24,16 @@ const brandNaming = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
             report(context, node);
         };
 
-        return {
-            AccessorProperty: member,
-            MethodDefinition: member,
-            PropertyDefinition: member,
-            TSMethodSignature: member,
-            TSPropertySignature: member,
-        };
+        return memberVisitors(member);
     },
 });
 
-function memberName(node: MemberNode): string | undefined {
-    const { key } = node;
-
-    return node.computed || key.type !== AST_NODE_TYPES.Identifier ? undefined : key.name;
-}
-
 function report(context: Context, node: MemberNode): void {
-    const name = memberName(node);
+    if (node.computed) {
+        return;
+    }
+
+    const name = getIdentifierName(node.key);
 
     if (!name?.startsWith("$") || name.endsWith("$")) {
         return;

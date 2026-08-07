@@ -67,8 +67,7 @@ const isPackageSource = (root: string, fileName: string): boolean =>
 const isInScope = (scope: Scope, fileName: string): boolean =>
     scope.declared.has(fileName) || isPackageSource(scope.root, fileName);
 
-const isOwnSource = (scope: Scope, file: ts.SourceFile | undefined): boolean =>
-    file !== undefined && isInScope(scope, file.fileName);
+const isOwnSource = (scope: Scope, file: ts.SourceFile): boolean => isInScope(scope, file.fileName);
 
 const resolveEntryFiles = (root: string, entrypoints: string[]): string[] =>
     resolveEntrypoints(root, entrypoints, "source").map((entry) => resolve(entry.dir, entry.path));

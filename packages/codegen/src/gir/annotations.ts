@@ -1,4 +1,4 @@
-import { attr, getDocDeprecated, isAttrTrue, type RawNode } from "./parse.js";
+import { attr, getDoc, getDocDeprecated, isAttrTrue, nameAttr, type RawNode } from "./parse.js";
 
 /** Release and deprecation annotations GIR carries on a documentable element. */
 type GirAnnotations = {
@@ -12,11 +12,10 @@ type GirAnnotations = {
     deprecationDoc: string | undefined;
 };
 
-const NO_ANNOTATIONS: GirAnnotations = {
-    since: undefined,
-    isDeprecated: false,
-    deprecatedSince: undefined,
-    deprecationDoc: undefined,
+type DocumentedNode = {
+    name: string;
+    doc: string | undefined;
+    annotations: GirAnnotations;
 };
 
 const annotationsFromNode = (node: RawNode | undefined): GirAnnotations => ({
@@ -26,7 +25,13 @@ const annotationsFromNode = (node: RawNode | undefined): GirAnnotations => ({
     deprecationDoc: getDocDeprecated(node),
 });
 
+const documentedFromNode = (node: RawNode): DocumentedNode => ({
+    name: nameAttr(node),
+    doc: getDoc(node),
+    annotations: annotationsFromNode(node),
+});
+
 const hasAnnotations = (annotations: GirAnnotations): boolean =>
     annotations.since !== undefined || annotations.isDeprecated || annotations.deprecatedSince !== undefined;
 
-export { annotationsFromNode, hasAnnotations, NO_ANNOTATIONS, type GirAnnotations };
+export { annotationsFromNode, documentedFromNode, hasAnnotations, type GirAnnotations };

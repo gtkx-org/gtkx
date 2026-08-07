@@ -6,7 +6,6 @@ type Context = TSESLint.RuleContext<MessageIds, Options>;
 type JsonLocation = { start: { line: number; column: number }; end: { line: number; column: number } };
 
 type JsonNode = {
-    type: string;
     loc: JsonLocation;
     key?: { value?: string; name?: string };
     value?: JsonNode & { value?: unknown };

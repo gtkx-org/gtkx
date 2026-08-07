@@ -18,7 +18,6 @@ type GlRemoval = {
 
 type GlSymbolProvenance = {
     feature: string;
-    featureNumber: number;
     requireComment?: string;
     removals: GlRemoval[];
 };
@@ -67,7 +66,6 @@ const requireMember = (state: SelectionState, name: string, context: MemberConte
 
     target.set(name, {
         feature: feature.name,
-        featureNumber: feature.number,
         ...(block.comment !== undefined && { requireComment: block.comment }),
         removals: [...(state.history.get(name) ?? [])],
     });

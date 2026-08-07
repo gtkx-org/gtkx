@@ -593,16 +593,12 @@ const planInParam = (
     };
 };
 
+const nullableHandleExpression = (name: string): string => `${name} == null ? null : getHandle(${name})`;
+
 const handleArgument = (context: ModuleContext, name: string, isNullable: boolean): string => {
-    if (isNullable) {
-        context.addRuntimeImport("getHandle");
-
-        return `${name} == null ? null : getHandle(${name})`;
-    }
-
     context.addRuntimeImport("getHandle");
 
-    return `getHandle(${name})`;
+    return isNullable ? nullableHandleExpression(name) : `getHandle(${name})`;
 };
 
 const closureArgument = (context: ModuleContext, name: string, isNullable: boolean): string => {
@@ -616,7 +612,7 @@ const hashtableArgument = (context: ModuleContext, valueRef: TypeId, name: strin
     if (isHandlePassing(context, valueRef)) {
         context.addRuntimeImport("getHandle");
 
-        return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, v == null ? null : getHandle(v)]) : null`;
+        return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, ${nullableHandleExpression("v")}]) : null`;
     }
 
     return `${name} ? globalThis.Array.from(${name}) : null`;

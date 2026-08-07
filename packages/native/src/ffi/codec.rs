@@ -38,7 +38,7 @@ pub use fundamental::FundamentalCodec;
 pub use hashtable::{HashTableCodec, HashTableEntryCodec};
 pub use numeric::{FloatCodec, IntegerCodec, lossless_f64};
 pub use object::ObjectCodec;
-pub(crate) use object::{acquire_decoded_ref, release_construction_ref};
+pub(crate) use object::{release_construction_ref, tracked_gobject_value};
 pub use r#ref::RefCodec;
 pub use string::{StringCodec, str_to_glib_full};
 pub use r#struct::StructCodec;

@@ -20,18 +20,13 @@ type GlExclusion = {
     reason: GlExclusionReason;
 };
 
-type GlEnumExclusion = {
-    token: string;
-    reason: "unsafe-integer";
-};
-
 type GlGenerationReport = {
     selection: GlSelection;
     selectedCommands: number;
     emittedCommands: number;
     derivedSingulars: number;
     exclusions: GlExclusion[];
-    enumExclusions: GlEnumExclusion[];
+    enumExclusions: string[];
     coreRemovals: GlSubset["removed"];
 };
 
@@ -57,7 +52,7 @@ type PlannedSelection = {
 
 type EnumSelection = {
     rows: EnumRow[];
-    enumExclusions: GlEnumExclusion[];
+    enumExclusions: string[];
 };
 
 type RenderedCommands = {
@@ -259,7 +254,7 @@ const buildEnumRows = (
     selection: GlSelection,
 ): EnumSelection => {
     const rows: EnumRow[] = [];
-    const enumExclusions: GlEnumExclusion[] = [];
+    const enumExclusions: string[] = [];
     const sortedEnums = sortStringsBy(enumNames.entries(), ([key]) => key);
 
     for (const [name, provenance] of sortedEnums) {
@@ -267,7 +262,7 @@ const buildEnumRows = (
         const literal = enumLiteral(token);
 
         if (literal === undefined) {
-            enumExclusions.push({ token: name, reason: "unsafe-integer" });
+            enumExclusions.push(name);
         } else {
             rows.push({ token, exportName: enumExportName(name), literal, provenance });
         }

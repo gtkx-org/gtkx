@@ -145,4 +145,4 @@ const guard =
             }
         };
 
-export { type Options as PublicApiJsdocOptions, publicApiJsdoc };
+export { publicApiJsdoc };

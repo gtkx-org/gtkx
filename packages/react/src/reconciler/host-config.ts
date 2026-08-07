@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getInstanceType, typeName } from "@gtkx/runtime";
-import { getOrInsert } from "@gtkx/utils";
+import { getOrInsert, packageVersion } from "@gtkx/utils";
 import { createContext } from "react";
 import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
@@ -15,7 +15,6 @@ import {
     createElementNode,
     createPropNode,
     createTextNode,
-    type Dispatch,
     ELEMENT_KIND,
     type ElementNode,
     type Instance,
@@ -47,6 +46,8 @@ const containerNodes: WeakMap<object, ElementNode> = new WeakMap();
 const priority = createPriorityTracker();
 
 const hostConfig = {
+    rendererPackageName: "@gtkx/react",
+    rendererVersion: packageVersion(import.meta.url, "@gtkx/react/package.json"),
     supportsMutation: true,
     supportsPersistence: false,
     supportsHydration: false,
@@ -222,8 +223,6 @@ const setWidgetVisible = (instance: Instance, isVisible: boolean): void => {
     }
 };
 
-const runDiscrete: Dispatch = (fn) => priority.withDiscrete(fn);
-
 const adoptContainer = (container: GObject.Object): ElementNode => {
     const name = typeName(getInstanceType(container));
 
@@ -231,7 +230,7 @@ const adoptContainer = (container: GObject.Object): ElementNode => {
         throw new Error("Cannot adopt a container whose GType has no registered name");
     }
 
-    return createElementNode(name, container, runDiscrete, null);
+    return createElementNode(name, container, priority.withDiscrete, null);
 };
 
 const getOrCreateContainerNode = (container: GObject.Object): ElementNode =>
@@ -242,7 +241,7 @@ const createNode = (type: string, props: Props): Instance => {
         return createPropNode(props.propName as string);
     }
 
-    const node = resolveElementNode(type, props, runDiscrete);
+    const node = resolveElementNode(type, props, priority.withDiscrete);
 
     if (node.kind === ELEMENT_KIND) {
         containerNodes.set(node.object, node);

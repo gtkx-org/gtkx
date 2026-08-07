@@ -550,10 +550,6 @@ const isInaccessible = (widget: Gtk.Widget): boolean => {
     let current: Gtk.Widget | null = widget;
 
     while (current) {
-        if (!current.getVisible()) {
-            return true;
-        }
-
         if (readAccessibleBoolean(current, "accessibleHidden") === true) {
             return true;
         }

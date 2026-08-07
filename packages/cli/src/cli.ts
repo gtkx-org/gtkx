@@ -3,7 +3,7 @@ import { defineCommand, runMain } from "citty";
 import { splitApplicationArgs } from "./internal/application-args.js";
 import { withErrorBoundary } from "./internal/errors.js";
 
-const version = packageVersion(import.meta.url);
+const version = packageVersion(import.meta.url, "../package.json");
 const { cliArgs } = splitApplicationArgs(process.argv.slice(2));
 
 const main = defineCommand({

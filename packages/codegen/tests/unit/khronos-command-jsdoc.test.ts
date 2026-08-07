@@ -352,7 +352,6 @@ describe("khronos tuple returns", () => {
 describe("khronos registry provenance notes", () => {
     const provenance = glProvenance({
         feature: "GL_VERSION_4_3",
-        featureNumber: 4.3,
         requireComment: "Reuse tokens from KHR_debug",
         removals: [
             { feature: "GL_VERSION_3_2", comment: "Compatibility-only GL 1.1 features removed from GL 3.2" },

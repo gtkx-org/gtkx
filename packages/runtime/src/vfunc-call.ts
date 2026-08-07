@@ -11,13 +11,14 @@ import {
     getVfuncRegistry,
     instanceClassName,
     resolveWrapperType,
+    type VfuncDescriptor,
 } from "./registry.js";
 import { TYPE_INVALID, typeInterfaces, typeIsA, typeParent } from "./type.js";
-import { type AnyVfuncDescriptor, findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs } from "./vfunc.js";
+import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs } from "./vfunc.js";
 
 type Invoker = (instance: object, inputs: unknown[]) => unknown;
 type InvokerCache = WeakMap<AnyClass, Map<string, Invoker>>;
-type ResolvedSlot = { descriptor: AnyVfuncDescriptor; interfaceType?: bigint };
+type ResolvedSlot = { descriptor: VfuncDescriptor; interfaceType?: bigint };
 
 const parentInvokers: InvokerCache = new WeakMap();
 const vfuncInvokers: InvokerCache = new WeakMap();

@@ -8,6 +8,8 @@ import { copyValue } from "./value.js";
 type Callback = (...args: unknown[]) => unknown;
 type CallbackReceiver = "this" | "emitter" | "none";
 type OutParam = { value: unknown; descriptor: Descriptor; argIndex: number };
+type LengthLink = { target: OutParam; sourceIndex: number };
+type OutParamGroups = { lengthLinks: LengthLink[]; valueParams: OutParam[] };
 
 type CallbackSpec = {
     argDescriptors: Descriptor[];
@@ -147,15 +149,27 @@ const writeOutParams = (outParams: OutParam[], outValues: unknown[]): Map<number
     return written;
 };
 
-const writeFoldedLengths = (
-    lengthParams: OutParam[],
-    lengths: Map<number, number>,
-    written: Map<number, unknown>,
-): void => {
-    for (const outParam of lengthParams) {
+const groupOutParams = (outParams: OutParam[]): OutParamGroups => {
+    const lengths = lengthOutParamIndices(outParams);
+    const groups: OutParamGroups = { lengthLinks: [], valueParams: [] };
+
+    for (const outParam of outParams) {
         const sourceIndex = lengths.get(outParam.argIndex);
-        const source = sourceIndex === undefined ? undefined : written.get(sourceIndex);
-        (outParam.value as { value: unknown }).value = Array.isArray(source) ? source.length : 0;
+
+        if (sourceIndex === undefined) {
+            groups.valueParams.push(outParam);
+        } else {
+            groups.lengthLinks.push({ target: outParam, sourceIndex });
+        }
+    }
+
+    return groups;
+};
+
+const writeFoldedLengths = (lengthLinks: LengthLink[], written: Map<number, unknown>): void => {
+    for (const link of lengthLinks) {
+        const source = written.get(link.sourceIndex);
+        (link.target.value as { value: unknown }).value = Array.isArray(source) ? source.length : 0;
     }
 };
 
@@ -201,11 +215,9 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
         return toNative(returnDescriptor, result);
     }
 
-    const lengths = lengthOutParamIndices(outParams);
-    const lengthParams = outParams.filter((outParam) => lengths.has(outParam.argIndex));
-    const valueParams = outParams.filter((outParam) => !lengths.has(outParam.argIndex));
+    const { lengthLinks, valueParams } = groupOutParams(outParams);
     const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", valueParams.length);
-    writeFoldedLengths(lengthParams, lengths, writeOutParams(valueParams, outValues));
+    writeFoldedLengths(lengthLinks, writeOutParams(valueParams, outValues));
 
     return toNative(returnDescriptor, primary);
 };

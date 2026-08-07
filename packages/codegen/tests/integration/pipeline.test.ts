@@ -9,7 +9,7 @@ import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
 import type { GirRecord } from "../../src/gir/record.js";
 import type { TypeId } from "../../src/gir/type-id.js";
 import type { GirType } from "../../src/gir/type.js";
-import { NO_ANNOTATIONS } from "../../src/gir/annotations.js";
+import { annotationsFromNode } from "../../src/gir/annotations.js";
 import { readBuiltinElements } from "../../src/react/element-config.js";
 import { matchAsyncFinish } from "../../src/store/gi/async.js";
 import { generateNamespaceModule } from "../../src/store/gi/pipeline.js";
@@ -413,7 +413,7 @@ const plainRecord = (name: string): GirRecord => ({
     isVtable: false,
     name,
     doc: undefined,
-    annotations: NO_ANNOTATIONS,
+    annotations: annotationsFromNode(undefined),
     cType: `G${name}`,
     glibTypeName: undefined,
     glibGetType: undefined,

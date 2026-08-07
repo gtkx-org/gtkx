@@ -14,7 +14,6 @@ use crate::ffi::library_cache::FfiCache;
 pub(crate) enum CallTarget {
     Symbol {
         library_name: String,
-        symbol_name: String,
     },
     Vfunc {
         vtable: VfuncVtable,
@@ -65,12 +64,9 @@ impl CallDescriptor {
         }
 
         let resolved = match &self.target {
-            CallTarget::Symbol {
-                library_name,
-                symbol_name,
-            } => FfiCache::with(|state| {
+            CallTarget::Symbol { library_name } => FfiCache::with(|state| {
                 let symbol = unsafe {
-                    state.resolve_symbol::<unsafe extern "C" fn() -> ()>(library_name, symbol_name)
+                    state.resolve_symbol::<unsafe extern "C" fn() -> ()>(library_name, &self.label)
                 }?;
                 anyhow::Ok(CodePtr(symbol as *mut c_void))
             })?,
@@ -164,21 +160,6 @@ fn vfunc_vtable(
     }
 }
 
-fn interface_offset_bounds(
-    interface_type: glib::Type,
-    vtable_size: Option<u32>,
-    label: &str,
-) -> anyhow::Result<u32> {
-    let Some(size) = vtable_size else {
-        anyhow::bail!(
-            "{label} binds a slot of interface {interface_type} without a vtable size, which \
-             would leave byte_offset bounded only by its alignment"
-        );
-    };
-
-    Ok(size)
-}
-
 fn vfunc_offset_bounds(
     vtable: VfuncVtable,
     vtable_size: Option<u32>,
@@ -195,9 +176,12 @@ fn vfunc_offset_bounds(
                 )
             }),
         VfuncVtable::Interface { interface_type, .. }
-        | VfuncVtable::DefaultInterface(interface_type) => {
-            interface_offset_bounds(interface_type, vtable_size, label)
-        }
+        | VfuncVtable::DefaultInterface(interface_type) => vtable_size.ok_or_else(|| {
+            anyhow::anyhow!(
+                "{label} binds a slot of interface {interface_type} without a vtable size, which \
+                 would leave byte_offset bounded only by its alignment"
+            )
+        }),
     }
 }
 
@@ -216,14 +200,12 @@ pub fn bind(
     fixed_arg_count: Option<u32>,
 ) -> Result<External<CallDescriptor>> {
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
-    let label = symbol_name.clone();
 
     Ok(External::new(prepare(
         CallTarget::Symbol {
             library_name: shared_library,
-            symbol_name,
         },
-        label,
+        symbol_name,
         arg_codecs,
         return_codec,
         fixed_arg_count.map(|count| count as usize),
@@ -284,10 +266,9 @@ mod tests {
     use super::*;
     use crate::ffi::codec::IntegerCodec;
 
-    fn symbol_target(symbol_name: &str) -> CallTarget {
+    fn symbol_target() -> CallTarget {
         CallTarget::Symbol {
             library_name: "libgtk-4.so.1".to_owned(),
-            symbol_name: symbol_name.to_owned(),
         }
     }
 
@@ -309,7 +290,7 @@ mod tests {
     fn builds_a_variadic_call_interface() {
         test_support::run(|| {
             let descriptor = prepare(
-                symbol_target("gtk_test_accessible_check_state"),
+                symbol_target(),
                 "gtk_test_accessible_check_state".to_owned(),
                 vec![
                     Codec::Integer(IntegerCodec::U32),
@@ -329,7 +310,7 @@ mod tests {
     fn builds_the_call_interface_without_resolving_the_symbol() {
         test_support::run(|| {
             let descriptor = prepare(
-                symbol_target("gtkx_no_such_symbol"),
+                symbol_target(),
                 "gtkx_no_such_symbol".to_owned(),
                 Vec::new(),
                 Codec::Integer(IntegerCodec::U32),
@@ -372,7 +353,7 @@ mod tests {
     fn memoizes_the_resolved_symbol() {
         test_support::run(|| {
             let descriptor = prepare(
-                symbol_target("gtk_get_major_version"),
+                symbol_target(),
                 "gtk_get_major_version".to_owned(),
                 Vec::new(),
                 Codec::Integer(IntegerCodec::U32),

@@ -9,7 +9,7 @@ import { namespaceFunctionExportName } from "../store/gi/function.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
-import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
+import { type ElementPageContext, renderElementPage } from "./element-page.js";
 import { docsSignatureContext, firstSentence, namespaceOrder } from "./render.js";
 import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./symbol-page.js";
 
@@ -371,7 +371,7 @@ class ApiReference {
         this.props = options.props ?? {};
         this.omittedProps = options.omittedProps ?? {};
         this.library = Library.load(options.libraries, options.girPath);
-        this.elementContext = createElementPageContext(this.library, (): string | undefined => undefined);
+        this.elementContext = { library: this.library, linkFor: (): string | undefined => undefined };
         this.buildIndex();
     }
 

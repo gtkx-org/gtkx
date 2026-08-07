@@ -6,7 +6,7 @@ import { tFn } from "../../analysis/descriptor.js";
 import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
-import { callableDoc, memberDocOptions } from "./callable-doc.js";
+import { callableDoc } from "./callable-doc.js";
 import {
     planCallArgs,
     renderMethodBody,
@@ -95,7 +95,7 @@ const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): voi
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
     const finish = matchNamespaceFinish(context, fn);
     const declaration = renderNamespaceFunctionDeclaration({ context, fn, finish, exportName, bindingName });
-    const doc = callableDoc(context, fn, memberDocOptions(context, finish?.fn));
+    const doc = callableDoc(context, fn, { finishFn: finish?.fn });
     context.module.appendDeclaration(`${doc}${declaration}`);
 };
 

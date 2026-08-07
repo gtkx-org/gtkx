@@ -92,7 +92,7 @@ describe("render - Window (1)", () => {
         it("throws without a GtkApplication ancestor", async () => {
             await expect(
                 baseRender(<GtkApplicationWindow title="Orphan" />, { container: rootElement }),
-            ).rejects.toThrow(/GtkApplicationWindow requires a GtkApplication ancestor/);
+            ).rejects.toThrow(/useApplication must be called within GtkApplication/);
         });
     });
 });

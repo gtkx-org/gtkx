@@ -135,8 +135,6 @@ const getDeclaratorShape = (node: TSESTree.VariableDeclarator): Shape => {
     return init === null ? "unknown" : getInitShape(init);
 };
 
-const describeShape = (shape: Shape): string => (shape === "other" ? "a non-boolean value" : "a value");
-
 const getBooleanViolation = (name: string): MessageIds | undefined => {
     if (NEGATED.test(name)) {
         return "negated";
@@ -160,7 +158,7 @@ const report = (context: Context, node: TSESTree.Node, name: string, shape: Shap
         return;
     }
 
-    context.report({ node, messageId, data: { name, prefixes: PREFIX_LIST, shape: describeShape(shape) } });
+    context.report({ node, messageId, data: { name, prefixes: PREFIX_LIST, shape: "a non-boolean value" } });
 };
 
 export { booleanName };

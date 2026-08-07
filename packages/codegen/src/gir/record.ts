@@ -1,8 +1,8 @@
 import type { ParseContext } from "./type-id.js";
-import { annotationsFromNode, type GirAnnotations } from "./annotations.js";
+import { documentedFromNode, type GirAnnotations } from "./annotations.js";
 import { collectFields, type GirField } from "./field.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, isAttrTrue, type RawNode } from "./parse.js";
+import { attr, getChildren, GIR_CONSTRUCTOR_TAG, isAttrTrue, type RawNode } from "./parse.js";
 
 /** A C struct or union declared by a GIR namespace: a plain record, a boxed type, or a GObject vtable. */
 type GirRecord = {
@@ -56,9 +56,8 @@ const recordFromNode = (
     context: ParseContext,
 ): GirRecord => ({
     isVtable,
+    ...documentedFromNode(node),
     name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
-    doc: getDoc(node),
-    annotations: annotationsFromNode(node),
     cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),
     glibGetType: attr(node, "glib:get-type"),

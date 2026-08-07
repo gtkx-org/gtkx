@@ -22,7 +22,6 @@ type PlacedChild = {
     adopted: GObject.Object | null;
     slot: string;
     behavior: ElementBehavior | null;
-    isAttached: boolean;
 };
 
 type ElementNode = SignalTarget & {

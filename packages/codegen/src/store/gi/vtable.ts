@@ -16,8 +16,8 @@ import {
 import {
     foldedLengthParameters,
     handlerParameters,
-    handlerRenames,
     parameterIdentifier,
+    renamesWithInstance,
     renderHandlerParameters,
     renderHandlerResultType,
 } from "../../analysis/param-structure.js";
@@ -37,7 +37,6 @@ type VtableSlot = {
     callback: GirCallback;
     vfunc: GirVirtualMethod | undefined;
     byteOffset: number;
-    vtableSize: number;
 };
 
 type VfuncMemberOptions = {
@@ -50,9 +49,7 @@ type VfuncMemberOptions = {
 
 type VfuncMembersOptions = {
     context: ModuleContext;
-    namespaceName: string;
     klass: GirClass;
-    ownerRef: string;
     mode: VfuncMemberMode;
 };
 
@@ -70,6 +67,7 @@ type VfuncEntry = {
 type Vtable = {
     structName: string;
     kind: VtableKind;
+    vtableSize: number;
     slots: VtableSlot[];
 };
 
@@ -151,7 +149,11 @@ const vtableSlotEntry = (
     return { key, callback };
 };
 
-const collectVtableSlots = (context: ModuleContext, fields: GirField[], isUnion: boolean): VtableSlot[] => {
+const collectVtableSlots = (
+    context: ModuleContext,
+    fields: GirField[],
+    isUnion: boolean,
+): { slots: VtableSlot[]; vtableSize: number } => {
     const { slots, size } = computeRecordFieldSlots(context, fields, isUnion);
     const entries: VtableSlot[] = [];
     const claimedNames: Set<string> = new Set();
@@ -161,11 +163,11 @@ const collectVtableSlots = (context: ModuleContext, fields: GirField[], isUnion:
 
         if (entry !== undefined) {
             claimedNames.add(entry.key);
-            entries.push({ ...entry, field, vfunc: undefined, byteOffset: slot.byteOffset, vtableSize: size });
+            entries.push({ ...entry, field, vfunc: undefined, byteOffset: slot.byteOffset });
         }
     }
 
-    return entries;
+    return { slots: entries, vtableSize: size };
 };
 
 const resolveVtableRecord = (
@@ -198,7 +200,7 @@ const collectVtable = (context: ModuleContext, namespaceName: string, klass: Gir
         return undefined;
     }
 
-    const slots = collectVtableSlots(context, resolved.record.fields, resolved.record.isUnion);
+    const { slots, vtableSize } = collectVtableSlots(context, resolved.record.fields, resolved.record.isUnion);
 
     if (slots.length === 0) {
         return undefined;
@@ -207,6 +209,7 @@ const collectVtable = (context: ModuleContext, namespaceName: string, klass: Gir
     return {
         structName: pascalCase(resolved.typeStruct),
         kind: klass.isInterface ? "interface" : "class",
+        vtableSize,
         slots: attachVirtualMethods(slots, klass),
     };
 };
@@ -281,13 +284,13 @@ const implementedSlotKeys = (context: ModuleContext, namespaceName: string, klas
 };
 
 const protectedSlotKeys = (options: VfuncMembersOptions, slots: VtableSlot[]): Set<string> => {
-    const { context, namespaceName, klass } = options;
+    const { context, klass } = options;
 
     if (klass.isInterface) {
         return new Set();
     }
 
-    const shared = implementedSlotKeys(context, namespaceName, klass);
+    const shared = implementedSlotKeys(context, context.namespace.name, klass);
 
     return new Set(slots.map((slot) => slot.key).filter((key) => !shared.has(key)));
 };
@@ -316,23 +319,12 @@ const slotDocParameters = (slot: VtableSlot): GirParameter[] => {
     return parameters.map((parameter, index) => ({ ...parameter, doc: vfuncParameters[index]?.doc ?? parameter.doc }));
 };
 
-const slotIdentifiers = (slot: VtableSlot, parameters: GirParameter[]): Map<string, string> => {
-    const identifiers = handlerRenames(parameters);
-    const [instance] = slot.callback.parameters;
-
-    if (instance !== undefined && instance.name.length > 0) {
-        identifiers.set(instance.name, "this");
-    }
-
-    return identifiers;
-};
-
 const slotDocSpec = (slot: VtableSlot): JsDocSpec => {
     const parameters = slotDocParameters(slot);
     const source = slot.vfunc ?? slot.callback;
 
     return {
-        ...handlerSpec(source, parameters, slotIdentifiers(slot, parameters)),
+        ...handlerSpec(source, parameters, renamesWithInstance(parameters, slot.callback.parameters[0])),
         returns: slot.vfunc?.returnValue.doc ?? slot.callback.returnValue.doc,
         throws: slot.callback.throws ? THROWS_TEXT : undefined,
     };
@@ -346,8 +338,9 @@ const vfuncEntries = (context: ModuleContext, namespaceName: string, klass: GirC
     }));
 
 const renderVfuncMembers = (options: VfuncMembersOptions): string[] => {
-    const { context, namespaceName, klass, ownerRef, mode } = options;
-    const slots = callableVfuncSlots(context, namespaceName, klass);
+    const { context, klass, mode } = options;
+    const ownerRef = pascalCase(klass.name);
+    const slots = callableVfuncSlots(context, context.namespace.name, klass);
 
     if (slots.length === 0) {
         return [];
@@ -442,7 +435,7 @@ const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): bo
 };
 
 const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot: VtableSlot): string => {
-    const { key, field, callback, byteOffset, vtableSize } = slot;
+    const { key, field, callback, byteOffset } = slot;
 
     const argDescriptors = callback.parameters
         .map((param) => renderParamDescriptor(context, param, param.type))
@@ -455,14 +448,13 @@ const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot
     );
 
     const lines = [
-        `kind: ${sourceStringLiteral(vtable.kind)} as const,`,
         `className: ${sourceStringLiteral(vtable.structName)},`,
         `vfuncName: ${sourceStringLiteral(field.name)},`,
         `byteOffset: ${String(byteOffset)},`,
     ];
 
     if (vtable.kind === "interface") {
-        lines.push(`vtableSize: ${String(vtableSize)},`);
+        lines.push(`vtableSize: ${String(vtable.vtableSize)},`);
     }
 
     lines.push(`argDescriptors: [${argDescriptors}],`, `returnDescriptor: ${returnDescriptor},`);

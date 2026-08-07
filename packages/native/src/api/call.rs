@@ -133,7 +133,6 @@ mod tests {
         crate::api::bind::prepare(
             crate::api::bind::CallTarget::Symbol {
                 library_name: "libgtk-4.so.1".to_owned(),
-                symbol_name: symbol.to_owned(),
             },
             symbol.to_owned(),
             arg_codecs,

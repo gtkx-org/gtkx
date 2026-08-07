@@ -5,11 +5,10 @@ import { renderTsType } from "../../analysis/ts-type.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../../gir/primitives.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import { ModuleContext } from "../../writer/context.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { generateCallback } from "./callback.js";
 import { generateClass } from "./class.js";
 import { generateConstant } from "./constant.js";
-import { annotationSpec } from "./doc-spec.js";
+import { getDoc } from "./doc-spec.js";
 import { generateEnum } from "./enum.js";
 import { generateNamespaceBootstrap, generateNamespaceFunction } from "./function.js";
 import { generateInterface } from "./interface.js";
@@ -73,7 +72,7 @@ const generateNamespaceMembers = (context: ModuleContext, namespace: GirNamespac
 const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
     const category = alias.cType === undefined ? undefined : primitiveCategory(alias.cType);
     const targetType = category === "gtype" ? PRIMITIVE_TS_TYPE.gtype : renderTsType(context, alias.target);
-    const doc = renderJsDoc(alias.doc, undefined, annotationSpec(alias.annotations));
+    const doc = getDoc(alias);
 
     context.module.appendDeclaration(
         `${doc}export type ${alias.name} = ${targetType};`,

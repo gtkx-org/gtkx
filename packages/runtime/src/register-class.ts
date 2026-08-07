@@ -63,15 +63,13 @@ type RegisterClassOptions<TInstance extends object> = {
 };
 
 type VfuncFn = NativeRegisterClassVfunc["fn"];
-type DiscoveredVfunc<K extends "class" | "interface"> = VfuncDescriptor<K> & { methodName: string; fn: VfuncFn };
-type DiscoveredClassVfunc = DiscoveredVfunc<"class">;
-type DiscoveredInterfaceVfunc = DiscoveredVfunc<"interface">;
+type DiscoveredVfunc = VfuncDescriptor & { methodName: string; fn: VfuncFn };
 type MethodTable = Map<string, VfuncFn>;
 type InstanceMembers = { methods: MethodTable; names: Set<string>; inheritedNames: Set<string> };
 
 type InterfaceVfuncBinding = {
     gtype: bigint;
-    vfuncs: DiscoveredInterfaceVfunc[];
+    vfuncs: DiscoveredVfunc[];
 };
 
 type PropertyVfuncSource = {
@@ -243,12 +241,12 @@ function collectInstanceMembers(klass: AnyClass): InstanceMembers {
     return members;
 }
 
-function buildDiscoveredVfunc<K extends "class" | "interface">(
+function buildDiscoveredVfunc(
     fn: VfuncFn,
     methodName: string,
-    resolveDescriptor: (methodName: string) => VfuncDescriptor<K> | undefined,
+    resolveDescriptor: (methodName: string) => VfuncDescriptor | undefined,
     skip: Set<string> | undefined,
-): DiscoveredVfunc<K> | undefined {
+): DiscoveredVfunc | undefined {
     if (skip?.has(methodName)) {
         return undefined;
     }
@@ -266,12 +264,12 @@ function buildDiscoveredVfunc<K extends "class" | "interface">(
     };
 }
 
-function collectDiscoveredVfuncs<K extends "class" | "interface">(
+function collectDiscoveredVfuncs(
     methods: MethodTable,
-    resolveDescriptor: (methodName: string) => VfuncDescriptor<K> | undefined,
+    resolveDescriptor: (methodName: string) => VfuncDescriptor | undefined,
     skip?: Set<string>,
-): DiscoveredVfunc<K>[] {
-    const result: DiscoveredVfunc<K>[] = [];
+): DiscoveredVfunc[] {
+    const result: DiscoveredVfunc[] = [];
 
     for (const [methodName, fn] of methods) {
         const discovered = buildDiscoveredVfunc(fn, methodName, resolveDescriptor, skip);
@@ -284,7 +282,7 @@ function collectDiscoveredVfuncs<K extends "class" | "interface">(
     return result;
 }
 
-function discoverClassVfuncs(klass: AnyClass, methods: MethodTable): DiscoveredClassVfunc[] {
+function discoverClassVfuncs(klass: AnyClass, methods: MethodTable): DiscoveredVfunc[] {
     return collectDiscoveredVfuncs(
         methods,
         (methodName) => findClassVfuncDescriptor(klass, methodName) ?? undefined,
@@ -325,7 +323,7 @@ function discoverInterfaceVfuncs(
     methods: MethodTable,
     interfaceGtype: bigint,
     claimedMethodNames: Set<string>,
-): DiscoveredInterfaceVfunc[] {
+): DiscoveredVfunc[] {
     return collectDiscoveredVfuncs(
         methods,
         (methodName) => findInterfaceVfuncDescriptor(interfaceGtype, methodName),
@@ -339,7 +337,7 @@ const hasDispatchedProperties = (dispatch: PropertyDispatch, adoptedTypes: bigin
 function propertyVfuncFor(
     source: PropertyVfuncSource,
     spec: PropertyVfuncSpec,
-): DiscoveredClassVfunc | undefined {
+): DiscoveredVfunc | undefined {
     const { klass, methods, dispatch, adoptedTypes } = source;
 
     const dispatched = hasDispatchedProperties(dispatch, adoptedTypes)
@@ -351,7 +349,7 @@ function propertyVfuncFor(
     return fn === undefined ? undefined : buildPropertyVfunc(klass, spec.methodName, fn, spec.isValueOut);
 }
 
-function propertyVfuncs(source: PropertyVfuncSource): DiscoveredClassVfunc[] {
+function propertyVfuncs(source: PropertyVfuncSource): DiscoveredVfunc[] {
     return PROPERTY_VFUNC_SPECS.map((spec) => propertyVfuncFor(source, spec)).filter(
         (vfunc) => vfunc !== undefined,
     );
@@ -367,7 +365,7 @@ function buildPropertyVfunc(
     methodName: string,
     fn: VfuncFn,
     isValueOut: boolean,
-): DiscoveredClassVfunc {
+): DiscoveredVfunc {
     const descriptor = findClassVfuncDescriptor(klass, methodName);
 
     if (!descriptor) {
@@ -402,7 +400,7 @@ function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassI
 }
 
 function toNativeOptions(
-    classVfuncs: DiscoveredClassVfunc[],
+    classVfuncs: DiscoveredVfunc[],
     interfaceBindings: InterfaceVfuncBinding[],
     properties: Record<string, PropertySpec>,
 ): NativeRegisterClassOptions | undefined {

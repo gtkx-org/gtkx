@@ -1,27 +1,14 @@
-import { closeSync, ftruncateSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PackageManager } from "./package-managers.js";
+import { updateManifest } from "./manifest.js";
 
 const BUILT_DEPENDENCIES = ["@swc/core", "esbuild"];
 const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
-const PACKAGE_JSON_FILE = "package.json";
 const SAFE_YAML_KEY = /^[A-Za-z][A-Za-z0-9-]*$/;
 const PNPM_PACKAGES_BLOCK = "packages:\n  - '.'\n";
 
 const quoteYamlKey = (name: string): string => (SAFE_YAML_KEY.test(name) ? name : `'${name}'`);
-
-const updateManifest = (root: string, mutate: (manifest: Record<string, unknown>) => void): void => {
-    const descriptor = openSync(join(root, PACKAGE_JSON_FILE), "r+");
-
-    try {
-        const manifest = JSON.parse(readFileSync(descriptor, "utf8")) as Record<string, unknown>;
-        mutate(manifest);
-        ftruncateSync(descriptor);
-        writeSync(descriptor, `${JSON.stringify(manifest, null, 4)}\n`, 0);
-    } finally {
-        closeSync(descriptor);
-    }
-};
 
 const writePnpmAllowance = (root: string): void => {
     const entries = BUILT_DEPENDENCIES.map((name) => `  ${quoteYamlKey(name)}: true`).join("\n");

@@ -39,7 +39,7 @@ function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNo
                 {...header.factoryProps}
                 {...rest}
             />
-            <ItemPortals store={itemCells} render={renderItem} collection={collection} expandedIds={expandedIds} />
+            <ItemPortals registry={itemCells} render={renderItem} collection={collection} expandedIds={expandedIds} />
             {header.portals}
         </>
     );

@@ -102,25 +102,15 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void =
     }
 };
 
-const visitOwnName = (record: Props, name: string, visit: (name: string) => void): void => {
-    if (Object.hasOwn(record, name)) {
-        visit(name);
-    }
-};
-
-const visitAddedName = (prev: Props, next: Props, name: string, visit: (name: string) => void): void => {
-    if (Object.hasOwn(next, name) && !Object.hasOwn(prev, name)) {
-        visit(name);
-    }
-};
-
 const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void): void => {
     for (const name in prev) {
-        visitOwnName(prev, name, visit);
+        visit(name);
     }
 
     for (const name in next) {
-        visitAddedName(prev, next, name, visit);
+        if (!Object.hasOwn(prev, name)) {
+            visit(name);
+        }
     }
 };
 

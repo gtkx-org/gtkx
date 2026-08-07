@@ -1,5 +1,5 @@
 import type { GirFunction } from "../../gir/function.js";
-import type { GirCallable, GirParameter } from "../../gir/parameter.js";
+import type { GirCallable } from "../../gir/parameter.js";
 import type { ModuleContext } from "../../writer/context.js";
 import type { JsDocSpec } from "../../writer/doc.js";
 import { shouldOmitPrimaryReturn } from "../../analysis/descriptor-render.js";
@@ -8,7 +8,7 @@ import {
     documentedParameters,
     type InputParameter,
     parameterIdentifier,
-    parameterRenames,
+    renamesWithInstance,
 } from "../../analysis/param-structure.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { annotationSpec, THROWS_TEXT } from "./doc-spec.js";
@@ -16,7 +16,6 @@ import { isCallbackParameter, returnedOutParameters } from "./method.js";
 
 type CallableDocOptions = {
     finishFn?: GirFunction | undefined;
-    shouldSkipParam?: (parameter: GirParameter) => boolean;
     renames?: Map<string, string> | undefined;
 };
 
@@ -71,7 +70,7 @@ const returnsText = (context: ModuleContext, fn: GirFunction): string | undefine
 };
 
 const docIdentifiers = (callable: GirFunction, renames: Map<string, string> | undefined): Map<string, string> => {
-    const identifiers = parameterRenames(callable);
+    const identifiers = renamesWithInstance(callable.parameters, callable.instance);
     const overrides = renames ?? new Map<string, string>();
 
     for (const [girName, declaredName] of overrides) {
@@ -87,7 +86,12 @@ const canCallableThrow = (callable: GirFunction, finishFn: GirFunction | undefin
 const callableSpec = (context: ModuleContext, callable: GirFunction, options: CallableDocOptions): JsDocSpec => ({
     ...annotationSpec(callable.annotations),
     identifiers: docIdentifiers(callable, options.renames),
-    params: documentedParameters(context.library, callable, options.shouldSkipParam, options.renames),
+    params: documentedParameters(
+        context.library,
+        callable,
+        (parameter) => options.finishFn !== undefined && isCallbackParameter(context, parameter),
+        options.renames,
+    ),
     returns: returnsText(context, options.finishFn ?? callable),
     throws: canCallableThrow(callable, options.finishFn) ? THROWS_TEXT : undefined,
 });
@@ -95,9 +99,4 @@ const callableSpec = (context: ModuleContext, callable: GirFunction, options: Ca
 const callableDoc = (context: ModuleContext, callable: GirFunction, options: CallableDocOptions = {}): string =>
     renderJsDoc(callable.doc, nulTerminatedNote(context, callable), callableSpec(context, callable, options));
 
-const memberDocOptions = (context: ModuleContext, finishFn: GirFunction | undefined): CallableDocOptions =>
-    finishFn === undefined
-        ? {}
-        : { finishFn, shouldSkipParam: (parameter) => isCallbackParameter(context, parameter) };
-
-export { callableDoc, callableSpec, memberDocOptions };
+export { callableDoc, callableSpec };

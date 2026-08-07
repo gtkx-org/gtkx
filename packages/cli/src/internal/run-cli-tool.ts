@@ -1,6 +1,5 @@
-import { formatChildProcessError } from "@gtkx/utils";
+import { formatChildProcessError, resolveExecutable } from "@gtkx/utils";
 import { execFileSync, type ExecFileSyncOptions } from "node:child_process";
-import { resolveCliTool } from "./resolve-cli-tool.js";
 
 type CliToolInvocation = {
     tool: string;
@@ -11,7 +10,7 @@ type CliToolInvocation = {
 
 const runCliTool = ({ tool, args, target, options }: CliToolInvocation): void => {
     try {
-        execFileSync(resolveCliTool(tool), args, options);
+        execFileSync(resolveExecutable(tool), args, options);
     } catch (error) {
         const details = formatChildProcessError(error);
         const suffix = details ? `:\n${details}` : "";

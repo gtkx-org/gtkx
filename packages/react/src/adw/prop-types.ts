@@ -32,8 +32,6 @@ type AdwPreferencesRowProps = {
 type AdwExpanderRowProps = {
     /** Widgets added to the area the row reveals when it expands. */
     rows?: ReactNode | null | undefined;
-    /** Widgets added to the row's header, beside the expander arrow. */
-    actions?: ReactNode | null | undefined;
 } & AdwPreferencesRowProps;
 
 /** Props of an `Adw.ToolbarView` element, whose `children` is the content the bars surround. */

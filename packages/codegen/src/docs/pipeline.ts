@@ -7,7 +7,7 @@ import { namespaceDirectory } from "../gir/namespace.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
-import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
+import { type ElementPageContext, renderElementPage } from "./element-page.js";
 import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
 
 type DocsElementLink = {
@@ -175,7 +175,7 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const byNamespace = groupElementsByNamespace(intrinsicElements);
     const linkByGlibName = buildElementLinks(intrinsicElements, basePath);
-    const pageContext = createElementPageContext(library, (glibName: string) => linkByGlibName.get(glibName));
+    const pageContext: ElementPageContext = { library, linkFor: (glibName) => linkByGlibName.get(glibName) };
     const pages: Page[] = [];
     const namespaces: DocsNamespace[] = [];
     const orderedNames = sortStringsBy(byNamespace.keys(), namespaceOrder);

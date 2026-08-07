@@ -48,7 +48,6 @@ const documentedToken = (): GlEnum =>
 const documentedProvenance = (): GlSymbolProvenance =>
     glProvenance({
         feature: "GL_VERSION_4_3",
-        featureNumber: 4.3,
         requireComment: "Reuse tokens from ARB_internalformat_query2",
         removals: [{ feature: "GL_VERSION_3_2", comment: "Compatibility-only GL 1.1 features removed" }],
     });

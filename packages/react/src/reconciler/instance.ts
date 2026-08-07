@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
-import { pickBy } from "@gtkx/utils";
+import { getOrInsert, pickBy } from "@gtkx/utils";
 import type { Props } from "./registry.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 import {
@@ -46,18 +46,7 @@ const findContentKind = (type: bigint): ContentKind | null => {
     return null;
 };
 
-const contentKindFor = (type: bigint): ContentKind | null => {
-    const cached = contentKinds.get(type);
-
-    if (cached !== undefined) {
-        return cached;
-    }
-
-    const kind = findContentKind(type);
-    contentKinds.set(type, kind);
-
-    return kind;
-};
+const contentKindFor = (type: bigint): ContentKind | null => getOrInsert(contentKinds, type, findContentKind);
 
 const constructInput = (info: TypeInfo, props: Props): Props =>
     pickBy(

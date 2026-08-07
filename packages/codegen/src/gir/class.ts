@@ -1,8 +1,8 @@
 import type { ParseContext } from "./type-id.js";
-import { annotationsFromNode, type GirAnnotations } from "./annotations.js";
+import { documentedFromNode, type GirAnnotations } from "./annotations.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { type GirCallable, parseCallable } from "./parameter.js";
-import { attr, getChildren, getDoc, GIR_CONSTRUCTOR_TAG, isAttrTrue, nameAttr, type RawNode } from "./parse.js";
+import { attr, getChildren, GIR_CONSTRUCTOR_TAG, isAttrTrue, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
 
 /** A `<virtual-method>` on a class or interface: the vtable slot's own documentation and signature. */
@@ -57,8 +57,6 @@ type GirClass = {
     properties: GirProperty[];
     /** GObject signals the type declares. */
     signals: GirCallable[];
-    /** Methods that invoke one of the type's virtual methods. */
-    vfuncInvokers: string[];
     /** Virtual methods the type declares, carrying the documentation their vtable slots are generated from. */
     vfuncs: GirVirtualMethod[];
 };
@@ -70,9 +68,7 @@ const virtualMethodsFromNode = (node: RawNode, context: ParseContext): GirVirtua
     }));
 
 const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContext): GirClass => ({
-    name: nameAttr(node),
-    doc: getDoc(node),
-    annotations: annotationsFromNode(node),
+    ...documentedFromNode(node),
     cType: attr(node, "c:type"),
     parent: attr(node, "parent"),
     glibTypeName: attr(node, "glib:type-name"),
@@ -95,9 +91,6 @@ const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContex
     functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),
     properties: getChildren(node, "property").map((property) => propertyFromNode(property, context)),
     signals: getChildren(node, "glib:signal").map((signal) => parseCallable(signal, context)),
-    vfuncInvokers: getChildren(node, "virtual-method")
-        .map((vfunc) => attr(vfunc, "invoker"))
-        .filter((invoker): invoker is string => invoker !== undefined),
     vfuncs: virtualMethodsFromNode(node, context),
 });
 

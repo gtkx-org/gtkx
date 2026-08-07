@@ -13,7 +13,7 @@
         "build": "gtkx build",
         "codegen": "gtkx codegen",
         "test": "vitest run",
-        "typecheck": "gtkx codegen && tsc --noEmit",
+        "typecheck": "gtkx codegen && tsc",
         "start": "node dist/bundle.js",
         "bundle": "gtkx build && node scripts/bundle.ts",
         "bundle:postject": "node scripts/bundle-postject.ts",

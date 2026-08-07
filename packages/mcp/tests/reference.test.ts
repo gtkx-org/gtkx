@@ -12,6 +12,7 @@ import {
     type ReferenceApi,
     type ReferenceProvider,
     registerReferenceResources,
+    type ResolvedProject,
 } from "../src/reference.js";
 
 type FakeReference = ReferenceApi & Pick<ApiReference, "girFiles">;
@@ -70,6 +71,7 @@ const fakeReference: FakeReference = {
 
 const provider: ReferenceProvider = {
     get: (projectRoot) => Promise.resolve({ reference: fakeReference, ...resolveFake(projectRoot) }),
+    load: (project) => Promise.resolve({ reference: fakeReference, ...project }),
     resolve: (projectRoot) => resolveFake(projectRoot),
 };
 
@@ -447,13 +449,15 @@ describe("gtkx_search_api", () => {
     it("forwards namespace, kind, and limit filters", async () => {
         const search = vi.fn(() => [buttonSymbol]);
 
+        const scoped = {
+            reference: { ...fakeReference, search },
+            root: "/apps/hello-world",
+            source: "app",
+        } as const;
+
         const filtering: ReferenceProvider = {
-            get: () =>
-                Promise.resolve({
-                    reference: { ...fakeReference, search },
-                    root: "/apps/hello-world",
-                    source: "app",
-                }),
+            get: () => Promise.resolve(scoped),
+            load: () => Promise.resolve(scoped),
             resolve: () => ({ root: "/apps/hello-world", source: "app" }),
         };
 
@@ -513,8 +517,14 @@ describe("reference tools — project scoping", () => {
     });
 
     it("forwards an explicit project root and names it in the answer", async () => {
-        const get = vi.fn((projectRoot?: string) => provider.get(projectRoot));
-        const forwarding: ReferenceProvider = { get, resolve: (projectRoot) => resolveFake(projectRoot) };
+        const load = vi.fn((project: ResolvedProject) => provider.load(project));
+
+        const forwarding: ReferenceProvider = {
+            get: (projectRoot) => provider.get(projectRoot),
+            load,
+            resolve: (projectRoot) => resolveFake(projectRoot),
+        };
+
         const tools = buildReferenceTools(forwarding);
 
         for (const tool of tools) {
@@ -522,7 +532,7 @@ describe("reference tools — project scoping", () => {
             expect(getNote(result)).toBe("Project: /projects/tablestar (requested with `projectRoot`)");
         }
 
-        expect(get.mock.calls).toEqual(tools.map(() => ["/projects/tablestar"]));
+        expect(load.mock.calls.map(([project]) => project.root)).toEqual(tools.map(() => "/projects/tablestar"));
     });
 
     it("names the project on errors as well", async () => {
@@ -559,6 +569,7 @@ describe("registerReferenceResources — index and namespaces", () => {
     it("degrades gracefully when the reference cannot load", async () => {
         const failing: ReferenceProvider = {
             get: () => Promise.reject(new Error("codegen is disabled")),
+            load: () => Promise.reject(new Error("codegen is disabled")),
             resolve: (projectRoot) => resolveFake(projectRoot),
         };
 

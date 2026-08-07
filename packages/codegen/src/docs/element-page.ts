@@ -50,11 +50,6 @@ type MemberOwner = {
     glibName: string | undefined;
 };
 
-const createElementPageContext = (
-    library: Library,
-    linkFor: (glibName: string) => string | undefined,
-): ElementPageContext => ({ library, linkFor });
-
 const frontmatter = (entry: GlibNamedClass): string => {
     const sentence = firstSentence(entry.klass.doc);
     const description = sentence.length > 0 ? sentence : `API reference for the ${entry.glibName} element.`;
@@ -285,4 +280,4 @@ const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): 
     ]);
 };
 
-export { createElementPageContext, renderElementPage, type ElementPageContext };
+export { renderElementPage, type ElementPageContext };

@@ -22,7 +22,7 @@ import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
-import { annotationSpec, handlerSpec } from "./doc-spec.js";
+import { getDoc, handlerSpec } from "./doc-spec.js";
 import { isRecordCallerOut, isRecordInout } from "./param-marshal.js";
 
 type SignalMapSpec = {
@@ -135,7 +135,7 @@ const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suff
 
     return collectNotifyDetails(context, klass).map((property) => {
         const detailedSignal = `notify::${property.name}`;
-        const doc = renderJsDoc(property.doc, undefined, annotationSpec(property.annotations));
+        const doc = getDoc(property);
 
         return `${doc}${sourceStringLiteral(detailedSignal)}: ${notifyValue};`;
     });

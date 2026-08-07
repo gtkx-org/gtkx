@@ -13,7 +13,7 @@ import { ancestorChain } from "../gir/ancestry.js";
 import { callbackAsFunction, type GirCallback } from "../gir/callback.js";
 import { type GirAlias, type GirConstant, type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../gir/primitives.js";
-import { callableSpec, memberDocOptions } from "../store/gi/callable-doc.js";
+import { callableSpec } from "../store/gi/callable-doc.js";
 import {
     dedupeCallables,
     indexMethodsByName,
@@ -319,7 +319,7 @@ const staticEntry = (options: StaticSectionOptions, callable: GirFunction): Sign
         name: signature.name,
         signature: signature.signature,
         doc: docMarkdown(callable.doc),
-        tags: callableSpec(options.context, callable, memberDocOptions(options.context, finishFn)),
+        tags: callableSpec(options.context, callable, { finishFn }),
     };
 };
 
@@ -721,7 +721,7 @@ const functionPage = (entry: GiSymbolBase & { kind: "function"; fn: GirFunction 
     const siblings = entry.namespace.functions;
     const signature = functionSignature(docsContext, entry.name, entry.fn, siblings);
     const finishFn = matchStaticFinishFunction(docsContext, entry.fn, siblings);
-    const spec = callableSpec(docsContext, entry.fn, memberDocOptions(docsContext, finishFn));
+    const spec = callableSpec(docsContext, entry.fn, { finishFn });
 
     return joinSections([...pageHeader(entry, "function"), `\`\`\`ts\n${signature}\n\`\`\``, ...pageTagNotes(spec)]);
 };

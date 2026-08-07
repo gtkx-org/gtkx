@@ -5,7 +5,7 @@ import type { JsDocSpec } from "../../writer/doc.js";
 import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
-import { callableDoc, callableSpec, memberDocOptions } from "./callable-doc.js";
+import { callableDoc, callableSpec } from "./callable-doc.js";
 import { renderFnExpression } from "./function.js";
 import { gtypeMemberDeclaration } from "./gtype-binding.js";
 import {
@@ -80,10 +80,10 @@ const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer
 );
 
 const memberDoc = (context: ModuleContext, callable: GirFunction, finishFn: GirFunction | undefined): string =>
-    callableDoc(context, callable, memberDocOptions(context, finishFn));
+    callableDoc(context, callable, { finishFn });
 
 const instanceMemberSpec = (context: ModuleContext, callable: GirFunction, scope: InstanceScope): JsDocSpec =>
-    callableSpec(context, callable, memberDocOptions(context, matchFinishFunction(context, callable, scope)));
+    callableSpec(context, callable, { finishFn: matchFinishFunction(context, callable, scope) });
 
 const instanceScope = (ownerName: string, callables: Callables): InstanceScope => ({
     ownerName,

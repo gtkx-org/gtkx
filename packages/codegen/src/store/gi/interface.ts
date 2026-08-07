@@ -18,7 +18,7 @@ import {
     renderInstanceMethodSignature,
     renderStaticHead,
 } from "./callables.js";
-import { annotationSpec } from "./doc-spec.js";
+import { annotationSpec, getDoc } from "./doc-spec.js";
 import { renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import {
@@ -137,7 +137,11 @@ const renderInterfaceLayout = (
 
 const invokerMembers = (context: ModuleContext, iface: GirClass, callables: Callables): Map<string, string> => {
     const className = pascalCase(iface.name);
-    const invokers: Set<string> = new Set(iface.vfuncInvokers);
+
+    const invokers: Set<string> = new Set(
+        iface.vfuncs.map((vfunc) => vfunc.invoker).filter((invoker) => invoker !== undefined),
+    );
+
     const members: Map<string, string> = new Map();
 
     for (const callable of callables.methods) {
@@ -230,14 +234,11 @@ const renderInterfaceType = (
 ): string => {
     const members = renderInterfaceTypeMembers(context, iface, callables);
 
-    return `${interfaceDoc(iface)}${renderBracedOrEmpty(
+    return `${getDoc(iface)}${renderBracedOrEmpty(
         `export interface ${className} extends ${interfaceTypeExtends(context, iface)}`,
         members.join("\n"),
     )}`;
 };
-
-const interfaceDoc = (iface: GirClass): string =>
-    renderJsDoc(iface.doc, undefined, annotationSpec(iface.annotations));
 
 const implTypeName = (className: string): string => `${className}Impl`;
 
@@ -277,13 +278,7 @@ const implTypeExtends = (context: ModuleContext, iface: GirClass): string => {
 };
 
 const interfaceVfuncMembers = (context: ModuleContext, iface: GirClass, mode: VfuncMemberMode): string[] =>
-    renderVfuncMembers({
-        context,
-        namespaceName: context.namespace.name,
-        klass: iface,
-        ownerRef: pascalCase(iface.name),
-        mode,
-    });
+    renderVfuncMembers({ context, klass: iface, mode });
 
 const renderInterfaceImplType = (
     context: ModuleContext,
@@ -369,7 +364,7 @@ const renderInterfaceClass = (context: ModuleContext, options: InterfaceClassOpt
 
     members.push(...renderStaticHead(context, callables, className), renderInterfaceBrand(context, implRef));
 
-    return `${interfaceDoc(iface)}${renderBracedOrEmpty(
+    return `${getDoc(iface)}${renderBracedOrEmpty(
         `export abstract class ${className}`,
         members.join("\n\n"),
     )}`;
@@ -400,7 +395,7 @@ const renderInterfaceMaker = (
     const members = renderInterfaceInstanceMembers(context, iface, callables);
     const classExpression = renderBracedOrEmpty("class extends Base", members.join("\n\n"));
 
-    return `${interfaceDoc(iface)}export const ${makerName(className)}: Mixin = (Base) =>\n${classExpression};`;
+    return `${getDoc(iface)}export const ${makerName(className)}: Mixin = (Base) =>\n${classExpression};`;
 };
 
 const renderInterfaceInstanceMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] => [
