@@ -7,7 +7,13 @@ import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
 import type { Props } from "./registry.js";
 import { Prop } from "../components/element.js";
-import { applyAdoptedProps, applyElementProps, assertPropsCanChange, flushBehaviors } from "./apply-props.js";
+import {
+    applyAdoptedProps,
+    applyElementProps,
+    assertPropsCanChange,
+    flushAccessible,
+    flushBehaviors,
+} from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
 import { resolveElementNode } from "./instance.js";
 import {
@@ -82,6 +88,7 @@ const hostConfig = {
     resetAfterCommit: (): void => {
         flushTextHosts();
         flushBehaviors();
+        flushAccessible();
     },
     preparePortalMount: (): void => undefined,
     clearContainer: (): void => undefined,

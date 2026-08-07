@@ -18,6 +18,7 @@ const NOTIFY_PREFIX = "onNotify";
 const HANDLER_PREFIX = "on";
 const HANDLER_NAME = /^on[A-Z]/;
 const flushDirty: Set<ElementNode> = new Set();
+const accessibleDirty: Map<ElementNode, Props> = new Map();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 
@@ -227,10 +228,24 @@ const flushBehaviors = (): void => {
     });
 };
 
-const applyAccessible = (object: GObject.Object, prev: Props, next: Props): void => {
+const applyAccessible = (object: GObject.Object, prev: Props | null, next: Props): void => {
     if (object instanceof Gtk.Accessible) {
         applyAccessibleProps(object, prev, next);
     }
+};
+
+const markAccessible = (node: ElementNode, prev: Props): void => {
+    if (!accessibleDirty.has(node)) {
+        accessibleDirty.set(node, prev);
+    }
+};
+
+const flushAccessible = (): void => {
+    for (const [node, prev] of accessibleDirty) {
+        applyAccessible(node.object, prev, node.props);
+    }
+
+    accessibleDirty.clear();
 };
 
 const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
@@ -238,8 +253,8 @@ const applyElementProps = (node: ElementNode, prev: Props, next: Props): void =>
     const consumed = runBehaviorUpdates(node, info, prev, next);
     applyValueEntries(node, info, { prev, next }, consumed);
     restoreActionableSensitivity(node, info, prev, next);
-    applyAccessible(node.object, prev, next);
     applyHandlers(node, info, prev, next);
+    markAccessible(node, prev);
     markFlush(node);
     node.props = next;
 };
@@ -264,6 +279,7 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
 
 export {
     markFlush,
+    flushAccessible,
     flushBehaviors,
     applyElementProps,
     applyAdoptedProps,
