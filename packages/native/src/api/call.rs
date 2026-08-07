@@ -138,6 +138,7 @@ mod tests {
             symbol.to_owned(),
             arg_codecs,
             return_codec,
+            None,
         )
     }
 

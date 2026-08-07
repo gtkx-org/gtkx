@@ -530,6 +530,7 @@ fn call_with_nullish_ref_arguments_passes_null_pointers_and_skips_writeback() {
             "g_direct_equal".to_owned(),
             vec![i32_ref_descriptor(), i32_ref_descriptor()],
             Descriptor::Boolean,
+            None,
         )
         .expect("bind should succeed");
 

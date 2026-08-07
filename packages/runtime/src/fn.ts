@@ -17,6 +17,12 @@ type FnSpec = {
     returns: Descriptor;
     /** The function takes a trailing `GError**`, whose contents are thrown as an error on return. */
     canThrow?: boolean;
+    /**
+     * How many of `args` precede the callee's ellipsis, marking it variadic. Omitting it binds a
+     * fixed-arity call, which passes the wrong argument classes to a variadic callee on some
+     * architectures.
+     */
+    fixedArgCount?: number;
 };
 
 type ArgSpec = {
@@ -189,8 +195,9 @@ function fromNativeCallable(
  */
 function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
     const nativeArgTypes = buildNativeArgTypes(spec.args, spec.canThrow ?? false);
+    const descriptor = nativeBind(sharedLibrary, symbol, nativeArgTypes, spec.returns, spec.fixedArgCount);
 
-    return fromNativeCallable(nativeBind(sharedLibrary, symbol, nativeArgTypes, spec.returns), spec);
+    return fromNativeCallable(descriptor, spec);
 }
 
 export { buildNativeArgTypes, fn, fromNativeCallable };

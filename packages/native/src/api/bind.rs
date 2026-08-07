@@ -1,7 +1,7 @@
 use std::cell::OnceCell;
 use std::ffi::c_void;
 
-use libffi::middle::{Builder, Cif, CodePtr};
+use libffi::middle::{Builder, Cif, CodePtr, Type};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
@@ -85,21 +85,42 @@ impl CallDescriptor {
     }
 }
 
+fn build_arg_types(
+    arg_codecs: &[Codec],
+    fixed_arg_count: Option<usize>,
+) -> (Vec<Type>, Option<usize>) {
+    let mut arg_types = Vec::with_capacity(arg_codecs.len());
+    let mut fixed_type_count = None;
+
+    for (index, codec) in arg_codecs.iter().enumerate() {
+        if fixed_arg_count == Some(index) {
+            fixed_type_count = Some(arg_types.len());
+        }
+
+        codec.append_ffi_arg_types(&mut arg_types);
+    }
+
+    if fixed_arg_count == Some(arg_codecs.len()) {
+        fixed_type_count = Some(arg_types.len());
+    }
+
+    (arg_types, fixed_type_count)
+}
+
 pub(crate) fn prepare(
     target: CallTarget,
     label: String,
     arg_codecs: Vec<Codec>,
     return_codec: Codec,
+    fixed_arg_count: Option<usize>,
 ) -> CallDescriptor {
-    let mut arg_types = Vec::with_capacity(arg_codecs.len());
-    for codec in &arg_codecs {
-        codec.append_ffi_arg_types(&mut arg_types);
-    }
+    let (arg_types, fixed_type_count) = build_arg_types(&arg_codecs, fixed_arg_count);
     let native_arg_count = arg_types.len();
-    let cif = Builder::new()
-        .res(return_codec.libffi_type())
-        .args(arg_types)
-        .into_cif();
+    let return_type = return_codec.libffi_type();
+    let cif = match fixed_type_count {
+        Some(fixed) => Cif::new_variadic(arg_types, fixed, return_type),
+        None => Builder::new().res(return_type).args(arg_types).into_cif(),
+    };
 
     CallDescriptor {
         target,
@@ -183,12 +204,16 @@ fn vfunc_offset_bounds(
 /// Precompiles the argument and return marshalling of `symbolName` in `sharedLibrary` into a
 /// reusable call descriptor that `call` can invoke. The symbol itself is resolved on the first
 /// call, so binding a symbol the installed library does not export fails only when it is called.
+///
+/// `fixedArgCount` marks the callee as variadic, naming how many of `argDescriptors` precede the
+/// ellipsis. Omitting it binds a plain fixed-arity call.
 #[napi(catch_unwind)]
 pub fn bind(
     shared_library: String,
     symbol_name: String,
     arg_descriptors: Vec<Descriptor>,
     return_descriptor: Descriptor,
+    fixed_arg_count: Option<u32>,
 ) -> Result<External<CallDescriptor>> {
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
     let label = symbol_name.clone();
@@ -201,6 +226,7 @@ pub fn bind(
         label,
         arg_codecs,
         return_codec,
+        fixed_arg_count.map(|count| count as usize),
     )))
 }
 
@@ -249,6 +275,7 @@ pub fn bind_vfunc(options: BindVfuncOptions) -> Result<External<CallDescriptor>>
         options.label,
         arg_codecs,
         return_codec,
+        None,
     )))
 }
 
@@ -265,6 +292,40 @@ mod tests {
     }
 
     #[test]
+    fn counts_fixed_arguments_in_expanded_ffi_types() {
+        let codecs = vec![
+            Codec::Integer(IntegerCodec::U32),
+            Codec::Integer(IntegerCodec::U32),
+            Codec::Integer(IntegerCodec::U32),
+        ];
+
+        assert_eq!(build_arg_types(&codecs, None).1, None);
+        assert_eq!(build_arg_types(&codecs, Some(0)).1, Some(0));
+        assert_eq!(build_arg_types(&codecs, Some(2)).1, Some(2));
+        assert_eq!(build_arg_types(&codecs, Some(codecs.len())).1, Some(3));
+    }
+
+    #[test]
+    fn builds_a_variadic_call_interface() {
+        test_support::run(|| {
+            let descriptor = prepare(
+                symbol_target("gtk_test_accessible_check_state"),
+                "gtk_test_accessible_check_state".to_owned(),
+                vec![
+                    Codec::Integer(IntegerCodec::U32),
+                    Codec::Integer(IntegerCodec::U32),
+                    Codec::Integer(IntegerCodec::I32),
+                ],
+                Codec::Integer(IntegerCodec::U32),
+                Some(2),
+            );
+
+            assert_eq!(descriptor.native_arg_count, 3);
+            assert!(descriptor.symbol().is_ok());
+        });
+    }
+
+    #[test]
     fn builds_the_call_interface_without_resolving_the_symbol() {
         test_support::run(|| {
             let descriptor = prepare(
@@ -272,6 +333,7 @@ mod tests {
                 "gtkx_no_such_symbol".to_owned(),
                 Vec::new(),
                 Codec::Integer(IntegerCodec::U32),
+                None,
             );
 
             assert_eq!(descriptor.native_arg_count, 0);
@@ -293,6 +355,7 @@ mod tests {
                 "ObjectClass.finalize".to_owned(),
                 Vec::new(),
                 Codec::Void(crate::ffi::codec::VoidCodec),
+                None,
             );
 
             assert!(descriptor.symbol.get().is_none());
@@ -313,6 +376,7 @@ mod tests {
                 "gtk_get_major_version".to_owned(),
                 Vec::new(),
                 Codec::Integer(IntegerCodec::U32),
+                None,
             );
 
             let first = descriptor.symbol().expect("the symbol resolves");
