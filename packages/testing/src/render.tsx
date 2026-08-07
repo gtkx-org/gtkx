@@ -43,13 +43,13 @@ type ReconcilerErrorState = {
 const reconcilerErrors: ReconcilerErrorState = { lastError: null, isHandlerInstalled: false };
 const activeRenders: Set<ActiveRender> = new Set();
 
-const flushLayout = async (window: Gtk.Window | null): Promise<void> => {
-    await new Promise<void>((resolve) => {
-        scheduleAfterLayout(window, resolve);
+const flushLayout = (window: Gtk.Window | null): Promise<void> =>
+    new Promise<void>((resolve) => {
+        scheduleAfterLayout(window, () => {
+            settleAccessible();
+            resolve();
+        });
     });
-
-    settleAccessible();
-};
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
     await runInAct(() => {
