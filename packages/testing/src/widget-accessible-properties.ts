@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import {
     readAccessibleBooleanProperty,
     readAccessibleFlag,
+    readAccessibleInt,
     readAccessibleRelation,
     readAccessibleState,
     readAccessibleNumber as readNativeNumber,
@@ -398,7 +399,7 @@ const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
 };
 
 const getWidgetLevel = (widget: Gtk.Widget): number | null => {
-    return readAccessibleNumber(widget, Gtk.AccessibleProperty.LEVEL);
+    return readAccessibleInt(widget, Gtk.AccessibleProperty.LEVEL);
 };
 
 /**

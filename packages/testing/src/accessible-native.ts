@@ -20,6 +20,8 @@ const REVERSE_RELATIONS: Partial<Record<Gtk.AccessibleRelation, Gtk.AccessibleRe
 };
 
 const UNDEFINED_VALUE = -1;
+const INT_SENTINEL = -2_147_483_648;
+const NUMBER_SENTINEL = -Number.MAX_VALUE;
 const BOOLEAN_DOMAIN = [0, 1];
 const OPTIONAL_BOOLEAN_DOMAIN = [0, 1, UNDEFINED_VALUE];
 const TRISTATE_DOMAIN = [Gtk.AccessibleTristate.FALSE, Gtk.AccessibleTristate.TRUE, Gtk.AccessibleTristate.MIXED];
@@ -214,9 +216,9 @@ const readAccessibleInt = (accessible: Gtk.Accessible, property: Gtk.AccessibleP
         return null;
     }
 
-    const reported = checkPropertyInt(getHandle(accessible), property, Number.MIN_SAFE_INTEGER);
+    const reported = checkPropertyInt(getHandle(accessible), property, INT_SENTINEL);
 
-    return reported === null ? Number.MIN_SAFE_INTEGER : Number(reported);
+    return reported === null ? INT_SENTINEL : Number(reported);
 };
 
 const readAccessibleNumber = (accessible: Gtk.Accessible, property: Gtk.AccessibleProperty): number | null => {
@@ -224,9 +226,9 @@ const readAccessibleNumber = (accessible: Gtk.Accessible, property: Gtk.Accessib
         return null;
     }
 
-    const reported = checkPropertyDouble(getHandle(accessible), property, -Infinity);
+    const reported = checkPropertyDouble(getHandle(accessible), property, NUMBER_SENTINEL);
 
-    return reported === null ? -Infinity : Number(reported);
+    return reported === null ? NUMBER_SENTINEL : Number(reported);
 };
 
 export {
