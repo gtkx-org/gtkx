@@ -4,8 +4,11 @@ import { getHandle, t } from "@gtkx/runtime";
 type CheckInt = (handle: unknown, attribute: number, expected: number) => string | null;
 type CheckString = (handle: unknown, attribute: number, expected: string | null) => string | null;
 type CheckDouble = (handle: unknown, attribute: number, expected: number) => string | null;
+type CheckRelation = (...args: unknown[]) => string | null;
 
 const LIB = "libgtk-4.so.1";
+const MAX_RELATION_TARGETS = 8;
+const relationBindings: Map<number, CheckRelation> = new Map();
 const UNDEFINED_VALUE = -1;
 const BOOLEAN_DOMAIN = [0, 1];
 const OPTIONAL_BOOLEAN_DOMAIN = [0, 1, UNDEFINED_VALUE];
@@ -53,6 +56,84 @@ const checkPropertyString = t.fn(LIB, "gtk_test_accessible_check_property", {
     returns: t.string("full"),
     fixedArgCount: 2,
 }) as CheckString;
+
+const buildRelationBinding = (targetCount: number): CheckRelation => {
+    const args = [{ type: t.object("borrowed") }, { type: t.int32 }];
+
+    for (let index = 0; index <= targetCount; index += 1) {
+        args.push({ type: t.object("borrowed") });
+    }
+
+    return t.fn(LIB, "gtk_test_accessible_check_relation", {
+        args,
+        returns: t.string("full"),
+        fixedArgCount: 2,
+    }) as CheckRelation;
+};
+
+const relationBindingFor = (targetCount: number): CheckRelation => {
+    const cached = relationBindings.get(targetCount);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const built = buildRelationBinding(targetCount);
+    relationBindings.set(targetCount, built);
+
+    return built;
+};
+
+const isRelationExactly = (
+    accessible: Gtk.Accessible,
+    relation: Gtk.AccessibleRelation,
+    candidate: Gtk.Accessible,
+    targetCount: number,
+): boolean => {
+    const call = relationBindingFor(targetCount);
+    const repeated = Array.from({ length: targetCount }, () => getHandle(candidate));
+
+    return call(getHandle(accessible), relation, ...repeated, null) === null;
+};
+
+const hasRelationSize = (
+    accessible: Gtk.Accessible,
+    relation: Gtk.AccessibleRelation,
+    candidates: Gtk.Accessible[],
+    size: number,
+): boolean => candidates.some((candidate) => isRelationExactly(accessible, relation, candidate, size));
+
+const findRelationSize = (
+    accessible: Gtk.Accessible,
+    relation: Gtk.AccessibleRelation,
+    candidates: Gtk.Accessible[],
+): number => {
+    for (let size = 1; size <= MAX_RELATION_TARGETS; size += 1) {
+        if (hasRelationSize(accessible, relation, candidates, size)) {
+            return size;
+        }
+    }
+
+    return 0;
+};
+
+const readAccessibleRelation = (
+    accessible: Gtk.Accessible,
+    relation: Gtk.AccessibleRelation,
+    candidates: Gtk.Accessible[],
+): Gtk.Accessible[] => {
+    if (!Gtk.testAccessibleHasRelation(accessible, relation)) {
+        return [];
+    }
+
+    const size = findRelationSize(accessible, relation, candidates);
+
+    if (size === 0) {
+        return [];
+    }
+
+    return candidates.filter((candidate) => isRelationExactly(accessible, relation, candidate, size));
+};
 
 const memberOfDomain = (accessible: Gtk.Accessible, state: Gtk.AccessibleState, domain: number[]): number | null => {
     for (const candidate of domain) {
@@ -110,4 +191,11 @@ const readAccessibleNumber = (accessible: Gtk.Accessible, property: Gtk.Accessib
     return reported === null ? -Infinity : Number(reported);
 };
 
-export { readAccessibleFlag, readAccessibleInt, readAccessibleNumber, readAccessibleState, readAccessibleString };
+export {
+    readAccessibleFlag,
+    readAccessibleInt,
+    readAccessibleNumber,
+    readAccessibleRelation,
+    readAccessibleState,
+    readAccessibleString,
+};

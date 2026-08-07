@@ -1,8 +1,13 @@
 import type * as GtkTypes from "@gtkx/gi/gtk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, waitFor } from "@gtkx/testing";
-import { readAccessibleFlag, readAccessibleState, readAccessibleString } from "@gtkx/testing/internal";
+import {
+    readAccessibleFlag,
+    readAccessibleRelation,
+    readAccessibleState,
+    readAccessibleString,
+} from "@gtkx/testing/internal";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -12,6 +17,18 @@ const accessible = (ref: RefObject<GtkTypes.Label | null>): GtkTypes.Accessible 
     }
 
     return ref.current;
+};
+
+const descendants = (widget: GtkTypes.Widget): GtkTypes.Accessible[] => {
+    const found: GtkTypes.Accessible[] = [];
+    let child = widget.getFirstChild();
+
+    while (child) {
+        found.push(child, ...descendants(child));
+        child = child.getNextSibling();
+    }
+
+    return found;
 };
 
 describe("reading accessible attributes from GTK", () => {
@@ -67,5 +84,45 @@ describe("holding accessible props against GTK's own writes", () => {
         await waitFor(() => {
             expect(readAccessibleFlag(accessible(ref), Gtk.AccessibleState.HIDDEN)).toBe(true);
         });
+    });
+});
+
+describe("resolving relation targets without reading the print string", () => {
+    it("resolves the LABELLED_BY GTK writes on a button to its own label", async () => {
+        const ref = createRef<GtkTypes.Button>();
+        await render(<GtkButton ref={ref} label="Press me" />);
+        const button = ref.current as GtkTypes.Widget;
+        const targets = readAccessibleRelation(button, Gtk.AccessibleRelation.LABELLED_BY, descendants(button));
+        expect(targets).toHaveLength(1);
+        expect(targets[0]).toBeInstanceOf(Gtk.Label);
+    });
+
+    it("resolves a relation carrying more than one target", async () => {
+        const first = createRef<GtkTypes.Label>();
+        const second = createRef<GtkTypes.Label>();
+        const subject = createRef<GtkTypes.Box>();
+
+        function App({ labels }: { labels: GtkTypes.Label[] }) {
+            return (
+                <GtkBox>
+                    <GtkLabel ref={first}>First</GtkLabel>
+                    <GtkLabel ref={second}>Second</GtkLabel>
+                    <GtkBox ref={subject} accessibleLabelledBy={labels} />
+                </GtkBox>
+            );
+        }
+
+        const { rerender } = await render(<App labels={[]} />);
+        const both = [first.current as GtkTypes.Label, second.current as GtkTypes.Label];
+        await rerender(<App labels={both} />);
+
+        const resolved = readAccessibleRelation(
+            subject.current as GtkTypes.Accessible,
+            Gtk.AccessibleRelation.LABELLED_BY,
+            both,
+        );
+
+        expect(resolved).toHaveLength(2);
+        expect(resolved).toEqual(expect.arrayContaining(both));
     });
 });

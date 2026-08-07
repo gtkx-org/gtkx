@@ -2,6 +2,7 @@ export {
     readAccessibleFlag,
     readAccessibleInt,
     readAccessibleNumber,
+    readAccessibleRelation,
     readAccessibleState,
     readAccessibleString,
 } from "./accessible-native.js";
