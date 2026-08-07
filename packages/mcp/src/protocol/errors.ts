@@ -9,6 +9,7 @@ const ErrorCode = {
     REQUEST_TIMEOUT: 1005,
     INVALID_REQUEST: 1006,
     METHOD_NOT_FOUND: 1007,
+    PROPERTY_NOT_FOUND: 1008,
 } as const;
 
 function isErrorCode(code: number): code is ErrorCode {
@@ -37,6 +38,18 @@ function connectionWriteFailedError(applicationId: string): ProtocolError {
 
 function widgetNotFoundError(widgetId: string): ProtocolError {
     return new ProtocolError(ErrorCode.WIDGET_NOT_FOUND, `Widget '${widgetId}' not found`, { widgetId });
+}
+
+function propertyNotFoundError(widgetType: string, property: string, readableProperties: string[]): ProtocolError {
+    return new ProtocolError(
+        ErrorCode.PROPERTY_NOT_FOUND,
+        `${widgetType} has no readable property '${property}'`,
+        {
+            widgetType,
+            property,
+            hint: `Readable properties of ${widgetType}: ${readableProperties.join(", ")}`,
+        },
+    );
 }
 
 function requestTimeoutError(timeout: number): ProtocolError {
@@ -78,6 +91,7 @@ export {
     appNotFoundError,
     connectionWriteFailedError,
     widgetNotFoundError,
+    propertyNotFoundError,
     requestTimeoutError,
     invalidRequestError,
     methodNotFoundError,

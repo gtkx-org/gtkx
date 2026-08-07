@@ -439,6 +439,25 @@ describe("buildTools — gtkx_get_widget_props", () => {
         const text = result.content[0] as { type: "text"; text: string };
         expect(JSON.parse(text.text)).toEqual({ label: "Click me" });
     });
+
+    it("forwards the requested property names to the app", async () => {
+        const properties = { collapsed: { type: "gboolean", value: true } };
+        const sendToApp = vi.fn(() => Promise.resolve({ properties }));
+        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
+
+        const result = await getTool(appRouter, "gtkx_get_widget_props").handler({
+            widgetId: "w1",
+            properties: ["collapsed"],
+        } as never);
+
+        expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.getProps", {
+            widgetId: "w1",
+            properties: ["collapsed"],
+        });
+
+        const text = result.content[0] as { type: "text"; text: string };
+        expect(JSON.parse(text.text)).toEqual({ properties });
+    });
 });
 
 describe("buildTools — gtkx_click", () => {

@@ -310,6 +310,13 @@ describe("widget.getProps", () => {
         expect(result.name).toBe("ok");
     });
 
+    it("names the widget type and the property when the widget has no such property", async () => {
+        const { dispatchWidget } = makeWidgetTarget();
+        const failure = dispatchWidget("widget.getProps", { properties: ["collapsed"] });
+        await expect(failure).rejects.toMatchObject({ code: ErrorCode.PROPERTY_NOT_FOUND });
+        await expect(failure).rejects.toThrow("GtkWidget has no readable property 'collapsed'");
+    });
+
     it("throws widgetNotFoundError when the id is unknown", async () => {
         const registry = new WidgetRegistry();
 

@@ -13,6 +13,7 @@ import { dirname } from "node:path";
 import type { WidgetRegistry } from "./widget-registry.js";
 import { serializeWidget } from "./serialize-widget.js";
 import { loadTestingModule, type TestingModule } from "./testing-loader.js";
+import { readWidgetProperties } from "./widget-properties.js";
 
 type HandlerContext = {
     app: Gtk.Application;
@@ -50,8 +51,16 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
         };
     }),
     "widget.query": validated(ServerRequestParamsSchemas["widget.query"], handleQuery),
-    "widget.getProps": targeted(ServerRequestParamsSchemas["widget.getProps"], ({ registry }, { testing, widget }) =>
-        Promise.resolve(serializeWidget(widget, (target) => registry.getOrCreateId(target), testing))),
+    "widget.getProps": targeted(
+        ServerRequestParamsSchemas["widget.getProps"],
+        ({ registry }, { testing, widget }, params) =>
+            Promise.resolve({
+                ...serializeWidget(widget, (target) => registry.getOrCreateId(target), testing),
+                ...(params.properties !== undefined && {
+                    properties: readWidgetProperties(widget, params.properties, registry),
+                }),
+            }),
+    ),
     "widget.click": targeted(ServerRequestParamsSchemas["widget.click"], async (_ctx, target) => {
         await clickTarget(target);
 

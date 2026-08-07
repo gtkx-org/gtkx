@@ -15,6 +15,7 @@ import {
     treeParams,
     typeParams,
     widgetIdParams,
+    widgetPropsParams,
 } from "./protocol/schemas.js";
 import { buildReferenceTools, createReferenceProvider, registerReferenceResources } from "./reference.js";
 import { SocketServer } from "./socket-server.js";
@@ -48,6 +49,14 @@ const applicationIdShape = { applicationId: z.string().optional().describe(APPLI
 const widgetIdShape = {
     ...applicationIdShape,
     widgetId: widgetIdParams.shape.widgetId.describe(WIDGET_ID_DESCRIPTION),
+};
+
+const widgetPropsShape = {
+    ...widgetIdShape,
+    properties: widgetPropsParams.shape.properties.describe(
+        "GObject property names to read as well, in kebab-case or camelCase (\"current-breakpoint\" or " +
+        "\"currentBreakpoint\"). Omit for the summary alone.",
+    ),
 };
 
 const treeShape = {
@@ -175,6 +184,26 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
         },
     });
 
+const widgetPropsTool = (appRouter: AppRouter): Tool =>
+    defineTool({
+        name: "gtkx_get_widget_props",
+        title: "Get widget properties",
+        kind: "readOnly",
+        description:
+            "Get a fixed summary of one widget by ID: type, accessible role, name, text, sensitivity, " +
+            "visibility, CSS classes, and the full subtree of descendant widgets. Pass `properties` to read " +
+            "GObject properties too; each comes back under its canonical kebab-case name as `{type, value}`, " +
+            "where an enum or flags value is its GType value name, a 64-bit integer a decimal string, and an " +
+            "object its GType name plus `widgetId` when it is a widget. Asking for a property the widget does " +
+            "not have fails; a value that cannot be marshalled carries a `note` instead.",
+        inputSchema: widgetPropsShape,
+        handler: async ({ applicationId, ...params }) => {
+            const result = await appRouter.sendToApp(applicationId, "widget.getProps", params);
+
+            return textContent(JSON.stringify(result, null, 2));
+        },
+    });
+
 function buildInspectionTools(appRouter: AppRouter): Tool[] {
     return [
         listAppsTool(appRouter),
@@ -209,21 +238,7 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
                 return textContent(JSON.stringify(result, null, 2));
             },
         }),
-        defineTool({
-            name: "gtkx_get_widget_props",
-            title: "Get widget properties",
-            kind: "readOnly",
-            description:
-                "Get a fixed summary of one widget by ID: type, accessible role, name, text, sensitivity, " +
-                "visibility, CSS classes, and the full subtree of descendant widgets. It does not return " +
-                "arbitrary GObject properties.",
-            inputSchema: widgetIdShape,
-            handler: async ({ applicationId, ...params }) => {
-                const result = await appRouter.sendToApp(applicationId, "widget.getProps", params);
-
-                return textContent(JSON.stringify(result, null, 2));
-            },
-        }),
+        widgetPropsTool(appRouter),
         screenshotTool(appRouter),
     ];
 }
