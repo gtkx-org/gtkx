@@ -6,7 +6,8 @@ use std::rc::Rc;
 
 use glib::prelude::ObjectExt as _;
 use glib::translate::{Borrowed, from_glib_borrow};
-use napi::sys;
+use napi::bindgen_prelude::*;
+use napi::{Env, sys};
 
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
@@ -61,6 +62,32 @@ pub unsafe fn wrapper_ref(gobject: *mut glib::gobject_ffi::GObject) -> sys::napi
         Some(nn) => unsafe { nn.as_ref() }.napi_ref.get(),
         None => std::ptr::null_mut(),
     }
+}
+
+/// # Safety
+///
+/// `gobject` must be a non-null pointer to a live `GObject` that the caller holds a strong
+/// reference to for the duration of the call, and the call must happen on the thread `install` ran
+/// on, because the qdata it inspects holds a non-`Send` `Rc`. The returned object borrows the
+/// environment and stays valid only for the current native call.
+pub unsafe fn wrapper_value(
+    env: &Env,
+    gobject: *mut glib::gobject_ffi::GObject,
+) -> Option<Object<'_>> {
+    let napi_ref = unsafe { wrapper_ref(gobject) };
+
+    if napi_ref.is_null() {
+        return None;
+    }
+
+    let mut raw_value: sys::napi_value = std::ptr::null_mut();
+    unsafe { sys::napi_get_reference_value(env.raw(), napi_ref, &raw mut raw_value) };
+
+    if raw_value.is_null() {
+        return None;
+    }
+
+    unsafe { Object::from_napi_value(env.raw(), raw_value) }.ok()
 }
 
 /// # Safety

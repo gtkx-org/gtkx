@@ -18,7 +18,7 @@ import {
 } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_SIZE, VALUE_T, VARIANT_T } from "./library.js";
 import { toNative } from "./native-value.js";
-import { getHandle, getWrapperClass, wrapHandle } from "./registry.js";
+import { getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
 import {
     getStrvType,
     isResolvableDescriptor,
@@ -281,7 +281,7 @@ const wrappedValueGetter = (fundamental: bigint): ValueGetter | undefined => {
         }
         case TYPE_INTERFACE:
         case TYPE_OBJECT: {
-            return (value) => wrapHandle(objectValueType.get(value) as ExternalObject<Handle> | null);
+            return (value) => wrapObject(objectValueType.get(value));
         }
         case TYPE_PARAM: {
             return (value) =>

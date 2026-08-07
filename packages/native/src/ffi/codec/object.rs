@@ -43,6 +43,12 @@ pub(crate) unsafe fn tracked_gobject_value(
     unsafe { acquire_decoded_ref(gobject_ptr, ownership) };
 
     let object: glib::Object = unsafe { from_glib_full(gobject_ptr) };
+
+    if let Some(existing) = unsafe { wrapper::wrapper_value(env, gobject_ptr) } {
+        drop(object);
+        return Ok(existing.into_unknown(env)?);
+    }
+
     Ok(value::handle_to_unknown(
         env,
         Handle::decoded_gobject(object),

@@ -1,5 +1,5 @@
+use napi::Env;
 use napi::bindgen_prelude::*;
-use napi::{Env, sys};
 use napi_derive::napi;
 
 use crate::handle::Handle;
@@ -16,18 +16,11 @@ pub fn get_wrapper<'env>(
         return Ok(None);
     };
 
-    let napi_ref = unsafe { wrapper::wrapper_ref(gobject_ptr) };
+    let Some(wrapper) = (unsafe { wrapper::wrapper_value(env, gobject_ptr) }) else {
+        return Ok(None);
+    };
 
-    if !napi_ref.is_null() {
-        let mut raw_value: sys::napi_value = std::ptr::null_mut();
-        unsafe { sys::napi_get_reference_value(env.raw(), napi_ref, &raw mut raw_value) };
-        if !raw_value.is_null() {
-            drop(handle.take_owned());
-            return Ok(Some(unsafe {
-                Object::from_napi_value(env.raw(), raw_value)?
-            }));
-        }
-    }
+    drop(handle.take_owned());
 
-    Ok(None)
+    Ok(Some(wrapper))
 }
