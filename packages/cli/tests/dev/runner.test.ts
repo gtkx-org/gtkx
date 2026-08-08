@@ -2,6 +2,7 @@ import type { InlineConfig, Plugin } from "vite";
 import { describe, expect, it, vi } from "vitest";
 import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
 import { RESTART_EXIT_CODE } from "../../src/dev/supervisor.js";
+import { collectLogged } from "../stderr-text.js";
 
 type ChangeListener = (changedPath: string) => void;
 
@@ -19,6 +20,7 @@ type HarnessOverrides = {
     applicationId?: string | null;
     configuredApplicationId?: string;
     isBoundary?: (mod: Record<string, unknown>) => boolean;
+    isApplicationRegistered?: boolean;
 };
 
 type HarnessMocks = {
@@ -87,6 +89,7 @@ const buildDeps = (mocks: HarnessMocks, plugins: Plugin[], overrides: HarnessOve
     startMcpClient: mocks.startMcp,
     stopMcpClient: mocks.stopMcp,
     watchApplicationShutdown: mocks.watchAppShutdown,
+    isApplicationRegistered: () => overrides.isApplicationRegistered ?? true,
     installShutdownHandlers: mocks.installShutdownHandlers,
     quitDefaultApplication: mocks.quitDefaultApp,
     performRefresh: mocks.performRefresh,
@@ -117,12 +120,25 @@ const startRunner = async (harness: Harness): Promise<void> => {
     await runner.run(ENTRY);
 };
 
+const startAppHarness = async (): Promise<Harness> => {
+    const harness = buildHarness({ applicationId: "com.example.app" });
+    await startRunner(harness);
+
+    return harness;
+};
+
 const emitChangeAndFlush = async (harness: Harness, file: string, ticks: number): Promise<void> => {
     harness.server.watcher.emit("change", file);
 
     for (let i = 0; i < ticks; i++) {
         await flushTick();
     }
+};
+
+const startWithUnknownModule = async (harness: Harness, file: string): Promise<void> => {
+    harness.server.moduleGraph.getModuleById.mockReturnValueOnce(undefined);
+    await startRunner(harness);
+    await emitChangeAndFlush(harness, file, 1);
 };
 
 const loggedMessages = (harness: Harness): string[] => harness.log.mock.calls.map(([message]) => message);
@@ -165,8 +181,7 @@ const emitBoundaryChange = async (harness: Harness, file: string): Promise<void>
 };
 
 const expectRefreshRestart = async (schedule: (fireShutdown: () => void) => void): Promise<Harness> => {
-    const harness = buildHarness({ applicationId: "com.example.app" });
-    await startRunner(harness);
+    const harness = await startAppHarness();
     const onShutdown = installedShutdown(harness);
 
     harness.performRefresh.mockImplementationOnce(() => {
@@ -224,10 +239,30 @@ describe("createDevRunner (entry loading)", () => {
     });
 });
 
+describe("createDevRunner (a command line the application refused)", () => {
+    it("stops the runner instead of watching an application that never registered", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app", isApplicationRegistered: false });
+        const previousExitCode = process.exitCode;
+        process.exitCode = 1;
+        await startRunner(harness);
+        process.exitCode = previousExitCode;
+        expect(harness.server.close).toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(1);
+        expect(harness.watchAppShutdown).not.toHaveBeenCalled();
+        expect(harness.startMcp).not.toHaveBeenCalled();
+        expect(loggedMessages(harness).some((m) => m.includes("refused its command line"))).toBe(true);
+    });
+
+    it("keeps running when the application registered", async () => {
+        const harness = await startAppHarness();
+        expect(harness.server.close).not.toHaveBeenCalled();
+        expect(harness.watchAppShutdown).toHaveBeenCalled();
+    });
+});
+
 describe("createDevRunner (application shutdown)", () => {
     it("tears down the server when the application shuts down outside a refresh pass", async () => {
-        const harness = buildHarness({ applicationId: "com.example.app" });
-        await startRunner(harness);
+        const harness = await startAppHarness();
         installedShutdown(harness)();
         expect(harness.stopMcp).toHaveBeenCalled();
         expect(harness.server.close).toHaveBeenCalled();
@@ -244,7 +279,7 @@ describe("createDevRunner (application shutdown)", () => {
         await startRunner(harness);
         installedShutdown(harness)();
         await flushTick();
-        const written = stderrSpy.mock.calls.map((call) => String(call[0])).join("");
+        const written = collectLogged(stderrSpy);
         expect(written).toContain("[gtkx] error Error closing server:");
         expect(written).toContain(error.stack ?? error.message);
         expect(harness.exit).toHaveBeenCalledWith(1);
@@ -268,8 +303,7 @@ describe("createDevRunner (application shutdown)", () => {
 
 describe("createDevRunner (shutdown outside a refresh pass)", () => {
     it("treats a shutdown after the refresh window has closed as a quit", async () => {
-        const harness = buildHarness({ applicationId: "com.example.app" });
-        await startRunner(harness);
+        const harness = await startAppHarness();
         const onShutdown = installedShutdown(harness);
         await emitBoundaryChange(harness, "/x/y.ts");
         await new Promise((resolve) => setTimeout(resolve, 0));
@@ -280,8 +314,7 @@ describe("createDevRunner (shutdown outside a refresh pass)", () => {
     });
 
     it("ignores application shutdowns while the runtime is shutting down", async () => {
-        const harness = buildHarness({ applicationId: "com.example.app" });
-        await startRunner(harness);
+        const harness = await startAppHarness();
         const onShutdown = installedShutdown(harness);
         onShutdown();
         onShutdown();
@@ -293,8 +326,7 @@ describe("createDevRunner (shutdown outside a refresh pass)", () => {
 
 describe("createDevRunner (signal shutdown)", () => {
     it("quits the default application and tears down the server on a shutdown signal", async () => {
-        const harness = buildHarness({ applicationId: "com.example.app" });
-        await startRunner(harness);
+        const harness = await startAppHarness();
         await installedSignalHandler(harness)();
         expect(harness.quitDefaultApp).toHaveBeenCalledTimes(1);
         expect(harness.stopMcp).toHaveBeenCalled();
@@ -302,8 +334,7 @@ describe("createDevRunner (signal shutdown)", () => {
     });
 
     it("ignores a shutdown signal once the runtime is already shutting down", async () => {
-        const harness = buildHarness({ applicationId: "com.example.app" });
-        await startRunner(harness);
+        const harness = await startAppHarness();
         const onSignal = installedSignalHandler(harness);
         await onSignal();
         await onSignal();
@@ -341,8 +372,7 @@ describe("createDevRunner (MCP lifecycle)", () => {
     });
 
     it("tears down the dev server and MCP client when the application shuts down", async () => {
-        const harness = buildHarness({ applicationId: "com.example.app" });
-        await startRunner(harness);
+        const harness = await startAppHarness();
         installedShutdown(harness)();
         expect(harness.stopMcp).toHaveBeenCalled();
         expect(harness.server.close).toHaveBeenCalled();
@@ -352,17 +382,13 @@ describe("createDevRunner (MCP lifecycle)", () => {
 describe("createDevRunner (file watcher wiring)", () => {
     it("forwards 'change' events into the file-change pipeline", async () => {
         const harness = buildHarness();
-        harness.server.moduleGraph.getModuleById.mockReturnValueOnce(undefined);
-        await startRunner(harness);
-        await emitChangeAndFlush(harness, "/some/file.ts", 1);
+        await startWithUnknownModule(harness, "/some/file.ts");
         expect(harness.server.moduleGraph.getModuleById).toHaveBeenCalledWith("/some/file.ts");
     });
 
     it("ignores 'change' events for files not in the module graph", async () => {
         const harness = buildHarness();
-        harness.server.moduleGraph.getModuleById.mockReturnValueOnce(undefined);
-        await startRunner(harness);
-        await emitChangeAndFlush(harness, "/x/unknown.ts", 1);
+        await startWithUnknownModule(harness, "/x/unknown.ts");
         expect(harness.server.moduleGraph.invalidateModule).not.toHaveBeenCalled();
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
     });

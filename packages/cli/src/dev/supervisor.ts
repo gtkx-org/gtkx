@@ -3,6 +3,7 @@ import { fork as nodeFork } from "node:child_process";
 import { type FSWatcher, watch as watchFs } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEV_ENTRY_ENV } from "./entry-env.js";
 
 type SupervisedChild = {
     killed: boolean;
@@ -13,7 +14,7 @@ type SupervisedChild = {
     once(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
 };
 
-type ForkRunner = (modulePath: string, args: string[], cwd: string) => SupervisedChild;
+type ForkRunner = (modulePath: string, args: string[], env: NodeJS.ProcessEnv, cwd: string) => SupervisedChild;
 
 type DevWatch = {
     paths: string[];
@@ -24,6 +25,7 @@ type SupervisorState = {
     runnerPath: string;
     entryPath: string;
     cwd: string;
+    args: string[];
     watch: DevWatch | undefined;
     watchers: FSWatcher[];
     fork: ForkRunner;
@@ -33,15 +35,45 @@ type SupervisorState = {
     capturedChildExit: number | undefined;
 };
 
+type DevSupervisorOptions = {
+    entryPath: string;
+    cwd: string;
+    args?: string[] | undefined;
+    watch?: DevWatch | undefined;
+    fork?: ForkRunner | undefined;
+};
+
 type DebounceTimer = { handle: NodeJS.Timeout | null };
 
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
 const RESTART_EXIT_CODE = 75;
+const CONDITION_FLAG = /^(?:--conditions|-C)(?:=.*)?$/;
+const SPLIT_CONDITION_FLAG = /^(?:--conditions|-C)$/;
 
-const defaultForkRunner: ForkRunner = (modulePath, args, cwd) =>
-    nodeFork(modulePath, [...args], { cwd, stdio: "inherit", detached: true });
+const withoutConditions = (argv: string[]): string[] =>
+    argv.filter(
+        (argument, index) => !CONDITION_FLAG.test(argument) && !SPLIT_CONDITION_FLAG.test(argv[index - 1] ?? ""),
+    );
+
+const getNodeOptions = (env: NodeJS.ProcessEnv): string | undefined => {
+    const options = env.NODE_OPTIONS;
+
+    return options === undefined ? undefined : withoutConditions(options.split(/\s+/)).join(" ");
+};
+
+const defaultForkRunner: ForkRunner = (modulePath, args, env, cwd) => {
+    const nodeOptions = getNodeOptions(env);
+
+    return nodeFork(modulePath, args, {
+        cwd,
+        env: { ...env, ...(nodeOptions !== undefined && { NODE_OPTIONS: nodeOptions }) },
+        stdio: "inherit",
+        detached: true,
+        execArgv: withoutConditions(process.execArgv),
+    });
+};
 
 const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => {
     if (!child.killed) {
@@ -93,7 +125,13 @@ const handleChildExit = (state: SupervisorState, code: number | null, signal: No
 };
 
 const launch = (state: SupervisorState): void => {
-    const child = state.fork(state.runnerPath, [state.entryPath], state.cwd);
+    const child = state.fork(
+        state.runnerPath,
+        state.args,
+        { ...process.env, [DEV_ENTRY_ENV]: state.entryPath },
+        state.cwd,
+    );
+
     state.child = child;
 
     child.on("exit", (code, signal) => {
@@ -247,16 +285,14 @@ const installShutdown = (state: SupervisorState): void => {
     });
 };
 
-const runDevSupervisor = async (
-    entryPath: string,
-    cwd: string,
-    watch?: DevWatch,
-    fork: ForkRunner = defaultForkRunner,
-): Promise<never> => {
+const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> => {
+    const { entryPath, cwd, args = [], watch, fork = defaultForkRunner } = options;
+
     const state: SupervisorState = {
         runnerPath: fileURLToPath(DEV_RUNNER_URL),
         entryPath,
         cwd,
+        args,
         watch,
         watchers: [],
         fork,
@@ -273,4 +309,11 @@ const runDevSupervisor = async (
     return new Promise<never>((): void => undefined);
 };
 
-export { RESTART_EXIT_CODE, defaultForkRunner, runDevSupervisor, type SupervisedChild, type ForkRunner, type DevWatch };
+export {
+    RESTART_EXIT_CODE,
+    defaultForkRunner,
+    runDevSupervisor,
+    type DevWatch,
+    type ForkRunner,
+    type SupervisedChild,
+};

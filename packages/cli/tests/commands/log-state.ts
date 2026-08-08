@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, type MockInstance, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
+import type { StderrSpy } from "../stderr-text.js";
 
-type StderrSpy = MockInstance<typeof process.stderr.write>;
 type LogState = { stderrSpy: StderrSpy };
 
 const setupLogState = (): LogState => {
@@ -18,7 +18,4 @@ const setupLogState = (): LogState => {
     return state;
 };
 
-const collectLogged = (stderrSpy: StderrSpy): string =>
-    stderrSpy.mock.calls.map((call) => String(call[0])).join("");
-
-export { setupLogState, collectLogged, type LogState };
+export { setupLogState };

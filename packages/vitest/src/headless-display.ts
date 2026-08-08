@@ -1,10 +1,10 @@
-import { type ChildProcess, spawn, spawnSync, type StdioOptions } from "node:child_process";
+import { resolveExecutable, spawnWithParentDeathSignal } from "@gtkx/utils";
+import { type ChildProcess, spawnSync } from "node:child_process";
 import { chmodSync, createWriteStream, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startNotificationService } from "./notification-service.ts";
-import { resolveExecutable } from "./resolve-executable.ts";
 import { startVirtualSeat } from "./virtual-seat.ts";
 
 /**
@@ -75,7 +75,6 @@ const BUS_CONFIG_DOCTYPE =
     '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" ' +
     '"https://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">';
 
-const PARENT_DEATH_SCRIPT = 'trap \'kill -9 "$child" 2>/dev/null\' TERM; "$@" & child=$!; wait "$child"';
 const hasWestonFakeSeat = createWestonFakeSeatProbe();
 
 const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
@@ -106,7 +105,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
                 ].join("\n"),
             );
 
-            return spawnWithParentDeathSignal("sway", ["-c", configPath], ["ignore", "ignore", "pipe"]);
+            return spawnWithParentDeathSignal("sway", ["-c", configPath], { stdio: ["ignore", "ignore", "pipe"] });
         },
     },
     weston: {
@@ -124,7 +123,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
                     `--height=${height}`,
                     "--socket=wayland-0",
                 ],
-                ["ignore", "ignore", "pipe"],
+                { stdio: ["ignore", "ignore", "pipe"] },
             ),
     },
 };
@@ -165,18 +164,6 @@ const restoreEnv = (snapshot: EnvSnapshot): void => {
             process.env[name] = previous;
         }
     }
-};
-
-const spawnWithParentDeathSignal = (command: string, args: string[], stdio: StdioOptions): ChildProcess => {
-    const child = spawn(
-        resolveExecutable("setpriv"),
-        ["--pdeathsig", "SIGTERM", "sh", "-c", PARENT_DEATH_SCRIPT, "sh", command, ...args],
-        { stdio },
-    );
-
-    child.unref();
-
-    return child;
 };
 
 function createWestonFakeSeatProbe(): () => boolean {
@@ -270,11 +257,11 @@ const captureStderr = (child: ChildProcess | undefined): StderrCapture => {
 };
 
 const trackChild = (child: ChildProcess, handlers: ChildHandlers): (() => void) => {
-    child.on("exit", handlers.exit);
+    child.on("close", handlers.exit);
     child.on("error", handlers.error);
 
     return () => {
-        child.removeListener("exit", handlers.exit);
+        child.removeListener("close", handlers.exit);
         child.removeListener("error", handlers.error);
     };
 };
@@ -462,15 +449,15 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         const busSocketPath = join(runtimeDir, "bus");
         writeBusConfig(busConfigPath, busSocketPath);
 
-        const busChild = spawnWithParentDeathSignal(
-            "dbus-daemon",
-            [`--config-file=${busConfigPath}`],
-            ["ignore", "ignore", "pipe"],
-        );
+        const busChild = spawnWithParentDeathSignal("dbus-daemon", [`--config-file=${busConfigPath}`], {
+            stdio: ["ignore", "ignore", "pipe"],
+        });
 
+        busChild.unref();
         spawned.push(busChild);
         applyEnv(env, { DBUS_SESSION_BUS_ADDRESS: `unix:path=${busSocketPath}` });
         const compositor = startCompositor(runtimeDir, options, env);
+        compositor.child.unref();
         spawned.push(compositor.child);
         applyEnv(env, { WAYLAND_DISPLAY: compositor.socket });
         const compositorSocketPath = join(runtimeDir, compositor.socket);

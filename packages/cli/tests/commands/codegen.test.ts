@@ -2,7 +2,8 @@ import { omit } from "@gtkx/utils";
 import { describe, expect, it, vi } from "vitest";
 import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 import { codegen } from "../../src/commands/codegen.js";
-import { collectLogged, setupLogState } from "./log-state.js";
+import { collectLogged } from "../stderr-text.js";
+import { setupLogState } from "./log-state.js";
 
 type CodegenArgs = { force?: boolean; cwd?: string };
 type CodegenRun = NonNullable<typeof codegen.run>;

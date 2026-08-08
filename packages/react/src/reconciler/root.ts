@@ -2,6 +2,7 @@ import type { ErrorInfo, ReactNode, ReactPortal } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import { createLogger, type Logger } from "@gtkx/utils";
 import { ConcurrentRoot } from "react-reconciler/constants.js";
+import { injectIntoDevTools } from "./devtools.js";
 import { type Container, reconciler } from "./host-config.js";
 import { rootElement } from "./root-element.js";
 
@@ -15,8 +16,11 @@ type RootErrorCallbacks = {
 
 type ReconcilerRootOptions = RootErrorCallbacks & { containerInfo: Container };
 
+/** A render root whose updates and teardown the caller drives, with error handling left to it. */
 type ReconcilerRoot = {
+    /** Mounts an element tree into the container, or updates the tree already mounted there. */
     update: (element: ReactNode) => void;
+    /** Hands the root to `teardown`, then stops {@link quit} from unmounting the container. */
     unmount: (teardown: (root: ReconcilerRoot) => Promise<void>) => Promise<void>;
 };
 
@@ -61,6 +65,8 @@ const logCaughtRenderError = (error: unknown): void => {
 };
 
 const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks): OpaqueRoot => {
+    injectIntoDevTools(reconciler);
+
     const container = reconciler.createContainer(
         containerInfo,
         ConcurrentRoot,

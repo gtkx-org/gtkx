@@ -30,12 +30,6 @@ const headlessPreloadSpecifier = (options: PluginOptions): string => {
     return url.href;
 };
 
-const workerSetupPath = (): string => {
-    const sibling = join(import.meta.dirname, "worker-setup.js");
-
-    return existsSync(sibling) ? sibling : join(import.meta.dirname, "..", "dist", "worker-setup.js");
-};
-
 /**
  * Vitest plugin that runs each test worker against its own isolated headless
  * Wayland display. It configures the forks pool, injects the worker preload and
@@ -52,7 +46,6 @@ const gtkx = (options: PluginOptions = {}): Plugin =>
                 test: {
                     globals: true,
                     execArgv: ["--import", headlessPreloadSpecifier(options)],
-                    setupFiles: [workerSetupPath()],
                     testTimeout: 30_000,
                     hookTimeout: 30_000,
                     pool: "forks",

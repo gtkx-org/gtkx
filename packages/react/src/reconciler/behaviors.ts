@@ -1,6 +1,14 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
+import {
+    type ApplicationClass,
+    type CommandLineApplication,
+    createApplication,
+    getInstanceType,
+    TYPE_INVALID,
+    typeFromName,
+    typeIsA,
+} from "@gtkx/runtime";
 import { getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 import { applyWrite } from "./signals.js";
@@ -36,9 +44,9 @@ type BoxLike = GObject.Object & {
 
 type RowCache = WeakMap<GObject.Object, Gtk.Widget>;
 
-type IndexedInserter = GObject.Object & {
-    remove: (child: Gtk.Widget) => void;
-    insert: (child: Gtk.Widget, position: number) => unknown;
+type IndexedChildHost<C extends GObject.Object> = GObject.Object & {
+    remove: (child: C) => void;
+    insert: (child: C, position: number) => unknown;
 };
 
 const childTypeCache: Map<string, bigint> = new Map();
@@ -117,41 +125,48 @@ const teardownList = <P extends GObject.Object, I, H>(
         return;
     }
 
-    const remove = hooks.remove;
-
-    if (remove === undefined) {
-        return;
-    }
-
     for (const entry of entries) {
-        remove(object, entry.item as I, entry.handle as H);
+        hooks.remove?.(object, entry.item as I, entry.handle as H);
     }
+};
+
+const listUpdate = <P extends GObject.Object, I, H>(
+    prop: string,
+    hooks: ListHooks<P, I, H>,
+): NonNullable<ElementBehavior<P>["update"]> => {
+    const { add } = hooks;
+
+    return (object, _prev, next, context) => {
+        const state = context as ListState;
+        const raw = next[prop];
+        const items: unknown[] = Array.isArray(raw) ? raw : [];
+
+        if (isDeepEqual(state.snapshot, items)) {
+            return [prop];
+        }
+
+        teardownList(object, state.entries, hooks);
+        state.entries = items.map((item) => ({ item, handle: add?.(object, item as I) }));
+        state.snapshot = structuredClone(items);
+
+        return [prop];
+    };
 };
 
 const list = <P extends GObject.Object, I, H = void>(
     prop: string,
     hooks: ListHooks<P, I, H>,
 ): ElementBehavior<P> => {
-    const { add } = hooks;
-
-    return {
+    const behavior: ElementBehavior<P> = {
         initialize: (): ListState => ({ snapshot: [], entries: [] }),
-        update: (object, _prev, next, context) => {
-            const state = context as ListState;
-            const raw = next[prop];
-            const items: unknown[] = Array.isArray(raw) ? raw : [];
-
-            if (isDeepEqual(state.snapshot, items)) {
-                return [prop];
-            }
-
-            teardownList(object, state.entries, hooks);
-            state.entries = items.map((item) => ({ item, handle: add?.(object, item as I) }));
-            state.snapshot = structuredClone(items);
-
-            return [prop];
-        },
+        update: listUpdate(prop, hooks),
     };
+
+    if (hooks.remove === undefined && hooks.clear === undefined) {
+        behavior.constructOnly = [prop];
+    }
+
+    return behavior;
 };
 
 const flushDeferred = <P extends GObject.Object, V>(
@@ -244,6 +259,23 @@ const addRemoveSlot = <C extends GObject.Object, P extends GObject.Object>(
     remove: (parent: P, child: C) => void,
 ): ElementBehavior => slot<P, C>(slotName, childType, { attach: add, detach: remove });
 
+const indexedSlot = <P extends IndexedChildHost<C>, C extends GObject.Object>(
+    slotName: string,
+    childType: string,
+): ElementBehavior<P> =>
+    slot<P, C>(slotName, childType, {
+        attach: (parent, child, info) => {
+            parent.insert(child, info.index);
+        },
+        detach: (parent, child) => {
+            parent.remove(child);
+        },
+        reorder: (parent, child, info) => {
+            parent.remove(child);
+            parent.insert(child, info.index);
+        },
+    });
+
 const adoptedChildrenSlot = <P extends GObject.Object, C extends GObject.Object>(
     childType: string,
     add: (parent: P, item: C) => unknown,
@@ -275,7 +307,7 @@ const wrappedRow = <W extends Gtk.Widget>(
 
 const removeWrappedRow = (
     Wrapper: new (props: Props) => Gtk.Widget,
-    parent: IndexedInserter,
+    parent: IndexedChildHost<Gtk.Widget>,
     child: Gtk.Widget,
     rows: RowCache,
 ): void => {
@@ -286,7 +318,7 @@ const removeWrappedRow = (
     }
 };
 
-const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedInserter>(
+const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedChildHost<Gtk.Widget>>(
     Wrapper: new (props: Props) => W,
     setChild: (wrapper: W, inner: Gtk.Widget) => void,
 ): ElementBehavior<P> => ({
@@ -300,7 +332,15 @@ const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedInserter>(
     initialize: (): RowCache => new WeakMap(),
 });
 
+const applicationCreator = <P extends GObject.Object & CommandLineApplication, C extends Props>(
+    base: ApplicationClass<P, C>,
+): ElementBehavior<P> => ({
+    create: (props) => createApplication(base, props as C),
+});
+
 export {
+    applicationCreator,
+    childMatcher,
     slot,
     value,
     list,
@@ -311,5 +351,6 @@ export {
     boxSlot,
     addRemoveSlot,
     adoptedChildrenSlot,
+    indexedSlot,
     wrappingIndexedSlot,
 };

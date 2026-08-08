@@ -1,4 +1,6 @@
+/* eslint-disable gtkx/no-library-prefix */
 import type * as Gdk from "@gtkx/gi/gdk";
+import type * as GLib from "@gtkx/gi/glib";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
@@ -53,6 +55,22 @@ type CreditSection = {
     people: string[];
 };
 
+/** One command-line option a `Gtk.Application` accepts. */
+type MainOption = {
+    /** Name the option is spelled with after two dashes, such as `verbose` for `--verbose`. */
+    longName: string;
+    /** Single character the option is spelled with after one dash, such as `v` for `-v`; defaults to none. */
+    shortName?: string | null;
+    /** How the option itself is parsed and listed; defaults to `GLib.OptionFlags.NONE`. */
+    flags?: GLib.OptionFlags;
+    /** Type of argument the option takes; defaults to `GLib.OptionArg.NONE`, meaning it takes none. */
+    arg?: GLib.OptionArg;
+    /** Text describing the option in `--help`. */
+    description: string;
+    /** Placeholder standing for the option's argument in `--help`; defaults to none. */
+    argDescription?: string | null;
+};
+
 /** One accelerator binding on a `Gtk.Application`. */
 type ActionAccel = {
     /** Action the accelerators activate, such as `app.quit` or `win.open('file')`. */
@@ -86,19 +104,19 @@ type GtkWidgetProps = {
 } & ChildrenProps;
 
 /** Props of an action group placed in a widget's `actionGroups` slot. */
-type GActionGroupProps = {
+type ActionGroupProps = {
     /** Prefix the group's actions are addressed by, such as `win`; defaults to the empty string. */
     prefix?: string | null | undefined;
 };
 
 /** Props of an element implementing `Gio.ActionMap`. */
-type GActionMapProps = {
+type ActionMapProps = {
     /** `Gio.Action` elements added to the map, removed again by their `name`. */
     actions?: ReactNode | null | undefined;
 };
 
 /** Props of a `Gio.Menu` element. */
-type GMenuProps = {
+type MenuProps = {
     /** Entries the menu is rebuilt from whenever they change. */
     items?: MenuItem[] | null | undefined;
 };
@@ -165,7 +183,10 @@ type GtkSizeGroupProps = {
 
 /** Props of a `Gtk.AboutDialog` element. */
 type GtkAboutDialogProps = {
-    /** Extra sections appended to the dialog's credits, which GTK offers no way to remove. */
+    /**
+     * Extra sections appended to the dialog's credits. GTK offers no way to remove one, so the list
+     * cannot change once it has been applied.
+     */
     creditSections?: CreditSection[] | null | undefined;
 };
 
@@ -173,6 +194,11 @@ type GtkAboutDialogProps = {
 type GtkApplicationProps = {
     /** Accelerators bound to the application's actions. */
     actionAccels?: ActionAccel[] | null | undefined;
+    /**
+     * Command-line options the application parses, registered before it starts. GLib offers no way to
+     * unregister one, so the list cannot change once it has been applied.
+     */
+    mainOptions?: MainOption[] | null | undefined;
 } & ChildrenProps;
 
 /** Props of a `Gtk.DropTarget` element. */
@@ -199,13 +225,14 @@ export {
     type ScaleMark,
     type LevelBarOffset,
     type CreditSection,
+    type MainOption,
     type ActionAccel,
     type DragSourceIcon,
     type ChildrenProps,
     type GtkWidgetProps,
-    type GActionGroupProps,
-    type GActionMapProps,
-    type GMenuProps,
+    type ActionGroupProps,
+    type ActionMapProps,
+    type MenuProps,
     type GtkShortcutControllerProps,
     type GtkOverlayProps,
     type GtkTextChildAnchorProps,

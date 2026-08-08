@@ -77,6 +77,13 @@
         "packages/native": {
             "includeEntryExports": false
         },
+        "packages/utils": {
+            "entry": [
+                "src/process/process-guard.ts",
+                "tests/fixtures/spawn-driver.mjs",
+                "tests/fixtures/spawn-escapee.mjs"
+            ]
+        },
         "packages/testing": {
             "includeEntryExports": false,
             "entry": [
@@ -87,14 +94,14 @@
             "entry": [
                 "src/global.d.ts!",
                 "tests/dev/fixtures/supervisor-harness.ts",
-                "tests/dev/fixtures/graceful-child.mjs"
+                "tests/dev/fixtures/graceful-child.mjs",
+                "tests/dev/fixtures/resolve-probe.mjs"
             ]
         },
         "packages/vitest": {
             "includeEntryExports": false,
             "entry": [
-                "src/worker-preload.ts!",
-                "src/worker-setup.ts!"
+                "src/worker-preload.ts!"
             ]
         },
         "examples/*": {

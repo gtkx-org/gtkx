@@ -45,6 +45,7 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     watchApplicationShutdown: (onShutdown) => {
         Gio.Application.getDefault()?.on("shutdown", onShutdown);
     },
+    isApplicationRegistered: () => Gio.Application.getDefault()?.getIsRegistered() === true,
     installShutdownHandlers: (onSignal) => {
         installGracefulShutdown({ onSignal });
     },

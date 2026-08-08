@@ -14,6 +14,7 @@ type DevRunnerDeps = {
     ): Promise<unknown>;
     stopMcpClient(): void;
     watchApplicationShutdown(onShutdown: () => void): void;
+    isApplicationRegistered(): boolean;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
     performRefresh: () => void;
@@ -126,7 +127,11 @@ const onShutdownSignal =
             });
         };
 
-const closeAndExit = async (deps: DevRunnerDeps, controller: ShutdownController): Promise<never> => {
+const closeAndExit = async (
+    deps: DevRunnerDeps,
+    controller: ShutdownController,
+    code = 0,
+): Promise<never> => {
     try {
         await controller.shutdown((): void => undefined);
     } catch (error_) {
@@ -135,7 +140,7 @@ const closeAndExit = async (deps: DevRunnerDeps, controller: ShutdownController)
         return deps.exit(1);
     }
 
-    return deps.exit(0);
+    return deps.exit(code);
 };
 
 const onApplicationShutdown =
@@ -155,6 +160,42 @@ const onApplicationShutdown =
             void closeAndExit(deps, controller);
         };
 
+const refusedExitCode = (): number => (process.exitCode === undefined ? 1 : Number(process.exitCode));
+
+const connectApplication = async (
+    deps: DevRunnerDeps,
+    server: DevServer,
+    liveApplicationId: string,
+    tracked: { refreshTracker: RefreshTracker; controller: ShutdownController },
+): Promise<void> => {
+    deps.watchApplicationShutdown(onApplicationShutdown(deps, tracked.refreshTracker, tracked.controller));
+    const applicationId = (await deps.getConfiguredApplicationId(process.cwd())) ?? liveApplicationId;
+    deps.log(`Connected application ID: ${applicationId}`);
+    await deps.startMcpClient(applicationId, (id) => server.ssrLoadModule(id));
+};
+
+const attachApplication = async (
+    deps: DevRunnerDeps,
+    server: DevServer,
+    tracked: { refreshTracker: RefreshTracker; controller: ShutdownController },
+): Promise<void> => {
+    const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS);
+
+    if (liveApplicationId === null) {
+        deps.log("Entry did not mount an application - MCP client not started.");
+
+        return;
+    }
+
+    if (!deps.isApplicationRegistered()) {
+        deps.log("Application refused its command line - stopping dev runner...");
+
+        return closeAndExit(deps, tracked.controller, refusedExitCode());
+    }
+
+    await connectApplication(deps, server, liveApplicationId, tracked);
+};
+
 const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
     async run(entryPath: string): Promise<void> {
         const root = process.cwd();
@@ -166,17 +207,7 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         server.watcher.on("change", onFileChange(server, refreshTrackingDeps, controller));
         deps.log(`Loading entry: ${entryPath}`);
         await server.ssrLoadModule(entryPath);
-        const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS);
-
-        if (liveApplicationId) {
-            deps.watchApplicationShutdown(onApplicationShutdown(deps, refreshTracker, controller));
-            const applicationId = (await deps.getConfiguredApplicationId(root)) ?? liveApplicationId;
-            deps.log(`Connected application ID: ${applicationId}`);
-            await deps.startMcpClient(applicationId, (id) => server.ssrLoadModule(id));
-        } else {
-            deps.log("Entry did not mount an application - MCP client not started.");
-        }
-
+        await attachApplication(deps, server, { refreshTracker, controller });
         deps.log("HMR enabled - watching for changes...");
     },
 });

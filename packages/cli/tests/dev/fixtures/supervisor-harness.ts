@@ -3,11 +3,11 @@ import { defaultForkRunner, type ForkRunner, runDevSupervisor } from "../../../s
 
 const childFixture = fileURLToPath(new URL("graceful-child.mjs", import.meta.url));
 
-const fork: ForkRunner = (_modulePath, args, cwd) => {
-    const child = defaultForkRunner(childFixture, args, cwd);
+const fork: ForkRunner = (_modulePath, args, env, cwd) => {
+    const child = defaultForkRunner(childFixture, args, env, cwd);
     process.stdout.write(`CHILD_PID ${String(child.pid ?? "")}\n`);
 
     return child;
 };
 
-await runDevSupervisor("entry.tsx", process.cwd(), undefined, fork);
+await runDevSupervisor({ entryPath: "entry.tsx", cwd: process.cwd(), fork });

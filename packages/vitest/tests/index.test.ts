@@ -2,13 +2,12 @@ import type { Plugin } from "vitest/config";
 import { describe, expect, it } from "vitest";
 import gtkx from "../src/index.js";
 
-type InputConfig = { root?: string; test?: { setupFiles?: string | string[] } };
+type InputConfig = { root?: string };
 
 type WorkerConfig = {
     test?: {
         globals?: boolean;
         execArgv?: string[];
-        setupFiles?: string[];
         pool?: string;
         testTimeout?: number;
         hookTimeout?: number;
@@ -78,12 +77,6 @@ describe("gtkx vitest plugin", () => {
         const specifier = preloadSpecifier(callConfig(gtkx({ size: "640x480", compositor: "sway" }), {}));
         expect(specifier.searchParams.get("size")).toBe("640x480");
         expect(specifier.searchParams.get("compositor")).toBe("sway");
-    });
-
-    it("registers the headless shutdown setup file for every worker", () => {
-        const setupFiles = callConfig(gtkx(), {}).test?.setupFiles ?? [];
-        expect(setupFiles).toHaveLength(1);
-        expect(setupFiles[0]?.endsWith("worker-setup.js")).toBe(true);
     });
 
     it("leaves module resolution conditions untouched", () => {
