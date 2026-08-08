@@ -4,11 +4,13 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirCallable } from "../../gir/parameter.js";
 import type { TypeId } from "../../gir/type-id.js";
+import type { JsDocSpec } from "../../writer/doc.js";
 import { forEachAncestor } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
 import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../../analysis/ts-type.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
+import { annotationSpec, selfHandlerSpec } from "../gi/doc-spec.js";
 import { getGlibName, giNamespaceAlias, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
 import { isOmittedProp } from "./omitted-props.js";
 
@@ -67,9 +69,18 @@ type IntrinsicElementMemberWalk = IntrinsicElementScope & {
     acceptSignal: (signal: GirCallable) => void;
 };
 
+const notifyDoc = (property: GirProperty, jsName: string, spec: JsDocSpec): string => {
+    const note = `Called with the new value when \`${jsName}\` changes.`;
+    const doc = property.doc;
+    const text = doc === undefined || doc.length === 0 ? note : `${note}\n\n${doc}`;
+
+    return renderJsDoc(text, undefined, spec);
+};
+
 const appendPropertyLines = (state: PropCollectorState, property: GirProperty, jsName: string): void => {
     const tsType = renderReactPropType(state.types, property.type, false);
-    const doc = renderJsDoc(property.doc);
+    const spec = annotationSpec(property.annotations);
+    const doc = renderJsDoc(property.doc, undefined, spec);
 
     if (isObjectProp(state.owner.library, property)) {
         state.propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
@@ -78,14 +89,15 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
         return;
     }
 
-    const isSettable = isConstructableProperty(property);
-
-    if (isSettable) {
+    if (isConstructableProperty(property)) {
         state.propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
     }
 
     const handlerType = `((value: ${tsType} | null, self: Self) => void) | null | undefined`;
-    state.propLines.push(`${isSettable ? "" : doc}onNotify${upperFirst(jsName)}?: ${handlerType};`);
+
+    state.propLines.push(
+        `${notifyDoc(property, jsName, spec)}onNotify${upperFirst(jsName)}?: ${handlerType};`,
+    );
 };
 
 const acceptCollectorProperty = (state: PropCollectorState, property: GirProperty): void => {
@@ -112,7 +124,8 @@ const acceptCollectorSignal = (state: PropCollectorState, signal: GirCallable): 
 
     state.seen.add(handlerName);
     const signature = renderSignalHandler({ types: state.types, signal, selfType: "Self" });
-    state.propLines.push(`${renderJsDoc(signal.doc)}${handlerName}?: (${signature}) | undefined;`);
+    const doc = renderJsDoc(signal.doc, undefined, selfHandlerSpec(signal));
+    state.propLines.push(`${doc}${handlerName}?: (${signature}) | undefined;`);
 };
 
 const createPropEntryCollector = (owner: IntrinsicElementScope): PropEntryCollector => {
@@ -259,4 +272,4 @@ const renderReactPropType = (context: PropTypeRenderContext, ref: TypeId | undef
     return isNullable ? `${base} | null` : base;
 };
 
-export { buildElementPropsEntries, buildInterfacePropsEntries, isObjectProp, reactTarget };
+export { buildElementPropsEntries, buildInterfacePropsEntries, isObjectProp };

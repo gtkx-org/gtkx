@@ -7,35 +7,40 @@ import { checkModules, compileProject, type SourceModule } from "../../src/compi
 import { compileStore } from "../../src/store/compile-store.js";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const tempDirs: string[] = [];
+
+const createTempDir = (): string => {
+    const dir = mkdtempSync(join(tmpdir(), "gtkx-compile-"));
+    tempDirs.push(dir);
+
+    return dir;
+};
+
+const compileStoreFrom = (files: SourceModule[]): string => {
+    const storeDir = createTempDir();
+
+    for (const file of files) {
+        const filePath = join(storeDir, file.fileName);
+        mkdirSync(dirname(filePath), { recursive: true });
+        writeFileSync(filePath, file.source);
+    }
+
+    compileStore({ storeDir, files, packageName: "@gtkx/gi" });
+
+    return storeDir;
+};
+
+afterEach(() => {
+    for (const dir of tempDirs) {
+        rmSync(dir, { recursive: true, force: true });
+    }
+
+    tempDirs.length = 0;
+});
 
 describe("compileStore", () => {
-    let dir: string | undefined;
-
-    afterEach(() => {
-        if (dir !== undefined) {
-            rmSync(dir, { recursive: true, force: true });
-        }
-
-        dir = undefined;
-    });
-
-    const run = (files: SourceModule[]): string => {
-        const storeDir = mkdtempSync(join(tmpdir(), "gtkx-compile-"));
-        dir = storeDir;
-
-        for (const file of files) {
-            const filePath = join(storeDir, file.fileName);
-            mkdirSync(dirname(filePath), { recursive: true });
-            writeFileSync(filePath, file.source);
-        }
-
-        compileStore({ storeDir, files, packageName: "@gtkx/gi" });
-
-        return storeDir;
-    };
-
     it("emits JS and declarations for modules that import each other through relative paths", () => {
-        const storeDir = run([
+        const storeDir = compileStoreFrom([
             { fileName: "foo/foo.ts", source: "export const answer: number = 42;\n" },
             {
                 fileName: "bar/bar.ts",
@@ -51,7 +56,7 @@ describe("compileStore", () => {
 
     it("throws with a positioned message when a generated module has a type error", () => {
         expect(() =>
-            run([
+            compileStoreFrom([
                 { fileName: "foo/foo.ts", source: "export const answer: number = 42;\n" },
                 {
                     fileName: "bar/bar.ts",
@@ -87,19 +92,8 @@ describe("checkModules", () => {
 });
 
 describe("compileProject", () => {
-    let dir: string | undefined;
-
-    afterEach(() => {
-        if (dir !== undefined) {
-            rmSync(dir, { recursive: true, force: true });
-        }
-
-        dir = undefined;
-    });
-
     it("throws when tsc fails without a file-positioned diagnostic", () => {
-        const projectDir = mkdtempSync(join(tmpdir(), "gtkx-compile-"));
-        dir = projectDir;
+        const projectDir = createTempDir();
         writeFileSync(join(projectDir, "ok.ts"), "export const answer: number = 42;\n");
 
         expect(() => {

@@ -49,16 +49,33 @@ const compileShaderPair = (vertSrc: string, fragSrc: string): number => {
     return program;
 };
 
+const createFilledBuffer = (target: number, data: ArrayBufferView): number => {
+    const buffer = gl.genBuffer();
+    gl.bindBuffer(target, buffer);
+    gl.bufferData(target, data.byteLength, data, gl.STATIC_DRAW);
+
+    return buffer;
+};
+
 const setUpTriangleAttribArray = (): { vao: number; vbo: number } => {
     const vao = gl.genVertexArray();
     gl.bindVertexArray(vao);
-    const vbo = gl.genBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, TRIANGLE_POSITIONS.byteLength, TRIANGLE_POSITIONS, gl.STATIC_DRAW);
+    const vbo = createFilledBuffer(gl.ARRAY_BUFFER, TRIANGLE_POSITIONS);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(0);
 
     return { vao, vbo };
+};
+
+const installUniformProgram = (): { program: number } => {
+    const fixture = { program: 0 };
+
+    beforeAll(() => {
+        fixture.program = compileShaderPair(UNIFORM_VERT, BASIC_FRAG);
+        gl.useProgram(fixture.program);
+    });
+
+    return fixture;
 };
 
 beforeAll(async () => {
@@ -167,71 +184,61 @@ describe("program operations", () => {
 });
 
 describe("uniform operations — lookup and scalars", () => {
-    let program: number;
-
-    beforeAll(() => {
-        program = compileShaderPair(UNIFORM_VERT, BASIC_FRAG);
-        gl.useProgram(program);
-    });
+    const fixture = installUniformProgram();
 
     it("gets a uniform location", () => {
-        const loc = gl.getUniformLocation(program, "uFloat");
+        const loc = gl.getUniformLocation(fixture.program, "uFloat");
         expect(loc).toBeGreaterThanOrEqual(0);
     });
 
     it("returns -1 for nonexistent uniform", () => {
-        const loc = gl.getUniformLocation(program, "nonexistent");
+        const loc = gl.getUniformLocation(fixture.program, "nonexistent");
         expect(loc).toBe(-1);
     });
 
     it("sets a float uniform", () => {
-        const loc = gl.getUniformLocation(program, "uFloat");
+        const loc = gl.getUniformLocation(fixture.program, "uFloat");
         gl.uniform1f(loc, 1.5);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
     it("sets an int uniform", () => {
-        const loc = gl.getUniformLocation(program, "uInt");
+        const loc = gl.getUniformLocation(fixture.program, "uInt");
         gl.uniform1i(loc, 42);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 });
 
 describe("uniform operations — vectors and matrices", () => {
-    let program: number;
-
-    beforeAll(() => {
-        program = compileShaderPair(UNIFORM_VERT, BASIC_FRAG);
-        gl.useProgram(program);
-    });
+    const fixture = installUniformProgram();
 
     it("sets a vec2 uniform", () => {
-        const loc = gl.getUniformLocation(program, "uVec2");
+        const loc = gl.getUniformLocation(fixture.program, "uVec2");
         gl.uniform2f(loc, 1, 2);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
     it("sets a vec3 uniform", () => {
-        const loc = gl.getUniformLocation(program, "uVec3");
+        const loc = gl.getUniformLocation(fixture.program, "uVec3");
         gl.uniform3f(loc, 1, 2, 3);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
     it("sets a vec4 uniform", () => {
-        const loc = gl.getUniformLocation(program, "uVec4");
+        const loc = gl.getUniformLocation(fixture.program, "uVec4");
         gl.uniform4f(loc, 1, 2, 3, 4);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
     it("sets a mat4 uniform", () => {
-        const loc = gl.getUniformLocation(program, "uMat4");
+        const loc = gl.getUniformLocation(fixture.program, "uMat4");
         const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
         gl.uniformMatrix4fv(loc, 1, false, identity);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
     it("sets a mat4 uniform from a Float32Array", () => {
-        const loc = gl.getUniformLocation(program, "uMat4");
+        const loc = gl.getUniformLocation(fixture.program, "uMat4");
         const identity = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
         gl.uniformMatrix4fv(loc, 1, false, identity);
         expect(gl.getError()).toBe(gl.NO_ERROR);
@@ -271,20 +278,14 @@ describe("buffer operations", () => {
     });
 
     it("binds and fills a buffer with float data", () => {
-        const buffer = gl.genBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        const data = new Float32Array([-1, -1, 0, 1, -1, 0, 0, 1, 0]);
-        gl.bufferData(gl.ARRAY_BUFFER, data.byteLength, data, gl.STATIC_DRAW);
+        const buffer = createFilledBuffer(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 0, 1, -1, 0, 0, 1, 0]));
         expect(gl.getError()).toBe(gl.NO_ERROR);
         gl.bindBuffer(gl.ARRAY_BUFFER, 0);
         gl.deleteBuffer(buffer);
     });
 
     it("binds and fills a buffer with unsigned short data", () => {
-        const buffer = gl.genBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
-        const indices = new Uint16Array([0, 1, 2]);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices.byteLength, indices, gl.STATIC_DRAW);
+        const buffer = createFilledBuffer(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2]));
         expect(gl.getError()).toBe(gl.NO_ERROR);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0);
         gl.deleteBuffer(buffer);
@@ -293,10 +294,7 @@ describe("buffer operations", () => {
 
 describe("buffer data transfer", () => {
     it("reads buffer contents back through getBufferSubData", () => {
-        const buffer = gl.genBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        const data = new Float32Array([1.5, -2.5, 3.25, 0]);
-        gl.bufferData(gl.ARRAY_BUFFER, data.byteLength, data, gl.STATIC_DRAW);
+        const buffer = createFilledBuffer(gl.ARRAY_BUFFER, new Float32Array([1.5, -2.5, 3.25, 0]));
         const readBack = new Float32Array(4);
         gl.getBufferSubData(gl.ARRAY_BUFFER, 0, readBack.byteLength, readBack);
         expect([...readBack]).toEqual([1.5, -2.5, 3.25, 0]);
@@ -385,10 +383,7 @@ describe("drawing operations — draw calls", () => {
 
     it("draws elements", () => {
         const { vao, vbo } = setUpTriangleAttribArray();
-        const ebo = gl.genBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
-        const indices = new Uint16Array([0, 1, 2]);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices.byteLength, indices, gl.STATIC_DRAW);
+        const ebo = createFilledBuffer(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2]));
         gl.drawElements(gl.TRIANGLES, 3, gl.UNSIGNED_SHORT, 0);
         expect(gl.getError()).toBe(gl.NO_ERROR);
         gl.bindVertexArray(0);

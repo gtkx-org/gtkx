@@ -362,9 +362,9 @@ const primitiveDefaultLiteral = (category: PrimitiveCategory, raw: string): stri
 };
 
 const bigintDefaultLiteral = (raw: string): string | undefined => {
-    const trimmed = raw.trim();
+    const integer = integerDefaultLiteral(raw);
 
-    return INTEGER_PATTERN.test(trimmed) ? `${trimmed}n` : undefined;
+    return integer === undefined ? undefined : `${integer}n`;
 };
 
 const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined => {

@@ -6,6 +6,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
+import { getDoc } from "./doc-spec.js";
 import { renderSourceGtype } from "./gtype-binding.js";
 import { emitFieldWrite, isEmittableField, isInlineField } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
@@ -33,7 +34,11 @@ const renderRecordConstructorPropsInterface = (
 
     const lines = slots
         .filter((entry): entry is WritableFieldSlot => isWritableFieldSlot(context, entry))
-        .map((entry) => `${toCamelIdentifier(entry.field.name)}?: ${renderTsType(context, entry.field.type, true)};`);
+        .map(
+            (entry) =>
+                `${getDoc(entry.field)}${toCamelIdentifier(entry.field.name)}?: ` +
+                `${renderTsType(context, entry.field.type, true)};`,
+        );
 
     return renderBracedOrEmpty(head, lines.join("\n"));
 };

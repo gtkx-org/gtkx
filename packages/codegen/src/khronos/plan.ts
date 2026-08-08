@@ -51,12 +51,12 @@ type GlPlanPolicy = {
 
 type CommandPlan =
     | {
-        ok: true;
+        isOk: true;
         command: GlCommand;
         params: ParamPlan[];
         returnPlan: ReturnPlan;
     } |
-    { ok: false; command: GlCommand; reason: GlExclusionReason };
+    { isOk: false; command: GlCommand; reason: GlExclusionReason };
 
 type ParamOutcome = { plan: ParamPlan } | { reason: GlExclusionReason };
 
@@ -317,13 +317,13 @@ const planCommand = (command: GlCommand, policy: GlPlanPolicy): CommandPlan => {
         const outcome = planParam(command, param, policy);
 
         if ("reason" in outcome) {
-            return { ok: false, command, reason: outcome.reason };
+            return { isOk: false, command, reason: outcome.reason };
         }
 
         params.push(outcome.plan);
     }
 
-    return { ok: true, command, params, returnPlan: planReturn(command) };
+    return { isOk: true, command, params, returnPlan: planReturn(command) };
 };
 
 export {
@@ -331,7 +331,6 @@ export {
     parseCType,
     planCommand,
     type GlScalar,
-    type ParsedCType,
     type ParamPlan,
     type ReturnPlan,
     type GlExclusionReason,

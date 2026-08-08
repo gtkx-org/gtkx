@@ -11,6 +11,11 @@ type FieldSlot = {
     bitWidth: number | undefined;
 };
 
+type FieldSlots = {
+    slots: FieldSlot[];
+    size: number;
+};
+
 type FieldLayoutInput = {
     layout: FieldLayout;
     bits: number | undefined;
@@ -39,7 +44,7 @@ const roundUp = (value: number, multiple: number): number => {
     return remainder === 0 ? value : value + (multiple - remainder);
 };
 
-const computeUnionSlots = (fields: FieldLayoutInput[]): { slots: FieldSlot[]; size: number } => {
+const computeUnionSlots = (fields: FieldLayoutInput[]): FieldSlots => {
     let maxSize = 0;
     let maxAlign = 1;
 
@@ -95,7 +100,7 @@ const processStructField = (state: StructLayoutState, slots: FieldSlot[], field:
     pushBitfield({ state, slots, field, align, bits: field.bits });
 };
 
-const computeStructSlots = (fields: FieldLayoutInput[]): { slots: FieldSlot[]; size: number } => {
+const computeStructSlots = (fields: FieldLayoutInput[]): FieldSlots => {
     const slots: FieldSlot[] = [];
     const state: StructLayoutState = { bitCursor: 0, maxAlign: 1 };
 
@@ -106,7 +111,7 @@ const computeStructSlots = (fields: FieldLayoutInput[]): { slots: FieldSlot[]; s
     return { slots, size: roundUp(roundUp(state.bitCursor, 8) / 8, state.maxAlign) };
 };
 
-const computeFieldSlots = (fields: FieldLayoutInput[], isUnion = false): { slots: FieldSlot[]; size: number } =>
+const computeFieldSlots = (fields: FieldLayoutInput[], isUnion = false): FieldSlots =>
     isUnion ? computeUnionSlots(fields) : computeStructSlots(fields);
 
 export { layoutOfPrimitive, computeFieldSlots, type FieldLayout, type FieldSlot, type FieldLayoutInput };

@@ -5,18 +5,63 @@ type Listener = (...args: unknown[]) => unknown;
 
 declare module "../gobject.js" {
     interface Object {
+        /** GType the instance's class is registered under, carried on the prototype. */
         __type__: Type;
 
+        /**
+         * Disconnects the handler `connect` returned the given id for.
+         *
+         * @param handlerId Id of the handler to disconnect.
+         */
         disconnect(handlerId: number): void;
 
+        /**
+         * Connects a handler that runs on every emission of `sigName`, remembering it so `off` can
+         * take the same callback back off again.
+         *
+         * @param sigName Signal to connect to.
+         * @param callback Handler invoked on each emission.
+         * @param isAfter Run the handler after the default handler rather than before it.
+         * @returns The same object, so calls chain.
+         */
         on(sigName: string, callback: (...args: unknown[]) => unknown, isAfter?: boolean): Object;
 
+        /**
+         * Connects a handler that runs at most once and disconnects itself after the first emission.
+         *
+         * @param sigName Signal to connect to.
+         * @param callback Handler invoked on the first emission.
+         * @param isAfter Run the handler after the default handler rather than before it.
+         * @returns The same object, so calls chain.
+         */
         once(sigName: string, callback: (...args: unknown[]) => unknown, isAfter?: boolean): Object;
 
+        /**
+         * Disconnects a handler previously connected with `on` or `once`, given the same callback.
+         *
+         * @param sigName Signal the handler was connected to.
+         * @param callback The handler that was connected.
+         * @returns The same object, so calls chain.
+         */
         off(sigName: string, callback: (...args: unknown[]) => unknown): Object;
 
+        /**
+         * Alias of `on`, for callers who prefer the DOM spelling.
+         *
+         * @param sigName Signal to connect to.
+         * @param callback Handler invoked on each emission.
+         * @param isAfter Run the handler after the default handler rather than before it.
+         * @returns The same object, so calls chain.
+         */
         addEventListener(sigName: string, callback: (...args: unknown[]) => unknown, isAfter?: boolean): Object;
 
+        /**
+         * Alias of `off`, for callers who prefer the DOM spelling.
+         *
+         * @param sigName Signal the handler was connected to.
+         * @param callback The handler that was connected.
+         * @returns The same object, so calls chain.
+         */
         removeEventListener(sigName: string, callback: (...args: unknown[]) => unknown): Object;
     }
 }

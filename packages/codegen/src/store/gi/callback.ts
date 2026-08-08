@@ -1,6 +1,6 @@
 import type { ModuleContext } from "../../writer/context.js";
 import { callbackAsFunction, type GirCallback } from "../../gir/callback.js";
-import { renderJsDoc } from "../../writer/doc.js";
+import { callableDoc } from "./callable-doc.js";
 import { renderMethodReturnType, renderMethodSignature } from "./method.js";
 
 const generateCallback = (context: ModuleContext, callback: GirCallback): void => {
@@ -17,7 +17,8 @@ const generateCallback = (context: ModuleContext, callback: GirCallback): void =
     const returnType = renderMethodReturnType(context, fn);
 
     context.module.appendDeclaration(
-        `${renderJsDoc(callback.doc)}export type ${callback.name} = (${signature}) => ${returnType};`,
+        `${callableDoc(context, fn)}export type ${callback.name} = (${signature}) => ${returnType};`,
+        context.declaredType(callback.name),
     );
 };
 

@@ -4,6 +4,22 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveLibraries } from "../../src/gir/libraries.js";
 
+const writeEmptyFiles = (dir: string, names: string[]): void => {
+    for (const name of names) {
+        writeFileSync(join(dir, name), "");
+    }
+};
+
+const withTempDir = (prefix: string, run: (dir: string) => void): void => {
+    const dir = mkdtempSync(join(tmpdir(), prefix));
+
+    try {
+        run(dir);
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+};
+
 describe("resolveLibraries", () => {
     it("returns the GTK-only default when libraries is omitted", () => {
         expect(resolveLibraries(undefined, [])).toEqual(["Gtk-4.0"]);
@@ -18,15 +34,10 @@ describe("resolveLibraries", () => {
     });
 
     it('expands "*" to the namespaces discovered on the search path', () => {
-        const dir = mkdtempSync(join(tmpdir(), "gir-resolve-"));
-
-        try {
-            writeFileSync(join(dir, "Gtk-4.0.gir"), "");
-            writeFileSync(join(dir, "Adw-1.gir"), "");
+        withTempDir("gir-resolve-", (dir) => {
+            writeEmptyFiles(dir, ["Gtk-4.0.gir", "Adw-1.gir"]);
             expect(resolveLibraries("*", [dir])).toEqual(["Adw-1", "Gtk-4.0"]);
-        } finally {
-            rmSync(dir, { recursive: true, force: true });
-        }
+        });
     });
 
     it('throws when "*" matches no .gir files', () => {
@@ -46,37 +57,26 @@ describe('resolveLibraries — "*" GIR discovery', () => {
     });
 
     it("returns sorted namespace identifiers for matching .gir files", () => {
-        writeFileSync(join(dir, "Gtk-4.0.gir"), "");
-        writeFileSync(join(dir, "Adw-1.gir"), "");
+        writeEmptyFiles(dir, ["Gtk-4.0.gir", "Adw-1.gir"]);
         expect(resolveLibraries("*", [dir])).toEqual(["Adw-1", "Gtk-4.0"]);
     });
 
     it("skips files that are not .gir or not Name-Version shaped", () => {
-        writeFileSync(join(dir, "Gtk-4.0.gir"), "");
-        writeFileSync(join(dir, "notes.txt"), "");
-        writeFileSync(join(dir, "weird name.gir"), "");
-        writeFileSync(join(dir, "NoVersion.gir"), "");
+        writeEmptyFiles(dir, ["Gtk-4.0.gir", "notes.txt", "weird name.gir", "NoVersion.gir"]);
         expect(resolveLibraries("*", [dir])).toEqual(["Gtk-4.0"]);
     });
 
     it("keeps only the highest version when a namespace appears multiple times", () => {
-        writeFileSync(join(dir, "Gtk-3.0.gir"), "");
-        writeFileSync(join(dir, "Gtk-4.0.gir"), "");
-        writeFileSync(join(dir, "Soup-2.4.gir"), "");
-        writeFileSync(join(dir, "Soup-3.0.gir"), "");
+        writeEmptyFiles(dir, ["Gtk-3.0.gir", "Gtk-4.0.gir", "Soup-2.4.gir", "Soup-3.0.gir"]);
         expect(resolveLibraries("*", [dir])).toEqual(["Gtk-4.0", "Soup-3.0"]);
     });
 
     it("deduplicates a namespace found across multiple search directories", () => {
-        const other = mkdtempSync(join(tmpdir(), "gir-discover-b-"));
-
-        try {
-            writeFileSync(join(dir, "Gtk-4.0.gir"), "");
-            writeFileSync(join(other, "Gtk-4.0.gir"), "");
+        withTempDir("gir-discover-b-", (other) => {
+            writeEmptyFiles(dir, ["Gtk-4.0.gir"]);
+            writeEmptyFiles(other, ["Gtk-4.0.gir"]);
             expect(resolveLibraries("*", [dir, other])).toEqual(["Gtk-4.0"]);
-        } finally {
-            rmSync(other, { recursive: true, force: true });
-        }
+        });
     });
 
     it("skips directories that cannot be read rather than crashing", () => {

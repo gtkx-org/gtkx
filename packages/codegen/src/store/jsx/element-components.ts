@@ -3,7 +3,7 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { LazyElementSpec } from "./element-prop-types.js";
-import { renderJsDoc } from "../../writer/doc.js";
+import { getDoc } from "../gi/doc-spec.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
 type ElementComponent = { module: string; export: string };
@@ -91,10 +91,11 @@ const collectLazyElementExports = (collector: ExportCollector, lazyElements: Laz
 };
 
 const renderLazyElementExport = (spec: LazyElementSpec): string => {
+    const doc = getDoc(spec);
     const factory = `createElementComponent(${sourceStringLiteral(spec.element)})`;
-    const component = `export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
+    const component = `${doc}export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
 
-    return `${spec.typeSource}\n\n${component}`;
+    return `${doc}${spec.typeSource}\n\n${component}`;
 };
 
 const renderCandidateExport = (
@@ -113,7 +114,9 @@ const renderCandidateExport = (
         imports.addNamed(component.module, component.export, false);
     }
 
-    return `${renderJsDoc(klass.doc)}${renderElementComponentExport(glibName, component)}`;
+    const doc = getDoc(klass);
+
+    return `${doc}${renderElementComponentExport(glibName, component)}`;
 };
 
 const resolveElementComponent = (
@@ -143,4 +146,4 @@ const renderElementComponentExport = (glibName: string, component: ElementCompon
     return `export const ${glibName}: ${annotation} = ${component.export}(${factoryCall});`;
 };
 
-export { generateElementComponentsSection, type ElementComponent, type ElementComponentOverrides };
+export { generateElementComponentsSection, type ElementComponentOverrides };

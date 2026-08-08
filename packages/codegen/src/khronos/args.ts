@@ -1,6 +1,6 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GlCommand, GlParam } from "./model.js";
-import type { CommandPlan, GlScalar, ParamPlan } from "./plan.js";
+import type { CommandPlan, GlScalar, ParamPlan, ReturnPlan } from "./plan.js";
 import {
     tArray,
     tBoolean,
@@ -15,14 +15,14 @@ import {
 import { paramPairAt } from "./param-pair.js";
 
 type InArg = {
-    out: false;
+    isOut: false;
     name: string;
     tsType: string;
     descriptor: string;
 };
 
 type OutArg = {
-    out: true;
+    isOut: true;
     cellName: string;
     seed: string;
     tsType: string;
@@ -31,7 +31,7 @@ type OutArg = {
 };
 
 type PlannedArg = InArg | OutArg;
-type OutArgCell = Pick<OutArg, "out" | "cellName" | "paramIndex">;
+type OutArgCell = Pick<OutArg, "isOut" | "cellName" | "paramIndex">;
 type OutArgFields = Pick<OutArg, "seed" | "tsType" | "descriptor">;
 
 type OutArgFieldsOptions = {
@@ -54,6 +54,29 @@ const OUT_PLAN_KINDS: Set<string> = new Set(["ref-out", "ref-array-out", "ref-fi
 const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
     group !== undefined && scalar.isGroupBearing === true ? group : scalar.tsAlias;
 
+const returnPlanTsType = (plan: ReturnPlan, group: string | undefined): string => {
+    switch (plan.kind) {
+        case "void": {
+            return "void";
+        }
+        case "scalar": {
+            return scalarAliasOrGroup(plan.scalar, group);
+        }
+        case "boolean": {
+            return "boolean";
+        }
+        case "string": {
+            return "string";
+        }
+        case "sync": {
+            return "GLsync";
+        }
+        case "opaque-pointer": {
+            return "GLpointer";
+        }
+    }
+};
+
 const paramIndexByName = (command: GlCommand, name: string): number => {
     const index = command.params.findIndex((param) => param.name === name);
 
@@ -71,7 +94,7 @@ const arrayInTsType = (scalar: GlScalar, group: string | undefined): string => {
 };
 
 const inArg = (name: string, tsType: string, descriptor: string): InArg => ({
-    out: false,
+    isOut: false,
     name,
     tsType,
     descriptor,
@@ -141,7 +164,7 @@ const outArgFields = (options: OutArgFieldsOptions): OutArgFields => {
 
             return {
                 seed: `const ${cellName} = { value: new Array<number>(${lenIdentifier}).fill(0) };`,
-                tsType: `${track(plan.scalar.tsAlias)}[]`,
+                tsType: `${track(scalarAliasOrGroup(plan.scalar, param.group))}[]`,
                 descriptor: tRef(tSizedArray(plan.scalar.descriptor, sizeIndex)),
             };
         }
@@ -182,14 +205,14 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
     }
 
     const cellName = `out${String(outIndex)}`;
-    const cell: OutArgCell = { out: true, cellName, paramIndex: index };
+    const cell: OutArgCell = { isOut: true, cellName, paramIndex: index };
 
     return { ...cell, ...outArgFields({ command, plan, param, cellName, track }) };
 };
 
 const isOutPlan = (plan: ParamPlan): boolean => OUT_PLAN_KINDS.has(plan.kind);
-const isInArg = (arg: PlannedArg): arg is InArg => !arg.out;
-const isOutArg = (arg: PlannedArg): arg is OutArg => arg.out;
+const isInArg = (arg: PlannedArg): arg is InArg => !arg.isOut;
+const isOutArg = (arg: PlannedArg): arg is OutArg => arg.isOut;
 
 const buildArg = (options: BuildArgOptions, name: string, track: (alias: string) => string): PlannedArg =>
     isOutPlan(options.plan) ? buildOutArg(options, track) : buildInArg(options, name, track);
@@ -203,7 +226,7 @@ const trackInto =
         };
 
 const planArgs = (
-    plan: CommandPlan & { ok: true },
+    plan: CommandPlan & { isOk: true },
     usedTypes: Set<string>,
 ): { args: PlannedArg[]; ins: InArg[]; outs: OutArg[] } => {
     const track = trackInto(usedTypes);
@@ -230,7 +253,7 @@ const planArgs = (
 };
 
 const scalarPrefixArg = (
-    plan: CommandPlan & { ok: true },
+    plan: CommandPlan & { isOk: true },
     index: number,
     track: (alias: string) => string,
 ): InArg | undefined => {
@@ -251,7 +274,7 @@ const scalarPrefixArg = (
     );
 };
 
-const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Set<string>): InArg[] | undefined => {
+const scalarPrefixArgs = (plan: CommandPlan & { isOk: true }, usedTypes: Set<string>): InArg[] | undefined => {
     const track = trackInto(usedTypes);
     const prefix: InArg[] = [];
 
@@ -268,4 +291,4 @@ const scalarPrefixArgs = (plan: CommandPlan & { ok: true }, usedTypes: Set<strin
     return prefix;
 };
 
-export { scalarAliasOrGroup, trackInto, planArgs, scalarPrefixArgs, type InArg, type OutArg };
+export { returnPlanTsType, scalarAliasOrGroup, trackInto, planArgs, scalarPrefixArgs, type InArg, type OutArg };

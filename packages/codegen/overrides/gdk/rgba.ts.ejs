@@ -1,11 +1,37 @@
 import { RGBA as GeneratedRGBA } from "../gdk.js";
 
+/**
+ * Parses a CSS color string into a new `RGBA`.
+ *
+ * @param value a CSS color string, such as `#rgb`, `rgb(r,g,b)`, or a named color
+ * @returns the parsed color
+ */
 const create = (value: string): GeneratedRGBA => {
     const rgba = new GeneratedRGBA();
     rgba.parse(value);
     return rgba;
 };
 
+/**
+ * Represents a color, in a way that is compatible with cairo's notion of color.
+ *
+ * `GdkRGBA` is a convenient way to pass colors around. It's based on
+ * cairo's way to deal with colors and mirrors its behavior. All values
+ * are in the range from 0.0 to 1.0 inclusive. So the color
+ * (0.0, 0.0, 0.0, 0.0) represents transparent black and
+ * (1.0, 1.0, 1.0, 1.0) is opaque white. Other values will
+ * be clamped to this range when drawing.
+ */
 export const RGBA: typeof GeneratedRGBA & { create: typeof create } = Object.assign(GeneratedRGBA, { create });
 
+/**
+ * Represents a color, in a way that is compatible with cairo's notion of color.
+ *
+ * `GdkRGBA` is a convenient way to pass colors around. It's based on
+ * cairo's way to deal with colors and mirrors its behavior. All values
+ * are in the range from 0.0 to 1.0 inclusive. So the color
+ * (0.0, 0.0, 0.0, 0.0) represents transparent black and
+ * (1.0, 1.0, 1.0, 1.0) is opaque white. Other values will
+ * be clamped to this range when drawing.
+ */
 export type RGBA = GeneratedRGBA;

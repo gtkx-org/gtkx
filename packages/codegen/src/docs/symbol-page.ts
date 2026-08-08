@@ -1,17 +1,19 @@
-import { pascalCase, sortStringsBy } from "@gtkx/utils";
+import { pascalCase, sortStringsBy, upperFirst } from "@gtkx/utils";
+import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirClass } from "../gir/class.js";
-import type { GirEnum } from "../gir/enum.js";
+import type { EnumMember, GirEnum } from "../gir/enum.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
-import type { GirProperty } from "../gir/property.js";
 import type { GirRecord } from "../gir/record.js";
 import type { ModuleContext } from "../writer/context.js";
+import type { JsDocSpec } from "../writer/doc.js";
 import { reservedSignalMemberRename } from "../analysis/inheritance.js";
 import { renderTsType } from "../analysis/ts-type.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import { callbackAsFunction, type GirCallback } from "../gir/callback.js";
 import { type GirAlias, type GirConstant, type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../gir/primitives.js";
+import { callableSpec } from "../store/gi/callable-doc.js";
 import {
     dedupeCallables,
     indexMethodsByName,
@@ -21,6 +23,7 @@ import {
     renderStaticSignature,
 } from "../store/gi/callables.js";
 import { constantLiteral } from "../store/gi/constant.js";
+import { annotationSpec } from "../store/gi/doc-spec.js";
 import { enumMemberKey } from "../store/gi/enum.js";
 import {
     methodExportName,
@@ -31,22 +34,31 @@ import {
 import { resolveAccessor, type ResolvedAccessor } from "../store/gi/property-accessor.js";
 import { resolveRecordFieldEntry } from "../store/gi/record-field-accessor.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
+import { vfuncEntries } from "../store/gi/vtable.js";
 import { implementedInterfaces, newlyImplementedInterfaces } from "../store/jsx/intrinsic-elements.js";
 import {
+    annotationNotes,
     classMethodEntries,
+    deprecationMeta,
     docMarkdown,
-    docsDefaultValue,
     docsSignatureContext,
     firstSentence,
     implementsLine,
     joinSections,
-    metaBlock,
+    type MetaDocEntry,
     methodsSectionBlocks,
     originSignatureBlocks,
+    type OriginSignatureEntry,
+    plainText,
+    propertyMetaLine,
     renderDocsSignalHandlerType,
     renderDocsType,
+    signalTags,
     signatureBlock,
     type SignatureEntry,
+    signatureEntryBlock,
+    sortedMetaBlocks,
+    tagNotes,
 } from "./render.js";
 
 /** What every indexed GIR symbol carries, whatever its kind. */
@@ -61,16 +73,57 @@ type GiSymbolBase = {
 
 /** A GIR symbol the reference indexes, discriminated by `kind` and carrying the GIR node its page renders from. */
 type GiSymbolEntry =
-    | (GiSymbolBase & { kind: "class" | "interface"; klass: GirClass }) |
-    (GiSymbolBase & { kind: "record"; record: GirRecord }) |
-    (GiSymbolBase & { kind: "enum"; enumeration: GirEnum }) |
-    (GiSymbolBase & { kind: "callback"; callback: GirCallback }) |
-    (GiSymbolBase & { kind: "alias"; alias: GirAlias }) |
-    (GiSymbolBase & { kind: "function"; fn: GirFunction }) |
-    (GiSymbolBase & { kind: "constant"; constant: GirConstant });
+    | (GiSymbolBase & {
+        /** Renders the class page: hierarchy, constructors, static methods, properties, signals, and methods. */
+        kind: "class" | "interface";
+        /** Supplies the ancestry, members, and, on an interface, the vtable slots an implementer fills. */
+        klass: GirClass;
+    }) |
+    (GiSymbolBase & {
+        /** Renders the record page, labeled `union` when the record is one. */
+        kind: "record";
+        /** Supplies the constructors, static methods, fields, and instance methods. */
+        record: GirRecord;
+    }) |
+    (GiSymbolBase & {
+        /** Renders the page for an enumeration, a flags type, or an error domain, as a table of members. */
+        kind: "enum";
+        /** Supplies the members, their values, and the GError domain when the enum carries one. */
+        enumeration: GirEnum;
+    }) |
+    (GiSymbolBase & {
+        /** Renders the callback page as a single function type signature. */
+        kind: "callback";
+        /** Supplies the parameters and return type the signature is rendered from. */
+        callback: GirCallback;
+    }) |
+    (GiSymbolBase & {
+        /** Renders the alias page as the type the alias resolves to. */
+        kind: "alias";
+        /** Supplies the target type the page prints. */
+        alias: GirAlias;
+    }) |
+    (GiSymbolBase & {
+        /** Renders the page for a namespace-level function, promisified when a finish function matches it. */
+        kind: "function";
+        /** Supplies the parameters and return type the signature is rendered from. */
+        fn: GirFunction;
+    }) |
+    (GiSymbolBase & {
+        /** Renders the page for a namespace-level constant, showing its type and literal value. */
+        kind: "constant";
+        /** Supplies the type and the value the literal is emitted from. */
+        constant: GirConstant;
+    });
 
+type ClassSymbol = GiSymbolBase & { klass: GirClass };
+type ClassPageSymbol = ClassSymbol & { kind: "class" | "interface" };
+
+/** What {@link renderSymbolPage} needs besides the entry itself. */
 type SymbolPageOptions = {
+    /** Parsed GIR the page resolves ancestry, interfaces, and referenced types against. */
     library: Library;
+    /** Looks up the JSX element a class is also available as, undefined when it has none. */
     elementNameFor: (namespaceName: string, className: string) => string | undefined;
 };
 
@@ -95,11 +148,10 @@ type PropertyAccessorSetup = {
     methodByName: Map<string, GirFunction>;
 };
 
-type MetaDocEntry = { name: string; meta: string; doc: string };
-type SignalDocEntry = { name: string; signature: string; doc: string; origin: string | undefined };
 type ResolvedRecordField = NonNullable<ReturnType<typeof resolveRecordFieldEntry>>;
 
 const qualifiedName = (entry: GiSymbolBase): string => `${entry.namespace.name}.${entry.name}`;
+const pageTagNotes = (spec: JsDocSpec): string[] => tagNotes({ ...spec, deprecated: undefined, since: undefined });
 
 const frontmatter = (entry: GiSymbolBase, kindLabel: string): string => {
     const sentence = firstSentence(entry.doc);
@@ -114,18 +166,46 @@ const kindLine = (kindLabel: string, namespace: GirNamespace): string =>
 const importBlock = (entry: GiSymbolBase): string =>
     `\`\`\`ts\nimport * as ${entry.namespace.name} from "@gtkx/gi/${namespaceDirectory(entry.namespace)}";\n\`\`\``;
 
+const entryAnnotations = (entry: GiSymbolEntry): GirAnnotations => {
+    switch (entry.kind) {
+        case "class":
+        case "interface": {
+            return entry.klass.annotations;
+        }
+        case "record": {
+            return entry.record.annotations;
+        }
+        case "enum": {
+            return entry.enumeration.annotations;
+        }
+        case "callback": {
+            return entry.callback.annotations;
+        }
+        case "alias": {
+            return entry.alias.annotations;
+        }
+        case "function": {
+            return entry.fn.annotations;
+        }
+        case "constant": {
+            return entry.constant.annotations;
+        }
+    }
+};
+
 const pageHeader = (entry: GiSymbolEntry, kindLabel: string): string[] => [
     frontmatter(entry, kindLabel),
     `# ${qualifiedName(entry)}`,
     kindLine(kindLabel, entry.namespace),
     docMarkdown(entry.doc),
+    ...annotationNotes(entryAnnotations(entry)),
     importBlock(entry),
 ];
 
 const qualifiedClassName = (namespaceName: string, className: string): string =>
     `${namespaceName}.${pascalCase(className)}`;
 
-const elementNote = (entry: GiSymbolBase & { klass: GirClass }, options: SymbolPageOptions): string[] => {
+const elementNote = (entry: ClassSymbol, options: SymbolPageOptions): string[] => {
     const glibName = options.elementNameFor(entry.namespace.name, entry.klass.name);
 
     if (glibName === undefined) {
@@ -139,7 +219,7 @@ const elementNote = (entry: GiSymbolBase & { klass: GirClass }, options: SymbolP
     ];
 };
 
-const hierarchySection = (entry: GiSymbolBase & { klass: GirClass }, library: Library): string[] => {
+const hierarchySection = (entry: ClassSymbol, library: Library): string[] => {
     const ancestors = [...ancestorChain(library, entry.klass, entry.namespace.name)].slice(1).toReversed();
 
     const interfaces = implementedInterfaces(entry.klass, entry.namespace, library).map((iface) =>
@@ -166,7 +246,7 @@ const hierarchySection = (entry: GiSymbolBase & { klass: GirClass }, library: Li
     return lines;
 };
 
-const prerequisitesLine = (entry: GiSymbolBase & { klass: GirClass }, library: Library): string[] => {
+const prerequisitesLine = (entry: ClassSymbol, library: Library): string[] => {
     const names = entry.klass.prerequisites.map((name) => {
         const resolved = library.resolveType(entry.namespace.name, name);
 
@@ -184,33 +264,86 @@ const prerequisitesLine = (entry: GiSymbolBase & { klass: GirClass }, library: L
     return [`Requires ${names.join(", ")}.`];
 };
 
-const staticSection = (options: StaticSectionOptions): string[] => {
-    const rendered: { name: string; block: string }[] = [];
+const interfaceImplementingIntro = (entry: ClassSymbol): string => {
+    const qualified = qualifiedName(entry);
 
-    for (const callable of dedupeCallables(options.callables)) {
-        const signature = renderStaticSignature(options.context, callable, {
-            returnTypeOverride: options.returnTypeOverride,
-            siblings: options.siblings,
-        });
+    return (
+        `A class fills these vtable slots to adopt the interface: declare \`implements ${qualified}Impl\` ` +
+        `on it and pass \`${qualified}\` in the \`implements\` option of \`registerClass\`. Every slot is ` +
+        "optional, and one the class leaves out keeps whatever the interface installs by default. The " +
+        "methods, properties, and signals above come from GLib dispatch."
+    );
+};
 
-        if (signature === undefined) {
-            continue;
-        }
+const classImplementingIntro = (entry: ClassSymbol): string => {
+    const qualified = qualifiedName(entry);
 
-        rendered.push({
-            name: signature.name,
-            block: signatureBlock(signature.name, signature.signature, [docMarkdown(callable.doc)]),
-        });
-    }
+    return (
+        "A subclass declared with `registerClass` overrides these virtual methods to change what " +
+        `\`${qualified}\` does: define the slot as a method on the subclass and call \`super.<slot>(...)\` ` +
+        "to chain up to the inherited implementation. A slot the subclass leaves out keeps that " +
+        "implementation unchanged."
+    );
+};
 
-    if (rendered.length === 0) {
+const implementingIntro = (entry: ClassPageSymbol): string =>
+    entry.kind === "interface" ? interfaceImplementingIntro(entry) : classImplementingIntro(entry);
+
+const implementingSection = (entry: ClassPageSymbol, library: Library): string[] => {
+    const context = docsSignatureContext(entry.namespace, library);
+    const entries = vfuncEntries(context, entry.namespace.name, entry.klass);
+
+    if (entries.length === 0) {
         return [];
     }
 
-    return [options.title, options.intro, ...sortStringsBy(rendered, (item) => item.name).map((item) => item.block)];
+    const blocks = sortStringsBy(entries, (item) => item.name).map((item) =>
+        signatureBlock(item.name, item.signature, [docMarkdown(item.doc)]));
+
+    return ["## Implementing", implementingIntro(entry), ...blocks];
 };
 
-const memberOwners = (entry: GiSymbolBase & { klass: GirClass }, library: Library): MemberOwner[] => [
+const staticEntry = (options: StaticSectionOptions, callable: GirFunction): SignatureEntry | undefined => {
+    const signature = renderStaticSignature(options.context, callable, {
+        returnTypeOverride: options.returnTypeOverride,
+        siblings: options.siblings,
+    });
+
+    if (signature === undefined) {
+        return undefined;
+    }
+
+    const finishFn = matchStaticFinishFunction(options.context, callable, options.siblings);
+
+    return {
+        name: signature.name,
+        signature: signature.signature,
+        doc: docMarkdown(callable.doc),
+        tags: callableSpec(options.context, callable, { finishFn }),
+    };
+};
+
+const staticSection = (options: StaticSectionOptions): string[] => {
+    const entries: SignatureEntry[] = [];
+
+    for (const callable of dedupeCallables(options.callables)) {
+        const entry = staticEntry(options, callable);
+
+        if (entry !== undefined) {
+            entries.push(entry);
+        }
+    }
+
+    if (entries.length === 0) {
+        return [];
+    }
+
+    const blocks = sortStringsBy(entries, (item) => item.name).map((item) => signatureEntryBlock(item));
+
+    return [options.title, options.intro, ...blocks];
+};
+
+const memberOwners = (entry: ClassSymbol, library: Library): MemberOwner[] => [
     { klass: entry.klass, namespace: entry.namespace, origin: undefined },
     ...newlyImplementedInterfaces(entry.klass, entry.namespace, library).map((iface) => ({
         klass: iface.klass,
@@ -264,32 +397,13 @@ const propertyAccessorSetup = (
     };
 };
 
-const propertyMeta = (property: GirProperty, accessor: ResolvedAccessor, origin: string | undefined): string => {
-    const meta: string[] = [`\`${accessor.tsType}\``];
-
-    if (property.defaultValue !== undefined) {
-        meta.push(`default \`${docsDefaultValue(property.defaultValue)}\``);
-    }
-
-    if (property.constructOnly) {
-        meta.push("construct-only");
-    }
-
+const getAccessNotes = (accessor: ResolvedAccessor): string[] => {
     if (!accessor.isWritable) {
-        meta.push("read-only");
-    } else if (!accessor.hasGetter) {
-        meta.push("write-only");
+        return ["read-only"];
     }
 
-    if (origin !== undefined) {
-        meta.push(`from \`${origin}\``);
-    }
-
-    return meta.join(" · ");
+    return accessor.hasGetter ? [] : ["write-only"];
 };
-
-const sortedMetaBlocks = (entries: MetaDocEntry[]): string[] =>
-    sortStringsBy(entries, (item) => item.name).map((item) => metaBlock(item.name, item.meta, item.doc));
 
 const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, seen: Set<string>): MetaDocEntry[] => {
     const entries: MetaDocEntry[] = [];
@@ -310,18 +424,21 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
 
         entries.push({
             name: accessor.jsName,
-            meta: propertyMeta(property, accessor, owner.origin),
+            meta: propertyMetaLine({
+                type: accessor.tsType,
+                property,
+                accessNotes: getAccessNotes(accessor),
+                origin: owner.origin,
+            }),
             doc: docMarkdown(property.doc),
+            tags: annotationSpec(property.annotations),
         });
     }
 
     return entries;
 };
 
-const propertiesSection = (
-    entry: GiSymbolBase & { kind: "class" | "interface"; klass: GirClass },
-    library: Library,
-): string[] => {
+const propertiesSection = (entry: ClassPageSymbol, library: Library): string[] => {
     const seen: Set<string> = new Set();
     const entries: MetaDocEntry[] = [];
 
@@ -343,8 +460,8 @@ const propertiesSection = (
     return ["## Properties", intro, ...sortedMetaBlocks(entries)];
 };
 
-const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<string>): SignalDocEntry[] => {
-    const entries: SignalDocEntry[] = [];
+const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<string>): OriginSignatureEntry[] => {
+    const entries: OriginSignatureEntry[] = [];
 
     for (const signal of owner.klass.signals) {
         if (seen.has(signal.name)) {
@@ -357,6 +474,7 @@ const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<stri
             name: signal.name,
             signature: renderDocsSignalHandlerType(library, signal),
             doc: docMarkdown(signal.doc),
+            tags: signalTags(signal, false),
             origin: owner.origin,
         });
     }
@@ -364,9 +482,9 @@ const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<stri
     return entries;
 };
 
-const signalsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Library): string[] => {
+const signalsSection = (entry: ClassSymbol, library: Library): string[] => {
     const seen: Set<string> = new Set();
-    const entries: SignalDocEntry[] = [];
+    const entries: OriginSignatureEntry[] = [];
 
     for (const owner of memberOwners(entry, library)) {
         entries.push(...ownerSignalEntries(owner, library, seen));
@@ -383,16 +501,13 @@ const signalsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Libr
     return ["## Signals", intro, ...originSignatureBlocks(entries)];
 };
 
-const classMethodsSection = (entry: GiSymbolBase & { klass: GirClass }, library: Library): string[] =>
+const classMethodsSection = (entry: ClassSymbol, library: Library): string[] =>
     methodsSectionBlocks(
         classMethodEntries(library, entry.namespace, entry.klass),
         "Methods are called on instances. Methods inherited from ancestors are documented on their own pages.",
     );
 
-const classPage = (
-    entry: GiSymbolBase & { kind: "class" | "interface"; klass: GirClass },
-    options: SymbolPageOptions,
-): string => {
+const classPage = (entry: ClassPageSymbol, options: SymbolPageOptions): string => {
     const { library } = options;
     const qualified = qualifiedName(entry);
     const docsContext = docsSignatureContext(entry.namespace, library);
@@ -422,6 +537,7 @@ const classPage = (
         ...propertiesSection(entry, library),
         ...signalsSection(entry, library),
         ...classMethodsSection(entry, library),
+        ...implementingSection(entry, library),
     ]);
 };
 
@@ -462,7 +578,12 @@ const recordInstanceEntries = (context: ModuleContext, record: GirRecord): Signa
             continue;
         }
 
-        entries.push({ name: rendered.name, signature: rendered.signature, doc: docMarkdown(callable.doc) });
+        entries.push({
+            name: rendered.name,
+            signature: rendered.signature,
+            doc: docMarkdown(callable.doc),
+            tags: callableSpec(context, callable, {}),
+        });
     }
 
     return sortStringsBy(entries, (item) => item.name);
@@ -500,7 +621,11 @@ const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord },
 };
 
 const fieldMeta = (field: ResolvedRecordField): string =>
-    [`\`${field.tsType}\``, ...(field.isWritable ? [] : ["read-only"])].join(" · ");
+    [
+        `\`${field.tsType}\``,
+        ...(field.isWritable ? [] : ["read-only"]),
+        ...deprecationMeta(field.annotations),
+    ].join(" · ");
 
 const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: Set<string>): string[] => {
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
@@ -513,7 +638,12 @@ const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: 
             continue;
         }
 
-        entries.push({ name: field.jsName, meta: fieldMeta(field), doc: docMarkdown(field.doc) });
+        entries.push({
+            name: field.jsName,
+            meta: fieldMeta(field),
+            doc: docMarkdown(field.doc),
+            tags: annotationSpec(field.annotations),
+        });
     }
 
     if (entries.length === 0) {
@@ -523,16 +653,23 @@ const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: 
     return ["## Fields", ...sortedMetaBlocks(entries)];
 };
 
+const memberDescription = (member: EnumMember): string => {
+    const markers = deprecationMeta(member.annotations).map((note) => `**${upperFirst(note)}.**`);
+
+    return [...markers, plainText(member.doc)]
+        .filter((part) => part.length > 0)
+        .join(" ")
+        .replaceAll("|", String.raw`\|`);
+};
+
 const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }): string => {
     const { enumeration } = entry;
     const kindLabel = enumeration.errorDomain === undefined ? enumeration.kind : "error domain";
     const qualified = qualifiedName(entry);
 
-    const rows = enumeration.members.map((member) => {
-        const description = firstSentence(member.doc).replaceAll("|", String.raw`\|`);
-
-        return `| \`${enumMemberKey(member.name)}\` | \`${member.value}\` | ${description} |`;
-    });
+    const rows = enumeration.members.map(
+        (member) => `| \`${enumMemberKey(member.name)}\` | \`${member.value}\` | ${memberDescription(member)} |`,
+    );
 
     const usage =
         enumeration.errorDomain === undefined
@@ -551,7 +688,12 @@ const callbackPage = (entry: GiSymbolBase & { kind: "callback"; callback: GirCal
     const parameters = renderMethodSignature(docsContext, fn);
     const signature = `type ${entry.name} = (${parameters}) => ${renderMethodReturnType(docsContext, fn)}`;
 
-    return joinSections([...pageHeader(entry, "callback"), "## Signature", `\`\`\`ts\n${signature}\n\`\`\``]);
+    return joinSections([
+        ...pageHeader(entry, "callback"),
+        "## Signature",
+        `\`\`\`ts\n${signature}\n\`\`\``,
+        ...pageTagNotes(callableSpec(docsContext, fn, {})),
+    ]);
 };
 
 const aliasPage = (entry: GiSymbolBase & { kind: "alias"; alias: GirAlias }, library: Library): string => {
@@ -576,9 +718,12 @@ const functionSignature = (context: ModuleContext, name: string, fn: GirFunction
 
 const functionPage = (entry: GiSymbolBase & { kind: "function"; fn: GirFunction }, library: Library): string => {
     const docsContext = docsSignatureContext(entry.namespace, library);
-    const signature = functionSignature(docsContext, entry.name, entry.fn, entry.namespace.functions);
+    const siblings = entry.namespace.functions;
+    const signature = functionSignature(docsContext, entry.name, entry.fn, siblings);
+    const finishFn = matchStaticFinishFunction(docsContext, entry.fn, siblings);
+    const spec = callableSpec(docsContext, entry.fn, { finishFn });
 
-    return joinSections([...pageHeader(entry, "function"), `\`\`\`ts\n${signature}\n\`\`\``]);
+    return joinSections([...pageHeader(entry, "function"), `\`\`\`ts\n${signature}\n\`\`\``, ...pageTagNotes(spec)]);
 };
 
 const constantPage = (entry: GiSymbolBase & { kind: "constant"; constant: GirConstant }, library: Library): string => {

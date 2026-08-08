@@ -9,7 +9,7 @@ import { namespaceFunctionExportName } from "../store/gi/function.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
-import { createElementPageContext, type ElementPageContext, renderElementPage } from "./element-page.js";
+import { type ElementPageContext, renderElementPage } from "./element-page.js";
 import { docsSignatureContext, firstSentence, namespaceOrder } from "./render.js";
 import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./symbol-page.js";
 
@@ -34,7 +34,16 @@ type ApiSymbolQuery = {
 };
 
 /** What an indexed symbol is: one of the GIR symbol kinds, or a JSX element. */
-type ApiSymbolKind = GiSymbolEntry["kind"] | "element";
+type ApiSymbolKind =
+    "alias" |
+    "callback" |
+    "class" |
+    "constant" |
+    "element" |
+    "enum" |
+    "function" |
+    "interface" |
+    "record";
 
 /** An indexed symbol, without its reference page. */
 type ApiSymbol = {
@@ -93,16 +102,30 @@ type ApiSearchOptions = {
     limit?: number;
 };
 
+/** An indexed JSX element, carrying the widget class its page renders from. */
 type ElementEntry = {
+    /** Discriminant marking the entry as a JSX element rather than a GIR symbol. */
     kind: "element";
+    /** GIR namespace declaring the widget class. */
     namespace: GirNamespace;
+    /** Element name, which is the class's GLib type name such as `GtkButton`. */
     name: string;
+    /** Documentation text carried by the widget class's GIR node. */
     doc: string | undefined;
+    /** The widget class the element is generated from. */
     element: GlibNamedClass;
 };
 
+/** Anything the index holds: a GIR symbol or a JSX element. */
 type SymbolEntry = GiSymbolEntry | ElementEntry;
-type ScoredEntry = { score: number; entry: SymbolEntry };
+
+/** A search hit: an indexed entry and how well its name answered the query. */
+type ScoredEntry = {
+    /** Match strength, ranked best first: an exact name, then a prefix, then a substring. */
+    score: number;
+    /** The entry that matched. */
+    entry: SymbolEntry;
+};
 
 /** Every kind the reference indexes, in the order a namespace overview groups its symbols. */
 const API_SYMBOL_KINDS: ApiSymbolKind[] = [
@@ -138,6 +161,9 @@ const compareNames = (a: string, b: string): number => {
 
     return a > b ? 1 : 0;
 };
+
+const symbolKindSet = (kinds: ApiSymbolKind[] | undefined): Set<ApiSymbolKind> | undefined =>
+    kinds === undefined ? undefined : new Set(kinds);
 
 const isQueriedEntry = (
     entry: SymbolEntry,
@@ -280,29 +306,13 @@ const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, isQual
     return exact.length > 0 ? exact : candidates;
 };
 
-const isSearchFilterMatch = (
-    entry: SymbolEntry,
-    namespaceFilter: string | undefined,
-    kinds: ApiSymbolKind[] | undefined,
-): boolean => {
-    if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) {
-        return false;
-    }
-
-    if (kinds !== undefined && !kinds.includes(entry.kind)) {
-        return false;
-    }
-
-    return true;
-};
-
 const getScoredEntry = (
     entry: SymbolEntry,
     query: string,
     namespaceFilter: string | undefined,
-    kinds: ApiSymbolKind[] | undefined,
+    kinds: Set<ApiSymbolKind> | undefined,
 ): ScoredEntry | undefined => {
-    if (!isSearchFilterMatch(entry, namespaceFilter, kinds)) {
+    if (!isQueriedEntry(entry, namespaceFilter, kinds)) {
         return undefined;
     }
 
@@ -355,12 +365,13 @@ class ApiReference {
     private props: ElementProps;
     private omittedProps: OmittedProps;
 
+    /** Indexes every symbol and JSX element in the GIR data the options point at. */
     constructor(options: ApiReferenceOptions) {
         this.libraries = options.libraries;
         this.props = options.props ?? {};
         this.omittedProps = options.omittedProps ?? {};
         this.library = Library.load(options.libraries, options.girPath);
-        this.elementContext = createElementPageContext(this.library, (): string | undefined => undefined);
+        this.elementContext = { library: this.library, linkFor: (): string | undefined => undefined };
         this.buildIndex();
     }
 
@@ -484,7 +495,7 @@ class ApiReference {
     private scoreEntries(
         query: string,
         namespaceFilter: string | undefined,
-        kinds: ApiSymbolKind[] | undefined,
+        kinds: Set<ApiSymbolKind> | undefined,
     ): ScoredEntry[] {
         const scored: ScoredEntry[] = [];
 
@@ -535,7 +546,7 @@ class ApiReference {
     /** Every indexed symbol the query keeps, ordered by namespace (Gtk, then Adw, then alphabetically) and name. */
     symbols(query: ApiSymbolQuery = {}): ApiSymbol[] {
         const namespaceFilter = query.namespace?.toLowerCase();
-        const kinds = query.kinds === undefined ? undefined : new Set(query.kinds);
+        const kinds = symbolKindSet(query.kinds);
 
         return this.entries
             .filter((entry) => isQueriedEntry(entry, namespaceFilter, kinds))
@@ -556,7 +567,7 @@ class ApiReference {
 
         const limit = Math.max(1, Math.floor(options.limit ?? DEFAULT_SEARCH_LIMIT));
         const namespaceFilter = options.namespace?.toLowerCase();
-        const scored = this.scoreEntries(query, namespaceFilter, options.kinds);
+        const scored = this.scoreEntries(query, namespaceFilter, symbolKindSet(options.kinds));
         scored.sort(compareScoredEntries);
 
         return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));

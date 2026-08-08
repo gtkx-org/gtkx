@@ -1,13 +1,22 @@
-import { lowerFirst, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import { sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import type { GlDocContext } from "./doc-context.js";
 import type { CommandPlan, GlScalar, ReturnPlan } from "./plan.js";
+import type { GlSymbolProvenance } from "./select.js";
 import { tBind, tInlineStruct, tRef, tString, tUint8, tVoid } from "../analysis/descriptor.js";
-import { type OutArg, planArgs, scalarAliasOrGroup, scalarPrefixArgs, trackInto } from "./args.js";
-import { commandJsDoc, inParamDocLine, singularJsDoc } from "./jsdoc.js";
+import { type InArg, type OutArg, planArgs, returnPlanTsType, scalarPrefixArgs, trackInto } from "./args.js";
+import { commandJsDoc, derivedJsDoc, inParamDocLine } from "./jsdoc.js";
+import { commandExportName } from "./notes.js";
 
 type RenderedCommand = {
     exportName: string;
     binding?: string;
     declaration: string;
+};
+
+type SingularContext = {
+    plan: CommandPlan & { isOk: true };
+    provenance: GlSymbolProvenance;
+    docs: GlDocContext;
 };
 
 type EmittedReturn = {
@@ -34,9 +43,6 @@ const glBind = (name: string, argList: string, returnType: string): string =>
         returnType,
     });
 
-const commandExportName = (name: string): string =>
-    toCamelIdentifier(name.startsWith("gl") ? lowerFirst(name.slice(2)) : name);
-
 const singularize = (plural: string): string =>
     plural.endsWith("ies") ? `${plural.slice(0, -3)}y` : plural.replace(/s$/, "");
 
@@ -48,32 +54,27 @@ const buildEmittedReturn = (
     returnGroup: string | undefined,
     usedTypes: Set<string>,
 ): EmittedReturn => {
-    const track = trackInto(usedTypes);
+    const tsType = trackInto(usedTypes)(returnPlanTsType(plan, returnGroup));
+    const cast = (call: string): string => `${call} as ${tsType}`;
 
     switch (plan.kind) {
         case "void": {
-            return { tsType: "void", descriptor: tVoid };
+            return { tsType, descriptor: tVoid };
         }
         case "scalar": {
-            const alias = track(scalarAliasOrGroup(plan.scalar, returnGroup));
-
-            return { tsType: alias, descriptor: plan.scalar.descriptor, expr: (call) => `${call} as ${alias}` };
+            return { tsType, descriptor: plan.scalar.descriptor, expr: cast };
         }
         case "boolean": {
-            return { tsType: "boolean", descriptor: tUint8, expr: (call) => `(${call} as number) !== 0` };
+            return { tsType, descriptor: tUint8, expr: (call) => `(${call} as number) !== 0` };
         }
         case "string": {
-            return { tsType: "string", descriptor: tString("borrowed"), expr: (call) => `${call} as string` };
+            return { tsType, descriptor: tString("borrowed"), expr: cast };
         }
         case "sync": {
-            return { tsType: track("GLsync"), descriptor: tInlineStruct(), expr: (call) => `${call} as GLsync` };
+            return { tsType, descriptor: tInlineStruct(), expr: cast };
         }
         case "opaque-pointer": {
-            return {
-                tsType: track("GLpointer"),
-                descriptor: tInlineStruct(),
-                expr: (call) => `${call} as GLpointer`,
-            };
+            return { tsType, descriptor: tInlineStruct(), expr: cast };
         }
     }
 };
@@ -117,19 +118,20 @@ const returnStatements = (call: string, returned: EmittedReturn, outs: OutArg[])
 };
 
 const renderCommand = (
-    plan: CommandPlan & { ok: true },
-    feature: string,
+    plan: CommandPlan & { isOk: true },
+    provenance: GlSymbolProvenance,
     usedTypes: Set<string>,
+    docs: GlDocContext,
 ): RenderedCommand => {
     const { command } = plan;
     const exportName = commandExportName(command.name);
     const { args, ins, outs } = planArgs(plan, usedTypes);
     const returned = buildEmittedReturn(plan.returnPlan, command.returnGroup, usedTypes);
     const signature = ins.map((arg) => `${arg.name}: ${arg.tsType}`).join(", ");
-    const argNames = args.map((arg) => (arg.out ? arg.cellName : arg.name)).join(", ");
+    const argNames = args.map((arg) => (arg.isOut ? arg.cellName : arg.name)).join(", ");
     const descriptors = renderDescriptorList(args.map((arg) => arg.descriptor));
     const tsReturn = returnTsType(returned, outs);
-    const jsDoc = commandJsDoc({ command, feature, ins, outs, returnPlan: plan.returnPlan });
+    const jsDoc = commandJsDoc({ plan, provenance, ins, outs, docs });
     const seeds = outs.map((out) => out.seed);
     const bindExpression = glBind(command.name, descriptors, returned.descriptor);
     const isInline = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
@@ -150,15 +152,17 @@ const renderCommand = (
     };
 };
 
-const singularCommandJsDoc = (
-    plan: CommandPlan & { ok: true },
-    feature: string,
-    summary: string,
-    body: string[],
-): string => singularJsDoc({ commandName: plan.command.name, feature, summary, body });
+const singularCommandJsDoc = (context: SingularContext, summary: string, body: string[]): string =>
+    derivedJsDoc({
+        command: context.plan.command,
+        provenance: context.provenance,
+        docs: context.docs,
+        summary,
+        body,
+    });
 
 const genSingularScalars = (
-    plan: CommandPlan & { ok: true },
+    plan: CommandPlan & { isOk: true },
 ): { countScalar: GlScalar; outScalar: GlScalar; lenParamName: string } | undefined => {
     const countPlan = plan.params.at(-2);
 
@@ -175,7 +179,7 @@ const genSingularScalars = (
     return { countScalar: countPlan.scalar, outScalar: outPlan.scalar, lenParamName: outPlan.lenParamName };
 };
 
-const genSingularObjectClass = (plan: CommandPlan & { ok: true }, lenParamName: string): string | undefined => {
+const genSingularObjectClass = (plan: CommandPlan & { isOk: true }, lenParamName: string): string | undefined => {
     const countParam = plan.command.params[plan.params.length - 2];
     const outParam = plan.command.params[plan.params.length - 1];
 
@@ -190,7 +194,7 @@ const genSingularObjectClass = (plan: CommandPlan & { ok: true }, lenParamName: 
     return outParam.objectClass;
 };
 
-const genSingularShape = (plan: CommandPlan & { ok: true }): GenSingularShape | undefined => {
+const genSingularShape = (plan: CommandPlan & { isOk: true }): GenSingularShape | undefined => {
     const scalars = genSingularScalars(plan);
 
     if (scalars === undefined) {
@@ -206,10 +210,25 @@ const genSingularShape = (plan: CommandPlan & { ok: true }): GenSingularShape | 
     return { countScalar: scalars.countScalar, outScalar: scalars.outScalar, objectClass };
 };
 
+const genSingularJsDoc = (context: SingularContext, prefix: InArg[], shape: GenSingularShape): string => {
+    const { command } = context.plan;
+
+    return singularCommandJsDoc(
+        context,
+        `Returns one ${shape.objectClass} object name via ` +
+        `\`${command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
+        [
+            ...prefix.map((arg) => inParamDocLine(context.plan, arg, context.docs)),
+            ` * @returns \`${shape.outScalar.tsAlias}\`, object class \`${shape.objectClass}\``,
+        ],
+    );
+};
+
 const deriveGenSingular = (
-    plan: CommandPlan & { ok: true },
-    feature: string,
+    plan: CommandPlan & { isOk: true },
+    provenance: GlSymbolProvenance,
     usedTypes: Set<string>,
+    docs: GlDocContext,
 ): RenderedCommand | undefined => {
     if (!GEN_FAMILY.test(plan.command.name)) {
         return undefined;
@@ -227,21 +246,14 @@ const deriveGenSingular = (
         return undefined;
     }
 
-    const { countScalar, outScalar, objectClass } = shape;
+    const { countScalar, outScalar } = shape;
     const exportName = singularize(commandExportName(plan.command.name));
     const bindingName = `${plan.command.name}Single`;
     const descriptors = [...prefix.map((arg) => arg.descriptor), countScalar.descriptor, tRef(outScalar.descriptor)];
     usedTypes.add(outScalar.tsAlias);
     const signature = prefix.map((arg) => `${arg.name}: ${arg.tsType}`).join(", ");
     const callArgs = [...prefix.map((arg) => arg.name), "1", "out"].join(", ");
-
-    const jsDoc = singularCommandJsDoc(
-        plan,
-        feature,
-        `Returns one ${objectClass} object name via ` +
-        `\`${plan.command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
-        [...prefix.map((arg) => inParamDocLine(plan.command, arg)), ` * @returns The new ${objectClass} object name`],
-    );
+    const jsDoc = genSingularJsDoc({ plan, provenance, docs }, prefix, shape);
 
     const body = ["    const out = { value: 0 };", `    ${bindingName}(${callArgs});`, "    return out.value;"].join(
         "\n",
@@ -256,7 +268,7 @@ const deriveGenSingular = (
     };
 };
 
-const deleteSingularAlias = (plan: CommandPlan & { ok: true }): string | undefined => {
+const deleteSingularAlias = (plan: CommandPlan & { isOk: true }): string | undefined => {
     if (plan.params.length !== 2) {
         return undefined;
     }
@@ -274,7 +286,7 @@ const deleteSingularAlias = (plan: CommandPlan & { ok: true }): string | undefin
     return arrayPlan.scalar.tsAlias;
 };
 
-const deleteSingularObjectClass = (plan: CommandPlan & { ok: true }): string | undefined => {
+const deleteSingularObjectClass = (plan: CommandPlan & { isOk: true }): string | undefined => {
     const [countParam, arrayParam] = plan.command.params;
 
     if (countParam === undefined || arrayParam === undefined) {
@@ -289,9 +301,10 @@ const deleteSingularObjectClass = (plan: CommandPlan & { ok: true }): string | u
 };
 
 const deriveDeleteSingular = (
-    plan: CommandPlan & { ok: true },
-    feature: string,
+    plan: CommandPlan & { isOk: true },
+    provenance: GlSymbolProvenance,
     usedTypes: Set<string>,
+    docs: GlDocContext,
 ): RenderedCommand | undefined => {
     if (!DELETE_FAMILY.test(plan.command.name)) {
         return undefined;
@@ -313,10 +326,9 @@ const deriveDeleteSingular = (
     const exportName = singularize(commandExportName(plan.command.name));
 
     const jsDoc = singularCommandJsDoc(
-        plan,
-        feature,
+        { plan, provenance, docs },
         `Deletes one ${objectClass} object name via \`${plan.command.name}(1, ...)\`.`,
-        [` * @param name - The ${objectClass} object name to delete`],
+        [` * @param name - \`${scalarAlias}\`, object class \`${objectClass}\``],
     );
 
     return {

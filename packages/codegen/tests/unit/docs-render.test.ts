@@ -58,6 +58,12 @@ describe("firstSentence", () => {
         expect(firstSentence("no terminal punctuation here")).toBe("no terminal punctuation here");
     });
 
+    it("keeps underscored identifiers intact", () => {
+        expect(firstSentence("Like %GTK_INPUT_PURPOSE_FREE_FORM, but characters are hidden.")).toBe(
+            "Like GTK_INPUT_PURPOSE_FREE_FORM, but characters are hidden.",
+        );
+    });
+
     it("truncates very long sentences", () => {
         const sentence = `${"word ".repeat(60)}end.`;
         const result = firstSentence(sentence);

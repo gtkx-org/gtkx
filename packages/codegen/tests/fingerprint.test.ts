@@ -10,6 +10,9 @@ const jsxInput = (overrides: Partial<JsxFingerprintInput> = {}): JsxFingerprintI
     ...overrides,
 });
 
+const jsxFingerprint = (overrides: Partial<JsxFingerprintInput> = {}, intrinsicElementCount = 0): string =>
+    computeJsxFingerprint(jsxInput(overrides), intrinsicElementCount).value;
+
 describe("computeGiFingerprint", () => {
     it("changes when the libraries change", () => {
         expect(computeGiFingerprint([], ["Gtk-4.0"], []).value).not.toBe(computeGiFingerprint([], ["Adw-1"], []).value);
@@ -23,62 +26,48 @@ describe("computeGiFingerprint", () => {
 
 describe("computeJsxFingerprint", () => {
     it("changes when component overrides change", () => {
-        const base = computeJsxFingerprint(jsxInput(), 0).value;
+        const withComponent = jsxFingerprint({
+            components: { GtkButton: { module: "@example/wrappers", export: "withButton" } },
+        });
 
-        const withComponent = computeJsxFingerprint(
-            jsxInput({ components: { GtkButton: { module: "@example/wrappers", export: "withButton" } } }),
-            0,
-        ).value;
-
-        expect(withComponent).not.toBe(base);
+        expect(withComponent).not.toBe(jsxFingerprint());
     });
 
     it("changes when the lazy element set changes", () => {
-        const base = computeJsxFingerprint(jsxInput(), 0).value;
-        expect(computeJsxFingerprint(jsxInput({ lazyElements: ["GtkStackPage"] }), 0).value).not.toBe(base);
+        expect(jsxFingerprint({ lazyElements: ["GtkStackPage"] })).not.toBe(jsxFingerprint());
     });
 
     it("changes when the base props change", () => {
-        const base = computeJsxFingerprint(jsxInput(), 0).value;
+        const withProps = jsxFingerprint({
+            props: { GtkButton: { module: "@gtkx/react/internal", export: "ChildrenProps" } },
+        });
 
-        const withProps = computeJsxFingerprint(
-            jsxInput({ props: { GtkButton: { module: "@gtkx/react/internal", export: "ChildrenProps" } } }),
-            0,
-        ).value;
-
-        expect(withProps).not.toBe(base);
+        expect(withProps).not.toBe(jsxFingerprint());
     });
 
     it("changes when the omitted props change", () => {
-        const base = computeJsxFingerprint(jsxInput(), 0).value;
-        expect(computeJsxFingerprint(jsxInput({ omittedProps: { AdwBin: ["child"] } }), 0).value).not.toBe(base);
+        expect(jsxFingerprint({ omittedProps: { AdwBin: ["child"] } })).not.toBe(jsxFingerprint());
     });
 
     it("is stable regardless of omitted prop order", () => {
-        const a = computeJsxFingerprint(jsxInput({ omittedProps: { AdwFlap: ["content", "flap"] } }), 0).value;
-        const b = computeJsxFingerprint(jsxInput({ omittedProps: { AdwFlap: ["flap", "content"] } }), 0).value;
+        const a = jsxFingerprint({ omittedProps: { AdwBottomSheet: ["content", "sheet"] } });
+        const b = jsxFingerprint({ omittedProps: { AdwBottomSheet: ["sheet", "content"] } });
         expect(a).toBe(b);
     });
 
     it("is stable regardless of component key order", () => {
-        const a = computeJsxFingerprint(
-            jsxInput({
-                components: { GtkButton: { module: "m", export: "a" }, GtkLabel: { module: "n", export: "b" } },
-            }),
-            0,
-        ).value;
+        const a = jsxFingerprint({
+            components: { GtkButton: { module: "m", export: "a" }, GtkLabel: { module: "n", export: "b" } },
+        });
 
-        const b = computeJsxFingerprint(
-            jsxInput({
-                components: { GtkLabel: { module: "n", export: "b" }, GtkButton: { module: "m", export: "a" } },
-            }),
-            0,
-        ).value;
+        const b = jsxFingerprint({
+            components: { GtkLabel: { module: "n", export: "b" }, GtkButton: { module: "m", export: "a" } },
+        });
 
         expect(a).toBe(b);
     });
 
     it("does not depend on the intrinsic element count", () => {
-        expect(computeJsxFingerprint(jsxInput(), 5).value).toBe(computeJsxFingerprint(jsxInput(), 10).value);
+        expect(jsxFingerprint({}, 5)).toBe(jsxFingerprint({}, 10));
     });
 });

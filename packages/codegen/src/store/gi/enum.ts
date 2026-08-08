@@ -1,47 +1,82 @@
 import { sourceStringLiteral } from "@gtkx/utils";
-import type { GirEnum } from "../../gir/enum.js";
+import type { EnumMember, GirEnum } from "../../gir/enum.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { renderJsDoc } from "../../writer/doc.js";
+import { hasAnnotations } from "../../gir/annotations.js";
 import { indent } from "../../writer/emit.js";
+import { getDoc } from "./doc-spec.js";
+
+type KeyedMember = EnumMember & { key: string };
+
+const memberDoc = (member: KeyedMember): string =>
+    getDoc(member);
+
+const enumDoc = (enumeration: GirEnum): string =>
+    getDoc(enumeration);
 
 const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
     if (!enumeration.introspectable) {
         return;
     }
 
-    const name = enumeration.name;
     const members = enumeration.members.map((member) => ({ ...member, key: enumMemberKey(member.name) }));
+    const errorDomain = enumeration.errorDomain;
 
-    if (enumeration.errorDomain !== undefined) {
-        const memberEntries = members.map((member) => `${member.key}: ${member.value}`);
-        const typeFields = members.map((member) => `${member.key}: number`).join("; ");
-        context.addRuntimeImport("createErrorDomain");
-        context.addRuntimeImport("ErrorDomain");
-        const quarkExpression = renderQuarkExpression(context, enumeration.errorDomain);
-        context.module.appendDeclaration(`${renderJsDoc(enumeration.doc)}export type ${name} = number;`);
-
-        context.module.appendDeclaration(
-            `export const ${name}: ErrorDomain<{ ${typeFields} }> = ` +
-            `createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
-        );
+    if (errorDomain !== undefined) {
+        appendErrorDomain(context, enumeration, members, errorDomain);
 
         return;
     }
 
-    if (members.some((member) => member.doc !== undefined)) {
-        const memberBlocks = members.map((member) => `${renderJsDoc(member.doc)}${member.key} = ${member.value},`);
+    appendEnumDeclaration(context, enumeration, members);
+};
 
-        context.module.appendDeclaration(
-            `${renderJsDoc(enumeration.doc)}export enum ${name} {\n${indent(memberBlocks.join("\n"), 1)}\n}`,
-        );
-
-        return;
-    }
-
-    const memberDeclarations = members.map((member) => `${member.key} = ${member.value}`);
+const appendErrorDomain = (
+    context: ModuleContext,
+    enumeration: GirEnum,
+    members: KeyedMember[],
+    errorDomain: string,
+): void => {
+    const memberEntries = members.map((member) => `${member.key}: ${member.value}`);
+    const typeFields = members.map((member) => `${memberDoc(member)}${member.key}: number;`);
+    context.addRuntimeImport("createErrorDomain");
+    context.addRuntimeImport("ErrorDomain");
+    const quarkExpression = renderQuarkExpression(context, errorDomain);
+    const doc = enumDoc(enumeration);
+    const shape = typeFields.length === 0 ? "{}" : `{\n${indent(typeFields.join("\n"), 1)}\n}`;
 
     context.module.appendDeclaration(
-        `${renderJsDoc(enumeration.doc)}export enum ${name} { ${memberDeclarations.join(", ")} }`,
+        `${doc}export type ${enumeration.name} = number;`,
+        context.declaredType(enumeration.name),
+    );
+
+    context.module.appendDeclaration(
+        `${doc}export const ${enumeration.name}: ErrorDomain<${shape}> = ` +
+        `createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
+    );
+};
+
+const isMemberDocumented = (member: KeyedMember): boolean =>
+    member.doc !== undefined || hasAnnotations(member.annotations);
+
+const appendEnumDeclaration = (context: ModuleContext, enumeration: GirEnum, members: KeyedMember[]): void => {
+    const doc = enumDoc(enumeration);
+
+    if (members.some((member) => isMemberDocumented(member))) {
+        const blocks = members.map((member) => `${memberDoc(member)}${member.key} = ${member.value},`);
+
+        context.module.appendDeclaration(
+            `${doc}export enum ${enumeration.name} {\n${indent(blocks.join("\n"), 1)}\n}`,
+            context.declaredType(enumeration.name),
+        );
+
+        return;
+    }
+
+    const declarations = members.map((member) => `${member.key} = ${member.value}`);
+
+    context.module.appendDeclaration(
+        `${doc}export enum ${enumeration.name} { ${declarations.join(", ")} }`,
+        context.declaredType(enumeration.name),
     );
 };
 

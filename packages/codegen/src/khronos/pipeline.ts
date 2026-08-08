@@ -1,6 +1,8 @@
 import { sanitizeIdentifier, sortStrings, sortStringsBy } from "@gtkx/utils";
+import { buildDocContext, type GlDocContext } from "./doc-context.js";
+import { buildExtensionIndex } from "./extensions.js";
 import { type GlEnum, loadGlRegistry } from "./model.js";
-import { renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
+import { type EnumRow, renderCommandsModule, renderEnumsModule, renderTypesModule } from "./modules.js";
 import { paramPairAt } from "./param-pair.js";
 import {
     type CommandPlan,
@@ -11,7 +13,7 @@ import {
     planCommand,
 } from "./plan.js";
 import { deriveDeleteSingular, deriveGenSingular, renderCommand, type RenderedCommand } from "./render.js";
-import { type GlSelection, resolveEnum, selectSubset } from "./select.js";
+import { type GlSelection, type GlSubset, type GlSymbolProvenance, resolveEnum, selectSubset } from "./select.js";
 
 type GlExclusion = {
     command: string;
@@ -24,6 +26,8 @@ type GlGenerationReport = {
     emittedCommands: number;
     derivedSingulars: number;
     exclusions: GlExclusion[];
+    enumExclusions: string[];
+    coreRemovals: GlSubset["removed"];
 };
 
 type GlGenerationResult = {
@@ -31,26 +35,29 @@ type GlGenerationResult = {
     report: GlGenerationReport;
 };
 
-type GroupBearingParamPlan = Extract<ParamPlan, { kind: "scalar" | "array-in" | "ref-out" }>;
+type GroupBearingParamPlan = Extract<ParamPlan, { kind: "scalar" | "array-in" | "ref-out" | "ref-array-out" }>;
 
 type GlGenerationOptions = {
     registryPath: string;
     overrideExports: Set<string>;
 };
 
-type OkPlan = CommandPlan & { ok: true };
+type OkPlan = CommandPlan & { isOk: true };
 
 type PlannedSelection = {
     okPlans: OkPlan[];
-    planFeatures: Map<string, string>;
+    planFeatures: Map<string, GlSymbolProvenance>;
     exclusions: GlExclusion[];
 };
 
-type EnumRow = {
-    token: GlEnum;
-    exportName: string;
-    literal: string;
-    feature: string;
+type EnumSelection = {
+    rows: EnumRow[];
+    enumExclusions: string[];
+};
+
+type RenderedCommands = {
+    rendered: RenderedCommand[];
+    singulars: RenderedCommand[];
 };
 
 const BYTE_OFFSET_PARAMS: Set<string> = new Set([
@@ -103,7 +110,14 @@ const PLAN_POLICY: GlPlanPolicy = {
 };
 
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
-const GROUP_BEARING_PARAM_KINDS: Set<ParamPlan["kind"]> = new Set(["scalar", "array-in", "ref-out"]);
+
+const GROUP_BEARING_PARAM_KINDS: Set<ParamPlan["kind"]> = new Set([
+    "scalar",
+    "array-in",
+    "ref-out",
+    "ref-array-out",
+]);
+
 const GL_SELECTION: GlSelection = { api: "gl", version: 4.6, profile: "core" };
 
 const enumExportName = (name: string): string =>
@@ -204,7 +218,7 @@ const planSelectedCommand = (registry: ReturnType<typeof loadGlRegistry>, name: 
 
     const plan = planCommand(command, PLAN_POLICY);
 
-    if (!plan.ok) {
+    if (!plan.isOk) {
         return { command: name, reason: plan.reason };
     }
 
@@ -213,19 +227,19 @@ const planSelectedCommand = (registry: ReturnType<typeof loadGlRegistry>, name: 
 
 const planSelectedCommands = (
     registry: ReturnType<typeof loadGlRegistry>,
-    commandNames: Map<string, string>,
+    commandNames: Map<string, GlSymbolProvenance>,
 ): PlannedSelection => {
     const exclusions: GlExclusion[] = [];
     const okPlans: OkPlan[] = [];
-    const planFeatures: Map<string, string> = new Map();
+    const planFeatures: Map<string, GlSymbolProvenance> = new Map();
     const sortedCommands = sortStringsBy(commandNames.entries(), ([key]) => key);
 
-    for (const [name, feature] of sortedCommands) {
+    for (const [name, provenance] of sortedCommands) {
         const result = planSelectedCommand(registry, name);
 
-        if ("ok" in result) {
+        if ("isOk" in result) {
             okPlans.push(result);
-            planFeatures.set(name, feature);
+            planFeatures.set(name, provenance);
         } else {
             exclusions.push(result);
         }
@@ -234,22 +248,62 @@ const planSelectedCommands = (
     return { okPlans, planFeatures, exclusions };
 };
 
-const buildEnumRows = (registry: ReturnType<typeof loadGlRegistry>, enumNames: Map<string, string>): EnumRow[] => {
-    const enumRows: EnumRow[] = [];
+const buildEnumRows = (
+    registry: ReturnType<typeof loadGlRegistry>,
+    enumNames: Map<string, GlSymbolProvenance>,
+    selection: GlSelection,
+): EnumSelection => {
+    const rows: EnumRow[] = [];
+    const enumExclusions: string[] = [];
     const sortedEnums = sortStringsBy(enumNames.entries(), ([key]) => key);
 
-    for (const [name, feature] of sortedEnums) {
-        const token = resolveEnum(registry, name);
+    for (const [name, provenance] of sortedEnums) {
+        const token = resolveEnum(registry, name, selection.api);
         const literal = enumLiteral(token);
 
         if (literal === undefined) {
-            continue;
+            enumExclusions.push(name);
+        } else {
+            rows.push({ token, exportName: enumExportName(name), literal, provenance });
         }
-
-        enumRows.push({ token, exportName: enumExportName(name), literal, feature });
     }
 
-    return enumRows;
+    return { rows, enumExclusions };
+};
+
+const provenanceFor = (planFeatures: Map<string, GlSymbolProvenance>, name: string): GlSymbolProvenance => {
+    const found = planFeatures.get(name);
+
+    if (found === undefined) {
+        throw new Error(`Command ${name} was planned without a selection provenance`);
+    }
+
+    return found;
+};
+
+const renderCommands = (
+    plans: OkPlan[],
+    planFeatures: Map<string, GlSymbolProvenance>,
+    usedTypes: Set<string>,
+    docs: GlDocContext,
+): RenderedCommands => {
+    const rendered: RenderedCommand[] = [];
+    const singulars: RenderedCommand[] = [];
+
+    for (const plan of plans) {
+        const provenance = provenanceFor(planFeatures, plan.command.name);
+        rendered.push(renderCommand(plan, provenance, usedTypes, docs));
+
+        const singular =
+            deriveGenSingular(plan, provenance, usedTypes, docs) ??
+            deriveDeleteSingular(plan, provenance, usedTypes, docs);
+
+        if (singular !== undefined) {
+            singulars.push(singular);
+        }
+    }
+
+    return { rendered, singulars };
 };
 
 const claimExportName = (exportNames: Map<string, string>, name: string, owner: string): void => {
@@ -299,27 +353,24 @@ const generateGlModules = (options: GlGenerationOptions): GlGenerationResult => 
     const registry = loadGlRegistry(options.registryPath);
     const subset = selectSubset(registry, selection);
     const { okPlans, planFeatures, exclusions } = planSelectedCommands(registry, subset.commands);
+    const { rows, enumExclusions } = buildEnumRows(registry, subset.enums, selection);
+    const groupAliases = collectGroupAliases(okPlans);
+
+    const docs = buildDocContext({
+        registry,
+        extensions: buildExtensionIndex(registry, selection),
+        plans: okPlans,
+        enumRows: rows,
+    });
+
     const usedTypes: Set<string> = new Set();
-    const rendered: RenderedCommand[] = [];
-    const singulars: RenderedCommand[] = [];
-
-    for (const plan of okPlans) {
-        const feature = planFeatures.get(plan.command.name) ?? "unknown feature";
-        rendered.push(renderCommand(plan, feature, usedTypes));
-        const singular = deriveGenSingular(plan, feature, usedTypes) ?? deriveDeleteSingular(plan, feature, usedTypes);
-
-        if (singular !== undefined) {
-            singulars.push(singular);
-        }
-    }
-
-    const enumRows = buildEnumRows(registry, subset.enums);
-    assertExportNamesDisjoint(rendered, singulars, enumRows, options.overrideExports);
+    const { rendered, singulars } = renderCommands(okPlans, planFeatures, usedTypes, docs);
+    assertExportNamesDisjoint(rendered, singulars, rows, options.overrideExports);
 
     const files: Map<string, string> = new Map([
-        ["types.ts", renderTypesModule(collectGroupAliases(okPlans))],
-        ["enums.ts", renderEnumsModule(enumRows)],
-        ["commands.ts", renderCommandsModule(rendered, singulars, usedTypes)],
+        ["types.ts", renderTypesModule(groupAliases, docs)],
+        ["enums.ts", renderEnumsModule(rows, docs)],
+        ["commands.ts", renderCommandsModule(rendered, singulars, usedTypes, docs)],
     ]);
 
     return {
@@ -330,6 +381,8 @@ const generateGlModules = (options: GlGenerationOptions): GlGenerationResult => 
             emittedCommands: rendered.length,
             derivedSingulars: singulars.length,
             exclusions,
+            enumExclusions,
+            coreRemovals: subset.removed,
         },
     };
 };

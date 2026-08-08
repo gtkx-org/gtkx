@@ -1,37 +1,92 @@
 import { Point as GeneratedPoint, Rect as GeneratedRect, Size as GeneratedSize } from "../graphene.js";
 
+/**
+ * Allocates a new `Point` and initializes it to the given coordinates.
+ *
+ * @param x the X coordinate
+ * @param y the Y coordinate
+ * @returns the initialized point
+ */
 const createPoint = (x: number, y: number): GeneratedPoint => {
     const point = GeneratedPoint.alloc();
     point.init(x, y);
     return point;
 };
 
+/**
+ * Allocates a new `Rect` and initializes it to the given origin and size.
+ *
+ * @param x the X coordinate of the origin
+ * @param y the Y coordinate of the origin
+ * @param width the width of the rectangle
+ * @param height the height of the rectangle
+ * @returns the initialized rectangle
+ */
 const createRect = (x: number, y: number, width: number, height: number): GeneratedRect => {
     const rect = GeneratedRect.alloc();
     rect.init(x, y, width, height);
     return rect;
 };
 
+/**
+ * Allocates a new `Size` and initializes it to the given width and height.
+ *
+ * @param width the width
+ * @param height the height
+ * @returns the initialized size
+ */
 const createSize = (width: number, height: number): GeneratedSize => {
     const size = GeneratedSize.alloc();
     size.init(width, height);
     return size;
 };
 
+/** A point with two coordinates. */
 export const Point: typeof GeneratedPoint & { create: typeof createPoint } = Object.assign(GeneratedPoint, {
     create: createPoint,
 });
 
+/** A point with two coordinates. */
 export type Point = GeneratedPoint;
 
+/**
+ * The location and size of a rectangle region.
+ *
+ * The width and height of a `graphene_rect_t` can be negative; for instance,
+ * a `graphene_rect_t` with an origin of [ 0, 0 ] and a size of [ 10, 10 ] is
+ * equivalent to a `graphene_rect_t` with an origin of [ 10, 10 ] and a size
+ * of [ -10, -10 ].
+ *
+ * Application code can normalize rectangles using `graphene_rect_normalize()`;
+ * this function will ensure that the width and height of a rectangle are
+ * positive values. All functions taking a `graphene_rect_t` as an argument
+ * will internally operate on a normalized copy; all functions returning a
+ * `graphene_rect_t` will always return a normalized rectangle.
+ */
 export const Rect: typeof GeneratedRect & { create: typeof createRect } = Object.assign(GeneratedRect, {
     create: createRect,
 });
 
+/**
+ * The location and size of a rectangle region.
+ *
+ * The width and height of a `graphene_rect_t` can be negative; for instance,
+ * a `graphene_rect_t` with an origin of [ 0, 0 ] and a size of [ 10, 10 ] is
+ * equivalent to a `graphene_rect_t` with an origin of [ 10, 10 ] and a size
+ * of [ -10, -10 ].
+ *
+ * Application code can normalize rectangles using `graphene_rect_normalize()`;
+ * this function will ensure that the width and height of a rectangle are
+ * positive values. All functions taking a `graphene_rect_t` as an argument
+ * will internally operate on a normalized copy; all functions returning a
+ * `graphene_rect_t` will always return a normalized rectangle.
+ */
 export type Rect = GeneratedRect;
 
+/** A size. */
 export const Size: typeof GeneratedSize & { create: typeof createSize } = Object.assign(GeneratedSize, {
     create: createSize,
 });
 
+/** A size. */
 export type Size = GeneratedSize;

@@ -1,4 +1,5 @@
 import { toCamelIdentifier } from "@gtkx/utils";
+import type { GirAnnotations } from "../../gir/annotations.js";
 import type { GirField } from "../../gir/field.js";
 import type { FieldSlot } from "../../gir/size.js";
 import type { TypeId } from "../../gir/type-id.js";
@@ -7,8 +8,8 @@ import type { ModuleContext } from "../../writer/context.js";
 import { isInlineCallbackRef, renderDescriptor } from "../../analysis/descriptor-render.js";
 import { tStruct } from "../../analysis/descriptor.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock } from "../../writer/emit.js";
+import { getDoc } from "./doc-spec.js";
 import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
 import { isValueMarshalable } from "./value-marshalable.js";
@@ -30,6 +31,7 @@ type RecordFieldEntry = {
     tsType: string;
     isWritable: boolean;
     doc: string | undefined;
+    annotations: GirAnnotations;
 };
 
 type InlineFieldVisit = {
@@ -180,6 +182,7 @@ const resolveRecordFieldEntry = (
         tsType: renderTsType(context, admitted.field.type, false),
         isWritable: admitted.field.writable,
         doc: admitted.field.doc,
+        annotations: admitted.field.annotations,
     };
 };
 
@@ -196,7 +199,7 @@ const renderRecordFieldAccessor = (
     }
 
     const { field, jsName } = admitted;
-    const doc = renderJsDoc(field.doc);
+    const doc = getDoc(field);
     const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });
 
     if (structArray !== undefined) {
@@ -632,5 +635,4 @@ export {
     emitFieldWrite,
     resolveRecordFieldEntry,
     renderRecordFieldAccessor,
-    type RecordFieldEntry,
 };

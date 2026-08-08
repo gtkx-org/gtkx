@@ -1,4 +1,5 @@
 import { toCamelIdentifier } from "@gtkx/utils";
+import type { GirAnnotations } from "../../gir/annotations.js";
 import type { GirClass } from "../../gir/class.js";
 import { getChain, type GirIndex, type GirTypeEntry } from "./gir-index.js";
 import { getGlibName } from "./intrinsic-elements.js";
@@ -7,6 +8,8 @@ type LazyElementSpec = {
     element: string;
     typeName: string;
     typeSource: string;
+    doc: string | undefined;
+    annotations: GirAnnotations;
 };
 
 const appendConstructOnlyNames = (klass: GirClass, names: string[]): void => {
@@ -34,7 +37,13 @@ const createLazyElementSpec = (context: GirIndex, element: string, entry: GirTyp
     const omitUnion = omitted.map((name) => JSON.stringify(name)).join(" | ");
     const base = omitted.length === 0 ? `${baseName}Props` : `Omit<${baseName}Props, ${omitUnion}>`;
 
-    return { element, typeName, typeSource: `export type ${typeName} = ${base} & { children?: ReactNode };` };
+    return {
+        element,
+        typeName,
+        typeSource: `export type ${typeName} = ${base} & { children?: ReactNode };`,
+        doc: entry.klass.doc,
+        annotations: entry.klass.annotations,
+    };
 };
 
 const lazyElementSpecs = (context: GirIndex, lazyElements: string[]): Map<string, LazyElementSpec[]> => {
