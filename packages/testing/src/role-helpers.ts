@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { sortStringsBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
-import { getWidgetAccessibleName } from "./widget-accessible-properties.js";
+import { getWidgetAccessibleName, getWidgetLevel } from "./widget-accessible-properties.js";
 
 const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
 
@@ -118,4 +118,12 @@ const logRoles = (container: Container): void => {
     console.log(prettyRoles(container));
 };
 
-export { formatRole, formatRoleList, getRoles, prettyRoles, logRoles };
+/**
+ * Returns the heading or hierarchy level GTK reports for a widget, or undefined when it declares
+ * none.
+ *
+ * @param widget The widget to read the level from.
+ */
+const computeHeadingLevel = (widget: Gtk.Widget): number | undefined => getWidgetLevel(widget) ?? undefined;
+
+export { computeHeadingLevel, formatRole, formatRoleList, getRoles, prettyRoles, logRoles };

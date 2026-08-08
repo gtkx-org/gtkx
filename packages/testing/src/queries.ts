@@ -38,7 +38,6 @@ const roleQueries = nameQueryFamily(
     "Role",
     queryAllByRole,
     buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
-        "Role",
         queryAllByRole,
         (container, matches, role, options) =>
             multipleFoundError(container, { queryType: "role", role, options }, matches),
@@ -50,7 +49,6 @@ const labelTextQueries = nameQueryFamily(
     "LabelText",
     queryAllByLabelText,
     buildQueries<[text: Matcher, options?: MatcherOptions]>(
-        "LabelText",
         queryAllByLabelText,
         (container, matches, text) => multipleFoundError(container, { queryType: "labelText", text }, matches),
         (container, text) => notFoundError(container, { queryType: "labelText", text }),
@@ -61,7 +59,6 @@ const textQueries = nameQueryFamily(
     "Text",
     queryAllByText,
     buildQueries<[text: Matcher, options?: MatcherOptions]>(
-        "Text",
         queryAllByText,
         (container, matches, text) => multipleFoundError(container, { queryType: "text", text }, matches),
         (container, text) => notFoundError(container, { queryType: "text", text }),
@@ -72,7 +69,6 @@ const nameQueries = nameQueryFamily(
     "Name",
     queryAllByName,
     buildQueries<[name: Matcher, options?: MatcherOptions]>(
-        "Name",
         queryAllByName,
         (container, matches, name) => multipleFoundError(container, { queryType: "name", name }, matches),
         (container, name) => notFoundError(container, { queryType: "name", name }),
@@ -83,7 +79,6 @@ const placeholderTextQueries = nameQueryFamily(
     "PlaceholderText",
     queryAllByPlaceholderText,
     buildQueries<[text: Matcher, options?: MatcherOptions]>(
-        "PlaceholderText",
         queryAllByPlaceholderText,
         (container, matches, text) => multipleFoundError(container, { queryType: "placeholderText", text }, matches),
         (container, text) => notFoundError(container, { queryType: "placeholderText", text }),
@@ -94,7 +89,6 @@ const displayValueQueries = nameQueryFamily(
     "DisplayValue",
     queryAllByDisplayValue,
     buildQueries<[value: Matcher, options?: MatcherOptions]>(
-        "DisplayValue",
         queryAllByDisplayValue,
         (container, matches, value) => multipleFoundError(container, { queryType: "displayValue", value }, matches),
         (container, value) => notFoundError(container, { queryType: "displayValue", value }),
@@ -406,13 +400,15 @@ function nameQueryFamily<Args extends unknown[]>(
     queryAllBy: QueryAllBy<Args>,
     built: BuiltQueries<Args>,
 ): Record<string, unknown> {
+    const [queryBy, getAllBy, getBy, findAllBy, findBy] = built;
+
     return {
-        [`queryBy${suffix}`]: built.queryBy,
+        [`queryBy${suffix}`]: queryBy,
         [`queryAllBy${suffix}`]: queryAllBy,
-        [`getBy${suffix}`]: built.getBy,
-        [`getAllBy${suffix}`]: built.getAllBy,
-        [`findBy${suffix}`]: built.findBy,
-        [`findAllBy${suffix}`]: built.findAllBy,
+        [`getBy${suffix}`]: getBy,
+        [`getAllBy${suffix}`]: getAllBy,
+        [`findBy${suffix}`]: findBy,
+        [`findAllBy${suffix}`]: findAllBy,
     };
 }
 
@@ -571,6 +567,8 @@ function queryAllByDisplayValue(container: Container, value: Matcher, options?: 
 
 export {
     builtinQueries,
+    isMatchingWidgetType,
+    isTextMatch,
     queryByRole,
     getAllByRole,
     getByRole,

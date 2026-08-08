@@ -570,6 +570,9 @@ importers:
       '@vitest/expect':
         specifier: ^4.1.10
         version: 4.1.10
+      '@vitest/pretty-format':
+        specifier: ^4.1.10
+        version: 4.1.10
       react:
         specifier: ^19.2
         version: 19.2.8

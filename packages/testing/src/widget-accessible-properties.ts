@@ -518,6 +518,12 @@ const getWidgetDescribedByText = (widget: Gtk.Widget): string | null => {
     return isTooltipUsedAsName(widget) ? null : callStringGetter(widget, "getTooltipText");
 };
 
+/**
+ * Returns whether a widget is excluded from the accessibility tree, because it or one of its
+ * ancestors is marked hidden.
+ *
+ * @param widget The widget to test.
+ */
 const isInaccessible = (widget: Gtk.Widget): boolean => {
     let current: Gtk.Widget | null = widget;
 
