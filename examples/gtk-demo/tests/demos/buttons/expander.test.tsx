@@ -26,16 +26,16 @@ describe("expanderDemo", () => {
 
         const expander = await screen.findByName("expander", { as: Gtk.Expander });
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: false })).toBe(expander);
-        expect(expander).not.toBeExpanded();
+        expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, false);
     });
 
     it("flips its own expanded state to true when clicked", async () => {
         const expander = await renderExpander();
-        expect(expander).not.toBeExpanded();
+        expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, false);
         await userEvent.click(expander);
 
         await waitFor(() => {
-            expect(expander).toBeExpanded();
+            expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, true);
         });
 
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: true })).toBe(expander);

@@ -5,6 +5,11 @@ type CheckInt = (handle: unknown, attribute: number, expected: number) => string
 type CheckString = (handle: unknown, attribute: number, expected: string | null) => string | null;
 type CheckDouble = (handle: unknown, attribute: number, expected: number) => string | null;
 type CheckRelation = (...args: unknown[]) => string | null;
+/** A value GTK holds for an accessible property: a string, a number, a token, or a boolean. */
+type AccessibleAttributeValue = boolean | number | string;
+type PropertyReader = (accessible: Gtk.Accessible, property: Gtk.AccessibleProperty) => AccessibleAttributeValue | null;
+type NativeCall = (...inputs: unknown[]) => unknown;
+type CheckArg = typeof DOUBLE_ARG | typeof INT_ARG | typeof OBJECT_ARG | typeof STRING_ARG;
 
 const LIB = "libgtk-4.so.1";
 const MAX_RELATION_TARGETS = 8;
@@ -45,42 +50,75 @@ const STATE_DOMAINS: Partial<Record<Gtk.AccessibleState, number[]>> = {
     [Gtk.AccessibleState.VISITED]: OPTIONAL_BOOLEAN_DOMAIN,
 };
 
-const checkStateInt = t.fn(LIB, "gtk_test_accessible_check_state", {
-    args: [{ type: t.object("borrowed") }, { type: t.int32 }, { type: t.int32 }],
-    returns: t.string("full"),
-    fixedArgCount: 2,
-}) as CheckInt;
+const AUTOCOMPLETE_DOMAIN = [
+    Gtk.AccessibleAutocomplete.NONE,
+    Gtk.AccessibleAutocomplete.INLINE,
+    Gtk.AccessibleAutocomplete.LIST,
+    Gtk.AccessibleAutocomplete.BOTH,
+];
 
-const checkPropertyInt = t.fn(LIB, "gtk_test_accessible_check_property", {
-    args: [{ type: t.object("borrowed") }, { type: t.int32 }, { type: t.int32 }],
-    returns: t.string("full"),
-    fixedArgCount: 2,
-}) as CheckInt;
+const ORIENTATION_DOMAIN = [Gtk.Orientation.HORIZONTAL, Gtk.Orientation.VERTICAL];
 
-const checkPropertyDouble = t.fn(LIB, "gtk_test_accessible_check_property", {
-    args: [{ type: t.object("borrowed") }, { type: t.int32 }, { type: t.float64 }],
-    returns: t.string("full"),
-    fixedArgCount: 2,
-}) as CheckDouble;
+const SORT_DOMAIN = [
+    Gtk.AccessibleSort.NONE,
+    Gtk.AccessibleSort.ASCENDING,
+    Gtk.AccessibleSort.DESCENDING,
+    Gtk.AccessibleSort.OTHER,
+];
 
-const checkPropertyString = t.fn(LIB, "gtk_test_accessible_check_property", {
-    args: [{ type: t.object("borrowed") }, { type: t.int32 }, { type: t.string("borrowed") }],
-    returns: t.string("full"),
-    fixedArgCount: 2,
-}) as CheckString;
+const TOKEN_DOMAINS: Partial<Record<Gtk.AccessibleProperty, number[]>> = {
+    [Gtk.AccessibleProperty.AUTOCOMPLETE]: AUTOCOMPLETE_DOMAIN,
+    [Gtk.AccessibleProperty.ORIENTATION]: ORIENTATION_DOMAIN,
+    [Gtk.AccessibleProperty.SORT]: SORT_DOMAIN,
+};
 
-const buildRelationBinding = (targetCount: number): CheckRelation => {
-    const args = [{ type: t.object("borrowed") }, { type: t.int32 }];
+const STRING_PROPERTIES: Set<Gtk.AccessibleProperty> = new Set<Gtk.AccessibleProperty>([
+    Gtk.AccessibleProperty.DESCRIPTION,
+    Gtk.AccessibleProperty.HELP_TEXT,
+    Gtk.AccessibleProperty.KEY_SHORTCUTS,
+    Gtk.AccessibleProperty.LABEL,
+    Gtk.AccessibleProperty.PLACEHOLDER,
+    Gtk.AccessibleProperty.ROLE_DESCRIPTION,
+    Gtk.AccessibleProperty.VALUE_TEXT,
+]);
 
-    for (let index = 0; index <= targetCount; index += 1) {
-        args.push({ type: t.object("borrowed") });
-    }
+const BOOLEAN_PROPERTIES: Set<Gtk.AccessibleProperty> = new Set<Gtk.AccessibleProperty>([
+    Gtk.AccessibleProperty.HAS_POPUP,
+    Gtk.AccessibleProperty.MODAL,
+    Gtk.AccessibleProperty.MULTI_LINE,
+    Gtk.AccessibleProperty.MULTI_SELECTABLE,
+    Gtk.AccessibleProperty.READ_ONLY,
+    Gtk.AccessibleProperty.REQUIRED,
+]);
 
-    return t.fn(LIB, "gtk_test_accessible_check_relation", {
-        args,
+const NUMBER_PROPERTIES: Set<Gtk.AccessibleProperty> = new Set<Gtk.AccessibleProperty>([
+    Gtk.AccessibleProperty.VALUE_MAX,
+    Gtk.AccessibleProperty.VALUE_MIN,
+    Gtk.AccessibleProperty.VALUE_NOW,
+]);
+
+const OBJECT_ARG = { type: t.object("borrowed") };
+const INT_ARG = { type: t.int32 };
+const DOUBLE_ARG = { type: t.float64 };
+const STRING_ARG = { type: t.string("borrowed") };
+const CHECK_PROPERTY = "gtk_test_accessible_check_property";
+const checkStateInt = buildAccessibleCheck("gtk_test_accessible_check_state", [INT_ARG]) as CheckInt;
+const checkPropertyInt = buildAccessibleCheck(CHECK_PROPERTY, [INT_ARG]) as CheckInt;
+const checkPropertyDouble = buildAccessibleCheck(CHECK_PROPERTY, [DOUBLE_ARG]) as CheckDouble;
+const checkPropertyString = buildAccessibleCheck(CHECK_PROPERTY, [STRING_ARG]) as CheckString;
+
+function buildAccessibleCheck(symbol: string, varargs: CheckArg[]): NativeCall {
+    return t.fn(LIB, symbol, {
+        args: [OBJECT_ARG, INT_ARG, ...varargs],
         returns: t.string("full"),
         fixedArgCount: 2,
-    }) as CheckRelation;
+    });
+}
+
+const buildRelationBinding = (targetCount: number): CheckRelation => {
+    const targets = Array.from({ length: targetCount + 1 }, () => OBJECT_ARG);
+
+    return buildAccessibleCheck("gtk_test_accessible_check_relation", targets) as CheckRelation;
 };
 
 const relationBindingFor = (targetCount: number): CheckRelation => {
@@ -158,9 +196,9 @@ const readAccessibleRelation = (
     return candidates.filter((candidate) => isRelationExactly(accessible, relation, candidate, size));
 };
 
-const memberOfDomain = (accessible: Gtk.Accessible, state: Gtk.AccessibleState, domain: number[]): number | null => {
+const memberOfDomain = (check: CheckInt, handle: unknown, attribute: number, domain: number[]): number | null => {
     for (const candidate of domain) {
-        if (checkStateInt(getHandle(accessible), state, candidate) === null) {
+        if (check(handle, attribute, candidate) === null) {
             return candidate;
         }
     }
@@ -175,7 +213,7 @@ const readAccessibleState = (accessible: Gtk.Accessible, state: Gtk.AccessibleSt
         return null;
     }
 
-    const member = memberOfDomain(accessible, state, domain);
+    const member = memberOfDomain(checkStateInt, getHandle(accessible), state, domain);
 
     return member === UNDEFINED_VALUE ? null : member;
 };
@@ -194,49 +232,88 @@ const readAccessibleString = (accessible: Gtk.Accessible, property: Gtk.Accessib
     return checkPropertyString(getHandle(accessible), property, null);
 };
 
+const readAccessibleToken = (
+    accessible: Gtk.Accessible,
+    property: Gtk.AccessibleProperty,
+    domain: number[],
+): number | null => {
+    if (!Gtk.testAccessibleHasProperty(accessible, property)) {
+        return null;
+    }
+
+    return memberOfDomain(checkPropertyInt, getHandle(accessible), property, domain);
+};
+
 const readAccessibleBooleanProperty = (
     accessible: Gtk.Accessible,
     property: Gtk.AccessibleProperty,
 ): boolean | null => {
+    const member = readAccessibleToken(accessible, property, BOOLEAN_DOMAIN);
+
+    return member === null ? null : member === 1;
+};
+
+const readAgainstSentinel = (
+    check: CheckDouble,
+    sentinel: number,
+    accessible: Gtk.Accessible,
+    property: Gtk.AccessibleProperty,
+): number | null => {
     if (!Gtk.testAccessibleHasProperty(accessible, property)) {
         return null;
     }
 
-    for (const candidate of BOOLEAN_DOMAIN) {
-        if (checkPropertyInt(getHandle(accessible), property, candidate) === null) {
-            return candidate === 1;
-        }
-    }
+    const reported = check(getHandle(accessible), property, sentinel);
 
-    return null;
+    return reported === null ? sentinel : Number(reported);
 };
 
-const readAccessibleInt = (accessible: Gtk.Accessible, property: Gtk.AccessibleProperty): number | null => {
-    if (!Gtk.testAccessibleHasProperty(accessible, property)) {
-        return null;
+const readAccessibleInt = (accessible: Gtk.Accessible, property: Gtk.AccessibleProperty): number | null =>
+    readAgainstSentinel(checkPropertyInt, INT_SENTINEL, accessible, property);
+
+const readAccessibleNumber = (accessible: Gtk.Accessible, property: Gtk.AccessibleProperty): number | null =>
+    readAgainstSentinel(checkPropertyDouble, NUMBER_SENTINEL, accessible, property);
+
+const tokenReaderFor =
+    (domain: number[]): PropertyReader =>
+        (accessible, property) =>
+            readAccessibleToken(accessible, property, domain);
+
+const propertyReaderFor = (property: Gtk.AccessibleProperty): PropertyReader => {
+    const domain = TOKEN_DOMAINS[property];
+
+    if (domain !== undefined) {
+        return tokenReaderFor(domain);
     }
 
-    const reported = checkPropertyInt(getHandle(accessible), property, INT_SENTINEL);
-
-    return reported === null ? INT_SENTINEL : Number(reported);
-};
-
-const readAccessibleNumber = (accessible: Gtk.Accessible, property: Gtk.AccessibleProperty): number | null => {
-    if (!Gtk.testAccessibleHasProperty(accessible, property)) {
-        return null;
+    if (STRING_PROPERTIES.has(property)) {
+        return readAccessibleString;
     }
 
-    const reported = checkPropertyDouble(getHandle(accessible), property, NUMBER_SENTINEL);
+    if (BOOLEAN_PROPERTIES.has(property)) {
+        return readAccessibleBooleanProperty;
+    }
 
-    return reported === null ? NUMBER_SENTINEL : Number(reported);
+    if (NUMBER_PROPERTIES.has(property)) {
+        return readAccessibleNumber;
+    }
+
+    return readAccessibleInt;
 };
+
+const readAccessibleProperty = (
+    accessible: Gtk.Accessible,
+    property: Gtk.AccessibleProperty,
+): AccessibleAttributeValue | null => propertyReaderFor(property)(accessible, property);
 
 export {
     readAccessibleBooleanProperty,
     readAccessibleFlag,
     readAccessibleInt,
     readAccessibleNumber,
+    readAccessibleProperty,
     readAccessibleRelation,
     readAccessibleState,
     readAccessibleString,
+    type AccessibleAttributeValue,
 };

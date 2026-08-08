@@ -64,7 +64,7 @@ describe("cssBlendmodesDemo behavior", () => {
     it("selects the Normal row by default once the listbox is mounted", async () => {
         await renderDemo(cssBlendmodesDemo);
         const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Normal", selected: true });
-        expect(row).toBeSelected();
+        expect(row).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
     });
 
     it("regenerates the root grid blend-mode css class when a blend row is activated", async () => {

@@ -79,12 +79,12 @@ describe("sensitivity, visibility and rooting matchers", () => {
 });
 
 describe("emptiness, validity and focus matchers", () => {
-    it("toBeEmpty passes for a container with no children", async () => {
-        expect(await renderNamedBox("empty-box")).toBeEmpty();
+    it("toBeEmptyWidget passes for a container with no children", async () => {
+        expect(await renderNamedBox("empty-box")).toBeEmptyWidget();
     });
 
-    it("toBeEmpty fails for a label carrying text", async () => {
-        expect(await renderLabel("Filled")).not.toBeEmpty();
+    it("toBeEmptyWidget fails for a label carrying text", async () => {
+        expect(await renderLabel("Filled")).not.toBeEmptyWidget();
     });
 
     it("toBeInvalid and toBeValid read the accessible invalid state", async () => {

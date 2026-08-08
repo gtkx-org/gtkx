@@ -75,7 +75,7 @@ describe("tree expander accessibility (1)", () => {
     it("leaves the expanded state to GTK, which sets it wherever the row can expand", async () => {
         await render(drawDescribedTree(["parent"]));
         expect(hasExpandedState(expanderNamed("Parent"))).toBe(true);
-        expect(expanderNamed("Parent")).toBeExpanded();
+        expect(expanderNamed("Parent")).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, true);
         expect(hasExpandedState(expanderNamed("Quiet"))).toBe(true);
         expect(hasExpandedState(expanderNamed("Child"))).toBe(false);
         expect(hasExpandedState(expanderNamed("Leaf"))).toBe(false);

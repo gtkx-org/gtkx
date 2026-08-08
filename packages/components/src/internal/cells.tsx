@@ -373,7 +373,7 @@ function expanderDescriptionFor(
 ): string | undefined {
     const { isExpanded } = slot.args;
 
-    if (descriptions == null || isExpanded === undefined) {
+    if (isExpanded === undefined || descriptions == null) {
         return undefined;
     }
 

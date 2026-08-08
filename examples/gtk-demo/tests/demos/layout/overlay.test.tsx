@@ -46,7 +46,7 @@ describe("overlayDemo entry behavior", () => {
     it("renders the entry with the placeholder text 'Your Lucky Number' and empty initial value", async () => {
         await renderDemo(overlayDemo);
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
-        expect(entry).toHavePlaceholderText("Your Lucky Number");
+        expect(screen.getByPlaceholderText("Your Lucky Number")).toBe(entry);
         expect(entry).toHaveDisplayValue("");
     });
 

@@ -59,7 +59,7 @@ describe("listviewWordsDemo layout", () => {
     it("renders a GtkSearchEntry with the configured placeholder", async () => {
         await renderDemo(listviewWordsDemo);
         const entry = await screen.findByPlaceholderText("Search words...");
-        expect(entry).toHavePlaceholderText("Search words...");
+        expect(entry).toBeInstanceOf(Gtk.SearchEntry);
     });
 
     it("renders a GtkListView with NONE selection", async () => {

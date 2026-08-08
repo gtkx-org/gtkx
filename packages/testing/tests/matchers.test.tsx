@@ -37,12 +37,11 @@ describe("jest-dom-style text matchers", () => {
         expect(button).not.toHaveAccessibleName("Cancel");
     });
 
-    it("toHaveDisplayValue and toHavePlaceholderText read an entry", async () => {
+    it("toHaveDisplayValue reads an entry", async () => {
         await render(<GtkEntry text="typed value" placeholderText="type here" />);
         const entry = await screen.findByDisplayValue("typed value");
         expect(entry).toHaveDisplayValue("typed value");
         expect(entry).toHaveDisplayValue(/typed/);
-        expect(entry).toHavePlaceholderText("type here");
         expect(entry).not.toHaveDisplayValue("other");
     });
 });

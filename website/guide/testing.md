@@ -129,15 +129,30 @@ Importing `@gtkx/testing` extends `expect` with widget-aware matchers, so assert
 expect(label).toHaveTextContent(/world/);
 expect(button).toHaveAccessibleName("Save");
 expect(entry).toHaveDisplayValue("typed value");
-expect(entry).toHavePlaceholderText("Search tasks");
 expect(check).toBeChecked();
 expect(toggle).toBePressed();
-expect(expander).toBeExpanded();
-expect(row).toBeSelected();
 expect(scale).toHaveValue(50);
 ```
 
 The text matchers take a string or `RegExp` (`toHaveTextContent` matches substrings; the others match exactly) and assert non-emptiness when called with no argument. The boolean state matchers throw when the widget does not expose that state at all, which catches querying the wrong widget rather than silently passing.
+
+GTK keeps accessibility separate from widget properties, so anything a screen reader would announce is asserted through `toHaveAccessibleState` and `toHaveAccessibleProperty`. Each takes the value type that attribute carries, and asserts only that it is set when you leave the value out:
+
+```ts
+expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, true);
+expect(row).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
+expect(toggle).toHaveAccessibleState(Gtk.AccessibleState.PRESSED, Gtk.AccessibleTristate.MIXED);
+expect(entry).toHaveAccessibleProperty(Gtk.AccessibleProperty.PLACEHOLDER);
+expect(grid).toHaveAccessibleProperty(Gtk.AccessibleProperty.SORT, Gtk.AccessibleSort.DESCENDING);
+```
+
+`toAppearBefore` and `toAppearAfter` compare two widgets by their position in the widget tree, and the `toContainAnyBy*` and `toContainOneBy*` families run a query against the widget's own subtree:
+
+```ts
+expect(heading).toAppearBefore(body);
+expect(form).toContainAnyByRole(Gtk.AccessibleRole.BUTTON);
+expect(form).toContainOneByLabelText("Email");
+```
 
 ## Debugging
 
