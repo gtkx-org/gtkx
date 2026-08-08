@@ -6,4 +6,4 @@ export {
     resolveLazyElements,
     resolveOmittedProps,
 } from "./config.ts";
-export { type ConfigLoader, createConfigLoader } from "./loader.ts";
+export { createConfigLoader } from "./loader.ts";

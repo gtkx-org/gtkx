@@ -1,5 +1,3 @@
-import { resolveExecutable } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
@@ -7,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BuildEndHook, ResolveIdHook } from "./plugin-hook-types.js";
 import { gtkxSettings } from "../../src/vite-plugins/settings.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-assertions.js";
+import { hasGlibCompileSchemas } from "./glib-tools.js";
 import { callOutputOptions, expectComposedAsyncBanner, expectComposedBanner } from "./output-options.js";
 
 type HandleHotUpdateHook = (this: unknown, ctx: { file: string; server: unknown }) => unknown;
@@ -25,24 +24,19 @@ type EnvPluginInit = {
     envPath: string;
 };
 
-const hasGlibCompileSchemas = (): boolean => {
-    try {
-        execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], {
-            stdio: ["ignore", "ignore", "ignore"],
-        });
-
-        return true;
-    } catch {
-        return false;
-    }
-};
-
 const stubLoadContext = () => ({
     error: (message: string): never => {
         throw new Error(message);
     },
     emitFile: vi.fn(),
 });
+
+const createPluginInMode = (command: "build" | "serve"): ReturnType<typeof gtkxSettings> => {
+    const plugin = gtkxSettings();
+    (plugin.configResolved as ConfigResolvedHook).call({}, { command });
+
+    return plugin;
+};
 
 const callResolveIdSettings = async (
     resolve: (source: string) => Promise<{ id: string; external?: boolean } | null>,
@@ -109,13 +103,22 @@ const initSchemaEnvPlugin = (tmp: string, seedSchemas?: (dataDir: string) => voi
 
 const settingsVirtualId = (schemaPath: string): string => `\0gtkx-settings:${schemaPath}`;
 
-const loadSchemaInServeMode = (schemaPath: string): { plugin: ReturnType<typeof gtkxSettings>; virtualId: string } => {
-    const plugin = gtkxSettings();
-    (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-    const virtualId = settingsVirtualId(schemaPath);
-    (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
+const loadSchemaCode = (plugin: ReturnType<typeof gtkxSettings>, schemaPath: string): string =>
+    (plugin.load as LoadHook).call(stubLoadContext(), settingsVirtualId(schemaPath)) as string;
 
-    return { plugin, virtualId };
+const loadSchemaInServeMode = (schemaPath: string): { plugin: ReturnType<typeof gtkxSettings>; virtualId: string } => {
+    const plugin = createPluginInMode("serve");
+    loadSchemaCode(plugin, schemaPath);
+
+    return { plugin, virtualId: settingsVirtualId(schemaPath) };
+};
+
+const loadSchemaDirInServeMode = (
+    schemaPath: string,
+): { plugin: ReturnType<typeof gtkxSettings>; schemaDir: string } => {
+    const { plugin } = loadSchemaInServeMode(schemaPath);
+
+    return { plugin, schemaDir: firstSchemaDir() };
 };
 
 class FakeEmitter {
@@ -153,29 +156,22 @@ describe("gtkxSettings (plugin shape and init)", () => {
     });
 
     it("prepends the schema-env banner to build output options", () => {
-        const plugin = gtkxSettings();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
+        const plugin = createPluginInMode("build");
         const result = callOutputOptions(plugin, {});
         expect(result?.banner).toContain("GSETTINGS_SCHEMA_DIR");
         expect(result?.banner).toContain("import.meta.url");
     });
 
     it("leaves output options untouched outside build mode", () => {
-        const plugin = gtkxSettings();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-        expect(callOutputOptions(plugin, {})).toBeUndefined();
+        expect(callOutputOptions(createPluginInMode("serve"), {})).toBeUndefined();
     });
 
     it("composes a function banner by prepending the schema-env banner to its result", async () => {
-        const plugin = gtkxSettings();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-        await expectComposedBanner(plugin, "GSETTINGS_SCHEMA_DIR");
+        await expectComposedBanner(createPluginInMode("build"), "GSETTINGS_SCHEMA_DIR");
     });
 
     it("awaits an async original banner function", async () => {
-        const plugin = gtkxSettings();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-        await expectComposedAsyncBanner(plugin, "GSETTINGS_SCHEMA_DIR");
+        await expectComposedAsyncBanner(createPluginInMode("build"), "GSETTINGS_SCHEMA_DIR");
     });
 });
 
@@ -229,9 +225,7 @@ describe("gtkxSettings (load)", () => {
         );
 
         try {
-            const plugin = gtkxSettings();
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-            const code = (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-settings:${schemaPath}`) as string;
+            const code = loadSchemaCode(createPluginInMode("build"), schemaPath);
 
             expect(code).toContain(
                 "export const com_example_alpha = { id: \"com.example.alpha\", path: null, keys: keys_0 };",
@@ -257,8 +251,7 @@ describe("gtkxSettings (load errors)", () => {
         writeFileSync(schemaPath, "<schemalist></schemalist>");
 
         try {
-            const plugin = gtkxSettings();
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
+            const plugin = createPluginInMode("build");
 
             const errorMock = vi.fn<(message: string) => never>(() => {
                 throw new Error("emitted");
@@ -280,8 +273,7 @@ describe("gtkxSettings (load errors)", () => {
 
 describe("gtkxSettings (buildEnd)", () => {
     it("buildEnd is a no-op when no schemas were queued", () => {
-        const plugin = gtkxSettings();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
+        const plugin = createPluginInMode("build");
         expectBuildEndIsNoop(plugin.buildEnd as BuildEndHook);
     });
 
@@ -300,9 +292,8 @@ describe("gtkxSettings (buildEnd)", () => {
         );
 
         try {
-            const plugin = gtkxSettings();
-            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-settings:${schemaPath}`);
+            const plugin = createPluginInMode("build");
+            loadSchemaCode(plugin, schemaPath);
             expectBuildEndEmitsAsset(plugin.buildEnd as BuildEndHook, "gschemas.compiled");
         } finally {
             rmSync(tmp, { recursive: true, force: true });
@@ -320,13 +311,7 @@ describe("gtkxSettings (dev-mode load: fresh schema dir)", () => {
             const schemaPath = writeSchema(tmp, "dev.gschema.xml", "com.example.dev");
 
             try {
-                const plugin = gtkxSettings();
-                (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-
-                const code = (plugin.load as LoadHook).call(
-                    stubLoadContext(),
-                    `\0gtkx-settings:${schemaPath}`,
-                ) as string;
+                const code = loadSchemaCode(createPluginInMode("serve"), schemaPath);
 
                 expect(code).toContain(
                     "export const com_example_dev = { id: \"com.example.dev\", path: null, keys: keys_0 };",
@@ -362,8 +347,7 @@ describe("gtkxSettings (dev-mode load: existing schema dir)", () => {
 
 describe("gtkxSettings (handleHotUpdate: untracked)", () => {
     it("ignores files that were never tracked", () => {
-        const plugin = gtkxSettings();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+        const plugin = createPluginInMode("serve");
 
         const server = {
             moduleGraph: {
@@ -425,8 +409,7 @@ describe("gtkxSettings (closeBundle)", () => {
         const schemaPath = writeSchema(tmp, "close.gschema.xml", "com.example.close");
 
         try {
-            const { plugin } = loadSchemaInServeMode(schemaPath);
-            const schemaDir = firstSchemaDir();
+            const { plugin, schemaDir } = loadSchemaDirInServeMode(schemaPath);
             expect(existsSync(schemaDir)).toBe(true);
             (plugin.closeBundle as () => void).call(plugin);
             expect(existsSync(schemaDir)).toBe(false);
@@ -445,8 +428,7 @@ describe("gtkxSettings (configureServer)", () => {
         const schemaPath = writeSchema(tmp, "srv.gschema.xml", "com.example.srv");
 
         try {
-            const { plugin } = loadSchemaInServeMode(schemaPath);
-            const schemaDir = firstSchemaDir();
+            const { plugin, schemaDir } = loadSchemaDirInServeMode(schemaPath);
             expect(existsSync(schemaDir)).toBe(true);
             const httpServer = new FakeEmitter();
             const watcher = new FakeEmitter();

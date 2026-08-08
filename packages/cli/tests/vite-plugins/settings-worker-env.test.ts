@@ -1,10 +1,9 @@
-import { resolveExecutable } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { gtkxSettingsWorkerEnv } from "../../src/vite-plugins/settings-worker-env.js";
+import { hasGlibCompileSchemas } from "./glib-tools.js";
 
 type ConfigHook = (config: { root?: string }) => { test?: { env?: Record<string, string> } } | undefined;
 
@@ -22,18 +21,6 @@ const SCHEMA_XML = `<?xml version="1.0" encoding="UTF-8"?>
   </schema>
 </schemalist>
 `;
-
-const hasGlibCompileSchemas = (): boolean => {
-    try {
-        execFileSync(resolveExecutable("glib-compile-schemas"), ["--version"], {
-            stdio: ["ignore", "ignore", "ignore"],
-        });
-
-        return true;
-    } catch {
-        return false;
-    }
-};
 
 const writeProject = (root: string, options: { dataDir: string | null; hasSchema: boolean }): void => {
     const imports = options.dataDir === null ? {} : { imports: { "#data/*": `./${options.dataDir}/*` } };

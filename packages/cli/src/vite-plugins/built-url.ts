@@ -1,4 +1,20 @@
 import type { Plugin } from "vite";
+import { posix } from "node:path";
+
+const EXECUTABLE_URL_BASE = "`file://${process.execPath}`";
+const LEADING_SLASHES = /^\/+/;
+
+const executableRelativeUrl = (target: string): string => {
+    const specifier = JSON.stringify(target.replace(LEADING_SLASHES, "./"));
+
+    return `decodeURIComponent(new URL(${specifier}, ${EXECUTABLE_URL_BASE}).pathname)`;
+};
+
+const bundleRelativeUrl = (filename: string): string => {
+    const specifier = JSON.stringify(`./${filename}`);
+
+    return `decodeURIComponent(new URL(${specifier}, import.meta.url).pathname)`;
+};
 
 const renderAssetUrl = (
     filename: string,
@@ -9,21 +25,11 @@ const renderAssetUrl = (
         return undefined;
     }
 
-    if (assetBase) {
-        const executableDir = "require(\"path\").dirname(process.execPath)";
-
-        return {
-            runtime:
-                `require("path").join(${executableDir},` +
-                `${JSON.stringify(assetBase)},${JSON.stringify(filename)})`,
-        };
+    if (assetBase === undefined) {
+        return { runtime: bundleRelativeUrl(filename) };
     }
 
-    const filenameLiteral = JSON.stringify(`./${filename}`);
-
-    return {
-        runtime: `new URL(${filenameLiteral}, import.meta.url).pathname`,
-    };
+    return { runtime: executableRelativeUrl(posix.join(assetBase, filename)) };
 };
 
 function gtkxBuiltUrl(assetBase?: string): Plugin {

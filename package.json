@@ -15,6 +15,7 @@
         "postinstall": "tsc -b --force packages/vitest/tsconfig.lib.json",
         "release": "nx run-many -t release",
         "release-e2e": "tsx ./scripts/release-e2e.ts",
+        "local-registry": "tsx ./scripts/local-registry.ts",
         "test": "nx run-many -t test",
         "tutorial": "tsx ./scripts/tutorial.ts",
         "typecheck": "nx run-many -t typecheck"

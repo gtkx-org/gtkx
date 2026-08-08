@@ -1,13 +1,14 @@
+import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
-import { type ConfigLoader, createConfigLoader } from "@gtkx/config/internal";
-import { error, formatChildProcessError, info, sortStrings } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
+import { createConfigLoader } from "@gtkx/config/internal";
+import { error, info, sortStrings } from "@gtkx/utils";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { AssetEmitter } from "./asset-emitter.js";
 import { DATA_IMPORT_PREFIX, resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
-import { resolveCliTool } from "../internal/resolve-cli-tool.js";
+import { runCliTool } from "../internal/run-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
 import { renderInitModule } from "./resource-init-module.js";
@@ -83,17 +84,10 @@ const stageBundle = (dir: string, entries: Map<string, ResourceEntry>): string =
 };
 
 const runCompiler = (sourceDir: string, manifest: string, outputPath: string): Buffer => {
-    try {
-        execFileSync(resolveCliTool(RESOURCE_COMPILER), [
-            `--sourcedir=${sourceDir}`,
-            `--target=${outputPath}`,
-            manifest,
-        ]);
-    } catch (error) {
-        const details = formatChildProcessError(error);
-        const suffix = details ? `:\n${details}` : "";
-        throw new Error(`${RESOURCE_COMPILER} failed${suffix}`, { cause: error });
-    }
+    runCliTool({
+        tool: RESOURCE_COMPILER,
+        args: [`--sourcedir=${sourceDir}`, `--target=${outputPath}`, manifest],
+    });
 
     return readFileSync(outputPath);
 };
@@ -229,10 +223,7 @@ const loadAssetModule = (state: PluginState, virtualId: string): string => {
     ].join("\n");
 };
 
-const emitBuildBundle = (
-    ctx: { emitFile: (asset: { type: "asset"; fileName: string; source: Buffer }) => string },
-    state: PluginState,
-): void => {
+const emitBuildBundle = (ctx: AssetEmitter, state: PluginState): void => {
     if (!state.isBuild || state.entries.size === 0) {
         return;
     }

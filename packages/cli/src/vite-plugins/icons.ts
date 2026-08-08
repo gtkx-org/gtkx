@@ -2,16 +2,13 @@ import type { Plugin, UserConfig } from "vite";
 import { info } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 
 type PluginState = {
     iconsDir: string | null;
-};
-
-type PluginContext = {
-    emitFile: (file: { type: "asset"; fileName: string; source: Buffer }) => void;
 };
 
 const ICONS_DIR = "icons";
@@ -33,7 +30,7 @@ const resolveIconsDir = (config: UserConfig): string | null => {
     return dataDir === null ? null : join(root, dataDir, ICONS_DIR);
 };
 
-const emitIcons = (ctx: PluginContext, icons: ListedFile[]): void => {
+const emitIcons = (ctx: AssetEmitter, icons: ListedFile[]): void => {
     for (const { absPath, rel } of icons) {
         ctx.emitFile({ type: "asset", fileName: join(ICONS_DIR, rel), source: readFileSync(absPath) });
     }

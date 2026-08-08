@@ -3,6 +3,7 @@ import { error, errorMessage, info } from "@gtkx/utils";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { removeTempDir, withStagingDir } from "../internal/staging-dir.js";
@@ -22,9 +23,8 @@ type PluginState = {
     cleanupProcessExit: (() => void) | null;
 };
 
-type PluginContext = {
+type PluginContext = AssetEmitter & {
     error: (message: string) => never;
-    emitFile: (file: { type: "asset"; fileName: string; source: Buffer }) => void;
 };
 
 const VIRTUAL_PREFIX = "\0gtkx-settings:";

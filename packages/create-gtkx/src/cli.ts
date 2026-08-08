@@ -2,7 +2,7 @@ import { packageVersion } from "@gtkx/utils";
 import { defineCommand, runMain } from "citty";
 import { scaffoldCommand } from "./command.js";
 
-const version = packageVersion(import.meta.url);
+const version = packageVersion(import.meta.url, "../package.json");
 
 const main = defineCommand({
     ...scaffoldCommand,

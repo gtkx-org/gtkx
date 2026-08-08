@@ -2,6 +2,7 @@ import { type InlineConfig, mergeConfig, build as viteBuild } from "vite";
 import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxNative } from "./vite-plugins/native.js";
+import { gtkxWorker } from "./vite-plugins/worker.js";
 
 type BuildOptions = {
     entry: string;
@@ -28,7 +29,7 @@ const build = async (options: BuildOptions): Promise<void> => {
     const root = viteConfig?.root ?? process.cwd();
 
     const forced: InlineConfig = {
-        plugins: [...gtkxVitePlugins(BUILD_MODE), gtkxBuiltUrl(assetBase), gtkxNative(root)],
+        plugins: [...gtkxVitePlugins(BUILD_MODE), gtkxWorker(), gtkxBuiltUrl(assetBase), gtkxNative(root)],
         build: {
             ssr: entry,
             assetsInlineLimit: 0,
@@ -44,4 +45,4 @@ const build = async (options: BuildOptions): Promise<void> => {
     await viteBuild({ ...merged, ssr: { ...merged.ssr, noExternal: true } });
 };
 
-export { build, type BuildOptions };
+export { build };

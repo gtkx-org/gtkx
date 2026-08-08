@@ -1,6 +1,6 @@
 import { vol } from "memfs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { addDependency, detectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -56,6 +56,12 @@ function runNonInteractive(overrides: Partial<CreateOptions> = {}): Promise<void
 
 function read(path: string): string {
     return vol.readFileSync(path, "utf8") as string;
+}
+
+function seedFile(relPath: string, contents: string): void {
+    const full = join(TEST_DIR, relPath);
+    vol.mkdirSync(dirname(full), { recursive: true });
+    vol.writeFileSync(full, contents);
 }
 
 function lastNote(): string {
@@ -383,8 +389,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
     });
 
     it("rejects a flag-supplied name whose directory is non-empty without overwrite", async () => {
-        vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
-        vol.writeFileSync(`${TEST_DIR}/test-app/keep.txt`, "keep");
+        seedFile("test-app/keep.txt", "keep");
         await expect(runNonInteractive()).rejects.toThrow(/is not empty/);
         expect(lastError()).toContain("is not empty");
     });
@@ -397,8 +402,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
     });
 
     it("proceeds when the target directory contains only a .git folder and preserves it", async () => {
-        vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
-        vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
+        seedFile("test-app/.git/config", "[core]");
         await runNonInteractive();
         expect(clack.log.error).not.toHaveBeenCalled();
         expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
@@ -421,9 +425,8 @@ describe("scaffold (non-interactive and overwrite)", () => {
 
 describe("scaffold (overwrite)", () => {
     it("preserves .git while clearing other files when --overwrite is set", async () => {
-        vol.mkdirSync(`${TEST_DIR}/test-app/.git`, { recursive: true });
-        vol.writeFileSync(`${TEST_DIR}/test-app/.git/config`, "[core]");
-        vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
+        seedFile("test-app/.git/config", "[core]");
+        seedFile("test-app/stale.txt", "stale");
         await run({ shouldOverwrite: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/.git/config`)).toBe(true);
@@ -431,8 +434,7 @@ describe("scaffold (overwrite)", () => {
     });
 
     it("empties an existing directory when --overwrite is set", async () => {
-        vol.mkdirSync(`${TEST_DIR}/test-app`, { recursive: true });
-        vol.writeFileSync(`${TEST_DIR}/test-app/stale.txt`, "stale");
+        seedFile("test-app/stale.txt", "stale");
         await run({ shouldOverwrite: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);

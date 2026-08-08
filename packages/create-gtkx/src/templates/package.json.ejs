@@ -11,12 +11,8 @@
         "build": "gtkx build",
         "codegen": "gtkx codegen",
 <% if (isTypescript) { -%>
-        "typecheck": "gtkx codegen && tsc --noEmit",
+        "typecheck": "gtkx codegen && tsc",
 <% } -%>
         "start": "node dist/bundle.js"
-    },
-    "allowScripts": {
-        "esbuild": true,
-        "@swc/core": true
     }
 }
