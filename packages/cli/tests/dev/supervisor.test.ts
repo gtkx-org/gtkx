@@ -28,6 +28,7 @@ const watchMock = vi.mocked(watchFs);
 
 const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the run succeeded */
 const superviseUntilExit = async (
     entry: string,
     watch?: Parameters<typeof runDevSupervisor>[2],

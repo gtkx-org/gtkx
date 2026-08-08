@@ -1,5 +1,10 @@
+import type * as Gdk from "@gtkx/gi/gdk";
+import type * as GLib from "@gtkx/gi/glib";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type RefObject, useEffectEvent, useLayoutEffect, useRef } from "react";
+
+type SourceResult = typeof GLib.SOURCE_CONTINUE | typeof GLib.SOURCE_REMOVE;
+type TickHandler = (widget: Gtk.Widget, frameClock: Gdk.FrameClock) => SourceResult;
 
 type TickRegistration = {
     widget: Gtk.Widget;
@@ -33,7 +38,7 @@ function forgetRegistration(registrationRef: TickRegistrationRef, entry: TickReg
 function addRegistration(
     registrationRef: TickRegistrationRef,
     widget: Gtk.Widget,
-    tick: Gtk.TickCallback,
+    tick: TickHandler,
 ): void {
     const entry: TickRegistration = { widget, id: null };
 
@@ -53,7 +58,7 @@ function addRegistration(
 function syncRegistration(
     registrationRef: TickRegistrationRef,
     target: RefObject<Gtk.Widget | null> | null,
-    tick: Gtk.TickCallback,
+    tick: TickHandler,
 ): void {
     const widget = target?.current ?? null;
     const registration = registrationRef.current;
@@ -71,7 +76,7 @@ function syncRegistration(
     addRegistration(registrationRef, widget, tick);
 }
 
-function useTickCallback(target: RefObject<Gtk.Widget | null> | null, callback: Gtk.TickCallback): void {
+function useTickCallback(target: RefObject<Gtk.Widget | null> | null, callback: TickHandler): void {
     const tick = useEffectEvent(callback);
     const registrationRef = useRef<TickRegistration | null>(null);
 

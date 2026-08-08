@@ -247,6 +247,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "unicorn/import-style": ["error", { styles: { path: { default: false, named: true } } }],
     "unicorn/name-replacements": "off",
     "unicorn/no-null": "off",
+    "unicorn/single-line-block-comment-style": ["error", "single-line"],
 };
 
 const TEST_RULES: Linter.RulesRecord = {

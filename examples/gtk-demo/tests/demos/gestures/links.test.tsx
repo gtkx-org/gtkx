@@ -1,4 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { screen } from "@gtkx/testing";
@@ -68,7 +69,7 @@ describe("linksDemo activate-link handler", () => {
         const stop = label.connect("activate-link", () => {
             isReachedDefault = true;
 
-            return true;
+            return Gdk.EVENT_STOP;
         });
 
         try {

@@ -1,19 +1,19 @@
 import { runCommand } from "citty";
 import { describe, expect, it, vi } from "vitest";
 import { build as buildApp } from "../../src/builder.js";
-import { ensureGenerated } from "../../src/codegen/run-codegen.js";
+import { didRegenerate } from "../../src/codegen/run-codegen.js";
 import { build } from "../../src/commands/build.js";
 import { setupLogState } from "./log-state.js";
 
 const buildMock = vi.mocked(buildApp);
-const ensureGeneratedMock = vi.mocked(ensureGenerated);
+const regenerateMock = vi.mocked(didRegenerate);
 
 vi.mock("../../src/builder.js", () => ({
     build: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("../../src/codegen/run-codegen.js", () => ({
-    ensureGenerated: vi.fn(() => Promise.resolve(false)),
+    didRegenerate: vi.fn(() => Promise.resolve(false)),
     runCodegen: vi.fn(),
 }));
 
@@ -23,7 +23,7 @@ describe("build", () => {
     it("runs codegen preflight and builds with the default entry", async () => {
         await runCommand(build, { rawArgs: [] });
 
-        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), {
+        expect(regenerateMock).toHaveBeenCalledWith(expect.any(String), {
             shouldAnnounce: true,
             mode: "production",
         });

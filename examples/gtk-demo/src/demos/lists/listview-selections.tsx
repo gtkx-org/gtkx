@@ -25,6 +25,8 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
 
+type EventResult = typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP;
+
 type SuggestionEntryProps = {
     words: string[];
     placeholder: string;
@@ -40,9 +42,9 @@ type SuggestionEntryViewProps = {
     popoverRef: React.RefObject<Gtk.Popover | null>;
     listBoxRef: React.RefObject<Gtk.ListBox | null>;
     onChanged: (entry: Gtk.Entry) => void;
-    onKeyPressed: (keyval: number) => boolean;
+    onKeyPressed: (keyval: number) => EventResult;
     onClosed: () => void;
-    onRowActivated: (index: number) => boolean;
+    onRowActivated: (index: number) => EventResult;
 };
 
 type SuggestionState = {
@@ -231,18 +233,18 @@ function findSuggestions(words: string[], text: string): string[] {
     return words.filter((word) => word.toLowerCase().includes(lower)).slice(0, 10);
 }
 
-function didAcceptSuggestion(state: SuggestionState, entry: Gtk.Entry | null, index: number): boolean {
+function acceptSuggestion(state: SuggestionState, entry: Gtk.Entry | null, index: number): EventResult {
     const word = state.matches[index];
 
     if (!entry || word === undefined) {
-        return false;
+        return Gdk.EVENT_PROPAGATE;
     }
 
     entry.setText(word);
     entry.setPosition(-1);
     state.setIsOpen(false);
 
-    return true;
+    return Gdk.EVENT_STOP;
 }
 
 function moveSuggestionSelection(state: SuggestionState, delta: number): void {
@@ -260,7 +262,7 @@ function handleSuggestionChanged(state: SuggestionState, entry: Gtk.Entry): void
     state.setIsOpen(findSuggestions(state.words, text).length > 0);
 }
 
-function didHandleSuggestionKey(state: SuggestionState, entry: Gtk.Entry | null, keyval: number): boolean {
+function handleSuggestionKey(state: SuggestionState, entry: Gtk.Entry | null, keyval: number): EventResult {
     if (state.matches.length === 0) {
         return Gdk.EVENT_PROPAGATE;
     }
@@ -278,7 +280,7 @@ function didHandleSuggestionKey(state: SuggestionState, entry: Gtk.Entry | null,
         }
         case Gdk.KEY_Return:
         case Gdk.KEY_KP_Enter: {
-            return didAcceptSuggestion(state, entry, state.selected);
+            return acceptSuggestion(state, entry, state.selected);
         }
         case Gdk.KEY_Escape: {
             state.setIsOpen(false);
@@ -393,11 +395,11 @@ const SuggestionEntry = ({ words, placeholder, name }: SuggestionEntryProps) => 
             onChanged={(entry) => {
                 handleSuggestionChanged(state, entry);
             }}
-            onKeyPressed={(keyval) => didHandleSuggestionKey(state, entryRef.current, keyval)}
+            onKeyPressed={(keyval) => handleSuggestionKey(state, entryRef.current, keyval)}
             onClosed={() => {
                 setIsOpen(false);
             }}
-            onRowActivated={(index) => didAcceptSuggestion(state, entryRef.current, index)}
+            onRowActivated={(index) => acceptSuggestion(state, entryRef.current, index)}
         />
     );
 };

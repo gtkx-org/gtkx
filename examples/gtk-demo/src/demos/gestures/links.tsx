@@ -1,4 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Pango from "@gtkx/gi/pango";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
@@ -35,10 +36,10 @@ function LinksDemo() {
             dialog.setCloseResponse("ok");
             void dialog.choose(parentWindow, null);
 
-            return true;
+            return Gdk.EVENT_STOP;
         }
 
-        return false;
+        return Gdk.EVENT_PROPAGATE;
     };
 
     return (

@@ -377,6 +377,7 @@ function useClipboardHandlers(state: ClipboardState, parentWindow: Gtk.Window | 
     return { handleCopy, handlePaste, handleFileSelect, handleFolderSelect, didHandleDrop };
 }
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the paste succeeded */
 async function tryPasteTexture(
     clipboard: Gdk.Clipboard,
     formats: Gdk.ContentFormats,
@@ -397,6 +398,7 @@ async function tryPasteTexture(
     return true;
 }
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the paste succeeded */
 async function tryPastePaintable(
     clipboard: Gdk.Clipboard,
     formats: Gdk.ContentFormats,
@@ -418,6 +420,7 @@ async function tryPastePaintable(
     return true;
 }
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the paste succeeded */
 async function tryPasteColor(
     clipboard: Gdk.Clipboard,
     formats: Gdk.ContentFormats,
@@ -432,6 +435,7 @@ async function tryPasteColor(
     return didApplyColorFromValue(value, setPastedContent);
 }
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the paste succeeded */
 async function tryPasteFile(
     clipboard: Gdk.Clipboard,
     formats: Gdk.ContentFormats,
@@ -453,6 +457,7 @@ async function tryPasteFile(
     return true;
 }
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the paste succeeded */
 async function tryPasteText(
     clipboard: Gdk.Clipboard,
     formats: Gdk.ContentFormats,

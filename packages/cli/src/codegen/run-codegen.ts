@@ -200,7 +200,7 @@ const getRunOptions = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCo
     return { cwd: root, mode, inputs, resolved };
 };
 
-const ensureGenerated = async (
+const didRegenerate = async (
     cwd: string,
     options: { shouldAnnounce?: boolean; mode?: string } = {},
 ): Promise<boolean> => {
@@ -243,7 +243,7 @@ export {
     runCodegen,
     isCodegenDisabled,
     syncSchemaEnv,
-    ensureGenerated,
+    didRegenerate,
     resolveConfigWatch,
     type RunCodegenOptions,
     type RunCodegenResult,

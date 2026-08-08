@@ -31,7 +31,7 @@ jobs:
 
       - name: Detect changes
         id: filter
-        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           filters: |
             code:
@@ -425,7 +425,7 @@ jobs:
         shell: bash
         run: |
           corepack enable
-          corepack prepare pnpm@11.18.0 --activate
+          corepack prepare pnpm@11.20.0 --activate
 
       - name: Set up Rust
         shell: bash
@@ -438,7 +438,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run the TypeScript benchmarks under CodSpeed
-        uses: CodSpeedHQ/action@88472375d0a4572cf70a9f1fe3a4e0ab8da1b924 # v5.0.1
+        uses: CodSpeedHQ/action@4296e51e7041e24dadb86d1d6e8b9320d223dbe8 # v5.0.3
         with:
           mode: walltime
           run: pnpm bench

@@ -19,6 +19,9 @@ import { useTickCallback } from "../../use-tick-callback.js";
 import { createVertexBuffer, setShaderSource } from "./gl-helpers.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
+type EventResult = typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP;
+type SourceResult = typeof GLib.SOURCE_CONTINUE | typeof GLib.SOURCE_REMOVE;
+
 type GLState = {
     program: number;
     vao: number;
@@ -1179,7 +1182,7 @@ const createInitialAnimState = (): AnimState => ({
 });
 
 function useShaderTickCallback(animRef: React.RefObject<AnimState>, glAreaRef: React.RefObject<Gtk.GLArea | null>) {
-    return (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+    return (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): SourceResult => {
         const anim = animRef.current;
         const frame = Number(frameClock.getFrameCounter());
         const frameTime = Number(frameClock.getFrameTime());
@@ -1291,7 +1294,7 @@ const drawShaderFrame = (state: GLState, anim: AnimState, resolution: [number, n
     gl.useProgram(0);
 };
 
-const didRenderShaderFrame = ({ glStateRef, animRef, resolution, self, shaderCode }: RenderShaderArgs): boolean => {
+const renderShaderFrame = ({ glStateRef, animRef, resolution, self, shaderCode }: RenderShaderArgs): EventResult => {
     if (!glStateRef.current) {
         if (self.getError()) {
             return Gdk.EVENT_PROPAGATE;
@@ -1313,7 +1316,7 @@ const useShadertoyFrame = (
 ) => {
     return {
         handleRender: (_context: Gdk.GLContext, self: Gtk.GLArea) =>
-            didRenderShaderFrame({ glStateRef, animRef, resolution: resolutionRef.current, self, shaderCode }),
+            renderShaderFrame({ glStateRef, animRef, resolution: resolutionRef.current, self, shaderCode }),
         handleResize: (width: number, height: number) => {
             resolutionRef.current = [width, height, 1];
             gl.viewport(0, 0, width, height);

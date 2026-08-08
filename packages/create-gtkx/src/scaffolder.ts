@@ -236,7 +236,7 @@ const promptPackageManager = async (): Promise<PackageManager> => {
     );
 };
 
-const promptTypeScript = async (): Promise<boolean> =>
+const shouldUseTypeScript = async (): Promise<boolean> =>
     guardCancellation(
         await p.confirm({
             message: "Use TypeScript?",
@@ -244,7 +244,7 @@ const promptTypeScript = async (): Promise<boolean> =>
         }),
     );
 
-const promptTesting = async (): Promise<boolean> =>
+const shouldSetUpTesting = async (): Promise<boolean> =>
     guardCancellation(
         await p.confirm({
             message: "Include testing setup (Vitest)?",
@@ -276,7 +276,7 @@ const validateResolvedOptions = (name: string, applicationId: string): void => {
     }
 };
 
-const confirmOverwrite = async (target: string, options: CreateOptions): Promise<boolean> => {
+const shouldOverwriteDirectory = async (target: string, options: CreateOptions): Promise<boolean> => {
     if (!options.isInteractive) {
         return options.shouldOverwrite === true;
     }
@@ -294,7 +294,7 @@ const handleTargetDirectory = async (root: string, target: string, options: Crea
         return;
     }
 
-    if (await confirmOverwrite(target, options)) {
+    if (await shouldOverwriteDirectory(target, options)) {
         emptyDir(root);
 
         return;
@@ -335,20 +335,20 @@ const resolvePackageManager = async (options: CreateOptions): Promise<PackageMan
     return (await detectedPackageManager()) ?? "pnpm";
 };
 
-const resolveTypeScript = async (options: CreateOptions): Promise<boolean> => {
+const isTypescriptSelected = async (options: CreateOptions): Promise<boolean> => {
     if (options.isTypescript !== undefined) {
         return options.isTypescript;
     }
 
-    return options.isInteractive ? promptTypeScript() : true;
+    return options.isInteractive ? shouldUseTypeScript() : true;
 };
 
-const resolveIncludeTesting = async (options: CreateOptions): Promise<boolean> => {
+const isTestingIncluded = async (options: CreateOptions): Promise<boolean> => {
     if (options.shouldIncludeTesting !== undefined) {
         return options.shouldIncludeTesting;
     }
 
-    return options.isInteractive ? promptTesting() : true;
+    return options.isInteractive ? shouldSetUpTesting() : true;
 };
 
 const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
@@ -359,8 +359,8 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
     const root = resolve(process.cwd(), target);
     await handleTargetDirectory(root, target, options);
     const packageManager = await resolvePackageManager(options);
-    const isTypescript = await resolveTypeScript(options);
-    const shouldIncludeTesting = await resolveIncludeTesting(options);
+    const isTypescript = await isTypescriptSelected(options);
+    const shouldIncludeTesting = await isTestingIncluded(options);
 
     return { target, name, applicationId, packageManager, isTypescript, shouldIncludeTesting };
 };

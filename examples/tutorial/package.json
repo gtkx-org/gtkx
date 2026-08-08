@@ -33,7 +33,7 @@
         "@gtkx/cli": "^1.0.0-rc.4",
         "@gtkx/config": "^1.0.0-rc.4",
         "@gtkx/testing": "^1.0.0-rc.4",
-        "@types/node": "^26.1.2",
+        "@types/node": "^26.2.0",
         "@types/react": "^19.2.18",
         "esbuild": "^0.28.1",
         "postject": "1.0.0-alpha.6",

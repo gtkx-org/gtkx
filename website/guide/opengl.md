@@ -167,7 +167,7 @@ const GLAreaDemo = () => {
 
     const handleRender = (_context: Gdk.GLContext) => {
         const state = glStateRef.current;
-        if (!state) return true;
+        if (!state) return Gdk.EVENT_STOP;
 
         gl.clearColor(0.5, 0.5, 0.5, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
@@ -178,7 +178,7 @@ const GLAreaDemo = () => {
         gl.bindVertexArray(0);
         gl.useProgram(0);
         gl.flush();
-        return true;
+        return Gdk.EVENT_STOP;
     };
 
     return (
