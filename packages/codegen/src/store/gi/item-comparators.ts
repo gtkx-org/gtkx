@@ -5,7 +5,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import { tObject } from "../../analysis/descriptor.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import { resolveInterface } from "../../gir/ancestry.js";
+import { resolveInterfaces } from "../../gir/ancestry.js";
 import { callbackAsFunction, type GirCallback } from "../../gir/callback.js";
 
 const COMPARATOR_CALLBACK_TYPES = new Set([
@@ -30,11 +30,9 @@ const isListModelImplementor = (context: ModuleContext, ref: TypeId): boolean =>
         return false;
     }
 
-    return resolved.value.implements.some((interfaceName) => {
-        const iface = resolveInterface(context.library, resolved.namespace.name, interfaceName);
+    const interfaces = resolveInterfaces(context.library, resolved.namespace.name, resolved.value.implements);
 
-        return iface?.namespaceName === "Gio" && iface.klass.name === "ListModel";
-    });
+    return interfaces.some((iface) => iface.namespaceName === "Gio" && iface.klass.name === "ListModel");
 };
 
 const isObjectItemComparator = (context: ModuleContext, fn: GirFunction): boolean => {

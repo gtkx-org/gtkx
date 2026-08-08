@@ -1,5 +1,6 @@
 import type { Type } from "@gtkx/gi/gobject";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { ParamFlags, paramSpecBoolean, typeFromName, Value } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -161,6 +162,20 @@ describe("fromValue extra coverage", () => {
         v.init(gdkRgbaGtype());
         v.setBoxed(makeRgba(0.1, 0.2, 0.3, 1));
         expect(fromValue(getHandle(v))).toBeInstanceOf(Gdk.RGBA);
+    });
+
+    it("returns the object a value typed as an interface holds", () => {
+        const store = new Gio.ListStore({ itemType: TYPE_OBJECT });
+        const v = new Value();
+        v.init(typeFromName("GListModel"));
+        v.setObject(store);
+        expect(fromValue(getHandle(v))).toBe(store);
+    });
+
+    it("returns null for a value typed as an interface holding nothing", () => {
+        const v = new Value();
+        v.init(typeFromName("GListModel"));
+        expect(fromValue(getHandle(v))).toBeNull();
     });
 });
 

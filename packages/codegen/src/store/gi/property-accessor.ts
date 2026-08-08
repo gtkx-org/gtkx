@@ -6,12 +6,13 @@ import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock } from "../../writer/emit.js";
 import { isEmittableCallable } from "./callables.js";
+import { getDoc } from "./doc-spec.js";
 import { methodExportName, renderMethodReturnType } from "./method.js";
 
 type ResolvedAccessor = {
+    property: GirProperty;
     jsName: string;
     tsType: string;
     hasGetter: boolean;
@@ -148,7 +149,7 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
     const ownType = resolveOwnType(context, property, getterMethod, setterMethod);
     const tsType = resolveTsType(args.inheritedType, ownType);
 
-    return { jsName, tsType, hasGetter, isWritable, getterMember, getterMethod, setterMember };
+    return { property, jsName, tsType, hasGetter, isWritable, getterMember, getterMethod, setterMember };
 };
 
 const resolveOwnerAccessor = (
@@ -210,15 +211,18 @@ const renderResolvedPropertyAccessor = (
         blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setterBody));
     }
 
-    return `${renderJsDoc(property.doc)}${blocks.join("\n\n")}`;
+    return `${propertyDoc(property)}${blocks.join("\n\n")}`;
 };
+
+const propertyDoc = (property: GirProperty): string =>
+    getDoc(property);
 
 const renderPropertyAccessor = (args: PropertyAccessorArgs): string | undefined =>
     withAccessor(args, (accessor) => renderResolvedPropertyAccessor(args.context, args.property, accessor));
 
 const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | undefined =>
     withAccessor(args, ({ jsName, tsType, hasGetter, isWritable }) => {
-        const doc = renderJsDoc(args.property.doc);
+        const doc = propertyDoc(args.property);
 
         if (hasGetter && isWritable) {
             return `${doc}${jsName}: ${tsType};`;
@@ -289,6 +293,7 @@ const delegateMember = (
 };
 
 export {
+    propertyDoc,
     resolveAccessor,
     resolveOwnerAccessor,
     resolveAccessorType,

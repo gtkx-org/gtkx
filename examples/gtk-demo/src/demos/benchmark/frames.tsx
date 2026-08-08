@@ -157,7 +157,7 @@ class ColorWidget extends Gtk.Widget {
         });
     }
 
-    snapshot(snapshot: Gtk.Snapshot): void {
+    override vfuncSnapshot(snapshot: Gtk.Snapshot): void {
         const width = this.getWidth();
         const height = this.getHeight();
         const color = new Gdk.RGBA();

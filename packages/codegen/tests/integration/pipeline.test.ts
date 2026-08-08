@@ -1,3 +1,4 @@
+/* eslint-disable gtkx/no-library-prefix */
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { GirClass } from "../../src/gir/class.js";
@@ -8,8 +9,10 @@ import type { GirParameter, GirReturnValue } from "../../src/gir/parameter.js";
 import type { GirRecord } from "../../src/gir/record.js";
 import type { TypeId } from "../../src/gir/type-id.js";
 import type { GirType } from "../../src/gir/type.js";
+import { annotationsFromNode } from "../../src/gir/annotations.js";
 import { readBuiltinElements } from "../../src/react/element-config.js";
 import { matchAsyncFinish } from "../../src/store/gi/async.js";
+import { generateNamespaceModule } from "../../src/store/gi/pipeline.js";
 import { elementPropTypeFor } from "../../src/store/jsx/element-prop-imports.js";
 import {
     collectIntrinsicElementClasses,
@@ -34,6 +37,7 @@ const BUS_GET_SIGNATURE =
     "export function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection> {";
 
 const BUS_GET_PROMISIFY_CALL = "return promisify(gBusGet, busGetFinish, cancellable, busType);";
+const THROWS_TAG = "@throws A `GLib.Error` carrying the failing operation's domain, code, and message.";
 
 const DBUS_CONNECTION_NEW_SIGNATURE =
     "static new(stream: IOStream, guid: string | null, flags: DBusConnectionFlags, " +
@@ -41,7 +45,7 @@ const DBUS_CONNECTION_NEW_SIGNATURE =
 
 const DBUS_CONNECTION_NEW_PROMISIFY_CALL =
     "return promisify(gDbusConnectionNew, this.newFinish.bind(this), cancellable, " +
-    "getHandle(stream), guid, flags, tryGetHandle(observer));";
+    "getHandle(stream), guid, flags, observer == null ? null : getHandle(observer));";
 
 const SHOW_URI_FULL_CALLBACK_SIGNATURE =
     "export function showUriFull(parent: Window | null, uri: string, timestamp: number, " +
@@ -297,12 +301,44 @@ const matchAll = (sources: string[], pattern: RegExp): string[] =>
 
 const stripDocComments = (source: string): string => source.replaceAll(/\/\*\*[\s\S]*?\*\//g, "");
 
-const moduleSource = (directory: string): string => {
+const documentedModuleSource = (directory: string): string => {
     const found = giModules.find((entry) => entry.directory === directory);
     expect(found, `expected generated module for ${directory}`).toBeDefined();
 
-    return stripDocComments(found?.source ?? "");
+    return found?.source ?? "";
 };
+
+const moduleSource = (directory: string): string => stripDocComments(documentedModuleSource(directory));
+
+const unwrapDocComment = (block: string): string =>
+    block
+        .split("\n")
+        .map((line) => line.replace(/^\s*\/?\*+\/?\s?/, ""))
+        .join(" ")
+        .replaceAll(/\s+/g, " ")
+        .trim();
+
+const docCommentBefore = (source: string, anchor: string): string => {
+    const index = source.indexOf(anchor);
+    expect(index, `expected ${anchor} in the generated module`).toBeGreaterThan(-1);
+
+    return unwrapDocComment(source.slice(source.lastIndexOf("/**", index), index));
+};
+
+const declarationFrom = (source: string, head: string): string => {
+    const index = source.indexOf(head);
+    expect(index, `expected ${head} in the generated module`).toBeGreaterThan(-1);
+
+    return source.slice(index, source.indexOf("\n}", index));
+};
+
+const declarationBody = (source: string, head: string): string =>
+    declarationFrom(source, head)
+        .slice(head.length)
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .join("\n");
 
 const registerModuleLevelPromisifyTests = (): void => {
     it("promisifies a module-level async function against its finish sibling", () => {
@@ -371,6 +407,46 @@ const registerAnnotatedFinishTests = (): void => {
     it("promisifies an instance async method against its name-matched static finish", () => {
         expect(gioSource()).toContain(IO_STREAM_SPLICE_SIGNATURE);
     });
+};
+
+const plainRecord = (name: string): GirRecord => ({
+    isVtable: false,
+    name,
+    doc: undefined,
+    annotations: annotationsFromNode(undefined),
+    cType: `G${name}`,
+    glibTypeName: undefined,
+    glibGetType: undefined,
+    glibRefFunc: undefined,
+    glibUnrefFunc: undefined,
+    copyFunc: undefined,
+    freeFunc: undefined,
+    disguised: false,
+    opaque: false,
+    introspectable: true,
+    fields: [],
+    methods: [],
+    constructors: [],
+    functions: [],
+    isUnion: false,
+});
+
+const generateClashingListModelImpl = (): string => generateWithRecord("Gio", plainRecord("ListModelImpl"));
+
+const generateWithRecord = (namespaceName: string, record: GirRecord): string => {
+    const namespace = namespaceNamed(namespaceName);
+
+    if (namespace === undefined) {
+        throw new Error(`expected the ${namespaceName} namespace`);
+    }
+
+    namespace.records.push(record);
+
+    try {
+        return generateNamespaceModule(namespace, library);
+    } finally {
+        namespace.records.pop();
+    }
 };
 
 describe("codegen gi pipeline", () => {
@@ -525,16 +601,19 @@ describe("codegen GObject item comparators", () => {
             "[boolean, number]",
         );
 
-        expect(source).toContain(`${itemComparatorArgs}, { userDataIndex: 2, scope: "call" })`);
+        expect(source).toContain(`${itemComparatorArgs}, { hasUserData: true, userDataIndex: 2, scope: "call" })`);
         expect(source).toContain(`${itemEqualityArgs}, { scope: "call" })`);
-        expect(source).toContain(`${itemEqualityFullArgs}, { userDataIndex: 2, scope: "call" })`);
+        expect(source).toContain(`${itemEqualityFullArgs}, { hasUserData: true, userDataIndex: 2, scope: "call" })`);
     });
 
     it("types CustomSorter comparator callbacks over borrowed object items", () => {
         const source = giSource("gtk");
         expect(source).toContain(`static new(sortFunc: (${itemComparatorSignature} => number) | null): CustomSorter`);
         expect(source).toContain(`setSortFunc(sortFunc: (${itemComparatorSignature} => number) | null): void`);
-        expect(source).toContain(`${itemComparatorArgs}, { hasDestroy: true, userDataIndex: 2, scope: "notified" })`);
+
+        expect(source).toContain(
+            `${itemComparatorArgs}, { hasDestroy: true, hasUserData: true, userDataIndex: 2, scope: "notified" })`,
+        );
     });
 
     it("keeps raw-pointer comparator callbacks outside GObject item containers", () => {
@@ -542,6 +621,25 @@ describe("codegen GObject item comparators", () => {
         expect(source).toContain("export type CompareDataFunc = (a: number | null, b: number | null) => number;");
         expect(source).toContain("export type EqualFunc = (a: number | null, b: number | null) => boolean;");
         expect(source).not.toContain(itemComparatorSignature);
+    });
+});
+
+describe("codegen type-erased callback parameters", () => {
+    it("drops a callable whose callback is a GCallback the callee hands user data to", () => {
+        const gtk = giSource("gtk");
+        expect(gtk).toContain("class CClosureExpression extends Expression");
+        expect(gtk).not.toContain('"gtk_cclosure_expression_new"');
+        expect(giSource("gio")).not.toContain('"g_cancellable_connect"');
+        expect(giSource("gobject")).not.toContain('"g_signal_group_connect_data"');
+    });
+
+    it("keeps a callback that reads its user data off the argument it is handed", () => {
+        const source = giSource("gdk");
+        expect(source).toContain("gdk_content_register_serializer");
+
+        expect(source).toContain(
+            't.callback([t.object("borrowed")], t.void, { hasDestroy: true, hasUserData: true, scope: "notified" })',
+        );
     });
 });
 
@@ -705,10 +803,10 @@ describe("codegen applied element props", () => {
         const gio = getSource(reactPipeline, "gio");
 
         expect(gio).toMatch(
-            /import \{[^}]*type GActionGroupProps as GActionGroupPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
+            /import \{[^}]*type ActionGroupProps as ActionGroupPropsBase[^}]*\} from "@gtkx\/react\/internal";/,
         );
 
-        expect(gio).toMatch(/export interface GActionGroupProps<[^>]*> extends GActionGroupPropsBase/);
+        expect(gio).toMatch(/export interface GActionGroupProps<[^>]*> extends ActionGroupPropsBase/);
     });
 
     it("emits lazy-element props from the page class interface", () => {
@@ -781,6 +879,413 @@ describe("Library.resolveType", () => {
         });
 
         expect(unexpected).toEqual([]);
+    });
+});
+
+describe("vtable slots that take a GError", () => {
+    it("marks a throwing slot so a call appends the trailing GError the parameters leave out", () => {
+        expect(moduleSource("gio")).toContain(
+            "vfuncName: \"init\",\n            byteOffset: 16,\n            vtableSize: 24,\n" +
+            "            argDescriptors: [t.object(\"borrowed\"), t.object(\"borrowed\")],\n" +
+            "            returnDescriptor: t.boolean,\n            canThrow: true,",
+        );
+    });
+
+    it("leaves a slot that takes no GError unmarked", () => {
+        expect(moduleSource("gio")).toContain(
+            "vfuncName: \"get_n_items\",\n            byteOffset: 24,\n            vtableSize: 40,\n" +
+            "            argDescriptors: [t.object(\"borrowed\")],\n" +
+            "            returnDescriptor: t.uint32,\n        },",
+        );
+    });
+});
+
+describe("vtable slots with array out parameters", () => {
+    it("emits local_command_line with its inout argument vector", () => {
+        const gio = moduleSource("gio");
+        expect(gio).toContain("vfuncLocalCommandLine(arguments_: string[]): [boolean, string[], number]");
+
+        expect(gio).toContain(
+            "argDescriptors: [t.object(\"borrowed\"), " +
+            "t.ref(t.array(t.string(\"full\"), \"array\", \"full\"), true), t.ref(t.int32)],",
+        );
+    });
+
+    it("emits get_default_attributes with both of its out arrays", () => {
+        const gtk = moduleSource("gtk");
+        expect(gtk).toContain("vfuncGetDefaultAttributes(): [string[], string[]]");
+    });
+
+    it("folds away the length parameter an out array carries, as a call does", () => {
+        const gtk = moduleSource("gtk");
+        expect(gtk).toContain("vfuncGetSelection(): [boolean, AccessibleTextRange[]]");
+
+        expect(gtk).toContain(
+            "vfuncGetAttributes(offset: number): [boolean, AccessibleTextRange[], string[], string[]]",
+        );
+    });
+
+    it("folds the length out of a slot whose only out parameters are an array and its length", () => {
+        const pango = moduleSource("pango");
+        expect(pango).toContain("vfuncListFaces(): FontFace[]");
+        expect(pango).toContain("vfuncListSizes(): number[] | null");
+    });
+});
+
+describe("vtable slot member visibility", () => {
+    it("marks a class slot protected, so only a subclass chaining up reaches it", () => {
+        const gtk = moduleSource("gtk");
+        expect(gtk).toContain("protected vfuncMeasure(orientation: Orientation, forSize: number)");
+        expect(gtk).toContain("protected vfuncCloseRequest(): boolean {");
+        expect(moduleSource("gobject")).toContain("protected vfuncConstructed(): void {");
+    });
+
+    it("leaves an interface slot public, which a TypeScript interface has no way to restrict", () => {
+        const gio = moduleSource("gio");
+        expect(gio).toContain("\n    vfuncGetItemType(): bigint;");
+        expect(gio).not.toContain("protected vfuncGetItemType");
+    });
+
+    it("leaves a class slot public when an implemented interface declares the same name", () => {
+        const gio = moduleSource("gio");
+        expect(gio).toContain("\n    vfuncTell(): bigint {");
+        expect(gio).not.toContain("protected vfuncTell");
+        expect(gio).not.toContain("protected vfuncGetInfo");
+    });
+
+    it("drops a slot an ancestor class already declares at the same vtable offset", () => {
+        const gobject = moduleSource("gobject");
+        expect(gobject).toContain("callVfunc(Object, \"vfuncConstructed\", this, [])");
+        expect(gobject).not.toContain("callVfunc(InitiallyUnowned, \"vfuncConstructed\", this, [])");
+    });
+
+    it("keeps a same-named slot an ancestor class declares at a different vtable offset", () => {
+        expect(moduleSource("adw")).toContain("callVfunc(ActionRow, \"vfuncActivate\", this, [])");
+        expect(moduleSource("gtk")).toContain("callVfunc(ListBoxRow, \"vfuncActivate\", this, [])");
+    });
+});
+
+describe("generated type name collisions", () => {
+    it("rejects a namespace whose own symbol claims the name an implementer type takes", () => {
+        expect(generateClashingListModelImpl).toThrow(
+            /The generated type 'ListModelImpl' is declared for both Gio.ListModelImpl and Gio.ListModel/,
+        );
+    });
+
+    it("takes a namespace whose symbols claim names no implementer type takes", () => {
+        expect(generateWithRecord("Gio", plainRecord("ListModelHandle"))).toContain("export class ListModelHandle");
+    });
+});
+
+describe("interface implementer types", () => {
+    it("declares the vfuncs an implementer supplies, and none of the interface's methods", () => {
+        const body = declarationBody(moduleSource("gio"), "export interface ListModelImpl {");
+
+        expect(body).toBe(
+            "vfuncGetItemType?(): bigint;\n" +
+            "vfuncGetNItems?(): number;\n" +
+            "vfuncGetItem?(position: number): GObject.Object | null;",
+        );
+    });
+
+    it("chains an implementer type onto the implementer type of each prerequisite interface", () => {
+        expect(moduleSource("gtk")).toContain("export interface SectionModelImpl extends Gio.ListModelImpl {");
+        expect(moduleSource("gtk")).toContain("export interface SymbolicPaintableImpl extends Gdk.PaintableImpl {");
+        expect(moduleSource("gio")).toContain("export interface LoadableIconImpl extends IconImpl {");
+    });
+
+    it("leaves out a prerequisite that is a class, which the implementer already extends", () => {
+        expect(moduleSource("gtk")).toContain("export interface EditableImpl {");
+        expect(moduleSource("gtk")).toContain("export interface ScrollableImpl {");
+    });
+
+    it("emits nothing for an interface without vtable slots", () => {
+        const gtk = moduleSource("gtk");
+        expect(gtk).toContain("export abstract class Orientable");
+        expect(gtk).not.toContain("OrientableImpl");
+        expect(gtk).not.toContain("RootImpl");
+        expect(moduleSource("gobject")).not.toContain("TypePluginImpl");
+    });
+
+    it("keeps the implementer type out of the runtime module", () => {
+        const gio = moduleSource("gio");
+        expect(gio).not.toContain("class ListModelImpl");
+        expect(gio).not.toContain("const ListModelImpl");
+    });
+
+    it("ties the interface value to its implementer type", () => {
+        const gio = moduleSource("gio");
+        expect(gio).toContain("export abstract class ListModel {");
+        expect(gio).toContain("declare static __impl__: Interface<ListModelImpl>[\"__impl__\"];");
+        expect(gio).toContain("type Interface");
+    });
+
+    it("asks nothing of an implementer of an interface without vtable slots", () => {
+        const orientable = declarationFrom(moduleSource("gtk"), "export abstract class Orientable {");
+        expect(orientable).toContain("declare static __impl__: Interface<unknown>[\"__impl__\"];");
+    });
+});
+
+describe("interface implementer slots a class may leave alone", () => {
+    it("leads each slot with the virtual method's own text ahead of the implementer note", () => {
+        const impl = declarationFrom(documentedModuleSource("gio"), "export interface ListModelImpl {");
+        const doc = docCommentBefore(impl, "vfuncGetNItems?(): number;");
+
+        expect(doc).toBe(
+            "Gets the number of items in `this`. " +
+            "Depending on the model implementation, calling this function may be " +
+            "less efficient than iterating the list with increasing values for " +
+            "`position` until `g_list_model_get_item()` returns `null`. " +
+            "Fills the `get_n_items` vtable slot. Declare it on a class passed to `registerClass` " +
+            "with `ListModel` in `implements`, which installs it in the interface vtable. Leaving it out " +
+            "keeps whatever the interface installs by default, the way it does for a C implementer. " +
+            "@returns the number of items in `this`. @since 2.44",
+        );
+    });
+
+    it("marks every slot optional, so a GIR that grows one breaks no implementer", () => {
+        const head = "export interface SectionModelImpl extends Gio.ListModelImpl {";
+        const body = declarationBody(moduleSource("gtk"), head);
+        expect(body).toBe("vfuncGetSection?(position: number): [number, number];");
+    });
+
+    it("keeps the interface's own callable slot required, which an instance always answers", () => {
+        const listModel = declarationFrom(moduleSource("gio"), "export interface ListModel extends GObject.Object {");
+        expect(listModel).toContain("vfuncGetNItems(): number;");
+        expect(listModel).not.toContain("vfuncGetNItems?(): number;");
+    });
+
+    it("keeps a class slot required, which the class either overrides or inherits", () => {
+        const gtk = moduleSource("gtk");
+        expect(gtk).toContain("protected vfuncMeasure(orientation: Orientation, forSize: number)");
+        expect(gtk).not.toContain("vfuncMeasure?(");
+    });
+});
+
+describe("interfaces with no slot to fill", () => {
+    it("brands an interface whose vtable introspection leaves out with unknown", () => {
+        const gtk = moduleSource("gtk");
+        expect(declarationFrom(gtk, "export abstract class Native {")).toContain("Interface<unknown>[\"__impl__\"]");
+        expect(declarationFrom(gtk, "export abstract class FileChooser {")).toContain("Interface<unknown>");
+        expect(moduleSource("gtk")).not.toContain("Interface<never>");
+        expect(moduleSource("gobject")).not.toContain("Interface<never>");
+    });
+});
+
+describe("interface vtable registration", () => {
+    it("registers the slots of a vtable struct introspection describes", () => {
+        expect(moduleSource("gio")).toContain("makeListModel, {\n    vfuncs: {");
+        expect(moduleSource("gtk")).toContain("makeSelectionModel, {\n    vfuncs: {");
+    });
+
+    it("registers no layout for a vtable that declares no slots, nor for one it cannot see", () => {
+        expect(moduleSource("gtk")).toContain("registerInterface(Orientable, resolveType(");
+        expect(moduleSource("gtk")).not.toContain("makeOrientable, {");
+        expect(moduleSource("gtk")).toContain("registerInterface(Native, resolveType(");
+        expect(moduleSource("gtk")).not.toContain("makeNative, {");
+        expect(moduleSource("gtk")).not.toContain("makeFileChooser, {");
+    });
+
+    it("names the accessor of every property a vtable slot backs", () => {
+        expect(moduleSource("gio")).toContain(
+            'properties: {\n        "enabled": {\n            getter: "getEnabled",\n        },',
+        );
+
+        expect(moduleSource("gtk")).toContain(
+            'properties: {\n        "action-name": {\n' +
+            '            getter: "getActionName",\n            setter: "setActionName",\n        },\n    },',
+        );
+    });
+
+    it("takes each direction of a property on its own and leaves an unbacked one out", () => {
+        expect(moduleSource("gtk")).toContain('properties: {\n        "text": {\n            getter: "getText",\n');
+        expect(moduleSource("gtk")).not.toContain('setter: "setText"');
+
+        expect(moduleSource("gio")).toContain(
+            'properties: {\n        "advertised-protocols": {\n            setter: "setAdvertisedProtocols",\n',
+        );
+
+        expect(moduleSource("gtk")).not.toContain('"hadjustment": {');
+    });
+});
+
+describe("vtable slot members carry their own documentation", () => {
+    it("stands the chain-up note alone on a slot GObject-Introspection leaves undocumented", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "protected vfuncActivateOsk(): void {");
+
+        expect(doc).toBe(
+            "Invokes the `activate_osk` vtable slot. Override it on a class passed to `registerClass` " +
+            "and chain up with `super.vfuncActivateOsk()`. It is `protected`, so only a subclass " +
+            "chaining up reaches it.",
+        );
+    });
+
+    it("leads a class slot with the virtual method's own text and return documentation", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "protected vfuncCloseRequest(): boolean {");
+
+        expect(doc).toBe(
+            "Class handler for the `Window.close-request` signal. " +
+            "Invokes the `close_request` vtable slot. Override it on a class passed to `registerClass` " +
+            "and chain up with `super.vfuncCloseRequest()`. It is `protected`, so only a subclass " +
+            "chaining up reaches it. @returns Whether the window should be destroyed",
+        );
+    });
+
+    it("keeps the live-instance warning on an interface slot, which stays callable", () => {
+        const doc = docCommentBefore(documentedModuleSource("gio"), "vfuncGetItemType(): bigint;");
+
+        expect(doc).toContain(
+            "chain up with `super.vfuncGetItemType()`. Calling it from anywhere else re-enters " +
+            "the slot on a live instance.",
+        );
+    });
+
+    it("keeps the documentation the vtable field carries ahead of the note", () => {
+        const doc = docCommentBefore(documentedModuleSource("gobject"), "protected vfuncConstructed(): void {");
+        expect(doc).toMatch(/^the `constructed` function is called by `g_object_new\(\)`/);
+        expect(doc).toContain("Invokes the `constructed` vtable slot.");
+        expect(doc).toContain("chain up with `super.vfuncConstructed()`");
+    });
+
+    it("prefers the virtual method's own prose over the vtable field's", () => {
+        const doc = docCommentBefore(
+            documentedModuleSource("gtk"),
+            "protected vfuncMeasure(orientation: Orientation, forSize: number)",
+        );
+
+        expect(doc).toMatch(/^Measures `this` in the orientation `orientation` and for the given `forSize`\./);
+        expect(doc).toContain("chain up with `super.vfuncMeasure()`");
+        expect(doc).toContain("@param orientation the orientation to measure");
+    });
+});
+
+describe("block tags on generated callables", () => {
+    it("names each emitted parameter with the prose GIR gives it", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "setSizeRequest(width: number, height: number)");
+        expect(doc).toContain("@param width");
+        expect(doc).toContain("should request");
+    });
+
+    it("carries the return value's prose", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "getFirstChild(): Widget | null {");
+        expect(doc).toContain("@returns");
+        expect(doc).toContain("first child");
+    });
+
+    it("names every slot of a folded out-parameter tuple", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "translateCoordinates(destWidget: Widget");
+        expect(doc).toContain("@returns Tuple of:");
+        expect(doc).toContain("- `result`:");
+        expect(doc).toContain("- `destX`:");
+        expect(doc).toContain("- `destY`:");
+    });
+
+    it("renames prose references to the emitted identifiers", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "translateCoordinates(destWidget: Widget");
+        expect(doc).toContain("relative to `this`");
+        expect(doc).not.toContain("src_widget");
+    });
+
+    it("carries the deprecation version and its replacement", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "show(): void {");
+        expect(doc).toContain("@deprecated Since 4.10. Use `Gtk.Widget.setVisible()` instead");
+    });
+
+    it("carries the release a symbol appeared in", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "launchFinish(result: Gio.AsyncResult): boolean");
+        expect(doc).toContain("@since 4.10");
+    });
+
+    it("documents the error a throwing callable raises", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "launchFinish(result: Gio.AsyncResult): boolean");
+        expect(doc).toContain("@throws A `GLib.Error` carrying the failing operation's domain, code, and message.");
+    });
+
+    it("documents the resolved value of a promisified callable from its finish sibling", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "launch(parent: Window | null");
+        expect(doc).toContain("@returns true if an application was launched");
+        expect(doc).not.toContain("@param callback");
+    });
+
+    it("names the parameter a runtime override declares rather than the one GIR names", () => {
+        const doc = docCommentBefore(documentedModuleSource("gobject"), "setBoxed(boxed: object | null)");
+        expect(doc).toContain("@param boxed");
+        expect(doc).not.toContain("@param vBoxed");
+    });
+});
+
+describe("throws tags on generated callables", () => {
+    it("documents the error a promisified callable rejects with from its finish sibling", () => {
+        const doc = docCommentBefore(documentedModuleSource("gtk"), "open(parent: Window | null");
+        expect(doc).toContain(THROWS_TAG);
+    });
+
+    it("documents the error a throwing vtable slot raises", () => {
+        const doc = docCommentBefore(documentedModuleSource("gio"), "protected vfuncFill(count: number");
+        expect(doc).toContain(THROWS_TAG);
+    });
+
+    it("leaves a vtable slot that cannot fail without a throws tag", () => {
+        const doc = docCommentBefore(documentedModuleSource("gio"), "vfuncGetItemType(): bigint;");
+        expect(doc).not.toContain(THROWS_TAG);
+    });
+});
+
+describe("block tags on generated namespace functions", () => {
+    it("drops the callback parameter a promisified namespace function no longer takes", () => {
+        const doc = docCommentBefore(documentedModuleSource("gio"), BUS_GET_SIGNATURE);
+        expect(doc).not.toContain("@param callback");
+    });
+
+    it("documents the resolved value and error from the finish sibling", () => {
+        const doc = docCommentBefore(documentedModuleSource("gio"), BUS_GET_SIGNATURE);
+        expect(doc).toContain("@returns a `GDBusConnection`");
+        expect(doc).toContain(THROWS_TAG);
+    });
+});
+
+describe("documentation on generated declarations other than methods", () => {
+    it("documents an error domain and each of its codes", () => {
+        const gio = documentedModuleSource("gio");
+        expect(docCommentBefore(gio, "\n    NOT_FOUND: number;")).toContain("File not found.");
+        expect(docCommentBefore(gio, "export const IOErrorEnum")).toContain("Error codes returned by GIO functions.");
+    });
+
+    it("documents the constructor props and property maps of a class", () => {
+        const gtk = documentedModuleSource("gtk");
+        const props = declarationFrom(gtk, "export interface WidgetConstructorProps");
+        expect(docCommentBefore(props, "canTarget?:")).toContain("Whether the widget can receive pointer events.");
+        const properties = declarationFrom(gtk, "export interface WidgetProperties");
+        expect(docCommentBefore(properties, "canTarget:")).toContain("Whether the widget can receive pointer events.");
+    });
+
+    it("documents each writable field of a record's constructor props", () => {
+        const props = declarationFrom(documentedModuleSource("gdk"), "export interface RGBAConstructorProps");
+        expect(docCommentBefore(props, "red?:")).toContain("intensity of the red channel");
+    });
+
+    it("documents the interface value, its mixin maker, and its implementer type", () => {
+        const gio = documentedModuleSource("gio");
+        const lead = "`GListModel` is an interface that represents a mutable list of";
+        expect(docCommentBefore(gio, "export abstract class ListModel {")).toContain(lead);
+        expect(docCommentBefore(gio, "export const makeListModel:")).toContain(lead);
+        expect(docCommentBefore(gio, "export interface ListModelImpl {")).toContain(lead);
+    });
+
+    it("documents signal-emit entries and notify details", () => {
+        const emit = declarationFrom(documentedModuleSource("gio"), "export interface ListModelSignalEmit");
+        expect(docCommentBefore(emit, "\"items-changed\":")).toContain("items were added to or removed");
+        const signals = declarationFrom(documentedModuleSource("gtk"), "export interface ButtonSignals");
+        expect(docCommentBefore(signals, "\"notify::label\":")).toContain("Text of the label inside the button");
+    });
+
+    it("strips media and DocBook markup from every generated module", () => {
+        for (const module of giModules) {
+            expect(module.source).not.toContain("<picture");
+            expect(module.source).not.toContain("<itemizedlist");
+            expect(module.source).not.toContain("linkend=");
+            expect(module.source).not.toContain("<!-- -->");
+        }
     });
 });
 

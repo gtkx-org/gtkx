@@ -1,10 +1,11 @@
 import { camelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
-import { renderJsDoc } from "../../writer/doc.js";
+import type { JsDocSpec } from "../../writer/doc.js";
+import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
+import { callableDoc, callableSpec } from "./callable-doc.js";
 import { renderFnExpression } from "./function.js";
 import { gtypeMemberDeclaration } from "./gtype-binding.js";
 import {
@@ -16,7 +17,7 @@ import {
     renderPromisifiedBody,
     renderPromisifiedSignature,
 } from "./method.js";
-import { renderRuntimeOverride } from "./runtime-override.js";
+import { renderRuntimeOverride, runtimeOverrideRenames } from "./runtime-override.js";
 
 type Callables = {
     constructors: GirFunction[];
@@ -64,7 +65,7 @@ type PlainTypeMembersOptions = {
 
 const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }) =>
-        `${renderJsDoc(callable.doc)}${memberSignatureText(context, callable, name, { finishFn })};`,
+        `${memberDoc(context, callable, finishFn)}${memberSignatureText(context, callable, name, { finishFn })};`,
 );
 
 const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer(
@@ -77,6 +78,12 @@ const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer
                     ownerName: scope.ownerName,
                 }),
 );
+
+const memberDoc = (context: ModuleContext, callable: GirFunction, finishFn: GirFunction | undefined): string =>
+    callableDoc(context, callable, { finishFn });
+
+const instanceMemberSpec = (context: ModuleContext, callable: GirFunction, scope: InstanceScope): JsDocSpec =>
+    callableSpec(context, callable, { finishFn: matchFinishFunction(context, callable, scope) });
 
 const instanceScope = (ownerName: string, callables: Callables): InstanceScope => ({
     ownerName,
@@ -96,11 +103,7 @@ const renderBinding = (
     context: ModuleContext,
     callable: GirFunction,
 ): { text: string; cIdentifier: string } | undefined => {
-    if (!callable.introspectable) {
-        return undefined;
-    }
-
-    if (callable.shadowedBy !== undefined) {
+    if (!isEmittableCallable(context, callable)) {
         return undefined;
     }
 
@@ -182,7 +185,8 @@ const renderCallableMember = (
     }
 
     const { cIdentifier, name } = resolved;
-    const doc = renderJsDoc(callable.doc);
+    const renames = options.canUseRuntimeOverride === true ? runtimeOverrideRenames(callable) : undefined;
+    const doc = callableDoc(context, callable, { renames });
     const override = runtimeOverrideMember(callable, name, doc, options.canUseRuntimeOverride);
 
     if (override !== undefined) {
@@ -349,7 +353,7 @@ const renderPromisifiedCallable = (
     const prefix = member.isStatic ? "static " : "";
     const header = `${prefix}${member.name}(${signature}): ${returnType}`;
 
-    return `${renderJsDoc(callable.doc)}${renderBlock(header, body)}`;
+    return `${memberDoc(context, callable, finishFn)}${renderBlock(header, body)}`;
 };
 
 const indexMethodsByName = (methods: GirFunction[]): Map<string, GirFunction> => {
@@ -366,7 +370,7 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
     callable.introspectable &&
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
-    !hasCallerAllocatedArrayLength(context.library, callable);
+    !hasUnmarshalableParam(context, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {
     const camel = camelCase(girName);
@@ -497,6 +501,7 @@ const renderPlainTypeMembers = (
 export {
     renderInstanceMethodSignature,
     renderClassInstanceMember,
+    instanceMemberSpec,
     instanceScope,
     dedupeCallables,
     generateBindings,
@@ -508,5 +513,6 @@ export {
     renderStaticHead,
     renderPlainTypeMembers,
     type Callables,
+    type InstanceMemberRenderer,
     type InstanceScope,
 };

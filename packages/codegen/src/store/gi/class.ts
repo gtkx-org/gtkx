@@ -11,7 +11,6 @@ import {
 } from "../../analysis/inheritance.js";
 import { ancestorChain, type ResolvedAncestor } from "../../gir/ancestry.js";
 import { splitOptionalNamespace } from "../../gir/type-ref.js";
-import { renderJsDoc } from "../../writer/doc.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
@@ -24,13 +23,14 @@ import {
     renderStaticHead,
 } from "./callables.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
+import { getDoc } from "./doc-spec.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyDeclarations } from "./properties.js";
 import { renderResolvedPropertyAccessor, resolveAccessor, type ResolvedAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
-import { renderVfuncMetadata } from "./vtable.js";
+import { renderVfuncMembers, renderVfuncMetadata } from "./vtable.js";
 
 type ImplementedRef = {
     typeRef: string;
@@ -84,9 +84,11 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
     const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
+    const doc = getDoc(klass);
 
     context.module.appendDeclaration(
-        `${renderJsDoc(klass.doc)}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
+        `${doc}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
+        context.declaredType(className),
     );
 
     context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
@@ -152,6 +154,7 @@ const renderClassMembers = (
         className,
     });
 
+    members.push(...renderVfuncMembers({ context, klass, mode: "implementation" }));
     const inheritedPropertyTypes = collectInheritedPropertyTypes(context, klass);
     const accessors: ResolvedAccessor[] = [];
 

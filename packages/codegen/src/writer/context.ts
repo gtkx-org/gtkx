@@ -1,6 +1,6 @@
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import { ModuleBuilder } from "./module.js";
+import { type DeclaredType, ModuleBuilder } from "./module.js";
 
 class ModuleContext {
     public module: ModuleBuilder = new ModuleBuilder();
@@ -53,6 +53,10 @@ class ModuleContext {
         this.module.imports.addNamespace(path, namespaceName);
 
         return namespaceName;
+    }
+
+    declaredType(owner: string, name: string = owner): DeclaredType {
+        return { name, owner: `${this.namespace.name}.${owner}` };
     }
 
     qualify(namespaceName: string, typeName: string): string {

@@ -16,5 +16,6 @@ const isOutputArg = (arg: Arg): boolean => arg.direction !== undefined;
 const isInoutArg = (arg: Arg): boolean => arg.direction === "inout";
 const isCallerAllocatedArg = (arg: Arg): boolean => arg.isCallerAllocated === true;
 const isRefArg = (arg: Arg): boolean => arg.direction !== undefined && arg.isCallerAllocated !== true;
+const requiresInputArg = (arg: Arg): boolean => !isRefArg(arg) || isInoutArg(arg);
 
-export { isOutputArg, isInoutArg, isCallerAllocatedArg, isRefArg, type Arg };
+export { isOutputArg, isInoutArg, isCallerAllocatedArg, isRefArg, requiresInputArg, type Arg };

@@ -1,6 +1,6 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
 import type { ArrayDescriptor, FundamentalDescriptor, HashTableDescriptor, StructDescriptor } from "./descriptors.js";
-import { getWrapperClass, tryGetHandle, wrapHandle } from "./registry.js";
+import { getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
 import { resolveDescriptorType } from "./type.js";
 
 type MarshalledKind = "object" | "struct" | "boxed" | "fundamental" | "array" | "hashtable";
@@ -76,7 +76,7 @@ function fromNative(descriptor: Descriptor, value: unknown): unknown {
 
     switch (descriptor.kind) {
         case "object": {
-            return wrapHandle(value as ExternalObject<Handle> | null);
+            return wrapObject(value);
         }
         case "struct": {
             return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);
@@ -129,7 +129,9 @@ function toNative(descriptor: Descriptor, value: unknown): unknown {
         case "struct":
         case "boxed":
         case "fundamental": {
-            return tryGetHandle(value as object | null | undefined) ?? null;
+            const instance = value as object | null | undefined;
+
+            return instance == null ? null : getHandle(instance);
         }
         case "array": {
             return collectionToNative(descriptor, value);

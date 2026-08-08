@@ -1,4 +1,4 @@
-import type { AnyClass } from "@gtkx/utils";
+import { type AnyClass, getParentClass } from "@gtkx/utils";
 
 /**
  * The signal plumbing every base class passed to a {@link Mixin} provides, so mixed-in interface
@@ -76,4 +76,17 @@ function installMixins(target: AnyClass, mixins: Mixin[]): void {
     }
 }
 
-export { installMixins, type MixinReceiver, type Mixin };
+function dropLayerMembers(layer: AnyClass, names: Set<string>): void {
+    for (const name of names) {
+        Reflect.deleteProperty(layer.prototype, name);
+    }
+}
+
+function insertMixinLayer(target: AnyClass, mixin: Mixin, inheritedNames: Set<string>): void {
+    const layer = mixin(getParentClass(target) as AnyClass<MixinReceiver>);
+    dropLayerMembers(layer, inheritedNames);
+    Object.setPrototypeOf(target.prototype, layer.prototype);
+    Object.setPrototypeOf(target, layer);
+}
+
+export { insertMixinLayer, installMixins, type MixinReceiver, type Mixin };

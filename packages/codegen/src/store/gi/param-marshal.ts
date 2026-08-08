@@ -68,4 +68,18 @@ const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean => {
     }
 };
 
-export { isHandlePassedInPlace, isCollectibleCallerOut, isRecordCallerOut, isRecordInout, isHandlePassing };
+const isClosureType = (context: ModuleContext, ref: TypeId): boolean => {
+    const name = context.library.nameFor(ref);
+
+    return name?.namespaceName === "GObject" && name.typeName === "Closure";
+};
+
+export {
+    isClosureType,
+    isHandlePassedInPlace,
+    isCollectibleCallerOut,
+    isRecordCallerOut,
+    isRecordInout,
+    isHandlePassing,
+    underlyingType,
+};

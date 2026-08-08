@@ -1,43 +1,75 @@
 import type { ArrayKind, Descriptor, Ownership } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
 
+/** Descriptor variant for a `gint8`. */
 type Int8Descriptor = Extract<Descriptor, { kind: "int8" }>;
+/** Descriptor variant for a `guint8`. */
 type Uint8Descriptor = Extract<Descriptor, { kind: "uint8" }>;
+/** Descriptor variant for a `gint16`. */
 type Int16Descriptor = Extract<Descriptor, { kind: "int16" }>;
+/** Descriptor variant for a `guint16`. */
 type Uint16Descriptor = Extract<Descriptor, { kind: "uint16" }>;
+/** Descriptor variant for a `gint32`. */
 type Int32Descriptor = Extract<Descriptor, { kind: "int32" }>;
+/** Descriptor variant for a `guint32`. */
 type Uint32Descriptor = Extract<Descriptor, { kind: "uint32" }>;
+/** Descriptor variant for a `gint64` marshalled as a number. */
 type Int64Descriptor = Extract<Descriptor, { kind: "int64" }>;
+/** Descriptor variant for a `guint64` marshalled as a number. */
 type Uint64Descriptor = Extract<Descriptor, { kind: "uint64" }>;
+/** Descriptor variant for a `gint64` marshalled as a bigint. */
 type BigInt64Descriptor = Extract<Descriptor, { kind: "bigint64" }>;
+/** Descriptor variant for a `guint64` marshalled as a bigint. */
 type BigUint64Descriptor = Extract<Descriptor, { kind: "biguint64" }>;
+/** Descriptor variant for a `gfloat`. */
 type Float32Descriptor = Extract<Descriptor, { kind: "float32" }>;
+/** Descriptor variant for a `gdouble`. */
 type Float64Descriptor = Extract<Descriptor, { kind: "float64" }>;
+/** Descriptor variant for an enumeration, carrying the library and `get_type` symbol its GType comes from. */
 type EnumDescriptor = Extract<Descriptor, { kind: "enum" }>;
+/** Descriptor variant for a flags type, carrying the library and `get_type` symbol its GType comes from. */
 type FlagsDescriptor = Extract<Descriptor, { kind: "flags" }>;
+/** Descriptor variant for a `gboolean`. */
 type BooleanDescriptor = Extract<Descriptor, { kind: "boolean" }>;
+/** Descriptor variant for a C string. */
 type StringDescriptor = Extract<Descriptor, { kind: "string" }>;
+/** Descriptor variant for a `GObject`. */
 type ObjectDescriptor = Extract<Descriptor, { kind: "object" }>;
+/** Descriptor variant for a `gunichar`. */
 type UnicharDescriptor = Extract<Descriptor, { kind: "unichar" }>;
+/** Descriptor variant for the absence of a value. */
 type VoidDescriptor = Extract<Descriptor, { kind: "void" }>;
+/** Descriptor variant for an opaque `gpointer`. */
 type BufferDescriptor = Extract<Descriptor, { kind: "buffer" }>;
+/** Descriptor variant for a `GBoxed` value. */
 type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }>;
 
+/** Descriptor variant for a plain C struct, extended with the class its decoded value is wrapped in. */
 type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & {
     /** Class a decoded value is wrapped in; without it the wrapper comes from the value's own GType. */
     wrapperClass?: AnyClass;
 };
 
+/** Descriptor variant for a ref-counted fundamental type, extended with the class its decoded value is wrapped in. */
 type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & {
     /** Class a decoded value is wrapped in; without it the wrapper comes from the type named by `typeName`. */
     wrapperClass?: AnyClass;
 };
 
+/** Descriptor variant for an array of items in one of the supported container layouts. */
 type ArrayDescriptor = Extract<Descriptor, { kind: "array" }>;
+/** Descriptor variant for a `GHashTable`, marshalled as an array of key/value pairs. */
 type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
+/** Descriptor variant for a function pointer a JavaScript function is marshalled into. */
 type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
+/** Descriptor variant for a pointer to another descriptor's value, for an output or inout argument. */
 type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
-type TypeDescriptor = BigUint64Descriptor & { type: true };
+
+/** Descriptor for a `GType`: a `guint64` marked so it resolves to `G_TYPE_GTYPE` rather than an integer. */
+type TypeDescriptor = BigUint64Descriptor & {
+    /** Distinguishes a GType from a plain `guint64` when the GLib type and the GValue type are resolved. */
+    type: true;
+};
 
 /** How a boxed value is stored, and where its GType and free function are resolved from. */
 type BoxedOptions = {
@@ -59,9 +91,13 @@ type BoxedOptions = {
 
 /** How the callee takes a callback's closure, and how long that closure has to stay alive. */
 type CallbackOptions = {
-    /** The callee also takes a `GDestroyNotify`, which frees the closure once it is done with it. */
+    /** The callee also takes a destroy notify, which frees the closure once it is done with it. */
     hasDestroy?: boolean;
-    /** Position of the `user_data` argument carrying the closure; without one it can never be freed. */
+    /** Signature of that destroy notify; defaults to `destroyNotify`, a one-argument `GDestroyNotify`. */
+    destroyKind?: CallbackDescriptor["destroyKind"];
+    /** The callee also takes a `user_data` pointer; without one the closure can never be freed. */
+    hasUserData?: boolean;
+    /** Position of `user_data` among the callback's own arguments, dropped before the closure is called. */
     userDataIndex?: number;
     /** Lifetime of the closure; defaults to `notified` when `hasDestroy` is set and `call` otherwise. */
     scope?: CallbackDescriptor["scope"];
@@ -101,32 +137,56 @@ type StructOptions = {
     wrapperClass?: AnyClass;
 };
 
+/** Descriptor for a `gint8`, marshalled as a number. */
 const int8T: Int8Descriptor = { kind: "int8" };
+/** Descriptor for a `guint8`, marshalled as a number. */
 const uint8T: Uint8Descriptor = { kind: "uint8" };
+/** Descriptor for a `gint16`, marshalled as a number. */
 const int16T: Int16Descriptor = { kind: "int16" };
+/** Descriptor for a `guint16`, marshalled as a number. */
 const uint16T: Uint16Descriptor = { kind: "uint16" };
+/** Descriptor for a `gint32`, marshalled as a number. */
 const int32T: Int32Descriptor = { kind: "int32" };
+/** Descriptor for a `guint32`, marshalled as a number. */
 const uint32T: Uint32Descriptor = { kind: "uint32" };
+/** Descriptor for a `gint64`, marshalled as a number and rejected outside the 2^53 safe range. */
 const int64T: Int64Descriptor = { kind: "int64" };
+/** Descriptor for a `guint64`, marshalled as a number and rejected outside the 2^53 safe range. */
 const uint64T: Uint64Descriptor = { kind: "uint64" };
+/** Descriptor for a `gint64`, marshalled as a bigint so the full 64-bit range survives. */
 const bigint64T: BigInt64Descriptor = { kind: "bigint64" };
+/** Descriptor for a `guint64`, marshalled as a bigint so the full 64-bit range survives. */
 const biguint64T: BigUint64Descriptor = { kind: "biguint64" };
+/** Descriptor for a `GType`, marshalled as a bigint and recognized as a GType by GValue conversion. */
 const gtypeT: TypeDescriptor = { kind: "biguint64", type: true };
+/** Descriptor for a `gfloat`. */
 const float32T: Float32Descriptor = { kind: "float32" };
+/** Descriptor for a `gdouble`. */
 const float64T: Float64Descriptor = { kind: "float64" };
+/** Descriptor for a `gboolean`, marshalled as a JavaScript boolean. */
 const booleanT: BooleanDescriptor = { kind: "boolean" };
+/** Descriptor for the absence of a value, used as the return descriptor of a `void` function. */
 const voidT: VoidDescriptor = { kind: "void" };
+/** Descriptor for a `gunichar`, marshalled as a single-character string or a codepoint number. */
 const unicharT: UnicharDescriptor = { kind: "unichar" };
+/** Descriptor for an opaque `gpointer`, taken from a typed array's memory or a numeric address. */
 const bufferT: BufferDescriptor = { kind: "buffer" };
 
+/**
+ * Builds a descriptor for a C string, whose optional length sizes the caller-allocated buffer
+ * used when the string is passed by reference.
+ */
 const stringT = (ownership: Ownership = "borrowed", length?: number): StringDescriptor =>
     length === undefined ? { kind: "string", ownership } : { kind: "string", ownership, length };
 
+/** Builds a descriptor for a `GObject`, wrapped in the class registered for its runtime GType. */
 const objectT = (ownership: Ownership = "borrowed"): ObjectDescriptor => ({ kind: "object", ownership });
 
+/** Wraps a descriptor in a pointer to it, for an output or inout argument. */
 const refT = (innerDescriptor: Descriptor, isInout = false): RefDescriptor =>
     isInout ? { kind: "ref", innerDescriptor, inout: true } : { kind: "ref", innerDescriptor };
 
+/** Builds a descriptor for a `GHashTable`, marshalled as an array of key/value pairs. */
 const hashTableT = (
     keyDescriptor: Descriptor,
     valueDescriptor: Descriptor,
@@ -138,6 +198,7 @@ const hashTableT = (
     ownership,
 });
 
+/** Builds a descriptor for an enumeration, resolving its GType from the named `get_type` function. */
 const enumT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): EnumDescriptor => ({
     kind: "enum",
     sharedLibrary,
@@ -145,6 +206,7 @@ const enumT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): En
     isSigned,
 });
 
+/** Builds a descriptor for a flags type, resolving its GType from the named `get_type` function. */
 const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): FlagsDescriptor => ({
     kind: "flags",
     sharedLibrary,
@@ -182,6 +244,7 @@ const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void
     }
 };
 
+/** Builds a descriptor for a `GBoxed` value of the named type. */
 const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor => {
     const result: BoxedDescriptor = {
         kind: "boxed",
@@ -194,6 +257,7 @@ const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor =
     return result;
 };
 
+/** Builds a descriptor for a plain C struct. */
 const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructDescriptor => {
     const result: StructDescriptor = { kind: "struct", ownership };
 
@@ -216,6 +280,7 @@ const structT = (ownership: Ownership = "borrowed", options: StructOptions = {})
     return result;
 };
 
+/** Builds a descriptor for a fundamental type whose lifetime is managed by named ref and unref functions. */
 const fundamentalT = (
     sharedLibrary: string,
     refFnName: string,
@@ -240,6 +305,7 @@ const fundamentalT = (
     return result;
 };
 
+/** Builds a descriptor for an array of items in one of the supported container layouts. */
 const arrayT = (
     itemDescriptor: Descriptor,
     arrayKind: ArrayKind = "array",
@@ -263,15 +329,19 @@ const arrayT = (
     return result;
 };
 
+/** Builds a descriptor for a `GList` of items. */
 const listT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(itemDescriptor, "glist", ownership);
 
+/** Builds a descriptor for a `GSList` of items. */
 const slistT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(itemDescriptor, "gslist", ownership);
 
+/** Builds a descriptor for a `GPtrArray` of items. */
 const ptrArrayT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(itemDescriptor, "gptrarray", ownership);
 
+/** Builds a descriptor for a `GArray` of items, optionally with an explicit element size. */
 const gArrayT = (
     itemDescriptor: Descriptor,
     ownership: Ownership = "borrowed",
@@ -279,9 +349,11 @@ const gArrayT = (
 ): ArrayDescriptor =>
     arrayT(itemDescriptor, "garray", ownership, elementSize === undefined ? undefined : { elementSize });
 
+/** Builds a descriptor for a `GByteArray`. */
 const byteArrayT = (ownership: Ownership = "borrowed"): ArrayDescriptor =>
     arrayT(uint8T, "gbytearray", ownership);
 
+/** Builds a descriptor for a C array whose length is carried by another argument. */
 const sizedArrayT = (
     itemDescriptor: Descriptor,
     sizeParamIndex: number,
@@ -289,6 +361,7 @@ const sizedArrayT = (
     elementSize?: number,
 ): ArrayDescriptor => arrayT(itemDescriptor, "sized", ownership, { sizeParamIndex, elementSize });
 
+/** Builds a descriptor for a C array of a fixed length. */
 const fixedArrayT = (
     itemDescriptor: Descriptor,
     fixedSize: number,
@@ -296,6 +369,7 @@ const fixedArrayT = (
     elementSize?: number,
 ): ArrayDescriptor => arrayT(itemDescriptor, "fixed", ownership, { fixedSize, elementSize });
 
+/** Builds a descriptor for a function pointer, marshalling a JavaScript function into a native closure. */
 const callbackT = (
     argDescriptors: Descriptor[],
     returnDescriptor: Descriptor,
@@ -305,6 +379,14 @@ const callbackT = (
 
     if (options?.hasDestroy !== undefined) {
         result.hasDestroy = options.hasDestroy;
+    }
+
+    if (options?.destroyKind !== undefined) {
+        result.destroyKind = options.destroyKind;
+    }
+
+    if (options?.hasUserData !== undefined) {
+        result.hasUserData = options.hasUserData;
     }
 
     if (options?.userDataIndex !== undefined) {
@@ -354,26 +436,6 @@ export {
     sizedArrayT,
     fixedArrayT,
     callbackT,
-    type Int8Descriptor,
-    type Uint8Descriptor,
-    type Int16Descriptor,
-    type Uint16Descriptor,
-    type Int32Descriptor,
-    type Uint32Descriptor,
-    type Int64Descriptor,
-    type Uint64Descriptor,
-    type BigInt64Descriptor,
-    type BigUint64Descriptor,
-    type Float32Descriptor,
-    type Float64Descriptor,
-    type EnumDescriptor,
-    type FlagsDescriptor,
-    type BooleanDescriptor,
-    type StringDescriptor,
-    type ObjectDescriptor,
-    type UnicharDescriptor,
-    type VoidDescriptor,
-    type BufferDescriptor,
     type BoxedDescriptor,
     type StructDescriptor,
     type FundamentalDescriptor,
@@ -381,5 +443,4 @@ export {
     type HashTableDescriptor,
     type CallbackDescriptor,
     type RefDescriptor,
-    type TypeDescriptor,
 };

@@ -204,15 +204,15 @@ const ColorList = registerClass(
         size = 0;
         cache: Map<number, InstanceType<typeof ColorObject>> = new Map();
 
-        override getItemType(): bigint {
+        override vfuncGetItemType(): bigint {
             return ColorObject.prototype.__type__;
         }
 
-        override getNItems(): number {
+        override vfuncGetNItems(): number {
             return this.size;
         }
 
-        override getItem(position: number): GObject.Object | null {
+        override vfuncGetItem(position: number): GObject.Object | null {
             if (position >= this.size) {
                 return null;
             }

@@ -1,4 +1,3 @@
-import type { AnyClass } from "@gtkx/utils";
 import {
     type ExternalObject,
     getType,
@@ -7,6 +6,7 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
     setWrapper,
 } from "@gtkx/native";
+import { type AnyClass, walkClassChain } from "@gtkx/utils";
 import type { Mixin, MixinReceiver } from "./mixin.js";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
 
@@ -18,49 +18,91 @@ type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &
     (C extends new (...args: infer A) => infer R ? new (...args: A) => R : never);
 
 /** One overridable vtable slot: where it sits in the vtable struct and how it is marshalled. */
-type VfuncDescriptor<K extends "class" | "interface"> = {
-    /** Whether the slot lives in a class struct or in an interface vtable. */
-    kind: K;
+type VfuncDescriptor = {
     /** GIR name of the type struct holding the slot, without its namespace, such as `WidgetClass`. */
     className: string;
     /** Name of the slot's field in that struct. */
     vfuncName: string;
     /** Byte offset of the slot within the struct. */
     byteOffset: number;
-    /** Byte size of the struct, used to bounds-check `VfuncDescriptor.byteOffset`. */
-    vtableSize: number;
+    /**
+     * Byte size of an interface's vtable struct, used to bounds-check `VfuncDescriptor.byteOffset`.
+     * A class struct is bounds-checked against the size `g_type_query` reports for it, so a slot in
+     * one carries no size of its own.
+     */
+    vtableSize?: number;
     /** Descriptor for each argument the slot receives, starting with the instance. */
     argDescriptors: NativeRegisterClassVfunc["argDescriptors"];
     /** Descriptor for the value the slot returns. */
     returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
+    /**
+     * The slot takes a trailing `GError**` that `VfuncDescriptor.argDescriptors` leaves out, the
+     * way GIR leaves it out of a callable's parameters. A call through the slot has to append it
+     * or it passes one argument fewer than the implementation reads.
+     */
+    canThrow?: boolean;
 };
 
 /**
  * The vtable slots a wrapper class or interface exposes, keyed by the JavaScript method name that
  * overrides each one.
  */
-type VfuncRegistry = Record<string, VfuncDescriptor<"class"> | VfuncDescriptor<"interface">>;
+type VfuncRegistry = Record<string, VfuncDescriptor>;
+
+/**
+ * How one property an interface declares reaches the vtable, given as the interface's own accessor
+ * members. A direction introspection does not route through a vtable slot is left out, and the
+ * property owns that direction's state itself.
+ */
+type InterfaceProperty = {
+    /** Member reading the slot the property's value comes from, such as `getEnabled`. */
+    getter?: string;
+    /** Member writing the slot the property's value goes to, such as `setActionName`. */
+    setter?: string;
+};
+
+/**
+ * What an interface's vtable struct looks like, for the classes that adopt the interface.
+ * `g_type_query` reports no size for an interface, so each slot's generated metadata carries the
+ * struct's byte size to bounds-check the slot's offset; an interface introspection describes no
+ * vtable for simply contributes no slots.
+ */
+type InterfaceLayout = {
+    /** The slots the struct declares, keyed by the JavaScript method name that fills each one. */
+    vfuncs?: VfuncRegistry;
+    /**
+     * The properties a vtable slot backs, keyed by canonical property name, so a class adopting the
+     * interface answers `g_object_get` and `g_object_set` with what the slot holds.
+     */
+    properties?: Record<string, InterfaceProperty>;
+};
 
 const classRegistry: Map<bigint, AnyClass> = new Map();
 const interfaceMixinRegistry: Map<bigint, Mixin> = new Map();
 const composedClassRegistry: Map<bigint, AnyClass> = new Map();
 const handleMap: WeakMap<object, ExternalObject<Handle>> = new WeakMap();
 const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
-const interfaceVfuncRegistry: Map<bigint, VfuncRegistry> = new Map();
+const interfaceLayoutRegistry: Map<bigint, InterfaceLayout> = new Map();
+const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
+const derivedClasses: WeakSet<AnyClass> = new WeakSet();
 
 function setClassType(cls: AnyClass, type: bigint): void {
     (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
 }
 
-function getClassType(cls: AnyClass): bigint {
-    const proto: object = cls.prototype;
+function getClassType(cls: AnyClass | undefined): bigint {
+    const proto: object | undefined = cls?.prototype;
 
-    return Object.hasOwn(proto, "__type__") ? (proto as TypedClass).__type__ : TYPE_INVALID;
+    if (proto === undefined || !Object.hasOwn(proto, "__type__")) {
+        return TYPE_INVALID;
+    }
+
+    return (proto as TypedClass).__type__;
 }
 
-/** Returns the GType tag of the given wrapper instance. */
+/** Returns the GType tag of the given wrapper instance, or the invalid type when it has no class. */
 function getInstanceType(instance: object): bigint {
-    return getClassType(instance.constructor as AnyClass);
+    return getClassType(instance.constructor as AnyClass | undefined);
 }
 
 function registerClassType(cls: AnyClass, type: bigint): void {
@@ -83,21 +125,47 @@ function registerClassType(cls: AnyClass, type: bigint): void {
 function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistry): void {
     registerClassType(cls, type);
 
+    if (type !== TYPE_INVALID) {
+        wrapperClasses.add(cls);
+    }
+
     if (vfuncs) {
         registerVfuncRegistry(cls, vfuncs);
     }
 }
 
+function markDerivedClass(cls: AnyClass): void {
+    derivedClasses.add(cls);
+}
+
+function resolveAncestorType(ancestor: AnyClass): bigint | undefined {
+    if (derivedClasses.has(ancestor) || !wrapperClasses.has(ancestor)) {
+        return undefined;
+    }
+
+    return getClassType(ancestor);
+}
+
+function resolveWrapperType(instance: object): bigint {
+    const cls = instance.constructor as AnyClass | undefined;
+
+    if (cls === undefined) {
+        return TYPE_INVALID;
+    }
+
+    return walkClassChain(cls, (ancestor) => resolveAncestorType(ancestor)) ?? TYPE_INVALID;
+}
+
 /**
  * Registers a GInterface, associating its GType with a mixin used to compose the
- * interface onto wrapper classes and an optional virtual function registry.
+ * interface onto wrapper classes and, when introspection describes its vtable, that layout.
  * @param cls Class carrying the interface's GType tag.
  * @param type GType of the interface.
  * @param mixin Mixin that applies the interface to a wrapper class.
- * @param vfuncs Vtable slots the interface exposes, so `registerClass` can bind the ones an
- * implementing class overrides.
+ * @param layout The interface's vtable struct, so `registerClass` can bind the slots an
+ * implementing class overrides and take over the ones it leaves alone.
  */
-function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: VfuncRegistry): void {
+function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, layout?: InterfaceLayout): void {
     if (type === TYPE_INVALID) {
         return;
     }
@@ -105,16 +173,17 @@ function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, vfuncs?: V
     setClassType(cls, type);
     interfaceMixinRegistry.set(type, mixin);
 
-    if (vfuncs) {
-        registerInterfaceVfuncRegistry(type, vfuncs);
+    if (layout) {
+        interfaceLayoutRegistry.set(type, layout);
     }
 }
 
 /**
  * Wraps a native handle in a JS wrapper instance. With no class, resolves and
- * reuses the wrapper for the handle's runtime GType (composing interface mixins);
- * with an explicit class, creates a bare instance backed by the handle. Returns
- * null for a null or undefined handle.
+ * reuses the wrapper for the handle's runtime GType (composing interface mixins),
+ * and hands back an instance that already carries a handle unchanged; with an
+ * explicit class, creates a bare instance backed by the handle. Returns null for
+ * a null or undefined handle.
  * @param handle Native handle to wrap.
  * @param cls Wrapper class to instantiate, or omitted to resolve it from the runtime type.
  */
@@ -174,12 +243,16 @@ function resolveWrapperClass(type: bigint): AnyClass | null {
     return null;
 }
 
+function getInterfaceMixin(type: bigint): Mixin | undefined {
+    return interfaceMixinRegistry.get(type);
+}
+
 function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, applied: Set<bigint>): AnyClass {
     if (applied.has(type) || typeIsA(baseType, type)) {
         return cls;
     }
 
-    const mixin = interfaceMixinRegistry.get(type);
+    const mixin = getInterfaceMixin(type);
 
     if (mixin === undefined) {
         return cls;
@@ -228,12 +301,25 @@ function resolveComposedClass(runtimeType: bigint): AnyClass | null {
     }
 
     setClassType(composed, runtimeType);
+    wrapperClasses.add(composed);
     composedClassRegistry.set(runtimeType, composed);
 
     return composed;
 }
 
+function wrapObject(value: unknown): object | null {
+    if (value == null) {
+        return null;
+    }
+
+    return getOrCreateWrapper(value as ExternalObject<Handle>);
+}
+
 function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
+    if (handleMap.has(handle)) {
+        return handle;
+    }
+
     const existing = getWrapper(handle);
 
     if (existing) {
@@ -258,21 +344,19 @@ function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
     return instance;
 }
 
+function instanceClassName(instance: object): string {
+    return (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
+}
+
 /** Returns the native handle bound to a wrapper instance, throwing if none is set. */
 function getHandle(instance: object): ExternalObject<Handle> {
     const handle = handleMap.get(instance);
 
     if (handle === undefined) {
-        const name = (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
-        throw new Error(`No native handle associated with ${name}`);
+        throw new Error(`No native handle associated with ${instanceClassName(instance)}`);
     }
 
     return handle;
-}
-
-/** Returns the native handle bound to an instance, or undefined when there is none or the instance is null. */
-function tryGetHandle(instance: object | null | undefined): ExternalObject<Handle> | undefined {
-    return instance == null ? undefined : handleMap.get(instance);
 }
 
 /** Associates a native handle with a wrapper instance. */
@@ -293,21 +377,18 @@ function getVfuncRegistry(cls: object): VfuncRegistry | undefined {
     return vfuncRegistry.get(cls);
 }
 
-function registerInterfaceVfuncRegistry(type: bigint, registry: VfuncRegistry): void {
-    if (type === TYPE_INVALID) {
-        return;
-    }
-
-    interfaceVfuncRegistry.set(type, registry);
+function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
+    return interfaceLayoutRegistry.get(type)?.vfuncs;
 }
 
-function getInterfaceVfuncRegistry(type: bigint): VfuncRegistry | undefined {
-    return interfaceVfuncRegistry.get(type);
+function getInterfaceProperties(type: bigint): Record<string, InterfaceProperty> | undefined {
+    return interfaceLayoutRegistry.get(type)?.properties;
 }
 
 export {
     getClassType,
     getInstanceType,
+    markDerivedClass,
     registerClassType,
     registerWrapperClass,
     registerInterface,
@@ -315,11 +396,16 @@ export {
     getWrapperClass,
     resolveWrapperClass,
     getHandle,
-    tryGetHandle,
     setHandle,
     getVfuncRegistry,
+    getInterfaceMixin,
+    getInterfaceProperties,
     getInterfaceVfuncRegistry,
+    instanceClassName,
+    registerWrapper,
+    resolveWrapperType,
+    wrapObject,
+    type InterfaceProperty,
     type StaticBase,
     type VfuncDescriptor,
-    type VfuncRegistry,
 };

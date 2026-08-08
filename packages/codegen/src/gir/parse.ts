@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createXmlParser } from "../xml.js";
 
+/** An element of the parsed GIR XML: attributes under `@_`-prefixed keys, children under their tag names. */
 type RawNode = Record<string, unknown>;
 
 const MULTI_TAGS: Set<string> = new Set([
@@ -16,6 +17,7 @@ const MULTI_TAGS: Set<string> = new Set([
     "alias",
     "union",
     "method",
+    "virtual-method",
     "constructor",
     "property",
     "field",
@@ -141,12 +143,12 @@ const docTextFromObject = (value: object): string | undefined => {
     return typeof text === "string" ? normalizeDoc(text) : undefined;
 };
 
-const getDoc = (node: RawNode | undefined): string | undefined => {
+const docElementText = (node: RawNode | undefined, tag: string): string | undefined => {
     if (node === undefined) {
         return undefined;
     }
 
-    const value = firstDocValue(node.doc);
+    const value = firstDocValue(node[tag]);
 
     if (typeof value === "string") {
         return normalizeDoc(value);
@@ -159,6 +161,9 @@ const getDoc = (node: RawNode | undefined): string | undefined => {
     return docTextFromObject(value);
 };
 
+const getDoc = (node: RawNode | undefined): string | undefined => docElementText(node, "doc");
+const getDocDeprecated = (node: RawNode | undefined): string | undefined => docElementText(node, "doc-deprecated");
+
 export {
     GIR_CONSTRUCTOR_TAG,
     parseGirFile,
@@ -170,5 +175,6 @@ export {
     getChildren,
     getChild,
     getDoc,
+    getDocDeprecated,
     type RawNode,
 };

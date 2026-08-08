@@ -1,12 +1,31 @@
 import { ImportsBuilder } from "./imports.js";
 
+type DeclaredType = {
+    name: string;
+    owner: string;
+};
+
 class ModuleBuilder {
     private bindings: string[] = [];
     private bindingNames: Set<string> = new Set();
     private hoistedDescriptors: Map<string, string> = new Map();
     private declarations: string[] = [];
+    private declaredTypes: Map<string, string> = new Map();
     private registrations: string[] = [];
     public imports: ImportsBuilder = new ImportsBuilder();
+
+    private claimTypeName(declared: DeclaredType): void {
+        const owner = this.declaredTypes.get(declared.name);
+
+        if (owner !== undefined && owner !== declared.owner) {
+            throw new Error(
+                `The generated type '${declared.name}' is declared for both ${owner} and ${declared.owner}. ` +
+                "Rename one of them, or drop the namespace from the configuration.",
+            );
+        }
+
+        this.declaredTypes.set(declared.name, declared.owner);
+    }
 
     appendBinding(code: string, name?: string): void {
         if (name !== undefined) {
@@ -34,7 +53,11 @@ class ModuleBuilder {
         return name;
     }
 
-    appendDeclaration(code: string): void {
+    appendDeclaration(code: string, declared?: DeclaredType): void {
+        if (declared !== undefined) {
+            this.claimTypeName(declared);
+        }
+
         this.declarations.push(code);
     }
 
@@ -66,4 +89,4 @@ class ModuleBuilder {
     }
 }
 
-export { ModuleBuilder };
+export { type DeclaredType, ModuleBuilder };

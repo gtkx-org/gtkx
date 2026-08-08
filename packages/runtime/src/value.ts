@@ -18,7 +18,7 @@ import {
 } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_SIZE, VALUE_T, VARIANT_T } from "./library.js";
 import { toNative } from "./native-value.js";
-import { getHandle, getWrapperClass, wrapHandle } from "./registry.js";
+import { getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
 import {
     getStrvType,
     isResolvableDescriptor,
@@ -35,6 +35,7 @@ import {
     TYPE_GTYPE,
     TYPE_INT,
     TYPE_INT64,
+    TYPE_INTERFACE,
     TYPE_INVALID,
     TYPE_OBJECT,
     TYPE_PARAM,
@@ -127,9 +128,11 @@ const PLAIN_VALUE_SETTERS: Map<bigint, ValueType["set"]> = new Map([
 const WRAPPED_VALUE_SETTERS: Map<bigint, ValueType["set"]> = new Map([
     [TYPE_STRING, setStringValue],
     [TYPE_OBJECT, handleSetter(objectValueType)],
+    [TYPE_INTERFACE, handleSetter(objectValueType)],
     [TYPE_PARAM, handleSetter(paramValueType)],
     [TYPE_VARIANT, handleSetter(variantValueType)],
     [TYPE_BOXED, setBoxedFromValue],
+    [TYPE_POINTER, setPointerValue],
 ]);
 
 const getBoxedTypeName = (type: bigint): string => typeName(type) ?? "GBoxed";
@@ -189,7 +192,7 @@ function copyValue(dest: ExternalObject<Handle>, src: ExternalObject<Handle>): v
     gValueCopy(src, dest);
 }
 
-const newTypedValue = (type: bigint): ExternalObject<Handle> => {
+const newValueForType = (type: bigint): ExternalObject<Handle> => {
     const value = newValue();
     gValueInit(value, type);
 
@@ -202,7 +205,7 @@ const newBoxedValue = (
     resolveSetBind: (name: string) => ValueType["set"],
 ): ExternalObject<Handle> => {
     const type = resolveDescriptorType(descriptor);
-    const value = newTypedValue(type);
+    const value = newValueForType(type);
     resolveSetBind(getBoxedTypeName(type))(value, getHandle(boxed));
 
     return value;
@@ -276,8 +279,9 @@ const wrappedValueGetter = (fundamental: bigint): ValueGetter | undefined => {
         case TYPE_STRING: {
             return (value) => stringValueType.get(value) ?? null;
         }
+        case TYPE_INTERFACE:
         case TYPE_OBJECT: {
-            return (value) => wrapHandle(objectValueType.get(value) as ExternalObject<Handle> | null);
+            return (value) => wrapObject(objectValueType.get(value));
         }
         case TYPE_PARAM: {
             return (value) =>
@@ -309,6 +313,14 @@ function setStringValue(value: ExternalObject<Handle>, nativeValue: unknown): vo
     stringValueType.set(value, nativeValue ?? null);
 }
 
+function setPointerValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
+    if (nativeValue != null) {
+        throw new Error("G_TYPE_POINTER non-null values cannot be marshalled from JS");
+    }
+
+    pointerValueType.set(value, 0);
+}
+
 function handleSetter(target: ValueType): ValueType["set"] {
     return (value, nativeValue) => {
         target.set(value, nativeValue == null ? null : getHandle(nativeValue));
@@ -327,6 +339,13 @@ const resolveValueSetter = (fundamental: bigint): ValueType["set"] | undefined =
 
 function intoValue(value: ExternalObject<Handle>, jsValue: unknown): void {
     const type = getValueType(value);
+
+    if (type === getStrvType()) {
+        strvValueType.set(value, jsValue ?? null);
+
+        return;
+    }
+
     const set = resolveValueSetter(typeFundamental(type));
 
     if (set === undefined) {
@@ -357,7 +376,7 @@ const resolveValueGType = (descriptor: Descriptor, nativeValue: unknown): bigint
 function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle> {
     const nativeValue = resolveNativeValue(descriptor, value);
     const type = resolveValueGType(descriptor, nativeValue);
-    const gValue = newTypedValue(type);
+    const gValue = newValueForType(type);
     resolveValueType(descriptor).set(gValue, nativeValue);
 
     return gValue;
@@ -380,7 +399,7 @@ function fromValue(value: ExternalObject<Handle>): unknown {
 }
 
 function newValueForDescriptor(descriptor: Descriptor): ExternalObject<Handle> {
-    return newTypedValue(resolveDescriptorType(descriptor));
+    return newValueForType(resolveDescriptorType(descriptor));
 }
 
 function outValueForDescriptor(
@@ -394,7 +413,7 @@ function outValueForDescriptor(
         write(storage, descriptor, 0, initial);
     }
 
-    const value = newTypedValue(TYPE_POINTER);
+    const value = newValueForType(TYPE_POINTER);
     pointerValueType.set(value, storage);
 
     return { value, read: () => read(storage, descriptor, 0) };
@@ -417,6 +436,7 @@ export {
     toValue,
     fromValue,
     newValueForDescriptor,
+    newValueForType,
     outValueForDescriptor,
     outValueForBoxedDescriptor,
     inoutValueForBoxedDescriptor,

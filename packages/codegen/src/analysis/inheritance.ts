@@ -5,9 +5,10 @@ import type { Library } from "../gir/library.js";
 import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
-import { ancestorChain, type ResolvedAncestor, resolveInterface } from "../gir/ancestry.js";
+import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
 import { methodExportName } from "../store/gi/method.js";
 import { resolveAccessorType } from "../store/gi/property-accessor.js";
+import { vfuncMemberNames } from "../store/gi/vtable.js";
 import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
 
@@ -45,29 +46,11 @@ const RESERVED_SIGNAL_MEMBERS = new Set([
     "removeEventListener",
 ]);
 
-const resolveImplementedInterface = (
-    context: AncestryContext,
-    name: string,
-    defaultNamespace: string = context.namespace.name,
-): ResolvedAncestor | undefined => resolveInterface(context.library, defaultNamespace, name);
-
 const resolveDirectInterfaces = (
     context: AncestryContext,
     klass: GirClass,
     defaultNamespace: string,
-): ResolvedAncestor[] => {
-    const interfaces: ResolvedAncestor[] = [];
-
-    for (const implementName of klass.implements) {
-        const iface = resolveImplementedInterface(context, implementName, defaultNamespace);
-
-        if (iface !== undefined) {
-            interfaces.push(iface);
-        }
-    }
-
-    return interfaces;
-};
+): ResolvedAncestor[] => resolveInterfaces(context.library, defaultNamespace, klass.implements);
 
 const resolvePrerequisiteReference = (context: ModuleContext, name: string): string | undefined => {
     const resolved = context.library.resolveType(context.namespace.name, name);
@@ -221,24 +204,44 @@ const mergeOmissionName = (
     return ancestor.returnType !== returnType || ancestor.arity !== arity ? name : undefined;
 };
 
-const collectInterfaceMergeOmissions = (
+const classChainVfuncNames = (context: ModuleContext, klass: GirClass): Set<string> => {
+    const names: Set<string> = new Set(vfuncMemberNames(context, context.namespace.name, klass));
+
+    forEachAncestor(context, klass, (ancestor) => {
+        for (const name of vfuncMemberNames(context, ancestor.namespaceName, ancestor.klass)) {
+            names.add(name);
+        }
+    });
+
+    return names;
+};
+
+const methodMergeOmissions = (context: ModuleContext, klass: GirClass, iface: GirClass): string[] => {
+    const ancestors = ancestorClassMethodSignatures(context, klass);
+
+    return iface.methods
+        .map((method) => mergeOmissionName(context, method, ancestors))
+        .filter((name): name is string => name !== undefined);
+};
+
+const vfuncMergeOmissions = (
     context: ModuleContext,
     klass: GirClass,
     iface: { klass: GirClass; namespaceName: string },
 ): string[] => {
-    const ancestors = ancestorClassMethodSignatures(context, klass);
-    const omissions: string[] = [];
+    const claimed = classChainVfuncNames(context, klass);
 
-    for (const method of iface.klass.methods) {
-        const name = mergeOmissionName(context, method, ancestors);
-
-        if (name !== undefined) {
-            omissions.push(name);
-        }
-    }
-
-    return omissions;
+    return vfuncMemberNames(context, iface.namespaceName, iface.klass).filter((name) => claimed.has(name));
 };
+
+const collectInterfaceMergeOmissions = (
+    context: ModuleContext,
+    klass: GirClass,
+    iface: { klass: GirClass; namespaceName: string },
+): string[] => [
+    ...methodMergeOmissions(context, klass, iface.klass),
+    ...vfuncMergeOmissions(context, klass, iface),
+];
 
 const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, string> => {
     const types: Map<string, string> = new Map();
@@ -416,7 +419,6 @@ const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string |
 };
 
 export {
-    resolveImplementedInterface,
     resolvePrerequisiteReference,
     forEachAncestor,
     collectInterfaceProperties,
@@ -425,6 +427,5 @@ export {
     collectInheritedMethods,
     conflictRename,
     reservedSignalMemberRename,
-    type OwnedProperty,
     type InheritedMethods,
 };

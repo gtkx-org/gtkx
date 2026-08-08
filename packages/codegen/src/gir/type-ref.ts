@@ -88,6 +88,7 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
         kind: "carray",
         element,
         elementCType: elementNode === undefined ? undefined : attr(elementNode, "c:type"),
+        arrayCType: attr(arrayNode, "c:type"),
         lengthParameterIndex: intAttr(arrayNode, "length"),
         fixedSize: intAttr(arrayNode, "fixed-size"),
         isZeroTerminated: isAttrTrue(arrayNode, "zero-terminated", true),

@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
-import { pickBy } from "@gtkx/utils";
+import { getOrInsert, pickBy } from "@gtkx/utils";
 import type { Props } from "./registry.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 import {
@@ -24,6 +24,7 @@ const CONTENT_TYPE_NAMES: { kind: ContentKind; name: string }[] = [
 ];
 
 const getContentTypes = createContentTypeCache();
+const contentKinds: Map<bigint, ContentKind | null> = new Map();
 
 function createContentTypeCache(): () => ContentType[] {
     let cached: ContentType[] | null = null;
@@ -35,7 +36,7 @@ function createContentTypeCache(): () => ContentType[] {
     };
 }
 
-const resolveContentKind = (type: bigint): ContentKind | null => {
+const findContentKind = (type: bigint): ContentKind | null => {
     for (const entry of getContentTypes()) {
         if (entry.type !== TYPE_INVALID && typeIsA(type, entry.type)) {
             return entry.kind;
@@ -44,6 +45,8 @@ const resolveContentKind = (type: bigint): ContentKind | null => {
 
     return null;
 };
+
+const contentKindFor = (type: bigint): ContentKind | null => getOrInsert(contentKinds, type, findContentKind);
 
 const constructInput = (info: TypeInfo, props: Props): Props =>
     pickBy(
@@ -76,7 +79,7 @@ const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch):
     const type = typeFromName(typeName);
     const object = createObject(typeName, type, constructInput(info, props));
 
-    return createElementNode(typeName, object, dispatch, resolveContentKind(type));
+    return createElementNode(typeName, object, dispatch, contentKindFor(type));
 };
 
 export { resolveElementNode };

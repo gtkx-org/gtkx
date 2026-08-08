@@ -314,7 +314,7 @@ impl Descriptor {
                 scope,
             } => {
                 let has_destroy = has_destroy.unwrap_or(false);
-                let has_user_data = has_user_data.unwrap_or(user_data_index.is_some());
+                let has_user_data = has_user_data.unwrap_or(false);
                 Codec::Callback(CallbackCodec {
                     arg_codecs: arg_descriptors
                         .0

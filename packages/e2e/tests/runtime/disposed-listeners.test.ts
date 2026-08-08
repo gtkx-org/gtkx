@@ -2,6 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { signalHandlerIsConnected } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
 import { describe, expect, it, vi } from "vitest";
 
 const GOBJECT_DOMAIN = "GLib-GObject";
@@ -86,7 +87,9 @@ describe("listener records that outlive their emitter's disposal", () => {
     });
 
     it("off() does not disconnect a handler destroyed by GtkNativeDialog.destroy()", () => {
-        const dialog = new Gtk.FileChooserNative();
+        class ProbeDialog extends Gtk.NativeDialog {}
+        registerClass(ProbeDialog, { typeName: "GtkxDisposedListenersDialog" });
+        const dialog = new ProbeDialog();
         const handler = vi.fn();
         dialog.on("response", handler);
 

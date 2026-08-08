@@ -3,10 +3,10 @@ import type { GirFunction } from "../../gir/function.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { tFn } from "../../analysis/descriptor.js";
-import { hasCallerAllocatedArrayLength } from "../../analysis/param-structure.js";
-import { renderJsDoc } from "../../writer/doc.js";
+import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
+import { callableDoc } from "./callable-doc.js";
 import {
     planCallArgs,
     renderMethodBody,
@@ -16,6 +16,19 @@ import {
     renderPromisifiedSignature,
     renderReturnDescriptor,
 } from "./method.js";
+
+type NamespaceFinish = {
+    fn: GirFunction;
+    exportName: string;
+};
+
+type NamespaceFunctionOptions = {
+    context: ModuleContext;
+    fn: GirFunction;
+    finish: NamespaceFinish | undefined;
+    exportName: string;
+    bindingName: string;
+};
 
 const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
     if (fn.cIdentifier === undefined) {
@@ -58,7 +71,7 @@ const canEmitNamespaceFunction = (context: ModuleContext, fn: GirFunction): bool
     !isMovedOntoEmittedMember(context, fn) &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
-    !hasCallerAllocatedArrayLength(context.library, fn);
+    !hasUnmarshalableParam(context, fn);
 
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
     if (!canEmitNamespaceFunction(context, fn)) {
@@ -80,30 +93,39 @@ const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): voi
     const bindingName = toCamelIdentifier(cIdentifier);
     context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
-    const declaration = renderNamespaceFunctionDeclaration(context, fn, exportName, bindingName);
-    context.module.appendDeclaration(`${renderJsDoc(fn.doc)}${declaration}`);
+    const finish = matchNamespaceFinish(context, fn);
+    const declaration = renderNamespaceFunctionDeclaration({ context, fn, finish, exportName, bindingName });
+    const doc = callableDoc(context, fn, { finishFn: finish?.fn });
+    context.module.appendDeclaration(`${doc}${declaration}`);
 };
 
-const renderNamespaceFunctionDeclaration = (
-    context: ModuleContext,
-    fn: GirFunction,
-    exportName: string,
-    bindingName: string,
-): string => {
+const matchNamespaceFinish = (context: ModuleContext, fn: GirFunction): NamespaceFinish | undefined => {
     const finishFn = matchAsyncFinish(context.library, fn, context.namespace.functions);
-    const finishCIdentifier = finishFn?.cIdentifier;
+    const cIdentifier = finishFn?.cIdentifier;
 
-    if (finishFn !== undefined && finishCIdentifier !== undefined && canEmitNamespaceFunction(context, finishFn)) {
-        const finishExport = namespaceFunctionExportName(
-            finishCIdentifier,
-            finishFn.name,
-            context.namespace.cSymbolPrefixes,
-        );
+    if (finishFn === undefined || cIdentifier === undefined || !canEmitNamespaceFunction(context, finishFn)) {
+        return undefined;
+    }
 
-        const { signature, returnType } = renderPromisifiedSignature(context, fn, finishFn);
-        const body = renderPromisifiedBody(context, fn, finishExport, bindingName);
+    return {
+        fn: finishFn,
+        exportName: namespaceFunctionExportName(cIdentifier, finishFn.name, context.namespace.cSymbolPrefixes),
+    };
+};
 
-        return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
+const renderPromisifiedNamespaceFunction = (options: NamespaceFunctionOptions, finish: NamespaceFinish): string => {
+    const { context, fn, exportName, bindingName } = options;
+    const { signature, returnType } = renderPromisifiedSignature(context, fn, finish.fn);
+    const body = renderPromisifiedBody(context, fn, finish.exportName, bindingName);
+
+    return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
+};
+
+const renderNamespaceFunctionDeclaration = (options: NamespaceFunctionOptions): string => {
+    const { context, fn, finish, exportName, bindingName } = options;
+
+    if (finish !== undefined) {
+        return renderPromisifiedNamespaceFunction(options, finish);
     }
 
     const signature = renderMethodSignature(context, fn);

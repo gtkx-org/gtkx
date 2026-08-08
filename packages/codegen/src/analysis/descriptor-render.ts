@@ -48,10 +48,12 @@ import {
     tUint64,
     tVoid,
 } from "./descriptor.js";
+import { carrayFor, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
 type RenderDescriptorOptions = {
     argIndexOffset?: number;
     argIndexMap?: Map<number, number> | undefined;
+    hasOutIndirection?: boolean;
     isCallerAllocated?: boolean;
     isInline?: boolean;
     isNewlyCreated?: boolean;
@@ -60,6 +62,7 @@ type RenderDescriptorOptions = {
 type ArgIndexOptions = {
     argIndexOffset: number;
     argIndexMap: Map<number, number> | undefined;
+    hasOutIndirection: boolean;
 };
 
 type RecordPlacement = {
@@ -122,21 +125,20 @@ const transferOwnership = (transfer: ParameterTransfer): Ownership => {
 const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =>
     transfer === "container" ? "none" : transfer;
 
-const isVoidRef = (library: Library, ref: TypeId | undefined): boolean => {
-    if (ref === undefined) {
-        return true;
-    }
-
-    const type = library.typeFor(ref);
-
-    return type?.kind === "primitive" && type.category === "void";
-};
+const isVoidRef = (library: Library, ref: TypeId | undefined): boolean =>
+    ref === undefined || primitiveCategoryFor(library, ref) === "void";
 
 const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): boolean =>
     ref !== undefined && library.typeFor(ref)?.kind === "callback" && library.nameFor(ref) === undefined;
 
 const shouldOmitPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
     isVoidRef(library, returnValue.type) || returnValue.skip;
+
+const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => ({
+    argIndexOffset: options.argIndexOffset ?? 0,
+    argIndexMap: options.argIndexMap,
+    hasOutIndirection: options.hasOutIndirection === true,
+});
 
 const renderDescriptor = (
     context: ModuleContext,
@@ -148,8 +150,7 @@ const renderDescriptor = (
         return tVoid;
     }
 
-    const { argIndexOffset = 0 } = options;
-    const indexOptions: ArgIndexOptions = { argIndexOffset, argIndexMap: options.argIndexMap };
+    const indexOptions = argIndexOptions(options);
     const ownership = transferOwnership(transfer);
     const type = context.library.typeFor(ref);
 
@@ -255,8 +256,19 @@ const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
     return type !== undefined && isScalarType(library, type);
 };
 
+const isStrvRef = (library: Library, ref: TypeId | undefined): boolean => {
+    const type = carrayFor(library, ref);
+
+    if (type === undefined) {
+        return false;
+    }
+
+    return isUnboundedArray(type) && primitiveCategoryFor(library, type.element) === "string";
+};
+
 const isCellInout = (library: Library, parameter: GirParameter): boolean =>
-    isInoutParameter(parameter) && isScalarRef(library, parameter.type);
+    isInoutParameter(parameter) &&
+    (isScalarRef(library, parameter.type) || isStrvRef(library, parameter.type));
 
 const renderParamDescriptor = (
     context: ModuleContext,
@@ -264,12 +276,14 @@ const renderParamDescriptor = (
     ref: TypeId | undefined,
     argIndex: Partial<ArgIndexOptions> = {},
 ): string => {
+    const behindRef: RenderDescriptorOptions = { ...argIndex, hasOutIndirection: true };
+
     if (isCellInout(context.library, parameter)) {
-        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, argIndex), true);
+        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, behindRef), true);
     }
 
     if (isOutParameter(parameter)) {
-        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, argIndex));
+        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, behindRef));
     }
 
     return renderDescriptor(context, ref, parameter.transferOwnership, {
@@ -301,6 +315,10 @@ const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number
 
     if (owningParameter.destroyIndex !== undefined) {
         options.push("hasDestroy: true");
+    }
+
+    if (owningParameter.closureIndex !== undefined) {
+        options.push("hasUserData: true");
     }
 
     if (userDataIndex !== undefined) {
@@ -458,10 +476,11 @@ const fundamentalAncestor = (
 const classSelfDescriptor = (
     context: ModuleContext,
     type: Extract<EntityType, { kind: "class" | "interface" }>,
+    ownership: Ownership,
 ): string => {
     const ancestor = fundamentalAncestor(context, type);
 
-    return ancestor === undefined ? tObject("borrowed") : renderFundamental({ ...ancestor, ownership: "borrowed" });
+    return ancestor === undefined ? tObject(ownership) : renderFundamental({ ...ancestor, ownership });
 };
 
 const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): string => {
@@ -478,7 +497,7 @@ const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): s
     }
 
     if (isClassOrInterface(type)) {
-        return classSelfDescriptor(context, type);
+        return classSelfDescriptor(context, type, transferOwnership(instance.transferOwnership));
     }
 
     if (type.kind === "record") {
@@ -659,8 +678,9 @@ const arrayExpression = (
     }
 
     const ownership = transferOwnership(transfer);
-    const element = renderDescriptor(context, ref.element, deriveElementTransfer(transfer), options);
-    const size = inlineElementSize(context, ref.element, ref.elementCType);
+    const elementOptions: ArgIndexOptions = { ...options, hasOutIndirection: false };
+    const element = renderDescriptor(context, ref.element, deriveElementTransfer(transfer), elementOptions);
+    const size = inlineElementSize(context, ref, options.hasOutIndirection);
 
     if (ref.lengthParameterIndex !== undefined) {
         return tSizedArray(element, mapArgIndex(options, ref.lengthParameterIndex), ownership, size);
@@ -683,20 +703,18 @@ const recordInlineSize = (context: ModuleContext, record: ResolvedRecord): numbe
     return size > 0 ? size : undefined;
 };
 
-const inlineElementSize = (
-    context: ModuleContext,
-    element: TypeId | undefined,
-    elementCType: string | undefined,
-): number | undefined => {
-    if (element === undefined) {
+const elementPointerDepth = (elementCType: string | undefined, hasOutIndirection: boolean): number => {
+    const declared = elementCType === undefined ? 0 : elementCType.split("*").length - 1;
+
+    return hasOutIndirection ? declared - 1 : declared;
+};
+
+const inlineElementSize = (context: ModuleContext, ref: CArrayType, hasOutIndirection: boolean): number | undefined => {
+    if (elementPointerDepth(ref.elementCType, hasOutIndirection) > 0) {
         return undefined;
     }
 
-    if (elementCType?.includes("*")) {
-        return undefined;
-    }
-
-    const type = context.library.typeFor(element);
+    const type = context.library.typeFor(ref.element);
 
     if (type?.kind !== "record") {
         return undefined;
@@ -724,6 +742,7 @@ export {
     renderDescriptor,
     isScalarRef,
     isCellInout,
+    recordInlineSize,
     renderParamDescriptor,
     renderCallbackType,
     renderSelfDescriptor,

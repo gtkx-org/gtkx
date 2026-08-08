@@ -36,6 +36,30 @@ const createTestContext = (): Context => {
     return Context.create(createTestSurface());
 };
 
+const createTextContext = (): Context => {
+    const ctx = createTestContext();
+    ctx.selectFontFace("Sans", 0, 0);
+    ctx.setFontSize(14);
+
+    return ctx;
+};
+
+const createIdentityMatrix = (): Matrix => Pattern.createLinear(0, 0, 1, 1).getMatrix();
+const createGradientPattern = (): Pattern => Pattern.createLinear(0, 0, 100, 0);
+
+const createHintedOptions = (style: HintStyle): FontOptions => {
+    const options = FontOptions.create();
+    options.setHintStyle(style);
+
+    return options;
+};
+
+const expectStatusSuccess = (draw: (ctx: Context) => void): void => {
+    const ctx = createTestContext();
+    draw(ctx);
+    expect(ctx.status()).toBe(Status.SUCCESS);
+};
+
 const expectCurveEndsAt30 = (curve: (ctx: Context) => void): void => {
     const ctx = createTestContext();
     ctx.moveTo(0, 0);
@@ -54,14 +78,14 @@ describe("Matrix (1)", () => {
     });
 
     it("creates an identity matrix", () => {
-        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        const m = createIdentityMatrix();
         const p = m.transformPoint(5, 7);
         expect(p.x).toBeCloseTo(5);
         expect(p.y).toBeCloseTo(7);
     });
 
     it("creates a translation matrix", () => {
-        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        const m = createIdentityMatrix();
         m.translate(5, 10);
         const p = m.transformPoint(0, 0);
         expect(p.x).toBeCloseTo(5);
@@ -69,7 +93,7 @@ describe("Matrix (1)", () => {
     });
 
     it("creates a scale matrix", () => {
-        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        const m = createIdentityMatrix();
         m.scale(2, 3);
         const d = m.transformDistance(1, 1);
         expect(d.dx).toBeCloseTo(2);
@@ -79,7 +103,7 @@ describe("Matrix (1)", () => {
 
 describe("Matrix (2)", () => {
     it("creates a rotation matrix", () => {
-        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        const m = createIdentityMatrix();
         m.rotate(Math.PI / 2);
         const d = m.transformDistance(1, 0);
         expect(d.dx).toBeCloseTo(0, 5);
@@ -87,7 +111,7 @@ describe("Matrix (2)", () => {
     });
 
     it("inverts", () => {
-        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        const m = createIdentityMatrix();
         m.scale(2, 4);
         m.invert();
         const d = m.transformDistance(2, 4);
@@ -96,7 +120,7 @@ describe("Matrix (2)", () => {
     });
 
     it("transforms a point", () => {
-        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        const m = createIdentityMatrix();
         m.translate(10, 20);
         const p = m.transformPoint(5, 5);
         expect(p.x).toBeCloseTo(15);
@@ -104,7 +128,7 @@ describe("Matrix (2)", () => {
     });
 
     it("transforms a distance", () => {
-        const m = Pattern.createLinear(0, 0, 1, 1).getMatrix();
+        const m = createIdentityMatrix();
         m.scale(3, 4);
         const d = m.transformDistance(2, 3);
         expect(d.dx).toBeCloseTo(6);
@@ -230,90 +254,90 @@ describe("Context — getCurrentPoint", () => {
 
 describe("Context — drawing operations", () => {
     it("strokes the current path", () => {
-        const ctx = createTestContext();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(100, 100);
-        ctx.stroke();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.moveTo(0, 0);
+            ctx.lineTo(100, 100);
+            ctx.stroke();
+        });
     });
 
     it("strokes preserving the path", () => {
-        const ctx = createTestContext();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(100, 100);
-        ctx.strokePreserve();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.moveTo(0, 0);
+            ctx.lineTo(100, 100);
+            ctx.strokePreserve();
+        });
     });
 
     it("fills the current path", () => {
-        const ctx = createTestContext();
-        ctx.rectangle(0, 0, 100, 100);
-        ctx.fill();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.rectangle(0, 0, 100, 100);
+            ctx.fill();
+        });
     });
 
     it("fills preserving the path", () => {
-        const ctx = createTestContext();
-        ctx.rectangle(0, 0, 100, 100);
-        ctx.fillPreserve();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.rectangle(0, 0, 100, 100);
+            ctx.fillPreserve();
+        });
     });
 
     it("paints the entire surface", () => {
-        const ctx = createTestContext();
-        ctx.paint();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.paint();
+        });
     });
 
     it("paints with alpha", () => {
-        const ctx = createTestContext();
-        ctx.paintWithAlpha(0.5);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.paintWithAlpha(0.5);
+        });
     });
 });
 
 describe("Context — clipping", () => {
     it("clips to the current path", () => {
-        const ctx = createTestContext();
-        ctx.rectangle(10, 10, 80, 80);
-        ctx.clip();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.rectangle(10, 10, 80, 80);
+            ctx.clip();
+        });
     });
 
     it("clips preserving the path", () => {
-        const ctx = createTestContext();
-        ctx.rectangle(10, 10, 80, 80);
-        ctx.clipPreserve();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.rectangle(10, 10, 80, 80);
+            ctx.clipPreserve();
+        });
     });
 
     it("resets the clip region", () => {
-        const ctx = createTestContext();
-        ctx.resetClip();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.resetClip();
+        });
     });
 });
 
 describe("Context — source color", () => {
     it("sets source RGB", () => {
-        const ctx = createTestContext();
-        ctx.setSourceRgb(1, 0, 0);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.setSourceRgb(1, 0, 0);
+        });
     });
 
     it("sets source RGBA", () => {
-        const ctx = createTestContext();
-        ctx.setSourceRgba(1, 0, 0, 0.5);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.setSourceRgba(1, 0, 0, 0.5);
+        });
     });
 
     it("sets a pattern as source", () => {
-        const ctx = createTestContext();
-        const pattern = Pattern.createLinear(0, 0, 100, 100);
-        pattern.addColorStopRgb(0, 1, 0, 0);
-        pattern.addColorStopRgb(1, 0, 0, 1);
-        ctx.setSource(pattern);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            const pattern = Pattern.createLinear(0, 0, 100, 100);
+            pattern.addColorStopRgb(0, 1, 0, 0);
+            pattern.addColorStopRgb(1, 0, 0, 1);
+            ctx.setSource(pattern);
+        });
     });
 });
 
@@ -387,21 +411,21 @@ describe("Context — transformations", () => {
     });
 
     it("translates the coordinate system", () => {
-        const ctx = createTestContext();
-        ctx.translate(50, 50);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.translate(50, 50);
+        });
     });
 
     it("scales the coordinate system", () => {
-        const ctx = createTestContext();
-        ctx.scale(2, 2);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.scale(2, 2);
+        });
     });
 
     it("rotates the coordinate system", () => {
-        const ctx = createTestContext();
-        ctx.rotate(Math.PI / 4);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.rotate(Math.PI / 4);
+        });
     });
 });
 
@@ -415,30 +439,26 @@ describe("Context — operator", () => {
 
 describe("Context — text: font setup and rendering", () => {
     it("selects a font face", () => {
-        const ctx = createTestContext();
-        ctx.selectFontFace("Sans", 0, 0);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.selectFontFace("Sans", 0, 0);
+        });
     });
 
     it("sets font size", () => {
-        const ctx = createTestContext();
-        ctx.setFontSize(14);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.setFontSize(14);
+        });
     });
 
     it("shows text", () => {
-        const ctx = createTestContext();
-        ctx.selectFontFace("Sans", 0, 0);
-        ctx.setFontSize(14);
+        const ctx = createTextContext();
         ctx.moveTo(10, 50);
         ctx.showText("Hello");
         expect(ctx.status()).toBe(Status.SUCCESS);
     });
 
     it("adds text to path", () => {
-        const ctx = createTestContext();
-        ctx.selectFontFace("Sans", 0, 0);
-        ctx.setFontSize(14);
+        const ctx = createTextContext();
         ctx.moveTo(10, 50);
         ctx.textPath("Hello");
         expect(ctx.status()).toBe(Status.SUCCESS);
@@ -447,9 +467,7 @@ describe("Context — text: font setup and rendering", () => {
 
 describe("Context — text: extents", () => {
     it("measures text extents", () => {
-        const ctx = createTestContext();
-        ctx.selectFontFace("Sans", 0, 0);
-        ctx.setFontSize(14);
+        const ctx = createTextContext();
         const extents = ctx.textExtents("Hello");
         expect(extents).toHaveProperty("xBearing");
         expect(extents).toHaveProperty("yBearing");
@@ -461,9 +479,7 @@ describe("Context — text: extents", () => {
     });
 
     it("gets font extents", () => {
-        const ctx = createTestContext();
-        ctx.selectFontFace("Sans", 0, 0);
-        ctx.setFontSize(14);
+        const ctx = createTextContext();
         const fe = ctx.fontExtents();
         expect(fe.ascent).toBeGreaterThan(0);
         expect(fe.descent).toBeGreaterThanOrEqual(0);
@@ -492,15 +508,15 @@ describe("Context — antialias", () => {
 
 describe("Context — page operations", () => {
     it("shows a page", () => {
-        const ctx = createTestContext();
-        ctx.showPage();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.showPage();
+        });
     });
 
     it("copies a page", () => {
-        const ctx = createTestContext();
-        ctx.copyPage();
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.copyPage();
+        });
     });
 });
 
@@ -587,11 +603,11 @@ describe("Context — hit testing", () => {
 
 describe("Context — masking", () => {
     it("masks with a pattern", () => {
-        const ctx = createTestContext();
-        ctx.setSourceRgb(1, 0, 0);
-        const pattern = Pattern.createRgba(0, 0, 0, 0.5);
-        ctx.mask(pattern);
-        expect(ctx.status()).toBe(Status.SUCCESS);
+        expectStatusSuccess((ctx) => {
+            ctx.setSourceRgb(1, 0, 0);
+            const pattern = Pattern.createRgba(0, 0, 0, 0.5);
+            ctx.mask(pattern);
+        });
     });
 
     it("masks with a surface", () => {
@@ -769,7 +785,7 @@ describe("Pattern — createMesh", () => {
 
 describe("Pattern — addColorStopRgb", () => {
     it("adds an RGB color stop to a gradient", () => {
-        const pattern = Pattern.createLinear(0, 0, 100, 0);
+        const pattern = createGradientPattern();
         pattern.addColorStopRgb(0, 1, 0, 0);
         expect(pattern.status()).toBe(Status.SUCCESS);
         expect(pattern.getColorStopCount()).toBe(1);
@@ -778,7 +794,7 @@ describe("Pattern — addColorStopRgb", () => {
 
 describe("Pattern — addColorStopRgba", () => {
     it("adds an RGBA color stop to a gradient", () => {
-        const pattern = Pattern.createLinear(0, 0, 100, 0);
+        const pattern = createGradientPattern();
         pattern.addColorStopRgba(0.5, 0, 1, 0, 0.5);
         expect(pattern.status()).toBe(Status.SUCCESS);
         const stop = pattern.getColorStopRgba(0);
@@ -789,7 +805,7 @@ describe("Pattern — addColorStopRgba", () => {
 
 describe("Pattern — extend", () => {
     it("sets and gets extend mode", () => {
-        const pattern = Pattern.createLinear(0, 0, 100, 0);
+        const pattern = createGradientPattern();
         pattern.setExtend(Extend.REPEAT);
         expect(pattern.getExtend()).toBe(Extend.REPEAT);
     });
@@ -797,7 +813,7 @@ describe("Pattern — extend", () => {
 
 describe("Pattern — filter", () => {
     it("sets and gets filter", () => {
-        const pattern = Pattern.createLinear(0, 0, 100, 0);
+        const pattern = createGradientPattern();
         pattern.setFilter(Filter.NEAREST);
         expect(pattern.getFilter()).toBe(Filter.NEAREST);
     });
@@ -805,7 +821,7 @@ describe("Pattern — filter", () => {
 
 describe("Pattern — matrix", () => {
     it("sets and gets matrix", () => {
-        const pattern = Pattern.createLinear(0, 0, 100, 0);
+        const pattern = createGradientPattern();
         const m = pattern.getMatrix();
         m.translate(5, 10);
         pattern.setMatrix(m);
@@ -818,7 +834,7 @@ describe("Pattern — matrix", () => {
 
 describe("Pattern — getType", () => {
     it("returns LINEAR for linear pattern", () => {
-        const pattern = Pattern.createLinear(0, 0, 100, 0);
+        const pattern = createGradientPattern();
         expect(pattern.getType()).toBe(PatternType.LINEAR);
     });
 
@@ -830,7 +846,7 @@ describe("Pattern — getType", () => {
 
 describe("Pattern — getReferenceCount", () => {
     it("reports a positive reference count", () => {
-        const pattern = Pattern.createLinear(0, 0, 100, 0);
+        const pattern = createGradientPattern();
         expect(pattern.getReferenceCount()).toBeGreaterThan(0);
     });
 });
@@ -857,9 +873,7 @@ describe("FontOptions — create", () => {
 
 describe("FontOptions — settings", () => {
     it("sets and gets hint style", () => {
-        const options = FontOptions.create();
-        options.setHintStyle(HintStyle.FULL);
-        expect(options.getHintStyle()).toBe(HintStyle.FULL);
+        expect(createHintedOptions(HintStyle.FULL).getHintStyle()).toBe(HintStyle.FULL);
     });
 
     it("sets and gets antialias", () => {
@@ -883,38 +897,26 @@ describe("FontOptions — settings", () => {
 
 describe("FontOptions — equal", () => {
     it("returns true for equal options", () => {
-        const a = FontOptions.create();
-        const b = FontOptions.create();
-        a.setHintStyle(HintStyle.FULL);
-        b.setHintStyle(HintStyle.FULL);
-        expect(a.equal(b)).toBe(true);
+        expect(createHintedOptions(HintStyle.FULL).equal(createHintedOptions(HintStyle.FULL))).toBe(true);
     });
 
     it("returns false for different options", () => {
-        const a = FontOptions.create();
-        const b = FontOptions.create();
-        a.setHintStyle(HintStyle.FULL);
-        b.setHintStyle(HintStyle.NONE);
-        expect(a.equal(b)).toBe(false);
+        expect(createHintedOptions(HintStyle.FULL).equal(createHintedOptions(HintStyle.NONE))).toBe(false);
     });
 });
 
 describe("FontOptions — merge", () => {
     it("merges another font options into this one", () => {
         const a = FontOptions.create();
-        const b = FontOptions.create();
-        b.setHintStyle(HintStyle.FULL);
-        a.merge(b);
+        a.merge(createHintedOptions(HintStyle.FULL));
         expect(a.getHintStyle()).toBe(HintStyle.FULL);
     });
 });
 
 describe("FontOptions — hash", () => {
     it("returns equal hashes for equal options", () => {
-        const a = FontOptions.create();
-        const b = FontOptions.create();
-        a.setHintStyle(HintStyle.SLIGHT);
-        b.setHintStyle(HintStyle.SLIGHT);
+        const a = createHintedOptions(HintStyle.SLIGHT);
+        const b = createHintedOptions(HintStyle.SLIGHT);
         expect(a.hash()).toBe(b.hash());
     });
 });

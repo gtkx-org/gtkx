@@ -1,4 +1,5 @@
 import type { ParseContext, TypeId } from "./type-id.js";
+import { documentedFromNode, type GirAnnotations } from "./annotations.js";
 import {
     attr,
     getChild,
@@ -12,37 +13,75 @@ import {
 } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
+/** Which way a parameter's value travels: into the call, back out of it, or both. */
 type ParameterDirection = "in" | "out" | "inout";
+/** How much of a value the receiver takes ownership of: none, the whole value, or only its container. */
 type ParameterTransfer = "none" | "full" | "container";
+/**
+ * How long a callback parameter stays valid: for the duration of the call, until its destroy notify runs,
+ * until the asynchronous operation invokes it, or forever.
+ */
 type CallbackScope = "call" | "notified" | "async" | "forever";
 
+/** A parameter of a {@link GirCallable}, with the annotations that decide how it is marshalled. */
 type GirParameter = {
+    /** The name GIR gives the parameter. */
     name: string;
+    /** What the parameter holds, absent when the GIR node declares no type. */
     type: TypeId | undefined;
+    /** The C spelling of the parameter's type, taken from its `type` or `array` child. */
+    cType: string | undefined;
+    /** Documentation prose from GIR, emitted as the parameter's `@param` text. */
+    doc: string | undefined;
+    /** Decides whether the parameter is an argument, part of the returned tuple, or both. */
     direction: ParameterDirection;
+    /** Ownership the marshalling descriptor is generated with, deciding whether the receiver frees the value. */
     transferOwnership: ParameterTransfer;
+    /** Whether the value may be null. */
     nullable: boolean;
+    /** Whether the caller may leave the parameter out entirely. */
     optional: boolean;
+    /** Whether the caller supplies the storage an out parameter writes into. */
     callerAllocates: boolean;
+    /** How long a callback parameter stays valid, absent when GIR carries no scope annotation. */
     scope: CallbackScope | undefined;
+    /** Position of the parameter carrying the callback's user data. */
     closureIndex: number | undefined;
+    /** Position of the parameter carrying the callback's destroy notify. */
     destroyIndex: number | undefined;
+    /** Whether the parameter is the `...` varargs marker. */
     isVarargs: boolean;
 };
 
+/** What a {@link GirCallable} hands back, with the annotations that decide how it is marshalled. */
 type GirReturnValue = {
+    /** What the callable returns, absent when the GIR node declares no type. */
     type: TypeId | undefined;
+    /** Documentation prose from GIR, emitted as the callable's `@returns` text. */
+    doc: string | undefined;
+    /** How much ownership the caller takes of the returned value. */
     transferOwnership: ParameterTransfer;
+    /** Whether the returned value may be null. */
     nullable: boolean;
+    /** Whether GIR marks the value as skipped, keeping it out of the generated signature. */
     skip: boolean;
 };
 
+/** Anything GIR describes with parameters and a return value: functions, methods, signals, and callbacks. */
 type GirCallable = {
+    /** The name GIR gives the callable. */
     name: string;
+    /** The callable's documentation text, absent when GIR carries none. */
     doc: string | undefined;
+    /** Release and deprecation annotations GIR carries on the callable. */
+    annotations: GirAnnotations;
+    /** The parameters the callable takes, in declaration order. */
     parameters: GirParameter[];
+    /** What the callable hands back. */
     returnValue: GirReturnValue;
+    /** Whether the callable reports failure through a trailing `GError`. */
     throws: boolean;
+    /** Whether GIR exposes the callable to bindings. */
     introspectable: boolean;
 };
 
@@ -62,9 +101,14 @@ const hasNullableAttr = (node: RawNode): boolean =>
 const hasOptionalAttr = (node: RawNode): boolean =>
     isAttrTrue(node, "optional") || (!isInDirection(node) && isAttrTrue(node, "allow-none"));
 
+const parameterCType = (node: RawNode): string | undefined =>
+    attr(getChild(node, "type"), "c:type") ?? attr(getChild(node, "array"), "c:type");
+
 const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => ({
     name: nameAttr(node),
     type: typeRefFromNode(node, context),
+    cType: parameterCType(node),
+    doc: getDoc(node),
     direction: parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction"),
     transferOwnership: transferOwnership(node),
     nullable: hasNullableAttr(node),
@@ -86,11 +130,12 @@ const isInoutParameter = (parameter: GirParameter): boolean => parameter.directi
 
 const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): GirReturnValue => {
     if (node === undefined) {
-        return { type: undefined, transferOwnership: "none", nullable: false, skip: false };
+        return { type: undefined, doc: undefined, transferOwnership: "none", nullable: false, skip: false };
     }
 
     return {
         type: typeRefFromNode(node, context),
+        doc: getDoc(node),
         transferOwnership: transferOwnership(node),
         nullable: hasNullableAttr(node),
         skip: isAttrTrue(node, "skip"),
@@ -102,8 +147,7 @@ const parseCallable = (node: RawNode, context: ParseContext): GirCallable => {
     const parameterNodes = getChildren(parametersNode, "parameter");
 
     return {
-        name: nameAttr(node),
-        doc: getDoc(node),
+        ...documentedFromNode(node),
         parameters: parameterNodes.map((parameter) => parameterFromNode(parameter, context)),
         returnValue: returnValueFromNode(getChild(node, "return-value"), context),
         throws: isAttrTrue(node, "throws"),

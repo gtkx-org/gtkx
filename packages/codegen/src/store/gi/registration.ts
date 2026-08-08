@@ -10,7 +10,7 @@ type InterfaceRegistration = {
     className: string;
     makerName: string;
     gtypeExpr?: string | undefined;
-    vfuncs?: string | undefined;
+    layout?: string | undefined;
 };
 
 const appendWrapperClassRegistration = (
@@ -29,7 +29,7 @@ const appendWrapperClassRegistration = (
 };
 
 const appendInterfaceRegistration = (context: ModuleContext, registration: InterfaceRegistration): void => {
-    const { className, makerName, gtypeExpr, vfuncs } = registration;
+    const { className, makerName, gtypeExpr, layout } = registration;
 
     if (gtypeExpr === undefined) {
         return;
@@ -37,7 +37,7 @@ const appendInterfaceRegistration = (context: ModuleContext, registration: Inter
 
     context.addRuntimeImport("registerInterface");
     const base = `${className}, ${gtypeExpr}, ${makerName}`;
-    const args = vfuncs === undefined ? base : `${base}, ${vfuncs}`;
+    const args = layout === undefined ? base : `${base}, ${layout}`;
     context.module.appendRegistration(`registerInterface(${args});`);
 };
 

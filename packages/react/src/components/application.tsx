@@ -1,10 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { quitApplication, runApplication } from "@gtkx/runtime";
 import { pickBy } from "@gtkx/utils";
+import process from "node:process";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
+import { createPortaledComponent } from "./portaled.js";
 
 type ApplicationComponentProps = {
     applicationId?: string | null | undefined;
@@ -14,23 +16,44 @@ type ApplicationComponentProps = {
 
 const POST_ACTIVATE_PROPS = new Set(["menubar"]);
 
+const commandLine = (applicationId: string | null): string[] => [
+    applicationId?.split(".").at(-1) ?? "gtkx",
+    ...process.argv.slice(2),
+];
+
+const startApplication = (
+    application: Gtk.Application,
+    setActivated: (isActivated: boolean) => void,
+    applicationId: string | null,
+): void => {
+    application.on("activate", () => {
+        setActivated(true);
+    });
+
+    const { exitStatus } = runApplication(application, commandLine(applicationId));
+
+    if (exitStatus !== 0) {
+        process.exitCode = exitStatus;
+    }
+};
+
 const useApplicationLifecycle = (
     application: Gtk.Application | null,
     setActivated: (isActivated: boolean) => void,
+    applicationId: string | null,
 ): void => {
     useLayoutEffect(() => {
         if (!application) {
             return;
         }
 
-        runApplication(application);
-        setActivated(true);
+        startApplication(application, setActivated, applicationId);
 
         return () => {
             quitApplication(application);
             setActivated(false);
         };
-    }, [application, setActivated]);
+    }, [application, setActivated, applicationId]);
 };
 
 const applicationChildren = (application: Gtk.Application | null, children: ReactNode): ReactNode => {
@@ -41,13 +64,13 @@ const applicationChildren = (application: Gtk.Application | null, children: Reac
     return <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>;
 };
 
-const createApplicationComponent = (
+const createApplicationElement = (
     Component: ElementType,
 ): ((props: ApplicationComponentProps) => ReactNode) => {
     return ({ applicationId = defaultApplicationId, children, ref, ...rest }: ApplicationComponentProps): ReactNode => {
         const [application, setApplication] = useState<Gtk.Application | null>(null);
         const [activated, setActivated] = useState(false);
-        useApplicationLifecycle(application, setActivated);
+        useApplicationLifecycle(application, setActivated, applicationId);
         const mergedRef = useMergedRef(ref, setApplication);
         const appliedProps = activated ? rest : pickBy(rest, (_value, key) => !POST_ACTIVATE_PROPS.has(key));
 
@@ -58,6 +81,9 @@ const createApplicationComponent = (
         );
     };
 };
+
+const createApplicationComponent = (Component: ElementType): ((props: unknown) => ReactNode) =>
+    createPortaledComponent(createApplicationElement(Component));
 
 /** @internal */
 export { createApplicationComponent };

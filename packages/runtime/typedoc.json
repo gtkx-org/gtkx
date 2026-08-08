@@ -4,6 +4,7 @@
         "EmitArg",
         "ErrorLike",
         "FinishResult",
+        "InterfaceLayout",
         "MixinReceiver",
         "RegisterClassOptions",
         "SignalConnectSpec",

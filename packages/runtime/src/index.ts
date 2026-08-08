@@ -1,9 +1,13 @@
 import "./exit-hook.js";
 
 /** @public */
+export { type ApplicationClass, type CommandLineApplication, createApplication } from "./application-class.js";
+/** @public */
+export { type ClosureCallback, ClosureMarshalError, toClosure, tryToClosure } from "./closure.js";
+/** @public */
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 /** @public */
-export { onExit, quit, quitApplication, runApplication } from "./lifecycle.js";
+export { onExit, quit, quitApplication, runApplication, type RunApplicationResult } from "./lifecycle.js";
 /** @public */
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 /** @public */
@@ -11,11 +15,18 @@ export { installMixins, type Mixin } from "./mixin.js";
 /** @public */
 export { fromNative, toNative } from "./native-value.js";
 /** @public */
-export { getObjectProperty, newObjectWithProperties, setObjectProperty } from "./object.js";
+export {
+    type ConstructBinding,
+    type ConstructBindings,
+    getObjectProperty,
+    newObjectWithProperties,
+    registerConstructProperties,
+    setObjectProperty,
+} from "./object.js";
 /** @public */
 export { promisify } from "./promisify.js";
 /** @public */
-export { registerClass } from "./register-class.js";
+export { type Interface, registerClass } from "./register-class.js";
 /** @public */
 export {
     getHandle,
@@ -25,7 +36,6 @@ export {
     registerWrapperClass,
     type StaticBase,
     setHandle,
-    tryGetHandle,
     wrapHandle,
 } from "./registry.js";
 /** @public */
@@ -70,4 +80,6 @@ export {
 /** @public */
 export { getBoxedValue, setBoxedValue } from "./value.js";
 /** @public */
-export { alloc, type ExternalObject, type Handle, read, setWrapper, write } from "@gtkx/native";
+export { callParent, callVfunc } from "./vfunc-call.js";
+/** @public */
+export { alloc, type ExternalObject, type Handle, read, write } from "@gtkx/native";
