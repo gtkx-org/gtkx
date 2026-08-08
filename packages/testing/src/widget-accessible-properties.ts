@@ -9,7 +9,6 @@ import {
     readAccessibleString as readNativeString,
 } from "./accessible-native.js";
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
-import { isTextHidden, REDACTED_TEXT, redactText } from "./hidden-text.js";
 import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
 import { descendants, relationCandidates } from "./traversal.js";
 
@@ -25,7 +24,6 @@ type CheckedState = "checked" | "unchecked" | "mixed";
 
 const EDITABLE_TEXT_GETTER = "getText";
 const DEFAULT_TEXT_GETTERS = ["getLabel", EDITABLE_TEXT_GETTER, "getTitle"];
-const LABELLING_TEXT_GETTERS = DEFAULT_TEXT_GETTERS.filter((getter) => getter !== EDITABLE_TEXT_GETTER);
 
 const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set<Gtk.AccessibleRole>([
     Gtk.AccessibleRole.ROW,
@@ -98,30 +96,13 @@ const readFirstText = (widget: Gtk.Widget, getters: string[]): string | null => 
     return null;
 };
 
-const getHiddenNodeText = (widget: Gtk.Widget): string | null => {
-    const labelling = readFirstText(widget, LABELLING_TEXT_GETTERS);
-
-    if (labelling !== null) {
-        return labelling;
-    }
-
-    return callStringGetter(widget, EDITABLE_TEXT_GETTER) ? REDACTED_TEXT : null;
-};
-
 /**
  * Returns a widget's own text by trying its label, text, and title getters in
- * order, or null when none produce a value. Text the widget hides, such as a
- * password entry's contents, is reported as `REDACTED_TEXT` instead.
+ * order, or null when none produce a value.
  *
  * @param widget The widget to read text from.
  */
-const getWidgetNodeText = (widget: Gtk.Widget): string | null => {
-    if (isTextHidden(widget)) {
-        return getHiddenNodeText(widget);
-    }
-
-    return readFirstText(widget, DEFAULT_TEXT_GETTERS);
-};
+const getWidgetText = (widget: Gtk.Widget): string | null => readFirstText(widget, DEFAULT_TEXT_GETTERS);
 
 const namingLabelText = (widget: Gtk.Widget): string | null => {
     const text = getLabelText(widget);
@@ -174,7 +155,7 @@ const getChildren = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
 };
 
 const textContentParts = (widget: Gtk.Widget): string[] => {
-    const own = getWidgetNodeText(widget);
+    const own = getWidgetText(widget);
 
     if (own !== null) {
         return [own];
@@ -227,7 +208,7 @@ const nameFromAuthor = (widget: Gtk.Widget): string | null =>
     getWidgetLabelledByText(widget) ?? readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
 
 const nameFromContent = (widget: Gtk.Widget): string | null => {
-    const ownText = getWidgetNodeText(widget);
+    const ownText = getWidgetText(widget);
 
     if (ownText) {
         return ownText;
@@ -280,7 +261,7 @@ const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
 
 const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
     if (EDITABLE_ROLES.has(widget.getAccessibleRole()) && isEditable(widget)) {
-        return redactText(widget, readEditableText(widget));
+        return readEditableText(widget);
     }
 
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.COMBO_BOX) {
@@ -336,7 +317,7 @@ const getWidgetSelection = (widget: Gtk.Widget): string | null => {
     }
 
     if (widget instanceof Gtk.Editable) {
-        return redactText(widget, readEditableSelection(widget));
+        return readEditableSelection(widget);
     }
 
     return null;
@@ -534,7 +515,7 @@ const getWidgetExternalLabelText = (widget: Gtk.Widget): string | null => {
 
 const isTooltipUsedAsName = (widget: Gtk.Widget): boolean =>
     readAccessibleString(widget, Gtk.AccessibleProperty.LABEL) === null &&
-    getWidgetNodeText(widget) === null &&
+    getWidgetText(widget) === null &&
     collectLabels(widget).length === 0;
 
 const getWidgetDescribedByText = (widget: Gtk.Widget): string | null => {
@@ -570,7 +551,7 @@ const isInaccessible = (widget: Gtk.Widget): boolean => {
 
 export {
     namingLabelText,
-    getWidgetNodeText,
+    getWidgetText,
     getWidgetTextContent,
     getWidgetLabelText,
     getWidgetAccessibleName,

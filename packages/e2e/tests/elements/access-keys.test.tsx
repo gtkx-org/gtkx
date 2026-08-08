@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import { AdwActionRow, AdwPreferencesGroup, AdwPreferencesPage } from "@gtkx/jsx/adw";
-import { getWidgetNodeText, render, screen } from "@gtkx/testing";
+import { getWidgetText, render, screen } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -33,6 +33,6 @@ describe("render - access keys", () => {
         const ref = await renderRow("_Database File", true);
         const row = ref.current;
         expect(row).not.toBeNull();
-        expect(row === null ? null : getWidgetNodeText(row)).toBe("Database File");
+        expect(row === null ? null : getWidgetText(row)).toBe("Database File");
     });
 });

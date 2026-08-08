@@ -30,7 +30,7 @@ const hoisted = vi.hoisted(() => ({
     fireEvent: vi.fn(() => Promise.resolve()),
     prettyWidget: vi.fn<(container: unknown, options?: PrettyWidgetOptions) => string>(() => "tree"),
     formatRole: vi.fn((role: number) => (role === 2 ? "label" : "button")),
-    getWidgetNodeText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
+    getWidgetText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
         return widget.getLabel?.() ?? widget.getText?.() ?? null;
     }),
     listToplevels: vi.fn(() => [] as unknown[]),
@@ -102,7 +102,7 @@ vi.mock("@gtkx/testing", () => ({
     fireEvent: hoisted.fireEvent,
     prettyWidget: hoisted.prettyWidget,
     formatRole: hoisted.formatRole,
-    getWidgetNodeText: hoisted.getWidgetNodeText,
+    getWidgetText: hoisted.getWidgetText,
     userEvent: { click: hoisted.click, type: hoisted.typeText, clear: hoisted.clear },
 }));
 

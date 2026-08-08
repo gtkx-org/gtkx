@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getWidgetNodeText, waitFor, within } from "@gtkx/testing";
+import { getWidgetText, waitFor, within } from "@gtkx/testing";
 import { expect } from "vitest";
 
 const rowTexts = (container: Gtk.Widget | null): (string | null)[] =>
@@ -8,7 +8,7 @@ const rowTexts = (container: Gtk.Widget | null): (string | null)[] =>
         ? []
         : within(container)
                 .queryAllByRole(Gtk.AccessibleRole.LABEL)
-                .map((widget) => getWidgetNodeText(widget));
+                .map((widget) => getWidgetText(widget));
 
 const expectRowTexts = (ref: RefObject<Gtk.Widget | null>, expected: (string | null)[]): Promise<void> =>
     waitFor(() => {

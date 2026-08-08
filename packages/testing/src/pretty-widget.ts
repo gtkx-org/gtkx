@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { sortStringsBy } from "@gtkx/utils";
 import { formatRole } from "./role-helpers.js";
 import { type Container, descendants, isOnScreen, roots } from "./traversal.js";
-import { getWidgetNodeText } from "./widget-accessible-properties.js";
+import { getWidgetText } from "./widget-accessible-properties.js";
 
 /** Produces the value of the `id` attribute printed first on a widget's opening tag. */
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
@@ -194,7 +194,7 @@ const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): st
     const attrs = formatAttrs(buildAttrs(widget, getId), colors);
     const openTag = `${colors.tag("<")}${colors.tag(tag)}${attrs}${colors.tag(">")}`;
     const closeTag = `${colors.tag("</")}${colors.tag(tag)}${colors.tag(">")}`;
-    const text = getWidgetNodeText(widget);
+    const text = getWidgetText(widget);
     const firstChild = widget.getFirstChild();
 
     if (!text && !firstChild) {

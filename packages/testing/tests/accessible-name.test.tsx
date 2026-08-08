@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkCheckButton } from "@gtkx/jsx/gtk";
 import { describe, expect, it } from "vitest";
-import { getWidgetNodeText, render, screen } from "../src/index.js";
+import { getWidgetText, render, screen } from "../src/index.js";
 
 describe("accessible name computation", () => {
     it("falls back to tooltip text for an icon-only button (the title step)", async () => {
@@ -45,6 +45,6 @@ describe("accessible name computation - access keys", () => {
     it("reports the drawn text, without the marker, as the node's text content", async () => {
         await render(<GtkButton label="_Save" useUnderline />);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" });
-        expect(getWidgetNodeText(button)).toBe("Save");
+        expect(getWidgetText(button)).toBe("Save");
     });
 });

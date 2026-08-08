@@ -12,7 +12,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import { getWidgetNodeText, render, screen, userEvent, waitFor } from "../src/index.js";
+import { getWidgetText, render, screen, userEvent, waitFor } from "../src/index.js";
 
 type ScrolledFixture = {
     window: Gtk.ScrolledWindow;
@@ -92,7 +92,7 @@ const renderScrolled = async (view: ReactNode, count: number): Promise<ScrolledF
 const getFindableRows = (): number[] =>
     screen
         .queryAllByText(ROW_PATTERN)
-        .map((widget) => Number(getWidgetNodeText(widget)?.slice(ROW_PREFIX.length)))
+        .map((widget) => Number(getWidgetText(widget)?.slice(ROW_PREFIX.length)))
         .toSorted((left, right) => left - right);
 
 const renderListView = (): Promise<ScrolledFixture> =>

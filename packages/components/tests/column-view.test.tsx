@@ -1,7 +1,7 @@
 import { ColumnView, type ListItemRenderer } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { act, getWidgetNodeText, render, screen, within } from "@gtkx/testing";
+import { act, getWidgetText, render, screen, within } from "@gtkx/testing";
 import { createRef, useMemo } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -79,7 +79,7 @@ const employeeColumns: ColumnViewColumn<Employee>[] = [
 const cellText = (cell: Gtk.Widget): string => {
     const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
 
-    return label ? (getWidgetNodeText(label) ?? "") : "";
+    return label ? (getWidgetText(label) ?? "") : "";
 };
 
 const rowCellTexts = (row: Gtk.Widget): string[] =>

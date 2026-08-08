@@ -2,7 +2,7 @@ import type { ListItem, ListItemRenderer } from "@gtkx/components";
 import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { act, getWidgetNodeText, screen, waitFor, within } from "@gtkx/testing";
+import { act, getWidgetText, screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import {
     expectRenderItemFunctionUpdate,
@@ -821,7 +821,7 @@ describe("render - ListView (tree) (23)", () => {
                 throw new TypeError("Expected the expander child to be a label");
             }
 
-            expect(getWidgetNodeText(child)).toBe("Parent");
+            expect(getWidgetText(child)).toBe("Parent");
             expectNoBoxBetween(child, ref.current);
         });
     });
