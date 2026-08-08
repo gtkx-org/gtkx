@@ -5,6 +5,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
 
@@ -70,6 +71,7 @@ function launchApp(app: AppItem, parentWindow: Gtk.Window | null) {
 
 function ListViewApplauncherDemo() {
     const parentWindow = useParentWindow();
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
     const apps = Gio.AppInfo.getAll().map((app) => ({
         appInfo: app,
@@ -92,6 +94,8 @@ function ListViewApplauncherDemo() {
                 name="list-view"
                 estimatedItemHeight={48}
                 selectionMode={Gtk.SelectionMode.SINGLE}
+                selectedIds={selectedIds}
+                onSelectionChanged={setSelectedIds}
                 onActivate={handleActivate}
                 renderItem={renderAppItem}
                 items={apps.map((app) => ({ id: app.id, value: app }))}

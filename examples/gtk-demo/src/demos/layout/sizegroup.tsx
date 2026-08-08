@@ -115,20 +115,26 @@ function DropdownRow({ row, selection, dropdowns, setSelection, setDropdowns }: 
     );
 }
 
+const PaddedColumn = ({ children }: { children: ReactNode }) => (
+    <GtkBox
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={5}
+        marginStart={5}
+        marginEnd={5}
+        marginTop={5}
+        marginBottom={5}
+    >
+        {children}
+    </GtkBox>
+);
+
 const OptionsFrame = ({ frame, ...state }: OptionsFrameProps) => (
     <GtkFrame name={frame.name} label={frame.label}>
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={5}
-            marginStart={5}
-            marginEnd={5}
-            marginTop={5}
-            marginBottom={5}
-        >
+        <PaddedColumn>
             {frame.rows.map((row) => (
                 <DropdownRow key={row.labelText} row={row} {...state} />
             ))}
-        </GtkBox>
+        </PaddedColumn>
     </GtkFrame>
 );
 
@@ -145,14 +151,7 @@ function SizeGroupDemo() {
     const state = { selection, dropdowns, setSelection, setDropdowns };
 
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={5}
-            marginStart={5}
-            marginEnd={5}
-            marginTop={5}
-            marginBottom={5}
-        >
+        <PaddedColumn>
             <GtkSizeGroup mode={mode} widgets={groupedDropdowns(dropdowns)} />
             {FRAMES.map((frame) => (
                 <OptionsFrame key={frame.name} frame={frame} {...state} />
@@ -164,7 +163,7 @@ function SizeGroupDemo() {
                 active={isGroupingEnabled}
                 onToggled={handleToggle}
             />
-        </GtkBox>
+        </PaddedColumn>
     );
 }
 

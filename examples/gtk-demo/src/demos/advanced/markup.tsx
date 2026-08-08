@@ -8,7 +8,7 @@ import {
     GtkTextBuffer,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, type ReactNode, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./markup.tsx?raw";
 import markupContent from "./markup.txt?raw";
@@ -73,6 +73,17 @@ const syncMarkupFromSource = (sourceView: Gtk.TextView | null, markupRef: React.
     markupRef.current = buffer.getText(startIter, endIter, false);
 };
 
+const MarkupScroller = ({ children }: { children: ReactNode }) => (
+    <GtkScrolledWindow
+        vexpand
+        hexpand
+        hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+    >
+        {children}
+    </GtkScrolledWindow>
+);
+
 const MarkupStack = ({ isShowingSource, formattedViewRef, sourceViewRef, onFormattedRealized }: MarkupStackProps) => (
     <GtkStack
         name="markup-stack"
@@ -82,12 +93,7 @@ const MarkupStack = ({ isShowingSource, formattedViewRef, sourceViewRef, onForma
         transitionType={Gtk.StackTransitionType.NONE}
     >
         <GtkStackPage name="formatted" title="Formatted">
-            <GtkScrolledWindow
-                vexpand
-                hexpand
-                hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-            >
+            <MarkupScroller>
                 <GtkTextView
                     name="formatted-view"
                     ref={formattedViewRef}
@@ -97,15 +103,10 @@ const MarkupStack = ({ isShowingSource, formattedViewRef, sourceViewRef, onForma
                     rightMargin={10}
                     onRealize={onFormattedRealized}
                 />
-            </GtkScrolledWindow>
+            </MarkupScroller>
         </GtkStackPage>
         <GtkStackPage name="source" title="Source">
-            <GtkScrolledWindow
-                vexpand
-                hexpand
-                hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-            >
+            <MarkupScroller>
                 <GtkTextView
                     name="source-view"
                     ref={sourceViewRef}
@@ -114,7 +115,7 @@ const MarkupStack = ({ isShowingSource, formattedViewRef, sourceViewRef, onForma
                     rightMargin={10}
                     buffer={<GtkTextBuffer>{SAMPLE_MARKUP}</GtkTextBuffer>}
                 />
-            </GtkScrolledWindow>
+            </MarkupScroller>
         </GtkStackPage>
     </GtkStack>
 );

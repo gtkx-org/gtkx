@@ -7,6 +7,12 @@ import sourceCode from "./drawingarea.tsx?raw";
 
 const CHECK_SIZE = 16;
 
+const SUBCIRCLES: { rgb: [number, number, number]; angle: number }[] = [
+    { rgb: [1, 0, 0], angle: 0.5 },
+    { rgb: [0, 1, 0], angle: 0.5 + 2 / 0.3 },
+    { rgb: [0, 0, 1], angle: 0.5 + 4 / 0.3 },
+];
+
 const drawingAreaDemo: Demo = {
     id: "drawingarea",
     title: "Drawing Area",
@@ -64,36 +70,20 @@ const draw3Circles = (
     { xc, yc, radius, alpha }: { xc: number; yc: number; radius: number; alpha: number },
 ) => {
     const subradius = radius * (2 / 3 - 0.1);
-    cr.setSourceRgba(1, 0, 0, alpha);
 
-    ovalPath(cr, {
-        xc: xc + (radius / 3) * Math.cos(Math.PI * 0.5),
-        yc: yc - (radius / 3) * Math.sin(Math.PI * 0.5),
-        xr: subradius,
-        yr: subradius,
-    });
+    for (const { rgb, angle } of SUBCIRCLES) {
+        const [r, g, b] = rgb;
+        cr.setSourceRgba(r, g, b, alpha);
 
-    cr.fill();
-    cr.setSourceRgba(0, 1, 0, alpha);
+        ovalPath(cr, {
+            xc: xc + (radius / 3) * Math.cos(Math.PI * angle),
+            yc: yc - (radius / 3) * Math.sin(Math.PI * angle),
+            xr: subradius,
+            yr: subradius,
+        });
 
-    ovalPath(cr, {
-        xc: xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 2 / 0.3)),
-        yc: yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 2 / 0.3)),
-        xr: subradius,
-        yr: subradius,
-    });
-
-    cr.fill();
-    cr.setSourceRgba(0, 0, 1, alpha);
-
-    ovalPath(cr, {
-        xc: xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 4 / 0.3)),
-        yc: yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 4 / 0.3)),
-        xr: subradius,
-        yr: subradius,
-    });
-
-    cr.fill();
+        cr.fill();
+    }
 };
 
 const drawKnockoutGroups = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {

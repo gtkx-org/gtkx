@@ -16,23 +16,23 @@ function useContextMenuGesture(options: ContextMenuGestureOptions): ContextMenuG
     const ref = useRef<Gtk.GestureClick | null>(null);
     const { onContextMenu } = options;
 
-    const onPressed = (_nPress: number, x: number, y: number) => {
+    const notifyWhenEventMatches = (x: number, y: number, isMatching: (event: Gdk.Event) => boolean) => {
         const event = ref.current?.getCurrentEvent();
 
-        if (event?.triggersContextMenu()) {
+        if (event && isMatching(event)) {
             onContextMenu(x, y);
         }
     };
 
-    const onReleased = (_nPress: number, x: number, y: number) => {
-        const event = ref.current?.getCurrentEvent();
+    const onPressed = (_nPress: number, x: number, y: number) => {
+        notifyWhenEventMatches(x, y, (event) => event.triggersContextMenu());
+    };
 
-        if (event?.getEventType() === Gdk.EventType.TOUCH_END) {
-            onContextMenu(x, y);
-        }
+    const onReleased = (_nPress: number, x: number, y: number) => {
+        notifyWhenEventMatches(x, y, (event) => event.getEventType() === Gdk.EventType.TOUCH_END);
     };
 
     return { ref, onPressed, onReleased };
 }
 
-export { type ContextMenuGesture, type ContextMenuGestureOptions, useContextMenuGesture };
+export { useContextMenuGesture };

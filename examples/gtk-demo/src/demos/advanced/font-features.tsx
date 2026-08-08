@@ -57,28 +57,25 @@ type FontFeaturesState = ReturnType<typeof useFontFeaturesState>;
 type FontFeaturesStyles = ReturnType<typeof useFontFeaturesStyles>;
 type FontFeaturesHandlers = ReturnType<typeof useFontFeaturesHandlers>;
 
-type PreviewStyleArgs = {
+type TextStyleValuesArgs = {
     fontDesc: Pango.FontDescription | null;
-    size: number;
     fgColor: Gdk.RGBA;
     letterSpacing: number;
+};
+
+type PreviewStyleArgs = TextStyleValuesArgs & {
+    size: number;
     lineHeight: number;
 };
 
-type EditStyleArgs = {
-    fontDesc: Pango.FontDescription | null;
+type EditStyleArgs = TextStyleValuesArgs & {
     size: number;
     fontFeaturesString: string;
-    fgColor: Gdk.RGBA;
-    letterSpacing: number;
 };
 
-type WaterfallStyleArgs = {
-    fontDesc: Pango.FontDescription | null;
+type WaterfallStyleArgs = TextStyleValuesArgs & {
     wfSize: number;
     fontFeaturesString: string;
-    fgColor: Gdk.RGBA;
-    letterSpacing: number;
 };
 
 type SliderEntryRowProps = {
@@ -125,6 +122,11 @@ type FontFeaturesPreviewLabelProps = {
     state: FontFeaturesState;
     styles: FontFeaturesStyles;
     attributes: Pango.AttrList | null;
+};
+
+type FontFeaturesSectionProps = {
+    state: FontFeaturesState;
+    handlers: FontFeaturesHandlers;
 };
 
 type FontFeaturesContextValue = {
@@ -509,16 +511,25 @@ const buildBgStyle = (bgColor: Gdk.RGBA) => {
     `;
 };
 
-const buildPreviewStyle = ({ fontDesc, size, fgColor, letterSpacing, lineHeight }: PreviewStyleArgs) => {
-    const fontFamily = fontDesc?.getFamily() ?? "Sans";
+const buildTextStyleValues = ({ fontDesc, fgColor, letterSpacing }: TextStyleValuesArgs) => {
     const { r, g, b } = rgbColor(fgColor);
+
+    return {
+        fontFamily: fontDesc?.getFamily() ?? "Sans",
+        color: `rgb(${String(r)}, ${String(g)}, ${String(b)})`,
+        spacing: `${String(letterSpacing / 1024)}em`,
+    };
+};
+
+const buildPreviewStyle = ({ fontDesc, size, fgColor, letterSpacing, lineHeight }: PreviewStyleArgs) => {
+    const { fontFamily, color, spacing } = buildTextStyleValues({ fontDesc, fgColor, letterSpacing });
 
     return css`
         label& {
             font-family: "${fontFamily}";
             font-size: ${size}pt;
-            color: rgb(${r}, ${g}, ${b});
-            letter-spacing: ${letterSpacing / 1024}em;
+            color: ${color};
+            letter-spacing: ${spacing};
             line-height: ${lineHeight};
             padding: 16px;
         }
@@ -526,31 +537,29 @@ const buildPreviewStyle = ({ fontDesc, size, fgColor, letterSpacing, lineHeight 
 };
 
 const buildEditStyle = ({ fontDesc, size, fontFeaturesString, fgColor, letterSpacing }: EditStyleArgs) => {
-    const fontFamily = fontDesc?.getFamily() ?? "Sans";
-    const { r, g, b } = rgbColor(fgColor);
+    const { fontFamily, color, spacing } = buildTextStyleValues({ fontDesc, fgColor, letterSpacing });
 
     return css`
         textview& {
             font-family: "${fontFamily}";
             font-size: ${size}pt;
             font-feature-settings: ${fontFeaturesString};
-            color: rgb(${r}, ${g}, ${b});
-            letter-spacing: ${letterSpacing / 1024}em;
+            color: ${color};
+            letter-spacing: ${spacing};
         }
     `;
 };
 
 const buildWaterfallStyle = ({ fontDesc, wfSize, fontFeaturesString, fgColor, letterSpacing }: WaterfallStyleArgs) => {
-    const fontFamily = fontDesc?.getFamily() ?? "Sans";
-    const { r, g, b } = rgbColor(fgColor);
+    const { fontFamily, color, spacing } = buildTextStyleValues({ fontDesc, fgColor, letterSpacing });
 
     return css`
         label& {
             font-family: "${fontFamily}";
             font-size: ${wfSize}pt;
             font-feature-settings: ${fontFeaturesString};
-            color: rgb(${r}, ${g}, ${b});
-            letter-spacing: ${letterSpacing / 1024}em;
+            color: ${color};
+            letter-spacing: ${spacing};
         }
     `;
 };
@@ -805,7 +814,7 @@ const FontFeaturesFontButton = ({ state }: { state: FontFeaturesState }) => {
     );
 };
 
-const FontFeaturesGrid = ({ state, handlers }: { state: FontFeaturesState; handlers: FontFeaturesHandlers }) => {
+const FontFeaturesGrid = ({ state, handlers }: FontFeaturesSectionProps) => {
     const { size, letterSpacing, lineHeight, viewMode } = state;
     const { setSize, setLetterSpacing, setLineHeight } = state;
 
@@ -866,7 +875,7 @@ const applyRgba = (value: Gdk.RGBA | null, apply: (color: Gdk.RGBA) => void) => 
 const ColorRow = ({ row, label, name, rgba, onChanged }: ColorRowProps) => (
     <>
         <GtkGridLayoutChild column={0} row={row}>
-            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
+            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE_FILL}>
                 {label}
             </GtkLabel>
         </GtkGridLayoutChild>
@@ -876,13 +885,13 @@ const ColorRow = ({ row, label, name, rgba, onChanged }: ColorRowProps) => (
                 rgba={rgba}
                 dialog={<GtkColorDialog />}
                 onNotifyRgba={onChanged}
-                valign={Gtk.Align.BASELINE}
+                valign={Gtk.Align.BASELINE_FILL}
             />
         </GtkGridLayoutChild>
     </>
 );
 
-const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; handlers: FontFeaturesHandlers }) => {
+const FontFeaturesColorRows = ({ state, handlers }: FontFeaturesSectionProps) => {
     const { fgColor, setFgColor, bgColor, setBgColor } = state;
 
     const handleForegroundChanged = (value: Gdk.RGBA | null) => {
@@ -930,7 +939,7 @@ const SliderScaleCell = (props: SliderEntryRowProps) => (
         <GtkScale
             hexpand
             widthRequest={100}
-            valign={Gtk.Align.BASELINE}
+            valign={Gtk.Align.BASELINE_FILL}
             adjustment={(
                 <GtkAdjustment
                     value={props.value}
@@ -951,7 +960,7 @@ const SliderScaleCell = (props: SliderEntryRowProps) => (
 const SliderEntryRow = (props: SliderEntryRowProps) => (
     <>
         <GtkGridLayoutChild column={0} row={props.row}>
-            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE}>
+            <GtkLabel xalign={0} valign={Gtk.Align.BASELINE_FILL}>
                 {props.label}
             </GtkLabel>
         </GtkGridLayoutChild>
@@ -961,7 +970,7 @@ const SliderEntryRow = (props: SliderEntryRowProps) => (
                 name={props.entryName}
                 widthChars={4}
                 maxWidthChars={4}
-                valign={Gtk.Align.BASELINE}
+                valign={Gtk.Align.BASELINE_FILL}
                 text={props.displayText}
                 onActivate={props.onEntryActivate}
                 sensitive={props.isSensitive}
@@ -970,7 +979,7 @@ const SliderEntryRow = (props: SliderEntryRowProps) => (
     </>
 );
 
-const FontFeaturesExpander = ({ state, handlers }: { state: FontFeaturesState; handlers: FontFeaturesHandlers }) => {
+const FontFeaturesExpander = ({ state, handlers }: FontFeaturesSectionProps) => {
     const { checkStates, radioStates } = state;
 
     return (
@@ -999,7 +1008,7 @@ const FontFeaturesExpander = ({ state, handlers }: { state: FontFeaturesState; h
     );
 };
 
-const FontFeaturesSidebar = ({ state, handlers }: { state: FontFeaturesState; handlers: FontFeaturesHandlers }) => (
+const FontFeaturesSidebar = ({ state, handlers }: FontFeaturesSectionProps) => (
     <GtkBox
         orientation={Gtk.Orientation.VERTICAL}
         spacing={6}
@@ -1190,7 +1199,7 @@ const FontFeaturesPreviewControlsRow = ({
                     name="plain_toggle"
                     label="Plain"
                     active={viewMode === "plain"}
-                    valign={Gtk.Align.BASELINE}
+                    valign={Gtk.Align.BASELINE_FILL}
                     onToggled={handlePlainToggled}
                 />
                 <GtkToggleButton
@@ -1198,7 +1207,7 @@ const FontFeaturesPreviewControlsRow = ({
                     label="Waterfall"
                     group={plainToggle}
                     active={viewMode === "waterfall"}
-                    valign={Gtk.Align.BASELINE}
+                    valign={Gtk.Align.BASELINE_FILL}
                     onToggled={handleWaterfallToggled}
                 />
             </GtkBox>

@@ -11,21 +11,14 @@ type ConstraintContainerProps = {
 
 const A = Gtk.ConstraintAttribute;
 
-const topEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => (
-    <GtkConstraint target={target} targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
+const edgeConstraint = (target: Gtk.ConstraintTarget, edge: Gtk.ConstraintAttribute, constant: number): ReactNode => (
+    <GtkConstraint target={target} targetAttribute={edge} sourceAttribute={edge} constant={constant} />
 );
 
-const bottomEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => (
-    <GtkConstraint target={target} targetAttribute={A.BOTTOM} sourceAttribute={A.BOTTOM} constant={-8} />
-);
-
-const startEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => (
-    <GtkConstraint target={target} targetAttribute={A.START} sourceAttribute={A.START} constant={8} />
-);
-
-const endEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => (
-    <GtkConstraint target={target} targetAttribute={A.END} sourceAttribute={A.END} constant={-8} />
-);
+const topEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => edgeConstraint(target, A.TOP, 8);
+const bottomEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => edgeConstraint(target, A.BOTTOM, -8);
+const startEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => edgeConstraint(target, A.START, 8);
+const endEdgeConstraint = (target: Gtk.ConstraintTarget): ReactNode => edgeConstraint(target, A.END, -8);
 
 const ConstraintContainer = ({ layoutManager, handlers, controllers }: ConstraintContainerProps): ReactNode => (
     <GtkBox name="container" hexpand vexpand layoutManager={layoutManager} controllers={controllers}>

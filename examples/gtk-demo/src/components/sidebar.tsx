@@ -1,7 +1,8 @@
-import { type ListItemRenderer, ListView } from "@gtkx/components";
+import { type ExpanderDescriptions, type ListItem, type ListItemRenderer, ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
 import type { TreeItem } from "../demos/types.js";
+import { collectExpandableIds } from "../collect-expandable-ids.js";
 import { useDemo } from "../context/demo-context.js";
 
 type SidebarProps = {
@@ -9,18 +10,12 @@ type SidebarProps = {
     onSearchChanged: (text: string) => void;
 };
 
-type SidebarItemData = {
-    id: string;
-    value: TreeItem;
-    hideExpander?: true;
-    children?: SidebarItemData[];
-};
-
 const EMPTY_SELECTION: string[] = [];
+const EXPANDER_DESCRIPTIONS: ExpanderDescriptions = { expand: "Expand", collapse: "Collapse" };
 
-function treeItemToData(item: TreeItem): SidebarItemData {
+function treeItemToData(item: TreeItem): ListItem<TreeItem> {
     if (item.type === "demo") {
-        return { id: `demo-${item.demo.id}`, value: item, hideExpander: true };
+        return { id: `demo-${item.demo.id}`, value: item, shouldHideExpander: true };
     }
 
     return {
@@ -29,18 +24,6 @@ function treeItemToData(item: TreeItem): SidebarItemData {
         children: item.children.map((child) => treeItemToData(child)),
     };
 }
-
-const collectExpandableIds = (nodes: SidebarItemData[]): string[] => {
-    const ids: string[] = [];
-
-    for (const node of nodes) {
-        if (node.children && node.children.length > 0) {
-            ids.push(node.id, ...collectExpandableIds(node.children));
-        }
-    }
-
-    return ids;
-};
 
 const renderItem: ListItemRenderer<TreeItem> = ({ item }) => {
     const text = item.type === "category" ? item.title : item.displayTitle;
@@ -89,6 +72,7 @@ const Sidebar = ({ isSearchActive, onSearchChanged }: SidebarProps) => {
                     name="sidebar-list"
                     cssClasses={["navigation-sidebar"]}
                     expandedIds={expandedIds}
+                    expanderDescriptions={EXPANDER_DESCRIPTIONS}
                     selectionMode={Gtk.SelectionMode.SINGLE}
                     selectedIds={selected}
                     onSelectionChanged={handleSelectionChanged}

@@ -19,11 +19,12 @@ import {
     GtkToggleButton,
     GtkWindow,
 } from "@gtkx/jsx/gtk";
-import { createPortal, quit, rootElement, useParentWindow } from "@gtkx/react";
+import { quit, useParentWindow } from "@gtkx/react";
 import * as path from "node:path/posix";
 import { type ComponentType, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import type { Demo as DemoDefinition, DemoProviderProps } from "./demos/types.js";
+import { EmptyState } from "./components/empty-state.js";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
@@ -111,11 +112,7 @@ const InfoTab = () => {
     const { currentDemo } = useDemo();
 
     if (!currentDemo) {
-        return (
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} vexpand>
-                <GtkLabel cssClasses={["dim-label"]}>Select a demo from the sidebar</GtkLabel>
-            </GtkBox>
-        );
+        return <EmptyState message="Select a demo from the sidebar" />;
     }
 
     const { displayTitle } = parseTitle(currentDemo.title);
@@ -182,29 +179,25 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
 
     return (
         <DemoStateProvider window={windowRef} onClose={onClose}>
-            {createPortal(
-                <GtkWindow
-                    ref={windowRef}
-                    name="demo-window"
-                    transientFor={hostWindow}
-                    title={demoWindowTitle(currentDemo, windowTitle)}
-                    defaultWidth={sizing.defaultWidth}
-                    defaultHeight={sizing.defaultHeight}
-                    resizable={sizing.isResizable}
-                    deletable={sizing.isDeletable}
-                    cssClasses={currentDemo.windowCssClasses}
-                    defaultWidget={defaultWidget}
-                    titlebar={titlebar}
-                    onCloseRequest={() => {
-                        onClose();
+            <GtkWindow
+                ref={windowRef}
+                name="demo-window"
+                title={demoWindowTitle(currentDemo, windowTitle)}
+                defaultWidth={sizing.defaultWidth}
+                defaultHeight={sizing.defaultHeight}
+                resizable={sizing.isResizable}
+                deletable={sizing.isDeletable}
+                cssClasses={currentDemo.windowCssClasses}
+                defaultWidget={defaultWidget}
+                titlebar={titlebar}
+                onCloseRequest={() => {
+                    onClose();
 
-                        return Gdk.EVENT_STOP;
-                    }}
-                >
-                    <DemoComponent onClose={onClose} window={windowRef} />
-                </GtkWindow>,
-                rootElement,
-            )}
+                    return Gdk.EVENT_STOP;
+                }}
+            >
+                <DemoComponent onClose={onClose} window={windowRef} />
+            </GtkWindow>
         </DemoStateProvider>
     );
 };

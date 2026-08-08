@@ -1,8 +1,8 @@
-import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
-import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { GtkSourceBuffer, GtkSourceView } from "@gtkx/jsx/gtksource";
 import { useDemo } from "../context/demo-context.js";
+import { EmptyState } from "./empty-state.js";
 
 const SourceViewer = () => {
     const { currentDemo } = useDemo();
@@ -39,16 +39,7 @@ const SourceViewer = () => {
                             )}
                         />
                     )
-                : (
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            valign={Gtk.Align.CENTER}
-                            halign={Gtk.Align.CENTER}
-                            vexpand
-                        >
-                            <GtkLabel cssClasses={["dim-label"]}>No source</GtkLabel>
-                        </GtkBox>
-                    )}
+                : <EmptyState message="No source" />}
         </GtkScrolledWindow>
     );
 };

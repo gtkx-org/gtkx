@@ -20,6 +20,7 @@
         "@gtkx/runtime": "workspace:*",
         "@gtkx/gl": "workspace:*",
         "@gtkx/react": "workspace:*",
+        "@gtkx/utils": "workspace:*",
         "react": "catalog:"
     },
     "devDependencies": {
@@ -100,9 +101,7 @@
                         "transitive": true
                     }
                 ],
-                "outputs": [
-                    "{projectRoot}/coverage"
-                ],
+                "outputs": [],
                 "dependsOn": [
                     "...",
                     "codegen",
@@ -114,7 +113,11 @@
                     "gtkx:codegen",
                     "@gtkx/gl:codegen",
                     "codegen"
-                ]
+                ],
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint examples/gtk-demo"
+                }
             },
             "coverage": {
                 "command": "vitest run --coverage",

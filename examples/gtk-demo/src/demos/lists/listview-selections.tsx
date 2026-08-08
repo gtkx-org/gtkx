@@ -166,10 +166,9 @@ const listviewSelectionsDemo: Demo = {
     id: "listview-selections",
     title: "Lists/Selections",
     description:
-        "The GtkDropDown widget is a modern alternative to GtkComboBox. It uses list models instead of tree " +
-        "models, and the content is displayed using widgets instead of cell renderers.\n\nThis example also " +
-        "shows a custom widget that can replace GtkEntryCompletion or GtkComboBoxText. It is not currently " +
-        "part of GTK.",
+        "The GtkDropDown widget presents a list of choices. It is backed by a list model, and each item is " +
+        "displayed with a widget produced by a factory.\n\nThis example also shows a custom entry that " +
+        "completes what you type from a word list and offers the matches in a popover. It is not part of GTK.",
     keywords: ["suggestion", "completion"],
     component: ListViewSelectionsDemo,
     sourceCode,

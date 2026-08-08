@@ -15,9 +15,8 @@ import {
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
+import { tryResolveExecutable } from "@gtkx/utils";
 import { spawn } from "node:child_process";
-import { accessSync, constants } from "node:fs";
-import { delimiter, join } from "node:path";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import { lookupIconPaintable } from "../icon-paintable.js";
@@ -83,6 +82,8 @@ type LinkKeyPressArgs = {
     setCurrentPage: (page: number) => void;
 };
 
+const SPEAK_COMMAND = "espeak-ng";
+
 const hypertextDemo: Demo = {
     id: "hypertext",
     title: "Text View/Hypertext",
@@ -100,32 +101,8 @@ const hypertextDemo: Demo = {
     isResizable: false,
 };
 
-function isExecutable(path: string): boolean {
-    try {
-        accessSync(path, constants.X_OK);
-
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-function resolveExecutable(command: string): string {
-    const searchPaths = (process.env.PATH ?? "").split(delimiter).filter((entry) => entry.length > 0);
-
-    for (const directory of searchPaths) {
-        const candidate = join(directory, command);
-
-        if (isExecutable(candidate)) {
-            return candidate;
-        }
-    }
-
-    return command;
-}
-
 function sayWord(word: string): void {
-    spawn(resolveExecutable("espeak-ng"), [word], { stdio: "ignore" });
+    spawn(tryResolveExecutable(SPEAK_COMMAND) ?? SPEAK_COMMAND, [word], { stdio: "ignore" });
 }
 
 function InlineIcon({ iconName, size }: { iconName: string; size: number }) {

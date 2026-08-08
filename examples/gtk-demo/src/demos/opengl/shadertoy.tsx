@@ -1340,7 +1340,7 @@ const ShaderPreview = ({ shaderCode }: { shaderCode: string }) => {
     return (
         <GtkGLArea
             ref={glAreaRef}
-            useEs
+            allowedApis={Gdk.GLAPI.GLES}
             onRender={handleRender}
             onResize={handleResize}
             onUnrealize={handleUnrealize}
@@ -1548,7 +1548,7 @@ const ShadertoyGLAreaPanel = ({
             <GtkGLArea
                 name="shadertoy-gl-area"
                 ref={glAreaRef}
-                useEs
+                allowedApis={Gdk.GLAPI.GLES}
                 onRender={handleRender}
                 onResize={handleResize}
                 onUnrealize={handleUnrealize}

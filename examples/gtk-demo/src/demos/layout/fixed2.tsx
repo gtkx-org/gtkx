@@ -41,10 +41,10 @@ function computeFixedTransform(
 ): Gsk.Transform | undefined {
     const angle = duration * 90;
     const scale = 2 + Math.sin(duration * Math.PI);
-    const labelWidth = label?.getAllocatedWidth() ?? 50;
-    const labelHeight = label?.getAllocatedHeight() ?? 20;
-    const containerWidth = fixed?.getAllocatedWidth() ?? 400;
-    const containerHeight = fixed?.getAllocatedHeight() ?? 300;
+    const labelWidth = label?.getWidth() ?? 50;
+    const labelHeight = label?.getHeight() ?? 20;
+    const containerWidth = fixed?.getWidth() ?? 400;
+    const containerHeight = fixed?.getHeight() ?? 300;
     const centerPoint = new Graphene.Point();
     centerPoint.init(containerWidth / 2, containerHeight / 2);
     const offsetPoint = new Graphene.Point();

@@ -67,6 +67,12 @@ type ComputeTextLayoutArgs = {
     shouldHintMetrics: boolean;
 };
 
+type FontContextArgs = {
+    surface: ReturnType<Context["getTarget"]>;
+    fontOptions: FontOptions;
+    shouldHintMetrics: boolean;
+};
+
 type FontRenderingControlsProps = {
     state: FontRenderingState;
     onZoomIn: () => void;
@@ -239,15 +245,33 @@ const createGridFontOptions = (
     return fontOptions;
 };
 
+const createFontContext = ({ surface, fontOptions, shouldHintMetrics }: FontContextArgs) => {
+    const cr = Context.create(surface);
+    cr.setFontOptions(fontOptions);
+    const pangoContext = PangoCairo.createContext(cr);
+    PangoCairo.contextSetFontOptions(pangoContext, fontOptions);
+    pangoContext.setRoundGlyphPositions(shouldHintMetrics);
+
+    return { cr, pangoContext };
+};
+
+const createTextLayout = (context: Pango.Context, fontDesc: Pango.FontDescription, text: string): Pango.Layout => {
+    const layout = Pango.Layout.new(context);
+    layout.setFontDescription(fontDesc);
+    layout.setText(text, -1);
+
+    return layout;
+};
+
+const repeatedGlyphText = (ch: string): string => `${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`;
+
 const setupGridLayout = (
     context: Pango.Context,
     fontDesc: Pango.FontDescription,
     text: string,
 ): { logicalRect: Pango.Rectangle; ch: string; iter: Pango.LayoutIter } | null => {
     let ch = text[0] ?? " ";
-    const layout = Pango.Layout.new(context);
-    layout.setFontDescription(fontDesc);
-    layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
+    const layout = createTextLayout(context, fontDesc, repeatedGlyphText(ch));
     let [, logicalRect] = layout.getPixelExtents();
     const iter = layout.getIter();
     const glyphItem = iter.getRun();
@@ -258,7 +282,7 @@ const setupGridLayout = (
 
     if (glyphItem.glyphs.numGlyphs < 8) {
         ch = "a";
-        layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
+        layout.setText(repeatedGlyphText(ch), -1);
         [, logicalRect] = layout.getPixelExtents();
     }
 
@@ -270,11 +294,12 @@ const setupGridLayout = (
 const withMeasurementContext = <T,>(inputs: MeasurementInputs, body: (pangoContext: Pango.Context) => T): T => {
     const fontOptions = createGridFontOptions(inputs.hintStyle, inputs.isAntialiased, inputs.shouldHintMetrics);
     const target = ImageSurface.create(Format.ARGB32, 1, 1);
-    const cr = Context.create(target);
-    cr.setFontOptions(fontOptions);
-    const pangoContext = PangoCairo.createContext(cr);
-    PangoCairo.contextSetFontOptions(pangoContext, fontOptions);
-    pangoContext.setRoundGlyphPositions(inputs.shouldHintMetrics);
+
+    const { pangoContext } = createFontContext({
+        surface: target,
+        fontOptions,
+        shouldHintMetrics: inputs.shouldHintMetrics,
+    });
 
     try {
         return body(pangoContext);
@@ -285,9 +310,7 @@ const withMeasurementContext = <T,>(inputs: MeasurementInputs, body: (pangoConte
 
 const measureTextSurface = (inputs: MeasurementInputs): { width: number; height: number } => {
     const { width, height } = withMeasurementContext(inputs, (pangoContext) => {
-        const layout = Pango.Layout.new(pangoContext);
-        layout.setFontDescription(inputs.fontDesc);
-        layout.setText(inputs.text || " ", -1);
+        const layout = createTextLayout(pangoContext, inputs.fontDesc, inputs.text || " ");
         const [inkRect] = layout.getExtents();
         const inkW = Math.ceil(inkRect.width / PANGO_SCALE);
         const inkH = Math.ceil(inkRect.height / PANGO_SCALE);
@@ -334,14 +357,13 @@ const renderSmallSurface = ({
     ch: string;
     shouldHintMetrics: boolean;
 }): { iter: Pango.LayoutIter } | null => {
-    const smallCr = Context.create(small);
-    smallCr.setFontOptions(fontOptions);
-    const smallCtx = PangoCairo.createContext(smallCr);
-    PangoCairo.contextSetFontOptions(smallCtx, fontOptions);
-    smallCtx.setRoundGlyphPositions(shouldHintMetrics);
-    const smallLayout = Pango.Layout.new(smallCtx);
-    smallLayout.setFontDescription(fontDesc);
-    smallLayout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
+    const { cr: smallCr, pangoContext: smallCtx } = createFontContext({
+        surface: small,
+        fontOptions,
+        shouldHintMetrics,
+    });
+
+    const smallLayout = createTextLayout(smallCtx, fontDesc, repeatedGlyphText(ch));
     let [, smallLogical] = smallLayout.getPixelExtents();
     const smallIter = smallLayout.getIter();
     const smallGlyphItem = smallIter.getRun();
@@ -351,7 +373,7 @@ const renderSmallSurface = ({
     }
 
     if (smallGlyphItem.glyphs.numGlyphs < 8) {
-        smallLayout.setText(`a${ZWNJ}a${ZWNJ}a${ZWNJ}a`, -1);
+        smallLayout.setText(repeatedGlyphText("a"), -1);
         [, smallLogical] = smallLayout.getPixelExtents();
     }
 
@@ -577,16 +599,16 @@ function useOverlayAnimation(state: FontRenderingState) {
 const drawSmallSurface = (ctx: DrawTextModeContext) => {
     const { target, surfaceWidth, surfaceHeight, fontOptions, state, cr } = ctx;
     const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
-    const smallCr = Context.create(small);
+
+    const { cr: smallCr, pangoContext: smallContext } = createFontContext({
+        surface: small,
+        fontOptions,
+        shouldHintMetrics: state.shouldHintMetrics,
+    });
+
     smallCr.setSourceRgb(1, 1, 1);
     smallCr.paint();
-    smallCr.setFontOptions(fontOptions);
-    const smallContext = PangoCairo.createContext(smallCr);
-    PangoCairo.contextSetFontOptions(smallContext, fontOptions);
-    smallContext.setRoundGlyphPositions(state.shouldHintMetrics);
-    const smallLayout = Pango.Layout.new(smallContext);
-    smallLayout.setFontDescription(state.fontDesc);
-    smallLayout.setText(state.text || " ", -1);
+    const smallLayout = createTextLayout(smallContext, state.fontDesc, state.text || " ");
     smallCr.setSourceRgba(0, 0, 0, state.pixelAlphaRef.current);
     smallCr.translate(10, 10);
     PangoCairo.showLayout(smallCr, smallLayout);
@@ -696,14 +718,14 @@ const drawExtents = ({
 const drawOutlineLayer = (ctx: DrawTextModeContext) => {
     const { target, surfaceWidth, surfaceHeight, fontOptions, state, cr } = ctx;
     const outlineSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
-    const outlineCr = Context.create(outlineSurface);
-    outlineCr.setFontOptions(fontOptions);
-    const outlineCtx = PangoCairo.createContext(outlineCr);
-    PangoCairo.contextSetFontOptions(outlineCtx, fontOptions);
-    outlineCtx.setRoundGlyphPositions(state.shouldHintMetrics);
-    const outlineLayout = Pango.Layout.new(outlineCtx);
-    outlineLayout.setFontDescription(state.fontDesc);
-    outlineLayout.setText(state.text || " ", -1);
+
+    const { cr: outlineCr, pangoContext: outlineCtx } = createFontContext({
+        surface: outlineSurface,
+        fontOptions,
+        shouldHintMetrics: state.shouldHintMetrics,
+    });
+
+    const outlineLayout = createTextLayout(outlineCtx, state.fontDesc, state.text || " ");
     outlineCr.translate(10, 10);
     PangoCairo.layoutPath(outlineCr, outlineLayout);
     outlineCr.setSourceRgba(0, 0, 0, 1);
@@ -727,14 +749,8 @@ const computeTextLayout = ({
 }: ComputeTextLayoutArgs) => {
     const target = cr.getTarget();
     const offscreen = Surface.createSimilar(target, Content.COLOR_ALPHA, width, height);
-    const offCr = Context.create(offscreen);
-    offCr.setFontOptions(fontOptions);
-    const context = PangoCairo.createContext(offCr);
-    PangoCairo.contextSetFontOptions(context, fontOptions);
-    context.setRoundGlyphPositions(shouldHintMetrics);
-    const layout = Pango.Layout.new(context);
-    layout.setFontDescription(fontDesc);
-    layout.setText(text || " ", -1);
+    const { pangoContext } = createFontContext({ surface: offscreen, fontOptions, shouldHintMetrics });
+    const layout = createTextLayout(pangoContext, fontDesc, text || " ");
     const [inkRect, logicalRect] = layout.getExtents();
     const baseline = layout.getBaseline();
 
@@ -796,12 +812,8 @@ function useDrawGridMode(state: FontRenderingState) {
         const fontOptions = createGridFontOptions(hintStyle, isAntialiased, shouldHintMetrics);
         const target = cr.getTarget();
         const tmpSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, 1, 1);
-        const tmpCr = Context.create(tmpSurface);
-        tmpCr.setFontOptions(fontOptions);
-        const context = PangoCairo.createContext(tmpCr);
-        PangoCairo.contextSetFontOptions(context, fontOptions);
-        context.setRoundGlyphPositions(shouldHintMetrics);
-        const layoutSetup = setupGridLayout(context, fontDesc, text);
+        const { pangoContext } = createFontContext({ surface: tmpSurface, fontOptions, shouldHintMetrics });
+        const layoutSetup = setupGridLayout(pangoContext, fontDesc, text);
 
         if (!layoutSetup) {
             return;

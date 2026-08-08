@@ -12,9 +12,11 @@ function useCssResource(css: string, priority: number = Gtk.STYLE_PROVIDER_PRIOR
 
         const provider = new Gtk.CssProvider();
         provider.loadFromString(css);
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         Gtk.StyleContext.addProviderForDisplay(display, provider, priority);
 
         return () => {
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             Gtk.StyleContext.removeProviderForDisplay(display, provider);
         };
     }, [css, priority]);
