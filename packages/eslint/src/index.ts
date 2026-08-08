@@ -150,8 +150,7 @@ const SOURCE_EXTENDS = [
 
 const SOURCE_RULES: Linter.RulesRecord = {
     "@stylistic/max-len": ["error", { code: 120 }],
-    "unicorn/consistent-boolean-name": "off",
-    "unicorn/single-line-block-comment-style": "off",
+    "unicorn/consistent-boolean-name": "error",
     "@stylistic/comma-dangle": [
         "error",
         {
@@ -184,7 +183,6 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "@typescript-eslint/switch-exhaustiveness-check": "error",
     curly: ["error", "all"],
     "gtkx/accessor-naming": "error",
-    "gtkx/boolean-name": "error",
     "gtkx/brand-naming": "error",
     "gtkx/cognitive-complexity": ["error", { max: 5 }],
     "gtkx/module-section-order": "error",
@@ -213,6 +211,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "unicorn/import-style": ["error", { styles: { path: { default: false, named: true } } }],
     "unicorn/name-replacements": "off",
     "unicorn/no-null": "off",
+    "unicorn/single-line-block-comment-style": ["error", "single-line"],
 };
 
 const TEST_RULES: Linter.RulesRecord = {

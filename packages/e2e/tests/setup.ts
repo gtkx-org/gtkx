@@ -6,7 +6,6 @@ import { afterAll, afterEach, beforeAll } from "vitest";
 import { callArgs, GTK_LIB } from "./helpers/native-utils.js";
 
 declare global {
-    // eslint-disable-next-line gtkx/boolean-name
     var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
 }
 

@@ -1,7 +1,6 @@
 import { beforeAll } from "vitest";
 
 declare global {
-    // eslint-disable-next-line gtkx/boolean-name
     var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
 }
 

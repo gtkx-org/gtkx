@@ -7,7 +7,6 @@ import type { Container } from "./traversal.js";
  */
 type Config = {
     /** Whether a successful query throws instead, naming a better query, when one is available. */
-    // eslint-disable-next-line gtkx/boolean-name
     throwSuggestions: boolean;
 
     /** Builds the error thrown when a query fails, given a message and optional container. */

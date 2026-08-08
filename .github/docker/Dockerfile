@@ -52,7 +52,7 @@ RUN apt-get update \
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
 
-ARG NODE24_VERSION=24.18.1
+ARG NODE24_VERSION=24.19.0
 ARG TARGETARCH
 RUN set -eux \
     && case "${TARGETARCH}" in \
@@ -75,7 +75,7 @@ ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
 ARG RUST_VERSION=1.97.1
-ARG RUST_NIGHTLY=nightly-2026-07-30
+ARG RUST_NIGHTLY=nightly-2026-08-08
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 

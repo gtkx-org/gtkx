@@ -7,14 +7,10 @@ type CreateCommandArgs = {
     name?: string | undefined;
     "application-id"?: string | undefined;
     "package-manager"?: string | undefined;
-    // eslint-disable-next-line gtkx/boolean-name
     typescript?: boolean | undefined;
-    // eslint-disable-next-line gtkx/boolean-name
     vitest?: boolean | undefined;
-    // eslint-disable-next-line gtkx/boolean-name
     yes?: boolean | undefined;
     "no-interactive"?: boolean | undefined;
-    // eslint-disable-next-line gtkx/boolean-name
     overwrite?: boolean | undefined;
 };
 

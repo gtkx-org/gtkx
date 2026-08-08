@@ -6,7 +6,6 @@ const REFRESH_EXCLUDE = /node_modules|[/\\]dist[/\\]|[/\\]\.gtkx[/\\]/;
 
 const shouldTransformForRefresh = (
     id: string,
-    // eslint-disable-next-line gtkx/boolean-name
     transformOptions: { ssr?: boolean | undefined } | undefined,
 ): boolean => {
     if (!transformOptions?.ssr) {

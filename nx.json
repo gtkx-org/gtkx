@@ -143,6 +143,7 @@
         },
         "release": {
             "cache": false,
+            "parallelism": false,
             "dependsOn": [
                 "build"
             ]

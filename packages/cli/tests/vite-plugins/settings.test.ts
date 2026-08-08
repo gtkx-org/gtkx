@@ -39,7 +39,6 @@ const createPluginInMode = (command: "build" | "serve"): ReturnType<typeof gtkxS
 };
 
 const callResolveIdSettings = async (
-    // eslint-disable-next-line gtkx/boolean-name
     resolve: (source: string) => Promise<{ id: string; external?: boolean } | null>,
     source: string,
 ): Promise<string | undefined | null> => {

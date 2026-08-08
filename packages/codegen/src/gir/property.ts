@@ -15,19 +15,14 @@ type GirProperty = {
     /** The property's value type, absent when GIR declares none. */
     type: TypeId | undefined;
     /** Whether GObject exposes the value for reading, which admits a generated getter. */
-    // eslint-disable-next-line gtkx/boolean-name
     readable: boolean;
     /** Whether GObject accepts a value for the property, which admits a generated setter. */
-    // eslint-disable-next-line gtkx/boolean-name
     writable: boolean;
     /** Whether GObject sets the property during construction, using its default when none is supplied. */
-    // eslint-disable-next-line gtkx/boolean-name
     construct: boolean;
     /** Whether the property can only be set at construction. */
-    // eslint-disable-next-line gtkx/boolean-name
     constructOnly: boolean;
     /** Whether GIR exposes the property to bindings. */
-    // eslint-disable-next-line gtkx/boolean-name
     introspectable: boolean;
     /** How ownership of the value transfers, which decides the descriptor the accessors marshal through. */
     transferOwnership: ParameterTransfer;

@@ -22,10 +22,8 @@ type WidgetType<T extends Gtk.Widget = Gtk.Widget> = abstract new (...args: neve
 /** Options controlling the default text normalizer. */
 type NormalizerOptions = {
     /** Trim leading and trailing whitespace. */
-    // eslint-disable-next-line gtkx/boolean-name
     trim?: boolean | undefined;
     /** Collapse runs of whitespace into a single space. */
-    // eslint-disable-next-line gtkx/boolean-name
     collapseWhitespace?: boolean | undefined;
 };
 
@@ -44,18 +42,14 @@ type WaitForOptions = {
 /** Options controlling text matching and, for asynchronous queries, polling behavior. */
 type MatcherOptions<T extends Gtk.Widget = Gtk.Widget> = {
     /** When true (the default), require an exact match; when false, match case-insensitively as a substring. */
-    // eslint-disable-next-line gtkx/boolean-name
     exact?: boolean | undefined;
     /** Custom normalizer replacing the default; cannot be combined with `trim` or `collapseWhitespace`. */
     normalizer?: NormalizerFn | undefined;
     /** Forwarded to the default normalizer when no custom `normalizer` is given. */
-    // eslint-disable-next-line gtkx/boolean-name
     trim?: boolean | undefined;
     /** Forwarded to the default normalizer when no custom `normalizer` is given. */
-    // eslint-disable-next-line gtkx/boolean-name
     collapseWhitespace?: boolean | undefined;
     /** Whether to include a suggested better query in error messages. */
-    // eslint-disable-next-line gtkx/boolean-name
     suggest?: boolean | undefined;
     /** Restricts matches to instances of this widget class, and narrows the query's return type to it. */
     as?: WidgetType<T> | undefined;
@@ -78,28 +72,22 @@ type ByRoleOptions<T extends Gtk.Widget = Gtk.Widget> = MatcherOptions<T> & {
     /** Matcher for the widget's accessible name. */
     name?: Matcher | undefined;
     /** Required checked state; a mixed check button reads as neither, so it matches neither value. */
-    // eslint-disable-next-line gtkx/boolean-name
     checked?: boolean | undefined;
     /** Required active state of a toggle button; any other widget matches neither value. */
-    // eslint-disable-next-line gtkx/boolean-name
     pressed?: boolean | undefined;
     /** Required selected state of a row, list item, grid cell, option or tree item. */
-    // eslint-disable-next-line gtkx/boolean-name
     selected?: boolean | undefined;
     /** Required expanded state of an expander or tree expander. */
-    // eslint-disable-next-line gtkx/boolean-name
     expanded?: boolean | undefined;
     /** Heading or hierarchy level. */
     level?: number | undefined;
     /** Required busy state, which an unset state satisfies as false. */
-    // eslint-disable-next-line gtkx/boolean-name
     busy?: boolean | undefined;
     /** Matcher for the widget's own accessible description, ignoring its `described-by` targets. */
     description?: Matcher | undefined;
     /** Constraints on the widget's range value, each checked only when given. */
     value?: ByRoleValue | undefined;
     /** When true, include widgets excluded from the accessibility tree. Widgets that are not mapped stay excluded. */
-    // eslint-disable-next-line gtkx/boolean-name
     hidden?: boolean | undefined;
 };
 

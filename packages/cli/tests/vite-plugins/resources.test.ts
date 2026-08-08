@@ -62,7 +62,6 @@ const initPlugin = async (
 };
 
 const callResolveIdResources = async (
-    // eslint-disable-next-line gtkx/boolean-name
     resolved: { id: string; external?: boolean } | null,
     source: string,
 ): Promise<string | undefined | null> => {

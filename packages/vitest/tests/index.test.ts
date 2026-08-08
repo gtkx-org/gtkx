@@ -6,7 +6,6 @@ type InputConfig = { root?: string };
 
 type WorkerConfig = {
     test?: {
-        // eslint-disable-next-line gtkx/boolean-name
         globals?: boolean;
         execArgv?: string[];
         pool?: string;

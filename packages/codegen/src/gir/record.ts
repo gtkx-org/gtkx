@@ -29,13 +29,10 @@ type GirRecord = {
     /** Name of the function releasing an instance, used when the record has no unref function. */
     freeFunc: string | undefined;
     /** Whether the struct is only ever handled behind a pointer, so its layout stays hidden. */
-    // eslint-disable-next-line gtkx/boolean-name
     disguised: boolean;
     /** Whether the struct's fields are private, so instances cannot be allocated or read directly. */
-    // eslint-disable-next-line gtkx/boolean-name
     opaque: boolean;
     /** Whether the record is exposed to language bindings. */
-    // eslint-disable-next-line gtkx/boolean-name
     introspectable: boolean;
     /** Struct members: the named fields first, then the anonymous inline unions, then the inline records. */
     fields: GirField[];

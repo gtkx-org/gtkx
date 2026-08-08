@@ -1,5 +1,4 @@
 import { accessorNaming } from "./rules/accessor-naming.js";
-import { booleanName } from "./rules/boolean-name.js";
 import { brandNaming } from "./rules/brand-naming.js";
 import { cognitiveComplexity } from "./rules/cognitive-complexity.js";
 import { moduleSectionOrder } from "./rules/module-section-order.js";
@@ -14,7 +13,6 @@ const gtkx = {
     meta: { name: "@gtkx/eslint" },
     rules: {
         "accessor-naming": accessorNaming,
-        "boolean-name": booleanName,
         "brand-naming": brandNaming,
         "cognitive-complexity": cognitiveComplexity,
         "module-section-order": moduleSectionOrder,

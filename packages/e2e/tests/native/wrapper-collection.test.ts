@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { createApplication } from "../helpers/application.js";
 import { forceGC, getRefCount } from "../helpers/native-utils.js";
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the wait succeeded */
 async function gcUntil(isSatisfied: () => boolean, maxRounds = 100): Promise<boolean> {
     for (let i = 0; i < maxRounds; i++) {
         if (isSatisfied()) {

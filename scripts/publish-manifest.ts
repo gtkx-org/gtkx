@@ -5,7 +5,6 @@ type ExportsField = string | { [key: string]: ExportsField };
 type PackageManifest = {
     name?: string;
     version?: string;
-    // eslint-disable-next-line gtkx/boolean-name
     private?: boolean;
     files?: string[];
     bin?: string | Record<string, string>;

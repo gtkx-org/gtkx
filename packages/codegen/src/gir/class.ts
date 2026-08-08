@@ -34,14 +34,12 @@ type GirClass = {
     /** C function that drops a reference, on a type that manages its own refcount. */
     glibUnrefFunc: string | undefined;
     /** Whether the type is its own GType fundamental rather than a GObject descendant. */
-    // eslint-disable-next-line gtkx/boolean-name
     fundamental: boolean;
     /** Whether the class cannot be instantiated on its own. */
     isAbstract: boolean;
     /** Whether the type came from an `<interface>` rather than a `<class>`. */
     isInterface: boolean;
     /** Whether GIR exposes the type to bindings; codegen skips it when false. */
-    // eslint-disable-next-line gtkx/boolean-name
     introspectable: boolean;
     /** Interfaces the class implements. */
     implements: string[];

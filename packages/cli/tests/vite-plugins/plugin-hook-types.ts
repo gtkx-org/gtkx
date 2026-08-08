@@ -4,7 +4,6 @@ type ResolveIdHook = (
             source: string,
             importer?: string,
             opts?: unknown,
-            // eslint-disable-next-line gtkx/boolean-name
         ) => Promise<{ id: string; external?: boolean } | null>;
     },
     source: string,

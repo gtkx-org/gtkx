@@ -38,13 +38,10 @@ type GirParameter = {
     /** Ownership the marshalling descriptor is generated with, deciding whether the receiver frees the value. */
     transferOwnership: ParameterTransfer;
     /** Whether the value may be null. */
-    // eslint-disable-next-line gtkx/boolean-name
     nullable: boolean;
     /** Whether the caller may leave the parameter out entirely. */
-    // eslint-disable-next-line gtkx/boolean-name
     optional: boolean;
     /** Whether the caller supplies the storage an out parameter writes into. */
-    // eslint-disable-next-line gtkx/boolean-name
     callerAllocates: boolean;
     /** How long a callback parameter stays valid, absent when GIR carries no scope annotation. */
     scope: CallbackScope | undefined;
@@ -65,10 +62,8 @@ type GirReturnValue = {
     /** How much ownership the caller takes of the returned value. */
     transferOwnership: ParameterTransfer;
     /** Whether the returned value may be null. */
-    // eslint-disable-next-line gtkx/boolean-name
     nullable: boolean;
     /** Whether GIR marks the value as skipped, keeping it out of the generated signature. */
-    // eslint-disable-next-line gtkx/boolean-name
     skip: boolean;
 };
 
@@ -85,10 +80,8 @@ type GirCallable = {
     /** What the callable hands back. */
     returnValue: GirReturnValue;
     /** Whether the callable reports failure through a trailing `GError`. */
-    // eslint-disable-next-line gtkx/boolean-name
     throws: boolean;
     /** Whether GIR exposes the callable to bindings. */
-    // eslint-disable-next-line gtkx/boolean-name
     introspectable: boolean;
 };
 

@@ -7,6 +7,7 @@ type McpClientController = {
 
 const { start: startMcpClient, stop: stopMcpClient } = createMcpClientController();
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether connecting succeeded */
 async function connectQuietly(client: McpClient): Promise<boolean> {
     try {
         await client.connect();

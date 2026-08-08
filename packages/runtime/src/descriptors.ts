@@ -68,7 +68,6 @@ type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
 /** Descriptor for a `GType`: a `guint64` marked so it resolves to `G_TYPE_GTYPE` rather than an integer. */
 type TypeDescriptor = BigUint64Descriptor & {
     /** Distinguishes a GType from a plain `guint64` when the GLib type and the GValue type are resolved. */
-    // eslint-disable-next-line gtkx/boolean-name
     type: true;
 };
 

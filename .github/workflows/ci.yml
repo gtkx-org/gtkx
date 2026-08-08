@@ -468,7 +468,9 @@ jobs:
 
       - name: Enable pnpm
         shell: bash
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.20.0 --activate
 
       - name: Set up Rust
         shell: bash
@@ -481,7 +483,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run the TypeScript benchmarks under CodSpeed
-        uses: CodSpeedHQ/action@95b3994cf33230316e44b642e0e2cb8b949166f6 # v5.0.2
+        uses: CodSpeedHQ/action@4296e51e7041e24dadb86d1d6e8b9320d223dbe8 # v5.0.3
         with:
           mode: walltime
           run: pnpm bench

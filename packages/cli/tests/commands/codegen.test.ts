@@ -5,7 +5,6 @@ import { codegen } from "../../src/commands/codegen.js";
 import { collectLogged } from "../stderr-text.js";
 import { setupLogState } from "./log-state.js";
 
-// eslint-disable-next-line gtkx/boolean-name
 type CodegenArgs = { force?: boolean; cwd?: string };
 type CodegenRun = NonNullable<typeof codegen.run>;
 type CodegenContext = Parameters<CodegenRun>[0];

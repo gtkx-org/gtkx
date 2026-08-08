@@ -14,7 +14,6 @@ type AccessibleProps = {
     /** Longer description announced after the label. */
     accessibleDescription?: string | null | undefined;
     /** Whether activating the widget opens a popup. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleHasPopup?: boolean | null | undefined;
     /** Keyboard shortcuts that activate the widget. */
     accessibleKeyShortcuts?: string | null | undefined;
@@ -23,23 +22,18 @@ type AccessibleProps = {
     /** Depth of the widget within a hierarchy of headings, list items, or tree rows. */
     accessibleLevel?: number | null | undefined;
     /** Whether the widget blocks interaction with everything behind it. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleModal?: boolean | null | undefined;
     /** Whether the text input accepts more than one line. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleMultiLine?: boolean | null | undefined;
     /** Whether more than one of the widget's items can be selected at a time. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleMultiSelectable?: boolean | null | undefined;
     /** Whether the widget arranges its items horizontally or vertically. */
     accessibleOrientation?: Gtk.Orientation | null | undefined;
     /** Hint announced while the input is empty. */
     accessiblePlaceholder?: string | null | undefined;
     /** Whether the value can be read but not changed. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleReadOnly?: boolean | null | undefined;
     /** Whether a value has to be supplied before the form can be submitted. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleRequired?: boolean | null | undefined;
     /** Wording that replaces the default announcement of the widget's role. */
     accessibleRoleDescription?: string | null | undefined;
@@ -56,28 +50,22 @@ type AccessibleProps = {
     /** Help text describing how to use the widget. */
     accessibleHelpText?: string | null | undefined;
     /** Whether the widget is still loading and its content may yet change. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleBusy?: boolean | null | undefined;
     /** Checked state of a check button or menu item, which may be mixed. */
     accessibleChecked?: Gtk.AccessibleTristate | null | undefined;
     /** Whether the widget is visible but cannot be edited or operated. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleDisabled?: boolean | null | undefined;
     /** Whether the content the widget discloses is showing. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleExpanded?: boolean | null | undefined;
     /** Whether the widget is kept out of the accessibility tree. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleHidden?: boolean | null | undefined;
     /** Whether the entered value fails validation, and in what way. */
     accessibleInvalid?: Gtk.AccessibleInvalidState | null | undefined;
     /** Pressed state of a toggle button, which may be mixed. */
     accessiblePressed?: Gtk.AccessibleTristate | null | undefined;
     /** Whether the widget is selected within its container. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleSelected?: boolean | null | undefined;
     /** Whether the link has already been followed. */
-    // eslint-disable-next-line gtkx/boolean-name
     accessibleVisited?: boolean | null | undefined;
     /** Descendant that holds the focus while the widget itself keeps it. */
     accessibleActiveDescendant?: Gtk.Accessible | null | undefined;

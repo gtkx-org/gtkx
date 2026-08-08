@@ -200,6 +200,7 @@ const getRunOptions = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCo
     return { cwd: root, mode, inputs, resolved };
 };
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
 const ensureGenerated = async (
     cwd: string,
     options: { shouldAnnounce?: boolean; mode?: string } = {},

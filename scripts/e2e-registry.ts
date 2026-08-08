@@ -133,6 +133,7 @@ function verdaccioConfig(workDir: string): string {
     `;
 }
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the registry answered */
 async function ping(): Promise<boolean> {
     try {
         const response = await fetch(`${REGISTRY}-/ping`);

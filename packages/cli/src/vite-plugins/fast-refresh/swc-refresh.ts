@@ -31,7 +31,6 @@ const buildRefreshResult = (result: Output): { code: string; map?: string } =>
 const injectRefreshRegistration = (
     code: string,
     id: string,
-    // eslint-disable-next-line gtkx/boolean-name
     transformOptions: { ssr?: boolean | undefined } | undefined,
 ): { code: string; map: null } | undefined => {
     if (!shouldTransformForRefresh(id, transformOptions)) {

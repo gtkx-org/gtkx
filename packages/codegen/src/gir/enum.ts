@@ -35,7 +35,6 @@ type GirEnum = {
     /** Quark name of the GError domain the members are codes of, absent on enums that carry no domain. */
     errorDomain: string | undefined;
     /** Whether the enum is introspectable; code generation skips the ones that are not. */
-    // eslint-disable-next-line gtkx/boolean-name
     introspectable: boolean;
     /** The enum's members, in declaration order. */
     members: EnumMember[];

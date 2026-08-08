@@ -62,6 +62,7 @@ const delay = (ms: number): Promise<void> =>
         setTimeout(resolve, ms);
     });
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- reports whether the condition was met */
 const pollUntil = async (isSatisfied: () => boolean): Promise<boolean> => {
     const deadline = Date.now() + POLL_TIMEOUT_MS;
 

@@ -45,7 +45,6 @@ type TextContentOptions = {
      * When true (the default), trim the text and collapse runs of whitespace into single spaces
      * before comparing. When false, only replace non-breaking spaces with regular ones.
      */
-    // eslint-disable-next-line gtkx/boolean-name
     normalizeWhitespace?: boolean | undefined;
 };
 
@@ -949,10 +948,12 @@ declare module "@vitest/expect" {
         toHaveAccessibleDescription(expected?: TextExpectation): void;
         toHaveAccessibleErrorMessage(expected?: TextExpectation): void;
         toHaveSelection(expected?: TextExpectation): void;
+        /* eslint-disable-next-line unicorn/consistent-boolean-name -- expected is the jest-dom matcher argument name */
         toHaveAccessibleState(state: BooleanAccessibleState, expected?: boolean): void;
         toHaveAccessibleState(state: TristateAccessibleState, expected?: Gtk.AccessibleTristate): void;
         toHaveAccessibleState(state: Gtk.AccessibleState.INVALID, expected?: Gtk.AccessibleInvalidState): void;
         toHaveAccessibleProperty(property: StringAccessibleProperty, expected?: string): void;
+        /* eslint-disable-next-line unicorn/consistent-boolean-name -- expected is the jest-dom matcher argument name */
         toHaveAccessibleProperty(property: BooleanAccessibleProperty, expected?: boolean): void;
         toHaveAccessibleProperty(property: NumberAccessibleProperty, expected?: number): void;
         toHaveAccessibleProperty(
@@ -989,7 +990,6 @@ declare module "@vitest/expect" {
         toContainOneByPlaceholderText(...args: TextQueryArgs): void;
         toContainAnyByDisplayValue(...args: TextQueryArgs): void;
         toContainOneByDisplayValue(...args: TextQueryArgs): void;
-        // eslint-disable-next-line gtkx/boolean-name
         toHaveClass(...args: (ClassExpectation | { exact: boolean })[]): void;
         toHaveObjectProperty(name: string, expected?: unknown): void;
     }

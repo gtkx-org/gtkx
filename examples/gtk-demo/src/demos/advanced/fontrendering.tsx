@@ -39,6 +39,7 @@ import type { Demo, DemoProviderProps } from "../types.js";
 import { useTickCallback } from "../../use-tick-callback.js";
 import sourceCode from "./fontrendering.tsx?raw";
 
+type SourceResult = typeof GLib.SOURCE_CONTINUE | typeof GLib.SOURCE_REMOVE;
 type Mode = "text" | "grid";
 type FontRenderingState = ReturnType<typeof useFontRenderingState>;
 
@@ -137,7 +138,7 @@ type FinishOverlayAnimationArgs = {
     outlineAlphaRef: RefObject<number>;
 };
 
-type KeepOverlayAnimatingArgs = {
+type AdvanceOverlayAnimationArgs = {
     widget: Gtk.Widget;
     frameClock: Gdk.FrameClock;
     animationRef: RefObject<OverlayAnimation | null>;
@@ -536,14 +537,14 @@ const didFinishOverlayAnimation = ({
     return t >= 1;
 };
 
-const shouldKeepOverlayAnimating = ({
+const advanceOverlayAnimation = ({
     widget,
     frameClock,
     animationRef,
     pixelAlphaRef,
     outlineAlphaRef,
     setIsAnimating,
-}: KeepOverlayAnimatingArgs): boolean => {
+}: AdvanceOverlayAnimationArgs): SourceResult => {
     const animation = animationRef.current;
 
     if (!animation) {
@@ -557,9 +558,11 @@ const shouldKeepOverlayAnimating = ({
     if (isDone) {
         animationRef.current = null;
         setIsAnimating(false);
+
+        return GLib.SOURCE_REMOVE;
     }
 
-    return !isDone;
+    return GLib.SOURCE_CONTINUE;
 };
 
 function useOverlayAnimation(state: FontRenderingState) {
@@ -583,7 +586,7 @@ function useOverlayAnimation(state: FontRenderingState) {
     }, [overlays.shouldShowPixels, overlays.shouldShowOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef]);
 
     useTickCallback(isAnimating ? drawingAreaRef : null, (widget, frameClock) =>
-        shouldKeepOverlayAnimating({
+        advanceOverlayAnimation({
             widget,
             frameClock,
             animationRef,

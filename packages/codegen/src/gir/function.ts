@@ -15,10 +15,8 @@ type GirFunction = {
     /** C symbol the callable is invoked through. */
     cIdentifier: string | undefined;
     /** Whether the C function takes a trailing `GError` out parameter and can fail. */
-    // eslint-disable-next-line gtkx/boolean-name
     throws: boolean;
     /** Whether the GIR marks the callable as introspectable, and so bindable. */
-    // eslint-disable-next-line gtkx/boolean-name
     introspectable: boolean;
     /** Qualified `Type.member` the GIR redirects the callable to, from its `moved-to` annotation. */
     movedTo: string | undefined;

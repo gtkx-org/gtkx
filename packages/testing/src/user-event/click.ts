@@ -53,6 +53,7 @@ const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
     return null;
 };
 
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether activation succeeded */
 const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
         return false;

@@ -39,7 +39,6 @@ type RenderListViewOptions<T> = ListViewFixtureOptions & {
 
 type RenderGridViewOptions<T> = ListViewFixtureOptions & {
     renderItem?: ListItemRenderer<T>;
-    // eslint-disable-next-line gtkx/boolean-name
     singleClickActivate?: boolean;
 };
 

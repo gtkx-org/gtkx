@@ -3,7 +3,6 @@ import * as GLib from "@gtkx/gi/glib";
 /** JavaScript type every GVariant basic type code unpacks to. */
 type BasicValueMap = {
     /** Boolean, held as a single byte reading 0 or 1. */
-    // eslint-disable-next-line gtkx/boolean-name
     b: boolean;
     /** Unsigned byte. */
     y: number;

@@ -19,13 +19,10 @@ type GirField = {
     /** The C type spelled on the field, which decides whether it is read through a pointer. */
     cType: string | undefined;
     /** Whether the field can be read; one that is neither readable nor writable gets no accessor at all. */
-    // eslint-disable-next-line gtkx/boolean-name
     readable: boolean;
     /** Whether the field can be written, which is what earns it a setter alongside its getter. */
-    // eslint-disable-next-line gtkx/boolean-name
     writable: boolean;
     /** Whether the field is private to the library, as every nested struct or union is. */
-    // eslint-disable-next-line gtkx/boolean-name
     private: boolean;
     /** Width in bits when the field is a C bitfield member. */
     bits: number | undefined;

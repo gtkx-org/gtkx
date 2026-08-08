@@ -21,7 +21,6 @@ type Manifest = {
     name: string;
     type: "module";
     version: string;
-    // eslint-disable-next-line gtkx/boolean-name
     sideEffects: true;
     exports: Record<string, unknown>;
     peerDependencies?: Record<string, string>;

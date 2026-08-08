@@ -46,8 +46,8 @@ const hasDescription = (row: Gtk.Widget): boolean =>
 const allRows = (view: Gtk.ColumnView): Gtk.Widget[] => within(view).getAllByRole(Gtk.AccessibleRole.ROW);
 const dataRows = (view: Gtk.ColumnView): Gtk.Widget[] => allRows(view).slice(1);
 
-const probeRows = (rows: Gtk.Widget[], probe: (row: Gtk.Widget) => boolean): boolean[] =>
-    rows.map((row) => probe(row));
+const probeRows = (rows: Gtk.Widget[], isMatch: (row: Gtk.Widget) => boolean): boolean[] =>
+    rows.map((row) => isMatch(row));
 
 const rowLabelFlags = (view: Gtk.ColumnView): boolean[] => probeRows(allRows(view), hasLabel);
 const rowDescriptionFlags = (view: Gtk.ColumnView): boolean[] => probeRows(allRows(view), hasDescription);

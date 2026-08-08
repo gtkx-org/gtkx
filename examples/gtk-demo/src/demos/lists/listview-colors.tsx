@@ -39,6 +39,8 @@ import type { Demo, DemoProviderProps } from "../types.js";
 import colorNamesRaw from "./color.names.txt?raw";
 import sourceCode from "./listview-colors.tsx?raw";
 
+type SourceResult = typeof GLib.SOURCE_CONTINUE | typeof GLib.SOURCE_REMOVE;
+
 type ColorItem = {
     id: string;
     name: string;
@@ -654,7 +656,7 @@ function useColorsInitialFill(models: ColorsModels, colorLimit: ColorLimit, sort
     }, []);
 }
 
-function shouldContinueFill(progress: FillProgress): boolean {
+function fillNextChunk(progress: FillProgress): SourceResult {
     if (progress.appended >= progress.colorLimit) {
         return GLib.SOURCE_REMOVE;
     }
@@ -696,7 +698,7 @@ function useColorsRefill({ models, gridView, colorLimit, sortMode, refillToken }
             onComplete: reorder,
         };
 
-        const tickId = gridView.addTickCallback(() => shouldContinueFill(progress));
+        const tickId = gridView.addTickCallback(() => fillNextChunk(progress));
 
         return () => {
             gridView.removeTickCallback(tickId);
