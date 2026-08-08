@@ -4,6 +4,16 @@ import { describe, expect, it } from "vitest";
 import { overlayDecorativeDemo } from "../../../src/demos/layout/overlay-decorative.js";
 import { renderDemo } from "../../test-utils.js";
 
+type MarginTargets = { scale: Gtk.Scale; textView: Gtk.TextView; topMarginTag: Gtk.TextTag };
+
+const renderMarginTargets = async (): Promise<MarginTargets> => {
+    await renderDemo(overlayDecorativeDemo);
+    const scale = await screen.findByName("margin-scale", { as: Gtk.Scale });
+    const textView = await screen.findByName("text-view", { as: Gtk.TextView });
+
+    return { scale, textView, topMarginTag: textView.getBuffer().getTagTable().lookup("top-margin") as Gtk.TextTag };
+};
+
 describe("overlayDecorativeDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(overlayDecorativeDemo.id).toBe("overlay-decorative");
@@ -64,10 +74,7 @@ describe("overlayDecorativeDemo scale behavior", () => {
     });
 
     it("syncs the TextView left margin and top-margin tag when the scale value changes", async () => {
-        await renderDemo(overlayDecorativeDemo);
-        const scale = await screen.findByName("margin-scale", { as: Gtk.Scale });
-        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
-        const topMarginTag = textView.getBuffer().getTagTable().lookup("top-margin") as Gtk.TextTag;
+        const { scale, textView, topMarginTag } = await renderMarginTargets();
         expect(textView).toHaveObjectProperty("leftMargin", 100);
         expect(topMarginTag).toHaveObjectProperty("pixelsAboveLines", 100);
         await userEvent.slide(scale, 25);
@@ -76,10 +83,7 @@ describe("overlayDecorativeDemo scale behavior", () => {
     });
 
     it("rounds non-integer margins for both the left margin and the top-margin tag", async () => {
-        await renderDemo(overlayDecorativeDemo);
-        const scale = await screen.findByName("margin-scale", { as: Gtk.Scale });
-        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
-        const topMarginTag = textView.getBuffer().getTagTable().lookup("top-margin") as Gtk.TextTag;
+        const { scale, textView, topMarginTag } = await renderMarginTargets();
         await userEvent.slide(scale, 37.7);
         expect(textView).toHaveObjectProperty("leftMargin", 38);
         expect(topMarginTag).toHaveObjectProperty("pixelsAboveLines", 38);

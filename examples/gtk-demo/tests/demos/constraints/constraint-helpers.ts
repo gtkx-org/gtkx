@@ -1,11 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
+import type { ChildButtons } from "../../../src/demos/constraints/child-buttons.js";
 
-type ChildButtons = {
-    button1: Gtk.Button;
-    button2: Gtk.Button;
-    button3: Gtk.Button;
-};
+type ConstraintObserver = ReturnType<Gtk.ConstraintLayout["observeConstraints"]>;
 
 const CHILD_BUTTON_LABELS = ["Child 1", "Child 2", "Child 3"];
 
@@ -31,25 +28,33 @@ const findContainerLayout = async (): Promise<{ box: Gtk.Box; layout: Gtk.Constr
     return { box, layout: box.getLayoutManager() as Gtk.ConstraintLayout };
 };
 
-const collectConstraints = (layout: Gtk.ConstraintLayout): Gtk.Constraint[] => {
-    const observer = layout.observeConstraints();
-    const constraints: Gtk.Constraint[] = [];
+const isConstraint = (item: unknown): item is Gtk.Constraint => item instanceof Gtk.Constraint;
+const isGuide = (item: unknown): item is Gtk.ConstraintGuide => item instanceof Gtk.ConstraintGuide;
 
-    for (let i = 0; i < observer.getNItems(); i++) {
-        const item = observer.getItem(i);
+const collectListItems = <T>(model: ConstraintObserver, isMatch: (item: unknown) => item is T): T[] => {
+    const items: T[] = [];
 
-        if (item instanceof Gtk.Constraint) {
-            constraints.push(item);
+    for (let i = 0; i < model.getNItems(); i++) {
+        const item = model.getItem(i);
+
+        if (isMatch(item)) {
+            items.push(item);
         }
     }
 
-    return constraints;
+    return items;
 };
+
+const collectConstraints = (layout: Gtk.ConstraintLayout): Gtk.Constraint[] =>
+    collectListItems(layout.observeConstraints(), isConstraint);
+
+const collectGuides = (layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide[] =>
+    collectListItems(layout.observeGuides(), isGuide);
 
 export {
     CHILD_BUTTON_LABELS,
-    type ChildButtons,
     collectConstraints,
+    collectGuides,
     findChildButtons,
     findContainerLayout,
     findLabelledChildButtons,

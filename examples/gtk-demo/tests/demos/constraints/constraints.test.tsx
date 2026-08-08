@@ -3,13 +3,14 @@ import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsDemo } from "../../../src/demos/constraints/constraints.js";
 import { renderDemo } from "../../test-utils.js";
-import { collectConstraints, findChildButtons } from "./constraint-helpers.js";
+import { collectConstraints, collectGuides, findChildButtons } from "./constraint-helpers.js";
 
 type AllocatedLayout = {
     button1: Gtk.Button;
     button2: Gtk.Button;
     button3: Gtk.Button;
     container: Gtk.Box;
+    containerWidth: number;
 };
 
 const getGridLayout = async (): Promise<Gtk.ConstraintLayout> => {
@@ -18,21 +19,6 @@ const getGridLayout = async (): Promise<Gtk.ConstraintLayout> => {
     expect(layout).toBeInstanceOf(Gtk.ConstraintLayout);
 
     return layout as Gtk.ConstraintLayout;
-};
-
-const collectGuides = (layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide[] => {
-    const observer = layout.observeGuides();
-    const guides: Gtk.ConstraintGuide[] = [];
-
-    for (let i = 0; i < observer.getNItems(); i++) {
-        const item = observer.getItem(i);
-
-        if (item instanceof Gtk.ConstraintGuide) {
-            guides.push(item);
-        }
-    }
-
-    return guides;
 };
 
 const boundsIn = (widget: Gtk.Widget, container: Gtk.Widget) => {
@@ -60,10 +46,21 @@ const renderAndAllocate = async (): Promise<AllocatedLayout> => {
     const container = await screen.findByName("container", { as: Gtk.Box });
 
     await waitFor(() => {
-        expect(button3.getAllocatedWidth()).toBeGreaterThan(0);
+        expect(button3.getWidth()).toBeGreaterThan(0);
     });
 
-    return { button1, button2, button3, container };
+    return { button1, button2, button3, container, containerWidth: container.getWidth() };
+};
+
+const renderAndMeasure = async () => {
+    const layout = await renderAndAllocate();
+
+    return {
+        b1: boundsIn(layout.button1, layout.container),
+        b2: boundsIn(layout.button2, layout.container),
+        b3: boundsIn(layout.button3, layout.container),
+        containerWidth: layout.containerWidth,
+    };
 };
 
 describe("constraintsDemo metadata", () => {
@@ -130,12 +127,8 @@ describe("constraintsDemo layout", () => {
 
 describe("constraintsDemo geometry", () => {
     it("resolves the constraints into the intended allocations", async () => {
-        const { button1, button2, button3, container } = await renderAndAllocate();
-        const containerWidth = container.getAllocatedWidth();
-        const b1 = boundsIn(button1, container);
-        const b2 = boundsIn(button2, container);
-        const b3 = boundsIn(button3, container);
-        expect(button1.getAllocatedWidth()).toBe(button2.getAllocatedWidth());
+        const { b1, b2, b3, containerWidth } = await renderAndMeasure();
+        expect(b1.getWidth()).toBe(b2.getWidth());
         expect(b1.getX()).toBe(8);
         expect(b2.getX() + b2.getWidth()).toBe(containerWidth - 8);
         expect(b2.getX()).toBeGreaterThan(b1.getX() + b1.getWidth());
@@ -145,10 +138,9 @@ describe("constraintsDemo geometry", () => {
     });
 
     it("recomputes the layout when the window is resized", async () => {
-        const { button1, button2, button3, container } = await renderAndAllocate();
-        const initialContainerWidth = container.getAllocatedWidth();
-        const initialButton1Width = button1.getAllocatedWidth();
-        const widerWidth = initialContainerWidth + 240;
+        const { button1, button2, button3, container, containerWidth } = await renderAndAllocate();
+        const widerWidth = containerWidth + 240;
+        const initialButton1Width = boundsIn(button1, container).getWidth();
         const root = container.getRoot();
 
         if (!(root instanceof Gtk.Window)) {
@@ -158,12 +150,12 @@ describe("constraintsDemo geometry", () => {
         root.setDefaultSize(widerWidth, 400);
 
         await waitFor(() => {
-            expect(container.getAllocatedWidth()).toBe(widerWidth);
+            expect(container.getWidth()).toBe(widerWidth);
         });
 
-        expect(button3.getAllocatedWidth()).toBe(widerWidth - 16);
-        expect(button1.getAllocatedWidth()).toBeGreaterThan(initialButton1Width);
-        expect(button1.getAllocatedWidth()).toBe(button2.getAllocatedWidth());
+        expect(boundsIn(button3, container).getWidth()).toBe(widerWidth - 16);
+        expect(boundsIn(button1, container).getWidth()).toBeGreaterThan(initialButton1Width);
+        expect(boundsIn(button1, container).getWidth()).toBe(boundsIn(button2, container).getWidth());
     });
 });
 

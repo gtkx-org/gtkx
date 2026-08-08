@@ -5,6 +5,12 @@ import { describe, expect, it } from "vitest";
 import { tabsDemo } from "../../../src/demos/input/tabs.js";
 import { renderDemo } from "../../test-utils.js";
 
+const renderTextView = async (): Promise<Gtk.TextView> => {
+    await renderDemo(tabsDemo);
+
+    return await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+};
+
 describe("tabsDemo", () => {
     it("exposes the expected metadata", () => {
         expect(tabsDemo.id).toBe("tabs");
@@ -19,16 +25,14 @@ describe("tabsDemo", () => {
     });
 
     it("renders a GtkTextView populated with tab-separated rows", async () => {
-        await renderDemo(tabsDemo);
-        const textView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+        const textView = await renderTextView();
         expect(await screen.findByDisplayValue(/one\t2\.0\tthree/, { collapseWhitespace: false })).toBe(textView);
         expect(await screen.findByDisplayValue(/four\t5\.555\tsix/, { collapseWhitespace: false })).toBe(textView);
         expect(await screen.findByDisplayValue(/seven\t88\.88\tnine/, { collapseWhitespace: false })).toBe(textView);
     });
 
     it("configures three tabs with LEFT, DECIMAL, RIGHT alignments", async () => {
-        await renderDemo(tabsDemo);
-        const textView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+        const textView = await renderTextView();
         const tabs = textView.getTabs();
         expect(tabs).not.toBeNull();
         const tabArray = tabs as Pango.TabArray;
@@ -44,8 +48,7 @@ describe("tabsDemo", () => {
 
 describe("tabsDemo text view", () => {
     it("places the tabs at positions 0, 150 and 290 with '.' as the decimal point", async () => {
-        await renderDemo(tabsDemo);
-        const textView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+        const textView = await renderTextView();
         const tabs = textView.getTabs() as Pango.TabArray;
         const [, pos0] = tabs.getTab(0);
         const [, pos1] = tabs.getTab(1);
@@ -57,8 +60,7 @@ describe("tabsDemo text view", () => {
     });
 
     it("uses word wrap on the text view", async () => {
-        await renderDemo(tabsDemo);
-        const textView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+        const textView = await renderTextView();
         expect(textView).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
     });
 

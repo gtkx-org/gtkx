@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listviewSettingsDemo } from "../../../src/demos/lists/listview-settings.js";
-import { findInactiveSearchToggle, renderDemo } from "../../test-utils.js";
+import { collectWidgets, findInactiveSearchToggle, openSearchEntry, renderDemo } from "../../test-utils.js";
 
 type FilteredToZeroState = {
     columnView: Gtk.ColumnView;
@@ -36,27 +36,21 @@ const readColumns = (cv: Gtk.ColumnView): Map<string, Gtk.ColumnViewColumn> => {
     return out;
 };
 
-const collectEditableLabels = (widget: Gtk.Widget, out: Gtk.EditableLabel[] = []): Gtk.EditableLabel[] => {
-    if (widget instanceof Gtk.EditableLabel) {
-        out.push(widget);
-    }
-
-    let child = widget.getFirstChild();
-
-    while (child) {
-        collectEditableLabels(child, out);
-        child = child.getNextSibling();
-    }
-
-    return out;
-};
-
 const itemCount = (cv: Gtk.ColumnView): number => (cv.getModel())?.getNItems() ?? 0;
+
+const findColumnView = async (): Promise<Gtk.ColumnView> =>
+    await screen.findByName("column-view", { as: Gtk.ColumnView });
+
+const renderColumnView = async (): Promise<Gtk.ColumnView> => {
+    await renderDemo(listviewSettingsDemo);
+
+    return await findColumnView();
+};
 
 const selectFirstSchemaWithKeys = async (): Promise<Gtk.ColumnView> => {
     const sidebar = await screen.findByName("sidebar", { as: Gtk.ListView });
     await userEvent.selectOptions(sidebar, 0);
-    const columnView = await screen.findByName("column-view", { as: Gtk.ColumnView });
+    const columnView = await findColumnView();
 
     await waitFor(() => {
         expect(itemCount(columnView)).toBeGreaterThan(0);
@@ -66,12 +60,12 @@ const selectFirstSchemaWithKeys = async (): Promise<Gtk.ColumnView> => {
 };
 
 const booleanEditableIn = (columnView: Gtk.ColumnView): Gtk.EditableLabel | undefined =>
-    collectEditableLabels(columnView).find((e) => e.getText() === "true" || e.getText() === "false");
+    collectWidgets(columnView, Gtk.EditableLabel).find((e) => e.getText() === "true" || e.getText() === "false");
 
 const booleanEditableAtRow = async (sidebar: Gtk.ListView, index: number): Promise<Gtk.EditableLabel | undefined> => {
     await userEvent.selectOptions(sidebar, index);
 
-    return booleanEditableIn(await screen.findByName("column-view", { as: Gtk.ColumnView }));
+    return booleanEditableIn(await findColumnView());
 };
 
 const selectSchemaWithBooleanKey = async (): Promise<Gtk.EditableLabel> => {
@@ -89,23 +83,11 @@ const selectSchemaWithBooleanKey = async (): Promise<Gtk.EditableLabel> => {
     throw new Error("No GSettings schema installed on this system exposes a boolean-valued key");
 };
 
-const openKeySearch = async (): Promise<Gtk.SearchEntry> => {
-    const toggle = await screen.findByName("search-toggle", { as: Gtk.ToggleButton });
-    await userEvent.click(toggle);
-    const searchBar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
-
-    await waitFor(() => {
-        expect(searchBar).toHaveObjectProperty("searchModeEnabled", true);
-    });
-
-    return screen.findByName("search-entry", { as: Gtk.SearchEntry });
-};
-
 const filterKeysToZero = async (): Promise<FilteredToZeroState> => {
     await renderDemo(listviewSettingsDemo);
     const columnView = await selectFirstSchemaWithKeys();
     const full = itemCount(columnView);
-    const entry = await openKeySearch();
+    const entry = await openSearchEntry();
     await userEvent.type(entry, "zzqqxx");
 
     await waitFor(() => {
@@ -157,15 +139,15 @@ describe("listviewSettingsDemo layout", () => {
         await renderDemo(listviewSettingsDemo);
         const searchBar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
         expect(searchBar).toHaveObjectProperty("searchModeEnabled", false);
-        const searchEntry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+        expect(screen.queryByName("search-entry")).toBeNull();
+        const searchEntry = await openSearchEntry();
         expect(searchEntry).toHaveObjectProperty("text", "");
     });
 });
 
 describe("listviewSettingsDemo column view", () => {
     it("renders a GtkColumnView with the expected columns", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        const columnView = await renderColumnView();
 
         expect(readColumns(columnView).keys().toArray()).toEqual([
             "Name",
@@ -178,8 +160,7 @@ describe("listviewSettingsDemo column view", () => {
     });
 
     it("hides the Summary and Description columns by default", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        const columnView = await renderColumnView();
         const byTitle = readColumns(columnView);
         expect(byTitle.get("Summary")).toHaveObjectProperty("visible", false);
         expect(byTitle.get("Description")).toHaveObjectProperty("visible", false);
@@ -187,8 +168,7 @@ describe("listviewSettingsDemo column view", () => {
     });
 
     it("attaches a selection model to the column view", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        const columnView = await renderColumnView();
 
         await waitFor(() => {
             expect(columnView.getModel()).toBeInstanceOf(Gtk.SelectionModel);
@@ -196,8 +176,7 @@ describe("listviewSettingsDemo column view", () => {
     });
 
     it("exposes the column view's column count once the React commit settles", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        const columnView = await renderColumnView();
 
         await waitFor(() => {
             expect(columnView.getColumns()).toHaveObjectProperty("nItems", 6);
@@ -207,8 +186,7 @@ describe("listviewSettingsDemo column view", () => {
 
 describe("listviewSettingsDemo column header menus", () => {
     it("attaches a header menu only to the four toggleable columns", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        const columnView = await renderColumnView();
 
         await waitFor(
             () => {
@@ -229,8 +207,7 @@ describe("listviewSettingsDemo column header menus", () => {
     });
 
     it("shows a column when its visibility menu action is activated", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        const columnView = await renderColumnView();
         expect(readColumns(columnView).get("Summary")).toHaveObjectProperty("visible", false);
         columnView.activateAction("columnview.show-summary", null);
 
@@ -249,7 +226,7 @@ describe("listviewSettingsDemo schema interactions", () => {
 
     it("opens the key search bar when the titlebar toggle is activated", async () => {
         await renderDemo(listviewSettingsDemo);
-        await openKeySearch();
+        await openSearchEntry();
         const searchBar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
         expect(searchBar).toHaveObjectProperty("searchModeEnabled", true);
     });
@@ -307,7 +284,7 @@ describe("listviewSettingsDemo value editing", () => {
         try {
             await renderDemo(listviewSettingsDemo);
             const columnView = await selectFirstSchemaWithKeys();
-            const [target] = collectEditableLabels(columnView);
+            const [target] = collectWidgets(columnView, Gtk.EditableLabel);
             expect(target).toBeDefined();
             const editable = target as Gtk.EditableLabel;
             const errorBellSpy = vi.spyOn(editable, "errorBell");

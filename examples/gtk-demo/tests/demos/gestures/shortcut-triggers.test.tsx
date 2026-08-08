@@ -4,6 +4,19 @@ import { describe, expect, it, vi } from "vitest";
 import { shortcutTriggersDemo } from "../../../src/demos/gestures/shortcut-triggers.js";
 import { renderDemo } from "../../test-utils.js";
 
+const expectShortcutLog = async (labelName: string, keys: string, message: string): Promise<void> => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation((): void => undefined);
+
+    try {
+        await renderDemo(shortcutTriggersDemo);
+        const label = await screen.findByName(labelName, { as: Gtk.Label });
+        await userEvent.keyboard(label, keys);
+        expect(logSpy).toHaveBeenCalledWith(message);
+    } finally {
+        logSpy.mockRestore();
+    }
+};
+
 describe("shortcutTriggersDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(shortcutTriggersDemo.id).toBe("shortcut-triggers");
@@ -49,28 +62,10 @@ describe("shortcutTriggersDemo rendering", () => {
 
 describe("shortcutTriggersDemo activation handlers", () => {
     it("logs the Ctrl-G activation message when the Ctrl-G shortcut fires", async () => {
-        const logSpy = vi.spyOn(console, "log").mockImplementation((): void => undefined);
-
-        try {
-            await renderDemo(shortcutTriggersDemo);
-            const label = await screen.findByName("label-ctrl-g", { as: Gtk.Label });
-            await userEvent.keyboard(label, "{Control>}g{/Control}");
-            expect(logSpy).toHaveBeenCalledWith("activated Press Ctrl-G");
-        } finally {
-            logSpy.mockRestore();
-        }
+        await expectShortcutLog("label-ctrl-g", "{Control>}g{/Control}", "activated Press Ctrl-G");
     });
 
     it("logs the Press-X activation message when the X shortcut fires", async () => {
-        const logSpy = vi.spyOn(console, "log").mockImplementation((): void => undefined);
-
-        try {
-            await renderDemo(shortcutTriggersDemo);
-            const label = await screen.findByName("label-x", { as: Gtk.Label });
-            await userEvent.keyboard(label, "x");
-            expect(logSpy).toHaveBeenCalledWith("activated Press X");
-        } finally {
-            logSpy.mockRestore();
-        }
+        await expectShortcutLog("label-x", "x", "activated Press X");
     });
 });

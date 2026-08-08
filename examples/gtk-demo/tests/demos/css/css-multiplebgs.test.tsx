@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cssMultiplebgsDemo } from "../../../src/demos/css/css-multiplebgs.js";
-import { hasBufferTag, renderDemo } from "../../test-utils.js";
+import { expectCssReloadedOnEdit, hasBufferTag, renderDemo } from "../../test-utils.js";
 
 describe("cssMultiplebgsDemo", () => {
     it("exposes the expected metadata", () => {
@@ -50,6 +50,7 @@ describe("cssMultiplebgsDemo", () => {
 describe("cssMultiplebgsDemo css provider", () => {
     it("loads the default CSS into a CssProvider added to the display on mount", async () => {
         const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
 
         try {
@@ -68,25 +69,11 @@ describe("cssMultiplebgsDemo css provider", () => {
     });
 
     it("re-applies the CssProvider when the user edits the buffer", async () => {
-        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
-
-        try {
-            await renderDemo(cssMultiplebgsDemo);
-            const textView = await screen.findByName("text-view", { as: Gtk.TextView });
-            loadSpy.mockClear();
-            await userEvent.clear(textView);
-            await userEvent.type(textView, "#canvas { background-color: magenta; }");
-
-            await waitFor(() => {
-                const userLoad = loadSpy.mock.calls.find(
-                    ([css]) => typeof css === "string" && css.includes("background-color: magenta"),
-                );
-
-                expect(userLoad, "expected the buffer edit to be loaded into a CssProvider").toBeDefined();
-            });
-        } finally {
-            loadSpy.mockRestore();
-        }
+        await expectCssReloadedOnEdit(
+            cssMultiplebgsDemo,
+            "#canvas { background-color: magenta; }",
+            "background-color: magenta",
+        );
     });
 
     it("marks invalid CSS by adding an error tag to the buffer", async () => {

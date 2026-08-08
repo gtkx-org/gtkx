@@ -17,9 +17,14 @@ const firstAppInfo = (): Gio.AppInfo => {
 
 const appInfoPrototype = (): Gio.AppInfo => Object.getPrototypeOf(firstAppInfo()) as Gio.AppInfo;
 
-const activateFirstRowAndExpectLaunch = async (launchSpy: ReturnType<typeof vi.spyOn>): Promise<void> => {
+const renderListView = async (): Promise<Gtk.ListView> => {
     await renderDemo(listviewApplauncherDemo);
-    const listView = await screen.findByName("list-view", { as: Gtk.ListView });
+
+    return await screen.findByName("list-view", { as: Gtk.ListView });
+};
+
+const activateFirstRowAndExpectLaunch = async (launchSpy: ReturnType<typeof vi.spyOn>): Promise<void> => {
+    const listView = await renderListView();
     await fireEvent(listView, "activate", 0);
 
     await waitFor(() => {
@@ -50,15 +55,13 @@ describe("listviewApplauncherDemo structure", () => {
     });
 
     it("uses single selection mode on the list view", async () => {
-        await renderDemo(listviewApplauncherDemo);
-        const listView = await screen.findByName("list-view", { as: Gtk.ListView });
+        const listView = await renderListView();
         const model = listView.getModel();
         expect(model).toBeInstanceOf(Gtk.SingleSelection);
     });
 
     it("moves the single selection to whichever row is chosen", async () => {
-        await renderDemo(listviewApplauncherDemo);
-        const listView = await screen.findByName("list-view", { as: Gtk.ListView });
+        const listView = await renderListView();
         const model = listView.getModel() as Gtk.SingleSelection;
         await userEvent.selectOptions(listView, 0);
         expect(model).toHaveObjectProperty("selected", 0);
@@ -69,8 +72,7 @@ describe("listviewApplauncherDemo structure", () => {
 
 describe("listviewApplauncherDemo rows", () => {
     it("renders one row per application returned by Gio.AppInfo.getAll", async () => {
-        await renderDemo(listviewApplauncherDemo);
-        const listView = await screen.findByName("list-view", { as: Gtk.ListView });
+        const listView = await renderListView();
         const model = listView.getModel();
         expect(model).not.toBeNull();
         const expectedCount = Gio.AppInfo.getAll().length;
@@ -106,8 +108,7 @@ describe("listviewApplauncherDemo rows", () => {
     });
 
     it("renders exactly one icon per label row through the list view factory", async () => {
-        await renderDemo(listviewApplauncherDemo);
-        const listView = await screen.findByName("list-view", { as: Gtk.ListView });
+        const listView = await renderListView();
         const images = within(listView).getAllByRole(Gtk.AccessibleRole.IMG);
         const labels = within(listView).getAllByRole(Gtk.AccessibleRole.LABEL);
         expect(images.length).toBeGreaterThan(0);

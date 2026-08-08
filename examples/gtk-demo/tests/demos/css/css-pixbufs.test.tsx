@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { cssPixbufsDemo } from "../../../src/demos/css/css-pixbufs.js";
-import { hasBufferTag, renderDemo } from "../../test-utils.js";
+import { expectCssReloadedOnEdit, findCssLoadedOnMount, hasBufferTag, renderDemo } from "../../test-utils.js";
 
 describe("cssPixbufsDemo", () => {
     it("exposes the expected metadata", () => {
@@ -44,41 +44,16 @@ describe("cssPixbufsDemo", () => {
 
 describe("cssPixbufsDemo css provider", () => {
     it("loads the default keyframe CSS into a CssProvider when the editor mounts", async () => {
-        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
-
-        try {
-            await renderDemo(cssPixbufsDemo);
-
-            const defaultLoad = loadSpy.mock.calls.find(
-                ([css]) => typeof css === "string" && css.includes("@keyframes move-the-image"),
-            );
-
-            expect(defaultLoad, "expected the default pixbufs CSS to be loaded via loadFromString").toBeDefined();
-        } finally {
-            loadSpy.mockRestore();
-        }
+        const loaded = await findCssLoadedOnMount(cssPixbufsDemo, "@keyframes move-the-image");
+        expect(loaded, "expected the default pixbufs CSS to be loaded via loadFromString").toBeDefined();
     });
 
     it("re-applies the CssProvider when the user edits the buffer", async () => {
-        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
-
-        try {
-            await renderDemo(cssPixbufsDemo);
-            const textView = await screen.findByName("text-view", { as: Gtk.TextView });
-            loadSpy.mockClear();
-            await userEvent.clear(textView);
-            await userEvent.type(textView, "window { background-color: cyan; }");
-
-            await waitFor(() => {
-                const userLoad = loadSpy.mock.calls.find(
-                    ([css]) => typeof css === "string" && css.includes("background-color: cyan"),
-                );
-
-                expect(userLoad, "expected the buffer edit to be loaded into a CssProvider").toBeDefined();
-            });
-        } finally {
-            loadSpy.mockRestore();
-        }
+        await expectCssReloadedOnEdit(
+            cssPixbufsDemo,
+            "window { background-color: cyan; }",
+            "background-color: cyan",
+        );
     });
 
     it("marks invalid CSS with an error tag and clears it once the CSS is valid again", async () => {

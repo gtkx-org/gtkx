@@ -19,6 +19,18 @@ const PAGE_TITLES = [
 const findStack = async (): Promise<Gtk.Stack> => screen.findByName("stack", { as: Gtk.Stack });
 const findSidebar = async (): Promise<Gtk.StackSidebar> => screen.findByName("sidebar", { as: Gtk.StackSidebar });
 
+const renderSidebarAndStack = async (): Promise<{ sidebar: Gtk.StackSidebar; stack: Gtk.Stack }> => {
+    await renderDemo(sidebarDemo);
+    const sidebar = await findSidebar();
+    const stack = await findStack();
+
+    return { sidebar, stack };
+};
+
+const clickPageRow = async (sidebar: Gtk.StackSidebar, name: string): Promise<void> => {
+    await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name }));
+};
+
 describe("sidebarDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(sidebarDemo.id).toBe("sidebar");
@@ -41,9 +53,7 @@ describe("sidebarDemo structure", () => {
     });
 
     it("binds the GtkStackSidebar to the stack", async () => {
-        await renderDemo(sidebarDemo);
-        const sidebar = await findSidebar();
-        const stack = await findStack();
+        const { sidebar, stack } = await renderSidebarAndStack();
         expect(sidebar).toHaveObjectProperty("stack", stack);
     });
 
@@ -63,8 +73,9 @@ describe("sidebarDemo structure", () => {
     });
 
     it("uses a plain GtkLabel for non-welcome pages", async () => {
-        await renderDemo(sidebarDemo);
-        const stack = await findStack();
+        const { sidebar, stack } = await renderSidebarAndStack();
+        expect(within(stack).queryByRole(Gtk.AccessibleRole.LABEL, { name: "Scrolling" })).toBeNull();
+        await clickPageRow(sidebar, "Scrolling");
         const label = await within(stack).findByRole(Gtk.AccessibleRole.LABEL, { name: "Scrolling" });
         expect(label).toBeInstanceOf(Gtk.Label);
     });
@@ -72,25 +83,23 @@ describe("sidebarDemo structure", () => {
 
 describe("sidebarDemo navigation", () => {
     it("switches the stack to the page whose sidebar row is activated", async () => {
-        await renderDemo(sidebarDemo);
-        const sidebar = await findSidebar();
-        const stack = await findStack();
+        const { sidebar, stack } = await renderSidebarAndStack();
         expect(stack).toHaveObjectProperty("visibleChildName", "Welcome to GTK");
         within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Welcome to GTK", selected: true });
-        await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Scrolling" }));
+        await clickPageRow(sidebar, "Scrolling");
 
         await waitFor(() => {
             expect(stack).toHaveObjectProperty("visibleChildName", "Scrolling");
         });
 
         within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Scrolling", selected: true });
-        await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Page 9" }));
+        await clickPageRow(sidebar, "Page 9");
 
         await waitFor(() => {
             expect(stack).toHaveObjectProperty("visibleChildName", "Page 9");
         });
 
-        await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Welcome to GTK" }));
+        await clickPageRow(sidebar, "Welcome to GTK");
 
         await waitFor(() => {
             expect(stack).toHaveObjectProperty("visibleChildName", "Welcome to GTK");

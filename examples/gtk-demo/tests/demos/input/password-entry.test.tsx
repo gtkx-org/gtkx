@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, queryController, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { passwordEntryDemo } from "../../../src/demos/input/password-entry.js";
-import { renderDemo } from "../../test-utils.js";
+import { findWidget, renderDemo, type RenderDemoOptions } from "../../test-utils.js";
 
 const findPasswordFields = async (): Promise<{ password: Gtk.PasswordEntry; confirm: Gtk.PasswordEntry }> => {
     const password = await screen.findByName("password-entry", { as: Gtk.PasswordEntry });
@@ -12,38 +12,19 @@ const findPasswordFields = async (): Promise<{ password: Gtk.PasswordEntry; conf
 };
 
 const findDoneButton = async (): Promise<Gtk.Button> =>
-    screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Done", as: Gtk.Button });
+    screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Done", as: Gtk.Button });
 
-const findInnerText = (widget: Gtk.Widget): Gtk.Text | null => {
-    if (widget instanceof Gtk.Text) {
-        return widget;
-    }
+const isPeekImage = (widget: Gtk.Image): boolean => widget.getIconName() === "view-reveal-symbolic";
 
-    for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
-        const found = findInnerText(child);
-
-        if (found) {
-            return found;
-        }
-    }
-
-    return null;
-};
-
-const findPeekImage = (widget: Gtk.Widget): Gtk.Image | null => {
-    if (widget instanceof Gtk.Image && widget.getIconName() === "view-reveal-symbolic") {
-        return widget;
-    }
-
-    for (let child = widget.getFirstChild(); child; child = child.getNextSibling()) {
-        const found = findPeekImage(child);
-
-        if (found) {
-            return found;
-        }
-    }
-
-    return null;
+const typePasswords = async (
+    password: string,
+    confirmation: string,
+    options: RenderDemoOptions = {},
+): Promise<void> => {
+    await renderDemo(passwordEntryDemo, options);
+    const fields = await findPasswordFields();
+    await userEvent.type(fields.password, password);
+    await userEvent.type(fields.confirm, confirmation);
 };
 
 describe("passwordEntryDemo metadata", () => {
@@ -70,8 +51,8 @@ describe("passwordEntryDemo form behavior", () => {
         await renderDemo(passwordEntryDemo);
         const { password } = await findPasswordFields();
         await userEvent.type(password, "s3cret");
-        const innerText = findInnerText(password);
-        const peek = findPeekImage(password);
+        const innerText = findWidget(password, Gtk.Text);
+        const peek = findWidget(password, Gtk.Image, isPeekImage);
         expect(innerText).not.toBeNull();
         expect(peek).not.toBeNull();
         const gesture = queryController(peek as Gtk.Image, Gtk.GestureClick);
@@ -85,10 +66,7 @@ describe("passwordEntryDemo form behavior", () => {
 
 describe("passwordEntryDemo done button", () => {
     it("enables the Done button when both password fields match", async () => {
-        await renderDemo(passwordEntryDemo);
-        const { password, confirm } = await findPasswordFields();
-        await userEvent.type(password, "hunter2");
-        await userEvent.type(confirm, "hunter2");
+        await typePasswords("hunter2", "hunter2");
 
         await waitFor(async () => {
             const button = await findDoneButton();
@@ -97,10 +75,7 @@ describe("passwordEntryDemo done button", () => {
     });
 
     it("keeps the Done button disabled when passwords differ", async () => {
-        await renderDemo(passwordEntryDemo);
-        const { password, confirm } = await findPasswordFields();
-        await userEvent.type(password, "hunter2");
-        await userEvent.type(confirm, "different");
+        await typePasswords("hunter2", "different");
 
         await waitFor(async () => {
             const button = await findDoneButton();
@@ -110,10 +85,7 @@ describe("passwordEntryDemo done button", () => {
 
     it("invokes onClose when the Done button is activated with matching passwords", async () => {
         const onClose = vi.fn();
-        await renderDemo(passwordEntryDemo, { onClose });
-        const { password, confirm } = await findPasswordFields();
-        await userEvent.type(password, "abc");
-        await userEvent.type(confirm, "abc");
+        await typePasswords("abc", "abc", { onClose });
 
         const button = await waitFor(async () => {
             const candidate = await findDoneButton();
@@ -135,7 +107,7 @@ describe("passwordEntryDemo window setup", () => {
         await renderDemo(passwordEntryDemo);
         const header = await screen.findByName("password-entry-header", { as: Gtk.HeaderBar });
         expect(header).toHaveObjectProperty("showTitleButtons", false);
-        const done = within(header).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Done" });
+        const done = within(header).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Done" });
         expect(done).toBe(await findDoneButton());
     });
 });

@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSettings2Demo } from "../../../src/demos/lists/listview-settings2.js";
-import { renderDemo } from "../../test-utils.js";
+import { activateSearchBar, openSearchEntry, renderDemo } from "../../test-utils.js";
 
 const listModel = async (): Promise<Gtk.SelectionModel> => {
     const listView = await screen.findByName("list-view", { as: Gtk.ListView });
@@ -16,23 +16,11 @@ const schemaHeaderLabels = (): string[] =>
         .map((l) => l.getLabel())
         .filter((text) => !text.includes(" "));
 
-async function activateSearch(): Promise<{ toggle: Gtk.ToggleButton; bar: Gtk.SearchBar }> {
-    const toggle = await screen.findByName("search-toggle", { as: Gtk.ToggleButton });
-    await userEvent.click(toggle);
-    const bar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
+const renderListModel = async (): Promise<Gtk.SelectionModel> => {
+    await renderDemo(listviewSettings2Demo);
 
-    await waitFor(() => {
-        expect(bar).toHaveObjectProperty("searchModeEnabled", true);
-    });
-
-    return { toggle, bar };
-}
-
-async function openSearchEntry(): Promise<Gtk.SearchEntry> {
-    await activateSearch();
-
-    return screen.findByName("search-entry", { as: Gtk.SearchEntry });
-}
+    return await listModel();
+};
 
 describe("listviewSettings2Demo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -76,7 +64,8 @@ describe("listviewSettings2Demo layout", () => {
     it("places the search entry inside the search bar", async () => {
         await renderDemo(listviewSettings2Demo);
         const bar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
-        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+        expect(within(bar).queryByName("search-entry")).toBeNull();
+        const entry = await openSearchEntry();
         await within(bar).findByName("search-entry");
         expect(entry).toBeInstanceOf(Gtk.SearchEntry);
     });
@@ -92,13 +81,12 @@ describe("listviewSettings2Demo layout", () => {
 describe("listviewSettings2Demo search and editing", () => {
     it("enables the search bar when the titlebar search toggle is activated", async () => {
         await renderDemo(listviewSettings2Demo);
-        const { bar } = await activateSearch();
+        const { bar } = await activateSearchBar();
         expect(bar).toHaveObjectProperty("searchModeEnabled", true);
     });
 
     it("narrows the list model to the matching schema when the search term matches a subset", async () => {
-        await renderDemo(listviewSettings2Demo);
-        const model = await listModel();
+        const model = await renderListModel();
         const initial = model.getNItems();
         const headers = schemaHeaderLabels();
         expect(headers.length).toBeGreaterThan(0);
@@ -117,8 +105,7 @@ describe("listviewSettings2Demo search and editing", () => {
     });
 
     it("clears the list model to zero when the search text matches no key", async () => {
-        await renderDemo(listviewSettings2Demo);
-        const model = await listModel();
+        const model = await renderListModel();
         const entry = await openSearchEntry();
         await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
 
@@ -130,8 +117,7 @@ describe("listviewSettings2Demo search and editing", () => {
 
 describe("listviewSettings2Demo search reset and editing", () => {
     it("restores the full list model when stop-search is emitted", async () => {
-        await renderDemo(listviewSettings2Demo);
-        const model = await listModel();
+        const model = await renderListModel();
         const initial = model.getNItems();
         const entry = await openSearchEntry();
         await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
@@ -149,7 +135,7 @@ describe("listviewSettings2Demo search reset and editing", () => {
 
     it("turns the search bar off when the search toggle is deactivated", async () => {
         await renderDemo(listviewSettings2Demo);
-        const { toggle, bar } = await activateSearch();
+        const { toggle, bar } = await activateSearchBar();
         await userEvent.click(toggle);
 
         await waitFor(() => {

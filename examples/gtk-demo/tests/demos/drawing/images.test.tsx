@@ -57,7 +57,7 @@ describe("imagesDemo toggle", () => {
         await renderDemo(imagesDemo);
 
         const toggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-            name: "_Insensitive",
+            name: "Insensitive",
             as: Gtk.ToggleButton,
         });
 
@@ -68,7 +68,7 @@ describe("imagesDemo toggle", () => {
         await renderDemo(imagesDemo);
 
         const toggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-            name: "_Insensitive",
+            name: "Insensitive",
             as: Gtk.ToggleButton,
         });
 

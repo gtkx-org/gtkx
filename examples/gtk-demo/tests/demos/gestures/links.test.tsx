@@ -7,6 +7,12 @@ import { describe, expect, it, vi } from "vitest";
 import { linksDemo } from "../../../src/demos/gestures/links.js";
 import { renderDemo } from "../../test-utils.js";
 
+const renderLinksLabel = async (): Promise<Gtk.Label> => {
+    await renderDemo(linksDemo);
+
+    return await screen.findByName("links-label", { as: Gtk.Label });
+};
+
 describe("linksDemo", () => {
     it("exposes the expected metadata", () => {
         expect(linksDemo.id).toBe("links");
@@ -19,8 +25,7 @@ describe("linksDemo", () => {
     });
 
     it("renders a markup-enabled label that wraps on word boundaries", async () => {
-        await renderDemo(linksDemo);
-        const label = await screen.findByName("links-label", { as: Gtk.Label });
+        const label = await renderLinksLabel();
         expect(label).toBeInstanceOf(Gtk.Label);
         expect(label).toHaveObjectProperty("useMarkup", true);
         expect(label).toHaveObjectProperty("wrap", true);
@@ -29,8 +34,7 @@ describe("linksDemo", () => {
     });
 
     it("exposes the keynav and external anchors as clickable hyperlinks in the markup", async () => {
-        await renderDemo(linksDemo);
-        const label = await screen.findByName("links-label", { as: Gtk.Label });
+        const label = await renderLinksLabel();
         const markup = label.getLabel();
         expect(markup).toMatch(/href="keynav"/);
         expect(markup).toMatch(/href="https:\/\/en\.wikipedia\.org\/wiki\/Text"/);
@@ -40,8 +44,7 @@ describe("linksDemo", () => {
 
 describe("linksDemo activate-link handler", () => {
     it("returns true and presents the keynav alert dialog when the 'keynav' link is activated", async () => {
-        await renderDemo(linksDemo);
-        const label = await screen.findByName("links-label", { as: Gtk.Label });
+        const label = await renderLinksLabel();
         const choose = vi.spyOn(Adw.AlertDialog.prototype, "choose").mockResolvedValue("ok");
         const setHeading = vi.spyOn(Adw.AlertDialog.prototype, "setHeading");
         const setBody = vi.spyOn(Adw.AlertDialog.prototype, "setBody");
@@ -61,8 +64,7 @@ describe("linksDemo activate-link handler", () => {
     });
 
     it("defers to default handling for a non-keynav link without presenting an alert dialog", async () => {
-        await renderDemo(linksDemo);
-        const label = await screen.findByName("links-label", { as: Gtk.Label });
+        const label = await renderLinksLabel();
         const choose = vi.spyOn(Adw.AlertDialog.prototype, "choose").mockResolvedValue("ok");
         let isReachedDefault = false;
 

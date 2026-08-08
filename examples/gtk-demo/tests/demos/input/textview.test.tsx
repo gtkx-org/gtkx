@@ -81,6 +81,19 @@ const iterAtOffset = (buffer: Gtk.TextBuffer, offset: number): Gtk.TextIter => {
     return iter;
 };
 
+const renderPrimaryView = async (): Promise<Gtk.TextView> => {
+    await renderDemo(textviewDemo);
+    const [view1] = await findTextViews();
+
+    return view1;
+};
+
+const expectWindowCountAbove = async (count: number): Promise<void> => {
+    await waitFor(() => {
+        expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBeGreaterThan(count);
+    });
+};
+
 const openEasterEggFromClonedButton = async (): Promise<{
     result: RenderResult;
     beforeWindows: Gtk.Widget[];
@@ -91,11 +104,7 @@ const openEasterEggFromClonedButton = async (): Promise<{
     const cloned = buttons.at(-1) as Gtk.Button;
     const beforeWindows = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW);
     await userEvent.click(cloned);
-
-    await waitFor(() => {
-        expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBeGreaterThan(beforeWindows.length);
-    });
-
+    await expectWindowCountAbove(beforeWindows.length);
     const after = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
     const newWindow = after.find((w) => !beforeWindows.includes(w));
 
@@ -129,8 +138,7 @@ describe("textviewDemo rendering", () => {
     });
 
     it("populates the shared buffer with section headings and international content", async () => {
-        await renderDemo(textviewDemo);
-        const [view1] = await findTextViews();
+        const view1 = await renderPrimaryView();
         const text = readBufferText(view1);
         expect(text).toContain("The text widget can display text with all kinds of nifty attributes");
         expect(text).toContain("Font styles.");
@@ -156,8 +164,7 @@ describe("textviewDemo rendering", () => {
 
 describe("textviewDemo formatting tags", () => {
     it("registers the demo's named formatting tags in the shared tag table", async () => {
-        await renderDemo(textviewDemo);
-        const [view1] = await findTextViews();
+        const view1 = await renderPrimaryView();
         const table = getBuffer(view1).getTagTable();
 
         for (const name of FORMATTING_TAGS) {
@@ -166,8 +173,7 @@ describe("textviewDemo formatting tags", () => {
     });
 
     it("applies the italic, bold and monospace tags to their respective text ranges", async () => {
-        await renderDemo(textviewDemo);
-        const [view1] = await findTextViews();
+        const view1 = await renderPrimaryView();
         const buffer = getBuffer(view1);
         const table = buffer.getTagTable();
 
@@ -186,8 +192,7 @@ describe("textviewDemo formatting tags", () => {
     });
 
     it("carries distinct per-tag wrap modes on the tagged wrapping sections", async () => {
-        await renderDemo(textviewDemo);
-        const [view1] = await findTextViews();
+        const view1 = await renderPrimaryView();
         const table = getBuffer(view1).getTagTable();
         expect(table.lookup("word_wrap") as Gtk.TextTag).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
         expect(table.lookup("char_wrap") as Gtk.TextTag).toHaveObjectProperty("wrapMode", Gtk.WrapMode.CHAR);
@@ -197,16 +202,14 @@ describe("textviewDemo formatting tags", () => {
 
 describe("textviewDemo embedded content", () => {
     it("embeds two paintables and four child anchors in the buffer", async () => {
-        await renderDemo(textviewDemo);
-        const [view1] = await findTextViews();
+        const view1 = await renderPrimaryView();
         const { paintables, anchors } = countEmbeddedContent(getBuffer(view1));
         expect(paintables).toBe(2);
         expect(anchors).toBe(4);
     });
 
     it("rejects user edits inside the not_editable range but accepts them elsewhere", async () => {
-        await renderDemo(textviewDemo);
-        const [view1] = await findTextViews();
+        const view1 = await renderPrimaryView();
         const buffer = getBuffer(view1);
         const lockedBefore = readBufferText(view1);
         buffer.placeCursor(iterAtOffset(buffer, getOffset(view1, "locked down")));
@@ -282,10 +285,7 @@ describe("textviewDemo easter egg", () => {
         const source = buttons[0] as Gtk.Button;
         const beforeWindows = screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length;
         await userEvent.click(source);
-
-        await waitFor(() => {
-            expect(screen.queryAllByRole(Gtk.AccessibleRole.WINDOW).length).toBeGreaterThan(beforeWindows);
-        });
+        await expectWindowCountAbove(beforeWindows);
     });
 
     it("makes the easter-egg window modal and transient for the demo root window", async () => {

@@ -4,6 +4,12 @@ import { describe, expect, it } from "vitest";
 import { expanderDemo } from "../../../src/demos/buttons/expander.js";
 import { renderDemo } from "../../test-utils.js";
 
+const renderExpander = async (): Promise<Gtk.Expander> => {
+    await renderDemo(expanderDemo);
+
+    return await screen.findByName("expander", { as: Gtk.Expander });
+};
+
 describe("expanderDemo", () => {
     it("exposes the expected metadata", () => {
         expect(expanderDemo.id).toBe("expander");
@@ -20,25 +26,23 @@ describe("expanderDemo", () => {
 
         const expander = await screen.findByName("expander", { as: Gtk.Expander });
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: false })).toBe(expander);
-        expect(expander).not.toBeExpanded();
+        expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, false);
     });
 
     it("flips its own expanded state to true when clicked", async () => {
-        await renderDemo(expanderDemo);
-        const expander = await screen.findByName("expander", { as: Gtk.Expander });
-        expect(expander).not.toBeExpanded();
+        const expander = await renderExpander();
+        expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, false);
         await userEvent.click(expander);
 
         await waitFor(() => {
-            expect(expander).toBeExpanded();
+            expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, true);
         });
 
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Details:", expanded: true })).toBe(expander);
     });
 
     it("encloses a non-editable, word-wrapped TextView seeded with the details paragraph", async () => {
-        await renderDemo(expanderDemo);
-        const expander = await screen.findByName("expander", { as: Gtk.Expander });
+        const expander = await renderExpander();
         await userEvent.click(expander);
         const textView = await within(expander).findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
         expect(textView).toBeInstanceOf(Gtk.TextView);

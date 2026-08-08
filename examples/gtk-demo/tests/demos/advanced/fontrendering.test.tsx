@@ -5,28 +5,36 @@ import { describe, expect, it } from "vitest";
 import { fontRenderingDemo } from "../../../src/demos/advanced/fontrendering.js";
 import { renderDemo } from "../../test-utils.js";
 
-async function activateGridMode(): Promise<Gtk.ToggleButton> {
-    const gridToggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-        name: "Grid",
-        as: Gtk.ToggleButton,
-    });
+async function findModeToggle(name: string): Promise<Gtk.ToggleButton> {
+    return await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name, as: Gtk.ToggleButton });
+}
 
+async function findOverlayCheck(name: string): Promise<Gtk.CheckButton> {
+    return await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name, as: Gtk.CheckButton });
+}
+
+async function renderDrawingArea(): Promise<Gtk.DrawingArea> {
+    await renderDemo(fontRenderingDemo);
+
+    return await screen.findByName("image", { as: Gtk.DrawingArea });
+}
+
+async function renderEntry(): Promise<Gtk.Entry> {
+    await renderDemo(fontRenderingDemo);
+
+    return await screen.findByName("entry", { as: Gtk.Entry });
+}
+
+async function activateGridMode(): Promise<Gtk.ToggleButton> {
+    const gridToggle = await findModeToggle("Grid");
     await userEvent.click(gridToggle);
 
     return gridToggle;
 }
 
 async function toggleExtentsAndGridOverlays(): Promise<{ extents: Gtk.CheckButton; grid: Gtk.CheckButton }> {
-    const extents = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-        name: "Show _Extents",
-        as: Gtk.CheckButton,
-    });
-
-    const grid = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-        name: "Show _Grid",
-        as: Gtk.CheckButton,
-    });
-
+    const extents = await findOverlayCheck("Show Extents");
+    const grid = await findOverlayCheck("Show Grid");
     await userEvent.click(extents);
     await userEvent.click(grid);
 
@@ -64,17 +72,8 @@ describe("fontRenderingDemo titlebar wiring", () => {
 describe("fontRenderingDemo header toggles", () => {
     it("starts in text mode with the Text toggle active", async () => {
         await renderDemo(fontRenderingDemo);
-
-        const textToggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-            name: "Text",
-            as: Gtk.ToggleButton,
-        });
-
-        const gridToggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-            name: "Grid",
-            as: Gtk.ToggleButton,
-        });
-
+        const textToggle = await findModeToggle("Text");
+        const gridToggle = await findModeToggle("Grid");
         expect(textToggle).toBePressed();
         expect(gridToggle).not.toBePressed();
     });
@@ -89,12 +88,7 @@ describe("fontRenderingDemo header toggles", () => {
         await renderDemo(fontRenderingDemo);
         const gridToggle = await activateGridMode();
         expect(gridToggle).toBePressed();
-
-        const textToggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
-            name: "Text",
-            as: Gtk.ToggleButton,
-        });
-
+        const textToggle = await findModeToggle("Text");
         await userEvent.click(textToggle);
         expect(textToggle).toBePressed();
         expect(gridToggle).not.toBePressed();
@@ -104,46 +98,23 @@ describe("fontRenderingDemo header toggles", () => {
 describe("fontRenderingDemo overlay checks", () => {
     it("renders pixel and outline overlay checkboxes with correct defaults", async () => {
         await renderDemo(fontRenderingDemo);
-
-        const showPixels = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Pixels",
-            as: Gtk.CheckButton,
-        });
-
-        const showOutline = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Outline",
-            as: Gtk.CheckButton,
-        });
-
+        const showPixels = await findOverlayCheck("Show Pixels");
+        const showOutline = await findOverlayCheck("Show Outline");
         expect(showPixels).toBeChecked();
         expect(showOutline).not.toBeChecked();
     });
 
     it("toggles the show-pixels overlay state", async () => {
         await renderDemo(fontRenderingDemo);
-
-        const showPixels = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Pixels",
-            as: Gtk.CheckButton,
-        });
-
+        const showPixels = await findOverlayCheck("Show Pixels");
         await userEvent.click(showPixels);
         expect(showPixels).not.toBeChecked();
     });
 
     it("toggles antialias and hint-metrics checks", async () => {
         await renderDemo(fontRenderingDemo);
-
-        const antialias = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "_Antialias",
-            as: Gtk.CheckButton,
-        });
-
-        const hintMetrics = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Hint _Metrics",
-            as: Gtk.CheckButton,
-        });
-
+        const antialias = await findOverlayCheck("Antialias");
+        const hintMetrics = await findOverlayCheck("Hint Metrics");
         expect(antialias).toBeChecked();
         expect(hintMetrics).not.toBeChecked();
         await userEvent.click(antialias);
@@ -172,9 +143,8 @@ describe("fontRenderingDemo zoom buttons", () => {
     });
 
     it("grows the drawing-area content width when zooming in", async () => {
-        await renderDemo(fontRenderingDemo);
+        const drawingArea = await renderDrawingArea();
         const zoomIn = await screen.findByName("up_button", { as: Gtk.Button });
-        const drawingArea = await screen.findByName("image", { as: Gtk.DrawingArea });
         const before = drawingArea.getContentWidth();
         await fireEvent(zoomIn, "clicked");
 
@@ -184,9 +154,8 @@ describe("fontRenderingDemo zoom buttons", () => {
     });
 
     it("shrinks the drawing-area content width when zooming out", async () => {
-        await renderDemo(fontRenderingDemo);
+        const drawingArea = await renderDrawingArea();
         const zoomOut = await screen.findByName("down_button", { as: Gtk.Button });
-        const drawingArea = await screen.findByName("image", { as: Gtk.DrawingArea });
         const before = drawingArea.getContentWidth();
         await fireEvent(zoomOut, "clicked");
 
@@ -198,15 +167,13 @@ describe("fontRenderingDemo zoom buttons", () => {
 
 describe("fontRenderingDemo text input", () => {
     it("renders an entry holding the default text", async () => {
-        await renderDemo(fontRenderingDemo);
-        const entry = await screen.findByName("entry", { as: Gtk.Entry });
+        const entry = await renderEntry();
         expect(entry).toBeInstanceOf(Gtk.Entry);
         expect(entry).toHaveDisplayValue("Fonts render");
     });
 
     it("updates the text state when the entry changes", async () => {
-        await renderDemo(fontRenderingDemo);
-        const entry = await screen.findByName("entry", { as: Gtk.Entry });
+        const entry = await renderEntry();
         await userEvent.clear(entry);
         await userEvent.type(entry, "Hello");
         expect(entry).toHaveDisplayValue("Hello");
@@ -234,8 +201,7 @@ describe("fontRenderingDemo drawing area", () => {
 
 describe("fontRenderingDemo font selection", () => {
     it("re-measures the content size when a larger font is selected", async () => {
-        await renderDemo(fontRenderingDemo);
-        const drawingArea = await screen.findByName("image", { as: Gtk.DrawingArea });
+        const drawingArea = await renderDrawingArea();
         const before = drawingArea.getContentHeight();
         const fontButton = await screen.findByName("font-button", { as: Gtk.FontDialogButton });
 
@@ -292,8 +258,7 @@ describe("fontRenderingDemo zoom limits", () => {
 
 describe("fontRenderingDemo keyboard zoom shortcuts", () => {
     it("zooms in via the Ctrl+plus shortcut", async () => {
-        await renderDemo(fontRenderingDemo);
-        const drawingArea = await screen.findByName("image", { as: Gtk.DrawingArea });
+        const drawingArea = await renderDrawingArea();
         const before = drawingArea.getContentWidth();
         drawingArea.grabFocus();
         await userEvent.keyboard(drawingArea, "{Control>}+{/Control}");
@@ -304,8 +269,7 @@ describe("fontRenderingDemo keyboard zoom shortcuts", () => {
     });
 
     it("zooms out via the Ctrl+minus shortcut", async () => {
-        await renderDemo(fontRenderingDemo);
-        const drawingArea = await screen.findByName("image", { as: Gtk.DrawingArea });
+        const drawingArea = await renderDrawingArea();
         const before = drawingArea.getContentWidth();
         drawingArea.grabFocus();
         await userEvent.keyboard(drawingArea, "{Control>}-{/Control}");
@@ -319,12 +283,7 @@ describe("fontRenderingDemo keyboard zoom shortcuts", () => {
 describe("fontRenderingDemo overlay animation", () => {
     it("checks the Show Outline overlay when toggled on", async () => {
         const result = await renderDemo(fontRenderingDemo);
-
-        const showOutline = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Outline",
-            as: Gtk.CheckButton,
-        });
-
+        const showOutline = await findOverlayCheck("Show Outline");
         await userEvent.click(showOutline);
         expect(showOutline).toBeChecked();
         await result.unmount();
@@ -332,12 +291,7 @@ describe("fontRenderingDemo overlay animation", () => {
 
     it("unchecks the Show Pixels overlay when toggled off", async () => {
         const result = await renderDemo(fontRenderingDemo);
-
-        const showPixels = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-            name: "Show _Pixels",
-            as: Gtk.CheckButton,
-        });
-
+        const showPixels = await findOverlayCheck("Show Pixels");
         await userEvent.click(showPixels);
         expect(showPixels).not.toBeChecked();
         await result.unmount();
@@ -346,8 +300,7 @@ describe("fontRenderingDemo overlay animation", () => {
 
 describe("fontRenderingDemo paint callback", () => {
     it("has a non-zero measured content size in text mode", async () => {
-        await renderDemo(fontRenderingDemo);
-        const drawingArea = await screen.findByName("image", { as: Gtk.DrawingArea });
+        const drawingArea = await renderDrawingArea();
 
         await act(() => {
             drawingArea.queueDraw();
@@ -358,8 +311,7 @@ describe("fontRenderingDemo paint callback", () => {
     });
 
     it("re-measures to a different content size after switching to grid mode", async () => {
-        await renderDemo(fontRenderingDemo);
-        const drawingArea = await screen.findByName("image", { as: Gtk.DrawingArea });
+        const drawingArea = await renderDrawingArea();
         const textSize: [number, number] = [drawingArea.getContentWidth(), drawingArea.getContentHeight()];
         await activateGridMode();
 
@@ -388,8 +340,7 @@ describe("fontRenderingDemo paint callback", () => {
 
 describe("fontRenderingDemo text entry", () => {
     it("clears the entry and accepts empty text via the change handler", async () => {
-        await renderDemo(fontRenderingDemo);
-        const entry = await screen.findByName("entry", { as: Gtk.Entry });
+        const entry = await renderEntry();
         await userEvent.clear(entry);
         expect(entry).toHaveDisplayValue("");
     });

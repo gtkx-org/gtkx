@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from "vitest";
 import { dndDemo } from "../../../src/demos/gestures/dnd.js";
 import { makeRgbaValue, makeStringValue, renderDemo } from "../../test-utils.js";
 
+type ChildTransform = ReturnType<Gtk.Fixed["getChildTransform"]>;
+
 const findCanvas = async (): Promise<Gtk.Fixed> => screen.findByName("canvas", { as: Gtk.Fixed });
 const findItemLabel = async (id: string): Promise<Gtk.Label> => screen.findByName(`item${id}`, { as: Gtk.Label });
 
@@ -58,20 +60,40 @@ const clickEnabledMenuButton = async (name: string): Promise<void> => {
     await userEvent.click(button);
 };
 
-const beginDragRevealingTrash = async (item: Gtk.Label, trash: Gtk.Box): Promise<Gtk.DragSource | null> => {
+const renderCanvasItem = async (): Promise<{ canvas: Gtk.Fixed; item1: Gtk.Label }> => {
+    await renderDemo(dndDemo);
+    const canvas = await findCanvas();
+    const item1 = await findItemLabel("1");
+
+    return { canvas, item1 };
+};
+
+const findTrashZone = async (): Promise<Gtk.Box> => screen.findByName("trash-zone", { as: Gtk.Box });
+
+const renderItemWithTrashHidden = async (): Promise<Gtk.Label> => {
+    await renderDemo(dndDemo);
+    const item1 = await findItemLabel("1");
+    expect(screen.queryByName("trash-zone")).toBeNull();
+
+    return item1;
+};
+
+const expectTransformChanged = async (canvas: Gtk.Fixed, item: Gtk.Label, before: ChildTransform): Promise<void> => {
+    await waitFor(() => {
+        const after = canvas.getChildTransform(item);
+        expect(after?.equal(before)).toBe(false);
+    });
+};
+
+const beginItemDrag = async (item: Gtk.Label): Promise<Gtk.DragSource> => {
     const dragSource = queryController(item, Gtk.DragSource);
-    expect(dragSource).toBeInstanceOf(Gtk.DragSource);
 
     if (!dragSource) {
-        return null;
+        throw new TypeError("expected a Gtk.DragSource on the item");
     }
 
     await act(() => {
         dragSource.emit("drag-begin", null);
-    });
-
-    await waitFor(() => {
-        expect(trash).toBeVisible();
     });
 
     return dragSource;
@@ -111,19 +133,20 @@ describe("dndDemo initial canvas", () => {
         }
     });
 
-    it("attaches a hidden context-menu popover at startup", async () => {
+    it("shows no context-menu popover until a context-menu press opens one", async () => {
         await renderDemo(dndDemo);
+        expect(screen.queryByName("context-menu")).toBeNull();
+        const canvas = await findCanvas();
+        await triggerContextMenu(canvas, 50, 50);
         const popover = await screen.findByName("context-menu", { as: Gtk.Popover });
         expect(popover).toBeInstanceOf(Gtk.Popover);
-        expect(popover).not.toBeVisible();
+        expect(popover).toBeVisible();
     });
 });
 
 describe("dndDemo canvas drop", () => {
     it("moves an item to the dropped location when its id is dropped on the canvas", async () => {
-        await renderDemo(dndDemo);
-        const canvas = await findCanvas();
-        const item1 = await findItemLabel("1");
+        const { canvas, item1 } = await renderCanvasItem();
         const [beforeX, beforeY] = canvas.getChildPosition(item1);
         await userEvent.drop(canvas, makeStringValue("1"), { x: 250, y: 250 });
 
@@ -184,22 +207,14 @@ describe("dndDemo inline editing", () => {
 
 describe("dndDemo item rotation", () => {
     it("changes the item transform while the rotate gesture reports an angle delta", async () => {
-        await renderDemo(dndDemo);
-        const canvas = await findCanvas();
-        const item1 = await findItemLabel("1");
+        const { canvas, item1 } = await renderCanvasItem();
         const before = canvas.getChildTransform(item1);
         await userEvent.rotate(item1, 0.5, 0.5);
-
-        await waitFor(() => {
-            const after = canvas.getChildTransform(item1);
-            expect(after?.equal(before)).toBe(false);
-        });
+        await expectTransformChanged(canvas, item1, before);
     });
 
     it("commits the rotation to the item transform when the rotate gesture ends", async () => {
-        await renderDemo(dndDemo);
-        const canvas = await findCanvas();
-        const item1 = await findItemLabel("1");
+        const { canvas, item1 } = await renderCanvasItem();
         const rotate = queryController(item1, Gtk.GestureRotate);
         expect(rotate).toBeInstanceOf(Gtk.GestureRotate);
 
@@ -214,10 +229,7 @@ describe("dndDemo item rotation", () => {
             rotate.emit("end", null);
         });
 
-        await waitFor(() => {
-            const after = canvas.getChildTransform(item1);
-            expect(after?.equal(before)).toBe(false);
-        });
+        await expectTransformChanged(canvas, item1, before);
     });
 
     it("rotates the item when the inline editor scale value changes", async () => {
@@ -331,22 +343,15 @@ describe("dndDemo non-context-menu click is ignored", () => {
             spy.mockRestore();
         }
 
-        const popover = await screen.findByName("context-menu", { as: Gtk.Popover });
-        expect(popover).not.toBeVisible();
+        expect(screen.queryByName("context-menu")).toBeNull();
     });
 });
 
 describe("dndDemo item drag-source side effects", () => {
     it("dims the item and reveals the trash zone on drag-begin, then restores them on drag-end", async () => {
-        await renderDemo(dndDemo);
-        const item1 = await findItemLabel("1");
-        const trash = await screen.findByName("trash-zone", { as: Gtk.Box });
-        expect(trash).not.toBeVisible();
-        const dragSource = await beginDragRevealingTrash(item1, trash);
-
-        if (!dragSource) {
-            return;
-        }
+        const item1 = await renderItemWithTrashHidden();
+        const dragSource = await beginItemDrag(item1);
+        expect(await findTrashZone()).toBeVisible();
 
         await waitFor(() => {
             expect(item1.getOpacity()).toBeCloseTo(0.3, 2);
@@ -358,7 +363,7 @@ describe("dndDemo item drag-source side effects", () => {
 
         await waitFor(() => {
             expect(item1.getOpacity()).toBeCloseTo(1, 2);
-            expect(trash).not.toBeVisible();
+            expect(screen.queryByName("trash-zone")).toBeNull();
         });
     });
 
@@ -388,14 +393,9 @@ describe("dndDemo item drag-source side effects", () => {
 
 describe("dndDemo trash zone", () => {
     it("deletes an item when its id is dropped on the trash zone", async () => {
-        await renderDemo(dndDemo);
-        const item1 = await findItemLabel("1");
-        const trash = await screen.findByName("trash-zone", { as: Gtk.Box });
-
-        if (!(await beginDragRevealingTrash(item1, trash))) {
-            return;
-        }
-
+        const item1 = await renderItemWithTrashHidden();
+        await beginItemDrag(item1);
+        const trash = await findTrashZone();
         await userEvent.drop(trash, makeStringValue("1"));
 
         await waitFor(() => {
@@ -406,8 +406,9 @@ describe("dndDemo trash zone", () => {
     });
 
     it("highlights the trash zone with a background class on drop-target enter and clears it on leave", async () => {
-        await renderDemo(dndDemo);
-        const trash = await screen.findByName("trash-zone", { as: Gtk.Box });
+        const item1 = await renderItemWithTrashHidden();
+        await beginItemDrag(item1);
+        const trash = await findTrashZone();
         const dropTarget = queryController(trash, Gtk.DropTarget);
         expect(dropTarget).toBeInstanceOf(Gtk.DropTarget);
 

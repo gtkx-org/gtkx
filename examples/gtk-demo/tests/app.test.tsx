@@ -1,21 +1,9 @@
-import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplication } from "@gtkx/jsx/gtk";
-import { rootElement } from "@gtkx/react";
-import { render, screen } from "@gtkx/testing";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-import { Demo } from "../src/app.js";
-import { createApplicationIdFactory } from "./test-utils.js";
+import { createAppRenderer } from "./render-app.js";
 
-const nextApplicationId = createApplicationIdFactory("org.gtkx.gtkdemoapp");
-
-const renderDemo = () =>
-    render(
-        <GtkApplication applicationId={nextApplicationId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-            <Demo />
-        </GtkApplication>,
-        { container: rootElement },
-    );
+const renderDemo = createAppRenderer("org.gtkx.gtkdemoapp");
 
 describe("App", () => {
     it("renders the main window titled 'GTK Demo'", async () => {

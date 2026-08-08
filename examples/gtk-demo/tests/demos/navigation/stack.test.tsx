@@ -6,6 +6,16 @@ import { renderDemo } from "../../test-utils.js";
 
 const findStack = async (): Promise<Gtk.Stack> => screen.findByName("stack", { as: Gtk.Stack });
 
+const renderStack = async (): Promise<Gtk.Stack> => {
+    await renderDemo(stackDemo);
+
+    return await findStack();
+};
+
+const clickTab = async (name: string): Promise<void> => {
+    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name }));
+};
+
 describe("stackDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(stackDemo.id).toBe("stack");
@@ -31,16 +41,14 @@ describe("stackDemo structure", () => {
     });
 
     it("uses crossfade as the stack transition", async () => {
-        await renderDemo(stackDemo);
-        const stack = await findStack();
+        const stack = await renderStack();
         expect(stack).toHaveObjectProperty("transitionType", Gtk.StackTransitionType.CROSSFADE);
     });
 });
 
 describe("stackDemo pages", () => {
     it("declares pages with the expected titles and ids", async () => {
-        await renderDemo(stackDemo);
-        const stack = await findStack();
+        const stack = await renderStack();
         const page1Child = stack.getChildByName("page1");
         const page2Child = stack.getChildByName("page2");
         const page3Child = stack.getChildByName("page3");
@@ -58,8 +66,9 @@ describe("stackDemo pages", () => {
     });
 
     it("renders the Page 2 check button inside the stack", async () => {
-        await renderDemo(stackDemo);
-        const stack = await findStack();
+        const stack = await renderStack();
+        expect(within(stack).queryByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Page 2" })).toBeNull();
+        await clickTab("Page 2");
         const checkButton = await within(stack).findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Page 2" });
         expect(checkButton).toBeInstanceOf(Gtk.CheckButton);
     });
@@ -67,15 +76,13 @@ describe("stackDemo pages", () => {
 
 describe("stackDemo switching", () => {
     it("starts with the first page visible", async () => {
-        await renderDemo(stackDemo);
-        const stack = await findStack();
+        const stack = await renderStack();
         expect(stack).toHaveObjectProperty("visibleChildName", "page1");
     });
 
     it("changes the visible page when a different switcher tab is clicked", async () => {
-        await renderDemo(stackDemo);
-        const stack = await findStack();
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Page 2" }));
+        const stack = await renderStack();
+        await clickTab("Page 2");
 
         await waitFor(() => {
             expect(stack).toHaveObjectProperty("visibleChildName", "page2");
@@ -103,15 +110,14 @@ describe("stackDemo switching", () => {
 
 describe("stackDemo page interaction", () => {
     it("returns to the first page when the Page 1 tab is clicked", async () => {
-        await renderDemo(stackDemo);
-        const stack = await findStack();
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Page 2" }));
+        const stack = await renderStack();
+        await clickTab("Page 2");
 
         await waitFor(() => {
             expect(stack).toHaveObjectProperty("visibleChildName", "page2");
         });
 
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Page 1" }));
+        await clickTab("Page 1");
 
         await waitFor(() => {
             expect(stack).toHaveObjectProperty("visibleChildName", "page1");
@@ -121,9 +127,8 @@ describe("stackDemo page interaction", () => {
     });
 
     it("activates the Page 2 check button via userEvent.click", async () => {
-        await renderDemo(stackDemo);
-        const stack = await findStack();
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Page 2" }));
+        const stack = await renderStack();
+        await clickTab("Page 2");
         const checkButton = await within(stack).findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Page 2" });
         expect(within(stack).queryByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Page 2", checked: true })).toBeNull();
         await userEvent.click(checkButton);

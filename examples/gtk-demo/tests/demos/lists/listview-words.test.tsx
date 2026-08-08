@@ -6,15 +6,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listviewWordsDemo } from "../../../src/demos/lists/listview-words.js";
-import { renderDemo } from "../../test-utils.js";
+import { findOpenButton, renderDemo } from "../../test-utils.js";
 
 const tempDirRef = { path: "" };
 
 async function renderDemoAndClickOpen() {
     await renderDemo(listviewWordsDemo);
-    const openButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
+    const openButton = await findOpenButton();
     await userEvent.click(openButton);
 }
+
+const findListView = async (): Promise<Gtk.ListView> => await screen.findByName("list-view", { as: Gtk.ListView });
+
+const findSearchEntry = async (): Promise<Gtk.SearchEntry> =>
+    await screen.findByName("search-entry", { as: Gtk.SearchEntry });
 
 const wordsFile = (words: string[]): string => {
     const wordsPath = join(tempDirRef.path, "words.txt");
@@ -47,25 +52,25 @@ describe("listviewWordsDemo metadata", () => {
 describe("listviewWordsDemo layout", () => {
     it("installs a header bar with an Open button", async () => {
         await renderDemo(listviewWordsDemo);
-        const openButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
+        const openButton = await findOpenButton();
         expect(openButton).toHaveObjectProperty("useUnderline", true);
     });
 
     it("renders a GtkSearchEntry with the configured placeholder", async () => {
         await renderDemo(listviewWordsDemo);
         const entry = await screen.findByPlaceholderText("Search words...");
-        expect(entry).toHavePlaceholderText("Search words...");
+        expect(entry).toBeInstanceOf(Gtk.SearchEntry);
     });
 
     it("renders a GtkListView with NONE selection", async () => {
         await renderDemo(listviewWordsDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const lv = await findListView();
         expect(lv.getModel()).toBeInstanceOf(Gtk.NoSelection);
     });
 
     it("populates the list view from the loaded word list", async () => {
         await renderDemo(listviewWordsDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const lv = await findListView();
         expect((lv.getModel() as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
     });
 
@@ -79,7 +84,7 @@ describe("listviewWordsDemo layout", () => {
 describe("listviewWordsDemo search interactions", () => {
     it("updates the search entry text when text is typed", async () => {
         await renderDemo(listviewWordsDemo);
-        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+        const entry = await findSearchEntry();
         await userEvent.type(entry, "lorem");
         expect(await screen.findByDisplayValue("lorem")).toBe(entry);
     });
@@ -91,7 +96,7 @@ describe("listviewWordsDemo search interactions", () => {
 
         try {
             await renderDemoAndClickOpen();
-            const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+            const lv = await findListView();
 
             await waitFor(() => {
                 expect(lv.getModel()).toHaveObjectProperty("nItems", 4);
@@ -101,7 +106,7 @@ describe("listviewWordsDemo search interactions", () => {
                 await screen.findByText(word);
             }
 
-            const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+            const entry = await findSearchEntry();
             await userEvent.type(entry, "gamma");
 
             await waitFor(() => {
@@ -119,8 +124,8 @@ describe("listviewWordsDemo search interactions", () => {
 describe("listviewWordsDemo search filtering", () => {
     it("filters the list view to zero matches when the search text matches nothing", async () => {
         await renderDemo(listviewWordsDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
-        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+        const lv = await findListView();
+        const entry = await findSearchEntry();
         await userEvent.type(entry, "qqqzzz");
 
         await waitFor(() => {
@@ -130,7 +135,7 @@ describe("listviewWordsDemo search filtering", () => {
 
     it("clears the search entry when cleared", async () => {
         await renderDemo(listviewWordsDemo);
-        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+        const entry = await findSearchEntry();
         await userEvent.type(entry, "abc");
         await userEvent.clear(entry);
         expect(screen.queryByDisplayValue("abc")).toBeNull();
@@ -138,8 +143,8 @@ describe("listviewWordsDemo search filtering", () => {
 
     it("restores the full word count when the search entry is cleared after filtering", async () => {
         await renderDemo(listviewWordsDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
-        const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+        const lv = await findListView();
+        const entry = await findSearchEntry();
         const initial = (lv.getModel() as Gtk.SelectionModel).getNItems();
         await userEvent.type(entry, "z");
 
@@ -169,14 +174,14 @@ describe("listviewWordsDemo Open button", () => {
                 expect(dialogSpy).toHaveBeenCalled();
             });
 
-            const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+            const lv = await findListView();
 
             await waitFor(() => {
                 expect(lv.getModel()).toHaveObjectProperty("nItems", 4);
             });
 
             await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "4 lines" });
-            const entry = await screen.findByName("search-entry", { as: Gtk.SearchEntry });
+            const entry = await findSearchEntry();
             await userEvent.type(entry, "gamma");
 
             await waitFor(() => {

@@ -17,6 +17,12 @@ const WEATHER_ICON_NAMES = new Set([
     "weather-storm-symbolic",
 ]);
 
+const renderListView = async (): Promise<Gtk.ListView> => {
+    await renderDemo(listviewWeatherDemo);
+
+    return await screen.findByName("list-view", { as: Gtk.ListView });
+};
+
 describe("listviewWeatherDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewWeatherDemo.id).toBe("listview-weather");
@@ -32,21 +38,18 @@ describe("listviewWeatherDemo metadata", () => {
 
 describe("listviewWeatherDemo list view", () => {
     it("renders a horizontal GtkListView with separators and no selection", async () => {
-        await renderDemo(listviewWeatherDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const lv = await renderListView();
         expect(lv).toHaveObjectProperty("orientation", Gtk.Orientation.HORIZONTAL);
         expect(lv).toHaveObjectProperty("showSeparators", true);
     });
 
     it("uses a no-selection model", async () => {
-        await renderDemo(listviewWeatherDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const lv = await renderListView();
         expect(lv.getModel()).toBeInstanceOf(Gtk.NoSelection);
     });
 
     it("keeps the selection empty when a cell is clicked", async () => {
-        await renderDemo(listviewWeatherDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const lv = await renderListView();
         const model = lv.getModel() as Gtk.SelectionModel;
         expect(Number(model.getSelection().getSize())).toBe(0);
         const cell = within(lv).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)[0] as Gtk.Widget;
@@ -55,8 +58,7 @@ describe("listviewWeatherDemo list view", () => {
     });
 
     it("populates the list view with the full deterministic hourly dataset", async () => {
-        await renderDemo(listviewWeatherDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const lv = await renderListView();
         const model = lv.getModel() as Gtk.SelectionModel;
         expect(model).toHaveObjectProperty("nItems", EXPECTED_ITEM_COUNT);
     });
@@ -71,8 +73,7 @@ describe("listviewWeatherDemo cell content", () => {
     });
 
     it("maps each weather type to a known symbolic weather icon", async () => {
-        await renderDemo(listviewWeatherDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const lv = await renderListView();
         const images = within(lv).getAllByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
         expect(images.length).toBeGreaterThan(0);
 
@@ -83,8 +84,7 @@ describe("listviewWeatherDemo cell content", () => {
     });
 
     it("renders the first hour cell at midnight and temperature labels in materialized cells", async () => {
-        await renderDemo(listviewWeatherDemo);
-        const lv = await screen.findByName("list-view", { as: Gtk.ListView });
+        const lv = await renderListView();
         const hourLabels = within(lv).getAllByText(/^\d{2}:\d{2}$/, { as: Gtk.Label });
         const tempLabels = within(lv).getAllByText(/^-?\d+°$/);
         expect(hourLabels.map((label) => label.getText())).toContain("00:00");

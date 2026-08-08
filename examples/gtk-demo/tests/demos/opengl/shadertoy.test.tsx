@@ -1,3 +1,4 @@
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -6,9 +7,17 @@ import { renderDemo } from "../../test-utils.js";
 
 const PRESET_NAMES = ["Alien Planet", "Mandelbrot", "Neon", "Cogs", "Glowing Stars"];
 
+const findButton = async (name: string): Promise<Gtk.Button> =>
+    screen.findByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.Button });
+
 const clickPreset = async (name: string): Promise<void> => {
-    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.Button });
-    await userEvent.click(button);
+    await userEvent.click(await findButton(name));
+};
+
+const renderAndFindSourceView = async (): Promise<Gtk.TextView> => {
+    await renderDemo(shadertoyDemo);
+
+    return screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
 };
 
 vi.setConfig({ testTimeout: 30_000 });
@@ -29,15 +38,14 @@ describe("shadertoyDemo", () => {
         const glArea = await screen.findByName("shadertoy-gl-area", { as: Gtk.GLArea });
 
         await waitFor(() => {
-            expect(glArea.getAllocatedWidth()).toBeGreaterThan(0);
+            expect(glArea.getWidth()).toBeGreaterThan(0);
         });
 
-        expect(glArea).toHaveObjectProperty("useEs", true);
+        expect(glArea).toHaveObjectProperty("allowedApis", Gdk.GLAPI.GLES);
     });
 
     it("seeds the source editor with the Alien Planet fragment shader", async () => {
-        await renderDemo(shadertoyDemo);
-        const sourceView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        const sourceView = await renderAndFindSourceView();
         expect(await screen.findByDisplayValue(/MAX_DISTANCE/)).toBe(sourceView);
         expect(sourceView).toHaveDisplayValue(/mountainColor/);
         expect(sourceView).toHaveDisplayValue(/void mainImage/);
@@ -47,32 +55,19 @@ describe("shadertoyDemo", () => {
 describe("shadertoyDemo shader presets", () => {
     it("exposes Restart, Clear, and one button per shader preset", async () => {
         await renderDemo(shadertoyDemo);
-
-        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Restart the demo" })).toBeInstanceOf(
-            Gtk.Button,
-        );
-
-        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Clear the text view" })).toBeInstanceOf(
-            Gtk.Button,
-        );
+        expect(await findButton("Restart the demo")).toBeInstanceOf(Gtk.Button);
+        expect(await findButton("Clear the text view")).toBeInstanceOf(Gtk.Button);
 
         for (const presetName of PRESET_NAMES) {
-            expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: presetName })).toBeInstanceOf(Gtk.Button);
+            expect(await findButton(presetName)).toBeInstanceOf(Gtk.Button);
         }
     });
 });
 
 describe("shadertoyDemo editor", () => {
     it("clears the editor buffer when the Clear button is activated", async () => {
-        await renderDemo(shadertoyDemo);
-        expect(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)).toHaveDisplayValue(/void mainImage/);
-
-        const clear = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-            name: "Clear the text view",
-            as: Gtk.Button,
-        });
-
-        await userEvent.click(clear);
+        expect(await renderAndFindSourceView()).toHaveDisplayValue(/void mainImage/);
+        await userEvent.click(await findButton("Clear the text view"));
 
         await waitFor(() => {
             expect(screen.queryByDisplayValue(/.+/)).toBeNull();
@@ -80,8 +75,7 @@ describe("shadertoyDemo editor", () => {
     });
 
     it("loads each preset shader into the buffer when its button is activated", async () => {
-        await renderDemo(shadertoyDemo);
-        await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await renderAndFindSourceView();
         await screen.findByDisplayValue(/MAX_DISTANCE/);
         await clickPreset("Mandelbrot");
         await screen.findByDisplayValue(/MANDELBROT_ITER/);
@@ -101,8 +95,7 @@ describe("shadertoyDemo editor", () => {
     });
 
     it("propagates user edits to the buffer", async () => {
-        await renderDemo(shadertoyDemo);
-        const sourceView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+        const sourceView = await renderAndFindSourceView();
         await userEvent.clear(sourceView);
         await userEvent.type(sourceView, "// custom shader");
         expect(await screen.findByDisplayValue("// custom shader")).toBe(sourceView);

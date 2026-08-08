@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { render, renderHook, screen } from "@gtkx/testing";
+import { render, renderHook, screen, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import type { Demo } from "../../src/demos/types.js";
 import { Sidebar } from "../../src/components/sidebar.js";
@@ -33,21 +33,19 @@ const standaloneDemo: Demo = {
 
 const noop = vi.fn();
 
-const ContextProbeWrapper = ({ children }: { children: ReactNode }) => (
-    <DemoProvider demos={[intro, buttonDemo, expanderDemo]}>
-        <Sidebar isSearchActive={false} onSearchChanged={noop} />
+const drawSidebar = (demos: Demo[], isSearchActive = false, children?: ReactNode): ReactNode => (
+    <DemoProvider demos={demos}>
+        <Sidebar isSearchActive={isSearchActive} onSearchChanged={noop} />
         {children}
     </DemoProvider>
 );
 
+const ContextProbeWrapper = ({ children }: { children: ReactNode }) =>
+    drawSidebar([intro, buttonDemo, expanderDemo], false, children);
+
 describe("Sidebar", () => {
     it("renders the Buttons category node grouping its two child demos", async () => {
-        await render(
-            <DemoProvider demos={[intro, buttonDemo, expanderDemo, standaloneDemo]}>
-                <Sidebar isSearchActive={false} onSearchChanged={noop} />
-            </DemoProvider>,
-        );
-
+        await render(drawSidebar([intro, buttonDemo, expanderDemo, standaloneDemo]));
         const category = await screen.findByText("Buttons");
         const first = await screen.findByText("Button");
         const second = await screen.findByText("Expander");
@@ -56,24 +54,14 @@ describe("Sidebar", () => {
     });
 
     it("renders top-level demos by their display title", async () => {
-        await render(
-            <DemoProvider demos={[intro, standaloneDemo]}>
-                <Sidebar isSearchActive={false} onSearchChanged={noop} />
-            </DemoProvider>,
-        );
-
+        await render(drawSidebar([intro, standaloneDemo]));
         const standalone = await screen.findByText("Standalone");
         const introEntry = await screen.findByText("GTK Demo");
         expect(standalone).not.toBe(introEntry);
     });
 
     it("opens the sidebar search bar when search mode is enabled", async () => {
-        await render(
-            <DemoProvider demos={[intro, buttonDemo, expanderDemo]}>
-                <Sidebar isSearchActive={true} onSearchChanged={noop} />
-            </DemoProvider>,
-        );
-
+        await render(drawSidebar([intro, buttonDemo, expanderDemo], true));
         const searchBar = await screen.findByName("sidebar-search-bar", { as: Gtk.SearchBar });
         expect(searchBar).toHaveObjectProperty("searchModeEnabled", true);
         await screen.findByText("Buttons");
@@ -82,5 +70,22 @@ describe("Sidebar", () => {
     it("exposes the current demo via the context", async () => {
         const { result } = await renderHook(() => useDemo(), { wrapper: ContextProbeWrapper });
         expect(result.current.currentDemo?.id).toBe("intro");
+    });
+});
+
+describe("Sidebar accessibility", () => {
+    it("names every expander in the tree and describes the ones that expand", async () => {
+        await render(drawSidebar([intro, buttonDemo, expanderDemo]));
+        const list = await screen.findByName("sidebar-list", { as: Gtk.ListView });
+        const expanders = within(list).getAllByRole(Gtk.AccessibleRole.BUTTON);
+        expect(expanders.length).toBeGreaterThan(0);
+
+        for (const expander of expanders) {
+            expect(expander).toHaveAccessibleName();
+        }
+
+        expect(within(list).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Buttons" })).toHaveAccessibleDescription(
+            "Collapse",
+        );
     });
 });

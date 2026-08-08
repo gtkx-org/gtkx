@@ -17,6 +17,14 @@ const findThreeFingerSwipe = (widget: Gtk.Widget): Gtk.GestureSwipe => {
     return swipe;
 };
 
+const expectRedrawOnGesture = async (gesture: (area: Gtk.DrawingArea) => Promise<void>): Promise<void> => {
+    await renderDemo(gesturesDemo);
+    const drawingArea = await findDrawingArea();
+    const queueDraw = vi.spyOn(drawingArea, "queueDraw");
+    await gesture(drawingArea);
+    expect(queueDraw).toHaveBeenCalled();
+};
+
 const paintWindow = async (): Promise<string> => {
     const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
 
@@ -52,35 +60,27 @@ describe("gesturesDemo metadata", () => {
 
 describe("gesturesDemo redraw on gesture", () => {
     it("queues a redraw when a swipe gesture completes", async () => {
-        await renderDemo(gesturesDemo);
-        const drawingArea = await findDrawingArea();
-        const queueDraw = vi.spyOn(drawingArea, "queueDraw");
-        await userEvent.swipe(drawingArea, 100, 50);
-        expect(queueDraw).toHaveBeenCalled();
+        await expectRedrawOnGesture(async (area) => {
+            await userEvent.swipe(area, 100, 50);
+        });
     });
 
     it("queues a redraw when a rotate angle change is recognized", async () => {
-        await renderDemo(gesturesDemo);
-        const drawingArea = await findDrawingArea();
-        const queueDraw = vi.spyOn(drawingArea, "queueDraw");
-        await userEvent.rotate(drawingArea, 0.5, 0.1);
-        expect(queueDraw).toHaveBeenCalled();
+        await expectRedrawOnGesture(async (area) => {
+            await userEvent.rotate(area, 0.5, 0.1);
+        });
     });
 
     it("queues a redraw when a zoom scale change is recognized", async () => {
-        await renderDemo(gesturesDemo);
-        const drawingArea = await findDrawingArea();
-        const queueDraw = vi.spyOn(drawingArea, "queueDraw");
-        await userEvent.zoom(drawingArea, 1.2);
-        expect(queueDraw).toHaveBeenCalled();
+        await expectRedrawOnGesture(async (area) => {
+            await userEvent.zoom(area, 1.2);
+        });
     });
 
     it("queues a redraw when a long press is recognized", async () => {
-        await renderDemo(gesturesDemo);
-        const drawingArea = await findDrawingArea();
-        const queueDraw = vi.spyOn(drawingArea, "queueDraw");
-        await userEvent.longPress(drawingArea, 100, 100);
-        expect(queueDraw).toHaveBeenCalled();
+        await expectRedrawOnGesture(async (area) => {
+            await userEvent.longPress(area, 100, 100);
+        });
     });
 });
 

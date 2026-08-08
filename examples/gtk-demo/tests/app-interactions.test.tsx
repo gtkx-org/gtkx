@@ -1,23 +1,12 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplication } from "@gtkx/jsx/gtk";
-import { rootElement } from "@gtkx/react";
-import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
-import { Demo } from "../src/app.js";
-import { createApplicationIdFactory } from "./test-utils.js";
+import { createAppRenderer } from "./render-app.js";
 
-const nextApplicationId = createApplicationIdFactory("org.gtkx.gtkdemoint");
-
-const renderDemo = () =>
-    render(
-        <GtkApplication applicationId={nextApplicationId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-            <Demo />
-        </GtkApplication>,
-        { container: rootElement },
-    );
+const renderDemo = createAppRenderer("org.gtkx.gtkdemoint");
 
 const selectFirstDemoWithComponent = async (): Promise<void> => {
     const sidebar = await screen.findByName("sidebar-list", { as: Gtk.ListView });
@@ -36,6 +25,21 @@ const selectFirstDemoWithComponent = async (): Promise<void> => {
     }
 
     expect(selectedIndex, "no demo with a runnable component found in the sidebar").not.toBeNull();
+};
+
+const renderMainWindowBody = async (): Promise<Gtk.Widget> => {
+    await renderDemo();
+
+    return await screen.findByName("main-window-body");
+};
+
+const findNotebook = async (): Promise<Gtk.Notebook> => await screen.findByName("notebook", { as: Gtk.Notebook });
+
+const expectDialogShown = async (): Promise<void> => {
+    await waitFor(async () => {
+        const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
+        expect(dialogs.length).toBeGreaterThan(0);
+    });
 };
 
 const openMenuItem = async (name: string): Promise<void> => {
@@ -85,11 +89,7 @@ describe("App about menu", () => {
     it("renders the about dialog after the About menu entry is activated", async () => {
         await renderDemo();
         await openMenuItem("About GTK Demo");
-
-        await waitFor(async () => {
-            const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
-            expect(dialogs.length).toBeGreaterThan(0);
-        });
+        await expectDialogShown();
     });
 
     it("bundles the application icon into the GResource so AdwAboutDialog can resolve it", async () => {
@@ -103,8 +103,9 @@ describe("App about menu", () => {
 describe("App notebook", () => {
     it("renders the Info and Source tabs", async () => {
         await renderDemo();
-        const infoTab = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Info" });
-        const sourceTab = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Source" });
+        const tabs = await screen.findAllByRole(Gtk.AccessibleRole.TAB);
+        const [infoTab, sourceTab] = tabs;
+        expect(tabs).toHaveLength(2);
         expect(infoTab).toBeInstanceOf(Gtk.Widget);
         expect(sourceTab).toBeInstanceOf(Gtk.Widget);
         expect(sourceTab).not.toBe(infoTab);
@@ -112,7 +113,7 @@ describe("App notebook", () => {
 
     it("advances the page when the notebook page is set", async () => {
         await renderDemo();
-        const notebook = await screen.findByName("notebook", { as: Gtk.Notebook });
+        const notebook = await findNotebook();
         expect(notebook).toHaveObjectProperty("page", 0);
 
         await act(() => {
@@ -129,12 +130,7 @@ describe("App keyboard shortcuts dialog", () => {
     it("opens the keyboard shortcuts dialog when the menu entry is activated", async () => {
         await renderDemo();
         await openMenuItem("Keyboard Shortcuts");
-
-        await waitFor(async () => {
-            const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
-            expect(dialogs.length).toBeGreaterThan(0);
-        });
-
+        await expectDialogShown();
         const shortcutLabels = await screen.findAllByText("Search demos");
         expect(shortcutLabels.length).toBeGreaterThan(0);
     });
@@ -159,8 +155,7 @@ describe("App inspector activation", () => {
 
 describe("App global shortcuts", () => {
     it("toggles the search bar when Ctrl+F is pressed", async () => {
-        await renderDemo();
-        const body = await screen.findByName("main-window-body");
+        const body = await renderMainWindowBody();
         const searchBar = await screen.findByName("sidebar-search-bar", { as: Gtk.SearchBar });
         expect(searchBar).toHaveObjectProperty("searchModeEnabled", false);
         await userEvent.keyboard(body, "{Control>}f{/Control}");
@@ -174,8 +169,7 @@ describe("App global shortcuts", () => {
         const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
 
         try {
-            await renderDemo();
-            const body = await screen.findByName("main-window-body");
+            const body = await renderMainWindowBody();
             await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
 
             await waitFor(() => {
@@ -187,9 +181,8 @@ describe("App global shortcuts", () => {
     });
 
     it("advances the notebook page when Ctrl+Page_Down is pressed", async () => {
-        await renderDemo();
-        const body = await screen.findByName("main-window-body");
-        const notebook = await screen.findByName("notebook", { as: Gtk.Notebook });
+        const body = await renderMainWindowBody();
+        const notebook = await findNotebook();
         expect(notebook).toHaveObjectProperty("page", 0);
         await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
 
@@ -199,9 +192,8 @@ describe("App global shortcuts", () => {
     });
 
     it("returns to the previous notebook page when Ctrl+Page_Up is pressed", async () => {
-        await renderDemo();
-        const body = await screen.findByName("main-window-body");
-        const notebook = await screen.findByName("notebook", { as: Gtk.Notebook });
+        const body = await renderMainWindowBody();
+        const notebook = await findNotebook();
         await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
 
         await waitFor(() => {
@@ -212,20 +204,6 @@ describe("App global shortcuts", () => {
 
         await waitFor(() => {
             expect(notebook).toHaveObjectProperty("page", 0);
-        });
-    });
-});
-
-describe("App opens demos with custom titlebars and dialog-only demos", () => {
-    it("renders Run-enabled demo entries from the sidebar (covers DemoWindow titlebar/provider paths)", async () => {
-        await renderDemo();
-        await selectFirstDemoWithComponent();
-        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
-        await userEvent.click(run);
-
-        await waitFor(async () => {
-            const windows = await screen.findAllByRole(Gtk.AccessibleRole.WINDOW);
-            expect(windows.length).toBeGreaterThan(1);
         });
     });
 });

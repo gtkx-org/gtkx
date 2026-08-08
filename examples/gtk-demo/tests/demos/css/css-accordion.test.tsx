@@ -46,6 +46,7 @@ describe("cssAccordionDemo", () => {
 
 describe("cssAccordionDemo styling and interaction", () => {
     it("registers a CssProvider on the default display at application priority", async () => {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
 
         try {

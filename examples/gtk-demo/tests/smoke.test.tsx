@@ -1,13 +1,10 @@
-import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplication } from "@gtkx/jsx/gtk";
-import { rootElement } from "@gtkx/react";
-import { configure, fireEvent, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { configure, fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, beforeAll, describe, expect, it, type MockInstance, vi } from "vitest";
-import { Demo } from "../src/app.js";
 import { parseTitle } from "../src/context/demo-context.js";
 import { demos } from "../src/demos/index.js";
-import { createApplicationIdFactory } from "./test-utils.js";
+import { createAppRenderer } from "./render-app.js";
+import { findWidget } from "./test-utils.js";
 
 type PrintOperationRunSpy = MockInstance<Gtk.PrintOperation["run"]>;
 
@@ -29,15 +26,7 @@ type DemoSweep = {
     tally: DemoTally;
 };
 
-const nextApplicationId = createApplicationIdFactory("org.gtkx.gtkdemoe2e");
-
-const renderApp = () =>
-    render(
-        <GtkApplication applicationId={nextApplicationId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-            <Demo />
-        </GtkApplication>,
-        { container: rootElement },
-    );
+const renderApp = createAppRenderer("org.gtkx.gtkdemoe2e");
 
 const toplevelWindows = async (): Promise<Gtk.Window[]> =>
     await screen.findAllByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
@@ -55,26 +44,6 @@ const requireOnlyDemoWindow = (windows: Gtk.Window[], title: string): Gtk.Window
     }
 
     return win;
-};
-
-const firstMatching = (root: Gtk.Widget, isMatch: (w: Gtk.Widget) => boolean): Gtk.Widget | null => {
-    if (isMatch(root)) {
-        return root;
-    }
-
-    let child = root.getFirstChild();
-
-    while (child) {
-        const found = firstMatching(child, isMatch);
-
-        if (found) {
-            return found;
-        }
-
-        child = child.getNextSibling();
-    }
-
-    return null;
 };
 
 const getActionName = (widget: Gtk.Widget): string | null => {
@@ -106,7 +75,7 @@ const closeDemoWindow = async (window: Gtk.Window): Promise<void> => {
         return;
     }
 
-    const closeButton = firstMatching(window, (w) => getActionName(w) === "window.close");
+    const closeButton = findWidget(window, Gtk.Widget, (w) => getActionName(w) === "window.close");
 
     if (closeButton) {
         await userEvent.click(closeButton);
@@ -118,7 +87,7 @@ const closeDemoWindow = async (window: Gtk.Window): Promise<void> => {
 };
 
 const dismissDialog = async (dialog: Gtk.Widget): Promise<void> => {
-    const close = firstMatching(dialog, (w) => w.getCssClasses().includes("close"));
+    const close = findWidget(dialog, Gtk.Widget, (w) => w.getCssClasses().includes("close"));
 
     if (!close) {
         throw new Error("dialog has no close button");

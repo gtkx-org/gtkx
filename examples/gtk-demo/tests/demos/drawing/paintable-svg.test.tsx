@@ -6,6 +6,8 @@ import nodeEditorSvgUri from "#data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
 import { findOpenButton, renderDemo } from "../../test-utils.js";
 
+type PictureState = { picture: Gtk.Picture; initial: ReturnType<Gtk.Picture["getPaintable"]> };
+
 const renderAndFindPicture = async (): Promise<Gtk.Picture> => {
     await renderDemo(paintableSvgDemo);
 
@@ -20,6 +22,15 @@ const renderAndFindSvgPicture = async (): Promise<{ picture: Gtk.Picture; svg: G
     });
 
     return { picture, svg: picture.getPaintable() as Gtk.Svg };
+};
+
+const openPictureFileDialog = async (): Promise<PictureState> => {
+    const { picture } = await renderAndFindSvgPicture();
+    const initial = picture.getPaintable();
+    const openButton = await findOpenButton();
+    await userEvent.click(openButton);
+
+    return { picture, initial };
 };
 
 describe("paintableSvgDemo metadata", () => {
@@ -54,7 +65,7 @@ describe("paintableSvgDemo rendering", () => {
     it("packs the open button into a HeaderBar titlebar", async () => {
         await renderDemo(paintableSvgDemo);
         const headerBar = await screen.findByName("paintable-svg-header", { as: Gtk.HeaderBar });
-        const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open", as: Gtk.Button });
+        const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Open", as: Gtk.Button });
         expect(openButton).toBeInstanceOf(Gtk.Button);
     });
 
@@ -72,10 +83,7 @@ describe("paintableSvgDemo open dialog", () => {
         openSpy.mockResolvedValue(Gio.File.newForUri(nodeEditorSvgUri));
 
         try {
-            const { picture } = await renderAndFindSvgPicture();
-            const initial = picture.getPaintable();
-            const openButton = await findOpenButton();
-            await userEvent.click(openButton);
+            const { picture, initial } = await openPictureFileDialog();
 
             await waitFor(() => {
                 expect(openSpy).toHaveBeenCalled();
@@ -95,10 +103,7 @@ describe("paintableSvgDemo open dialog", () => {
         openSpy.mockRejectedValue(new Error("dismissed"));
 
         try {
-            const { picture } = await renderAndFindSvgPicture();
-            const initial = picture.getPaintable();
-            const openButton = await findOpenButton();
-            await userEvent.click(openButton);
+            const { picture, initial } = await openPictureFileDialog();
 
             await waitFor(() => {
                 expect(errorSpy).toHaveBeenCalledWith("dismissed");
