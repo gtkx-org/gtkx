@@ -2,16 +2,23 @@ import type { ListItem, ListItemRenderer } from "@gtkx/components";
 import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { act, getWidgetNodeText, screen, waitFor, within } from "@gtkx/testing";
+import { act, getWidgetText, screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
-import { expectRenderItemFunctionUpdate, namedRows, renderTestItemWithSpy } from "./helpers/list-collection-render.js";
+import {
+    expectRenderItemFunctionUpdate,
+    expectRenderItemReceivesData,
+    expectSingleItemValueUpdate,
+    namedRows,
+} from "./helpers/list-collection-render.js";
 import {
     firstSecondItems,
     firstSecondThirdItems,
     type FixtureInput,
     type ListViewFixture,
     renderListView,
+    renderStatefulListView,
 } from "./helpers/list-fixtures.js";
+import { expectRowTexts, rowTexts } from "./helpers/row-texts.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type Category = {
@@ -235,19 +242,12 @@ const toTreeItems = (categories: (Category & { children: Setting[] })[]): Fixtur
         children: category.children.map((setting) => ({
             id: setting.id,
             value: setting,
-            hideExpander: true,
+            shouldHideExpander: true,
         })),
     }));
 
 const expanderByName = (name: string): Gtk.TreeExpander =>
     screen.getByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.TreeExpander });
-
-const rowTexts = (container: Gtk.ListView | null): (string | null)[] =>
-    container === null
-        ? []
-        : within(container)
-                .queryAllByRole(Gtk.AccessibleRole.LABEL)
-                .map((widget) => getWidgetNodeText(widget));
 
 const listRowByName = (name: string): Gtk.TreeListRow => {
     const row = expanderByName(name).getListRow();
@@ -266,11 +266,6 @@ const setRowExpandedByName = async (name: string, isExpanded: boolean): Promise<
         row.setExpanded(isExpanded);
     });
 };
-
-const expectRowTexts = (ref: RefObject<Gtk.ListView>, expected: (string | null)[]): Promise<void> =>
-    waitFor(() => {
-        expect(rowTexts(ref.current)).toEqual(expected);
-    });
 
 const expectSettledRowTexts = (ref: RefObject<Gtk.ListView>, expected: (string | null)[]): Promise<void> =>
     waitFor(() => {
@@ -299,7 +294,7 @@ function leafNode(id: string, name: string) {
 }
 
 function childNode(id: string, name: string) {
-    return { id, value: { name }, hideExpander: true as const };
+    return { id, value: { name }, shouldHideExpander: true as const };
 }
 
 function categoryNode(id: string, name: string, children: ReturnType<typeof childNode>[]) {
@@ -386,7 +381,7 @@ const buildViewportCategoryTree = (): ListItem<DemoItem>[] =>
     });
 
 const expandAppearance = async (): Promise<RefObject<Gtk.ListView>> => {
-    const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 1)));
+    const { ref } = await renderStatefulListView(toTreeItems(allSettingCategories.slice(0, 1)));
     await setRowExpandedByName("Appearance", true);
 
     return ref;
@@ -403,7 +398,7 @@ function filterCategory(id: string, name: string, children: [string, string][]):
         children: children.map(([childId, childName]) => ({
             id: childId,
             value: { type: "leaf", name: childName },
-            hideExpander: true,
+            shouldHideExpander: true,
         })),
     };
 }
@@ -486,9 +481,7 @@ describe("render - ListView (tree) (3)", () => {
         });
 
         it("updates item value", async () => {
-            const { rerender } = await renderListView([{ id: "1", value: { name: "Initial" } }]);
-            await rerender([{ id: "1", value: { name: "Updated" } }]);
-            expect(screen.queryAllByText("Updated")).toHaveLength(1);
+            await expectSingleItemValueUpdate();
         });
     });
 });
@@ -496,8 +489,7 @@ describe("render - ListView (tree) (3)", () => {
 describe("render - ListView (tree) (4)", () => {
     describe("renderItem (tree)", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = await renderTestItemWithSpy();
-            expect(renderItem).toHaveBeenCalled();
+            await expectRenderItemReceivesData();
         });
 
         it("receives depth in renderItem", async () => {
@@ -530,7 +522,7 @@ describe("render - ListView (tree) (5)", () => {
 });
 
 describe("render - ListView (tree) (6)", () => {
-    describe("expandable rows (uncontrolled)", () => {
+    describe("expandable rows", () => {
         it("parent row is expandable when it has children", async () => {
             await renderListView(parentWith([leafNode("child1", "Child 1")]));
             const row = expanderByName("Parent").getListRow();
@@ -539,7 +531,7 @@ describe("render - ListView (tree) (6)", () => {
         });
 
         it("expands parent row to show children when expanded", async () => {
-            const { ref } = await renderListView(parentWithTwoChildren);
+            const { ref } = await renderStatefulListView(parentWithTwoChildren);
             await expectRowTexts(ref, ["Parent"]);
             await setRowExpandedByName("Parent", true);
             await expectRowTexts(ref, ["Parent", "Child 1", "Child 2"]);
@@ -601,7 +593,7 @@ describe("render - ListView (tree) (8)", () => {
 describe("render - ListView (tree) (9)", () => {
     describe("nested children rendering (1)", () => {
         it("renders all nested children with correct data after expansion", async () => {
-            const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 3)));
+            const { ref } = await renderStatefulListView(toTreeItems(allSettingCategories.slice(0, 3)));
             expect(rowTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy"]);
             await setRowExpandedByName("Notifications", true);
             await expectSettledRowTexts(ref, ["Appearance", "Notifications", ...notificationChildNames, "Privacy"]);
@@ -621,16 +613,16 @@ describe("render - ListView (tree) (10)", () => {
 
 describe("render - ListView (tree) (11)", () => {
     describe("tree item properties", () => {
-        it("supports indentForDepth property", async () => {
-            await expectParentChildRenders({ indentForDepth: false }, { indentForDepth: true });
+        it("supports shouldIndentForDepth property", async () => {
+            await expectParentChildRenders({ shouldIndentForDepth: false }, { shouldIndentForDepth: true });
         });
 
-        it("supports indentForIcon property", async () => {
-            await expectParentChildRenders({ indentForIcon: true }, { indentForIcon: false });
+        it("supports shouldIndentForIcon property", async () => {
+            await expectParentChildRenders({ shouldIndentForIcon: true }, { shouldIndentForIcon: false });
         });
 
-        it("supports hideExpander property", async () => {
-            await expectParentChildRenders({ hideExpander: false }, { hideExpander: true });
+        it("supports shouldHideExpander property", async () => {
+            await expectParentChildRenders({ shouldHideExpander: false }, { shouldHideExpander: true });
         });
     });
 });
@@ -654,7 +646,7 @@ describe("render - ListView (tree) (13)", () => {
 describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
     it("renders all children correctly after multiple expand/collapse cycles", async () => {
         const allCategoryNames = ["Appearance", "Notifications", "Privacy", "Power", "Network"];
-        const { ref } = await renderListView(toTreeItems(allSettingCategories));
+        const { ref } = await renderStatefulListView(toTreeItems(allSettingCategories));
         expect(rowTexts(ref.current)).toEqual(allCategoryNames);
 
         const expandAndVerify = async (categoryName: string, expectedChildren: string[]) => {
@@ -679,7 +671,7 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
 
 describe("render - ListView (tree) (15) > settings tree regression (4)", () => {
     it("third child does not remain stuck on Loading after expansion", async () => {
-        const { ref } = await renderListView(toTreeItems(allSettingCategories.slice(0, 2)), {
+        const { ref } = await renderStatefulListView(toTreeItems(allSettingCategories.slice(0, 2)), {
             estimatedItemHeight: 48,
         });
 
@@ -796,14 +788,14 @@ describe("render - ListView (tree) (22)", () => {
     describe("controlled expansion callbacks", () => {
         it("reports onExpandedChange when the user expands a row", async () => {
             const onExpandedChange = vi.fn();
-            const { ref } = await renderListView(parentWithChild, { expandedIds: [], onExpandedChange });
+            const { ref } = await renderStatefulListView(parentWithChild, { onExpandedChange });
             await setRowExpandedByName("Parent", true);
 
             await waitFor(() => {
                 expect(onExpandedChange).toHaveBeenCalledWith(["parent"]);
             });
 
-            expect(ref.current).not.toBeNull();
+            await expectRowTexts(ref, ["Parent", "Child"]);
         });
 
         it("passes isExpanded to renderItem from expandedIds", async () => {
@@ -829,7 +821,7 @@ describe("render - ListView (tree) (23)", () => {
                 throw new TypeError("Expected the expander child to be a label");
             }
 
-            expect(getWidgetNodeText(child)).toBe("Parent");
+            expect(getWidgetText(child)).toBe("Parent");
             expectNoBoxBetween(child, ref.current);
         });
     });

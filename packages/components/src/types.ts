@@ -13,18 +13,18 @@ import type { ReactNode } from "react";
  * arbitrary value. Nested items form a tree.
  */
 type ListItem<T = unknown> = {
-    /** Stable identifier used to track the item across updates and selection. */
+    /** Stable identifier used to track the item across updates and selection, naming every row that carries it. */
     id: string;
     /** Payload handed to the cell renderer as `ListItemRenderArgs.item`. */
     value: T;
     /** Child items nested under this one, which turn a plain item list into a tree. */
     children?: ListItem<T>[] | undefined;
-    /** Hides the tree expander arrow even when the item has children. */
-    hideExpander?: boolean | undefined;
-    /** Adds indentation matching the item's depth in the tree. */
-    indentForDepth?: boolean | undefined;
-    /** Reserves indentation space for an expander icon. */
-    indentForIcon?: boolean | undefined;
+    /** Hides the tree expander arrow even when the item has children, through `hide-expander`. */
+    shouldHideExpander?: boolean | undefined;
+    /** Adds indentation matching the item's depth in the tree, through `indent-for-depth`. */
+    shouldIndentForDepth?: boolean | undefined;
+    /** Reserves indentation space for an expander icon, through `indent-for-icon`. */
+    shouldIndentForIcon?: boolean | undefined;
 };
 
 /** A group of items rendered under a shared section header. */
@@ -49,6 +49,24 @@ type ListItemRenderArgs<T> = {
     isExpanded?: boolean | undefined;
 };
 
+/**
+ * Properties applied to the row that carries one item's cells. A Gtk.ColumnViewRow is not a widget, so
+ * these are the only handles it offers; anything omitted falls back to the row's own default, which
+ * leaves the accessibility strings unset rather than setting them to an empty string.
+ */
+type ListRowProps = {
+    /** Name a screen reader announces for the row, through `accessible-label`. */
+    accessibleLabel?: string | undefined;
+    /** Longer description a screen reader announces for the row, through `accessible-description`. */
+    accessibleDescription?: string | undefined;
+    /** Whether activating the row emits the view's `activate` signal; rows are activatable by default. */
+    isActivatable?: boolean | undefined;
+    /** Whether the row takes keyboard focus; rows are focusable by default. */
+    isFocusable?: boolean | undefined;
+    /** Whether clicking or keying the row tries to select it; rows are selectable by default. */
+    isSelectable?: boolean | undefined;
+};
+
 /** Arguments passed to a {@link ListSectionRenderer} when rendering one section header. */
 type ListSectionRenderArgs<S> = {
     /** Value of the `ListSection` whose header is being rendered. */
@@ -59,6 +77,8 @@ type ListSectionRenderArgs<S> = {
 type ListItemRenderer<T> = (args: ListItemRenderArgs<T>) => ReactNode;
 /** Renders the contents of one section header of a collection view. */
 type ListSectionRenderer<S> = (args: ListSectionRenderArgs<S>) => ReactNode;
+/** Returns the {@link ListRowProps} to apply to the row displaying one item, re-run whenever the item renders. */
+type ListRowPropsResolver<T> = (args: ListItemRenderArgs<T>) => ListRowProps;
 
 /** Size a collection view requests for each cell before its contents render, keeping scroll estimates steady. */
 type ItemSizeProps = {
@@ -70,20 +90,56 @@ type ItemSizeProps = {
 
 /** Controlled selection shared by the multi-item collection views. */
 type SelectionProps = {
-    /** Ids of the items to keep selected; omitting it leaves the view's own selection alone. */
+    /**
+     * Ids of the items to keep selected; omitting it keeps nothing selected, and `onSelectionChanged` is how a
+     * user's selection is adopted into it. An id repeated in several branches of a tree names every matching row,
+     * and a single-selection view takes the first of them.
+     */
     selectedIds?: string[] | null | undefined;
-    /** Called with the ids of every selected item whenever the selection changes, and once on mount. */
+    /** Called with one id per selected row whenever the selection changes, and once on mount. */
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     /** How much the user may select, one item at a time unless `MULTIPLE` or `NONE` is given. */
     selectionMode?: Gtk.SelectionMode | null | undefined;
 };
 
+/**
+ * Wording a screen reader announces for the control that expands and collapses a row. GTK names that control
+ * after the row's own content and reports whether it is expanded, but says nothing about what activating it
+ * does, so these strings supply that and belong in the application's own language.
+ */
+type ExpanderDescriptions = {
+    /** Announced while the row is collapsed, such as "Expand". */
+    expand: string;
+    /** Announced while the row is expanded, such as "Collapse". */
+    collapse: string;
+};
+
 /** Controlled expansion for the views that turn nested `ListItem.children` into a tree. */
 type ExpansionProps = {
-    /** Ids of the items to keep expanded; omitting it leaves the rows' own expanded state alone. */
+    /**
+     * Ids of the items to keep expanded; omitting it keeps every row collapsed, and `onExpandedChange` is how a
+     * user's expansion is adopted into it. An id repeated in several branches names every matching row, so all of
+     * them expand together.
+     */
     expandedIds?: string[] | null | undefined;
-    /** Called with the ids of every expanded row whenever expansion changes. */
+    /** Called with one id per expanded row, in visible order, whenever expansion changes. */
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
+    /**
+     * Wording announced for the expander of every row that can expand, describing what activating it does.
+     * Omitting it leaves those expanders described only by the row they carry, and rows that cannot expand or
+     * that hide their expander are never described.
+     */
+    expanderDescriptions?: ExpanderDescriptions | null | undefined;
+};
+
+/** Controlled sorting for the views whose headers can sort the collection. */
+type SortProps = {
+    /** Id of the column the view is sorted by, making sorting controlled. */
+    sortColumn?: string | null | undefined;
+    /** Direction `sortColumn` is sorted in, defaulting to ascending. */
+    sortOrder?: Gtk.SortType | null | undefined;
+    /** Called when the user sorts from a header, with the primary column's id, or null, and its order. */
+    onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
 };
 
 /** The data a collection view renders, either as a plain item list or grouped into sections. */
@@ -111,29 +167,26 @@ type ColumnViewColumn<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | 
 /** The declarative collection props {@link ColumnView} adds on top of Gtk.ColumnView's own. */
 type ColumnViewOwnProps<T, S> = SelectionProps &
     ExpansionProps &
+    SortProps &
     SourceProps<T, S> &
     Omit<ItemSizeProps, "estimatedItemWidth"> & {
         /** Columns to render, in order; each carries its own cell renderer. */
         columns: ColumnViewColumn<T>[];
         /** Renders the header shown above each section. */
         renderHeader?: ListSectionRenderer<S> | null | undefined;
-        /** Id of the column the view is sorted by, making sorting controlled. */
-        sortColumn?: string | null | undefined;
-        /** Direction `sortColumn` is sorted in, defaulting to ascending. */
-        sortOrder?: Gtk.SortType | null | undefined;
-        /** Called when the user sorts from a header, with the primary column's id, or null, and its order. */
-        onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null | undefined;
+        /** Resolves the props of the row carrying one item's cells, such as its screen-reader label. */
+        rowProps?: ListRowPropsResolver<T> | null | undefined;
     };
 
 /**
  * Props for {@link ColumnView}. Combines the underlying Gtk.ColumnView props with
  * declarative collection props: flat items or grouped sections, controlled selection
  * and expansion, sorting (sortColumn, sortOrder, onSortChanged), an optional section
- * header renderer, and the columns to render.
+ * header renderer, per-row props, and the columns to render.
  */
 type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
-    "columns" | "model" | "headerFactory" | keyof ColumnViewOwnProps<T, S>
+    "columns" | "model" | "headerFactory" | "rowFactory" | keyof ColumnViewOwnProps<T, S>
 > &
 ColumnViewOwnProps<T, S>;
 
@@ -207,14 +260,18 @@ ListViewOwnProps<T, S>;
 
 export {
     type SelectionProps,
+    type ExpanderDescriptions,
     type ExpansionProps,
+    type SortProps,
     type DropDownOwnProps,
     type DropDownWidgetProps,
     type ListItem,
     type ListSection,
     type ListItemRenderArgs,
+    type ListRowProps,
     type ListSectionRenderArgs,
     type ListItemRenderer,
+    type ListRowPropsResolver,
     type ListSectionRenderer,
     type ColumnViewColumn,
     type ColumnViewProps,

@@ -3,12 +3,13 @@ import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderListView, valueItems } from "./helpers/list-fixtures.js";
+import { expectMultiSelectionAdopted } from "./helpers/list-collection-render.js";
+import { renderStatefulListView, valueItems } from "./helpers/list-fixtures.js";
 
 type Category = {
     id: string;
     value: { name: string };
-    children: { id: string; value: { name: string }; hideExpander: true }[];
+    children: { id: string; value: { name: string }; shouldHideExpander: true }[];
 };
 
 const tree: Category[] = [
@@ -16,8 +17,8 @@ const tree: Category[] = [
         id: "cat-a",
         value: { name: "Category A" },
         children: [
-            { id: "a-1", value: { name: "Alpha" }, hideExpander: true },
-            { id: "a-2", value: { name: "Beta" }, hideExpander: true },
+            { id: "a-1", value: { name: "Alpha" }, shouldHideExpander: true },
+            { id: "a-2", value: { name: "Beta" }, shouldHideExpander: true },
         ],
     },
 ];
@@ -36,7 +37,7 @@ const expectNoActWarning = (errorSpy: MockInstance<typeof console.error>): void 
 };
 
 const expectTreeToggleHasNoActWarning = async (errorSpy: MockInstance<typeof console.error>): Promise<void> => {
-    await renderListView(tree, { estimatedItemHeight: 48 });
+    await renderStatefulListView(tree, { estimatedItemHeight: 48 });
     const row = expandableExpanders()[0]?.getListRow();
 
     if (!row) {
@@ -57,18 +58,7 @@ const expectTreeToggleHasNoActWarning = async (errorSpy: MockInstance<typeof con
 };
 
 const expectMultiSelectionHasNoActWarning = async (errorSpy: MockInstance<typeof console.error>): Promise<void> => {
-    const onSelectionChanged = vi.fn();
-
-    const { ref } = await renderListView(
-        [
-            { id: "1", value: { name: "First" } },
-            { id: "2", value: { name: "Second" } },
-        ],
-        { selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged },
-    );
-
-    await userEvent.selectOptions(ref.current, [0, 1]);
-    expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
+    await expectMultiSelectionAdopted();
     expectNoActWarning(errorSpy);
 };
 

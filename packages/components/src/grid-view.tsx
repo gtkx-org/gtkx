@@ -29,7 +29,7 @@ function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
     return (
         <>
             <GtkGridView model={selection} factory={<GtkSignalListItemFactory {...itemCells.handlers} />} {...rest} />
-            <ItemPortals store={itemCells} render={renderItem} collection={collection} />
+            <ItemPortals registry={itemCells} render={renderItem} collection={collection} />
         </>
     );
 }

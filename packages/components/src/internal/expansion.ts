@@ -1,8 +1,14 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { RefObject } from "react";
-import { useEffectEvent, useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { Collection } from "./collection.js";
-import { eachRow } from "./collection.js";
+import type { TreeExpansion } from "./tree-expansion.js";
+import type { VisibleOrder, WalkOptions } from "./tree-order.js";
+import { isCollectionIdle } from "./collection.js";
+import { useControlledSync } from "./controlled-sync.js";
+import { joinParts } from "./keys.js";
+import { trackPaths } from "./slots.js";
+import { adoptOrder, markExpanded, orderFor } from "./tree-expansion.js";
+import { walkVisible } from "./tree-order.js";
 
 type ExpansionOptions = {
     collection: Collection;
@@ -10,113 +16,144 @@ type ExpansionOptions = {
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
 };
 
+type ItemsChange = {
+    position: number;
+    removed: number;
+    added: number;
+};
+
+type ItemsChangeHandler = (position: number, removed: number, added: number) => void;
 type LastExpansion = { key: string };
+
+type ExpansionContext = {
+    collection: Collection;
+    last: LastExpansion;
+    onExpandedChange?: ((ids: string[]) => void) | null | undefined;
+};
 
 function newLastExpansion(): LastExpansion {
     return { key: "" };
 }
 
-function collectExpanded(row: Gtk.TreeListRow, id: string | null, ids: string[]): void {
-    if (id !== null && row.getExpanded()) {
-        ids.push(id);
+function wantedSet(expansion: TreeExpansion, expandedIds: string[]): Set<string> {
+    const wanted: Set<string> = new Set();
+
+    for (const id of expandedIds) {
+        for (const path of expansion.index.expandablePathsFor(id)) {
+            wanted.add(path);
+        }
+    }
+
+    return wanted;
+}
+
+function hasSameExpansion(expanded: Set<string>, wanted: Set<string>): boolean {
+    return expanded.size === wanted.size && wanted.isSubsetOf(expanded);
+}
+
+function toggleOptions(expansion: TreeExpansion, tree: Gtk.TreeListModel, wanted: Set<string>): WalkOptions {
+    return {
+        index: expansion.index,
+        slots: trackPaths(wanted),
+        marks: trackPaths(wanted.symmetricDifference(expansion.expanded)),
+        visit: (row) => {
+            if (row.isMarked) {
+                tree.getRow(row.position)?.setExpanded(row.isOpen);
+            }
+        },
+    };
+}
+
+function walkApplying(expansion: TreeExpansion, options: WalkOptions): VisibleOrder {
+    expansion.isApplying = true;
+
+    try {
+        return walkVisible(options);
+    } finally {
+        expansion.isApplying = false;
     }
 }
 
-function expandRow(row: Gtk.TreeListRow, id: string | null, wanted: Set<string>): void {
-    const isDesired = id !== null && wanted.has(id);
+function applyWanted(expansion: TreeExpansion, tree: Gtk.TreeListModel, expandedIds: string[]): void {
+    const wanted = wantedSet(expansion, expandedIds);
 
-    if (row.isExpandable() && row.getExpanded() !== isDesired) {
-        row.setExpanded(isDesired);
+    if (hasSameExpansion(expansion.expanded, wanted)) {
+        return;
     }
+
+    adoptOrder(expansion, walkApplying(expansion, toggleOptions(expansion, tree, wanted)));
 }
 
-function applyExpansion(tree: Gtk.TreeListModel, expandedIds: string[]): void {
-    const wanted = new Set(expandedIds);
+function reportExpansion(context: ExpansionContext): void {
+    const { expandedIds, expandedPaths } = orderFor(context.collection.expansion);
+    const key = joinParts(expandedPaths);
 
-    eachRow(tree, (row, id) => {
-        expandRow(row, id, wanted);
-    });
+    if (context.last.key === key) {
+        return;
+    }
+
+    context.last.key = key;
+    context.onExpandedChange?.([...expandedIds]);
 }
 
-function reportExpansion(
-    collection: Collection,
-    last: LastExpansion,
-    onExpandedChange: ((ids: string[]) => void) | null | undefined,
-): void {
-    const tree = collection.treeModel();
+function applyControlledExpansion(context: ExpansionContext, expandedIds: string[] | null | undefined): void {
+    const tree = context.collection.treeModel();
 
     if (tree === null) {
         return;
     }
 
-    const ids: string[] = [];
+    applyWanted(context.collection.expansion, tree, expandedIds ?? []);
+    reportExpansion(context);
+}
 
-    eachRow(tree, (row, id) => {
-        collectExpanded(row, id, ids);
-    });
+function isExpansionIdle(collection: Collection): boolean {
+    return collection.treeModel() !== null && isCollectionIdle(collection);
+}
 
-    const key = ids.join(" ");
+function didRowDrift(collection: Collection, change: ItemsChange): boolean {
+    const path = collection.pathAt(change.position - 1);
+    const isExpanded = change.removed === 0 && change.added > 0;
+    const isCollapsed = change.added === 0 && change.removed > 0;
 
-    if (last.key === key) {
+    if (path === null || isExpanded === isCollapsed) {
+        return false;
+    }
+
+    markExpanded(collection.expansion, path, isExpanded);
+
+    return true;
+}
+
+function observeExpansion(context: ExpansionContext, change: ItemsChange, onDrift: () => void): void {
+    if (!isExpansionIdle(context.collection)) {
         return;
     }
 
-    last.key = key;
-    onExpandedChange?.(ids);
+    const didDrift = didRowDrift(context.collection, change);
+    reportExpansion(context);
+
+    if (didDrift) {
+        onDrift();
+    }
 }
 
-function reportWhenIdle(
-    collection: Collection,
-    last: LastExpansion,
-    expanding: RefObject<boolean>,
-    onExpandedChange: ((ids: string[]) => void) | null | undefined,
-): void {
-    if (expanding.current) {
-        return;
-    }
-
-    reportExpansion(collection, last, onExpandedChange);
-}
-
-function runControlledExpansion(
-    collection: Collection,
-    expandedIds: string[] | null | undefined,
-    expanding: RefObject<boolean>,
-    report: () => void,
-): void {
-    const tree = collection.treeModel();
-
-    if (tree === null || expandedIds == null) {
-        return;
-    }
-
-    expanding.current = true;
-
-    try {
-        applyExpansion(tree, expandedIds);
-    } finally {
-        expanding.current = false;
-    }
-
-    report();
-}
-
-function useExpansion(options: ExpansionOptions): () => void {
+function useExpansion(options: ExpansionOptions): ItemsChangeHandler {
     const { collection, expandedIds, onExpandedChange } = options;
     const [last] = useState<LastExpansion>(newLastExpansion);
-    const expanding = useRef(false);
+    const context: ExpansionContext = { collection, last, onExpandedChange };
 
-    const report = useEffectEvent((): void => {
-        reportWhenIdle(collection, last, expanding, onExpandedChange);
+    const markDrift = useControlledSync({
+        ids: expandedIds,
+        collection,
+        apply: (ids) => {
+            applyControlledExpansion(context, ids);
+        },
     });
 
-    useLayoutEffect(() => {
-        runControlledExpansion(collection, expandedIds, expanding, report);
-    }, [collection, expandedIds]);
-
-    return () => {
-        reportWhenIdle(collection, last, expanding, onExpandedChange);
+    return (position, removed, added) => {
+        observeExpansion(context, { position, removed, added }, markDrift);
     };
 }
 
-export { useExpansion, type ExpansionOptions };
+export { useExpansion, type ItemsChangeHandler };

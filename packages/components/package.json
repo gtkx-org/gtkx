@@ -51,6 +51,7 @@
     },
     "dependencies": {
         "@gtkx/react": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*"
     },
     "peerDependencies": {
@@ -59,7 +60,6 @@
     "devDependencies": {
         "@codspeed/vitest-plugin": "^5.7.1",
         "@gtkx/config": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "vitest": "catalog:"

@@ -1,26 +1,39 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkTreeExpander } from "@gtkx/jsx/gtk";
+import { GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
+import { setObjectProperty, t } from "@gtkx/runtime";
 import { memo, useLayoutEffect, useState, useSyncExternalStore } from "react";
-import type { ListItem, ListItemRenderArgs, ListItemRenderer, ListSectionRenderer } from "../types.js";
+import type {
+    ExpanderDescriptions,
+    ListItem,
+    ListItemRenderArgs,
+    ListItemRenderer,
+    ListRowProps,
+    ListRowPropsResolver,
+    ListSectionRenderer,
+} from "../types.js";
 import type { Collection } from "./collection.js";
-import { getId } from "./collection-model.js";
+import { slotRefFor } from "./collection-model.js";
 
 type CellSize = {
     width: number;
     height: number;
 };
 
-type CellHost = GObject.Object & {
+type FactoryHost = GObject.Object & {
+    getItem: () => GObject.Object | null;
+};
+
+type CellHost = FactoryHost & {
     getChild: () => Gtk.Widget | null;
     setChild: (child: Gtk.Widget | null) => void;
 };
 
-type CellEntry<C extends CellHost> = {
+type CellEntry<H extends FactoryHost> = {
     key: string;
-    cell: C;
+    host: H;
     item: GObject.Object | null;
     listeners: Set<() => void>;
     subscribe: (onChange: () => void) => () => void;
@@ -28,37 +41,58 @@ type CellEntry<C extends CellHost> = {
 };
 
 type FactoryHandlers = {
-    onSetup: (cell: GObject.Object) => void;
-    onBind: (cell: GObject.Object) => void;
-    onUnbind: (cell: GObject.Object) => void;
-    onTeardown: (cell: GObject.Object) => void;
+    onSetup: (host: GObject.Object) => void;
+    onBind: (host: GObject.Object) => void;
+    onUnbind: (host: GObject.Object) => void;
+    onTeardown: (host: GObject.Object) => void;
 };
 
-type CellStore<C extends CellHost> = {
+type CellRegistry<H extends FactoryHost> = {
     handlers: FactoryHandlers;
     setSize: (size: CellSize) => void;
     subscribe: (onChange: () => void) => () => void;
-    getSnapshot: () => CellEntry<C>[];
+    getVersion: () => number;
+    getEntries: () => CellEntry<H>[];
 };
 
-type StoreState<C extends CellHost> = {
+type HostGuard<H extends FactoryHost> = (value: GObject.Object) => value is H;
+
+type CellRegistryOptions<H extends FactoryHost> = {
+    isHost: HostGuard<H>;
+    prepare?: ((host: H, size: CellSize) => void) | undefined;
+};
+
+type CellRegistryState<H extends FactoryHost> = CellRegistryOptions<H> & {
     size: CellSize;
-    entries: Map<C, CellEntry<C>>;
-    snapshot: CellEntry<C>[] | null;
+    entries: Map<H, CellEntry<H>>;
+    snapshot: CellEntry<H>[] | null;
     listeners: Set<() => void>;
     serial: number;
+    version: number;
 };
 
-type CellGuard<C extends CellHost> = (value: GObject.Object) => value is C;
+type ResolvedRowProps = {
+    accessibleLabel: string | null;
+    accessibleDescription: string | null;
+    isActivatable: boolean;
+    isFocusable: boolean;
+    isSelectable: boolean;
+};
 
-type ItemBodyOptions = {
+type ItemSlotOptions = {
     item: GObject.Object | null;
     position: number | undefined;
     row: Gtk.TreeListRow | null;
-    isRowExpanded: boolean | undefined;
-    render: ListItemRenderer<never>;
     collection: Collection;
     expandedIds: string[] | null | undefined;
+};
+
+type PositionedHost = Gtk.ListItem | Gtk.ColumnViewRow;
+
+type ItemSlot = {
+    item: ListItem;
+    row: Gtk.TreeListRow | null;
+    args: ListItemRenderArgs<unknown>;
 };
 
 type ItemCellProps = {
@@ -66,13 +100,29 @@ type ItemCellProps = {
     render: ListItemRenderer<never>;
     collection: Collection;
     expandedIds: string[] | null | undefined;
+    expanderDescriptions: ExpanderDescriptions | null | undefined;
 };
 
 type ItemPortalsProps = {
-    store: CellStore<Gtk.ListItem>;
+    registry: CellRegistry<Gtk.ListItem>;
     render: ListItemRenderer<never>;
     collection: Collection;
     expandedIds?: string[] | null | undefined;
+    expanderDescriptions?: ExpanderDescriptions | null | undefined;
+};
+
+type ItemRowProps = {
+    entry: CellEntry<Gtk.ColumnViewRow>;
+    rowProps: ListRowPropsResolver<never>;
+    collection: Collection;
+    expandedIds: string[] | null | undefined;
+};
+
+type RowPortalsProps = {
+    registry: CellRegistry<Gtk.ColumnViewRow>;
+    rowProps: ListRowPropsResolver<never>;
+    collection: Collection;
+    expandedIds: string[] | null | undefined;
 };
 
 type HeaderCellProps = {
@@ -82,40 +132,73 @@ type HeaderCellProps = {
 };
 
 type HeaderPortalsProps = {
-    store: CellStore<Gtk.ListHeader>;
+    registry: CellRegistry<Gtk.ListHeader>;
     render: ListSectionRenderer<never>;
     collection: Collection;
 };
 
-const ItemCell = memo(ItemCellImpl);
-const HeaderCell = memo(HeaderCellImpl);
+type SectionHeaderSlot = {
+    factoryProps: { headerFactory?: ReactElement };
+    portals: ReactNode;
+};
 
-const isListItem = (value: GObject.Object): value is Gtk.ListItem => value instanceof Gtk.ListItem;
-const isListHeader = (value: GObject.Object): value is Gtk.ListHeader => value instanceof Gtk.ListHeader;
+type RowSlot = {
+    factoryProps: { rowFactory?: ReactElement };
+    portals: ReactNode;
+};
+
+const ItemCell = memo(ItemCellImpl);
+const ItemRow = memo(ItemRowImpl);
+const HeaderCell = memo(HeaderCellImpl);
+const CELL_OPTIONS: CellRegistryOptions<Gtk.ListItem> = { isHost: isListItem, prepare: prepareCell };
+const HEADER_OPTIONS: CellRegistryOptions<Gtk.ListHeader> = { isHost: isListHeader, prepare: prepareCell };
+const ROW_OPTIONS: CellRegistryOptions<Gtk.ColumnViewRow> = { isHost: isColumnViewRow };
+const NO_SIZE: CellSize = { width: -1, height: -1 };
+const NO_ROW_PROPS: ListRowProps = {};
+const ROW_TEXT_DESCRIPTOR = t.string("borrowed");
 
 const placeholder = (size: CellSize): Gtk.Widget =>
     new Gtk.Box({ widthRequest: size.width, heightRequest: size.height });
 
-function notifyEntry<C extends CellHost>(entry: CellEntry<C>): void {
+function isListItem(value: GObject.Object): value is Gtk.ListItem {
+    return value instanceof Gtk.ListItem;
+}
+
+function isListHeader(value: GObject.Object): value is Gtk.ListHeader {
+    return value instanceof Gtk.ListHeader;
+}
+
+function isColumnViewRow(value: GObject.Object): value is Gtk.ColumnViewRow {
+    return value instanceof Gtk.ColumnViewRow;
+}
+
+function prepareCell(host: CellHost, size: CellSize): void {
+    if (host.getChild() === null) {
+        host.setChild(placeholder(size));
+    }
+}
+
+function notifyEntry<H extends FactoryHost>(entry: CellEntry<H>): void {
     for (const listener of entry.listeners) {
         listener();
     }
 }
 
-function notifyRoster<C extends CellHost>(state: StoreState<C>): void {
+function notifyRegistry<H extends FactoryHost>(state: CellRegistryState<H>): void {
     state.snapshot = null;
+    state.version += 1;
 
     for (const listener of state.listeners) {
         listener();
     }
 }
 
-function createEntry<C extends CellHost>(state: StoreState<C>, cell: C): CellEntry<C> {
+function createEntry<H extends FactoryHost>(state: CellRegistryState<H>, host: H): CellEntry<H> {
     state.serial += 1;
 
-    const entry: CellEntry<C> = {
+    const entry: CellEntry<H> = {
         key: `gtkx-cell-${String(state.serial)}`,
-        cell,
+        host,
         item: null,
         listeners: new Set(),
         subscribe: (onChange) => {
@@ -131,20 +214,20 @@ function createEntry<C extends CellHost>(state: StoreState<C>, cell: C): CellEnt
     return entry;
 }
 
-function setupCell<C extends CellHost>(state: StoreState<C>, cell: C): void {
-    cell.setChild(placeholder(state.size));
-    state.entries.set(cell, createEntry(state, cell));
-    notifyRoster(state);
+function setupHost<H extends FactoryHost>(state: CellRegistryState<H>, host: H): void {
+    state.prepare?.(host, state.size);
+    state.entries.set(host, createEntry(state, host));
+    notifyRegistry(state);
 }
 
-function teardownCell<C extends CellHost>(state: StoreState<C>, cell: C): void {
-    if (state.entries.delete(cell)) {
-        notifyRoster(state);
+function teardownHost<H extends FactoryHost>(state: CellRegistryState<H>, host: H): void {
+    if (state.entries.delete(host)) {
+        notifyRegistry(state);
     }
 }
 
-function writeBinding<C extends CellHost>(state: StoreState<C>, cell: C, item: GObject.Object | null): void {
-    const entry = state.entries.get(cell);
+function writeBinding<H extends FactoryHost>(state: CellRegistryState<H>, host: H, item: GObject.Object | null): void {
+    const entry = state.entries.get(host);
 
     if (entry === undefined) {
         return;
@@ -154,23 +237,12 @@ function writeBinding<C extends CellHost>(state: StoreState<C>, cell: C, item: G
     notifyEntry(entry);
 }
 
-function boundItem(cell: CellHost): GObject.Object | null {
-    if (cell instanceof Gtk.ListItem) {
-        return cell.getItem();
-    }
-
-    return cell instanceof Gtk.ListHeader ? cell.getItem() : null;
+function bindHost<H extends FactoryHost>(state: CellRegistryState<H>, host: H): void {
+    state.prepare?.(host, state.size);
+    writeBinding(state, host, host.getItem());
 }
 
-function bindCell<C extends CellHost>(state: StoreState<C>, cell: C): void {
-    if (cell.getChild() === null) {
-        cell.setChild(placeholder(state.size));
-    }
-
-    writeBinding(state, cell, boundItem(cell));
-}
-
-function subscribeRoster<C extends CellHost>(state: StoreState<C>, onChange: () => void): () => void {
+function subscribeRegistry<H extends FactoryHost>(state: CellRegistryState<H>, onChange: () => void): () => void {
     state.listeners.add(onChange);
 
     return () => {
@@ -178,81 +250,84 @@ function subscribeRoster<C extends CellHost>(state: StoreState<C>, onChange: () 
     };
 }
 
-function rosterSnapshot<C extends CellHost>(state: StoreState<C>): CellEntry<C>[] {
+function getRegistryEntries<H extends FactoryHost>(state: CellRegistryState<H>): CellEntry<H>[] {
     state.snapshot ??= state.entries.values().toArray();
 
     return state.snapshot;
 }
 
-function guarded<C extends CellHost>(isCell: CellGuard<C>, run: (cell: C) => void): (cell: GObject.Object) => void {
-    return (cell) => {
-        if (isCell(cell)) {
-            run(cell);
+function guarded<H extends FactoryHost>(isHost: HostGuard<H>, run: (host: H) => void): (host: GObject.Object) => void {
+    return (host) => {
+        if (isHost(host)) {
+            run(host);
         }
     };
 }
 
-function createHandlers<C extends CellHost>(state: StoreState<C>, isCell: CellGuard<C>): FactoryHandlers {
+function createHandlers<H extends FactoryHost>(state: CellRegistryState<H>): FactoryHandlers {
+    const { isHost } = state;
+
     return {
-        onSetup: guarded(isCell, (cell) => {
-            setupCell(state, cell);
+        onSetup: guarded(isHost, (host) => {
+            setupHost(state, host);
         }),
-        onBind: guarded(isCell, (cell) => {
-            bindCell(state, cell);
+        onBind: guarded(isHost, (host) => {
+            bindHost(state, host);
         }),
-        onUnbind: guarded(isCell, (cell) => {
-            writeBinding(state, cell, null);
+        onUnbind: guarded(isHost, (host) => {
+            writeBinding(state, host, null);
         }),
-        onTeardown: guarded(isCell, (cell) => {
-            teardownCell(state, cell);
+        onTeardown: guarded(isHost, (host) => {
+            teardownHost(state, host);
         }),
     };
 }
 
-function createCellStore<C extends CellHost>(isCell: CellGuard<C>, size: CellSize): CellStore<C> {
-    const state: StoreState<C> = {
+function createCellRegistry<H extends FactoryHost>(options: CellRegistryOptions<H>, size: CellSize): CellRegistry<H> {
+    const state: CellRegistryState<H> = {
+        ...options,
         size,
         entries: new Map(),
         snapshot: null,
         listeners: new Set(),
         serial: 0,
+        version: 0,
     };
 
     return {
-        handlers: createHandlers(state, isCell),
+        handlers: createHandlers(state),
         setSize: (next) => {
             state.size = next;
         },
-        subscribe: (onChange) => subscribeRoster(state, onChange),
-        getSnapshot: () => rosterSnapshot(state),
+        subscribe: (onChange) => subscribeRegistry(state, onChange),
+        getVersion: () => state.version,
+        getEntries: () => getRegistryEntries(state),
     };
 }
 
-function useCellStore<C extends CellHost>(isCell: CellGuard<C>, size: CellSize): CellStore<C> {
-    const [store] = useState(() => createCellStore(isCell, size));
+function useCellRegistry<H extends FactoryHost>(options: CellRegistryOptions<H>, size: CellSize): CellRegistry<H> {
+    const [registry] = useState(() => createCellRegistry(options, size));
 
     useLayoutEffect(() => {
-        store.setSize(size);
+        registry.setSize(size);
     });
 
-    return store;
+    return registry;
 }
 
-function useItemCells(size: CellSize): CellStore<Gtk.ListItem> {
-    return useCellStore(isListItem, size);
+function useItemCells(size: CellSize): CellRegistry<Gtk.ListItem> {
+    return useCellRegistry(CELL_OPTIONS, size);
 }
 
-function useHeaderCells(size: CellSize): CellStore<Gtk.ListHeader> {
-    return useCellStore(isListHeader, size);
+function useHeaderCells(size: CellSize): CellRegistry<Gtk.ListHeader> {
+    return useCellRegistry(HEADER_OPTIONS, size);
 }
 
-function isRowWanted(options: ItemBodyOptions, item: ListItem): boolean {
-    const { expandedIds } = options;
-
-    return expandedIds == null ? options.isRowExpanded === true : expandedIds.includes(item.id);
+function isRowWanted(options: ItemSlotOptions, item: ListItem): boolean {
+    return options.expandedIds?.includes(item.id) ?? false;
 }
 
-function itemArgs(item: ListItem, options: ItemBodyOptions): ListItemRenderArgs<unknown> {
+function itemArgs(item: ListItem, options: ItemSlotOptions): ListItemRenderArgs<unknown> {
     const args: ListItemRenderArgs<unknown> = { item: item.value, index: options.position ?? 0 };
     const row = options.row;
 
@@ -269,7 +344,49 @@ function itemArgs(item: ListItem, options: ItemBodyOptions): ListItemRenderArgs<
     return args;
 }
 
-function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: ReactNode): ReactNode {
+function slotFor(options: ItemSlotOptions): ItemSlot | null {
+    const ref = slotRefFor(options.item);
+    const item = ref === null ? undefined : options.collection.itemAt(ref);
+
+    if (item === undefined) {
+        return null;
+    }
+
+    return { item, row: options.row, args: itemArgs(item, options) };
+}
+
+function useItemSlot(
+    entry: CellEntry<PositionedHost>,
+    collection: Collection,
+    expandedIds: string[] | null | undefined,
+): ItemSlot | null {
+    const position = useProperty(entry.host, "position");
+    const item = useSyncExternalStore(entry.subscribe, entry.getItem);
+    const row = item instanceof Gtk.TreeListRow ? item : null;
+
+    return slotFor({ item, position, row, collection, expandedIds });
+}
+
+function expanderDescriptionFor(
+    slot: ItemSlot,
+    descriptions: ExpanderDescriptions | null | undefined,
+): string | undefined {
+    const { isExpanded } = slot.args;
+
+    if (isExpanded === undefined || descriptions == null) {
+        return undefined;
+    }
+
+    return isExpanded ? descriptions.collapse : descriptions.expand;
+}
+
+function wrapExpander(
+    slot: ItemSlot,
+    content: ReactNode,
+    descriptions: ExpanderDescriptions | null | undefined,
+): ReactNode {
+    const { item, row } = slot;
+
     const expander: ReactNode =
         row === null
             ? (
@@ -278,9 +395,10 @@ function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: Reac
             : (
                     <GtkTreeExpander
                         listRow={row}
-                        hideExpander={item.hideExpander ?? false}
-                        indentForDepth={item.indentForDepth ?? true}
-                        indentForIcon={item.indentForIcon ?? true}
+                        hideExpander={item.shouldHideExpander ?? false}
+                        indentForDepth={item.shouldIndentForDepth ?? true}
+                        indentForIcon={item.shouldIndentForIcon ?? true}
+                        accessibleDescription={expanderDescriptionFor(slot, descriptions)}
                     >
                         {content}
                     </GtkTreeExpander>
@@ -289,57 +407,161 @@ function wrapExpander(item: ListItem, row: Gtk.TreeListRow | null, content: Reac
     return expander;
 }
 
-function itemBody(options: ItemBodyOptions): ReactNode {
-    const id = getId(options.item);
-    const item = id === null ? undefined : options.collection.itemFor(id);
-
-    if (item === undefined) {
+function itemBody(
+    slot: ItemSlot | null,
+    render: ListItemRenderer<never>,
+    descriptions: ExpanderDescriptions | null | undefined,
+): ReactNode {
+    if (slot === null) {
         return null;
     }
 
-    const render = options.render as ListItemRenderer<unknown>;
+    const renderItem = render as ListItemRenderer<unknown>;
 
-    return wrapExpander(item, options.row, render(itemArgs(item, options)));
+    return wrapExpander(slot, renderItem(slot.args), descriptions);
 }
 
-function ItemCellImpl({ entry, render, collection, expandedIds }: ItemCellProps): ReactNode {
-    const item = useSyncExternalStore(entry.subscribe, entry.getItem);
-    const position = useProperty(entry.cell, "position");
-    const row = item instanceof Gtk.TreeListRow ? item : null;
-    const isRowExpanded = useProperty(row, "expanded");
-    const body = itemBody({ item, position, row, isRowExpanded, render, collection, expandedIds });
+function rowText(value: string | undefined): string | null {
+    return value ?? null;
+}
 
-    return createPortal(body, entry.cell, entry.key);
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- reads the flag off a row, paired with rowText */
+function rowFlag(value: boolean | undefined): boolean {
+    return value ?? true;
+}
+
+function rowPropsFor(slot: ItemSlot | null, rowProps: ListRowPropsResolver<never>): ResolvedRowProps {
+    const resolve = rowProps as ListRowPropsResolver<unknown>;
+    const props = slot === null ? NO_ROW_PROPS : resolve(slot.args);
+
+    return {
+        accessibleLabel: rowText(props.accessibleLabel),
+        accessibleDescription: rowText(props.accessibleDescription),
+        isActivatable: rowFlag(props.isActivatable),
+        isFocusable: rowFlag(props.isFocusable),
+        isSelectable: rowFlag(props.isSelectable),
+    };
+}
+
+function setRowText(host: Gtk.ColumnViewRow, name: string, value: string | null): void {
+    setObjectProperty(host, name, ROW_TEXT_DESCRIPTOR, value);
+}
+
+function applyRowProps(host: Gtk.ColumnViewRow, props: ResolvedRowProps): void {
+    setRowText(host, "accessible-label", props.accessibleLabel);
+    setRowText(host, "accessible-description", props.accessibleDescription);
+    host.setActivatable(props.isActivatable);
+    host.setFocusable(props.isFocusable);
+    host.setSelectable(props.isSelectable);
+}
+
+function ItemCellImpl({ entry, render, collection, expandedIds, expanderDescriptions }: ItemCellProps): ReactNode {
+    const slot = useItemSlot(entry, collection, expandedIds);
+    const body = itemBody(slot, render, expanderDescriptions);
+
+    return createPortal(body, entry.host, entry.key);
+}
+
+function ItemRowImpl({ entry, rowProps, collection, expandedIds }: ItemRowProps): ReactNode {
+    const slot = useItemSlot(entry, collection, expandedIds);
+    const props = rowPropsFor(slot, rowProps);
+
+    useLayoutEffect(() => {
+        applyRowProps(entry.host, props);
+    });
+
+    return null;
 }
 
 function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNode {
     const item = useSyncExternalStore(entry.subscribe, entry.getItem);
-    const id = getId(item);
+    const ref = slotRefFor(item);
     const renderHeader = render as ListSectionRenderer<unknown>;
-    const body = id === null ? null : renderHeader({ section: collection.sectionFor(id) });
+    const body = ref === null ? null : renderHeader({ section: collection.sectionFor(ref.store.path) });
 
-    return createPortal(body, entry.cell, entry.key);
+    return createPortal(body, entry.host, entry.key);
 }
 
-function usePortalEntries<C extends CellHost>(store: CellStore<C>): CellEntry<C>[] {
-    return useSyncExternalStore(store.subscribe, store.getSnapshot);
+function usePortalEntries<H extends FactoryHost>(registry: CellRegistry<H>): CellEntry<H>[] {
+    useSyncExternalStore(registry.subscribe, registry.getVersion);
+
+    return registry.getEntries();
 }
 
-const ItemPortals = ({ store, render, collection, expandedIds }: ItemPortalsProps): ReactNode =>
-    usePortalEntries(store).map((entry) => (
-        <ItemCell key={entry.key} entry={entry} render={render} collection={collection} expandedIds={expandedIds} />
+const ItemPortals = ({
+    registry,
+    render,
+    collection,
+    expandedIds,
+    expanderDescriptions,
+}: ItemPortalsProps): ReactNode =>
+    usePortalEntries(registry).map((entry) => (
+        <ItemCell
+            key={entry.key}
+            entry={entry}
+            render={render}
+            collection={collection}
+            expandedIds={expandedIds}
+            expanderDescriptions={expanderDescriptions}
+        />
     ));
 
-const HeaderPortals = ({ store, render, collection }: HeaderPortalsProps): ReactNode =>
-    usePortalEntries(store).map((entry) => (
+const RowPortals = ({ registry, rowProps, collection, expandedIds }: RowPortalsProps): ReactNode =>
+    usePortalEntries(registry).map((entry) => (
+        <ItemRow
+            key={entry.key}
+            entry={entry}
+            rowProps={rowProps}
+            collection={collection}
+            expandedIds={expandedIds}
+        />
+    ));
+
+const HeaderPortals = ({ registry, render, collection }: HeaderPortalsProps): ReactNode =>
+    usePortalEntries(registry).map((entry) => (
         <HeaderCell key={entry.key} entry={entry} render={render} collection={collection} />
     ));
 
+const useSectionHeader = (
+    render: ListSectionRenderer<never> | null | undefined,
+    collection: Collection,
+    size: CellSize,
+): SectionHeaderSlot => {
+    const registry = useHeaderCells(size);
+
+    if (render == null) {
+        return { factoryProps: {}, portals: null };
+    }
+
+    return {
+        factoryProps: { headerFactory: <GtkSignalListItemFactory {...registry.handlers} /> },
+        portals: <HeaderPortals registry={registry} render={render} collection={collection} />,
+    };
+};
+
+const useRowProps = (
+    rowProps: ListRowPropsResolver<never> | null | undefined,
+    collection: Collection,
+    expandedIds: string[] | null | undefined,
+): RowSlot => {
+    const registry = useCellRegistry(ROW_OPTIONS, NO_SIZE);
+
+    if (rowProps == null) {
+        return { factoryProps: {}, portals: null };
+    }
+
+    return {
+        factoryProps: { rowFactory: <GtkSignalListItemFactory {...registry.handlers} /> },
+        portals: (
+            <RowPortals registry={registry} rowProps={rowProps} collection={collection} expandedIds={expandedIds} />
+        ),
+    };
+};
+
 export {
     useItemCells,
-    useHeaderCells,
+    useRowProps,
+    useSectionHeader,
     ItemPortals,
-    HeaderPortals,
     type CellSize,
-    type CellStore,
 };

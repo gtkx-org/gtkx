@@ -1,12 +1,11 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { ElementType, ReactNode, Ref } from "react";
 import { GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
-import { applyWrite } from "@gtkx/react/internal";
 import { omit } from "@gtkx/utils";
-import { useEffectEvent, useLayoutEffect, useRef } from "react";
+import { useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
 import type { Collection } from "./collection.js";
-import { HeaderPortals, ItemPortals, useHeaderCells, useItemCells } from "./cells.js";
+import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
 import { useCollectionData } from "./use-collection.js";
 import { useWidgetRef } from "./use-widget-ref.js";
 
@@ -24,6 +23,13 @@ type SelectionOptions = {
 };
 
 type NotifySelectedHandler = NonNullable<DropDownBaseProps["onNotifySelected"]>;
+type ApplyState = { isApplying: boolean };
+
+type NotifyContext = {
+    options: SelectionOptions;
+    known: { current: string | null };
+    state: ApplyState;
+};
 
 type KnownSelection = {
     known: { current: string | null };
@@ -43,6 +49,10 @@ const DROP_DOWN_PROPS: string[] = [
     "ref",
 ];
 
+function newApplyState(): ApplyState {
+    return { isApplying: false };
+}
+
 const describeValue = (value: unknown): string => {
     if (typeof value === "string") {
         return value;
@@ -60,9 +70,6 @@ const defaultItemContent = (value: unknown): ReactNode =>
 
 const defaultRenderItem = ({ item }: ListItemRenderArgs<unknown>): ReactNode => defaultItemContent(item);
 const faceRenderer = (props: DropDownBaseProps): ListItemRenderer<never> => props.renderItem ?? defaultRenderItem;
-
-const listRenderer = (props: DropDownBaseProps): ListItemRenderer<never> =>
-    props.renderListItem ?? props.renderItem ?? defaultRenderItem;
 
 const resolvePosition = (
     widget: SelectableWidget,
@@ -110,16 +117,32 @@ const reportSelectedNotify = (options: SelectionOptions, tracker: KnownSelection
     reportKnownSelection(tracker, collection.idAt(widget.getSelected()));
 };
 
-const applySelectedPosition = (widget: SelectableWidget, position: number): void => {
-    applyWrite(() => {
+const applySelectedPosition = (widget: SelectableWidget, position: number, state: ApplyState): void => {
+    state.isApplying = true;
+
+    try {
         widget.selected = position;
-    });
+    } finally {
+        state.isApplying = false;
+    }
+};
+
+const dispatchSelectedNotify = (context: NotifyContext, value: number | null, self: SelectableWidget): void => {
+    const { options, known, state } = context;
+
+    if (state.isApplying) {
+        return;
+    }
+
+    reportSelectedNotify(options, { known, onSelectionChanged: options.props.onSelectionChanged });
+    options.props.onNotifySelected?.(value, self);
 };
 
 const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler => {
     const { widget, collection } = options;
     const { selectedId } = options.props;
     const known = useRef<string | null>(null);
+    const [applyState] = useState<ApplyState>(newApplyState);
 
     const syncKnownSelection = useEffectEvent((position: number): void => {
         const effectiveId = collection.idAt(position);
@@ -140,13 +163,12 @@ const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler 
         }
 
         const position = resolvePosition(widget, collection, selectedId);
-        applySelectedPosition(widget, position);
+        applySelectedPosition(widget, position, applyState);
         syncKnownSelection(position);
-    }, [widget, collection, selectedId]);
+    }, [widget, collection, selectedId, applyState]);
 
     return (value, self) => {
-        reportSelectedNotify(options, { known, onSelectionChanged: options.props.onSelectionChanged });
-        options.props.onNotifySelected?.(value, self);
+        dispatchSelectedNotify({ options, known, state: applyState }, value, self);
     };
 };
 
@@ -154,12 +176,11 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
     const { component: Component, items, sections, renderListItem, renderHeader, ref } = props;
     const rest = omit(props, DROP_DOWN_PROPS);
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
-    const collection = useCollectionData({ items, sections });
+    const collection = useCollectionData({ items, sections, isFlat: true });
     const faceCells = useItemCells({ width: -1, height: -1 });
     const listCells = useItemCells({ width: -1, height: -1 });
-    const headerCells = useHeaderCells({ width: -1, height: -1 });
+    const header = useSectionHeader(renderHeader, collection, { width: -1, height: -1 });
     const handleNotifySelected = useDropDownSelection({ widget, collection, props });
-    const hasHeader = typeof renderHeader === "function";
 
     return (
         <>
@@ -170,15 +191,15 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
                 {...(renderListItem != null && {
                     listFactory: <GtkSignalListItemFactory {...listCells.handlers} />,
                 })}
-                {...(hasHeader && { headerFactory: <GtkSignalListItemFactory {...headerCells.handlers} /> })}
+                {...header.factoryProps}
                 {...rest}
                 onNotifySelected={handleNotifySelected}
             />
-            <ItemPortals store={faceCells} render={faceRenderer(props)} collection={collection} />
+            <ItemPortals registry={faceCells} render={faceRenderer(props)} collection={collection} />
             {renderListItem != null && (
-                <ItemPortals store={listCells} render={listRenderer(props)} collection={collection} />
+                <ItemPortals registry={listCells} render={renderListItem} collection={collection} />
             )}
-            {hasHeader && <HeaderPortals store={headerCells} render={renderHeader} collection={collection} />}
+            {header.portals}
         </>
     );
 }

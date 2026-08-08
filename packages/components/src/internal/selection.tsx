@@ -2,15 +2,19 @@ import type * as Gio from "@gtkx/gi/gio";
 import type { ReactElement } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkMultiSelection, GtkNoSelection, GtkSingleSelection } from "@gtkx/jsx/gtk";
-import { useEffectEvent, useLayoutEffect, useState } from "react";
+import { useState } from "react";
 import type { Collection } from "./collection.js";
+import type { ItemsChangeHandler } from "./expansion.js";
+import { isCollectionIdle } from "./collection.js";
+import { useControlledSync } from "./controlled-sync.js";
+import { joinParts } from "./keys.js";
 
 type SelectionOptions = {
     collection: Collection;
     selectedIds?: string[] | null | undefined;
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     selectionMode?: Gtk.SelectionMode | null | undefined;
-    onItemsChanged: () => void;
+    onItemsChanged: ItemsChangeHandler;
 };
 
 type LastSelection = {
@@ -18,29 +22,60 @@ type LastSelection = {
     key: string | null;
 };
 
+type SelectionContext = {
+    selection: Gtk.SelectionModel | null;
+    collection: Collection;
+    last: LastSelection;
+    onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
+};
+
 type SelectionElementProps = {
     ref: (value: Gtk.SelectionModel | null) => void;
     model: Gio.ListModel;
     onSelectionChanged: () => void;
-    onItemsChanged: () => void;
+    onItemsChanged: ItemsChangeHandler;
 };
 
-function getSelectedIds(selection: Gtk.SelectionModel, collection: Collection): string[] {
+function selectedPositions(selection: Gtk.SelectionModel): number[] {
     const bitset = selection.getSelection();
     const size = Number(bitset.getSize());
-    const ids: string[] = [];
+    const positions: number[] = [];
 
     for (let index = 0; index < size; index++) {
-        pushId(collection.idAt(bitset.getNth(index)), ids);
+        positions.push(bitset.getNth(index));
+    }
+
+    return positions;
+}
+
+function idsAt(collection: Collection, positions: number[]): string[] {
+    const ids: string[] = [];
+
+    for (const position of positions) {
+        const id = collection.idAt(position);
+
+        if (id !== null) {
+            ids.push(id);
+        }
     }
 
     return ids;
 }
 
-function pushId(id: string | null, ids: string[]): void {
-    if (id !== null) {
-        ids.push(id);
+function plannedPositions(context: SelectionContext, ids: string[]): number[] | null {
+    const { selection, collection } = context;
+
+    if (selection === null || selection instanceof Gtk.NoSelection) {
+        return null;
     }
+
+    const positions = collection.positionsFor(ids);
+
+    if (ids.length > 0 && positions.length === 0) {
+        return null;
+    }
+
+    return selection instanceof Gtk.SingleSelection ? positions.slice(0, 1) : positions;
 }
 
 function applySingleSelection(selection: Gtk.SingleSelection, positions: number[]): void {
@@ -65,17 +100,7 @@ function applyMultiSelection(selection: Gtk.SelectionModel, positions: number[])
     selection.setSelection(selected, Gtk.Bitset.newRange(0, selection.getNItems()));
 }
 
-function applySelection(selection: Gtk.SelectionModel, collection: Collection, ids: string[]): void {
-    if (selection instanceof Gtk.NoSelection) {
-        return;
-    }
-
-    const positions = collection.positionsFor(ids);
-
-    if (ids.length > 0 && positions.length === 0) {
-        return;
-    }
-
+function applySelection(selection: Gtk.SelectionModel, positions: number[]): void {
     if (selection instanceof Gtk.SingleSelection) {
         applySingleSelection(selection, positions);
 
@@ -85,26 +110,20 @@ function applySelection(selection: Gtk.SelectionModel, collection: Collection, i
     applyMultiSelection(selection, positions);
 }
 
-function reportSelection(
-    selection: Gtk.SelectionModel | null,
-    collection: Collection,
-    last: LastSelection,
-    onSelectionChanged: ((ids: string[]) => void) | null | undefined,
-): void {
-    if (selection === null) {
+function reportSelection(context: SelectionContext, ids: string[]): void {
+    const key = joinParts(ids);
+
+    if (context.last.selection === context.selection && context.last.key === key) {
         return;
     }
 
-    const ids = getSelectedIds(selection, collection);
-    const key = ids.join(" ");
+    context.last.selection = context.selection;
+    context.last.key = key;
+    context.onSelectionChanged?.(ids);
+}
 
-    if (last.selection === selection && last.key === key) {
-        return;
-    }
-
-    last.selection = selection;
-    last.key = key;
-    onSelectionChanged?.(ids);
+function hasSelectionDrifted(actual: number[], planned: number[]): boolean {
+    return actual.length !== planned.length || planned.some((position, index) => actual[index] !== position);
 }
 
 function selectionElement(mode: Gtk.SelectionMode | null | undefined, props: SelectionElementProps): ReactElement {
@@ -119,16 +138,45 @@ function selectionElement(mode: Gtk.SelectionMode | null | undefined, props: Sel
     return <GtkSingleSelection {...props} autoselect={false} canUnselect />;
 }
 
-function syncSelection(
-    selection: Gtk.SelectionModel | null,
-    collection: Collection,
-    selectedIds: string[] | null | undefined,
-): void {
-    if (selection === null || selectedIds == null) {
+function applyControlledSelection(context: SelectionContext, selectedIds: string[] | null | undefined): void {
+    const { selection, collection } = context;
+
+    if (selection === null) {
         return;
     }
 
-    applySelection(selection, collection, selectedIds);
+    const planned = plannedPositions(context, selectedIds ?? []);
+
+    if (planned !== null) {
+        applySelection(selection, planned);
+    }
+
+    reportSelection(context, idsAt(collection, selectedPositions(selection)));
+}
+
+function observeSelection(
+    context: SelectionContext,
+    selectedIds: string[] | null | undefined,
+    onDrift: () => void,
+): void {
+    const { selection, collection } = context;
+
+    if (selection === null) {
+        return;
+    }
+
+    const positions = selectedPositions(selection);
+    reportSelection(context, idsAt(collection, positions));
+
+    if (!isCollectionIdle(collection)) {
+        return;
+    }
+
+    const planned = plannedPositions(context, selectedIds ?? []);
+
+    if (planned !== null && hasSelectionDrifted(positions, planned)) {
+        onDrift();
+    }
 }
 
 function newLastSelection(): LastSelection {
@@ -139,24 +187,25 @@ function useSelection(options: SelectionOptions): ReactElement {
     const { collection, selectedIds, onSelectionChanged, selectionMode } = options;
     const [selection, setSelection] = useState<Gtk.SelectionModel | null>(null);
     const [last] = useState<LastSelection>(newLastSelection);
+    const context: SelectionContext = { selection, collection, last, onSelectionChanged };
 
-    const report = useEffectEvent((): void => {
-        reportSelection(selection, collection, last, onSelectionChanged);
+    const markDrift = useControlledSync({
+        ids: selectedIds,
+        collection,
+        widget: selection,
+        apply: (ids) => {
+            applyControlledSelection(context, ids);
+        },
     });
-
-    useLayoutEffect(() => {
-        syncSelection(selection, collection, selectedIds);
-        report();
-    }, [selection, collection, selectedIds]);
 
     return selectionElement(selectionMode, {
         ref: setSelection,
         model: collection.model,
         onSelectionChanged: () => {
-            reportSelection(selection, collection, last, onSelectionChanged);
+            observeSelection(context, selectedIds, markDrift);
         },
         onItemsChanged: options.onItemsChanged,
     });
 }
 
-export { useSelection, type SelectionOptions };
+export { useSelection };

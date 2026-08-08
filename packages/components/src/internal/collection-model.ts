@@ -1,178 +1,283 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
 import type { CollectionIndex, Level } from "./collection-index.js";
-import { childLevelKey, ROOT_LEVEL_KEY } from "./collection-index.js";
+import type { TreeExpansion } from "./tree-expansion.js";
+import { createCollectionIndex } from "./collection-index.js";
+import { encodePart } from "./keys.js";
+import { adoptIndex, createTreeExpansion, pruneSlots, resetExpansion } from "./tree-expansion.js";
 
-type LevelState = {
-    store: Gio.ListStore;
-    ids: string[];
-    canExpand: Map<string, boolean>;
+type LevelStore = Gio.ListModel & LazyLevelStore;
+
+type SlotRef = {
+    store: LevelStore;
+    slot: number;
 };
 
-type SpliceRange = {
+type SyncContext = {
+    index: CollectionIndex;
+    expansion: TreeExpansion;
+};
+
+type SlotRun = {
     start: number;
-    removed: number;
-    added: string[];
+    length: number;
 };
 
 type ModelState = {
     root: Gio.ListStore;
     rootModels: GObject.Object[];
     model: Gtk.FlattenListModel;
-    objects: Map<string, Gtk.StringObject>;
-    levels: Map<string, LevelState>;
+    groupStores: LevelStore[];
     tree: Gtk.TreeListModel | null;
+    treeRoot: LevelStore | null;
+    expansion: TreeExpansion;
 };
 
 type CollectionModel = {
     model: Gtk.FlattenListModel;
+    expansion: TreeExpansion;
     treeModel: () => Gtk.TreeListModel | null;
     sync: (index: CollectionIndex) => void;
 };
 
-const OBJECT_CACHE_MAX = 1 << 20;
+const STORE_CLASS_KEY = Symbol.for("gtkx.components.lazy-level-store");
+const SLOTS_KEY = Symbol.for("gtkx.components.lazy-level-store.slots");
+const EMPTY_INDEX = createCollectionIndex(undefined, undefined, true);
+const SLOTS = sharedSlots();
 
-const newStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
+const newRootStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
 
-function getId(value: GObject.Object | null): string | null {
-    const item = value instanceof Gtk.TreeListRow ? value.getItem() : value;
+function sharedSlots(): WeakMap<GObject.Object, SlotRef> {
+    const cached: unknown = Reflect.get(globalThis, SLOTS_KEY);
 
-    return item instanceof Gtk.StringObject ? item.getString() : null;
-}
-
-function objectFor(state: ModelState, id: string): Gtk.StringObject {
-    const existing = state.objects.get(id);
-
-    if (existing !== undefined) {
-        return existing;
+    if (cached instanceof WeakMap) {
+        return cached as WeakMap<GObject.Object, SlotRef>;
     }
 
-    const created = Gtk.StringObject.new(id);
-    state.objects.set(id, created);
+    const created: WeakMap<GObject.Object, SlotRef> = new WeakMap();
+    Reflect.set(globalThis, SLOTS_KEY, created);
 
     return created;
 }
 
-function commonPrefix(previous: string[], next: string[], max: number): number {
-    let count = 0;
+function registeredStoreClass(): typeof LazyLevelStore {
+    const cached: unknown = Reflect.get(globalThis, STORE_CLASS_KEY);
 
-    while (count < max && previous[count] === next[count]) {
-        count += 1;
+    if (typeof cached === "function") {
+        return cached as typeof LazyLevelStore;
     }
 
-    return count;
+    registerClass(LazyLevelStore, { typeName: "GtkxLazyLevelStore", implements: [Gio.ListModel] });
+    Reflect.set(globalThis, STORE_CLASS_KEY, LazyLevelStore);
+
+    return LazyLevelStore;
 }
 
-function commonSuffix(previous: string[], next: string[], max: number): number {
-    let count = 0;
+function slotRefFor(value: GObject.Object | null): SlotRef | null {
+    const item = value instanceof Gtk.TreeListRow ? value.getItem() : value;
 
-    while (count < max && previous[previous.length - 1 - count] === next[next.length - 1 - count]) {
-        count += 1;
-    }
-
-    return count;
-}
-
-function spliceRange(previous: string[], next: string[]): SpliceRange | null {
-    const shared = Math.min(previous.length, next.length);
-    const start = commonPrefix(previous, next, shared);
-
-    if (start === previous.length && start === next.length) {
+    if (item === null) {
         return null;
     }
 
-    const tail = commonSuffix(previous, next, shared - start);
+    const ref = SLOTS.get(item);
 
-    return { start, removed: previous.length - start - tail, added: next.slice(start, next.length - tail) };
+    return ref === undefined || ref.slot === -1 ? null : ref;
 }
 
-function levelFor(state: ModelState, key: string): LevelState {
-    const existing = state.levels.get(key);
+function slotPathAt(store: LevelStore, slot: number): string {
+    return store.path + encodePart(String(slot));
+}
 
-    if (existing !== undefined) {
-        return existing;
+function newLevelStore(path: string): LevelStore {
+    const store = new (registeredStoreClass())() as LevelStore;
+    store.path = path;
+
+    return store;
+}
+
+function buildChildStore(context: SyncContext, path: string): LevelStore | null {
+    const level = context.index.children.get(path);
+
+    if (level === undefined) {
+        return null;
     }
 
-    const created: LevelState = { store: newStore(), ids: [], canExpand: new Map() };
-    state.levels.set(key, created);
+    const store = newLevelStore(path);
+    growStore(context, store, level);
 
-    return created;
+    return store;
 }
 
-function refreshExpandable(current: LevelState, level: Level): void {
-    const next: Map<string, boolean> = new Map();
+function pushSlot(context: SyncContext, store: LevelStore, level: Level, slot: number): void {
+    const canExpand = level.expandableFlags[slot] ?? false;
+    store.refs.push({ store, slot });
+    store.objects.push(null);
+    store.expandableFlags.push(canExpand);
+    store.childStores.push(canExpand ? buildChildStore(context, slotPathAt(store, slot)) : null);
+}
 
-    for (const [index, id] of level.ids.entries()) {
-        const isWanted = level.expandableFlags[index] ?? false;
-        const previous = current.canExpand.get(id);
-        next.set(id, isWanted);
+function growStore(context: SyncContext, store: LevelStore, level: Level): void {
+    for (let slot = store.refs.length; slot < level.items.length; slot++) {
+        pushSlot(context, store, level, slot);
+    }
+}
 
-        if (previous !== undefined && previous !== isWanted) {
-            current.store.itemsChanged(index, 1, 1);
+function flipSlot(context: SyncContext, store: LevelStore, slot: number): void {
+    const canExpand = !(store.expandableFlags[slot] ?? false);
+    store.expandableFlags[slot] = canExpand;
+    store.childStores[slot] = canExpand ? buildChildStore(context, slotPathAt(store, slot)) : null;
+}
+
+function collectFlips(store: LevelStore, level: Level): Set<number> {
+    const overlap = Math.min(store.refs.length, level.items.length);
+    const flipped: Set<number> = new Set();
+
+    for (let slot = 0; slot < overlap; slot++) {
+        if ((store.expandableFlags[slot] ?? false) !== (level.expandableFlags[slot] ?? false)) {
+            flipped.add(slot);
         }
     }
 
-    current.canExpand = next;
+    return flipped;
 }
 
-function didSpliceLevel(state: ModelState, level: Level): boolean {
-    const current = levelFor(state, level.key);
-    const range = spliceRange(current.ids, level.ids);
+function syncOverlap(context: SyncContext, store: LevelStore, level: Level): Set<number> {
+    const flipped = collectFlips(store, level);
 
-    if (range === null) {
-        return false;
+    if (flipped.size === 0) {
+        return flipped;
     }
 
-    current.store.splice(range.start, range.removed, range.added.map((id) => objectFor(state, id)));
-    current.ids = [...level.ids];
+    pruneSlots(context.expansion, store.path, (slot) => flipped.has(slot));
 
-    return true;
+    for (const slot of flipped) {
+        flipSlot(context, store, slot);
+    }
+
+    return flipped;
 }
 
-function dropUnvisited(state: ModelState, visited: Set<string>): void {
-    for (const key of state.levels.keys()) {
-        if (!visited.has(key)) {
-            state.levels.delete(key);
+function detachRefs(store: LevelStore, nextLength: number): void {
+    for (let slot = nextLength; slot < store.refs.length; slot++) {
+        const ref = store.refs[slot];
+
+        if (ref !== undefined) {
+            ref.slot = -1;
         }
     }
 }
 
-function pruneObjects(state: ModelState, index: CollectionIndex): void {
-    if (state.objects.size <= OBJECT_CACHE_MAX) {
+function shrinkStore(context: SyncContext, store: LevelStore, nextLength: number): void {
+    if (store.refs.length <= nextLength) {
         return;
     }
 
-    for (const id of state.objects.keys()) {
-        if (!index.hasId(id)) {
-            state.objects.delete(id);
-        }
+    detachRefs(store, nextLength);
+    pruneSlots(context.expansion, store.path, (slot) => slot >= nextLength);
+    store.refs.length = nextLength;
+    store.objects.length = nextLength;
+    store.childStores.length = nextLength;
+    store.expandableFlags.length = nextLength;
+}
+
+function emitTailSplice(store: LevelStore, previousLength: number, nextLength: number): void {
+    if (nextLength < previousLength) {
+        store.itemsChanged(nextLength, previousLength - nextLength, 0);
+
+        return;
+    }
+
+    if (nextLength > previousLength) {
+        store.itemsChanged(previousLength, 0, nextLength - previousLength);
     }
 }
 
-function childStoreFor(state: ModelState, object: GObject.Object): Gio.ListStore | null {
-    const id = getId(object);
+function extendRuns(runs: SlotRun[], slot: number): void {
+    const last = runs.at(-1);
 
-    if (id === null) {
+    if (last !== undefined && last.start + last.length === slot) {
+        last.length += 1;
+
+        return;
+    }
+
+    runs.push({ start: slot, length: 1 });
+}
+
+function collectFlipRuns(flipped: Set<number>): SlotRun[] {
+    const runs: SlotRun[] = [];
+
+    for (const slot of flipped) {
+        extendRuns(runs, slot);
+    }
+
+    return runs;
+}
+
+function emitFlips(store: LevelStore, flipped: Set<number>): void {
+    for (const run of collectFlipRuns(flipped)) {
+        store.itemsChanged(run.start, run.length, run.length);
+    }
+}
+
+function stepChildStore(context: SyncContext, store: LevelStore, slot: number, flipped: Set<number>): void {
+    const child = store.childStores[slot];
+
+    if (child == null || flipped.has(slot)) {
+        return;
+    }
+
+    const level = context.index.children.get(slotPathAt(store, slot));
+
+    if (level !== undefined) {
+        syncLevel(context, child, level);
+    }
+}
+
+function syncLevel(context: SyncContext, store: LevelStore, level: Level): void {
+    const previousLength = store.refs.length;
+    const overlap = Math.min(previousLength, level.items.length);
+    const flipped = syncOverlap(context, store, level);
+    shrinkStore(context, store, level.items.length);
+    growStore(context, store, level);
+    emitTailSplice(store, previousLength, level.items.length);
+    emitFlips(store, flipped);
+
+    for (let slot = 0; slot < overlap; slot++) {
+        stepChildStore(context, store, slot, flipped);
+    }
+}
+
+function childStoreFor(object: GObject.Object): Gio.ListModel | null {
+    const ref = slotRefFor(object);
+
+    if (ref === null) {
         return null;
     }
 
-    return state.levels.get(childLevelKey(id))?.store ?? null;
+    return ref.store.childStores[ref.slot] ?? null;
 }
 
-function ensureTree(state: ModelState): Gtk.TreeListModel {
-    state.tree ??= Gtk.TreeListModel.new(levelFor(state, ROOT_LEVEL_KEY).store, false, false, (object) =>
-        childStoreFor(state, object));
+function ensureTree(state: ModelState, first: LevelStore): Gtk.TreeListModel {
+    if (state.tree === null || state.treeRoot !== first) {
+        state.tree = Gtk.TreeListModel.new(first, false, false, (object) => childStoreFor(object));
+        state.treeRoot = first;
+    }
 
     return state.tree;
 }
 
 function desiredRootModels(state: ModelState, index: CollectionIndex): GObject.Object[] {
-    if (index.isTree) {
-        return [ensureTree(state)];
+    const [first] = state.groupStores;
+
+    if (first !== undefined && index.isTree) {
+        return [ensureTree(state, first)];
     }
 
-    return index.groups.map((level) => levelFor(state, level.key).store);
+    return [...state.groupStores];
 }
 
 function hasSameModels(previous: GObject.Object[], next: GObject.Object[]): boolean {
@@ -188,51 +293,63 @@ function syncRoot(state: ModelState, index: CollectionIndex): void {
 
     state.root.splice(0, state.rootModels.length, next);
     state.rootModels = next;
+    resetExpansion(state.expansion);
+}
+
+function adjustGroupStores(state: ModelState, context: SyncContext): void {
+    const { groups } = context.index;
+    state.groupStores.length = Math.min(state.groupStores.length, groups.length);
+
+    for (const level of groups.slice(state.groupStores.length)) {
+        const store = newLevelStore(level.path);
+        growStore(context, store, level);
+        state.groupStores.push(store);
+    }
+}
+
+function stepGroupStores(state: ModelState, context: SyncContext, surviving: number): void {
+    for (const [group, level] of context.index.groups.entries()) {
+        const store = state.groupStores[group];
+
+        if (store !== undefined && group < surviving) {
+            syncLevel(context, store, level);
+        }
+    }
 }
 
 function syncModel(state: ModelState, index: CollectionIndex): void {
-    const levels = [...index.groups, ...index.children.values()];
-    const visited: Set<string> = new Set();
-    let didChange = false;
+    const context: SyncContext = { index, expansion: state.expansion };
+    const surviving = Math.min(state.groupStores.length, index.groups.length);
+    state.expansion.isSyncing = true;
 
-    for (const level of levels) {
-        didChange = didSpliceLevel(state, level) || didChange;
-        visited.add(level.key);
+    try {
+        adjustGroupStores(state, context);
+        syncRoot(state, index);
+        stepGroupStores(state, context, surviving);
+    } finally {
+        state.expansion.isSyncing = false;
     }
 
-    if (didChange || visited.size !== state.levels.size) {
-        dropUnvisited(state, visited);
-        pruneObjects(state, index);
-    }
-
-    syncRoot(state, index);
-    refreshExpandableLevels(state, index, levels);
-}
-
-function refreshExpandableLevels(state: ModelState, index: CollectionIndex, levels: Level[]): void {
-    if (!index.isTree) {
-        return;
-    }
-
-    for (const level of levels) {
-        refreshExpandable(levelFor(state, level.key), level);
-    }
+    adoptIndex(state.expansion, index);
 }
 
 function createCollectionModel(): CollectionModel {
-    const root = newStore();
+    registeredStoreClass();
+    const root = newRootStore();
 
     const state: ModelState = {
         root,
         rootModels: [],
         model: Gtk.FlattenListModel.new(root),
-        objects: new Map(),
-        levels: new Map(),
+        groupStores: [],
         tree: null,
+        treeRoot: null,
+        expansion: createTreeExpansion(EMPTY_INDEX),
     };
 
     return {
         model: state.model,
+        expansion: state.expansion,
         treeModel: () => state.tree,
         sync: (index) => {
             syncModel(state, index);
@@ -240,4 +357,39 @@ function createCollectionModel(): CollectionModel {
     };
 }
 
-export { createCollectionModel, getId, type CollectionModel };
+class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
+    declare itemsChanged: Gio.ListModel["itemsChanged"];
+    path = "";
+    refs: SlotRef[] = [];
+    objects: (Gtk.StringObject | null)[] = [];
+    childStores: (LevelStore | null)[] = [];
+    expandableFlags: boolean[] = [];
+
+    private createItem(position: number, ref: SlotRef): Gtk.StringObject {
+        const created = Gtk.StringObject.new("");
+        this.objects[position] = created;
+        SLOTS.set(created, ref);
+
+        return created;
+    }
+
+    vfuncGetItemType(): bigint {
+        return GObject.TYPE_OBJECT;
+    }
+
+    vfuncGetNItems(): number {
+        return this.refs.length;
+    }
+
+    vfuncGetItem(position: number): GObject.Object | null {
+        const ref = this.refs[position];
+
+        if (ref === undefined) {
+            return null;
+        }
+
+        return this.objects[position] ?? this.createItem(position, ref);
+    }
+}
+
+export { createCollectionModel, slotPathAt, slotRefFor, type CollectionModel, type SlotRef };

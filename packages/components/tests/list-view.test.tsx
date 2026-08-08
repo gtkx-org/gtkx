@@ -1,4 +1,5 @@
-import type { ListItemRenderer } from "@gtkx/components";
+import type { ListItem, ListItemRenderer } from "@gtkx/components";
+import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { screen, within } from "@gtkx/testing";
@@ -15,14 +16,52 @@ import {
     expectLargeDatasetReorder,
     expectRapidReorder,
     expectRenderItemFunctionUpdate,
+    expectRenderItemReceivesData,
     expectReorder,
+    expectSingleItemValueUpdate,
     namedRows,
     RAPID_REORDER_ORDERS,
     renderCounterCell,
-    renderTestItemWithSpy,
 } from "./helpers/list-collection-render.js";
 import { renderGridView, renderListView } from "./helpers/list-fixtures.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
+
+type NamedItem = ListItem<{ name: string }>;
+type Splice = [number, number, number];
+
+const branchA: NamedItem = { id: "a", value: { name: "A" }, children: [{ id: "a0", value: { name: "A0" } }] };
+const leafB: NamedItem = { id: "b", value: { name: "B" } };
+const branchB: NamedItem = { id: "b", value: { name: "B" }, children: [{ id: "b0", value: { name: "B0" } }] };
+const leafC: NamedItem = { id: "c", value: { name: "C" } };
+const branchC: NamedItem = { id: "c", value: { name: "C" }, children: [{ id: "c0", value: { name: "C0" } }] };
+const leafD: NamedItem = { id: "d", value: { name: "D" } };
+const branchD: NamedItem = { id: "d", value: { name: "D" }, children: [{ id: "d0", value: { name: "D0" } }] };
+
+const collectionModelFor = (ref: RefObject<Gtk.ListView>): Gtk.FlattenListModel => {
+    const selection = ref.current.getModel();
+
+    if (!(selection instanceof Gtk.SingleSelection)) {
+        throw new TypeError("Expected the list view to hold a single selection model");
+    }
+
+    const model = selection.getModel();
+
+    if (!(model instanceof Gtk.FlattenListModel)) {
+        throw new TypeError("Expected the selection to wrap the collection model");
+    }
+
+    return model;
+};
+
+const spliceLog = (ref: RefObject<Gtk.ListView>): Splice[] => {
+    const splices: Splice[] = [];
+
+    collectionModelFor(ref).connect("items-changed", (position, removed, added) => {
+        splices.push([position, removed, added]);
+    });
+
+    return splices;
+};
 
 const collectLabelTexts = (container: Gtk.Widget): string[] =>
     within(container)
@@ -30,24 +69,34 @@ const collectLabelTexts = (container: Gtk.Widget): string[] =>
         .map((widget) => (widget instanceof Gtk.Label ? widget.getLabel() : ""))
         .filter((text) => text.length > 0);
 
-const listViewView = async (items: Parameters<typeof renderListView>[0]): Promise<CollectionView> => {
-    const { ref, rerender } = await renderListView(items);
+const asCollectionView = (fixture: {
+    ref: RefObject<Gtk.Widget>;
+    rerender: CollectionView["rerender"];
+}): CollectionView => ({
+    texts: () => collectLabelTexts(fixture.ref.current),
+    rerender: fixture.rerender,
+});
 
-    return { texts: () => collectLabelTexts(ref.current), rerender };
-};
+const listViewView = async (items: Parameters<typeof renderListView>[0]): Promise<CollectionView> =>
+    asCollectionView(await renderListView(items));
 
-const gridViewView = async (items: Parameters<typeof renderGridView>[0]): Promise<CollectionView> => {
-    const { ref, rerender } = await renderGridView(items);
+const gridViewView = async (items: Parameters<typeof renderGridView>[0]): Promise<CollectionView> =>
+    asCollectionView(await renderGridView(items));
 
-    return { texts: () => collectLabelTexts(ref.current), rerender };
-};
+const topLevelTexts = (items: string[] | NamedItem[]): string[] =>
+    items.map((item) => (typeof item === "string" ? item : item.value.name));
 
-const expectSingleItemValueUpdate = async (): Promise<void> => {
-    const { rerender } = await renderListView([{ id: "1", value: { name: "Initial" } }]);
-    expect(screen.queryAllByText("Initial")).toHaveLength(1);
-    await rerender([{ id: "1", value: { name: "Updated" } }]);
-    expect(screen.queryAllByText("Updated")).toHaveLength(1);
-    expect(screen.queryAllByText("Initial")).toHaveLength(0);
+const expectSpliceEmissions = async (
+    initial: string[] | NamedItem[],
+    next: string[] | NamedItem[],
+    expected: Splice[],
+): Promise<void> => {
+    const { ref, rerender } = await renderListView<{ name: string }>(initial);
+    expect(collectLabelTexts(ref.current)).toEqual(topLevelTexts(initial));
+    const splices = spliceLog(ref);
+    await rerender(next);
+    expect(collectLabelTexts(ref.current)).toEqual(topLevelTexts(next));
+    expect(splices).toEqual(expected);
 };
 
 const createItems = (a: number, b: number, c: number) => [
@@ -139,8 +188,7 @@ describe("render - ListView (2)", () => {
 describe("render - ListView (3)", () => {
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
-            const renderItem = await renderTestItemWithSpy();
-            expect(renderItem).toHaveBeenCalledWith(expect.objectContaining({ item: { name: "Test Item" } }));
+            await expectRenderItemReceivesData();
         });
 
         it("updates when renderItem function changes", async () => {
@@ -293,6 +341,45 @@ describe("render - ListView (9)", () => {
         it("renders the item label as the grid cell's direct content with no wrapper container", async () => {
             const { ref } = await renderGridView(["First"]);
             expectNoBoxBetween(screen.getByText("First"), ref.current);
+        });
+    });
+});
+
+describe("render - ListView (10)", () => {
+    describe("model emission policy", () => {
+        it("emits no items-changed for a pure reorder", async () => {
+            await expectSpliceEmissions(["A", "B", "C", "D"], ["D", "A", "B", "C"], []);
+        });
+
+        it("emits one tail splice when a row is inserted in the middle", async () => {
+            await expectSpliceEmissions(["A", "B", "C"], ["A", "X", "B", "C"], [[3, 0, 1]]);
+        });
+
+        it("emits one tail splice when rows are removed", async () => {
+            await expectSpliceEmissions(["A", "B", "C", "D"], ["A", "C"], [[2, 2, 0]]);
+        });
+
+        it("emits one replacement when a row's expandability flips", async () => {
+            await expectSpliceEmissions([branchA, leafB], [branchA, branchB], [[1, 1, 1]]);
+        });
+
+        it("emits one replacement covering a run of adjacent expandability flips", async () => {
+            await expectSpliceEmissions(
+                [branchA, leafB, leafC, leafD],
+                [branchA, branchB, branchC, leafD],
+                [[1, 2, 2]],
+            );
+        });
+
+        it("emits one replacement per run when the flips are not adjacent", async () => {
+            await expectSpliceEmissions(
+                [branchA, leafB, leafC, leafD],
+                [branchA, branchB, leafC, branchD],
+                [
+                    [1, 1, 1],
+                    [3, 1, 1],
+                ],
+            );
         });
     });
 });

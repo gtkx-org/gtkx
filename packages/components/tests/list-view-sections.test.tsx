@@ -1,10 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type ListSection, ListView } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { render, screen } from "@gtkx/testing";
+import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { expectRowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
+import { getSelectionModel } from "./helpers/selection-model.js";
 import { expectTextPresent } from "./helpers/text-presence.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
@@ -28,18 +30,31 @@ const sectioned: ListSection<string, Row>[] = [
     },
 ];
 
-const renderSectioned = async (ref: ReturnType<typeof createRef<Gtk.ListView>>) => {
+const repeatedId: ListSection<string, Row>[] = [
+    { id: "s", value: "First", data: [{ id: "a", value: { name: "Alpha" } }] },
+    { id: "s", value: "Second", data: [{ id: "b", value: { name: "Beta" } }] },
+];
+
+const renderSections = async (
+    ref: ReturnType<typeof createRef<Gtk.ListView>>,
+    sections: ListSection<string, Row>[],
+    selectedIds?: string[],
+) => {
     await render(
         <ScrollWrapper minContentHeight={400}>
             <ListView<Row, string>
                 ref={ref}
-                sections={sectioned}
+                sections={sections}
+                selectedIds={selectedIds}
                 renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
                 renderHeader={({ section: label }: { section: string }) => <GtkLabel>{label}</GtkLabel>}
             />
         </ScrollWrapper>,
     );
 };
+
+const renderSectioned = (ref: ReturnType<typeof createRef<Gtk.ListView>>, selectedIds?: string[]) =>
+    renderSections(ref, sectioned, selectedIds);
 
 describe("ListView sections", () => {
     it("renders a header per section through the header factory", async () => {
@@ -57,6 +72,23 @@ describe("ListView sections", () => {
         await renderSectioned(ref);
         await screen.findAllByText("Alpha");
         expect(ref.current?.getModel()).toHaveObjectProperty("nItems", 3);
+    });
+
+    it("keeps two sections that share an id apart", async () => {
+        const ref = createRef<Gtk.ListView>();
+        await renderSections(ref, repeatedId);
+        await expectTextPresent("Alpha");
+        await expectRowTexts(ref, ["First", "Alpha", "Second", "Beta"]);
+    });
+
+    it("selects an id that lives past the first section", async () => {
+        const ref = createRef<Gtk.ListView>();
+        await renderSectioned(ref, ["c"]);
+        await screen.findAllByText("Gamma");
+
+        await waitFor(() => {
+            expect(getSelectionModel(ref).isSelected(2)).toBe(true);
+        });
     });
 
     it("renders the header label as the header's direct content with no wrapper container", async () => {
