@@ -99,6 +99,14 @@ const startWithClient = async (): Promise<net.Socket> => {
     return connectClient(socketCtx.socketPath);
 };
 
+const startWithConnection = async (): Promise<{ client: net.Socket; connection: ProtocolConnection }> => {
+    await socketCtx.server.start();
+    const connectionPromise = waitForConnection(socketCtx.registry);
+    const client = await connectClient(socketCtx.socketPath);
+
+    return { client, connection: await connectionPromise };
+};
+
 const nextRequest = (registry: ConnectionRegistry): Promise<Request> =>
     new Promise((resolve) => {
         registry.addEventListener(
@@ -127,13 +135,12 @@ const collectFirstFrame = async <T>(client: net.Socket, act: () => void): Promis
 };
 
 export {
-    connectClient,
-    tryConnect,
-    waitForConnection,
-    socketCtx,
-    setupSocketServer,
-    startWithClient,
-    nextRequest,
     collectFirstFrame,
-    type SocketServerContext,
+    connectClient,
+    nextRequest,
+    setupSocketServer,
+    socketCtx,
+    startWithClient,
+    startWithConnection,
+    tryConnect,
 };

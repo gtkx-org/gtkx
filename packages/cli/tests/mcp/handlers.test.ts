@@ -13,6 +13,11 @@ type FakeApp = {
 type TextMatches = { widgets: { text: string | null }[] };
 type ChildMatches = { widgets: { children: unknown[] }[] };
 
+type WidgetTarget = {
+    widget: never;
+    dispatchWidget: (method: string, params: Record<string, unknown>) => Promise<unknown>;
+};
+
 const hoisted = vi.hoisted(() => ({
     findAllByRole: vi.fn(),
     findAllByText: vi.fn(),
@@ -25,11 +30,15 @@ const hoisted = vi.hoisted(() => ({
     fireEvent: vi.fn(() => Promise.resolve()),
     prettyWidget: vi.fn<(container: unknown, options?: PrettyWidgetOptions) => string>(() => "tree"),
     formatRole: vi.fn((role: number) => (role === 2 ? "label" : "button")),
-    getWidgetNodeText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
+    getWidgetText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
         return widget.getLabel?.() ?? widget.getText?.() ?? null;
     }),
     listToplevels: vi.fn(() => [] as unknown[]),
+    act: vi.fn((callback: () => unknown) => Promise.resolve(callback())),
     AccessibleRole: { BUTTON: 1, LABEL: 2 },
+    TreeExpander: class TreeExpander {
+        isTreeExpander = true;
+    },
 }));
 
 const {
@@ -50,7 +59,11 @@ const makeApp = (windows: { getTitle?: () => string | null }[] = []): FakeApp =>
     getWindows: () => windows,
 });
 
-const makeWidget = (overrides: FakeWidgetOverrides = {}): never => makeFakeWidget(overrides);
+const makeWidget = (overrides: FakeWidgetOverrides = {}): never => {
+    const widget = makeFakeWidget(overrides);
+
+    return overrides.type === "GtkTreeExpander" ? Object.assign(new hoisted.TreeExpander(), widget) : widget;
+};
 
 const registerWidget = (registry: WidgetRegistry, widget: never): string => {
     registry.register(widget);
@@ -61,7 +74,26 @@ const registerWidget = (registry: WidgetRegistry, widget: never): string => {
 const dispatchQuery = (params: Record<string, unknown>, registry = new WidgetRegistry()): Promise<unknown> =>
     dispatch("widget.query", params, { app: makeApp() as never, registry });
 
+const dispatchMatchingNameQuery = (value: string): Promise<unknown> => {
+    findAllByName.mockResolvedValueOnce([makeWidget()]);
+
+    return dispatchQuery({ by: "name", value });
+};
+
+const makeWidgetTarget = (overrides: FakeWidgetOverrides = {}): WidgetTarget => {
+    const widget = makeWidget(overrides);
+    const registry = new WidgetRegistry();
+    const id = registerWidget(registry, widget);
+
+    return {
+        widget,
+        dispatchWidget: (method, params) =>
+            dispatch(method, { widgetId: id, ...params }, { app: makeApp() as never, registry }),
+    };
+};
+
 vi.mock("@gtkx/testing", () => ({
+    act: hoisted.act,
     findAllByRole: hoisted.findAllByRole,
     findAllByText: hoisted.findAllByText,
     findAllByName: hoisted.findAllByName,
@@ -70,17 +102,22 @@ vi.mock("@gtkx/testing", () => ({
     fireEvent: hoisted.fireEvent,
     prettyWidget: hoisted.prettyWidget,
     formatRole: hoisted.formatRole,
-    getWidgetNodeText: hoisted.getWidgetNodeText,
+    getWidgetText: hoisted.getWidgetText,
     userEvent: { click: hoisted.click, type: hoisted.typeText, clear: hoisted.clear },
 }));
 
 vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: hoisted.AccessibleRole,
+    TreeExpander: hoisted.TreeExpander,
     Window: { listToplevels: hoisted.listToplevels },
 }));
 
 beforeEach(() => {
     vi.clearAllMocks();
+    findAllByRole.mockResolvedValue([]);
+    findAllByText.mockResolvedValue([]);
+    findAllByName.mockResolvedValue([]);
+    findAllByLabelText.mockResolvedValue([]);
 });
 
 describe("dispatch (method routing)", () => {
@@ -177,18 +214,16 @@ describe("widget.query", () => {
         expect(findAllByRole).not.toHaveBeenCalled();
     });
 
-    it("routes text/name/labelText through the matching testing helper", async () => {
+    it("routes text and labelText through the matching testing helper", async () => {
         const widget = makeWidget();
-        findAllByText.mockResolvedValueOnce([widget]);
-        findAllByName.mockResolvedValueOnce([widget]);
-        findAllByLabelText.mockResolvedValueOnce([widget]);
         const registry = new WidgetRegistry();
+        findAllByText.mockResolvedValueOnce([widget]);
         await dispatchQuery({ by: "text", value: "Hi" }, registry);
-        await dispatchQuery({ by: "name", value: "btn" }, registry);
+        findAllByLabelText.mockResolvedValueOnce([widget]);
         await dispatchQuery({ by: "labelText", value: "Submit" }, registry);
         expect(findAllByText).toHaveBeenCalledWith(expect.anything(), "Hi", undefined);
-        expect(findAllByName).toHaveBeenCalledWith(expect.anything(), "btn", undefined);
         expect(findAllByLabelText).toHaveBeenCalledWith(expect.anything(), "Submit", undefined);
+        expect(findAllByName).not.toHaveBeenCalled();
     });
 
     it("returns shallow match summaries without descendants", async () => {
@@ -210,17 +245,76 @@ describe("widget.query", () => {
     });
 });
 
+describe("widget.query by name", () => {
+    it("finds a widget by its accessible label when no widget name matches", async () => {
+        const row = makeWidget({ getLabel: () => "Name", type: "AdwEntryRow" });
+        findAllByLabelText.mockResolvedValueOnce([row]);
+        const result = (await dispatchQuery({ by: "name", value: "Name" })) as TextMatches;
+        expect(result.widgets).toHaveLength(1);
+        expect(result.widgets[0]?.text).toBe("Name");
+    });
+
+    it("finds a widget by its rendered text when no widget name matches", async () => {
+        findAllByText.mockResolvedValueOnce([makeWidget({ getLabel: () => "Save" })]);
+        const result = (await dispatchQuery({ by: "name", value: "Save" })) as TextMatches;
+        expect(result.widgets[0]?.text).toBe("Save");
+    });
+
+    it("compares the widget name, the accessible label, and the rendered text", async () => {
+        await dispatchQuery({ by: "name", value: "Name" });
+        expect(findAllByName).toHaveBeenCalledWith(expect.anything(), "Name", undefined);
+        expect(findAllByLabelText).toHaveBeenCalledWith(expect.anything(), "Name", undefined);
+        expect(findAllByText).toHaveBeenCalledWith(expect.anything(), "Name", undefined);
+    });
+
+    it("returns a widget once when several lookups match it", async () => {
+        const widget = makeWidget();
+        findAllByName.mockResolvedValueOnce([widget]);
+        findAllByLabelText.mockResolvedValueOnce([widget]);
+        findAllByText.mockResolvedValueOnce([widget]);
+        const result = (await dispatchQuery({ by: "name", value: "dup" })) as { widgets: unknown[] };
+        expect(result.widgets).toHaveLength(1);
+    });
+});
+
+describe("widget.query result description", () => {
+    it("spells out that the name query covers the GType fallback and the accessible label", async () => {
+        const result = (await dispatchMatchingNameQuery("GtkButton")) as { searched: string };
+        expect(result.searched).toContain("gtk_widget_get_name");
+        expect(result.searched).toContain("accessible label");
+    });
+
+    it("describes what a role query compared", async () => {
+        findAllByRole.mockResolvedValueOnce([makeWidget()]);
+        const result = (await dispatchQuery({ by: "role", value: "button" })) as { searched: string };
+        expect(result.searched).toContain("accessible role");
+    });
+
+    it("hints at what was compared when nothing matched", async () => {
+        const result = (await dispatchQuery({ by: "name", value: "Missing" })) as { hint: string };
+        expect(result.hint).toContain("Nothing matched by:\"name\" value:\"Missing\"");
+        expect(result.hint).toContain("gtk_widget_get_name");
+        expect(result.hint).toContain("gtkx_get_widget_tree");
+    });
+
+    it("omits the hint when the query matched", async () => {
+        const result = (await dispatchMatchingNameQuery("hit")) as { hint?: string };
+        expect(result.hint).toBeUndefined();
+    });
+});
+
 describe("widget.getProps", () => {
     it("returns the serialized widget when the id is known", async () => {
-        const widget = makeWidget({ getName: () => "ok" });
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, widget);
-
-        const result = (await dispatch("widget.getProps", { widgetId: id }, { app: makeApp() as never, registry })) as {
-            name: string | null;
-        };
-
+        const { dispatchWidget } = makeWidgetTarget({ getName: () => "ok" });
+        const result = (await dispatchWidget("widget.getProps", {})) as { name: string | null };
         expect(result.name).toBe("ok");
+    });
+
+    it("names the widget type and the property when the widget has no such property", async () => {
+        const { dispatchWidget } = makeWidgetTarget();
+        const failure = dispatchWidget("widget.getProps", { properties: ["collapsed"] });
+        await expect(failure).rejects.toMatchObject({ code: ErrorCode.PROPERTY_NOT_FOUND });
+        await expect(failure).rejects.toThrow("GtkWidget has no readable property 'collapsed'");
     });
 
     it("throws widgetNotFoundError when the id is unknown", async () => {
@@ -242,35 +336,52 @@ describe("widget.getProps", () => {
 
 describe("widget.click / widget.type / widget.fireEvent", () => {
     it("clicks the resolved widget and reports success", async () => {
-        const widget = makeWidget();
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, widget);
-        const result = await dispatch("widget.click", { widgetId: id }, { app: makeApp() as never, registry });
+        const { widget, dispatchWidget } = makeWidgetTarget();
+        const result = await dispatchWidget("widget.click", {});
         expect(click).toHaveBeenCalledWith(widget);
         expect(result).toEqual({ success: true });
     });
 
+    it("toggles a tree expander through its own action instead of clicking the enclosing row", async () => {
+        const activateAction = vi.fn(() => true);
+        const { dispatchWidget } = makeWidgetTarget({ type: "GtkTreeExpander", activateAction });
+        const result = await dispatchWidget("widget.click", {});
+        expect(activateAction).toHaveBeenCalledWith("listitem.toggle-expand", null);
+        expect(click).not.toHaveBeenCalled();
+        expect(result).toEqual({ success: true });
+    });
+
+    it("toggles a tree expander inside the act environment so React sees the new rows", async () => {
+        const { dispatchWidget } = makeWidgetTarget({ type: "GtkTreeExpander", activateAction: () => true });
+        await dispatchWidget("widget.click", {});
+        expect(hoisted.act).toHaveBeenCalledTimes(1);
+    });
+
     it("clears before typing when clear=true", async () => {
-        const widget = makeWidget();
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, widget);
-        await dispatch("widget.type", { widgetId: id, text: "hi", clear: true }, { app: makeApp() as never, registry });
+        const { widget, dispatchWidget } = makeWidgetTarget();
+        await dispatchWidget("widget.type", { text: "hi", clear: true });
         expect(clear).toHaveBeenCalledWith(widget);
         expect(typeText).toHaveBeenCalledWith(widget, "hi");
     });
 
     it("unwraps typed signal args before firing", async () => {
-        const widget = makeWidget();
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, widget);
-
-        await dispatch(
-            "widget.fireEvent",
-            { widgetId: id, signal: "clicked", args: [{ type: "int", value: 42 }, "plain"] },
-            { app: makeApp() as never, registry },
-        );
-
+        const { widget, dispatchWidget } = makeWidgetTarget();
+        const args = [{ type: "int", value: 42 }, "plain"];
+        await dispatchWidget("widget.fireEvent", { signal: "clicked", args });
         expect(fireEvent).toHaveBeenCalledWith(widget, "clicked", 42, "plain");
+    });
+
+    it("reports the state of a widget that can act on the signal", async () => {
+        const { dispatchWidget } = makeWidgetTarget();
+        const result = await dispatchWidget("widget.fireEvent", { signal: "clicked" });
+        expect(result).toMatchObject({ signal: "clicked", isRealized: true, isMapped: true, isSensitive: true });
+    });
+
+    it("reports that an unrealized widget could not act on the signal", async () => {
+        const { dispatchWidget } = makeWidgetTarget({ getRealized: () => false, getMapped: () => false });
+        const result = await dispatchWidget("widget.fireEvent", { signal: "activate" });
+        expect(result).toMatchObject({ isRealized: false, isMapped: false });
+        expect((result as { note: string }).note).toContain("not realized and mapped");
     });
 });
 
@@ -288,7 +399,7 @@ describe("widget.screenshot", () => {
         };
 
         expect(result).toEqual({ data: "abc", mimeType: "image/png" });
-        expect(screenshot).toHaveBeenCalledWith(window);
+        expect(screenshot).toHaveBeenCalledWith(window, { path: undefined });
     });
 
     it("screenshots the named window when windowId is supplied", async () => {
@@ -297,7 +408,23 @@ describe("widget.screenshot", () => {
         const id = registerWidget(registry, window);
         screenshot.mockResolvedValueOnce({ data: "x", mimeType: "image/png" });
         await dispatch("widget.screenshot", { windowId: id }, { app: makeApp() as never, registry });
-        expect(screenshot).toHaveBeenCalledWith(window);
+        expect(screenshot).toHaveBeenCalledWith(window, { path: undefined });
+    });
+
+    it("forwards the output path and reports where the capture was saved", async () => {
+        const window = makeWidget();
+        const registry = new WidgetRegistry();
+        const id = registerWidget(registry, window);
+        screenshot.mockResolvedValueOnce({ data: "y", mimeType: "image/png" });
+
+        const result = await dispatch(
+            "widget.screenshot",
+            { windowId: id, path: "/screenshots/gtkx/shot.png" },
+            { app: makeApp() as never, registry },
+        );
+
+        expect(screenshot).toHaveBeenCalledWith(window, { path: "/screenshots/gtkx/shot.png" });
+        expect(result).toEqual({ data: "y", mimeType: "image/png", savedPath: "/screenshots/gtkx/shot.png" });
     });
 
     it("throws when no windows are available and no windowId is supplied", async () => {

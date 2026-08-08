@@ -19,6 +19,12 @@ type RouterContext = {
     router: AppRouter;
 };
 
+type PingExchange = {
+    conn: TestConnection;
+    promise: Promise<unknown>;
+    sent: Request;
+};
+
 const createdConnections: TestConnection[] = [];
 const ctx = {} as RouterContext;
 
@@ -84,6 +90,13 @@ function onRegistered(router: AppRouter): ReturnType<typeof vi.fn> {
     return listener;
 }
 
+function registerWithRegisterSpy(params: { applicationId: string; pid?: number }): ReturnType<typeof vi.fn> {
+    const onRegister = onRegistered(ctx.router);
+    emitRegister(makeConnection("c1"), params);
+
+    return onRegister;
+}
+
 function registerWithUnregisterSpy(): { conn: TestConnection; onUnregister: ReturnType<typeof vi.fn> } {
     const conn = makeConnection("c1");
     const onUnregister = onUnregistered(ctx.router);
@@ -117,6 +130,13 @@ function registerAppForContext(applicationId: string, connectionId = "c1"): Test
     return conn;
 }
 
+function sendPingRequest(applicationId: string | undefined, params?: unknown): PingExchange {
+    const conn = registerAppForContext("app-a");
+    const promise = ctx.router.sendToApp(applicationId, "ping", params);
+
+    return { conn, promise, sent: lastOutgoingRequest(conn) };
+}
+
 class FakeSocket extends Duplex {
     lines: string[] = [];
 
@@ -139,9 +159,7 @@ describe("AppRouter registration — basics", () => {
 
     it("registers an app and emits appRegistered with its info", () => {
         const { connections, router } = ctx;
-        const conn = makeConnection("c1");
-        const onRegister = onRegistered(router);
-        emitRegister(conn, { applicationId: "app-a", pid: 1234 });
+        const onRegister = registerWithRegisterSpy({ applicationId: "app-a", pid: 1234 });
         expect(onRegister).toHaveBeenCalledWith({ applicationId: "app-a", pid: 1234 });
         expect(router.hasConnectedApps()).toBe(true);
         expect(router.getApps()).toEqual([{ applicationId: "app-a", pid: 1234 }]);
@@ -171,9 +189,7 @@ describe("AppRouter registration — basics", () => {
 
     it("rejects registration with invalid params", () => {
         const { connections, router } = ctx;
-        const conn = makeConnection("c1");
-        const onRegister = onRegistered(router);
-        emitRegister(conn, { applicationId: "app-a" });
+        const onRegister = registerWithRegisterSpy({ applicationId: "app-a" });
         expect(onRegister).not.toHaveBeenCalled();
         expect(router.hasConnectedApps()).toBe(false);
         const response = lastResponse(connections);
@@ -240,10 +256,8 @@ describe("AppRouter getDefaultApp", () => {
     });
 
     it("returns the first registered app", () => {
-        const { router } = ctx;
-        const conn = makeConnection("c1");
-        emitRegister(conn, { applicationId: "app-a", pid: 1 });
-        expect(router.getDefaultApp()?.info.applicationId).toBe("app-a");
+        registerAppForContext("app-a");
+        expect(ctx.router.getDefaultApp()?.info.applicationId).toBe("app-a");
     });
 });
 
@@ -251,11 +265,9 @@ describe("AppRouter waitForApp", () => {
     setupRouterContext();
 
     it("resolves immediately when an app is already registered", async () => {
-        const { router } = ctx;
-        const conn = makeConnection("c1");
-        emitRegister(conn, { applicationId: "app-a", pid: 1 });
+        registerAppForContext("app-a");
 
-        await expect(router.waitForApp()).resolves.toEqual({
+        await expect(ctx.router.waitForApp()).resolves.toEqual({
             applicationId: "app-a",
             pid: 1,
         });
@@ -280,25 +292,19 @@ describe("AppRouter sendToApp — happy paths", () => {
     setupRouterContext();
 
     it("sends a request to the named app and resolves with the response result", async () => {
-        const conn = registerAppForContext("app-a");
-        const promise = ctx.router.sendToApp("app-a", "ping", { hello: "world" });
-        const sent = lastOutgoingRequest(conn);
+        const { conn, promise, sent } = sendPingRequest("app-a", { hello: "world" });
         conn.feed(`${JSON.stringify({ id: sent.id, result: { ok: true } })}\n`);
         await expect(promise).resolves.toEqual({ ok: true });
     });
 
     it("sends to the default app when applicationId is undefined", async () => {
-        const conn = registerAppForContext("app-a");
-        const promise = ctx.router.sendToApp(undefined, "ping");
-        const sent = lastOutgoingRequest(conn);
+        const { conn, promise, sent } = sendPingRequest(undefined);
         conn.feed(`${JSON.stringify({ id: sent.id, result: 42 })}\n`);
         await expect(promise).resolves.toBe(42);
     });
 
     it("ignores responses for unknown request ids", async () => {
-        const conn = registerAppForContext("app-a");
-        const promise = ctx.router.sendToApp("app-a", "ping");
-        const sent = lastOutgoingRequest(conn);
+        const { conn, promise, sent } = sendPingRequest("app-a");
         conn.feed(`${JSON.stringify({ id: "unknown", result: 1 })}\n`);
         conn.feed(`${JSON.stringify({ id: sent.id, result: 2 })}\n`);
         await expect(promise).resolves.toBe(2);
@@ -347,9 +353,7 @@ describe("AppRouter sendToApp — transport errors", () => {
     });
 
     it("rejects with the ProtocolError described by an error response", async () => {
-        const conn = registerAppForContext("app-a");
-        const promise = ctx.router.sendToApp("app-a", "ping");
-        const sent = lastOutgoingRequest(conn);
+        const { conn, promise, sent } = sendPingRequest("app-a");
 
         conn.feed(
             `${JSON.stringify({

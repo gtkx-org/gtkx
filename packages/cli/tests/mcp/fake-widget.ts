@@ -1,11 +1,14 @@
 type FakeWidgetOverrides = {
     type?: string;
+    activateAction?: (name: string, args: unknown) => boolean;
     getFirstChild?: () => unknown;
     getNextSibling?: () => unknown;
     getAccessibleRole?: () => number | undefined;
     getName?: () => string | null;
     getSensitive?: () => boolean;
     getVisible?: () => boolean;
+    getRealized?: () => boolean;
+    getMapped?: () => boolean;
     getCssClasses?: () => string[];
     getLabel?: () => string | null;
     getText?: () => string | null;
@@ -19,6 +22,8 @@ const DEFAULTS = {
     getName: () => null,
     getSensitive: () => true,
     getVisible: () => true,
+    getRealized: () => true,
+    getMapped: () => true,
     getCssClasses: () => [],
 };
 

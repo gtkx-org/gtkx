@@ -17,6 +17,13 @@ type SerializedWidget = {
     children: SerializedWidget[];
 };
 
+type SerializedProperty = {
+    type: string;
+    value: string | number | boolean | string[] | null;
+    widgetId?: string;
+    note?: string;
+};
+
 type AppInfo = {
     applicationId: string;
     pid: number;
@@ -81,6 +88,13 @@ const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }> = z.object({
     widgetId: z.string(),
 });
 
+const widgetPropsParams: z.ZodObject<
+    { widgetId: z.ZodString; properties: z.ZodOptional<z.ZodArray<z.ZodString>> }
+> = z.object({
+    widgetId: z.string(),
+    properties: z.array(z.string()).optional(),
+});
+
 const treeParams: z.ZodObject<
     { rootId: z.ZodOptional<z.ZodString>; maxDepth: z.ZodOptional<z.ZodNumber> }
 > = z.object({
@@ -127,7 +141,7 @@ const ServerRequestParamsSchemas: {
     "app.getWindows": typeof emptyParams;
     "widget.getTree": typeof treeParams;
     "widget.query": typeof queryParams;
-    "widget.getProps": typeof widgetIdParams;
+    "widget.getProps": typeof widgetPropsParams;
     "widget.click": typeof widgetIdParams;
     "widget.type": typeof typeParams;
     "widget.fireEvent": typeof fireEventParams;
@@ -136,7 +150,7 @@ const ServerRequestParamsSchemas: {
     "app.getWindows": emptyParams,
     "widget.getTree": treeParams,
     "widget.query": queryParams,
-    "widget.getProps": widgetIdParams,
+    "widget.getProps": widgetPropsParams,
     "widget.click": widgetIdParams,
     "widget.type": typeParams,
     "widget.fireEvent": fireEventParams,
@@ -154,8 +168,8 @@ export {
     ResponseSchema,
     RegisterParamsSchema,
     widgetIdParams,
+    widgetPropsParams,
     treeParams,
-    queryOptionsSchema,
     queryParams,
     typeParams,
     fireEventParams,
@@ -165,6 +179,7 @@ export {
     type Request,
     type Response,
     type SerializedWidget,
+    type SerializedProperty,
     type AppInfo,
     type ServerRequestParams,
     type ParamsSchema,

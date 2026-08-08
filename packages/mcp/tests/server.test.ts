@@ -144,8 +144,12 @@ async function runListAppsWithFailingWait(thrown: unknown): Promise<{ type: "tex
     return result.content[0] as { type: "text"; text: string };
 }
 
-async function runWidgetActionTool(tool: string, payload: Record<string, unknown>): Promise<WidgetActionRun> {
-    const sendToApp = vi.fn();
+async function runWidgetActionTool(
+    tool: string,
+    payload: Record<string, unknown>,
+    response?: unknown,
+): Promise<WidgetActionRun> {
+    const sendToApp = vi.fn(() => Promise.resolve(response));
     const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
     const result = await getTool(appRouter, tool).handler(payload as never);
 
@@ -435,6 +439,25 @@ describe("buildTools — gtkx_get_widget_props", () => {
         const text = result.content[0] as { type: "text"; text: string };
         expect(JSON.parse(text.text)).toEqual({ label: "Click me" });
     });
+
+    it("forwards the requested property names to the app", async () => {
+        const properties = { collapsed: { type: "gboolean", value: true } };
+        const sendToApp = vi.fn(() => Promise.resolve({ properties }));
+        const appRouter = makeAppRouter({ sendToApp: sendToApp as never });
+
+        const result = await getTool(appRouter, "gtkx_get_widget_props").handler({
+            widgetId: "w1",
+            properties: ["collapsed"],
+        } as never);
+
+        expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.getProps", {
+            widgetId: "w1",
+            properties: ["collapsed"],
+        });
+
+        const text = result.content[0] as { type: "text"; text: string };
+        expect(JSON.parse(text.text)).toEqual({ properties });
+    });
 });
 
 describe("buildTools — gtkx_click", () => {
@@ -458,9 +481,19 @@ describe("buildTools — gtkx_type", () => {
 describe("buildTools — gtkx_fire_event", () => {
     it("forwards signal name and args", async () => {
         const payload = { widgetId: "w1", signal: "clicked", args: ["arg1"] };
-        const { sendToApp, result } = await runWidgetActionTool("gtkx_fire_event", payload);
+        const response = { signal: "clicked", isRealized: true, isMapped: true, isSensitive: true, note: "emitted" };
+        const { sendToApp, result } = await runWidgetActionTool("gtkx_fire_event", payload, response);
         expect(sendToApp).toHaveBeenCalledWith(undefined, "widget.fireEvent", payload);
-        expect(result.content[0]).toEqual({ type: "text", text: "Fired event" });
+        expect(result.content[0]).toEqual({ type: "text", text: JSON.stringify(response, null, 2) });
+    });
+
+    it("reports the widget state back to the caller instead of a fixed string", async () => {
+        const response = { signal: "activate", isRealized: false, isMapped: false, isSensitive: true, note: "n/a" };
+        const payload = { widgetId: "w1", signal: "activate" };
+        const { result } = await runWidgetActionTool("gtkx_fire_event", payload, response);
+        const text = (result.content[0] as { text: string }).text;
+        expect(text).toContain('"isRealized": false');
+        expect(text).toContain('"isMapped": false');
     });
 });
 

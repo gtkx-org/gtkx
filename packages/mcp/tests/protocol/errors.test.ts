@@ -5,6 +5,7 @@ import {
     invalidRequestError,
     methodNotFoundError,
     noAppConnectedError,
+    propertyNotFoundError,
     ProtocolError,
     requestTimeoutError,
     widgetNotFoundError,
@@ -71,6 +72,24 @@ describe("widgetNotFoundError", () => {
         expect(error.code).toBe(ErrorCode.WIDGET_NOT_FOUND);
         expect(error.message).toContain("widget-123");
         expect(error.data).toEqual({ widgetId: "widget-123" });
+    });
+});
+
+describe("propertyNotFoundError", () => {
+    it("names the widget type and the property", () => {
+        const error = propertyNotFoundError("GtkLabel", "collapsed", ["label", "use-markup"]);
+        expect(error.code).toBe(ErrorCode.PROPERTY_NOT_FOUND);
+        expect(error.message).toBe("GtkLabel has no readable property 'collapsed'");
+    });
+
+    it("hints at the properties that can be read", () => {
+        const error = propertyNotFoundError("GtkLabel", "collapsed", ["label", "use-markup"]);
+
+        expect(error.data).toEqual({
+            widgetType: "GtkLabel",
+            property: "collapsed",
+            hint: "Readable properties of GtkLabel: label, use-markup",
+        });
     });
 });
 

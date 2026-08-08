@@ -10,10 +10,12 @@
     },
     "devDependencies": {
         "@codspeed/vitest-plugin": "^5.7.1",
+        "@gtkx/cli": "workspace:*",
         "@gtkx/config": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
+        "@gtkx/mcp": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
@@ -22,7 +24,15 @@
     "nx": {
         "targets": {
             "test:asan": {
-                "cache": false,
+                "cache": true,
+                "inputs": [
+                    "default",
+                    "^default",
+                    "{workspaceRoot}/rust-toolchain.toml",
+                    "{workspaceRoot}/scripts/asan-e2e.ts",
+                    "{workspaceRoot}/scripts/rust-nightly.ts"
+                ],
+                "outputs": [],
                 "dependsOn": [
                     "gtkx:codegen",
                     "@gtkx/vitest:build",

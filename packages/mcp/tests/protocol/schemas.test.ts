@@ -22,6 +22,13 @@ describe("ServerRequestParamsSchemas", () => {
         expect(ServerRequestParamsSchemas["widget.getProps"].safeParse({ widgetId: "3" }).success).toBe(true);
     });
 
+    it("makes the widget.getProps property list optional", () => {
+        const schema = ServerRequestParamsSchemas["widget.getProps"];
+        expect(schema.safeParse({ widgetId: "3" }).data?.properties).toBeUndefined();
+        expect(schema.safeParse({ widgetId: "3", properties: ["collapsed"] }).success).toBe(true);
+        expect(schema.safeParse({ widgetId: "3", properties: "collapsed" }).success).toBe(false);
+    });
+
     it("accepts an empty payload for app.getWindows", () => {
         expect(ServerRequestParamsSchemas["app.getWindows"].safeParse({}).success).toBe(true);
     });

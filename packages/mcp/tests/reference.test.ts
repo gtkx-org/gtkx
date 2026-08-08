@@ -1,7 +1,7 @@
 import type { ApiLookupResult, ApiReference, ApiSymbol } from "@gtkx/codegen";
-import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ import {
     type ReferenceApi,
     type ReferenceProvider,
     registerReferenceResources,
+    type ResolvedProject,
 } from "../src/reference.js";
 
 type FakeReference = ReferenceApi & Pick<ApiReference, "girFiles">;
@@ -22,6 +23,23 @@ type RegisteredResource = {
     uriOrTemplate: string | ResourceTemplate;
     config: { mimeType?: string };
     read: ReadCallback;
+};
+
+type ProjectDirs = {
+    explicit: string;
+    app: string;
+    workingDirectory: string;
+    nested: string;
+    elsewhere: string;
+};
+
+type ScopingCase = {
+    name: string;
+    workingDirectory: keyof ProjectDirs;
+    appRoot?: keyof ProjectDirs;
+    projectRoot?: keyof ProjectDirs;
+    expectedRoot: keyof ProjectDirs;
+    expectedSource: "argument" | "workingDirectory" | "app";
 };
 
 const { loadApiReferenceMock, loadConfigMock, resolveGirPathMock, resolveLibrariesMock } = vi.hoisted(() => ({
@@ -51,7 +69,53 @@ const fakeReference: FakeReference = {
     lookup: (query): ApiLookupResult => lookupFake(query),
 };
 
-const provider: ReferenceProvider = { get: () => Promise.resolve(fakeReference) };
+const provider: ReferenceProvider = {
+    get: (projectRoot) => Promise.resolve({ reference: fakeReference, ...resolveFake(projectRoot) }),
+    load: (project) => Promise.resolve({ reference: fakeReference, ...project }),
+    resolve: (projectRoot) => resolveFake(projectRoot),
+};
+
+const SCOPING_CASES: ScopingCase[] = [
+    {
+        name: "prefers an explicit project root over a registered app",
+        workingDirectory: "workingDirectory",
+        appRoot: "app",
+        projectRoot: "explicit",
+        expectedRoot: "explicit",
+        expectedSource: "argument",
+    },
+    {
+        name: "prefers the project containing the working directory over a registered app",
+        workingDirectory: "nested",
+        appRoot: "app",
+        expectedRoot: "workingDirectory",
+        expectedSource: "workingDirectory",
+    },
+    {
+        name: "falls back to a registered app when the working directory is not a project",
+        workingDirectory: "elsewhere",
+        appRoot: "app",
+        expectedRoot: "app",
+        expectedSource: "app",
+    },
+    {
+        name: "resolves from the working directory with no app and no explicit root",
+        workingDirectory: "nested",
+        expectedRoot: "workingDirectory",
+        expectedSource: "workingDirectory",
+    },
+    {
+        name: "resolves the working directory itself when no project encloses it",
+        workingDirectory: "elsewhere",
+        expectedRoot: "elsewhere",
+        expectedSource: "workingDirectory",
+    },
+];
+
+const resolveFake = (projectRoot?: string): { root: string; source: "app" | "argument" } => ({
+    root: projectRoot ?? "/apps/hello-world",
+    source: projectRoot === undefined ? "app" : "argument",
+});
 
 function lookupFake(query: string): ApiLookupResult {
     if (query === "Gtk.Button" || query === "Button") {
@@ -85,9 +149,68 @@ function getText(result: { content: { type: string }[] }): string {
     return (first as { type: "text"; text: string }).text;
 }
 
+function getNote(result: { content: { type: string }[] }): string {
+    const last = result.content.at(-1);
+
+    if (last?.type !== "text") {
+        throw new Error("Expected text content");
+    }
+
+    return (last as { type: "text"; text: string }).text;
+}
+
 function stubLoadedReference(reference: FakeReference = fakeReference): void {
-    loadConfigMock.mockResolvedValue({ config: {}, configFile: "gtkx.config.ts" });
+    loadConfigMock.mockImplementation((root: string) =>
+        Promise.resolve({ config: {}, configFile: "gtkx.config.ts", root }),
+    );
+
     loadApiReferenceMock.mockReturnValue(reference);
+}
+
+function makeProjectDirs(base: string): ProjectDirs {
+    const dirs: ProjectDirs = {
+        explicit: join(base, "explicit"),
+        app: join(base, "app"),
+        workingDirectory: join(base, "working"),
+        nested: join(base, "working", "src", "nested"),
+        elsewhere: join(base, "elsewhere"),
+    };
+
+    mkdirSync(dirs.nested, { recursive: true });
+    mkdirSync(dirs.elsewhere, { recursive: true });
+
+    for (const root of [dirs.explicit, dirs.app, dirs.workingDirectory]) {
+        mkdirSync(root, { recursive: true });
+        writeFileSync(join(root, "gtkx.config.ts"), "export default {};");
+    }
+
+    return dirs;
+}
+
+async function withProjectDirs(run: (dirs: ProjectDirs) => Promise<void>): Promise<void> {
+    const base = mkdtempSync(join(tmpdir(), "gtkx-projects-"));
+
+    try {
+        stubLoadedReference();
+        await run(makeProjectDirs(base));
+    } finally {
+        rmSync(base, { recursive: true, force: true });
+    }
+}
+
+function makeProvider(getWorkingDirectory: () => string, appRoot?: string): ReferenceProvider {
+    return createReferenceProvider({ getAppRoot: () => appRoot, getWorkingDirectory });
+}
+
+function dirFor(dirs: ProjectDirs, key: keyof ProjectDirs | undefined): string | undefined {
+    return key === undefined ? undefined : dirs[key];
+}
+
+async function missingSymbolError(): Promise<CallToolResult> {
+    const result = await getTool("gtkx_get_api_docs").handler({ symbol: "Missing" });
+    expect(result.isError).toBe(true);
+
+    return result;
 }
 
 async function withFrozenClock(run: (setNow: (now: number) => void) => Promise<void>): Promise<void> {
@@ -197,10 +320,39 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
+describe("createReferenceProvider — project scoping", () => {
+    it.each(SCOPING_CASES)("$name", async (scoping) => {
+        await withProjectDirs(async (dirs) => {
+            const expectedRoot = dirs[scoping.expectedRoot];
+            const scoped = makeProvider(() => dirs[scoping.workingDirectory], dirFor(dirs, scoping.appRoot));
+            const resolved = await scoped.get(dirFor(dirs, scoping.projectRoot));
+            expect(loadConfigMock).toHaveBeenCalledExactlyOnceWith(expectedRoot);
+            expect(resolved.root).toBe(expectedRoot);
+            expect(resolved.source).toBe(scoping.expectedSource);
+        });
+    });
+});
+
+describe("createReferenceProvider — root discovery", () => {
+    it("reads the project root the configuration was found in", async () => {
+        await withProjectDirs(async (dirs) => {
+            loadConfigMock.mockResolvedValueOnce({
+                config: {},
+                configFile: "gtkx.config.ts",
+                root: dirs.workingDirectory,
+            });
+
+            await expect(makeProvider(() => dirs.elsewhere).get()).resolves.toMatchObject({
+                root: dirs.workingDirectory,
+            });
+        });
+    });
+});
+
 describe("createReferenceProvider — caching", () => {
     it("loads the reference once per project root and caches it", async () => {
         stubLoadedReference();
-        const cached = createReferenceProvider(() => "/project");
+        const cached = makeProvider(() => "/project");
         await cached.get();
         await cached.get();
         expect(loadConfigMock).toHaveBeenCalledExactlyOnceWith("/project");
@@ -215,7 +367,7 @@ describe("createReferenceProvider — caching", () => {
     it("loads separately when the resolved root changes", async () => {
         stubLoadedReference();
         const roots = ["/one", "/two"];
-        const changing = createReferenceProvider(() => roots.shift() ?? "/two");
+        const changing = makeProvider(() => roots.shift() ?? "/two");
         await changing.get();
         await changing.get();
         expect(loadApiReferenceMock).toHaveBeenCalledTimes(2);
@@ -226,25 +378,30 @@ describe("createReferenceProvider — caching", () => {
 
 describe("createReferenceProvider — failures and reloads", () => {
     it("rejects when codegen is disabled and retries after the backoff window", async () => {
-        loadConfigMock.mockResolvedValueOnce({ config: { codegen: false }, configFile: "gtkx.config.ts" });
-        loadConfigMock.mockResolvedValueOnce({ config: {}, configFile: "gtkx.config.ts" });
+        loadConfigMock.mockResolvedValueOnce({
+            config: { codegen: false },
+            configFile: "gtkx.config.ts",
+            root: "/project",
+        });
+
+        loadConfigMock.mockResolvedValueOnce({ config: {}, configFile: "gtkx.config.ts", root: "/project" });
         loadApiReferenceMock.mockReturnValue(fakeReference);
 
         await withFrozenClock(async (setNow) => {
-            const failing = createReferenceProvider(() => "/project");
+            const failing = makeProvider(() => "/project");
             await expect(failing.get()).rejects.toThrow(/codegen is disabled/);
             await expect(failing.get()).rejects.toThrow(/codegen is disabled/);
             expect(loadConfigMock).toHaveBeenCalledTimes(1);
             setNow(10_000);
-            await expect(failing.get()).resolves.toBe(fakeReference);
+            await expect(failing.get()).resolves.toMatchObject({ reference: fakeReference });
             expect(loadConfigMock).toHaveBeenCalledTimes(2);
         });
     });
 
     it("rejects when no GIR search paths are available", async () => {
-        loadConfigMock.mockResolvedValue({ config: {}, configFile: "gtkx.config.ts" });
+        loadConfigMock.mockResolvedValue({ config: {}, configFile: "gtkx.config.ts", root: "/project" });
         resolveGirPathMock.mockReturnValueOnce([]);
-        const failing = createReferenceProvider(() => "/project");
+        const failing = makeProvider(() => "/project");
         await expect(failing.get()).rejects.toThrow(/No GIR search paths available/);
     });
 
@@ -252,7 +409,7 @@ describe("createReferenceProvider — failures and reloads", () => {
         await withGirFile(async (girFile, setNow) => {
             writeFileSync(girFile, "before");
             stubLoadedReference({ ...fakeReference, girFiles: [girFile] });
-            const watching = createReferenceProvider(() => "/project");
+            const watching = makeProvider(() => "/project");
             await watching.get();
             writeFileSync(girFile, "after-with-different-size");
             await watching.get();
@@ -291,7 +448,19 @@ describe("gtkx_search_api", () => {
 
     it("forwards namespace, kind, and limit filters", async () => {
         const search = vi.fn(() => [buttonSymbol]);
-        const filtering: ReferenceProvider = { get: () => Promise.resolve({ ...fakeReference, search }) };
+
+        const scoped = {
+            reference: { ...fakeReference, search },
+            root: "/apps/hello-world",
+            source: "app",
+        } as const;
+
+        const filtering: ReferenceProvider = {
+            get: () => Promise.resolve(scoped),
+            load: () => Promise.resolve(scoped),
+            resolve: () => ({ root: "/apps/hello-world", source: "app" }),
+        };
+
         const tool = buildReferenceTools(filtering).find((candidate) => candidate.name === "gtkx_search_api");
 
         if (!tool) {
@@ -323,9 +492,51 @@ describe("gtkx_get_api_docs", () => {
     });
 
     it("errors with a search hint when the symbol is unknown", async () => {
-        const result = await getTool("gtkx_get_api_docs").handler({ symbol: "Missing" });
-        expect(result.isError).toBe(true);
-        expect(getText(result)).toContain("gtkx_search_api");
+        expect(getText(await missingSymbolError())).toContain("gtkx_search_api");
+    });
+});
+
+describe("reference tools — project scoping", () => {
+    it("names the project every successful answer is scoped to", async () => {
+        const listed = await getTool("gtkx_list_api").handler({});
+        const searched = await getTool("gtkx_search_api").handler({ query: "button" });
+        const documented = await getTool("gtkx_get_api_docs").handler({ symbol: "Gtk.Button" });
+        expect(listed.isError).toBeUndefined();
+        expect(getText(documented)).toBe("BUTTON PAGE");
+
+        for (const result of [listed, searched, documented]) {
+            expect(getNote(result)).toContain("Project: /apps/hello-world");
+            expect(getNote(result)).toContain("connected app");
+        }
+    });
+
+    it("keeps the payload as the first content block", async () => {
+        const searched = await getTool("gtkx_search_api").handler({ query: "button" });
+        expect(JSON.parse(getText(searched))).toEqual([buttonSymbol]);
+        expect(searched.content).toHaveLength(2);
+    });
+
+    it("forwards an explicit project root and names it in the answer", async () => {
+        const load = vi.fn((project: ResolvedProject) => provider.load(project));
+
+        const forwarding: ReferenceProvider = {
+            get: (projectRoot) => provider.get(projectRoot),
+            load,
+            resolve: (projectRoot) => resolveFake(projectRoot),
+        };
+
+        const tools = buildReferenceTools(forwarding);
+
+        for (const tool of tools) {
+            const result = await tool.handler({ projectRoot: "/projects/tablestar", query: "b", symbol: "Gtk.Button" });
+            expect(getNote(result)).toBe("Project: /projects/tablestar (requested with `projectRoot`)");
+        }
+
+        expect(load.mock.calls.map(([project]) => project.root)).toEqual(tools.map(() => "/projects/tablestar"));
+    });
+
+    it("names the project on errors as well", async () => {
+        expect(getNote(await missingSymbolError())).toContain("Project: /apps/hello-world");
     });
 });
 
@@ -356,7 +567,12 @@ describe("registerReferenceResources — index and namespaces", () => {
     });
 
     it("degrades gracefully when the reference cannot load", async () => {
-        const failing: ReferenceProvider = { get: () => Promise.reject(new Error("codegen is disabled")) };
+        const failing: ReferenceProvider = {
+            get: () => Promise.reject(new Error("codegen is disabled")),
+            load: () => Promise.reject(new Error("codegen is disabled")),
+            resolve: (projectRoot) => resolveFake(projectRoot),
+        };
+
         const namespaceResource = findResource(registerAllWith(failing), "gtkx-api-namespace");
         const template = getTemplate(namespaceResource);
         await expect(getListCallback(template)({} as never)).resolves.toEqual({ resources: [] });
