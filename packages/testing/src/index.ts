@@ -5,7 +5,6 @@ export type { BoundQueries, RenderResult, Screen } from "./bound-queries.js";
 export type { Config, ConfigFn } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";
-export { REDACTED_TEXT } from "./hidden-text.js";
 export type { ClassExpectation, TextContentOptions, TextExpectation } from "./matchers.js";
 export { matchers, registerMatchers } from "./matchers.js";
 export { getDefaultNormalizer } from "./normalize.js";
@@ -95,10 +94,5 @@ export type {
 } from "./user-event/index.js";
 export { userEvent } from "./user-event/index.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
-export {
-    getWidgetErrorMessage,
-    getWidgetInvalidState,
-    getWidgetNodeText,
-    getWidgetTextContent,
-} from "./widget-accessible-properties.js";
+export { getWidgetText } from "./widget-accessible-properties.js";
 export { within } from "./within.js";

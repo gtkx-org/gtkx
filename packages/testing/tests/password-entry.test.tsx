@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkPasswordEntry } from "@gtkx/jsx/gtk";
 import { describe, expect, it } from "vitest";
-import { getWidgetText, getWidgetTextContent, prettyWidget, render, screen } from "../src/index.js";
+import { getWidgetText, prettyWidget, render, screen } from "../src/index.js";
+import { getWidgetTextContent } from "../src/widget-accessible-properties.js";
 
 const SECRET = "hunter2";
 

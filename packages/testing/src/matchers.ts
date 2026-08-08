@@ -914,8 +914,6 @@ function toHaveObjectProperty(this: MatcherContext, received: unknown, ...args: 
         };
     }
 
-    /* eslint-disable-next-line unicorn/no-this-outside-of-class --
-       expect.extend invokes matchers with the matcher state as `this` */
     const isPass = isEqualValue(this, actual, expected);
 
     return {
