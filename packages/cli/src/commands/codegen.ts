@@ -1,7 +1,7 @@
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { formatCodegenResult } from "../codegen/report.js";
-import { didRegenerate, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
+import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const codegen = defineCommand({
@@ -29,7 +29,7 @@ const codegen = defineCommand({
         }
 
         if (!args.force) {
-            const isRan = await didRegenerate(cwd);
+            const isRan = await ensureGenerated(cwd);
             info(isRan ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
 
             return;

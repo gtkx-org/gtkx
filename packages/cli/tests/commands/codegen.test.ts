@@ -1,6 +1,6 @@
 import { omit } from "@gtkx/utils";
 import { describe, expect, it, vi } from "vitest";
-import { didRegenerate, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 import { codegen } from "../../src/commands/codegen.js";
 import { collectLogged, setupLogState } from "./log-state.js";
 
@@ -10,7 +10,7 @@ type CodegenContext = Parameters<CodegenRun>[0];
 type RunCodegenOptions = NonNullable<Parameters<typeof runCodegen>[0]>;
 
 const runCodegenMock = vi.mocked(runCodegen);
-const regenerateMock = vi.mocked(didRegenerate);
+const ensureGeneratedMock = vi.mocked(ensureGenerated);
 const codegenDisabledMock = vi.mocked(isCodegenDisabled);
 const syncSchemaEnvMock = vi.mocked(syncSchemaEnv);
 
@@ -37,7 +37,7 @@ const run = (overrides: CodegenArgs): Promise<unknown> => {
 };
 
 vi.mock("../../src/codegen/run-codegen.js", () => ({
-    didRegenerate: vi.fn(() => Promise.resolve(true)),
+    ensureGenerated: vi.fn(() => Promise.resolve(true)),
     isCodegenDisabled: vi.fn(() => Promise.resolve(false)),
     syncSchemaEnv: vi.fn(),
     runCodegen: vi.fn(() =>
@@ -55,15 +55,15 @@ vi.mock("../../src/codegen/run-codegen.js", () => ({
 describe("codegen command (default — conditional)", () => {
     const state = setupLogState();
 
-    it("delegates to didRegenerate and reports a regeneration", async () => {
+    it("delegates to ensureGenerated and reports a regeneration", async () => {
         await run({ cwd: "/custom/dir" });
-        expect(regenerateMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
+        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
         expect(runCodegenMock).not.toHaveBeenCalled();
         expect(collectLogged(state.stderrSpy)).toContain("regenerated stale bindings");
     });
 
     it("reports up to date when nothing was regenerated", async () => {
-        regenerateMock.mockResolvedValueOnce(false);
+        ensureGeneratedMock.mockResolvedValueOnce(false);
         await run({});
         expect(collectLogged(state.stderrSpy)).toContain("bindings up to date");
     });
@@ -74,7 +74,7 @@ describe("codegen command (default — conditional)", () => {
         const options = firstRunCodegenOptions();
         expect(options.cwd).toContain("custom/dir");
         expect(omit(options, ["cwd"])).toEqual({});
-        expect(regenerateMock).not.toHaveBeenCalled();
+        expect(ensureGeneratedMock).not.toHaveBeenCalled();
         expect(collectLogged(state.stderrSpy)).toContain("reusing an installed binding store");
     });
 });
@@ -88,7 +88,7 @@ describe("codegen command (--force)", () => {
         expect(options.cwd).toContain("custom/dir");
         expect(omit(options, ["cwd"])).toEqual({ isForced: true });
         expect(syncSchemaEnvMock).toHaveBeenCalledWith(expect.stringContaining("custom/dir"));
-        expect(regenerateMock).not.toHaveBeenCalled();
+        expect(ensureGeneratedMock).not.toHaveBeenCalled();
         const logged = collectLogged(state.stderrSpy);
         expect(logged).toContain("config=/project/gtkx.config.ts");
         expect(logged).toContain("libraries=Gtk-4.0, Adw-1");

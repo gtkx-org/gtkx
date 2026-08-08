@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { didRegenerate, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 
 const writeFingerprint = (cwd: string, libraries: string[] = ["Gtk-4.0"]) => {
     writeFileSync(
@@ -81,7 +81,7 @@ const announceLogs = async (cwd: string): Promise<string> => {
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
     try {
-        await didRegenerate(cwd, { shouldAnnounce: true });
+        await ensureGenerated(cwd, { shouldAnnounce: true });
 
         return stderrSpy.mock.calls.map((call) => String(call[0])).join("");
     } finally {
@@ -137,7 +137,7 @@ describe("runCodegen", () => {
     });
 });
 
-describe("didRegenerate — announce path", () => {
+describe("ensureGenerated — announce path", () => {
     let cwd: string;
     const originalEnv = process.env.GTKX_DISABLE_PREFLIGHT;
 
@@ -157,20 +157,20 @@ describe("didRegenerate — announce path", () => {
 
     it("returns silently when GTKX_DISABLE_PREFLIGHT=1", async () => {
         process.env.GTKX_DISABLE_PREFLIGHT = "1";
-        expect(await didRegenerate(cwd, { shouldAnnounce: true })).toBe(false);
+        expect(await ensureGenerated(cwd, { shouldAnnounce: true })).toBe(false);
     });
 
     it("rejects when there is no gtkx.config.ts", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installRuntimePackage(cwd);
-        await expect(didRegenerate(cwd, { shouldAnnounce: true })).rejects.toThrow(/invalid `applicationId`/);
+        await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("propagates non-NotFound config errors", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installRuntimePackage(cwd);
         writeConfig(cwd, "export default { libraries: [] };");
-        await expect(didRegenerate(cwd, { shouldAnnounce: true })).rejects.toThrow();
+        await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow();
     });
 
     it("runs codegen when the gi store is missing", async () => {
@@ -192,7 +192,7 @@ describe("didRegenerate — announce path", () => {
     });
 });
 
-describe("didRegenerate", () => {
+describe("ensureGenerated", () => {
     let cwd: string;
 
     beforeEach(() => {
@@ -205,14 +205,14 @@ describe("didRegenerate", () => {
 
     it("regenerates when the jsx unit is missing", async () => {
         installReactProject(cwd);
-        expect(await didRegenerate(cwd)).toBe(true);
+        expect(await ensureGenerated(cwd)).toBe(true);
     });
 
     it("does nothing when the gi and jsx stores are present", async () => {
         installReactProject(cwd);
         writeJsxStore(cwd);
         writeFingerprint(cwd);
-        expect(await didRegenerate(cwd)).toBe(false);
+        expect(await ensureGenerated(cwd)).toBe(false);
     });
 
     it("does not wedge on a missing jsx unit when the react runtime is absent", async () => {
@@ -221,22 +221,22 @@ describe("didRegenerate", () => {
         writeConfig(cwd);
         writeDefaultGiBarrels(cwd);
         writeFingerprint(cwd);
-        expect(await didRegenerate(cwd)).toBe(false);
+        expect(await ensureGenerated(cwd)).toBe(false);
     });
 
     it("rejects when there is no gtkx.config.ts", async () => {
         installRuntimePackage(cwd);
-        await expect(didRegenerate(cwd)).rejects.toThrow(/invalid `applicationId`/);
+        await expect(ensureGenerated(cwd)).rejects.toThrow(/invalid `applicationId`/);
     });
 
     it("propagates non-NotFound config errors", async () => {
         installRuntimePackage(cwd);
         writeConfig(cwd, "export default { libraries: [] };");
-        await expect(didRegenerate(cwd)).rejects.toThrow();
+        await expect(ensureGenerated(cwd)).rejects.toThrow();
     });
 });
 
-describe("didRegenerate — store links", () => {
+describe("ensureGenerated — store links", () => {
     let cwd: string;
 
     beforeEach(() => {
@@ -251,7 +251,7 @@ describe("didRegenerate — store links", () => {
         installReactProject(cwd);
         writeJsxStore(cwd);
         rmSync(join(cwd, "node_modules", "@gtkx", "gi"), { recursive: true, force: true });
-        expect(await didRegenerate(cwd)).toBe(true);
+        expect(await ensureGenerated(cwd)).toBe(true);
     });
 
     it("regenerates when the jsx store link is pruned", async () => {
@@ -259,7 +259,7 @@ describe("didRegenerate — store links", () => {
         writeJsxStore(cwd);
         writeFingerprint(cwd);
         rmSync(join(cwd, "node_modules", "@gtkx", "jsx"), { recursive: true, force: true });
-        expect(await didRegenerate(cwd)).toBe(true);
+        expect(await ensureGenerated(cwd)).toBe(true);
     });
 
     it("regenerates when a store manifest is pruned but its modules remain", async () => {
@@ -267,7 +267,7 @@ describe("didRegenerate — store links", () => {
         writeJsxStore(cwd);
         writeFingerprint(cwd);
         rmSync(join(cwd, "node_modules", ".gtkx", "jsx", "package.json"), { force: true });
-        expect(await didRegenerate(cwd)).toBe(true);
+        expect(await ensureGenerated(cwd)).toBe(true);
     });
 });
 

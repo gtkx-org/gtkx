@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { didRegenerate, resolveConfigWatch } from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, resolveConfigWatch } from "../../src/codegen/run-codegen.js";
 import { dev } from "../../src/commands/dev.js";
 import { runDevSupervisor } from "../../src/dev/supervisor.js";
 
@@ -7,7 +7,7 @@ type DevRun = NonNullable<typeof dev.run>;
 type DevContext = Parameters<DevRun>[0];
 
 const watchSentinel = { paths: ["/proj/gtkx.config.ts"], regenerate: () => Promise.resolve() };
-const regenerateMock = vi.mocked(didRegenerate);
+const ensureGeneratedMock = vi.mocked(ensureGenerated);
 const resolveConfigWatchMock = vi.mocked(resolveConfigWatch);
 const runDevSupervisorMock = vi.mocked(runDevSupervisor);
 
@@ -24,7 +24,7 @@ const runDev = (entry?: string): Promise<unknown> => {
 };
 
 vi.mock("../../src/codegen/run-codegen.js", () => ({
-    didRegenerate: vi.fn(() => Promise.resolve(false)),
+    ensureGenerated: vi.fn(() => Promise.resolve(false)),
     resolveConfigWatch: vi.fn(() => Promise.resolve(watchSentinel)),
 }));
 
@@ -44,7 +44,7 @@ describe("dev command", () => {
     it("runs preflight codegen and hands off to the supervisor with the resolved entry", async () => {
         await runDev("src/main.tsx");
 
-        expect(regenerateMock).toHaveBeenCalledWith(expect.any(String), {
+        expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), {
             shouldAnnounce: true,
             mode: "development",
         });

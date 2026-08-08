@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { didRegenerate, resolveConfigWatch } from "../codegen/run-codegen.js";
+import { ensureGenerated, resolveConfigWatch } from "../codegen/run-codegen.js";
 import { type DevWatch, runDevSupervisor } from "../dev/supervisor.js";
 import { entryArg, resolveEntry } from "../internal/entry-arg.js";
 
@@ -15,7 +15,7 @@ const dev = defineCommand({
     },
     async run({ args }) {
         const { cwd, entry: entryPath } = resolveEntry(args);
-        await didRegenerate(cwd, { shouldAnnounce: true, mode: DEV_MODE });
+        await ensureGenerated(cwd, { shouldAnnounce: true, mode: DEV_MODE });
         const watch: DevWatch | undefined = await resolveConfigWatch(cwd, DEV_MODE);
         await runDevSupervisor(entryPath, cwd, watch);
     },
