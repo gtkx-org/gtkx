@@ -1,17 +1,16 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import * as Gio from "@gtkx/gi/gio";
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { GtkApplication, GtkApplicationWindow, type GtkApplicationWindowProps, GtkBox } from "@gtkx/jsx/gtk";
-import { rootElement, useParentWindow } from "@gtkx/react";
+import { GtkApplicationWindow, type GtkApplicationWindowProps, GtkBox } from "@gtkx/jsx/gtk";
+import { useParentWindow } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
-import { createAppIdFactory } from "./helpers/unique-name.js";
+import { createApplicationRenderer } from "./helpers/application-render.js";
 
 type ProbeProps = { slot: string };
 
 const captured: Record<string, Gtk.Window | null> = {};
-const uniqueAppId = createAppIdFactory("org.gtkx.useparentwindowtest");
+const renderApplication = createApplicationRenderer("org.gtkx.useparentwindowtest");
 
 const Probe = ({ slot }: ProbeProps) => {
     const parentWindow = useParentWindow();
@@ -26,25 +25,22 @@ const Probe = ({ slot }: ProbeProps) => {
 const renderProbedWindow = async (props: GtkApplicationWindowProps): Promise<Gtk.Window | null> => {
     let windowInstance: Gtk.Window | null = null;
 
-    await render(
-        <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-            <GtkApplicationWindow
-                ref={(instance) => {
-                    windowInstance = instance;
-                }}
-                defaultWidth={100}
-                defaultHeight={100}
-                {...props}
-            />
-        </GtkApplication>,
-        { container: rootElement },
+    await renderApplication(
+        <GtkApplicationWindow
+            ref={(instance) => {
+                windowInstance = instance;
+            }}
+            defaultWidth={100}
+            defaultHeight={100}
+            {...props}
+        />,
     );
 
     return windowInstance;
 };
 
 describe("useParentWindow", () => {
-    it("returns the window provided by createWindowComponent", async () => {
+    it("returns the window provided by the enclosing window element", async () => {
         const windowInstance = await renderProbedWindow({ children: <Probe slot="children" /> });
         expect(windowInstance).not.toBeNull();
         expect(captured.children).toBe(windowInstance);
@@ -72,7 +68,7 @@ describe("useParentWindow", () => {
         expect(captured.actions).toBe(windowInstance);
     });
 
-    it("returns null when there is no createWindowComponent ancestor", async () => {
+    it("returns null when there is no window ancestor", async () => {
         await render(<Probe slot="orphan" />);
         expect(captured.orphan).toBeNull();
     });
@@ -86,13 +82,10 @@ describe("useParentWindow", () => {
             return null;
         };
 
-        await render(
-            <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-                <GtkApplicationWindow defaultWidth={100} defaultHeight={100}>
-                    <RenderProbe />
-                </GtkApplicationWindow>
-            </GtkApplication>,
-            { container: rootElement },
+        await renderApplication(
+            <GtkApplicationWindow defaultWidth={100} defaultHeight={100}>
+                <RenderProbe />
+            </GtkApplicationWindow>,
         );
 
         expect(seen).toEqual(["null", "window"]);

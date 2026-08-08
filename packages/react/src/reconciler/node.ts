@@ -18,10 +18,10 @@ type SignalTarget = {
 type PlacedChild = {
     node: PlaceableNode;
     object: GObject.Object;
+    typeName: string;
     adopted: GObject.Object | null;
     slot: string;
     behavior: ElementBehavior | null;
-    isAttached: boolean;
 };
 
 type ElementNode = SignalTarget & {
@@ -111,15 +111,17 @@ const createElementNode = (
 
 const createTextNode = (text: string): TextNode => ({ kind: TEXT_KIND, text, parent: null });
 
-const nodeObject = (node: PlaceableNode): GObject.Object | null => {
-    if (node.kind === LAZY_KIND) {
-        const [child] = node.children;
-
-        return child === undefined ? null : nodeObject(child);
+const leafElement = (node: PlaceableNode): ElementNode | null => {
+    if (node.kind !== LAZY_KIND) {
+        return node;
     }
 
-    return node.object;
+    const [child] = node.children;
+
+    return child === undefined ? null : leafElement(child);
 };
+
+const nodeObject = (node: PlaceableNode): GObject.Object | null => leafElement(node)?.object ?? null;
 
 const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarget => ({
     object: adopted,
@@ -141,6 +143,7 @@ export {
     createLazyNode,
     createElementNode,
     createTextNode,
+    leafElement,
     nodeObject,
     lazyTarget,
     getOrCreateContext,

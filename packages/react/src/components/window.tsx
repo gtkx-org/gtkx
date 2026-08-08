@@ -1,11 +1,13 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
-import { useMergedRef } from "../hooks/use-merged-refs.js";
+import { type ElementType, type ReactElement, type ReactNode, use } from "react";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
+import { createPresentedComponent, type PresentedProps } from "../hooks/use-presented-instance.js";
 import { applyWrite } from "../reconciler/signals.js";
+import { createPortaledComponent } from "./portaled.js";
 
-type WindowComponentProps = {
-    ref?: Ref<Gtk.Window | null> | undefined;
+type WindowComponentProps = PresentedProps<Gtk.Window> & {
+    // eslint-disable-next-line gtkx/accessor-naming
+    transientFor?: Gtk.Window | ReactElement | null | undefined;
 };
 
 const presentWindow = (window: Gtk.Window): void => {
@@ -20,30 +22,29 @@ const destroyWindow = (window: Gtk.Window): void => {
     });
 };
 
-const createWindowComponent = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) => {
-    return ({ ref, ...rest }: WindowComponentProps): ReactNode => {
-        const [window, setWindow] = useState<Gtk.Window | null>(null);
-        const mergedRef = useMergedRef(ref, setWindow);
+const usePresentWindow = (): ((window: Gtk.Window) => void) => presentWindow;
 
-        useLayoutEffect(() => {
-            if (!window) {
-                return;
-            }
+const createPresentedWindowComponent = (Component: ElementType): ((props: PresentedProps<Gtk.Window>) => ReactNode) =>
+    createPresentedComponent<Gtk.Window>(Component, {
+        usePresent: usePresentWindow,
+        dismiss: destroyWindow,
+        wrap: (element, window) => (
+            <ParentWindowContext.Provider value={window}>{element}</ParentWindowContext.Provider>
+        ),
+    });
 
-            presentWindow(window);
+const withDefaultTransientFor = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) => {
+    return (props: WindowComponentProps): ReactNode => {
+        const parent = use(ParentWindowContext);
+        const isDefaulted = props.transientFor === undefined && parent !== null;
 
-            return () => {
-                destroyWindow(window);
-            };
-        }, [window]);
-
-        return (
-            <ParentWindowContext.Provider value={window}>
-                <Component ref={mergedRef} {...rest} />
-            </ParentWindowContext.Provider>
-        );
+        return <Component {...(isDefaulted ? { ...props, transientFor: parent } : props)} />;
     };
 };
 
+const createWindowComponent = (Component: ElementType): ((props: unknown) => ReactNode) =>
+    createPortaledComponent(withDefaultTransientFor(createPresentedWindowComponent(Component)));
+
+export { createPresentedWindowComponent };
 /** @internal */
 export { createWindowComponent };

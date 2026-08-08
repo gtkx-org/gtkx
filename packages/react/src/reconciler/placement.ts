@@ -1,6 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getOrInsert, indexBeforeOrEnd, remove } from "@gtkx/utils";
+import { getOrInsert, indexBeforeOrEnd } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, markFlush } from "./apply-props.js";
 import { typeInfoFor } from "./metadata.js";
@@ -11,7 +11,7 @@ import {
     getOrCreateContext,
     LAZY_KIND,
     lazyTarget,
-    nodeObject,
+    leafElement,
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
@@ -21,13 +21,20 @@ import { markTextDirty } from "./text.js";
 type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
 
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
-    const object = nodeObject(node);
+    const leaf = leafElement(node);
 
-    if (object === null) {
+    if (leaf === null) {
         return null;
     }
 
-    return { node, object, adopted: null, slot, behavior: null, isAttached: false };
+    return {
+        node,
+        object: leaf.object,
+        typeName: leaf.typeName,
+        adopted: null,
+        slot,
+        behavior: null,
+    };
 };
 
 const siblingAt = (entries: PlacedChild[], index: number): GObject.Object | null =>
@@ -80,7 +87,6 @@ const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
     writeSlot(parent, entry, entry.object);
     wireBufferView(entry.node, parent);
     entry.behavior = null;
-    entry.isAttached = true;
 };
 
 const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
@@ -99,11 +105,18 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
 
     ctx.entry.behavior = behavior;
     adoptedFrom(ctx.parent, ctx.entry, behavior, claim);
-    ctx.entry.isAttached = true;
     applyLazyProps(ctx.entry);
 
     return true;
 };
+
+const unclaimedChildError = (parentTypeName: string, childTypeName: string): Error =>
+    new Error(
+        `<${childTypeName}> cannot be a child of <${parentTypeName}>. Pass it to the ` +
+        `<${parentTypeName}> prop that takes it, if there is one, portal it to rootElement with createPortal ` +
+        `if it does not belong inside <${parentTypeName}>, or register an attach behavior for ` +
+        `<${parentTypeName}> with defineElements from "@gtkx/react/config" if it belongs among its children.`,
+    );
 
 const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
     const ctx: AttachContext = { parent, entry, index, sibling };
@@ -114,9 +127,11 @@ const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibli
         }
     }
 
-    if (entry.slot !== DEFAULT_SLOT) {
-        setObjectSlot(parent, entry);
+    if (entry.slot === DEFAULT_SLOT) {
+        throw unclaimedChildError(parent.typeName, entry.typeName);
     }
+
+    setObjectSlot(parent, entry);
 };
 
 const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
@@ -136,9 +151,7 @@ const runDetach = (parent: ElementNode, entry: PlacedChild): void => {
     const behavior = entry.behavior;
 
     if (behavior === null) {
-        if (entry.slot !== DEFAULT_SLOT) {
-            writeSlot(parent, entry, null);
-        }
+        writeSlot(parent, entry, null);
 
         return;
     }
@@ -147,12 +160,6 @@ const runDetach = (parent: ElementNode, entry: PlacedChild): void => {
 };
 
 const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
-    if (!entry.isAttached) {
-        return;
-    }
-
-    entry.isAttached = false;
-
     applyWrite(() => {
         runDetach(parent, entry);
     });
@@ -174,13 +181,6 @@ const getPosition = (entries: PlacedChild[], before: PlaceableNode | null): numb
 
 const placeNew = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild[], index: number): void => {
     attachEntry(parent, entry, index, siblingAt(entries, index));
-
-    if (!entry.isAttached) {
-        remove(entries, entry);
-
-        return;
-    }
-
     const isInsertedBeforeEnd = index < entries.length - 1;
     const isCannotReorderInPlace = entry.behavior !== null && entry.behavior.reorder === undefined;
 

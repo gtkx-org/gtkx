@@ -1,11 +1,25 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel, GtkScrolledWindow, type GtkScrolledWindowProps } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-const getPolicy = (scrolledWindow: Gtk.ScrolledWindow): [Gtk.PolicyType, Gtk.PolicyType] => {
-    return scrolledWindow.getPolicy();
+const renderContentWindow = async (props: GtkScrolledWindowProps): Promise<Gtk.ScrolledWindow> => {
+    const ref = createRef<Gtk.ScrolledWindow>();
+
+    await render(
+        <GtkScrolledWindow ref={ref} {...props}>
+            <GtkLabel>Content</GtkLabel>
+        </GtkScrolledWindow>,
+    );
+
+    const scrolledWindow = ref.current;
+
+    if (scrolledWindow === null) {
+        throw new Error("expected the scrolled window ref to be assigned");
+    }
+
+    return scrolledWindow;
 };
 
 function App({ text }: { text: string }) {
@@ -18,74 +32,38 @@ function App({ text }: { text: string }) {
 
 describe("render - ScrolledWindow (1)", () => {
     it("creates ScrolledWindow widget", async () => {
-        const ref = createRef<Gtk.ScrolledWindow>();
-
-        await render(
-            <GtkScrolledWindow ref={ref}>
-                <GtkLabel>Content</GtkLabel>
-            </GtkScrolledWindow>,
-        );
-
-        expect(ref.current).not.toBeNull();
-        expect(ref.current).toBeInstanceOf(Gtk.ScrolledWindow);
+        const scrolledWindow = await renderContentWindow({});
+        expect(scrolledWindow).toBeInstanceOf(Gtk.ScrolledWindow);
     });
 
     it("sets AUTOMATIC scroll policy by default", async () => {
-        const ref = createRef<Gtk.ScrolledWindow>();
-
-        await render(
-            <GtkScrolledWindow ref={ref}>
-                <GtkLabel>Content</GtkLabel>
-            </GtkScrolledWindow>,
-        );
-
-        const [hPolicy, vPolicy] = getPolicy(ref.current as Gtk.ScrolledWindow);
+        const scrolledWindow = await renderContentWindow({});
+        const [hPolicy, vPolicy] = scrolledWindow.getPolicy();
         expect(hPolicy).toBe(Gtk.PolicyType.AUTOMATIC);
         expect(vPolicy).toBe(Gtk.PolicyType.AUTOMATIC);
     });
 
     it("sets horizontal scroll policy", async () => {
-        const ref = createRef<Gtk.ScrolledWindow>();
-
-        await render(
-            <GtkScrolledWindow ref={ref} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                <GtkLabel>Content</GtkLabel>
-            </GtkScrolledWindow>,
-        );
-
-        const [hPolicy] = getPolicy(ref.current as Gtk.ScrolledWindow);
+        const scrolledWindow = await renderContentWindow({ hscrollbarPolicy: Gtk.PolicyType.NEVER });
+        const [hPolicy] = scrolledWindow.getPolicy();
         expect(hPolicy).toBe(Gtk.PolicyType.NEVER);
     });
 });
 
 describe("render - ScrolledWindow (2)", () => {
     it("sets vertical scroll policy", async () => {
-        const ref = createRef<Gtk.ScrolledWindow>();
-
-        await render(
-            <GtkScrolledWindow ref={ref} vscrollbarPolicy={Gtk.PolicyType.ALWAYS}>
-                <GtkLabel>Content</GtkLabel>
-            </GtkScrolledWindow>,
-        );
-
-        const [, vPolicy] = getPolicy(ref.current as Gtk.ScrolledWindow);
+        const scrolledWindow = await renderContentWindow({ vscrollbarPolicy: Gtk.PolicyType.ALWAYS });
+        const [, vPolicy] = scrolledWindow.getPolicy();
         expect(vPolicy).toBe(Gtk.PolicyType.ALWAYS);
     });
 
     it("sets both scroll policies", async () => {
-        const ref = createRef<Gtk.ScrolledWindow>();
+        const scrolledWindow = await renderContentWindow({
+            hscrollbarPolicy: Gtk.PolicyType.NEVER,
+            vscrollbarPolicy: Gtk.PolicyType.ALWAYS,
+        });
 
-        await render(
-            <GtkScrolledWindow
-                ref={ref}
-                hscrollbarPolicy={Gtk.PolicyType.NEVER}
-                vscrollbarPolicy={Gtk.PolicyType.ALWAYS}
-            >
-                <GtkLabel>Content</GtkLabel>
-            </GtkScrolledWindow>,
-        );
-
-        const [hPolicy, vPolicy] = getPolicy(ref.current as Gtk.ScrolledWindow);
+        const [hPolicy, vPolicy] = scrolledWindow.getPolicy();
         expect(hPolicy).toBe(Gtk.PolicyType.NEVER);
         expect(vPolicy).toBe(Gtk.PolicyType.ALWAYS);
     });
@@ -104,11 +82,11 @@ describe("render - ScrolledWindow (3)", () => {
         }
 
         await render(<App hPolicyProp={Gtk.PolicyType.AUTOMATIC} vPolicyProp={Gtk.PolicyType.AUTOMATIC} />);
-        let [hPolicy, vPolicy] = getPolicy(ref.current as Gtk.ScrolledWindow);
+        let [hPolicy, vPolicy] = ref.current?.getPolicy() ?? [];
         expect(hPolicy).toBe(Gtk.PolicyType.AUTOMATIC);
         expect(vPolicy).toBe(Gtk.PolicyType.AUTOMATIC);
         await render(<App hPolicyProp={Gtk.PolicyType.NEVER} vPolicyProp={Gtk.PolicyType.ALWAYS} />);
-        [hPolicy, vPolicy] = getPolicy(ref.current as Gtk.ScrolledWindow);
+        [hPolicy, vPolicy] = ref.current?.getPolicy() ?? [];
         expect(hPolicy).toBe(Gtk.PolicyType.NEVER);
         expect(vPolicy).toBe(Gtk.PolicyType.ALWAYS);
     });

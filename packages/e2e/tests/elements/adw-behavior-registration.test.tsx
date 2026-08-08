@@ -14,7 +14,7 @@ describe("adwaita behavior registration", () => {
         expect(behaviorsFor("AdwNavigationSplitView").length).toBeGreaterThan(0);
         expect(behaviorsFor("AdwPreferencesPage").length).toBeGreaterThan(0);
         expect(behaviorsFor("AdwTabView").length).toBeGreaterThan(0);
-        expect(behaviorsFor("AdwLeaflet").length).toBeGreaterThan(0);
+        expect(behaviorsFor("AdwWrapBox").length).toBeGreaterThan(0);
     });
 
     it("gives every registered behavior at least one property", () => {

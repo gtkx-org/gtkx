@@ -3,7 +3,6 @@ import { type ElementConfig, forTypes, internal, type ModuleExport } from "../re
 const CHILD_SETTER_TYPES: string[] = [
     "AdwBin",
     "AdwClamp",
-    "AdwClampScrollable",
     "AdwNavigationPage",
     "AdwSplitButton",
     "AdwStatusPage",
@@ -12,17 +11,11 @@ const CHILD_SETTER_TYPES: string[] = [
     "AdwToggle",
 ];
 
-const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwFlap", "AdwOverlaySplitView"];
+const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwOverlaySplitView"];
 const childrenProps = internal("ChildrenProps");
 const breakpointsProps = adw("AdwBreakpointsProps");
 const preferencesRowProps = adw("AdwPreferencesRowProps");
 
-/**
- * The framework's own element configuration for the Adwaita types it customizes: the base props interface each
- * generated element extends, the component that wraps it, the GObject properties left out of its generated
- * props, and whether its GObject is created by its parent. Carries no behaviors, so importing it never
- * reaches the GObject bindings.
- */
 const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     ...forTypes(CHILD_SETTER_TYPES, {
         props: childrenProps,
@@ -32,11 +25,24 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: childrenProps,
         omittedProps: ["content"],
     }),
+    AdwClampScrollable: {
+        props: childrenProps,
+        omittedProps: ["child"],
+    },
     AdwViewStackPage: {
         isLazy: true,
     },
     AdwTabPage: {
         isLazy: true,
+    },
+    AdwLayout: {
+        isLazy: true,
+    },
+    AdwSidebarSection: {
+        props: childrenProps,
+    },
+    AdwMultiLayoutView: {
+        props: adw("AdwMultiLayoutViewProps"),
     },
     AdwPreferencesRow: {
         props: preferencesRowProps,
@@ -71,9 +77,6 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: childrenProps,
         omittedProps: ["content"],
     },
-    AdwLeaflet: {
-        props: childrenProps,
-    },
     AdwWrapBox: {
         props: childrenProps,
     },
@@ -86,13 +89,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwPreferencesDialog: {
         props: childrenProps,
     },
-    AdwPreferencesWindow: {
-        props: childrenProps,
-    },
     AdwPreferencesGroup: {
-        props: childrenProps,
-    },
-    AdwSqueezer: {
         props: childrenProps,
     },
     AdwTabView: {

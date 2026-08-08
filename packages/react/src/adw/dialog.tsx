@@ -1,36 +1,33 @@
 import type * as Adw from "@gtkx/gi/adw";
-import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
-import { useMergedRef } from "../hooks/use-merged-refs.js";
+import { type ElementType, type ReactNode, useCallback } from "react";
+import { createPortaledComponent } from "../components/portaled.js";
 import { useParentWindow } from "../hooks/use-parent-window.js";
-import { rootElement } from "../reconciler/root-element.js";
-import { createPortal } from "../reconciler/root.js";
+import { createPresentedComponent, type PresentedProps } from "../hooks/use-presented-instance.js";
 
-type DialogComponentProps = {
-    ref?: Ref<Adw.Dialog | null> | undefined;
+type DialogComponentProps = PresentedProps<Adw.Dialog>;
+
+const closeDialog = (dialog: Adw.Dialog): void => {
+    dialog.forceClose();
 };
 
-const createDialogComponent = (Component: ElementType): ((props: DialogComponentProps) => ReactNode) => {
-    return ({ ref, ...rest }: DialogComponentProps): ReactNode => {
-        const parent = useParentWindow();
-        const [dialog, setDialog] = useState<Adw.Dialog | null>(null);
+const usePresentDialog = (): ((dialog: Adw.Dialog) => void) => {
+    const parent = useParentWindow();
 
-        useLayoutEffect(() => {
-            if (!dialog) {
-                return;
-            }
-
+    return useCallback(
+        (dialog: Adw.Dialog) => {
             dialog.present(parent);
-
-            return () => {
-                dialog.forceClose();
-            };
-        }, [dialog, parent]);
-
-        const mergedRef = useMergedRef(ref, setDialog);
-
-        return createPortal(<Component ref={mergedRef} {...rest} />, rootElement);
-    };
+        },
+        [parent],
+    );
 };
+
+const createDialogComponent = (Component: ElementType): ((props: DialogComponentProps) => ReactNode) =>
+    createPortaledComponent(
+        createPresentedComponent<Adw.Dialog>(Component, {
+            usePresent: usePresentDialog,
+            dismiss: closeDialog,
+        }),
+    );
 
 /** @internal */
 export { createDialogComponent };

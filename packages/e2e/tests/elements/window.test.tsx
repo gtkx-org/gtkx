@@ -3,7 +3,7 @@ import type { ReactNode, RefObject } from "react";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
-import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render as baseRender, screen } from "@gtkx/testing";
 import { createRef } from "react";
@@ -71,6 +71,28 @@ describe("render - Window (1)", () => {
             await renderAdw(<AdwApplicationWindow ref={ref} />);
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getApplication()).not.toBeNull();
+        });
+
+        it("creates Gtk.ApplicationWindow through intermediate elements", async () => {
+            const ref = createRef<Gtk.ApplicationWindow>();
+
+            await render(
+                <GtkApplicationWindow title="Outer">
+                    <GtkBox>
+                        <GtkApplicationWindow ref={ref} title="Nested App Window" />
+                    </GtkBox>
+                </GtkApplicationWindow>,
+            );
+
+            expect(ref.current).not.toBeNull();
+            expect(ref.current?.getApplication()).not.toBeNull();
+            expect(ref.current?.getParent()).toBeNull();
+        });
+
+        it("throws without a GtkApplication ancestor", async () => {
+            await expect(
+                baseRender(<GtkApplicationWindow title="Orphan" />, { container: rootElement }),
+            ).rejects.toThrow(/useApplication must be called within GtkApplication/);
         });
     });
 });
