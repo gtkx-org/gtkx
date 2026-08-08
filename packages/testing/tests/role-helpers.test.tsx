@@ -2,7 +2,7 @@ import type { MockInstance } from "vitest";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkCheckButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getRoles, getWidgetNodeText, prettyRoles, render, screen } from "../src/index.js";
+import { getRoles, getWidgetText, prettyRoles, render, screen } from "../src/index.js";
 
 describe("getRoles", () => {
     it("returns map of roles to widgets", async () => {
@@ -25,7 +25,7 @@ describe("getRoles", () => {
         const roles = getRoles(container);
         const button = roles.get("button")?.[0];
         expect(button).toBeInstanceOf(Gtk.Button);
-        expect(button && getWidgetNodeText(button)).toBe("My Button");
+        expect(button && getWidgetText(button)).toBe("My Button");
     });
 
     it("returns empty map for empty container", async () => {

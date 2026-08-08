@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwCarousel, AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { getWidgetNodeText, within } from "@gtkx/testing";
+import { getWidgetText, within } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { buildPlainNotebook } from "../helpers/notebook-render.js";
-import { renderChildren } from "../helpers/render-children.js";
 
 type ReorderCase<Container> = {
     build: (ref: RefObject<Container | null>) => (items: string[]) => ReactNode;
@@ -45,7 +45,7 @@ function buildCarousel(ref: RefObject<Adw.Carousel | null>) {
 function tabLabels(notebook: Gtk.Notebook): string[] {
     return within(notebook)
         .getAllByRole(Gtk.AccessibleRole.TAB)
-        .map((tab) => getWidgetNodeText(within(tab).getByRole(Gtk.AccessibleRole.LABEL)) ?? "");
+        .map((tab) => getWidgetText(within(tab).getByRole(Gtk.AccessibleRole.LABEL)) ?? "");
 }
 
 function tabViewTitles(view: Adw.TabView): string[] {

@@ -1,8 +1,22 @@
-/// <reference types="@vitest/expect" />
+import type { SyncExpectationResult } from "@vitest/expect";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import type { ByRoleOptions, Matcher, MatcherOptions } from "./types.js";
+import {
+    type AccessibleAttributeValue,
+    readAccessibleProperty,
+    readAccessibleState,
+} from "./accessible-native.js";
 import { getDefaultNormalizer } from "./normalize.js";
+import {
+    queryAllByDisplayValue,
+    queryAllByLabelText,
+    queryAllByPlaceholderText,
+    queryAllByRole,
+    queryAllByText,
+} from "./queries.js";
 import { formatRole } from "./role-helpers.js";
+import { type Container, descendants } from "./traversal.js";
 import {
     type CheckedState,
     getWidgetAccessibleName,
@@ -10,13 +24,10 @@ import {
     getWidgetDescribedByText,
     getWidgetDisplayValue,
     getWidgetErrorMessage,
-    getWidgetExpandedState,
     getWidgetInvalidState,
     getWidgetLabelText,
-    getWidgetPlaceholderText,
     getWidgetPressedState,
     getWidgetRequiredState,
-    getWidgetSelectedState,
     getWidgetSelection,
     getWidgetTextContent,
     getWidgetValue,
@@ -40,15 +51,60 @@ type TextContentOptions = {
 /** The expected value for a style class: an exact class name or a regular expression. */
 type ClassExpectation = string | RegExp;
 /** The outcome of a matcher: whether it passed, and the failure text built on demand. */
-type MatcherResult = { pass: boolean; message: () => string };
+type MatcherResult = Pick<SyncExpectationResult, "message" | "pass">;
+
 /** The matcher state bound as `this`, supplying the test runner's deep equality check. */
-type MatcherContext = { equals: (actual: unknown, expected: unknown) => boolean };
+type MatcherContext = {
+    /** Compares a received value against an expected one, resolving asymmetric matchers. */
+    equals: (actual: unknown, expected: unknown) => boolean;
+};
+
 /** Compares text read from the received widget; with no expected value, asserts the text is non-empty. */
 type TextMatcher = (received: unknown, expected?: TextExpectation) => MatcherResult;
 /** Asserts a single state of the received widget, taking no expected value. */
 type StateMatcher = (received: unknown) => MatcherResult;
+/** Trailing arguments of the `ByRole` query family, as a containment matcher takes them. */
+type RoleQueryArgs = [role: Gtk.AccessibleRole, options?: ByRoleOptions];
+/** Trailing arguments of the text-based query families, as a containment matcher takes them. */
+type TextQueryArgs = [text: Matcher, options?: MatcherOptions];
+/** Counts the descendants a query family finds under the received widget. */
+type ContainmentMatcher<Args extends unknown[]> = (received: unknown, ...args: Args) => MatcherResult;
 type TextMatcherContext = { matcherName: string; widget: Gtk.Widget; actual: string | null };
 type ClassArguments = { expected: ClassExpectation[]; isExact: boolean };
+type QueryAll<Args extends unknown[]> = (container: Container, ...args: Args) => Gtk.Widget[];
+
+type BooleanAccessibleState =
+    Gtk.AccessibleState.BUSY |
+    Gtk.AccessibleState.DISABLED |
+    Gtk.AccessibleState.EXPANDED |
+    Gtk.AccessibleState.HIDDEN |
+    Gtk.AccessibleState.SELECTED |
+    Gtk.AccessibleState.VISITED;
+
+type TristateAccessibleState = Gtk.AccessibleState.CHECKED | Gtk.AccessibleState.PRESSED;
+
+type StringAccessibleProperty =
+    Gtk.AccessibleProperty.DESCRIPTION |
+    Gtk.AccessibleProperty.HELP_TEXT |
+    Gtk.AccessibleProperty.KEY_SHORTCUTS |
+    Gtk.AccessibleProperty.LABEL |
+    Gtk.AccessibleProperty.PLACEHOLDER |
+    Gtk.AccessibleProperty.ROLE_DESCRIPTION |
+    Gtk.AccessibleProperty.VALUE_TEXT;
+
+type BooleanAccessibleProperty =
+    Gtk.AccessibleProperty.HAS_POPUP |
+    Gtk.AccessibleProperty.MODAL |
+    Gtk.AccessibleProperty.MULTI_LINE |
+    Gtk.AccessibleProperty.MULTI_SELECTABLE |
+    Gtk.AccessibleProperty.READ_ONLY |
+    Gtk.AccessibleProperty.REQUIRED;
+
+type NumberAccessibleProperty =
+    Gtk.AccessibleProperty.LEVEL |
+    Gtk.AccessibleProperty.VALUE_MAX |
+    Gtk.AccessibleProperty.VALUE_MIN |
+    Gtk.AccessibleProperty.VALUE_NOW;
 
 /** A text matcher that also takes normalization options for the text it reads. */
 type TextContentMatcher = (
@@ -72,23 +128,34 @@ type MatcherImplementations = {
     toHaveAccessibleDescription: TextMatcher;
     /** Asserts the joined accessible names of the widget's `error-message` targets, read only while it is invalid. */
     toHaveAccessibleErrorMessage: TextMatcher;
-    /** Asserts the widget's placeholder text; with no argument, that it has some. */
-    toHavePlaceholderText: TextMatcher;
     /** Asserts the text currently selected in an editable widget. */
     toHaveSelection: TextMatcher;
+    /**
+     * Asserts an accessible state GTK holds for the widget, taking the value type that state carries.
+     * With no expected value, asserts only that the state is set to something determinate.
+     */
+    toHaveAccessibleState: (
+        received: unknown,
+        state: Gtk.AccessibleState,
+        expected?: boolean | number,
+    ) => MatcherResult;
+    /**
+     * Asserts an accessible property GTK holds for the widget, taking the value type that property
+     * carries. With no expected value, asserts only that the property is set.
+     */
+    toHaveAccessibleProperty: (
+        received: unknown,
+        property: Gtk.AccessibleProperty,
+        expected?: AccessibleAttributeValue,
+    ) => MatcherResult;
     /** Asserts the widget's checked state is checked rather than unchecked or mixed. */
     toBeChecked: StateMatcher;
     /** Asserts the widget's checked state is mixed. */
     toBePartiallyChecked: StateMatcher;
     /** Asserts a `Gtk.ToggleButton` is active, and throws for any other widget. */
     toBePressed: StateMatcher;
-    /** Asserts a `Gtk.Expander` or the row behind a `Gtk.TreeExpander` is expanded, and throws for anything else. */
-    toBeExpanded: StateMatcher;
-    /**
-     * Asserts a `Gtk.ListBoxRow` or `Gtk.FlowBoxChild` is selected, or that a widget in a selectable role
-     * carries the selected state flag, and throws for anything else.
-     */
-    toBeSelected: StateMatcher;
+    /** Asserts the widget's accessible pressed state is mixed, and throws when it exposes none. */
+    toBePartiallyPressed: StateMatcher;
     /** Asserts the widget is insensitive, or sits inside an insensitive ancestor. */
     toBeDisabled: StateMatcher;
     /** Asserts the widget and all of its ancestors are sensitive. */
@@ -98,7 +165,7 @@ type MatcherImplementations = {
     /** Asserts the widget's root is a window that is still in the toplevel list. */
     toBeRooted: StateMatcher;
     /** Asserts the widget has neither a child nor label text. */
-    toBeEmpty: StateMatcher;
+    toBeEmptyWidget: StateMatcher;
     /** Asserts the widget's accessible invalid state is set to anything other than false. */
     toBeInvalid: StateMatcher;
     /** Asserts the widget's accessible invalid state is unset or false. */
@@ -113,6 +180,30 @@ type MatcherImplementations = {
     toHaveRole: (received: unknown, expected: Gtk.AccessibleRole) => MatcherResult;
     /** Asserts the widget is, or is an ancestor of, the given widget. */
     toContainElement: (received: unknown, descendant: Gtk.Widget | null) => MatcherResult;
+    /** Asserts the widget comes before the given widget in the widget tree, neither containing the other. */
+    toAppearBefore: (received: unknown, other: Gtk.Widget) => MatcherResult;
+    /** Asserts the widget comes after the given widget in the widget tree, neither containing the other. */
+    toAppearAfter: (received: unknown, other: Gtk.Widget) => MatcherResult;
+    /** Asserts at least one widget under the received one matches the `ByRole` query. */
+    toContainAnyByRole: ContainmentMatcher<RoleQueryArgs>;
+    /** Asserts exactly one widget under the received one matches the `ByRole` query. */
+    toContainOneByRole: ContainmentMatcher<RoleQueryArgs>;
+    /** Asserts at least one widget under the received one matches the `ByText` query. */
+    toContainAnyByText: ContainmentMatcher<TextQueryArgs>;
+    /** Asserts exactly one widget under the received one matches the `ByText` query. */
+    toContainOneByText: ContainmentMatcher<TextQueryArgs>;
+    /** Asserts at least one widget under the received one matches the `ByLabelText` query. */
+    toContainAnyByLabelText: ContainmentMatcher<TextQueryArgs>;
+    /** Asserts exactly one widget under the received one matches the `ByLabelText` query. */
+    toContainOneByLabelText: ContainmentMatcher<TextQueryArgs>;
+    /** Asserts at least one widget under the received one matches the `ByPlaceholderText` query. */
+    toContainAnyByPlaceholderText: ContainmentMatcher<TextQueryArgs>;
+    /** Asserts exactly one widget under the received one matches the `ByPlaceholderText` query. */
+    toContainOneByPlaceholderText: ContainmentMatcher<TextQueryArgs>;
+    /** Asserts at least one widget under the received one matches the `ByDisplayValue` query. */
+    toContainAnyByDisplayValue: ContainmentMatcher<TextQueryArgs>;
+    /** Asserts exactly one widget under the received one matches the `ByDisplayValue` query. */
+    toContainOneByDisplayValue: ContainmentMatcher<TextQueryArgs>;
     /**
      * Asserts the widget carries every given style class, each a name, a space-separated list, or a pattern.
      * Pass `{ exact: true }` last to require exactly that set, which rules out patterns.
@@ -128,6 +219,7 @@ type MatcherImplementations = {
 type ExpectExtend = { extend: (m: MatcherImplementations) => void };
 
 const registration = { isRegistered: false };
+const MIXED_TRISTATE: number = Gtk.AccessibleTristate.MIXED;
 const displayValueMatcher: TextMatcher = textMatcher("toHaveDisplayValue", getWidgetDisplayValue, "exact");
 const toHaveAccessibleName: TextMatcher = textMatcher("toHaveAccessibleName", getWidgetAccessibleName, "exact");
 
@@ -143,12 +235,69 @@ const toHaveAccessibleErrorMessage: TextMatcher = textMatcher(
     "exact",
 );
 
-const toHavePlaceholderText: TextMatcher = textMatcher("toHavePlaceholderText", getWidgetPlaceholderText, "exact");
 const toHaveSelection: TextMatcher = textMatcher("toHaveSelection", getWidgetSelection, "exact");
 const toBePressed: StateMatcher = booleanStateMatcher("toBePressed", "pressed", getWidgetPressedState);
-const toBeExpanded: StateMatcher = booleanStateMatcher("toBeExpanded", "expanded", getWidgetExpandedState);
-const toBeSelected: StateMatcher = booleanStateMatcher("toBeSelected", "selected", getWidgetSelectedState);
 const toBeRequired: StateMatcher = booleanStateMatcher("toBeRequired", "required", getWidgetRequiredState);
+
+const toContainAnyByRole: ContainmentMatcher<RoleQueryArgs> = containmentMatcher(
+    "toContainAnyByRole",
+    false,
+    queryAllByRole,
+);
+
+const toContainOneByRole: ContainmentMatcher<RoleQueryArgs> = containmentMatcher(
+    "toContainOneByRole",
+    true,
+    queryAllByRole,
+);
+
+const toContainAnyByText: ContainmentMatcher<TextQueryArgs> = containmentMatcher(
+    "toContainAnyByText",
+    false,
+    queryAllByText,
+);
+
+const toContainOneByText: ContainmentMatcher<TextQueryArgs> = containmentMatcher(
+    "toContainOneByText",
+    true,
+    queryAllByText,
+);
+
+const toContainAnyByLabelText: ContainmentMatcher<TextQueryArgs> = containmentMatcher(
+    "toContainAnyByLabelText",
+    false,
+    queryAllByLabelText,
+);
+
+const toContainOneByLabelText: ContainmentMatcher<TextQueryArgs> = containmentMatcher(
+    "toContainOneByLabelText",
+    true,
+    queryAllByLabelText,
+);
+
+const toContainAnyByPlaceholderText: ContainmentMatcher<TextQueryArgs> = containmentMatcher(
+    "toContainAnyByPlaceholderText",
+    false,
+    queryAllByPlaceholderText,
+);
+
+const toContainOneByPlaceholderText: ContainmentMatcher<TextQueryArgs> = containmentMatcher(
+    "toContainOneByPlaceholderText",
+    true,
+    queryAllByPlaceholderText,
+);
+
+const toContainAnyByDisplayValue: ContainmentMatcher<TextQueryArgs> = containmentMatcher(
+    "toContainAnyByDisplayValue",
+    false,
+    queryAllByDisplayValue,
+);
+
+const toContainOneByDisplayValue: ContainmentMatcher<TextQueryArgs> = containmentMatcher(
+    "toContainOneByDisplayValue",
+    true,
+    queryAllByDisplayValue,
+);
 
 /** The widget assertion matchers keyed by name, suitable for passing to `expect.extend`. */
 const matchers: MatcherImplementations = {
@@ -157,18 +306,18 @@ const matchers: MatcherImplementations = {
     toHaveAccessibleName,
     toHaveAccessibleDescription,
     toHaveAccessibleErrorMessage,
-    toHavePlaceholderText,
     toHaveSelection,
+    toHaveAccessibleState,
+    toHaveAccessibleProperty,
     toBeChecked,
     toBePartiallyChecked,
     toBePressed,
-    toBeExpanded,
-    toBeSelected,
+    toBePartiallyPressed,
     toBeDisabled,
     toBeEnabled,
     toBeVisible,
     toBeRooted,
-    toBeEmpty,
+    toBeEmptyWidget,
     toBeInvalid,
     toBeValid,
     toBeRequired,
@@ -176,6 +325,18 @@ const matchers: MatcherImplementations = {
     toHaveValue,
     toHaveRole,
     toContainElement,
+    toAppearBefore,
+    toAppearAfter,
+    toContainAnyByRole,
+    toContainOneByRole,
+    toContainAnyByText,
+    toContainOneByText,
+    toContainAnyByLabelText,
+    toContainOneByLabelText,
+    toContainAnyByPlaceholderText,
+    toContainOneByPlaceholderText,
+    toContainAnyByDisplayValue,
+    toContainOneByDisplayValue,
     toHaveClass,
     toHaveObjectProperty,
 };
@@ -243,6 +404,81 @@ const stateResult = (widget: Gtk.Widget, stateName: string, isPass: boolean): Ma
     pass: isPass,
     message: () => `expected widget ${negationPrefix(isPass)}to be ${stateName}\n${describeWidget(widget)}`,
 });
+
+const describeAttributeValue = (value: AccessibleAttributeValue | null): string =>
+    value === null ? "unset" : JSON.stringify(value);
+
+const attributeSetResult = (
+    widget: Gtk.Widget,
+    label: string,
+    actual: AccessibleAttributeValue | null,
+): MatcherResult => {
+    const isSet = actual !== null;
+
+    return {
+        pass: isSet,
+        message: () => `expected widget ${negationPrefix(isSet)}to have ${label} set\n${describeWidget(widget)}`,
+    };
+};
+
+const attributeValueResult = (
+    widget: Gtk.Widget,
+    label: string,
+    actual: AccessibleAttributeValue | null,
+    expected: AccessibleAttributeValue,
+): MatcherResult => {
+    const isPass = actual === expected;
+
+    return {
+        pass: isPass,
+        message: () =>
+            `expected widget ${negationPrefix(isPass)}to have ${label} equal to ` +
+            `${describeAttributeValue(expected)}, but received ${describeAttributeValue(actual)}\n` +
+            describeWidget(widget),
+    };
+};
+
+const orderResult = (widget: Gtk.Widget, other: Gtk.Widget, position: string, isPass: boolean): MatcherResult => ({
+    pass: isPass,
+    message: () =>
+        `expected widget ${negationPrefix(isPass)}to appear ${position} ${describeWidget(other)} ` +
+        `in the widget tree\n${describeWidget(widget)}`,
+});
+
+const getTreeRoot = (widget: Gtk.Widget): Gtk.Widget => {
+    let root = widget;
+    let parent = root.getParent();
+
+    while (parent) {
+        root = parent;
+        parent = root.getParent();
+    }
+
+    return root;
+};
+
+const isSeparateWidget = (first: Gtk.Widget, second: Gtk.Widget): boolean =>
+    first !== second && !first.isAncestor(second) && !second.isAncestor(first);
+
+const isPrecedingWidget = (root: Gtk.Widget, first: Gtk.Widget, second: Gtk.Widget): boolean => {
+    for (const widget of descendants(root)) {
+        if (widget === first) {
+            return true;
+        }
+
+        if (widget === second) {
+            return false;
+        }
+    }
+
+    return false;
+};
+
+const isAppearingBefore = (first: Gtk.Widget, second: Gtk.Widget): boolean => {
+    const root = getTreeRoot(first);
+
+    return isSeparateWidget(first, second) && root === getTreeRoot(second) && isPrecedingWidget(root, first, second);
+};
 
 const camelCase = (name: string): string =>
     name.replaceAll(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
@@ -426,6 +662,84 @@ function booleanStateMatcher(
     };
 }
 
+function containmentMatcher<Args extends unknown[]>(
+    matcherName: string,
+    isSingle: boolean,
+    queryAll: QueryAll<Args>,
+): ContainmentMatcher<Args> {
+    const quantity = isSingle ? "exactly one widget" : "any widget";
+
+    return (received: unknown, ...args: Args): MatcherResult => {
+        const widget = asWidget(received, matcherName);
+        const matches = queryAll(widget, ...args);
+        const isPass = isSingle ? matches.length === 1 : matches.length > 0;
+
+        return {
+            pass: isPass,
+            message: () =>
+                `expected widget ${negationPrefix(isPass)}to contain ${quantity} matching ${matcherName}, ` +
+                `but found ${String(matches.length)}\n${describeWidget(widget)}`,
+        };
+    };
+}
+
+function toHaveAccessibleState(
+    received: unknown,
+    state: Gtk.AccessibleState,
+    expected?: boolean | number,
+): MatcherResult {
+    const widget = asWidget(received, "toHaveAccessibleState");
+    const actual = readAccessibleState(widget, state);
+    const label = `accessible state ${Gtk.AccessibleState[state]}`;
+
+    if (expected === undefined) {
+        return attributeSetResult(widget, label, actual);
+    }
+
+    return attributeValueResult(widget, label, actual, typeof expected === "boolean" ? Number(expected) : expected);
+}
+
+function toHaveAccessibleProperty(
+    received: unknown,
+    property: Gtk.AccessibleProperty,
+    expected?: AccessibleAttributeValue,
+): MatcherResult {
+    const widget = asWidget(received, "toHaveAccessibleProperty");
+    const actual = readAccessibleProperty(widget, property);
+    const label = `accessible property ${Gtk.AccessibleProperty[property]}`;
+
+    if (expected === undefined) {
+        return attributeSetResult(widget, label, actual);
+    }
+
+    return attributeValueResult(widget, label, actual, expected);
+}
+
+function toBePartiallyPressed(received: unknown): MatcherResult {
+    const widget = asWidget(received, "toBePartiallyPressed");
+    const state = readAccessibleState(widget, Gtk.AccessibleState.PRESSED);
+
+    if (state === null) {
+        throw notApplicable("toBePartiallyPressed", "pressed state", widget);
+    }
+
+    return stateResult(widget, "partially pressed", state === MIXED_TRISTATE);
+}
+
+function toAppearBefore(received: unknown, other: Gtk.Widget): MatcherResult {
+    const widget = asWidget(received, "toAppearBefore");
+    const target = asWidget(other, "toAppearBefore");
+
+    return orderResult(widget, target, "before", isAppearingBefore(widget, target));
+}
+
+function toAppearAfter(received: unknown, other: Gtk.Widget): MatcherResult {
+    const widget = asWidget(received, "toAppearAfter");
+    const target = asWidget(other, "toAppearAfter");
+
+    return orderResult(widget, target, "after", isAppearingBefore(target, widget));
+}
+
 function readCheckedState(widget: Gtk.Widget, matcherName: string): CheckedState {
     const state = getWidgetCheckedState(widget);
 
@@ -509,8 +823,8 @@ function toBeRooted(received: unknown): MatcherResult {
     return stateResult(widget, "rooted in a window", isWidgetRooted(widget));
 }
 
-function toBeEmpty(received: unknown): MatcherResult {
-    const widget = asWidget(received, "toBeEmpty");
+function toBeEmptyWidget(received: unknown): MatcherResult {
+    const widget = asWidget(received, "toBeEmptyWidget");
 
     return stateResult(widget, "empty", widget.getFirstChild() === null && getWidgetLabelText(widget) === null);
 }
@@ -633,18 +947,30 @@ declare module "@vitest/expect" {
         toHaveAccessibleName(expected?: TextExpectation): void;
         toHaveAccessibleDescription(expected?: TextExpectation): void;
         toHaveAccessibleErrorMessage(expected?: TextExpectation): void;
-        toHavePlaceholderText(expected?: TextExpectation): void;
         toHaveSelection(expected?: TextExpectation): void;
+        /* eslint-disable-next-line unicorn/consistent-boolean-name -- expected is the jest-dom matcher argument name */
+        toHaveAccessibleState(state: BooleanAccessibleState, expected?: boolean): void;
+        toHaveAccessibleState(state: TristateAccessibleState, expected?: Gtk.AccessibleTristate): void;
+        toHaveAccessibleState(state: Gtk.AccessibleState.INVALID, expected?: Gtk.AccessibleInvalidState): void;
+        toHaveAccessibleProperty(property: StringAccessibleProperty, expected?: string): void;
+        /* eslint-disable-next-line unicorn/consistent-boolean-name -- expected is the jest-dom matcher argument name */
+        toHaveAccessibleProperty(property: BooleanAccessibleProperty, expected?: boolean): void;
+        toHaveAccessibleProperty(property: NumberAccessibleProperty, expected?: number): void;
+        toHaveAccessibleProperty(
+            property: Gtk.AccessibleProperty.AUTOCOMPLETE,
+            expected?: Gtk.AccessibleAutocomplete,
+        ): void;
+        toHaveAccessibleProperty(property: Gtk.AccessibleProperty.ORIENTATION, expected?: Gtk.Orientation): void;
+        toHaveAccessibleProperty(property: Gtk.AccessibleProperty.SORT, expected?: Gtk.AccessibleSort): void;
         toBeChecked(): void;
         toBePartiallyChecked(): void;
         toBePressed(): void;
-        toBeExpanded(): void;
-        toBeSelected(): void;
+        toBePartiallyPressed(): void;
         toBeDisabled(): void;
         toBeEnabled(): void;
         toBeVisible(): void;
         toBeRooted(): void;
-        toBeEmpty(): void;
+        toBeEmptyWidget(): void;
         toBeInvalid(): void;
         toBeValid(): void;
         toBeRequired(): void;
@@ -652,6 +978,18 @@ declare module "@vitest/expect" {
         toHaveValue(expected?: number | string): void;
         toHaveRole(expected: Gtk.AccessibleRole): void;
         toContainElement(descendant: Gtk.Widget | null): void;
+        toAppearBefore(other: Gtk.Widget): void;
+        toAppearAfter(other: Gtk.Widget): void;
+        toContainAnyByRole(...args: RoleQueryArgs): void;
+        toContainOneByRole(...args: RoleQueryArgs): void;
+        toContainAnyByText(...args: TextQueryArgs): void;
+        toContainOneByText(...args: TextQueryArgs): void;
+        toContainAnyByLabelText(...args: TextQueryArgs): void;
+        toContainOneByLabelText(...args: TextQueryArgs): void;
+        toContainAnyByPlaceholderText(...args: TextQueryArgs): void;
+        toContainOneByPlaceholderText(...args: TextQueryArgs): void;
+        toContainAnyByDisplayValue(...args: TextQueryArgs): void;
+        toContainOneByDisplayValue(...args: TextQueryArgs): void;
         toHaveClass(...args: (ClassExpectation | { exact: boolean })[]): void;
         toHaveObjectProperty(name: string, expected?: unknown): void;
     }
@@ -661,36 +999,4 @@ declare module "@vitest/expect" {
     /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }
 
-export {
-    toHaveDisplayValue,
-    toHaveTextContent,
-    toHaveAccessibleName,
-    toHaveAccessibleDescription,
-    toHaveAccessibleErrorMessage,
-    toHavePlaceholderText,
-    toHaveSelection,
-    toBeChecked,
-    toBePartiallyChecked,
-    toBePressed,
-    toBeExpanded,
-    toBeSelected,
-    toBeDisabled,
-    toBeEnabled,
-    toBeVisible,
-    toBeRooted,
-    toBeEmpty,
-    toBeInvalid,
-    toBeValid,
-    toBeRequired,
-    toHaveFocus,
-    toHaveValue,
-    toHaveRole,
-    toContainElement,
-    toHaveClass,
-    toHaveObjectProperty,
-    matchers,
-    registerMatchers,
-    type ClassExpectation,
-    type TextContentOptions,
-    type TextExpectation,
-};
+export { matchers, registerMatchers, type ClassExpectation, type TextContentOptions, type TextExpectation };

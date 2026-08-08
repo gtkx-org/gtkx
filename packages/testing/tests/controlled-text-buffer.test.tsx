@@ -23,10 +23,15 @@ const ControlledNotes = ({ initial }: { initial: string }): ReactNode => {
     );
 };
 
+const renderNotes = async (initial: string): Promise<Gtk.TextView> => {
+    await render(<ControlledNotes initial={initial} />);
+
+    return screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+};
+
 describe("controlled GtkTextBuffer through the text prop", () => {
     it("seeds the buffer without putting the initial text on the undo stack", async () => {
-        await render(<ControlledNotes initial="seed" />);
-        const view = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+        const view = await renderNotes("seed");
         expect(bufferText(view)).toBe("seed");
         expect(view.getBuffer().getCanUndo()).toBe(false);
         view.grabFocus();
@@ -35,8 +40,7 @@ describe("controlled GtkTextBuffer through the text prop", () => {
     });
 
     it("keeps the caret in place while each keystroke round-trips through React state", async () => {
-        await render(<ControlledNotes initial="hello" />);
-        const view = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+        const view = await renderNotes("hello");
         view.grabFocus();
         await userEvent.keyboard(view, "{Home}{ArrowRight}{ArrowRight}");
         expect(caretOffset(view)).toBe(2);
@@ -46,8 +50,7 @@ describe("controlled GtkTextBuffer through the text prop", () => {
     });
 
     it("undoes the user's own edits and stops at the seed", async () => {
-        await render(<ControlledNotes initial="hello" />);
-        const view = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+        const view = await renderNotes("hello");
         view.grabFocus();
         await userEvent.type(view, "!");
         expect(bufferText(view)).toBe("hello!");

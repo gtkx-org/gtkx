@@ -31,6 +31,11 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
+        },
+        "./internal": {
+            "source": "./src/internal.ts",
+            "types": "./dist/internal.d.ts",
+            "default": "./dist/internal.js"
         }
     },
     "sideEffects": [
@@ -50,7 +55,9 @@
     "dependencies": {
         "@gtkx/runtime": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "@gtkx/utils": "workspace:*"
+        "@gtkx/utils": "workspace:*",
+        "@vitest/expect": "^4.1.10",
+        "@vitest/pretty-format": "^4.1.10"
     },
     "peerDependencies": {
         "@types/react": "^19.2",
@@ -60,7 +67,6 @@
         "@gtkx/config": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "@types/react": "catalog:",
-        "@vitest/expect": "^4.1.10",
         "vitest": "catalog:"
     }
 }

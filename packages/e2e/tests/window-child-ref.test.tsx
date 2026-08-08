@@ -1,15 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import * as Gio from "@gtkx/gi/gio";
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
-import { rootElement } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { GtkApplicationWindow, GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { type RefObject, useEffect, useRef } from "react";
 import { describe, expect, it } from "vitest";
-import { createAppIdFactory } from "./helpers/unique-name.js";
+import { createApplicationRenderer } from "./helpers/application-render.js";
 
 type Captured = { label: Gtk.Label | null; calls: number };
 
-const uniqueAppId = createAppIdFactory("org.gtkx.windowchildref");
+const renderApplication = createApplicationRenderer("org.gtkx.windowchildref");
 
 const renderHost = async (captured: Captured, body?: (ref: RefObject<Gtk.Label | null>) => void): Promise<void> => {
     const Host = () => {
@@ -30,12 +27,7 @@ const renderHost = async (captured: Captured, body?: (ref: RefObject<Gtk.Label |
         );
     };
 
-    await render(
-        <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-            <Host />
-        </GtkApplication>,
-        { container: rootElement },
-    );
+    await renderApplication(<Host />);
 };
 
 describe("a component that renders a window", () => {

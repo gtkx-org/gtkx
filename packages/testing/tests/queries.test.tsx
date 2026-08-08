@@ -48,10 +48,7 @@ import {
     queryByText,
     render,
 } from "../src/index.js";
-
-const VBox = ({ children }: { children: ReactNode }) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>
-);
+import { VBox } from "./widget-fixtures.js";
 
 const renderTwoButtons = () =>
     render(
@@ -413,10 +410,19 @@ describe("findByRole accessible name", () => {
         expect(button).toBeInstanceOf(Gtk.Button);
     });
 
-    it("prefers accessibleLabel over visible label text", async () => {
+    it("names a button from the label GTK relates it to, ahead of accessibleLabel", async () => {
         const { container } = await render(<GtkButton accessibleLabel="Submit form" label="OK" />);
-        const button = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Submit form" });
+        const button = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "OK" });
         expect(button).toBeInstanceOf(Gtk.Button);
+    });
+
+    it("names a widget from accessibleLabel when GTK relates it to nothing", async () => {
+        const { container } = await render(
+            <GtkBox accessibleLabel="Submit form" accessibleRole={Gtk.AccessibleRole.GROUP} />,
+        );
+
+        const box = await findByRole(container, Gtk.AccessibleRole.GROUP, { name: "Submit form" });
+        expect(box).toBeInstanceOf(Gtk.Box);
     });
 });
 
@@ -515,10 +521,10 @@ describe("queryByText", () => {
 describe("queryAllByText", () => {
     it("returns all matching elements", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkButton label="Same" />
                 <GtkButton label="Same" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const buttons = queryAllByText(container, "Same");
@@ -549,10 +555,10 @@ describe("queryByName", () => {
 describe("queryAllByName", () => {
     it("returns all matching elements", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkEntry name="field" />
                 <GtkEntry name="field" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const entries = queryAllByName(container, "field");
@@ -766,13 +772,13 @@ describe("getByRole hidden", () => {
         expect(hiddenIncludedMatches).toHaveLength(2);
     });
 
-    it("excludes not-visible widgets by default", async () => {
+    it("excludes not-visible widgets even when hidden is set, because they are not mapped", async () => {
         const { defaultMatches, hiddenIncludedMatches } = await queryButtonsBesideHidden(
             <GtkButton label="Gone" visible={false} />,
         );
 
         expect(defaultMatches).toHaveLength(1);
-        expect(hiddenIncludedMatches).toHaveLength(2);
+        expect(hiddenIncludedMatches).toHaveLength(1);
     });
 });
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { render, type RenderOptions } from "@gtkx/testing";
+import type { RenderOptions } from "./types.js";
+import { render } from "./render.js";
 
 type ChildrenBuilder<T> = (items: T[]) => ReactNode;
 
@@ -7,11 +8,11 @@ type RenderChildrenResult<T> = {
     rerender: (items: T[]) => Promise<void>;
 };
 
-const renderChildren = async <T,>(
+async function renderChildren<T>(
     initial: T[],
     build: ChildrenBuilder<T>,
     options?: RenderOptions,
-): Promise<RenderChildrenResult<T>> => {
+): Promise<RenderChildrenResult<T>> {
     const { rerender } = await render(build(initial), options);
 
     return {
@@ -19,6 +20,6 @@ const renderChildren = async <T,>(
             await rerender(build(items));
         },
     };
-};
+}
 
-export { renderChildren, type ChildrenBuilder, type RenderChildrenResult };
+export { renderChildren, type ChildrenBuilder };

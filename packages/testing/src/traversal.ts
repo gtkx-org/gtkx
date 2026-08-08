@@ -16,21 +16,40 @@ type Container = QueryContainer | Gtk.Application | typeof TOPLEVELS;
 const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
 
 const isApplication = (container: Container): container is Gtk.Application => container instanceof Gtk.Application;
+const isAnyWidget = (): boolean => true;
+const isOnScreen = (widget: Gtk.Widget): boolean => widget.getMapped();
 
-const traverseWidgetTree = function* (root: Gtk.Widget): Generator<Gtk.Widget> {
-    yield root;
+const traverseWidgetTree = function* (
+    root: Gtk.Widget,
+    isIncluded: (widget: Gtk.Widget) => boolean,
+): Generator<Gtk.Widget> {
+    if (isIncluded(root)) {
+        yield root;
+    }
+
     let child = root.getFirstChild();
 
     while (child) {
-        yield* traverseWidgetTree(child);
+        yield* traverseWidgetTree(child, isIncluded);
         child = child.getNextSibling();
     }
 };
 
 const descendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
-    const tree = traverseWidgetTree(widget);
+    const tree = traverseWidgetTree(widget, isAnyWidget);
     tree.next();
     yield* tree;
+};
+
+const relationCandidates = (widget: Gtk.Widget): Gtk.Accessible[] => {
+    const pool: Gtk.Accessible[] = [...widget.listMnemonicLabels(), ...descendants(widget)];
+    const root = widget.getRoot();
+
+    if (root instanceof Gtk.Widget) {
+        pool.push(...traverseWidgetTree(root, isAnyWidget));
+    }
+
+    return [...new Set(pool)];
 };
 
 const resolveRoot = (container: QueryContainer): Gtk.Widget | null => {
@@ -69,7 +88,7 @@ const roots = function* (container: Container): Generator<Gtk.Widget> {
 
 const traverse = function* (container: Container): Generator<Gtk.Widget> {
     for (const root of roots(container)) {
-        yield* traverseWidgetTree(root);
+        yield* traverseWidgetTree(root, isOnScreen);
     }
 };
 
@@ -85,4 +104,4 @@ const findAll = (container: Container, isMatch: (node: Gtk.Widget) => boolean): 
     return results;
 };
 
-export { TOPLEVELS, descendants, roots, traverse, findAll, type Container };
+export { TOPLEVELS, descendants, findAll, isOnScreen, relationCandidates, roots, traverse, type Container };

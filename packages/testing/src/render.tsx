@@ -5,23 +5,28 @@ import {
     isRootElement,
     type ReconcilerRoot,
     setReconcilerErrorHandler,
+    settleAccessible,
 } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import type { RenderResult } from "./bound-queries.js";
-import type { QueryMap, RenderOptions, ScreenshotOptions, WindowSelector } from "./types.js";
+import type { QueryMap, RenderOptions, ScreenshotOptions } from "./types.js";
 import { runInAct } from "./act.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
 import { scheduleAfterLayout } from "./frame-sync.js";
+import { createHarnessWindow } from "./harness-window.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
-import { captureAndSaveScreenshot } from "./screenshot.js";
-import { type Container, TOPLEVELS, traverse } from "./traversal.js";
+import { captureScreen } from "./screenshot.js";
+import { type Container, roots, TOPLEVELS } from "./traversal.js";
 import { resetClipboard } from "./user-event/index.js";
 import { within } from "./within.js";
 
+/** A mounted render tracked so cleanup can unmount it. */
 type ActiveRender = {
+    /** Root that rerenders drive and that cleanup tears the tree down through. */
     root: ReconcilerRoot;
+    /** Harness window created for the render, null when it renders into a container the caller supplied. */
     window: Gtk.Window | null;
 };
 
@@ -37,12 +42,13 @@ type ReconcilerErrorState = {
 
 const reconcilerErrors: ReconcilerErrorState = { lastError: null, isHandlerInstalled: false };
 const activeRenders: Set<ActiveRender> = new Set();
-const HARNESS_WINDOW_WIDTH = 800;
-const HARNESS_WINDOW_HEIGHT = 600;
 
 const flushLayout = (window: Gtk.Window | null): Promise<void> =>
-    new Promise((resolve) => {
-        scheduleAfterLayout(window, resolve);
+    new Promise<void>((resolve) => {
+        scheduleAfterLayout(window, () => {
+            settleAccessible();
+            resolve();
+        });
     });
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
@@ -96,7 +102,7 @@ const resolveContainer = (container: RenderOptions["container"]): ResolvedContai
         return { containerInfo: container, window: null };
     }
 
-    const window = new Gtk.Window({ defaultWidth: HARNESS_WINDOW_WIDTH, defaultHeight: HARNESS_WINDOW_HEIGHT });
+    const window = createHarnessWindow();
     window.setDecorated(false);
 
     return { containerInfo: window, window };
@@ -107,7 +113,7 @@ const firstToplevelWidget = (baseElement: Container): Gtk.Widget => {
         return baseElement;
     }
 
-    const [first] = traverse(baseElement);
+    const [first] = roots(baseElement);
 
     if (first) {
         return first;
@@ -209,8 +215,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
         logRoles: () => {
             logRoles(baseElement);
         },
-        screenshot: (selector?: WindowSelector, screenshotOptions?: ScreenshotOptions) =>
-            captureAndSaveScreenshot(selector, screenshotOptions),
+        screenshot: (screenshotOptions?: ScreenshotOptions) => captureScreen(screenshotOptions),
     };
 
     setScreen(result);

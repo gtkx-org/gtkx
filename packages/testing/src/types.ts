@@ -87,7 +87,7 @@ type ByRoleOptions<T extends Gtk.Widget = Gtk.Widget> = MatcherOptions<T> & {
     description?: Matcher | undefined;
     /** Constraints on the widget's range value, each checked only when given. */
     value?: ByRoleValue | undefined;
-    /** When true, include widgets excluded from the accessibility tree. */
+    /** When true, include widgets excluded from the accessibility tree. Widgets that are not mapped stay excluded. */
     hidden?: boolean | undefined;
 };
 
@@ -187,8 +187,11 @@ type DebugUtilities = {
     debug: (element?: Container | Container[], options?: PrettyWidgetOptions) => void;
     /** Prints the accessible roles found in the scope, with the widgets carrying each one. */
     logRoles: () => void;
-    /** Captures a window, writes the image to a temporary file, and logs its path. */
-    screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
+    /**
+     * Captures what is on screen, which is the active toplevel window: GTK4 exposes no position for
+     * a toplevel, so windows cannot be composited into a single image.
+     */
+    screenshot: (options?: ScreenshotOptions) => Promise<ScreenshotResult>;
 };
 
 /** A captured screenshot: base64-encoded image data, its MIME type, and pixel dimensions. */
@@ -203,26 +206,27 @@ type ScreenshotResult = {
     height: number;
 };
 
-/** Options for capturing a screenshot: the poll timeout and interval, plus a rendering scale factor. */
+/**
+ * Options for capturing a screenshot: the poll timeout and interval, a rendering scale factor, and
+ * a file to write the PNG to.
+ */
 type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
     /** Device scale factor applied when rendering. */
-    scale?: number;
+    scale?: number | undefined;
+    /** File the PNG is written to, with its parent directories created as needed. */
+    path?: string | undefined;
 };
-
-/**
- * Selects the window to screenshot by index, or by title (exact string or regular expression);
- * undefined targets the default window.
- */
-type WindowSelector = number | string | RegExp | undefined;
 
 /**
  * Options for {@link renderHook}: an optional wrapper and the initial props (required unless the
  * props type permits undefined).
  */
 type RenderHookOptions<Props> = {
+    /** Component wrapped around the one calling the hook, such as a context provider. */
     wrapper?: WrapperComponent;
 } & (undefined extends Props
     ? {
+            /** Props the hook is invoked with until `rerender` is given new ones. */
             initialProps?: Props;
         }
     : {
@@ -234,8 +238,11 @@ type RenderHookOptions<Props> = {
  * props and to unmount.
  */
 type RenderHookResult<Result, Props> = {
-    /** Holds the most recent value returned by the hook under `current`. */
-    result: { current: Result };
+    /** Stable object the hook's return value is written to on every render. */
+    result: {
+        /** The hook's latest return value. */
+        current: Result;
+    };
     /** Re-invokes the hook, keeping the previous props when none are given. */
     rerender: (newProps?: Props) => Promise<void>;
     /** Unmounts the component that calls the hook. */
@@ -260,7 +267,6 @@ export {
     type DebugUtilities,
     type ScreenshotResult,
     type ScreenshotOptions,
-    type WindowSelector,
     type RenderHookOptions,
     type RenderHookResult,
 };

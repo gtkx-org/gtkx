@@ -1,12 +1,12 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
-import { getWidgetNodeText, render, within } from "@gtkx/testing";
+import { getWidgetText, render, within } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { buildLabelNotebook } from "../helpers/notebook-render.js";
-import { renderChildren } from "../helpers/render-children.js";
 
-const tabLabel = (tab: Gtk.Widget): string => getWidgetNodeText(within(tab).getByRole(Gtk.AccessibleRole.LABEL)) ?? "";
+const tabLabel = (tab: Gtk.Widget): string => getWidgetText(within(tab).getByRole(Gtk.AccessibleRole.LABEL)) ?? "";
 
 const getPageLabels = (notebook: Gtk.Notebook): string[] =>
     within(notebook)

@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { sortStringsBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
-import { getWidgetAccessibleName } from "./widget-accessible-properties.js";
+import { getWidgetAccessibleName, getWidgetLevel } from "./widget-accessible-properties.js";
 
 const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
 
@@ -47,10 +47,11 @@ const formatRoleList = (roles: Iterable<Gtk.AccessibleRole>): string => {
 };
 
 /**
- * Groups every widget in a container's tree by its accessible role name.
+ * Groups every mapped widget in a container's tree by its accessible role name. Widgets that are not
+ * mapped are left out.
  *
  * @param container The scope to traverse.
- * @returns A map from role name to the widgets that have that role.
+ * @returns A map from role name to the mapped widgets that have that role.
  */
 const getRoles = (container: Container): Map<string, Gtk.Widget[]> => {
     const roles: Map<string, Gtk.Widget[]> = new Map();
@@ -80,6 +81,7 @@ const formatWidgetPreview = (widget: Gtk.Widget, name: string | null): string =>
 /**
  * Formats the accessible roles in a container's tree as a readable string,
  * listing each role together with its widgets and their accessible names.
+ * Widgets that are not mapped are left out.
  *
  * @param container The scope to inspect.
  */
@@ -116,4 +118,12 @@ const logRoles = (container: Container): void => {
     console.log(prettyRoles(container));
 };
 
-export { formatRole, formatRoleList, getRoles, prettyRoles, logRoles };
+/**
+ * Returns the heading or hierarchy level GTK reports for a widget, or undefined when it declares
+ * none.
+ *
+ * @param widget The widget to read the level from.
+ */
+const computeHeadingLevel = (widget: Gtk.Widget): number | undefined => getWidgetLevel(widget) ?? undefined;
+
+export { computeHeadingLevel, formatRole, formatRoleList, getRoles, prettyRoles, logRoles };

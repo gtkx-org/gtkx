@@ -16,8 +16,6 @@ import {
     GtkListBoxRow,
     GtkScale,
     GtkScrolledWindow,
-    GtkShortcut,
-    GtkShortcutController,
     GtkStack,
     GtkStackPage,
     GtkSwitch,
@@ -25,7 +23,7 @@ import {
 import { createRef, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { configure, getConfig, render, screen, userEvent } from "../src/index.js";
-import { renderDragAndDropPair } from "./event-render-setup.js";
+import { renderDragAndDropPair, renderGesturedLabel, renderShortcutHost } from "./event-render-setup.js";
 
 const initialConfig = { ...getConfig() };
 const NOT_SENSITIVE_PATTERN = /did not become actionable within 60ms because it is not sensitive/;
@@ -54,19 +52,8 @@ const renderInsensitiveButton = async () => {
     return { button, handleClick };
 };
 
-const renderInsensitiveGesturedLabel = async (
-    name: string,
-    label: string,
-    gesture: ReactNode,
-): Promise<Gtk.Widget> => {
-    await render(
-        <GtkLabel name={name} sensitive={false} controllers={gesture}>
-            {label}
-        </GtkLabel>,
-    );
-
-    return screen.findByName(name);
-};
+const renderInsensitiveGesturedLabel = (name: string, label: string, gesture: ReactNode): Promise<Gtk.Widget> =>
+    renderGesturedLabel(name, label, gesture, false);
 
 describe("userEvent actionability - insensitive click targets", () => {
     setupShortTimeout();
@@ -197,28 +184,7 @@ describe("userEvent actionability - insensitive keyboard targets", () => {
 
     it("rejects keyboard input on an insensitive shortcut host without activating shortcuts", async () => {
         const onActivate = vi.fn(() => true);
-
-        await render(
-            <GtkBox
-                name="host"
-                sensitive={false}
-                controllers={(
-                    <GtkShortcutController
-                        scope={Gtk.ShortcutScope.GLOBAL}
-                        shortcuts={(
-                            <GtkShortcut
-                                trigger={Gtk.ShortcutTrigger.parseString("F5")}
-                                action={Gtk.CallbackAction.new(onActivate)}
-                            />
-                        )}
-                    />
-                )}
-            >
-                <GtkLabel>anchor</GtkLabel>
-            </GtkBox>,
-        );
-
-        const host = await screen.findByName("host");
+        const host = await renderShortcutHost(Gtk.ShortcutTrigger.parseString("F5"), onActivate, false);
         await expect(userEvent.keyboard(host, "{F5}")).rejects.toThrow(NOT_SENSITIVE_PATTERN);
         expect(onActivate).not.toHaveBeenCalled();
     });
@@ -295,6 +261,7 @@ describe("userEvent actionability - timeout error", () => {
 
     it("reports an unmapped widget on a non-visible stack page", async () => {
         const handleClick = vi.fn();
+        const concealedRef = createRef<Gtk.Button>();
 
         await render(
             <GtkStack>
@@ -302,7 +269,7 @@ describe("userEvent actionability - timeout error", () => {
                     <GtkButton label="Shown" />
                 </GtkStackPage>
                 <GtkStackPage name="hidden-page">
-                    <GtkButton label="Concealed" onClicked={handleClick} />
+                    <GtkButton ref={concealedRef} label="Concealed" onClicked={handleClick} />
                 </GtkStackPage>
             </GtkStack>,
         );
@@ -310,7 +277,8 @@ describe("userEvent actionability - timeout error", () => {
         const shown = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Shown" });
         await userEvent.click(shown);
         configure({ actionabilityTimeout: 60 });
-        const concealed = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Concealed" });
+        expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Concealed", hidden: true })).toBeNull();
+        const concealed = concealedRef.current as Gtk.Button;
 
         await expect(userEvent.click(concealed)).rejects.toThrow(
             /<Button role="button"> did not become actionable within 60ms because it is not mapped/,

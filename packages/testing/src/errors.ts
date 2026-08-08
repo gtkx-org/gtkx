@@ -130,6 +130,17 @@ const buildElementError = (container: Container, headLines: string[]): Error => 
     return config.getElementError(lines.join("\n"), container);
 };
 
+/**
+ * Builds the error a failing query throws, appending the container's widget tree to the message the
+ * way the built-in queries do.
+ *
+ * @param message The failure message.
+ * @param container The scope whose widget tree is appended; omitted, only the message is used.
+ * @returns The error produced by the configured `getElementError`.
+ */
+const getElementError = (message: string, container?: Container): Error =>
+    container === undefined ? getConfig().getElementError(message) : buildElementError(container, [message]);
+
 const notFoundError = (container: Container, descriptor: QueryDescriptor): Error => {
     const description = formatQueryDescription(descriptor);
     const headLines = [`Unable to find an element with ${description}`];
@@ -183,9 +194,9 @@ const timeoutError = (timeout: number, lastError: Error | null): Error => {
 
 export {
     runWithExpensiveErrorDiagnosticsDisabled,
+    getElementError,
     notFoundError,
     multipleFoundError,
     suggestionError,
     timeoutError,
-    type QueryDescriptor,
 };

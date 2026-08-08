@@ -10,14 +10,14 @@ import {
     GtkLevelBar,
     GtkProgressBar,
     GtkScale,
-    GtkScrolledWindow,
     GtkSeparator,
     GtkSpinner,
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
+import { cleanup, render } from "@gtkx/testing/internal";
 import { bench, describe } from "vitest";
-import { cleanup, render } from "../tests/helpers/production-render.js";
+import { scrolledBox } from "../tests/helpers/scrolled-box.js";
 
 type RowRenderer = (i: number, key: string) => ReactNode;
 
@@ -54,11 +54,8 @@ const ROW = (i: number): ReactNode => {
     return renderer(i, String(i));
 };
 
-const drawMixed = (n: number, salt: string): ReactNode => (
-    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
-        <GtkBox>{Array.from({ length: n }, (_, i) => ROW(i + salt.length))}</GtkBox>
-    </GtkScrolledWindow>
-);
+const drawMixed = (n: number, salt: string): ReactNode =>
+    scrolledBox(Array.from({ length: n }, (_, i) => ROW(i + salt.length)));
 
 describe("mixed-widget mount", () => {
     for (const n of SIZES) {

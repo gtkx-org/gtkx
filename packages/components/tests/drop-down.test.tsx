@@ -2,10 +2,10 @@ import { DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { valueItems } from "./helpers/list-fixtures.js";
-import { renderChildren } from "./helpers/render-children.js";
 import { expectTextPresent } from "./helpers/text-presence.js";
 
 type IdItem = { id: string; value: string };
@@ -13,6 +13,10 @@ type IdItem = { id: string; value: string };
 const buildDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: string[]) => (
     <DropDown ref={dropDownRef} items={valueItems(items)} />
 );
+
+const openDropDownList = async (): Promise<void> => {
+    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX));
+};
 
 const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, text: string): Promise<void> => {
     if (dropDown) {
@@ -154,6 +158,7 @@ describe("render - DropDown (3)", () => {
             />,
         );
 
+        await openDropDownList();
         await expectTextPresent("Letters");
         await expectTextPresent("Numbers");
         await expectTextPresent("Alpha");
@@ -162,6 +167,7 @@ describe("render - DropDown (3)", () => {
 
     it("renders no section headers when renderHeader is omitted", async () => {
         await render(<DropDown sections={sections} />);
+        await openDropDownList();
         await screen.findAllByText("Alpha");
         await screen.findAllByText("One");
         expect(screen.queryAllByText("Letters")).toHaveLength(0);

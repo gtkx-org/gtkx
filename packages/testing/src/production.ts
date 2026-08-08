@@ -1,6 +1,7 @@
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
-import * as Gtk from "@gtkx/gi/gtk";
 import { createRoot, type Root } from "@gtkx/react";
+import { createHarnessWindow } from "./harness-window.js";
 
 type ProductionRenderResult = {
     rerender: (element: ReactNode) => Promise<void>;
@@ -11,8 +12,6 @@ type ActiveRender = {
     window: Gtk.Window;
 };
 
-const HARNESS_WINDOW_WIDTH = 800;
-const HARNESS_WINDOW_HEIGHT = 600;
 const SETTLE_TURNS = 3;
 const activeRenders: Set<ActiveRender> = new Set();
 
@@ -25,7 +24,7 @@ const settle = async (): Promise<void> => {
 };
 
 const render = async (element: ReactNode): Promise<ProductionRenderResult> => {
-    const window = new Gtk.Window({ defaultWidth: HARNESS_WINDOW_WIDTH, defaultHeight: HARNESS_WINDOW_HEIGHT });
+    const window = createHarnessWindow();
     const root = createRoot(window);
     activeRenders.add({ root, window });
     root.render(element);
@@ -50,4 +49,4 @@ const cleanup = async (): Promise<void> => {
     await settle();
 };
 
-export { render, cleanup, type ProductionRenderResult };
+export { cleanup, render };

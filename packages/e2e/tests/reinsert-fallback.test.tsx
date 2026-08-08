@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as Adw from "@gtkx/gi/adw";
 import { AdwPreferencesGroup, AdwSwitchRow } from "@gtkx/jsx/adw";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
-import { renderChildren } from "./helpers/render-children.js";
 
 function* walk(widget: Gtk.Widget): IterableIterator<Gtk.Widget> {
     let child = widget.getFirstChild();
@@ -15,7 +15,13 @@ function* walk(widget: Gtk.Widget): IterableIterator<Gtk.Widget> {
     }
 }
 
-const rowTitles = (group: Adw.PreferencesGroup): string[] => {
+const getRowTitles = (ref: RefObject<Adw.PreferencesGroup | null>): string[] => {
+    const group = ref.current;
+
+    if (group === null) {
+        throw new Error("expected the preferences group ref to be assigned");
+    }
+
     const titles: string[] = [];
 
     for (const widget of walk(group)) {
@@ -35,32 +41,27 @@ const buildGroup = (ref: RefObject<Adw.PreferencesGroup | null>) => (items: stri
     </AdwPreferencesGroup>
 );
 
+const expectRebuiltTitles = async (initial: string[], rebuilt: string[]): Promise<void> => {
+    const ref = createRef<Adw.PreferencesGroup>();
+    const { rerender } = await renderChildren(initial, buildGroup(ref));
+    await rerender(rebuilt);
+    expect(getRowTitles(ref)).toEqual(rebuilt);
+};
+
 describe("reinsert fallback - add/remove container without insert", () => {
     it("removes a middle row", async () => {
-        const ref = createRef<Adw.PreferencesGroup>();
-        const { rerender } = await renderChildren(["A", "B", "C"], buildGroup(ref));
-        await rerender(["A", "C"]);
-        expect(rowTitles(ref.current as Adw.PreferencesGroup)).toEqual(["A", "C"]);
+        await expectRebuiltTitles(["A", "B", "C"], ["A", "C"]);
     });
 
     it("inserts a row in the middle via full rebuild", async () => {
-        const ref = createRef<Adw.PreferencesGroup>();
-        const { rerender } = await renderChildren(["A", "B", "C"], buildGroup(ref));
-        await rerender(["A", "X", "B", "C"]);
-        expect(rowTitles(ref.current as Adw.PreferencesGroup)).toEqual(["A", "X", "B", "C"]);
+        await expectRebuiltTitles(["A", "B", "C"], ["A", "X", "B", "C"]);
     });
 
     it("reverses row order via full rebuild", async () => {
-        const ref = createRef<Adw.PreferencesGroup>();
-        const { rerender } = await renderChildren(["A", "B", "C"], buildGroup(ref));
-        await rerender(["C", "B", "A"]);
-        expect(rowTitles(ref.current as Adw.PreferencesGroup)).toEqual(["C", "B", "A"]);
+        await expectRebuiltTitles(["A", "B", "C"], ["C", "B", "A"]);
     });
 
     it("removes and reorders together via full rebuild", async () => {
-        const ref = createRef<Adw.PreferencesGroup>();
-        const { rerender } = await renderChildren(["A", "B", "C", "D"], buildGroup(ref));
-        await rerender(["D", "A", "C"]);
-        expect(rowTitles(ref.current as Adw.PreferencesGroup)).toEqual(["D", "A", "C"]);
+        await expectRebuiltTitles(["A", "B", "C", "D"], ["D", "A", "C"]);
     });
 });

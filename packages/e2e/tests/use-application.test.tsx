@@ -1,12 +1,11 @@
-import * as Gio from "@gtkx/gi/gio";
-import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement, useApplication } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
-import { createAppIdFactory } from "./helpers/unique-name.js";
+import { createApplicationRenderer } from "./helpers/application-render.js";
 
-const uniqueAppId = createAppIdFactory("org.gtkx.useapplicationtest");
+const renderApplication = createApplicationRenderer("org.gtkx.useapplicationtest");
 
 const Probe = () => {
     useApplication();
@@ -28,13 +27,7 @@ describe("useApplication", () => {
             return <GtkApplicationWindow defaultWidth={100} defaultHeight={100} />;
         };
 
-        await render(
-            <GtkApplication applicationId={uniqueAppId()} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-                <CapturingProbe />
-            </GtkApplication>,
-            { container: rootElement },
-        );
-
+        await renderApplication(<CapturingProbe />);
         expect(captured).not.toBeNull();
         expect(typeof (captured as { register?: unknown }).register).toBe("function");
     });

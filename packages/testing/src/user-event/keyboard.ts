@@ -1,4 +1,5 @@
 import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { UserEventState } from "./state.js";
 import { getEditableDelegate } from "../editable.js";
@@ -238,13 +239,55 @@ const didDispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifi
     return false;
 };
 
-const didDispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
-    const delegate = getEditableDelegate(widget);
+const isAccelMatch = (accel: string, keyval: number, modifiers: Gdk.ModifierType): boolean => {
+    const [isParsed, accelKeyval, accelModifiers] = Gtk.acceleratorParse(accel);
 
-    if (delegate && didDispatchShortcutsOnWidget(delegate, keyval, modifiers)) {
-        return true;
+    return isParsed && accelKeyval === keyval && accelModifiers === modifiers;
+};
+
+const hasMatchingAccel = (
+    application: Gtk.Application,
+    detailedActionName: string,
+    keyval: number,
+    modifiers: number,
+): boolean =>
+    application.getAccelsForAction(detailedActionName).some((accel) => isAccelMatch(accel, keyval, modifiers));
+
+const didActivateDetailedAction = (window: Gtk.Window, detailedActionName: string): boolean => {
+    const [isParsed, actionName, target] = Gio.Action.parseDetailedName(detailedActionName);
+
+    return isParsed && window.activateAction(actionName, target);
+};
+
+const didDispatchAccelsOnWindow = (window: Gtk.Window, keyval: number, modifiers: number): boolean => {
+    const application = window.getApplication();
+
+    if (!application) {
+        return false;
     }
 
+    for (const detailedActionName of application.listActionDescriptions()) {
+        if (hasMatchingAccel(application, detailedActionName, keyval, modifiers)) {
+            return didActivateDetailedAction(window, detailedActionName);
+        }
+    }
+
+    return false;
+};
+
+const didDispatchApplicationAccels = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+    const root = widget.getRoot();
+
+    return root instanceof Gtk.Window && didDispatchAccelsOnWindow(root, keyval, modifiers);
+};
+
+const didDispatchDelegateShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+    const delegate = getEditableDelegate(widget);
+
+    return delegate !== null && didDispatchShortcutsOnWidget(delegate, keyval, modifiers);
+};
+
+const didDispatchShortcutsOnAncestors = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
     for (let current: Gtk.Widget | null = widget; current; current = current.getParent()) {
         if (didDispatchShortcutsOnWidget(current, keyval, modifiers)) {
             return true;
@@ -253,6 +296,11 @@ const didDispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: num
 
     return false;
 };
+
+const didDispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean =>
+    didDispatchApplicationAccels(widget, keyval, modifiers) ||
+    didDispatchDelegateShortcuts(widget, keyval, modifiers) ||
+    didDispatchShortcutsOnAncestors(widget, keyval, modifiers);
 
 const handleKeyPress = async (widget: Gtk.Widget, keyval: number, modifiers: number): Promise<void> => {
     const isHandled = didDispatchShortcuts(widget, keyval, modifiers);

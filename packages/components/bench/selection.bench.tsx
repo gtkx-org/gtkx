@@ -1,8 +1,8 @@
 import type { ListItem } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
+import { cleanup, render } from "@gtkx/testing/internal";
 import { bench, describe } from "vitest";
 import { renderListView } from "../tests/helpers/list-fixtures.js";
-import { cleanup, render } from "../tests/helpers/production-render.js";
 
 const SIZES = [100, 200, 400];
 

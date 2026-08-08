@@ -33,9 +33,9 @@ type DetachInfo = {
 
 /**
  * Customizes how one element type places children and applies props. Hooks other than `create` receive the
- * GObject instance; `update`, `flush`, `mount` and `unmount` also take the private per-node context
- * `initialize` built, and `attach`, `reorder` and `detach` read it off their info object. Subtypes inherit a
- * type's behaviors, except for `create`, which is consulted only for the type it is registered on.
+ * GObject instance; `update` and `flush` also take the private per-node context `initialize` built, and
+ * `attach`, `reorder` and `detach` read it off their info object. Subtypes inherit a type's behaviors,
+ * except for `create`, which is consulted only for the type it is registered on.
  */
 type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     /** Builds the GObject from its construct props, for types whose constructor does more than set properties. */
@@ -54,12 +54,14 @@ type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     update?: (object: T, prev: Props, next: Props, context: unknown) => Iterable<string> | undefined;
     /** Runs after the commit that touched the node, once every child has been placed. */
     flush?: (object: T, context: unknown) => void;
-    /** Runs once the node and its initial children are attached. */
-    mount?: (object: T, context: unknown) => void;
-    /** Runs when React deletes the node. */
-    unmount?: (object: T, context: unknown) => void;
     /** Props to withhold from the constructor, leaving them for a later hook to apply. */
     deferred?: string[];
+    /**
+     * Props the behavior can only apply while the element is being built, because the library exposes no
+     * counterpart to whatever applied them. Changing one after it has been applied throws instead of
+     * silently applying the new value on top of the old.
+     */
+    constructOnly?: string[];
 };
 
 /** A named export in a module, referenced as plain data (the module is never imported at runtime). */

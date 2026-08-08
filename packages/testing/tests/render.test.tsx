@@ -7,10 +7,15 @@ import { describe, expect, it, vi } from "vitest";
 import { cleanup, type Container, queryAllByRole, render, type WrapperComponent } from "../src/index.js";
 
 const NON_UNIQUE = Gio.ApplicationFlags.NON_UNIQUE;
+const WrapperContext = createContext("default");
 
 const Thrower = (): ReactNode => {
     throw new Error("boom");
 };
+
+const WrappingProvider: WrapperComponent = ({ children }) => (
+    <WrapperContext.Provider value="wrapped">{children}</WrapperContext.Provider>
+);
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
     static getDerivedStateFromError(): { hasError: boolean } {
@@ -83,16 +88,10 @@ describe("render container", () => {
 
 describe("render wrapper", () => {
     it("applies a context-provider wrapper around the element", async () => {
-        const Context = createContext("default");
-
-        const Provider: WrapperComponent = ({ children }) => (
-            <Context.Provider value="wrapped">{children}</Context.Provider>
-        );
-
         const observed: { seen: string } = { seen: "default" };
 
         const Probe = (): ReactNode => {
-            const value = useContext(Context);
+            const value = useContext(WrapperContext);
 
             useLayoutEffect(() => {
                 observed.seen = value;
@@ -101,21 +100,15 @@ describe("render wrapper", () => {
             return <GtkLabel>probe</GtkLabel>;
         };
 
-        await render(<Probe />, { wrapper: Provider });
+        await render(<Probe />, { wrapper: WrappingProvider });
         expect(observed.seen).toBe("wrapped");
     });
 
     it("re-applies the wrapper on rerender", async () => {
-        const Context = createContext("default");
-
-        const Provider: WrapperComponent = ({ children }) => (
-            <Context.Provider value="wrapped">{children}</Context.Provider>
-        );
-
         const seen: string[] = [];
 
         const Probe = ({ tag }: { tag: string }): ReactNode => {
-            const value = useContext(Context);
+            const value = useContext(WrapperContext);
 
             useLayoutEffect(() => {
                 seen.push(`${tag}:${value}`);
@@ -124,7 +117,7 @@ describe("render wrapper", () => {
             return <GtkLabel>{tag}</GtkLabel>;
         };
 
-        const { rerender, findByText } = await render(<Probe tag="first" />, { wrapper: Provider });
+        const { rerender, findByText } = await render(<Probe tag="first" />, { wrapper: WrappingProvider });
         await findByText("first");
         await rerender(<Probe tag="second" />);
         await findByText("second");

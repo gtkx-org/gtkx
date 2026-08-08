@@ -1,7 +1,12 @@
+import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkBox, GtkButton, GtkEntry, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import { expect } from "vitest";
 import { render, screen } from "../src/index.js";
+
+const VBox = ({ children }: { children: ReactNode }) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>
+);
 
 const expectRejection = (assert: () => void, message: RegExp): void => {
     expect(assert).toThrow(message);
@@ -51,4 +56,5 @@ export {
     renderNamedBox,
     renderSlider,
     renderStyledButton,
+    VBox,
 };

@@ -276,7 +276,7 @@ describe("render - ContainerProp (6)", () => {
 });
 
 describe("render - ContainerProp (7)", () => {
-    describe("AdwExpanderRow (rows/actions) (1)", () => {
+    describe("AdwExpanderRow (rows/suffix) (1)", () => {
         it("creates ExpanderRow widget", async () => {
             const ref = createRef<Adw.ExpanderRow>();
             await render(<AdwExpanderRow ref={ref} title="Test" />);
@@ -313,17 +313,22 @@ describe("render - ContainerProp (7)", () => {
 });
 
 describe("render - ContainerProp (8)", () => {
-    describe("AdwExpanderRow (rows/actions) (2)", () => {
+    describe("AdwExpanderRow (rows/suffix) (2)", () => {
         it("adds nested rows to ExpanderRow", async () => {
             const rowRef = createRef<Adw.ActionRow>();
-            await render(<AdwExpanderRow title="Settings" rows={<AdwActionRow ref={rowRef} title="Option 1" />} />);
+
+            await render(
+                <AdwExpanderRow expanded title="Settings" rows={<AdwActionRow ref={rowRef} title="Option 1" />} />,
+            );
+
             expect(rowRef.current).not.toBeNull();
-            expect(screen.getByText("Option 1")).toBeDefined();
+            expect(await screen.findByText("Option 1")).toBeDefined();
         });
 
         it("adds multiple rows", async () => {
             await render(
                 <AdwExpanderRow
+                    expanded
                     title="Settings"
                     rows={(
                         <>
@@ -334,14 +339,14 @@ describe("render - ContainerProp (8)", () => {
                 />,
             );
 
-            expect(screen.getByText("Option 1")).toBeDefined();
-            expect(screen.getByText("Option 2")).toBeDefined();
+            expect(await screen.findByText("Option 1")).toBeDefined();
+            expect(await screen.findByText("Option 2")).toBeDefined();
         });
     });
 });
 
 describe("render - ContainerProp (9)", () => {
-    describe("AdwExpanderRow (rows/actions) (3)", () => {
+    describe("AdwExpanderRow (rows/suffix) (3)", () => {
         it("removes nested rows when unmounted", async () => {
             const expanderRef = createRef<Adw.ExpanderRow>();
 
@@ -367,19 +372,19 @@ describe("render - ContainerProp (9)", () => {
         });
 
         it("adds action widgets to ExpanderRow", async () => {
-            await render(<AdwExpanderRow title="Group" actions={<GtkButton label="Action" />} />);
+            await render(<AdwExpanderRow title="Group" suffix={<GtkButton label="Action" />} />);
             expect(screen.getByText("Action")).toBeDefined();
         });
     });
 });
 
 describe("render - ContainerProp (10)", () => {
-    describe("AdwExpanderRow (rows/actions) (4)", () => {
+    describe("AdwExpanderRow (rows/suffix) (4)", () => {
         it("adds multiple action widgets", async () => {
             await render(
                 <AdwExpanderRow
                     title="Group"
-                    actions={(
+                    suffix={(
                         <>
                             <GtkButton label="Action 1" />
                             <GtkButton label="Action 2" />
@@ -392,14 +397,14 @@ describe("render - ContainerProp (10)", () => {
             expect(screen.getByText("Action 2")).toBeDefined();
         });
 
-        it("handles multiple rows and actions together", async () => {
+        it("handles multiple rows and suffixes together", async () => {
             const ref = createRef<Adw.ExpanderRow>();
 
             await render(
                 <AdwExpanderRow
                     ref={ref}
                     title="Complex"
-                    actions={(
+                    suffix={(
                         <>
                             <GtkButton label="Action 1" />
                             <GtkButton label="Action 2" />

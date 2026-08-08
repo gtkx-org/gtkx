@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
 import * as Gtk from "@gtkx/gi/gtk";
-import { drain, kebabCase } from "@gtkx/utils";
+import { drain, isDeepEqual, kebabCase } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
@@ -16,9 +16,13 @@ type PropChange = { prev: Props; next: Props };
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const NOTIFY_PREFIX = "onNotify";
 const HANDLER_PREFIX = "on";
+const HANDLER_NAME = /^on[A-Z]/;
 const flushDirty: Set<ElementNode> = new Set();
+const accessibleDirty: Map<ElementNode, Props> = new Map();
+const mapWatched: WeakSet<ElementNode> = new WeakSet();
+const pendingMap: Set<ElementNode> = new Set();
 
-const isHandlerName = (name: string): boolean => /^on[A-Z]/.test(name);
+const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 
 const signalForProp = (info: TypeInfo, name: string): string => {
     if (name === NOTIFY_PREFIX) {
@@ -102,29 +106,42 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void =
 };
 
 const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void): void => {
-    const names = new Set([...Object.keys(prev), ...Object.keys(next)]);
-
-    for (const name of names) {
+    for (const name in prev) {
         visit(name);
+    }
+
+    for (const name in next) {
+        if (!Object.hasOwn(prev, name)) {
+            visit(name);
+        }
     }
 };
 
-const constructOnlyChangeError = (typeName: string, name: string): Error =>
+const propChangeError = (typeName: string, name: string): Error =>
     new Error(
         `Cannot change the construct-only prop '${name}' of <${typeName}> after it is created. ` +
-        "GTK accepts it only while the object is being built, so give the element a key that " +
+        "It is only accepted while the element is being built, so give the element a key that " +
         `changes with '${name}' and React will build a new one.`,
     );
 
-const assertConstructOnlyUnchanged = (typeName: string, prev: Props, next: Props): void => {
+const hasAppliedValue = (value: unknown): boolean => (Array.isArray(value) ? value.length > 0 : value !== undefined);
+
+const isConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
+    info.constructOnly.has(name) && !Object.is(change.prev[name], change.next[name]);
+
+const isDeclaredConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
+    info.declaredConstructOnly.has(name) &&
+    hasAppliedValue(change.prev[name]) &&
+    !isDeepEqual(change.prev[name], change.next[name]);
+
+const assertPropsCanChange = (typeName: string, prev: Props, next: Props): void => {
     const info = typeInfoFor(typeName);
+    const change: PropChange = { prev, next };
 
     eachChangedName(prev, next, (name) => {
-        if (!info.constructOnly.has(name) || Object.is(prev[name], next[name])) {
-            return;
+        if (isConstructOnlyChange(info, name, change) || isDeclaredConstructOnlyChange(info, name, change)) {
+            throw propChangeError(typeName, name);
         }
-
-        throw constructOnlyChangeError(typeName, name);
     });
 };
 
@@ -213,22 +230,58 @@ const flushBehaviors = (): void => {
     });
 };
 
-const mountBehaviors = (node: ElementNode): void => {
-    if (!typeInfoFor(node.typeName).hasMount) {
+const applyAccessible = (object: GObject.Object, prev: Props | null, next: Props): void => {
+    if (object instanceof Gtk.Accessible) {
+        applyAccessibleProps(object, prev, next);
+    }
+};
+
+const markAccessible = (node: ElementNode, prev: Props): void => {
+    if (!accessibleDirty.has(node)) {
+        accessibleDirty.set(node, prev);
+    }
+};
+
+const hasAccessibleProp = (props: Props): boolean => {
+    for (const name in props) {
+        if (isAccessibleProp(name)) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const watchMap = (node: ElementNode): void => {
+    const { object } = node;
+
+    if (mapWatched.has(node) || !(object instanceof Gtk.Widget) || !hasAccessibleProp(node.props)) {
         return;
     }
 
-    eachBehavior(node, (behavior, context) => behavior.mount?.(node.object, context));
+    mapWatched.add(node);
+
+    object.connect("map", () => {
+        pendingMap.add(node);
+        setTimeout(settleAccessible, 0);
+    });
 };
 
-const unmountBehaviors = (node: ElementNode): void => {
-    eachBehavior(node, (behavior, context) => behavior.unmount?.(node.object, context));
+const settleAccessible = (): void => {
+    drain(pendingMap, (node) => {
+        if (node.object instanceof Gtk.Widget && node.object.getMapped()) {
+            applyAccessible(node.object, null, node.props);
+        }
+    });
 };
 
-const applyAccessible = (object: GObject.Object, prev: Props, next: Props): void => {
-    if (object instanceof Gtk.Widget) {
-        applyAccessibleProps(object, prev, next);
+const flushAccessible = (): void => {
+    for (const [node, prev] of accessibleDirty) {
+        applyAccessible(node.object, prev, node.props);
+        watchMap(node);
     }
+
+    accessibleDirty.clear();
 };
 
 const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
@@ -236,8 +289,8 @@ const applyElementProps = (node: ElementNode, prev: Props, next: Props): void =>
     const consumed = runBehaviorUpdates(node, info, prev, next);
     applyValueEntries(node, info, { prev, next }, consumed);
     restoreActionableSensitivity(node, info, prev, next);
-    applyAccessible(node.object, prev, next);
     applyHandlers(node, info, prev, next);
+    markAccessible(node, prev);
     markFlush(node);
     node.props = next;
 };
@@ -262,10 +315,10 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
 
 export {
     markFlush,
+    flushAccessible,
+    settleAccessible,
     flushBehaviors,
-    mountBehaviors,
-    unmountBehaviors,
     applyElementProps,
     applyAdoptedProps,
-    assertConstructOnlyUnchanged,
+    assertPropsCanChange,
 };

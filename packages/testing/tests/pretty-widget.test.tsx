@@ -1,12 +1,7 @@
-import type { ReactNode } from "react";
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+import { GtkButton } from "@gtkx/jsx/gtk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { logWidget, prettyWidget, render, screen } from "../src/index.js";
-
-const VBox = ({ children }: { children: ReactNode }) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>
-);
+import { VBox } from "./widget-fixtures.js";
 
 function spyOnConsoleLog() {
     return vi.spyOn(console, "log").mockImplementation(vi.fn());

@@ -1,6 +1,7 @@
-import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { cleanup, render } from "@gtkx/testing/internal";
 import { bench, describe } from "vitest";
-import { cleanup, render } from "../tests/helpers/production-render.js";
+import { scrolledBox } from "../tests/helpers/scrolled-box.js";
 
 const SIZES = [100, 200, 400];
 
@@ -11,12 +12,7 @@ describe("child insertion", () => {
         ));
 
         bench(`mount a box of ${String(n)} children`, async () => {
-            await render(
-                <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
-                    <GtkBox>{labels}</GtkBox>
-                </GtkScrolledWindow>,
-            );
-
+            await render(scrolledBox(labels));
             await cleanup();
         });
     }

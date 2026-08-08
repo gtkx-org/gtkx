@@ -1,8 +1,16 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkDragSource, GtkDropTarget, GtkLabel } from "@gtkx/jsx/gtk";
+import {
+    GtkBox,
+    GtkButton,
+    GtkDragSource,
+    GtkDropTarget,
+    GtkLabel,
+    GtkShortcut,
+    GtkShortcutController,
+} from "@gtkx/jsx/gtk";
 import { type Mock, vi } from "vitest";
 import { render, screen } from "../src/index.js";
 
@@ -28,6 +36,44 @@ async function renderClickButton(label = "Click me"): Promise<RenderedClickButto
     const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
 
     return { handleClick, button };
+}
+
+async function renderGesturedLabel(
+    name: string,
+    label: string,
+    gesture: ReactNode,
+    isSensitive = true,
+): Promise<Gtk.Widget> {
+    await render(
+        <GtkLabel name={name} sensitive={isSensitive} controllers={gesture}>
+            {label}
+        </GtkLabel>,
+    );
+
+    return screen.findByName(name);
+}
+
+async function renderShortcutHost(
+    trigger: Gtk.ShortcutTrigger,
+    didActivate: () => boolean,
+    isSensitive = true,
+): Promise<Gtk.Widget> {
+    await render(
+        <GtkBox
+            name="host"
+            sensitive={isSensitive}
+            controllers={(
+                <GtkShortcutController
+                    scope={Gtk.ShortcutScope.GLOBAL}
+                    shortcuts={<GtkShortcut trigger={trigger} action={Gtk.CallbackAction.new(didActivate)} />}
+                />
+            )}
+        >
+            <GtkLabel>anchor</GtkLabel>
+        </GtkBox>,
+    );
+
+    return screen.findByName("host");
 }
 
 async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<RenderedDragAndDropPair> {
@@ -66,7 +112,6 @@ async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<R
 export {
     renderClickButton,
     renderDragAndDropPair,
-    type RenderedClickButton,
-    type DragAndDropPairOptions,
-    type RenderedDragAndDropPair,
+    renderGesturedLabel,
+    renderShortcutHost,
 };

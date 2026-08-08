@@ -5,7 +5,7 @@ type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
 type WidgetFormatting = {
     formatRole(role: Gtk.AccessibleRole): string;
-    getWidgetNodeText(widget: Gtk.Widget): string | null;
+    getWidgetText(widget: Gtk.Widget): string | null;
 };
 
 const serializeWidget = (
@@ -30,7 +30,7 @@ const serializeWidget = (
         type: widget.constructor.name,
         role: testing.formatRole(widget.getAccessibleRole()),
         name: widget.getName() || null,
-        text: testing.getWidgetNodeText(widget),
+        text: testing.getWidgetText(widget),
         isSensitive: widget.getSensitive(),
         isVisible: widget.getVisible(),
         cssClasses: widget.getCssClasses(),

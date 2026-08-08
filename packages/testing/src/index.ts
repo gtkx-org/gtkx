@@ -2,12 +2,22 @@ import "./register-test-hooks.js";
 
 export { act } from "./act.js";
 export type { BoundQueries, RenderResult, Screen } from "./bound-queries.js";
+export type {
+    BuiltQueries,
+    MissingErrorBuilder,
+    MultipleErrorBuilder,
+    QueryAllBy,
+} from "./build-queries.js";
+export { buildQueries } from "./build-queries.js";
 export type { Config, ConfigFn } from "./config.js";
 export { configure, getConfig } from "./config.js";
-export { fireEvent } from "./fire-event.js";
+export { getElementError } from "./errors.js";
+export type { WidgetEvent } from "./fire-event.js";
+export { createEvent, fireEvent } from "./fire-event.js";
 export type { ClassExpectation, TextContentOptions, TextExpectation } from "./matchers.js";
 export { matchers, registerMatchers } from "./matchers.js";
 export { getDefaultNormalizer } from "./normalize.js";
+export { prettyFormat } from "./pretty-format.js";
 export type { PrettyWidgetOptions } from "./pretty-widget.js";
 export { logWidget, prettyWidget } from "./pretty-widget.js";
 export {
@@ -48,11 +58,13 @@ export {
     queryByRole,
     queryByText,
 } from "./queries.js";
+export type { QueryHelpers } from "./query-helpers.js";
+export { queryAllByObjectProperty, queryByObjectProperty, queryHelpers } from "./query-helpers.js";
 export { renderHook } from "./render-hook.js";
 export { cleanup, render } from "./render.js";
-export { formatRole, getRoles, logRoles, prettyRoles } from "./role-helpers.js";
+export { computeHeadingLevel, formatRole, getRoles, logRoles, prettyRoles } from "./role-helpers.js";
 export { screen } from "./screen.js";
-export { captureAndSaveScreenshot, logScreenshotPath, screenshot } from "./screenshot.js";
+export { screenshot } from "./screenshot.js";
 export type { Method, Suggestion, Variant } from "./suggestions.js";
 export { getSuggestedQuery } from "./suggestions.js";
 export type { Container } from "./traversal.js";
@@ -71,7 +83,6 @@ export type {
     ScreenshotOptions,
     ScreenshotResult,
     WaitForOptions,
-    WindowSelector,
     WrapperComponent,
 } from "./types.js";
 export type { ControllerConstructor } from "./user-event/controller.js";
@@ -91,13 +102,9 @@ export type {
     TabOptions,
     TypeOptions,
     UserEvent,
+    UserEventOptions,
 } from "./user-event/index.js";
 export { userEvent } from "./user-event/index.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
-export {
-    getWidgetErrorMessage,
-    getWidgetInvalidState,
-    getWidgetNodeText,
-    getWidgetTextContent,
-} from "./widget-accessible-properties.js";
-export { within } from "./within.js";
+export { getWidgetText, isInaccessible } from "./widget-accessible-properties.js";
+export { getQueriesForElement, within } from "./within.js";

@@ -16,7 +16,8 @@ const bindCustomQueries = <Q extends QueryMap>(customQueries: Q, container: Cont
 
 /**
  * Binds the built-in queries, and any custom queries, to a specific container
- * so they search only within that scope.
+ * so they search only within that scope. Also exported as `getQueriesForElement`,
+ * which reads better in library code.
  *
  * @param container The scope the returned queries operate on.
  * @param queries Optional custom queries to bind alongside the built-in ones.
@@ -30,4 +31,4 @@ const within = <Q extends QueryMap = Record<never, never>>(
     ...(queries ? bindCustomQueries(queries, container) : ({} as BoundCustomQueries<Q>)),
 });
 
-export { within };
+export { within, within as getQueriesForElement };

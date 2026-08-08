@@ -2,9 +2,9 @@ import { DropDown, ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { describe, expect, it } from "vitest";
 import { expectAllVisibleOnce } from "./helpers/list-collection-render.js";
-import { renderChildren } from "./helpers/render-children.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 import { expectTextPresent } from "./helpers/text-presence.js";
 
@@ -12,6 +12,12 @@ type TextItem = {
     id: string;
     text: string;
 };
+
+const firstSecondThirdTextItems: TextItem[] = [
+    { id: "1", text: "First" },
+    { id: "2", text: "Second" },
+    { id: "3", text: "Third" },
+];
 
 const buildTextListView = (items: TextItem[]) => (
     <ScrollWrapper>
@@ -53,14 +59,7 @@ describe("render - ListItem (1)", () => {
         });
 
         it("renders multiple list items", async () => {
-            await render(
-                buildTextListView([
-                    { id: "1", text: "First" },
-                    { id: "2", text: "Second" },
-                    { id: "3", text: "Third" },
-                ]),
-            );
-
+            await render(buildTextListView(firstSecondThirdTextItems));
             expectAllVisibleOnce("First", "Second", "Third");
         });
     });
@@ -77,15 +76,7 @@ describe("render - ListItem (2)", () => {
         });
 
         it("removes item from list", async () => {
-            const { rerender } = await renderChildren(
-                [
-                    { id: "1", text: "First" },
-                    { id: "2", text: "Second" },
-                    { id: "3", text: "Third" },
-                ],
-                buildTextListView,
-            );
-
+            const { rerender } = await renderChildren(firstSecondThirdTextItems, buildTextListView);
             expectAllVisibleOnce("First", "Second", "Third");
             await rerender([{ id: "1", text: "First" }]);
             expect(screen.queryAllByText("First")).toHaveLength(1);

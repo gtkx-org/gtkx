@@ -1,10 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel, GtkNotebook, GtkNotebookPage, type GtkNotebookPageElementProps } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
+import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { buildPlainNotebook } from "../helpers/notebook-render.js";
-import { renderChildren } from "../helpers/render-children.js";
 
 type NotebookPageMetadata = Pick<GtkNotebookPageElementProps, "tabLabel" | "tabExpand" | "tabFill">;
 

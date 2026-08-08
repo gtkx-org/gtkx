@@ -1,8 +1,9 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { sortStringsBy } from "@gtkx/utils";
+import { type Config, format, type NewPlugin, type PrettyFormatOptions } from "@vitest/pretty-format";
 import { formatRole } from "./role-helpers.js";
-import { type Container, roots } from "./traversal.js";
-import { getWidgetNodeText } from "./widget-accessible-properties.js";
+import { type Container, descendants, isOnScreen, roots } from "./traversal.js";
+import { getWidgetText } from "./widget-accessible-properties.js";
 
 /** Produces the value of the `id` attribute printed first on a widget's opening tag. */
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
@@ -20,29 +21,19 @@ type PrettyWidgetOptions = {
     getId?: WidgetIdResolver;
     /** Stops descending past this depth, replacing deeper children with a summary line. */
     maxDepth?: number;
+    /** Forwarded to pretty-format, which does the printing; `indent` and `min` shape the layout. */
+    prettyFormatOptions?: PrettyFormatOptions;
 };
 
-type Colors = {
-    tag: (s: string) => string;
-    attr: (s: string) => string;
-    value: (s: string) => string;
-};
+type Color = { open: string; close: string };
 
 type FormatContext = {
     getId: WidgetIdResolver | undefined;
-    colors: Colors;
+    config: Config;
     maxDepth: number | undefined;
 };
 
 const DEFAULT_MAX_LENGTH = 7000;
-const INDENT = "  ";
-
-const ansi = {
-    cyan: "\u{1B}[36m",
-    yellow: "\u{1B}[33m",
-    green: "\u{1B}[32m",
-    reset: "\u{1B}[0m",
-};
 
 const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [string, string][] => {
     const attrs: [string, string][] = [];
@@ -65,6 +56,10 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
 
     if (!widget.getVisible()) {
         attrs.push(["accessible-hidden", "true"]);
+    }
+
+    if (!isOnScreen(widget)) {
+        attrs.push(["mapped", "false"]);
     }
 
     const idAttrs = attrs.filter(([key]) => key === "id");
@@ -93,29 +88,16 @@ const isHighlightSupported = (): boolean => {
     return process.stdout.isTTY;
 };
 
-const createColors = (isEnabled: boolean): Colors => {
-    if (!isEnabled) {
-        const identity = (s: string): string => s;
-
-        return { tag: identity, attr: identity, value: identity };
-    }
-
-    return {
-        tag: (s) => `${ansi.cyan}${s}${ansi.reset}`,
-        attr: (s) => `${ansi.yellow}${s}${ansi.reset}`,
-        value: (s) => `${ansi.green}${s}${ansi.reset}`,
-    };
-};
-
+const paint = (color: Color, text: string): string => `${color.open}${text}${color.close}`;
 const escapeAttrValue = (value: string): string => value.replaceAll('"', "&quot;");
 
-const formatAttr = (key: string, value: string, colors: Colors): string => {
+const formatAttr = (key: string, value: string, colors: Config["colors"]): string => {
     const quoted = `"${escapeAttrValue(value)}"`;
 
-    return ` ${colors.attr(key)}=${colors.value(quoted)}`;
+    return ` ${paint(colors.prop, key)}=${paint(colors.value, quoted)}`;
 };
 
-const formatAttrs = (attrs: [string, string][], colors: Colors): string =>
+const formatAttrs = (attrs: [string, string][], colors: Config["colors"]): string =>
     attrs.map(([key, value]) => formatAttr(key, value, colors)).join("");
 
 const countChildren = (widget: Gtk.Widget): number => {
@@ -130,66 +112,112 @@ const countChildren = (widget: Gtk.Widget): number => {
     return count;
 };
 
-const formatHiddenChildrenLine = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
-    const { getId, colors } = ctx;
-    const indent = INDENT.repeat(depth);
-    const count = countChildren(widget);
+const depthLimitReason = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): string => {
     const hint = getId ? ` (pass rootId="${getId(widget)}" or raise maxDepth to expand)` : "";
-    const plural = count === 1 ? "" : "s";
-    const summary = `… ${String(count)} child widget${plural} hidden${hint}`;
 
-    return `${indent}${INDENT}${colors.tag(summary)}\n`;
+    return `hidden${hint}`;
 };
 
-const formatChildren = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
+const hasMappedDescendant = (widget: Gtk.Widget): boolean => {
+    for (const descendant of descendants(widget)) {
+        if (isOnScreen(descendant)) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const collapseReasonFor = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string | null => {
+    if (!widget.getFirstChild()) {
+        return null;
+    }
+
+    if (!isOnScreen(widget) && !hasMappedDescendant(widget)) {
+        return "not mapped";
+    }
+
+    if (ctx.maxDepth !== undefined && depth >= ctx.maxDepth) {
+        return depthLimitReason(widget, ctx.getId);
+    }
+
+    return null;
+};
+
+const formatCollapsedChildrenLine = (
+    widget: Gtk.Widget,
+    indentation: string,
+    config: Config,
+    reason: string,
+): string => {
+    const count = countChildren(widget);
+    const plural = count === 1 ? "" : "s";
+    const summary = `… ${String(count)} child widget${plural} ${reason}`;
+
+    return `${indentation}${config.indent}${paint(config.colors.tag, summary)}${config.spacingOuter}`;
+};
+
+const formatChildren = (widget: Gtk.Widget, indentation: string, depth: number, ctx: FormatContext): string => {
     let output = "";
     let child = widget.getFirstChild();
 
     while (child) {
-        output += formatWidget(child, depth + 1, ctx);
+        output += formatWidget(child, indentation + ctx.config.indent, depth + 1, ctx);
         child = child.getNextSibling();
     }
 
     return output;
 };
 
-const formatWidget = (widget: Gtk.Widget, depth: number, ctx: FormatContext): string => {
-    const { getId, colors, maxDepth } = ctx;
-    const indent = INDENT.repeat(depth);
-    const tag = widget.constructor.name;
-    const attrs = formatAttrs(buildAttrs(widget, getId), colors);
-    const openTag = `${colors.tag("<")}${colors.tag(tag)}${attrs}${colors.tag(">")}`;
-    const closeTag = `${colors.tag("</")}${colors.tag(tag)}${colors.tag(">")}`;
-    const text = getWidgetNodeText(widget);
-    const firstChild = widget.getFirstChild();
+const formatBody = (widget: Gtk.Widget, indentation: string, depth: number, ctx: FormatContext): string => {
+    const collapseReason = collapseReasonFor(widget, depth, ctx);
 
-    if (!text && !firstChild) {
-        return `${indent}${openTag}\n`;
+    if (collapseReason === null) {
+        return formatChildren(widget, indentation, depth, ctx);
     }
 
-    let output = `${indent}${openTag}\n`;
-
-    if (text) {
-        output += `${indent}${INDENT}${text}\n`;
-    }
-
-    if (firstChild && maxDepth !== undefined && depth >= maxDepth) {
-        output += formatHiddenChildrenLine(widget, depth, ctx);
-        output += `${indent}${closeTag}\n`;
-
-        return output;
-    }
-
-    output += formatChildren(widget, depth, ctx);
-    output += `${indent}${closeTag}\n`;
-
-    return output;
+    return formatCollapsedChildrenLine(widget, indentation, ctx.config, collapseReason);
 };
+
+const formatWidget = (widget: Gtk.Widget, indentation: string, depth: number, ctx: FormatContext): string => {
+    const { config } = ctx;
+    const tag = widget.constructor.name;
+    const attrs = formatAttrs(buildAttrs(widget, ctx.getId), config.colors);
+    const openTag = `${paint(config.colors.tag, "<" + tag)}${attrs}${paint(config.colors.tag, ">")}`;
+    const closeTag = paint(config.colors.tag, `</${tag}>`);
+    const text = getWidgetText(widget);
+    const openLine = `${indentation}${openTag}${config.spacingOuter}`;
+
+    if (!text && !widget.getFirstChild()) {
+        return openLine;
+    }
+
+    const textLine = text ? `${indentation}${config.indent}${text}${config.spacingOuter}` : "";
+    const body = formatBody(widget, indentation, depth, ctx);
+
+    return `${openLine}${textLine}${body}${indentation}${closeTag}${config.spacingOuter}`;
+};
+
+const createWidgetPlugin = (options: PrettyWidgetOptions): NewPlugin => ({
+    test: (value: unknown): boolean => value instanceof Gtk.Widget,
+    serialize: (widget: Gtk.Widget, config: Config, indentation: string): string =>
+        formatWidget(widget, indentation, 0, { getId: options.getId, config, maxDepth: options.maxDepth }),
+});
 
 const resolveMaxLength = (options: PrettyWidgetOptions): number => {
     const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
 
     return options.maxLength ?? envLimit;
+};
+
+const formatOptions = (options: PrettyWidgetOptions): PrettyFormatOptions => {
+    const { plugins, ...rest } = options.prettyFormatOptions ?? {};
+
+    return {
+        highlight: options.shouldHighlight ?? isHighlightSupported(),
+        ...rest,
+        plugins: [createWidgetPlugin(options), ...(plugins ?? [])],
+    };
 };
 
 /**
@@ -207,12 +235,11 @@ const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): 
         return "";
     }
 
-    const shouldHighlight = options.shouldHighlight ?? isHighlightSupported();
-    const colors = createColors(shouldHighlight);
+    const prettyFormatOptions = formatOptions(options);
     let output = "";
 
     for (const root of roots(container)) {
-        output += formatWidget(root, 0, { getId: options.getId, colors, maxDepth: options.maxDepth });
+        output += format(root, prettyFormatOptions);
     }
 
     if (output.length > maxLength) {
@@ -236,4 +263,4 @@ const logWidget = (container: Container | Container[], options?: PrettyWidgetOpt
     }
 };
 
-export { prettyWidget, logWidget, type PrettyWidgetOptions };
+export { logWidget, prettyWidget, type PrettyWidgetOptions };

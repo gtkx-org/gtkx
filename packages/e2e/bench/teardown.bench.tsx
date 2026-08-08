@@ -1,6 +1,6 @@
+import { cleanup, render } from "@gtkx/testing/internal";
 import { bench, describe } from "vitest";
 import { drawButtonBox } from "../tests/helpers/button-box.js";
-import { cleanup, render } from "../tests/helpers/production-render.js";
 import { BENCH_SIZES } from "../tests/helpers/sized-bench.js";
 
 describe("teardown", () => {

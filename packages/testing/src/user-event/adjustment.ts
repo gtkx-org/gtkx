@@ -44,17 +44,42 @@ const resolveScrollAdjustments = (widget: Gtk.Widget): ScrollAdjustments | null 
     return null;
 };
 
+const stepToward = (adjustment: Gtk.Adjustment, target: number, step: number): number => {
+    const value = adjustment.getValue();
+    adjustment.setValue(value < target ? Math.min(value + step, target) : Math.max(value - step, target));
+
+    return adjustment.getValue();
+};
+
+const rampTo = (adjustment: Gtk.Adjustment, target: number, step: number): void => {
+    let value = adjustment.getValue();
+
+    while (value !== target) {
+        const moved = stepToward(adjustment, target, step);
+
+        if (moved === value) {
+            return;
+        }
+
+        value = moved;
+    }
+};
+
 const applyScrollDelta = (adjustment: Gtk.Adjustment | null, delta: number): void => {
     if (!adjustment || delta === 0) {
         return;
     }
 
-    adjustment.setValue(adjustment.getValue() + delta);
+    const pageSize = adjustment.getPageSize();
+    rampTo(adjustment, adjustment.getValue() + delta, pageSize > 0 ? pageSize : Math.abs(delta));
 };
 
 /**
  * Adds the delta to the adjustments of the widget itself, or of its nearest Gtk.ScrolledWindow or
  * Gtk.Scrollable ancestor.
+ *
+ * Each adjustment advances in viewport-sized steps rather than one jump, so virtualized views such
+ * as Gtk.ListView, Gtk.GridView and Gtk.ColumnView re-anchor onto the rows the new offset shows.
  *
  * @throws When neither the widget nor any of its ancestors is scrollable.
  */
