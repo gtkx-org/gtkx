@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/components",
-    "version": "1.0.0-rc.4",
+    "version": "1.0.0",
     "description": "High-level GTKX components for declarative collection views, menus, and containers with attach-time placement",
     "keywords": [
         "gtkx",

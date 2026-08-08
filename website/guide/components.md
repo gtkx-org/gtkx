@@ -10,7 +10,7 @@ Most of what GTKX offers reaches you through the intrinsic elements codegen gene
 `@gtkx/components` is a separate install:
 
 ```bash
-npm install @gtkx/components@rc
+npm install @gtkx/components
 ```
 
 Those hooks come from `@gtkx/react`, which every GTKX project already has, and their signatures are in the [@gtkx/react reference](/reference/@gtkx/react/).

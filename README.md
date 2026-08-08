@@ -121,10 +121,10 @@ GTKX is Linux-only and needs Node.js 24 or later. See [Requirements](#requiremen
 Scaffold a new app with the `create-gtkx` initializer:
 
 ```sh
-npm create gtkx@rc
+npm create gtkx
 ```
 
-The same command works with other package managers: `pnpm create gtkx@rc` or `yarn create gtkx@rc`.
+The same command works with other package managers: `pnpm create gtkx` or `yarn create gtkx`.
 
 Then run your new app:
 
@@ -161,7 +161,7 @@ Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
 
 ## Status
 
-GTKX 1.0 is at the release candidate stage.
+GTKX 1.0 is released.
 
 ## Contributing
 

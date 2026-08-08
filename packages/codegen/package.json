@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/codegen",
-    "version": "1.0.0-rc.4",
+    "version": "1.0.0",
     "description": "Generates the typed GTKX bindings and API reference from GIR and OpenGL registry data",
     "keywords": [
         "gtkx",

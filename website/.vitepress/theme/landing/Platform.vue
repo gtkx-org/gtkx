@@ -8,7 +8,7 @@ const tab = ref("create");
 const STEPS: Record<string, { label: string; cmd: string; out: string[] }> = {
     create: {
         label: "create",
-        cmd: "npm create gtkx@rc",
+        cmd: "npm create gtkx",
         out: ["◇ Project structure created", "◇ Dependencies installed", "◇ Git repository initialized"],
     },
     dev: {

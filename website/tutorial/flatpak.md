@@ -222,4 +222,4 @@ Rerun `npm run flatpak:sources` on every dependency change: a stale `generated-s
 
 ## Next
 
-Read the [complete source on GitHub](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial), then start your own with `npm create gtkx@rc`.
+Read the [complete source on GitHub](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial), then start your own with `npm create gtkx`.

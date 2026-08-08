@@ -13,7 +13,7 @@
         "build": "gtkx build",
         "codegen": "gtkx codegen",
         "test": "vitest run",
-        "typecheck": "gtkx codegen && tsc --noEmit",
+        "typecheck": "gtkx codegen && tsc",
         "start": "node dist/bundle.js",
         "bundle": "gtkx build && node scripts/bundle.ts",
         "bundle:postject": "node scripts/bundle-postject.ts",
@@ -23,16 +23,16 @@
         "flatpak:build": "bash flatpak/build.sh"
     },
     "dependencies": {
-        "@gtkx/components": "^1.0.0-rc.4",
-        "@gtkx/css": "^1.0.0-rc.4",
-        "@gtkx/react": "^1.0.0-rc.4",
+        "@gtkx/components": "^1.0.0",
+        "@gtkx/css": "^1.0.0",
+        "@gtkx/react": "^1.0.0",
         "react": "^19.2.8",
         "zustand": "^5.0.14"
     },
     "devDependencies": {
-        "@gtkx/cli": "^1.0.0-rc.4",
-        "@gtkx/config": "^1.0.0-rc.4",
-        "@gtkx/testing": "^1.0.0-rc.4",
+        "@gtkx/cli": "^1.0.0",
+        "@gtkx/config": "^1.0.0",
+        "@gtkx/testing": "^1.0.0",
         "@types/node": "^26.2.0",
         "@types/react": "^19.2.18",
         "esbuild": "^0.28.1",

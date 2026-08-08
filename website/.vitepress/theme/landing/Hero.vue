@@ -5,7 +5,7 @@ import CodeBlock from "../components/CodeBlock.vue";
 import Icon from "../components/Icon.vue";
 import { REPO_URL } from "./content";
 
-const cmd = "npm create gtkx@rc";
+const cmd = "npm create gtkx";
 </script>
 
 <template>
