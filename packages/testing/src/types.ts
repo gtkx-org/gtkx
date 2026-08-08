@@ -199,8 +199,11 @@ type DebugUtilities = {
     debug: (element?: Container | Container[], options?: PrettyWidgetOptions) => void;
     /** Prints the accessible roles found in the scope, with the widgets carrying each one. */
     logRoles: () => void;
-    /** Captures a window, writes the image to a temporary file, and logs its path. */
-    screenshot: (selector?: WindowSelector, options?: ScreenshotOptions) => Promise<ScreenshotResult>;
+    /**
+     * Captures what is on screen, which is the active toplevel window: GTK4 exposes no position for
+     * a toplevel, so windows cannot be composited into a single image.
+     */
+    screenshot: (options?: ScreenshotOptions) => Promise<ScreenshotResult>;
 };
 
 /** A captured screenshot: base64-encoded image data, its MIME type, and pixel dimensions. */
@@ -215,17 +218,16 @@ type ScreenshotResult = {
     height: number;
 };
 
-/** Options for capturing a screenshot: the poll timeout and interval, plus a rendering scale factor. */
+/**
+ * Options for capturing a screenshot: the poll timeout and interval, a rendering scale factor, and
+ * a file to write the PNG to.
+ */
 type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval"> & {
     /** Device scale factor applied when rendering. */
-    scale?: number;
+    scale?: number | undefined;
+    /** File the PNG is written to, with its parent directories created as needed. */
+    path?: string | undefined;
 };
-
-/**
- * Selects the window to screenshot by index, or by title (exact string or regular expression);
- * undefined targets the default window.
- */
-type WindowSelector = number | string | RegExp | undefined;
 
 /**
  * Options for {@link renderHook}: an optional wrapper and the initial props (required unless the
@@ -277,7 +279,6 @@ export {
     type DebugUtilities,
     type ScreenshotResult,
     type ScreenshotOptions,
-    type WindowSelector,
     type RenderHookOptions,
     type RenderHookResult,
 };

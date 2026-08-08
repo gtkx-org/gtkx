@@ -52,7 +52,7 @@ export { renderHook } from "./render-hook.js";
 export { cleanup, render } from "./render.js";
 export { formatRole, getRoles, logRoles, prettyRoles } from "./role-helpers.js";
 export { screen } from "./screen.js";
-export { captureAndSaveScreenshot, logScreenshotPath, screenshot } from "./screenshot.js";
+export { screenshot } from "./screenshot.js";
 export type { Method, Suggestion, Variant } from "./suggestions.js";
 export { getSuggestedQuery } from "./suggestions.js";
 export type { Container } from "./traversal.js";
@@ -71,7 +71,6 @@ export type {
     ScreenshotOptions,
     ScreenshotResult,
     WaitForOptions,
-    WindowSelector,
     WrapperComponent,
 } from "./types.js";
 export type { ControllerConstructor } from "./user-event/controller.js";

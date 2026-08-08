@@ -8,8 +8,6 @@ import {
     ServerRequestParamsSchemas,
     widgetNotFoundError,
 } from "@gtkx/mcp/internal";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
 import type { WidgetRegistry } from "./widget-registry.js";
 import { serializeWidget } from "./serialize-widget.js";
 import { loadTestingModule, type TestingModule } from "./testing-loader.js";
@@ -273,12 +271,9 @@ async function handleScreenshot(
 ): Promise<unknown> {
     const testing = await loadTestingModule();
     const target = params.windowId ? requireWidget(registry, params.windowId) : defaultScreenshotTarget(registry);
-    const result = await testing.screenshot(target);
+    const result = await testing.screenshot(target, { path: params.path });
 
     if (params.path) {
-        mkdirSync(dirname(params.path), { recursive: true });
-        writeFileSync(params.path, Buffer.from(result.data, "base64"));
-
         return { data: result.data, mimeType: result.mimeType, savedPath: params.path };
     }
 

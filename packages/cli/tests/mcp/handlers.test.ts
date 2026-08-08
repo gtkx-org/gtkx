@@ -399,7 +399,7 @@ describe("widget.screenshot", () => {
         };
 
         expect(result).toEqual({ data: "abc", mimeType: "image/png" });
-        expect(screenshot).toHaveBeenCalledWith(window);
+        expect(screenshot).toHaveBeenCalledWith(window, { path: undefined });
     });
 
     it("screenshots the named window when windowId is supplied", async () => {
@@ -408,7 +408,23 @@ describe("widget.screenshot", () => {
         const id = registerWidget(registry, window);
         screenshot.mockResolvedValueOnce({ data: "x", mimeType: "image/png" });
         await dispatch("widget.screenshot", { windowId: id }, { app: makeApp() as never, registry });
-        expect(screenshot).toHaveBeenCalledWith(window);
+        expect(screenshot).toHaveBeenCalledWith(window, { path: undefined });
+    });
+
+    it("forwards the output path and reports where the capture was saved", async () => {
+        const window = makeWidget();
+        const registry = new WidgetRegistry();
+        const id = registerWidget(registry, window);
+        screenshot.mockResolvedValueOnce({ data: "y", mimeType: "image/png" });
+
+        const result = await dispatch(
+            "widget.screenshot",
+            { windowId: id, path: "/screenshots/gtkx/shot.png" },
+            { app: makeApp() as never, registry },
+        );
+
+        expect(screenshot).toHaveBeenCalledWith(window, { path: "/screenshots/gtkx/shot.png" });
+        expect(result).toEqual({ data: "y", mimeType: "image/png", savedPath: "/screenshots/gtkx/shot.png" });
     });
 
     it("throws when no windows are available and no windowId is supplied", async () => {
