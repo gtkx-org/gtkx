@@ -7,6 +7,11 @@ import { getWidgetSelection } from "../widget-accessible-properties.js";
 import { callBooleanGetter } from "../widget-getters.js";
 import { wrapEvent } from "./event-wrapper.js";
 
+type SignalWatchTarget = {
+    on(signal: string, handler: (...args: unknown[]) => unknown, isAfter?: boolean): unknown;
+    off(signal: string, handler: (...args: unknown[]) => unknown): unknown;
+};
+
 /** Options for `userEvent.type`. */
 type TypeOptions = {
     /** Focus the widget before typing; defaults to true. */
@@ -169,12 +174,40 @@ const requireClearableText = (editable: EditableTarget): void => {
     }
 };
 
+const deletionSignalFor = (widget: EditableTarget): [SignalWatchTarget, string] =>
+    widget instanceof Gtk.TextView ? [widget.getBuffer(), "delete-range"] : [widget, "delete-text"];
+
+const isDeletionApplied = (emitter: SignalWatchTarget, signal: string, apply: () => void): boolean => {
+    let isApplied = false;
+
+    const watch = (): void => {
+        isApplied = true;
+    };
+
+    emitter.on(signal, watch, true);
+    apply();
+    emitter.off(signal, watch);
+
+    return isApplied;
+};
+
+const didDeleteAllText = (widget: EditableTarget): boolean => {
+    const [emitter, signal] = deletionSignalFor(widget);
+
+    return isDeletionApplied(emitter, signal, () => {
+        deleteAllText(widget);
+    });
+};
+
 const clearEditable = (editable: EditableTarget): void => {
     requireClearableText(editable);
     editable.grabFocus();
-    deleteAllText(editable);
 
-    if (readEditableText(editable) !== "") {
+    if (readEditableText(editable) === "") {
+        return;
+    }
+
+    if (!didDeleteAllText(editable)) {
         throw new Error(CLEAR_REFUSED);
     }
 };
@@ -182,10 +215,11 @@ const clearEditable = (editable: EditableTarget): void => {
 /**
  * Focuses an editable widget and deletes its whole text through the widget's own editing API, so the
  * deletion emits the signals an edit made by hand emits. Text a tag protects is detected before the
- * deletion runs, leaving such a widget untouched.
+ * deletion runs, leaving such a widget untouched. A widget that writes a new value back in response
+ * to the deletion, as an input mask does, is cleared successfully and keeps whatever it wrote.
  *
  * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView, when it refuses edits, when
- * a tag protects part of its text, or when part of its text survives the deletion.
+ * a tag protects part of its text, or when a handler blocks the deletion.
  */
 const clear = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot clear element", clearEditable);
