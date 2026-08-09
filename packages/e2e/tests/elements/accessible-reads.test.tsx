@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwComboRow, AdwPreferencesGroup } from "@gtkx/jsx/adw";
-import { GtkBox, GtkLabel, GtkStringList, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel, GtkStringList, GtkTextView, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -41,5 +41,18 @@ describe("accessible reads beyond the concrete classes", () => {
         );
 
         expect(screen.getByDisplayValue("alpha")).toBeDefined();
+    });
+});
+
+describe("indeterminate states match neither boolean", () => {
+    it("does not match a mixed pressed toggle as pressed or unpressed", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkToggleButton label="Mixed" accessiblePressed={Gtk.AccessibleTristate.MIXED} />
+            </GtkBox>,
+        );
+
+        expect(screen.queryAllByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: false })).toHaveLength(0);
+        expect(screen.queryAllByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: true })).toHaveLength(0);
     });
 });

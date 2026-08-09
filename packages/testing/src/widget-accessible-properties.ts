@@ -32,6 +32,11 @@ const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set<Gtk.AccessibleRole>([
     Gtk.AccessibleRole.TREE_ITEM,
 ]);
 
+const PRESSED_BY_TRISTATE: Map<number, boolean> = new Map<number, boolean>([
+    [Gtk.AccessibleTristate.FALSE, false],
+    [Gtk.AccessibleTristate.TRUE, true],
+]);
+
 const CHECKED_BY_TRISTATE: Map<number, CheckedState> = new Map<number, CheckedState>([
     [Gtk.AccessibleTristate.FALSE, "unchecked"],
     [Gtk.AccessibleTristate.TRUE, "checked"],
@@ -351,8 +356,11 @@ const isWidgetChecked = (widget: Gtk.Widget): boolean | null => {
     return state === null || state === "mixed" ? null : state === "checked";
 };
 
-const getWidgetPressedState = (widget: Gtk.Widget): boolean | null =>
-    readAccessibleBoolean(widget, Gtk.AccessibleState.PRESSED);
+const getWidgetPressedState = (widget: Gtk.Widget): boolean | null => {
+    const tristate = readAccessibleState(widget, Gtk.AccessibleState.PRESSED);
+
+    return tristate === null ? null : PRESSED_BY_TRISTATE.get(tristate) ?? null;
+};
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | null => {
     if (widget instanceof Gtk.TreeExpander) {

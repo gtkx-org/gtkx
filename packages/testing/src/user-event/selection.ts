@@ -147,6 +147,10 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void | Promise<
         return undefined;
     }
 
+    if (!hasIndexedChildren(widget)) {
+        throw new TypeError("Cannot select options: the widget exposes no children to select by index");
+    }
+
     return applyIndexedChildren(widget, valueArray, selectChildRow);
 };
 
