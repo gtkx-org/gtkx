@@ -167,12 +167,12 @@ const runSelectionEvent = (
 
 /**
  * Selects the items at the given positions through a list, grid, or column view's selection model,
- * by setting the selected item of a drop-down, or by selecting list box rows. An empty array clears
- * a view's selection.
+ * by setting the selected position of a widget with the COMBO_BOX role, or by activating the
+ * indexed children of a list box or flow box. An empty array clears a view's selection.
  *
- * @throws When a view has no selection model, when a Gtk.DropDown is given more than one position,
- * when a widget with the COMBO_BOX role is not a Gtk.DropDown, or when the widget is neither a view
- * nor something with the COMBO_BOX or LIST role.
+ * @throws When a view has no selection model, when a COMBO_BOX-role widget is given more than one
+ * position or exposes no `setSelected`, or when the widget's role is none of COMBO_BOX, GRID, or
+ * LIST.
  */
 const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, selectInListView, selectByRole);

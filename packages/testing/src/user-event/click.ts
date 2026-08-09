@@ -2,6 +2,9 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getOrCreateControllers, queryController } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 
+const CHILD_AT_INDEX_GETTERS = ["getRowAtIndex", "getChildAtIndex"];
+const SELECTED_PROBE = "isSelected";
+
 const getPressPoint = (widget: Gtk.Widget): { x: number; y: number } => {
     const width = widget.getWidth();
     const height = widget.getHeight();
@@ -39,11 +42,25 @@ const emitClickSequence = (widget: Gtk.Widget, target: Gtk.Widget, nPress: numbe
         }
     });
 
+const hasWidgetMethod = (widget: Gtk.Widget, name: string): boolean =>
+    typeof Reflect.get(widget, name) === "function";
+
+const isIndexedContainer = (widget: Gtk.Widget | null): boolean =>
+    widget !== null && CHILD_AT_INDEX_GETTERS.some((getter) => hasWidgetMethod(widget, getter));
+
+const isActivatableChild = (widget: Gtk.Widget): boolean =>
+    hasWidgetMethod(widget, SELECTED_PROBE) && isIndexedContainer(widget.getParent());
+
+const isClickTarget = (widget: Gtk.Widget): boolean =>
+    isActivatableChild(widget) ||
+    widget instanceof Gtk.Button ||
+    queryController(widget, Gtk.GestureClick) !== null;
+
 const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
     let current = widget.getParent();
 
     while (current) {
-        if (current instanceof Gtk.Button || queryController(current, Gtk.GestureClick) !== null) {
+        if (isClickTarget(current)) {
             return current;
         }
 
@@ -51,6 +68,16 @@ const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
     }
 
     return null;
+};
+
+const deliverClick = (widget: Gtk.Widget, target: Gtk.Widget): Promise<void> => {
+    if (isActivatableChild(target)) {
+        return wrapEvent(widget, () => {
+            target.activate();
+        });
+    }
+
+    return emitClickSequence(widget, target, 1);
 };
 
 /* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether activation succeeded */
@@ -87,7 +114,7 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
     const target = findClickableAncestor(widget);
 
     if (target) {
-        await emitClickSequence(widget, target, 1);
+        await deliverClick(widget, target);
     }
 };
 
