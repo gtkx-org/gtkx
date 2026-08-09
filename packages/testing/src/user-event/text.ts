@@ -145,7 +145,10 @@ const clear = async (state: UserEventState, widget: Gtk.Widget): Promise<void> =
         throw new Error(`Cannot clear element: ${EDITABLE_REQUIRED}`);
     }
 
-    widget.grabFocus();
+    await wrapEvent(widget, () => {
+        widget.grabFocus();
+    });
+
     await keyboard(state, widget, CLEAR_SEQUENCE);
 };
 
