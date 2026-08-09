@@ -1,8 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { hasSignalListener } from "@gtkx/runtime/internal";
 import { callBooleanGetter, getWidgetMethod, hasWidgetMethod } from "../widget-getters.js";
-import { getOrCreateControllers, isSynthesizedController, queryAllControllers } from "./controller.js";
+import { queryAllControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
-import { hasIndexedChildren, selectContainerChild, SELECTED_PROBE, unselectAllChildren } from "./indexed-children.js";
+import { hasIndexedChildren, selectContainerChild, SELECTED_PROBE, unselectOtherChildren } from "./indexed-children.js";
 
 const getPressPoint = (widget: Gtk.Widget): { x: number; y: number } => {
     const width = widget.getWidth();
@@ -31,14 +32,16 @@ const emitRelease = (widget: Gtk.Widget, controllers: Gtk.GestureClick[], nPress
     emitGesture(widget, controllers, nPress, "released");
 };
 
+const emitClicks = (target: Gtk.Widget, controllers: Gtk.GestureClick[], nPress: number): void => {
+    for (let i = 1; i <= nPress; i++) {
+        emitPress(target, controllers, i);
+        emitRelease(target, controllers, i);
+    }
+};
+
 const emitClickSequence = (widget: Gtk.Widget, target: Gtk.Widget, nPress: number): Promise<void> =>
     wrapEvent(widget, () => {
-        const controllers = getOrCreateControllers(target, Gtk.GestureClick);
-
-        for (let i = 1; i <= nPress; i++) {
-            emitPress(target, controllers, i);
-            emitRelease(target, controllers, i);
-        }
+        emitClicks(target, queryAllControllers(target, Gtk.GestureClick), nPress);
     });
 
 const isIndexedContainer = (widget: Gtk.Widget | null): boolean =>
@@ -47,8 +50,10 @@ const isIndexedContainer = (widget: Gtk.Widget | null): boolean =>
 const isActivatableChild = (widget: Gtk.Widget): boolean =>
     hasWidgetMethod(widget, SELECTED_PROBE) && isIndexedContainer(widget.getParent());
 
-const hasAuthoredClickGesture = (widget: Gtk.Widget): boolean =>
-    queryAllControllers(widget, Gtk.GestureClick).some((gesture) => !isSynthesizedController(gesture));
+const getAuthoredClickGestures = (widget: Gtk.Widget): Gtk.GestureClick[] =>
+    queryAllControllers(widget, Gtk.GestureClick).filter((gesture) => hasSignalListener(gesture));
+
+const hasAuthoredClickGesture = (widget: Gtk.Widget): boolean => getAuthoredClickGestures(widget).length > 0;
 
 const isClickTarget = (widget: Gtk.Widget): boolean =>
     isActivatableChild(widget) || widget instanceof Gtk.Button || hasAuthoredClickGesture(widget);
@@ -86,33 +91,56 @@ const replaceContainerSelection = (container: Gtk.Widget, child: Gtk.Widget): vo
         return;
     }
 
-    if (isMultipleSelection(container)) {
-        unselectAllChildren(container);
-    }
-
     selectContainerChild(container, child);
+
+    if (isMultipleSelection(container)) {
+        unselectOtherChildren(container, child);
+    }
 };
 
-const activateContainerChild = (child: Gtk.Widget): void => {
+const isActivatedByClick = (container: Gtk.Widget, nPress: number): boolean =>
+    isSingleClickActivating(container) || nPress > 1;
+
+const isSelectionReplacedByClick = (container: Gtk.Widget, nPress: number): boolean =>
+    nPress > 1 || !isSingleClickActivating(container);
+
+const applyClickOutcome = (child: Gtk.Widget, nPress: number): void => {
     const container = child.getParent();
 
-    if (container === null || isSingleClickActivating(container)) {
-        child.activate();
-
+    if (container === null) {
         return;
     }
 
-    replaceContainerSelection(container, child);
+    if (isActivatedByClick(container, nPress)) {
+        child.activate();
+    }
+
+    if (isSelectionReplacedByClick(container, nPress)) {
+        replaceContainerSelection(container, child);
+    }
 };
 
-const deliverClick = async (widget: Gtk.Widget, target: Gtk.Widget): Promise<void> => {
-    await emitClickSequence(widget, target, 1);
+const emitContainerClick = (widget: Gtk.Widget, child: Gtk.Widget, nPress: number): Promise<void> =>
+    wrapEvent(widget, () => {
+        const container = child.getParent();
 
-    if (isActivatableChild(target)) {
-        await wrapEvent(widget, () => {
-            activateContainerChild(target);
-        });
+        if (container !== null) {
+            emitClicks(container, getAuthoredClickGestures(container), nPress);
+        }
+    });
+
+const deliverClick = async (widget: Gtk.Widget, target: Gtk.Widget, nPress: number): Promise<void> => {
+    await emitClickSequence(widget, target, nPress);
+
+    if (!isActivatableChild(target)) {
+        return;
     }
+
+    await emitContainerClick(widget, target, nPress);
+
+    await wrapEvent(widget, () => {
+        applyClickOutcome(target, nPress);
+    });
 };
 
 /* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether activation succeeded */
@@ -132,12 +160,13 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
 
 /**
  * Presses and releases a Gtk.Button, and otherwise activates the widget. A widget that is the
- * indexed child of a list box or flow box instead receives a click gesture and is then activated,
- * or exclusively selected when its container does not activate on a single click, whether the click
- * lands on the child itself or on one of its descendants. When activation does nothing, the click
- * goes to the widget itself if it carries a click gesture of its own, and otherwise to the nearest
- * ancestor that does. A widget with the label role is never activated and never consumes the click
- * itself.
+ * indexed child of a list box or flow box instead receives a click gesture, passes one on to the
+ * click gestures its container carries, and is then activated, or exclusively selected when its
+ * container does not activate on a single click, whether the click lands on the child itself or on
+ * one of its descendants. When activation does nothing, the click goes to the widget itself if it
+ * carries a click gesture of its own, and otherwise to the nearest ancestor that is a Gtk.Button, is
+ * such an indexed child, or carries a click gesture. A widget with the label role is never activated
+ * and never consumes the click itself.
  */
 const click = async (widget: Gtk.Widget): Promise<void> => {
     if (widget instanceof Gtk.Button) {
@@ -147,7 +176,7 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
     }
 
     if (isActivatableChild(widget)) {
-        await deliverClick(widget, widget);
+        await deliverClick(widget, widget, 1);
 
         return;
     }
@@ -159,30 +188,20 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
     const target = isSelfClickTarget(widget) ? widget : findClickableAncestor(widget);
 
     if (target) {
-        await deliverClick(widget, target);
+        await deliverClick(widget, target, 1);
     }
 };
 
 /**
- * Emits a two-press click gesture at the widget's center, adding a Gtk.GestureClick when it has
- * none. A list box row or flow box child whose container does not activate on a single click is
- * then selected and activated, as GTK's double-click path does.
+ * Emits a two-press click gesture at the widget's center on the click gestures it already carries.
+ * A list box row or flow box child is then activated and its container's selection replaced with
+ * it, as GTK's double-click path does whether or not the container activates on a single click.
  */
-const dblClick = async (widget: Gtk.Widget): Promise<void> => {
-    await emitClickSequence(widget, widget, 2);
-    const container = widget.getParent();
-
-    if (container === null || !isActivatableChild(widget) || isSingleClickActivating(container)) {
-        return;
-    }
-
-    await wrapEvent(widget, () => {
-        replaceContainerSelection(container, widget);
-        widget.activate();
-    });
-};
-
-/** Emits a three-press click gesture at the widget's center, adding a Gtk.GestureClick when it has none. */
-const tripleClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, widget, 3);
+const dblClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, widget, 2);
+/**
+ * Emits a three-press click gesture at the widget's center on the click gestures it already
+ * carries, applying the same outcome to a list box row or flow box child as a double click.
+ */
+const tripleClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, widget, 3);
 
 export { emitPress, emitRelease, click, dblClick, tripleClick };

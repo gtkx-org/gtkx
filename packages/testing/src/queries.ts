@@ -25,7 +25,7 @@ import {
     getWidgetPlaceholderText,
     getWidgetPressedState,
     getWidgetSelectedState,
-    getWidgetValue,
+    getWidgetValueText,
     isInaccessible,
     isWidgetChecked,
     isWidgetValueMatch,
@@ -343,7 +343,7 @@ const hasMatchingAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, opti
         }
     }
 
-    return value.text === undefined || isTextMatch(getWidgetValue(widget).text, value.text, widget, options);
+    return value.text === undefined || isTextMatch(getWidgetValueText(widget), value.text, widget, options);
 };
 
 const hasMatchingBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {

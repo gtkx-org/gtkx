@@ -53,6 +53,8 @@ const untrackHandlerId = (instance: object, signal: string, handlerId: number): 
     }
 };
 
+const hasSignalListener = (instance: object): boolean => (listenerTable.get(instance)?.size ?? 0) > 0;
+
 /**
  * Connects a handler to a signal and tracks it so it can later be removed with
  * {@link offSignal}.
@@ -115,4 +117,4 @@ function offSignal(instance: SignalConnectable, signal: string, handler: SignalH
     instance.disconnect(handlerId);
 }
 
-export { onSignal, onceSignal, offSignal };
+export { hasSignalListener, onSignal, onceSignal, offSignal };

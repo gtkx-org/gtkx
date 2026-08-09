@@ -4,10 +4,12 @@ import { AdwComboRow, AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import {
     GtkAdjustment,
     GtkBox,
+    GtkEntry,
     GtkInscription,
     GtkLabel,
     GtkProgressBar,
     GtkScale,
+    GtkScrollbar,
     GtkStringList,
     GtkTextView,
     GtkToggleButton,
@@ -22,6 +24,13 @@ const expectLabelSelection = async (text: string, range: [number, number], expec
     const label = ref.current as Gtk.Label;
     label.selectRegion(range[0], range[1]);
     expect(label).toHaveSelection(expected);
+};
+
+const renderPlaceholderEntry = async (rendered: string, accessible: string): Promise<Gtk.Entry | null> => {
+    const ref = createRef<Gtk.Entry>();
+    await render(<GtkEntry ref={ref} placeholderText={rendered} accessiblePlaceholder={accessible} />);
+
+    return ref.current;
 };
 
 describe("accessible reads beyond the concrete classes", () => {
@@ -67,8 +76,8 @@ describe("indeterminate states match neither boolean", () => {
     });
 });
 
-describe("numeric value reads keep full precision", () => {
-    it("matches a scale value beyond six significant digits", async () => {
+describe("numeric values compare within the resolution GTK publishes", () => {
+    it("matches a scale value beyond six significant digits in every matcher alike", async () => {
         const ref = createRef<Gtk.Scale>();
 
         await render(
@@ -76,14 +85,66 @@ describe("numeric value reads keep full precision", () => {
         );
 
         expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 1234.5678 } })).toBe(ref.current);
+        expect(screen.queryAllByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 1234.57 } })).toHaveLength(0);
         expect(ref.current).toHaveValue(1234.5678);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.VALUE_NOW, 1234.5678);
         expect(ref.current).not.toHaveValue(1234.57);
+        expect(ref.current).not.toHaveAccessibleProperty(Gtk.AccessibleProperty.VALUE_NOW, 1234.57);
     });
 
     it("matches a progress fraction that six digits cannot represent", async () => {
         const ref = createRef<Gtk.ProgressBar>();
         await render(<GtkProgressBar ref={ref} fraction={1 / 3} />);
         expect(ref.current).toHaveValue(1 / 3);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.VALUE_NOW, 1 / 3);
+    });
+});
+
+describe("numeric values carry the staleness GTK publishes them with", () => {
+    it("still matches a value GTK held back because it moved by less than 0.001", async () => {
+        const ref = createRef<Gtk.Scale>();
+        const adjustment = createRef<Gtk.Adjustment>();
+
+        await render(
+            <GtkScale
+                ref={ref}
+                adjustment={<GtkAdjustment ref={adjustment} value={42} lower={0} upper={100} />}
+            />,
+        );
+
+        adjustment.current?.setValue(42.0009);
+        expect(adjustment.current?.getValue()).toBeCloseTo(42.0009, 8);
+        expect(ref.current).toHaveValue(42.0009);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.VALUE_NOW, 42.0009);
+        expect(ref.current).not.toHaveValue(42.0011);
+        expect(ref.current).not.toHaveAccessibleProperty(Gtk.AccessibleProperty.VALUE_NOW, 42.0011);
+    });
+
+    it("reports a scrollbar's maximum as the last value it can reach", async () => {
+        const ref = createRef<Gtk.Scrollbar>();
+
+        await render(
+            <GtkScrollbar
+                ref={ref}
+                adjustment={<GtkAdjustment value={0} lower={0} upper={100} pageSize={10} />}
+            />,
+        );
+
+        expect(screen.getByRole(Gtk.AccessibleRole.SCROLLBAR, { value: { max: 90 } })).toBe(ref.current);
+        expect(screen.queryAllByRole(Gtk.AccessibleRole.SCROLLBAR, { value: { max: 100 } })).toHaveLength(0);
+    });
+});
+
+describe("placeholders read what the widget renders", () => {
+    it("prefers the rendered placeholder over the accessible one", async () => {
+        const entry = await renderPlaceholderEntry("Search", "Query");
+        expect(screen.getByPlaceholderText("Search")).toBe(entry);
+        expect(screen.queryAllByPlaceholderText("Query")).toHaveLength(0);
+    });
+
+    it("ignores an empty accessible placeholder", async () => {
+        const entry = await renderPlaceholderEntry("Real", "");
+        expect(screen.getByPlaceholderText("Real")).toBe(entry);
     });
 });
 

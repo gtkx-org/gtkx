@@ -1,8 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ComponentProps } from "react";
 import * as GtkNs from "@gtkx/gi/gtk";
-import { GtkFlowBox, GtkFlowBoxChild, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
-import { render, screen, userEvent } from "@gtkx/testing";
+import { GtkFlowBox, GtkFlowBoxChild, GtkGestureClick, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
+import { queryAllControllers, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderRowBox } from "../helpers/row-box.js";
@@ -137,6 +137,42 @@ describe("userEvent click - flow box children", () => {
         await userEvent.click(screen.getByText("Child 2"));
         expect(onChildActivated).not.toHaveBeenCalled();
         expect(getSelection(refs)).toEqual([false, false, true]);
+    });
+
+    it("activates the child on a double click when a single click already activates", async () => {
+        const { refs, onChildActivated } = await renderActivatableChildren({
+            selectionMode: GtkNs.SelectionMode.SINGLE,
+        });
+
+        await userEvent.dblClick(refs[1]?.current as Gtk.FlowBoxChild);
+        expect(onChildActivated).toHaveBeenCalledTimes(1);
+        expect(getSelection(refs)).toEqual([false, true, false]);
+    });
+
+    it("fires a click gesture the flow box carries when one of its child descendants is clicked", async () => {
+        const onPressed = vi.fn();
+
+        const { refs, onChildActivated } = await renderActivatableChildren({
+            selectionMode: GtkNs.SelectionMode.SINGLE,
+            controllers: <GtkGestureClick onPressed={onPressed} />,
+        });
+
+        await userEvent.click(screen.getByText("Child 1"));
+        expect(onPressed).toHaveBeenCalledTimes(1);
+        expect(onChildActivated).toHaveBeenCalledTimes(1);
+        expect(getSelection(refs)).toEqual([false, true, false]);
+    });
+
+    it("leaves no gesture behind on the children it clicks", async () => {
+        const refs = await renderChildren({ selectionMode: GtkNs.SelectionMode.SINGLE });
+        await userEvent.click(screen.getByText("Child 1"));
+        await userEvent.dblClick(refs[2]?.current as Gtk.FlowBoxChild);
+
+        expect(refs.map((ref) => queryAllControllers(ref.current as Gtk.FlowBoxChild, GtkNs.GestureClick))).toEqual([
+            [],
+            [],
+            [],
+        ]);
     });
 });
 

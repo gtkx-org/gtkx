@@ -14,13 +14,6 @@ import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
 import { descendants, relationCandidates } from "./traversal.js";
 import { callBooleanGetter, callStringGetter, getWidgetMethod } from "./widget-getters.js";
 
-type WidgetValue = {
-    now: number | null;
-    min: number | null;
-    max: number | null;
-    text: string | null;
-};
-
 type WidgetValueField = "now" | "min" | "max";
 type CheckedState = "checked" | "unchecked" | "mixed";
 
@@ -235,21 +228,24 @@ const getWidgetName = (widget: Gtk.Widget): string | null => {
     return widget.getName();
 };
 
+const nonEmptyText = (text: string | null): string | null => (text === null || text === "" ? null : text);
+
+const readPlaceholderProperty = (widget: Gtk.Widget): string | null => {
+    const value: unknown = Reflect.get(widget, "placeholderText");
+
+    return typeof value === "string" ? nonEmptyText(value) : null;
+};
+
 const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
     if (!EDITABLE_ROLES.has(widget.getAccessibleRole())) {
         return null;
     }
 
-    const fromAccessible = readAccessibleString(widget, Gtk.AccessibleProperty.PLACEHOLDER);
-    const fromGetter = fromAccessible ?? callStringGetter(widget, "getPlaceholderText");
-
-    if (fromGetter !== null) {
-        return fromGetter;
-    }
-
-    const fromAccessor: unknown = Reflect.get(widget, "placeholderText");
-
-    return typeof fromAccessor === "string" && fromAccessor !== "" ? fromAccessor : null;
+    return (
+        nonEmptyText(callStringGetter(widget, "getPlaceholderText")) ??
+        readPlaceholderProperty(widget) ??
+        nonEmptyText(readAccessibleString(widget, Gtk.AccessibleProperty.PLACEHOLDER))
+    );
 };
 
 const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
@@ -397,12 +393,11 @@ const getWidgetDescription = (widget: Gtk.Widget): string | null => {
     return readAccessibleString(widget, Gtk.AccessibleProperty.DESCRIPTION);
 };
 
-const getWidgetValue = (widget: Gtk.Widget): WidgetValue => ({
-    now: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_NOW),
-    min: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MIN),
-    max: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MAX),
-    text: readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT),
-});
+const getWidgetValueNow = (widget: Gtk.Widget): number | null =>
+    readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_NOW);
+
+const getWidgetValueText = (widget: Gtk.Widget): string | null =>
+    readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT);
 
 const isWidgetValueMatch = (widget: Gtk.Widget, field: WidgetValueField, expected: number): boolean =>
     isAccessibleNumberMatch(widget, VALUE_PROPERTIES[field], expected);
@@ -516,7 +511,8 @@ export {
     getWidgetErrorMessage,
     getWidgetBusyState,
     getWidgetDescription,
-    getWidgetValue,
+    getWidgetValueNow,
+    getWidgetValueText,
     getWidgetOwnLabel,
     getWidgetExternalLabelText,
     getWidgetLabelledByText,

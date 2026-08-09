@@ -41,15 +41,21 @@ const unselectContainerChild = (container: Gtk.Widget, child: Gtk.Widget): void 
     applyChildMethod(container, CHILD_DESELECTORS, child);
 };
 
-const unselectAllChildren = (container: Gtk.Widget): void => {
-    const fn = getWidgetMethod(container, "unselectAll");
+const isChildSelected = (child: Gtk.Widget): boolean => callBooleanGetter(child, SELECTED_PROBE) ?? false;
 
-    if (typeof fn === "function") {
-        (fn as () => void).call(container);
+const unselectOtherChildren = (container: Gtk.Widget, child: Gtk.Widget): void => {
+    let index = 0;
+    let candidate = getChildAtIndex(container, index);
+
+    while (candidate !== null) {
+        if (candidate !== child && isChildSelected(candidate)) {
+            unselectContainerChild(container, candidate);
+        }
+
+        index++;
+        candidate = getChildAtIndex(container, index);
     }
 };
-
-const isChildSelected = (child: Gtk.Widget): boolean => callBooleanGetter(child, SELECTED_PROBE) ?? false;
 
 export {
     getChildAtIndex,
@@ -57,6 +63,6 @@ export {
     isChildSelected,
     SELECTED_PROBE,
     selectContainerChild,
-    unselectAllChildren,
     unselectContainerChild,
+    unselectOtherChildren,
 };

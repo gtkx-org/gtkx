@@ -3,8 +3,6 @@ import type * as Gtk from "@gtkx/gi/gtk";
 /** An event controller class that can be constructed without arguments, such as `Gtk.GestureClick`. */
 type ControllerConstructor<T extends Gtk.EventController> = new () => T;
 
-const synthesized: WeakSet<Gtk.EventController> = new WeakSet();
-
 /**
  * Returns every controller of the given type attached to a widget, in the order GTK4 reports them.
  *
@@ -95,15 +93,11 @@ const getOrCreateControllers = <T extends Gtk.EventController>(
 
     const controller = new controllerType();
     widget.addController(controller);
-    synthesized.add(controller);
 
     return [controller];
 };
 
-const isSynthesizedController = (controller: Gtk.EventController): boolean => synthesized.has(controller);
-
 export {
-    isSynthesizedController,
     queryAllControllers,
     queryController,
     getAllControllers,

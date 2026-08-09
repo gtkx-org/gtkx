@@ -11,6 +11,7 @@
         "QueryMap",
         "TOPLEVELS",
         "WidgetIdResolver",
+        "clear",
         "click",
         "copy",
         "cut",

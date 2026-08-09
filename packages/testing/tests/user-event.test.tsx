@@ -373,30 +373,38 @@ describe("userEvent.clear", () => {
         expect(editableText(entry)).toBe("");
     });
 
-    it("delivers the clear sequence through the instance's held modifiers", async () => {
-        const presses: [number, number, number][] = [];
+    it("clears while a modifier is held on the instance, without dispatching keys", async () => {
+        const presses: number[] = [];
+        const edits: string[] = [];
 
-        const onKeyPressed = vi.fn((keyval: number, keycode: number, modifiers: number): boolean => {
-            presses.push([keyval, keycode, modifiers]);
+        const onKeyPressed = vi.fn((keyval: number): boolean => {
+            presses.push(keyval);
 
             return false;
         });
 
         await render(<GtkEntry text="abc" controllers={<GtkEventControllerKey onKeyPressed={onKeyPressed} />} />);
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+
+        if (!(entry instanceof Gtk.Editable)) {
+            throw new TypeError("Element is not editable");
+        }
+
+        entry.connect("delete-text", () => {
+            edits.push("delete-text");
+        });
+
+        entry.connect("changed", () => {
+            edits.push("changed");
+        });
+
         const user = userEvent.setup();
         await user.keyboard(entry, "{Shift>}");
         await user.clear(entry);
         await user.keyboard(entry, "{/Shift}");
-
-        const isShiftCarried = presses.some(
-            ([keyval, , modifiers]) =>
-                keyval === Gdk.KEY_a &&
-                (modifiers & Gdk.ModifierType.SHIFT_MASK) !== 0 &&
-                (modifiers & Gdk.ModifierType.CONTROL_MASK) !== 0,
-        );
-
-        expect(isShiftCarried).toBe(true);
+        expect(editableText(entry)).toBe("");
+        expect(edits).toEqual(["delete-text", "changed"]);
+        expect(presses).toEqual([Gdk.KEY_Shift_L]);
     });
 
     describe("error handling", () => {

@@ -19,6 +19,9 @@ const installAdjustment = (row: Adw.SpinRow, lower: number, upper: number, value
     return adjustment;
 };
 
+const getSwitch = (isChecked: boolean): Gtk.Widget =>
+    screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: isChecked, as: Gtk.Switch });
+
 const expectListenerClearedWhenHandlerNull = async <Widget,>({
     renderRow,
     afterMount,
@@ -112,7 +115,22 @@ describe("render - SwitchRow (1)", () => {
             </AdwPreferencesGroup>,
         );
 
-        expect(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: true, as: Gtk.Switch })).toBeDefined();
+        expect(getSwitch(true)).toBeDefined();
+    });
+
+    it("publishes the switch role and the checked state on the row and on its switch", async () => {
+        const ref = createRef<Adw.SwitchRow>();
+
+        await render(
+            <AdwPreferencesGroup>
+                <AdwSwitchRow ref={ref} title="Enabled" active={true} />
+            </AdwPreferencesGroup>,
+        );
+
+        const switches = screen.getAllByRole(Gtk.AccessibleRole.SWITCH, { checked: true });
+        expect(switches).toHaveLength(2);
+        expect(switches).toContain(ref.current);
+        expect(switches.filter((widget) => widget instanceof Gtk.Switch)).toHaveLength(1);
     });
 
     it("invokes onActiveChanged when toggled", async () => {
@@ -124,7 +142,7 @@ describe("render - SwitchRow (1)", () => {
             </AdwPreferencesGroup>,
         );
 
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: false, as: Gtk.Switch }));
+        await userEvent.click(getSwitch(false));
         expect(onActiveChanged).toHaveBeenCalled();
         const lastCall = onActiveChanged.mock.calls.at(-1);
         expect(lastCall?.[0]).toBe(true);
@@ -139,10 +157,8 @@ describe("render - SwitchRow (2)", () => {
                     <AdwSwitchRow ref={ref} title="Enabled" active={false} onNotifyActive={handler} />
                 </AdwPreferencesGroup>
             ),
-            fireFirst: () =>
-                userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: false, as: Gtk.Switch })),
-            fireSecond: () =>
-                userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: true, as: Gtk.Switch })),
+            fireFirst: () => userEvent.click(getSwitch(false)),
+            fireSecond: () => userEvent.click(getSwitch(true)),
         });
     });
 });

@@ -26,27 +26,27 @@ type UserEvent = {
     setup: (options?: UserEventOptions) => UserEvent;
     /**
      * Clicks a button, and otherwise activates the widget, falling back to a click gesture on the
-     * widget itself or its nearest clickable ancestor. A list box row or flow box child receives its
-     * click gesture and is then activated, or exclusively selected when its container does not
-     * activate on a single click.
+     * widget itself or on its nearest clickable ancestor. A list box row or flow box child receives
+     * its click gesture, passes one on to the gestures its container carries, and is then activated,
+     * or exclusively selected when its container does not activate on a single click.
      */
     click: typeof click;
     /**
-     * Emits a two-press click gesture on the widget, activating a list box row or flow box child
-     * whose container does not activate on a single click.
+     * Emits a two-press click gesture on the widget, activating a list box row or flow box child and
+     * replacing its container's selection whether or not that container activates on a single click.
      */
     dblClick: typeof dblClick;
-    /** Emits a three-press click gesture on the widget. */
+    /**
+     * Emits a three-press click gesture on the widget, applying the same outcome to a list box row or
+     * flow box child as a double click.
+     */
     tripleClick: typeof tripleClick;
     /** Moves focus within the widget's root, forward by default and backward with `isShiftHeld`. */
     tab: typeof tab;
     /** Focuses an editable widget, applies any initial selection, and inserts the text at the cursor. */
     type: typeof type;
-    /**
-     * Selects an editable widget's whole text and deletes it by sending Ctrl+A followed by Delete
-     * through the instance's shared keyboard state, so held modifiers participate in the sequence.
-     */
-    clear: (widget: Gtk.Widget) => Promise<void>;
+    /** Focuses an editable widget and deletes its whole text, leaving nothing selected. */
+    clear: typeof clear;
     /** Writes an editable widget's current selection to the clipboard. */
     copy: typeof copy;
     /** Writes an editable widget's current selection to the clipboard and deletes it. */
@@ -84,7 +84,10 @@ type UserEvent = {
     scroll: typeof scroll;
     /** Sends a key sequence, dispatching matching shortcuts and tracking held modifiers across calls. */
     keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
-    /** Applies a pointer token, tracking whether the left button is held across calls. */
+    /**
+     * Applies a pointer token to the click gestures the widget already carries, tracking whether the
+     * left button is held across calls.
+     */
     pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
 };
 
@@ -121,7 +124,7 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
         tripleClick: after(tripleClick),
         tab: after(tab),
         type: after(type),
-        clear: after((widget: Gtk.Widget): Promise<void> => clear(state, widget)),
+        clear: after(clear),
         copy: after(copy),
         cut: after(cut),
         paste: after(paste),

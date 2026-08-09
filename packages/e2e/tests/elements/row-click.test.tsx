@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GtkNs from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkGestureClick, GtkLabel, GtkListBox, GtkListBoxRow } from "@gtkx/jsx/gtk";
-import { render, screen, userEvent } from "@gtkx/testing";
+import { GtkBox, GtkButton, GtkGestureClick, GtkLabel, GtkListBox, GtkListBoxRow, GtkNotebook } from "@gtkx/jsx/gtk";
+import { queryAllControllers, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderRowBox } from "../helpers/row-box.js";
@@ -33,22 +33,18 @@ describe("userEvent click - row descendants", () => {
 });
 
 describe("userEvent click - gesture-driven widgets", () => {
-    it("fires a click gesture the widget itself carries", async () => {
-        const ref = createRef<Gtk.Box>();
+    it("fires an ancestor's gesture instead of the gesture GTK gave the clicked widget", async () => {
+        const notebookRef = createRef<Gtk.Notebook>();
+        const onPressed = vi.fn();
 
         await render(
-            <GtkBox ref={ref} orientation={GtkNs.Orientation.VERTICAL}>
-                <GtkLabel label="content" />
+            <GtkBox orientation={GtkNs.Orientation.VERTICAL} controllers={<GtkGestureClick onPressed={onPressed} />}>
+                <GtkNotebook ref={notebookRef} />
             </GtkBox>,
         );
 
-        const box = ref.current as Gtk.Box;
-        const gesture = new GtkNs.GestureClick();
-        const onPressed = vi.fn();
-        gesture.on("pressed", onPressed);
-        box.addController(gesture);
-        await userEvent.click(box);
-        expect(onPressed).toHaveBeenCalled();
+        await userEvent.click(notebookRef.current as Gtk.Notebook);
+        expect(onPressed).toHaveBeenCalledTimes(1);
     });
 
     it("fires a click gesture the row carries when its label is clicked", async () => {
@@ -71,8 +67,37 @@ describe("userEvent click - gesture-driven widgets", () => {
     });
 });
 
-describe("userEvent click - repeat and non-activating containers", () => {
-    it("still reaches the button after a double click synthesized a gesture", async () => {
+describe("userEvent click - container gestures", () => {
+    it("fires a click gesture the list box carries when one of its row descendants is clicked", async () => {
+        const onPressed = vi.fn();
+        const onRowActivated = vi.fn();
+
+        const refs = await renderRowBox(
+            {
+                selectionMode: GtkNs.SelectionMode.SINGLE,
+                onRowActivated,
+                controllers: <GtkGestureClick onPressed={onPressed} />,
+            },
+            2,
+        );
+
+        await userEvent.click(screen.getByText("Row 1"));
+        expect(onPressed).toHaveBeenCalledTimes(1);
+        expect(onRowActivated).toHaveBeenCalledTimes(1);
+        expect(getSelection(refs)).toEqual([false, true]);
+    });
+
+    it("fires the widget's own click gesture when nothing else handles the click", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const onPressed = vi.fn();
+        await render(<GtkBox ref={boxRef} controllers={<GtkGestureClick onPressed={onPressed} />} />);
+        await userEvent.click(boxRef.current as Gtk.Box);
+        expect(onPressed).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("userEvent click - controller hygiene", () => {
+    it("leaves no gesture behind on a gesture-less widget and still reaches the button", async () => {
         const boxRef = createRef<Gtk.Box>();
         const onClicked = vi.fn();
 
@@ -86,11 +111,45 @@ describe("userEvent click - repeat and non-activating containers", () => {
 
         const box = boxRef.current as Gtk.Box;
         await userEvent.dblClick(box);
-        onClicked.mockClear();
+        expect(queryAllControllers(box, GtkNs.GestureClick)).toHaveLength(0);
         await userEvent.click(box);
-        expect(onClicked).toHaveBeenCalled();
+        expect(onClicked).toHaveBeenCalledTimes(1);
     });
 
+    it("leaves no gesture behind on a widget a pointer click touched", async () => {
+        const innerRef = createRef<Gtk.Box>();
+        const onPressed = vi.fn();
+
+        await render(
+            <GtkBox controllers={<GtkGestureClick onPressed={onPressed} />}>
+                <GtkBox ref={innerRef} orientation={GtkNs.Orientation.VERTICAL}>
+                    <GtkLabel label="pointer box" />
+                </GtkBox>
+            </GtkBox>,
+        );
+
+        const inner = innerRef.current as Gtk.Box;
+        await userEvent.pointer(inner, "click");
+        expect(queryAllControllers(inner, GtkNs.GestureClick)).toHaveLength(0);
+        await userEvent.click(screen.getByText("pointer box"));
+        expect(onPressed).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves no gesture behind on the rows it clicks", async () => {
+        const refs = await renderRowBox({ selectionMode: GtkNs.SelectionMode.SINGLE }, 3);
+        await userEvent.click(screen.getByText("Row 0"));
+        await userEvent.click(refs[1]?.current as Gtk.ListBoxRow);
+        await userEvent.click(screen.getByText("Row 1"));
+
+        expect(refs.map((ref) => queryAllControllers(ref.current as Gtk.ListBoxRow, GtkNs.GestureClick))).toEqual([
+            [],
+            [],
+            [],
+        ]);
+    });
+});
+
+describe("userEvent click - repeat and non-activating containers", () => {
     it("selects without activating when the list box does not activate on a single click", async () => {
         await expectSelectWithoutActivation(() => screen.getByText("Row 1"));
     });
@@ -107,6 +166,14 @@ describe("userEvent click - repeat and non-activating containers", () => {
             2,
         );
 
+        await userEvent.dblClick(refs[1]?.current as Gtk.ListBoxRow);
+        expect(onRowActivated).toHaveBeenCalledTimes(1);
+        expect(getSelection(refs)).toEqual([false, true]);
+    });
+
+    it("activates the row on a double click when a single click already activates", async () => {
+        const onRowActivated = vi.fn();
+        const refs = await renderRowBox({ selectionMode: GtkNs.SelectionMode.SINGLE, onRowActivated }, 2);
         await userEvent.dblClick(refs[1]?.current as Gtk.ListBoxRow);
         expect(onRowActivated).toHaveBeenCalledTimes(1);
         expect(getSelection(refs)).toEqual([false, true]);
@@ -145,6 +212,37 @@ describe("userEvent click - multiple-selection list boxes", () => {
         expect(getSelection(refs)).toEqual([true, false]);
         await userEvent.click(screen.getByText("Row 1"));
         expect(getSelection(refs)).toEqual([true, false]);
+    });
+});
+
+describe("userEvent click - selection notifications", () => {
+    it("never reports an empty selection while replacing it", async () => {
+        const refs = await renderRowBox(
+            { selectionMode: GtkNs.SelectionMode.MULTIPLE, activateOnSingleClick: false },
+            3,
+        );
+
+        const listBox = refs[0]?.current?.getParent() as Gtk.ListBox;
+        const reported: boolean[][] = [];
+
+        listBox.on("selected-rows-changed", () => {
+            reported.push(getSelection(refs));
+        });
+
+        await userEvent.click(screen.getByText("Row 1"));
+
+        expect(reported).toEqual([
+            [true, true, false],
+            [false, true, false],
+        ]);
+
+        reported.length = 0;
+        await userEvent.click(screen.getByText("Row 2"));
+
+        expect(reported).toEqual([
+            [false, true, true],
+            [false, false, true],
+        ]);
     });
 });
 

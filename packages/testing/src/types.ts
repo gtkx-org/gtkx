@@ -55,13 +55,19 @@ type MatcherOptions<T extends Gtk.Widget = Gtk.Widget> = {
     as?: WidgetType<T> | undefined;
 } & WaitForOptions;
 
-/** Constraints on a widget's numeric range value used by role queries. */
+/**
+ * Constraints on a widget's numeric range value used by role queries. The numbers come from the
+ * accessibility tree and match within 0.001, the resolution GTK keeps them to.
+ */
 type ByRoleValue = {
     /** The current value. */
     now?: number | undefined;
     /** The lower bound of the value's range. */
     min?: number | undefined;
-    /** The upper bound of the value's range. */
+    /**
+     * The highest value the widget can reach, which on a paged widget such as a scrollbar is its
+     * adjustment's upper bound less one page.
+     */
     max?: number | undefined;
     /** Matcher for the value's textual representation. */
     text?: Matcher | undefined;

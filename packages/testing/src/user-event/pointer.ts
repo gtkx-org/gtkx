@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { UserEventState } from "./state.js";
 import { emitPress, emitRelease } from "./click.js";
-import { getOrCreateControllers } from "./controller.js";
+import { queryAllControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 
 /**
@@ -15,7 +15,7 @@ const RELEASE_INPUTS: Set<PointerInput> = new Set(["[/MouseLeft]", "up"]);
 const CLICK_INPUTS: Set<PointerInput> = new Set(["[MouseLeft]", "click"]);
 
 const applyPointerInput = (widget: Gtk.Widget, state: UserEventState, input: PointerInput): void => {
-    const controllers = getOrCreateControllers(widget, Gtk.GestureClick);
+    const controllers = queryAllControllers(widget, Gtk.GestureClick);
 
     if (CLICK_INPUTS.has(input)) {
         emitPress(widget, controllers, 1);

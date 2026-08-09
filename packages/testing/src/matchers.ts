@@ -3,7 +3,10 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ByRoleOptions, Matcher, MatcherOptions } from "./types.js";
 import {
+    ACCESSIBLE_NUMBER_TOLERANCE,
     type AccessibleAttributeValue,
+    isAccessibleNumberMatch,
+    isAccessibleNumberProperty,
     readAccessibleProperty,
     readAccessibleState,
 } from "./accessible-native.js";
@@ -30,7 +33,7 @@ import {
     getWidgetRequiredState,
     getWidgetSelection,
     getWidgetTextContent,
-    getWidgetValue,
+    getWidgetValueNow,
     hasDisplayValue,
     isWidgetDisabled,
     isWidgetValueMatch,
@@ -142,7 +145,8 @@ type MatcherImplementations = {
     ) => MatcherResult;
     /**
      * Asserts an accessible property GTK holds for the widget, taking the value type that property
-     * carries. With no expected value, asserts only that the property is set.
+     * carries. With no expected value, asserts only that the property is set. Numeric properties
+     * compare the way `toHaveValue` and the `value` option of the `ByRole` queries do, within 0.001.
      */
     toHaveAccessibleProperty: (
         received: unknown,
@@ -175,7 +179,16 @@ type MatcherImplementations = {
     toBeRequired: StateMatcher;
     /** Asserts the widget holds the platform focus state. */
     toHaveFocus: StateMatcher;
-    /** Asserts a widget's numeric value, or its display value when a string is given. */
+    /**
+     * Asserts a widget's numeric value, or its display value when a string is given.
+     *
+     * Numbers come from the accessibility tree, which GTK keeps to a resolution of 0.001: it drops an
+     * update whose value is nearer than that to the one already published, so a widget that moves by
+     * less keeps its previous value. Numbers therefore match within 0.001, the same tolerance the
+     * `value` option of the `ByRole` queries and `toHaveAccessibleProperty` apply. That option reads
+     * the same tree, where the maximum of a paged widget such as a scrollbar is the last value it can
+     * reach, its adjustment's upper bound less one page.
+     */
     toHaveValue: (received: unknown, expected?: number | string) => MatcherResult;
     /** Asserts the widget's accessible role. */
     toHaveRole: (received: unknown, expected: Gtk.AccessibleRole) => MatcherResult;
@@ -219,8 +232,18 @@ type MatcherImplementations = {
 
 type ExpectExtend = { extend: (m: MatcherImplementations) => void };
 
+type AttributeExpectation = {
+    label: string;
+    comparison: string;
+    expected: AccessibleAttributeValue;
+    actual: AccessibleAttributeValue | null;
+    isPass: boolean;
+    isReadingRounded: boolean;
+};
+
 const registration = { isRegistered: false };
 const MIXED_TRISTATE: number = Gtk.AccessibleTristate.MIXED;
+const ROUNDED_READING = ", which the accessibility tree rounds to six significant digits";
 const displayValueMatcher: TextMatcher = textMatcher("toHaveDisplayValue", getWidgetDisplayValue, "exact");
 const toHaveAccessibleName: TextMatcher = textMatcher("toHaveAccessibleName", getWidgetAccessibleName, "exact");
 
@@ -422,22 +445,16 @@ const attributeSetResult = (
     };
 };
 
-const attributeValueResult = (
-    widget: Gtk.Widget,
-    label: string,
-    actual: AccessibleAttributeValue | null,
-    expected: AccessibleAttributeValue,
-): MatcherResult => {
-    const isPass = actual === expected;
+const describeReading = (expectation: AttributeExpectation): string =>
+    `${describeAttributeValue(expectation.actual)}${expectation.isReadingRounded ? ROUNDED_READING : ""}`;
 
-    return {
-        pass: isPass,
-        message: () =>
-            `expected widget ${negationPrefix(isPass)}to have ${label} equal to ` +
-            `${describeAttributeValue(expected)}, but received ${describeAttributeValue(actual)}\n` +
-            describeWidget(widget),
-    };
-};
+const attributeValueResult = (widget: Gtk.Widget, expectation: AttributeExpectation): MatcherResult => ({
+    pass: expectation.isPass,
+    message: () =>
+        `expected widget ${negationPrefix(expectation.isPass)}to have ${expectation.label} ` +
+        `${expectation.comparison} ${describeAttributeValue(expectation.expected)}, but received ` +
+        `${describeReading(expectation)}\n${describeWidget(widget)}`,
+});
 
 const orderResult = (widget: Gtk.Widget, other: Gtk.Widget, position: string, isPass: boolean): MatcherResult => ({
     pass: isPass,
@@ -697,8 +714,42 @@ function toHaveAccessibleState(
         return attributeSetResult(widget, label, actual);
     }
 
-    return attributeValueResult(widget, label, actual, typeof expected === "boolean" ? Number(expected) : expected);
+    const wanted = typeof expected === "boolean" ? Number(expected) : expected;
+
+    return attributeValueResult(widget, {
+        label,
+        comparison: "equal to",
+        expected: wanted,
+        actual,
+        isPass: actual === wanted,
+        isReadingRounded: false,
+    });
 }
+
+const propertyLabel = (property: Gtk.AccessibleProperty): string =>
+    `accessible property ${Gtk.AccessibleProperty[property]}`;
+
+const propertyExpectation = (
+    widget: Gtk.Widget,
+    property: Gtk.AccessibleProperty,
+    expected: AccessibleAttributeValue,
+    actual: AccessibleAttributeValue | null,
+): AttributeExpectation => {
+    const label = propertyLabel(property);
+
+    if (typeof expected === "number" && isAccessibleNumberProperty(property)) {
+        return {
+            label,
+            comparison: `within ${String(ACCESSIBLE_NUMBER_TOLERANCE)} of`,
+            expected,
+            actual,
+            isPass: isAccessibleNumberMatch(widget, property, expected),
+            isReadingRounded: true,
+        };
+    }
+
+    return { label, comparison: "equal to", expected, actual, isPass: actual === expected, isReadingRounded: false };
+};
 
 function toHaveAccessibleProperty(
     received: unknown,
@@ -707,13 +758,12 @@ function toHaveAccessibleProperty(
 ): MatcherResult {
     const widget = asWidget(received, "toHaveAccessibleProperty");
     const actual = readAccessibleProperty(widget, property);
-    const label = `accessible property ${Gtk.AccessibleProperty[property]}`;
 
     if (expected === undefined) {
-        return attributeSetResult(widget, label, actual);
+        return attributeSetResult(widget, propertyLabel(property), actual);
     }
 
-    return attributeValueResult(widget, label, actual, expected);
+    return attributeValueResult(widget, propertyExpectation(widget, property, expected, actual));
 }
 
 function toBePartiallyPressed(received: unknown): MatcherResult {
@@ -773,6 +823,9 @@ function toHaveDisplayValue(received: unknown, expected?: TextExpectation): Matc
     return displayValueMatcher(received, expected);
 }
 
+const describeValueExpectation = (expected: number | undefined): string =>
+    expected === undefined ? "set" : `within ${String(ACCESSIBLE_NUMBER_TOLERANCE)} of ${String(expected)}`;
+
 function toHaveValue(received: unknown, expected?: number | string): MatcherResult {
     const widget = asWidget(received, "toHaveValue");
 
@@ -780,7 +833,7 @@ function toHaveValue(received: unknown, expected?: number | string): MatcherResu
         return displayValueMatcher(received, expected);
     }
 
-    const actual = getWidgetValue(widget).now;
+    const actual = getWidgetValueNow(widget);
 
     if (actual === null) {
         throw notApplicable("toHaveValue", "numeric value", widget);
@@ -791,8 +844,8 @@ function toHaveValue(received: unknown, expected?: number | string): MatcherResu
     return {
         pass: isPass,
         message: () =>
-            `expected widget ${negationPrefix(isPass)}to have value ${String(expected)}, ` +
-            `but received approximately ${String(actual)}\n${describeWidget(widget)}`,
+            `expected widget ${negationPrefix(isPass)}to have value ${describeValueExpectation(expected)}, ` +
+            `but received ${String(actual)}${ROUNDED_READING}\n${describeWidget(widget)}`,
     };
 }
 
