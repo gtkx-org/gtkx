@@ -112,7 +112,7 @@ describe("render - SwitchRow (1)", () => {
             </AdwPreferencesGroup>,
         );
 
-        expect(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: true })).toBeDefined();
+        expect(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: true, as: Gtk.Switch })).toBeDefined();
     });
 
     it("invokes onActiveChanged when toggled", async () => {
@@ -124,7 +124,7 @@ describe("render - SwitchRow (1)", () => {
             </AdwPreferencesGroup>,
         );
 
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: false }));
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: false, as: Gtk.Switch }));
         expect(onActiveChanged).toHaveBeenCalled();
         const lastCall = onActiveChanged.mock.calls.at(-1);
         expect(lastCall?.[0]).toBe(true);
@@ -139,8 +139,10 @@ describe("render - SwitchRow (2)", () => {
                     <AdwSwitchRow ref={ref} title="Enabled" active={false} onNotifyActive={handler} />
                 </AdwPreferencesGroup>
             ),
-            fireFirst: () => userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: false })),
-            fireSecond: () => userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: true })),
+            fireFirst: () =>
+                userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: false, as: Gtk.Switch })),
+            fireSecond: () =>
+                userEvent.click(screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: true, as: Gtk.Switch })),
         });
     });
 });

@@ -33,6 +33,12 @@ const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set<Gtk.AccessibleRole>([
     Gtk.AccessibleRole.TREE_ITEM,
 ]);
 
+const CHECKED_BY_TRISTATE: Map<number, CheckedState> = new Map<number, CheckedState>([
+    [Gtk.AccessibleTristate.FALSE, "unchecked"],
+    [Gtk.AccessibleTristate.TRUE, "checked"],
+    [Gtk.AccessibleTristate.MIXED, "mixed"],
+]);
+
 const callStringGetter = (widget: Gtk.Widget, method: string): string | null => {
     const fn: unknown = Reflect.get(widget, method);
 
@@ -66,11 +72,7 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
         return widget.getLabel();
     }
 
-    if (widget instanceof Gtk.Inscription) {
-        return widget.getText() ?? null;
-    }
-
-    return null;
+    return readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
 };
 
 const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
@@ -319,20 +321,18 @@ const getWidgetSelection = (widget: Gtk.Widget): string | null => {
 
 const checkedFromActive = (isActive: boolean): CheckedState => (isActive ? "checked" : "unchecked");
 
-const isCheckableToggle = (widget: Gtk.Widget): boolean =>
-    widget instanceof Gtk.Switch ||
-    (widget instanceof Gtk.ToggleButton && widget.getAccessibleRole() === Gtk.AccessibleRole.RADIO);
+const isRadioToggle = (widget: Gtk.Widget): widget is Gtk.ToggleButton =>
+    widget instanceof Gtk.ToggleButton && widget.getAccessibleRole() === Gtk.AccessibleRole.RADIO;
 
 const getWidgetCheckedState = (widget: Gtk.Widget): CheckedState | null => {
-    if (widget instanceof Gtk.CheckButton) {
-        return widget.getInconsistent() ? "mixed" : checkedFromActive(widget.getActive());
+    const tristate = readAccessibleState(widget, Gtk.AccessibleState.CHECKED);
+    const state = tristate === null ? undefined : CHECKED_BY_TRISTATE.get(tristate);
+
+    if (state !== undefined) {
+        return state;
     }
 
-    if (isCheckableToggle(widget)) {
-        return checkedFromActive(Reflect.get(widget, "active") === true);
-    }
-
-    return null;
+    return isRadioToggle(widget) ? checkedFromActive(widget.getActive()) : null;
 };
 
 const isWidgetChecked = (widget: Gtk.Widget): boolean | null => {
@@ -341,29 +341,22 @@ const isWidgetChecked = (widget: Gtk.Widget): boolean | null => {
     return state === null || state === "mixed" ? null : state === "checked";
 };
 
-const getWidgetPressedState = (widget: Gtk.Widget): boolean | null => {
-    if (widget instanceof Gtk.ToggleButton) {
-        return widget.getActive();
-    }
-
-    return null;
-};
+const getWidgetPressedState = (widget: Gtk.Widget): boolean | null =>
+    readAccessibleBoolean(widget, Gtk.AccessibleState.PRESSED);
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | null => {
-    if (widget instanceof Gtk.Expander) {
-        return widget.getExpanded();
-    }
-
     if (widget instanceof Gtk.TreeExpander) {
         return widget.getListRow()?.getExpanded() ?? null;
     }
 
-    return null;
+    return readAccessibleBoolean(widget, Gtk.AccessibleState.EXPANDED);
 };
 
 const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
-    if (widget instanceof Gtk.ListBoxRow || widget instanceof Gtk.FlowBoxChild) {
-        return widget.isSelected();
+    const selected = readAccessibleBoolean(widget, Gtk.AccessibleState.SELECTED);
+
+    if (selected !== null) {
+        return selected;
     }
 
     if (SELECTABLE_ROLES.has(widget.getAccessibleRole())) {
@@ -400,39 +393,9 @@ const adjustmentValue = (adjustment: Gtk.Adjustment): ValueTriplet => ({
     max: adjustment.getUpper(),
 });
 
-const adjustmentWidgetValue = (widget: Gtk.Widget): ValueTriplet | null => {
-    if (widget instanceof Gtk.Range) {
-        return adjustmentValue(widget.getAdjustment());
-    }
-
-    if (widget instanceof Gtk.Scrollbar) {
-        return adjustmentValue(widget.getAdjustment());
-    }
-
-    if (widget instanceof Gtk.SpinButton) {
-        return adjustmentValue(widget.getAdjustment());
-    }
-
+const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
     if (widget instanceof Gtk.ScaleButton) {
         return adjustmentValue(widget.getAdjustment());
-    }
-
-    return null;
-};
-
-const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
-    const adjustmentBased = adjustmentWidgetValue(widget);
-
-    if (adjustmentBased) {
-        return adjustmentBased;
-    }
-
-    if (widget instanceof Gtk.LevelBar) {
-        return { now: widget.getValue(), min: widget.getMinValue(), max: widget.getMaxValue() };
-    }
-
-    if (widget instanceof Gtk.ProgressBar) {
-        return { now: widget.getFraction(), min: 0, max: 1 };
     }
 
     return null;
