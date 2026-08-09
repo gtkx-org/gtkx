@@ -81,7 +81,7 @@ function onceSignal(instance: SignalConnectable, signal: string, handler: Signal
 
     const wrapped: SignalHandler = (...args) => {
         untrackHandlerId(instance, signal, handlerId);
-        untrackConnection(instance, signal, handlerId);
+        untrackConnection(instance, handlerId);
         instance.disconnect(handlerId);
 
         return handler(...args);
@@ -108,7 +108,7 @@ function offSignal(instance: SignalConnectable, signal: string, handler: SignalH
     }
 
     untrackHandlerId(instance, signal, handlerId);
-    untrackConnection(instance, signal, handlerId);
+    untrackConnection(instance, handlerId);
 
     if (!isSignalHandlerConnected(instance, handlerId)) {
         return;

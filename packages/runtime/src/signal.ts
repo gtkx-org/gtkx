@@ -71,6 +71,8 @@ const gSignalHandlerIsConnected = bind(
     booleanT,
 );
 
+const gSignalHandlerDisconnect = bind(LIB, "g_signal_handler_disconnect", [objectT("borrowed"), uint64T], voidT);
+
 /** Returns the signal name without its detail suffix (the part after `::`). */
 const getSignalBaseName = (signal: string): string => {
     const detailIndex = signal.indexOf("::");
@@ -109,25 +111,30 @@ const trackConnection = (instance: object, signal: string, handlerId: number): v
     handlerIds.add(handlerId);
 };
 
-const untrackConnection = (instance: object, signal: string, handlerId: number): void => {
+const untrackConnection = (instance: object, handlerId: number): void => {
     const bySignal = connectionTable.get(instance);
 
     if (bySignal === undefined) {
         return;
     }
 
-    const name = getSignalBaseName(signal);
-    const handlerIds = bySignal.get(name);
+    for (const [name, handlerIds] of bySignal) {
+        handlerIds.delete(handlerId);
 
-    if (handlerIds === undefined) {
-        return;
+        if (handlerIds.size === 0) {
+            bySignal.delete(name);
+        }
     }
+};
 
-    handlerIds.delete(handlerId);
-
-    if (handlerIds.size === 0) {
-        bySignal.delete(name);
-    }
+/**
+ * Disconnects the handler an instance connected under the given id, and forgets the connection.
+ * @param instance Emitter the handler was connected to.
+ * @param handlerId Id {@link connectSignal} returned for the handler.
+ */
+const disconnectSignal = (instance: object, handlerId: number): void => {
+    untrackConnection(instance, handlerId);
+    gSignalHandlerDisconnect(getHandle(instance), handlerId);
 };
 
 const hasLiveConnection = (instance: object, handlerIds: Set<number>): boolean => {
@@ -260,6 +267,7 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returnDes
 export {
     getSignalBaseName,
     connectSignal,
+    disconnectSignal,
     emitSignal,
     hasSignalListener,
     isSignalHandlerConnected,

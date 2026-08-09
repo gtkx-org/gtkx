@@ -39,7 +39,7 @@ export {
     wrapHandle,
 } from "./registry.js";
 /** @public */
-export { connectSignal, emitSignal, getSignalBaseName, type SignalHandler } from "./signal.js";
+export { connectSignal, disconnectSignal, emitSignal, getSignalBaseName, type SignalHandler } from "./signal.js";
 /** @public */
 export { t } from "./t.js";
 /** @public */

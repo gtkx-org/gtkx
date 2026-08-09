@@ -185,8 +185,12 @@ const isDeletionApplied = (emitter: SignalWatchTarget, signal: string, apply: ()
     };
 
     emitter.on(signal, watch, true);
-    apply();
-    emitter.off(signal, watch);
+
+    try {
+        apply();
+    } finally {
+        emitter.off(signal, watch);
+    }
 
     return isApplied;
 };

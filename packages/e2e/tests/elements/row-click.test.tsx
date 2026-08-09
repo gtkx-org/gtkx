@@ -10,8 +10,8 @@ import {
     GtkNotebook,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { queryAllControllers, render, screen, userEvent } from "@gtkx/testing";
-import { createRef, type RefObject } from "react";
+import { queryAllControllers, render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { createRef, type ReactElement, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderRowBox } from "../helpers/row-box.js";
 import { getSelection } from "../helpers/selection-state.js";
@@ -20,6 +20,14 @@ type DecoratedButton = {
     boxRef: RefObject<Gtk.Box | null>;
     onPressed: ReturnType<typeof vi.fn>;
     onClicked: ReturnType<typeof vi.fn>;
+};
+
+type PressHandler = (nPress: number, x: number, y: number, self: Gtk.GestureClick) => void;
+
+type GesturedListBox = {
+    listBox: Gtk.ListBox;
+    onPressed: ReturnType<typeof vi.fn>;
+    onRowActivated: ReturnType<typeof vi.fn>;
 };
 
 const renderDecoratedButton = async (): Promise<DecoratedButton> => {
@@ -36,6 +44,78 @@ const renderDecoratedButton = async (): Promise<DecoratedButton> => {
     );
 
     return { boxRef, onPressed, onClicked };
+};
+
+const expectClickInsideButton = async (
+    child: (onPressed: PressHandler) => ReactElement,
+    text: string,
+    expected: { presses: number; clicks: number },
+): Promise<void> => {
+    const onPressed = vi.fn();
+    const onClicked = vi.fn();
+    await render(<GtkButton onClicked={onClicked}>{child(onPressed)}</GtkButton>);
+    await userEvent.click(screen.getByText(text));
+    expect(onPressed).toHaveBeenCalledTimes(expected.presses);
+    expect(onClicked).toHaveBeenCalledTimes(expected.clicks);
+};
+
+const clickRecorder = (order: string[], name: string): ReactElement => (
+    <GtkGestureClick
+        onPressed={() => {
+            order.push(`${name}:pressed`);
+        }}
+        onReleased={() => {
+            order.push(`${name}:released`);
+        }}
+    />
+);
+
+const renderNestedGestures = async (order: string[]): Promise<Gtk.Box> => {
+    const innerRef = createRef<Gtk.Box>();
+
+    await render(
+        <GtkBox controllers={clickRecorder(order, "outer")}>
+            <GtkBox ref={innerRef} controllers={clickRecorder(order, "inner")}>
+                <GtkLabel label="nested" />
+            </GtkBox>
+        </GtkBox>,
+    );
+
+    return innerRef.current as Gtk.Box;
+};
+
+const renderGesturedListBox = async (): Promise<GesturedListBox> => {
+    const ref = createRef<Gtk.ListBox>();
+    const onPressed = vi.fn();
+    const onRowActivated = vi.fn();
+
+    await render(
+        <GtkListBox
+            ref={ref}
+            onRowActivated={onRowActivated}
+            controllers={<GtkGestureClick onPressed={onPressed} />}
+        />,
+    );
+
+    return { listBox: ref.current as Gtk.ListBox, onPressed, onRowActivated };
+};
+
+const appendLabeledRows = (listBox: Gtk.ListBox, count: number): Gtk.ListBoxRow[] =>
+    Array.from({ length: count }, (_, index) => {
+        const row = new Gtk.ListBoxRow();
+        row.setChild(new Gtk.Label({ label: `Detachable ${String(index)}` }));
+        listBox.append(row);
+
+        return row;
+    });
+
+const detachOnPress = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
+    const gesture = new Gtk.GestureClick();
+    row.addController(gesture);
+
+    gesture.on("pressed", () => {
+        listBox.remove(row);
+    });
 };
 
 const expectSelectWithoutActivation = async (
@@ -143,6 +223,34 @@ describe("userEvent click - gesture provenance", () => {
         expect(onCancel).not.toHaveBeenCalled();
     });
 
+    it("leaves a secondary-button gesture out of a primary click", async () => {
+        await expectClickInsideButton(
+            (onPressed) => (
+                <GtkBox controllers={<GtkGestureClick button={3} onPressed={onPressed} />}>
+                    <GtkLabel label="secondary" />
+                </GtkBox>
+            ),
+            "secondary",
+            { presses: 0, clicks: 1 },
+        );
+    });
+});
+
+describe("userEvent click - widgets carrying only GTK's own gestures", () => {
+    it("clicks a text view without driving the gesture GTK gave it", async () => {
+        const ref = createRef<Gtk.TextView>();
+        await render(<GtkTextView ref={ref} />);
+        await expect(userEvent.click(ref.current as Gtk.TextView)).resolves.toBeUndefined();
+    });
+
+    it("drives only the gesture a text view was given, not the ones GTK gave it", async () => {
+        const ref = createRef<Gtk.TextView>();
+        const onPressed = vi.fn();
+        await render(<GtkTextView ref={ref} controllers={<GtkGestureClick onPressed={onPressed} />} />);
+        await userEvent.click(ref.current as Gtk.TextView);
+        expect(onPressed).toHaveBeenCalledTimes(1);
+    });
+
     it("expands an expander when its title label is clicked", async () => {
         const ref = createRef<Gtk.Expander>();
 
@@ -155,13 +263,57 @@ describe("userEvent click - gesture provenance", () => {
         await userEvent.click(screen.getByText("More details"));
         expect(ref.current?.getExpanded()).toBe(true);
     });
+
+    it("expands an expander nested in a row instead of activating the row", async () => {
+        const ref = createRef<Gtk.Expander>();
+        const onRowActivated = vi.fn();
+
+        await render(
+            <GtkListBox selectionMode={Gtk.SelectionMode.SINGLE} onRowActivated={onRowActivated}>
+                <GtkListBoxRow>
+                    <GtkExpander ref={ref} label="More details">
+                        <GtkLabel label="Body" />
+                    </GtkExpander>
+                </GtkListBoxRow>
+            </GtkListBox>,
+        );
+
+        await userEvent.click(screen.getByText("More details"));
+        expect(ref.current?.getExpanded()).toBe(true);
+        expect(onRowActivated).not.toHaveBeenCalled();
+    });
 });
 
-describe("userEvent click - widgets carrying only GTK's own gestures", () => {
-    it("clicks a text view without driving the gesture GTK gave it", async () => {
-        const ref = createRef<Gtk.TextView>();
-        await render(<GtkTextView ref={ref} />);
-        await expect(userEvent.click(ref.current as Gtk.TextView)).resolves.toBeUndefined();
+describe("userEvent click - widgets carrying a gesture of their own", () => {
+    it("fires a gesture a label carries instead of passing the click outwards alone", async () => {
+        await expectClickInsideButton(
+            (onPressed) => <GtkLabel label="tap me" controllers={<GtkGestureClick onPressed={onPressed} />} />,
+            "tap me",
+            { presses: 1, clicks: 1 },
+        );
+    });
+
+    it("fires the gesture an activatable widget carries instead of activating it", async () => {
+        const ref = createRef<Gtk.ListBox>();
+        const onPressed = vi.fn();
+
+        await render(
+            <GtkListBox ref={ref} controllers={<GtkGestureClick onPressed={onPressed} />}>
+                <GtkListBoxRow>
+                    <GtkLabel label="Only row" />
+                </GtkListBoxRow>
+            </GtkListBox>,
+        );
+
+        await userEvent.click(ref.current as Gtk.ListBox);
+        expect(onPressed).toHaveBeenCalledTimes(1);
+    });
+
+    it("hands the press to every gesture before releasing any of them", async () => {
+        const order: string[] = [];
+        const inner = await renderNestedGestures(order);
+        await userEvent.click(inner);
+        expect(order).toEqual(["inner:pressed", "outer:pressed", "inner:released", "outer:released"]);
     });
 });
 
@@ -202,6 +354,15 @@ describe("userEvent click - gestures inside a button", () => {
     });
 });
 
+describe("userEvent dblClick - widgets outside a row", () => {
+    it("presses the button around the clicked widget twice", async () => {
+        const { onPressed, onClicked } = await renderDecoratedButton();
+        await userEvent.dblClick(screen.getByText("decorated"));
+        expect(onPressed).toHaveBeenCalledTimes(2);
+        expect(onClicked).toHaveBeenCalledTimes(2);
+    });
+});
+
 describe("userEvent dblClick - widgets inside a row", () => {
     it("presses the button a row wraps instead of the row", async () => {
         const onClicked = vi.fn();
@@ -223,32 +384,30 @@ describe("userEvent dblClick - widgets inside a row", () => {
 
 describe("userEvent click - rows detached mid-click", () => {
     it("still reaches the container and skips the outcome of a detached row", async () => {
-        const ref = createRef<Gtk.ListBox>();
-        const onRowActivated = vi.fn();
-        const onPressed = vi.fn();
-
-        await render(
-            <GtkListBox
-                ref={ref}
-                onRowActivated={onRowActivated}
-                controllers={<GtkGestureClick onPressed={onPressed} />}
-            />,
-        );
-
-        const listBox = ref.current as Gtk.ListBox;
+        const { listBox, onPressed, onRowActivated } = await renderGesturedListBox();
         const row = new Gtk.ListBoxRow();
-        const gesture = new Gtk.GestureClick();
         listBox.append(row);
-        row.addController(gesture);
-
-        gesture.on("pressed", () => {
-            listBox.remove(row);
-        });
-
+        detachOnPress(listBox, row);
         await userEvent.click(row);
         expect(onPressed).toHaveBeenCalledTimes(1);
         expect(onRowActivated).not.toHaveBeenCalled();
         expect(row.getParent()).toBeNull();
+    });
+
+    it("delivers the container gesture at the position the detached row held", async () => {
+        const { listBox, onPressed } = await renderGesturedListBox();
+        const first = appendLabeledRows(listBox, 4)[0] as Gtk.ListBoxRow;
+        detachOnPress(listBox, first);
+
+        await waitFor(() => {
+            expect(first.getHeight()).toBeGreaterThan(0);
+        });
+
+        const [, bounds] = first.computeBounds(listBox);
+        await userEvent.click(first);
+        const pressY = (onPressed.mock.calls[0] as [number, number, number])[2];
+        expect(pressY).toBeGreaterThanOrEqual(bounds.getY());
+        expect(pressY).toBeLessThanOrEqual(bounds.getY() + bounds.getHeight());
     });
 });
 
@@ -310,9 +469,10 @@ describe("userEvent click - controller hygiene", () => {
 
         const box = boxRef.current as Gtk.Box;
         await userEvent.dblClick(box);
+        expect(onClicked).toHaveBeenCalledTimes(2);
         expect(queryAllControllers(box, Gtk.GestureClick)).toHaveLength(0);
         await userEvent.click(box);
-        expect(onClicked).toHaveBeenCalledTimes(1);
+        expect(onClicked).toHaveBeenCalledTimes(3);
     });
 
     it("leaves no gesture behind on a widget a pointer click touched", async () => {
@@ -345,6 +505,28 @@ describe("userEvent click - controller hygiene", () => {
             [],
             [],
         ]);
+    });
+});
+
+describe("userEvent pointer - the button held across calls", () => {
+    it("keeps a press over a gesture-less widget from swallowing the next one", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const buttonRef = createRef<Gtk.Button>();
+        const onPressed = vi.fn();
+
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox ref={boxRef}>
+                    <GtkLabel label="empty" />
+                </GtkBox>
+                <GtkButton ref={buttonRef} label="Press" controllers={<GtkGestureClick onPressed={onPressed} />} />
+            </GtkBox>,
+        );
+
+        const user = userEvent.setup();
+        await user.pointer(boxRef.current as Gtk.Box, "down");
+        await user.pointer(buttonRef.current as Gtk.Button, "down");
+        expect(onPressed).toHaveBeenCalledTimes(1);
     });
 });
 

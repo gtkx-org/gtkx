@@ -25,22 +25,23 @@ type UserEvent = {
      */
     setup: (options?: UserEventOptions) => UserEvent;
     /**
-     * Clicks a button, and otherwise activates the widget, falling back to a click gesture on the
-     * widget itself, on its nearest clickable ancestor, or, as a last resort, on the nearest widget
-     * carrying any click gesture. A list box row or flow box child receives its click gesture at the
-     * clicked position, passes one on to the gestures its container carries, and is then activated,
-     * or exclusively selected when its container does not activate on a single click.
+     * Activates a widget that neither claims the click nor carries a click gesture of its own, and
+     * otherwise presses and releases outwards from the clicked widget through every widget carrying
+     * a click gesture, stopping at the first button or indexed child. A list box row or flow box
+     * child receives its click gesture at the clicked position, passes one on to the gestures its
+     * container carries, and is then activated, or exclusively selected when its container does not
+     * activate on a single click.
      */
     click: typeof click;
     /**
-     * Emits a two-press click gesture on the widget or, for a descendant of a list box row or flow
-     * box child, on that child, activating it and replacing its container's selection whether or not
-     * that container activates on a single click.
+     * Delivers a two-press click gesture along the same path a single click takes, without trying
+     * activation first, activating a list box row or flow box child on that path and replacing its
+     * container's selection whether or not that container activates on a single click.
      */
     dblClick: typeof dblClick;
     /**
-     * Emits a three-press click gesture the same way a double click is delivered, applying the same
-     * outcome to a list box row or flow box child.
+     * Delivers a three-press click gesture the same way a double click is delivered, applying the
+     * same outcome to a list box row or flow box child.
      */
     tripleClick: typeof tripleClick;
     /** Moves focus within the widget's root, forward by default and backward with `isShiftHeld`. */
