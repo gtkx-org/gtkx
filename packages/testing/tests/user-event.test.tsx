@@ -466,7 +466,7 @@ describe("userEvent.selectOptions", () => {
     describe("error handling", () => {
         it("throws when element is not selectable", async () => {
             await expect(actOnPlainButton((button) => userEvent.selectOptions(button, 0))).rejects.toThrow(
-                "Cannot select options: expected selectable widget (COMBO_BOX or LIST)",
+                "Cannot select options: expected selectable widget (COMBO_BOX, GRID, or LIST)",
             );
         });
 
@@ -474,7 +474,7 @@ describe("userEvent.selectOptions", () => {
             const dropdown = await renderDropDown(["A", "B"]);
 
             await expect(userEvent.selectOptions(dropdown, [0, 1])).rejects.toThrow(
-                "Cannot select multiple options: Gtk.DropDown only supports single selection",
+                "Cannot select multiple options: a drop-down only supports single selection",
             );
         });
     });
@@ -489,11 +489,11 @@ describe("userEvent.deselectOptions", () => {
     });
 
     describe("error handling", () => {
-        it("throws when element is not a list box", async () => {
+        it("throws when the widget has no indexed children", async () => {
             const dropdown = await renderDropDown(["A"]);
 
             await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow(
-                "Cannot deselect options: only ListBox supports deselection",
+                "Cannot deselect options: the widget exposes no children to deselect by index",
             );
         });
     });
