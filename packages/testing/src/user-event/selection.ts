@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type { UserEventState } from "./state.js";
 import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
 import { keyboard } from "./keyboard.js";
+import { createInitialState } from "./state.js";
 
 type CollectionWidget = Gtk.ListView | Gtk.GridView | Gtk.ColumnView;
 type IndexedChildAction = (child: Gtk.Widget) => void | Promise<void>;
@@ -96,9 +96,19 @@ const selectChildRow = (row: Gtk.Widget): void => {
     row.activate();
 };
 
-const unselectChildRow = async (state: UserEventState, row: Gtk.Widget): Promise<void> => {
+const isChildSelected = (row: Gtk.Widget): boolean => {
+    const fn: unknown = Reflect.get(row, "isSelected");
+
+    return typeof fn === "function" && (fn as () => boolean).call(row);
+};
+
+const unselectChildRow = async (row: Gtk.Widget): Promise<void> => {
+    if (!isChildSelected(row)) {
+        return;
+    }
+
     row.grabFocus();
-    await keyboard(state, row, TOGGLE_ROW_SEQUENCE);
+    await keyboard(createInitialState(), row, TOGGLE_ROW_SEQUENCE);
 };
 
 const applyIndexedChildren = async (
@@ -192,21 +202,22 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
     }
 };
 
-const deselectByRole = (state: UserEventState, widget: Gtk.Widget, valueArray: number[]): Promise<void> => {
+const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): Promise<void> => {
     if (!hasIndexedChildren(widget)) {
         throw new TypeError("Cannot deselect options: the widget exposes no children to deselect by index");
     }
 
-    return applyIndexedChildren(widget, valueArray, (child) => unselectChildRow(state, child));
+    return applyIndexedChildren(widget, valueArray, unselectChildRow);
 };
 
-const deselectOptions = (
-    state: UserEventState,
-    widget: Gtk.Widget,
-    values: number | number[],
-): Promise<void> =>
-    runSelectionEvent(widget, values, deselectInListView, (target, valueArray) =>
-        deselectByRole(state, target, valueArray),
-    );
+/**
+ * Unselects the items at the given positions in a list, grid, or column view, or toggles off the
+ * selected indexed children of a list box or flow box with Ctrl+Space. A child that is not selected
+ * is left alone.
+ *
+ * @throws When a view has no selection model, or when the widget exposes no indexed children.
+ */
+const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
+    runSelectionEvent(widget, values, deselectInListView, deselectByRole);
 
 export { selectOptions, deselectOptions };

@@ -1,11 +1,11 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { UserEventState } from "./state.js";
 import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable } from "../editable.js";
 import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
 import { keyboard } from "./keyboard.js";
+import { createInitialState } from "./state.js";
 
 /** Options for `userEvent.type`. */
 type TypeOptions = {
@@ -140,16 +140,31 @@ const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<
         insertEditableText(editable, text);
     });
 
-const clear = async (state: UserEventState, widget: Gtk.Widget): Promise<void> => {
+const isWidgetEditable = (widget: Gtk.Widget): boolean => {
+    const fn: unknown = Reflect.get(widget, "getEditable");
+
+    return typeof fn !== "function" || (fn as () => boolean).call(widget);
+};
+
+/**
+ * Selects an editable widget's whole text and deletes it, as pressing Ctrl+A and then Delete does.
+ *
+ * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView, or when it refuses edits.
+ */
+const clear = async (widget: Gtk.Widget): Promise<void> => {
     if (!isEditable(widget)) {
         throw new Error(`Cannot clear element: ${EDITABLE_REQUIRED}`);
+    }
+
+    if (!isWidgetEditable(widget)) {
+        throw new Error("Cannot clear element: the widget is not editable");
     }
 
     await wrapEvent(widget, () => {
         widget.grabFocus();
     });
 
-    await keyboard(state, widget, CLEAR_SEQUENCE);
+    await keyboard(createInitialState(), widget, CLEAR_SEQUENCE);
 };
 
 /**

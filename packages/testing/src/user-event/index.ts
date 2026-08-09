@@ -38,7 +38,7 @@ type UserEvent = {
     /** Focuses an editable widget, applies any initial selection, and inserts the text at the cursor. */
     type: typeof type;
     /** Selects an editable widget's whole text and deletes it, as Ctrl+A followed by Delete does. */
-    clear: (widget: Gtk.Widget) => Promise<void>;
+    clear: typeof clear;
     /** Writes an editable widget's current selection to the clipboard. */
     copy: typeof copy;
     /** Writes an editable widget's current selection to the clipboard and deletes it. */
@@ -51,7 +51,7 @@ type UserEvent = {
      */
     selectOptions: typeof selectOptions;
     /** Deselects the items at those positions, toggling list box and flow box children with Ctrl+Space. */
-    deselectOptions: (widget: Gtk.Widget, values: number | number[]) => Promise<void>;
+    deselectOptions: typeof deselectOptions;
     /** Emits a motion `enter` on the widget, adding a motion controller when it has none. */
     hover: typeof hover;
     /** Emits a motion `leave` on the widget, adding a motion controller when it has none. */
@@ -113,14 +113,12 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
         tripleClick: after(tripleClick),
         tab: after(tab),
         type: after(type),
-        clear: after((widget: Gtk.Widget): Promise<void> => clear(state, widget)),
+        clear: after(clear),
         copy: after(copy),
         cut: after(cut),
         paste: after(paste),
         selectOptions: after(selectOptions),
-        deselectOptions: after((widget: Gtk.Widget, values: number | number[]): Promise<void> =>
-            deselectOptions(state, widget, values),
-        ),
+        deselectOptions: after(deselectOptions),
         hover: after(hover),
         unhover: after(unhover),
         rotate: after(rotate),

@@ -42,6 +42,19 @@ describe("userEvent selection - FlowBox", () => {
     });
 });
 
+describe("userEvent deselection - populated containers", () => {
+    it("deselects a selected child and leaves an unselected one alone", async () => {
+        const refs = await renderChildren(GtkNs.SelectionMode.MULTIPLE);
+        const flowBox = refs[0]?.current?.getParent() as Gtk.FlowBox;
+        await userEvent.selectOptions(flowBox, [0, 2]);
+        expect(getSelection(refs)).toEqual([true, false, true]);
+        await userEvent.deselectOptions(flowBox, 2);
+        expect(getSelection(refs)).toEqual([true, false, false]);
+        await userEvent.deselectOptions(flowBox, 1);
+        expect(getSelection(refs)).toEqual([true, false, false]);
+    });
+});
+
 describe("userEvent deselection - empty containers", () => {
     it("is a no-op on a list box with no rows", async () => {
         const ref = createRef<Gtk.ListBox>();
