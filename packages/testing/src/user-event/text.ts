@@ -1,9 +1,11 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import type { UserEventState } from "./state.js";
 import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable } from "../editable.js";
 import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
+import { keyboard } from "./keyboard.js";
 
 /** Options for `userEvent.type`. */
 type TypeOptions = {
@@ -16,6 +18,7 @@ type TypeOptions = {
 };
 
 const EDITABLE_REQUIRED = `expected editable widget (${formatRoleList(EDITABLE_ROLES)})`;
+const CLEAR_SEQUENCE = "{Control>}a{/Control}{Delete}";
 
 const insertEditableText = (widget: EditableTarget, text: string): void => {
     if (widget instanceof Gtk.TextView) {
@@ -58,16 +61,6 @@ const deleteSelection = (widget: EditableTarget): void => {
     }
 
     widget.deleteSelection();
-};
-
-const setEditableText = (widget: EditableTarget, text: string): void => {
-    if (widget instanceof Gtk.TextView) {
-        widget.getBuffer().setText(text, text.length);
-
-        return;
-    }
-
-    widget.setText(text);
 };
 
 const applyTextViewSelection = (widget: Gtk.TextView, start: number, end: number): void => {
@@ -147,15 +140,14 @@ const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<
         insertEditableText(editable, text);
     });
 
-/**
- * Replaces an editable widget's text with the empty string.
- *
- * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
- */
-const clear = (widget: Gtk.Widget): Promise<void> =>
-    runEditableEvent(widget, "Cannot clear element", (editable) => {
-        setEditableText(editable, "");
-    });
+const clear = async (state: UserEventState, widget: Gtk.Widget): Promise<void> => {
+    if (!isEditable(widget)) {
+        throw new Error(`Cannot clear element: ${EDITABLE_REQUIRED}`);
+    }
+
+    widget.grabFocus();
+    await keyboard(state, widget, CLEAR_SEQUENCE);
+};
 
 /**
  * Writes an editable widget's selected text to its clipboard, or the empty string when nothing is selected.

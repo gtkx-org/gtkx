@@ -37,8 +37,8 @@ type UserEvent = {
     tab: typeof tab;
     /** Focuses an editable widget, applies any initial selection, and inserts the text at the cursor. */
     type: typeof type;
-    /** Empties an editable widget's text. */
-    clear: typeof clear;
+    /** Selects an editable widget's whole text and deletes it, as Ctrl+A followed by Delete does. */
+    clear: (widget: Gtk.Widget) => Promise<void>;
     /** Writes an editable widget's current selection to the clipboard. */
     copy: typeof copy;
     /** Writes an editable widget's current selection to the clipboard and deletes it. */
@@ -47,8 +47,8 @@ type UserEvent = {
     paste: typeof paste;
     /** Selects the items at the given positions in a list, grid, or column view, a drop-down, or a list box. */
     selectOptions: typeof selectOptions;
-    /** Deselects the items at the given positions in a list view or list box. */
-    deselectOptions: typeof deselectOptions;
+    /** Deselects the items at those positions, toggling list box rows with Ctrl+Space as a user would. */
+    deselectOptions: (widget: Gtk.Widget, values: number | number[]) => Promise<void>;
     /** Emits a motion `enter` on the widget, adding a motion controller when it has none. */
     hover: typeof hover;
     /** Emits a motion `leave` on the widget, adding a motion controller when it has none. */
@@ -110,12 +110,14 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
         tripleClick: after(tripleClick),
         tab: after(tab),
         type: after(type),
-        clear: after(clear),
+        clear: after((widget: Gtk.Widget): Promise<void> => clear(state, widget)),
         copy: after(copy),
         cut: after(cut),
         paste: after(paste),
         selectOptions: after(selectOptions),
-        deselectOptions: after(deselectOptions),
+        deselectOptions: after((widget: Gtk.Widget, values: number | number[]): Promise<void> =>
+            deselectOptions(state, widget, values),
+        ),
         hover: after(hover),
         unhover: after(unhover),
         rotate: after(rotate),

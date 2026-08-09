@@ -1,11 +1,14 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import type { UserEventState } from "./state.js";
 import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
+import { keyboard } from "./keyboard.js";
 
 type CollectionWidget = Gtk.ListView | Gtk.GridView | Gtk.ColumnView;
-type ListBoxRowAction = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow) => void;
+type ListBoxRowAction = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow) => void | Promise<void>;
 
 const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
+const TOGGLE_ROW_SEQUENCE = "{Control>} {/Control}";
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
     return SELECTABLE_ROLES.has(widget.getAccessibleRole());
@@ -66,19 +69,22 @@ const selectListBoxRow = (_listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
     row.activate();
 };
 
-const unselectListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
-    listBox.unselectRow(row);
+const unselectListBoxRow = async (state: UserEventState, row: Gtk.ListBoxRow): Promise<void> => {
+    row.grabFocus();
+    await keyboard(state, row, TOGGLE_ROW_SEQUENCE);
 };
 
-const applyListBoxRows = (listBox: Gtk.ListBox, valueArray: number[], apply: ListBoxRowAction): void => {
+const applyListBoxRows = async (
+    listBox: Gtk.ListBox,
+    valueArray: number[],
+    apply: ListBoxRowAction,
+): Promise<void> => {
     for (const value of valueArray) {
         const row = listBox.getRowAtIndex(value);
 
-        if (!row) {
-            continue;
+        if (row) {
+            await apply(listBox, row);
         }
-
-        apply(listBox, row);
     }
 };
 
@@ -101,7 +107,7 @@ const selectInListView = (widget: CollectionWidget, valueArray: number[]): void 
     selectListViewItems(selectionModel, valueArray, !isMultiSelection);
 };
 
-const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
+const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void | Promise<void> => {
     if (!isSelectable(widget)) {
         throw new Error(`Cannot select options: expected selectable widget (${formatRoleList(SELECTABLE_ROLES)})`);
     }
@@ -110,16 +116,18 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
 
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
         selectDropDownOption(widget, valueArray);
-    } else if (widget instanceof Gtk.ListBox) {
-        applyListBoxRows(widget, valueArray, selectListBoxRow);
+
+        return undefined;
     }
+
+    return widget instanceof Gtk.ListBox ? applyListBoxRows(widget, valueArray, selectListBoxRow) : undefined;
 };
 
 const runSelectionEvent = (
     widget: Gtk.Widget,
     values: number | number[],
     inListView: (view: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]) => void,
-    byRole: (widget: Gtk.Widget, valueArray: number[]) => void,
+    byRole: (widget: Gtk.Widget, valueArray: number[]) => void | Promise<void>,
 ): Promise<void> =>
     wrapEvent(widget, () => {
         const valueArray = Array.isArray(values) ? values : [values];
@@ -130,7 +138,7 @@ const runSelectionEvent = (
             return;
         }
 
-        byRole(widget, valueArray);
+        return byRole(widget, valueArray);
     });
 
 /**
@@ -153,22 +161,21 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
     }
 };
 
-const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
+const deselectByRole = (state: UserEventState, widget: Gtk.Widget, valueArray: number[]): Promise<void> => {
     if (!(widget instanceof Gtk.ListBox)) {
         throw new TypeError("Cannot deselect options: only ListBox supports deselection");
     }
 
-    applyListBoxRows(widget, valueArray, unselectListBoxRow);
+    return applyListBoxRows(widget, valueArray, (_listBox, row) => unselectListBoxRow(state, row));
 };
 
-/**
- * Unselects the items at the given positions in a list, grid, or column view, or the rows at those
- * indices in a Gtk.ListBox.
- *
- * @throws When a view has no selection model, or when the widget is neither one of those views nor
- * a Gtk.ListBox.
- */
-const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
-    runSelectionEvent(widget, values, deselectInListView, deselectByRole);
+const deselectOptions = (
+    state: UserEventState,
+    widget: Gtk.Widget,
+    values: number | number[],
+): Promise<void> =>
+    runSelectionEvent(widget, values, deselectInListView, (target, valueArray) =>
+        deselectByRole(state, target, valueArray),
+    );
 
 export { selectOptions, deselectOptions };
