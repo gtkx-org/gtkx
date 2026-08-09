@@ -59,6 +59,9 @@ const getIndexSelector = (widget: Gtk.Widget): ((position: number) => void) | nu
     return typeof fn === "function" ? (fn as (position: number) => void).bind(widget) : null;
 };
 
+const hasIndexedChildren = (widget: Gtk.Widget): boolean =>
+    CHILD_AT_INDEX_GETTERS.some((getter) => typeof Reflect.get(widget, getter) === "function");
+
 const getChildAtIndex = (widget: Gtk.Widget, index: number): Gtk.Widget | null => {
     for (const getter of CHILD_AT_INDEX_GETTERS) {
         const fn: unknown = Reflect.get(widget, getter);
@@ -186,7 +189,7 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
 };
 
 const deselectByRole = (state: UserEventState, widget: Gtk.Widget, valueArray: number[]): Promise<void> => {
-    if (getChildAtIndex(widget, 0) === null) {
+    if (!hasIndexedChildren(widget)) {
         throw new TypeError("Cannot deselect options: the widget exposes no children to deselect by index");
     }
 

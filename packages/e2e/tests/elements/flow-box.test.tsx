@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GtkNs from "@gtkx/gi/gtk";
-import { GtkFlowBox, GtkFlowBoxChild, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkFlowBox, GtkFlowBoxChild, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { render, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
@@ -39,5 +39,19 @@ describe("userEvent selection - FlowBox", () => {
         const flowBox = refs[0]?.current?.getParent() as Gtk.FlowBox;
         await userEvent.selectOptions(flowBox, [0, 2]);
         expect(getSelection(refs)).toEqual([true, false, true]);
+    });
+});
+
+describe("userEvent deselection - empty containers", () => {
+    it("is a no-op on a list box with no rows", async () => {
+        const ref = createRef<Gtk.ListBox>();
+        await render(<GtkListBox ref={ref} selectionMode={GtkNs.SelectionMode.MULTIPLE} />);
+        await expect(userEvent.deselectOptions(ref.current as Gtk.ListBox, 0)).resolves.toBeUndefined();
+    });
+
+    it("is a no-op on a flow box with no children", async () => {
+        const ref = createRef<Gtk.FlowBox>();
+        await render(<GtkFlowBox ref={ref} selectionMode={GtkNs.SelectionMode.MULTIPLE} />);
+        await expect(userEvent.deselectOptions(ref.current as Gtk.FlowBox, 0)).resolves.toBeUndefined();
     });
 });
