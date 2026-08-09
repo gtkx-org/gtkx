@@ -1,10 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { getOrCreateControllers, isSynthesizedController, queryAllControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
-
-const CHILD_AT_INDEX_GETTERS = ["getRowAtIndex", "getChildAtIndex"];
-const SELECTED_PROBE = "isSelected";
-const CHILD_SELECTORS = ["selectRow", "selectChild"];
+import { hasIndexedChildren, hasWidgetMethod, selectContainerChild, SELECTED_PROBE } from "./indexed-children.js";
 
 const getPressPoint = (widget: Gtk.Widget): { x: number; y: number } => {
     const width = widget.getWidth();
@@ -43,11 +40,8 @@ const emitClickSequence = (widget: Gtk.Widget, target: Gtk.Widget, nPress: numbe
         }
     });
 
-const hasWidgetMethod = (widget: Gtk.Widget, name: string): boolean =>
-    typeof Reflect.get(widget, name) === "function";
-
 const isIndexedContainer = (widget: Gtk.Widget | null): boolean =>
-    widget !== null && CHILD_AT_INDEX_GETTERS.some((getter) => hasWidgetMethod(widget, getter));
+    widget !== null && hasIndexedChildren(widget);
 
 const isActivatableChild = (widget: Gtk.Widget): boolean =>
     hasWidgetMethod(widget, SELECTED_PROBE) && isIndexedContainer(widget.getParent());
@@ -79,18 +73,6 @@ const isSingleClickActivating = (container: Gtk.Widget): boolean => {
     const fn: unknown = Reflect.get(container, "getActivateOnSingleClick");
 
     return typeof fn !== "function" || (fn as () => boolean).call(container);
-};
-
-const selectContainerChild = (container: Gtk.Widget, child: Gtk.Widget): void => {
-    for (const setter of CHILD_SELECTORS) {
-        const fn: unknown = Reflect.get(container, setter);
-
-        if (typeof fn === "function") {
-            (fn as (selected: Gtk.Widget) => void).call(container, child);
-
-            return;
-        }
-    }
 };
 
 const activateContainerChild = (child: Gtk.Widget): void => {

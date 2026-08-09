@@ -1,20 +1,22 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { formatRoleList } from "../role-helpers.js";
 import { wrapEvent } from "./event-wrapper.js";
-import { keyboard } from "./keyboard.js";
-import { createInitialState } from "./state.js";
+import {
+    getChildAtIndex,
+    hasIndexedChildren,
+    isChildSelected,
+    selectContainerChild,
+    unselectContainerChild,
+} from "./indexed-children.js";
 
 type CollectionWidget = Gtk.ListView | Gtk.GridView | Gtk.ColumnView;
-type IndexedChildAction = (child: Gtk.Widget) => void | Promise<void>;
+type IndexedChildAction = (container: Gtk.Widget, child: Gtk.Widget) => void;
 
 const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set([
     Gtk.AccessibleRole.COMBO_BOX,
     Gtk.AccessibleRole.GRID,
     Gtk.AccessibleRole.LIST,
 ]);
-
-const CHILD_AT_INDEX_GETTERS = ["getRowAtIndex", "getChildAtIndex"];
-const TOGGLE_ROW_SEQUENCE = "{Control>} {/Control}";
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
     return SELECTABLE_ROLES.has(widget.getAccessibleRole());
@@ -59,21 +61,6 @@ const getIndexSelector = (widget: Gtk.Widget): ((position: number) => void) | nu
     return typeof fn === "function" ? (fn as (position: number) => void).bind(widget) : null;
 };
 
-const hasIndexedChildren = (widget: Gtk.Widget): boolean =>
-    CHILD_AT_INDEX_GETTERS.some((getter) => typeof Reflect.get(widget, getter) === "function");
-
-const getChildAtIndex = (widget: Gtk.Widget, index: number): Gtk.Widget | null => {
-    for (const getter of CHILD_AT_INDEX_GETTERS) {
-        const fn: unknown = Reflect.get(widget, getter);
-
-        if (typeof fn === "function") {
-            return (fn as (position: number) => Gtk.Widget | null).call(widget, index) ?? null;
-        }
-    }
-
-    return null;
-};
-
 const selectDropDownOption = (widget: Gtk.Widget, valueArray: number[]): void => {
     const setSelected = getIndexSelector(widget);
 
@@ -92,35 +79,22 @@ const selectDropDownOption = (widget: Gtk.Widget, valueArray: number[]): void =>
     }
 };
 
-const selectChildRow = (row: Gtk.Widget): void => {
-    row.activate();
+const selectChildRow = (container: Gtk.Widget, child: Gtk.Widget): void => {
+    selectContainerChild(container, child);
 };
 
-const isChildSelected = (row: Gtk.Widget): boolean => {
-    const fn: unknown = Reflect.get(row, "isSelected");
-
-    return typeof fn === "function" && (fn as () => boolean).call(row);
-};
-
-const unselectChildRow = async (row: Gtk.Widget): Promise<void> => {
-    if (!isChildSelected(row)) {
-        return;
+const unselectChildRow = (container: Gtk.Widget, child: Gtk.Widget): void => {
+    if (isChildSelected(child)) {
+        unselectContainerChild(container, child);
     }
-
-    row.grabFocus();
-    await keyboard(createInitialState(), row, TOGGLE_ROW_SEQUENCE);
 };
 
-const applyIndexedChildren = async (
-    widget: Gtk.Widget,
-    valueArray: number[],
-    apply: IndexedChildAction,
-): Promise<void> => {
+const applyIndexedChildren = (widget: Gtk.Widget, valueArray: number[], apply: IndexedChildAction): void => {
     for (const value of valueArray) {
         const child = getChildAtIndex(widget, value);
 
         if (child) {
-            await apply(child);
+            apply(widget, child);
         }
     }
 };
@@ -144,7 +118,7 @@ const selectInListView = (widget: CollectionWidget, valueArray: number[]): void 
     selectListViewItems(selectionModel, valueArray, !isMultiSelection);
 };
 
-const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void | Promise<void> => {
+const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     if (!isSelectable(widget)) {
         throw new Error(`Cannot select options: expected selectable widget (${formatRoleList(SELECTABLE_ROLES)})`);
     }
@@ -154,21 +128,21 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void | Promise<
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
         selectDropDownOption(widget, valueArray);
 
-        return undefined;
+        return;
     }
 
     if (!hasIndexedChildren(widget)) {
         throw new TypeError("Cannot select options: the widget exposes no children to select by index");
     }
 
-    return applyIndexedChildren(widget, valueArray, selectChildRow);
+    applyIndexedChildren(widget, valueArray, selectChildRow);
 };
 
 const runSelectionEvent = (
     widget: Gtk.Widget,
     values: number | number[],
     inListView: (view: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]) => void,
-    byRole: (widget: Gtk.Widget, valueArray: number[]) => void | Promise<void>,
+    byRole: (widget: Gtk.Widget, valueArray: number[]) => void,
 ): Promise<void> =>
     wrapEvent(widget, () => {
         const valueArray = Array.isArray(values) ? values : [values];
@@ -179,7 +153,7 @@ const runSelectionEvent = (
             return;
         }
 
-        return byRole(widget, valueArray);
+        byRole(widget, valueArray);
     });
 
 /**
@@ -202,12 +176,12 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
     }
 };
 
-const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): Promise<void> => {
+const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     if (!hasIndexedChildren(widget)) {
         throw new TypeError("Cannot deselect options: the widget exposes no children to deselect by index");
     }
 
-    return applyIndexedChildren(widget, valueArray, unselectChildRow);
+    applyIndexedChildren(widget, valueArray, unselectChildRow);
 };
 
 /**
