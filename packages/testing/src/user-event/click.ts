@@ -69,21 +69,13 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
 };
 
 /**
- * Presses and releases a Gtk.Button, flips a Gtk.Switch, and otherwise activates the widget,
- * falling back to a click gesture on the nearest Gtk.Button or click-gesture ancestor when
- * activation does nothing. A widget with the label role is never activated.
+ * Presses and releases a Gtk.Button, and otherwise activates the widget, falling back to a click
+ * gesture on the nearest Gtk.Button or click-gesture ancestor when activation does nothing. A
+ * widget with the label role is never activated.
  */
 const click = async (widget: Gtk.Widget): Promise<void> => {
     if (widget instanceof Gtk.Button) {
         await emitClickSequence(widget, widget, 1);
-
-        return;
-    }
-
-    if (widget instanceof Gtk.Switch) {
-        await wrapEvent(widget, () => {
-            widget.setActive(!widget.getActive());
-        });
 
         return;
     }

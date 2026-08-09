@@ -62,8 +62,7 @@ const selectDropDownOption = (widget: Gtk.Widget, valueArray: number[]): void =>
     widget.setSelected(selection);
 };
 
-const selectListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
-    listBox.selectRow(row);
+const selectListBoxRow = (_listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
     row.activate();
 };
 
