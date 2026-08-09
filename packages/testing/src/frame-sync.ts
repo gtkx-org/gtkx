@@ -36,6 +36,35 @@ const runWhenSized = (widget: Gtk.Widget, finish: () => void): void => {
     });
 };
 
+const runOnNextFrame = (widget: Gtk.Widget, finish: () => void): void => {
+    let tickId = 0;
+
+    const fallback = setTimeout(() => {
+        widget.removeTickCallback(tickId);
+        finish();
+    }, CLOCK_STALL_FALLBACK_MS);
+
+    tickId = widget.addTickCallback(() => {
+        clearTimeout(fallback);
+        finish();
+
+        return GLib.SOURCE_REMOVE;
+    });
+};
+
+const scheduleNextFrame = (widget: Gtk.Widget): Promise<void> =>
+    new Promise((resolve) => {
+        const finish = once(resolve);
+
+        if (widget.getFrameClock() == null) {
+            queueMicrotask(finish);
+
+            return;
+        }
+
+        runOnNextFrame(widget, finish);
+    });
+
 const scheduleAfterLayout = (widget: Gtk.Widget | null, callback: () => void): void => {
     const finish = once(callback);
 
@@ -48,4 +77,4 @@ const scheduleAfterLayout = (widget: Gtk.Widget | null, callback: () => void): v
     runWhenSized(widget, finish);
 };
 
-export { scheduleAfterLayout };
+export { scheduleAfterLayout, scheduleNextFrame };
