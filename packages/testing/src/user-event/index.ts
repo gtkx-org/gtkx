@@ -45,9 +45,12 @@ type UserEvent = {
     cut: typeof cut;
     /** Inserts the given text, or the clipboard's text, at an editable widget's cursor. */
     paste: typeof paste;
-    /** Selects the items at the given positions in a list, grid, or column view, a drop-down, or a list box. */
+    /**
+     * Selects the items at those positions in a view or drop-down, or activates the indexed children of
+     * a list box or flow box.
+     */
     selectOptions: typeof selectOptions;
-    /** Deselects the items at those positions, toggling list box rows with Ctrl+Space as a user would. */
+    /** Deselects the items at those positions, toggling list box and flow box children with Ctrl+Space. */
     deselectOptions: (widget: Gtk.Widget, values: number | number[]) => Promise<void>;
     /** Emits a motion `enter` on the widget, adding a motion controller when it has none. */
     hover: typeof hover;
