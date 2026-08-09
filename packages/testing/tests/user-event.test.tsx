@@ -448,7 +448,22 @@ describe("userEvent.clear error handling", () => {
         );
 
         const buffer = view.getBuffer();
-        expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("prompt");
+        expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("erasable prompt");
+    });
+
+    it("throws when a handler blocks the deletion, without reporting success", async () => {
+        await render(<GtkEntry text="abc" />);
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+
+        entry.connect("delete-text", () => {
+            GObject.signalStopEmissionByName(entry, "delete-text");
+        });
+
+        await expect(userEvent.clear(entry)).rejects.toThrow(
+            "Cannot clear element: the widget refuses to delete part of its text",
+        );
+
+        expect(editableText(entry)).toBe("abc");
     });
 });
 
@@ -564,6 +579,12 @@ describe("userEvent.deselectOptions", () => {
 
             await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow(
                 "Cannot deselect options: the widget exposes no children to deselect by index",
+            );
+        });
+
+        it("throws when element is not selectable", async () => {
+            await expect(actOnPlainButton((button) => userEvent.deselectOptions(button, 0))).rejects.toThrow(
+                "Cannot deselect options: expected selectable widget (COMBO_BOX, GRID, or LIST)",
             );
         });
     });

@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import type { UserEventState } from "./state.js";
-import { emitPress, emitRelease } from "./click.js";
+import { emitClickPhase } from "./click.js";
 import { queryAllControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 
@@ -18,22 +18,22 @@ const applyPointerInput = (widget: Gtk.Widget, state: UserEventState, input: Poi
     const controllers = queryAllControllers(widget, Gtk.GestureClick);
 
     if (CLICK_INPUTS.has(input)) {
-        emitPress(widget, controllers, 1);
-        emitRelease(widget, controllers, 1);
+        emitClickPhase(widget, controllers, 1, "pressed");
+        emitClickPhase(widget, controllers, 1, "released");
         state.isMouseLeftDown = false;
 
         return;
     }
 
     if (PRESS_INPUTS.has(input) && !state.isMouseLeftDown) {
-        emitPress(widget, controllers, 1);
+        emitClickPhase(widget, controllers, 1, "pressed");
         state.isMouseLeftDown = true;
 
         return;
     }
 
     if (RELEASE_INPUTS.has(input) && state.isMouseLeftDown) {
-        emitRelease(widget, controllers, 1);
+        emitClickPhase(widget, controllers, 1, "released");
         state.isMouseLeftDown = false;
     }
 };

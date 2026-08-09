@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable } from "../editable.js";
+import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable, readEditableText } from "../editable.js";
 import { formatRoleList } from "../role-helpers.js";
 import { getWidgetSelection } from "../widget-accessible-properties.js";
 import { callBooleanGetter } from "../widget-getters.js";
@@ -18,6 +18,7 @@ type TypeOptions = {
 };
 
 const EDITABLE_REQUIRED = `expected editable widget (${formatRoleList(EDITABLE_ROLES)})`;
+const CLEAR_REFUSED = "Cannot clear element: the widget refuses to delete part of its text";
 
 const insertEditableText = (widget: EditableTarget, text: string): void => {
     if (widget instanceof Gtk.TextView) {
@@ -158,26 +159,36 @@ const hasNonEditableChar = (iter: Gtk.TextIter, isDefaultEditable: boolean): boo
 const hasProtectedText = (widget: EditableTarget): boolean =>
     widget instanceof Gtk.TextView && hasNonEditableChar(widget.getBuffer().getStartIter(), widget.getEditable());
 
+const requireClearableText = (editable: EditableTarget): void => {
+    if (!isWidgetEditable(editable)) {
+        throw new Error("Cannot clear element: the widget is not editable");
+    }
+
+    if (hasProtectedText(editable)) {
+        throw new Error(CLEAR_REFUSED);
+    }
+};
+
+const clearEditable = (editable: EditableTarget): void => {
+    requireClearableText(editable);
+    editable.grabFocus();
+    deleteAllText(editable);
+
+    if (readEditableText(editable) !== "") {
+        throw new Error(CLEAR_REFUSED);
+    }
+};
+
 /**
  * Focuses an editable widget and deletes its whole text through the widget's own editing API, so the
- * deletion emits the signals an edit made by hand emits.
+ * deletion emits the signals an edit made by hand emits. Text a tag protects is detected before the
+ * deletion runs, leaving such a widget untouched.
  *
- * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView, when it refuses edits, or
- * when part of its text survives the deletion because a tag protects it.
+ * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView, when it refuses edits, when
+ * a tag protects part of its text, or when part of its text survives the deletion.
  */
 const clear = (widget: Gtk.Widget): Promise<void> =>
-    runEditableEvent(widget, "Cannot clear element", (editable) => {
-        if (!isWidgetEditable(editable)) {
-            throw new Error("Cannot clear element: the widget is not editable");
-        }
-
-        editable.grabFocus();
-        deleteAllText(editable);
-
-        if (hasProtectedText(editable)) {
-            throw new Error("Cannot clear element: the widget refuses to delete part of its text");
-        }
-    });
+    runEditableEvent(widget, "Cannot clear element", clearEditable);
 
 /**
  * Writes an editable widget's selected text to its clipboard, or the empty string when nothing is selected.

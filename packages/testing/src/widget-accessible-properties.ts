@@ -248,13 +248,18 @@ const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
     );
 };
 
+const comboBoxDisplayValue = (widget: Gtk.Widget): string | null =>
+    widget instanceof Gtk.DropDown
+        ? (dropDownFaceText(widget) ?? getWidgetValueText(widget))
+        : (getWidgetValueText(widget) ?? dropDownFaceText(widget));
+
 const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
     if (EDITABLE_ROLES.has(widget.getAccessibleRole()) && isEditable(widget)) {
         return readEditableText(widget);
     }
 
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.COMBO_BOX) {
-        return readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT) ?? dropDownFaceText(widget);
+        return comboBoxDisplayValue(widget);
     }
 
     return null;

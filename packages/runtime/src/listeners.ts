@@ -1,4 +1,4 @@
-import { isSignalHandlerConnected, type SignalHandler } from "./signal.js";
+import { isSignalHandlerConnected, type SignalHandler, untrackConnection } from "./signal.js";
 
 /**
  * The connect and disconnect surface {@link onSignal}, {@link onceSignal} and {@link offSignal}
@@ -81,6 +81,7 @@ function onceSignal(instance: SignalConnectable, signal: string, handler: Signal
 
     const wrapped: SignalHandler = (...args) => {
         untrackHandlerId(instance, signal, handlerId);
+        untrackConnection(instance, signal, handlerId);
         instance.disconnect(handlerId);
 
         return handler(...args);
@@ -107,6 +108,7 @@ function offSignal(instance: SignalConnectable, signal: string, handler: SignalH
     }
 
     untrackHandlerId(instance, signal, handlerId);
+    untrackConnection(instance, signal, handlerId);
 
     if (!isSignalHandlerConnected(instance, handlerId)) {
         return;

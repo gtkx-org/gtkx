@@ -4,6 +4,7 @@ import { callBooleanGetter, getCallableMethod, hasWidgetMethod } from "../widget
 const CHILD_AT_INDEX_GETTERS = ["getRowAtIndex", "getChildAtIndex"];
 const CHILD_SELECTORS = ["selectRow", "selectChild"];
 const CHILD_DESELECTORS = ["unselectRow", "unselectChild"];
+const SELECTED_CHILD_GETTERS = ["getSelectedRows", "getSelectedChildren"];
 const SELECTED_PROBE = "isSelected";
 
 const hasIndexedChildren = (widget: Gtk.Widget): boolean =>
@@ -43,17 +44,23 @@ const unselectContainerChild = (container: Gtk.Widget, child: Gtk.Widget): void 
 
 const isChildSelected = (child: Gtk.Widget): boolean => callBooleanGetter(child, SELECTED_PROBE) ?? false;
 
-const unselectOtherChildren = (container: Gtk.Widget, child: Gtk.Widget): void => {
-    let index = 0;
-    let candidate = getChildAtIndex(container, index);
+const getSelectedChildren = (container: Gtk.Widget): Gtk.Widget[] => {
+    for (const getter of SELECTED_CHILD_GETTERS) {
+        const fn = getCallableMethod<[], Gtk.Widget[]>(container, getter);
 
-    while (candidate !== null) {
-        if (candidate !== child && isChildSelected(candidate)) {
-            unselectContainerChild(container, candidate);
+        if (fn) {
+            return fn();
         }
+    }
 
-        index++;
-        candidate = getChildAtIndex(container, index);
+    return [];
+};
+
+const unselectOtherChildren = (container: Gtk.Widget, child: Gtk.Widget): void => {
+    for (const selected of getSelectedChildren(container)) {
+        if (selected !== child) {
+            unselectContainerChild(container, selected);
+        }
     }
 };
 

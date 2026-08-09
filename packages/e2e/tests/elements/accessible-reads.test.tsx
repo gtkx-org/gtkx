@@ -1,15 +1,18 @@
 import type * as Adw from "@gtkx/gi/adw";
+import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwComboRow, AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import {
     GtkAdjustment,
     GtkBox,
+    GtkDropDown,
     GtkEntry,
     GtkInscription,
     GtkLabel,
     GtkProgressBar,
     GtkScale,
     GtkScrollbar,
+    GtkSignalListItemFactory,
     GtkStringList,
     GtkTextView,
     GtkToggleButton,
@@ -24,6 +27,21 @@ const expectLabelSelection = async (text: string, range: [number, number], expec
     const label = ref.current as Gtk.Label;
     label.selectRegion(range[0], range[1]);
     expect(label).toHaveSelection(expected);
+};
+
+const setUpItemLabel = (object: GObject.Object): void => {
+    if (object instanceof Gtk.ListItem) {
+        object.setChild(new Gtk.Label());
+    }
+};
+
+const bindItemLabel = (object: GObject.Object): void => {
+    const child = object instanceof Gtk.ListItem ? object.getChild() : null;
+    const item = object instanceof Gtk.ListItem ? object.getItem() : null;
+
+    if (child instanceof Gtk.Label && item instanceof Gtk.StringObject) {
+        child.setLabel(`Language: ${item.getString()}`);
+    }
 };
 
 const renderPlaceholderEntry = async (rendered: string, accessible: string): Promise<Gtk.Entry | null> => {
@@ -60,6 +78,21 @@ describe("accessible reads beyond the concrete classes", () => {
         );
 
         expect(screen.getByDisplayValue("alpha")).toBeDefined();
+    });
+
+    it("reads the face a drop-down renders rather than the item behind it", async () => {
+        const ref = createRef<Gtk.DropDown>();
+
+        await render(
+            <GtkDropDown
+                ref={ref}
+                model={<GtkStringList strings={["English", "French"]} />}
+                factory={<GtkSignalListItemFactory onSetup={setUpItemLabel} onBind={bindItemLabel} />}
+            />,
+        );
+
+        expect(screen.getByDisplayValue("Language: English")).toBe(ref.current);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.VALUE_TEXT, "English");
     });
 });
 

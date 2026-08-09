@@ -109,16 +109,39 @@ const trackConnection = (instance: object, signal: string, handlerId: number): v
     handlerIds.add(handlerId);
 };
 
-const hasLiveConnection = (instance: object, handlerIds: Set<number>): boolean => {
-    for (const handlerId of handlerIds) {
-        if (isSignalHandlerConnected(instance, handlerId)) {
-            return true;
-        }
+const untrackConnection = (instance: object, signal: string, handlerId: number): void => {
+    const bySignal = connectionTable.get(instance);
 
-        handlerIds.delete(handlerId);
+    if (bySignal === undefined) {
+        return;
     }
 
-    return false;
+    const name = getSignalBaseName(signal);
+    const handlerIds = bySignal.get(name);
+
+    if (handlerIds === undefined) {
+        return;
+    }
+
+    handlerIds.delete(handlerId);
+
+    if (handlerIds.size === 0) {
+        bySignal.delete(name);
+    }
+};
+
+const hasLiveConnection = (instance: object, handlerIds: Set<number>): boolean => {
+    let isLive = false;
+
+    for (const handlerId of handlerIds) {
+        if (isSignalHandlerConnected(instance, handlerId)) {
+            isLive = true;
+        } else {
+            handlerIds.delete(handlerId);
+        }
+    }
+
+    return isLive;
 };
 
 function hasSignalListener(instance: object, signals?: string[]): boolean {
@@ -239,5 +262,6 @@ export {
     emitSignal,
     hasSignalListener,
     isSignalHandlerConnected,
+    untrackConnection,
     type SignalHandler,
 };
