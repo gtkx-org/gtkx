@@ -19,7 +19,6 @@ type WidgetValue = {
     text: string | null;
 };
 
-type ValueTriplet = { now: number | null; min: number | null; max: number | null };
 type CheckedState = "checked" | "unchecked" | "mixed";
 
 const EDITABLE_TEXT_GETTER = "getText";
@@ -398,35 +397,12 @@ const getWidgetDescription = (widget: Gtk.Widget): string | null => {
     return readAccessibleString(widget, Gtk.AccessibleProperty.DESCRIPTION);
 };
 
-const adjustmentValue = (adjustment: Gtk.Adjustment): ValueTriplet => ({
-    now: adjustment.getValue(),
-    min: adjustment.getLower(),
-    max: adjustment.getUpper(),
+const getWidgetValue = (widget: Gtk.Widget): WidgetValue => ({
+    now: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_NOW),
+    min: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MIN),
+    max: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MAX),
+    text: readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT),
 });
-
-const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
-    if (widget instanceof Gtk.ScaleButton) {
-        return adjustmentValue(widget.getAdjustment());
-    }
-
-    return null;
-};
-
-const getWidgetValue = (widget: Gtk.Widget): WidgetValue => {
-    const text = readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT);
-    const live = getWidgetLiveValue(widget);
-
-    if (live) {
-        return { ...live, text };
-    }
-
-    return {
-        now: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_NOW),
-        min: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MIN),
-        max: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MAX),
-        text,
-    };
-};
 
 const getWidgetOwnLabel = (widget: Gtk.Widget): string | null => {
     return readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);

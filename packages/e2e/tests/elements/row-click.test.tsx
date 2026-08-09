@@ -3,7 +3,7 @@ import * as GtkNs from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkListBox, GtkListBoxRow } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const ROW_COUNT = 5;
 
@@ -30,5 +30,25 @@ describe("userEvent click - row descendants", () => {
         expect(getSelection(refs)).toEqual([false, false, false, true, false]);
         await userEvent.click(screen.getByText("Row 0"));
         expect(getSelection(refs)).toEqual([true, false, false, false, false]);
+    });
+});
+
+describe("userEvent click - gesture-driven widgets", () => {
+    it("fires a click gesture the widget itself carries", async () => {
+        const ref = createRef<Gtk.Box>();
+
+        await render(
+            <GtkBox ref={ref} orientation={GtkNs.Orientation.VERTICAL}>
+                <GtkLabel label="content" />
+            </GtkBox>,
+        );
+
+        const box = ref.current as Gtk.Box;
+        const gesture = new GtkNs.GestureClick();
+        const onPressed = vi.fn();
+        gesture.on("pressed", onPressed);
+        box.addController(gesture);
+        await userEvent.click(box);
+        expect(onPressed).toHaveBeenCalled();
     });
 });

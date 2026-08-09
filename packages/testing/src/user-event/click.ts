@@ -70,6 +70,9 @@ const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
     return null;
 };
 
+const isSelfClickTarget = (widget: Gtk.Widget): boolean =>
+    widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL && isClickTarget(widget);
+
 const deliverClick = (widget: Gtk.Widget, target: Gtk.Widget): Promise<void> => {
     if (isActivatableChild(target)) {
         return wrapEvent(widget, () => {
@@ -111,7 +114,7 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
         return;
     }
 
-    const target = findClickableAncestor(widget);
+    const target = isSelfClickTarget(widget) ? widget : findClickableAncestor(widget);
 
     if (target) {
         await deliverClick(widget, target);
