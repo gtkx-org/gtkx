@@ -240,11 +240,12 @@ const getWidgetName = (widget: Gtk.Widget): string | null => {
 };
 
 const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
-    if (!EDITABLE_ROLES.has(widget.getAccessibleRole()) || !(widget instanceof Gtk.Editable)) {
+    if (!EDITABLE_ROLES.has(widget.getAccessibleRole())) {
         return null;
     }
 
-    const fromGetter = callStringGetter(widget, "getPlaceholderText");
+    const fromAccessible = readAccessibleString(widget, Gtk.AccessibleProperty.PLACEHOLDER);
+    const fromGetter = fromAccessible ?? callStringGetter(widget, "getPlaceholderText");
 
     if (fromGetter !== null) {
         return fromGetter;
@@ -261,7 +262,7 @@ const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
     }
 
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.COMBO_BOX) {
-        return dropDownFaceText(widget);
+        return readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT) ?? dropDownFaceText(widget);
     }
 
     return null;
@@ -301,23 +302,33 @@ const readTextViewSelection = (view: Gtk.TextView): string | null => {
     return hasSelection ? buffer.getText(start, end, true) : null;
 };
 
-const readEditableSelection = (editable: Gtk.Editable): string | null => {
-    const [hasSelection, start, end] = editable.getSelectionBounds();
+const sliceSelectedText = (widget: Gtk.Widget, start: number, end: number): string | null => {
+    const chars: unknown = Reflect.get(widget, "getChars");
 
-    return hasSelection ? editable.getChars(start, end) : null;
-};
-
-const getWidgetSelection = (widget: Gtk.Widget): string | null => {
-    if (widget instanceof Gtk.TextView) {
-        return readTextViewSelection(widget);
+    if (typeof chars === "function") {
+        return (chars as (from: number, to: number) => string | null).call(widget, start, end) ?? null;
     }
 
-    if (widget instanceof Gtk.Editable) {
-        return readEditableSelection(widget);
+    const text = callStringGetter(widget, "getText");
+
+    /* eslint-disable-next-line @typescript-eslint/no-misused-spread -- bounds are code point offsets */
+    return text === null ? null : [...text].slice(start, end).join("");
+};
+
+const readBoundedSelection = (widget: Gtk.Widget): string | null => {
+    const bounds: unknown = Reflect.get(widget, "getSelectionBounds");
+
+    if (typeof bounds !== "function") {
+        return null;
     }
 
-    return null;
+    const [hasSelection, start, end] = (bounds as () => [boolean, number, number]).call(widget);
+
+    return hasSelection ? sliceSelectedText(widget, start, end) : null;
 };
+
+const getWidgetSelection = (widget: Gtk.Widget): string | null =>
+    widget instanceof Gtk.TextView ? readTextViewSelection(widget) : readBoundedSelection(widget);
 
 const checkedFromActive = (isActive: boolean): CheckedState => (isActive ? "checked" : "unchecked");
 
