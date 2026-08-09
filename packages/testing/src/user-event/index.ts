@@ -47,11 +47,11 @@ type UserEvent = {
     /** Inserts the given text, or the clipboard's text, at an editable widget's cursor. */
     paste: typeof paste;
     /**
-     * Selects the items at those positions in a view or drop-down, or activates the indexed children of
-     * a list box or flow box.
+     * Selects the items at those positions in a view or drop-down, or selects the indexed children of
+     * a list box or flow box through their container, without activating them.
      */
     selectOptions: typeof selectOptions;
-    /** Deselects the items at those positions, toggling list box and flow box children with Ctrl+Space. */
+    /** Unselects the items at those positions, leaving list box and flow box children unactivated. */
     deselectOptions: typeof deselectOptions;
     /** Emits a motion `enter` on the widget, adding a motion controller when it has none. */
     hover: typeof hover;
