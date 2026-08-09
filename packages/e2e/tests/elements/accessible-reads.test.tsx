@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwComboRow, AdwPreferencesGroup } from "@gtkx/jsx/adw";
-import { GtkBox, GtkLabel, GtkStringList, GtkTextView, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkInscription, GtkLabel, GtkStringList, GtkTextView, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -54,5 +54,19 @@ describe("indeterminate states match neither boolean", () => {
 
         expect(screen.queryAllByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: false })).toHaveLength(0);
         expect(screen.queryAllByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: true })).toHaveLength(0);
+    });
+});
+
+describe("inscriptions stay discoverable by text", () => {
+    it("finds one whose text came from the text prop, and one from markup", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkInscription text="glyph name" />
+                <GtkInscription markup="<b>bold name</b>" />
+            </GtkBox>,
+        );
+
+        expect(screen.getByText("glyph name", { as: Gtk.Inscription })).toBeDefined();
+        expect(screen.getByText("bold name", { as: Gtk.Inscription })).toBeDefined();
     });
 });
