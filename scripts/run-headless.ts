@@ -12,6 +12,12 @@ const HEADLESS_ENV = {
     ALSOFT_LOGLEVEL: "0",
 };
 
+const spawnInOwnProcessGroup = (command: string, args: string[], env: NodeJS.ProcessEnv): ChildProcess =>
+    spawnWithParentDeathSignal("timeout", ["--preserve-status", "0", command, ...args], {
+        stdio: "inherit",
+        env,
+    });
+
 const waitForExit = (child: ChildProcess): Promise<number> =>
     new Promise((resolve) => {
         child.once("exit", (code, signal) => {
@@ -38,13 +44,10 @@ const runHeadless = async (): Promise<void> => {
     const requiresNightly = rawArgs.includes("+nightly");
     const args = rawArgs.filter((arg) => arg !== "+nightly");
 
-    const child = spawnWithParentDeathSignal("wlheadless-run", ["-c", "weston", "--", command, ...args], {
-        stdio: "inherit",
-        env: {
-            ...process.env,
-            ...(requiresNightly && { RUSTUP_TOOLCHAIN: RUST_NIGHTLY }),
-            ...HEADLESS_ENV,
-        },
+    const child = spawnInOwnProcessGroup("wlheadless-run", ["-c", "weston", "--", command, ...args], {
+        ...process.env,
+        ...(requiresNightly && { RUSTUP_TOOLCHAIN: RUST_NIGHTLY }),
+        ...HEADLESS_ENV,
     });
 
     process.exitCode = await waitForExit(child);

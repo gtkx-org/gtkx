@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { callBooleanGetter, getWidgetMethod, hasWidgetMethod } from "../widget-getters.js";
+import { callBooleanGetter, getCallableMethod, hasWidgetMethod } from "../widget-getters.js";
 
 const CHILD_AT_INDEX_GETTERS = ["getRowAtIndex", "getChildAtIndex"];
 const CHILD_SELECTORS = ["selectRow", "selectChild"];
@@ -11,10 +11,10 @@ const hasIndexedChildren = (widget: Gtk.Widget): boolean =>
 
 const getChildAtIndex = (widget: Gtk.Widget, index: number): Gtk.Widget | null => {
     for (const getter of CHILD_AT_INDEX_GETTERS) {
-        const fn = getWidgetMethod(widget, getter);
+        const fn = getCallableMethod<[number], Gtk.Widget | null>(widget, getter);
 
-        if (typeof fn === "function") {
-            return (fn as (position: number) => Gtk.Widget | null).call(widget, index) ?? null;
+        if (fn) {
+            return fn(index) ?? null;
         }
     }
 
@@ -23,10 +23,10 @@ const getChildAtIndex = (widget: Gtk.Widget, index: number): Gtk.Widget | null =
 
 const applyChildMethod = (container: Gtk.Widget, names: string[], child: Gtk.Widget): void => {
     for (const name of names) {
-        const fn = getWidgetMethod(container, name);
+        const fn = getCallableMethod<[Gtk.Widget], unknown>(container, name);
 
-        if (typeof fn === "function") {
-            (fn as (target: Gtk.Widget) => void).call(container, child);
+        if (fn) {
+            fn(child);
 
             return;
         }

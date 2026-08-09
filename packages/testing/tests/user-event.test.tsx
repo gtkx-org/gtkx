@@ -21,6 +21,9 @@ import {
     GtkListBox,
     GtkListBoxRow,
     GtkSwitch,
+    GtkTextBuffer,
+    GtkTextTag,
+    GtkTextView,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { describe, expect, it, vi } from "vitest";
@@ -406,22 +409,46 @@ describe("userEvent.clear", () => {
         expect(edits).toEqual(["delete-text", "changed"]);
         expect(presses).toEqual([Gdk.KEY_Shift_L]);
     });
+});
 
-    describe("error handling", () => {
-        it("throws when element is not editable", async () => {
-            await expect(actOnPlainButton((button) => userEvent.clear(button))).rejects.toThrow(
-                "Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
-            );
-        });
+describe("userEvent.clear error handling", () => {
+    it("throws when element is not editable", async () => {
+        await expect(actOnPlainButton((button) => userEvent.clear(button))).rejects.toThrow(
+            "Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
+        );
+    });
 
-        it("throws when the widget refuses edits", async () => {
-            await render(<GtkEntry text="Locked" editable={false} />);
-            const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+    it("throws when the widget refuses edits", async () => {
+        await render(<GtkEntry text="Locked" editable={false} />);
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
 
-            await expect(userEvent.clear(entry)).rejects.toThrow(
-                "Cannot clear element: the widget is not editable",
-            );
-        });
+        await expect(userEvent.clear(entry)).rejects.toThrow(
+            "Cannot clear element: the widget is not editable",
+        );
+    });
+
+    it("throws when a tag protects part of a text view's text", async () => {
+        await render(
+            <GtkTextView
+                buffer={(
+                    <GtkTextBuffer>
+                        {"erasable "}
+                        <GtkTextTag name="keep" editable={false}>
+                            prompt
+                        </GtkTextTag>
+                    </GtkTextBuffer>
+                )}
+            />,
+        );
+
+        const view = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+
+        await expect(userEvent.clear(view)).rejects.toThrow(
+            "Cannot clear element: the widget refuses to delete part of its text",
+        );
+
+        const buffer = view.getBuffer();
+        expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("prompt");
     });
 });
 

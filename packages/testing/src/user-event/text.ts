@@ -141,26 +141,43 @@ const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<
 
 const isWidgetEditable = (widget: Gtk.Widget): boolean => callBooleanGetter(widget, "getEditable") ?? true;
 
+const hasNonEditableChar = (iter: Gtk.TextIter, isDefaultEditable: boolean): boolean => {
+    while (!iter.isEnd()) {
+        if (!iter.editable(isDefaultEditable)) {
+            return true;
+        }
+
+        if (!iter.forwardChar()) {
+            return false;
+        }
+    }
+
+    return false;
+};
+
+const hasProtectedText = (widget: EditableTarget): boolean =>
+    widget instanceof Gtk.TextView && hasNonEditableChar(widget.getBuffer().getStartIter(), widget.getEditable());
+
 /**
  * Focuses an editable widget and deletes its whole text through the widget's own editing API, so the
  * deletion emits the signals an edit made by hand emits.
  *
- * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView, or when it refuses edits.
+ * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView, when it refuses edits, or
+ * when part of its text survives the deletion because a tag protects it.
  */
-const clear = (widget: Gtk.Widget): Promise<void> => {
-    if (!isEditable(widget)) {
-        throw new Error(`Cannot clear element: ${EDITABLE_REQUIRED}`);
-    }
+const clear = (widget: Gtk.Widget): Promise<void> =>
+    runEditableEvent(widget, "Cannot clear element", (editable) => {
+        if (!isWidgetEditable(editable)) {
+            throw new Error("Cannot clear element: the widget is not editable");
+        }
 
-    if (!isWidgetEditable(widget)) {
-        throw new Error("Cannot clear element: the widget is not editable");
-    }
+        editable.grabFocus();
+        deleteAllText(editable);
 
-    return wrapEvent(widget, () => {
-        widget.grabFocus();
-        deleteAllText(widget);
+        if (hasProtectedText(editable)) {
+            throw new Error("Cannot clear element: the widget refuses to delete part of its text");
+        }
     });
-};
 
 /**
  * Writes an editable widget's selected text to its clipboard, or the empty string when nothing is selected.

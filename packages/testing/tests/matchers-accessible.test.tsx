@@ -2,12 +2,18 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkEntry, GtkExpander, GtkLabel, GtkListBox, GtkListBoxRow, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { describe, expect, it } from "vitest";
 import { render, screen } from "../src/index.js";
-import { expectRejection, renderLabel } from "./widget-fixtures.js";
+import { expectRejection, renderLabel, renderNamedBox } from "./widget-fixtures.js";
 
 const renderToggle = async (pressed?: Gtk.AccessibleTristate): Promise<Gtk.ToggleButton> => {
     await render(<GtkToggleButton name="toggle" label="Bold" accessiblePressed={pressed} />);
 
     return screen.findByName("toggle", { as: Gtk.ToggleButton });
+};
+
+const expectValueNowRejection = (widget: Gtk.Widget, message: RegExp): void => {
+    expectRejection(() => {
+        expect(widget).toHaveAccessibleProperty(Gtk.AccessibleProperty.VALUE_NOW, 5);
+    }, message);
 };
 
 const renderExpander = async (): Promise<Gtk.Expander> => {
@@ -118,6 +124,16 @@ describe("toHaveAccessibleProperty", () => {
         const box = await screen.findByName("shortcut");
         expect(box).toHaveAccessibleProperty(Gtk.AccessibleProperty.KEY_SHORTCUTS);
         expect(box).not.toHaveAccessibleProperty(Gtk.AccessibleProperty.ROLE_DESCRIPTION);
+    });
+
+    it("mentions rounding when a numeric reading misses the expected value", async () => {
+        await render(<GtkBox name="ranked" accessibleValueNow={7.5} />);
+        const box = await screen.findByName("ranked");
+        expectValueNowRejection(box, /but received 7\.5, which the accessibility tree rounds/);
+    });
+
+    it("omits the rounding mention when the numeric property is unset", async () => {
+        expectValueNowRejection(await renderNamedBox("plain"), /but received unset\n/);
     });
 });
 

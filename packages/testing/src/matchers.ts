@@ -744,7 +744,7 @@ const propertyExpectation = (
             expected,
             actual,
             isPass: isAccessibleNumberMatch(widget, property, expected),
-            isReadingRounded: true,
+            isReadingRounded: actual !== null,
         };
     }
 

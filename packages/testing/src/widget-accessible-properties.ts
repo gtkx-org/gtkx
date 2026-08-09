@@ -12,7 +12,7 @@ import {
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
 import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
 import { descendants, relationCandidates } from "./traversal.js";
-import { callBooleanGetter, callStringGetter, getWidgetMethod } from "./widget-getters.js";
+import { callBooleanGetter, callStringGetter, getCallableMethod } from "./widget-getters.js";
 
 type WidgetValueField = "now" | "min" | "max";
 type CheckedState = "checked" | "unchecked" | "mixed";
@@ -295,10 +295,10 @@ const readTextViewSelection = (view: Gtk.TextView): string | null => {
 };
 
 const sliceSelectedText = (widget: Gtk.Widget, start: number, end: number): string | null => {
-    const chars = getWidgetMethod(widget, "getChars");
+    const chars = getCallableMethod<[number, number], string | null>(widget, "getChars");
 
-    if (typeof chars === "function") {
-        return (chars as (from: number, to: number) => string | null).call(widget, start, end) ?? null;
+    if (chars) {
+        return chars(start, end) ?? null;
     }
 
     const text = callStringGetter(widget, "getText");
@@ -308,13 +308,13 @@ const sliceSelectedText = (widget: Gtk.Widget, start: number, end: number): stri
 };
 
 const readBoundedSelection = (widget: Gtk.Widget): string | null => {
-    const bounds = getWidgetMethod(widget, "getSelectionBounds");
+    const bounds = getCallableMethod<[], [boolean, number, number]>(widget, "getSelectionBounds");
 
-    if (typeof bounds !== "function") {
+    if (!bounds) {
         return null;
     }
 
-    const [hasSelection, start, end] = (bounds as () => [boolean, number, number]).call(widget);
+    const [hasSelection, start, end] = bounds();
 
     return hasSelection ? sliceSelectedText(widget, start, end) : null;
 };

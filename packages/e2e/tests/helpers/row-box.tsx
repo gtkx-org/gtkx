@@ -1,6 +1,5 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import type { ComponentProps } from "react";
-import * as GtkNs from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkListBox, GtkListBoxRow } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
@@ -16,7 +15,7 @@ const renderRowBox = async (
     const refs = Array.from({ length: count }, () => createRef<Gtk.ListBoxRow>());
 
     await render(
-        <GtkBox orientation={GtkNs.Orientation.VERTICAL}>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkListBox {...props}>
                 {refs.map((ref, index) => (
                     <GtkListBoxRow key={index} ref={ref} {...rowPropsFor?.(index)}>
