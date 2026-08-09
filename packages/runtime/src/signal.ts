@@ -151,7 +151,8 @@ function hasSignalListener(instance: object, signals?: string[]): boolean {
         return false;
     }
 
-    const names = signals ?? bySignal.keys().toArray();
+    const names =
+        signals === undefined ? bySignal.keys().toArray() : signals.map((signal) => getSignalBaseName(signal));
 
     return names.some((name) => {
         const handlerIds = bySignal.get(name);
