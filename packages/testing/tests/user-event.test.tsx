@@ -21,6 +21,9 @@ import {
     GtkListBox,
     GtkListBoxRow,
     GtkSwitch,
+    GtkTextBuffer,
+    GtkTextTag,
+    GtkTextView,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { describe, expect, it, vi } from "vitest";
@@ -373,12 +376,94 @@ describe("userEvent.clear", () => {
         expect(editableText(entry)).toBe("");
     });
 
-    describe("error handling", () => {
-        it("throws when element is not editable", async () => {
-            await expect(actOnPlainButton((button) => userEvent.clear(button))).rejects.toThrow(
-                "Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
-            );
+    it("clears while a modifier is held on the instance, without dispatching keys", async () => {
+        const presses: number[] = [];
+        const edits: string[] = [];
+
+        const onKeyPressed = vi.fn((keyval: number): boolean => {
+            presses.push(keyval);
+
+            return false;
         });
+
+        await render(<GtkEntry text="abc" controllers={<GtkEventControllerKey onKeyPressed={onKeyPressed} />} />);
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+
+        if (!(entry instanceof Gtk.Editable)) {
+            throw new TypeError("Element is not editable");
+        }
+
+        entry.connect("delete-text", () => {
+            edits.push("delete-text");
+        });
+
+        entry.connect("changed", () => {
+            edits.push("changed");
+        });
+
+        const user = userEvent.setup();
+        await user.keyboard(entry, "{Shift>}");
+        await user.clear(entry);
+        await user.keyboard(entry, "{/Shift}");
+        expect(editableText(entry)).toBe("");
+        expect(edits).toEqual(["delete-text", "changed"]);
+        expect(presses).toEqual([Gdk.KEY_Shift_L]);
+    });
+});
+
+describe("userEvent.clear error handling", () => {
+    it("throws when element is not editable", async () => {
+        await expect(actOnPlainButton((button) => userEvent.clear(button))).rejects.toThrow(
+            "Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
+        );
+    });
+
+    it("throws when the widget refuses edits", async () => {
+        await render(<GtkEntry text="Locked" editable={false} />);
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+
+        await expect(userEvent.clear(entry)).rejects.toThrow(
+            "Cannot clear element: the widget is not editable",
+        );
+    });
+
+    it("throws when a tag protects part of a text view's text", async () => {
+        await render(
+            <GtkTextView
+                buffer={(
+                    <GtkTextBuffer>
+                        {"erasable "}
+                        <GtkTextTag name="keep" editable={false}>
+                            prompt
+                        </GtkTextTag>
+                    </GtkTextBuffer>
+                )}
+            />,
+        );
+
+        const view = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
+
+        await expect(userEvent.clear(view)).rejects.toThrow(
+            "Cannot clear element: the widget refuses to delete part of its text",
+        );
+
+        const buffer = view.getBuffer();
+        expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("erasable prompt");
+    });
+
+    it("throws when a handler blocks the deletion, without reporting success", async () => {
+        await render(<GtkEntry text="abc" />);
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+
+        entry.connect("delete-text", () => {
+            GObject.signalStopEmissionByName(entry, "delete-text");
+        });
+
+        await expect(userEvent.clear(entry)).rejects.toThrow(
+            "Cannot clear element: the widget refuses to delete part of its text",
+        );
+
+        expect(editableText(entry)).toBe("abc");
     });
 });
 
@@ -466,7 +551,7 @@ describe("userEvent.selectOptions", () => {
     describe("error handling", () => {
         it("throws when element is not selectable", async () => {
             await expect(actOnPlainButton((button) => userEvent.selectOptions(button, 0))).rejects.toThrow(
-                "Cannot select options: expected selectable widget (COMBO_BOX or LIST)",
+                "Cannot select options: expected selectable widget (COMBO_BOX, GRID, or LIST)",
             );
         });
 
@@ -474,7 +559,7 @@ describe("userEvent.selectOptions", () => {
             const dropdown = await renderDropDown(["A", "B"]);
 
             await expect(userEvent.selectOptions(dropdown, [0, 1])).rejects.toThrow(
-                "Cannot select multiple options: Gtk.DropDown only supports single selection",
+                "Cannot select multiple options: a drop-down only supports single selection",
             );
         });
     });
@@ -489,11 +574,17 @@ describe("userEvent.deselectOptions", () => {
     });
 
     describe("error handling", () => {
-        it("throws when element is not a list box", async () => {
+        it("throws when the widget has no indexed children", async () => {
             const dropdown = await renderDropDown(["A"]);
 
             await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow(
-                "Cannot deselect options: only ListBox supports deselection",
+                "Cannot deselect options: the widget exposes no children to deselect by index",
+            );
+        });
+
+        it("throws when element is not selectable", async () => {
+            await expect(actOnPlainButton((button) => userEvent.deselectOptions(button, 0))).rejects.toThrow(
+                "Cannot deselect options: expected selectable widget (COMBO_BOX, GRID, or LIST)",
             );
         });
     });

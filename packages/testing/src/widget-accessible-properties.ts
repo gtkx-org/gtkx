@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    isAccessibleNumberMatch,
     readAccessibleBooleanProperty,
     readAccessibleFlag,
     readAccessibleInt,
@@ -11,15 +12,9 @@ import {
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
 import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
 import { descendants, relationCandidates } from "./traversal.js";
+import { callBooleanGetter, callStringGetter, getCallableMethod } from "./widget-getters.js";
 
-type WidgetValue = {
-    now: number | null;
-    min: number | null;
-    max: number | null;
-    text: string | null;
-};
-
-type ValueTriplet = { now: number | null; min: number | null; max: number | null };
+type WidgetValueField = "now" | "min" | "max";
 type CheckedState = "checked" | "unchecked" | "mixed";
 
 const EDITABLE_TEXT_GETTER = "getText";
@@ -33,16 +28,21 @@ const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set<Gtk.AccessibleRole>([
     Gtk.AccessibleRole.TREE_ITEM,
 ]);
 
-const callStringGetter = (widget: Gtk.Widget, method: string): string | null => {
-    const fn: unknown = Reflect.get(widget, method);
+const PRESSED_BY_TRISTATE: Map<number, boolean> = new Map<number, boolean>([
+    [Gtk.AccessibleTristate.FALSE, false],
+    [Gtk.AccessibleTristate.TRUE, true],
+]);
 
-    if (typeof fn !== "function") {
-        return null;
-    }
+const CHECKED_BY_TRISTATE: Map<number, CheckedState> = new Map<number, CheckedState>([
+    [Gtk.AccessibleTristate.FALSE, "unchecked"],
+    [Gtk.AccessibleTristate.TRUE, "checked"],
+    [Gtk.AccessibleTristate.MIXED, "mixed"],
+]);
 
-    const value = (fn as () => string | null).call(widget);
-
-    return value ?? null;
+const VALUE_PROPERTIES: Record<WidgetValueField, Gtk.AccessibleProperty> = {
+    now: Gtk.AccessibleProperty.VALUE_NOW,
+    min: Gtk.AccessibleProperty.VALUE_MIN,
+    max: Gtk.AccessibleProperty.VALUE_MAX,
 };
 
 const readAccessibleString = (widget: Gtk.Widget, property: Gtk.AccessibleProperty): string | null =>
@@ -66,20 +66,11 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
         return widget.getLabel();
     }
 
-    if (widget instanceof Gtk.Inscription) {
-        return widget.getText() ?? null;
-    }
-
-    return null;
+    return readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
 };
 
 const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
-
-const isUnderlineUsed = (widget: Gtk.Widget): boolean => {
-    const fn: unknown = Reflect.get(widget, "getUseUnderline");
-
-    return typeof fn === "function" && (fn as () => boolean).call(widget);
-};
+const isUnderlineUsed = (widget: Gtk.Widget): boolean => callBooleanGetter(widget, "getUseUnderline") ?? false;
 
 const readNamingText = (widget: Gtk.Widget, getter: string, value: string): string =>
     getter !== EDITABLE_TEXT_GETTER && isUnderlineUsed(widget) ? stripMnemonic(value) : value;
@@ -237,21 +228,30 @@ const getWidgetName = (widget: Gtk.Widget): string | null => {
     return widget.getName();
 };
 
+const nonEmptyText = (text: string | null): string | null => (text === null || text === "" ? null : text);
+
+const readPlaceholderProperty = (widget: Gtk.Widget): string | null => {
+    const value: unknown = Reflect.get(widget, "placeholderText");
+
+    return typeof value === "string" ? nonEmptyText(value) : null;
+};
+
 const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
-    if (!EDITABLE_ROLES.has(widget.getAccessibleRole()) || !(widget instanceof Gtk.Editable)) {
+    if (!EDITABLE_ROLES.has(widget.getAccessibleRole())) {
         return null;
     }
 
-    const fromGetter = callStringGetter(widget, "getPlaceholderText");
-
-    if (fromGetter !== null) {
-        return fromGetter;
-    }
-
-    const fromAccessor: unknown = Reflect.get(widget, "placeholderText");
-
-    return typeof fromAccessor === "string" && fromAccessor !== "" ? fromAccessor : null;
+    return (
+        nonEmptyText(callStringGetter(widget, "getPlaceholderText")) ??
+        readPlaceholderProperty(widget) ??
+        nonEmptyText(readAccessibleString(widget, Gtk.AccessibleProperty.PLACEHOLDER))
+    );
 };
+
+const comboBoxDisplayValue = (widget: Gtk.Widget): string | null =>
+    widget instanceof Gtk.DropDown
+        ? (dropDownFaceText(widget) ?? getWidgetValueText(widget))
+        : (getWidgetValueText(widget) ?? dropDownFaceText(widget));
 
 const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
     if (EDITABLE_ROLES.has(widget.getAccessibleRole()) && isEditable(widget)) {
@@ -259,7 +259,7 @@ const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
     }
 
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.COMBO_BOX) {
-        return dropDownFaceText(widget);
+        return comboBoxDisplayValue(widget);
     }
 
     return null;
@@ -299,40 +299,48 @@ const readTextViewSelection = (view: Gtk.TextView): string | null => {
     return hasSelection ? buffer.getText(start, end, true) : null;
 };
 
-const readEditableSelection = (editable: Gtk.Editable): string | null => {
-    const [hasSelection, start, end] = editable.getSelectionBounds();
+const sliceSelectedText = (widget: Gtk.Widget, start: number, end: number): string | null => {
+    const chars = getCallableMethod<[number, number], string | null>(widget, "getChars");
 
-    return hasSelection ? editable.getChars(start, end) : null;
-};
-
-const getWidgetSelection = (widget: Gtk.Widget): string | null => {
-    if (widget instanceof Gtk.TextView) {
-        return readTextViewSelection(widget);
+    if (chars) {
+        return chars(start, end) ?? null;
     }
 
-    if (widget instanceof Gtk.Editable) {
-        return readEditableSelection(widget);
+    const text = callStringGetter(widget, "getText");
+
+    /* eslint-disable-next-line @typescript-eslint/no-misused-spread -- bounds are code point offsets */
+    return text === null ? null : [...text].slice(start, end).join("");
+};
+
+const readBoundedSelection = (widget: Gtk.Widget): string | null => {
+    const bounds = getCallableMethod<[], [boolean, number, number]>(widget, "getSelectionBounds");
+
+    if (!bounds) {
+        return null;
     }
 
-    return null;
+    const [hasSelection, start, end] = bounds();
+
+    return hasSelection ? sliceSelectedText(widget, start, end) : null;
 };
+
+const getWidgetSelection = (widget: Gtk.Widget): string | null =>
+    widget instanceof Gtk.TextView ? readTextViewSelection(widget) : readBoundedSelection(widget);
 
 const checkedFromActive = (isActive: boolean): CheckedState => (isActive ? "checked" : "unchecked");
 
-const isCheckableToggle = (widget: Gtk.Widget): boolean =>
-    widget instanceof Gtk.Switch ||
-    (widget instanceof Gtk.ToggleButton && widget.getAccessibleRole() === Gtk.AccessibleRole.RADIO);
+const isRadioToggle = (widget: Gtk.Widget): widget is Gtk.ToggleButton =>
+    widget instanceof Gtk.ToggleButton && widget.getAccessibleRole() === Gtk.AccessibleRole.RADIO;
 
 const getWidgetCheckedState = (widget: Gtk.Widget): CheckedState | null => {
-    if (widget instanceof Gtk.CheckButton) {
-        return widget.getInconsistent() ? "mixed" : checkedFromActive(widget.getActive());
+    const tristate = readAccessibleState(widget, Gtk.AccessibleState.CHECKED);
+    const state = tristate === null ? undefined : CHECKED_BY_TRISTATE.get(tristate);
+
+    if (state !== undefined) {
+        return state;
     }
 
-    if (isCheckableToggle(widget)) {
-        return checkedFromActive(Reflect.get(widget, "active") === true);
-    }
-
-    return null;
+    return isRadioToggle(widget) ? checkedFromActive(widget.getActive()) : null;
 };
 
 const isWidgetChecked = (widget: Gtk.Widget): boolean | null => {
@@ -342,28 +350,24 @@ const isWidgetChecked = (widget: Gtk.Widget): boolean | null => {
 };
 
 const getWidgetPressedState = (widget: Gtk.Widget): boolean | null => {
-    if (widget instanceof Gtk.ToggleButton) {
-        return widget.getActive();
-    }
+    const tristate = readAccessibleState(widget, Gtk.AccessibleState.PRESSED);
 
-    return null;
+    return tristate === null ? null : PRESSED_BY_TRISTATE.get(tristate) ?? null;
 };
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | null => {
-    if (widget instanceof Gtk.Expander) {
-        return widget.getExpanded();
-    }
-
     if (widget instanceof Gtk.TreeExpander) {
         return widget.getListRow()?.getExpanded() ?? null;
     }
 
-    return null;
+    return readAccessibleBoolean(widget, Gtk.AccessibleState.EXPANDED);
 };
 
 const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
-    if (widget instanceof Gtk.ListBoxRow || widget instanceof Gtk.FlowBoxChild) {
-        return widget.isSelected();
+    const selected = readAccessibleBoolean(widget, Gtk.AccessibleState.SELECTED);
+
+    if (selected !== null) {
+        return selected;
     }
 
     if (SELECTABLE_ROLES.has(widget.getAccessibleRole())) {
@@ -394,65 +398,14 @@ const getWidgetDescription = (widget: Gtk.Widget): string | null => {
     return readAccessibleString(widget, Gtk.AccessibleProperty.DESCRIPTION);
 };
 
-const adjustmentValue = (adjustment: Gtk.Adjustment): ValueTriplet => ({
-    now: adjustment.getValue(),
-    min: adjustment.getLower(),
-    max: adjustment.getUpper(),
-});
+const getWidgetValueNow = (widget: Gtk.Widget): number | null =>
+    readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_NOW);
 
-const adjustmentWidgetValue = (widget: Gtk.Widget): ValueTriplet | null => {
-    if (widget instanceof Gtk.Range) {
-        return adjustmentValue(widget.getAdjustment());
-    }
+const getWidgetValueText = (widget: Gtk.Widget): string | null =>
+    readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT);
 
-    if (widget instanceof Gtk.Scrollbar) {
-        return adjustmentValue(widget.getAdjustment());
-    }
-
-    if (widget instanceof Gtk.SpinButton) {
-        return adjustmentValue(widget.getAdjustment());
-    }
-
-    if (widget instanceof Gtk.ScaleButton) {
-        return adjustmentValue(widget.getAdjustment());
-    }
-
-    return null;
-};
-
-const getWidgetLiveValue = (widget: Gtk.Widget): ValueTriplet | null => {
-    const adjustmentBased = adjustmentWidgetValue(widget);
-
-    if (adjustmentBased) {
-        return adjustmentBased;
-    }
-
-    if (widget instanceof Gtk.LevelBar) {
-        return { now: widget.getValue(), min: widget.getMinValue(), max: widget.getMaxValue() };
-    }
-
-    if (widget instanceof Gtk.ProgressBar) {
-        return { now: widget.getFraction(), min: 0, max: 1 };
-    }
-
-    return null;
-};
-
-const getWidgetValue = (widget: Gtk.Widget): WidgetValue => {
-    const text = readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT);
-    const live = getWidgetLiveValue(widget);
-
-    if (live) {
-        return { ...live, text };
-    }
-
-    return {
-        now: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_NOW),
-        min: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MIN),
-        max: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MAX),
-        text,
-    };
-};
+const isWidgetValueMatch = (widget: Gtk.Widget, field: WidgetValueField, expected: number): boolean =>
+    isAccessibleNumberMatch(widget, VALUE_PROPERTIES[field], expected);
 
 const getWidgetOwnLabel = (widget: Gtk.Widget): string | null => {
     return readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
@@ -563,10 +516,13 @@ export {
     getWidgetErrorMessage,
     getWidgetBusyState,
     getWidgetDescription,
-    getWidgetValue,
+    getWidgetValueNow,
+    getWidgetValueText,
     getWidgetOwnLabel,
     getWidgetExternalLabelText,
     getWidgetLabelledByText,
     isInaccessible,
+    isWidgetValueMatch,
     type CheckedState,
+    type WidgetValueField,
 };

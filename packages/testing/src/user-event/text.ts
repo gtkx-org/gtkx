@@ -1,9 +1,16 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable } from "../editable.js";
+import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable, readEditableText } from "../editable.js";
 import { formatRoleList } from "../role-helpers.js";
+import { getWidgetSelection } from "../widget-accessible-properties.js";
+import { callBooleanGetter } from "../widget-getters.js";
 import { wrapEvent } from "./event-wrapper.js";
+
+type SignalWatchTarget = {
+    on(signal: string, handler: (...args: unknown[]) => unknown, isAfter?: boolean): unknown;
+    off(signal: string, handler: (...args: unknown[]) => unknown): unknown;
+};
 
 /** Options for `userEvent.type`. */
 type TypeOptions = {
@@ -16,6 +23,7 @@ type TypeOptions = {
 };
 
 const EDITABLE_REQUIRED = `expected editable widget (${formatRoleList(EDITABLE_ROLES)})`;
+const CLEAR_REFUSED = "Cannot clear element: the widget refuses to delete part of its text";
 
 const insertEditableText = (widget: EditableTarget, text: string): void => {
     if (widget instanceof Gtk.TextView) {
@@ -37,18 +45,7 @@ const insertEditableText = (widget: EditableTarget, text: string): void => {
     widget.setPosition(newPosition);
 };
 
-const readSelection = (widget: EditableTarget): string => {
-    if (widget instanceof Gtk.TextView) {
-        const buffer = widget.getBuffer();
-        const [hasSelection, start, end] = buffer.getSelectionBounds();
-
-        return hasSelection ? buffer.getText(start, end, true) : "";
-    }
-
-    const [hasSelection, start, end] = widget.getSelectionBounds();
-
-    return hasSelection ? widget.getChars(start, end) : "";
-};
+const readSelection = (widget: EditableTarget): string => getWidgetSelection(widget) ?? "";
 
 const deleteSelection = (widget: EditableTarget): void => {
     if (widget instanceof Gtk.TextView) {
@@ -60,14 +57,15 @@ const deleteSelection = (widget: EditableTarget): void => {
     widget.deleteSelection();
 };
 
-const setEditableText = (widget: EditableTarget, text: string): void => {
+const deleteAllText = (widget: EditableTarget): void => {
     if (widget instanceof Gtk.TextView) {
-        widget.getBuffer().setText(text, text.length);
+        const buffer = widget.getBuffer();
+        buffer.deleteInteractive(buffer.getStartIter(), buffer.getEndIter(), widget.getEditable());
 
         return;
     }
 
-    widget.setText(text);
+    widget.deleteText(0, -1);
 };
 
 const applyTextViewSelection = (widget: Gtk.TextView, start: number, end: number): void => {
@@ -147,15 +145,88 @@ const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<
         insertEditableText(editable, text);
     });
 
+const isWidgetEditable = (widget: Gtk.Widget): boolean => callBooleanGetter(widget, "getEditable") ?? true;
+
+const hasNonEditableChar = (iter: Gtk.TextIter, isDefaultEditable: boolean): boolean => {
+    while (!iter.isEnd()) {
+        if (!iter.editable(isDefaultEditable)) {
+            return true;
+        }
+
+        if (!iter.forwardChar()) {
+            return false;
+        }
+    }
+
+    return false;
+};
+
+const hasProtectedText = (widget: EditableTarget): boolean =>
+    widget instanceof Gtk.TextView && hasNonEditableChar(widget.getBuffer().getStartIter(), widget.getEditable());
+
+const requireClearableText = (editable: EditableTarget): void => {
+    if (!isWidgetEditable(editable)) {
+        throw new Error("Cannot clear element: the widget is not editable");
+    }
+
+    if (hasProtectedText(editable)) {
+        throw new Error(CLEAR_REFUSED);
+    }
+};
+
+const deletionSignalFor = (widget: EditableTarget): [SignalWatchTarget, string] =>
+    widget instanceof Gtk.TextView ? [widget.getBuffer(), "delete-range"] : [widget, "delete-text"];
+
+const isDeletionApplied = (emitter: SignalWatchTarget, signal: string, apply: () => void): boolean => {
+    let isApplied = false;
+
+    const watch = (): void => {
+        isApplied = true;
+    };
+
+    emitter.on(signal, watch, true);
+
+    try {
+        apply();
+    } finally {
+        emitter.off(signal, watch);
+    }
+
+    return isApplied;
+};
+
+const didDeleteAllText = (widget: EditableTarget): boolean => {
+    const [emitter, signal] = deletionSignalFor(widget);
+
+    return isDeletionApplied(emitter, signal, () => {
+        deleteAllText(widget);
+    });
+};
+
+const clearEditable = (editable: EditableTarget): void => {
+    requireClearableText(editable);
+    editable.grabFocus();
+
+    if (readEditableText(editable) === "") {
+        return;
+    }
+
+    if (!didDeleteAllText(editable)) {
+        throw new Error(CLEAR_REFUSED);
+    }
+};
+
 /**
- * Replaces an editable widget's text with the empty string.
+ * Focuses an editable widget and deletes its whole text through the widget's own editing API, so the
+ * deletion emits the signals an edit made by hand emits. Text a tag protects is detected before the
+ * deletion runs, leaving such a widget untouched. A widget that writes a new value back in response
+ * to the deletion, as an input mask does, is cleared successfully and keeps whatever it wrote.
  *
- * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
+ * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView, when it refuses edits, when
+ * a tag protects part of its text, or when a handler blocks the deletion.
  */
 const clear = (widget: Gtk.Widget): Promise<void> =>
-    runEditableEvent(widget, "Cannot clear element", (editable) => {
-        setEditableText(editable, "");
-    });
+    runEditableEvent(widget, "Cannot clear element", clearEditable);
 
 /**
  * Writes an editable widget's selected text to its clipboard, or the empty string when nothing is selected.

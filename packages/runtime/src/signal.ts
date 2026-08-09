@@ -53,6 +53,7 @@ type EmitArg = Arg & {
 };
 
 const connectCache = createBindCache();
+const connectionTable: WeakMap<object, Map<string, Set<number>>> = new WeakMap();
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 
@@ -69,6 +70,8 @@ const gSignalHandlerIsConnected = bind(
     [objectT("borrowed"), uint64T],
     booleanT,
 );
+
+const gSignalHandlerDisconnect = bind(LIB, "g_signal_handler_disconnect", [objectT("borrowed"), uint64T], voidT);
 
 /** Returns the signal name without its detail suffix (the part after `::`). */
 const getSignalBaseName = (signal: string): string => {
@@ -89,6 +92,81 @@ function getSignalDetailQuark(signal: string): number {
 
 const isSignalHandlerConnected = (instance: object, handlerId: number): boolean =>
     gSignalHandlerIsConnected(getHandle(instance), handlerId) as boolean;
+
+const trackConnection = (instance: object, signal: string, handlerId: number): void => {
+    let bySignal = connectionTable.get(instance);
+
+    if (!bySignal) {
+        bySignal = new Map();
+        connectionTable.set(instance, bySignal);
+    }
+
+    let handlerIds = bySignal.get(signal);
+
+    if (!handlerIds) {
+        handlerIds = new Set();
+        bySignal.set(signal, handlerIds);
+    }
+
+    handlerIds.add(handlerId);
+};
+
+const untrackConnection = (instance: object, handlerId: number): void => {
+    const bySignal = connectionTable.get(instance);
+
+    if (bySignal === undefined) {
+        return;
+    }
+
+    for (const [name, handlerIds] of bySignal) {
+        handlerIds.delete(handlerId);
+
+        if (handlerIds.size === 0) {
+            bySignal.delete(name);
+        }
+    }
+};
+
+/**
+ * Disconnects the handler an instance connected under the given id, and forgets the connection.
+ * @param instance Emitter the handler was connected to.
+ * @param handlerId Id {@link connectSignal} returned for the handler.
+ */
+const disconnectSignal = (instance: object, handlerId: number): void => {
+    untrackConnection(instance, handlerId);
+    gSignalHandlerDisconnect(getHandle(instance), handlerId);
+};
+
+const hasLiveConnection = (instance: object, handlerIds: Set<number>): boolean => {
+    let isLive = false;
+
+    for (const handlerId of handlerIds) {
+        if (isSignalHandlerConnected(instance, handlerId)) {
+            isLive = true;
+        } else {
+            handlerIds.delete(handlerId);
+        }
+    }
+
+    return isLive;
+};
+
+function hasSignalListener(instance: object, signals?: string[]): boolean {
+    const bySignal = connectionTable.get(instance);
+
+    if (!bySignal) {
+        return false;
+    }
+
+    const names =
+        signals === undefined ? bySignal.keys().toArray() : signals.map((signal) => getSignalBaseName(signal));
+
+    return names.some((name) => {
+        const handlerIds = bySignal.get(name);
+
+        return handlerIds !== undefined && hasLiveConnection(instance, handlerIds);
+    });
+}
 
 const getSignalId = (instance: object, signal: string): number => {
     const type: bigint = (instance as TypedClass).__type__;
@@ -119,8 +197,10 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
     const wrapped = wrapCallback(handler, callback, "emitter");
     const type: bigint = (instance as TypedClass).__type__;
     const connect = connectBind(type, signal, callback);
+    const handlerId = connect(getHandle(instance), signal, wrapped, isAfter ? 1 : 0) as number;
+    trackConnection(instance, getSignalBaseName(signal), handlerId);
 
-    return connect(getHandle(instance), signal, wrapped, isAfter ? 1 : 0) as number;
+    return handlerId;
 }
 
 const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: () => unknown } => {
@@ -184,4 +264,13 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returnDes
     );
 }
 
-export { getSignalBaseName, connectSignal, emitSignal, isSignalHandlerConnected, type SignalHandler };
+export {
+    getSignalBaseName,
+    connectSignal,
+    disconnectSignal,
+    emitSignal,
+    hasSignalListener,
+    isSignalHandlerConnected,
+    untrackConnection,
+    type SignalHandler,
+};

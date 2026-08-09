@@ -1,5 +1,5 @@
-import { offSignal, onceSignal, onSignal } from "@gtkx/runtime";
-import { Object as GObject, signalHandlerDisconnect, type Type } from "../gobject.js";
+import { disconnectSignal, offSignal, onceSignal, onSignal } from "@gtkx/runtime";
+import { Object as GObject, type Type } from "../gobject.js";
 
 type Listener = (...args: unknown[]) => unknown;
 
@@ -71,7 +71,7 @@ type GObjectWithConnect = GObject & {
 };
 
 GObject.prototype.disconnect = function disconnect(handlerId: number): void {
-    signalHandlerDisconnect(this, BigInt(handlerId));
+    disconnectSignal(this, handlerId);
 };
 
 function onImpl(this: GObjectWithConnect, sigName: string, callback: Listener, isAfter?: boolean): GObject {

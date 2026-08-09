@@ -16,7 +16,10 @@ const once = (callback: () => void): (() => void) => {
     };
 };
 
-const runWhenSized = (widget: Gtk.Widget, finish: () => void): void => {
+const hasFrameClock = (widget: Gtk.Widget | null): widget is Gtk.Widget => widget?.getFrameClock() != null;
+const isSized = (widget: Gtk.Widget): boolean => widget.getWidth() > 0;
+
+const runUntilReady = (widget: Gtk.Widget, isReady: () => boolean, finish: () => void): void => {
     let tickId = 0;
 
     const fallback = setTimeout(() => {
@@ -25,7 +28,7 @@ const runWhenSized = (widget: Gtk.Widget, finish: () => void): void => {
     }, CLOCK_STALL_FALLBACK_MS);
 
     tickId = widget.addTickCallback(() => {
-        if (widget.getWidth() === 0) {
+        if (!isReady()) {
             return GLib.SOURCE_CONTINUE;
         }
 
@@ -36,16 +39,29 @@ const runWhenSized = (widget: Gtk.Widget, finish: () => void): void => {
     });
 };
 
+const scheduleNextFrame = (widget: Gtk.Widget): Promise<void> =>
+    new Promise((resolve) => {
+        const finish = once(resolve);
+
+        if (!hasFrameClock(widget)) {
+            queueMicrotask(finish);
+
+            return;
+        }
+
+        runUntilReady(widget, () => true, finish);
+    });
+
 const scheduleAfterLayout = (widget: Gtk.Widget | null, callback: () => void): void => {
     const finish = once(callback);
 
-    if (widget?.getFrameClock() == null || widget.getWidth() > 0) {
+    if (!hasFrameClock(widget) || isSized(widget)) {
         queueMicrotask(finish);
 
         return;
     }
 
-    runWhenSized(widget, finish);
+    runUntilReady(widget, () => isSized(widget), finish);
 };
 
-export { scheduleAfterLayout };
+export { scheduleAfterLayout, scheduleNextFrame };

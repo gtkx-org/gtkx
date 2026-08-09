@@ -1,11 +1,23 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { formatRoleList } from "../role-helpers.js";
+import { getCallableMethod } from "../widget-getters.js";
 import { wrapEvent } from "./event-wrapper.js";
+import {
+    getChildAtIndex,
+    hasIndexedChildren,
+    isChildSelected,
+    selectContainerChild,
+    unselectContainerChild,
+} from "./indexed-children.js";
 
 type CollectionWidget = Gtk.ListView | Gtk.GridView | Gtk.ColumnView;
-type ListBoxRowAction = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow) => void;
+type IndexedChildAction = (container: Gtk.Widget, child: Gtk.Widget) => void;
 
-const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set([Gtk.AccessibleRole.COMBO_BOX, Gtk.AccessibleRole.LIST]);
+const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set([
+    Gtk.AccessibleRole.COMBO_BOX,
+    Gtk.AccessibleRole.GRID,
+    Gtk.AccessibleRole.LIST,
+]);
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
     return SELECTABLE_ROLES.has(widget.getAccessibleRole());
@@ -44,42 +56,40 @@ const selectListViewItems = (
 const isListView = (widget: Gtk.Widget): widget is CollectionWidget =>
     widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
 
+const getIndexSelector = (widget: Gtk.Widget): ((position: number) => void) | null =>
+    getCallableMethod<[number], unknown>(widget, "setSelected");
+
 const selectDropDownOption = (widget: Gtk.Widget, valueArray: number[]): void => {
-    if (!(widget instanceof Gtk.DropDown)) {
-        throw new TypeError("Cannot select options: the COMBO_BOX role is only selectable on Gtk.DropDown");
+    const setSelected = getIndexSelector(widget);
+
+    if (!setSelected) {
+        throw new TypeError("Cannot select options: the COMBO_BOX role needs a widget exposing setSelected");
     }
 
     if (valueArray.length > 1) {
-        throw new Error("Cannot select multiple options: Gtk.DropDown only supports single selection");
+        throw new Error("Cannot select multiple options: a drop-down only supports single selection");
     }
 
     const [selection] = valueArray;
 
-    if (selection === undefined) {
-        return;
+    if (selection !== undefined) {
+        setSelected(selection);
     }
-
-    widget.setSelected(selection);
 };
 
-const selectListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
-    listBox.selectRow(row);
-    row.activate();
+const unselectChildRow = (container: Gtk.Widget, child: Gtk.Widget): void => {
+    if (isChildSelected(child)) {
+        unselectContainerChild(container, child);
+    }
 };
 
-const unselectListBoxRow = (listBox: Gtk.ListBox, row: Gtk.ListBoxRow): void => {
-    listBox.unselectRow(row);
-};
-
-const applyListBoxRows = (listBox: Gtk.ListBox, valueArray: number[], apply: ListBoxRowAction): void => {
+const applyIndexedChildren = (widget: Gtk.Widget, valueArray: number[], apply: IndexedChildAction): void => {
     for (const value of valueArray) {
-        const row = listBox.getRowAtIndex(value);
+        const child = getChildAtIndex(widget, value);
 
-        if (!row) {
-            continue;
+        if (child) {
+            apply(widget, child);
         }
-
-        apply(listBox, row);
     }
 };
 
@@ -102,18 +112,29 @@ const selectInListView = (widget: CollectionWidget, valueArray: number[]): void 
     selectListViewItems(selectionModel, valueArray, !isMultiSelection);
 };
 
-const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
+const requireSelectableRole = (widget: Gtk.Widget, verb: string): void => {
     if (!isSelectable(widget)) {
-        throw new Error(`Cannot select options: expected selectable widget (${formatRoleList(SELECTABLE_ROLES)})`);
+        throw new Error(
+            `Cannot ${verb} options: expected selectable widget (${formatRoleList(SELECTABLE_ROLES)})`,
+        );
     }
+};
 
+const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
+    requireSelectableRole(widget, "select");
     const role = widget.getAccessibleRole();
 
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
         selectDropDownOption(widget, valueArray);
-    } else if (widget instanceof Gtk.ListBox) {
-        applyListBoxRows(widget, valueArray, selectListBoxRow);
+
+        return;
     }
+
+    if (!hasIndexedChildren(widget)) {
+        throw new TypeError("Cannot select options: the widget exposes no children to select by index");
+    }
+
+    applyIndexedChildren(widget, valueArray, selectContainerChild);
 };
 
 const runSelectionEvent = (
@@ -136,12 +157,13 @@ const runSelectionEvent = (
 
 /**
  * Selects the items at the given positions through a list, grid, or column view's selection model,
- * by setting the selected item of a drop-down, or by selecting list box rows. An empty array clears
- * a view's selection.
+ * by setting the selected position of a widget with the COMBO_BOX role, or by selecting the indexed
+ * children of a list box or flow box through their container. An empty array clears a view's
+ * selection. The children are never activated, so no row-activated handler runs.
  *
- * @throws When a view has no selection model, when a Gtk.DropDown is given more than one position,
- * when a widget with the COMBO_BOX role is not a Gtk.DropDown, or when the widget is neither a view
- * nor something with the COMBO_BOX or LIST role.
+ * @throws When a view has no selection model, when a COMBO_BOX-role widget is given more than one
+ * position or exposes no `setSelected`, or when the widget's role is none of COMBO_BOX, GRID, or
+ * LIST.
  */
 const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, selectInListView, selectByRole);
@@ -155,19 +177,22 @@ const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView
 };
 
 const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
-    if (!(widget instanceof Gtk.ListBox)) {
-        throw new TypeError("Cannot deselect options: only ListBox supports deselection");
+    requireSelectableRole(widget, "deselect");
+
+    if (!hasIndexedChildren(widget)) {
+        throw new TypeError("Cannot deselect options: the widget exposes no children to deselect by index");
     }
 
-    applyListBoxRows(widget, valueArray, unselectListBoxRow);
+    applyIndexedChildren(widget, valueArray, unselectChildRow);
 };
 
 /**
- * Unselects the items at the given positions in a list, grid, or column view, or the rows at those
- * indices in a Gtk.ListBox.
+ * Unselects the items at the given positions in a list, grid, or column view, or unselects the
+ * indexed children of a list box or flow box through their container. A child that is not selected
+ * is left alone, and no child is activated.
  *
- * @throws When a view has no selection model, or when the widget is neither one of those views nor
- * a Gtk.ListBox.
+ * @throws When a view has no selection model, when the widget's role is none of COMBO_BOX, GRID, or
+ * LIST, or when it exposes no indexed children.
  */
 const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, deselectInListView, deselectByRole);

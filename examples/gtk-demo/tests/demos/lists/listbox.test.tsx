@@ -105,7 +105,7 @@ describe("listboxDemo row interaction", () => {
         const firstRow = await findFirstRow();
         const revealer = findDetailsRevealer(firstRow);
         const isBefore = revealer.getRevealChild();
-        await userEvent.click(firstRow);
+        await userEvent.dblClick(firstRow);
 
         await waitFor(() => {
             expect(revealer).toHaveObjectProperty("revealChild", !isBefore);
@@ -117,8 +117,8 @@ describe("listboxDemo row interaction", () => {
         const firstRow = await findFirstRow();
         const revealer = findDetailsRevealer(firstRow);
         const isInitial = revealer.getRevealChild();
-        await userEvent.click(firstRow);
-        await userEvent.click(firstRow);
+        await userEvent.dblClick(firstRow);
+        await userEvent.dblClick(firstRow);
 
         await waitFor(() => {
             expect(revealer).toHaveObjectProperty("revealChild", isInitial);

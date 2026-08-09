@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { scheduleNextFrame } from "../frame-sync.js";
 import { wrapEvent } from "./event-wrapper.js";
 
 /** A scroll distance in pixels along each axis. */
@@ -84,7 +85,7 @@ const applyScrollDelta = (adjustment: Gtk.Adjustment | null, delta: number): voi
  * @throws When neither the widget nor any of its ancestors is scrollable.
  */
 const scroll = (widget: Gtk.Widget, delta: ScrollDelta): Promise<void> =>
-    wrapEvent(widget, () => {
+    wrapEvent(widget, async () => {
         const adjustments = resolveScrollAdjustments(widget);
 
         if (!adjustments) {
@@ -95,6 +96,7 @@ const scroll = (widget: Gtk.Widget, delta: ScrollDelta): Promise<void> =>
 
         applyScrollDelta(adjustments.horizontal, delta.x ?? 0);
         applyScrollDelta(adjustments.vertical, delta.y ?? 0);
+        await scheduleNextFrame(widget);
     });
 
 export { slide, scroll, type ScrollDelta };

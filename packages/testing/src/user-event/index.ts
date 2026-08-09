@@ -25,19 +25,30 @@ type UserEvent = {
      */
     setup: (options?: UserEventOptions) => UserEvent;
     /**
-     * Clicks a button, toggles a switch, and otherwise activates the widget, falling back to a click
-     * gesture on its nearest clickable ancestor when activation does nothing.
+     * Activates a widget that neither claims the click nor carries a click gesture of its own, and
+     * otherwise presses and releases outwards from the clicked widget through every widget carrying
+     * a click gesture, stopping at the first button or indexed child. A list box row or flow box
+     * child receives its click gesture at the clicked position, passes one on to the gestures its
+     * container carries, and is then activated, or exclusively selected when its container does not
+     * activate on a single click.
      */
     click: typeof click;
-    /** Emits a two-press click gesture on the widget. */
+    /**
+     * Delivers a two-press click gesture along the same path a single click takes, without trying
+     * activation first, activating a list box row or flow box child on that path and replacing its
+     * container's selection whether or not that container activates on a single click.
+     */
     dblClick: typeof dblClick;
-    /** Emits a three-press click gesture on the widget. */
+    /**
+     * Delivers a three-press click gesture the same way a double click is delivered, applying the
+     * same outcome to a list box row or flow box child.
+     */
     tripleClick: typeof tripleClick;
     /** Moves focus within the widget's root, forward by default and backward with `isShiftHeld`. */
     tab: typeof tab;
     /** Focuses an editable widget, applies any initial selection, and inserts the text at the cursor. */
     type: typeof type;
-    /** Empties an editable widget's text. */
+    /** Focuses an editable widget and deletes its whole text, leaving nothing selected. */
     clear: typeof clear;
     /** Writes an editable widget's current selection to the clipboard. */
     copy: typeof copy;
@@ -45,9 +56,12 @@ type UserEvent = {
     cut: typeof cut;
     /** Inserts the given text, or the clipboard's text, at an editable widget's cursor. */
     paste: typeof paste;
-    /** Selects the items at the given positions in a list, grid, or column view, a drop-down, or a list box. */
+    /**
+     * Selects the items at those positions in a view or drop-down, or selects the indexed children of
+     * a list box or flow box through their container, without activating them.
+     */
     selectOptions: typeof selectOptions;
-    /** Deselects the items at the given positions in a list view or list box. */
+    /** Unselects the items at those positions, leaving list box and flow box children unactivated. */
     deselectOptions: typeof deselectOptions;
     /** Emits a motion `enter` on the widget, adding a motion controller when it has none. */
     hover: typeof hover;
@@ -73,7 +87,10 @@ type UserEvent = {
     scroll: typeof scroll;
     /** Sends a key sequence, dispatching matching shortcuts and tracking held modifiers across calls. */
     keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
-    /** Applies a pointer token, tracking whether the left button is held across calls. */
+    /**
+     * Applies a pointer token to the click gestures the widget already carries, tracking whether the
+     * left button is held across calls.
+     */
     pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
 };
 
