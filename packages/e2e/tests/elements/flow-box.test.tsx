@@ -4,6 +4,7 @@ import { GtkFlowBox, GtkFlowBoxChild, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk
 import { render, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+import { getSelection } from "../helpers/selection-state.js";
 
 const renderChildren = async (
     mode: GtkNs.SelectionMode,
@@ -22,9 +23,6 @@ const renderChildren = async (
 
     return refs;
 };
-
-const getSelection = (refs: RefObject<Gtk.FlowBoxChild | null>[]): boolean[] =>
-    refs.map((ref) => ref.current?.isSelected() ?? false);
 
 describe("userEvent selection - FlowBox", () => {
     it("selects the child at a position", async () => {

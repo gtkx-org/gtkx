@@ -25,8 +25,9 @@ type UserEvent = {
      */
     setup: (options?: UserEventOptions) => UserEvent;
     /**
-     * Clicks a button, toggles a switch, and otherwise activates the widget, falling back to a click
-     * gesture on its nearest clickable ancestor when activation does nothing.
+     * Clicks a button, and otherwise activates the widget, falling back to a click gesture on the
+     * widget itself or its nearest clickable ancestor, activating or selecting a row when the
+     * ancestor is the indexed child of a list box or flow box.
      */
     click: typeof click;
     /** Emits a two-press click gesture on the widget. */
