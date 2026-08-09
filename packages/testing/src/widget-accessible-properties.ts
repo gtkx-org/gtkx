@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    isAccessibleNumberMatch,
     readAccessibleBooleanProperty,
     readAccessibleFlag,
     readAccessibleInt,
@@ -11,6 +12,7 @@ import {
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
 import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
 import { descendants, relationCandidates } from "./traversal.js";
+import { callBooleanGetter, callStringGetter, getWidgetMethod } from "./widget-getters.js";
 
 type WidgetValue = {
     now: number | null;
@@ -19,6 +21,7 @@ type WidgetValue = {
     text: string | null;
 };
 
+type WidgetValueField = "now" | "min" | "max";
 type CheckedState = "checked" | "unchecked" | "mixed";
 
 const EDITABLE_TEXT_GETTER = "getText";
@@ -43,16 +46,10 @@ const CHECKED_BY_TRISTATE: Map<number, CheckedState> = new Map<number, CheckedSt
     [Gtk.AccessibleTristate.MIXED, "mixed"],
 ]);
 
-const callStringGetter = (widget: Gtk.Widget, method: string): string | null => {
-    const fn: unknown = Reflect.get(widget, method);
-
-    if (typeof fn !== "function") {
-        return null;
-    }
-
-    const value = (fn as () => string | null).call(widget);
-
-    return value ?? null;
+const VALUE_PROPERTIES: Record<WidgetValueField, Gtk.AccessibleProperty> = {
+    now: Gtk.AccessibleProperty.VALUE_NOW,
+    min: Gtk.AccessibleProperty.VALUE_MIN,
+    max: Gtk.AccessibleProperty.VALUE_MAX,
 };
 
 const readAccessibleString = (widget: Gtk.Widget, property: Gtk.AccessibleProperty): string | null =>
@@ -80,12 +77,7 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
 };
 
 const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
-
-const isUnderlineUsed = (widget: Gtk.Widget): boolean => {
-    const fn: unknown = Reflect.get(widget, "getUseUnderline");
-
-    return typeof fn === "function" && (fn as () => boolean).call(widget);
-};
+const isUnderlineUsed = (widget: Gtk.Widget): boolean => callBooleanGetter(widget, "getUseUnderline") ?? false;
 
 const readNamingText = (widget: Gtk.Widget, getter: string, value: string): string =>
     getter !== EDITABLE_TEXT_GETTER && isUnderlineUsed(widget) ? stripMnemonic(value) : value;
@@ -307,7 +299,7 @@ const readTextViewSelection = (view: Gtk.TextView): string | null => {
 };
 
 const sliceSelectedText = (widget: Gtk.Widget, start: number, end: number): string | null => {
-    const chars: unknown = Reflect.get(widget, "getChars");
+    const chars = getWidgetMethod(widget, "getChars");
 
     if (typeof chars === "function") {
         return (chars as (from: number, to: number) => string | null).call(widget, start, end) ?? null;
@@ -320,7 +312,7 @@ const sliceSelectedText = (widget: Gtk.Widget, start: number, end: number): stri
 };
 
 const readBoundedSelection = (widget: Gtk.Widget): string | null => {
-    const bounds: unknown = Reflect.get(widget, "getSelectionBounds");
+    const bounds = getWidgetMethod(widget, "getSelectionBounds");
 
     if (typeof bounds !== "function") {
         return null;
@@ -411,6 +403,9 @@ const getWidgetValue = (widget: Gtk.Widget): WidgetValue => ({
     max: readAccessibleNumber(widget, Gtk.AccessibleProperty.VALUE_MAX),
     text: readAccessibleString(widget, Gtk.AccessibleProperty.VALUE_TEXT),
 });
+
+const isWidgetValueMatch = (widget: Gtk.Widget, field: WidgetValueField, expected: number): boolean =>
+    isAccessibleNumberMatch(widget, VALUE_PROPERTIES[field], expected);
 
 const getWidgetOwnLabel = (widget: Gtk.Widget): string | null => {
     return readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
@@ -526,5 +521,7 @@ export {
     getWidgetExternalLabelText,
     getWidgetLabelledByText,
     isInaccessible,
+    isWidgetValueMatch,
     type CheckedState,
+    type WidgetValueField,
 };

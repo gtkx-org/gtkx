@@ -28,7 +28,9 @@ import {
     getWidgetValue,
     isInaccessible,
     isWidgetChecked,
+    isWidgetValueMatch,
     namingLabelText,
+    type WidgetValueField,
 } from "./widget-accessible-properties.js";
 
 /** The built-in queries in their unbound form, each taking the container to search as its first argument. */
@@ -325,25 +327,23 @@ const hasMatchingAccessibleName = (widget: Gtk.Widget, options: ByRoleOptions): 
     return isTextMatch(text, options.name, widget, options);
 };
 
-const isNumericValueMatch = (expected: number | undefined, actual: number | null): boolean =>
-    expected === undefined || actual === expected;
+const isNumericValueMatch = (widget: Gtk.Widget, field: WidgetValueField, expected: number | undefined): boolean =>
+    expected === undefined || isWidgetValueMatch(widget, field, expected);
 
 const hasMatchingAccessibleValue = (widget: Gtk.Widget, value: ByRoleValue, options: ByRoleOptions): boolean => {
-    const actual = getWidgetValue(widget);
-
-    const numericChecks: [number | undefined, number | null][] = [
-        [value.now, actual.now],
-        [value.min, actual.min],
-        [value.max, actual.max],
+    const numericChecks: [WidgetValueField, number | undefined][] = [
+        ["now", value.now],
+        ["min", value.min],
+        ["max", value.max],
     ];
 
-    for (const [expected, current] of numericChecks) {
-        if (!isNumericValueMatch(expected, current)) {
+    for (const [field, expected] of numericChecks) {
+        if (!isNumericValueMatch(widget, field, expected)) {
             return false;
         }
     }
 
-    return value.text === undefined || isTextMatch(actual.text, value.text, widget, options);
+    return value.text === undefined || isTextMatch(getWidgetValue(widget).text, value.text, widget, options);
 };
 
 const hasMatchingBooleanStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {

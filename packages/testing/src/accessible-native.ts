@@ -274,6 +274,14 @@ const readAccessibleInt = (accessible: Gtk.Accessible, property: Gtk.AccessibleP
 const readAccessibleNumber = (accessible: Gtk.Accessible, property: Gtk.AccessibleProperty): number | null =>
     readAgainstSentinel(checkPropertyDouble, NUMBER_SENTINEL, accessible, property);
 
+const isAccessibleNumberMatch = (
+    accessible: Gtk.Accessible,
+    property: Gtk.AccessibleProperty,
+    expected: number,
+): boolean =>
+    Gtk.testAccessibleHasProperty(accessible, property) &&
+    checkPropertyDouble(getHandle(accessible), property, expected) === null;
+
 const tokenReaderFor =
     (domain: number[]): PropertyReader =>
         (accessible, property) =>
@@ -307,6 +315,7 @@ const readAccessibleProperty = (
 ): AccessibleAttributeValue | null => propertyReaderFor(property)(accessible, property);
 
 export {
+    isAccessibleNumberMatch,
     readAccessibleBooleanProperty,
     readAccessibleFlag,
     readAccessibleInt,

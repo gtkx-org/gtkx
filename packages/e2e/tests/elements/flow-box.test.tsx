@@ -1,18 +1,22 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import type { ComponentProps } from "react";
 import * as GtkNs from "@gtkx/gi/gtk";
-import { GtkFlowBox, GtkFlowBoxChild, GtkLabel, GtkListBox, GtkListBoxRow } from "@gtkx/jsx/gtk";
-import { render, userEvent } from "@gtkx/testing";
+import { GtkFlowBox, GtkFlowBoxChild, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
+import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { renderRowBox } from "../helpers/row-box.js";
 import { getSelection } from "../helpers/selection-state.js";
 
-const renderChildren = async (
-    mode: GtkNs.SelectionMode,
-): Promise<RefObject<Gtk.FlowBoxChild | null>[]> => {
+type FlowBoxProps = Partial<ComponentProps<typeof GtkFlowBox>>;
+type ActivatableChildren = { refs: RefObject<Gtk.FlowBoxChild | null>[]; onChildActivated: ReturnType<typeof vi.fn> };
+type SelectedPair = { refs: RefObject<Gtk.FlowBoxChild | null>[]; flowBox: Gtk.FlowBox };
+
+const renderChildren = async (props: FlowBoxProps): Promise<RefObject<Gtk.FlowBoxChild | null>[]> => {
     const refs = [createRef<Gtk.FlowBoxChild>(), createRef<Gtk.FlowBoxChild>(), createRef<Gtk.FlowBoxChild>()];
 
     await render(
-        <GtkFlowBox selectionMode={mode}>
+        <GtkFlowBox {...props}>
             {refs.map((ref, index) => (
                 <GtkFlowBoxChild key={index} ref={ref}>
                     <GtkLabel label={`Child ${String(index)}`} />
@@ -24,32 +28,76 @@ const renderChildren = async (
     return refs;
 };
 
+const renderSelectedPair = async (): Promise<SelectedPair> => {
+    const refs = await renderChildren({ selectionMode: GtkNs.SelectionMode.MULTIPLE });
+    const flowBox = refs[0]?.current?.getParent() as Gtk.FlowBox;
+    await userEvent.selectOptions(flowBox, [0, 2]);
+
+    return { refs, flowBox };
+};
+
+const renderActivatableChildren = async (props: FlowBoxProps): Promise<ActivatableChildren> => {
+    const onChildActivated = vi.fn();
+    const refs = await renderChildren({ ...props, onChildActivated });
+
+    return { refs, onChildActivated };
+};
+
 describe("userEvent selection - FlowBox", () => {
     it("selects the child at a position", async () => {
-        const refs = await renderChildren(GtkNs.SelectionMode.SINGLE);
+        const refs = await renderChildren({ selectionMode: GtkNs.SelectionMode.SINGLE });
         const flowBox = refs[0]?.current?.getParent() as Gtk.FlowBox;
         await userEvent.selectOptions(flowBox, 1);
         expect(getSelection(refs)).toEqual([false, true, false]);
     });
 
     it("selects several children when the mode allows it", async () => {
-        const refs = await renderChildren(GtkNs.SelectionMode.MULTIPLE);
-        const flowBox = refs[0]?.current?.getParent() as Gtk.FlowBox;
-        await userEvent.selectOptions(flowBox, [0, 2]);
+        const { refs } = await renderSelectedPair();
         expect(getSelection(refs)).toEqual([true, false, true]);
     });
 });
 
 describe("userEvent deselection - populated containers", () => {
     it("deselects a selected child and leaves an unselected one alone", async () => {
-        const refs = await renderChildren(GtkNs.SelectionMode.MULTIPLE);
-        const flowBox = refs[0]?.current?.getParent() as Gtk.FlowBox;
-        await userEvent.selectOptions(flowBox, [0, 2]);
+        const { refs, flowBox } = await renderSelectedPair();
         expect(getSelection(refs)).toEqual([true, false, true]);
         await userEvent.deselectOptions(flowBox, 2);
         expect(getSelection(refs)).toEqual([true, false, false]);
         await userEvent.deselectOptions(flowBox, 1);
         expect(getSelection(refs)).toEqual([true, false, false]);
+    });
+
+    it("deselects a row in browse selection mode", async () => {
+        const refs = await renderRowBox({ selectionMode: GtkNs.SelectionMode.BROWSE }, 2);
+        const listBox = refs[0]?.current?.getParent() as Gtk.ListBox;
+        await userEvent.selectOptions(listBox, 0);
+        expect(getSelection(refs)).toEqual([true, false]);
+        await userEvent.deselectOptions(listBox, 0);
+        expect(getSelection(refs)).toEqual([false, false]);
+    });
+
+    it("deselects the exact rows even when they cannot take focus", async () => {
+        const refs = await renderRowBox({ selectionMode: GtkNs.SelectionMode.MULTIPLE }, 2, (index) =>
+            index === 1 ? { focusable: false } : {},
+        );
+
+        const listBox = refs[0]?.current?.getParent() as Gtk.ListBox;
+        await userEvent.selectOptions(listBox, [0, 1]);
+        expect(getSelection(refs)).toEqual([true, true]);
+        await userEvent.deselectOptions(listBox, 0);
+        expect(getSelection(refs)).toEqual([false, true]);
+        await userEvent.deselectOptions(listBox, 1);
+        expect(getSelection(refs)).toEqual([false, false]);
+    });
+
+    it("deselects a selected row that a filter keeps off screen", async () => {
+        const refs = await renderRowBox({ selectionMode: GtkNs.SelectionMode.MULTIPLE }, 2);
+        const listBox = refs[0]?.current?.getParent() as Gtk.ListBox;
+        await userEvent.selectOptions(listBox, [0, 1]);
+        expect(getSelection(refs)).toEqual([true, true]);
+        listBox.setFilterFunc((row) => row !== refs[1]?.current);
+        await userEvent.deselectOptions(listBox, 1);
+        expect(getSelection(refs)).toEqual([true, false]);
     });
 });
 
@@ -67,26 +115,40 @@ describe("userEvent deselection - empty containers", () => {
     });
 });
 
+describe("userEvent click - flow box children", () => {
+    it("activates the child owning the clicked label when a single click activates", async () => {
+        const { refs, onChildActivated } = await renderActivatableChildren({
+            selectionMode: GtkNs.SelectionMode.SINGLE,
+        });
+
+        await userEvent.click(screen.getByText("Child 1"));
+        expect(onChildActivated).toHaveBeenCalledTimes(1);
+        expect(getSelection(refs)).toEqual([false, true, false]);
+    });
+
+    it("replaces the selection across clicks when a single click does not activate", async () => {
+        const { refs, onChildActivated } = await renderActivatableChildren({
+            selectionMode: GtkNs.SelectionMode.MULTIPLE,
+            activateOnSingleClick: false,
+        });
+
+        await userEvent.click(screen.getByText("Child 0"));
+        expect(getSelection(refs)).toEqual([true, false, false]);
+        await userEvent.click(screen.getByText("Child 2"));
+        expect(onChildActivated).not.toHaveBeenCalled();
+        expect(getSelection(refs)).toEqual([false, false, true]);
+    });
+});
+
 describe("userEvent selection - no activation side effects", () => {
     it("selects a list box row without activating it", async () => {
-        const refs = [createRef<Gtk.ListBoxRow>(), createRef<Gtk.ListBoxRow>()];
-        const boxRef = createRef<Gtk.ListBox>();
         const onRowActivated = vi.fn();
-
-        await render(
-            <GtkListBox ref={boxRef} selectionMode={GtkNs.SelectionMode.MULTIPLE} onRowActivated={onRowActivated}>
-                {refs.map((ref, index) => (
-                    <GtkListBoxRow key={index} ref={ref}>
-                        <GtkLabel label={`Row ${String(index)}`} />
-                    </GtkListBoxRow>
-                ))}
-            </GtkListBox>,
-        );
-
-        await userEvent.selectOptions(boxRef.current as Gtk.ListBox, 1);
+        const refs = await renderRowBox({ selectionMode: GtkNs.SelectionMode.MULTIPLE, onRowActivated }, 2);
+        const listBox = refs[0]?.current?.getParent() as Gtk.ListBox;
+        await userEvent.selectOptions(listBox, 1);
         expect(getSelection(refs)[1]).toBe(true);
         expect(onRowActivated).not.toHaveBeenCalled();
-        await userEvent.deselectOptions(boxRef.current as Gtk.ListBox, 1);
+        await userEvent.deselectOptions(listBox, 1);
         expect(getSelection(refs)[1]).toBe(false);
         expect(onRowActivated).not.toHaveBeenCalled();
     });

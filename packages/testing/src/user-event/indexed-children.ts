@@ -1,14 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { callBooleanGetter, getWidgetMethod, hasWidgetMethod } from "../widget-getters.js";
 
 const CHILD_AT_INDEX_GETTERS = ["getRowAtIndex", "getChildAtIndex"];
 const CHILD_SELECTORS = ["selectRow", "selectChild"];
 const CHILD_DESELECTORS = ["unselectRow", "unselectChild"];
 const SELECTED_PROBE = "isSelected";
-
-const getWidgetMethod = (widget: Gtk.Widget, name: string): unknown => Reflect.get(widget, name);
-
-const hasWidgetMethod = (widget: Gtk.Widget, name: string): boolean =>
-    typeof getWidgetMethod(widget, name) === "function";
 
 const hasIndexedChildren = (widget: Gtk.Widget): boolean =>
     CHILD_AT_INDEX_GETTERS.some((getter) => hasWidgetMethod(widget, getter));
@@ -45,18 +41,22 @@ const unselectContainerChild = (container: Gtk.Widget, child: Gtk.Widget): void 
     applyChildMethod(container, CHILD_DESELECTORS, child);
 };
 
-const isChildSelected = (child: Gtk.Widget): boolean => {
-    const fn = getWidgetMethod(child, SELECTED_PROBE);
+const unselectAllChildren = (container: Gtk.Widget): void => {
+    const fn = getWidgetMethod(container, "unselectAll");
 
-    return typeof fn === "function" && (fn as () => boolean).call(child);
+    if (typeof fn === "function") {
+        (fn as () => void).call(container);
+    }
 };
+
+const isChildSelected = (child: Gtk.Widget): boolean => callBooleanGetter(child, SELECTED_PROBE) ?? false;
 
 export {
     getChildAtIndex,
     hasIndexedChildren,
-    hasWidgetMethod,
     isChildSelected,
     SELECTED_PROBE,
     selectContainerChild,
+    unselectAllChildren,
     unselectContainerChild,
 };

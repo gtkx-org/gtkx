@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { formatRoleList } from "../role-helpers.js";
+import { getWidgetMethod } from "../widget-getters.js";
 import { wrapEvent } from "./event-wrapper.js";
 import {
     getChildAtIndex,
@@ -56,7 +57,7 @@ const isListView = (widget: Gtk.Widget): widget is CollectionWidget =>
     widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
 
 const getIndexSelector = (widget: Gtk.Widget): ((position: number) => void) | null => {
-    const fn: unknown = Reflect.get(widget, "setSelected");
+    const fn = getWidgetMethod(widget, "setSelected");
 
     return typeof fn === "function" ? (fn as (position: number) => void).bind(widget) : null;
 };

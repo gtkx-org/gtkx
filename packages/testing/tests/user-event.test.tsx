@@ -373,10 +373,45 @@ describe("userEvent.clear", () => {
         expect(editableText(entry)).toBe("");
     });
 
+    it("delivers the clear sequence through the instance's held modifiers", async () => {
+        const presses: [number, number, number][] = [];
+
+        const onKeyPressed = vi.fn((keyval: number, keycode: number, modifiers: number): boolean => {
+            presses.push([keyval, keycode, modifiers]);
+
+            return false;
+        });
+
+        await render(<GtkEntry text="abc" controllers={<GtkEventControllerKey onKeyPressed={onKeyPressed} />} />);
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        const user = userEvent.setup();
+        await user.keyboard(entry, "{Shift>}");
+        await user.clear(entry);
+        await user.keyboard(entry, "{/Shift}");
+
+        const isShiftCarried = presses.some(
+            ([keyval, , modifiers]) =>
+                keyval === Gdk.KEY_a &&
+                (modifiers & Gdk.ModifierType.SHIFT_MASK) !== 0 &&
+                (modifiers & Gdk.ModifierType.CONTROL_MASK) !== 0,
+        );
+
+        expect(isShiftCarried).toBe(true);
+    });
+
     describe("error handling", () => {
         it("throws when element is not editable", async () => {
             await expect(actOnPlainButton((button) => userEvent.clear(button))).rejects.toThrow(
                 "Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
+            );
+        });
+
+        it("throws when the widget refuses edits", async () => {
+            await render(<GtkEntry text="Locked" editable={false} />);
+            const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+
+            await expect(userEvent.clear(entry)).rejects.toThrow(
+                "Cannot clear element: the widget is not editable",
             );
         });
     });

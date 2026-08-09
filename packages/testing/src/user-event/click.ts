@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { callBooleanGetter, getWidgetMethod, hasWidgetMethod } from "../widget-getters.js";
 import { getOrCreateControllers, isSynthesizedController, queryAllControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
-import { hasIndexedChildren, hasWidgetMethod, selectContainerChild, SELECTED_PROBE } from "./indexed-children.js";
+import { hasIndexedChildren, selectContainerChild, SELECTED_PROBE, unselectAllChildren } from "./indexed-children.js";
 
 const getPressPoint = (widget: Gtk.Widget): { x: number; y: number } => {
     const width = widget.getWidth();
@@ -69,10 +70,27 @@ const findClickableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
 const isSelfClickTarget = (widget: Gtk.Widget): boolean =>
     widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL && isClickTarget(widget);
 
-const isSingleClickActivating = (container: Gtk.Widget): boolean => {
-    const fn: unknown = Reflect.get(container, "getActivateOnSingleClick");
+const isSingleClickActivating = (container: Gtk.Widget): boolean =>
+    callBooleanGetter(container, "getActivateOnSingleClick") ?? true;
 
-    return typeof fn !== "function" || (fn as () => boolean).call(container);
+const isMultipleSelection = (container: Gtk.Widget): boolean => {
+    const fn = getWidgetMethod(container, "getSelectionMode");
+
+    return typeof fn === "function" && (fn as () => Gtk.SelectionMode).call(container) === Gtk.SelectionMode.MULTIPLE;
+};
+
+const isChildSelectable = (child: Gtk.Widget): boolean => callBooleanGetter(child, "getSelectable") ?? true;
+
+const replaceContainerSelection = (container: Gtk.Widget, child: Gtk.Widget): void => {
+    if (!isChildSelectable(child)) {
+        return;
+    }
+
+    if (isMultipleSelection(container)) {
+        unselectAllChildren(container);
+    }
+
+    selectContainerChild(container, child);
 };
 
 const activateContainerChild = (child: Gtk.Widget): void => {
@@ -84,17 +102,17 @@ const activateContainerChild = (child: Gtk.Widget): void => {
         return;
     }
 
-    selectContainerChild(container, child);
+    replaceContainerSelection(container, child);
 };
 
-const deliverClick = (widget: Gtk.Widget, target: Gtk.Widget): Promise<void> => {
+const deliverClick = async (widget: Gtk.Widget, target: Gtk.Widget): Promise<void> => {
+    await emitClickSequence(widget, target, 1);
+
     if (isActivatableChild(target)) {
-        return wrapEvent(widget, () => {
+        await wrapEvent(widget, () => {
             activateContainerChild(target);
         });
     }
-
-    return emitClickSequence(widget, target, 1);
 };
 
 /* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether activation succeeded */
@@ -113,15 +131,23 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
 };
 
 /**
- * Presses and releases a Gtk.Button, and otherwise activates the widget. When activation does
- * nothing, the click goes to the widget itself if it carries a click gesture of its own, and
- * otherwise to the nearest ancestor that does. An ancestor that is the indexed child of a list box
- * or flow box is activated, or merely selected when its container does not activate on a single
- * click. A widget with the label role is never activated and never consumes the click itself.
+ * Presses and releases a Gtk.Button, and otherwise activates the widget. A widget that is the
+ * indexed child of a list box or flow box instead receives a click gesture and is then activated,
+ * or exclusively selected when its container does not activate on a single click, whether the click
+ * lands on the child itself or on one of its descendants. When activation does nothing, the click
+ * goes to the widget itself if it carries a click gesture of its own, and otherwise to the nearest
+ * ancestor that does. A widget with the label role is never activated and never consumes the click
+ * itself.
  */
 const click = async (widget: Gtk.Widget): Promise<void> => {
     if (widget instanceof Gtk.Button) {
         await emitClickSequence(widget, widget, 1);
+
+        return;
+    }
+
+    if (isActivatableChild(widget)) {
+        await deliverClick(widget, widget);
 
         return;
     }
@@ -137,8 +163,25 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
     }
 };
 
-/** Emits a two-press click gesture at the widget's center, adding a Gtk.GestureClick when it has none. */
-const dblClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, widget, 2);
+/**
+ * Emits a two-press click gesture at the widget's center, adding a Gtk.GestureClick when it has
+ * none. A list box row or flow box child whose container does not activate on a single click is
+ * then selected and activated, as GTK's double-click path does.
+ */
+const dblClick = async (widget: Gtk.Widget): Promise<void> => {
+    await emitClickSequence(widget, widget, 2);
+    const container = widget.getParent();
+
+    if (container === null || !isActivatableChild(widget) || isSingleClickActivating(container)) {
+        return;
+    }
+
+    await wrapEvent(widget, () => {
+        replaceContainerSelection(container, widget);
+        widget.activate();
+    });
+};
+
 /** Emits a three-press click gesture at the widget's center, adding a Gtk.GestureClick when it has none. */
 const tripleClick = (widget: Gtk.Widget): Promise<void> => emitClickSequence(widget, widget, 3);
 

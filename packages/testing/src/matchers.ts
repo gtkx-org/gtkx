@@ -33,6 +33,7 @@ import {
     getWidgetValue,
     hasDisplayValue,
     isWidgetDisabled,
+    isWidgetValueMatch,
     isWidgetVisible,
 } from "./widget-accessible-properties.js";
 
@@ -785,13 +786,13 @@ function toHaveValue(received: unknown, expected?: number | string): MatcherResu
         throw notApplicable("toHaveValue", "numeric value", widget);
     }
 
-    const isPass = expected === undefined || actual === expected;
+    const isPass = expected === undefined || isWidgetValueMatch(widget, "now", expected);
 
     return {
         pass: isPass,
         message: () =>
             `expected widget ${negationPrefix(isPass)}to have value ${String(expected)}, ` +
-            `but received ${String(actual)}\n${describeWidget(widget)}`,
+            `but received approximately ${String(actual)}\n${describeWidget(widget)}`,
     };
 }
 

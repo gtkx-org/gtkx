@@ -1,10 +1,28 @@
 import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwComboRow, AdwPreferencesGroup } from "@gtkx/jsx/adw";
-import { GtkBox, GtkInscription, GtkLabel, GtkStringList, GtkTextView, GtkToggleButton } from "@gtkx/jsx/gtk";
+import {
+    GtkAdjustment,
+    GtkBox,
+    GtkInscription,
+    GtkLabel,
+    GtkProgressBar,
+    GtkScale,
+    GtkStringList,
+    GtkTextView,
+    GtkToggleButton,
+} from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+
+const expectLabelSelection = async (text: string, range: [number, number], expected: string): Promise<void> => {
+    const ref = createRef<Gtk.Label>();
+    await render(<GtkLabel ref={ref} label={text} selectable />);
+    const label = ref.current as Gtk.Label;
+    label.selectRegion(range[0], range[1]);
+    expect(label).toHaveSelection(expected);
+};
 
 describe("accessible reads beyond the concrete classes", () => {
     it("reads a placeholder from a widget that is not a Gtk.Editable", async () => {
@@ -14,19 +32,11 @@ describe("accessible reads beyond the concrete classes", () => {
     });
 
     it("reads the selection of a selectable label", async () => {
-        const ref = createRef<Gtk.Label>();
-        await render(<GtkLabel ref={ref} label="hello world" selectable />);
-        const label = ref.current as Gtk.Label;
-        label.selectRegion(6, 11);
-        expect(label).toHaveSelection("world");
+        await expectLabelSelection("hello world", [6, 11], "world");
     });
 
     it("slices a label selection by code point", async () => {
-        const ref = createRef<Gtk.Label>();
-        await render(<GtkLabel ref={ref} label="a😀bc" selectable />);
-        const label = ref.current as Gtk.Label;
-        label.selectRegion(1, 3);
-        expect(label).toHaveSelection("😀b");
+        await expectLabelSelection("a😀bc", [1, 3], "😀b");
     });
 
     it("reads the shown option of an Adwaita combo row", async () => {
@@ -54,6 +64,26 @@ describe("indeterminate states match neither boolean", () => {
 
         expect(screen.queryAllByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: false })).toHaveLength(0);
         expect(screen.queryAllByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { pressed: true })).toHaveLength(0);
+    });
+});
+
+describe("numeric value reads keep full precision", () => {
+    it("matches a scale value beyond six significant digits", async () => {
+        const ref = createRef<Gtk.Scale>();
+
+        await render(
+            <GtkScale ref={ref} adjustment={<GtkAdjustment value={1234.5678} lower={0} upper={10_000} />} />,
+        );
+
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 1234.5678 } })).toBe(ref.current);
+        expect(ref.current).toHaveValue(1234.5678);
+        expect(ref.current).not.toHaveValue(1234.57);
+    });
+
+    it("matches a progress fraction that six digits cannot represent", async () => {
+        const ref = createRef<Gtk.ProgressBar>();
+        await render(<GtkProgressBar ref={ref} fraction={1 / 3} />);
+        expect(ref.current).toHaveValue(1 / 3);
     });
 });
 
