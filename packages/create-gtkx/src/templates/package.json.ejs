@@ -2,6 +2,13 @@
     "name": "<%= name %>",
     "version": "0.0.1",
     "private": true,
+    "description": "A GTK4 application built with GTKX",
+    "license": "MIT",
+<% if (developerEmail) { -%>
+    "author": "<%= developerName %> <<%= developerEmail %>>",
+<% } else { -%>
+    "author": "<%= developerName %>",
+<% } -%>
     "type": "module",
     "imports": {
         "#data/*": "./data/*"
@@ -13,6 +20,7 @@
 <% if (isTypescript) { -%>
         "typecheck": "gtkx codegen && tsc",
 <% } -%>
-        "start": "node dist/bundle.js"
+        "start": "node dist/bundle.js",
+        "deploy": "gtkx deploy"
     }
 }

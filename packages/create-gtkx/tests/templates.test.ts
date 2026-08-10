@@ -11,6 +11,8 @@ function context(overrides: Partial<TemplateContext> = {}): TemplateContext {
         shouldIncludeTesting: false,
         isTypescript: true,
         importExtension: ".js",
+        developerName: "Ada Lovelace",
+        developerEmail: "ada@example.com",
         ...overrides,
     };
 }
@@ -74,6 +76,7 @@ describe("listTemplates", () => {
 
         expect(templates).toEqual([
             ".gitignore",
+            "data/icons/hicolor/scalable/apps/icon.svg",
             "gtkx.config.ts",
             "package.json",
             "src/app.tsx",

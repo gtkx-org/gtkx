@@ -10,6 +10,8 @@ type TemplateContext = {
     shouldIncludeTesting: boolean;
     isTypescript: boolean;
     importExtension: string;
+    developerName: string;
+    developerEmail: string | null;
 };
 
 const getTemplatesDir = (): string => {
