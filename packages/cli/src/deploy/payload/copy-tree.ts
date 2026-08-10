@@ -1,0 +1,38 @@
+import { chmodSync, copyFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import type { StagedFile } from "../types.js";
+import { listFilesRecursive } from "../../internal/list-files.js";
+
+const EXECUTABLE_MODE = 0o755;
+const READABLE_MODE = 0o644;
+const EXECUTABLE_SUFFIXES = [".node", ".so"];
+
+const modeFor = (rel: string): number => {
+    const name = rel.split("/").at(-1) ?? rel;
+
+    return EXECUTABLE_SUFFIXES.some((suffix) => name.endsWith(suffix)) ? EXECUTABLE_MODE : READABLE_MODE;
+};
+
+const placeFile = (root: string, rel: string, mode: number, write: (target: string) => void): StagedFile => {
+    const abs = join(root, rel);
+    mkdirSync(dirname(abs), { recursive: true });
+    write(abs);
+    chmodSync(abs, mode);
+
+    return { rel, abs, mode };
+};
+
+const copyInto = (root: string, rel: string, source: string, mode = modeFor(rel)): StagedFile =>
+    placeFile(root, rel, mode, (target) => {
+        copyFileSync(source, target);
+    });
+
+const writeInto = (root: string, rel: string, contents: string, mode = READABLE_MODE): StagedFile =>
+    placeFile(root, rel, mode, (target) => {
+        writeFileSync(target, contents);
+    });
+
+const copyTree = (root: string, relBase: string, sourceDir: string): StagedFile[] =>
+    listFilesRecursive(sourceDir).map((file) => copyInto(root, join(relBase, file.rel), file.absPath));
+
+export { copyInto, copyTree, EXECUTABLE_MODE, READABLE_MODE, writeInto };
