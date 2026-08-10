@@ -147,7 +147,7 @@ type DeployTarget = {
     prefix: string;
     tools: DeployTool[];
     render: (payload: DeployPayload) => DeployManifest[];
-    pack: (payload: DeployPayload, manifests: DeployManifest[]) => DeployArtifact[];
+    pack: (payload: DeployPayload, manifests: DeployManifest[]) => Promise<DeployArtifact[]>;
 };
 
 export type {
