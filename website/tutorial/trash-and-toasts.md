@@ -242,7 +242,7 @@ Each site calls `useRequestDeleteTask` and drops its own `moveToTrash` selection
 
 ## A dialog that is a form
 
-Lists have been in the sidebar since [Lists and a Sidebar](/tutorial/lists-and-the-sidebar), seeded and fixed. Creating one needs a name and a color, and an alert dialog can carry that form: its children become its body, laid out above the response buttons.
+Lists have been in the sidebar since [Lists and a Sidebar](/tutorial/lists-and-the-sidebar), seeded and fixed. Creating one needs a name and a color, and an alert dialog can carry that form: its children become the dialog's extra child, laid out below the heading and body text and above the response buttons, so the heading and the buttons stay exactly where they are.
 
 Create `src/components/new-list-dialog.tsx`:
 

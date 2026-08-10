@@ -41,8 +41,67 @@ type Interface<TImpl> = AnyClass & {
     __impl__: (impl: Partial<TImpl> & object) => void;
 };
 
+/**
+ * One key of `RegisterClassOptions.properties` with every underscore turned into the dash a canonical
+ * GObject property name separates its words with.
+ */
+type Dashed<TName extends string> = TName extends `${infer THead}_${infer TTail}`
+    ? Dashed<`${THead}-${TTail}`>
+    : TName;
+
+/**
+ * One dashed key in the camelCase spelling the accessors {@link registerClass} installs carry, which is
+ * the spelling the hooks that address a property by name take.
+ */
+type Camelized<TName extends string> = TName extends `${infer THead}-${infer TTail}`
+    ? `${THead}${Capitalize<Camelized<TTail>>}`
+    : TName;
+
+/**
+ * The names a registered class carries in its property map: every key of
+ * `RegisterClassOptions.properties` in camelCase, whichever of the three spellings it was written in.
+ * A `properties` object given a type of its own rather than left to inference has `string` for its key
+ * type and names nothing, because a name only known as `string` addresses no member in particular.
+ */
+type InstalledNames<TProperties> = string extends keyof TProperties
+    ? never
+    : Camelized<Dashed<keyof TProperties & string>>;
+
+/**
+ * An instance of a registered class: everything the class itself declares, plus the property map the
+ * hooks that address a property by name, such as `useProperty` from `@gtkx/react`, read the installed
+ * names off. Each name is typed with the value type the class declares for the member of that name,
+ * so a property the class does not `declare` contributes nothing.
+ */
+type RegisteredInstance<TInstance, TProperties> = TInstance & {
+    /** Type-level map from installed property name to value type; no value ever carries it. */
+    __properties__: Pick<TInstance, InstalledNames<TProperties> & keyof TInstance>;
+};
+
+/**
+ * The construct signature and prototype a registered class carries, both giving
+ * {@link RegisteredInstance}. The signature stays abstract for as long as the class itself is, so
+ * registering an abstract base leaves it as impossible to construct as it was.
+ */
+type RegisteredConstructor<TClass, TArgs extends unknown[], TInstance> = {
+    /** Object the class's instances inherit from. */
+    prototype: TInstance;
+} & (TClass extends new (...args: never) => unknown
+    ? new (...args: TArgs) => TInstance
+    : abstract new (...args: TArgs) => TInstance);
+
+/**
+ * The class {@link registerClass} hands back: the same class, with the same statics, whose instances
+ * carry the properties `RegisterClassOptions.properties` installed. Binding the call to a name, rather
+ * than discarding it, is what carries those names into the type system.
+ */
+type RegisteredClass<TClass extends AnyClass, TProperties> =
+    TClass extends abstract new (...args: infer TArgs) => infer TInstance
+        ? Omit<TClass, "prototype"> & RegisteredConstructor<TClass, TArgs, RegisteredInstance<TInstance, TProperties>>
+        : never;
+
 /** What {@link registerClass} adds to the new GType beyond the vtable slots it discovers on the class. */
-type RegisterClassOptions<TInstance extends object> = {
+type RegisterClassOptions<TInstance extends object, TProperties extends Record<string, PropertySpec>> = {
     /** Name to register the new GType under, defaulting to the class's own name. */
     typeName?: string;
     /**
@@ -53,15 +112,22 @@ type RegisterClassOptions<TInstance extends object> = {
      */
     implements?: Interface<TInstance>[];
     /**
-     * Properties to install on the new type, keyed by canonical name and valued with the
-     * `GObject.ParamSpec` describing each. Every property gains dashed, underscored and camelCased
-     * prototype accessors that emit `notify` on write, unless the class already defines that name.
+     * Properties to install on the new type, keyed by the name JavaScript addresses each one by and
+     * valued with the `GObject.ParamSpec` describing it. A key is read in camelCase however it is
+     * written, so `dewPoint`, `dew_point` and `dew-point` all name the same member, and the ParamSpec
+     * has to carry the canonical spelling of that name, `dew-point`, or registration throws: the
+     * ParamSpec's name is the one GObject emits `notify` with, and a name the key does not spell
+     * reaches nothing that listens for it. Every property gains prototype accessors that emit `notify`
+     * on write, one for the key as written, one for it with dashes turned into underscores and one for
+     * it in camelCase, each unless the class already defines that name.
      * A class that defines `vfuncSetProperty` or `vfuncGetProperty` itself backs that direction with
      * its own method instead of the generated accessor dispatch.
      */
-    properties?: Record<string, PropertySpec>;
+    properties?: TProperties;
 };
 
+/** {@link RegisterClassOptions} with the widest instance and property types {@link registerClass} accepts. */
+type AnyRegisterClassOptions = RegisterClassOptions<object, Record<string, PropertySpec>>;
 type VfuncFn = NativeRegisterClassVfunc["fn"];
 type DiscoveredVfunc = VfuncDescriptor & { methodName: string; fn: VfuncFn };
 type MethodTable = Map<string, VfuncFn>;
@@ -100,8 +166,10 @@ const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec
  * `RegisterClassOptions.implements` names.
  *
  * Throws when the class does not extend a registered wrapper class, when it has no derivable type
- * name, when an entry in `RegisterClassOptions.implements` is not a registered interface, and when a
- * listed interface has a prerequisite that neither the parent type nor another listed interface meets.
+ * name, when an entry in `RegisterClassOptions.implements` is not a registered interface, when a
+ * listed interface has a prerequisite that neither the parent type nor another listed interface meets,
+ * and when an entry in `RegisterClassOptions.properties` names its `GObject.ParamSpec` something other
+ * than the canonical spelling of the key it sits under.
  *
  * A slot is filled from the `vfunc`-prefixed methods on the class's prototype chain, up to but not
  * including the registered ancestor the class extends, so a method an intermediate base class
@@ -121,9 +189,14 @@ const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec
  *
  * @param klass The subclass to register.
  * @param options What the new GType gains beyond the vtable slots the class overrides.
- * @returns The same class, now registered.
+ * @returns The same class, now registered, with every name in `options.properties` in its property map.
  */
-function registerClass<T extends AnyClass>(klass: T, options: RegisterClassOptions<T["prototype"]> = {}): T {
+function registerClass<
+    T extends AnyClass,
+    TProperties extends Record<string, PropertySpec> = Record<never, PropertySpec>,
+>(klass: T, options?: RegisterClassOptions<T["prototype"], TProperties>): RegisteredClass<T, TProperties>;
+
+function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): AnyClass {
     const parentType = resolveParentType(klass);
 
     if (parentType === TYPE_INVALID) {

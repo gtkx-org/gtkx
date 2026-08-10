@@ -1,8 +1,9 @@
 import { type ExternalObject, type Handle, read } from "@gtkx/native";
+import { type AnyClass } from "@gtkx/utils";
 import { bind } from "./bind.js";
 import { boxedT, callbackT, sizedArrayT, structT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { CLOSURE_SIZE, LIB, VALUE_SIZE, VALUE_T } from "./library.js";
-import { getHandle, getInstanceType, getWrapperClass, instanceClassName, wrapHandle } from "./registry.js";
+import { getClassType, getHandle, getWrapperClass, instanceClassName, wrapHandle } from "./registry.js";
 import { resolveBoxedType, typeIsA } from "./type.js";
 import { fromValue, getValueType, intoValue } from "./value.js";
 
@@ -61,7 +62,7 @@ const gClosureSink = bind(LIB, "g_closure_sink", [CLOSURE_T], voidT);
 const gClosureSetMarshal = bind(LIB, "g_closure_set_marshal", [CLOSURE_T, uint64T], voidT);
 
 const isClosureInstance = (value: object): boolean =>
-    typeIsA(getInstanceType(value), resolveBoxedType(CLOSURE_T));
+    typeIsA(getClassType(value.constructor as AnyClass), resolveBoxedType(CLOSURE_T));
 
 const getNestedValue = (param: ExternalObject<Handle>): object | null =>
     wrapHandle(gValueGetBoxed(param) as ExternalObject<Handle> | null, getWrapperClass(resolveBoxedType(VALUE_T)));

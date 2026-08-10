@@ -29,6 +29,7 @@ export { promisify } from "./promisify.js";
 export { type Interface, registerClass } from "./register-class.js";
 /** @public */
 export {
+    getClassType,
     getHandle,
     getInstanceType,
     getWrapperClass,
@@ -83,3 +84,5 @@ export { getBoxedValue, setBoxedValue } from "./value.js";
 export { callParent, callVfunc } from "./vfunc-call.js";
 /** @public */
 export { alloc, type ExternalObject, type Handle, read, write } from "@gtkx/native";
+/** @public */
+export { type AnyClass } from "@gtkx/utils";

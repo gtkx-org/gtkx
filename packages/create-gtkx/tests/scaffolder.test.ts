@@ -12,7 +12,7 @@ const clack = vi.hoisted(() => ({
     intro: vi.fn(),
     note: vi.fn(),
     cancel: vi.fn(),
-    log: { info: vi.fn(), error: vi.fn() },
+    log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
     text: vi.fn(() => Promise.resolve("")),
     select: vi.fn((opts: { initialValue?: unknown }) => Promise.resolve(opts.initialValue)),
@@ -27,6 +27,19 @@ const TEST_DIR = "/test-workspace";
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
 const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
 const templateFiles: Record<string, string> = {};
+const CUTOFF = ", within the minimumReleaseAge cutoff (2026-08-09T08:49:41.166Z)";
+const PROD_ARGS = ["@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"].map((name) => pin(name)).join(" ");
+
+const DEV_ARGS = ["@gtkx/cli", "@gtkx/config", "@gtkx/mcp", "vite", "@types/node", "@types/react", "typescript"]
+    .map((name) => pin(name))
+    .join(" ");
+
+const RELEASE_AGE_FAILURE = [
+    "`corepack pnpm add -D @gtkx/cli@^1.0.0` failed.",
+    "[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] 2 lockfile entries failed verification:",
+    `  @gtkx/config@1.0.0 was published at 2026-08-09T23:05:27.984Z${CUTOFF}`,
+    `  @gtkx/runtime@1.0.0 was published at 2026-08-09T23:05:26.446Z${CUTOFF}`,
+].join("\n");
 
 function readJson(path: string): ScaffoldedManifest {
     return JSON.parse(read(path)) as ScaffoldedManifest;
@@ -70,6 +83,18 @@ function lastNote(): string {
 
 function lastError(): string {
     return String(clack.log.error.mock.calls.at(-1)?.[0] ?? "");
+}
+
+function lastWarning(): string {
+    return String(clack.log.warn.mock.calls.at(-1)?.[0] ?? "");
+}
+
+function lastInfo(): string {
+    return String(clack.log.info.mock.calls.at(-1)?.[0] ?? "");
+}
+
+function recoverySteps(): string[] {
+    return lastInfo().split("\n").slice(1).map((line) => line.trim());
 }
 
 function partialOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
@@ -260,7 +285,15 @@ describe("scaffold (JavaScript variant)", () => {
     it("drops typescript and @types/react from the installed dev dependencies", async () => {
         await run({ isTypescript: false, shouldIncludeTesting: true });
         const devCall = addDependencyMock.mock.calls[1];
-        expect(devCall?.[0]).toEqual([pin("@gtkx/cli"), pin("@gtkx/config"), "vite", pin("@gtkx/testing"), "vitest"]);
+
+        expect(devCall?.[0]).toEqual([
+            pin("@gtkx/cli"),
+            pin("@gtkx/config"),
+            pin("@gtkx/mcp"),
+            "vite",
+            pin("@gtkx/testing"),
+            "vitest",
+        ]);
     });
 });
 
@@ -283,6 +316,7 @@ describe("scaffold (dependency installation)", () => {
         expect(devCall?.[0]).toEqual([
             pin("@gtkx/cli"),
             pin("@gtkx/config"),
+            pin("@gtkx/mcp"),
             "vite",
             "@types/node",
             "@types/react",
@@ -303,13 +337,61 @@ describe("scaffold (dependency installation)", () => {
         expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "npm" });
         expect(addDependencyMock.mock.calls[1]?.[1]).toMatchObject({ packageManager: "npm" });
     });
+});
 
-    it("aborts with a non-zero exit and a manual install command when installation fails", async () => {
+describe("scaffold (install failure)", () => {
+    it("aborts with a non-zero exit and the commands that re-add every dependency", async () => {
         addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
         await expect(run({ packageManager: "npm" })).rejects.toThrow(/Failed to install dependencies/);
-        expect(clack.log.error.mock.calls.some(([m]) => String(m).includes("install failed"))).toBe(true);
-        expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("cd test-app"))).toBe(true);
-        expect(clack.log.info.mock.calls.some(([m]) => String(m).includes("npm install"))).toBe(true);
+        expect(lastError()).toContain("install failed");
+        expect(recoverySteps()).toEqual(["cd test-app", `npm install ${PROD_ARGS}`, `npm install -D ${DEV_ARGS}`]);
+        expect(clack.log.warn).not.toHaveBeenCalled();
+    });
+
+    it("tells the user a plain install has nothing to reinstall", async () => {
+        addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
+        await expect(run()).rejects.toThrow(/Failed to install dependencies/);
+        expect(lastInfo()).toContain("wrote nothing to package.json");
+        expect(recoverySteps()).not.toContain("pnpm install");
+    });
+
+    it("omits the cd step when scaffolding into the current directory", async () => {
+        addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
+        await expect(run({ name: "." })).rejects.toThrow(/Failed to install dependencies/);
+        expect(recoverySteps()).toEqual([`pnpm add ${PROD_ARGS}`, `pnpm add -D ${DEV_ARGS}`]);
+    });
+});
+
+describe("scaffold (release-age install failure)", () => {
+    it("explains pnpm's release-age policy and lists the versions it rejected", async () => {
+        addDependencyMock.mockRejectedValueOnce(new Error(RELEASE_AGE_FAILURE));
+        await expect(run()).rejects.toThrow(/Failed to install dependencies/);
+        const warning = lastWarning();
+        expect(warning).toContain("minimumReleaseAge policy");
+        expect(warning).toContain("\nminimumReleaseAgeExclude:\n  - '@gtkx/config@1.0.0'\n  - '@gtkx/runtime@1.0.0'");
+    });
+
+    it("puts the exclusion at the top level and warns that a later install can name more", async () => {
+        addDependencyMock.mockRejectedValueOnce(new Error(RELEASE_AGE_FAILURE));
+        await expect(run()).rejects.toThrow(/Failed to install dependencies/);
+        const warning = lastWarning();
+        expect(warning).toContain("sibling of packages: and allowBuilds:");
+        expect(warning).toContain("a later install can name more");
+    });
+
+    it("keeps the raw package manager output and the re-add commands alongside the explanation", async () => {
+        addDependencyMock.mockRejectedValueOnce(new Error(RELEASE_AGE_FAILURE));
+        await expect(run()).rejects.toThrow(/Failed to install dependencies/);
+        expect(lastError()).toContain("ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION");
+        expect(recoverySteps()).toEqual(["cd test-app", `pnpm add ${PROD_ARGS}`, `pnpm add -D ${DEV_ARGS}`]);
+    });
+
+    it("never writes the exclusion into the scaffolded pnpm-workspace.yaml", async () => {
+        addDependencyMock.mockRejectedValueOnce(new Error(RELEASE_AGE_FAILURE));
+        await expect(run()).rejects.toThrow(/Failed to install dependencies/);
+        const workspace = read(`${TEST_DIR}/test-app/pnpm-workspace.yaml`);
+        expect(workspace).not.toContain("minimumReleaseAgeExclude");
+        expect(workspace).not.toContain("minimumReleaseAge");
     });
 });
 

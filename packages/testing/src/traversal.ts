@@ -35,6 +35,15 @@ const traverseWidgetTree = function* (
     }
 };
 
+const children = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
+    let child = widget.getFirstChild();
+
+    while (child) {
+        yield child;
+        child = child.getNextSibling();
+    }
+};
+
 const descendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
     const tree = traverseWidgetTree(widget, isAnyWidget);
     tree.next();
@@ -104,4 +113,14 @@ const findAll = (container: Container, isMatch: (node: Gtk.Widget) => boolean): 
     return results;
 };
 
-export { TOPLEVELS, descendants, findAll, isOnScreen, relationCandidates, roots, traverse, type Container };
+export {
+    TOPLEVELS,
+    children,
+    descendants,
+    findAll,
+    isOnScreen,
+    relationCandidates,
+    roots,
+    traverse,
+    type Container,
+};

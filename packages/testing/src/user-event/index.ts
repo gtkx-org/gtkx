@@ -30,18 +30,29 @@ type UserEvent = {
      * a click gesture, stopping at the first button or indexed child. A list box row or flow box
      * child receives its click gesture at the clicked position, passes one on to the gestures its
      * container carries, and is then activated, or exclusively selected when its container does not
-     * activate on a single click.
+     * activate on a single click. The press also stops at a widget whose click GTK4 implements
+     * itself, where the gestures that widget carries of its own still take the press and the same
+     * outcome is then applied through GTK's own public action: a list, grid, or column-view row is
+     * focused and selected, and activated as well when its view activates on a single click; an
+     * expandable tree expander that is itself the clicked widget toggles its expansion; a column
+     * header sorts by its column. A column-view cell and the row carrying the column headers stand
+     * in the way of the click rather than taking it, so a click on either reaches the row or the
+     * view behind it.
      */
     click: typeof click;
     /**
      * Delivers a two-press click gesture along the same path a single click takes, without trying
      * activation first, activating a list box row or flow box child on that path and replacing its
-     * container's selection whether or not that container activates on a single click.
+     * container's selection whether or not that container activates on a single click. A widget
+     * whose click GTK4 implements itself receives that outcome once per press, so a row is selected
+     * and activated by the second press, a tree expander ends back where it started, and a column
+     * header inverts its order after sorting.
      */
     dblClick: typeof dblClick;
     /**
      * Delivers a three-press click gesture the same way a double click is delivered, applying the
-     * same outcome to a list box row or flow box child.
+     * same outcome to a list box row or flow box child, and applying the outcome GTK4 implements
+     * itself once per press to a row, tree expander, or column header.
      */
     tripleClick: typeof tripleClick;
     /** Moves focus within the widget's root, forward by default and backward with `isShiftHeld`. */
@@ -89,7 +100,9 @@ type UserEvent = {
     keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
     /**
      * Applies a pointer token to the click gestures the widget already carries, tracking whether the
-     * left button is held across calls.
+     * left button is held across calls. On a widget whose click GTK4 implements itself, the release
+     * also applies GTK's own outcome, the way {@link UserEvent.click} does, and a column-view cell
+     * or the row carrying the column headers passes the token to the row or view behind it.
      */
     pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
 };

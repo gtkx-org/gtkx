@@ -1,6 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { getInstanceType, typeName } from "@gtkx/runtime";
 
 const getWidgetMethod = (widget: Gtk.Widget, name: string): unknown => Reflect.get(widget, name);
+const getWidgetTypeName = (widget: Gtk.Widget): string | null => typeName(getInstanceType(widget));
 
 const hasWidgetMethod = (widget: Gtk.Widget, name: string): boolean =>
     typeof getWidgetMethod(widget, name) === "function";
@@ -27,4 +29,4 @@ const callStringGetter = (widget: Gtk.Widget, method: string): string | null => 
     return typeof value === "string" ? value : null;
 };
 
-export { callBooleanGetter, callStringGetter, getCallableMethod, hasWidgetMethod };
+export { callBooleanGetter, callStringGetter, getCallableMethod, getWidgetTypeName, hasWidgetMethod };

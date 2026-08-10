@@ -15,6 +15,7 @@ type SerializedWidget = {
     isVisible: boolean;
     cssClasses: string[];
     children: SerializedWidget[];
+    hiddenChildren?: number;
 };
 
 type SerializedProperty = {
@@ -88,11 +89,19 @@ const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }> = z.object({
     widgetId: z.string(),
 });
 
+const DEFAULT_SUBTREE_DEPTH = 8;
+const MAX_SUBTREE_WIDGETS = 30;
+
 const widgetPropsParams: z.ZodObject<
-    { widgetId: z.ZodString; properties: z.ZodOptional<z.ZodArray<z.ZodString>> }
+    {
+        widgetId: z.ZodString;
+        properties: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        maxDepth: z.ZodOptional<z.ZodNumber>;
+    }
 > = z.object({
     widgetId: z.string(),
     properties: z.array(z.string()).optional(),
+    maxDepth: z.number().int().nonnegative().optional(),
 });
 
 const treeParams: z.ZodObject<
@@ -164,6 +173,8 @@ function getRuntimeDir(): string {
 }
 
 export {
+    DEFAULT_SUBTREE_DEPTH,
+    MAX_SUBTREE_WIDGETS,
     RequestSchema,
     ResponseSchema,
     RegisterParamsSchema,

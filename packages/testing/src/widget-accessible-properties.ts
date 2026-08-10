@@ -11,7 +11,7 @@ import {
 } from "./accessible-native.js";
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
 import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
-import { descendants, relationCandidates } from "./traversal.js";
+import { children, descendants, relationCandidates } from "./traversal.js";
 import { callBooleanGetter, callStringGetter, getCallableMethod } from "./widget-getters.js";
 
 type WidgetValueField = "now" | "min" | "max";
@@ -136,15 +136,6 @@ const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
     return namingLabelText(widget);
 };
 
-const getChildren = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
-    let child = widget.getFirstChild();
-
-    while (child) {
-        yield child;
-        child = child.getNextSibling();
-    }
-};
-
 const textContentParts = (widget: Gtk.Widget): string[] => {
     const own = getWidgetText(widget);
 
@@ -152,7 +143,7 @@ const textContentParts = (widget: Gtk.Widget): string[] => {
         return [own];
     }
 
-    return [...getChildren(widget)].flatMap((child) => textContentParts(child));
+    return [...children(widget)].flatMap((child) => textContentParts(child));
 };
 
 const getWidgetTextContent = (widget: Gtk.Widget): string | null => {
@@ -168,7 +159,7 @@ const dropDownChildFaceText = (child: Gtk.Widget): string | null =>
     isDropDownFaceCandidate(child) ? getWidgetLabelText(child) ?? dropDownFaceText(child) : null;
 
 const dropDownFaceText = (widget: Gtk.Widget): string | null => {
-    for (const child of getChildren(widget)) {
+    for (const child of children(widget)) {
         const text = dropDownChildFaceText(child);
 
         if (text !== null) {

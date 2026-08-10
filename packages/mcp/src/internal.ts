@@ -8,6 +8,8 @@ export {
 } from "./protocol/errors.js";
 export {
     DEFAULT_SOCKET_PATH,
+    DEFAULT_SUBTREE_DEPTH,
+    MAX_SUBTREE_WIDGETS,
     type ParamsSchema,
     type Request,
     type SerializedProperty,

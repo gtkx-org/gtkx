@@ -9,7 +9,9 @@ import { ConnectionRegistry } from "./connection-registry.js";
 import {
     type AppInfo,
     DEFAULT_SOCKET_PATH,
+    DEFAULT_SUBTREE_DEPTH,
     fireEventParams,
+    MAX_SUBTREE_WIDGETS,
     queryParams,
     screenshotParams,
     treeParams,
@@ -17,7 +19,12 @@ import {
     widgetIdParams,
     widgetPropsParams,
 } from "./protocol/schemas.js";
-import { buildReferenceTools, createReferenceProvider, registerReferenceResources } from "./reference.js";
+import {
+    buildReferenceTools,
+    createReferenceProvider,
+    type ReferenceProvider,
+    registerReferenceResources,
+} from "./reference.js";
 import { SocketServer } from "./socket-server.js";
 import { defineTool, imageContent, registerTool, textContent, type Tool } from "./tool.js";
 
@@ -48,26 +55,33 @@ const applicationIdShape = { applicationId: z.string().optional().describe(APPLI
 
 const widgetIdShape = {
     ...applicationIdShape,
-    widgetId: widgetIdParams.shape.widgetId.describe(WIDGET_ID_DESCRIPTION),
+    ...describeParams(widgetIdParams.shape, { widgetId: WIDGET_ID_DESCRIPTION }),
 };
 
 const widgetPropsShape = {
-    ...widgetIdShape,
-    properties: widgetPropsParams.shape.properties.describe(
-        "GObject property names to read as well, in kebab-case or camelCase (\"current-breakpoint\" or " +
-        "\"currentBreakpoint\"). Omit for the summary alone.",
-    ),
+    ...applicationIdShape,
+    ...describeParams(widgetPropsParams.shape, {
+        widgetId: WIDGET_ID_DESCRIPTION,
+        properties:
+            "GObject property names to read as well, in kebab-case or camelCase (\"current-breakpoint\" or " +
+            "\"currentBreakpoint\"). Omit for the summary alone.",
+        maxDepth:
+            `How many levels of descendants to include: ${String(DEFAULT_SUBTREE_DEPTH)} by default, and 0 ` +
+            `for the widget on its own. At most ${String(MAX_SUBTREE_WIDGETS)} widgets come back whatever ` +
+            "the depth, and any widget whose own direct children were left out carries a `hiddenChildren` count.",
+    }),
 };
 
 const treeShape = {
     ...applicationIdShape,
-    rootId: treeParams.shape.rootId.describe(
-        "Render only the subtree rooted at this widget ID (from a prior tree or query). Omit for the whole app.",
-    ),
-    maxDepth: treeParams.shape.maxDepth.describe(
-        "Limit how many levels deep to render; deeper descendants are summarized with a count. " +
-        "Combine with rootId to drill in without dumping the whole tree.",
-    ),
+    ...describeParams(treeParams.shape, {
+        rootId:
+            "Render only the subtree rooted at this widget ID (from a prior tree or query). Omit for the " +
+            "whole app.",
+        maxDepth:
+            "Limit how many levels deep to render; deeper descendants are summarized with a count. " +
+            "Combine with rootId to drill in without dumping the whole tree.",
+    }),
 };
 
 const listAppsShape = {
@@ -82,32 +96,58 @@ const listAppsShape = {
 
 const queryWidgetsShape = {
     ...applicationIdShape,
-    by: queryParams.shape.by.describe("Query type"),
-    value: queryParams.shape.value.describe("Value to search for"),
-    options: queryParams.shape.options.describe("Additional query options"),
+    ...describeParams(queryParams.shape, {
+        by: "Query type",
+        value: "Value to search for",
+        options: "Additional query options",
+    }),
 };
 
 const typeShape = {
-    ...widgetIdShape,
-    text: typeParams.shape.text.describe("Text to type"),
-    clear: typeParams.shape.clear.describe("Clear existing text before typing"),
+    ...applicationIdShape,
+    ...describeParams(typeParams.shape, {
+        widgetId: WIDGET_ID_DESCRIPTION,
+        text: "Text to type",
+        clear: "Clear existing text before typing",
+    }),
 };
 
 const fireEventShape = {
-    ...widgetIdShape,
-    signal: fireEventParams.shape.signal.describe("GTK4 signal name to emit"),
-    args: fireEventParams.shape.args.describe("Arguments to pass to the signal"),
+    ...applicationIdShape,
+    ...describeParams(fireEventParams.shape, {
+        widgetId: WIDGET_ID_DESCRIPTION,
+        signal: "GTK4 signal name to emit",
+        args: "Arguments to pass to the signal",
+    }),
 };
 
 const screenshotShape = {
     ...applicationIdShape,
-    windowId: screenshotParams.shape.windowId.describe(
-        "Window ID to capture. If not specified, captures the first window.",
-    ),
-    path: screenshotParams.shape.path.describe(
-        "Absolute path to write the PNG to on the app's machine. If set, the screenshot is saved there " +
-        "in addition to being returned.",
-    ),
+    ...describeParams(screenshotParams.shape, {
+        windowId: "Window ID to capture. If not specified, captures the first window.",
+        path:
+            "Absolute path to write the PNG to on the app's machine. If set, the screenshot is saved there " +
+            "in addition to being returned.",
+    }),
+};
+
+function describeParams<Shape extends Record<string, z.ZodType>>(
+    shape: Shape,
+    descriptions: { [Key in keyof Shape]: string },
+): Shape {
+    const described: [string, z.ZodType][] = Object.entries(shape).map(([key, schema]) => [
+        key,
+        schema.describe(descriptions[key as keyof Shape]),
+    ]);
+
+    return Object.fromEntries(described) as Shape;
+}
+
+const connectStdio = async (mcpServer: McpServer, stop: () => Promise<void>): Promise<void> => {
+    const transport = new StdioServerTransport();
+    process.stdin.on("end", () => void stop());
+    process.stdin.on("close", () => void stop());
+    await mcpServer.connect(transport);
 };
 
 const logSocketError = (event: Event): void => {
@@ -191,11 +231,17 @@ const widgetPropsTool = (appRouter: AppRouter): Tool =>
         kind: "readOnly",
         description:
             "Get a fixed summary of one widget by ID: type, accessible role, name, text, sensitivity, " +
-            "visibility, CSS classes, and the full subtree of descendant widgets. Pass `properties` to read " +
-            "GObject properties too; each comes back under its canonical kebab-case name as `{type, value}`, " +
-            "where an enum or flags value is its GType value name, a 64-bit integer a decimal string, and an " +
-            "object its GType name plus `widgetId` when it is a widget. Asking for a property the widget does " +
-            "not have fails; a value that cannot be marshalled carries a `note` instead.",
+            "visibility, CSS classes, and the same summary for its descendants. The subtree is bounded " +
+            `twice: ${String(DEFAULT_SUBTREE_DEPTH)} levels deep unless \`maxDepth\` says otherwise, and ` +
+            `${String(MAX_SUBTREE_WIDGETS)} widgets in all, filled breadth first. Wherever either bound ` +
+            "cut a branch, that widget carries `hiddenChildren`, the count of its own direct children left " +
+            "out rather than of everything below them; call again with that widget's ID to drill in, or " +
+            "use `gtkx_get_widget_tree` for a wider map. Pass `properties` to read GObject properties too; " +
+            "they come back first in the payload, each under its canonical kebab-case name as " +
+            "`{type, value}`, where an enum or flags value is its GType value name, a 64-bit integer a " +
+            "decimal string, and an object its GType name plus `widgetId` when it is a widget. Asking for " +
+            "a property the widget does not have fails; a value that cannot be marshalled carries a `note` " +
+            "instead.",
         inputSchema: widgetPropsShape,
         handler: async ({ applicationId, ...params }) => {
             const result = await appRouter.sendToApp(applicationId, "widget.getProps", params);
@@ -230,7 +276,10 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
             title: "Query widgets",
             kind: "readOnly",
             description:
-                "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
+                "Find widgets by role, text, name, or label. Returns each match with its ID and the same " +
+                "fixed summary `gtkx_get_widget_props` returns, with no descendants: a match that has " +
+                "children carries `hiddenChildren`, the count of its direct children left out. Read a " +
+                "match's subtree with `gtkx_get_widget_props` or `gtkx_get_widget_tree`.",
             inputSchema: queryWidgetsShape,
             handler: async ({ applicationId, ...params }) => {
                 const result = await appRouter.sendToApp(applicationId, "widget.query", params);
@@ -250,8 +299,9 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             title: "Click widget",
             kind: "action",
             description:
-                "Click a widget. Works with buttons, checkboxes, and other interactive widgets. Clicking a " +
-                "tree expander toggles the row's expansion, the same as clicking its arrow.",
+                "Click a widget through userEvent.click, with no special case per widget. Works with " +
+                "buttons, checkboxes, switches, list and grid rows, tree expanders, and column headers: a " +
+                "row is selected, an expander toggles its row's expansion, and a header sorts its column.",
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.click", params);
@@ -290,6 +340,12 @@ function buildTools(appRouter: AppRouter): Tool[] {
     return [...buildInspectionTools(appRouter), ...buildInteractionTools(appRouter)];
 }
 
+const registerTools = (mcpServer: McpServer, appRouter: AppRouter, provider: ReferenceProvider): void => {
+    for (const tool of [...buildTools(appRouter), ...buildReferenceTools(provider)]) {
+        registerTool(mcpServer, tool);
+    }
+};
+
 const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
     const registry = new ConnectionRegistry();
@@ -308,11 +364,7 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
     const referenceProvider = createReferenceProvider({ getAppRoot: () => appRouter.getProjectRoot() });
-
-    for (const tool of [...buildTools(appRouter), ...buildReferenceTools(referenceProvider)]) {
-        registerTool(mcpServer, tool);
-    }
-
+    registerTools(mcpServer, appRouter, referenceProvider);
     registerReferenceResources(mcpServer, referenceProvider);
     let isStopped = false;
 
@@ -326,13 +378,18 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
         await mcpServer.close();
     };
 
+    let isStarted = false;
+
     const start = async (): Promise<void> => {
         await socketServer.start();
+
+        if (isStarted) {
+            return;
+        }
+
+        isStarted = true;
         log.info(`socket server listening on ${socketPath}`);
-        const transport = new StdioServerTransport();
-        process.stdin.on("end", () => void stop());
-        process.stdin.on("close", () => void stop());
-        await mcpServer.connect(transport);
+        await connectStdio(mcpServer, stop);
     };
 
     return { start, stop };

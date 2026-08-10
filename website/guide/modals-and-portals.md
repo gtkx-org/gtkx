@@ -77,7 +77,7 @@ const Notice = ({ onClose }: { onClose: () => void }) => (
 );
 ```
 
-Showing it is a conditional render, the same as any other element. Reach for `AdwDialog` when a plain surface is enough, and for a more specific element, such as `AdwAlertDialog` or `AdwPreferencesDialog`, when you want its behavior; each carries the same contract and takes its own props and children directly.
+Showing it is a conditional render, the same as any other element. Reach for `AdwDialog` when a plain surface is enough, and for a more specific element, such as `AdwAlertDialog` or `AdwPreferencesDialog`, when you want its behavior; each carries the same contract and takes its own props and children directly. A plain `AdwDialog` has no chrome of its own, so its children fill the whole surface, while a specialized dialog places them where its own layout expects them: `AdwPreferencesDialog` takes `AdwPreferencesPage` children, and `AdwAlertDialog` slots its children between its text and its buttons.
 
 Set `canClose={false}` when the dialog is not ready to go away, and handle `onCloseAttempt` to decide what happens instead, for example prompting about unsaved edits. Unmounting still closes the dialog unconditionally, so React remains the final word on lifetime.
 
@@ -86,6 +86,32 @@ The tutorial works the same contract through a store field that names the dialog
 ## Alert dialogs
 
 `Adw.AlertDialog` is the message-and-buttons modal. `AdwAlertDialog` turns its imperative `addResponse`/`setResponseAppearance` calls into a declarative `responses` array, and the chosen button's `id` arrives on `onResponse`.
+
+Its `heading` and `body` props are plain strings, and anything richer goes in as children. Children of an `AdwAlertDialog` become the dialog's extra child, `adw_alert_dialog_set_extra_child`, which Adwaita draws below the heading and body and above the response buttons:
+
+```tsx
+import * as Adw from "@gtkx/gi/adw";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
+import { GtkEntry } from "@gtkx/jsx/gtk";
+
+const RenameDialog = ({ onResponse }: { onResponse: (id: string) => void }) => (
+    <AdwAlertDialog
+        heading="Rename"
+        body="Pick a new name for this list."
+        defaultResponse="rename"
+        closeResponse="cancel"
+        responses={[
+            { id: "cancel", label: "Cancel" },
+            { id: "rename", label: "Rename", appearance: Adw.ResponseAppearance.SUGGESTED },
+        ]}
+        onResponse={onResponse}
+    >
+        <GtkEntry placeholderText="List name" activatesDefault />
+    </AdwAlertDialog>
+);
+```
+
+Because the children land in that extra slot rather than replacing the dialog's content, the heading, the body, and every response button stay on screen. The `extraChild` property itself is not part of the element's prop surface; children are the only way to fill it.
 
 The `responses` entry shape (`id`, `label`, `appearance`) and the `defaultResponse`/`closeResponse` safety pair are covered in [Confirming a permanent delete](/tutorial/trash-and-toasts#confirming-a-permanent-delete). The same chapter builds a form inside an alert dialog in [A dialog that is a form](/tutorial/trash-and-toasts#a-dialog-that-is-a-form).
 

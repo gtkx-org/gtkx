@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getInstanceType, typeName } from "@gtkx/runtime";
+import { type AnyClass, getClassType, typeName } from "@gtkx/runtime";
 import { getOrInsert, packageVersion } from "@gtkx/utils";
 import { createContext } from "react";
 import ReactReconciler from "react-reconciler";
@@ -231,7 +231,7 @@ const setWidgetVisible = (instance: Instance, isVisible: boolean): void => {
 };
 
 const adoptContainer = (container: GObject.Object): ElementNode => {
-    const name = typeName(getInstanceType(container));
+    const name = typeName(getClassType(container.constructor as AnyClass));
 
     if (name === null) {
         throw new Error("Cannot adopt a container whose GType has no registered name");

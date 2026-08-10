@@ -176,15 +176,14 @@ const InteractiveDialog = ({
             { id: "ok", label: "_OK" },
         ]}
         onResponse={onResponse}
-        extraChild={(
-            <InteractiveFields
-                entry1Text={entry1Text}
-                setEntry1Text={setEntry1Text}
-                entry2Text={entry2Text}
-                setEntry2Text={setEntry2Text}
-            />
-        )}
-    />
+    >
+        <InteractiveFields
+            entry1Text={entry1Text}
+            setEntry1Text={setEntry1Text}
+            entry2Text={entry2Text}
+            setEntry2Text={setEntry2Text}
+        />
+    </AdwAlertDialog>
 );
 
 function useDialogDemoState() {

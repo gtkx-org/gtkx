@@ -1,113 +1,39 @@
-import type * as GObject from "@gtkx/gi/gobject";
-import { dispatch, WidgetRegistry } from "@gtkx/cli/internal";
+import { dispatch } from "@gtkx/cli/internal";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkListView, GtkNoSelection, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
-import { render, screen, waitFor } from "@gtkx/testing";
+import { GtkButton, GtkNoSelection } from "@gtkx/jsx/gtk";
+import { render, screen } from "@gtkx/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applicationProps } from "../helpers/application.js";
+import {
+    CHILD_NAMES,
+    EXPANDABLE_ROOT,
+    findBoundExpander,
+    LEAF_ROOT,
+    newTree,
+    renderTree,
+    resetTree,
+    ROOT_NAMES,
+} from "../helpers/tree-list-render.js";
+import { contextFor } from "./dispatch-context.js";
 
-type TreeProps = { tree: Gtk.TreeListModel };
-
-const EXPANDABLE_ROOT = "alpha";
-const LEAF_ROOT = "beta";
-const ROOT_NAMES = [EXPANDABLE_ROOT, LEAF_ROOT];
-const CHILD_NAMES = ["alpha-child"];
-const boundExpanders: Map<string, Gtk.TreeExpander> = new Map();
-
-const childModelFor = (item: GObject.Object): Gtk.StringList | null =>
-    item instanceof Gtk.StringObject && item.getString() === EXPANDABLE_ROOT ? Gtk.StringList.new(CHILD_NAMES) : null;
-
-const newTree = (): Gtk.TreeListModel =>
-    Gtk.TreeListModel.new(Gtk.StringList.new(ROOT_NAMES), false, false, childModelFor);
-
-const getCell = (object: GObject.Object): Gtk.TreeExpander | null => {
-    const child = object instanceof Gtk.ListItem ? object.getChild() : null;
-
-    return child instanceof Gtk.TreeExpander ? child : null;
-};
-
-const getRow = (object: GObject.Object): Gtk.TreeListRow | null => {
-    const item = object instanceof Gtk.ListItem ? object.getItem() : null;
-
-    return item instanceof Gtk.TreeListRow ? item : null;
-};
-
-const getRowText = (row: Gtk.TreeListRow): string => {
-    const item = row.getItem();
-
-    return item instanceof Gtk.StringObject ? item.getString() : "";
-};
-
-const setCellText = (expander: Gtk.TreeExpander, text: string): void => {
-    const label = expander.getChild();
-
-    if (label instanceof Gtk.Label) {
-        label.setLabel(text);
-    }
-};
-
-const handleSetup = (object: GObject.Object): void => {
-    if (!(object instanceof Gtk.ListItem)) {
-        return;
-    }
-
-    const expander = new Gtk.TreeExpander();
-    expander.setChild(new Gtk.Label());
-    object.setChild(expander);
-};
-
-const handleBind = (object: GObject.Object): void => {
-    const expander = getCell(object);
-    const row = getRow(object);
-
-    if (expander === null || row === null) {
-        return;
-    }
-
-    const text = getRowText(row);
-    expander.setListRow(row);
-    setCellText(expander, text);
-    boundExpanders.set(text, expander);
-};
-
-const Tree = ({ tree }: TreeProps) => (
-    <GtkListView
-        model={<GtkNoSelection model={tree} />}
-        factory={<GtkSignalListItemFactory onSetup={handleSetup} onBind={handleBind} />}
-    />
-);
+type BoundRow = { expander: Gtk.TreeExpander; tree: Gtk.TreeListModel };
 
 const clickThroughMcp = async (widget: Gtk.Widget): Promise<void> => {
-    const registry = new WidgetRegistry();
-    registry.refresh();
-    registry.register(widget);
-    const app = new Gtk.Application(applicationProps());
-    await dispatch("widget.click", { widgetId: registry.getOrCreateId(widget) }, { app, registry });
+    const context = contextFor(widget);
+    await dispatch("widget.click", { widgetId: context.registry.getOrCreateId(widget) }, context);
 };
 
-const findBoundExpander = async (text: string): Promise<Gtk.TreeExpander> => {
-    await waitFor(() => {
-        expect(boundExpanders.has(text)).toBe(true);
-    });
+const renderBoundTree = async (name: string): Promise<BoundRow> => {
+    const tree = newTree();
+    await renderTree(<GtkNoSelection model={tree} />);
 
-    const expander = boundExpanders.get(text);
-
-    if (expander === undefined) {
-        throw new Error(`No tree expander was bound for "${text}"`);
-    }
-
-    return expander;
+    return { expander: await findBoundExpander(name), tree };
 };
 
-beforeEach(() => {
-    boundExpanders.clear();
-});
+beforeEach(resetTree);
 
 describe("widget.click on a tree expander", () => {
     it("expands the row behind the expander instead of acting on the enclosing list row", async () => {
-        const tree = newTree();
-        await render(<Tree tree={tree} />);
-        const expander = await findBoundExpander(EXPANDABLE_ROOT);
+        const { expander, tree } = await renderBoundTree(EXPANDABLE_ROOT);
         expect(expander.getListRow()?.getExpanded()).toBe(false);
         expect(tree.getNItems()).toBe(ROOT_NAMES.length);
         await clickThroughMcp(expander);
@@ -116,9 +42,7 @@ describe("widget.click on a tree expander", () => {
     });
 
     it("collapses the row again on a second click", async () => {
-        const tree = newTree();
-        await render(<Tree tree={tree} />);
-        const expander = await findBoundExpander(EXPANDABLE_ROOT);
+        const { expander, tree } = await renderBoundTree(EXPANDABLE_ROOT);
         await clickThroughMcp(expander);
         await clickThroughMcp(expander);
         expect(expander.getListRow()?.getExpanded()).toBe(false);
@@ -126,9 +50,7 @@ describe("widget.click on a tree expander", () => {
     });
 
     it("leaves a row that has no children unexpanded", async () => {
-        const tree = newTree();
-        await render(<Tree tree={tree} />);
-        const expander = await findBoundExpander(LEAF_ROOT);
+        const { expander, tree } = await renderBoundTree(LEAF_ROOT);
         await clickThroughMcp(expander);
         expect(expander.getListRow()?.getExpanded()).toBe(false);
         expect(tree.getNItems()).toBe(ROOT_NAMES.length);

@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { SerializedWidget } from "@gtkx/mcp/internal";
+import { DEFAULT_SUBTREE_DEPTH, MAX_SUBTREE_WIDGETS, type SerializedWidget } from "@gtkx/mcp/internal";
 
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
@@ -8,34 +8,84 @@ type WidgetFormatting = {
     getWidgetText(widget: Gtk.Widget): string | null;
 };
 
+type PendingWidget = {
+    depth: number;
+    node: SerializedWidget;
+    widget: Gtk.Widget;
+};
+
+type Expansion = {
+    budget: number;
+    maxDepth: number;
+    pending: PendingWidget[];
+    resolveId: WidgetIdResolver;
+    testing: WidgetFormatting;
+};
+
+const getChildren = (widget: Gtk.Widget): Gtk.Widget[] => {
+    const children: Gtk.Widget[] = [];
+    let child = widget.getFirstChild();
+
+    while (child) {
+        children.push(child);
+        child = child.getNextSibling();
+    }
+
+    return children;
+};
+
+const createNode = (widget: Gtk.Widget, expansion: Expansion): SerializedWidget => ({
+    id: expansion.resolveId(widget),
+    type: widget.constructor.name,
+    role: expansion.testing.formatRole(widget.getAccessibleRole()),
+    name: widget.getName() || null,
+    text: expansion.testing.getWidgetText(widget),
+    isSensitive: widget.getSensitive(),
+    isVisible: widget.getVisible(),
+    cssClasses: widget.getCssClasses(),
+    children: [],
+});
+
+const expandNode = (expansion: Expansion, parent: PendingWidget): void => {
+    const children = getChildren(parent.widget);
+    const canDescend = parent.depth < expansion.maxDepth;
+    const shownCount = canDescend ? Math.min(children.length, expansion.budget) : 0;
+    expansion.budget -= shownCount;
+
+    for (const child of children.slice(0, shownCount)) {
+        const node = createNode(child, expansion);
+        parent.node.children.push(node);
+        expansion.pending.push({ depth: parent.depth + 1, node, widget: child });
+    }
+
+    if (shownCount < children.length) {
+        parent.node.hiddenChildren = children.length - shownCount;
+    }
+};
+
 const serializeWidget = (
     widget: Gtk.Widget,
     resolveId: WidgetIdResolver,
     testing: WidgetFormatting,
-    maxDepth = Infinity,
+    maxDepth = DEFAULT_SUBTREE_DEPTH,
 ): SerializedWidget => {
-    const children: SerializedWidget[] = [];
+    const expansion: Expansion = {
+        budget: MAX_SUBTREE_WIDGETS - 1,
+        maxDepth,
+        pending: [],
+        resolveId,
+        testing,
+    };
 
-    if (maxDepth > 0) {
-        let child = widget.getFirstChild();
+    const root = createNode(widget, expansion);
+    let parent: PendingWidget | undefined = { depth: 0, node: root, widget };
 
-        while (child) {
-            children.push(serializeWidget(child, resolveId, testing, maxDepth - 1));
-            child = child.getNextSibling();
-        }
+    while (parent !== undefined) {
+        expandNode(expansion, parent);
+        parent = expansion.pending.shift();
     }
 
-    return {
-        id: resolveId(widget),
-        type: widget.constructor.name,
-        role: testing.formatRole(widget.getAccessibleRole()),
-        name: widget.getName() || null,
-        text: testing.getWidgetText(widget),
-        isSensitive: widget.getSensitive(),
-        isVisible: widget.getVisible(),
-        cssClasses: widget.getCssClasses(),
-        children,
-    };
+    return root;
 };
 
 export { serializeWidget, type WidgetFormatting };

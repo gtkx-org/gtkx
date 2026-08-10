@@ -235,7 +235,27 @@ function makeSetProperty(dispatch: PropertyDispatch) {
     };
 }
 
+function assertCanonicalName(klass: AnyClass, name: string, propertyName: string): void {
+    const canonical = canonicalCase(name);
+
+    if (propertyName === canonical) {
+        return;
+    }
+
+    throw new TypeError(
+        `registerClass: ${klass.name} keys the property '${name}' to a GObject.ParamSpec named ` +
+        `'${propertyName}', which is the name GObject notifies under; name the ParamSpec '${canonical}'`,
+    );
+}
+
+function assertCanonicalNames(klass: AnyClass, properties: Record<string, PropertySpec>): void {
+    for (const [name, pspec] of Object.entries(properties)) {
+        assertCanonicalName(klass, name, getPropertyName(pspec));
+    }
+}
+
 function buildAccessors(klass: AnyClass, properties: Record<string, PropertySpec>): PropertyAccessor[] {
+    assertCanonicalNames(klass, properties);
     const accessors: PropertyAccessor[] = [];
 
     for (const [name, pspec] of Object.entries(properties)) {

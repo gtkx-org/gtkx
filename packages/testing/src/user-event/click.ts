@@ -5,16 +5,19 @@ import { callBooleanGetter, getCallableMethod, hasWidgetMethod } from "../widget
 import { queryAllControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 import { hasIndexedChildren, selectContainerChild, SELECTED_PROBE, unselectOtherChildren } from "./indexed-children.js";
+import { isClickTransparent, type NativeClick, nativeClickFor } from "./native-click.js";
 
 type PressPoint = { x: number; y: number };
 type ClickPhase = "pressed" | "released";
 type ClickSite = { gestures: Gtk.GestureClick[]; point: PressPoint };
+type ClickScope = { isClicked: boolean; isInternalAllowed: boolean };
 
 type ClickTarget = {
     widget: Gtk.Widget;
     container: Gtk.Widget | null;
     gestures: Gtk.GestureClick[];
     isClaiming: boolean;
+    native: NativeClick | null;
 };
 
 const CLICK_SIGNALS = ["pressed", "released"];
@@ -92,27 +95,42 @@ const getAuthoredClickGestures = (widget: Gtk.Widget): Gtk.GestureClick[] =>
 const isClaimingTarget = (widget: Gtk.Widget): boolean =>
     widget instanceof Gtk.Button || containerFor(widget) !== null;
 
-const clickTargetFor = (widget: Gtk.Widget, isInternalAllowed: boolean): ClickTarget | null => {
+const gestureTargetFor = (widget: Gtk.Widget, isInternalAllowed: boolean): ClickTarget | null => {
     const gestures = clickGestures(widget);
 
     if (isClaimingTarget(widget)) {
-        return { widget, container: containerFor(widget), gestures, isClaiming: true };
+        return { widget, container: containerFor(widget), gestures, isClaiming: true, native: null };
     }
 
     const authored = gestures.filter((gesture) => hasClickHandlers(gesture));
 
     if (authored.length > 0) {
-        return { widget, container: null, gestures: authored, isClaiming: false };
+        return { widget, container: null, gestures: authored, isClaiming: false, native: null };
     }
 
     if (isInternalAllowed && gestures.some((gesture) => isInternalGesture(gesture))) {
-        return { widget, container: null, gestures, isClaiming: true };
+        return { widget, container: null, gestures, isClaiming: true, native: null };
     }
 
     return null;
 };
 
-const isSelfClickTarget = (widget: Gtk.Widget): boolean => clickTargetFor(widget, false) !== null;
+const clickTargetFor = (widget: Gtk.Widget, scope: ClickScope): ClickTarget | null => {
+    if (isClickTransparent(widget)) {
+        return null;
+    }
+
+    const native = nativeClickFor(widget, scope.isClicked);
+
+    if (native !== null) {
+        return { widget, container: null, gestures: getAuthoredClickGestures(widget), isClaiming: true, native };
+    }
+
+    return gestureTargetFor(widget, scope.isInternalAllowed);
+};
+
+const isSelfClickTarget = (widget: Gtk.Widget): boolean =>
+    isClickTransparent(widget) || clickTargetFor(widget, { isClicked: true, isInternalAllowed: false }) !== null;
 
 const nextClickWidget = (current: Gtk.Widget, target: ClickTarget | null): Gtk.Widget | null =>
     target?.isClaiming === true ? null : current.getParent();
@@ -122,7 +140,9 @@ const collectClickTargets = (widget: Gtk.Widget): ClickTarget[] => {
     let current: Gtk.Widget | null = widget;
 
     while (current !== null) {
-        const target = clickTargetFor(current, current !== widget && targets.length === 0);
+        const isClicked = current === widget;
+        const scope = { isClicked, isInternalAllowed: !isClicked && targets.length === 0 };
+        const target = clickTargetFor(current, scope);
         const next = nextClickWidget(current, target);
 
         if (target !== null) {
@@ -172,7 +192,7 @@ const isActivatedByClick = (container: Gtk.Widget, nPress: number): boolean =>
 const isSelectionReplacedByClick = (container: Gtk.Widget, nPress: number): boolean =>
     nPress > 1 || !isSingleClickActivating(container);
 
-const applyClickOutcome = (target: ClickTarget, nPress: number): void => {
+const applyContainerOutcome = (target: ClickTarget, nPress: number): void => {
     const { container, widget } = target;
 
     if (container === null || widget.getParent() !== container) {
@@ -186,6 +206,16 @@ const applyClickOutcome = (target: ClickTarget, nPress: number): void => {
     if (isSelectionReplacedByClick(container, nPress)) {
         replaceContainerSelection(container, widget);
     }
+};
+
+const applyClickOutcome = (target: ClickTarget, nPress: number): void => {
+    if (target.native === null) {
+        applyContainerOutcome(target, nPress);
+
+        return;
+    }
+
+    target.native(target.widget, nPress);
 };
 
 const applyClickOutcomes = (targets: ClickTarget[], nPress: number): void => {
@@ -229,6 +259,19 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
  * than the container's center. An indexed child that the press reaches is then activated, or
  * exclusively selected when its container does not activate on a single click. A widget with the
  * label role is never activated, but does consume the click when it carries a gesture of its own.
+ *
+ * The press also stops at a widget whose click GTK4 implements in C on a gesture it attached
+ * itself, reading a GdkEvent that off-screen synthesis cannot produce. Gestures that widget carries
+ * of its own still take the press and release, the way GTK hands them the press before its own
+ * gesture claims it, and the same outcome is then applied through the public action GTK's own
+ * handler invokes: a list, grid, or column-view row is focused and selected, and activated as well
+ * on a second press or when its view activates on a single click; an expandable tree expander
+ * toggles its expansion, once per press, and only when it is the widget clicked, so a click on its
+ * child falls through to the enclosing row; a column header sorts by its column. Sorting goes
+ * through Gtk.ColumnView.sortByColumn, so the primary sort column and order match what a pointer
+ * produces while previously sorted columns are dropped rather than kept as secondary keys. A
+ * column-view cell and the row that carries the column headers stand in the way of the click rather
+ * than taking it, so a click on either reaches the row or the view behind it.
  */
 const click = async (widget: Gtk.Widget): Promise<void> => {
     if (!isSelfClickTarget(widget) && (await tryActivate(widget))) {
@@ -242,13 +285,17 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
  * Delivers a two-press click gesture the way {@link click} delivers a single press, without trying
  * activation first. A list box row or flow box child the presses reach, clicked directly or through
  * a descendant, is activated and exclusively selected, as GTK's double-click path does whether or
- * not the container activates on a single click.
+ * not the container activates on a single click. A widget whose click GTK4 implements itself
+ * receives that outcome once per press, so a list, grid, or column-view row is selected and then
+ * activated by the second press, a tree expander ends back where it started, and a column header
+ * sorts and then inverts its order.
  */
 const dblClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 2);
 /**
  * Delivers a three-press click gesture the same way a double click is delivered, applying the same
- * outcome to a list box row or flow box child the presses reach.
+ * outcome to a list box row or flow box child the presses reach, and applying the outcome GTK4
+ * implements itself once per press to a row, tree expander, or column header.
  */
 const tripleClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 3);
 
-export { clickGestures, emitClickPhase, click, dblClick, tripleClick };
+export { clickGestures, emitClickPhase, getAuthoredClickGestures, click, dblClick, tripleClick };

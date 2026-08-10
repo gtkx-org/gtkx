@@ -1,4 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog, type AdwAlertDialogProps } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
@@ -45,7 +46,7 @@ describe("render - AlertDialog responses (1)", () => {
         expect(ref.current?.getResponseLabel("ok")).toBe("OK Button");
     });
 
-    it("renders body children alongside responses", async () => {
+    it("renders children as the extra child alongside responses", async () => {
         const ref = createRef<Adw.AlertDialog>();
 
         await render(
@@ -56,7 +57,9 @@ describe("render - AlertDialog responses (1)", () => {
         );
 
         expect(ref.current?.hasResponse("ok")).toBe(true);
-        expect(ref.current?.getChild()).not.toBeNull();
+        expect(ref.current?.getHeading()).toBe("Test");
+        expect(ref.current?.getExtraChild()).toBeInstanceOf(Gtk.Label);
+        expect(ref.current?.getChild()).not.toBe(ref.current?.getExtraChild());
     });
 });
 

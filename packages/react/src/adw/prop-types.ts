@@ -18,7 +18,12 @@ type AlertDialogResponse = {
 type AdwAlertDialogProps = {
     /** Buttons the dialog offers, added and removed as the list changes. */
     responses?: AlertDialogResponse[] | null | undefined;
-} & ChildrenProps;
+    /**
+     * Widget set as the dialog's extra child, shown below the `heading` and `body` and above the
+     * response buttons, leaving the dialog's own chrome in place.
+     */
+    children?: ReactNode;
+};
 
 /** Props of an `Adw.PreferencesRow` element. */
 type AdwPreferencesRowProps = {

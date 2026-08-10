@@ -18,6 +18,8 @@ type WidgetTarget = {
     dispatchWidget: (method: string, params: Record<string, unknown>) => Promise<unknown>;
 };
 
+type ScreenshotTarget = { window: never; registry: WidgetRegistry; id: string };
+
 const hoisted = vi.hoisted(() => ({
     findAllByRole: vi.fn(),
     findAllByText: vi.fn(),
@@ -36,9 +38,6 @@ const hoisted = vi.hoisted(() => ({
     listToplevels: vi.fn(() => [] as unknown[]),
     act: vi.fn((callback: () => unknown) => Promise.resolve(callback())),
     AccessibleRole: { BUTTON: 1, LABEL: 2 },
-    TreeExpander: class TreeExpander {
-        isTreeExpander = true;
-    },
 }));
 
 const {
@@ -59,12 +58,6 @@ const makeApp = (windows: { getTitle?: () => string | null }[] = []): FakeApp =>
     getWindows: () => windows,
 });
 
-const makeWidget = (overrides: FakeWidgetOverrides = {}): never => {
-    const widget = makeFakeWidget(overrides);
-
-    return overrides.type === "GtkTreeExpander" ? Object.assign(new hoisted.TreeExpander(), widget) : widget;
-};
-
 const registerWidget = (registry: WidgetRegistry, widget: never): string => {
     registry.register(widget);
 
@@ -75,13 +68,22 @@ const dispatchQuery = (params: Record<string, unknown>, registry = new WidgetReg
     dispatch("widget.query", params, { app: makeApp() as never, registry });
 
 const dispatchMatchingNameQuery = (value: string): Promise<unknown> => {
-    findAllByName.mockResolvedValueOnce([makeWidget()]);
+    findAllByName.mockResolvedValueOnce([makeFakeWidget()]);
 
     return dispatchQuery({ by: "name", value });
 };
 
+const makeScreenshotTarget = (data: string): ScreenshotTarget => {
+    const window = makeFakeWidget();
+    const registry = new WidgetRegistry();
+    const id = registerWidget(registry, window);
+    screenshot.mockResolvedValueOnce({ data, mimeType: "image/png" });
+
+    return { window, registry, id };
+};
+
 const makeWidgetTarget = (overrides: FakeWidgetOverrides = {}): WidgetTarget => {
-    const widget = makeWidget(overrides);
+    const widget = makeFakeWidget(overrides);
     const registry = new WidgetRegistry();
     const id = registerWidget(registry, widget);
 
@@ -108,7 +110,6 @@ vi.mock("@gtkx/testing", () => ({
 
 vi.mock("@gtkx/gi/gtk", () => ({
     AccessibleRole: hoisted.AccessibleRole,
-    TreeExpander: hoisted.TreeExpander,
     Window: { listToplevels: hoisted.listToplevels },
 }));
 
@@ -133,8 +134,8 @@ describe("dispatch (method routing)", () => {
 
 describe("app.getWindows", () => {
     it("returns toplevel ids and titles from the registry's captured set", async () => {
-        const w1 = makeWidget({ getTitle: () => "Hello" });
-        const w2 = makeWidget({ getTitle: () => null });
+        const w1 = makeFakeWidget({ getTitle: () => "Hello" });
+        const w2 = makeFakeWidget({ getTitle: () => null });
         listToplevels.mockReturnValueOnce([w1, w2]);
         const registry = new WidgetRegistry();
         registry.refresh();
@@ -168,7 +169,7 @@ describe("widget.getTree", () => {
     it("resolves tree ids through the registry", async () => {
         prettyWidget.mockReturnValueOnce("rendered");
         const registry = new WidgetRegistry();
-        const widget = makeWidget({});
+        const widget = makeFakeWidget({});
         await dispatch("widget.getTree", {}, { app: makeApp() as never, registry });
         const getId = prettyWidget.mock.calls[0]?.[1]?.getId;
         expect(getId?.(widget)).toBe(registry.getOrCreateId(widget));
@@ -177,7 +178,7 @@ describe("widget.getTree", () => {
     it("renders only the subtree for a rootId", async () => {
         prettyWidget.mockReturnValueOnce("subtree");
         const registry = new WidgetRegistry();
-        const widget = makeWidget({});
+        const widget = makeFakeWidget({});
         const rootId = registerWidget(registry, widget);
         await dispatch("widget.getTree", { rootId }, { app: makeApp() as never, registry });
         expect(prettyWidget).toHaveBeenCalledWith(widget, expect.objectContaining({ shouldHighlight: false }));
@@ -193,7 +194,7 @@ describe("widget.getTree", () => {
 
 describe("widget.query", () => {
     it("converts a string role into the enum value before delegating to findAllByRole", async () => {
-        const widget = makeWidget({ getLabel: () => "OK" });
+        const widget = makeFakeWidget({ getLabel: () => "OK" });
         findAllByRole.mockResolvedValueOnce([widget]);
         const result = (await dispatchQuery({ by: "role", value: "BUTTON", options: { exact: true } })) as TextMatches;
         expect(findAllByRole).toHaveBeenCalledWith(expect.anything(), 1, { exact: true });
@@ -201,7 +202,7 @@ describe("widget.query", () => {
     });
 
     it("accepts the lowercase role shown in the widget tree", async () => {
-        findAllByRole.mockResolvedValueOnce([makeWidget()]);
+        findAllByRole.mockResolvedValueOnce([makeFakeWidget()]);
         await dispatchQuery({ by: "role", value: "button" });
         expect(findAllByRole).toHaveBeenCalledWith(expect.anything(), 1, undefined);
     });
@@ -215,7 +216,7 @@ describe("widget.query", () => {
     });
 
     it("routes text and labelText through the matching testing helper", async () => {
-        const widget = makeWidget();
+        const widget = makeFakeWidget();
         const registry = new WidgetRegistry();
         findAllByText.mockResolvedValueOnce([widget]);
         await dispatchQuery({ by: "text", value: "Hi" }, registry);
@@ -227,7 +228,7 @@ describe("widget.query", () => {
     });
 
     it("returns shallow match summaries without descendants", async () => {
-        findAllByRole.mockResolvedValueOnce([makeWidget({ getFirstChild: () => makeWidget({}) })]);
+        findAllByRole.mockResolvedValueOnce([makeFakeWidget({ getFirstChild: () => makeFakeWidget({}) })]);
         const result = (await dispatchQuery({ by: "role", value: "button" })) as ChildMatches;
         expect(result.widgets[0]?.children).toEqual([]);
     });
@@ -247,7 +248,7 @@ describe("widget.query", () => {
 
 describe("widget.query by name", () => {
     it("finds a widget by its accessible label when no widget name matches", async () => {
-        const row = makeWidget({ getLabel: () => "Name", type: "AdwEntryRow" });
+        const row = makeFakeWidget({ getLabel: () => "Name", type: "AdwEntryRow" });
         findAllByLabelText.mockResolvedValueOnce([row]);
         const result = (await dispatchQuery({ by: "name", value: "Name" })) as TextMatches;
         expect(result.widgets).toHaveLength(1);
@@ -255,7 +256,7 @@ describe("widget.query by name", () => {
     });
 
     it("finds a widget by its rendered text when no widget name matches", async () => {
-        findAllByText.mockResolvedValueOnce([makeWidget({ getLabel: () => "Save" })]);
+        findAllByText.mockResolvedValueOnce([makeFakeWidget({ getLabel: () => "Save" })]);
         const result = (await dispatchQuery({ by: "name", value: "Save" })) as TextMatches;
         expect(result.widgets[0]?.text).toBe("Save");
     });
@@ -268,7 +269,7 @@ describe("widget.query by name", () => {
     });
 
     it("returns a widget once when several lookups match it", async () => {
-        const widget = makeWidget();
+        const widget = makeFakeWidget();
         findAllByName.mockResolvedValueOnce([widget]);
         findAllByLabelText.mockResolvedValueOnce([widget]);
         findAllByText.mockResolvedValueOnce([widget]);
@@ -285,7 +286,7 @@ describe("widget.query result description", () => {
     });
 
     it("describes what a role query compared", async () => {
-        findAllByRole.mockResolvedValueOnce([makeWidget()]);
+        findAllByRole.mockResolvedValueOnce([makeFakeWidget()]);
         const result = (await dispatchQuery({ by: "role", value: "button" })) as { searched: string };
         expect(result.searched).toContain("accessible role");
     });
@@ -342,21 +343,6 @@ describe("widget.click / widget.type / widget.fireEvent", () => {
         expect(result).toEqual({ success: true });
     });
 
-    it("toggles a tree expander through its own action instead of clicking the enclosing row", async () => {
-        const activateAction = vi.fn(() => true);
-        const { dispatchWidget } = makeWidgetTarget({ type: "GtkTreeExpander", activateAction });
-        const result = await dispatchWidget("widget.click", {});
-        expect(activateAction).toHaveBeenCalledWith("listitem.toggle-expand", null);
-        expect(click).not.toHaveBeenCalled();
-        expect(result).toEqual({ success: true });
-    });
-
-    it("toggles a tree expander inside the act environment so React sees the new rows", async () => {
-        const { dispatchWidget } = makeWidgetTarget({ type: "GtkTreeExpander", activateAction: () => true });
-        await dispatchWidget("widget.click", {});
-        expect(hoisted.act).toHaveBeenCalledTimes(1);
-    });
-
     it("clears before typing when clear=true", async () => {
         const { widget, dispatchWidget } = makeWidgetTarget();
         await dispatchWidget("widget.type", { text: "hi", clear: true });
@@ -387,7 +373,7 @@ describe("widget.click / widget.type / widget.fireEvent", () => {
 
 describe("widget.screenshot", () => {
     it("screenshots the first toplevel when no windowId is supplied", async () => {
-        const window = makeWidget({ getTitle: () => "win" });
+        const window = makeFakeWidget({ getTitle: () => "win" });
         listToplevels.mockReturnValueOnce([window]);
         screenshot.mockResolvedValueOnce({ data: "abc", mimeType: "image/png" });
         const registry = new WidgetRegistry();
@@ -403,27 +389,27 @@ describe("widget.screenshot", () => {
     });
 
     it("screenshots the named window when windowId is supplied", async () => {
-        const window = makeWidget();
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, window);
-        screenshot.mockResolvedValueOnce({ data: "x", mimeType: "image/png" });
-        await dispatch("widget.screenshot", { windowId: id }, { app: makeApp() as never, registry });
-        expect(screenshot).toHaveBeenCalledWith(window, { path: undefined });
+        const target = makeScreenshotTarget("x");
+
+        await dispatch(
+            "widget.screenshot",
+            { windowId: target.id },
+            { app: makeApp() as never, registry: target.registry },
+        );
+
+        expect(screenshot).toHaveBeenCalledWith(target.window, { path: undefined });
     });
 
     it("forwards the output path and reports where the capture was saved", async () => {
-        const window = makeWidget();
-        const registry = new WidgetRegistry();
-        const id = registerWidget(registry, window);
-        screenshot.mockResolvedValueOnce({ data: "y", mimeType: "image/png" });
+        const target = makeScreenshotTarget("y");
 
         const result = await dispatch(
             "widget.screenshot",
-            { windowId: id, path: "/screenshots/gtkx/shot.png" },
-            { app: makeApp() as never, registry },
+            { windowId: target.id, path: "/screenshots/gtkx/shot.png" },
+            { app: makeApp() as never, registry: target.registry },
         );
 
-        expect(screenshot).toHaveBeenCalledWith(window, { path: "/screenshots/gtkx/shot.png" });
+        expect(screenshot).toHaveBeenCalledWith(target.window, { path: "/screenshots/gtkx/shot.png" });
         expect(result).toEqual({ data: "y", mimeType: "image/png", savedPath: "/screenshots/gtkx/shot.png" });
     });
 

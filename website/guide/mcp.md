@@ -15,7 +15,9 @@ Combined with the Fast Refresh loop of `gtkx dev`, that gives an agent the same 
 
 The system has a server half and an app half that find each other through a Unix domain socket.
 
-The **server half** is the `gtkx-mcp` binary from the `@gtkx/mcp` package. Your MCP client launches it as an ordinary stdio MCP server. On startup it also opens a socket at `$XDG_RUNTIME_DIR/gtkx-mcp.sock` (falling back to the system temporary directory) and waits for apps to register. Because the socket path is fixed, one server serves your whole session; a second instance refuses to start while the first is alive.
+The **server half** is the `gtkx-mcp` binary from the `@gtkx/mcp` package. Your MCP client launches it as an ordinary stdio MCP server. On startup it also opens a socket at `$XDG_RUNTIME_DIR/gtkx-mcp.sock` (falling back to the system temporary directory) and waits for apps to register. Because the socket path is fixed, one server serves your whole session; a second instance refuses to start while the first is alive, and two starting at the same moment always end with one owner and one refusal rather than two servers each believing they hold the path. A socket file left behind by a server that crashed is removed by the next server to start, but only once connecting to it comes back refused. When that check cannot reach a verdict, on a machine too loaded to complete the connection, the new server refuses to start and says so, rather than removing a socket another session may still be serving.
+
+A server takes the path in two steps. It listens on a hidden name beside it, a dot followed by hex derived from the socket path, then hard-links that name onto `gtkx-mcp.sock`; the link is what claims the path, and it fails outright when the name is already taken. Everything that inspects, removes, or claims `gtkx-mcp.sock` happens while the server holds a claim lock keyed to that path, an abstract socket the kernel releases the moment its process dies, so servers starting together take their turns instead of one deleting the file the other has just published. A server removes `gtkx-mcp.sock` only while that name still resolves to the socket it linked there, so it can never delete one another server owns. The consequence to know when reading `ss -xl` or `/proc/net/unix` is that the listening address is the hidden name, not `gtkx-mcp.sock`; `ls` and anything connecting by path see the socket under the published name as usual.
 
 The **app half** lives inside `gtkx dev`. When your entry module mounts an application, the dev runner starts an MCP client in the app process. It connects to that same socket and registers the app's application ID, process ID, and project root.
 
@@ -27,13 +29,29 @@ All of this is development tooling. The MCP client is part of the CLI's dev runn
 
 ## Setup
 
-`@gtkx/testing` must be resolvable from your project. Every widget tool except `gtkx_list_apps` loads it through your app's module graph and fails without it; the API reference tools never touch the app. Projects scaffolded with the testing option already have it. Otherwise install it:
+Two packages belong in your project's dev dependencies. `@gtkx/mcp` carries the `gtkx-mcp` binary your MCP client launches. `@gtkx/testing` is what every widget tool except `gtkx_list_apps` loads through your app's module graph, and without it those tools fail; the API reference tools never touch the app and never need it.
 
-```bash
-npm install -D @gtkx/testing
+A scaffolded project already depends on `@gtkx/mcp`, and one scaffolded with the testing option already has `@gtkx/testing` too. Otherwise install them:
+
+::: code-group
+
+```bash [npm]
+npm install -D @gtkx/mcp @gtkx/testing
 ```
 
-Nothing else is needed on the app side: `gtkx dev` starts the client automatically whenever your entry mounts an application. On the agent side, register `gtkx-mcp` as a stdio server. For Claude Code:
+```bash [pnpm]
+pnpm add -D @gtkx/mcp @gtkx/testing
+```
+
+```bash [yarn]
+yarn add -D @gtkx/mcp @gtkx/testing
+```
+
+:::
+
+Depending on `@gtkx/mcp` directly, rather than downloading it each time the agent starts, buys two things. It holds the server to the major version your app speaks: the two halves share a wire protocol, and the `^` range a normal install records keeps `@gtkx/mcp` in the same major as the `@gtkx/cli` your project runs, where a runner that fetches `latest` can cross into the next one. And it puts `gtkx-mcp` in `node_modules/.bin`, which is what the launch command below resolves. pnpm leaves a nested dependency's binary in its virtual store instead, so in a pnpm project without that dependency the launch fails with `gtkx-mcp: command not found`, even though `@gtkx/cli` pulls the package in underneath.
+
+Nothing else is needed on the app side: `gtkx dev` starts the client automatically whenever your entry mounts an application. On the agent side, register `gtkx-mcp` as a stdio server, launched with your project directory as its working directory. For Claude Code, run this from the project root:
 
 ```bash
 claude mcp add gtkx -- npx -y @gtkx/mcp
@@ -52,6 +70,16 @@ For any other MCP client, the standard `mcpServers` configuration looks like thi
 }
 ```
 
+`npx` starts the copy your project already has: it resolves `gtkx-mcp` from `node_modules/.bin` and runs it without going to the network. It downloads the package only when the project's tree does not contain it at all, which is the other half of why the direct dependency matters under pnpm. The nested copy `@gtkx/cli` brings in is enough to stop the download, and its shim sits in the virtual store where `node_modules/.bin` cannot reach it, so the command finds neither one.
+
+To try the server against a project without adding the dependency to it, fetch a copy for the run:
+
+```bash
+pnpm dlx @gtkx/mcp
+```
+
+`npx -y @gtkx/mcp` does the same from a directory whose tree does not resolve the package. Yarn has no equivalent worth using here: Yarn Classic has no `dlx` command, and Yarn 2 and newer print their resolution log on stdout, which is the channel a stdio MCP server owes to JSON-RPC alone. Either fetching runner installs the latest published release, which can be a major ahead of the `@gtkx/cli` your app runs, so treat it as a way to try the server rather than the setup you keep.
+
 The binary takes no arguments and has no configuration of its own. If the agent calls a tool before any app has connected, the error names the fix: "No GTKX application connected: start an app with 'gtkx dev' to connect".
 
 ## The tools
@@ -63,7 +91,7 @@ The server groups its tools into inspection, interaction, and the API reference:
 | `gtkx_list_apps` | Inspection | List connected apps and their open windows |
 | `gtkx_get_widget_tree` | Inspection | Dump an app's widget hierarchy with IDs |
 | `gtkx_query_widgets` | Inspection | Find widgets by role, text, name, or label |
-| `gtkx_get_widget_props` | Inspection | Read one widget's summary and its subtree |
+| `gtkx_get_widget_props` | Inspection | Read one widget's summary, GObject properties, and bounded subtree |
 | `gtkx_take_screenshot` | Inspection | Capture a window as a PNG |
 | `gtkx_click` | Interaction | Click a widget |
 | `gtkx_type` | Interaction | Type into an editable widget |
@@ -108,9 +136,9 @@ This is the map the agent navigates by, and the fullest source of the widget IDs
 }
 ```
 
-That call finds every button whose accessible name is "New List" and returns each match with its ID and serialized properties. These are the same queries as `findAllByRole`, `findAllByText`, `findAllByName`, and `findAllByLabelText` in `@gtkx/testing`, with the same matching semantics, so anything you have learned about querying in tests transfers directly.
+That call finds every button whose accessible name is "New List" and returns each match with its ID and the same fixed summary `gtkx_get_widget_props` returns, with no descendants: a match that has children carries `hiddenChildren`, the count of its direct children left out, and reading them takes a second call with that match's ID. These are the same queries as `findAllByRole`, `findAllByText`, `findAllByName`, and `findAllByLabelText` in `@gtkx/testing`, with the same matching semantics, so anything you have learned about querying in tests transfers directly.
 
-**`gtkx_get_widget_props`** takes a `widgetId` and returns a fixed summary of that widget, plus the same summary for every widget beneath it: type, accessible role, name, text, sensitivity, visibility, and CSS classes. That fixed set is what the tool reads, not arbitrary GObject properties, so use it to re-check one branch of the interface after an interaction, for example to confirm a button became insensitive (its `isSensitive` flag) or a row picked up a CSS class (its `cssClasses`).
+**`gtkx_get_widget_props`** takes a `widgetId` and returns a fixed summary of that widget: type, accessible role, name, text, sensitivity, visibility, and CSS classes. The same summary follows for its descendants, under two bounds that keep the answer small enough to read: eight levels deep, which `maxDepth` raises or lowers (`0` returns the widget on its own), and thirty widgets in total whatever the depth. The subtree fills breadth first, so what comes back is the thirty widgets nearest the one asked for rather than one branch followed to exhaustion, and a widget that either bound cut short carries `hiddenChildren`: the count of its own direct children left out, not of everything below them. Drilling in is one more call with that widget's ID rather than a guess. Use it to re-check one branch of the interface after an interaction, for example to confirm a button became insensitive (its `isSensitive` flag) or a row picked up a CSS class (its `cssClasses`). Pass `properties` with GObject property names, kebab-case or camelCase, to read arbitrary properties as well; they come back first in the payload, ahead of the subtree, each as `{type, value}` under its canonical kebab-case name. For a wider map, `gtkx_get_widget_tree` is the tool built for breadth.
 
 **`gtkx_take_screenshot`** captures a window and returns it as base64 PNG image content. `windowId` selects a window (defaulting to the first), and an optional absolute `path` also writes the PNG to disk on the app's machine, creating directories as needed, which is how agents save screenshots into a repository for documentation or visual comparison. A screenshot shows results but cannot be clicked; widget IDs for interaction always come from the tree or a query.
 
@@ -120,7 +148,7 @@ Widget IDs are stable for as long as a widget stays mounted: the app re-walks it
 
 The mutating tools carry the `destructiveHint` annotation, so clients that ask for confirmation before mutations will do so here.
 
-**`gtkx_click`** clicks the widget with the given `widgetId`. It works on anything `userEvent.click` handles: buttons, check buttons, switches, rows, and other activatable widgets.
+**`gtkx_click`** clicks the widget with the given `widgetId`. It routes straight to `userEvent.click` with no special case per widget, so it works on anything that helper handles: buttons, check buttons, switches, list and grid rows, tree expanders, column headers, and other activatable widgets.
 
 **`gtkx_type`** types `text` into an editable widget such as a `GtkEntry` or `GtkTextView`. Pass `clear: true` to empty the widget first, which is how you replace a value instead of appending to it.
 

@@ -111,6 +111,10 @@ await userEvent.keyboard(entry, "{Control>}a{/Control}");
 
 Driving GTK4 off-screen rather than through a real display shapes what some helpers can do: `pointer` synthesizes left-button input only, and `drag` refuses a `Gtk.Range`, so reach for `slide(range, value)` or `keyboard` to move a slider. The full set of helpers is in the [`userEvent` reference](/reference/@gtkx/testing/).
 
+Where GTK4 implements a click in C on a gesture it attached itself, that handler reads the `GdkEvent` behind the gesture, which off-screen synthesis cannot produce. For those widgets `userEvent.click` invokes the same public action GTK's own handler invokes, so the outcome matches without a fabricated event: `listitem.select` for list, grid, and column-view rows, which activate as well on a second press or when their view activates on a single click, `listitem.toggle-expand` for an expandable `Gtk.TreeExpander`, and `sortByColumn` for a column header. Clicking a row therefore changes the selection model, clicking an expander expands or collapses its row, and clicking a sortable header sorts the view.
+
+A click gesture you attached to such a widget yourself still receives its `pressed` and `released`, the way GTK4 hands the press to every gesture on the widget before its own claims it. The press then goes no further: a gesture on an ancestor of the row, expander, or header does not see it, matching the claim GTK4 makes there. A column-view cell and the row that carries the column headers take no click of their own, so clicking a cell selects the row behind it and clicking the header row does nothing.
+
 ## fireEvent, act, and waitFor
 
 `fireEvent(object, signalName, ...args)` emits any GObject signal directly, with no actionability checks. Like `userEvent`, it runs inside `act` and must be awaited, so state updates land before you assert. Reach for it when the thing you are testing is a signal handler rather than a user interaction, or when the interaction has no `userEvent` equivalent: firing `"activated"` on a row, or `"close-request"` on a window. `userEvent` should still be your default, because it exercises the same event plumbing as production.

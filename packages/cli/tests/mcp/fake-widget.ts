@@ -1,6 +1,5 @@
 type FakeWidgetOverrides = {
     type?: string;
-    activateAction?: (name: string, args: unknown) => boolean;
     getFirstChild?: () => unknown;
     getNextSibling?: () => unknown;
     getAccessibleRole?: () => number | undefined;

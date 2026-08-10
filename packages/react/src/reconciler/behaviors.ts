@@ -1,10 +1,11 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
+    type AnyClass,
     type ApplicationClass,
     type CommandLineApplication,
     createApplication,
-    getInstanceType,
+    getClassType,
     TYPE_INVALID,
     typeFromName,
     typeIsA,
@@ -58,7 +59,7 @@ const childMatcher =
         (child) => {
             const type = childTypeFor(name);
 
-            return type === TYPE_INVALID || typeIsA(getInstanceType(child), type);
+            return type === TYPE_INVALID || typeIsA(getClassType(child.constructor as AnyClass), type);
         };
 
 const slotAttach =

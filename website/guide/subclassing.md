@@ -22,30 +22,134 @@ new Counter();
 
 The class must extend a registered wrapper class, directly or through other subclasses of your own. `typeName` defaults to the class's name; GType names live in one process-wide namespace, so prefix yours with something specific to your app.
 
+The call also returns the class it registered. Nothing here needs the return value, and [Properties](#properties) is where it starts to matter.
+
 ## Properties
 
-Pass `properties` to install GObject properties on the new type, keyed by the name you want in JavaScript and valued with the `GObject.ParamSpec` describing each one:
+Pass `properties` to install GObject properties on the new type, keyed by the name JavaScript addresses each one by and valued with the `GObject.ParamSpec` describing it. `registerClass` hands the class back with those names in its type, so bind the call to a name instead of discarding it:
 
 ```ts
 import { Object as GObject, ParamFlags, paramSpecInt } from "@gtkx/gi/gobject";
 import { registerClass } from "@gtkx/runtime";
 
-class Swatch extends GObject {
+class SwatchBase extends GObject {
     declare red: number;
 }
 
-registerClass(Swatch, {
+const Swatch = registerClass(SwatchBase, {
     typeName: "ExampleSwatch",
     properties: { red: paramSpecInt("red", null, null, 0, 255, 0, ParamFlags.READWRITE) },
 });
+
+type Swatch = InstanceType<typeof Swatch>;
 
 const swatch = new Swatch();
 swatch.red = 200;
 ```
 
-Each property gains dashed, underscored and camelCased prototype accessors that emit `notify` on write, so `swatch.red = 200` and `swatch.setProperty("red", value)` are interchangeable, and a native consumer such as `Gtk.PropertyExpression` reads the value without calling back into JavaScript.
+`Swatch` is a value and a type at once: the `const` is the registered class, and `InstanceType<typeof Swatch>` names its instances wherever a signature needs them.
 
-Declare the field with `declare` rather than an initializer. The accessors live on the prototype, and a class field would shadow them on every instance.
+Register a class *declaration*, the way the example does, rather than a class expression written inside the call. `const Swatch = registerClass(class Swatch extends GObject { … })` reads well and behaves identically until the project emits declaration files, where the anonymous class type fails to be written out:
+
+```
+error TS4094: Property 'vfuncConstructed' of exported anonymous class type may not be private or protected.
+```
+
+Every wrapper class carries protected vtable members, so any registered class expression that a `.d.ts` has to name hits this. A declaration has a name TypeScript can refer to, and emits cleanly.
+
+Registering an abstract class hands back an abstract class. Its properties reach every concrete subclass, and `new` on the base stays the error it already was.
+
+Each property gains prototype accessors that emit `notify` on write: one for the key as written, one for the key with its dashes turned into underscores, and one for the key in camelCase. So `swatch.red = 200` and `swatch.setProperty("red", value)` are interchangeable, and a native consumer such as `Gtk.PropertyExpression` reads the value without calling back into JavaScript.
+
+Declare the field with `declare` rather than an initializer. The accessors live on the prototype, and a class field would shadow them on every instance. The `declare`d type is also the value type the property carries everywhere else: `properties` says which properties to install, and the class says what each one holds.
+
+### The two names a property has
+
+The key is the JavaScript name, read in camelCase however it is written: `dewPoint`, `dew_point` and `dew-point` all name the same member, all put `dewPoint` in the class's type, and all read and write the same storage. The ParamSpec carries the GObject name, which is that same name canonicalized: lowercase words joined by dashes.
+
+```ts
+class ReadingBase extends GObject {
+    declare dewPoint: number;
+}
+
+const Reading = registerClass(ReadingBase, {
+    typeName: "ExampleReading",
+    properties: { dewPoint: paramSpecInt("dew-point", null, null, 0, 255, 0, ParamFlags.READWRITE) },
+});
+```
+
+The two have to agree, and `registerClass` refuses the pair when they do not:
+
+```
+registerClass: ReadingBase keys the property 'dewPoint' to a GObject.ParamSpec named 'dewPoint',
+which is the name GObject notifies under; name the ParamSpec 'dew-point'
+```
+
+The ParamSpec's name is what GObject emits `notify` with, so a ParamSpec named `dewPoint` notifies under `notify::dewPoint` while everything that addresses the property by its JavaScript name, `useProperty` and `useSignal` included, listens for `notify::dew-point`. Nothing would ever hear a change, which is why the mismatch is an error rather than a convention.
+
+### Properties and the hooks
+
+`useProperty` from `@gtkx/react` reads a property and re-renders the component when it changes. It takes the properties a registered class installs the same way it takes the ones a generated class arrives with, and you write nothing extra for it:
+
+```tsx
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { useProperty, useSignal } from "@gtkx/react";
+
+function SwatchRow({ swatch }: { swatch: Swatch }) {
+    const red = useProperty(swatch, "red"); // number | undefined
+
+    useSignal(swatch, "notify::red", () => {
+        console.log("red is now", swatch.red);
+    });
+
+    return <GtkLabel label={`red: ${red ?? 0}`} />;
+}
+```
+
+The names come off the class the call returned, which is why the example binds it to `Swatch` instead of dropping it. Registering as a bare statement installs the same properties at runtime and leaves the type with none to offer:
+
+```ts
+class Tint extends GObject {
+    declare level: number;
+}
+
+registerClass(Tint, {
+    typeName: "ExampleTint",
+    properties: { level: paramSpecInt("level", null, null, 0, 255, 0, ParamFlags.READWRITE) },
+});
+
+useProperty(new Tint(), "level"); // Argument of type '"level"' is not assignable to parameter of type 'never'
+```
+
+Leave the `properties` object to inference for the same reason. Pulled out into a constant and annotated, its key type is `string`, which names no property in particular and leaves the class with none of them addressable. `satisfies`, with `ParamSpec` imported as a type from `@gtkx/gi/gobject`, keeps the keys and still checks the values:
+
+```ts
+const DIAL_PROPERTIES = {
+    angle: paramSpecInt("angle", null, null, 0, 360, 0, ParamFlags.READWRITE),
+} satisfies Record<string, ParamSpec>;
+```
+
+Only installed properties are addressable, and every other member of the class is rejected, because nothing notifies on it:
+
+```ts
+class DialBase extends GObject {
+    declare angle: number;
+
+    tally = 0;
+}
+
+const Dial = registerClass(DialBase, { typeName: "ExampleDial", properties: DIAL_PROPERTIES });
+
+const dial = new Dial();
+
+useProperty(dial, "angel"); // rejected: nothing installs that name
+useProperty(dial, "tally"); // rejected: a plain field, not a property
+useProperty(dial, "setProperty"); // rejected: a method, not a property
+```
+
+A subclass of a generated class keeps every property it inherits, so `useProperty` still takes `"label"` on a `Gtk.Label` subclass, beside the ones the subclass installs.
+
+`useSignal` never needed any of this. Every GObject declares `notify`, so `"notify::red"` type-checks whichever form registered the class, and it is what `useProperty` connects to underneath.
 
 ## Overriding virtual functions
 

@@ -7,6 +7,7 @@ import { addDependency, detectPackageManager as nypmDetectPackageManager } from 
 import { x } from "tinyexec";
 import { writeBuildAllowance } from "./build-allowance.js";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
+import { getInstallHint } from "./install-hints.js";
 import { updateManifest } from "./manifest.js";
 import { isKnownPackageManager, PACKAGE_MANAGERS, type PackageManager } from "./package-managers.js";
 import { isValidProjectName } from "./project-name.js";
@@ -45,6 +46,13 @@ type InstallAllOptions = {
     devDependencies: string[];
 };
 
+type InstallFailureOptions = {
+    error: unknown;
+    target: string;
+    packageManager: PackageManager;
+    devDependencies: string[];
+};
+
 const selfVersion = packageVersion(import.meta.url, "../package.json");
 
 const GTKX_ENV_MODULE_HEADER = `/**
@@ -52,7 +60,7 @@ const GTKX_ENV_MODULE_HEADER = `/**
  */`;
 
 const DEPENDENCIES = ["@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"];
-const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "vite"];
+const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@gtkx/mcp", "vite"];
 const TYPESCRIPT_DEV_DEPENDENCIES = ["@types/node", "@types/react", "typescript"];
 const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 
@@ -60,8 +68,8 @@ const DEV_COMMAND: Record<PackageManager, string> = Object.fromEntries(
     PACKAGE_MANAGERS.map((manager) => [manager.value, manager.devCommand]),
 ) as Record<PackageManager, string>;
 
-const INSTALL_COMMAND: Record<PackageManager, string> = Object.fromEntries(
-    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.installCommand]),
+const ADD_COMMAND: Record<PackageManager, string> = Object.fromEntries(
+    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.addCommand]),
 ) as Record<PackageManager, string>;
 
 const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
@@ -73,11 +81,13 @@ To run tests, you need a headless Wayland compositor installed:
   Fedora: sudo dnf install sway
   Ubuntu: sudo apt install sway`;
 
+const RECOVERY_HEADING = "The failing command wrote nothing to package.json, so add the dependencies again:";
+
 const pinGtkxDependency = (name: string, version: string): string =>
     name.startsWith("@gtkx/") ? `${name}@^${version}` : name;
 
 const getDevCommand = (packageManager: PackageManager): string => DEV_COMMAND[packageManager];
-const getInstallCommand = (packageManager: PackageManager): string => INSTALL_COMMAND[packageManager];
+const getAddCommand = (packageManager: PackageManager): string => ADD_COMMAND[packageManager];
 const titleFromName = (name: string): string => name.split("-").map((part) => upperFirst(part)).join(" ");
 const suggestApplicationId = (name: string): string => `com.${name.replaceAll("-", "")}.app`;
 
@@ -423,6 +433,32 @@ const installDependencies = async (options: InstallDependenciesOptions): Promise
 
 const pin = (names: string[]): string[] => names.map((dependency) => pinGtkxDependency(dependency, selfVersion));
 
+const formatRecovery = ({ target, packageManager, devDependencies }: InstallFailureOptions): string => {
+    const add = getAddCommand(packageManager);
+
+    const steps = [
+        ...(target === "." ? [] : [`cd ${target}`]),
+        `${add} ${pin(DEPENDENCIES).join(" ")}`,
+        `${add} -D ${pin(devDependencies).join(" ")}`,
+    ];
+
+    const indented = steps.map((step) => `  ${step}`).join("\n");
+
+    return `${RECOVERY_HEADING}\n${indented}`;
+};
+
+const reportInstallFailure = (options: InstallFailureOptions): void => {
+    const message = errorMessage(options.error);
+    p.log.error(`Failed to install dependencies: ${message}`);
+    const hint = getInstallHint(message);
+
+    if (hint !== undefined) {
+        p.log.warn(hint);
+    }
+
+    p.log.info(formatRecovery(options));
+};
+
 const installAllDependencies = async (options: InstallAllOptions): Promise<void> => {
     const { root, target, packageManager, devDependencies } = options;
     const spinner = p.spinner();
@@ -434,8 +470,7 @@ const installAllDependencies = async (options: InstallAllOptions): Promise<void>
         spinner.stop("Dependencies installed");
     } catch (error) {
         spinner.stop("Failed to install dependencies");
-        p.log.error(`Failed to install dependencies: ${errorMessage(error)}`);
-        p.log.info(`Install them manually by running:\n  cd ${target}\n  ${getInstallCommand(packageManager)}`);
+        reportInstallFailure({ error, target, packageManager, devDependencies });
         throw new ScaffoldAbortedError("Failed to install dependencies");
     }
 };

@@ -77,6 +77,15 @@ const preferencesDialogChildren = addRemoveSlot<Adw.PreferencesPage, Adw.Prefere
     },
 );
 
+const alertDialogExtraChild = slot<Adw.AlertDialog, Gtk.Widget>("children", "GtkWidget", {
+    attach: (dialog, child) => {
+        dialog.setExtraChild(child);
+    },
+    detach: (dialog) => {
+        dialog.setExtraChild(null);
+    },
+});
+
 const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children", "AdwSidebarSection");
 const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", "AdwSidebarItem");
 const isWidget = childMatcher("GtkWidget");
@@ -378,6 +387,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     AdwAlertDialog: {
         behaviors: [
+            alertDialogExtraChild,
             list<Adw.AlertDialog, AlertDialogResponse>("responses", {
                 add: (dialog, response) => {
                     dialog.addResponse(response.id, response.label);

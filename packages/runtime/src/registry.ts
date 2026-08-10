@@ -90,6 +90,11 @@ function setClassType(cls: AnyClass, type: bigint): void {
     (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
 }
 
+/**
+ * Returns the GType a class was registered under, or the invalid type when it carries none. The tag is
+ * read off the class's own prototype, so a subclass that never went through `registerClass` reports the
+ * invalid type rather than inheriting the one its parent was registered with.
+ */
 function getClassType(cls: AnyClass | undefined): bigint {
     const proto: object | undefined = cls?.prototype;
 
@@ -100,9 +105,16 @@ function getClassType(cls: AnyClass | undefined): bigint {
     return (proto as TypedClass).__type__;
 }
 
-/** Returns the GType tag of the given wrapper instance, or the invalid type when it has no class. */
+/**
+ * Returns the GType the given instance's handle carries, or the invalid type when it has no handle.
+ * This is the object's own type rather than the type of the class it was wrapped as, and the two differ
+ * for an object GTK created itself, such as the row widget inside a `Gtk.ListView`, which GTKX wraps as
+ * the nearest registered ancestor.
+ */
 function getInstanceType(instance: object): bigint {
-    return getClassType(instance.constructor as AnyClass | undefined);
+    const handle = handleMap.get(instance);
+
+    return handle === undefined ? TYPE_INVALID : getType(handle);
 }
 
 function registerClassType(cls: AnyClass, type: bigint): void {

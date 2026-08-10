@@ -119,6 +119,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     },
     AdwAlertDialog: {
         props: adw("AdwAlertDialogProps"),
+        omittedProps: ["extraChild"],
     },
 };
 
