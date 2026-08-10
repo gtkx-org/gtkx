@@ -1,3 +1,4 @@
+import { isRecord } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -17,9 +18,6 @@ type PackageManifest = {
 
 const AUTHOR_PATTERN = /^(?<name>[^<(]*)(?:<(?<email>[^>]*)>)?/;
 const EMPTY_AUTHOR: ManifestAuthor = { name: null, email: null };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === "object" && value !== null && !Array.isArray(value);
 
 const optionalString = (value: unknown): string | null =>
     typeof value === "string" && value.trim().length > 0 ? value.trim() : null;

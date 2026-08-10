@@ -1,9 +1,8 @@
-import { tryResolveExecutable } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { DeploySettings } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
+import { gitRemoteUrl, runGit } from "../git.js";
 import { optional } from "../nfpm/optional.js";
 
 type PackageManager = "npm" | "pnpm" | "yarn";
@@ -52,22 +51,8 @@ const detectPackageManager = (settings: DeploySettings): PackageManager => {
 
 const installCommandFor = (manager: PackageManager): string => INSTALL_COMMAND[manager];
 
-const runGit = (root: string, args: string[]): string | null => {
-    const git = tryResolveExecutable("git");
-
-    if (git === undefined) {
-        return null;
-    }
-
-    try {
-        return execFileSync(git, args, { cwd: root, encoding: "utf8" }).trim();
-    } catch {
-        return null;
-    }
-};
-
 const resolveSourceUrl = (settings: DeploySettings): string => {
-    const url = settings.deploy.flatpak?.source?.url ?? runGit(settings.paths.root, ["remote", "get-url", "origin"]);
+    const url = settings.deploy.flatpak?.source?.url ?? gitRemoteUrl(settings.paths.root);
 
     if (url === null) {
         throw new Error(

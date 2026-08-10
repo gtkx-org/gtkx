@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { runCliTool } from "../../internal/run-cli-tool.js";
-import { cacheDir, downloadFile, fetchText } from "../download.js";
+import { cacheDir, digestFromChecksums, downloadFile, fetchText } from "../download.js";
 
 const DIST_BASE_URL = "https://nodejs.org/dist";
 const STRIP_COMPONENTS = "2";
@@ -10,14 +10,8 @@ const releaseName = (version: string, arch: string): string => `node-v${version}
 
 const expectedDigest = async (version: string, assetName: string): Promise<string> => {
     const checksums = await fetchText(`${DIST_BASE_URL}/v${version}/SHASUMS256.txt`);
-    const line = checksums.split("\n").find((entry) => entry.trim().endsWith(` ${assetName}`));
-    const digest = line?.trim().split(/\s+/, 1)[0];
 
-    if (digest === undefined) {
-        throw new Error(`Node.js ${version} publishes no checksum for ${assetName}`);
-    }
-
-    return digest;
+    return digestFromChecksums(checksums, assetName, `Node.js ${version}`);
 };
 
 const extractNode = (archive: string, dir: string, version: string, arch: string): void => {

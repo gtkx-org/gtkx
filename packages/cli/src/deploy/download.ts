@@ -77,4 +77,15 @@ const downloadFile = async ({ url, dest, label, sha256, mode }: DownloadRequest)
     return dest;
 };
 
-export { cacheDir, downloadFile, fetchText };
+const digestFromChecksums = (checksums: string, assetName: string, subject: string): string => {
+    const line = checksums.split("\n").find((entry) => entry.trim().endsWith(` ${assetName}`));
+    const digest = line?.trim().split(/\s+/, 1)[0];
+
+    if (digest === undefined) {
+        throw new Error(`${subject} publishes no checksum for ${assetName}`);
+    }
+
+    return digest;
+};
+
+export { cacheDir, digestFromChecksums, downloadFile, fetchText };

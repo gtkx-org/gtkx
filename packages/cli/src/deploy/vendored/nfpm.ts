@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { runCliTool } from "../../internal/run-cli-tool.js";
-import { cacheDir, downloadFile, fetchText } from "../download.js";
+import { cacheDir, digestFromChecksums, downloadFile, fetchText } from "../download.js";
 
 const NFPM_VERSION = "2.47.0";
 const NFPM_BASE_URL = `https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}`;
@@ -23,14 +23,8 @@ const assetNameFor = (arch: string): string => {
 
 const expectedDigest = async (assetName: string): Promise<string> => {
     const checksums = await fetchText(`${NFPM_BASE_URL}/checksums.txt`);
-    const line = checksums.split("\n").find((entry) => entry.trim().endsWith(` ${assetName}`));
-    const digest = line?.trim().split(/\s+/, 1)[0];
 
-    if (digest === undefined) {
-        throw new Error(`nfpm ${NFPM_VERSION} publishes no checksum for ${assetName}`);
-    }
-
-    return digest;
+    return digestFromChecksums(checksums, assetName, `nfpm ${NFPM_VERSION}`);
 };
 
 const extractNfpm = (archive: string, dir: string): void => {

@@ -1,6 +1,5 @@
-import { tryResolveExecutable } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
 import type { DeployConfig, DeployScreenshot } from "../types.js";
+import { gitRemoteUrl, runGit } from "../git.js";
 
 type ScreenshotRequest = {
     root: string;
@@ -22,22 +21,6 @@ const RAW_BASE_BY_HOST: Record<string, (owner: string, repo: string) => string> 
     "github.com": (owner, repo) => `https://raw.githubusercontent.com/${owner}/${repo}/${DEFAULT_BRANCH}`,
     "gitlab.com": (owner, repo) => `https://gitlab.com/${owner}/${repo}/-/raw/${DEFAULT_BRANCH}`,
 };
-
-const runGit = (root: string, args: string[]): string | null => {
-    const git = tryResolveExecutable("git");
-
-    if (git === undefined) {
-        return null;
-    }
-
-    try {
-        return execFileSync(git, args, { cwd: root, encoding: "utf8" }).trim();
-    } catch {
-        return null;
-    }
-};
-
-const readOriginUrl = (root: string): string | null => runGit(root, ["remote", "get-url", "origin"]);
 
 const readRepositoryPrefix = (root: string): string =>
     trimTrailingSlash(runGit(root, ["rev-parse", "--show-prefix"]) ?? "");
@@ -86,7 +69,7 @@ const resolveScreenshotBaseUrl = ({ root, deploy }: ScreenshotRequest): string |
         return trimTrailingSlash(deploy.screenshotBaseUrl);
     }
 
-    const remote = readOriginUrl(root);
+    const remote = gitRemoteUrl(root);
     const base = remote === null ? null : baseForRemote(remote);
     const prefix = base === null ? "" : readRepositoryPrefix(root);
 
