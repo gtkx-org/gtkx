@@ -3,6 +3,7 @@ import { defu } from "defu";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { configError, isRecord, rawIssue } from "./config-error.ts";
+import { deploySchema } from "./deploy.ts";
 import { resolveUserEventSignals } from "./user-event-signals.ts";
 
 /** Accepted `reactCompiler.compilationMode` values, choosing which functions the compiler processes. */
@@ -188,6 +189,7 @@ const configSchema = z.object({
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
     userEventSignals: userEventSignalsSchema.optional(),
     elements: elementsSchema.optional(),
+    deploy: deploySchema.optional(),
 });
 
 /**

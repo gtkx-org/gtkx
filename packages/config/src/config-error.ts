@@ -37,12 +37,21 @@ const dottedPath = (segments: PropertyKey[]): string => {
 const isStandaloneIssue = (issue: z.core.$ZodIssue): boolean =>
     "params" in issue && isRecord(issue.params) && issue.params.standalone === true;
 
-const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string => {
+const unrecognizedKeyPath = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string | undefined => {
     if (issue.code === "unrecognized_keys") {
         const [key] = issue.keys;
-        const path = dottedPath(key === undefined ? fullPath : [...fullPath, key]);
 
-        return `${CONFIG_PREFIX} \`${path}\` is not a recognized key`;
+        return dottedPath(key === undefined ? fullPath : [...fullPath, key]);
+    }
+
+    return issue.code === "invalid_key" ? dottedPath(fullPath) : undefined;
+};
+
+const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string => {
+    const unrecognized = unrecognizedKeyPath(issue, fullPath);
+
+    if (unrecognized !== undefined) {
+        return `${CONFIG_PREFIX} \`${unrecognized}\` is not a recognized key`;
     }
 
     if (isStandaloneIssue(issue)) {
