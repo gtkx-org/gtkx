@@ -37,4 +37,16 @@ describe("ServerRequestParamsSchemas", () => {
         expect(ServerRequestParamsSchemas["widget.screenshot"].safeParse({}).success).toBe(true);
         expect(ServerRequestParamsSchemas["widget.screenshot"].safeParse({ windowId: "1" }).success).toBe(true);
     });
+
+    it("takes maxDepth 0 for the root alone on both widget.getTree and widget.getProps", () => {
+        expect(ServerRequestParamsSchemas["widget.getTree"].safeParse({ maxDepth: 0 }).success).toBe(true);
+
+        expect(ServerRequestParamsSchemas["widget.getProps"].safeParse({ widgetId: "3", maxDepth: 0 }).success)
+            .toBe(true);
+    });
+
+    it("rejects a negative or fractional maxDepth on widget.getTree", () => {
+        expect(ServerRequestParamsSchemas["widget.getTree"].safeParse({ maxDepth: -1 }).success).toBe(false);
+        expect(ServerRequestParamsSchemas["widget.getTree"].safeParse({ maxDepth: 1.5 }).success).toBe(false);
+    });
 });

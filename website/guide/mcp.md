@@ -74,7 +74,7 @@ The widget tools fail until an app is running under `gtkx dev`.
 
 **`gtkx_list_apps`** lists every connected app with its application ID, process ID, and open windows (each with an ID and title). Pass `waitForApps: true` to block until at least one app registers, with `timeout` in milliseconds (default 10000).
 
-**`gtkx_get_widget_tree`** returns an app's widget hierarchy as an indented, HTML-like tree. `rootId` renders only the subtree under one widget ID and `maxDepth` (a positive integer) caps how deep the tree goes, summarizing each cut-off widget's children as a count with the ID to pass as `rootId`. The output is truncated at 7000 characters; raise that by starting the app with `DEBUG_PRINT_LIMIT=50000 gtkx dev`.
+**`gtkx_get_widget_tree`** returns an app's widget hierarchy as an indented, HTML-like tree. `rootId` renders only the subtree under one widget ID and `maxDepth` caps how deep the tree goes (`0` renders the root on its own), summarizing each cut-off widget's children as a count with the ID to pass as `rootId`. The output is truncated at 7000 characters; raise that by starting the app with `DEBUG_PRINT_LIMIT=50000 gtkx dev`.
 
 ```html
 <Window id="0" name="GtkWindow" role="window">

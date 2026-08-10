@@ -108,7 +108,7 @@ const treeParams: z.ZodObject<
     { rootId: z.ZodOptional<z.ZodString>; maxDepth: z.ZodOptional<z.ZodNumber> }
 > = z.object({
     rootId: z.string().optional(),
-    maxDepth: z.number().int().positive().optional(),
+    maxDepth: z.number().int().nonnegative().optional(),
 });
 
 const queryOptionsSchema: z.ZodObject<

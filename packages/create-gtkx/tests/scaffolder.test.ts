@@ -364,10 +364,10 @@ describe("scaffold (install failure)", () => {
         expect(clack.log.warn).not.toHaveBeenCalled();
     });
 
-    it("tells the user a plain install has nothing to reinstall", async () => {
+    it("recovers by adding the dependencies rather than a plain install", async () => {
         addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
         await expect(run()).rejects.toThrow(/Failed to install dependencies/);
-        expect(lastInfo()).toContain("wrote nothing to package.json");
+        expect(lastInfo()).toContain("safe to repeat");
         expect(recoverySteps()).not.toContain("pnpm install");
     });
 

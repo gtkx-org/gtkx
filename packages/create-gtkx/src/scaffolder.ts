@@ -82,7 +82,7 @@ To run tests, you need a headless Wayland compositor installed:
   Fedora: sudo dnf install sway
   Ubuntu: sudo apt install sway`;
 
-const RECOVERY_HEADING = "The failing command wrote nothing to package.json, so add the dependencies again:";
+const RECOVERY_HEADING = "Finish the setup by adding the dependencies again, which is safe to repeat:";
 
 const pinGtkxDependency = (name: string, version: string): string =>
     name.startsWith("@gtkx/") ? `${name}@^${version}` : name;

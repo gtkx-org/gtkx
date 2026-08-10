@@ -87,8 +87,9 @@ const treeShape = {
             "Render only the subtree rooted at this widget ID (from a prior tree or query). Omit for the " +
             "whole app.",
         maxDepth:
-            "Limit how many levels deep to render; deeper descendants are summarized with a count. " +
-            "Combine with rootId to drill in without dumping the whole tree.",
+            "Limit how many levels deep to render, and 0 for the root widget on its own; deeper " +
+            "descendants are summarized with a count. Combine with rootId to drill in without dumping " +
+            "the whole tree.",
     }),
 };
 
