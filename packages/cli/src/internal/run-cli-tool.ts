@@ -5,16 +5,25 @@ type CliToolInvocation = {
     tool: string;
     args: string[];
     target?: string;
+    shouldStream?: boolean;
     options?: ExecFileSyncOptions;
 };
 
-const runCliTool = ({ tool, args, target, options }: CliToolInvocation): void => {
+const streamingOptions = (options: ExecFileSyncOptions | undefined): ExecFileSyncOptions => ({
+    ...options,
+    stdio: "inherit",
+});
+
+const runCliTool = ({ tool, args, target, shouldStream, options }: CliToolInvocation): void => {
+    const executable = resolveExecutable(tool);
+
     try {
-        execFileSync(resolveExecutable(tool), args, options);
+        execFileSync(executable, args, shouldStream === true ? streamingOptions(options) : options);
     } catch (error) {
         const details = formatChildProcessError(error);
         const suffix = details ? `:\n${details}` : "";
         const subject = target === undefined ? "" : ` for ${target}`;
+
         throw new Error(`${tool} failed${subject}${suffix}`, { cause: error });
     }
 };

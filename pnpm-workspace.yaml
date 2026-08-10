@@ -28,6 +28,7 @@ catalog:
   typescript: ^6.0.3
   vite: ^8.2.1
   vitest: ^4.1.10
+  yaml: ^2.8.1
   zod: ^4.4.3
 
 allowBuilds:

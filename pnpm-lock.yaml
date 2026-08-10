@@ -30,6 +30,9 @@ catalogs:
     vitest:
       specifier: ^4.1.10
       version: 4.1.10
+    yaml:
+      specifier: ^2.8.1
+      version: 2.9.0
     zod:
       specifier: ^4.4.3
       version: 4.4.3
@@ -238,6 +241,9 @@ importers:
       vite:
         specifier: ^8.2.1
         version: 8.2.1(@types/node@26.2.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.11)(yaml@2.9.0)
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.0
     devDependencies:
       '@gtkx/testing':
         specifier: workspace:*

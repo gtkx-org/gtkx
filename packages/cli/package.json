@@ -78,7 +78,8 @@
         "create-gtkx": "workspace:*",
         "fast-xml-parser": "^5.10.1",
         "react-refresh": "^0.18.0",
-        "vite": "catalog:"
+        "vite": "catalog:",
+        "yaml": "catalog:"
     },
     "devDependencies": {
         "@gtkx/testing": "workspace:*",
