@@ -417,6 +417,19 @@ impl Codec {
             Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_)
         )
     }
+
+    #[must_use]
+    pub fn is_scalar(&self) -> bool {
+        matches!(
+            self,
+            Codec::Integer(_)
+                | Codec::BigInt(_)
+                | Codec::Float(_)
+                | Codec::EnumFlags(_)
+                | Codec::Boolean(_)
+                | Codec::Unichar(_)
+        )
+    }
 }
 
 impl std::fmt::Display for Codec {

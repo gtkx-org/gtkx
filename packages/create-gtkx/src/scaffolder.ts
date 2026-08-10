@@ -393,7 +393,7 @@ const toDestinationPath = (templateRelativePath: string, isTypescript: boolean):
 
 const addTestScript = (root: string): void => {
     updateManifest(root, (manifest) => {
-        (manifest.scripts as Record<string, string>).test = "vitest";
+        (manifest.scripts as Record<string, string>).test = "vitest run";
     });
 };
 

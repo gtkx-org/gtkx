@@ -164,7 +164,7 @@ In `tests/tasks.test.tsx`:
     });
 ```
 
-This test emits a signal instead of synthesizing input. `userEvent` is still the better default because it drives the same event plumbing as production, but `activated` on a row has no single gesture behind it, and `fireEvent(object, signalName)` emits any GObject signal without actionability checks. The name matcher is a regular expression because that row's accessible name includes its due-date subtitle along with the title.
+This test emits a signal instead of synthesizing input. `userEvent` is still the better default because it drives the same event plumbing as production, and `userEvent.click` on this row would activate it too. Here the handler behind `activated` is what the test is about, so it drives that signal directly: `fireEvent(object, signalName)` emits any GObject signal without actionability checks. The name matcher is a regular expression because that row's accessible name includes its due-date subtitle along with the title.
 
 In `tests/tasks.test.tsx`:
 
@@ -189,6 +189,28 @@ In `tests/tasks.test.tsx`:
 
 The third argument to `dragAndDrop` is the payload. It has to match the string your `GtkDragSource` puts in its content provider: the task identifier from [Dragging Tasks Into Order](/tutorial/drag-to-reorder). The assertion reads the rows back in tree order to check they swapped. The seed gives every task a distinct position, so that order is the same on every run.
 
+The last one drives the swatch group from [Deleting Without Fear](/tutorial/trash-and-toasts), where each toggle button past the first joins the first through `group`. Clicking the same swatch twice is the case a plain toggle gets wrong, because the second click would clear it.
+
+In `tests/tasks.test.tsx`:
+
+```tsx
+// ...
+
+    it("keeps one color selected when the same swatch is clicked repeatedly", async () => {
+        await render(<App />, { container: rootElement });
+        useStore.getState().showDialog("new-list");
+
+        const orange = await screen.findByLabelText("Color #e66100");
+        await userEvent.click(orange);
+        await userEvent.click(orange);
+
+        expect(orange).toHaveObjectProperty("active", true);
+        expect(await screen.findByLabelText("Color #3584e4")).toHaveObjectProperty("active", false);
+    });
+```
+
+Opening the dialog is a store write rather than a click, because the button that raises it lives in the sidebar header and this test is about the swatches. `findByLabelText` reaches each toggle through the `accessibleLabel` the dot carries, and `toHaveObjectProperty` reads a plain GObject property off the widget, which is where a toggle keeps its state.
+
 ## Reading a failure
 
 When a query finds nothing, the error tells you what the tree actually holds. Ask for a button the app does not have:
@@ -205,19 +227,22 @@ ElementError: Unable to find an element with role 'BUTTON' and name 'Add task'
 Here are the accessible roles:
 
 button:
-  Name "": <Button role="button"></Button>
   Name "New List": <Button role="button">New List</Button>
-  Name "": <Button role="button"></Button>
-  Name "Apply": <Button role="button">Apply</Button>
   Name "Delete task": <Button role="button">Delete task</Button>
   Name "Delete task": <Button role="button">Delete task</Button>
-  Name "": <Button role="button"></Button>
+  Name "Delete task": <Button role="button">Delete task</Button>
+  Name "Delete task": <Button role="button">Delete task</Button>
+  Name "Delete task": <Button role="button">Delete task</Button>
+  Name "Delete task": <Button role="button">Delete task</Button>
   Name "New Task (Ctrl+N)": <Button role="button">New Task (Ctrl+N)</Button>
   Name "Search (Ctrl+F)": <Button role="button">Search (Ctrl+F)</Button>
   Name "Main Menu": <MenuButton role="button">Main Menu</MenuButton>
+  Name "Minimize": <Button role="button">Minimize</Button>
+  Name "Maximize": <Button role="button">Maximize</Button>
+  Name "Close": <Button role="button">Close</Button>
 ```
 
-The dump continues through every other role in the window. Read it as an accessibility report, not a stack trace: `Name "Delete task"` appears once per visible row because [Completing, Starring, and Deleting](/tutorial/completing-and-deleting) gave that icon-only button an `accessibleLabel`, and every entry reading `Name ""` is a widget that neither a query nor a screen reader can name.
+The dump continues through every other role in the window. Read it as an accessibility report, not a stack trace: `Name "Delete task"` appears once per seeded task because [Completing, Starring, and Deleting](/tutorial/completing-and-deleting) gave that icon-only button an `accessibleLabel`, and Minimize, Maximize, and Close are the window controls the header bar draws. Every button here has a name. Further down, under `generic`, the entries reading `Name ""` are the layout boxes, which neither a query nor a screen reader has any reason to reach.
 
 You do not have to fail a query to see this. `screen.debug()` prints the annotated tree at any point in a test, and `screen.logRoles()` prints the same grouping on demand. That is the quickest way to check what role a widget reports before you write the query.
 
@@ -234,12 +259,12 @@ npm test
 Every test passes against real GTK4 widgets with no display attached:
 
 ```
- RUN  v4.1.10 /home/eugenio/gtkx/examples/tutorial
+ RUN  v4.1.10 ~/tasks
 
 [gtkx] Compiled GSettings schema: com.gtkx.tutorial.gschema.xml
 
  Test Files  1 passed (1)
-      Tests  5 passed (5)
+      Tests  6 passed (6)
    Start at  18:12:36
    Duration  8.71s (transform 6.38s, setup 358ms, import 7.60s, tests 518ms, environment 0ms)
 ```

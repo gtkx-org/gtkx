@@ -12,8 +12,8 @@ The GTKX CLI scaffolds a new app, installs its dependencies, and gives you a dev
 GTKX is Linux-only. You need:
 
 - Node.js 24 or later
-- The GTK4 and GLib (2.68 or later) development packages, whose GObject-Introspection data codegen reads to generate your bindings
-- The Adwaita development package, once you add `Adw-1` to your `libraries`
+- The GTK4 (4.20 or later) and GLib development packages, whose GObject-Introspection data codegen reads to generate your bindings
+- The Adwaita (1.8 or later) development package, once you add `Adw-1` to your `libraries`
 
 The native package (`@gtkx/native`) ships prebuilt binaries for x64 and arm64 glibc Linux. On other targets, build it from the GTKX repository with a Rust toolchain.
 
@@ -107,4 +107,4 @@ Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every ro
 
 ## Next
 
-With the project scaffolded and `gtkx dev` running, continue to [Configuration and Codegen](/guide/configuration-and-codegen) for the full option and codegen reference. To tour the Tasks app end to end, start the [Tutorial](/tutorial/).
+With the project scaffolded and `gtkx dev` running, continue to [Configuration and Codegen](/guide/configuration-and-codegen) for how codegen works and what [every config option](/guide/configuration-and-codegen#every-option) does. To tour the Tasks app end to end, start the [Tutorial](/tutorial/).

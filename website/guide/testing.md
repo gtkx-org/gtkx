@@ -15,7 +15,7 @@ A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm cr
 npm install -D @gtkx/testing vitest
 ```
 
-Then point a `test` script at `vitest` and write `vitest.config.ts`:
+Then point a `test` script at `vitest run` and write `vitest.config.ts`:
 
 ```ts
 import gtkx from "@gtkx/cli/vitest-plugin";
@@ -117,7 +117,7 @@ A click gesture you attached to such a widget yourself still receives its `press
 
 ## fireEvent, act, and waitFor
 
-`fireEvent(object, signalName, ...args)` emits any GObject signal directly, with no actionability checks. Like `userEvent`, it runs inside `act` and must be awaited, so state updates land before you assert. Reach for it when the thing you are testing is a signal handler rather than a user interaction, or when the interaction has no `userEvent` equivalent: firing `"activated"` on a row, or `"close-request"` on a window. `userEvent` should still be your default, because it exercises the same event plumbing as production.
+`fireEvent(object, signalName, ...args)` emits any GObject signal directly, with no actionability checks. Like `userEvent`, it runs inside `act` and must be awaited, so state updates land before you assert. Reach for it when the thing you are testing is a signal handler rather than a user interaction, or when the interaction has no `userEvent` equivalent, such as firing `"close-request"` on a window. `userEvent` should still be your default, because it exercises the same event plumbing as production: a row, for one, activates under `userEvent.click`, so emit its `"activated"` directly only when the handler itself is what the test is about.
 
 ```ts
 await fireEvent(row, "activated");

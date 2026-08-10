@@ -14,11 +14,19 @@ import {
     type VfuncDescriptor,
 } from "./registry.js";
 import { TYPE_INVALID, typeInterfaces, typeIsA, typeParent } from "./type.js";
+import { type RefSeeds, seedsFor } from "./vfunc-seeds.js";
 import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs } from "./vfunc.js";
 
 type Invoker = (instance: object, inputs: unknown[]) => unknown;
 type InvokerCache = WeakMap<AnyClass, Map<string, Invoker>>;
 type ResolvedSlot = { descriptor: VfuncDescriptor; interfaceType?: bigint };
+
+const NO_BASELINE = -1;
+
+const SEEDED_SLOTS: Record<string, RefSeeds> = {
+    "LayoutManagerClass.measure": new Map([[6, NO_BASELINE], [7, NO_BASELINE]]),
+    "WidgetClass.measure": new Map([[5, NO_BASELINE], [6, NO_BASELINE]]),
+};
 
 const parentInvokers: InvokerCache = new WeakMap();
 const vfuncInvokers: InvokerCache = new WeakMap();
@@ -63,12 +71,20 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
     const canThrow = descriptor.canThrow === true;
     const label = `${descriptor.className}.${descriptor.vfuncName}`;
     const [, ...inputArgs] = args.filter(requiresInputArg);
+    let pendingSeeds: RefSeeds | undefined;
 
-    const shaped = fromNativeCallable(bindVfunc(bindOptionsFor(slot, instanceType, args, label)), {
-        args,
-        returns: descriptor.returnDescriptor,
-        canThrow,
-    });
+    const takeRefSeeds = (): RefSeeds | undefined => {
+        const seeds = pendingSeeds;
+        pendingSeeds = undefined;
+
+        return seeds;
+    };
+
+    const shaped = fromNativeCallable(
+        bindVfunc(bindOptionsFor(slot, instanceType, args, label)),
+        { args, returns: descriptor.returnDescriptor, canThrow },
+        takeRefSeeds,
+    );
 
     return (instance, inputs) => {
         if (inputs.length !== inputArgs.length) {
@@ -78,7 +94,10 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
             );
         }
 
-        return shaped(getHandle(instance), ...inputArgs.map((arg, index) => toNativeInput(arg, inputs[index])));
+        const nativeInputs = inputArgs.map((arg, index) => toNativeInput(arg, inputs[index]));
+        pendingSeeds = SEEDED_SLOTS[label] ?? seedsFor(descriptor.argDescriptors, instance);
+
+        return shaped(getHandle(instance), ...nativeInputs);
     };
 }
 

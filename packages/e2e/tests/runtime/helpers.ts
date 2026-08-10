@@ -1,4 +1,4 @@
-import { type Type, TYPE_STRING, typeIsA, Value } from "@gtkx/gi/gobject";
+import { Object as GObject, type ParamSpec, type Type, TYPE_STRING, typeIsA, Value } from "@gtkx/gi/gobject";
 import { type ExternalObject, getType, type Handle } from "@gtkx/native";
 import { TYPE_INVALID, TYPE_POINTER } from "@gtkx/runtime";
 
@@ -27,4 +27,15 @@ function pointerValue(): Value {
     return value;
 }
 
-export { isInstanceOfType, pointerValue, stringValue };
+function watchNotify(instance: GObject): string[] {
+    const seen: string[] = [];
+
+    instance.on("notify", (...args: unknown[]) => {
+        const [pspec] = args as [ParamSpec];
+        seen.push(pspec.getName());
+    });
+
+    return seen;
+}
+
+export { isInstanceOfType, pointerValue, stringValue, watchNotify };

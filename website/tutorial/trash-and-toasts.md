@@ -24,11 +24,28 @@ A task is deleted from a row, from the open task's header, and from the Delete k
 
 The overlay is a widget, so it can only wrap what is on screen, the split view. But the Delete shortcut lives on the window itself, outside that content, and it deletes tasks too. So the context that carries the overlay has to sit higher than the overlay widget does. `@gtkx/components/adw` ships that split as `ToastProvider` and `useToast`: you hand the provider a ref, give the same ref to an `AdwToastOverlay` mounted wherever the toasts should appear, and every `useToast` below the provider shows toasts on that overlay.
 
+The scaffolder did not install that package. From `tasks/`:
+
+::: code-group
+
+```bash [npm]
+npm install @gtkx/components
+```
+
+```bash [pnpm]
+pnpm add @gtkx/components
+```
+
+:::
+
+Like zustand, it belongs in `dependencies`: the toast helpers it supplies run in the shipped application.
+
 Wire both in `src/components/window.tsx`. Hold the overlay in a ref, wrap the window in `ToastProvider`, and mount the overlay around the split view:
 
 ```tsx
 import { ToastProvider } from "@gtkx/components/adw";
 import { AdwToastOverlay } from "@gtkx/jsx/adw";
+import { useRef } from "react";
 
 // ...
 
@@ -154,6 +171,10 @@ export const DeleteConfirmation = () => {
 Mount it from `src/components/dialogs.tsx`:
 
 ```diff
++import { DeleteConfirmation } from "./delete-confirmation.js";
++
+         case "shortcuts":
+             return <Shortcuts onClose={close} />;
 +        case "delete-task":
 +            return <DeleteConfirmation />;
          case "none":
@@ -199,6 +220,8 @@ A task already in Trash raises the dialog. Anything else moves to Trash, closes 
 Point the call sites at it. Each calls `useRequestDeleteTask` at the top of the component and hands the result to its button. In `src/components/task-row.tsx`:
 
 ```diff
++import { useRequestDeleteTask } from "./dialogs.js";
++
  export const TaskRow = ({ task }: { task: Task }) => {
 +    const requestDeleteTask = useRequestDeleteTask();
      const setDone = useStore((state) => state.setDone);
@@ -212,6 +235,8 @@ Point the call sites at it. Each calls `useRequestDeleteTask` at the top of the 
 The open task's header does the same in `src/components/content-pane.tsx`:
 
 ```diff
++import { useRequestDeleteTask } from "./dialogs.js";
++
  export const ContentPane = () => {
 +    const requestDeleteTask = useRequestDeleteTask();
      const tasks = useStore((state) => state.tasks);
@@ -225,17 +250,23 @@ The open task's header does the same in `src/components/content-pane.tsx`:
 And in `src/components/app-shortcuts.tsx`, where the Delete key lands, take the handler from the hook:
 
 ```diff
++import { useRequestDeleteTask } from "./dialogs.js";
++
  export const AppShortcuts = () => {
 +    const requestDeleteTask = useRequestDeleteTask();
      const selectedTaskId = useStore((state) => state.selectedTaskId);
 ```
 
-```tsx
-const deleteSelected = (): void => {
-    const { tasks, selectedTaskId: id } = useStore.getState();
-    const task = tasks.find((candidate) => candidate.id === id);
-    if (task) requestDeleteTask(task);
-};
+```diff
+     const deleteSelected = (): void => {
+-        const { selectedTaskId: id, moveToTrash, closeTask: close } = useStore.getState();
+-        if (id === null) return;
+-        moveToTrash(id);
+-        close();
++        const { tasks, selectedTaskId: id } = useStore.getState();
++        const task = tasks.find((candidate) => candidate.id === id);
++        if (task) requestDeleteTask(task);
+     };
 ```
 
 Each site calls `useRequestDeleteTask` and drops its own `moveToTrash` selection, so each button just reports what the user asked for and leaves the decision to the hook.
@@ -317,6 +348,8 @@ The swatches are one radio group: each `GtkToggleButton` past the first joins th
 Mount it alongside the other dialogs in `src/components/dialogs.tsx`:
 
 ```diff
++import { NewListDialog } from "./new-list-dialog.js";
++
 +        case "new-list":
 +            return <NewListDialog />;
          case "delete-task":

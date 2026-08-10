@@ -62,9 +62,21 @@ const buildElement = (typeName: string, record: Props): ReactElement => {
     );
 };
 
-const createElementComponent =
-    (typeName: string): ((props: unknown) => ReactNode) =>
-        (props: unknown): ReactNode =>
-            buildElement(typeName, isRecord(props) ? props : {});
+/**
+ * Builds the component that renders the element of a GLib type, which is how the generated `@gtkx/jsx`
+ * store exposes every widget. Reach for it to render a type codegen does not cover, such as one
+ * `registerClass` created: the element name is the GType name, and the component routes each prop whose
+ * value is an element into that prop's slot, which a bare intrinsic element cannot do.
+ *
+ * Name the props the element takes as the type argument, since the GType name says nothing about them.
+ * Left out, the component takes `unknown`, which accepts no attributes at all.
+ *
+ * @param typeName GType name to render, such as `GtkButton` or the `typeName` given to `registerClass`.
+ * @returns A component taking that type's props.
+ */
+/* eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- callers name the props */
+function createElementComponent<P = unknown>(typeName: string): (props: P) => ReactNode {
+    return (props: P): ReactNode => buildElement(typeName, isRecord(props) ? props : {});
+}
 
 export { Prop, createElementComponent };

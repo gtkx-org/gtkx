@@ -113,14 +113,47 @@ echo ""
 echo "Done. package-lock.json and flatpak/generated-sources.json are ready to build."
 ```
 
-Add it to `package.json` alongside the scripts from Appendix B:
+The build itself gets a script too, so the lint and the missing-sources check run before `flatpak-builder` does. Create `flatpak/build.sh`:
+
+```bash
+#!/bin/bash
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "Validating desktop entry and metainfo..."
+npm run flatpak:lint
+
+if [[ ! -f flatpak/generated-sources.json ]]; then
+    echo "Error: flatpak/generated-sources.json is missing." >&2
+    echo "Run 'npm run flatpak:sources' first." >&2
+    exit 1
+fi
+
+echo "Building flatpak from source in a sandbox..."
+flatpak-builder \
+    --force-clean \
+    --user \
+    --install-deps-from=flathub \
+    --repo=flatpak-repo \
+    build-dir \
+    flatpak/com.gtkx.tutorial.yaml
+
+echo ""
+echo "Build complete. Install with:"
+echo "  flatpak install --user flatpak-repo com.gtkx.tutorial"
+echo "  flatpak run com.gtkx.tutorial"
+```
+
+Add all three to `package.json` alongside the scripts from Appendix B:
 
 ```json
 {
   "scripts": {
     // ...
     "flatpak:lint": "desktop-file-validate flatpak/com.gtkx.tutorial.desktop && appstreamcli validate --no-net flatpak/com.gtkx.tutorial.metainfo.xml",
-    "flatpak:sources": "bash flatpak/generate-sources.sh"
+    "flatpak:sources": "bash flatpak/generate-sources.sh",
+    "flatpak:build": "bash flatpak/build.sh"
   }
 }
 ```
@@ -138,13 +171,7 @@ npm run flatpak:sources
 Now build it:
 
 ```bash
-flatpak-builder \
-    --force-clean \
-    --user \
-    --install-deps-from=flathub \
-    --repo=flatpak-repo \
-    build-dir \
-    flatpak/com.gtkx.tutorial.yaml
+npm run flatpak:build
 ```
 
 `--install-deps-from=flathub` pulls the GNOME runtime and the Node.js SDK extension, which is slow the first time and then cached. `--repo=flatpak-repo` writes the result as a local repository you can install from.

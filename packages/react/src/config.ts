@@ -1,4 +1,6 @@
 /** @public */
+export { createElementComponent } from "./components/element.js";
+/** @public */
 export { BUILTIN_ELEMENTS } from "./element-config.js";
 /** @public */
 export type {

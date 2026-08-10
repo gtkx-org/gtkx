@@ -13,7 +13,7 @@ That is **Tasks**, a GNOME task manager. In this tutorial you build it from an e
 
 You build it one running step at a time: after every chapter you have an app you can launch.
 
-You need working familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html), which this tutorial does not teach: it spends its words on GTK4 and Adwaita instead. You also need Linux with the GTK4 development libraries and Node.js 24 or later. [Getting Started](/guide/getting-started) lists the system packages per distribution.
+You need working familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html), which this tutorial does not teach: it spends its words on GTK4 and Adwaita instead. You also need Linux with the GTK4 development libraries and Node.js 24 or later. [Getting Started](/guide/getting-started) covers what to install.
 
 ## Check your setup
 
@@ -67,8 +67,9 @@ Answer the prompts like this:
 ◇  Include testing setup (Vitest)?
 │  Yes
 │
-└  Project structure created
 ```
+
+It then writes the project, installs the dependencies, initializes a git repository, and prints the commands to start it.
 
 Pick whichever package manager you use. This tutorial writes `npm run` in its commands; substitute freely.
 

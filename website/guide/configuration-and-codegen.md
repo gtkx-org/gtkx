@@ -22,6 +22,18 @@ export default defineConfig({
 
 For sharing a base config across packages, `mergeConfig(base, override)` deep-merges configs with the override winning on conflict. The config is loaded per mode, so a `$development` or `$production` block layers over the top-level values when `gtkx dev` or `gtkx build` reads the file.
 
+### Every option
+
+`applicationId` is the only required key. The rest carry defaults that suit most projects:
+
+- **`applicationId`** is the GApplication identifier the app registers under. It must satisfy `g_application_id_is_valid`, so `com.example.Tasks` passes and `tasks` does not. The application element takes it from here, and so does everything keyed off it: notifications, the desktop entry, and GSettings paths.
+- **`libraries`** names the GIR libraries to bind, each as `Name-Version`. Omit the key and codegen generates `Gtk-4.0` alone; list others and `Gtk-4.0` joins them unless the list already names a Gtk version. The bare string `"*"` (never an array entry) binds every library installed on the GIR path.
+- **`girPath`** adds directories to the front of the `.gir` search path, which otherwise runs `GTKX_GIR_PATH`, then `/usr/share/gir-1.0`, then the `girdir` pkg-config reports for `gobject-introspection-1.0`. Set it when your introspection data sits somewhere that search does not reach.
+- **`reactCompiler`** controls the React Compiler, which the build runs over your own sources by default. Set `false` to turn it off, or pass an object to forward `compilationMode` (`infer`, `syntax`, `annotation`, `all`) and `panicThreshold` (`none`, `critical_errors`, `all_errors`) to `babel-plugin-react-compiler`.
+- **`codegen: false`** skips generation for this project, which then imports whatever binding store is already installed. `gtkx docs` then has no libraries to document and says so. The examples in the GTKX repository set it because the workspace generates one shared store for all of them.
+- **`userEventSignals`** adds, per GLib type name, to the set of signals GTKX suppresses while it is writing to a widget itself, so a controlled widget's handler sees the user's change rather than the echo of the value React just applied. The defaults already cover the GTK4 and Adwaita widgets (`changed` on `GtkEditable`, `toggled` on `GtkCheckButton`, and so on), and your entries merge into them instead of replacing them, which is what a custom widget with its own change signal needs.
+- **`elements`** holds the customizations described under [Customizing elements](#advanced-customizing-elements): `behaviors` is the path to the module that default-exports your `defineElements` map, and `config` maps a GLib type name to what codegen emits for it (`component` and `props` to swap in your own module exports, `omittedProps` to drop props from the generated interface, `isLazy` for a type whose GObject its parent container creates).
+
 ## What codegen emits
 
 Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx` so imports resolve without either package appearing in your `package.json`:
@@ -113,12 +125,17 @@ export default defineConfig({
 ```
 
 ```ts
+// src/augmentations.d.ts
+import "@gtkx/jsx/gtk";
+
 declare module "@gtkx/jsx/gtk" {
     interface GtkWidgetProps {
         cursorName?: string | null | undefined;
     }
 }
 ```
+
+The leading `import` is what makes this an augmentation. Without it the file has no top-level import or export, so `declare module` reads as an ambient module declaration and shadows the generated one, and `@gtkx/jsx/gtk` stops exporting any element at all.
 
 Every widget element then accepts a `cursorName` prop and the reconciler calls `setCursorFromName` whenever the value changes. A behavior declared on a type covers every element descending from it, which is how the built-in `controllers` behavior on `GtkWidget` reaches all widgets. Your behaviors are consulted before the built-in ones, so you can also override how an existing slot or prop behaves. The same map's `isLazy: true` marks a type whose GObject its parent container creates (a page or layout child), so its element defers construction until the parent adopts it.
 

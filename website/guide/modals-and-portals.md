@@ -12,7 +12,7 @@ Portals let a component render children into a container other than its JSX pare
 `createPortal` from `@gtkx/react` has the same shape as its React DOM namesake, with GTK4 containers in place of DOM nodes:
 
 ```ts
-createPortal(children: ReactNode, container: GObject.Object | RootElement, key?: string | null): ReactPortal
+createPortal(children: ReactNode, container: GObject.Object | RootElement, key?: string): ReactPortal
 ```
 
 The container is either any live `GObject.Object` or the special `rootElement` marker described below. That definition is deliberately broad. The most common targets are:

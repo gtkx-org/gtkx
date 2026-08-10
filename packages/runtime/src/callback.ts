@@ -4,6 +4,7 @@ import { fromNative, toNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { splitTupleResult } from "./tuple.js";
 import { copyValue } from "./value.js";
+import { popSeedFrame, pushSeedFrame, type RefSeeds } from "./vfunc-seeds.js";
 
 type Callback = (...args: unknown[]) => unknown;
 type CallbackReceiver = "this" | "emitter" | "none";
@@ -24,6 +25,7 @@ type CallbackPlan = {
     start: number;
     receiver: CallbackReceiver;
     hasOutParams: boolean;
+    hasRefOutParams: boolean;
 };
 
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
@@ -97,15 +99,14 @@ const partitionCallbackArgs = (
 const hasOutParamArg = (descriptor: Descriptor | undefined): boolean =>
     descriptor !== undefined && (descriptor.kind === "ref" || isCallerAllocatedOut(descriptor));
 
-const haveOutParamArgs = (effectiveTypes: Descriptor[], start: number): boolean => {
-    for (let i = start; i < effectiveTypes.length; i++) {
-        if (hasOutParamArg(effectiveTypes[i])) {
-            return true;
-        }
-    }
+const hasRefOutParamArg = (descriptor: Descriptor | undefined): boolean =>
+    descriptor?.kind === "ref" && descriptor.inout !== true;
 
-    return false;
-};
+const haveOutParamArgs = (effectiveTypes: Descriptor[], start: number): boolean =>
+    effectiveTypes.slice(start).some((descriptor) => hasOutParamArg(descriptor));
+
+const haveRefOutParamArgs = (effectiveTypes: Descriptor[], start: number): boolean =>
+    effectiveTypes.slice(start).some((descriptor) => hasRefOutParamArg(descriptor));
 
 const sizeParamIndexFor = (descriptor: Descriptor): number | undefined => {
     if (descriptor.kind !== "ref") {
@@ -178,6 +179,34 @@ const writeFoldedLengths = (lengthLinks: LengthLink[], written: Map<number, unkn
     }
 };
 
+const collectRefSeeds = (outParams: OutParam[]): RefSeeds => {
+    const seeds: RefSeeds = new Map();
+
+    for (const outParam of outParams) {
+        const seed = (outParam.value as { value?: unknown } | null)?.value;
+
+        if (seed != null && hasRefOutParamArg(outParam.descriptor)) {
+            seeds.set(outParam.argIndex, seed);
+        }
+    }
+
+    return seeds;
+};
+
+const applyCallback = (plan: CallbackPlan, thisArg: unknown, inputs: unknown[], outParams: OutParam[]): unknown => {
+    if (!plan.hasRefOutParams) {
+        return plan.fn.apply(thisArg, inputs);
+    }
+
+    pushSeedFrame({ argDescriptors: plan.effectiveTypes, instance: thisArg, seeds: collectRefSeeds(outParams) });
+
+    try {
+        return plan.fn.apply(thisArg, inputs);
+    } finally {
+        popSeedFrame();
+    }
+};
+
 const getThisArg = (receiver: CallbackReceiver, wrapped: unknown[]): unknown =>
     receiver === "this" ? (wrapped[0] ?? null) : null;
 
@@ -214,7 +243,7 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     }
 
     const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, rawArgs, plan.start);
-    const result = plan.fn.apply(thisArg, inputs);
+    const result = applyCallback(plan, thisArg, inputs, outParams);
 
     if (outParams.length === 0) {
         return toNative(returnDescriptor, result);
@@ -251,6 +280,7 @@ function wrapCallback(fn: Callback, spec: CallbackSpec, receiver: CallbackReceiv
         start,
         receiver,
         hasOutParams: haveOutParamArgs(effectiveTypes, start),
+        hasRefOutParams: haveRefOutParamArgs(effectiveTypes, start),
     };
 
     return (...rawArgs: unknown[]): unknown => runCallback(plan, rawArgs);

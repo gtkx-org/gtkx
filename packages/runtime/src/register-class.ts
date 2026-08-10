@@ -10,10 +10,12 @@ import { wrapCallback } from "./callback.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
     buildPropertyDispatch,
+    GET_PROPERTY_VFUNC,
     makeGetProperty,
     makeSetProperty,
     type PropertyDispatch,
     type PropertySpec,
+    SET_PROPERTY_VFUNC,
     toNativeProperties,
 } from "./properties.js";
 import {
@@ -117,11 +119,24 @@ type RegisterClassOptions<TInstance extends object, TProperties extends Record<s
      * written, so `dewPoint`, `dew_point` and `dew-point` all name the same member, and the ParamSpec
      * has to carry the canonical spelling of that name, `dew-point`, or registration throws: the
      * ParamSpec's name is the one GObject emits `notify` with, and a name the key does not spell
-     * reaches nothing that listens for it. Every property gains prototype accessors that emit `notify`
-     * on write, one for the key as written, one for it with dashes turned into underscores and one for
-     * it in camelCase, each unless the class already defines that name.
-     * A class that defines `vfuncSetProperty` or `vfuncGetProperty` itself backs that direction with
-     * its own method instead of the generated accessor dispatch.
+     * reaches nothing that listens for it. Every property gains prototype accessors, one for the key
+     * as written, one for it with dashes turned into underscores and one for it in camelCase, each
+     * unless the class already defines that name. They serve the value from storage of their own on
+     * the instance, which is also what the type's `get_property` and `set_property` slots read and
+     * write, so a value set from JavaScript, from `g_object_set_property` and at construction all
+     * land in the same place.
+     *
+     * A write the ParamSpec would refuse throws rather than reaching GObject, which reports such a
+     * write as a GLib critical and drops it: a `TypeError` for a read-only or construct-only
+     * property and for a value of a type the property cannot hold, and a `RangeError` for a value
+     * the ParamSpec rejects. The same two checks run over a value handed to the constructor, where
+     * a construct-only property is the one that is writable. An accepted write emits one `notify`,
+     * which a `freeze_notify` batch collects; a write of the value the property already holds is
+     * dropped and emits none.
+     *
+     * A class that defines the camelCase member itself owns the property: its own accessor decides
+     * what a write means, the other two spellings forward to it, and the type's property slots read
+     * and write it rather than the generated storage.
      */
     properties?: TProperties;
 };
@@ -154,8 +169,8 @@ type PropertyVfuncSpec = {
 const VALUE_ARG_INDEX = 2;
 
 const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
-    { methodName: "vfuncGetProperty", isValueOut: true, makeDispatch: makeGetProperty },
-    { methodName: "vfuncSetProperty", isValueOut: false, makeDispatch: makeSetProperty },
+    { methodName: GET_PROPERTY_VFUNC, isValueOut: true, makeDispatch: makeGetProperty },
+    { methodName: SET_PROPERTY_VFUNC, isValueOut: false, makeDispatch: makeSetProperty },
 ];
 
 const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec) => spec.methodName));
@@ -212,8 +227,8 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     const declaredTypes = resolveInterfaceTypes(klass, options.implements ?? []);
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
-    const dispatch = buildPropertyDispatch(klass, properties, adoptedTypes);
     const { methods, inheritedNames } = collectInstanceMembers(klass);
+    const dispatch = buildPropertyDispatch({ klass, properties, adoptedTypes });
 
     const classVfuncs = [
         ...discoverClassVfuncs(klass, methods),

@@ -1,5 +1,6 @@
 import type { CallDescriptor, Descriptor, ExternalObject, Ref } from "@gtkx/native";
 import { call, bind as nativeBind } from "@gtkx/native";
+import type { RefSeeds } from "./vfunc-seeds.js";
 import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, requiresInputArg } from "./arg.js";
 import { wrapCallbackValue } from "./callback.js";
 import { boxedT, refT } from "./descriptors.js";
@@ -77,19 +78,19 @@ const resolveCallerAllocated = (inputs: unknown[], inputIndex: number): unknown 
     return wrapper == null ? wrapper : getHandle(wrapper);
 };
 
-const buildRefValue = (requiresInput: boolean, inputs: unknown[], inputIndex: number): Ref => ({
-    value: requiresInput ? inputs[inputIndex] : null,
+const buildRefValue = (spec: ArgSpec, inputs: unknown[], seeds: RefSeeds | undefined): Ref => ({
+    value: spec.requiresInput ? inputs[spec.inputIndex] : (seeds?.get(spec.index) ?? null),
 });
 
-const buildNativeValue = (spec: ArgSpec, inputs: unknown[]): unknown => {
-    const { arg, isRef, isCallerAllocated, requiresInput, inputIndex } = spec;
+const buildNativeValue = (spec: ArgSpec, inputs: unknown[], seeds: RefSeeds | undefined): unknown => {
+    const { arg, isRef, isCallerAllocated, inputIndex } = spec;
 
     if (isCallerAllocated) {
         return resolveCallerAllocated(inputs, inputIndex);
     }
 
     if (isRef) {
-        return buildRefValue(requiresInput, inputs, inputIndex);
+        return buildRefValue(spec, inputs, seeds);
     }
 
     if (arg.type.kind === "callback") {
@@ -99,8 +100,8 @@ const buildNativeValue = (spec: ArgSpec, inputs: unknown[]): unknown => {
     return inputs[inputIndex];
 };
 
-const buildNativeValues = (plans: ArgSpec[], inputs: unknown[]): unknown[] =>
-    plans.map((plan) => buildNativeValue(plan, inputs));
+const buildNativeValues = (plans: ArgSpec[], inputs: unknown[], seeds: RefSeeds | undefined): unknown[] =>
+    plans.map((plan) => buildNativeValue(plan, inputs, seeds));
 
 const readOutParams = (outPlans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
     if (outPlans.length === 0) {
@@ -148,6 +149,7 @@ const directCallable = (
 function fromNativeCallable(
     descriptor: ExternalObject<CallDescriptor>,
     spec: FnSpec,
+    getRefSeeds?: () => RefSeeds | undefined,
 ): (...inputs: unknown[]) => unknown {
     const { args, returns: returnDescriptor, canThrow = false } = spec;
     const hasPrimary = returnDescriptor.kind !== "void";
@@ -167,7 +169,7 @@ function fromNativeCallable(
 
     if (canThrow) {
         return (...inputs) => {
-            const nativeValues = buildNativeValues(plans, inputs);
+            const nativeValues = buildNativeValues(plans, inputs, getRefSeeds?.());
             const errorRef: Ref = { value: null };
             nativeValues.push(errorRef);
             const nativeResult = call(descriptor, nativeValues);
@@ -178,7 +180,7 @@ function fromNativeCallable(
     }
 
     return (...inputs) => {
-        const nativeValues = buildNativeValues(plans, inputs);
+        const nativeValues = buildNativeValues(plans, inputs, getRefSeeds?.());
 
         return shape(inputs, nativeValues, call(descriptor, nativeValues));
     };

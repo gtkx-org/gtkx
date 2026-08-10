@@ -166,7 +166,7 @@ jq '.state.tasks[-1]' ~/.local/share/com.gtkx.tutorial/tasks.json
   "important": false,
   "deleted": false,
   "due": null,
-  "position": 6,
+  "position": 3,
   "createdAt": "2026-07-19T09:31:47.902Z",
   "completedAt": null
 }

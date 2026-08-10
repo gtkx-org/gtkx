@@ -97,12 +97,12 @@ const linkProgram = (vertexShader: number, fragmentShader: number): number => {
 `initGL` calls both, then creates the vertex array and buffer the draw call needs. The GLSL sources, the interleaved `VERTEX_DATA`, and `createRotationMatrix` live in `examples/gtk-demo/src/demos/opengl/glarea.tsx`. Buffer uploads take the byte length next to the view, since the binding passes both to the driver:
 
 ```ts
-interface GLState {
+type GLState = {
     program: number;
     vao: number;
     vbo: number;
     mvpLocation: number;
-}
+};
 
 const initGL = (api: Gdk.GLAPI): GLState => {
     const isGles = api === Gdk.GLAPI.GLES;

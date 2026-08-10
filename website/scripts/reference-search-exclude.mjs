@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, sep } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const referenceDir = join(dirname(fileURLToPath(import.meta.url)), "..", "reference");
-const packagesDir = join(referenceDir, "@gtkx");
+const overviewFile = join(referenceDir, "index.md");
 const frontmatter = /^---\n[\s\S]*?\n---\n+/;
 
 const walkEntry = (dir, entry) => {
@@ -18,6 +18,6 @@ const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((entry) 
 
 for (const file of walk(referenceDir)) {
     const body = readFileSync(file, "utf8").replace(frontmatter, "");
-    const fields = file.startsWith(packagesDir + sep) ? ["search: false", "editLink: false"] : ["editLink: false"];
+    const fields = file === overviewFile ? ["editLink: false"] : ["search: false", "editLink: false"];
     writeFileSync(file, `---\n${fields.join("\n")}\n---\n\n${body}`);
 }

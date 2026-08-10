@@ -17,7 +17,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass, TYPE_POINTER } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
-import { stringValue } from "./helpers.js";
+import { stringValue, watchNotify } from "./helpers.js";
 
 const uniqueName = createTypeNameFactory("_");
 
@@ -30,17 +30,6 @@ const intValue = (n: number): Value => {
 };
 
 const intSpec = (name: string): ParamSpec => paramSpecInt(name, null, null, 0, 255, 0, ParamFlags.READWRITE);
-
-const watchNotify = (instance: GObject): string[] => {
-    const seen: string[] = [];
-
-    instance.on("notify", (...args: unknown[]) => {
-        const [pspec] = args as [ParamSpec];
-        seen.push(pspec.getName());
-    });
-
-    return seen;
-};
 
 const makeTintClass = () => {
     class Tint extends GObject {
@@ -206,13 +195,12 @@ describe("registerClass — properties a pointer or string-array type backs", ()
     it("refuses a pointer JavaScript cannot hand back to GLib", () => {
         const Anchor = makeAnchorClass();
         const anchor = new Anchor();
-        anchor.target = 1;
-        const read = new Value();
-        read.init(TYPE_POINTER);
 
         expect(() => {
-            anchor.getProperty("target", read);
-        }).toThrow(/G_TYPE_POINTER non-null values/);
+            anchor.target = 1;
+        }).toThrow(/'target' to 1; the property holds values of type 'gpointer'/);
+
+        expect(anchor.target).toBeNull();
     });
 });
 

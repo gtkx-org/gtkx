@@ -9,9 +9,11 @@ import {
     boxedT,
     float32T,
     float64T,
+    int8T,
     int32T,
     objectT,
     stringT,
+    uint8T,
     uint32T,
     uint64T,
     voidT,
@@ -28,6 +30,7 @@ import {
     resolveType,
     TYPE_BOOLEAN,
     TYPE_BOXED,
+    TYPE_CHAR,
     TYPE_DOUBLE,
     TYPE_ENUM,
     TYPE_FLAGS,
@@ -37,12 +40,15 @@ import {
     TYPE_INT64,
     TYPE_INTERFACE,
     TYPE_INVALID,
+    TYPE_LONG,
     TYPE_OBJECT,
     TYPE_PARAM,
     TYPE_POINTER,
     TYPE_STRING,
+    TYPE_UCHAR,
     TYPE_UINT,
     TYPE_UINT64,
+    TYPE_ULONG,
     TYPE_VARIANT,
     typeFundamental,
     typeName,
@@ -54,6 +60,7 @@ type ValueType = {
 };
 
 type ValueGetter = (value: ExternalObject<Handle>) => unknown;
+type ValueWriter = ValueType["set"];
 
 const setBoxedCache = createBindCache();
 const setStaticBoxedCache = createBindCache();
@@ -62,8 +69,12 @@ const gValueInit = bind(LIB, "g_value_init", [VALUE_T, biguint64T], voidT);
 const gValueCopy = bind(LIB, "g_value_copy", [VALUE_T, VALUE_T], voidT);
 const booleanValueType = bindValueType("boolean", booleanT);
 const typeValueType = bindValueType("gtype", biguint64T);
+const scharValueType = bindValueType("schar", int8T);
+const ucharValueType = bindValueType("uchar", uint8T);
 const intValueType = bindValueType("int", int32T);
 const uintValueType = bindValueType("uint", uint32T);
+const longValueType = bindValueType("long", bigint64T);
+const ulongValueType = bindValueType("ulong", biguint64T);
 const int64ValueType = bindValueType("int64", bigint64T);
 const uint64ValueType = bindValueType("uint64", biguint64T);
 const floatValueType = bindValueType("float", float32T);
@@ -102,8 +113,12 @@ const PLAIN_VALUE_TYPES: Partial<Record<Descriptor["kind"], ValueType>> = {
 const PLAIN_VALUE_GETTERS: Map<bigint, ValueGetter> = new Map([
     [TYPE_BOOLEAN, booleanValueType.get],
     [TYPE_GTYPE, typeValueType.get],
+    [TYPE_CHAR, scharValueType.get],
+    [TYPE_UCHAR, ucharValueType.get],
     [TYPE_INT, intValueType.get],
     [TYPE_UINT, uintValueType.get],
+    [TYPE_LONG, longValueType.get],
+    [TYPE_ULONG, ulongValueType.get],
     [TYPE_INT64, int64ValueType.get],
     [TYPE_UINT64, uint64ValueType.get],
     [TYPE_FLOAT, floatValueType.get],
@@ -115,8 +130,12 @@ const PLAIN_VALUE_GETTERS: Map<bigint, ValueGetter> = new Map([
 const PLAIN_VALUE_SETTERS: Map<bigint, ValueType["set"]> = new Map([
     [TYPE_BOOLEAN, booleanValueType.set],
     [TYPE_GTYPE, typeValueType.set],
+    [TYPE_CHAR, scharValueType.set],
+    [TYPE_UCHAR, ucharValueType.set],
     [TYPE_INT, intValueType.set],
     [TYPE_UINT, uintValueType.set],
+    [TYPE_LONG, longValueType.set],
+    [TYPE_ULONG, ulongValueType.set],
     [TYPE_INT64, int64ValueType.set],
     [TYPE_UINT64, uint64ValueType.set],
     [TYPE_FLOAT, floatValueType.set],
@@ -337,13 +356,13 @@ const resolveValueGetter = (fundamental: bigint): ValueGetter | undefined =>
 const resolveValueSetter = (fundamental: bigint): ValueType["set"] | undefined =>
     PLAIN_VALUE_SETTERS.get(fundamental) ?? WRAPPED_VALUE_SETTERS.get(fundamental);
 
-function intoValue(value: ExternalObject<Handle>, jsValue: unknown): void {
-    const type = getValueType(value);
+function setStrvValue(value: ExternalObject<Handle>, jsValue: unknown): void {
+    strvValueType.set(value, jsValue ?? null);
+}
 
+function valueWriterFor(type: bigint): ValueWriter {
     if (type === getStrvType()) {
-        strvValueType.set(value, jsValue ?? null);
-
-        return;
+        return setStrvValue;
     }
 
     const set = resolveValueSetter(typeFundamental(type));
@@ -352,7 +371,11 @@ function intoValue(value: ExternalObject<Handle>, jsValue: unknown): void {
         throw new Error(`Unsupported type for intoValue: ${typeName(type) ?? String(type)}`);
     }
 
-    set(value, jsValue);
+    return set;
+}
+
+function intoValue(value: ExternalObject<Handle>, jsValue: unknown): void {
+    valueWriterFor(getValueType(value))(value, jsValue);
 }
 
 const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
@@ -440,4 +463,6 @@ export {
     outValueForDescriptor,
     outValueForBoxedDescriptor,
     inoutValueForBoxedDescriptor,
+    type ValueWriter,
+    valueWriterFor,
 };

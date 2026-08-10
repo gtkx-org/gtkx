@@ -238,13 +238,12 @@ fn seed_recording_function(seeded: &Rc<RefCell<Vec<sys::napi_value>>>) -> sys::n
     })
 }
 
-#[test]
-fn ref_inout_parameters_are_seeded_and_flushed() {
+fn assert_i32_ref_seed(inout: bool) {
     helpers::run(|| {
         let env = helpers::fake_env();
         let seeded = Rc::new(RefCell::new(Vec::new()));
         let js_fn = seed_recording_function(&seeded);
-        let state = ref_i32_closure(&env, js_fn, true);
+        let state = ref_i32_closure(&env, js_fn, inout);
         let call: unsafe extern "C" fn(*mut i32) = unsafe { std::mem::transmute(state.code_ptr) };
 
         let mut backing: i32 = 41;
@@ -259,7 +258,12 @@ fn ref_inout_parameters_are_seeded_and_flushed() {
 }
 
 #[test]
-fn ref_pure_out_parameters_are_seeded_null_and_flushed_without_reading_the_slot() {
+fn ref_inout_parameters_are_seeded_and_flushed() {
+    assert_i32_ref_seed(true);
+}
+
+#[test]
+fn ref_pure_out_scalar_parameters_are_not_seeded_from_the_slot() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let seeded = Rc::new(RefCell::new(Vec::new()));
@@ -272,8 +276,47 @@ fn ref_pure_out_parameters_are_seeded_null_and_flushed_without_reading_the_slot(
 
         let seeds = seeded.borrow();
         assert_eq!(seeds.len(), 1);
-        assert!(napi_mock::is_null(seeds[0]));
+        assert_eq!(napi_mock::read_double(seeds[0]), None);
         assert_eq!(backing, 52);
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+fn string_seed_recording_function(seeded: &Rc<RefCell<Vec<sys::napi_value>>>) -> sys::napi_value {
+    let seeded_in_fn = Rc::clone(seeded);
+    napi_mock::fake_function(move |args| {
+        let seed = napi_mock::read_object_property(args[0], "value")
+            .expect("the ref object should carry a seeded value");
+        seeded_in_fn.borrow_mut().push(seed);
+        napi_mock::set_object_property(args[0], "value", napi_mock::fake_string("written"));
+        napi_mock::fake_undefined()
+    })
+}
+
+#[test]
+fn ref_pure_out_pointer_parameters_are_seeded_null_without_reading_the_slot() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seeded = Rc::new(RefCell::new(Vec::new()));
+        let js_fn = string_seed_recording_function(&seeded);
+        let ref_codec =
+            RefCodec::new(borrowed_string_codec(), false).expect("String is a valid Ref inner");
+        let state = ClosureState::boxed(
+            js_fn_handle(&env, js_fn),
+            vec![Codec::Ref(ref_codec)],
+            Codec::Void(VoidCodec),
+            None,
+            false,
+        );
+        let call: unsafe extern "C" fn(*mut *const c_char) =
+            unsafe { std::mem::transmute(state.code_ptr) };
+
+        let mut backing: *const c_char = c"unread".as_ptr();
+        unsafe { call(&raw mut backing) };
+
+        let seeds = seeded.borrow();
+        assert_eq!(seeds.len(), 1);
+        assert!(napi_mock::is_null(seeds[0]));
         assert!(napi_mock::fatal_exceptions().is_empty());
     });
 }

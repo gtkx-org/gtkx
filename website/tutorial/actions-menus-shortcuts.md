@@ -361,6 +361,26 @@ import { AppShortcuts } from "./app-shortcuts.js";
 >
 ```
 
+Escape and Delete now have keys behind them, so the two buttons in the open task's header can name them the way the New Task button does. In `src/components/content-pane.tsx`:
+
+```diff
+     <GtkButton
+         iconName="go-previous-symbolic"
+-        tooltipText="Back"
++        tooltipText="Back (Escape)"
+         onClicked={closeTask}
+     />
+```
+
+```diff
+     <GtkButton
+         iconName="user-trash-symbolic"
+-        tooltipText="Delete"
++        tooltipText="Delete (Delete)"
+         onClicked={() => moveToTrash(task.id)}
+     />
+```
+
 ## Run it
 
 Save the files and try the keyboard.

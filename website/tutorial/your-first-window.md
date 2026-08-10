@@ -8,17 +8,17 @@ You have a scaffolded project that runs. Replace its contents with the first pie
 
 ## What the scaffolder made
 
-Open the `tasks` directory. Everything in it, ignoring `node_modules`:
+Open the `tasks` directory. The files the scaffolder wrote, alongside the `node_modules` it installed and the `.git` repository it initialized:
 
 ```
 tasks/
-├── data/
 ├── src/
 │   ├── app.tsx
 │   ├── gtkx-env.d.ts
 │   └── index.tsx
 ├── tests/
 │   └── app.test.tsx
+├── .gitignore
 ├── gtkx.config.ts
 ├── package.json
 ├── tsconfig.json
@@ -33,12 +33,22 @@ tasks/
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-    libraries: ["Gtk-4.0", "Adw-1"],
+    libraries: ["Gtk-4.0"],
     applicationId: "com.gtkx.tutorial",
 });
 ```
 
-Everything on this page comes from Adwaita rather than plain GTK4, so `Adw-1` needs to be in that list. If your application ID reads something else, change it to `com.gtkx.tutorial` now: the schema file, the notification identity, and the Flatpak all key off this string.
+Everything on this page comes from Adwaita rather than plain GTK4, and the scaffolder binds `Gtk-4.0` alone, so add `Adw-1` to that list:
+
+```diff
+ export default defineConfig({
+-    libraries: ["Gtk-4.0"],
++    libraries: ["Gtk-4.0", "Adw-1"],
+     applicationId: "com.gtkx.tutorial",
+ });
+```
+
+If your application ID reads something else, change it to `com.gtkx.tutorial` now: the schema file, the notification identity, and the Flatpak all key off this string.
 
 ## The entry point
 
@@ -57,7 +67,7 @@ createRoot().render(<App />);
 
 ## The application and its window
 
-Replace the whole of `src/app.tsx` with this.
+Replace the whole of `src/app.tsx` with this. The scaffolder's `tests/app.test.tsx` covers the counter you are deleting, so delete that file along with it: [Appendix A](/tutorial/testing) writes the tests for Tasks from scratch. Leaving it there breaks `npm run typecheck` and `npm test` from here on, because it imports `App` as a default export and the file below has none.
 
 `src/app.tsx`:
 

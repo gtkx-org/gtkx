@@ -75,17 +75,14 @@ The window keys are not something the user picks. They let the app remember its 
 
 ## Importing the schema
 
-`gtkx dev`, `gtkx build`, and `gtkx codegen` scan `data/` for `.gschema.xml` files, compile them with `glib-compile-schemas`, and generate a module per schema carrying its keys and their types. You reach that module through a subpath import, so add one to `package.json`:
+`gtkx dev`, `gtkx build`, and `gtkx codegen` scan `data/` for `.gschema.xml` files, compile them with `glib-compile-schemas`, and generate a module per schema carrying its keys and their types. You reach that module through a subpath import, which the scaffolder already declared in `package.json`:
 
-```diff
- {
-     "name": "gtkx-tutorial",
-     "version": "0.1.0",
-     "private": true,
-     "type": "module",
-+    "imports": {
-+        "#data/*": "./data/*"
-+    },
+```json
+{
+    "imports": {
+        "#data/*": "./data/*"
+    }
+}
 ```
 
 Now any file can pull the schema in by its path:
@@ -244,14 +241,15 @@ Add the kind to `src/types.ts`:
 
 ```diff
 -export type DialogKind = "none" | "about" | "shortcuts" | "new-list" | "delete-task";
-+export type DialogKind = "none" | "about" | "shortcuts" | "new-list" | "delete-task" | "preferences";
++export type DialogKind = "none" | "about" | "shortcuts" | "preferences" | "new-list" | "delete-task";
 ```
 
 Add the action in `src/components/window-actions.tsx`:
 
 ```diff
-     <GSimpleAction name="about" onActivate={() => showDialog("about")} />
+     <GSimpleAction name="new" onActivate={newTask} />
 +    <GSimpleAction name="preferences" onActivate={() => showDialog("preferences")} />
+     <GSimpleAction name="shortcuts" onActivate={() => showDialog("shortcuts")} />
 ```
 
 Give it its accelerator in `src/app.tsx`:
@@ -266,15 +264,29 @@ Give it its accelerator in `src/app.tsx`:
 
 The accelerator string spells the key by name: `comma` is the GDK key name, and `<Control>,` does not parse.
 
-And put it in the menu, in `src/components/main-menu.tsx`:
+And put it in the menu, in `src/components/main-menu.tsx`. It joins the Keyboard Shortcuts section rather than starting one of its own, so the menu keeps its three groups:
 
 ```diff
      { section: [{ label: "New Task", action: "win.new" }] },
-+    { section: [{ label: "Preferences", action: "win.preferences" }] },
-     { section: [{ label: "Keyboard Shortcuts", action: "win.shortcuts" }] },
+-    { section: [{ label: "Keyboard Shortcuts", action: "win.shortcuts" }] },
++    {
++        section: [
++            { label: "Preferences", action: "win.preferences" },
++            { label: "Keyboard Shortcuts", action: "win.shortcuts" },
++        ],
++    },
+     { section: [{ label: "About Tasks", action: "win.about" }] },
 ```
 
 The menu item shows `Ctrl+,` along its right edge automatically, because it reads the accelerator you registered against the same action name.
+
+The shortcuts window is documentation, not wiring, so it needs the row added by hand. In `src/components/shortcuts.tsx`:
+
+```diff
+     <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
++    <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
+     <AdwShortcutsItem title="Keyboard shortcuts" accelerator="<Control>question" />
+```
 
 ## The dialog
 

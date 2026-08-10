@@ -15,22 +15,22 @@ npm run build
 ```
 
 ```
-> gtkx-tutorial@0.1.0 build
+> tasks@0.0.1 build
 > gtkx build
 
-[gtkx] Building /home/eugenio/gtkx/examples/tutorial/src/index.tsx
-vite v8.1.5 building ssr environment for production...
+[gtkx] Building ~/tasks/src/index.tsx
+vite v8.2.1 building ssr environment for production...
 [gtkx] Queued GSettings schema: com.gtkx.tutorial.gschema.xml
 [gtkx] Compiled 1 GSettings schema(s)
 [gtkx] Copied 2 icon(s) into icons/
-✓ 223 modules transformed.
+✓ 256 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg      0.49 kB │ gzip:   0.28 kB
 dist/gschemas.compiled                                               0.63 kB
 dist/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg               1.47 kB │ gzip:   0.38 kB
-dist/gtkx.node                                                   1,525.12 kB
-dist/bundle.js                                                   3,784.98 kB │ gzip: 486.82 kB
+dist/gtkx.node                                                   1,624.69 kB
+dist/bundle.js                                                   4,067.30 kB │ gzip: 510.94 kB
 
 ✓ built in 694ms
 [gtkx] Build complete: dist/bundle.js
@@ -42,7 +42,11 @@ Everything except the bundle is found at runtime relative to the executable: the
 
 ## A single executable
 
-Node.js can embed a script into a copy of the `node` binary as a [Single Executable Application](https://nodejs.org/api/single-executable-applications.html), giving one file that needs no `node` on the target machine:
+Node.js can embed a script into a copy of the `node` binary as a [Single Executable Application](https://nodejs.org/api/single-executable-applications.html), giving one file that needs no `node` on the target machine. Three scripts do the work, and the two tools they call are needed only at build time:
+
+```bash
+npm install -D esbuild postject
+```
 
 ```json
 "scripts": {
@@ -52,7 +56,7 @@ Node.js can embed a script into a copy of the `node` binary as a [Single Executa
 }
 ```
 
-`bundle` re-emits the app as CommonJS, because a single executable cannot use ESM. `bundle:postject` vendors the `postject` CLI locally, so the injection step works offline.
+`bundle` re-emits the app as CommonJS with esbuild, because a single executable cannot use ESM, and swaps the native addon for a shim that loads `gtkx.node` from beside `process.execPath`. `bundle:postject` vendors the `postject` CLI into `vendor/postject.cjs` as one self-contained file, so the injection step works offline. `build:sea` generates the blob, copies the `node` binary, and injects the blob into the copy. All three are in [`examples/tutorial/scripts/`](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial/scripts), ready to copy into your own project.
 
 `sea-config.json` tells Node.js what to embed:
 

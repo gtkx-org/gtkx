@@ -107,6 +107,7 @@ export const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (
                     important: false,
                     deleted: false,
                     due: null,
+                    position: state.tasks.length,
                     createdAt: new Date().toISOString(),
                     completedAt: null,
                 },
@@ -259,6 +260,7 @@ import {
     AdwNavigationSplitView,
     AdwToolbarView,
 } from "@gtkx/jsx/adw";
+import { quit } from "@gtkx/react";
 import { useStore } from "../store/index.js";
 import { ContentPane } from "./content-pane.js";
 import { Sidebar } from "./sidebar.js";
@@ -269,7 +271,12 @@ export const Window = () => {
     const title = lists.find((list) => list.id === selection.listId)?.name ?? "Tasks";
 
     return (
-        <AdwApplicationWindow title="Tasks" widthRequest={360} heightRequest={294}>
+        <AdwApplicationWindow
+            title="Tasks"
+            widthRequest={360}
+            heightRequest={294}
+            onCloseRequest={() => quit()}
+        >
             <AdwNavigationSplitView
                 sidebarWidthFraction={0.25}
                 minSidebarWidth={220}

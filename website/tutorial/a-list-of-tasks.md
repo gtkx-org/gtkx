@@ -150,7 +150,11 @@ Use the task's `id`, never the array index. An index key says the row in slot ze
 Point the window body at the list. In `src/app.tsx`, swap the status page for the component:
 
 ```diff
--                    <AdwStatusPage title="No Tasks Yet" iconName="checkbox-checked-symbolic" />
+-                    <AdwStatusPage
+-                        iconName="checkbox-checked-symbolic"
+-                        title="No Tasks Yet"
+-                        description="Your tasks will show up here."
+-                    />
 +                    <TaskList />
 ```
 

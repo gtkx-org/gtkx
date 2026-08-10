@@ -59,7 +59,33 @@ Every wrapper class carries protected vtable members, so any registered class ex
 
 Registering an abstract class hands back an abstract class. Its properties reach every concrete subclass, and `new` on the base stays the error it already was.
 
-Each property gains prototype accessors that emit `notify` on write: one for the key as written, one for the key with its dashes turned into underscores, and one for the key in camelCase. So `swatch.red = 200` and `swatch.setProperty("red", value)` are interchangeable, and a native consumer such as `Gtk.PropertyExpression` reads the value without calling back into JavaScript.
+Each property gains prototype accessors that emit `notify` on write: one for the key as written, one for the key with its dashes turned into underscores, and one for the key in camelCase. They read and write the same storage the property's GObject getter and setter reach, so a native consumer such as `Gtk.PropertyExpression` sees what `swatch.red = 200` wrote.
+
+The accessors write that storage directly rather than going through `GObject.set_property`, but they check the value against the ParamSpec first, so a write GObject would have refused or corrected is refused here instead.
+
+A property without `ParamFlags.WRITABLE` throws on every assignment:
+
+```
+TypeError: Swatch.red: cannot set property 'red' to 200; the property is read-only
+```
+
+A property whose ParamSpec carries `ParamFlags.CONSTRUCT_ONLY` is set at construction, as `new Swatch({ red: 200 })`, and an assignment after that is refused the same way, with `the property can only be set when the object is constructed`. Both refusals fire for any value, including the one the property already holds.
+
+On a writable property the value is checked twice. A type check rejects the wrong JavaScript type, and a number outside the range the C type can hold:
+
+```
+TypeError: Swatch.red: cannot set property 'red' to 1.7; the property holds values of type 'gint'
+```
+
+Then GObject itself is asked, through `g_param_value_validate`, whether it would keep the value. A value it would correct is refused rather than quietly corrected:
+
+```
+RangeError: Swatch.red: cannot set property 'red' to 9999; the value is invalid or out of range for type 'gint', and GObject would put 255 in its place
+```
+
+Add `ParamFlags.LAX_VALIDATION` to the ParamSpec to keep GObject's own tolerance for out-of-range values, and the write stores what it was given. A refused write leaves the stored value untouched and emits no `notify`; an accepted one emits exactly one. Assigning the value already stored does nothing and skips the checks.
+
+Defining the camelCase member on the class yourself takes the property over: that member decides what a read and a write mean, the other two spellings forward to it, and none of these checks run.
 
 Declare the field with `declare` rather than an initializer. The accessors live on the prototype, and a class field would shadow them on every instance. The `declare`d type is also the value type the property carries everywhere else: `properties` says which properties to install, and the class says what each one holds.
 
@@ -293,9 +319,15 @@ never asked about, so nothing rejects it, and the slot it was meant to fill is l
 
 ```ts
 class Sectioned extends GObject implements Gtk.SectionModelImpl {
+    vfuncGetNItems(): number {
+        return 1;
+    }
+
     vfuncGetSecton(): [number, number] { // typo: compiles, never installs
         return [0, 1];
     }
+
+    // ... vfuncGetItemType, vfuncGetItem
 }
 ```
 
@@ -425,13 +457,17 @@ class LevelStore extends GObject implements Gio.ListModelImpl {
 
     rows: GObject[] = [];
 
+    vfuncGetNItems(): number {
+        return this.rows.length;
+    }
+
     setRows(rows: GObject[]): void {
         const removed = this.rows.length;
         this.rows = rows;
         this.itemsChanged(0, removed, rows.length);
     }
 
-    // ...
+    // ... vfuncGetItemType, vfuncGetItem
 }
 ```
 
@@ -458,7 +494,11 @@ const store = new LevelStore({ itemType: TYPE_OBJECT });
 
 store.getNItems(); // 2, served by the vfunc
 store.nItems; // 0, read off the empty GSequence
-store.find(store.getItem(0)); // [false, 0]: find searches the sequence, which never sees a vfunc-served item
+const first = store.getItem(0);
+
+if (first) {
+    store.find(first); // [false, 0]: find searches the sequence, which never sees a vfunc-served item
+}
 
 store.append(new GObject({}));
 store.getNItems(); // still 2
@@ -502,6 +542,7 @@ Many containers place a widget in a named position through a prop rather than th
 An object nested purely so it lives and dies with the component around it, rather than because it belongs to the parent's content, wants a portal. `createPortal(element, rootElement)` from `@gtkx/react` mounts it with no GTK4 parent while it stays where it is in the React tree, so it still reads the surrounding context and still unmounts with the component that rendered it. Putting the portal in a component that wraps the element keeps the natural shape at every call site:
 
 ```tsx
+import { GtkSizeGroup, type GtkSizeGroupProps } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement } from "@gtkx/react";
 
 function Grouped(props: GtkSizeGroupProps) {
@@ -512,6 +553,41 @@ function Grouped(props: GtkSizeGroupProps) {
 GTKX ships that wrapper for `GtkSizeGroup` itself, which is why the element can sit among the widgets it groups. [Modals and Portals](/guide/modals-and-portals) covers `rootElement` and the rest of the mounting model.
 
 When the object really is a child, the parent is missing an `attach` behavior. Give it one with `defineElements`, keyed by the parent's GLib type name, as [Advanced: Customizing elements](/guide/configuration-and-codegen#advanced-customizing-elements) describes. A behavior declared on a type covers every element descending from it, so the one that fits usually belongs on an ancestor rather than on the parent alone.
+
+## Rendering a registered class
+
+Codegen emits an element for every class in the GIR data, but a class `registerClass` created is not in that data, so it has no generated element. `createElementComponent` from `@gtkx/react/config` builds one for any GType name, which is what the generated store itself uses:
+
+```tsx
+import { ParamFlags, paramSpecInt } from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import type { GtkWidgetProps } from "@gtkx/jsx/gtk";
+import { createElementComponent } from "@gtkx/react/config";
+import { registerClass } from "@gtkx/runtime";
+import type { ReactNode } from "react";
+
+class SwatchBase extends Gtk.Widget {
+    declare red: number;
+}
+
+const Swatch = registerClass(SwatchBase, {
+    typeName: "ExampleSwatch",
+    properties: { red: paramSpecInt("red", null, null, 0, 255, 0, ParamFlags.READWRITE) },
+});
+
+type Swatch = InstanceType<typeof Swatch>;
+type SwatchProps = GtkWidgetProps<Swatch> & { red?: number };
+
+const SwatchElement = createElementComponent<SwatchProps>("ExampleSwatch");
+
+<SwatchElement red={200} widthRequest={48} />;
+```
+
+The element name is the `typeName` the class was registered under. The reconciler reads the type's ancestry off the live GType and picks up what is registered for each ancestor, so the new element inherits their props, signal handlers, defaults and behaviors: a `Gtk.Widget` subclass takes `cssClasses`, `halign`, `onNotifyVisible` and the rest without any of them being declared anywhere.
+
+Name the props as the type argument. The GType name says nothing about what the element takes, and a component left at the default `unknown` accepts no attributes at all, so every attribute is an error without it. The component is also what routes a prop whose value is an element into that prop's slot, which is why a bare string element is not a substitute for it.
+
+Properties the class installs itself are applied after construction, since only the generated metadata says which of a type's properties are construct arguments. A property that has to be set at construction wants a `create` behavior, registered with `defineElements` and keyed by the same type name, which constructs the object from the props it is given.
 
 ## What an override of `constructed` can see
 

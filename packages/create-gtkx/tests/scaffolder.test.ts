@@ -188,7 +188,7 @@ describe("scaffold (top-level generated files)", () => {
         await run({ shouldIncludeTesting: true });
         const content = readJson(`${TEST_DIR}/test-app/package.json`);
         expect(content.name).toBe("test-app");
-        expect(content.scripts.test).toContain("vitest");
+        expect(content.scripts.test).toBe("vitest run");
     });
 
     it("omits the test script from package.json when shouldIncludeTesting=false", async () => {
@@ -499,7 +499,7 @@ describe("scaffold (non-interactive and overwrite)", () => {
         const config = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
         expect(config).toContain('applicationId: "com.testapp.app"');
         const pkg = readJson(`${TEST_DIR}/test-app/package.json`);
-        expect(pkg.scripts.test).toContain("vitest");
+        expect(pkg.scripts.test).toBe("vitest run");
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
         expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "pnpm" });
     });

@@ -324,7 +324,8 @@ impl ClosureData {
         arg_ptr: *const c_void,
     ) -> anyhow::Result<RefSlot<'e>> {
         let inner_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
-        let seed = if ref_codec.inout {
+        let is_seeded = ref_codec.inout;
+        let seed = if is_seeded {
             seed_ref(env, inner_ptr, &ref_codec.inner_codec)?
         } else {
             value::js_null(env)?
@@ -564,19 +565,14 @@ fn seed_ref<'e>(
         return Ok(value::js_null(env)?);
     }
     let seeded = match inner_codec {
-        Codec::Integer(_)
-        | Codec::BigInt(_)
-        | Codec::Float(_)
-        | Codec::EnumFlags(_)
-        | Codec::Boolean(_)
-        | Codec::Unichar(_) => unsafe {
-            inner_codec.read(env, ReadCtx::slot(inner_ptr.cast_const(), "inout ref seed"))
+        codec if codec.is_scalar() => {
+            unsafe { codec.read(env, ReadCtx::slot(inner_ptr.cast_const(), "ref seed")) }
+                .report_err("callback: failed to seed ref")
         }
-        .report_err("callback: failed to seed inout ref"),
         Codec::Array(array_codec) if !array_codec.is_length_bounded() => {
             let value_ptr = unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() };
-            unsafe { array_codec.read_value(env, value_ptr, "inout ref seed", Ownership::Borrowed) }
-                .report_err("callback: failed to seed inout ref")
+            unsafe { array_codec.read_value(env, value_ptr, "ref seed", Ownership::Borrowed) }
+                .report_err("callback: failed to seed ref")
         }
         _ => None,
     };

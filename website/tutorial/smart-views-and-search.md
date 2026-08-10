@@ -522,6 +522,19 @@ const listId = addListId(selection, lists);
 
 Pure functions over selected arrays. No new state, and nothing written to disk.
 
+`listId` is the third of the three expressions the union broke. The add row still reads `selection.listId`, which no longer type-checks and would file the task under the wrong list from a smart view, so point it at the derived value:
+
+```diff
+ <AdwEntryRow
+     title="Add a task…"
+     onEntryActivated={(self) => {
+-        addTask(selection.listId, self.text);
++        addTask(listId, self.text);
+         self.text = "";
+     }}
+ />
+```
+
 ## Run it
 
 Save, and the sidebar in the open window redraws: All Tasks, Today, Important, your lists, and Trash, each with a count of open work on the right.

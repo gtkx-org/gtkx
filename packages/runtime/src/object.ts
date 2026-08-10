@@ -96,8 +96,7 @@ function registerConstructProperties(cls: AnyClass, bindings: ConstructBindings)
 }
 
 function constructPropertyForEntry(
-    gtype: bigint,
-    bindings: ConstructBindings,
+    source: { gtype: bigint; bindings: ConstructBindings; wrapper: object },
     name: string,
     value: unknown,
 ): ConstructProperty | undefined {
@@ -105,10 +104,10 @@ function constructPropertyForEntry(
         return undefined;
     }
 
-    const binding = bindings[name];
+    const binding = source.bindings[name];
 
     if (binding === undefined) {
-        return constructPropertyFor(gtype, name, value);
+        return constructPropertyFor(source.gtype, name, value, source.wrapper);
     }
 
     return { name: binding[0], value: toValue(binding[1], value) };
@@ -120,6 +119,9 @@ function constructPropertyForEntry(
  * through `registerConstructProperties` is marshalled through its descriptor; any
  * other one is marshalled through the `GObject.ParamSpec` the type installs under
  * that name, dashed or camelCased, and is skipped when the type installs none.
+ * A value that ParamSpec would refuse throws before GObject sees it: a `TypeError`
+ * for a read-only property and for a value of a type the property cannot hold, and
+ * a `RangeError` for a value the ParamSpec rejects.
  * Properties whose value is `undefined` are skipped. A type registered with
  * `registerClass` binds the wrapper before its `constructed` slot runs, so an
  * override of that slot already sees a usable instance.
@@ -133,9 +135,10 @@ function newObjectWithProperties(gtype: bigint, props: object, wrapper: object):
     const names: string[] = [];
     const values: ExternalObject<Handle>[] = [];
     const bindings = constructBindingsFor(wrapper.constructor as AnyClass | undefined);
+    const source = { gtype, bindings, wrapper };
 
     for (const name of Object.keys(props)) {
-        const property = constructPropertyForEntry(gtype, bindings, name, Reflect.get(props, name));
+        const property = constructPropertyForEntry(source, name, Reflect.get(props, name));
 
         if (property !== undefined) {
             names.push(property.name);

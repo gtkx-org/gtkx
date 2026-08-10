@@ -1,4 +1,4 @@
-import { ParameterType } from "typedoc";
+import { ParameterType, ReflectionKind } from "typedoc";
 import { MemberRouter } from "typedoc-plugin-markdown";
 
 const OPTION = "publicModuleNames";
@@ -20,6 +20,18 @@ const load = (app) => {
 
 class RouteSafeRouter extends MemberRouter {
     publicModuleNames = this.application.options.getValue(OPTION);
+
+    buildPages(project) {
+        for (const reflection of project.getReflectionsByKind(ReflectionKind.Module)) {
+            reflection.name = this.getPublicModuleName(reflection);
+        }
+
+        return super.buildPages(project);
+    }
+
+    getPublicModuleName(reflection) {
+        return getPublicName(this.publicModuleNames[reflection.parent?.name ?? ""], reflection.name);
+    }
 
     getReflectionAlias(reflection) {
         const alias = super.getReflectionAlias(reflection);

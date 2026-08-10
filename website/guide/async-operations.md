@@ -10,7 +10,7 @@ GIO's async operations come in callback-and-finish pairs: a call taking a `Gio.A
 Here's an example of a promisified method (from `Gio.File`):
 
 ```ts
-loadContentsAsync(cancellable?: Cancellable | null): Promise<[boolean, number[], string]>;
+loadContentsAsync(cancellable?: Cancellable | null): Promise<[boolean, number[], string | null]>;
 ```
 
 The result carries the C function's return value first, then its out-parameters: here a success flag, the file's contents, and its etag. A failed call rejects, so you skip straight to the value you want with `const [, contents] = await file.loadContentsAsync(null);`. A call whose C return is void and that has a single out-parameter gives you that value directly instead of a tuple.
@@ -50,7 +50,7 @@ A rejected async call carries the same `GLib.Error` a synchronous call would thr
 
 Every promisified call accepts an optional `Gio.Cancellable` as its last argument.
 
-Cancelling settles the pending promise: it rejects rather than hanging. GIO operations reject with a GError in the `Gio.IOErrorEnum` domain carrying code `CANCELLED`, while GTK4 dialogs report it in their own domain as `Gtk.DialogError.CANCELLED`. Matching on the domain and code is how a `catch` tells a cancellation apart from a genuine failure and returns quietly instead of reporting it.
+Canceling settles the pending promise: it rejects rather than hanging. GIO operations reject with a GError in the `Gio.IOErrorEnum` domain carrying code `CANCELLED`, while GTK4 dialogs report it in their own domain as `Gtk.DialogError.CANCELLED`. Matching on the domain and code is how a `catch` tells a cancellation apart from a genuine failure and returns quietly instead of reporting it.
 
 ```ts
 import * as Gio from "@gtkx/gi/gio";

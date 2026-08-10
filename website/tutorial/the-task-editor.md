@@ -12,7 +12,7 @@ Which task is open is view state, so it belongs in the UI slice next to `selecti
 
 In `src/store/ui.ts`, add the field and the actions:
 
-```ts
+```diff
  export type UiSlice = {
      selection: Selection;
 +    selectedTaskId: string | null;
@@ -27,14 +27,14 @@ In `src/store/ui.ts`, add the field and the actions:
      setCollapsed: (collapsed: boolean) => void;
 ```
 
-```ts
+```diff
  export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) => ({
      selection: { kind: "smart", view: "all" },
 +    selectedTaskId: null,
      collapsed: false,
 ```
 
-```ts
+```diff
      select: (selection) =>
          set((state) => ({
              selection,
@@ -53,7 +53,7 @@ An `AdwActionRow` responds to clicks only once you mark it `activatable`, which 
 
 In `src/components/task-row.tsx`, pull `openTask` out of the store and mark the row:
 
-```tsx
+```diff
  export const TaskRow = ({ task }: { task: Task }) => {
      const setDone = useStore((state) => state.setDone);
      const setImportant = useStore((state) => state.setImportant);
@@ -61,7 +61,7 @@ In `src/components/task-row.tsx`, pull `openTask` out of the store and mark the 
      const moveToTrash = useStore((state) => state.moveToTrash);
 ```
 
-```tsx
+```diff
          <AdwActionRow
              title={title}
              useMarkup
@@ -110,13 +110,13 @@ Adding `setTitle`, `setNotes`, and `setDue` next to `setDone` and `setImportant`
 
 In `src/store/tasks.ts`, add `updateTask` to the slice type and to the creator:
 
-```ts
+```diff
      setImportant: (id: string, important: boolean) => void;
 +    updateTask: (id: string, fields: Partial<Pick<Task, "title" | "notes" | "due" | "listId">>) => void;
      moveToTrash: (id: string) => void;
 ```
 
-```ts
+```diff
      setImportant: (id, important) => set((state) => ({ tasks: patch(state.tasks, id, { important }) })),
 +    updateTask: (id, fields) => set((state) => ({ tasks: patch(state.tasks, id, fields) })),
 ```
@@ -274,7 +274,7 @@ Returning `null` for a task with no due date lets each caller decide what "no da
 
 In `src/components/task-row.tsx`, add the subtitle:
 
-```tsx
+```diff
              title={title}
              useMarkup
 +            subtitle={formatDue(task.due) ?? undefined}
@@ -363,7 +363,7 @@ The editor holds state React knows nothing about: where the cursor sits in the t
 
 In `src/components/content-pane.tsx`, give the editor a key:
 
-```tsx
+```diff
 -                <TaskDetail task={task} />
 +                <TaskDetail key={task.id} task={task} />
 ```
