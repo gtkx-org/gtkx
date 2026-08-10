@@ -14,17 +14,24 @@ const streamingOptions = (options: ExecFileSyncOptions | undefined): ExecFileSyn
     stdio: "inherit",
 });
 
+const optionsFor = (shouldStream: boolean | undefined, options: ExecFileSyncOptions | undefined): ExecFileSyncOptions |
+    undefined => (shouldStream === true ? streamingOptions(options) : options);
+
+const failureMessage = (tool: string, target: string | undefined, error: unknown): string => {
+    const details = formatChildProcessError(error);
+    const suffix = details ? `:\n${details}` : "";
+    const subject = target === undefined ? "" : ` for ${target}`;
+
+    return `${tool} failed${subject}${suffix}`;
+};
+
 const runCliTool = ({ tool, args, target, shouldStream, options }: CliToolInvocation): void => {
     const executable = resolveExecutable(tool);
 
     try {
-        execFileSync(executable, args, shouldStream === true ? streamingOptions(options) : options);
+        execFileSync(executable, args, optionsFor(shouldStream, options));
     } catch (error) {
-        const details = formatChildProcessError(error);
-        const suffix = details ? `:\n${details}` : "";
-        const subject = target === undefined ? "" : ` for ${target}`;
-
-        throw new Error(`${tool} failed${subject}${suffix}`, { cause: error });
+        throw new Error(failureMessage(tool, target, error), { cause: error });
     }
 };
 

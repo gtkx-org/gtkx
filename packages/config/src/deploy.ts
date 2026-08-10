@@ -145,6 +145,7 @@ const flatpakSchema = z.strictObject({
     runtimeRepo: url("must be an absolute .flatpakrepo URL").optional(),
     shouldEmitBundle: flag(BOOLEAN_ERROR).optional(),
     shouldInstall: flag(BOOLEAN_ERROR).optional(),
+    shouldUseRofilesFuse: flag(BOOLEAN_ERROR).optional(),
 });
 
 const debSigningSchema = z.strictObject({

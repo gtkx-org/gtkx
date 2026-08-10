@@ -2,11 +2,11 @@ import { execFileSync } from "node:child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runCliTool } from "../../src/internal/run-cli-tool.js";
 
-vi.mock("node:child_process", () => ({ execFileSync: vi.fn() }));
-
 const execFileSyncMock = vi.mocked(execFileSync);
 
 const childProcessError = (stderr: string): Error => Object.assign(new Error("Command failed"), { stderr });
+
+vi.mock("node:child_process", () => ({ execFileSync: vi.fn() }));
 
 describe("runCliTool", () => {
     beforeEach(() => {
@@ -23,7 +23,6 @@ describe("runCliTool", () => {
 
     it("resolves the tool to an absolute path before running it", () => {
         runCliTool({ tool: "sh", args: ["-c", "true"] });
-
         const [executable] = execFileSyncMock.mock.calls[0] ?? [];
         expect(executable).toMatch(/\/sh$/);
     });
@@ -50,15 +49,13 @@ describe("runCliTool", () => {
 
     it("inherits stdio when streaming is requested", () => {
         runCliTool({ tool: "sh", args: [], shouldStream: true, options: { cwd: "/tmp" } });
-
-        const [, , options] = execFileSyncMock.mock.calls[0] ?? [];
+        const options = (execFileSyncMock.mock.calls[0] ?? [])[2];
         expect(options).toEqual({ cwd: "/tmp", stdio: "inherit" });
     });
 
     it("passes the given options through when not streaming", () => {
         runCliTool({ tool: "sh", args: [], options: { cwd: "/tmp" } });
-
-        const [, , options] = execFileSyncMock.mock.calls[0] ?? [];
+        const options = (execFileSyncMock.mock.calls[0] ?? [])[2];
         expect(options).toEqual({ cwd: "/tmp" });
     });
 });

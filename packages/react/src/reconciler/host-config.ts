@@ -1,11 +1,12 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { type AnyClass, getClassType, typeName } from "@gtkx/runtime";
-import { getOrInsert, packageVersion } from "@gtkx/utils";
+import { getOrInsert } from "@gtkx/utils";
 import { createContext } from "react";
 import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
 import type { Props } from "./registry.js";
+import manifest from "../../package.json" with { type: "json" };
 import { Prop } from "../components/element.js";
 import {
     applyAdoptedProps,
@@ -53,7 +54,7 @@ const priority = createPriorityTracker();
 
 const hostConfig = {
     rendererPackageName: "@gtkx/react",
-    rendererVersion: packageVersion(import.meta.url, "@gtkx/react/package.json"),
+    rendererVersion: manifest.version,
     supportsMutation: true,
     supportsPersistence: false,
     supportsHydration: false,
