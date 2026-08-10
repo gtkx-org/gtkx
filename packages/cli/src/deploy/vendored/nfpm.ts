@@ -59,4 +59,4 @@ const resolveNfpm = async (): Promise<string> => {
     return existsSync(binary) ? binary : downloadNfpm(dir, binary);
 };
 
-export { NFPM_VERSION, resolveNfpm };
+export { resolveNfpm };

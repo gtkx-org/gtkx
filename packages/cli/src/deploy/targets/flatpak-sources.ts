@@ -95,10 +95,7 @@ const generateNodeSources = (settings: DeploySettings, manager: PackageManager):
 export {
     detectPackageManager,
     GENERATED_SOURCES,
-    GENERATOR,
     generateNodeSources,
-    generatedSourcesPath,
     installCommandFor,
-    type PackageManager,
     resolveGitSource,
 };

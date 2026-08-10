@@ -41,4 +41,4 @@ const packWithNfpm = async (
     return { path: target, size: statSync(target).size };
 };
 
-export { artifactNameFor, packWithNfpm };
+export { packWithNfpm };

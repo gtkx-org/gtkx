@@ -182,4 +182,4 @@ const runDeploy = async (options: DeployOptions): Promise<void> => {
     info(`Deploy complete: ${String(artifacts.length)} artifacts in ${output}`);
 };
 
-export { type DeployOptions, runDeploy };
+export { runDeploy };

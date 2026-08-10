@@ -123,4 +123,4 @@ const stageOverlays = (settings: DeploySettings): Record<DeployTargetName, Stage
     rpm: stageOverlay(settings, "rpm"),
 });
 
-export { libDirFor, PREFIX_FOR, type StagedMetadata, stageOverlays, stagePayload };
+export { type StagedMetadata, stageOverlays, stagePayload };

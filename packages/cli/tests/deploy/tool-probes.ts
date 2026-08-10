@@ -17,8 +17,6 @@ const missingInCi = (name: string): never => {
 
 const hasAppstreamCli = (): boolean => hasTool("appstreamcli");
 const hasDesktopFileValidate = (): boolean => hasTool("desktop-file-validate");
-const hasDpkgDeb = (): boolean => hasTool("dpkg-deb");
 const hasFlatpakBuilder = (): boolean => hasTool("flatpak-builder");
-const hasRpm = (): boolean => hasTool("rpm");
 
-export { hasAppstreamCli, hasDesktopFileValidate, hasDpkgDeb, hasFlatpakBuilder, hasRpm };
+export { hasAppstreamCli, hasDesktopFileValidate, hasFlatpakBuilder };

@@ -50,4 +50,4 @@ const renderNode = (node: XmlNode, depth: number): string[] => {
 
 const renderDocument = (root: XmlNode): string => [XML_DECLARATION, ...renderNode(root, 0), ""].join("\n");
 
-export { element, escapeXml, renderDocument, text, type XmlNode };
+export { element, renderDocument, text, type XmlNode };

@@ -151,4 +151,4 @@ const renderNfpmConfig = (payload: DeployPayload, packager: NfpmPackager): NfpmC
     };
 };
 
-export { type NfpmConfig, type NfpmPackager, packageNameFor, renderNfpmConfig };
+export { type NfpmPackager, packageNameFor, renderNfpmConfig };

@@ -174,4 +174,4 @@ const resolveDeploySettings = (request: SettingsRequest): DeploySettings => {
     };
 };
 
-export { resolveDeploySettings, type SettingsRequest };
+export { resolveDeploySettings };

@@ -37,4 +37,4 @@ const resolveDepends = (deploy: DeployConfig, libraries: string[], glibcFloor: s
     };
 };
 
-export { type Relations, resolveDepends };
+export { resolveDepends };

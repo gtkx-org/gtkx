@@ -39,4 +39,4 @@ const copyTree = (root: string, relBase: string, sourceDir: string): StagedFile[
     listFilesRecursive(sourceDir)
         .map((file) => copyInto(root, join(relBase, file.rel), file.absPath, sourceMode(file.absPath)));
 
-export { copyInto, copyTree, EXECUTABLE_MODE, READABLE_MODE, writeInto };
+export { copyInto, copyTree, EXECUTABLE_MODE, writeInto };

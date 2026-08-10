@@ -109,6 +109,5 @@ export {
     probeTools,
     STRIP,
     TAR,
-    type ToolReport,
     warnMissingOptional,
 };

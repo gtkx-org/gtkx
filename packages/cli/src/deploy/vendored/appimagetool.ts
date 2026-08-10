@@ -54,4 +54,4 @@ const resolveAppimageTooling = async (arch: string): Promise<AppimageTooling> =>
     return { tool, runtime };
 };
 
-export { type AppimageTooling, resolveAppimageTooling };
+export { resolveAppimageTooling };

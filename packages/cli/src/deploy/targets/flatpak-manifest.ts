@@ -59,4 +59,4 @@ const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
     };
 };
 
-export { branchFor, type FlatpakManifest, renderFlatpakManifest };
+export { branchFor, renderFlatpakManifest };

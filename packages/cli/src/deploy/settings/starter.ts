@@ -38,4 +38,4 @@ const missingDeployError = (applicationId: string, manifest: PackageManifest): E
         `Every value above was derived from package.json; see ${DOCS_URL}.`,
     );
 
-export { missingDeployError, starterBlock };
+export { missingDeployError };

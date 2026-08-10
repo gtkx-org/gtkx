@@ -66,4 +66,4 @@ const nfpmContents = (prefix: string, files: StagedFile[], shouldOwnDirectories:
     return [...ownedDirectories(contents).map((directory) => directoryContent(directory)), ...contents];
 };
 
-export { type NfpmContent, nfpmContents };
+export { nfpmContents };

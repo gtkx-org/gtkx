@@ -395,6 +395,5 @@ export {
     withRegistry,
     verifyAppStarts,
     verifyBuiltAppStarts,
-    type AppLaunch,
     type RegistryContext,
 };
