@@ -15,12 +15,7 @@
         "test": "vitest run",
         "typecheck": "gtkx codegen && tsc",
         "start": "node dist/bundle.js",
-        "bundle": "gtkx build && node scripts/bundle.ts",
-        "bundle:postject": "node scripts/bundle-postject.ts",
-        "build:sea": "bash scripts/build-sea.sh",
-        "flatpak:lint": "desktop-file-validate flatpak/com.gtkx.tutorial.desktop && appstreamcli validate --no-net flatpak/com.gtkx.tutorial.metainfo.xml",
-        "flatpak:sources": "bash flatpak/generate-sources.sh",
-        "flatpak:build": "bash flatpak/build.sh"
+        "deploy": "gtkx deploy"
     },
     "dependencies": {
         "@gtkx/components": "^1.0.0",
@@ -35,13 +30,12 @@
         "@gtkx/testing": "^1.0.0",
         "@types/node": "^26.2.0",
         "@types/react": "^19.2.18",
-        "esbuild": "^0.28.1",
-        "postject": "1.0.0-alpha.6",
         "typescript": "^7.0.2",
         "vitest": "^4.1.10"
     },
     "allowScripts": {
-        "esbuild": true,
         "@swc/core": true
-    }
+    },
+    "author": "GTKX <hello@gtkx.dev>",
+    "homepage": "https://gtkx.dev"
 }

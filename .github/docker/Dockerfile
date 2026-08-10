@@ -41,6 +41,13 @@ RUN apt-get update \
         shared-mime-info \
         hicolor-icon-theme \
         librsvg2-common \
+        desktop-file-utils \
+        appstream \
+        dpkg-dev \
+        rpm \
+        binutils \
+        file \
+        xz-utils \
         fontconfig \
         fonts-noto-core \
         fonts-dejavu-core \
