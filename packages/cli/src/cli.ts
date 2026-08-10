@@ -23,6 +23,11 @@ const main = defineCommand({
 
             return withErrorBoundary(build);
         },
+        deploy: async () => {
+            const { deploy } = await import("./commands/deploy.js");
+
+            return withErrorBoundary(deploy);
+        },
         codegen: async () => {
             const { codegen } = await import("./commands/codegen.js");
 
