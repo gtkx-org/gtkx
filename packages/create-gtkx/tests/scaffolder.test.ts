@@ -337,6 +337,22 @@ describe("scaffold (dependency installation)", () => {
         expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "npm" });
         expect(addDependencyMock.mock.calls[1]?.[1]).toMatchObject({ packageManager: "npm" });
     });
+
+    it("hides an inherited allow-scripts policy from the install, then restores it", async () => {
+        process.env.npm_config_allow_scripts = "nx";
+        let seen: string | undefined = "unset";
+
+        addDependencyMock.mockImplementation(() => {
+            seen = process.env.npm_config_allow_scripts;
+
+            return Promise.resolve(undefined as never);
+        });
+
+        await run({ packageManager: "npm" });
+        expect(seen).toBeUndefined();
+        expect(process.env.npm_config_allow_scripts).toBe("nx");
+        delete process.env.npm_config_allow_scripts;
+    });
 });
 
 describe("scaffold (install failure)", () => {

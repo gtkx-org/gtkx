@@ -72,6 +72,7 @@ const ADD_COMMAND: Record<PackageManager, string> = Object.fromEntries(
     PACKAGE_MANAGERS.map((manager) => [manager.value, manager.addCommand]),
 ) as Record<PackageManager, string>;
 
+const INHERITED_SCRIPT_POLICY_VARS = ["npm_config_allow_scripts", "npm_config_allow-scripts"];
 const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
 const TYPESCRIPT_TEMPLATES = new Set(["tsconfig.json", "src/gtkx-env.d.ts"]);
 
@@ -426,9 +427,30 @@ const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise
     }
 };
 
+const withoutInheritedScriptPolicy = async (run: () => Promise<void>): Promise<void> => {
+    const saved = INHERITED_SCRIPT_POLICY_VARS.map((key) => [key, process.env[key]] as const);
+
+    for (const [key] of saved) {
+        Reflect.deleteProperty(process.env, key);
+    }
+
+    try {
+        await run();
+    } finally {
+        for (const [key, value] of saved) {
+            if (value !== undefined) {
+                process.env[key] = value;
+            }
+        }
+    }
+};
+
 const installDependencies = async (options: InstallDependenciesOptions): Promise<void> => {
     const { cwd, packageManager, dependencies, isDev } = options;
-    await addDependency(dependencies, { cwd, packageManager, dev: isDev, silent: true });
+
+    await withoutInheritedScriptPolicy(async () => {
+        await addDependency(dependencies, { cwd, packageManager, dev: isDev, silent: true });
+    });
 };
 
 const pin = (names: string[]): string[] => names.map((dependency) => pinGtkxDependency(dependency, selfVersion));
