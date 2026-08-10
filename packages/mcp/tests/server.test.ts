@@ -228,6 +228,13 @@ function requireAppRouter(): EventTarget {
     return appRouter;
 }
 
+async function startedServer(): Promise<ReturnType<typeof createMcpServer>> {
+    const server = createMcpServer({ version: "test" });
+    await server.start();
+
+    return server;
+}
+
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
     McpServer: class {
         connect = mcpConnectMock;
@@ -523,6 +530,24 @@ describe("main — startup", () => {
         expect(registerToolMock).toHaveBeenCalledTimes(allToolNames.length);
         expect(mcpConnectMock).toHaveBeenCalledOnce();
         expect(stdioInstances).toHaveLength(1);
+    });
+});
+
+describe("createMcpServer — lifecycle", () => {
+    useMainSetup();
+
+    it("refuses to start again once it has been stopped", async () => {
+        const server = await startedServer();
+        await server.stop();
+        await expect(server.start()).rejects.toThrow("a stopped server cannot be started again");
+        expect(socketStartMock).toHaveBeenCalledOnce();
+        expect(mcpConnectMock).toHaveBeenCalledOnce();
+    });
+
+    it("connects stdio once when started twice", async () => {
+        const server = await startedServer();
+        await server.start();
+        expect(mcpConnectMock).toHaveBeenCalledOnce();
     });
 });
 

@@ -5,7 +5,7 @@ description: "A map of the high-level components in @gtkx/components."
 
 # Components
 
-Most of what GTKX offers reaches you through the intrinsic elements codegen generates. Some widgets carry an imperative API that does not map onto props alone: a model plus factories, an attach call with coordinates, a size group you join from elsewhere in the tree. `@gtkx/components` is a hand-written layer that gives those a declarative shape, and `@gtkx/react` ships the hooks that bridge GObject state into React.
+GTK4's collection widgets take a model plus factories. The components in `@gtkx/components` drop those `model`, `factory`, and `headerFactory` props and take data plus renderers instead.
 
 `@gtkx/components` is a separate install:
 
@@ -13,13 +13,13 @@ Most of what GTKX offers reaches you through the intrinsic elements codegen gene
 npm install @gtkx/components
 ```
 
-Those hooks come from `@gtkx/react`, which every GTKX project already has, and their signatures are in the [@gtkx/react reference](/reference/@gtkx/react/).
+Full prop lists are in the [@gtkx/components reference](/reference/@gtkx/components/), and the hooks that bridge GObject state into React ship with `@gtkx/react`, whose signatures are in the [@gtkx/react reference](/reference/@gtkx/react/).
 
 ## List components
 
 ### ListView
 
-`ListView<T, S>` wraps `Gtk.ListView` and removes its `model`, `factory`, and `headerFactory` props: you pass data and a renderer instead. Selection is controlled, so `selectedIds` and `onSelectionChanged` keep it in React state:
+`ListView<T, S>` wraps `Gtk.ListView`. Pass `items` as `{ id, value }` pairs plus a `renderItem`. Selection is controlled: nothing stays selected unless `selectedIds` is fed back from `onSelectionChanged`.
 
 ```tsx
 import { ListView } from "@gtkx/components";
@@ -36,45 +36,24 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Give your `ListItem`s `children` and the same component renders a tree with expander arrows. Add `expandedIds`/`onExpandedChange` on top of that to drive expansion from React state. Cell recycling still happens natively; your `renderItem` output is rendered into the factory-created containers through portals, so React state inside a cell behaves normally.
+Nesting `ListItem.children` turns the same component into a tree, with `expandedIds` and `onExpandedChange` driving expansion.
 
-To group rows under headers, pass `sections` in place of `items`. Each `ListSection` holds its own `data` array of `ListItem`s, and `renderHeader` draws the header shown above each group. `ColumnView` and `DropDown` accept the same pair.
+To group rows under headers, pass `sections` in place of `items`: each `ListSection` carries its own `data` array of items, and `renderHeader` draws the header above each group. `ColumnView` and `DropDown` accept the same pair.
 
 ### GridView
 
-`GridView<T>` applies the same treatment to `Gtk.GridView`, the icon-grid counterpart: `items`, `renderItem`, controlled selection, and size estimates, with intrinsic props like `minColumns`, `maxColumns`, and `singleClickActivate` passing straight through. The minesweeper demo in `examples/gtk-demo` renders its board this way:
-
-```tsx
-import { GridView } from "@gtkx/components";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-
-<GridView
-    estimatedItemHeight={32}
-    minColumns={GRID_SIZE}
-    maxColumns={GRID_SIZE}
-    singleClickActivate
-    onActivate={(position) => handleCellClick(position)}
-    items={board.map((cell) => ({ id: cell.id, value: cell }))}
-    renderItem={({ item }) => <GtkLabel>{getCellDisplay(item)}</GtkLabel>}
-/>
-```
+`GridView<T>` gives `Gtk.GridView`, the icon-grid counterpart, the same `items`, `renderItem`, controlled selection, and size estimates, and adds `minColumns`, `maxColumns`, `singleClickActivate`, and `onActivate`.
 
 ### ColumnView
 
-`ColumnView<T, S>` wraps `Gtk.ColumnView`, the multi-column table. Columns are declared through the `columns` prop, an array of `ColumnViewColumn` objects, each with a required `id` and `title`, its own `renderCell`, and optional presentation props like `isSortable` and `expand`. Sorting is controlled: clicking a sortable header calls `onSortChanged(column, order)`, and you sort `items` yourself before passing them in, so the view always matches your data:
+`ColumnView<T, S>` renders a multi-column table. Columns come from the `columns` prop, each one requiring `id`, `title`, and `renderCell`. Sorting is controlled: `onSortChanged` reports the header click, and the caller sorts `items` before passing them in.
 
 ```tsx
 import { ColumnView, type ColumnViewColumn } from "@gtkx/components";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
 const columns: ColumnViewColumn<Employee>[] = [
-    {
-        id: "name",
-        title: "Name",
-        expand: true,
-        isSortable: true,
-        renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel>,
-    },
+    { id: "name", title: "Name", isSortable: true, renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel> },
 ];
 
 <ColumnView
@@ -86,11 +65,9 @@ const columns: ColumnViewColumn<Employee>[] = [
 />
 ```
 
-Typing the array as `ColumnViewColumn<Employee>[]` binds every `renderCell` callback to the view's item type, so the `item` argument is inferred as `Employee` without annotating each callback.
-
 ### DropDown
 
-`DropDown<T, S>` wraps `Gtk.DropDown`, which in raw GTK4 requires a model plus separate factories (the button face, the popup rows, and popup section headers). Here it is `items` plus controlled single selection, or `sections` plus `renderHeader` when the popup rows should be grouped. `renderItem` draws both the button and the popup rows, `renderListItem` overrides the popup rows separately, and with no renderer at all each value is shown as a label, verbatim when it is a string and as JSON otherwise:
+`DropDown<T, S>` takes `items`, or `sections` plus `renderHeader`, with single controlled selection through `selectedId` and `onSelectionChanged`. `renderItem` is optional and draws both the button face and the popup rows, `renderListItem` overrides the popup rows on their own, and with neither given each value is shown as a label.
 
 ```tsx
 import { DropDown } from "@gtkx/components";
@@ -102,18 +79,7 @@ import { DropDown } from "@gtkx/components";
 />
 ```
 
-`ComboRow<T, S>` from `@gtkx/components/adw` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does:
-
-```tsx
-import { ComboRow } from "@gtkx/components/adw";
-
-<ComboRow
-    title="Theme"
-    items={THEMES.map((theme) => ({ id: theme, value: theme }))}
-    selectedId={theme}
-    onSelectionChanged={(id) => setTheme(id)}
-/>
-```
+`ComboRow<T, S>` from `@gtkx/components/adw` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does.
 
 ## Next
 

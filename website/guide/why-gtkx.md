@@ -1,6 +1,6 @@
 ---
 title: "Why GTKX"
-description: "What GTKX is, why it exists, and how it compares to GJS and node-gtk."
+description: "What GTKX is, why it exists, and why it runs on Node.js."
 ---
 
 # Why GTKX
@@ -14,19 +14,13 @@ GTK4 and Adwaita are mature, and GtkBuilder XML can lay out an interface and bin
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
-## Why Node.js, and why not node-gtk/GJS
+## Why Node.js
 
-GTKX runs on Node.js. The established ways to reach GTK4 from JavaScript, GJS and node-gtk, each come with trade-offs GTKX set out to avoid.
-
-GJS is GNOME's own JavaScript runtime, built on SpiderMonkey rather than V8. Because it is a separate runtime from Node.js, it cuts you off from native modules and from the npm packages and tooling built for Node.js APIs.
-
-node-gtk does run on Node.js, but it is lightly maintained, and strict types are an afterthought coming from (the now deprecated) `ts-for-gir` node support. Its native addon is C++ on the older nan/V8 ABI rather than N-API, and its documentation and examples still center on GTK3.
-
-GTKX takes a different approach. It generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back.
+GJS is GNOME's own JavaScript runtime, separate from Node.js, so native modules, npm packages, and Node.js tooling are out of reach. node-gtk runs on Node.js but is lightly maintained, with weak types and GTK3-era documentation and examples. GTKX generates the TypeScript types and the native calls from the same GObject-Introspection data, so they cannot drift apart.
 
 A GTKX app is an ordinary Node.js process, so you do everyday work with the Node standard library and npm. Use `node:fs` for files, `fetch` for HTTP, `setTimeout` and `setInterval` for timers, and any package on the registry for the rest. The generated GLib and Gio bindings come in only where the GNOME platform itself is the point: GSettings, desktop notifications, actions, and the `Gio.File` objects a file dialog hands back.
 
-At runtime, the native Rust core acquires the default GLib main context on the Node.js thread and drives it from the libuv event loop, so GTK and your JavaScript share a single thread and every native mutation happens on it. Calls into the system GTK4 and Adwaita libraries go through libffi directly, since the introspection data is consumed when your bindings are generated rather than loaded while the app runs.
+GTK and JavaScript share a single thread, so keep widget work on it.
 
 ## Next
 

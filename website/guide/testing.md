@@ -5,17 +5,17 @@ description: "Testing GTKX components headlessly: the render, query, and userEve
 
 # Testing
 
-GTKX ships with a React Testing Library-inspired testing package, which provides the same API adapted to GTK4 patterns.
+GTKX ships a React Testing Library-inspired testing package: the same API, adapted to GTK4.
 
 ## Setup
 
-A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx`) ships this config. To add testing to a project scaffolded without it, start with the install:
+A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx`) already ships this config. Otherwise:
 
 ```bash
 npm install -D @gtkx/testing vitest
 ```
 
-Then point a `test` script at `vitest run` and write `vitest.config.ts`:
+Point a `test` script at `vitest run` and write `vitest.config.ts`:
 
 ```ts
 import gtkx from "@gtkx/cli/vitest-plugin";
@@ -30,22 +30,13 @@ export default defineConfig({
 });
 ```
 
-`@gtkx/vitest` injects a preload script into each worker process that boots a private headless environment before any test code loads:
+Each Vitest worker runs in its own headless environment, started before any test code loads and torn down with the worker. Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` on the host; plugin options are in the [@gtkx/vitest reference](/reference/@gtkx/vitest/).
 
-- an isolated `XDG_RUNTIME_DIR`
-- a dedicated `dbus-daemon` session bus
-- a headless Wayland compositor
-- a stub `org.freedesktop.Notifications` service on that bus, so code that posts notifications has a listener to talk to
-
-Every worker gets its own compositor and bus, so tests in different files cannot interfere through shared display state, and the whole stack is torn down when the worker exits. The plugin also pins the environment GTK4 needs to render deterministically off-screen.
-
-The scaffolded config wraps that plugin: `@gtkx/cli/vitest-plugin` combines the GTKX Vite plugins with `@gtkx/vitest` and runs it with the default headless output `size` and `compositor`. A project that composes its own Vitest config from `@gtkx/vitest` sets both directly; see the [@gtkx/vitest reference](/reference/@gtkx/vitest/). Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` installed on the host.
-
-Importing `@gtkx/testing` registers everything else for you: it hooks `afterEach` to clean up renders, hooks `afterAll` to quit the GTK4 loop, and extends `expect` with the widget matchers. There is no setup file to write.
+Importing `@gtkx/testing` is the entire setup: cleanup, GTK4 loop teardown, and the `expect` matchers all come with the import. There is no setup file to write.
 
 ## Rendering and cleanup
 
-`render` is async and must be awaited, because mounting widgets means flushing React's work through the live GTK4 loop before the promise resolves:
+`render` is async and must be awaited:
 
 ```tsx
 import { render, screen } from "@gtkx/testing";
@@ -53,7 +44,7 @@ import { render, screen } from "@gtkx/testing";
 const { unmount, rerender, debug } = await render(<MyPanel />);
 ```
 
-With no options, `render` creates an 800x600 harness `Gtk.Window` (with a plain header bar) and presents your element inside it. That works for any component that renders widgets. A top-level app component is different: `<AdwApplication>` is not a widget, so it cannot live inside a harness window. Render it into `rootElement` from `@gtkx/react` instead, which mounts it the same way `createRoot()` does in production:
+With no options, `render` presents the element in a harness window. `<AdwApplication>` is not a widget and cannot live there, so render an app component into `rootElement` from `@gtkx/react`:
 
 ```tsx
 import { rootElement } from "@gtkx/react";
@@ -61,15 +52,13 @@ import { rootElement } from "@gtkx/react";
 await render(<App />, { container: rootElement });
 ```
 
-Queries search every open toplevel by default, so dialogs and popovers are always findable, and widget animations are disabled by default so tests never wait on transitions (pass `areAnimationsEnabled: true` to opt back in). `render` takes further options: `wrapper` for context providers, `baseElement`, strict mode, error callbacks, and custom `queries`. See the [`render` reference](/reference/@gtkx/testing/).
+Queries search every open toplevel, so dialogs and popovers are findable, and animations are disabled unless `areAnimationsEnabled: true` is passed. `wrapper` mounts a context provider around the element; the remaining options are in the [`render` reference](/reference/@gtkx/testing/).
 
-The returned `RenderResult` carries every query bound to the render, plus the render's container, unmount, and rerender handles and the debug helpers described below. You rarely destructure it, because `screen` proxies to the most recent render and is the idiomatic way to query. `within(container)` binds the same queries to any subtree when you need to scope a search, and `renderHook(callback)` renders a hook into a throwaway `Gtk.Box` for testing hooks in isolation.
-
-Cleanup is automatic. The registered `afterEach` unmounts every active render, destroys the harness windows, resets `screen`, and clears the clipboard, so each test starts from an empty display.
+`screen` proxies to the most recent render and is the idiomatic way to query; `within(container)` scopes queries to a subtree, and `renderHook(callback)` tests a hook in isolation. Cleanup is automatic: every test starts from an empty display.
 
 ## Queries
 
-The query kinds, each available as `getBy`, `getAllBy`, `queryBy`, `queryAllBy`, `findBy`, and `findAllBy`, cover the widget tree:
+Every query kind is available as `getBy`, `getAllBy`, `queryBy`, `queryAllBy`, `findBy`, and `findAllBy`:
 
 | Kind | Matches |
 |---|---|
@@ -80,28 +69,20 @@ The query kinds, each available as `getBy`, `getAllBy`, `queryBy`, `queryAllBy`,
 | `ByPlaceholderText` | The placeholder of an editable widget |
 | `ByDisplayValue` | The current text of an editable widget or `GtkTextView` |
 
-The variants have Testing Library semantics: `getBy*` returns synchronously and throws when nothing (or more than one thing) matches, `queryBy*` returns `null` when nothing matches (more than one match still throws), and `findBy*` polls until a match appears or the timeout elapses (1000 ms by default), which makes it the right default after any interaction that triggers a re-render. Every kind is also exported unbound, taking the container as its first argument.
+`getBy*` throws when nothing, or more than one thing, matches; `queryBy*` returns `null` when nothing matches; and `findBy*` polls until a match appears (1000 ms by default), which makes it the right choice after any interaction that triggers a re-render.
 
-Roles are always `Gtk.AccessibleRole` enum values, never strings, because they are GTK4's own accessibility vocabulary: a `GtkButton` reports `BUTTON`, a `GtkCheckButton` reports `CHECKBOX`, an `AdwActionRow` reports `LIST_ITEM`. The accessible name is resolved in this order: an explicit `accessibleLabel` wins, then the widget's own label, text, or title, then the joined text of its descendant labels (with mnemonic underscores stripped), then its tooltip. Widgets that are hidden or excluded from the accessibility tree are skipped unless you pass `{ hidden: true }`.
-
-`ByRole` accepts the richest options object: `name` narrows by accessible name, and further options (`checked`, `pressed`, `selected`, and more) narrow by accessible state read live from the widget, so a `CHECKBOX` matches `checked` only while its `GtkCheckButton` is active. See [`ByRoleOptions`](/reference/@gtkx/testing/type-aliases/ByRoleOptions) for the full set.
-
-Text matchers are a `string` or number, a `RegExp`, or a predicate function, with `MatcherOptions` controlling exactness and normalization.
+Roles are always `Gtk.AccessibleRole` enum values, never strings: a `GtkCheckButton` reports `CHECKBOX`, an `AdwActionRow` reports `LIST_ITEM`. `ByRole` narrows further by `name` and by accessible state; see [`ByRoleOptions`](/reference/@gtkx/testing/type-aliases/ByRoleOptions). Text matchers take a `string` or number, a `RegExp`, or a predicate function.
 
 ```ts
 import * as Gtk from "@gtkx/gi/gtk";
 
 const save = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" });
-const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
 const entry = screen.getByPlaceholderText("Search tasks");
-expect(screen.queryByText("Deleted task")).toBeNull();
 ```
 
 ## Simulating input with userEvent
 
-Every `userEvent` helper first waits for the widget to be actionable, polling for up to 500 ms (configurable via `actionabilityTimeout`). It always checks that the widget is sensitive. When the widget is rooted in a visible window, it also checks that the window has been allocated a size and that the widget is mapped on screen. The window must be active as well, unless the display reports no seat. If any check never passes, the helper throws an error naming the failed condition, which turns "my click silently did nothing" into a precise diagnosis. The interaction itself runs inside React's `act`, so resulting state updates are flushed before the promise resolves.
-
-The surface spans clicking, text entry, keyboard and pointer input, gestures, drag and drop, scrolling, and selection. Each call reads like the production interaction it stands in for, and named keys and held modifiers use Testing Library's syntax:
+Every `userEvent` helper is async and runs inside React's `act`, so state updates flush before it resolves. Each waits up to 500 ms (`actionabilityTimeout`) for the widget to become actionable, and throws an error naming the condition that failed when it never does.
 
 ```ts
 await userEvent.click(button);
@@ -109,60 +90,40 @@ await userEvent.type(entry, "hello");
 await userEvent.keyboard(entry, "{Control>}a{/Control}");
 ```
 
-Driving GTK4 off-screen rather than through a real display shapes what some helpers can do: `pointer` synthesizes left-button input only, and `drag` refuses a `Gtk.Range`, so reach for `slide(range, value)` or `keyboard` to move a slider. The full set of helpers is in the [`userEvent` reference](/reference/@gtkx/testing/).
-
-Where GTK4 implements a click in C on a gesture it attached itself, that handler reads the `GdkEvent` behind the gesture, which off-screen synthesis cannot produce. For those widgets `userEvent.click` invokes the same public action GTK's own handler invokes, so the outcome matches without a fabricated event: `listitem.select` for list, grid, and column-view rows, which activate as well on a second press or when their view activates on a single click, `listitem.toggle-expand` for an expandable `Gtk.TreeExpander`, and `sortByColumn` for a column header. Clicking a row therefore changes the selection model, clicking an expander expands or collapses its row, and clicking a sortable header sorts the view.
-
-A click gesture you attached to such a widget yourself still receives its `pressed` and `released`, the way GTK4 hands the press to every gesture on the widget before its own claims it. The press then goes no further: a gesture on an ancestor of the row, expander, or header does not see it, matching the claim GTK4 makes there. A column-view cell and the row that carries the column headers take no click of their own, so clicking a cell selects the row behind it and clicking the header row does nothing.
+`userEvent.click` on a list row changes the selection, on a `Gtk.TreeExpander` toggles expansion, and on a sortable column header sorts the view. Off-screen, `pointer` synthesizes left-button input only and `drag` refuses a `Gtk.Range`, so use `slide(range, value)` to move a slider. The full set of helpers is in the [`userEvent` reference](/reference/@gtkx/testing/).
 
 ## fireEvent, act, and waitFor
 
-`fireEvent(object, signalName, ...args)` emits any GObject signal directly, with no actionability checks. Like `userEvent`, it runs inside `act` and must be awaited, so state updates land before you assert. Reach for it when the thing you are testing is a signal handler rather than a user interaction, or when the interaction has no `userEvent` equivalent, such as firing `"close-request"` on a window. `userEvent` should still be your default, because it exercises the same event plumbing as production: a row, for one, activates under `userEvent.click`, so emit its `"activated"` directly only when the handler itself is what the test is about.
+`fireEvent(object, signalName, ...args)` emits any GObject signal directly, with no actionability checks, and must be awaited. Reach for it when the test is about a signal handler rather than a user interaction:
 
 ```ts
 await fireEvent(row, "activated");
 ```
 
-`act(callback)` is React's `act` with the environment flag managed for you; you need it only when you mutate state outside a `userEvent` or `fireEvent` call. `waitFor(callback, options?)` retries an assertion until it passes or times out, and `waitForElementToBeRemoved` resolves once a widget leaves the widget tree. Both default to the 1000 ms `asyncUtilTimeout`. `configure({ asyncUtilTimeout, actionabilityTimeout, throwSuggestions, getElementError })` adjusts the global defaults, which is useful in a shared setup file when a slow CI machine needs longer timeouts.
+`act(callback)` is needed only for state mutated outside a `userEvent` or `fireEvent` call. `waitFor(callback, options?)` retries an assertion until it passes, and `waitForElementToBeRemoved` resolves once a widget leaves the tree; both default to 1000 ms, which `configure` changes globally.
 
 ## Matchers
 
-Importing `@gtkx/testing` extends `expect` with widget-aware matchers, so assertions read at the same level as queries:
+Assertions read at the same level as queries:
 
 ```ts
 expect(label).toHaveTextContent(/world/);
 expect(button).toHaveAccessibleName("Save");
-expect(entry).toHaveDisplayValue("typed value");
 expect(check).toBeChecked();
-expect(toggle).toBePressed();
-expect(scale).toHaveValue(50);
 ```
 
-The text matchers take a string or `RegExp` (`toHaveTextContent` matches substrings; the others match exactly) and assert non-emptiness when called with no argument. The boolean state matchers throw when the widget does not expose that state at all, which catches querying the wrong widget rather than silently passing.
-
-GTK keeps accessibility separate from widget properties, so anything a screen reader would announce is asserted through `toHaveAccessibleState` and `toHaveAccessibleProperty`. Each takes the value type that attribute carries, and asserts only that it is set when you leave the value out:
+The boolean state matchers throw when the widget does not expose that state. Accessible state and properties are asserted through `toHaveAccessibleState` and `toHaveAccessibleProperty`, not widget properties:
 
 ```ts
 expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, true);
-expect(row).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
-expect(toggle).toHaveAccessibleState(Gtk.AccessibleState.PRESSED, Gtk.AccessibleTristate.MIXED);
-expect(entry).toHaveAccessibleProperty(Gtk.AccessibleProperty.PLACEHOLDER);
 expect(grid).toHaveAccessibleProperty(Gtk.AccessibleProperty.SORT, Gtk.AccessibleSort.DESCENDING);
 ```
 
-`toAppearBefore` and `toAppearAfter` compare two widgets by their position in the widget tree, and the `toContainAnyBy*` and `toContainOneBy*` families run a query against the widget's own subtree:
-
-```ts
-expect(heading).toAppearBefore(body);
-expect(form).toContainAnyByRole(Gtk.AccessibleRole.BUTTON);
-expect(form).toContainOneByLabelText("Email");
-```
+`toAppearBefore` and `toAppearAfter` compare two widgets by tree position, and `toContainAnyBy*` and `toContainOneBy*` run a query against a widget's own subtree.
 
 ## Debugging
 
-When a query fails, look at the tree the way the queries see it. `screen.debug()` prints an HTML-like dump of the widget tree annotated with roles, names, and accessibility attributes. `logWidget(container)` prints the same dump for an arbitrary widget, and `prettyWidget(container)` returns it as a string instead of printing. `screen.logRoles()` groups every widget in the tree by role, which is the fastest way to answer "what role does this widget actually report?". `getSuggestedQuery(widget)` recommends the best query for a widget, preferring role, then label text, then the weaker kinds.
-
-For visual inspection, `screenshot(widget)` renders a widget off-screen and returns the base64 PNG data; pass `{ path }` to also write the image to a file, creating missing directories. `screen.screenshot()` takes the same options and captures what is on screen rather than one render's subtree, which in practice is the active toplevel window: GTK4 exposes no position for a toplevel, so several windows cannot be composited into a single image. Target another window by finding it first, with `screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "…" })`. For poking at a live dev session rather than a test, the [MCP server](/guide/mcp) exposes the same tree dumps, queries, and screenshots to any MCP client.
+`screen.debug()` prints the widget tree the way the queries see it, with roles, names, and accessibility attributes. `screen.logRoles()` groups every widget by role, the fastest way to answer which role a widget reports. `screenshot(widget)` returns the base64 PNG data, and `{ path }` also writes the image to a file; `screen.screenshot()` takes the same options and captures the active toplevel window instead of one render's subtree. For a live dev session rather than a test, the [MCP server](/guide/mcp) exposes the same dumps, queries, and screenshots.
 
 ::: tip
 Tests written this way double as a basic accessibility audit: a widget `getByRole` cannot find by name is usually one that is missing an accessible label.
@@ -170,7 +131,7 @@ Tests written this way double as a basic accessibility audit: a widget `getByRol
 
 ## A simple example
 
-A minimal counter component, tested end to end. The component under test is ordinary application code; the test renders it, finds the button by role, clicks it, and asserts on the resulting label text:
+A minimal counter component, tested end to end. The test renders it, finds the button by role, clicks it twice, and asserts on the resulting label text:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -202,7 +163,7 @@ describe("Counter", () => {
 });
 ```
 
-Every step runs the production path: the click drives a `GtkGestureClick` on a `GtkButton`, React re-renders, GTK4 relabels the `GtkLabel`, and `findByText` reads the result off the live widget. The same pattern scales from a counter to the full Tasks app in the [tutorial](/tutorial/testing).
+The same pattern scales from a counter to the full Tasks app in the [tutorial](/tutorial/testing).
 
 ## Next
 

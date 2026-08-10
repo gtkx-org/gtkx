@@ -5,33 +5,13 @@ description: "Give AI coding agents eyes and hands on your running app: the @gtk
 
 # MCP
 
-An AI coding agent working on a web app can open the page and read the DOM. `@gtkx/mcp` gives an agent the same handle on a running GTK4 window. It is an MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to your live GTKX app.
+`@gtkx/mcp` is a stdio MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to a running GTKX app. Through it an agent inspects and drives the live window, and looks up the exact props, signals, and method signatures of the project's generated bindings instead of guessing. Combined with the Fast Refresh loop of `gtkx dev`, that gives an agent the same edit, look, verify cycle you have.
 
-Through it, an agent can list open windows, dump the widget tree, find widgets the way a test would, click buttons, type into entries, emit signals, and screenshot the result. It also serves a searchable API reference for your project's generated bindings, so the agent looks up exact props, signals, and method signatures instead of guessing.
-
-Combined with the Fast Refresh loop of `gtkx dev`, that gives an agent the same edit, look, verify cycle you have. Jump to [Setup](#setup) to register the server, or read on for how it connects.
-
-## How it connects
-
-The system has a server half and an app half that find each other through a Unix domain socket.
-
-The **server half** is the `gtkx-mcp` binary from the `@gtkx/mcp` package. Your MCP client launches it as an ordinary stdio MCP server. On startup it also opens a socket at `$XDG_RUNTIME_DIR/gtkx-mcp.sock` (falling back to the system temporary directory) and waits for apps to register. Because the socket path is fixed, one server serves your whole session; a second instance refuses to start while the first is alive, and two starting at the same moment always end with one owner and one refusal rather than two servers each believing they hold the path. A socket file left behind by a server that crashed is removed by the next server to start, but only once connecting to it comes back refused. When that check cannot reach a verdict, on a machine too loaded to complete the connection, the new server refuses to start and says so, rather than removing a socket another session may still be serving.
-
-A server takes the path in two steps. It listens on a hidden name beside it, a dot followed by hex derived from the socket path, then hard-links that name onto `gtkx-mcp.sock`; the link is what claims the path, and it fails outright when the name is already taken. Everything that inspects, removes, or claims `gtkx-mcp.sock` happens while the server holds a claim lock keyed to that path, an abstract socket the kernel releases the moment its process dies, so servers starting together take their turns instead of one deleting the file the other has just published. A server removes `gtkx-mcp.sock` only while that name still resolves to the socket it linked there, so it can never delete one another server owns. The consequence to know when reading `ss -xl` or `/proc/net/unix` is that the listening address is the hidden name, not `gtkx-mcp.sock`; `ls` and anything connecting by path see the socket under the published name as usual.
-
-The **app half** lives inside `gtkx dev`. When your entry module mounts an application, the dev runner starts an MCP client in the app process. It connects to that same socket and registers the app's application ID, process ID, and project root.
-
-If the server is not running yet, the client silently retries every two seconds, so the order never matters: start the agent first or the app first, and they connect whenever both are up. Several apps can register with one server. Every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app; `gtkx_list_apps` takes none. The API reference tools are development-time and are not tied to a running app: they take an optional `projectRoot` instead.
-
-Clicking, typing, querying, and screenshots all delegate to [`@gtkx/testing`](/guide/testing), loaded through your app's own module graph: `gtkx_click` runs `userEvent.click`, `gtkx_query_widgets` runs the `findAllBy*` queries, and the widget tree is rendered by `prettyWidget`.
-
-All of this is development tooling. The MCP client is part of the CLI's dev runner, not your application code, so `gtkx build` bundles none of it and a production app has nothing listening.
+`gtkx dev` starts the app side automatically as soon as the entry module mounts an application, and the two halves find each other whenever both are up, so start order does not matter. Several apps can register with one server: every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app, while the reference tools take `projectRoot` instead. All of this is development tooling, so `gtkx build` bundles none of it and a production app has nothing listening.
 
 ## Setup
 
-Two packages belong in your project's dev dependencies. `@gtkx/mcp` carries the `gtkx-mcp` binary your MCP client launches. `@gtkx/testing` is what every widget tool except `gtkx_list_apps` loads through your app's module graph, and without it those tools fail; the API reference tools never touch the app and never need it.
-
-A scaffolded project already depends on `@gtkx/mcp`, and one scaffolded with the testing option already has `@gtkx/testing` too. Otherwise install them:
+Two packages belong in the project's dev dependencies. `@gtkx/mcp` carries the `gtkx-mcp` binary the MCP client launches, and `@gtkx/testing` backs every widget tool. A scaffolded project already depends on `@gtkx/mcp`, and one scaffolded with the testing option has `@gtkx/testing` too. Otherwise install them:
 
 ::: code-group
 
@@ -49,9 +29,9 @@ yarn add -D @gtkx/mcp @gtkx/testing
 
 :::
 
-Depending on `@gtkx/mcp` directly, rather than downloading it each time the agent starts, buys two things. It holds the server to the major version your app speaks: the two halves share a wire protocol, and the `^` range a normal install records keeps `@gtkx/mcp` in the same major as the `@gtkx/cli` your project runs, where a runner that fetches `latest` can cross into the next one. And it puts `gtkx-mcp` in `node_modules/.bin`, which is what the launch command below resolves. pnpm leaves a nested dependency's binary in its virtual store instead, so in a pnpm project without that dependency the launch fails with `gtkx-mcp: command not found`, even though `@gtkx/cli` pulls the package in underneath.
+`@gtkx/mcp` has to be a direct dev dependency. Under pnpm, the nested copy `@gtkx/cli` pulls in stays in the virtual store, and the launch below fails with `gtkx-mcp: command not found`.
 
-Nothing else is needed on the app side: `gtkx dev` starts the client automatically whenever your entry mounts an application. On the agent side, register `gtkx-mcp` as a stdio server, launched with your project directory as its working directory. For Claude Code, run this from the project root:
+Register `gtkx-mcp` as a stdio server, launched from the project root. For Claude Code:
 
 ```bash
 claude mcp add gtkx -- npx -y @gtkx/mcp
@@ -70,21 +50,11 @@ For any other MCP client, the standard `mcpServers` configuration looks like thi
 }
 ```
 
-`npx` starts the copy your project already has: it resolves `gtkx-mcp` from `node_modules/.bin` and runs it without going to the network. It downloads the package only when the project's tree does not contain it at all, which is the other half of why the direct dependency matters under pnpm. The nested copy `@gtkx/cli` brings in is enough to stop the download, and its shim sits in the virtual store where `node_modules/.bin` cannot reach it, so the command finds neither one.
+To try the server against a project without adding the dependency, run `pnpm dlx @gtkx/mcp`, which installs the latest published release rather than the one matching the project.
 
-To try the server against a project without adding the dependency to it, fetch a copy for the run:
-
-```bash
-pnpm dlx @gtkx/mcp
-```
-
-`npx -y @gtkx/mcp` does the same from a directory whose tree does not resolve the package. Yarn has no equivalent worth using here: Yarn Classic has no `dlx` command, and Yarn 2 and newer print their resolution log on stdout, which is the channel a stdio MCP server owes to JSON-RPC alone. Either fetching runner installs the latest published release, which can be a major ahead of the `@gtkx/cli` your app runs, so treat it as a way to try the server rather than the setup you keep.
-
-The binary takes no arguments and has no configuration of its own. If the agent calls a tool before any app has connected, the error names the fix: "No GTKX application connected: start an app with 'gtkx dev' to connect".
+The widget tools fail until an app is running under `gtkx dev`.
 
 ## The tools
-
-The server groups its tools into inspection, interaction, and the API reference:
 
 | Tool | Kind | What it does |
 |---|---|---|
@@ -102,11 +72,9 @@ The server groups its tools into inspection, interaction, and the API reference:
 
 ### Inspection
 
-The read-only tools carry the MCP `readOnlyHint` annotation, so clients that gate destructive actions can run them freely.
+**`gtkx_list_apps`** lists every connected app with its application ID, process ID, and open windows (each with an ID and title). Pass `waitForApps: true` to block until at least one app registers, with `timeout` in milliseconds (default 10000).
 
-**`gtkx_list_apps`** lists every connected app with its application ID, process ID, and open windows (each with an ID and title). Pass `waitForApps: true` to block until at least one app registers, with `timeout` in milliseconds (default 10000). This is the natural first call in any session, especially right after launching `gtkx dev`, when the app may still be starting.
-
-**`gtkx_get_widget_tree`** returns an app's widget hierarchy as an indented, HTML-like tree. Each widget appears as a tag named after its class, with its `id`, widget `name`, and accessible `role` as attributes, and its text content nested inside. A widget that is insensitive or invisible also carries an `accessible-disabled` or `accessible-hidden` flag. Two arguments narrow what gets rendered: `rootId` renders only the subtree under one widget ID, and `maxDepth` (a positive integer) caps how many levels deep the tree goes, summarizing each cut-off widget's children as a count with the ID to pass as `rootId` to expand them. Combine them to drill in. The output is truncated at 7000 characters on every call, whatever `rootId` and `maxDepth` narrow it to; raise that limit by starting the app with `DEBUG_PRINT_LIMIT=50000 gtkx dev`. An excerpt looks like this:
+**`gtkx_get_widget_tree`** returns an app's widget hierarchy as an indented, HTML-like tree. `rootId` renders only the subtree under one widget ID and `maxDepth` (a positive integer) caps how deep the tree goes, summarizing each cut-off widget's children as a count with the ID to pass as `rootId`. The output is truncated at 7000 characters; raise that by starting the app with `DEBUG_PRINT_LIMIT=50000 gtkx dev`.
 
 ```html
 <Window id="0" name="GtkWindow" role="window">
@@ -124,9 +92,7 @@ The read-only tools carry the MCP `readOnlyHint` annotation, so clients that gat
 </Window>
 ```
 
-This is the map the agent navigates by, and the fullest source of the widget IDs that `gtkx_get_widget_props`, `gtkx_take_screenshot`, and the interaction tools take.
-
-**`gtkx_query_widgets`** finds widgets the way a test does, without dumping the whole tree. It takes `by` (one of `"role"`, `"text"`, `"name"`, `"labelText"`), a `value` to match, and an `options` object with `exact` (exact versus substring matching), `timeout`, and `name` (accessible-name filter, honored only when `by` is `"role"`). Role values are the `Gtk.AccessibleRole` member names:
+**`gtkx_query_widgets`** finds widgets without dumping the whole tree. It takes `by` (one of `"role"`, `"text"`, `"name"`, `"labelText"`), a `value` to match, and an `options` object with `exact`, `timeout`, and `name` (an accessible-name filter, honored only for role queries). Role values are `Gtk.AccessibleRole` member names:
 
 ```json
 {
@@ -136,57 +102,37 @@ This is the map the agent navigates by, and the fullest source of the widget IDs
 }
 ```
 
-That call finds every button whose accessible name is "New List" and returns each match with its ID and the same fixed summary `gtkx_get_widget_props` returns, with no descendants: a match that has children carries `hiddenChildren`, the count of its direct children left out, and reading them takes a second call with that match's ID. These are the same queries as `findAllByRole`, `findAllByText`, `findAllByName`, and `findAllByLabelText` in `@gtkx/testing`, with the same matching semantics, so anything you have learned about querying in tests transfers directly.
+Each match comes back with its ID and the same summary `gtkx_get_widget_props` returns, with no descendants: a match that has children carries `hiddenChildren`, the count of its direct children left out. The widget tools run through [`@gtkx/testing`](/guide/testing), so these queries match `findAllByRole`, `findAllByText`, `findAllByName`, and `findAllByLabelText` exactly, and anything learned about querying in tests transfers directly.
 
-**`gtkx_get_widget_props`** takes a `widgetId` and returns a fixed summary of that widget: type, accessible role, name, text, sensitivity, visibility, and CSS classes. The same summary follows for its descendants, under two bounds that keep the answer small enough to read: eight levels deep, which `maxDepth` raises or lowers (`0` returns the widget on its own), and thirty widgets in total whatever the depth. The subtree fills breadth first, so what comes back is the thirty widgets nearest the one asked for rather than one branch followed to exhaustion, and a widget that either bound cut short carries `hiddenChildren`: the count of its own direct children left out, not of everything below them. Drilling in is one more call with that widget's ID rather than a guess. Use it to re-check one branch of the interface after an interaction, for example to confirm a button became insensitive (its `isSensitive` flag) or a row picked up a CSS class (its `cssClasses`). Pass `properties` with GObject property names, kebab-case or camelCase, to read arbitrary properties as well; they come back first in the payload, ahead of the subtree, each as `{type, value}` under its canonical kebab-case name. For a wider map, `gtkx_get_widget_tree` is the tool built for breadth.
+**`gtkx_get_widget_props`** takes a `widgetId` and returns a fixed summary of that widget (type, accessible role, name, text, sensitivity, visibility, and CSS classes) followed by the same summary for a subtree of descendants bounded twice: eight levels deep, which `maxDepth` raises or lowers (`0` returns the widget on its own), and thirty widgets in all whatever the depth. Any widget whose own direct children were left out carries `hiddenChildren`, their count, so drilling in is one more call with that widget's ID. Pass `properties` with GObject property names, kebab-case or camelCase, to read named properties as well.
 
-**`gtkx_take_screenshot`** captures a window and returns it as base64 PNG image content. `windowId` selects a window (defaulting to the first), and an optional absolute `path` also writes the PNG to disk on the app's machine, creating directories as needed, which is how agents save screenshots into a repository for documentation or visual comparison. A screenshot shows results but cannot be clicked; widget IDs for interaction always come from the tree or a query.
+**`gtkx_take_screenshot`** captures a window and returns it as base64 PNG image content. `windowId` selects a window (defaulting to the first), and an optional absolute `path` also writes the PNG to disk on the app's machine.
 
-Widget IDs are stable for as long as a widget stays mounted: the app re-walks its toplevel windows on every request and each widget keeps the same ID for its lifetime. An ID stops resolving once its widget is unmounted, so after a dialog closes, a list re-renders, or Fast Refresh replaces a component, the agent re-fetches the tree or re-queries instead of reusing stale IDs.
+Widget IDs stay stable for as long as a widget is mounted and stop resolving once it unmounts, so after a dialog closes, a list re-renders, or Fast Refresh patches a component, re-fetch the tree or re-query rather than reusing stale IDs.
 
 ### Interaction
 
-The mutating tools carry the `destructiveHint` annotation, so clients that ask for confirmation before mutations will do so here.
+Every widget tool call is routed to the app with a 30 second timeout, so a hung app surfaces as a tool error rather than a stuck agent.
 
-**`gtkx_click`** clicks the widget with the given `widgetId`. It routes straight to `userEvent.click` with no special case per widget, so it works on anything that helper handles: buttons, check buttons, switches, list and grid rows, tree expanders, column headers, and other activatable widgets.
+**`gtkx_click`** clicks the widget with the given `widgetId`, and works on any activatable widget.
 
-**`gtkx_type`** types `text` into an editable widget such as a `GtkEntry` or `GtkTextView`. Pass `clear: true` to empty the widget first, which is how you replace a value instead of appending to it.
+**`gtkx_type`** types `text` into an editable widget such as a `GtkEntry` or `GtkTextView`. Pass `clear: true` to empty the widget first.
 
-**`gtkx_fire_event`** emits an arbitrary GTK4 `signal` on a widget, with an optional `args` array, for interactions `gtkx_click` and `gtkx_type` do not cover: emitting `close-request` on a window, or a custom signal your code connects to. Each argument can be a raw value or a `{ type, value }` object, in which case the `value` is passed through.
-
-::: info
-Every widget tool call, inspection or interaction, is routed to the app with a 30 second timeout, so a hung app surfaces as a tool error rather than a stuck agent.
-:::
+**`gtkx_fire_event`** emits an arbitrary GTK4 `signal` on a widget, with an optional `args` array, for interactions the other two do not cover: `close-request` on a window, or a custom signal the code connects to.
 
 ### API reference
 
-The reference tools answer from the same GObject-Introspection data your bindings are generated from, so what they document is exactly what `@gtkx/gi` and `@gtkx/jsx` export: the same camelCase methods, the same promisified async pairs, the same JSX props and `on<Signal>` handlers. They need no running app and no `@gtkx/testing`; the only requirement is a project with codegen enabled, since a `codegen: false` project has no generated bindings to document. They are all read-only.
+The reference tools answer from the same GObject-Introspection data the bindings are generated from, so they document exactly what a project's generated bindings export. They need no running app, but a project with `codegen: false` has no bindings to document. All three take an optional `projectRoot`.
 
-All three take an optional `projectRoot` alongside their own arguments, which decides the project they answer for.
+**`gtkx_list_api`** without arguments returns an overview of every namespace the configured libraries pull in, with symbol and JSX element counts. With a `namespace` it lists that namespace's symbols grouped by kind.
 
-**`gtkx_list_api`** without arguments returns an overview of every namespace the configured libraries pull in, with symbol and JSX element counts. With a `namespace` it lists all of that namespace's symbols grouped by kind: JSX elements, classes, enums, and the rest.
+**`gtkx_search_api`** finds symbols by a case-insensitive substring of their name, with optional `namespace`, `kind`, and `limit` filters.
 
-**`gtkx_search_api`** finds symbols by a case-insensitive substring of their name, with optional `namespace`, `kind`, and `limit` filters. Each match comes back with its namespace, kind, and a one-line summary, ready to feed into `gtkx_get_api_docs`.
+**`gtkx_get_api_docs`** returns one symbol's full reference page as markdown. It accepts a qualified name (`Gtk.Button`, `GLib.Variant`), a JSX element name (`GtkButton`), or a bare name when it is unambiguous, and a `kind` parameter disambiguates when several symbols share a name. Element pages match the ones `gtkx docs` generates (see [generating element reference docs](/guide/configuration-and-codegen#generating-element-reference-docs)).
 
-**`gtkx_get_api_docs`** returns the full reference page for one symbol as markdown. It accepts a qualified name (`Gtk.Button`, `Gtk.Orientation`, `GLib.Variant`), a JSX element name (`GtkButton`), or a bare name when it is unambiguous. When several symbols share a name, the error lists the candidates, and a `kind` parameter disambiguates.
-
-Element pages match the ones `gtkx docs` generates: hierarchy, children, props, `on<Signal>` handler props, and `ref` methods (see [generating element reference docs](/guide/configuration-and-codegen#generating-element-reference-docs)). Pages for `@gtkx/gi` symbols cover the rest.
-
-What the reference documents depends on a project, since that project's `gtkx.config.ts` decides which libraries are bound. Pass `projectRoot` to say which one: any directory inside the project works, absolute or relative to the server's working directory, because the lookup walks up to the enclosing `gtkx.config.ts`.
-
-Without it, the server documents the project containing its own working directory, which for a stdio server is wherever your MCP client launched it, normally the project you are working on. Only when that directory is not inside a GTKX project does it fall back to a connected app's project root, which apps report when they register.
-
-Every answer ends with the project it was scoped to and how that project was chosen, so an answer scoped to the wrong surface is visible rather than silent:
-
-```
-Project: /home/you/tablestar (found from the working directory)
-```
-
-The GIR data is parsed once per project and cached, and re-parsed only when `gtkx.config.ts` or the GIR files change, so the first reference call for a project takes a moment and later ones are instant.
-
-The same pages are also published as MCP resources for clients that work resource-first: `gtkx://reference/index` is the overview, `gtkx://reference/{namespace}` one namespace's symbol list, and `gtkx://reference/{namespace}/{symbol}` one symbol's page, with completion wired up for both namespace and symbol names. A URI carries no project, so resources use the same default: the working directory's project, then a connected app's.
+Pass `projectRoot`, any directory inside the project, absolute or relative, to choose which project the answers cover. Without it, the server documents the project containing its working directory, falling back to a connected app's project root when that directory is not inside a GTKX project. The same pages are published as MCP resources for clients that work resource-first: `gtkx://reference/index` is the overview, `gtkx://reference/{namespace}` one namespace's symbol list, and `gtkx://reference/{namespace}/{symbol}` one symbol's page.
 
 ## Next
 
-- The [API reference](/reference/) documents the GTKX packages themselves. The generated bindings (`@gtkx/gi`, `@gtkx/jsx`) are specific to your project's configured libraries, which is what `gtkx_get_api_docs` reads; `gtkx docs` writes the element pages of that same reference to disk.
+- The [API reference](/reference/) documents the GTKX packages themselves.
 - The [tutorial's testing chapter](/tutorial/testing) applies the queries and events behind these tools to the Tasks app.

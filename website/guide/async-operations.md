@@ -1,23 +1,23 @@
 ---
 title: "Async Operations"
-description: "How GTKX turns GIO's callback-and-finish async convention into Promise-returning methods you can await, cancel with Gio.Cancellable, and catch as GLib errors."
+description: "Awaiting promisified GIO calls, canceling them, and keeping long work off the main thread."
 ---
 
 # Async Operations
 
-GIO's async operations come in callback-and-finish pairs: a call taking a `Gio.AsyncReadyCallback` starts the work, and a sibling `_finish` call extracts the result (or the error) once the callback fires. GTKX's codegen gives the async half of each pair a `Promise` return and calls the `_finish` sibling for you, so opening a file dialog, reading the file it hands back, or connecting to the session bus is an ordinary `await`.
+GIO async methods return promises, so you `await` them like any other promise.
 
-Here's an example of a promisified method (from `Gio.File`):
+A promisified method resolves to the C function's return value first, then its out-parameters, as a tuple:
 
 ```ts
 loadContentsAsync(cancellable?: Cancellable | null): Promise<[boolean, number[], string | null]>;
 ```
 
-The result carries the C function's return value first, then its out-parameters: here a success flag, the file's contents, and its etag. A failed call rejects, so you skip straight to the value you want with `const [, contents] = await file.loadContentsAsync(null);`. A call whose C return is void and that has a single out-parameter gives you that value directly instead of a tuple.
+A failed call rejects, so the leading success boolean can be skipped with `const [, contents] = await file.loadContentsAsync(null);`. A call whose C return is void and that has a single out-parameter resolves to that value directly instead of a tuple.
 
 ## Awaiting async operations
 
-Async operations can be awaited just like regular JS promises:
+GTK4 reports a dismissed dialog as an error rather than as a return value, so a `catch` matching `Gtk.DialogError.DISMISSED` returns quietly:
 
 ```tsx
 import * as Gio from "@gtkx/gi/gio";
@@ -29,14 +29,11 @@ const OpenButton = ({ onFile }: { onFile: (file: Gio.File) => void }) => {
     const parentWindow = useParentWindow();
 
     const handleOpen = async () => {
-        const dialog = new Gtk.FileDialog();
-        dialog.setTitle("Open file");
         try {
-            const file = await dialog.open(parentWindow, null);
-            onFile(file);
+            onFile(await new Gtk.FileDialog().open(parentWindow, null));
         } catch (error) {
             if (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED) return;
-            if (error instanceof Error) console.error(error.message);
+            throw error;
         }
     };
 
@@ -44,45 +41,34 @@ const OpenButton = ({ onFile }: { onFile: (file: Gio.File) => void }) => {
 };
 ```
 
-A rejected async call carries the same `GLib.Error` a synchronous call would throw, so its own `stack` points into the callback that delivered the failure rather than at your code. Outside production, GTKX attaches the stack captured where the operation started as the error's `cause`, so you can trace a failure back to the `await` that began it.
+Outside production, the rejection's `cause` carries the stack captured where the operation started.
 
 ## Cancellation with Gio.Cancellable
 
-Every promisified call accepts an optional `Gio.Cancellable` as its last argument.
-
-Canceling settles the pending promise: it rejects rather than hanging. GIO operations reject with a GError in the `Gio.IOErrorEnum` domain carrying code `CANCELLED`, while GTK4 dialogs report it in their own domain as `Gtk.DialogError.CANCELLED`. Matching on the domain and code is how a `catch` tells a cancellation apart from a genuine failure and returns quietly instead of reporting it.
+Every promisified call accepts an optional `Gio.Cancellable` as its last argument. Canceling rejects the pending promise rather than leaving it hanging: GIO operations reject with code `CANCELLED` in the `Gio.IOErrorEnum` domain, GTK4 dialogs with `CANCELLED` in their own `Gtk.DialogError` domain.
 
 ```ts
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 
-const runWithTimeout = async (action: (cancellable: Gio.Cancellable) => Promise<void>) => {
+const openWithTimeout = async (parent: Gtk.Window | null) => {
     const cancellable = new Gio.Cancellable();
     const timeoutId = setTimeout(() => cancellable.cancel(), 20_000);
+
     try {
-        await action(cancellable);
+        return await new Gtk.FileDialog().open(parent, cancellable);
+    } catch (error) {
+        if (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.CANCELLED) return null;
+        throw error;
     } finally {
         clearTimeout(timeoutId);
     }
 };
-
-await runWithTimeout(async (cancellable) => {
-    const dialog = new Gtk.FileDialog();
-    try {
-        const file = await dialog.open(null, cancellable);
-        // ...
-    } catch (error) {
-        if (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.CANCELLED) return;
-        throw error;
-    }
-});
 ```
 
 ## Moving work to a worker
 
-Awaiting a GIO operation keeps the interface responsive because the work happens outside JavaScript. Your own CPU-bound code does not get that for free: GTKX drives the GLib main context from the Node main thread, so a long synchronous function freezes the window for its whole duration. Put that work in a [Node worker thread](https://nodejs.org/api/worker_threads.html) instead.
-
-`gtkx build` emits a chunk for a worker whose URL is written inside the construction:
+CPU-bound JavaScript on the main thread freezes the window, so it belongs in a [Node worker thread](https://nodejs.org/api/worker_threads.html):
 
 ```ts
 import { Worker } from "node:worker_threads";
@@ -91,15 +77,10 @@ const worker = new Worker(new URL("./indexer.ts", import.meta.url));
 worker.on("message", (rows) => setRows(rows));
 ```
 
-The specifier has to be relative and has to name the worker source file as it exists on disk, and the `new URL(...)` has to sit directly in the `new Worker(...)` call. This is the only shape the build recognizes. Hoisting the URL to a variable and passing the variable fails the build rather than shipping a bundle whose worker is missing:
+The specifier has to be relative and has to name the worker source file as it exists on disk, and the `new URL(...)` has to sit directly inside the `new Worker(...)` call, otherwise `gtkx build` fails.
 
-```ts
-const WORKER_URL = new URL("./indexer.ts", import.meta.url);
-const worker = new Worker(WORKER_URL); // gtkx build: error
-```
-
-A worker runs no GTK code. It has no GLib main context and no widget tree, so it computes and posts results back, and the main thread renders them.
+A worker runs no GTK code: it computes and posts results back for the main thread to render.
 
 ## Next
 
-Continue with [Error Handling](/guide/error-handling) for the full story on matching GLib error domains and codes.
+Continue with [Error Handling](/guide/error-handling) for matching GLib error domains and codes.

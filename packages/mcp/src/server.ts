@@ -38,6 +38,14 @@ type McpServerHandle = {
     stop(): Promise<void>;
 };
 
+type ServerLifecycle = {
+    socketServer: SocketServer;
+    mcpServer: McpServer;
+    socketPath: string;
+    isStopped: boolean;
+    isStarted: boolean;
+};
+
 type AppWindow = { id: string; title: string | null };
 type AppWithWindows = AppInfo & { windows?: AppWindow[] };
 
@@ -346,6 +354,38 @@ const registerTools = (mcpServer: McpServer, appRouter: AppRouter, provider: Ref
     }
 };
 
+async function stopServer(state: ServerLifecycle): Promise<void> {
+    if (state.isStopped) {
+        return;
+    }
+
+    state.isStopped = true;
+    await state.socketServer.stop();
+    await state.mcpServer.close();
+}
+
+async function startServer(state: ServerLifecycle): Promise<void> {
+    if (state.isStopped) {
+        throw new Error("createMcpServer: a stopped server cannot be started again");
+    }
+
+    await state.socketServer.start();
+
+    if (state.isStarted) {
+        return;
+    }
+
+    state.isStarted = true;
+    log.info(`socket server listening on ${state.socketPath}`);
+    await connectStdio(state.mcpServer, () => stopServer(state));
+}
+
+const createServerHandle = (socketServer: SocketServer, mcpServer: McpServer, socketPath: string): McpServerHandle => {
+    const state: ServerLifecycle = { socketServer, mcpServer, socketPath, isStopped: false, isStarted: false };
+
+    return { start: () => startServer(state), stop: () => stopServer(state) };
+};
+
 const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
     const registry = new ConnectionRegistry();
@@ -366,33 +406,8 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const referenceProvider = createReferenceProvider({ getAppRoot: () => appRouter.getProjectRoot() });
     registerTools(mcpServer, appRouter, referenceProvider);
     registerReferenceResources(mcpServer, referenceProvider);
-    let isStopped = false;
 
-    const stop = async (): Promise<void> => {
-        if (isStopped) {
-            return;
-        }
-
-        isStopped = true;
-        await socketServer.stop();
-        await mcpServer.close();
-    };
-
-    let isStarted = false;
-
-    const start = async (): Promise<void> => {
-        await socketServer.start();
-
-        if (isStarted) {
-            return;
-        }
-
-        isStarted = true;
-        log.info(`socket server listening on ${socketPath}`);
-        await connectStdio(mcpServer, stop);
-    };
-
-    return { start, stop };
+    return createServerHandle(socketServer, mcpServer, socketPath);
 };
 
 async function main(): Promise<void> {
