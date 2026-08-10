@@ -60,7 +60,7 @@ The key belongs at the top level of the file, alongside `packages:` and `allowBu
 
 `npm run dev` runs `gtkx dev`. Leave it running while you work: saving a component patches it into the window that is already open, and a change Fast Refresh cannot patch restarts the app.
 
-`npm run build` bundles the app to `dist/bundle.js`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 runtime libraries, plus Adwaita once you bind it. Turning it into an installable program with a desktop entry and icons is covered in [Appendix B: Packaging](/tutorial/packaging).
+`npm run build` bundles the app to `dist/bundle.js`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 runtime libraries, plus Adwaita once you bind it. `npm run deploy` goes further and packages the app as a Flatpak, a `.deb`, an `.rpm`, or an AppImage, with the desktop entry and AppStream metadata generated for you: see [Deploying](/guide/deploying).
 
 ## Project structure
 

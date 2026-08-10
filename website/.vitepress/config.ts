@@ -27,7 +27,7 @@ const tutorialItems = [
     { text: "Reminders", link: "/tutorial/reminders" },
     { text: "Appendix A: Testing", link: "/tutorial/testing" },
     { text: "Appendix B: Packaging", link: "/tutorial/packaging" },
-    { text: "Appendix C: Flatpak", link: "/tutorial/flatpak" },
+    { text: "Appendix C: Flathub", link: "/tutorial/flatpak" },
 ];
 
 const guideSidebar = [
@@ -43,6 +43,7 @@ const guideSidebar = [
     { text: "OpenGL", link: "/guide/opengl" },
     { text: "Testing", link: "/guide/testing" },
     { text: "MCP", link: "/guide/mcp" },
+    { text: "Deploying", link: "/guide/deploying" },
     { text: "API Reference", link: "/reference/" },
 ];
 
@@ -174,7 +175,7 @@ export default defineConfig({
             { text: "Reference", link: "/reference/" },
             { text: "Blog", link: "/blog/" },
             { text: "Examples", link: "https://github.com/gtkx-org/gtkx/tree/main/examples" },
-            { text: "1.0", link: "/blog/gtkx-1-0" },
+            { text: "1.1", link: "/blog/gtkx-1-1" },
         ],
         sidebar: {
             "/guide/": guideSidebar,
@@ -183,7 +184,10 @@ export default defineConfig({
             "/blog/": [
                 {
                     text: "Blog",
-                    items: [{ text: "GTKX 1.0", link: "/blog/gtkx-1-0" }],
+                    items: [
+                        { text: "GTKX 1.1", link: "/blog/gtkx-1-1" },
+                        { text: "GTKX 1.0", link: "/blog/gtkx-1-0" },
+                    ],
                 },
             ],
         },
