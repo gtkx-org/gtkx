@@ -4,6 +4,7 @@ import * as Gio from "@gtkx/gi/gio";
 import {
     AdwApplication,
     AdwApplicationWindow,
+    AdwDialog,
     AdwHeaderBar,
     AdwNavigationPage,
     AdwNavigationSplitView,
@@ -12,11 +13,44 @@ import {
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { quit, rootElement } from "@gtkx/react";
-import { act, render, userEvent, waitFor } from "@gtkx/testing";
-import { createRef, type ReactElement, type Ref } from "react";
+import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { createRef, type ReactElement, type Ref, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+type DialogKind = "about" | "shortcuts" | "none";
+
 const REUSE_APP_ID = "org.gtkx.tutorial-reuse";
+const DIALOG_APP_ID = "org.gtkx.tutorial-dialogs";
+
+const shortcutsDialog: ReactElement = (
+    <AdwDialog title="Shortcuts">
+        <GtkLabel>shortcuts body</GtkLabel>
+    </AdwDialog>
+);
+
+const DialogShell = ({ shown }: { shown: DialogKind }): ReactElement => {
+    const [dialog, setDialog] = useState<DialogKind>(shown);
+    const [requested, setRequested] = useState<DialogKind>(shown);
+
+    const clearDialog = (): void => {
+        setDialog("none");
+    };
+
+    if (requested !== shown) {
+        setRequested(shown);
+        setDialog(shown);
+    }
+
+    return (
+        <AdwApplication applicationId={DIALOG_APP_ID} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+            <AdwApplicationWindow>
+                <GtkLabel>Body</GtkLabel>
+                {dialog === "about" ? <AdwDialog title="About" onClosed={clearDialog} /> : null}
+                {dialog === "shortcuts" ? shortcutsDialog : null}
+            </AdwApplicationWindow>
+        </AdwApplication>
+    );
+};
 
 const headerStart = (buttonRef: Ref<Gtk.Button | null>, isDetail: boolean): ReactElement => {
     if (isDetail) {
@@ -114,5 +148,11 @@ describe("tutorial regressions", () => {
         expect(buttonRef.current).toBeEnabled();
         await rerender(<ReuseShell buttonRef={buttonRef} isDetail={true} />);
         expect(buttonRef.current).toBeEnabled();
+    });
+
+    it("opens a second dialog while the first one's onClosed clears the state that mounted it", async () => {
+        const { rerender } = await render(<DialogShell shown="about" />, { container: rootElement });
+        await rerender(<DialogShell shown="shortcuts" />);
+        expect(screen.queryAllByText("shortcuts body")).toHaveLength(1);
     });
 });
