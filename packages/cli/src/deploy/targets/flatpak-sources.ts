@@ -16,6 +16,7 @@ type GitSource = {
 
 const GENERATED_SOURCES = "generated-sources.json";
 const GENERATOR = "flatpak-node-generator";
+const FETCHABLE_URL = /^https?:\/\//;
 
 const LOCKFILE_BY_MANAGER: Record<PackageManager, string> = {
     npm: "package-lock.json",
@@ -58,6 +59,14 @@ const resolveSourceUrl = (settings: DeploySettings): string => {
         throw new Error(
             "Cannot build a Flathub-ready manifest without a public source: Flathub builds from a fetchable " +
             "repository, not from your working tree. Set `deploy.flatpak.source.url`.",
+        );
+    }
+
+    if (!FETCHABLE_URL.test(url)) {
+        throw new Error(
+            `Cannot build a Flathub-ready manifest from "${url}": Flathub's builders clone over HTTPS and have no ` +
+            "credentials, so an SSH remote never resolves there. Set `deploy.flatpak.source.url` to the " +
+            "repository's https:// URL.",
         );
     }
 

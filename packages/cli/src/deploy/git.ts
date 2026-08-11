@@ -9,7 +9,7 @@ const runGit = (root: string, args: string[]): string | null => {
     }
 
     try {
-        return execFileSync(git, args, { cwd: root, encoding: "utf8" }).trim();
+        return execFileSync(git, args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     } catch {
         return null;
     }

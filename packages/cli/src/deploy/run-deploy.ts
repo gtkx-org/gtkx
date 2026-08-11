@@ -2,7 +2,14 @@ import { loadConfig } from "@gtkx/config";
 import { info, warn } from "@gtkx/utils";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import type { DeployArtifact, DeployManifest, DeployPayload, DeploySettings, DeployTarget } from "./types.js";
+import type {
+    DeployArtifact,
+    DeployManifest,
+    DeployPayload,
+    DeploySettings,
+    DeployTarget,
+    DeployTool,
+} from "./types.js";
 import { build as buildApp } from "../builder.js";
 import { ensureGenerated } from "../codegen/run-codegen.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
@@ -15,7 +22,16 @@ import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
 import { resolveDeploySettings } from "./settings/index.js";
 import { readPackageManifest } from "./settings/package-manifest.js";
 import { missingDeployError } from "./settings/starter.js";
-import { APPSTREAMCLI, assertTools, DESKTOP_FILE_VALIDATE, probeTools, STRIP, warnMissingOptional } from "./tools.js";
+import {
+    APPSTREAMCLI,
+    assertTools,
+    DESKTOP_FILE_VALIDATE,
+    FLATPAK_NODE_GENERATOR,
+    probeTools,
+    STRIP,
+    TAR,
+    warnMissingOptional,
+} from "./tools.js";
 
 type DeployOptions = {
     entry: string;
@@ -71,9 +87,16 @@ const warnMissingNetwork = (settings: DeploySettings): void => {
     warn(`This app declares ${WEBKIT_LIBRARY} but its flatpak permissions omit ${NETWORK_ARG}, so pages will not load`);
 };
 
+const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
+    const isFlatpakSource = settings.deploy.flatpak?.mode === "source";
+
+    return isFlatpakSource && targets.some((target) => target.name === "flatpak") ? [FLATPAK_NODE_GENERATOR] : [];
+};
+
 const preflight = (targets: DeployTarget[], settings: DeploySettings, shouldPrintManifests: boolean): void => {
-    const packagerTools = shouldPrintManifests ? [] : targets.flatMap((target) => target.tools);
-    const report = probeTools([DESKTOP_FILE_VALIDATE, APPSTREAMCLI, STRIP, ...packagerTools]);
+    const packagerTools = shouldPrintManifests ? [] : [TAR, ...targets.flatMap((target) => target.tools)];
+    const required = [DESKTOP_FILE_VALIDATE, APPSTREAMCLI, STRIP, ...sourceModeTools(targets, settings)];
+    const report = probeTools([...required, ...packagerTools]);
     assertTools(report);
     warnMissingOptional(report);
     warnMissingNetwork(settings);

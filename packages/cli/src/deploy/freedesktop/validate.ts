@@ -1,5 +1,5 @@
-import { formatChildProcessError, resolveExecutable, warn } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
+import { resolveExecutable, warn } from "@gtkx/utils";
+import { spawnSync } from "node:child_process";
 
 type ValidationRequest = {
     tool: string;
@@ -10,13 +10,19 @@ type ValidationRequest = {
 const DIAGNOSTIC_PREFIX = /^[EIPW]:/;
 
 const runValidator = ({ tool, args, subject }: ValidationRequest): string => {
-    const executable = resolveExecutable(tool);
+    const result = spawnSync(resolveExecutable(tool), args, { encoding: "utf8" });
 
-    try {
-        return execFileSync(executable, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
-    } catch (error) {
-        throw new Error(`${subject} is not valid:\n${formatChildProcessError(error) ?? "no output"}`, { cause: error });
+    if (result.error !== undefined) {
+        throw new Error(`${subject} could not be validated: ${result.error.message}`, { cause: result.error });
     }
+
+    const output = [result.stdout, result.stderr].join("\n").trim();
+
+    if (result.status !== 0) {
+        throw new Error(`${subject} is not valid:\n${output.length > 0 ? output : "no output"}`);
+    }
+
+    return output;
 };
 
 const validateDesktopEntry = (path: string): void => {

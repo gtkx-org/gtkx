@@ -8,6 +8,7 @@ type DeployTool = {
     command: string;
     purpose: string;
     isOptional: boolean;
+    isPresent?: () => boolean;
 };
 
 type StagedFile = {

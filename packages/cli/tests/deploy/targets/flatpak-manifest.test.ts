@@ -166,3 +166,27 @@ describe("renderFlatpakManifest — source", () => {
         expect(sources).toContain("generated-sources.json");
     });
 });
+
+describe("renderFlatpakManifest — source URL", () => {
+    it("rejects an SSH remote, which Flathub's builders cannot clone", () => {
+        const settings = tutorialSettings({
+            deploy: { flatpak: { mode: "source", packageManager: "npm", source: { url: "git@github.com:o/r.git" } } },
+        });
+
+        expect(() => renderFlatpakManifest(payloadFor(settings))).toThrow(/clone over HTTPS/);
+    });
+
+    it("accepts an https remote", () => {
+        const settings = tutorialSettings({
+            deploy: {
+                flatpak: {
+                    mode: "source",
+                    packageManager: "npm",
+                    source: { url: "https://github.com/o/r.git", tag: "v1", commit: "abc" },
+                },
+            },
+        });
+
+        expect(() => renderFlatpakManifest(payloadFor(settings))).not.toThrow();
+    });
+});

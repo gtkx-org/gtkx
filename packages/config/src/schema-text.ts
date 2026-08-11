@@ -3,9 +3,11 @@ import { z } from "zod";
 const SEGMENT_SEPARATOR = /[/\\]/;
 
 const isRelativePath = (value: string): boolean => {
-    const segments = value.split(SEGMENT_SEPARATOR);
+    if (value.length === 0 || value.startsWith("/") || value.includes("\\")) {
+        return false;
+    }
 
-    return value.length > 0 && !value.startsWith("/") && segments.every((part) => part !== "" && part !== "..");
+    return value.split(SEGMENT_SEPARATOR).every((part) => part !== "" && part !== "..");
 };
 
 const text = (message: string): z.ZodString => z.string({ error: message }).min(1, { error: message });

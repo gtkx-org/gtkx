@@ -1,4 +1,5 @@
 import { tryResolveExecutable, warn } from "@gtkx/utils";
+import { spawnSync } from "node:child_process";
 import type { DeployTool } from "./types.js";
 import { detectPackageFamily, installHints } from "./install-hints.js";
 
@@ -8,6 +9,7 @@ type ToolReport = {
 };
 
 const DETAIL_COLUMN = 26;
+const FLATPAK_BUILDER_REF = "org.flatpak.Builder";
 
 const APPSTREAMCLI: DeployTool = {
     command: "appstreamcli",
@@ -37,6 +39,14 @@ const FLATPAK_BUILDER: DeployTool = {
     command: "flatpak-builder",
     purpose: "builds the Flatpak",
     isOptional: false,
+    isPresent: () =>
+        tryResolveExecutable("flatpak-builder") !== undefined || isFlatpakRefInstalled(FLATPAK_BUILDER_REF),
+};
+
+const FLATPAK_NODE_GENERATOR: DeployTool = {
+    command: "flatpak-node-generator",
+    purpose: "vendors the npm dependencies a Flathub build installs offline",
+    isOptional: false,
 };
 
 const STRIP: DeployTool = {
@@ -51,7 +61,18 @@ const TAR: DeployTool = {
     isOptional: false,
 };
 
-const isToolPresent = (tool: DeployTool): boolean => tryResolveExecutable(tool.command) !== undefined;
+const isFlatpakRefInstalled = (ref: string): boolean => {
+    const flatpak = tryResolveExecutable(FLATPAK.command);
+
+    if (flatpak === undefined) {
+        return false;
+    }
+
+    return spawnSync(flatpak, ["info", ref], { stdio: "ignore" }).status === 0;
+};
+
+const isToolPresent = (tool: DeployTool): boolean =>
+    tool.isPresent === undefined ? tryResolveExecutable(tool.command) !== undefined : tool.isPresent();
 
 const uniqueTools = (tools: DeployTool[]): DeployTool[] =>
     new Map(tools.map((tool) => [tool.command, tool])).values().toArray();
@@ -101,6 +122,7 @@ const warnMissingOptional = (report: ToolReport): void => {
 
 export {
     APPSTREAMCLI,
+    FLATPAK_NODE_GENERATOR,
     assertTools,
     DESKTOP_FILE_VALIDATE,
     FILE_TOOL,

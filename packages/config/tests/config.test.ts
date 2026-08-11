@@ -626,3 +626,11 @@ describe("validateConfig (deploy.extraFiles)", () => {
         }).toThrow("must be a destination path inside the install prefix");
     });
 });
+
+describe("validateConfig (deploy.extraFiles) — separators", () => {
+    it("rejects a destination containing a backslash, which is never a POSIX path segment", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "share\\evil": "NOTES.md" } } });
+        }).toThrow("must be a destination path inside the install prefix");
+    });
+});
