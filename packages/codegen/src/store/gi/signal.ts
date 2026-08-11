@@ -1,4 +1,4 @@
-import { camelCase, sourceStringLiteral } from "@gtkx/utils";
+import { camelCase, sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirCallable, GirParameter } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
@@ -335,7 +335,7 @@ const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParamet
         throw new Error("renderCallerOutAllocation: expected a named caller-allocated out-parameter");
     }
 
-    return `new ${context.qualify(name.namespaceName, name.typeName)}()`;
+    return `new ${context.qualify(name.namespaceName, sanitizeTypeIdentifier(name.typeName))}()`;
 };
 
 const renderCallback = (context: ModuleContext, signal: GirCallable): string => {

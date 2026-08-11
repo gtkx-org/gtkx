@@ -2,6 +2,7 @@ import { pascalCase, sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/u
 import type { GirClass, GirVirtualMethod } from "../../gir/class.js";
 import type { GirField } from "../../gir/field.js";
 import type { GirFunction } from "../../gir/function.js";
+import type { Library } from "../../gir/library.js";
 import type { GirParameter } from "../../gir/parameter.js";
 import type { GirRecord } from "../../gir/record.js";
 import type { TypeId } from "../../gir/type-id.js";
@@ -22,6 +23,7 @@ import {
     renderHandlerResultType,
 } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
+import { typeKey } from "../../analysis/type-key.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../../gir/ancestry.js";
 import { callbackAsFunction, type GirCallback } from "../../gir/callback.js";
 import { renderJsDoc } from "../../writer/doc.js";
@@ -235,24 +237,21 @@ const collectVtable = (context: ModuleContext, namespaceName: string, klass: Gir
 const shadowedSlotKey = (klass: GirClass, slot: VtableSlot): string =>
     `vfunc${sanitizeTypeIdentifier(klass.name)}${pascalCase(slot.field.name)}`;
 
-const typeKey = (ref: TypeId | undefined): string =>
-    ref === undefined ? "void" : `${String(ref.nsId)}.${String(ref.id)}`;
-
-const slotSignatureKey = (slot: VtableSlot): string => {
+const slotSignatureKey = (library: Library, slot: VtableSlot): string => {
     const [, ...parameters] = slot.callback.parameters;
 
     const parts = parameters.map(
-        (parameter) => `${typeKey(parameter.type)}/${parameter.direction}/${String(parameter.nullable)}`);
+        (parameter) => `${typeKey(library, parameter.type)}/${parameter.direction}/${String(parameter.nullable)}`);
 
-    return `${parts.join(",")}->${typeKey(slot.callback.returnValue.type)}`;
+    return `${parts.join(",")}->${typeKey(library, slot.callback.returnValue.type)}`;
 };
 
-const isShadowingSlot = (slot: VtableSlot, inherited: VtableSlot[]): boolean =>
+const isShadowingSlot = (library: Library, slot: VtableSlot, inherited: VtableSlot[]): boolean =>
     inherited.some(
         (other) =>
             other.key === slot.key &&
             slotIdentity(other) !== slotIdentity(slot) &&
-            slotSignatureKey(other) !== slotSignatureKey(slot));
+            slotSignatureKey(library, other) !== slotSignatureKey(library, slot));
 
 const disambiguateSlots = (
     context: ModuleContext,
@@ -263,7 +262,7 @@ const disambiguateSlots = (
     const inherited = ancestorSlots(context, namespaceName, klass);
 
     return slots.map((slot) =>
-        isShadowingSlot(slot, inherited) ? { ...slot, key: shadowedSlotKey(klass, slot) } : slot);
+        isShadowingSlot(context.library, slot, inherited) ? { ...slot, key: shadowedSlotKey(klass, slot) } : slot);
 };
 
 const ancestorSlots = (context: ModuleContext, namespaceName: string, klass: GirClass): VtableSlot[] => {

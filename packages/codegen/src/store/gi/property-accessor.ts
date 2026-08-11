@@ -6,6 +6,7 @@ import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
+import { comparisonContextFor } from "../../writer/comparison-context.js";
 import { renderBlock } from "../../writer/emit.js";
 import { isEmittableCallable } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
@@ -123,8 +124,9 @@ const areDelegatesAgreeing = (
         return true;
     }
 
-    const read = baseTypeName(renderMethodReturnType(context, getter.method));
-    const written = baseTypeName(renderTsType(context, setterParam.type, false));
+    const scratch = comparisonContextFor(context);
+    const read = baseTypeName(renderMethodReturnType(scratch, getter.method));
+    const written = baseTypeName(renderTsType(scratch, setterParam.type, false));
 
     return read === written;
 };

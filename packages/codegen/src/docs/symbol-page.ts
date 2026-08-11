@@ -51,6 +51,7 @@ import {
     type OriginSignatureEntry,
     plainText,
     propertyMetaLine,
+    qualifiedClassName,
     renderDocsSignalHandlerType,
     renderDocsType,
     signalTags,
@@ -201,9 +202,6 @@ const pageHeader = (entry: GiSymbolEntry, kindLabel: string): string[] => [
     ...annotationNotes(entryAnnotations(entry)),
     importBlock(entry),
 ];
-
-const qualifiedClassName = (namespaceName: string, className: string): string =>
-    `${namespaceName}.${sanitizeTypeIdentifier(className)}`;
 
 const elementNote = (entry: ClassSymbol, options: SymbolPageOptions): string[] => {
     const glibName = options.elementNameFor(entry.namespace.name, entry.klass.name);

@@ -1,3 +1,5 @@
+import { escapeReserved } from "./escape-reserved.ts";
+
 const RESERVED: Set<string> = new Set([
     "arguments",
     "await",
@@ -50,7 +52,7 @@ const RESERVED: Set<string> = new Set([
 ]);
 
 function sanitizeIdentifier(name: string): string {
-    return RESERVED.has(name) ? `${name}_` : name;
+    return escapeReserved(name, RESERVED);
 }
 
-export { sanitizeIdentifier };
+export { RESERVED, sanitizeIdentifier };

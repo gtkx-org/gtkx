@@ -43,9 +43,16 @@ describe("sanitizeTypeIdentifier", () => {
         expect(sanitizeIdentifier("object")).toBe("object");
     });
 
-    it("maps an already suffixed name to itself", () => {
-        expect(sanitizeTypeIdentifier("boolean_")).toBe("boolean_");
-        expect(sanitizeTypeIdentifier(sanitizeTypeIdentifier("enum"))).toBe("enum_");
+    it("suffixes an already suffixed name again, so no two names map together", () => {
+        expect(sanitizeTypeIdentifier("boolean_")).toBe("boolean__");
+        expect(sanitizeTypeIdentifier("boolean__")).toBe("boolean___");
+        expect(sanitizeTypeIdentifier(sanitizeTypeIdentifier("enum"))).toBe("enum__");
+        expect(sanitizeIdentifier("enum_")).toBe("enum__");
+    });
+
+    it("leaves an unreserved name that ends in an underscore alone", () => {
+        expect(sanitizeTypeIdentifier("Widget_")).toBe("Widget_");
+        expect(sanitizeIdentifier("iconName_")).toBe("iconName_");
     });
 
     it("leaves a safe name and the empty string unchanged", () => {

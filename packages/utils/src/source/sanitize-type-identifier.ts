@@ -1,6 +1,8 @@
-import { sanitizeIdentifier } from "./sanitize-identifier.ts";
+import { escapeReserved } from "./escape-reserved.ts";
+import { RESERVED } from "./sanitize-identifier.ts";
 
 const TYPE_RESERVED: Set<string> = new Set([
+    ...RESERVED,
     "any",
     "bigint",
     "boolean",
@@ -14,7 +16,7 @@ const TYPE_RESERVED: Set<string> = new Set([
 ]);
 
 function sanitizeTypeIdentifier(name: string): string {
-    return TYPE_RESERVED.has(name) ? `${name}_` : sanitizeIdentifier(name);
+    return escapeReserved(name, TYPE_RESERVED);
 }
 
 export { sanitizeTypeIdentifier };

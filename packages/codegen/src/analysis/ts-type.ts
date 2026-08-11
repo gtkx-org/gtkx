@@ -2,6 +2,7 @@ import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { Library } from "../gir/library.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
+import { isEmittableEntity } from "../gir/emittable.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import {
     type CArrayType,
@@ -25,22 +26,7 @@ type TsTypeTarget = {
     renderGtype: () => string;
 };
 
-const willEmitEntity = (type: EntityType): boolean => {
-    switch (type.kind) {
-        case "callback":
-        case "class":
-        case "interface":
-        case "record": {
-            return type.value.introspectable && type.value.name.length > 0;
-        }
-        case "enum": {
-            return type.value.introspectable;
-        }
-        case "alias": {
-            return true;
-        }
-    }
-};
+const willEmitEntity = (type: EntityType): boolean => isEmittableEntity(type.value);
 
 const referenceName = (library: Library, ref: TypeId): ReferenceName | undefined => {
     const name = library.nameFor(ref);

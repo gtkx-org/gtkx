@@ -7,9 +7,11 @@ import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
+import { isEmittableEntity } from "../gir/emittable.js";
 import { memberName, methodExportName } from "../store/gi/method.js";
 import { resolveAccessorType } from "../store/gi/property-accessor.js";
 import { vfuncMemberNames } from "../store/gi/vtable.js";
+import { comparisonContextFor } from "../writer/comparison-context.js";
 import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
 
@@ -69,7 +71,7 @@ const resolvePrerequisiteReference = (context: ModuleContext, name: string): str
         return undefined;
     }
 
-    if (!resolved.value.introspectable || resolved.value.name.length === 0) {
+    if (!isEmittableEntity(resolved.value)) {
         return undefined;
     }
 
@@ -357,7 +359,9 @@ const areParametersComparable = (context: ModuleContext, pair: ParameterPair): b
         return true;
     }
 
-    return renderTsType(context, pair.own.type, false) === renderTsType(context, pair.inherited.type, false);
+    const scratch = comparisonContextFor(context);
+
+    return renderTsType(scratch, pair.own.type, false) === renderTsType(scratch, pair.inherited.type, false);
 };
 
 const inputParameterPairs = (context: ModuleContext, own: GirFunction, inherited: GirFunction): ParameterPair[] => {

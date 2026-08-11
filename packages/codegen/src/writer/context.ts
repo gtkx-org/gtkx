@@ -1,4 +1,3 @@
-import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import { type Declaration, ModuleBuilder } from "./module.js";
@@ -66,9 +65,7 @@ class ModuleContext {
         });
     }
 
-    qualify(namespaceName: string, typeName: string): string {
-        const name = sanitizeTypeIdentifier(typeName);
-
+    qualify(namespaceName: string, name: string): string {
         if (namespaceName === this.namespace.name) {
             return name;
         }

@@ -4,6 +4,7 @@ import type { Library } from "../../gir/library.js";
 import type { GirAlias, GirNamespace } from "../../gir/namespace.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { getParentRef } from "../../gir/ancestry.js";
+import { isEmittableEntity } from "../../gir/emittable.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../../gir/primitives.js";
 import { ModuleContext } from "../../writer/context.js";
 import { generateCallback } from "./callback.js";
@@ -69,6 +70,10 @@ const generateNamespaceMembers = (context: ModuleContext, namespace: GirNamespac
 };
 
 const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
+    if (!isEmittableEntity(alias)) {
+        return;
+    }
+
     const category = alias.cType === undefined ? undefined : primitiveCategory(alias.cType);
     const targetType = category === "gtype" ? PRIMITIVE_TS_TYPE.gtype : renderTsType(context, alias.target);
     const doc = getDoc(alias);

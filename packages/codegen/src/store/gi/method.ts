@@ -1,4 +1,4 @@
-import { camelCase, sourceStringLiteral } from "@gtkx/utils";
+import { camelCase, sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -519,7 +519,7 @@ const planCallerOut = (
 
     if (name !== undefined && isCollectibleCallerOut(context, parameter)) {
         context.addRuntimeImport("getHandle");
-        const classExpression = context.qualify(name.namespaceName, name.typeName);
+        const classExpression = context.qualify(name.namespaceName, sanitizeTypeIdentifier(name.typeName));
 
         return {
             paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", isCallerAllocated: true }),

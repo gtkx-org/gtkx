@@ -5,6 +5,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import { omittedTypeRef, prerequisiteConflicts } from "../../analysis/interface-conflicts.js";
 import { resolveInterfaces } from "../../gir/ancestry.js";
+import { isEmittableEntity } from "../../gir/emittable.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 import {
@@ -73,11 +74,7 @@ const BRAND_NOTE = [
 ].join("\n");
 
 const generateInterface = (context: ModuleContext, iface: GirClass): void => {
-    if (!iface.introspectable) {
-        return;
-    }
-
-    if (iface.name.length === 0) {
+    if (!isEmittableEntity(iface)) {
         return;
     }
 

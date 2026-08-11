@@ -1,4 +1,4 @@
-import { sourceStringLiteral } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirCallback } from "../gir/callback.js";
 import type { Library } from "../gir/library.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
@@ -534,7 +534,7 @@ const structExpression = (
     options: { isCallerAllocated: boolean; isInline: boolean },
 ): string => {
     const { size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
-    const wrapperClass = context.qualify(resolved.namespace.name, resolved.value.name);
+    const wrapperClass = context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(resolved.value.name));
     const isCopyable = isValueMarshalable(context, resolved.namespace.name, resolved.value);
 
     return tStruct(ownership, {
@@ -614,7 +614,7 @@ const recordExpression = (
 
     if (refFunc !== undefined && unrefFunc !== undefined && lib !== undefined) {
         const wrapperClass = requiresFallbackClass(record)
-            ? context.qualify(resolved.namespace.name, record.name)
+            ? context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(record.name))
             : undefined;
 
         return fundamentalRecordExpression({

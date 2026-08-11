@@ -2,6 +2,7 @@ import { sanitizeIdentifier, sanitizeTypeIdentifier, sortStrings, sortStringsBy 
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirRecord } from "../gir/record.js";
+import { isEmittableEntity } from "../gir/emittable.js";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
@@ -214,7 +215,7 @@ const functionEntry = (
 };
 
 const classEntry = (namespace: GirNamespace, klass: GirClass): GiSymbolEntry | undefined => {
-    if (!klass.introspectable || klass.name.length === 0) {
+    if (!isEmittableEntity(klass)) {
         return undefined;
     }
 
@@ -238,7 +239,7 @@ const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
 };
 
 const recordEntry = (namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
-    if (!record.introspectable || record.isVtable || record.name.length === 0) {
+    if (record.isVtable || !isEmittableEntity(record)) {
         return undefined;
     }
 

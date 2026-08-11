@@ -90,6 +90,11 @@ const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): voi
     }
 
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
+
+    if (exportName.length === 0) {
+        return;
+    }
+
     const bindingName = namespaceBindingName(cIdentifier, exportName);
     context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
     const finish = matchNamespaceFinish(context, fn);

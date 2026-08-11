@@ -6,6 +6,7 @@ import { generateNamespaceModule } from "../../src/store/gi/pipeline.js";
 
 const FIXTURE_GIR_PATH = [join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "gir")];
 const library = Library.load(["Hazard-1.0", "Bare-1.0", "Clash-1.0"], FIXTURE_GIR_PATH);
+const twinLibrary = Library.load(["Twin-1.0"], FIXTURE_GIR_PATH);
 
 const sources: Map<string, string> = new Map(
     library.namespaces.values().map((namespace) => [namespace.name, generateNamespaceModule(namespace, library)]),
@@ -15,6 +16,12 @@ const hazard = String(sources.get("Hazard"));
 const bare = String(sources.get("Bare"));
 const clash = String(sources.get("Clash"));
 
+const generateTwinModules = (): void => {
+    for (const namespace of twinLibrary.namespaces.values()) {
+        generateNamespaceModule(namespace, twinLibrary);
+    }
+};
+
 describe("a namespace whose type names collide with TypeScript keywords", () => {
     it.each([
         ["boolean", "export class boolean_ {"],
@@ -23,6 +30,15 @@ describe("a namespace whose type names collide with TypeScript keywords", () => 
         ["object", "export class object_ {"],
     ])("suffixes the record named %s", (_name, declaration) => {
         expect(hazard).toContain(declaration);
+    });
+
+    it("suffixes again a type name that already carries the suffix", () => {
+        expect(hazard).toContain("export class boolean__ {");
+    });
+
+    it("suffixes again a value name that already carries the suffix", () => {
+        expect(hazard).toContain("export const in_ = 1;");
+        expect(hazard).toContain("export const in__ = 2;");
     });
 
     it("suffixes an alias named after a reserved word", () => {
@@ -62,12 +78,30 @@ describe("a namespace with member names that are not identifiers", () => {
         expect(hazard).not.toContain("hazardScalerResample(getHandle");
     });
 
-    it("prefixes an enum member whose name starts with a digit", () => {
-        expect(hazard).toContain("_2ND = 2");
+    it("declares every enum member once, under a name that is an identifier", () => {
+        expect(hazard).toContain("export enum Flavor { FIRST = 0, SECOND = 1, _2ND = 2 }");
+    });
+});
+
+describe("a namespace that declares something with no name", () => {
+    it("declares no enumeration", () => {
+        expect(hazard).not.toMatch(/export enum\s+\{/u);
     });
 
-    it("declares a repeated enum member only once", () => {
-        expect(hazard.split("SECOND = 1").length - 1).toBe(1);
+    it("declares no alias", () => {
+        expect(hazard).not.toMatch(/export type\s+=/u);
+    });
+
+    it("declares no constant", () => {
+        expect(hazard).not.toMatch(/export const\s+=/u);
+    });
+});
+
+describe("a namespace whose functions collide on one exported name", () => {
+    it("refuses to emit a module that would declare the name twice", () => {
+        expect(generateTwinModules).toThrow(
+            "The generated module declares 'init' twice in its value space.",
+        );
     });
 });
 

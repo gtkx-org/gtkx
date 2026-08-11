@@ -9,6 +9,7 @@
              c:identifier-prefixes="Hazard"
              c:symbol-prefixes="hazard">
     <record name="boolean" c:type="HazardBoolean"/>
+    <record name="boolean_" c:type="HazardBooleanUnderscore"/>
     <record name="enum" c:type="HazardEnum"/>
     <record name="void" c:type="HazardVoid"/>
     <record name="object" c:type="HazardObject"/>
@@ -23,6 +24,7 @@
       <member name="second" value="1" c:identifier="HAZARD_FLAVOR_SECOND"/>
       <member name="second" value="1" c:identifier="HAZARD_FLAVOR_SECOND"/>
       <member name="2nd" value="2" c:identifier="HAZARD_FLAVOR_2ND"/>
+      <member name="" value="3" c:identifier="HAZARD_FLAVOR_BLANK"/>
     </enumeration>
     <record name="Scaler" c:type="HazardScaler">
       <method name="2d" c:identifier="hazard_scaler_2d">
@@ -90,5 +92,20 @@
     <constant name="LIMIT" value="8" c:type="HAZARD_LIMIT">
       <type name="gint" c:type="gint"/>
     </constant>
+    <constant name="in" value="1" c:type="HAZARD_IN">
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="in_" value="2" c:type="HAZARD_IN_">
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="" value="3" c:type="HAZARD_ANONYMOUS">
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <enumeration name="" c:type="HazardNameless">
+      <member name="only" value="0" c:identifier="HAZARD_NAMELESS_ONLY"/>
+    </enumeration>
+    <alias name="" c:type="HazardNamelessAlias">
+      <type name="gint" c:type="gint"/>
+    </alias>
   </namespace>
 </repository>

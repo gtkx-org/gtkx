@@ -1,6 +1,7 @@
 import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { GirRecord } from "../../gir/record.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { isEmittableEntity } from "../../gir/emittable.js";
 import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
@@ -14,11 +15,7 @@ const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
     context.namespace.name === "GLib" && record.glibGetType === "g_error_get_type";
 
 const generateRecord = (context: ModuleContext, record: GirRecord): void => {
-    if (!record.introspectable) {
-        return;
-    }
-
-    if (record.name.length === 0) {
+    if (!isEmittableEntity(record)) {
         return;
     }
 

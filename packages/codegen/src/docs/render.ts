@@ -286,6 +286,9 @@ const originSignatureBlocks = (entries: OriginSignatureEntry[]): string[] =>
         signatureEntryBlock(item, item.origin === undefined ? [] : [`From \`${item.origin}\`.`]),
     );
 
+const qualifiedClassName = (namespaceName: string, className: string): string =>
+    `${namespaceName}.${sanitizeTypeIdentifier(className)}`;
+
 const classMethodEntries = (library: Library, namespace: GirNamespace, klass: GirClass): SignatureEntry[] => {
     const realContext = new ModuleContext(namespace, library);
     const signatureContext = docsSignatureContext(namespace, library);
@@ -362,6 +365,7 @@ export {
     originSignatureBlocks,
     classMethodEntries,
     methodsSectionBlocks,
+    qualifiedClassName,
     tagNotes,
     type MetaDocEntry,
     type SignatureEntry,

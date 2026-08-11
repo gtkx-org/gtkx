@@ -1,13 +1,13 @@
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
-import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
 import { isOutParameter } from "../gir/parameter.js";
 import { memberName } from "../store/gi/method.js";
 import { protectedChainSlotKeys, vfuncCallables, vfuncMemberNames } from "../store/gi/vtable.js";
 import { forEachAncestor } from "./inheritance.js";
 import { inputParameters } from "./param-structure.js";
+import { typeKey } from "./type-key.js";
 
 type MemberTable = Map<string, GirFunction>;
 
@@ -34,18 +34,6 @@ type CallableKeyPair = {
 };
 
 const CHAINABLE_SIGNAL_MEMBERS = ["addEventListener", "off", "on", "once", "removeEventListener"];
-
-const typeKey = (library: Library, ref: TypeId | undefined): string => {
-    if (ref === undefined) {
-        return "void";
-    }
-
-    const type = library.typeFor(ref);
-
-    return type?.kind === "primitive" && type.category === "void"
-        ? "void"
-        : `${String(ref.nsId)}.${String(ref.id)}`;
-};
 
 const callableKeys = (library: Library, fn: GirFunction): CallableKeys => ({
     inputs: inputParameters(library, fn).map((entry) => typeKey(library, entry.parameter.type)),

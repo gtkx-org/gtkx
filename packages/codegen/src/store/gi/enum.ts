@@ -2,6 +2,7 @@ import { sanitizeTypeIdentifier, sourceStringLiteral, uniqBy } from "@gtkx/utils
 import type { EnumMember, GirEnum } from "../../gir/enum.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { hasAnnotations } from "../../gir/annotations.js";
+import { isEmittableEntity } from "../../gir/emittable.js";
 import { indent } from "../../writer/emit.js";
 import { getDoc } from "./doc-spec.js";
 
@@ -14,12 +15,14 @@ const enumDoc = (enumeration: GirEnum): string =>
     getDoc(enumeration);
 
 const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
-    if (!enumeration.introspectable) {
+    if (!isEmittableEntity(enumeration)) {
         return;
     }
 
     const members = uniqBy(
-        enumeration.members.map((member) => ({ ...member, key: enumMemberKey(member.name) })),
+        enumeration.members
+            .map((member) => ({ ...member, key: enumMemberKey(member.name) }))
+            .filter((member) => member.key.length > 0),
         (member) => member.key,
     );
 

@@ -37,6 +37,39 @@ describe("ModuleBuilder", () => {
         );
     });
 
+    it("rejects a declaration recorded under a name its own code does not export", () => {
+        const builder = new ModuleBuilder();
+
+        const declareMismatched = (): void => {
+            builder.appendDeclaration({ name: "ListModel", code: LIST_MODEL_IMPL });
+        };
+
+        expect(declareMismatched).toThrow("The declaration recorded as 'ListModel' exports 'ListModelImpl'.");
+    });
+
+    it("rejects a declaration whose code exports nothing", () => {
+        const builder = new ModuleBuilder();
+
+        const declareBodyless = (): void => {
+            builder.appendDeclaration({ name: "ListModel", code: "interface ListModel {}" });
+        };
+
+        expect(declareBodyless).toThrow("The declaration recorded as 'ListModel' exports no name at all.");
+    });
+
+    it("rejects two declarations claiming one name in the same declaration space", () => {
+        const builder = new ModuleBuilder();
+        builder.appendDeclaration({ name: "init", code: "export function init(): void {}" });
+
+        const declareAgain = (): void => {
+            builder.appendDeclaration({ name: "init", code: "export function init(): void {}" });
+        };
+
+        expect(declareAgain).toThrow("The generated module declares 'init' twice in its value space.");
+    });
+});
+
+describe("ModuleBuilder registrations", () => {
     it("rejects a registration naming a symbol the module never declares", () => {
         const builder = new ModuleBuilder();
         builder.appendRegistration("init();", ["init"]);

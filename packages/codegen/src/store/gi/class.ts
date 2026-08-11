@@ -18,6 +18,7 @@ import {
     omittedTypeRef,
 } from "../../analysis/interface-conflicts.js";
 import { ancestorChain, getParentRef, type ResolvedAncestor } from "../../gir/ancestry.js";
+import { isEmittableEntity } from "../../gir/emittable.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
@@ -76,11 +77,7 @@ type AppendInstanceMethodsOptions = {
 };
 
 const generateClass = (context: ModuleContext, klass: GirClass): void => {
-    if (!klass.introspectable) {
-        return;
-    }
-
-    if (klass.name.length === 0) {
+    if (!isEmittableEntity(klass)) {
         return;
     }
 
@@ -293,7 +290,7 @@ const implementedRefFor = (options: ImplementedRefOptions): ImplementedRef | und
     const { context, klass, name, inherited } = options;
     const resolved = context.library.resolveType(context.namespace.name, name);
 
-    if (resolved?.kind !== "interface" || !resolved.value.introspectable || resolved.value.name.length === 0) {
+    if (resolved?.kind !== "interface" || !isEmittableEntity(resolved.value)) {
         return undefined;
     }
 
@@ -364,7 +361,7 @@ const resolveParent = (context: ModuleContext, klass: GirClass): string | undefi
 
     return parent === undefined
         ? undefined
-        : context.qualify(parent.namespaceName ?? context.namespace.name, parent.typeName);
+        : context.qualify(parent.namespaceName ?? context.namespace.name, sanitizeTypeIdentifier(parent.typeName));
 };
 
 export { generateClass };
