@@ -634,3 +634,23 @@ describe("validateConfig (deploy.extraFiles) — separators", () => {
         }).toThrow("must be a destination path inside the install prefix");
     });
 });
+
+describe("validateConfig (deploy.screenshots)", () => {
+    it("accepts a screenshot given as an absolute url", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { screenshots: [{ url: "https://example.com/one.png" }] } });
+        }).not.toThrow();
+    });
+
+    it("accepts a screenshot given as a project-relative file", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { screenshots: [{ file: "assets/one.png" }] } });
+        }).not.toThrow();
+    });
+
+    it("rejects a screenshot that names no image at all", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { screenshots: [{ caption: "no image" }] } });
+        }).toThrow("`deploy.screenshots[0]` must have either a `url` or a `file`");
+    });
+});

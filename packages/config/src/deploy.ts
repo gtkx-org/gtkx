@@ -48,12 +48,16 @@ const developerSchema = z.strictObject({
     email: text("must be an email address").optional(),
 });
 
-const screenshotSchema = z.strictObject({
-    url: url("must be an absolute URL to a PNG or JPEG").optional(),
-    file: text("must be an image path relative to the project root").optional(),
-    caption: text("must be a screenshot caption").optional(),
-    isDefault: flag(BOOLEAN_ERROR).optional(),
-});
+const screenshotSchema = z
+    .strictObject({
+        url: url("must be an absolute URL to a PNG or JPEG").optional(),
+        file: text("must be an image path relative to the project root").optional(),
+        caption: text("must be a screenshot caption").optional(),
+        isDefault: flag(BOOLEAN_ERROR).optional(),
+    })
+    .refine((entry) => entry.url !== undefined || entry.file !== undefined, {
+        error: "must have either a `url` or a `file`",
+    });
 
 const releaseSchema = z.strictObject({
     version: text(VERSION_ERROR),
