@@ -1,4 +1,4 @@
-import { pascalCase, sortStrings, sortStringsBy } from "@gtkx/utils";
+import { sanitizeIdentifier, sanitizeTypeIdentifier, sortStrings, sortStringsBy } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirRecord } from "../gir/record.js";
@@ -220,7 +220,7 @@ const classEntry = (namespace: GirNamespace, klass: GirClass): GiSymbolEntry | u
 
     const kind = klass.isInterface ? "interface" : "class";
 
-    return { kind, namespace, name: pascalCase(klass.name), doc: klass.doc, klass };
+    return { kind, namespace, name: sanitizeTypeIdentifier(klass.name), doc: klass.doc, klass };
 };
 
 const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
@@ -242,7 +242,7 @@ const recordEntry = (namespace: GirNamespace, record: GirRecord): GiSymbolEntry 
         return undefined;
     }
 
-    return { kind: "record", namespace, name: record.name, doc: record.doc, record };
+    return { kind: "record", namespace, name: sanitizeTypeIdentifier(record.name), doc: record.doc, record };
 };
 
 const recordEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
@@ -265,7 +265,7 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
         .map<GiSymbolEntry>((enumeration) => ({
             kind: "enum",
             namespace,
-            name: enumeration.name,
+            name: sanitizeTypeIdentifier(enumeration.name),
             doc: enumeration.doc,
             enumeration,
         })),
@@ -274,21 +274,21 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
         .map<GiSymbolEntry>((callback) => ({
             kind: "callback",
             namespace,
-            name: callback.name,
+            name: sanitizeTypeIdentifier(callback.name),
             doc: callback.doc,
             callback,
         })),
     ...namespace.aliases.map<GiSymbolEntry>((alias) => ({
         kind: "alias",
         namespace,
-        name: alias.name,
+        name: sanitizeTypeIdentifier(alias.name),
         doc: alias.doc,
         alias,
     })),
     ...namespace.constants.map<GiSymbolEntry>((constant) => ({
         kind: "constant",
         namespace,
-        name: constant.name,
+        name: sanitizeIdentifier(constant.name),
         doc: constant.doc,
         constant,
     })),

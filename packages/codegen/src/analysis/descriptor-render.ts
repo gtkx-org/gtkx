@@ -93,6 +93,7 @@ type ResolvedRecord = Extract<EntityType, { kind: "record" }>["value"];
 
 type FundamentalRecordOptions = {
     resolved: Extract<EntityType, { kind: "record" }>;
+    lib: string;
     refFunc: string;
     unrefFunc: string;
     ownership: Ownership;
@@ -427,13 +428,14 @@ const getFundamental = (
     node: Extract<EntityType, { kind: "class" | "interface" }>,
 ): AncestorFundamental | undefined => {
     const cls = node.value;
+    const lib = node.namespace.sharedLibrary;
 
-    if (!cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
+    if (lib === undefined || !cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
         return undefined;
     }
 
     return {
-        lib: node.namespace.sharedLibrary ?? "",
+        lib,
         refFunc: cls.glibRefFunc,
         unrefFunc: cls.glibUnrefFunc,
         typeName: cls.glibTypeName,
@@ -544,10 +546,10 @@ const structExpression = (
 };
 
 const fundamentalRecordExpression = (options: FundamentalRecordOptions): string => {
-    const { resolved, refFunc, unrefFunc, ownership, wrapperClass, isInline } = options;
+    const { resolved, lib, refFunc, unrefFunc, ownership, wrapperClass, isInline } = options;
 
     return renderFundamental({
-        lib: resolved.namespace.sharedLibrary ?? "",
+        lib,
         refFunc,
         unrefFunc,
         typeName: resolved.value.glibTypeName,
@@ -608,14 +610,16 @@ const recordExpression = (
 ): string => {
     const record = resolved.value;
     const { refFunc, unrefFunc } = recordRefPair(record);
+    const lib = resolved.namespace.sharedLibrary;
 
-    if (refFunc !== undefined && unrefFunc !== undefined) {
+    if (refFunc !== undefined && unrefFunc !== undefined && lib !== undefined) {
         const wrapperClass = requiresFallbackClass(record)
             ? context.qualify(resolved.namespace.name, record.name)
             : undefined;
 
         return fundamentalRecordExpression({
             resolved,
+            lib,
             refFunc,
             unrefFunc,
             ownership,
@@ -632,12 +636,11 @@ const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tU
 const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string => {
     const getter = resolved.value.glibGetType;
     const isSigned = resolved.value.members.some((member) => member.value.startsWith("-"));
+    const lib = resolved.namespace.sharedLibrary;
 
-    if (getter === undefined || getter === "") {
+    if (getter === undefined || getter === "" || lib === undefined) {
         return rawEnumDescriptor(isSigned);
     }
-
-    const lib = resolved.namespace.sharedLibrary ?? "";
 
     return resolved.value.kind === "bitfield" ? tFlags(lib, getter, isSigned) : tEnum(lib, getter, isSigned);
 };

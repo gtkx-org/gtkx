@@ -3,6 +3,7 @@ import type { GirClass } from "../../gir/class.js";
 import type { GirCallable, GirParameter } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
+import type { Declaration } from "../../writer/module.js";
 import {
     isCellInout,
     renderDescriptor,
@@ -92,12 +93,18 @@ const renderSignalDeclarations = (
     klass: GirClass,
     className: string,
     isParentlessObjectSubclass: boolean,
-): string[] => {
+): Declaration[] => {
     const base = { context, klass, className, isParentlessObjectSubclass };
 
-    const declarations = [
-        renderSignalMap({ ...base, suffix: SIGNALS_SUFFIX, renderEntry: renderSignalHandlerType }),
-        renderSignalMap({ ...base, suffix: SIGNAL_EMIT_SUFFIX, renderEntry: renderSignalEmitEntry }),
+    const declarations: Declaration[] = [
+        {
+            name: `${className}${SIGNALS_SUFFIX}`,
+            code: renderSignalMap({ ...base, suffix: SIGNALS_SUFFIX, renderEntry: renderSignalHandlerType }),
+        },
+        {
+            name: `${className}${SIGNAL_EMIT_SUFFIX}`,
+            code: renderSignalMap({ ...base, suffix: SIGNAL_EMIT_SUFFIX, renderEntry: renderSignalEmitEntry }),
+        },
     ];
 
     if (
@@ -107,7 +114,7 @@ const renderSignalDeclarations = (
             klass.implements.length > 0)
     ) {
         const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
-        declarations.push(renderSignalConnectInterface(className, isRootObject));
+        declarations.push({ name: className, code: renderSignalConnectInterface(className, isRootObject) });
     }
 
     return declarations;

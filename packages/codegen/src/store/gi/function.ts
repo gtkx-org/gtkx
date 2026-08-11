@@ -1,6 +1,5 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
-import type { GirNamespace } from "../../gir/namespace.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { tFn } from "../../analysis/descriptor.js";
 import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
@@ -90,13 +89,20 @@ const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): voi
         return;
     }
 
-    const bindingName = toCamelIdentifier(cIdentifier);
-    context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
     const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
+    const bindingName = namespaceBindingName(cIdentifier, exportName);
+    context.module.appendBinding(`const ${bindingName} = ${expression};`, cIdentifier);
     const finish = matchNamespaceFinish(context, fn);
     const declaration = renderNamespaceFunctionDeclaration({ context, fn, finish, exportName, bindingName });
     const doc = callableDoc(context, fn, { finishFn: finish?.fn });
-    context.module.appendDeclaration(`${doc}${declaration}`);
+    context.declare({ name: exportName, code: `${doc}${declaration}` });
+    appendBootstrapRegistration(context, fn, exportName);
+};
+
+const namespaceBindingName = (cIdentifier: string, exportName: string): string => {
+    const bindingName = toCamelIdentifier(cIdentifier);
+
+    return bindingName === exportName ? `_${bindingName}` : bindingName;
 };
 
 const matchNamespaceFinish = (context: ModuleContext, fn: GirFunction): NamespaceFinish | undefined => {
@@ -159,31 +165,21 @@ const stripLongestPrefix = (input: string, prefixes: string[]): string => {
     return best.length === 0 ? input : input.slice(best.length);
 };
 
-const isBootstrapFunction = (fn: GirFunction): boolean =>
-    fn.parameters.length === 0 && fn.introspectable && fn.shadowedBy === undefined && fn.cIdentifier !== undefined;
-
 const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {
+    if (fn.parameters.length > 0) {
+        return;
+    }
+
     if (fn.name === "init") {
-        context.module.appendRegistration(`${exportName}();`);
+        context.module.appendRegistration(`${exportName}();`, [exportName]);
 
         return;
     }
 
     if (fn.name === "finalize") {
         context.addRuntimeImport("onExit");
-        context.module.appendRegistration(`onExit(${exportName});`);
+        context.module.appendRegistration(`onExit(${exportName});`, [exportName]);
     }
 };
 
-const generateNamespaceBootstrap = (context: ModuleContext, namespace: GirNamespace): void => {
-    for (const fn of namespace.functions) {
-        if (!isBootstrapFunction(fn) || fn.cIdentifier === undefined) {
-            continue;
-        }
-
-        const exportName = namespaceFunctionExportName(fn.cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
-        appendBootstrapRegistration(context, fn, exportName);
-    }
-};
-
-export { renderFnExpression, generateNamespaceFunction, namespaceFunctionExportName, generateNamespaceBootstrap };
+export { renderFnExpression, generateNamespaceFunction, namespaceFunctionExportName };

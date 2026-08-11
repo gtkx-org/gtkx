@@ -1,3 +1,4 @@
+import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { Library } from "../gir/library.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
@@ -26,19 +27,27 @@ type TsTypeTarget = {
 
 const willEmitEntity = (type: EntityType): boolean => {
     switch (type.kind) {
-        case "callback": {
-            return type.value.introspectable && type.value.name.length > 0;
-        }
+        case "callback":
+        case "class":
+        case "interface":
         case "record": {
             return type.value.introspectable && type.value.name.length > 0;
         }
-        case "alias":
-        case "class":
-        case "enum":
-        case "interface": {
+        case "enum": {
+            return type.value.introspectable;
+        }
+        case "alias": {
             return true;
         }
     }
+};
+
+const referenceName = (library: Library, ref: TypeId): ReferenceName | undefined => {
+    const name = library.nameFor(ref);
+
+    return name === undefined
+        ? undefined
+        : { namespaceName: name.namespaceName, typeName: sanitizeTypeIdentifier(name.typeName) };
 };
 
 const renderPrimitiveType = (target: TsTypeTarget, type: Extract<GirType, { kind: "primitive" }>): string =>
@@ -56,11 +65,12 @@ const renderBaseType = (library: Library, target: TsTypeTarget, ref: TypeId | un
     }
 
     const type = library.typeFor(ref);
-    const name = library.nameFor(ref);
 
     if (type === undefined) {
-        return renderNamedType(target, undefined, name);
+        return renderNamedType(target, undefined, undefined);
     }
+
+    const name = referenceName(library, ref);
 
     switch (type.kind) {
         case "primitive": {

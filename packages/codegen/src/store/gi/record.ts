@@ -1,3 +1,4 @@
+import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { GirRecord } from "../../gir/record.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { indentMembers } from "../../writer/emit.js";
@@ -21,7 +22,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
         return;
     }
 
-    const className = record.name;
+    const className = sanitizeTypeIdentifier(record.name);
     const isErrorSubclass = isGErrorRecord(context, record);
 
     const callables: Callables = {
@@ -36,12 +37,17 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     const heritage = isErrorSubclass ? " extends globalThis.Error" : "";
     const doc = getDoc(record);
 
-    context.module.appendDeclaration(
-        `${doc}export class ${className}${heritage} {\n${body}\n}`,
-        context.declaredType(className),
-    );
+    context.declare({
+        name: className,
+        code: `${doc}export class ${className}${heritage} {\n${body}\n}`,
+        owner: record.name,
+    });
 
-    context.module.appendDeclaration(renderRecordConstructorPropsInterface(context, record, className));
+    context.declare({
+        name: `${className}ConstructorProps`,
+        code: renderRecordConstructorPropsInterface(context, record, className),
+    });
+
     const gtypeExpr = renderSourceGtype(context, record);
 
     appendWrapperClassRegistration(context, {

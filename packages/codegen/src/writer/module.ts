@@ -1,8 +1,9 @@
 import { ImportsBuilder } from "./imports.js";
 
-type DeclaredType = {
+type Declaration = {
     name: string;
-    owner: string;
+    code: string;
+    owner?: string | undefined;
 };
 
 class ModuleBuilder {
@@ -10,21 +11,42 @@ class ModuleBuilder {
     private bindingNames: Set<string> = new Set();
     private hoistedDescriptors: Map<string, string> = new Map();
     private declarations: string[] = [];
+    private declaredNames: Set<string> = new Set();
     private declaredTypes: Map<string, string> = new Map();
     private registrations: string[] = [];
+    private requiredNames: Set<string> = new Set();
     public imports: ImportsBuilder = new ImportsBuilder();
 
-    private claimTypeName(declared: DeclaredType): void {
-        const owner = this.declaredTypes.get(declared.name);
+    private claimTypeName(declaration: Declaration): void {
+        const { name, owner } = declaration;
 
-        if (owner !== undefined && owner !== declared.owner) {
+        if (owner === undefined) {
+            return;
+        }
+
+        const previous = this.declaredTypes.get(name);
+
+        if (previous !== undefined && previous !== owner) {
             throw new Error(
-                `The generated type '${declared.name}' is declared for both ${owner} and ${declared.owner}. ` +
+                `The generated type '${name}' is declared for both ${previous} and ${owner}. ` +
                 "Rename one of them, or drop the namespace from the configuration.",
             );
         }
 
-        this.declaredTypes.set(declared.name, declared.owner);
+        this.declaredTypes.set(name, owner);
+    }
+
+    private verifyRegistrations(): void {
+        const missing = [...this.requiredNames].filter((name) => !this.declaredNames.has(name));
+
+        if (missing.length === 0) {
+            return;
+        }
+
+        throw new Error(
+            `The generated module registers ${missing.join(", ")}, which it never declares. ` +
+            "A registration may only name a symbol whose declaration the same module emits.",
+        );
     }
 
     appendBinding(code: string, name?: string): void {
@@ -53,19 +75,22 @@ class ModuleBuilder {
         return name;
     }
 
-    appendDeclaration(code: string, declared?: DeclaredType): void {
-        if (declared !== undefined) {
-            this.claimTypeName(declared);
-        }
-
-        this.declarations.push(code);
+    appendDeclaration(declaration: Declaration): void {
+        this.claimTypeName(declaration);
+        this.declaredNames.add(declaration.name);
+        this.declarations.push(declaration.code);
     }
 
-    appendRegistration(code: string): void {
+    appendRegistration(code: string, requires: string[] = []): void {
+        for (const name of requires) {
+            this.requiredNames.add(name);
+        }
+
         this.registrations.push(code);
     }
 
     toSource(): string {
+        this.verifyRegistrations();
         const sections: string[] = [];
         const importsBlock = this.imports.toSource();
 
@@ -89,4 +114,4 @@ class ModuleBuilder {
     }
 }
 
-export { type DeclaredType, ModuleBuilder };
+export { type Declaration, ModuleBuilder };

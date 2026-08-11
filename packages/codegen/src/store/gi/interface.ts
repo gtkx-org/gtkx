@@ -1,8 +1,9 @@
-import { pascalCase, sourceStringLiteral } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
+import { omittedTypeRef, prerequisiteConflicts } from "../../analysis/interface-conflicts.js";
 import { resolveInterfaces } from "../../gir/ancestry.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
@@ -80,7 +81,7 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
         return;
     }
 
-    const className = pascalCase(iface.name);
+    const className = sanitizeTypeIdentifier(iface.name);
 
     const callables: Callables = {
         constructors: dedupeCallables(iface.constructors),
@@ -92,13 +93,16 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     const gtypeExpr = renderSourceGtype(context, iface);
     const implRef = appendInterfaceTypes(context, iface, className, callables) ?? "unknown";
     const classCode = renderInterfaceClass(context, { iface, className, callables, gtypeExpr, implRef });
-    context.module.appendDeclaration(classCode, context.declaredType(className));
+    context.declare({ name: className, code: classCode, owner: iface.name });
 
     for (const declaration of renderSignalDeclarations(context, iface, className, true)) {
-        context.module.appendDeclaration(declaration);
+        context.declare(declaration);
     }
 
-    context.module.appendDeclaration(renderInterfaceMaker(context, iface, className, callables));
+    context.declare({
+        name: makerName(className),
+        code: renderInterfaceMaker(context, iface, className, callables),
+    });
 
     appendInterfaceRegistration(context, {
         className,
@@ -136,7 +140,7 @@ const renderInterfaceLayout = (
 };
 
 const invokerMembers = (context: ModuleContext, iface: GirClass, callables: Callables): Map<string, string> => {
-    const className = pascalCase(iface.name);
+    const className = sanitizeTypeIdentifier(iface.name);
 
     const invokers: Set<string> = new Set(
         iface.vfuncs.map((vfunc) => vfunc.invoker).filter((invoker) => invoker !== undefined),
@@ -201,7 +205,7 @@ const appendInterfaceTypes = (
     callables: Callables,
 ): string | undefined => {
     const typeCode = renderInterfaceType(context, iface, className, callables);
-    context.module.appendDeclaration(typeCode, context.declaredType(className));
+    context.declare({ name: className, code: typeCode, owner: iface.name });
     const implType = renderInterfaceImplType(context, iface, className);
 
     if (implType === undefined) {
@@ -209,21 +213,43 @@ const appendInterfaceTypes = (
     }
 
     const implName = implTypeName(className);
-    context.module.appendDeclaration(implType, context.declaredType(className, implName));
+    context.declare({ name: implName, code: implType, owner: iface.name });
 
     return implName;
 };
 
+const prerequisiteRef = (context: ModuleContext, iface: GirClass, name: string): string | undefined => {
+    const ref = resolvePrerequisiteReference(context, name);
+    const resolved = context.library.resolveType(context.namespace.name, name);
+
+    if (ref === undefined || (resolved?.kind !== "class" && resolved?.kind !== "interface")) {
+        return undefined;
+    }
+
+    return omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, resolved.value));
+};
+
+const rootPrerequisiteRef = (context: ModuleContext, iface: GirClass): string => {
+    const ref = context.qualify("GObject", "Object");
+    const resolved = context.library.resolveType("GObject", "Object");
+
+    if (resolved?.kind !== "class") {
+        return ref;
+    }
+
+    return omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, resolved.value));
+};
+
 const interfaceTypeExtends = (context: ModuleContext, iface: GirClass): string => {
     const refs = iface.prerequisites
-        .map((name) => resolvePrerequisiteReference(context, name))
+        .map((name) => prerequisiteRef(context, iface, name))
         .filter((entry): entry is string => entry !== undefined);
 
     if (refs.length > 0) {
         return refs.join(", ");
     }
 
-    return context.qualify("GObject", "Object");
+    return rootPrerequisiteRef(context, iface);
 };
 
 const renderInterfaceType = (
@@ -264,7 +290,7 @@ const implPrerequisiteRefs = (context: ModuleContext, iface: GirClass): string[]
             continue;
         }
 
-        const name = implTypeName(pascalCase(prerequisite.klass.name));
+        const name = implTypeName(sanitizeTypeIdentifier(prerequisite.klass.name));
         refs.push(context.qualify(prerequisite.namespaceName, name));
     }
 
@@ -337,7 +363,7 @@ const renderInterfaceMembers = (
     callables: Callables,
     renderers: InterfaceMemberRenderers,
 ): string[] => {
-    const className = pascalCase(iface.name);
+    const className = sanitizeTypeIdentifier(iface.name);
     const scope = instanceScope(className, callables);
     const claimedNames: Set<string> = new Set();
     const methodMembers = collectMethodMembers({ context, className, scope, callables, renderers, claimedNames });

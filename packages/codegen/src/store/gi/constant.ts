@@ -1,4 +1,4 @@
-import { sourceStringLiteral } from "@gtkx/utils";
+import { sanitizeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirConstant } from "../../gir/namespace.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { TypeId } from "../../gir/type-id.js";
@@ -10,7 +10,12 @@ const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["bigint64", "biguint6
 
 const generateConstant = (context: ModuleContext, constant: GirConstant): void => {
     const doc = getDoc(constant);
-    context.module.appendDeclaration(`${doc}export const ${constant.name} = ${constantLiteral(context, constant)};`);
+    const name = sanitizeIdentifier(constant.name);
+
+    context.declare({
+        name,
+        code: `${doc}export const ${name} = ${constantLiteral(context, constant)};`,
+    });
 };
 
 const constantLiteral = (context: ModuleContext, constant: GirConstant): string => {

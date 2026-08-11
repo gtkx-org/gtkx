@@ -1,4 +1,4 @@
-import { pascalCase, sortStringsBy, upperFirst } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sortStringsBy, upperFirst } from "@gtkx/utils";
 import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirClass } from "../gir/class.js";
 import type { EnumMember, GirEnum } from "../gir/enum.js";
@@ -203,7 +203,7 @@ const pageHeader = (entry: GiSymbolEntry, kindLabel: string): string[] => [
 ];
 
 const qualifiedClassName = (namespaceName: string, className: string): string =>
-    `${namespaceName}.${pascalCase(className)}`;
+    `${namespaceName}.${sanitizeTypeIdentifier(className)}`;
 
 const elementNote = (entry: ClassSymbol, options: SymbolPageOptions): string[] => {
     const glibName = options.elementNameFor(entry.namespace.name, entry.klass.name);
@@ -354,7 +354,7 @@ const memberOwners = (entry: ClassSymbol, library: Library): MemberOwner[] => [
 
 const interfaceMethodNames = (library: Library, owner: MemberOwner): string[] => {
     const context = docsSignatureContext(owner.namespace, library);
-    const className = pascalCase(owner.klass.name);
+    const className = sanitizeTypeIdentifier(owner.klass.name);
     const methods = dedupeCallables(owner.klass.methods);
 
     const scope = instanceScope(className, {

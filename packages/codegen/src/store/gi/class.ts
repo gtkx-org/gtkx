@@ -1,16 +1,23 @@
-import { pascalCase, toCamelIdentifier } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import {
+    ancestorClassMethodNames,
     collectInheritedMethods,
     collectInheritedPropertyTypes,
     collectInterfaceMergeOmissions,
     conflictRename,
     type InheritedMethods,
 } from "../../analysis/inheritance.js";
-import { ancestorChain, type ResolvedAncestor } from "../../gir/ancestry.js";
-import { splitOptionalNamespace } from "../../gir/type-ref.js";
+import {
+    type ClaimedMembers,
+    claimInterfaceMembers,
+    inheritedMembers,
+    interfaceConflicts,
+    omittedTypeRef,
+} from "../../analysis/interface-conflicts.js";
+import { ancestorChain, getParentRef, type ResolvedAncestor } from "../../gir/ancestry.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
@@ -37,6 +44,7 @@ type ImplementedRef = {
     makerRef: string;
     interfaceKlass: GirClass;
     interfaceNamespace: string;
+    conflicts: string[];
 };
 
 type MemberDeclarationsOptions = {
@@ -48,6 +56,14 @@ type MemberDeclarationsOptions = {
 };
 
 type ClassMembers = { members: string[]; accessors: ResolvedAccessor[] };
+
+type ImplementedRefOptions = {
+    context: ModuleContext;
+    klass: GirClass;
+    name: string;
+    inherited: Set<string>;
+    claimed: ClaimedMembers;
+};
 
 type AppendInstanceMethodsOptions = {
     context: ModuleContext;
@@ -68,7 +84,7 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
         return;
     }
 
-    const className = pascalCase(klass.name);
+    const className = sanitizeTypeIdentifier(klass.name);
 
     const callables: Callables = {
         constructors: dedupeCallables(klass.constructors),
@@ -80,18 +96,23 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     const parentExpression = resolveParent(context, klass);
     const extendsClause = renderExtendsClause(context, parentExpression, callables);
     const implemented = resolveImplementedRefs(context, klass);
-    const typeRefs = implemented.map((ref) => ref.typeRef);
+    const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));
     const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
     const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
     const doc = getDoc(klass);
 
-    context.module.appendDeclaration(
-        `${doc}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
-        context.declaredType(className),
-    );
+    context.declare({
+        name: className,
+        code: `${doc}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
+        owner: klass.name,
+    });
 
-    context.module.appendDeclaration(renderConstructorPropsInterface(context, klass, className));
+    context.declare({
+        name: `${className}ConstructorProps`,
+        code: renderConstructorPropsInterface(context, klass, className),
+    });
+
     appendMemberDeclarations({ context, klass, className, accessors, implemented });
     appendInstallMixins(context, className, implemented);
     appendClassRegistrations(context, klass, className);
@@ -101,11 +122,11 @@ const appendMemberDeclarations = (options: MemberDeclarationsOptions): void => {
     const { context, klass, className, accessors, implemented } = options;
 
     for (const declaration of renderPropertyDeclarations(context, klass, className, accessors)) {
-        context.module.appendDeclaration(declaration);
+        context.declare(declaration);
     }
 
     for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
-        context.module.appendDeclaration(declaration);
+        context.declare(declaration);
     }
 
     appendInterfaceMerge(context, klass, className, implemented);
@@ -122,7 +143,11 @@ const appendInterfaceMerge = (
     }
 
     const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
-    context.module.appendDeclaration(`export interface ${className} extends ${mergeRefs.join(", ")} {}`);
+
+    context.declare({
+        name: className,
+        code: `export interface ${className} extends ${mergeRefs.join(", ")} {}`,
+    });
 };
 
 const renderClassMembers = (
@@ -131,7 +156,7 @@ const renderClassMembers = (
     callables: Callables,
     hasParent: boolean,
 ): ClassMembers => {
-    const className = pascalCase(klass.name);
+    const className = sanitizeTypeIdentifier(klass.name);
     const members: string[] = [gtypeMemberDeclaration(context)];
     const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
 
@@ -156,6 +181,7 @@ const renderClassMembers = (
 
     members.push(...renderVfuncMembers({ context, klass, mode: "implementation" }));
     const inheritedPropertyTypes = collectInheritedPropertyTypes(context, klass);
+    const inheritedNames = ancestorClassMethodNames(context, klass);
     const accessors: ResolvedAccessor[] = [];
 
     for (const property of klass.properties) {
@@ -167,6 +193,7 @@ const renderClassMembers = (
             claimedNames,
             methodByName: scope.methodByName,
             inheritedType,
+            inheritedNames,
         });
 
         if (accessor === undefined) {
@@ -204,8 +231,13 @@ const appendInstallMixins = (context: ModuleContext, className: string, implemen
     }
 
     context.addRuntimeImport("installMixins");
-    const makers = implemented.map((ref) => ref.makerRef).join(", ");
-    context.module.appendRegistration(`installMixins(${className}, [${makers}]);`);
+    const makerRefs = implemented.map((ref) => ref.makerRef);
+    const localRefs = makerRefs.filter((ref) => !ref.includes("."));
+
+    context.module.appendRegistration(`installMixins(${className}, [${makerRefs.join(", ")}]);`, [
+        className,
+        ...localRefs,
+    ]);
 };
 
 const appendClassRegistrations = (context: ModuleContext, klass: GirClass, className: string): void => {
@@ -254,23 +286,14 @@ const interfaceMergeRef = (context: ModuleContext, klass: GirClass, ref: Impleme
         namespaceName: ref.interfaceNamespace,
     });
 
-    if (omissions.length === 0) {
-        return ref.typeRef;
-    }
-
-    const keys = omissions.map((name) => JSON.stringify(name)).join(" | ");
-
-    return `Omit<${ref.typeRef}, ${keys}>`;
+    return omittedTypeRef(ref.typeRef, [...omissions, ...ref.conflicts]);
 };
 
-const implementedRefFor = (
-    context: ModuleContext,
-    name: string,
-    inherited: Set<string>,
-): ImplementedRef | undefined => {
+const implementedRefFor = (options: ImplementedRefOptions): ImplementedRef | undefined => {
+    const { context, klass, name, inherited } = options;
     const resolved = context.library.resolveType(context.namespace.name, name);
 
-    if (resolved?.kind !== "interface") {
+    if (resolved?.kind !== "interface" || !resolved.value.introspectable || resolved.value.name.length === 0) {
         return undefined;
     }
 
@@ -278,22 +301,34 @@ const implementedRefFor = (
         return undefined;
     }
 
-    const pascal = pascalCase(resolved.value.name);
+    const typeName = sanitizeTypeIdentifier(resolved.value.name);
+
+    const conflictOptions = {
+        context,
+        klass,
+        iface: resolved.value,
+        ifaceNamespace: resolved.namespace.name,
+    };
+
+    const conflicts = interfaceConflicts(conflictOptions, options.claimed);
+    claimInterfaceMembers(conflictOptions, options.claimed);
 
     return {
-        typeRef: context.qualify(resolved.namespace.name, pascal),
-        makerRef: context.qualify(resolved.namespace.name, `make${pascal}`),
+        typeRef: context.qualify(resolved.namespace.name, typeName),
+        makerRef: context.qualify(resolved.namespace.name, `make${typeName}`),
         interfaceKlass: resolved.value,
         interfaceNamespace: resolved.namespace.name,
+        conflicts,
     };
 };
 
 const resolveImplementedRefs = (context: ModuleContext, klass: GirClass): ImplementedRef[] => {
     const inherited = inheritedInterfaceKeys(context, klass);
+    const claimed = inheritedMembers(context, klass);
     const refs: ImplementedRef[] = [];
 
     for (const name of klass.implements) {
-        const ref = implementedRefFor(context, name, inherited);
+        const ref = implementedRefFor({ context, klass, name, inherited, claimed });
 
         if (ref !== undefined) {
             refs.push(ref);
@@ -325,13 +360,11 @@ const renderExtendsClause = (
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
-    if (klass.parent === undefined) {
-        return undefined;
-    }
+    const parent = getParentRef(klass);
 
-    const [namespace, typeName] = splitOptionalNamespace(klass.parent);
-
-    return context.qualify(namespace ?? context.namespace.name, pascalCase(typeName));
+    return parent === undefined
+        ? undefined
+        : context.qualify(parent.namespaceName ?? context.namespace.name, parent.typeName);
 };
 
 export { generateClass };

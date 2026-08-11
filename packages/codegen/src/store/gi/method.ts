@@ -74,7 +74,13 @@ type PlanArgsContext = {
     folded: Set<number>;
 };
 
-const methodExportName = (fn: GirFunction): string => camelCase(fn.name);
+const memberName = (girName: string): string => {
+    const camel = camelCase(girName);
+
+    return /^\d/.test(camel) ? `_${camel}` : camel;
+};
+
+const methodExportName = (fn: GirFunction): string => memberName(fn.name);
 
 const arrayLengthArgument = (source: GirParameter, sourceIndex: number): string => {
     const identifier = parameterIdentifier(source, sourceIndex);
@@ -681,6 +687,7 @@ const parameterCallExpression = (
 export {
     constructibleName,
     isCallbackParameter,
+    memberName,
     methodExportName,
     renderMethodSignature,
     renderMethodReturnType,

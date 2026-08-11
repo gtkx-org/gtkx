@@ -1,4 +1,4 @@
-import { pascalCase, sortStringsBy } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sortStringsBy } from "@gtkx/utils";
 import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
@@ -289,7 +289,7 @@ const originSignatureBlocks = (entries: OriginSignatureEntry[]): string[] =>
 const classMethodEntries = (library: Library, namespace: GirNamespace, klass: GirClass): SignatureEntry[] => {
     const realContext = new ModuleContext(namespace, library);
     const signatureContext = docsSignatureContext(namespace, library);
-    const className = pascalCase(klass.name);
+    const className = sanitizeTypeIdentifier(klass.name);
     const inherited = collectInheritedMethods(realContext, klass);
 
     return instanceMethodEntries(signatureContext, klass, (method) =>
@@ -307,7 +307,7 @@ const instanceMethodEntries = (
 ): SignatureEntry[] => {
     const deduped = dedupeCallables(klass.methods);
 
-    const scope = instanceScope(pascalCase(klass.name), {
+    const scope = instanceScope(sanitizeTypeIdentifier(klass.name), {
         constructors: dedupeCallables(klass.constructors),
         functions: dedupeCallables(klass.functions),
         methods: deduped,

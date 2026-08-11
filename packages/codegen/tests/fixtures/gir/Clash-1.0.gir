@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Clash"
+             version="1.0"
+             shared-library="libclash.so.1"
+             c:identifier-prefixes="Clash"
+             c:symbol-prefixes="clash">
+    <alias name="Weird" c:type="ClashWeird">
+      <type name="unsigned long long" c:type="unsigned long long"/>
+    </alias>
+    <interface name="Sink"
+               c:symbol-prefix="sink"
+               c:type="ClashSink"
+               glib:type-name="ClashSink"
+               glib:get-type="clash_sink_get_type">
+      <method name="get_item" c:identifier="clash_sink_get_item">
+        <return-value transfer-ownership="none">
+          <type name="Base" c:type="ClashBase*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="sink" transfer-ownership="none">
+            <type name="Sink" c:type="ClashSink*"/>
+          </instance-parameter>
+          <parameter name="index" transfer-ownership="none">
+            <type name="gint" c:type="gint"/>
+          </parameter>
+        </parameters>
+      </method>
+    </interface>
+    <class name="Base"
+           c:symbol-prefix="base"
+           c:type="ClashBase"
+           glib:type-name="ClashBase"
+           glib:get-type="clash_base_get_type"
+           glib:type-struct="BaseClass">
+      <method name="is_live" c:identifier="clash_base_is_live">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="base" transfer-ownership="none">
+            <type name="Base" c:type="ClashBase*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_item" c:identifier="clash_base_get_item">
+        <return-value transfer-ownership="none">
+          <type name="Base" c:type="ClashBase*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="base" transfer-ownership="none">
+            <type name="Base" c:type="ClashBase*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <record name="BaseClass" c:type="ClashBaseClass" glib:is-gtype-struct-for="Base">
+      <field name="query">
+        <callback name="query" c:type="query">
+          <return-value transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </return-value>
+          <parameters>
+            <parameter name="base" transfer-ownership="none">
+              <type name="Base" c:type="ClashBase*"/>
+            </parameter>
+            <parameter name="value" transfer-ownership="none">
+              <type name="gint" c:type="gint"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+    <class name="Derived"
+           c:symbol-prefix="derived"
+           c:type="ClashDerived"
+           parent="Base"
+           glib:type-name="ClashDerived"
+           glib:get-type="clash_derived_get_type"
+           glib:type-struct="DerivedClass">
+      <implements name="Sink"/>
+      <property name="is-live" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+    <record name="DerivedClass" c:type="ClashDerivedClass" glib:is-gtype-struct-for="Derived">
+      <field name="parent_class">
+        <type name="BaseClass" c:type="ClashBaseClass"/>
+      </field>
+      <field name="query">
+        <callback name="query" c:type="query">
+          <return-value transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </return-value>
+          <parameters>
+            <parameter name="derived" transfer-ownership="none">
+              <type name="Derived" c:type="ClashDerived*"/>
+            </parameter>
+            <parameter name="direction" transfer-ownership="none">
+              <type name="gint" c:type="gint"/>
+            </parameter>
+            <parameter name="value" transfer-ownership="none">
+              <type name="gint" c:type="gint"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+  </namespace>
+</repository>

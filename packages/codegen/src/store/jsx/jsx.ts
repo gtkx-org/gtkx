@@ -1,4 +1,4 @@
-import { sourceStringLiteral } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
@@ -285,7 +285,7 @@ const renderInterfacePropsBlock = (
 
     const extendsClause = prerequisiteExtends.length === 0 ? "" : ` extends ${prerequisiteExtends.join(", ")}`;
     addGiNamespace(imports, iface.namespace.name, giNamespaceAlias(iface.namespace.name));
-    const selfDefault = `${giNamespaceAlias(iface.namespace.name)}.${iface.klass.name}`;
+    const selfDefault = `${giNamespaceAlias(iface.namespace.name)}.${sanitizeTypeIdentifier(iface.klass.name)}`;
     const signature = `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`;
     const block = `${getDoc(iface.klass)}${renderBlock(signature, ownerLines.join("\n"))}`;
 
@@ -324,7 +324,7 @@ const renderPropBlock = (
     const ownerLines = dedupePropLines(["ref?: Ref<Self | null> | undefined;", ...propLines]);
     const extendsList = resolveElementExtends(library, entry, context);
     const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
-    const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${entry.klass.name}`;
+    const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${sanitizeTypeIdentifier(entry.klass.name)}`;
 
     const block = `${getDoc(entry.klass)}${renderBlock(
         `export interface ${entry.glibName}Props<Self = ${selfDefault}>${extendsClause}`,

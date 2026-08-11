@@ -1,16 +1,17 @@
+import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirAlias, GirNamespace } from "../../gir/namespace.js";
 import { renderTsType } from "../../analysis/ts-type.js";
+import { getParentRef } from "../../gir/ancestry.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../../gir/primitives.js";
-import { splitOptionalNamespace } from "../../gir/type-ref.js";
 import { ModuleContext } from "../../writer/context.js";
 import { generateCallback } from "./callback.js";
 import { generateClass } from "./class.js";
 import { generateConstant } from "./constant.js";
 import { getDoc } from "./doc-spec.js";
 import { generateEnum } from "./enum.js";
-import { generateNamespaceBootstrap, generateNamespaceFunction } from "./function.js";
+import { generateNamespaceFunction } from "./function.js";
 import { generateInterface } from "./interface.js";
 import { generateRecord } from "./record.js";
 
@@ -58,8 +59,6 @@ const generateNamespaceMembers = (context: ModuleContext, namespace: GirNamespac
         generateNamespaceFunction(context, fn);
     }
 
-    generateNamespaceBootstrap(context, namespace);
-
     for (const constant of namespace.constants) {
         generateConstant(context, constant);
     }
@@ -73,11 +72,13 @@ const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
     const category = alias.cType === undefined ? undefined : primitiveCategory(alias.cType);
     const targetType = category === "gtype" ? PRIMITIVE_TS_TYPE.gtype : renderTsType(context, alias.target);
     const doc = getDoc(alias);
+    const name = sanitizeTypeIdentifier(alias.name);
 
-    context.module.appendDeclaration(
-        `${doc}export type ${alias.name} = ${targetType};`,
-        context.declaredType(alias.name),
-    );
+    context.declare({
+        name,
+        code: `${doc}export type ${name} = ${targetType};`,
+        owner: alias.name,
+    });
 };
 
 const visitClass = (state: TopologicalState, klass: GirClass): void => {
@@ -124,17 +125,13 @@ const sameNamespaceParent = (
     namespaceName: string,
     byLocalName: Map<string, GirClass>,
 ): GirClass | undefined => {
-    if (klass.parent === undefined) {
+    const parent = getParentRef(klass);
+
+    if (parent === undefined || (parent.namespaceName !== undefined && parent.namespaceName !== namespaceName)) {
         return undefined;
     }
 
-    const [parentNamespace, typeName] = splitOptionalNamespace(klass.parent);
-
-    if (parentNamespace !== undefined && parentNamespace !== namespaceName) {
-        return undefined;
-    }
-
-    return byLocalName.get(typeName);
+    return byLocalName.get(parent.typeName);
 };
 
 export { generateNamespaceModule };

@@ -28,9 +28,11 @@ type PropertyAccessorArgs = {
     claimedNames: Set<string>;
     methodByName: Map<string, GirFunction>;
     inheritedType?: string | undefined;
+    inheritedNames?: Set<string> | undefined;
 };
 
 type AccessorDelegate = { member: string | undefined; method: GirFunction | undefined };
+type AccessorDelegates = { getter: AccessorDelegate; setter: AccessorDelegate };
 
 type GetterBodyOptions = {
     context: ModuleContext;
@@ -39,6 +41,9 @@ type GetterBodyOptions = {
     getterMethod: GirFunction | undefined;
     tsType: string;
 };
+
+const NO_DELEGATE: AccessorDelegate = { member: undefined, method: undefined };
+const NULLABLE_SUFFIX = " | null";
 
 const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined): boolean => {
     if (type === undefined) {
@@ -104,6 +109,37 @@ const resolveSetterDelegate = (args: PropertyAccessorArgs, jsName: string, isWri
     );
 };
 
+const baseTypeName = (type: string): string =>
+    type.endsWith(NULLABLE_SUFFIX) ? type.slice(0, -NULLABLE_SUFFIX.length) : type;
+
+const areDelegatesAgreeing = (
+    context: ModuleContext,
+    getter: AccessorDelegate,
+    setter: AccessorDelegate,
+): boolean => {
+    const setterParam = setter.method?.parameters[0];
+
+    if (setterParam === undefined || getter.method === undefined) {
+        return true;
+    }
+
+    const read = baseTypeName(renderMethodReturnType(context, getter.method));
+    const written = baseTypeName(renderTsType(context, setterParam.type, false));
+
+    return read === written;
+};
+
+const resolveDelegates = (args: PropertyAccessorArgs, jsName: string, isWritable: boolean): AccessorDelegates => {
+    const getter = resolveGetterDelegate(args, jsName);
+    const setter = resolveSetterDelegate(args, jsName, isWritable);
+
+    if (areDelegatesAgreeing(args.context, getter, setter)) {
+        return { getter, setter };
+    }
+
+    return { getter: NO_DELEGATE, setter: NO_DELEGATE };
+};
+
 const resolveOwnType = (
     context: ModuleContext,
     property: GirProperty,
@@ -123,23 +159,27 @@ const resolveOwnType = (
     return renderTsType(context, property.type, isNullablePropertyType(context, property.type));
 };
 
-const isSkippedAccessor = (property: GirProperty, jsName: string, claimedNames: Set<string>): boolean =>
-    !property.introspectable || claimedNames.has(jsName) || jsName === "constructor";
+const isSkippedAccessor = (args: PropertyAccessorArgs, jsName: string): boolean =>
+    !args.property.introspectable ||
+    args.claimedNames.has(jsName) ||
+    args.inheritedNames?.has(jsName) === true ||
+    jsName === "constructor";
 
 const resolveTsType = (inheritedType: string | undefined, ownType: string): string =>
     inheritedType !== undefined && inheritedType !== ownType ? inheritedType : ownType;
 
 const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
-    const { context, property, claimedNames } = args;
+    const { context, property } = args;
     const jsName = toCamelIdentifier(property.name);
 
-    if (isSkippedAccessor(property, jsName, claimedNames)) {
+    if (isSkippedAccessor(args, jsName)) {
         return undefined;
     }
 
     const isWritable = isConstructableProperty(property) && !property.constructOnly;
-    const { member: getterMember, method: getterMethod } = resolveGetterDelegate(args, jsName);
-    const { member: setterMember, method: setterMethod } = resolveSetterDelegate(args, jsName, isWritable);
+    const { getter, setter } = resolveDelegates(args, jsName, isWritable);
+    const { member: getterMember, method: getterMethod } = getter;
+    const { member: setterMember, method: setterMethod } = setter;
     const hasGetter = property.readable || getterMember !== undefined;
 
     if (!hasGetter && !isWritable) {

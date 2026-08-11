@@ -76,7 +76,10 @@ const renderEnumsModule = (tokens: EnumRow[], docs: GlDocContext): string => {
     const builder = new ModuleBuilder();
 
     for (const row of tokens) {
-        builder.appendDeclaration(`${enumJsDoc(row, docs)}\nexport const ${row.exportName} = ${row.literal};`);
+        builder.appendDeclaration({
+            name: row.exportName,
+            code: `${enumJsDoc(row, docs)}\nexport const ${row.exportName} = ${row.literal};`,
+        });
     }
 
     return `${generatedHeader(docs)}\n\n${builder.toSource()}`;
@@ -135,7 +138,11 @@ const appendScalarAliases = (builder: ModuleBuilder, docs: GlDocContext): void =
         }
 
         seen.add(scalar.tsAlias);
-        builder.appendDeclaration(`${scalarJsDoc(scalar.tsAlias, docs)}\nexport type ${scalar.tsAlias} = number;`);
+
+        builder.appendDeclaration({
+            name: scalar.tsAlias,
+            code: `${scalarJsDoc(scalar.tsAlias, docs)}\nexport type ${scalar.tsAlias} = number;`,
+        });
     }
 };
 
@@ -143,7 +150,10 @@ const appendGroupAliases = (builder: ModuleBuilder, groupAliases: Map<string, st
     const sorted = sortStringsBy(groupAliases.entries(), ([key]) => key);
 
     for (const [group, base] of sorted) {
-        builder.appendDeclaration(`${groupAliasJsDoc(group, base, docs)}\nexport type ${group} = ${base};`);
+        builder.appendDeclaration({
+            name: group,
+            code: `${groupAliasJsDoc(group, base, docs)}\nexport type ${group} = ${base};`,
+        });
     }
 };
 
@@ -151,12 +161,18 @@ const renderTypesModule = (groupAliases: Map<string, string>, docs: GlDocContext
     const builder = new ModuleBuilder();
     builder.imports.addNamed("@gtkx/native", "ExternalObject", true);
     builder.imports.addNamed("@gtkx/native", "Handle", true);
-    builder.appendDeclaration(`${syncJsDoc(docs)}\nexport type GLsync = ExternalObject<Handle>;`);
 
-    builder.appendDeclaration(
-        "/** An opaque native pointer handle (e.g. a `glMapBufferRange` mapping). */\n" +
-        "export type GLpointer = ExternalObject<Handle>;",
-    );
+    builder.appendDeclaration({
+        name: "GLsync",
+        code: `${syncJsDoc(docs)}\nexport type GLsync = ExternalObject<Handle>;`,
+    });
+
+    builder.appendDeclaration({
+        name: "GLpointer",
+        code:
+            "/** An opaque native pointer handle (e.g. a `glMapBufferRange` mapping). */\n" +
+            "export type GLpointer = ExternalObject<Handle>;",
+    });
 
     appendScalarAliases(builder, docs);
     appendGroupAliases(builder, groupAliases, docs);
@@ -184,7 +200,7 @@ const appendCommandBindings = (builder: ModuleBuilder, commands: RenderedCommand
 
 const appendCommandDeclarations = (builder: ModuleBuilder, commands: RenderedCommand[]): void => {
     for (const command of commands) {
-        builder.appendDeclaration(command.declaration);
+        builder.appendDeclaration({ name: command.exportName, code: command.declaration });
     }
 };
 

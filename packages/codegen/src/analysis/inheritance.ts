@@ -1,12 +1,13 @@
-import { camelCase, lowerFirst, pascalCase, toCamelIdentifier } from "@gtkx/utils";
+import { lowerFirst, pascalCase, sanitizeTypeIdentifier, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
+import type { GirParameter } from "../gir/parameter.js";
 import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
-import { methodExportName } from "../store/gi/method.js";
+import { memberName, methodExportName } from "../store/gi/method.js";
 import { resolveAccessorType } from "../store/gi/property-accessor.js";
 import { vfuncMemberNames } from "../store/gi/vtable.js";
 import { inputParameters } from "./param-structure.js";
@@ -28,6 +29,11 @@ type InheritedMethod = {
 type InheritedMethods = {
     returnTypes: Map<string, string>;
     definitions: Map<string, InheritedMethod>;
+};
+
+type ParameterPair = {
+    own: GirParameter;
+    inherited: GirParameter;
 };
 
 type InheritedMatch = {
@@ -63,7 +69,11 @@ const resolvePrerequisiteReference = (context: ModuleContext, name: string): str
         return undefined;
     }
 
-    return context.qualify(resolved.namespace.name, pascalCase(resolved.value.name));
+    if (!resolved.value.introspectable || resolved.value.name.length === 0) {
+        return undefined;
+    }
+
+    return context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(resolved.value.name));
 };
 
 const forEachAncestor = (
@@ -159,7 +169,7 @@ const recordAncestorSignatures = (
     signatures: Map<string, MethodSignature>,
 ): void => {
     for (const method of klass.methods) {
-        const name = camelCase(method.name);
+        const name = memberName(method.name);
 
         if (!method.introspectable || signatures.has(name)) {
             continue;
@@ -182,6 +192,9 @@ const ancestorClassMethodSignatures = (context: ModuleContext, klass: GirClass):
     return signatures;
 };
 
+const ancestorClassMethodNames = (context: ModuleContext, klass: GirClass): Set<string> =>
+    new Set(ancestorClassMethodSignatures(context, klass).keys());
+
 const mergeOmissionName = (
     context: ModuleContext,
     method: GirFunction,
@@ -191,7 +204,7 @@ const mergeOmissionName = (
         return undefined;
     }
 
-    const name = camelCase(method.name);
+    const name = memberName(method.name);
     const ancestor = ancestors.get(name);
 
     if (ancestor === undefined) {
@@ -298,7 +311,7 @@ const absorbInheritedMethods = (
             continue;
         }
 
-        const name = camelCase(method.name);
+        const name = memberName(method.name);
 
         if (returnTypes.has(name)) {
             continue;
@@ -332,9 +345,45 @@ const hasMethodConflict = (options: {
     return (
         inheritedReturn !== ownReturn ||
         hasParameterEnumConflict(context, callable, inheritedMethod) ||
-        inputParameters(context.library, callable).length !==
-        inputParameters(context.library, inheritedMethod.method).length
+        hasParameterTypeConflict(context, callable, inheritedMethod.method)
     );
+};
+
+const isCallbackType = (context: ModuleContext, ref: TypeId | undefined): boolean =>
+    ref !== undefined && context.library.typeFor(ref)?.kind === "callback";
+
+const areParametersComparable = (context: ModuleContext, pair: ParameterPair): boolean => {
+    if (isCallbackType(context, pair.own.type) && isCallbackType(context, pair.inherited.type)) {
+        return true;
+    }
+
+    return renderTsType(context, pair.own.type, false) === renderTsType(context, pair.inherited.type, false);
+};
+
+const inputParameterPairs = (context: ModuleContext, own: GirFunction, inherited: GirFunction): ParameterPair[] => {
+    const ownParams = inputParameters(context.library, own);
+    const inheritedParams = inputParameters(context.library, inherited);
+    const pairs: ParameterPair[] = [];
+
+    for (const [index, entry] of ownParams.entries()) {
+        const other = inheritedParams[index];
+
+        if (other !== undefined) {
+            pairs.push({ own: entry.parameter, inherited: other.parameter });
+        }
+    }
+
+    return pairs;
+};
+
+const hasParameterTypeConflict = (context: ModuleContext, own: GirFunction, inherited: GirFunction): boolean => {
+    const ownCount = inputParameters(context.library, own).length;
+
+    if (ownCount !== inputParameters(context.library, inherited).length) {
+        return true;
+    }
+
+    return inputParameterPairs(context, own, inherited).some((pair) => !areParametersComparable(context, pair));
 };
 
 const conflictRename = (
@@ -383,26 +432,9 @@ const hasEnumConflict = (
     return ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum;
 };
 
-const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
-    const ownParams = inputParameters(context.library, own);
-    const inheritedParams = inputParameters(context.library, inherited.method);
-    const count = Math.min(ownParams.length, inheritedParams.length);
-
-    for (let index = 0; index < count; index += 1) {
-        const ownParam = ownParams[index];
-        const inheritedParam = inheritedParams[index];
-
-        if (
-            ownParam !== undefined &&
-            inheritedParam !== undefined &&
-            hasEnumConflict(context, ownParam.parameter.type, inheritedParam.parameter.type)
-        ) {
-            return true;
-        }
-    }
-
-    return false;
-};
+const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean =>
+    inputParameterPairs(context, own, inherited.method).some(
+        (pair) => hasEnumConflict(context, pair.own.type, pair.inherited.type));
 
 const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string | undefined => {
     if (ref === undefined) {
@@ -419,6 +451,7 @@ const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string |
 };
 
 export {
+    ancestorClassMethodNames,
     resolvePrerequisiteReference,
     forEachAncestor,
     collectInterfaceProperties,

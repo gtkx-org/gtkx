@@ -21,6 +21,7 @@ const RESERVED: Set<string> = new Set([
     "for",
     "function",
     "if",
+    "implements",
     "import",
     "in",
     "instanceof",

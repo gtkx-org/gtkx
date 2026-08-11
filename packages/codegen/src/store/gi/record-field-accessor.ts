@@ -1,6 +1,7 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirAnnotations } from "../../gir/annotations.js";
 import type { GirField } from "../../gir/field.js";
+import type { GirRecord } from "../../gir/record.js";
 import type { FieldSlot } from "../../gir/size.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
@@ -479,6 +480,12 @@ const structArraySetterBlock = (options: StructArrayAccessorOptions): string =>
         structArraySetterStatements(options.context, options),
     );
 
+const isPlainDataRecord = (record: GirRecord): boolean =>
+    record.glibGetType === undefined &&
+    record.constructors.length === 0 &&
+    record.functions.length === 0 &&
+    record.methods.length === 0;
+
 const resolveStructArrayElements = (context: ModuleContext, fieldType: TypeId): StructArrayElements | undefined => {
     const arrayType = context.library.typeFor(fieldType);
 
@@ -488,7 +495,7 @@ const resolveStructArrayElements = (context: ModuleContext, fieldType: TypeId): 
 
     const elementType = context.library.typeFor(arrayType.element);
 
-    if (elementType?.kind === "record" && elementType.value.glibGetType !== undefined) {
+    if (elementType?.kind === "record" && !isPlainDataRecord(elementType.value)) {
         return undefined;
     }
 

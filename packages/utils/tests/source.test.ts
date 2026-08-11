@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeIdentifier, sourceStringLiteral, toCamelIdentifier } from "../src/source/index.js";
+import {
+    sanitizeIdentifier,
+    sanitizeTypeIdentifier,
+    sourceStringLiteral,
+    toCamelIdentifier,
+} from "../src/source/index.js";
 
 const LINE_SEPARATOR = String.fromCodePoint(0x20_28);
 const PARAGRAPH_SEPARATOR = String.fromCodePoint(0x20_29);
@@ -17,6 +22,35 @@ describe("sanitizeIdentifier", () => {
 
     it("leaves the empty string unchanged", () => {
         expect(sanitizeIdentifier("")).toBe("");
+    });
+});
+
+describe("sanitizeTypeIdentifier", () => {
+    it("appends an underscore to a reserved word", () => {
+        expect(sanitizeTypeIdentifier("enum")).toBe("enum_");
+        expect(sanitizeTypeIdentifier("void")).toBe("void_");
+        expect(sanitizeTypeIdentifier("implements")).toBe("implements_");
+    });
+
+    it("appends an underscore to a name TypeScript reserves for a primitive type", () => {
+        expect(sanitizeTypeIdentifier("boolean")).toBe("boolean_");
+        expect(sanitizeTypeIdentifier("object")).toBe("object_");
+        expect(sanitizeTypeIdentifier("unknown")).toBe("unknown_");
+    });
+
+    it("leaves a primitive type name usable as a value identifier", () => {
+        expect(sanitizeIdentifier("boolean")).toBe("boolean");
+        expect(sanitizeIdentifier("object")).toBe("object");
+    });
+
+    it("maps an already suffixed name to itself", () => {
+        expect(sanitizeTypeIdentifier("boolean_")).toBe("boolean_");
+        expect(sanitizeTypeIdentifier(sanitizeTypeIdentifier("enum"))).toBe("enum_");
+    });
+
+    it("leaves a safe name and the empty string unchanged", () => {
+        expect(sanitizeTypeIdentifier("Widget")).toBe("Widget");
+        expect(sanitizeTypeIdentifier("")).toBe("");
     });
 });
 

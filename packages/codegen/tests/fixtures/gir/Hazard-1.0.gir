@@ -1,0 +1,94 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Hazard"
+             version="1.0"
+             shared-library="libhazard.so.1"
+             c:identifier-prefixes="Hazard"
+             c:symbol-prefixes="hazard">
+    <record name="boolean" c:type="HazardBoolean"/>
+    <record name="enum" c:type="HazardEnum"/>
+    <record name="void" c:type="HazardVoid"/>
+    <record name="object" c:type="HazardObject"/>
+    <alias name="function" c:type="HazardFunction">
+      <type name="gint" c:type="gint"/>
+    </alias>
+    <alias name="Offset" c:type="HazardOffset">
+      <type name="gint" c:type="gint"/>
+    </alias>
+    <enumeration name="Flavor" c:type="HazardFlavor">
+      <member name="first" value="0" c:identifier="HAZARD_FLAVOR_FIRST"/>
+      <member name="second" value="1" c:identifier="HAZARD_FLAVOR_SECOND"/>
+      <member name="second" value="1" c:identifier="HAZARD_FLAVOR_SECOND"/>
+      <member name="2nd" value="2" c:identifier="HAZARD_FLAVOR_2ND"/>
+    </enumeration>
+    <record name="Scaler" c:type="HazardScaler">
+      <method name="2d" c:identifier="hazard_scaler_2d">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="scaler" transfer-ownership="none">
+            <type name="Scaler" c:type="HazardScaler*"/>
+          </instance-parameter>
+          <parameter name="width" transfer-ownership="none">
+            <type name="gint" c:type="gint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="" c:identifier="hazard_scaler_resample">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="scaler" transfer-ownership="none">
+            <type name="Scaler" c:type="HazardScaler*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="free" c:identifier="hazard_scaler_free">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="scaler" transfer-ownership="none">
+            <type name="Scaler" c:type="HazardScaler*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_flavor" c:identifier="hazard_scaler_get_flavor">
+        <return-value transfer-ownership="none">
+          <type name="Flavor" c:type="HazardFlavor"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="scaler" transfer-ownership="none">
+            <type name="Scaler" c:type="HazardScaler*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="take_boolean" c:identifier="hazard_scaler_take_boolean">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="scaler" transfer-ownership="none">
+            <type name="Scaler" c:type="HazardScaler*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <type name="boolean" c:type="HazardBoolean*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </record>
+    <function name="unprefixed_helper" c:identifier="unprefixed_helper">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+    </function>
+    <constant name="LIMIT" value="8" c:type="HAZARD_LIMIT">
+      <type name="gint" c:type="gint"/>
+    </constant>
+  </namespace>
+</repository>
