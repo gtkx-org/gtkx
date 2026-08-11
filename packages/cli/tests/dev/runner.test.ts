@@ -13,6 +13,7 @@ type FakeServer = DevServer & {
         invalidateModule: ReturnType<typeof vi.fn<DevServer["moduleGraph"]["invalidateModule"]>>;
     };
     ssrLoadModule: ReturnType<typeof vi.fn<DevServer["ssrLoadModule"]>>;
+    ssrFixStacktrace: ReturnType<typeof vi.fn<DevServer["ssrFixStacktrace"]>>;
     watcher: ChangeEmitter;
 };
 
@@ -21,6 +22,7 @@ type HarnessOverrides = {
     configuredApplicationId?: string;
     isBoundary?: (mod: Record<string, unknown>) => boolean;
     isApplicationRegistered?: boolean;
+    whileWaiting?: () => void;
 };
 
 type HarnessMocks = {
@@ -30,7 +32,6 @@ type HarnessMocks = {
     performRefresh: ReturnType<typeof vi.fn<DevRunnerDeps["performRefresh"]>>;
     isBoundary: ReturnType<typeof vi.fn<DevRunnerDeps["isRefreshBoundary"]>>;
     watchAppShutdown: ReturnType<typeof vi.fn<DevRunnerDeps["watchApplicationShutdown"]>>;
-    watchRenderErrors: ReturnType<typeof vi.fn<DevRunnerDeps["watchRenderErrors"]>>;
     watchUncaughtErrors: ReturnType<typeof vi.fn<DevRunnerDeps["watchUncaughtErrors"]>>;
     installShutdownHandlers: ReturnType<typeof vi.fn<DevRunnerDeps["installShutdownHandlers"]>>;
     quitDefaultApp: ReturnType<typeof vi.fn<DevRunnerDeps["quitDefaultApplication"]>>;
@@ -50,9 +51,9 @@ type WaitCall = { timeoutMs: number; shouldKeepWaiting: () => boolean };
 type OnShutdown = () => void;
 type OnSignal = () => void | Promise<void>;
 type OnCause = (cause: unknown) => void;
-type RenderErrorCall = Parameters<DevRunnerDeps["watchRenderErrors"]>;
 
 const ENTRY = "/abs/src/main.tsx";
+const PARKED = "Waiting for a change to restart the application...";
 
 const PLUGIN_NAMES = [
     "gtkx:settings",
@@ -69,6 +70,7 @@ const createFakeServer = (overrides: Partial<FakeServer> = {}): FakeServer => ({
         invalidateModule: vi.fn<DevServer["moduleGraph"]["invalidateModule"]>(),
     },
     ssrLoadModule: vi.fn<DevServer["ssrLoadModule"]>(() => Promise.resolve({})),
+    ssrFixStacktrace: vi.fn<DevServer["ssrFixStacktrace"]>(),
     watcher: new ChangeEmitter(),
     ...overrides,
 });
@@ -78,7 +80,6 @@ const buildMocks = (server: FakeServer, overrides: HarnessOverrides): HarnessMoc
     startMcp: vi.fn<DevRunnerDeps["startMcpClient"]>(() => Promise.resolve()),
     stopMcp: vi.fn<DevRunnerDeps["stopMcpClient"]>(),
     watchAppShutdown: vi.fn<DevRunnerDeps["watchApplicationShutdown"]>(),
-    watchRenderErrors: vi.fn<DevRunnerDeps["watchRenderErrors"]>(() => Promise.resolve()),
     watchUncaughtErrors: vi.fn<DevRunnerDeps["watchUncaughtErrors"]>(),
     installShutdownHandlers: vi.fn<DevRunnerDeps["installShutdownHandlers"]>(),
     quitDefaultApp: vi.fn<DevRunnerDeps["quitDefaultApplication"]>(),
@@ -99,6 +100,7 @@ const buildDeps = (
     createServer: mocks.createServer,
     waitForApplicationId: (timeoutMs, shouldKeepWaiting) => {
         waitCalls.push({ timeoutMs, shouldKeepWaiting });
+        overrides.whileWaiting?.();
 
         return Promise.resolve(overrides.applicationId ?? null);
     },
@@ -106,7 +108,6 @@ const buildDeps = (
     startMcpClient: mocks.startMcp,
     stopMcpClient: mocks.stopMcp,
     watchApplicationShutdown: mocks.watchAppShutdown,
-    watchRenderErrors: mocks.watchRenderErrors,
     watchUncaughtErrors: mocks.watchUncaughtErrors,
     isApplicationRegistered: () => overrides.isApplicationRegistered ?? true,
     installShutdownHandlers: mocks.installShutdownHandlers,
@@ -205,19 +206,6 @@ const installedSignalHandler = (harness: Harness): OnSignal => {
     return onSignal;
 };
 
-const installedRenderErrorCall = (harness: Harness): RenderErrorCall => {
-    expect(harness.watchRenderErrors).toHaveBeenCalledTimes(1);
-    const [call] = harness.watchRenderErrors.mock.calls;
-
-    if (!call) {
-        throw new Error("watchRenderErrors was never called");
-    }
-
-    return call;
-};
-
-const installedRenderErrorHandler = (harness: Harness): OnCause => installedRenderErrorCall(harness)[1];
-
 const installedUncaughtErrorHandler = (harness: Harness): OnCause => {
     expect(harness.watchUncaughtErrors).toHaveBeenCalledTimes(1);
     const [onUncaughtError] = harness.watchUncaughtErrors.mock.calls[0] as [OnCause];
@@ -251,11 +239,11 @@ const expectRefreshRestart = async (schedule: (fireShutdown: () => void) => void
 const startFailedHarness = async (cause: Error): Promise<Harness> => {
     const harness = await startAppHarness();
     const onShutdown = installedShutdown(harness);
-    const onRenderError = installedRenderErrorHandler(harness);
+    const reportUncaught = installedUncaughtErrorHandler(harness);
 
     harness.performRefresh.mockImplementationOnce(() => {
         onShutdown();
-        onRenderError(cause);
+        reportUncaught(cause);
     });
 
     await emitBoundaryChange(harness, "/x/y.ts");
@@ -332,6 +320,7 @@ describe("createDevRunner (application shutdown)", () => {
     it("tears down the server when the application shuts down outside a refresh pass", async () => {
         const harness = await startAppHarness();
         installedShutdown(harness)();
+        await settleTimers();
         expect(harness.stopMcp).toHaveBeenCalled();
         expect(harness.server.close).toHaveBeenCalled();
         await flushTick();
@@ -346,6 +335,7 @@ describe("createDevRunner (application shutdown)", () => {
         const stderrSpy = captureStderr();
         await startRunner(harness);
         installedShutdown(harness)();
+        await settleTimers();
         await flushTick();
         const written = collectLogged(stderrSpy);
         expect(written).toContain("[gtkx] error Error closing server:");
@@ -379,24 +369,30 @@ describe("createDevRunner (a component that throws)", () => {
         expect(harness.server.close).not.toHaveBeenCalled();
         expect(written).toContain("Application error; keeping the dev server up.");
         expect(written).toContain("PROBE: deliberate render throw");
-        expect(loggedMessages(harness).some((m) => m.includes("waiting for a change"))).toBe(true);
+        expect(loggedMessages(harness).some((m) => m.includes(PARKED))).toBe(true);
     });
 
-    it("parks without restarting when the error is known before the unmount", async () => {
+    it("keeps the dev server up when the error only arrives after the unmount", async () => {
         const stderrSpy = captureStderr();
         const harness = await startAppHarness();
-        const onShutdown = installedShutdown(harness);
-        const onRenderError = installedRenderErrorHandler(harness);
-
-        harness.performRefresh.mockImplementationOnce(() => {
-            onRenderError(new Error("boom"));
-            onShutdown();
-        });
-
-        await emitBoundaryChange(harness, "/x/y.ts");
+        installedShutdown(harness)();
+        installedUncaughtErrorHandler(harness)(new Error("PROBE: throw inside useEffect"));
         await settleTimers();
+        await flushTick();
+        const written = collectLogged(stderrSpy);
         stderrSpy.mockRestore();
         expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
+        expect(written).toContain("PROBE: throw inside useEffect");
+        expect(loggedMessages(harness).some((m) => m.includes(PARKED))).toBe(true);
+    });
+
+    it("maps the reported stack back through the dev server", async () => {
+        const stderrSpy = captureStderr();
+        const cause = new Error("PROBE: deliberate render throw");
+        const harness = await startFailedHarness(cause);
+        stderrSpy.mockRestore();
+        expect(harness.server.ssrFixStacktrace).toHaveBeenCalledWith(cause);
     });
 
     it("restarts on the next save so the fixed module is loaded fresh", async () => {
@@ -412,6 +408,33 @@ describe("createDevRunner (a component that throws)", () => {
     });
 });
 
+describe("createDevRunner (an error the application survived)", () => {
+    it("keeps Fast Refresh working after an error that left the application up", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startAppHarness();
+        installedUncaughtErrorHandler(harness)(new Error("PROBE: rejected click handler"));
+        await emitBoundaryChange(harness, "/x/y.ts");
+        const written = collectLogged(stderrSpy);
+        stderrSpy.mockRestore();
+        expect(written).toContain("PROBE: rejected click handler");
+        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
+    });
+
+    it("still stops the dev runner when the window closes after such an error", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startAppHarness();
+        installedUncaughtErrorHandler(harness)(new Error("PROBE: rejected click handler"));
+        installedShutdown(harness)();
+        await settleTimers();
+        await flushTick();
+        stderrSpy.mockRestore();
+        expect(harness.exit).toHaveBeenCalledWith(0);
+        expect(loggedMessages(harness).some((m) => m.includes("Application quit"))).toBe(true);
+    });
+});
+
 describe("createDevRunner (an entry that fails to load)", () => {
     it("keeps watching instead of taking the whole command down", async () => {
         const stderrSpy = captureStderr();
@@ -421,7 +444,14 @@ describe("createDevRunner (an entry that fails to load)", () => {
         expect(harness.exit).not.toHaveBeenCalled();
         expect(harness.startMcp).not.toHaveBeenCalled();
         expect(written).toContain("Extra is not defined");
-        expect(loggedMessages(harness).some((m) => m.includes("HMR enabled"))).toBe(true);
+        expect(loggedMessages(harness).some((m) => m.includes(PARKED))).toBe(true);
+    });
+
+    it("does not claim Fast Refresh is watching a session it has parked", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startWithFailingEntry(new Error("boom"));
+        stderrSpy.mockRestore();
+        expect(loggedMessages(harness).some((m) => m.includes("HMR enabled"))).toBe(false);
     });
 
     it("stops polling for the application once the entry has failed", async () => {
@@ -439,47 +469,45 @@ describe("createDevRunner (an entry that fails to load)", () => {
     });
 });
 
-describe("createDevRunner (error reporting)", () => {
-    it("reports a render error once when the process also reports it as uncaught", async () => {
+describe("createDevRunner (an application that died before the runner attached)", () => {
+    it("parks the session instead of taking the whole command down", async () => {
         const stderrSpy = captureStderr();
-        const cause = new Error("PROBE: deliberate render throw");
-        const harness = await startFailedHarness(cause);
-        installedUncaughtErrorHandler(harness)(cause);
-        const written = collectLogged(stderrSpy);
-        stderrSpy.mockRestore();
-        expect(harness.exit).not.toHaveBeenCalled();
-        expect(written.split("keeping the dev server up.")).toHaveLength(2);
-    });
+        const cause = new Error("PROBE: initial render throw");
 
-    it("survives an uncaught error the runtime raises outside a refresh", async () => {
-        const stderrSpy = captureStderr();
-        const harness = await startAppHarness();
-        installedUncaughtErrorHandler(harness)(new Error("PROBE: throw inside useEffect"));
-        installedShutdown(harness)();
+        const harness: Harness = buildHarness({
+            applicationId: "com.example.app",
+            isApplicationRegistered: false,
+            whileWaiting: () => {
+                installedUncaughtErrorHandler(harness)(cause);
+            },
+        });
+
+        await startRunner(harness);
         const written = collectLogged(stderrSpy);
         stderrSpy.mockRestore();
         expect(harness.exit).not.toHaveBeenCalled();
         expect(harness.server.close).not.toHaveBeenCalled();
-        expect(written).toContain("PROBE: throw inside useEffect");
+        expect(written).toContain("PROBE: initial render throw");
+        expect(loggedMessages(harness).some((m) => m.includes(PARKED))).toBe(true);
     });
 
-    it("starts anyway when the render error handler cannot be installed", async () => {
+    it("restarts on the next save instead of Fast Refreshing into a dead application", async () => {
         const stderrSpy = captureStderr();
-        const harness = buildHarness({ applicationId: "com.example.app" });
-        harness.watchRenderErrors.mockRejectedValueOnce(new Error("no @gtkx/react here"));
-        await startRunner(harness);
-        const written = collectLogged(stderrSpy);
-        stderrSpy.mockRestore();
-        expect(written).toContain("Could not watch for render errors:");
-        expect(harness.startMcp).toHaveBeenCalled();
-        expect(loggedMessages(harness).some((m) => m.includes("HMR enabled"))).toBe(true);
-    });
 
-    it("installs the render error handler through the application's module graph", async () => {
-        const harness = await startAppHarness();
-        const [loadAppModule] = installedRenderErrorCall(harness);
-        await loadAppModule("@gtkx/react/internal");
-        expect(harness.server.ssrLoadModule).toHaveBeenCalledWith("@gtkx/react/internal");
+        const harness: Harness = buildHarness({
+            applicationId: "com.example.app",
+            isApplicationRegistered: false,
+            whileWaiting: () => {
+                installedUncaughtErrorHandler(harness)(new Error("boom"));
+            },
+        });
+
+        await startRunner(harness);
+        harness.server.moduleGraph.getModuleById.mockReturnValueOnce({ importers: new Set<object>() });
+        await emitChangeAndFlush(harness, "/x/y.ts", 2);
+        stderrSpy.mockRestore();
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
     });
 });
 
@@ -490,6 +518,7 @@ describe("createDevRunner (shutdown outside a refresh pass)", () => {
         await emitBoundaryChange(harness, "/x/y.ts");
         await settleTimers();
         onShutdown();
+        await settleTimers();
         expect(harness.server.close).toHaveBeenCalled();
         await flushTick();
         expect(harness.exit).toHaveBeenCalledWith(0);
@@ -500,6 +529,7 @@ describe("createDevRunner (shutdown outside a refresh pass)", () => {
         const onShutdown = installedShutdown(harness);
         onShutdown();
         onShutdown();
+        await settleTimers();
         expect(harness.server.close).toHaveBeenCalledTimes(1);
         await flushTick();
         expect(harness.exit).toHaveBeenCalledExactlyOnceWith(0);
@@ -556,6 +586,7 @@ describe("createDevRunner (MCP lifecycle)", () => {
     it("tears down the dev server and MCP client when the application shuts down", async () => {
         const harness = await startAppHarness();
         installedShutdown(harness)();
+        await settleTimers();
         expect(harness.stopMcp).toHaveBeenCalled();
         expect(harness.server.close).toHaveBeenCalled();
     });

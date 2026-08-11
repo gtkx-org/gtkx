@@ -14,7 +14,6 @@ type DevRunnerDeps = {
     startMcpClient(applicationId: string, loadAppModule: LoadAppModule): Promise<unknown>;
     stopMcpClient(): void;
     watchApplicationShutdown(onShutdown: () => void): void;
-    watchRenderErrors(loadAppModule: LoadAppModule, onRenderError: (cause: unknown) => void): Promise<void>;
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
     isApplicationRegistered(): boolean;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
@@ -44,10 +43,17 @@ type DevSession = {
 };
 
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
-const RESTART_DECISION_DELAY_MS = 0;
 
-const reportFailure = (cause: unknown): void => {
+const announceFailure = (server: DevServer, cause: unknown): void => {
+    if (cause instanceof Error) {
+        server.ssrFixStacktrace(cause);
+    }
+
     error("Application error; keeping the dev server up. Fix the error and save again.", cause);
+};
+
+const parkSession = (session: DevSession): void => {
+    session.deps.log("Waiting for a change to restart the application...");
 };
 
 const requestRestart = async (session: DevSession): Promise<never> => {
@@ -58,7 +64,7 @@ const requestRestart = async (session: DevSession): Promise<never> => {
 };
 
 const requiresRestart = (session: DevSession, module: DevServerChangedModule): boolean => {
-    if (session.failure.hasFailed()) {
+    if (session.failure.isDown()) {
         return true;
     }
 
@@ -167,13 +173,20 @@ const closeAndExit = async (session: DevSession, code = 0): Promise<never> => {
     return session.deps.exit(code);
 };
 
-const parkSession = (session: DevSession): void => {
-    session.deps.log("Application stopped after an error - waiting for a change...");
-};
+const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {
+    if (session.controller.isShuttingDown()) {
+        return;
+    }
 
-const restartAfterRefresh = (session: DevSession): void => {
-    if (session.failure.hasFailed()) {
+    if (session.failure.isDown()) {
         parkSession(session);
+
+        return;
+    }
+
+    if (!wasRefreshing) {
+        session.deps.log("Application quit - stopping dev runner...");
+        void closeAndExit(session);
 
         return;
     }
@@ -187,22 +200,17 @@ const handleApplicationShutdown = (session: DevSession): void => {
         return;
     }
 
-    if (session.failure.hasFailed()) {
+    if (session.failure.isDown()) {
         parkSession(session);
 
         return;
     }
 
-    if (session.refreshTracker.isRefreshing()) {
-        setTimeout(() => {
-            restartAfterRefresh(session);
-        }, RESTART_DECISION_DELAY_MS);
+    const wasRefreshing = session.refreshTracker.isRefreshing();
 
-        return;
-    }
-
-    session.deps.log("Application quit - stopping dev runner...");
-    void closeAndExit(session);
+    session.failure.settleUnmount(() => {
+        settleUnmount(session, wasRefreshing);
+    });
 };
 
 const onApplicationShutdown = (session: DevSession): (() => void) => () => {
@@ -219,15 +227,33 @@ const connectApplication = async (session: DevSession, liveApplicationId: string
     await deps.startMcpClient(applicationId, (id) => server.ssrLoadModule(id));
 };
 
+const connectRegisteredApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
+    if (session.deps.isApplicationRegistered()) {
+        await connectApplication(session, liveApplicationId);
+
+        return;
+    }
+
+    if (session.failure.hasReported()) {
+        session.deps.log("Application stopped before the dev runner attached.");
+        session.failure.fail();
+
+        return;
+    }
+
+    session.deps.log("Application refused its command line - stopping dev runner...");
+    await closeAndExit(session, refusedExitCode());
+};
+
 const attachApplication = async (session: DevSession): Promise<void> => {
     const { deps, failure } = session;
 
     const liveApplicationId = await deps.waitForApplicationId(
         APPLICATION_MOUNT_TIMEOUT_MS,
-        () => !failure.hasFailed(),
+        () => !failure.isDown(),
     );
 
-    if (failure.hasFailed()) {
+    if (failure.isDown()) {
         return;
     }
 
@@ -237,26 +263,7 @@ const attachApplication = async (session: DevSession): Promise<void> => {
         return;
     }
 
-    if (!deps.isApplicationRegistered()) {
-        deps.log("Application refused its command line - stopping dev runner...");
-
-        return closeAndExit(session, refusedExitCode());
-    }
-
-    await connectApplication(session, liveApplicationId);
-};
-
-const installRenderErrorHandler = async (session: DevSession): Promise<void> => {
-    try {
-        await session.deps.watchRenderErrors(
-            (id) => session.server.ssrLoadModule(id),
-            (cause) => {
-                session.failure.fail(cause);
-            },
-        );
-    } catch (error_) {
-        error("Could not watch for render errors:", error_);
-    }
+    await connectRegisteredApplication(session, liveApplicationId);
 };
 
 const loadEntry = async (session: DevSession, entryPath: string): Promise<void> => {
@@ -269,6 +276,23 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
     }
 };
 
+const isApplicationLost = (session: DevSession): boolean =>
+    session.failure.hasReported() && !session.deps.isApplicationRegistered();
+
+const announceReady = (session: DevSession): void => {
+    if (isApplicationLost(session)) {
+        session.failure.fail();
+    }
+
+    if (session.failure.isDown()) {
+        parkSession(session);
+
+        return;
+    }
+
+    session.deps.log("HMR enabled - watching for changes...");
+};
+
 const createSession = (server: DevServer, deps: DevRunnerDeps): DevSession => {
     const refreshTracker = createRefreshTracker(deps.performRefresh);
 
@@ -277,7 +301,9 @@ const createSession = (server: DevServer, deps: DevRunnerDeps): DevSession => {
         deps: { ...deps, performRefresh: refreshTracker.performRefresh },
         controller: createShutdownController(server, deps),
         refreshTracker,
-        failure: createFailureTracker(reportFailure),
+        failure: createFailureTracker((cause) => {
+            announceFailure(server, cause);
+        }, refreshTracker.isRefreshing),
     };
 };
 
@@ -288,14 +314,13 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
         deps.installShutdownHandlers(onShutdownSignal(session));
 
         deps.watchUncaughtErrors((cause) => {
-            session.failure.fail(cause);
+            session.failure.report(cause);
         });
 
         server.watcher.on("change", onFileChange(session));
-        await installRenderErrorHandler(session);
         await loadEntry(session, entryPath);
         await attachApplication(session);
-        deps.log("HMR enabled - watching for changes...");
+        announceReady(session);
     },
 });
 

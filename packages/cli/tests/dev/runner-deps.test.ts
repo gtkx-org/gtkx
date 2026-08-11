@@ -141,16 +141,6 @@ describe("defaultDevRunnerDeps (waitForApplicationId)", () => {
 });
 
 describe("defaultDevRunnerDeps (error watching)", () => {
-    it("registers the reconciler error handler through the application's module graph", async () => {
-        const deps = defaultDevRunnerDeps();
-        const setReconcilerErrorHandler = vi.fn();
-        const loadAppModule = vi.fn(() => Promise.resolve({ setReconcilerErrorHandler }));
-        const onRenderError = vi.fn();
-        await deps.watchRenderErrors(loadAppModule, onRenderError);
-        expect(loadAppModule).toHaveBeenCalledWith("@gtkx/react/internal");
-        expect(setReconcilerErrorHandler).toHaveBeenCalledWith(onRenderError);
-    });
-
     it("routes uncaught exceptions and unhandled rejections to the same handler", () => {
         const deps = defaultDevRunnerDeps();
         const on = vi.spyOn(process, "on").mockReturnValue(process);

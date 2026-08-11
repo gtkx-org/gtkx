@@ -11,13 +11,8 @@ import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 
-type ReconcilerErrorModule = {
-    setReconcilerErrorHandler: (handler: (cause: unknown) => void) => unknown;
-};
-
 const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
-const REACT_INTERNAL_MODULE = "@gtkx/react/internal";
 
 const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? null;
 
@@ -49,10 +44,6 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     stopMcpClient,
     watchApplicationShutdown: (onShutdown) => {
         Gio.Application.getDefault()?.on("shutdown", onShutdown);
-    },
-    watchRenderErrors: async (loadAppModule, onRenderError) => {
-        const react = (await loadAppModule(REACT_INTERNAL_MODULE)) as ReconcilerErrorModule;
-        react.setReconcilerErrorHandler(onRenderError);
     },
     watchUncaughtErrors: (onUncaughtError) => {
         process.on("uncaughtException", onUncaughtError);

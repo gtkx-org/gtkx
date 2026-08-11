@@ -16,6 +16,7 @@ type DevServer = {
     close(): Promise<void>;
     moduleGraph: DevServerModuleGraph;
     ssrLoadModule(id: string): Promise<Record<string, unknown>>;
+    ssrFixStacktrace(cause: Error): void;
     watcher: {
         on(event: "change", listener: (changedPath: string) => void): void;
     };
