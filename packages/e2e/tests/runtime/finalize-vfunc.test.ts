@@ -1,22 +1,10 @@
 import { Object as GObject } from "@gtkx/gi/gobject";
 import { callParent, getHandle, registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
-import { forceGC } from "../helpers/native-utils.js";
+import { gcUntil } from "../helpers/native-utils.js";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 
 const uniqueName = createTypeNameFactory("_");
-
-async function gcUntil(isSatisfied: () => boolean, maxRounds = 100): Promise<void> {
-    for (let round = 0; round < maxRounds; round++) {
-        if (isSatisfied()) {
-            return;
-        }
-
-        await new Promise((resolve) => setImmediate(resolve));
-        forceGC();
-        await new Promise((resolve) => setImmediate(resolve));
-    }
-}
 
 describe("vfuncFinalize", () => {
     it("runs once against a usable instance when the wrapper is collected", async () => {

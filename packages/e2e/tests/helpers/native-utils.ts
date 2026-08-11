@@ -38,8 +38,20 @@ function forceGC(): void {
     globalThis.gc();
 }
 
+async function gcUntil(isSatisfied: () => boolean, maxRounds = 100): Promise<void> {
+    for (let round = 0; round < maxRounds; round++) {
+        if (isSatisfied()) {
+            return;
+        }
+
+        await new Promise((resolve) => setImmediate(resolve));
+        forceGC();
+        await new Promise((resolve) => setImmediate(resolve));
+    }
+}
+
 function getRefCount(handle: ExternalObject<Handle>): number {
     return read(handle, UINT32_DESCRIPTOR, GOBJECT_REF_COUNT_OFFSET) as number;
 }
 
-export { callArgs, GTK_LIB, GOBJECT_LIB, BIGUINT64, typeFromName, forceGC, getRefCount };
+export { callArgs, GTK_LIB, GOBJECT_LIB, BIGUINT64, typeFromName, forceGC, gcUntil, getRefCount };

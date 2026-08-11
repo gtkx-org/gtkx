@@ -168,7 +168,7 @@ type PropertyVfuncSpec = {
 
 const INSTANCE_ARG_INDEX = 0;
 const VALUE_ARG_INDEX = 2;
-const TEARDOWN_SLOTS: Set<string> = new Set(["ObjectClass.dispose", "ObjectClass.finalize"]);
+const TEARDOWN_SLOT_NAMES: Set<string> = new Set(["dispose", "finalize"]);
 
 const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
     { methodName: GET_PROPERTY_VFUNC, isValueOut: true, makeDispatch: makeGetProperty },
@@ -459,7 +459,7 @@ function markInstanceCallScoped(argDescriptors: Descriptor[]): Descriptor[] {
 }
 
 function slotArgDescriptors(descriptor: VfuncDescriptor): Descriptor[] {
-    if (!TEARDOWN_SLOTS.has(`${descriptor.className}.${descriptor.vfuncName}`)) {
+    if (!TEARDOWN_SLOT_NAMES.has(descriptor.vfuncName)) {
         return descriptor.argDescriptors;
     }
 

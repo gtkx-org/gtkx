@@ -5,22 +5,7 @@ import { type ExternalObject, getWrapper, type Handle } from "@gtkx/native";
 import { getHandle, registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { createApplication } from "../helpers/application.js";
-import { forceGC, getRefCount } from "../helpers/native-utils.js";
-
-/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the wait succeeded */
-async function gcUntil(isSatisfied: () => boolean, maxRounds = 100): Promise<boolean> {
-    for (let i = 0; i < maxRounds; i++) {
-        if (isSatisfied()) {
-            return true;
-        }
-
-        await new Promise((resolve) => setImmediate(resolve));
-        forceGC();
-        await new Promise((resolve) => setImmediate(resolve));
-    }
-
-    return isSatisfied();
-}
+import { gcUntil, getRefCount } from "../helpers/native-utils.js";
 
 function detachLabel(): { handle: ExternalObject<Handle>; weak: WeakRef<object> } {
     const label = new Gtk.Label();
@@ -93,15 +78,15 @@ describe("wrapper collection", () => {
     it("collects a wrapper with no other holder once its JS reference is dropped", async () => {
         const { handle, weak } = detachLabel();
         expect(getRefCount(handle)).toBe(1);
-        const isCollected = await gcUntil(() => weak.deref() === undefined);
-        expect(isCollected).toBe(true);
+        await gcUntil(() => weak.deref() === undefined);
+        expect(weak.deref()).toBeUndefined();
     });
 
     it("collects the wrapper of a registered subclass once its JS reference is dropped", async () => {
         const { handle, weak } = detachRegisteredObject();
         expect(getRefCount(handle)).toBe(1);
-        const isCollected = await gcUntil(() => weak.deref() === undefined);
-        expect(isCollected).toBe(true);
+        await gcUntil(() => weak.deref() === undefined);
+        expect(weak.deref()).toBeUndefined();
     });
 });
 
