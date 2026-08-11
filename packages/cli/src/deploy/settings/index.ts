@@ -74,10 +74,18 @@ type DesktopSlice = Pick<
 const ISO_DATE_LENGTH = 10;
 const MILLISECONDS_PER_SECOND = 1000;
 
+const reproducibleDate = (epoch: string | undefined): Date | null => {
+    if (epoch === undefined || epoch.trim().length === 0) {
+        return null;
+    }
+
+    const seconds = Number(epoch);
+
+    return Number.isFinite(seconds) ? new Date(seconds * MILLISECONDS_PER_SECOND) : null;
+};
+
 const buildDate = (now: Date): string => {
-    const epoch = process.env.SOURCE_DATE_EPOCH;
-    const parsed = epoch === undefined ? NaN : Number(epoch);
-    const stamp = Number.isNaN(parsed) ? now : new Date(parsed * MILLISECONDS_PER_SECOND);
+    const stamp = reproducibleDate(process.env.SOURCE_DATE_EPOCH) ?? now;
 
     return stamp.toISOString().slice(0, ISO_DATE_LENGTH);
 };
