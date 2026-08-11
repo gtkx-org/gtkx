@@ -8,9 +8,9 @@ use napi::{Env, JsValue as _};
 use native::api::bind::bind;
 use native::api::call::call;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind,
-    FloatCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadCtx, RefCodec,
-    StringCodec, UnicharCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec,
+    EnumFlagsKind, FloatCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadCtx,
+    RefCodec, StringCodec, UnicharCodec,
 };
 use native::ffi::descriptor::{Descriptor, NestedDescriptor};
 use native::ffi::{self, StashData, StashStorage};
@@ -36,8 +36,7 @@ fn u8_array_ref_codec() -> RefCodec {
                 Box::new(Codec::Integer(IntegerCodec::U8)),
                 ArrayKind::Array,
                 Ownership::Borrowed,
-                None,
-                None,
+                ArrayBounds::NONE,
                 None,
             )
             .expect("valid array codec"),
@@ -421,8 +420,7 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
             Box::new(Codec::String(string_codec())),
             ArrayKind::Array,
             Ownership::Full,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid array codec");
@@ -442,8 +440,7 @@ fn decode_with_context_array_container_released_by_array_decoder() {
             })),
             ArrayKind::Array,
             Ownership::Full,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid array codec");
@@ -463,8 +460,7 @@ fn decode_with_context_garray_container_released_by_array_decoder() {
             Box::new(Codec::Integer(IntegerCodec::U8)),
             ArrayKind::GArray,
             Ownership::Full,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid garray codec");
@@ -482,8 +478,7 @@ fn decode_with_context_array_non_string_items_freed_by_ref() {
             Box::new(Codec::Integer(IntegerCodec::U8)),
             ArrayKind::Fixed,
             Ownership::Full,
-            None,
-            Some(0),
+            ArrayBounds::fixed(0),
             None,
         )
         .expect("valid fixed array codec");
@@ -505,8 +500,7 @@ fn decode_with_context_array_non_ptr_slot_stash_uses_storage_pointer() {
             Box::new(Codec::String(string_codec())),
             ArrayKind::Array,
             Ownership::Borrowed,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid array codec");
@@ -619,8 +613,7 @@ fn strv_ref_codec() -> RefCodec {
                 })),
                 ArrayKind::Array,
                 Ownership::Full,
-                None,
-                None,
+                ArrayBounds::NONE,
                 None,
             )
             .expect("valid array codec"),
@@ -704,8 +697,7 @@ fn encode_length_bounded_array_passes_the_caller_allocated_buffer_itself() {
                     Box::new(Codec::Integer(IntegerCodec::U32)),
                     ArrayKind::Sized,
                     Ownership::Borrowed,
-                    Some(0),
-                    None,
+                    ArrayBounds::sized(0),
                     None,
                 )
                 .expect("valid sized array codec"),

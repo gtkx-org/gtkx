@@ -204,6 +204,7 @@ fn array_of(
         item_descriptor: NestedDescriptor(Box::new(item)),
         array_kind: kind,
         ownership: Ownership::Borrowed,
+        base_param_index: None,
         size_param_index: sized,
         fixed_size: fixed,
         element_size: None,

@@ -27,7 +27,7 @@ mod r#struct;
 mod unichar;
 mod void;
 
-pub use array::{ArrayCodec, ArrayKind};
+pub use array::{ArrayBounds, ArrayCodec, ArrayKind};
 pub use bigint::BigIntCodec;
 pub use boolean::BooleanCodec;
 pub use boxed::BoxedCodec;

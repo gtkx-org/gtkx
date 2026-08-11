@@ -5,6 +5,7 @@ import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import {
+    type GirCursorBounds,
     type GirParameter,
     type GirReturnValue,
     isCallerAllocatedOut,
@@ -30,6 +31,7 @@ import {
     tBoxed,
     tByteArray,
     tCallback,
+    tCursorArray,
     tEnum,
     tFixedArray,
     tFlags,
@@ -50,19 +52,19 @@ import {
 } from "./descriptor.js";
 import { carrayFor, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
-type RenderDescriptorOptions = {
-    argIndexOffset?: number;
-    argIndexMap?: Map<number, number> | undefined;
-    hasOutIndirection?: boolean;
-    isCallerAllocated?: boolean;
-    isInline?: boolean;
-    isNewlyCreated?: boolean;
-};
-
 type ArgIndexOptions = {
     argIndexOffset: number;
     argIndexMap: Map<number, number> | undefined;
+    cursor: GirCursorBounds | undefined;
     hasOutIndirection: boolean;
+};
+
+type CursorArgIndexOptions = ArgIndexOptions & { cursor: GirCursorBounds };
+
+type RenderDescriptorOptions = Partial<ArgIndexOptions> & {
+    isCallerAllocated?: boolean;
+    isInline?: boolean;
+    isNewlyCreated?: boolean;
 };
 
 type RecordPlacement = {
@@ -137,6 +139,7 @@ const shouldOmitPrimaryReturn = (library: Library, returnValue: GirReturnValue):
 const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => ({
     argIndexOffset: options.argIndexOffset ?? 0,
     argIndexMap: options.argIndexMap,
+    cursor: options.cursor,
     hasOutIndirection: options.hasOutIndirection === true,
 });
 
@@ -276,7 +279,7 @@ const renderParamDescriptor = (
     ref: TypeId | undefined,
     argIndex: Partial<ArgIndexOptions> = {},
 ): string => {
-    const behindRef: RenderDescriptorOptions = { ...argIndex, hasOutIndirection: true };
+    const behindRef: RenderDescriptorOptions = { ...argIndex, cursor: parameter.cursor, hasOutIndirection: true };
 
     if (isCellInout(context.library, parameter)) {
         return tRef(renderDescriptor(context, ref, parameter.transferOwnership, behindRef), true);
@@ -667,19 +670,52 @@ const expressionForResolved = (
     }
 };
 
+const elementExpression = (
+    context: ModuleContext,
+    ref: CArrayType,
+    transfer: ParameterTransfer,
+    options: ArgIndexOptions,
+): string =>
+    renderDescriptor(context, ref.element, deriveElementTransfer(transfer), {
+        ...options,
+        cursor: undefined,
+        hasOutIndirection: false,
+    });
+
+const cursorArrayExpression = (
+    context: ModuleContext,
+    ref: CArrayType,
+    transfer: ParameterTransfer,
+    options: CursorArgIndexOptions,
+): string =>
+    tCursorArray(
+        elementExpression(context, ref, transfer, options),
+        {
+            baseIndex: mapArgIndex(options, options.cursor.baseIndex),
+            lengthIndex: mapArgIndex(options, options.cursor.lengthIndex),
+        },
+        transferOwnership(transfer),
+        inlineElementSize(context, ref, options.hasOutIndirection),
+    );
+
 const arrayExpression = (
     context: ModuleContext,
     ref: CArrayType,
     transfer: ParameterTransfer,
     options: ArgIndexOptions,
 ): string => {
+    const { cursor } = options;
+
+    if (cursor !== undefined) {
+        return cursorArrayExpression(context, ref, transfer, { ...options, cursor });
+    }
+
     if (hasUnknownArrayLength(ref)) {
         return tUint64;
     }
 
     const ownership = transferOwnership(transfer);
-    const elementOptions: ArgIndexOptions = { ...options, hasOutIndirection: false };
-    const element = renderDescriptor(context, ref.element, deriveElementTransfer(transfer), elementOptions);
+    const element = elementExpression(context, ref, transfer, options);
     const size = inlineElementSize(context, ref, options.hasOutIndirection);
 
     if (ref.lengthParameterIndex !== undefined) {

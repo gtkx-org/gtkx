@@ -107,10 +107,20 @@ type CallbackOptions = {
 type ArrayOptions = {
     /** Stride in bytes between elements stored inline in the array. */
     elementSize?: number | undefined;
+    /** Position of the argument whose buffer a cursor array points into. */
+    baseParamIndex?: number | undefined;
     /** Position of the argument carrying the element count, for a length-bounded array. */
     sizeParamIndex?: number | undefined;
     /** Element count of a fixed-length array. */
     fixedSize?: number | undefined;
+};
+
+/** Where a cursor array's base buffer and total length come from. */
+type CursorBounds = {
+    /** Position of the argument holding the buffer the cursor points into. */
+    baseParamIndex: number;
+    /** Position of the argument carrying that buffer's element count. */
+    sizeParamIndex: number;
 };
 
 /** How a ref-counted fundamental value is named, wrapped and stored. */
@@ -318,6 +328,10 @@ const arrayT = (
         result.elementSize = options.elementSize;
     }
 
+    if (options?.baseParamIndex !== undefined) {
+        result.baseParamIndex = options.baseParamIndex;
+    }
+
     if (options?.sizeParamIndex !== undefined) {
         result.sizeParamIndex = options.sizeParamIndex;
     }
@@ -360,6 +374,17 @@ const sizedArrayT = (
     ownership: Ownership = "borrowed",
     elementSize?: number,
 ): ArrayDescriptor => arrayT(itemDescriptor, "sized", ownership, { sizeParamIndex, elementSize });
+
+/**
+ * Builds a descriptor for an out pointer into the buffer another argument supplied, decoded as the
+ * elements from where it points to the end of that buffer.
+ */
+const cursorArrayT = (
+    itemDescriptor: Descriptor,
+    bounds: CursorBounds,
+    ownership: Ownership = "borrowed",
+    elementSize?: number,
+): ArrayDescriptor => arrayT(itemDescriptor, "cursor", ownership, { ...bounds, elementSize });
 
 /** Builds a descriptor for a C array of a fixed length. */
 const fixedArrayT = (
@@ -435,6 +460,7 @@ export {
     byteArrayT,
     sizedArrayT,
     fixedArrayT,
+    cursorArrayT,
     callbackT,
     type BoxedDescriptor,
     type StructDescriptor,

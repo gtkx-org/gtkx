@@ -4,10 +4,10 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::ffi::codec::{
-    ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec, CallbackCodec,
-    CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
-    FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec, StringCodec,
-    StructCodec, UnicharCodec, VoidCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec,
+    CallbackCodec, CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec, EnumFlagsKind,
+    FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec,
+    StringCodec, StructCodec, UnicharCodec, VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -148,6 +148,7 @@ pub enum Descriptor {
         item_descriptor: NestedDescriptor,
         array_kind: ArrayKind,
         ownership: Ownership,
+        base_param_index: Option<u32>,
         size_param_index: Option<u32>,
         fixed_size: Option<u32>,
         element_size: Option<u32>,
@@ -281,6 +282,7 @@ impl Descriptor {
                 item_descriptor,
                 array_kind,
                 ownership,
+                base_param_index,
                 size_param_index,
                 fixed_size,
                 element_size,
@@ -289,8 +291,11 @@ impl Descriptor {
                     item_descriptor.into_codec()?,
                     array_kind,
                     ownership,
-                    size_param_index,
-                    fixed_size,
+                    ArrayBounds {
+                        base_param_index,
+                        size_param_index,
+                        fixed_size,
+                    },
                     element_size.map(|n| n as usize),
                 )
                 .map_err(|error| Error::from_reason(error.to_string()))?,

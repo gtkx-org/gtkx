@@ -1,7 +1,7 @@
 use std::ffi::CString;
 
 use anyhow::bail;
-pub use container::ArrayKind;
+pub use container::{ArrayBounds, ArrayKind};
 use container::{ArrayContainer, ArrayContainerCodec};
 use item::ItemCodec;
 
@@ -12,6 +12,7 @@ use crate::value::TypedView;
 
 mod byte_array;
 mod container;
+mod cursor;
 mod fixed;
 mod garray;
 mod item;
@@ -33,15 +34,14 @@ impl ArrayCodec {
         item_codec: Box<Codec>,
         kind: ArrayKind,
         ownership: Ownership,
-        size_param_index: Option<u32>,
-        fixed_size: Option<u32>,
+        bounds: ArrayBounds,
         element_size: Option<usize>,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             item_codec,
             ownership,
             element_size,
-            container: ArrayContainerCodec::from_kind(kind, size_param_index, fixed_size)?,
+            container: ArrayContainerCodec::from_kind(kind, bounds)?,
         })
     }
 
@@ -260,6 +260,14 @@ impl ArrayCodec {
         }
 
         self.element_size
+    }
+
+    pub(super) fn cursor_stride(&self) -> anyhow::Result<usize> {
+        self.inline_element_size()
+            .or_else(|| self.item_element_size())
+            .ok_or_else(|| {
+                anyhow::anyhow!("Unsupported cursor array item codec: {:?}", self.item_codec)
+            })
     }
 
     pub(super) fn inline_element_buffer(

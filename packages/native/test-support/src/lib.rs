@@ -9,8 +9,8 @@ use napi::bindgen_prelude::Unknown;
 use napi::{Env, JsValue as _, sys};
 use native::Handle;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
-    IntegerCodec, Ownership, PtrWriter, ReadCtx, SlotInit,
+    ArrayBounds, ArrayCodec, ArrayKind, Codec, Decoder, Encoder, EnumFlagsCodec, EnumFlagsKind,
+    FloatCodec, IntegerCodec, Ownership, PtrWriter, ReadCtx, SlotInit,
 };
 use native::ffi::library_cache::FfiCache;
 use native::ffi::{PendingTransfer, Slot};
@@ -354,8 +354,7 @@ pub fn i32_array_codec(size: u32) -> ArrayCodec {
         Box::new(Codec::Integer(IntegerCodec::I32)),
         ArrayKind::Fixed,
         Ownership::Borrowed,
-        None,
-        Some(size),
+        ArrayBounds::fixed(size),
         None,
     )
     .expect("valid fixed array codec")
@@ -366,8 +365,7 @@ pub fn f32_array_codec() -> ArrayCodec {
         Box::new(Codec::Float(FloatCodec::F32)),
         ArrayKind::Sized,
         Ownership::Borrowed,
-        Some(1),
-        None,
+        ArrayBounds::sized(1),
         None,
     )
     .expect("valid sized array codec")

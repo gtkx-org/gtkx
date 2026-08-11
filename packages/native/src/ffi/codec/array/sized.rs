@@ -65,7 +65,7 @@ impl ArrayCodec {
         Ok(size as usize)
     }
 
-    fn size_from_args(
+    pub(super) fn size_from_args(
         ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
         size_param_index: usize,

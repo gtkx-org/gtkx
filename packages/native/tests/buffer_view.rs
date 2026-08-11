@@ -5,14 +5,15 @@ use napi::bindgen_prelude::Unknown;
 use napi::sys::{TypedarrayType, napi_typedarray_type};
 use native::ffi::Stash;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Encoder as _, EnumFlagsCodec,
-    EnumFlagsKind, FloatCodec, IntegerCodec, Ownership,
+    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Encoder as _,
+    EnumFlagsCodec, EnumFlagsKind, FloatCodec, IntegerCodec, Ownership,
 };
 use native::value::{TypedView, ViewKind};
 use test_support as helpers;
 
 fn array_of(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec::new(Box::new(item), kind, ownership, None, None, None).expect("valid array codec")
+    ArrayCodec::new(Box::new(item), kind, ownership, ArrayBounds::NONE, None)
+        .expect("valid array codec")
 }
 
 fn sized_array_of(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCodec {
@@ -20,8 +21,7 @@ fn sized_array_of(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCo
         Box::new(item),
         ArrayKind::Sized,
         ownership,
-        Some(size_index),
-        None,
+        ArrayBounds::sized(size_index),
         None,
     )
     .expect("valid sized array codec")
@@ -32,8 +32,7 @@ fn fixed_array_of(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec {
         Box::new(item),
         ArrayKind::Fixed,
         ownership,
-        None,
-        Some(size),
+        ArrayBounds::fixed(size),
         None,
     )
     .expect("valid fixed array codec")

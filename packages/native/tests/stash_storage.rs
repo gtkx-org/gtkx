@@ -2,7 +2,7 @@ use std::ffi::{CStr, CString, c_char, c_void};
 
 use gtk4::glib;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, Codec, Encoder as _, IntegerCodec, Ownership, StringCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, Codec, Encoder as _, IntegerCodec, Ownership, StringCodec,
 };
 use native::ffi::{
     GArrayData, GLIST_OPS, GSLIST_OPS, ListData, ListPayload, Stash, StashData, StashStorage,
@@ -484,8 +484,7 @@ fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) 
         })),
         kind,
         container_ownership,
-        None,
-        None,
+        ArrayBounds::NONE,
         None,
     )
     .expect("valid array codec")
@@ -548,8 +547,7 @@ fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
             Box::new(Codec::Integer(IntegerCodec::U8)),
             ArrayKind::GByteArray,
             Ownership::Full,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid gbytearray codec");

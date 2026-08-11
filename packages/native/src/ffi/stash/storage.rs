@@ -381,12 +381,20 @@ impl Drop for StashStorage {
     }
 }
 
+fn allocated_ptr<T>(vec: &mut Vec<T>) -> *mut c_void {
+    if vec.capacity() == 0 {
+        return std::ptr::null_mut();
+    }
+
+    vec.as_mut_ptr().cast::<c_void>()
+}
+
 macro_rules! impl_stash_storage_from_vec {
     ($($descriptor:ty => $vec_variant:ident),+ $(,)?) => {
         $(
             impl From<Vec<$descriptor>> for StashStorage {
                 fn from(mut vec: Vec<$descriptor>) -> Self {
-                    let ptr = vec.as_mut_ptr().cast::<c_void>();
+                    let ptr = allocated_ptr(&mut vec);
                     Self::new(ptr, StashData::$vec_variant(vec))
                 }
             }

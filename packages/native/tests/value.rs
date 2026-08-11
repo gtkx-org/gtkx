@@ -7,8 +7,8 @@ use napi::bindgen_prelude::{External, Unknown};
 use napi::{Env, JsValue as _};
 use native::ffi;
 use native::ffi::codec::{
-    ArrayCodec, ArrayKind, BoxedCodec, Codec, Decoder, FundamentalCodec, IntegerCodec, ObjectCodec,
-    Ownership, RefCodec, StringCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BoxedCodec, Codec, Decoder, FundamentalCodec, IntegerCodec,
+    ObjectCodec, Ownership, RefCodec, StringCodec,
 };
 use test_support as helpers;
 use test_support::napi_mock;
@@ -53,8 +53,7 @@ fn gobject_glist_type_of(container: Ownership) -> Codec {
             Box::new(gobject_type_of(Ownership::Borrowed)),
             ArrayKind::GList,
             container,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid glist codec"),
@@ -67,8 +66,7 @@ fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) 
             Box::new(string_type_of(item)),
             kind,
             container,
-            None,
-            None,
+            ArrayBounds::NONE,
             None,
         )
         .expect("valid array codec"),

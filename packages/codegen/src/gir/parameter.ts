@@ -23,6 +23,17 @@ type ParameterTransfer = "none" | "full" | "container";
  */
 type CallbackScope = "call" | "notified" | "async" | "forever";
 
+/**
+ * Bounds of an out parameter that points into the buffer of a sibling parameter instead of to an
+ * array of its own, which GIR describes as an array with no extent of any kind.
+ */
+type GirCursorBounds = {
+    /** Position of the parameter holding the buffer the pointer points into. */
+    baseIndex: number;
+    /** Position of the parameter carrying that buffer's element count. */
+    lengthIndex: number;
+};
+
 /** A parameter of a {@link GirCallable}, with the annotations that decide how it is marshalled. */
 type GirParameter = {
     /** The name GIR gives the parameter. */
@@ -51,6 +62,8 @@ type GirParameter = {
     destroyIndex: number | undefined;
     /** Whether the parameter is the `...` varargs marker. */
     isVarargs: boolean;
+    /** Where the buffer is that the parameter points into, when it carries a cursor rather than an array. */
+    cursor: GirCursorBounds | undefined;
 };
 
 /** What a {@link GirCallable} hands back, with the annotations that decide how it is marshalled. */
@@ -118,6 +131,7 @@ const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter =
     closureIndex: intAttr(node, "closure"),
     destroyIndex: intAttr(node, "destroy"),
     isVarargs: getChild(node, "varargs") !== undefined,
+    cursor: undefined,
 });
 
 const isOutParameter = (parameter: GirParameter): boolean =>
@@ -163,6 +177,7 @@ export {
     isInoutParameter,
     parseCallable,
     type ParameterTransfer,
+    type GirCursorBounds,
     type GirParameter,
     type GirReturnValue,
     type GirCallable,

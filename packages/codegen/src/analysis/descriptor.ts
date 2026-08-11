@@ -1,4 +1,5 @@
 import { sourceStringLiteral } from "@gtkx/utils";
+import type { GirCursorBounds } from "../gir/parameter.js";
 import { joinArgs } from "../writer/emit.js";
 
 type Ownership = "borrowed" | "full";
@@ -39,6 +40,7 @@ type DescriptorName =
     "byteArray" |
     "sizedArray" |
     "fixedArray" |
+    "cursorArray" |
     "callback" |
     "fn";
 
@@ -128,6 +130,7 @@ const T: DescriptorNames = {
     byteArray: "t.byteArray",
     sizedArray: "t.sizedArray",
     fixedArray: "t.fixedArray",
+    cursorArray: "t.cursorArray",
     callback: "t.callback",
     fn: "t.fn",
 };
@@ -235,6 +238,14 @@ const tSizedArray = (
         elementSize === undefined ? undefined : String(elementSize),
     ]);
 
+const tCursorArray = (element: string, bounds: GirCursorBounds, ownership?: Ownership, elementSize?: number): string =>
+    call("cursorArray", [
+        element,
+        `{ baseParamIndex: ${String(bounds.baseIndex)}, sizeParamIndex: ${String(bounds.lengthIndex)} }`,
+        ownership === undefined ? undefined : sourceStringLiteral(ownership),
+        elementSize === undefined ? undefined : String(elementSize),
+    ]);
+
 const tFixedArray = (element: string, length: number, ownership?: Ownership, elementSize?: number): string =>
     call("fixedArray", [
         element,
@@ -288,6 +299,7 @@ export {
     tArray,
     tSizedArray,
     tFixedArray,
+    tCursorArray,
     tCallback,
     tBind,
     tFn,
