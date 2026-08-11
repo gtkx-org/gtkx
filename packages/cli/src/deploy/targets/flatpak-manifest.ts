@@ -50,7 +50,6 @@ const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
 
     return {
         id: settings.applicationId,
-        branch: branchFor(settings),
         ...runtimeKeys(settings),
         command: settings.binaryName,
         "finish-args": flatpak.finishArgs ?? DEFAULT_FINISH_ARGS,

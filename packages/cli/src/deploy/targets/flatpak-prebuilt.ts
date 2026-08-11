@@ -7,10 +7,18 @@ const DESTINATION = "${FLATPAK_DEST}";
 const STAGE_SOURCE_PATH = "../../stage";
 const OVERLAY_SOURCE_PATH = "../../overlay/flatpak";
 
-const validationCommands = (settings: DeploySettings): string[] => [
-    `desktop-file-validate ${DESTINATION}/share/applications/${settings.applicationId}.desktop`,
-    `appstreamcli validate --no-net --explain ${DESTINATION}/share/metainfo/${settings.applicationId}.metainfo.xml`,
-];
+const validationCommands = (settings: DeploySettings): string[] => {
+    if (settings.deploy.flatpak?.mode !== "source") {
+        return [];
+    }
+
+    const metainfo = `${DESTINATION}/share/metainfo/${settings.applicationId}.metainfo.xml`;
+
+    return [
+        `desktop-file-validate ${DESTINATION}/share/applications/${settings.applicationId}.desktop`,
+        `appstreamcli validate --no-net --explain ${metainfo}`,
+    ];
+};
 
 const permissionCommands = (settings: DeploySettings): string[] => [
     `chmod 755 ${DESTINATION}/bin/${settings.binaryName} ${DESTINATION}/lib/${settings.binaryName}/node`,

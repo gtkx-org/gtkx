@@ -46,7 +46,6 @@ const BUILD_MODE = "production";
 const BYTES_PER_MIB = 1024 * 1024;
 const WEBKIT_LIBRARY = "WebKit-6.0";
 const NETWORK_ARG = "--share=network";
-const STORE_TARGETS: Set<string> = new Set(["flatpak"]);
 
 const displayPath = (settings: DeploySettings, path: string): string => relative(settings.paths.root, path);
 const megabytes = (size: number): string => (size / BYTES_PER_MIB).toFixed(1);
@@ -61,6 +60,9 @@ const renderMetadata = (settings: DeploySettings): StagedMetadata => ({
     metainfo: renderMetainfo(settings),
     mimePackage: renderMimePackage(settings),
 });
+
+const isFlathubSubmission = (settings: DeploySettings, targets: DeployTarget[]): boolean =>
+    settings.deploy.flatpak?.mode === "source" && targets.some((target) => target.name === "flatpak");
 
 const validateMetadata = (settings: DeploySettings, metadata: StagedMetadata, areWarningsFatal: boolean): void => {
     const dir = settings.paths.metadata;
@@ -127,7 +129,7 @@ const buildPayload = async (
     targets: DeployTarget[],
 ): Promise<DeployPayload> => {
     const metadata = renderMetadata(settings);
-    validateMetadata(settings, metadata, targets.some((target) => STORE_TARGETS.has(target.name)));
+    validateMetadata(settings, metadata, isFlathubSubmission(settings, targets));
 
     if (!options.shouldSkipBuild) {
         info(`Building ${options.entry}`);

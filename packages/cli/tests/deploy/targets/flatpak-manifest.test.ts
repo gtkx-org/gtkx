@@ -49,12 +49,15 @@ describe("renderFlatpakManifest — prebuilt", () => {
     it("pins the GNOME runtime and names the launcher as the command", () => {
         expect(renderFlatpakManifest(payloadFor())).toMatchObject({
             id: "com.gtkx.tutorial",
-            branch: "stable",
             runtime: "org.gnome.Platform",
             "runtime-version": "50",
             sdk: "org.gnome.Sdk",
             command: "gtkx-tutorial",
         });
+    });
+
+    it("carries no branch, which Flathub's linter rejects at the top level", () => {
+        expect(renderFlatpakManifest(payloadFor())).not.toHaveProperty("branch");
     });
 
     it("needs no Node SDK extension, because the payload carries its own Node.js", () => {
@@ -94,10 +97,10 @@ describe("renderFlatpakManifest — prebuilt", () => {
 });
 
 describe("renderFlatpakManifest — prebuilt build steps", () => {
-    it("validates the metadata inside the sandbox as the last build step", () => {
+    it("leaves the metadata to deploy's own validation, which already ran on the same files", () => {
         const commands = getModule(payloadFor())["build-commands"];
-        expect(commands.at(-2)).toContain("desktop-file-validate");
-        expect(commands.at(-1)).toContain("appstreamcli validate --no-net --explain");
+        expect(commands.some((command) => command.includes("desktop-file-validate"))).toBe(false);
+        expect(commands.some((command) => command.includes("appstreamcli"))).toBe(false);
     });
 
     it("compiles the schemas after installing, and only when the app ships any", () => {
@@ -164,6 +167,12 @@ describe("renderFlatpakManifest — source", () => {
     it("vendors the offline sources file alongside the git source", () => {
         const sources = getModule(payloadFor(sourceSettings())).sources;
         expect(sources).toContain("generated-sources.json");
+    });
+
+    it("validates the metadata inside the sandbox, the way a reviewer expects", () => {
+        const commands = getModule(payloadFor(sourceSettings()))["build-commands"];
+        expect(commands.at(-2)).toContain("desktop-file-validate");
+        expect(commands.at(-1)).toContain("appstreamcli validate --no-net --explain");
     });
 });
 

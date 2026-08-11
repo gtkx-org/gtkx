@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { DeploySettings } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { gitRemoteUrl, runGit } from "../git.js";
@@ -92,10 +92,12 @@ const generatedSourcesPath = (settings: DeploySettings): string =>
 
 const generateNodeSources = (settings: DeploySettings, manager: PackageManager): void => {
     const lockfile = settings.deploy.flatpak?.lockfile ?? LOCKFILE_BY_MANAGER[manager];
+    const output = generatedSourcesPath(settings);
+    mkdirSync(dirname(output), { recursive: true });
 
     runCliTool({
         tool: GENERATOR,
-        args: [manager, join(settings.paths.root, lockfile), "-o", generatedSourcesPath(settings)],
+        args: [manager, join(settings.paths.root, lockfile), "-o", output],
         target: "the offline npm sources",
         shouldStream: true,
     });

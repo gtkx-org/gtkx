@@ -58,6 +58,7 @@ const builderArgsFor = (settings: DeploySettings, dir: string): string[] => [
     "--force-clean",
     "--user",
     "--install-deps-from=flathub",
+    `--default-branch=${branchFor(settings)}`,
     ...(settings.deploy.flatpak?.shouldUseRofilesFuse === false ? ["--disable-rofiles-fuse"] : []),
     `--state-dir=${join(dir, "state")}`,
     `--repo=${join(dir, "repo")}`,

@@ -98,6 +98,7 @@ describe("the flatpak-builder arguments", () => {
         expect(args).toContain("--force-clean");
         expect(args).toContain("--user");
         expect(args).toContain("--install-deps-from=flathub");
+        expect(args).toContain("--default-branch=stable");
         expect(args).toContain("--state-dir=/project/build/targets/flatpak/state");
         expect(args).toContain("--repo=/project/build/targets/flatpak/repo");
     });

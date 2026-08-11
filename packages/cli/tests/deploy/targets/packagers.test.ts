@@ -55,7 +55,6 @@ describe.skipIf(!hasFlatpakBuilder())("the generated flatpak manifest", () => {
             id: "com.gtkx.tutorial",
             command: "gtkx-tutorial",
             "runtime-version": "50",
-            branch: "stable",
         });
     });
 

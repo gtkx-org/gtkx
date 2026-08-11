@@ -215,10 +215,17 @@ describe("runDeploy — metadata validation", () => {
         expect(validateMetainfo).toHaveBeenCalledWith(join(metadata, `${APPLICATION_ID}.metainfo.xml`), false);
     });
 
-    it("treats metainfo warnings as fatal when a store target is packaged", async () => {
+    it("treats metainfo warnings as fatal when the manifest is bound for Flathub", async () => {
         state.targets = [stubTarget("flatpak")];
+        setDeploy({ flatpak: { mode: "source" } });
         await deploy();
         expect(vi.mocked(validateMetainfo).mock.calls[0]?.[1]).toBe(true);
+    });
+
+    it("leaves warnings non-fatal for a flatpak built for local distribution", async () => {
+        state.targets = [stubTarget("flatpak")];
+        await deploy();
+        expect(vi.mocked(validateMetainfo).mock.calls[0]?.[1]).toBe(false);
     });
 });
 
