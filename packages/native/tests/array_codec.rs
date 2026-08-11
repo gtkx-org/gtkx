@@ -1611,6 +1611,24 @@ fn decode_with_context_sized_array() {
 }
 
 #[test]
+fn decode_with_context_sized_array_rejects_a_length_beyond_the_javascript_limit() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor =
+            sized_array_type(Codec::Integer(IntegerCodec::I32), 0, Ownership::Borrowed);
+        let data: Vec<i32> = vec![5, 6, 7];
+        let stash = Stash::Ptr(data.as_ptr() as *mut c_void);
+        let ffi_args = [Stash::U32(134_217_729)];
+        let arg_codecs = [Codec::Integer(IntegerCodec::U32)];
+        let Err(error) = descriptor.decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
+        else {
+            panic!("an oversized length is rejected");
+        };
+        assert!(error.to_string().contains("134217729 elements"));
+    });
+}
+
+#[test]
 fn decode_with_context_sized_array_null_ptr() {
     helpers::run(|| {
         let env = helpers::fake_env();

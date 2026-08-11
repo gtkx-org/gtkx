@@ -300,6 +300,8 @@ impl ArrayCodec {
         data: *const u8,
         len: usize,
     ) -> anyhow::Result<Vec<Unknown<'e>>> {
+        value::checked_array_length(len)?;
+
         (0..len)
             .map(|index| unsafe {
                 self.item_codec.read(
@@ -424,6 +426,8 @@ impl ArrayCodec {
         if let Some(stride) = self.inline_element_size() {
             return self.decode_inline(env, stride, data, len);
         }
+        value::checked_array_length(len)?;
+
         let numbers_to_unknowns = |numbers: Vec<f64>| -> anyhow::Result<Vec<Unknown<'e>>> {
             numbers
                 .into_iter()

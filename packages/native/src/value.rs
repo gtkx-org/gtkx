@@ -14,6 +14,8 @@ pub mod wrapper;
 pub use closure::ClosureHandle;
 pub use view::{TypedView, ViewKind};
 
+const MAX_JS_ARRAY_LENGTH: u32 = 134_217_728;
+
 pub fn read_napi<T: FromNapiValue>(value: Unknown<'_>) -> Result<T> {
     T::from_unknown(value)
 }
@@ -42,16 +44,22 @@ pub fn js_undefined(env: &Env) -> Result<Unknown<'_>> {
     ().into_unknown(env)
 }
 
+pub fn checked_array_length(length: usize) -> Result<u32> {
+    u32::try_from(length)
+        .ok()
+        .filter(|&length| length <= MAX_JS_ARRAY_LENGTH)
+        .ok_or_else(|| {
+            Error::new(
+                Status::InvalidArg,
+                format!(
+                    "An array of {length} elements exceeds the maximum JavaScript array length of {MAX_JS_ARRAY_LENGTH}"
+                ),
+            )
+        })
+}
+
 pub fn js_array<'e>(env: &'e Env, items: Vec<Unknown<'e>>) -> Result<Unknown<'e>> {
-    let length = u32::try_from(items.len()).map_err(|_| {
-        Error::new(
-            Status::InvalidArg,
-            format!(
-                "Array of {} items exceeds the JavaScript array index range",
-                items.len()
-            ),
-        )
-    })?;
+    let length = checked_array_length(items.len())?;
     let mut js_array = env.create_array(length)?;
     for (index, item) in (0..length).zip(items) {
         js_array.set(index, item)?;
