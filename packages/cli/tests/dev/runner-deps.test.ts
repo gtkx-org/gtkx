@@ -116,19 +116,53 @@ describe("defaultDevRunnerDeps (waitForApplicationId)", () => {
     it("resolves the registered GLib applicationId", async () => {
         const deps = defaultDevRunnerDeps();
         hoisted.getDefault.mockReturnValue({ applicationId: "com.example.app" });
-        await expect(deps.waitForApplicationId(1000)).resolves.toBe("com.example.app");
+        await expect(deps.waitForApplicationId(1000, () => true)).resolves.toBe("com.example.app");
     });
 
     it("keeps polling and resolves once the application mounts after a delay", async () => {
         const deps = defaultDevRunnerDeps();
         hoisted.getDefault.mockReturnValueOnce(null).mockReturnValue({ applicationId: "com.example.late" });
-        await expect(deps.waitForApplicationId(1000)).resolves.toBe("com.example.late");
+        await expect(deps.waitForApplicationId(1000, () => true)).resolves.toBe("com.example.late");
     });
 
     it("resolves null when no application mounts before the timeout", async () => {
         const deps = defaultDevRunnerDeps();
         hoisted.getDefault.mockReturnValue(null);
-        await expect(deps.waitForApplicationId(60)).resolves.toBeNull();
+        await expect(deps.waitForApplicationId(60, () => true)).resolves.toBeNull();
+    });
+
+    it("gives up as soon as the caller stops waiting", async () => {
+        const deps = defaultDevRunnerDeps();
+        hoisted.getDefault.mockReturnValue(null);
+        const startedAt = Date.now();
+        await expect(deps.waitForApplicationId(60_000, () => false)).resolves.toBeNull();
+        expect(Date.now() - startedAt).toBeLessThan(5000);
+    });
+});
+
+describe("defaultDevRunnerDeps (error watching)", () => {
+    it("registers the reconciler error handler through the application's module graph", async () => {
+        const deps = defaultDevRunnerDeps();
+        const setReconcilerErrorHandler = vi.fn();
+        const loadAppModule = vi.fn(() => Promise.resolve({ setReconcilerErrorHandler }));
+        const onRenderError = vi.fn();
+        await deps.watchRenderErrors(loadAppModule, onRenderError);
+        expect(loadAppModule).toHaveBeenCalledWith("@gtkx/react/internal");
+        expect(setReconcilerErrorHandler).toHaveBeenCalledWith(onRenderError);
+    });
+
+    it("routes uncaught exceptions and unhandled rejections to the same handler", () => {
+        const deps = defaultDevRunnerDeps();
+        const on = vi.spyOn(process, "on").mockReturnValue(process);
+        const onUncaughtError = vi.fn();
+
+        try {
+            deps.watchUncaughtErrors(onUncaughtError);
+            expect(on).toHaveBeenCalledWith("uncaughtException", onUncaughtError);
+            expect(on).toHaveBeenCalledWith("unhandledRejection", onUncaughtError);
+        } finally {
+            on.mockRestore();
+        }
     });
 });
 

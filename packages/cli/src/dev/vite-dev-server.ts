@@ -33,4 +33,4 @@ const createDevServerConfig = (root: string, plugins: Plugin[]): InlineConfig =>
     },
 });
 
-export { createDevServerConfig, type DevServer };
+export { createDevServerConfig, type DevServer, type DevServerChangedModule };

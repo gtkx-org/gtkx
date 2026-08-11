@@ -11,16 +11,21 @@ import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 
+type ReconcilerErrorModule = {
+    setReconcilerErrorHandler: (handler: (cause: unknown) => void) => unknown;
+};
+
 const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
+const REACT_INTERNAL_MODULE = "@gtkx/react/internal";
 
 const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? null;
 
-const waitForApplicationId = async (timeoutMs: number): Promise<string | null> => {
+const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null> => {
     const deadline = Date.now() + timeoutMs;
     let applicationId = currentApplicationId();
 
-    while (applicationId === null && Date.now() < deadline) {
+    while (applicationId === null && Date.now() < deadline && shouldKeepWaiting()) {
         await new Promise((resolve) => setTimeout(resolve, APPLICATION_POLL_INTERVAL_MS));
         applicationId = currentApplicationId();
     }
@@ -44,6 +49,14 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     stopMcpClient,
     watchApplicationShutdown: (onShutdown) => {
         Gio.Application.getDefault()?.on("shutdown", onShutdown);
+    },
+    watchRenderErrors: async (loadAppModule, onRenderError) => {
+        const react = (await loadAppModule(REACT_INTERNAL_MODULE)) as ReconcilerErrorModule;
+        react.setReconcilerErrorHandler(onRenderError);
+    },
+    watchUncaughtErrors: (onUncaughtError) => {
+        process.on("uncaughtException", onUncaughtError);
+        process.on("unhandledRejection", onUncaughtError);
     },
     isApplicationRegistered: () => Gio.Application.getDefault()?.getIsRegistered() === true,
     installShutdownHandlers: (onSignal) => {
