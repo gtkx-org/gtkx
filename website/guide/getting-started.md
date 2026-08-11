@@ -91,7 +91,7 @@ createRoot().render(<App />);
 
 The application element picks up its `applicationId` from `gtkx.config.ts` automatically. An Adwaita app adds `Adw-1` to its `libraries` and uses `<AdwApplication>`, imported from `@gtkx/jsx/adw`, in place of `<GtkApplication>` (see [Your First Window](/tutorial/your-first-window)).
 
-Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every root, and unmounting the application element quits the application it started. It returns `true`, which is what a close-request handler returns to stop GTK4 from closing the window itself, so the starter hands it to its main window as `onCloseRequest={quit}`.
+Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every root that currently holds a mounted tree, and unmounting the application element quits the application it started. It returns `true` when it unmounted something, which is what a close-request handler returns to stop GTK4 from closing the window itself, so the starter hands it to its main window as `onCloseRequest={quit}`. With nothing left to unmount it returns `false` instead, leaving GTK4's own close handler to run.
 
 ## Next
 

@@ -18,7 +18,10 @@ type ReconcilerRootOptions = RootErrorCallbacks & { containerInfo: Container };
 
 /** A render root whose updates and teardown the caller drives, with error handling left to it. */
 type ReconcilerRoot = {
-    /** Mounts an element tree into the container, or updates the tree already mounted there. */
+    /**
+     * Mounts an element tree into the container, or updates the tree already mounted there. Passing `null` unmounts
+     * the container instead.
+     */
     update: (element: ReactNode) => void;
     /** Hands the root to `teardown`, then stops {@link quit} from unmounting the container. */
     unmount: (teardown: (root: ReconcilerRoot) => Promise<void>) => Promise<void>;
@@ -26,7 +29,10 @@ type ReconcilerRoot = {
 
 /** The object {@link createRoot} returns: it renders an element tree into a container and can tear it down. */
 type Root = {
-    /** Mounts an element tree into the container, or updates the tree already mounted there. */
+    /**
+     * Mounts an element tree into the container, or updates the tree already mounted there. Rendering `null` unmounts
+     * the container instead.
+     */
     render: (element: ReactNode) => void;
     /** Unmounts the rendered tree and runs its effect cleanups. */
     unmount: () => void;
@@ -67,7 +73,7 @@ const logCaughtRenderError = (error: unknown): void => {
 const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks): OpaqueRoot => {
     injectIntoDevTools(reconciler);
 
-    const container = reconciler.createContainer(
+    return reconciler.createContainer(
         containerInfo,
         ConcurrentRoot,
         null,
@@ -87,10 +93,6 @@ const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks):
         },
         (): void => undefined,
     ) as OpaqueRoot;
-
-    activeRoots.add(container);
-
-    return container;
 };
 
 const unmountContainer = (container: OpaqueRoot): void => {
@@ -98,12 +100,23 @@ const unmountContainer = (container: OpaqueRoot): void => {
     activeRoots.delete(container);
 };
 
+const mountContainer = (container: OpaqueRoot, element: ReactNode): void => {
+    if (element === null) {
+        unmountContainer(container);
+
+        return;
+    }
+
+    activeRoots.add(container);
+    reconciler.updateContainer(element, container, null, null);
+};
+
 const createReconcilerRoot = (options: ReconcilerRootOptions): ReconcilerRoot => {
     const container = openContainer(options.containerInfo, options);
 
     const root: ReconcilerRoot = {
         update: (element) => {
-            reconciler.updateContainer(element, container, null, null);
+            mountContainer(container, element);
         },
         unmount: async (teardown) => {
             await teardown(root);
@@ -128,7 +141,7 @@ const createRoot = (container: Container = rootElement): Root => {
 
     return {
         render: (element) => {
-            reconciler.updateContainer(element, opaque, null, null);
+            mountContainer(opaque, element);
         },
         unmount: () => {
             unmountContainer(opaque);
@@ -136,13 +149,20 @@ const createRoot = (container: Container = rootElement): Root => {
     };
 };
 
-/** Unmounts every active render root and stops the originating signal from propagating further. */
-const quit = (): typeof Gdk.EVENT_STOP => {
-    for (const container of activeRoots) {
+/**
+ * Unmounts every render root that currently holds a mounted tree.
+ *
+ * @returns `Gdk.EVENT_STOP` when at least one root came down, so a close-request handler keeps GTK4 from closing the
+ * window itself, and `Gdk.EVENT_PROPAGATE` when there was nothing to unmount, so the default handler still runs.
+ */
+const quit = (): typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP => {
+    const containers = [...activeRoots];
+
+    for (const container of containers) {
         unmountContainer(container);
     }
 
-    return Gdk.EVENT_STOP;
+    return containers.length > 0 ? Gdk.EVENT_STOP : Gdk.EVENT_PROPAGATE;
 };
 
 /**
