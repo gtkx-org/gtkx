@@ -53,6 +53,17 @@ const fetchText = async (url: string): Promise<string> => {
     return bytes.toString("utf8");
 };
 
+const cachedFetchText = async (url: string, dest: string): Promise<string> => {
+    if (existsSync(dest)) {
+        return readFileSync(dest, "utf8");
+    }
+
+    const contents = await fetchText(url);
+    writeFileSync(dest, contents);
+
+    return contents;
+};
+
 const isCacheUsable = (dest: string, sha256: string): boolean => {
     if (!existsSync(dest)) {
         return false;
@@ -98,4 +109,4 @@ const digestFromChecksums = (checksums: string, assetName: string, subject: stri
     return digest;
 };
 
-export { cacheDir, digestFromChecksums, downloadFile, fetchText };
+export { cacheDir, cachedFetchText, digestFromChecksums, downloadFile };

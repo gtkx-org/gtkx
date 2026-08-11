@@ -1,10 +1,10 @@
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { runCliTool } from "../../internal/run-cli-tool.js";
-import { cacheDir, digestFromChecksums, downloadFile, fetchText } from "../download.js";
+import { cachedFetchText, cacheDir, digestFromChecksums, downloadFile } from "../download.js";
 
 const NFPM_VERSION = "2.47.0";
 const NFPM_BASE_URL = `https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}`;
+const CHECKSUMS_FILE = "checksums.txt";
 
 const NFPM_ASSET_ARCH: Record<string, string> = {
     arm64: "arm64",
@@ -21,8 +21,8 @@ const assetNameFor = (arch: string): string => {
     return `nfpm_${NFPM_VERSION}_Linux_${assetArch}.tar.gz`;
 };
 
-const expectedDigest = async (assetName: string): Promise<string> => {
-    const checksums = await fetchText(`${NFPM_BASE_URL}/checksums.txt`);
+const expectedDigest = async (assetName: string, dir: string): Promise<string> => {
+    const checksums = await cachedFetchText(`${NFPM_BASE_URL}/${CHECKSUMS_FILE}`, join(dir, CHECKSUMS_FILE));
 
     return digestFromChecksums(checksums, assetName, `nfpm ${NFPM_VERSION}`);
 };
@@ -38,7 +38,7 @@ const downloadNfpm = async (dir: string, binary: string): Promise<string> => {
         url: `${NFPM_BASE_URL}/${assetName}`,
         dest: join(dir, assetName),
         label: `nfpm ${NFPM_VERSION}`,
-        sha256: await expectedDigest(assetName),
+        sha256: await expectedDigest(assetName, dir),
     });
 
     extractNfpm(archive, dir);
@@ -54,9 +54,8 @@ const resolveNfpm = async (): Promise<string> => {
     }
 
     const dir = cacheDir(["nfpm", NFPM_VERSION]);
-    const binary = join(dir, "nfpm");
 
-    return existsSync(binary) ? binary : downloadNfpm(dir, binary);
+    return downloadNfpm(dir, join(dir, "nfpm"));
 };
 
 export { resolveNfpm };

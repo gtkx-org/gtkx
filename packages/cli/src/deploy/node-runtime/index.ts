@@ -11,13 +11,9 @@ const BYTES_PER_MIB = 1024 * 1024;
 const EXECUTABLE_MODE = 0o755;
 const NODE_FILENAME = "node";
 
-const sourcePathFor = async (settings: DeploySettings, version: string): Promise<string> => {
+const sourcePathFor = (settings: DeploySettings): string => {
     const node = settings.deploy.node ?? {};
     const source = node.source ?? "download";
-
-    if (source === "download") {
-        return downloadNode(version, settings.arch.node);
-    }
 
     if (source === "host") {
         return process.execPath;
@@ -51,19 +47,29 @@ const stageNode = (settings: DeploySettings, sourcePath: string): string => {
     return staged;
 };
 
-const guardSource = (sourcePath: string, source: string): void => {
-    if (source !== "download") {
-        assertPortableNode(readElfInfo(sourcePath), source);
+const stageDownloadedNode = async (settings: DeploySettings, version: string): Promise<string> => {
+    const staged = await downloadNode(version, settings.arch.node, settings.paths.runtime);
+    chmodSync(staged, EXECUTABLE_MODE);
+
+    return staged;
+};
+
+const stageFromSource = async (settings: DeploySettings, version: string, source: string): Promise<string> => {
+    if (source === "download") {
+        return stageDownloadedNode(settings, version);
     }
+
+    const sourcePath = sourcePathFor(settings);
+    assertPortableNode(readElfInfo(sourcePath), source);
+
+    return stageNode(settings, sourcePath);
 };
 
 const resolveNodeRuntime = async (settings: DeploySettings): Promise<NodeRuntime> => {
     const node = settings.deploy.node ?? {};
     const source = node.source ?? "download";
     const version = node.version ?? process.versions.node;
-    const sourcePath = await sourcePathFor(settings, version);
-    guardSource(sourcePath, source);
-    const staged = stageNode(settings, sourcePath);
+    const staged = await stageFromSource(settings, version, source);
     const isStripped = node.shouldStrip === false ? false : didStripBinary(staged);
     const elf = readElfInfo(staged);
     info(`Bundled Node.js v${version} (${megabytes(staged)} MiB, glibc >= ${elf.glibcFloor ?? "unknown"})`);
