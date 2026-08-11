@@ -101,7 +101,7 @@ share/glib-2.0/schemas/<id>*.gschema.xml      copied from data/
 
 ## Why Node.js is bundled
 
-GTKX needs Node.js 24, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` downloads the official `nodejs.org` build matching the Node.js you are running, verifies it against the published SHA-256, and caches it under `~/.cache/gtkx/node/`. That costs about 100 MiB per package and makes the first deploy need network access.
+GTKX needs Node.js 24, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` downloads the official `nodejs.org` build matching the Node.js you are running and verifies it against the published SHA-256. The release archive is cached under `~/.cache/gtkx/node/` and re-verified on every reuse, so only the first deploy needs network access. That costs about 100 MiB per package.
 
 `deploy.node.source` changes where it comes from:
 
@@ -111,15 +111,18 @@ GTKX needs Node.js 24, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so th
 
 ## Tools you need installed
 
-`desktop-file-validate` and `appstreamcli` are always required, because they are what catch a metadata mistake before it reaches a software center. Everything else depends on the target:
+`desktop-file-validate` and `appstreamcli` are always required, because they are what catch a metadata mistake before it reaches a software center. `tar` is required whenever packages are actually built, since the bundled Node.js is extracted from its release archive. Beyond that it depends on the target:
 
 | Target | Needs | Fetched automatically |
 | --- | --- | --- |
-| `flatpak` | `flatpak`, `flatpak-builder` | the GNOME runtime |
-| `deb`, `rpm` | `tar` | `nfpm` |
+| `flatpak` | `flatpak`, and either `flatpak-builder` or the `org.flatpak.Builder` Flatpak | the GNOME runtime |
+| `flatpak` with `mode: "source"` | the above, plus `flatpak-node-generator` | |
+| `deb`, `rpm` | | `nfpm` |
 | `appimage` | `file` | `appimagetool` and the AppImage runtime |
 
-`nfpm` and `appimagetool` are downloaded, checksum-verified, and cached under `~/.cache/gtkx/`, so building a `.deb` on Fedora and an `.rpm` on Debian both work without installing anything distribution-specific. When a required tool is missing, `gtkx deploy` lists every one of them at once, with the install command for your distribution.
+`nfpm` and `appimagetool` are downloaded, checksum-verified, and cached under `~/.cache/gtkx/`, so building a `.deb` on Fedora and an `.rpm` on Debian both work without installing anything distribution-specific. Only the archives are cached, and each is re-verified against its published checksum before it is reused, so a corrupted cache is discarded and re-fetched rather than packaged.
+
+When a required tool is missing, `gtkx deploy` lists every one of them at once, with the install command for your distribution. `--print-manifests` needs none of the packaging tools, only the two validators.
 
 ## Reviewing what it generates
 
