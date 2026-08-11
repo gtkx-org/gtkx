@@ -1,6 +1,6 @@
-import { info } from "@gtkx/utils";
+import { info, warn } from "@gtkx/utils";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -53,8 +53,22 @@ const fetchText = async (url: string): Promise<string> => {
     return bytes.toString("utf8");
 };
 
+const isCacheUsable = (dest: string, sha256: string): boolean => {
+    if (!existsSync(dest)) {
+        return false;
+    }
+
+    if (getDigest(readFileSync(dest)) === sha256) {
+        return true;
+    }
+
+    warn(`Discarding the cached ${dest}: its checksum no longer matches`);
+
+    return false;
+};
+
 const downloadFile = async ({ url, dest, label, sha256, mode }: DownloadRequest): Promise<string> => {
-    if (existsSync(dest)) {
+    if (isCacheUsable(dest, sha256)) {
         return dest;
     }
 

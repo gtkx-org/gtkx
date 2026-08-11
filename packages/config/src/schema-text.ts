@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const SEGMENT_SEPARATOR = /[/\\]/;
+
+const isRelativePath = (value: string): boolean => {
+    const segments = value.split(SEGMENT_SEPARATOR);
+
+    return value.length > 0 && !value.startsWith("/") && segments.every((part) => part !== "" && part !== "..");
+};
+
 const text = (message: string): z.ZodString => z.string({ error: message }).min(1, { error: message });
 
 const textList = (itemNoun: string, listMessage: string): z.ZodArray<z.ZodString> =>
@@ -11,4 +19,14 @@ const flag = (message: string): z.ZodBoolean => z.boolean({ error: message });
 const textRecord = (valueMessage: string, recordMessage: string): z.ZodRecord<z.ZodString, z.ZodString> =>
     z.record(z.string(), text(valueMessage), { error: recordMessage });
 
-export { flag, text, textList, textRecord, url };
+const relativePath = (message: string): z.ZodString =>
+    z.string({ error: message }).refine((value) => isRelativePath(value), { error: message });
+
+const relativePathRecord = (
+    keyMessage: string,
+    valueMessage: string,
+    recordMessage: string,
+): z.ZodRecord<z.ZodString, z.ZodString> =>
+    z.record(relativePath(keyMessage), text(valueMessage), { error: recordMessage });
+
+export { flag, relativePathRecord, text, textList, textRecord, url };

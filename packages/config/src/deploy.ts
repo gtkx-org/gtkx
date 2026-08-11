@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { flag, text, textList, textRecord, url } from "./schema-text.ts";
+import { flag, relativePathRecord, text, textList, textRecord, url } from "./schema-text.ts";
 
 const APPIMAGE_COMPRESSIONS = ["gzip", "xz", "zstd"] as const;
 const DEB_COMPRESSIONS = ["gzip", "none", "xz", "zstd"] as const;
@@ -237,7 +237,8 @@ const deploySchema = z.strictObject({
     desktopEntry: textRecord("must be a desktop entry value", "must be a record of desktop entry keys to values")
         .optional(),
     isDbusActivatable: flag(BOOLEAN_ERROR).optional(),
-    extraFiles: textRecord(
+    extraFiles: relativePathRecord(
+        "must be a destination path inside the install prefix, without a leading slash or a .. segment",
         "must be a source path",
         "must be a record of prefix-relative destinations to source paths",
     ).optional(),

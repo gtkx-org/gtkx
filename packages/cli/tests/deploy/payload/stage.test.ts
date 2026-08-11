@@ -140,3 +140,15 @@ describe("stageOverlays", () => {
         expect(relativePaths(overlays.deb).some((rel) => rel.includes("dbus-1"))).toBe(false);
     });
 });
+
+describe("stagePayload — containment", () => {
+    it("refuses an extra file that would escape the staging directory", () => {
+        const settings = { ...state.project.settings, extraFiles: { "../../escaped.txt": "LICENSE" } };
+        expect(() => stage(settings)).toThrow("resolves outside the staging directory");
+    });
+
+    it("refuses an extra file whose destination is absolute", () => {
+        const settings = { ...state.project.settings, extraFiles: { "share/../../../etc/x": "LICENSE" } };
+        expect(() => stage(settings)).toThrow("resolves outside the staging directory");
+    });
+});

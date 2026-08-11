@@ -3,6 +3,7 @@ import type { z } from "zod";
 type IssuePath = (string | number)[];
 
 const CONFIG_PREFIX = "gtkx.config.ts:";
+const UNRECOGNIZED_KEY_REASON = "is not a recognized key";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
@@ -47,11 +48,17 @@ const unrecognizedKeyPath = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): 
     return issue.code === "invalid_key" ? dottedPath(fullPath) : undefined;
 };
 
+const keyRejectionReason = (issue: z.core.$ZodIssue): string => {
+    const nested = issue.code === "invalid_key" ? issue.issues[0] : undefined;
+
+    return nested?.code === "custom" ? nested.message : UNRECOGNIZED_KEY_REASON;
+};
+
 const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string => {
     const unrecognized = unrecognizedKeyPath(issue, fullPath);
 
     if (unrecognized !== undefined) {
-        return `${CONFIG_PREFIX} \`${unrecognized}\` is not a recognized key`;
+        return `${CONFIG_PREFIX} \`${unrecognized}\` ${keyRejectionReason(issue)}`;
     }
 
     if (isStandaloneIssue(issue)) {

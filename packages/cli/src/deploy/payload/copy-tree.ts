@@ -1,5 +1,5 @@
 import { chmodSync, copyFileSync, mkdirSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 import type { StagedFile } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 
@@ -14,8 +14,17 @@ const modeFor = (rel: string): number => {
     return EXECUTABLE_SUFFIXES.some((suffix) => name.endsWith(suffix)) ? EXECUTABLE_MODE : READABLE_MODE;
 };
 
+const assertInsideRoot = (root: string, rel: string, abs: string): void => {
+    const escape = relative(root, abs);
+
+    if (escape.length === 0 || escape.startsWith("..") || isAbsolute(escape)) {
+        throw new Error(`Cannot stage "${rel}": it resolves outside the staging directory`);
+    }
+};
+
 const placeFile = (root: string, rel: string, mode: number, write: (target: string) => void): StagedFile => {
     const abs = join(root, rel);
+    assertInsideRoot(root, rel, abs);
     mkdirSync(dirname(abs), { recursive: true });
     write(abs);
     chmodSync(abs, mode);

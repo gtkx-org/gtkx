@@ -600,3 +600,29 @@ describe("resolveConfig (deploy)", () => {
         expect(withDeploy).toEqual(base);
     });
 });
+
+describe("validateConfig (deploy.extraFiles)", () => {
+    it("accepts a prefix-relative destination", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "share/extra/notes.txt": "NOTES.md" } } });
+        }).not.toThrow();
+    });
+
+    it("rejects an absolute destination, and says why", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "/etc/passwd": "NOTES.md" } } });
+        }).toThrow("`deploy.extraFiles./etc/passwd` must be a destination path inside the install prefix");
+    });
+
+    it("rejects a destination that climbs out of the prefix", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "share/../../etc/passwd": "NOTES.md" } } });
+        }).toThrow("must be a destination path inside the install prefix");
+    });
+
+    it("rejects an empty destination", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "": "NOTES.md" } } });
+        }).toThrow("must be a destination path inside the install prefix");
+    });
+});
