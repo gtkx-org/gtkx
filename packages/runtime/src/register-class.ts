@@ -166,9 +166,11 @@ type PropertyVfuncSpec = {
     makeDispatch: (dispatch: PropertyDispatch) => VfuncFn;
 };
 
+type ArgPatch = { isCallerAllocated: true } | { isCallScoped: true };
+
 const INSTANCE_ARG_INDEX = 0;
 const VALUE_ARG_INDEX = 2;
-const TEARDOWN_SLOT_NAMES: Set<string> = new Set(["dispose", "finalize"]);
+const TEARDOWN_VFUNC_NAMES: Set<string> = new Set(["dispose", "finalize"]);
 
 const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
     { methodName: GET_PROPERTY_VFUNC, isValueOut: true, makeDispatch: makeGetProperty },
@@ -448,22 +450,23 @@ function propertyVfuncs(source: PropertyVfuncSource): DiscoveredVfunc[] {
     );
 }
 
-function markValueCallerAllocated(argDescriptors: Descriptor[]): Descriptor[] {
-    return argDescriptors.map((arg, index) =>
-        index === VALUE_ARG_INDEX ? { ...arg, isCallerAllocated: true } : arg);
+function markArg(argDescriptors: Descriptor[], index: number, patch: ArgPatch): Descriptor[] {
+    return argDescriptors.map((arg, at) => (at === index ? { ...arg, ...patch } : arg));
 }
 
-function markInstanceCallScoped(argDescriptors: Descriptor[]): Descriptor[] {
-    return argDescriptors.map((arg, index) =>
-        index === INSTANCE_ARG_INDEX ? { ...arg, isCallScoped: true } : arg);
+function isTeardownSlot(descriptor: VfuncDescriptor): boolean {
+    return (
+        TEARDOWN_VFUNC_NAMES.has(descriptor.vfuncName) &&
+        descriptor.argDescriptors[INSTANCE_ARG_INDEX]?.kind === "object"
+    );
 }
 
 function slotArgDescriptors(descriptor: VfuncDescriptor): Descriptor[] {
-    if (!TEARDOWN_SLOT_NAMES.has(descriptor.vfuncName)) {
+    if (!isTeardownSlot(descriptor)) {
         return descriptor.argDescriptors;
     }
 
-    return markInstanceCallScoped(descriptor.argDescriptors);
+    return markArg(descriptor.argDescriptors, INSTANCE_ARG_INDEX, { isCallScoped: true });
 }
 
 function buildPropertyVfunc(
@@ -479,7 +482,7 @@ function buildPropertyVfunc(
     }
 
     const argDescriptors = isValueOut
-        ? markValueCallerAllocated(descriptor.argDescriptors)
+        ? markArg(descriptor.argDescriptors, VALUE_ARG_INDEX, { isCallerAllocated: true })
         : descriptor.argDescriptors;
 
     return {

@@ -13,6 +13,9 @@ use crate::ffi::PendingTransfer;
 const GOBJECT_SIZE_HINT: usize = 512;
 const STRUCT_SIZE_HINT: usize = 256;
 
+pub const INVALIDATED_HANDLE: &str =
+    "the instance a dispose or finalize override receives is only valid until the override returns";
+
 #[derive(Default)]
 pub struct FieldStore {
     allocations: RefCell<Vec<(usize, PendingTransfer)>>,
@@ -49,7 +52,7 @@ impl Drop for FieldStore {
 
 enum HandleKind {
     Object {
-        ptr: *mut c_void,
+        ptr: Cell<*mut c_void>,
         owned: Cell<Option<glib::Object>>,
     },
     Boxed(Boxed),
@@ -120,7 +123,7 @@ impl Handle {
     pub fn decoded_gobject(object: glib::Object) -> Self {
         let ptr = object.as_ptr().cast::<c_void>();
         HandleKind::Object {
-            ptr,
+            ptr: Cell::new(ptr),
             owned: Cell::new(Some(object)),
         }
         .into()
@@ -128,21 +131,36 @@ impl Handle {
 
     /// A handle over a `GObject` that owns no reference to it, for a pointer the caller only keeps
     /// alive for the duration of one call, such as the instance a class vtable slot receives while
-    /// `GObject` is tearing it down and taking a reference is no longer allowed.
+    /// `GObject` is tearing it down and taking a reference is no longer allowed. Call
+    /// [`Handle::invalidate`] once that call returns, so nothing reaches the instance afterwards.
     #[must_use]
     pub fn borrowed_gobject(gobject_ptr: *mut glib::gobject_ffi::GObject) -> Self {
         HandleKind::Object {
-            ptr: gobject_ptr.cast::<c_void>(),
+            ptr: Cell::new(gobject_ptr.cast::<c_void>()),
             owned: Cell::new(None),
         }
         .into()
     }
 
+    /// Drops the pointer an object handle carries, leaving it referring to nothing.
+    pub fn invalidate(&self) {
+        if let HandleKind::Object { ptr, .. } = &self.kind {
+            ptr.set(std::ptr::null_mut());
+        }
+    }
+
+    #[must_use]
+    pub fn is_invalidated(&self) -> bool {
+        matches!(&self.kind, HandleKind::Object { ptr, .. } if ptr.get().is_null())
+    }
+
     #[must_use]
     pub fn as_gobject_ptr(&self) -> Option<*mut glib::gobject_ffi::GObject> {
-        let HandleKind::Object { ptr, .. } = self.kind else {
+        let HandleKind::Object { ptr, .. } = &self.kind else {
             return None;
         };
+
+        let ptr = ptr.get();
 
         (!ptr.is_null()).then(|| ptr.cast::<glib::gobject_ffi::GObject>())
     }
@@ -156,9 +174,8 @@ impl Handle {
 
     pub fn as_ptr(&self) -> *mut c_void {
         match &self.kind {
-            HandleKind::Object { ptr, .. }
-            | HandleKind::Struct(ptr)
-            | HandleKind::Borrowed(ptr) => *ptr,
+            HandleKind::Object { ptr, .. } => ptr.get(),
+            HandleKind::Struct(ptr) | HandleKind::Borrowed(ptr) => *ptr,
             HandleKind::Boxed(boxed) => boxed.as_ptr(),
             HandleKind::Fundamental(fundamental) => fundamental.as_ptr(),
         }

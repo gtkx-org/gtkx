@@ -171,6 +171,39 @@ fn take_owned_consumes_the_object_once() {
 }
 
 #[test]
+fn a_call_scoped_gobject_handle_owns_nothing_until_it_is_invalidated() {
+    helpers::run(|| {
+        let (obj, obj_ptr, before) = helpers::fresh_gobject();
+        let handle = Handle::borrowed_gobject(obj_ptr);
+
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
+        assert_eq!(handle.as_gobject_ptr(), Some(obj_ptr));
+        assert!(handle.take_owned().is_none());
+        assert!(!handle.is_invalidated());
+
+        handle.invalidate();
+
+        assert!(handle.is_invalidated());
+        assert!(handle.as_gobject_ptr().is_none());
+        assert!(handle.as_ptr().is_null());
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
+
+        drop(obj);
+    });
+}
+
+#[test]
+fn invalidating_a_handle_that_holds_no_gobject_changes_nothing() {
+    let raw = 0xABCD_1234usize as *mut c_void;
+    let handle = Handle::from_glib_borrow(raw);
+
+    handle.invalidate();
+
+    assert!(!handle.is_invalidated());
+    assert_eq!(handle.as_ptr(), raw);
+}
+
+#[test]
 fn take_owned_on_a_borrowed_handle_returns_none() {
     helpers::run(|| {
         let obj = glib::Object::new::<glib::Object>();

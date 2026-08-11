@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::{byte_count_from_f64, native_result};
+use crate::api::{byte_count_from_f64, live_handle_ptr, native_result};
 use crate::ffi::codec::{Codec, Decoder as _, ReadCtx};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
@@ -28,7 +28,9 @@ pub fn read<'env>(
 ) -> Result<Unknown<'env>> {
     let offset = byte_count_from_f64(offset, "field read: offset")?;
 
-    let field_ptr = handle.as_ptr().wrapping_byte_add(offset).cast_const();
+    let field_ptr = live_handle_ptr(handle, "field read")?
+        .wrapping_byte_add(offset)
+        .cast_const();
     let field_codec = field_descriptor.into_codec()?;
     native_result("field read", read_field(env, field_ptr, &field_codec))
 }

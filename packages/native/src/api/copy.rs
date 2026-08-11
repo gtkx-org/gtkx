@@ -2,7 +2,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::byte_count_from_f64;
+use crate::api::{byte_count_from_f64, live_handle_ptr};
 use crate::handle::Handle;
 
 fn copy_bytes(dest: *mut u8, src: *const u8, size: usize) {
@@ -24,8 +24,10 @@ pub fn copy<'env>(
     size: f64,
 ) -> Result<Unknown<'env>> {
     let size = byte_count_from_f64(size, "copy: size")?;
+    let dest_ptr = live_handle_ptr(dest, "copy: destination")?;
+    let src_ptr = live_handle_ptr(src, "copy: source")?;
 
-    copy_bytes(dest.as_ptr().cast::<u8>(), src.as_ptr().cast::<u8>(), size);
+    copy_bytes(dest_ptr.cast::<u8>(), src_ptr.cast::<u8>(), size);
     ().into_unknown(env)
 }
 

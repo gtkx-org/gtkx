@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use napi::bindgen_prelude::*;
 use napi::{Env, ValueType};
 
-use crate::handle::Handle;
+use crate::handle::{Handle, INVALIDATED_HANDLE};
 
 mod closure;
 mod view;
@@ -24,6 +24,10 @@ pub fn handle_ptr(value: Unknown<'_>, type_name: &str) -> anyhow::Result<*mut c_
     match value.get_type()? {
         ValueType::External => {
             let external: &External<Handle> = read_napi(value)?;
+            anyhow::ensure!(
+                !external.is_invalidated(),
+                "The {type_name} handle refers to nothing: {INVALIDATED_HANDLE}"
+            );
             Ok(external.as_ptr())
         }
         ValueType::Null | ValueType::Undefined => Ok(std::ptr::null_mut()),

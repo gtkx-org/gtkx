@@ -7,12 +7,20 @@ import { createTypeNameFactory } from "../helpers/unique-name.js";
 
 type TeardownCounts = { dispose: number; finalize: number };
 
+const MARKER = "kept";
 const uniqueName = createTypeNameFactory("_");
 
 function destroyInWindow(child: Box): void {
     const window = new Window({});
     window.setChild(child);
     window.destroy();
+}
+
+async function expectDisposedOnce(counts: TeardownCounts): Promise<void> {
+    await gcUntil(() => counts.finalize > 0);
+    expect(counts).toEqual({ dispose: 1, finalize: 1 });
+    await gcUntil(() => false, 20);
+    expect(counts).toEqual({ dispose: 1, finalize: 1 });
 }
 
 describe("vfuncDispose", () => {
@@ -33,14 +41,11 @@ describe("vfuncDispose", () => {
 
         registerClass(DisposedObject, { typeName: uniqueName("GtkxDisposeOnce") });
         const weak = new WeakRef(new DisposedObject({}));
-        await gcUntil(() => counts.finalize > 0);
+        await expectDisposedOnce(counts);
         expect(weak.deref()).toBeUndefined();
-        expect(counts).toEqual({ dispose: 1, finalize: 1 });
-        await gcUntil(() => false, 20);
-        expect(counts).toEqual({ dispose: 1, finalize: 1 });
     });
 
-    it("runs once for a widget subclass destroyed inside a window", async () => {
+    it("runs once for a widget subclass, whose slot resolves through InitiallyUnowned", async () => {
         const counts: TeardownCounts = { dispose: 0, finalize: 0 };
 
         class DisposedBox extends Box {
@@ -57,9 +62,29 @@ describe("vfuncDispose", () => {
 
         registerClass(DisposedBox, { typeName: uniqueName("GtkxDisposeOnceBox") });
         destroyInWindow(new DisposedBox({}));
-        await gcUntil(() => counts.finalize > 0);
-        expect(counts).toEqual({ dispose: 1, finalize: 1 });
-        await gcUntil(() => false, 20);
-        expect(counts).toEqual({ dispose: 1, finalize: 1 });
+        await expectDisposedOnce(counts);
+    });
+});
+
+describe("vfuncDispose on an instance that still has its wrapper", () => {
+    it("runs against that wrapper, which outlives the call", () => {
+        const markers: (string | undefined)[] = [];
+
+        class DisposedWindow extends Window {
+            declare marker: string | undefined;
+
+            vfuncDispose(): void {
+                markers.push(this.marker);
+                callParent(DisposedWindow, "vfuncDispose", this);
+            }
+        }
+
+        registerClass(DisposedWindow, { typeName: uniqueName("GtkxDisposeWindow") });
+        const window = new DisposedWindow({});
+        window.marker = MARKER;
+        window.setChild(new Box({}));
+        window.runDispose();
+        expect(markers).toEqual([MARKER]);
+        expect(window.getChild()).toBeNull();
     });
 });

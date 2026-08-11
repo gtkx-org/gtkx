@@ -383,6 +383,22 @@ fn object_ptr_returns_handle_pointer() {
 }
 
 #[test]
+fn object_ptr_errors_for_an_invalidated_handle() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let obj = glib::Object::new::<glib::Object>();
+        let handle = native::Handle::borrowed_gobject(obj.as_ptr());
+        handle.invalidate();
+
+        let unknown = External::new(handle).into_unknown(&env).unwrap();
+        let error = native::value::handle_ptr(unknown, "GObject")
+            .expect_err("an invalidated handle should be rejected");
+
+        assert!(format!("{error:#}").contains("only valid until the override returns"));
+    });
+}
+
+#[test]
 fn object_ptr_returns_null_for_null_and_undefined() {
     helpers::run(|| {
         let env = helpers::fake_env();

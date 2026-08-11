@@ -1,3 +1,7 @@
+use std::ffi::c_void;
+
+use crate::handle::{Handle, INVALIDATED_HANDLE};
+
 pub mod alloc;
 pub mod bind;
 pub mod call;
@@ -43,6 +47,17 @@ pub(crate) fn native_result<T>(context: &str, result: anyhow::Result<T>) -> napi
             format!("Error during {context}: {error:#}"),
         )
     })
+}
+
+pub(crate) fn live_handle_ptr(handle: &Handle, label: &str) -> napi::Result<*mut c_void> {
+    if handle.is_invalidated() {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("{label}: the handle refers to nothing, {INVALIDATED_HANDLE}"),
+        ));
+    }
+
+    Ok(handle.as_ptr())
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -94,7 +109,28 @@ mod tests {
     use glib::translate::IntoGlib as _;
     use napi::bindgen_prelude::BigInt;
 
-    use super::type_from_bigint;
+    use super::{Handle, live_handle_ptr, type_from_bigint};
+
+    #[test]
+    fn live_handle_ptr_rejects_an_invalidated_handle() {
+        test_support::run(|| {
+            let (obj, obj_ptr, _) = test_support::fresh_gobject();
+            let handle = Handle::borrowed_gobject(obj_ptr);
+            assert!(live_handle_ptr(&handle, "field read").is_ok());
+
+            handle.invalidate();
+            let error = live_handle_ptr(&handle, "field read")
+                .expect_err("an invalidated handle should be rejected");
+
+            assert!(
+                error
+                    .reason
+                    .contains("only valid until the override returns")
+            );
+
+            drop(obj);
+        });
+    }
 
     #[test]
     fn type_from_bigint_accepts_a_valid_type() {

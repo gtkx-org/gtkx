@@ -3,16 +3,17 @@ use std::collections::HashMap;
 use std::ffi::{CString, c_char, c_void};
 
 use ::libffi::{low as libffi_low, middle as libffi};
-use napi::Env;
 use napi::bindgen_prelude::{
-    Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown,
+    External, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown,
 };
+use napi::{Env, ValueType};
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
     Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
     str_to_glib_full,
 };
+use crate::handle::Handle;
 use crate::host::error_reporter::{self, ReportErr};
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
@@ -30,6 +31,27 @@ fn wrap_ref<'e>(env: &'e Env, value: Unknown<'e>) -> anyhow::Result<Unknown<'e>>
     let mut ref_obj: Object<'e> = Object::new(env)?;
     ref_obj.set_named_property("value", value)?;
     Ok(ref_obj.to_unknown())
+}
+
+fn call_scoped_handle<'e>(codec: &Codec, value: Unknown<'e>) -> Option<&'e Handle> {
+    if !matches!(codec, Codec::Object(object_codec) if object_codec.is_call_scoped) {
+        return None;
+    }
+
+    if value.get_type().ok()? != ValueType::External {
+        return None;
+    }
+
+    let external: &'e External<Handle> = value::read_napi(value).ok()?;
+    let handle: &'e Handle = external;
+
+    Some(handle)
+}
+
+fn invalidate_call_scoped(handles: &[&Handle]) {
+    for handle in handles {
+        handle.invalidate();
+    }
 }
 
 enum CallbackError {
@@ -226,6 +248,7 @@ impl ClosureState {
 struct ClosureArgs<'e> {
     js_args: Vec<Unknown<'e>>,
     ref_slots: Vec<RefSlot<'e>>,
+    call_scoped: Vec<&'e Handle>,
 }
 
 struct RefSlot<'e> {
@@ -350,6 +373,7 @@ impl ClosureData {
     ) -> anyhow::Result<ClosureArgs<'e>> {
         let mut js_args = Vec::with_capacity(self.arg_codecs.len());
         let mut ref_slots: Vec<RefSlot<'e>> = Vec::new();
+        let mut call_scoped: Vec<&'e Handle> = Vec::new();
         let siblings = unsafe { self.sibling_stashes(args) };
 
         for (i, codec) in self.arg_codecs.iter().enumerate() {
@@ -371,10 +395,15 @@ impl ClosureData {
                     value::js_null(env)?
                 }
             };
+            call_scoped.extend(call_scoped_handle(codec, val));
             js_args.push(val);
         }
 
-        Ok(ClosureArgs { js_args, ref_slots })
+        Ok(ClosureArgs {
+            js_args,
+            ref_slots,
+            call_scoped,
+        })
     }
 
     unsafe fn handle_call(
@@ -402,9 +431,14 @@ impl ClosureData {
         let state_ptr = self.take_oneshot_state();
 
         let outcome: Result<(), CallbackError> = (|| {
-            let ClosureArgs { js_args, ref_slots } =
-                unsafe { self.read_args(&env, args) }.map_err(CallbackError::Infrastructure)?;
-            let return_value = call_js_function(&env, &self.js_fn, &js_args)?;
+            let ClosureArgs {
+                js_args,
+                ref_slots,
+                call_scoped,
+            } = unsafe { self.read_args(&env, args) }.map_err(CallbackError::Infrastructure)?;
+            let returned = call_js_function(&env, &self.js_fn, &js_args);
+            invalidate_call_scoped(&call_scoped);
+            let return_value = returned?;
             self.flush_refs(&env, &ref_slots);
             let ret = if capture_result {
                 Ok(return_value)
@@ -551,7 +585,7 @@ impl ClosureData {
 
 fn string_from_unknown(value: Unknown<'_>) -> Option<String> {
     match value.get_type().ok()? {
-        napi::ValueType::String => value::read_napi::<String>(value).ok(),
+        ValueType::String => value::read_napi::<String>(value).ok(),
         _ => None,
     }
 }
