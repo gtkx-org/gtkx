@@ -48,6 +48,7 @@ type VfuncDescriptor = {
  * overrides each one.
  */
 type VfuncRegistry = Record<string, VfuncDescriptor>;
+type WrapperBinding = (handle: ExternalObject<Handle>, instance: object) => void;
 
 /**
  * How one property an interface declares reaches the vtable, given as the interface's own accessor
@@ -320,24 +321,18 @@ function resolveComposedClass(runtimeType: bigint): AnyClass | null {
 }
 
 function wrapObject(value: unknown): object | null {
-    if (value == null) {
-        return null;
-    }
-
-    return getOrCreateWrapper(value as ExternalObject<Handle>);
+    return value == null ? null : getOrCreateWrapper(value as ExternalObject<Handle>);
 }
 
-function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
-    if (handleMap.has(handle)) {
-        return handle;
-    }
+function wrapCallScopedObject(value: unknown): object | null {
+    return value == null ? null : wrapperFor(value as ExternalObject<Handle>, bindCallScopedWrapper);
+}
 
-    const existing = getWrapper(handle);
+function existingWrapperFor(handle: ExternalObject<Handle>): object | null {
+    return handleMap.has(handle) ? handle : getWrapper(handle);
+}
 
-    if (existing) {
-        return existing;
-    }
-
+function createWrapper(handle: ExternalObject<Handle>): object {
     const runtimeType: bigint = getType(handle);
 
     if (runtimeType === TYPE_INVALID) {
@@ -350,10 +345,24 @@ function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
         throw new Error(`Expected registered GLib type, got type ${String(runtimeType)}`);
     }
 
-    const instance: object = Object.create(cls.prototype) as object;
-    registerWrapper(handle, instance);
+    return Object.create(cls.prototype) as object;
+}
+
+function wrapperFor(handle: ExternalObject<Handle>, bind: WrapperBinding): object {
+    const existing = existingWrapperFor(handle);
+
+    if (existing) {
+        return existing;
+    }
+
+    const instance = createWrapper(handle);
+    bind(handle, instance);
 
     return instance;
+}
+
+function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
+    return wrapperFor(handle, registerWrapper);
 }
 
 function instanceClassName(instance: object): string {
@@ -374,6 +383,10 @@ function getHandle(instance: object): ExternalObject<Handle> {
 /** Associates a native handle with a wrapper instance. */
 function setHandle(instance: object, handle: ExternalObject<Handle>): void {
     handleMap.set(instance, handle);
+}
+
+function bindCallScopedWrapper(handle: ExternalObject<Handle>, instance: object): void {
+    setHandle(instance, handle);
 }
 
 function registerWrapper(handle: ExternalObject<Handle>, instance: object): void {
@@ -416,6 +429,7 @@ export {
     instanceClassName,
     registerWrapper,
     resolveWrapperType,
+    wrapCallScopedObject,
     wrapObject,
     type InterfaceProperty,
     type StaticBase,

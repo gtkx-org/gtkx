@@ -104,6 +104,7 @@ fn string_object_boxed_struct_and_fundamental_descriptors_map_to_their_codecs() 
 
     let object = Descriptor::Object {
         ownership: Ownership::Borrowed,
+        is_call_scoped: None,
     };
     assert!(matches!(codec(object), Codec::Object(_)));
 

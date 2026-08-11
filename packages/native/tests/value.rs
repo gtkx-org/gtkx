@@ -14,7 +14,10 @@ use test_support as helpers;
 use test_support::napi_mock;
 
 fn gobject_type_of(ownership: Ownership) -> Codec {
-    Codec::Object(ObjectCodec { ownership })
+    Codec::Object(ObjectCodec {
+        ownership,
+        is_call_scoped: false,
+    })
 }
 
 fn string_type_of(ownership: Ownership) -> Codec {

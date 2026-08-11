@@ -88,7 +88,10 @@ fn fixed_array_type(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec 
 }
 
 fn gobject_item_codec(ownership: Ownership) -> Codec {
-    Codec::Object(ObjectCodec { ownership })
+    Codec::Object(ObjectCodec {
+        ownership,
+        is_call_scoped: false,
+    })
 }
 
 fn unresolvable_fundamental_item_codec() -> Codec {

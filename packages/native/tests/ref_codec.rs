@@ -158,6 +158,7 @@ fn decode_gobject_delegates_to_inner_decoder() {
         let ref_codec = RefCodec::new(
             Codec::Object(ObjectCodec {
                 ownership: Ownership::Borrowed,
+                is_call_scoped: false,
             }),
             false,
         )
@@ -437,6 +438,7 @@ fn decode_with_context_array_container_released_by_array_decoder() {
         let array_codec = ArrayCodec::new(
             Box::new(Codec::Object(ObjectCodec {
                 ownership: Ownership::Borrowed,
+                is_call_scoped: false,
             })),
             ArrayKind::Array,
             Ownership::Full,

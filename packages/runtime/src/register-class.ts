@@ -166,7 +166,9 @@ type PropertyVfuncSpec = {
     makeDispatch: (dispatch: PropertyDispatch) => VfuncFn;
 };
 
+const INSTANCE_ARG_INDEX = 0;
 const VALUE_ARG_INDEX = 2;
+const TEARDOWN_SLOTS: Set<string> = new Set(["ObjectClass.dispose", "ObjectClass.finalize"]);
 
 const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
     { methodName: GET_PROPERTY_VFUNC, isValueOut: true, makeDispatch: makeGetProperty },
@@ -345,10 +347,13 @@ function buildDiscoveredVfunc(
         return undefined;
     }
 
+    const argDescriptors = slotArgDescriptors(descriptor);
+
     return {
         ...descriptor,
         methodName,
-        fn: wrapVfunc(fn, descriptor.argDescriptors, descriptor.returnDescriptor),
+        argDescriptors,
+        fn: wrapVfunc(fn, argDescriptors, descriptor.returnDescriptor),
     };
 }
 
@@ -446,6 +451,19 @@ function propertyVfuncs(source: PropertyVfuncSource): DiscoveredVfunc[] {
 function markValueCallerAllocated(argDescriptors: Descriptor[]): Descriptor[] {
     return argDescriptors.map((arg, index) =>
         index === VALUE_ARG_INDEX ? { ...arg, isCallerAllocated: true } : arg);
+}
+
+function markInstanceCallScoped(argDescriptors: Descriptor[]): Descriptor[] {
+    return argDescriptors.map((arg, index) =>
+        index === INSTANCE_ARG_INDEX ? { ...arg, isCallScoped: true } : arg);
+}
+
+function slotArgDescriptors(descriptor: VfuncDescriptor): Descriptor[] {
+    if (!TEARDOWN_SLOTS.has(`${descriptor.className}.${descriptor.vfuncName}`)) {
+        return descriptor.argDescriptors;
+    }
+
+    return markInstanceCallScoped(descriptor.argDescriptors);
 }
 
 function buildPropertyVfunc(

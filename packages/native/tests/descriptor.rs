@@ -38,6 +38,7 @@ fn transfer_release_matches_codec_ownership() {
 
         let full_object = ObjectCodec {
             ownership: Ownership::Full,
+            is_call_scoped: false,
         };
         assert!(matches!(
             full_object.transfer_release(),
@@ -45,6 +46,7 @@ fn transfer_release_matches_codec_ownership() {
         ));
         let borrowed_object = ObjectCodec {
             ownership: Ownership::Borrowed,
+            is_call_scoped: false,
         };
         assert!(borrowed_object.transfer_release().is_none());
 

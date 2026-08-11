@@ -126,6 +126,18 @@ impl Handle {
         .into()
     }
 
+    /// A handle over a `GObject` that owns no reference to it, for a pointer the caller only keeps
+    /// alive for the duration of one call, such as the instance a class vtable slot receives while
+    /// `GObject` is tearing it down and taking a reference is no longer allowed.
+    #[must_use]
+    pub fn borrowed_gobject(gobject_ptr: *mut glib::gobject_ffi::GObject) -> Self {
+        HandleKind::Object {
+            ptr: gobject_ptr.cast::<c_void>(),
+            owned: Cell::new(None),
+        }
+        .into()
+    }
+
     #[must_use]
     pub fn as_gobject_ptr(&self) -> Option<*mut glib::gobject_ffi::GObject> {
         let HandleKind::Object { ptr, .. } = self.kind else {

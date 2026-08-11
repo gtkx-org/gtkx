@@ -229,12 +229,14 @@ fn d_string_full() -> Descriptor {
 fn d_object_borrowed() -> Descriptor {
     Descriptor::Object {
         ownership: Ownership::Borrowed,
+        is_call_scoped: None,
     }
 }
 
 fn d_object_full() -> Descriptor {
     Descriptor::Object {
         ownership: Ownership::Full,
+        is_call_scoped: None,
     }
 }
 

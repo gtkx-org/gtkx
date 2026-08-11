@@ -122,6 +122,8 @@ registerClass(Resource, { typeName: "ExampleResource" });
 
 `callParent` works for every slot, including the ones that do have a member.
 
+`dispose` and `finalize` run while GObject is taking the instance apart, so the `this` they receive lasts only for the call: it carries a usable handle, which is all `callParent` needs, but it is not registered as the object's wrapper and must not outlive the override. When the object still has a wrapper, which is the case whenever something in JavaScript still holds the instance, that same wrapper is what the override runs against and the fields it declares are all readable. An object whose wrapper was already collected reaches its own `dispose` and `finalize` with a fresh instance carrying none of them, so release state the collector cannot reach, such as a GLib source id, rather than assuming a field survived.
+
 ## Implementing an interface
 
 A subclass inherits the interfaces its parent implements. To adopt one the parent does not provide, name it in `implements` and fill its vtable slots on the class:

@@ -150,6 +150,7 @@ fn borrowed_string_codec() -> Codec {
 fn full_gobject_codec() -> Codec {
     Codec::Object(ObjectCodec {
         ownership: Ownership::Full,
+        is_call_scoped: false,
     })
 }
 
@@ -624,6 +625,7 @@ fn full_sized_struct_encoder_installs_g_free_destroy() {
 fn full_gobject_encoder_installs_unref_destroy() {
     let encoder = HashTableEntryCodec::Handle(Box::new(Codec::Object(ObjectCodec {
         ownership: Ownership::Full,
+        is_call_scoped: false,
     })));
     assert!(encoder.free_func().unwrap().is_some());
 }

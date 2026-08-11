@@ -16,12 +16,21 @@ use test_support as helpers;
 fn borrowed() -> ObjectCodec {
     ObjectCodec {
         ownership: Ownership::Borrowed,
+        is_call_scoped: false,
     }
 }
 
 fn full() -> ObjectCodec {
     ObjectCodec {
         ownership: Ownership::Full,
+        is_call_scoped: false,
+    }
+}
+
+fn call_scoped() -> ObjectCodec {
+    ObjectCodec {
+        ownership: Ownership::Borrowed,
+        is_call_scoped: true,
     }
 }
 
@@ -152,6 +161,36 @@ fn decode_borrowed_adds_exactly_one_ref() {
 
         assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before + 1);
         assert_is_object(&decoded);
+    });
+}
+
+#[test]
+fn decode_call_scoped_takes_no_reference() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (_obj, obj_ptr, before) = fresh_gobject();
+
+        let decoded = call_scoped()
+            .decode(&env, &ffi::Stash::Ptr(obj_ptr.cast::<c_void>()))
+            .expect("call-scoped decode should succeed");
+
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
+        assert_is_object(&decoded);
+    });
+}
+
+#[test]
+fn ptr_to_value_call_scoped_takes_no_reference() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (_obj, obj_ptr, before) = fresh_gobject();
+
+        let value =
+            unsafe { call_scoped().read(&env, ReadCtx::value(obj_ptr.cast::<c_void>(), "ctx")) }
+                .expect("call-scoped read should succeed");
+
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, before);
+        assert_is_object(&value);
     });
 }
 

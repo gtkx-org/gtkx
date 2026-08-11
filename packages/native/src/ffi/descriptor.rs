@@ -115,6 +115,7 @@ pub enum Descriptor {
     },
     Object {
         ownership: Ownership,
+        is_call_scoped: Option<bool>,
     },
     Unichar,
     Void,
@@ -227,7 +228,13 @@ impl Descriptor {
                 ownership,
                 length: string_length(length)?,
             }),
-            Self::Object { ownership } => Codec::Object(ObjectCodec { ownership }),
+            Self::Object {
+                ownership,
+                is_call_scoped,
+            } => Codec::Object(ObjectCodec {
+                ownership,
+                is_call_scoped: is_call_scoped.unwrap_or(false),
+            }),
             Self::Boxed {
                 ownership,
                 type_name,

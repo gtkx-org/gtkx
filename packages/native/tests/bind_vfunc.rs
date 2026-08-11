@@ -26,6 +26,7 @@ fn offset(value: usize) -> u32 {
 fn borrowed_object() -> Descriptor {
     Descriptor::Object {
         ownership: Ownership::Borrowed,
+        is_call_scoped: None,
     }
 }
 
