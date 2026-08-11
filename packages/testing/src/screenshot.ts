@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { ScreenshotOptions, ScreenshotResult } from "./types.js";
 import { getConfig } from "./config.js";
+import { now } from "./timers.js";
 import { descendants } from "./traversal.js";
 import { waitFor } from "./wait-for.js";
 
@@ -106,7 +107,7 @@ const requestFrame = (widget: Gtk.Widget): void => {
 const startFrameProbe = (widget: Gtk.Widget): FrameProbe => {
     requestFrame(widget);
 
-    return { counter: getFrameCounter(widget), startedAt: Date.now() };
+    return { counter: getFrameCounter(widget), startedAt: now() };
 };
 
 const updateFrameProbe = (widget: Gtk.Widget, probe: FrameProbe): void => {
@@ -120,7 +121,7 @@ const updateFrameProbe = (widget: Gtk.Widget, probe: FrameProbe): void => {
 
     if (counter !== null) {
         probe.counter = counter;
-        probe.startedAt = Date.now();
+        probe.startedAt = now();
     }
 };
 
@@ -134,7 +135,7 @@ const isPresenting = (widget: Gtk.Widget, probe: FrameProbe): boolean =>
     isSurfaceOnScreen(widget) && hasFrameAdvanced(widget, probe);
 
 const isPresentationStalled = (widget: Gtk.Widget, probe: FrameProbe): boolean =>
-    Date.now() - probe.startedAt >= PRESENTATION_PROBE_MS && !isPresenting(widget, probe);
+    now() - probe.startedAt >= PRESENTATION_PROBE_MS && !isPresenting(widget, probe);
 
 const allocateRoot = (widget: Gtk.Widget): void => {
     const root = widget.getRoot();

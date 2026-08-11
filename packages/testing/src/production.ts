@@ -2,6 +2,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactNode } from "react";
 import { createRoot, type Root } from "@gtkx/react";
 import { createHarnessWindow } from "./harness-window.js";
+import { delay } from "./timers.js";
 
 type ProductionRenderResult = {
     rerender: (element: ReactNode) => Promise<void>;
@@ -15,11 +16,9 @@ type ActiveRender = {
 const SETTLE_TURNS = 3;
 const activeRenders: Set<ActiveRender> = new Set();
 
-const turn = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
-
 const settle = async (): Promise<void> => {
     for (let index = 0; index < SETTLE_TURNS; index++) {
-        await turn();
+        await delay(0);
     }
 };
 

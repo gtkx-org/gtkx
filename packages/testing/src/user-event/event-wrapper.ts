@@ -2,13 +2,13 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { runInAct } from "../act.js";
 import { getConfig } from "../config.js";
 import { formatRole } from "../role-helpers.js";
+import { delay, now } from "../timers.js";
 
 const NOT_SENSITIVE = "it is not sensitive (the widget or one of its ancestors is disabled)";
 const WINDOW_NOT_ALLOCATED = "its window has not been allocated a size";
 const NOT_MAPPED = "it is not mapped (it is not shown on screen, e.g. it is hidden or on a non-visible page)";
 const WINDOW_NOT_ACTIVE = "its window never became active";
-
-const actionableHop = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 1));
+const ACTIONABLE_HOP_MS = 1;
 
 const canDisplayDeliverActivation = (window: Gtk.Window): boolean =>
     window.getDisplay().getDefaultSeat() !== null;
@@ -55,11 +55,11 @@ const describeWidget = (widget: Gtk.Widget): string => {
 
 const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {
     const timeout = getConfig().actionabilityTimeout;
-    const deadline = Date.now() + timeout;
+    const deadline = now() + timeout;
     let failure = findActionabilityFailure(widget);
 
-    while (failure !== null && Date.now() < deadline) {
-        await actionableHop();
+    while (failure !== null && now() < deadline) {
+        await delay(ACTIONABLE_HOP_MS);
         failure = findActionabilityFailure(widget);
     }
 

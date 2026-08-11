@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GLib from "@gtkx/gi/glib";
+import { cancelTimeout, scheduleTimeout } from "./timers.js";
 
 const CLOCK_STALL_FALLBACK_MS = 500;
 
@@ -22,7 +23,7 @@ const isSized = (widget: Gtk.Widget): boolean => widget.getWidth() > 0;
 const runUntilReady = (widget: Gtk.Widget, isReady: () => boolean, finish: () => void): void => {
     let tickId = 0;
 
-    const fallback = setTimeout(() => {
+    const fallback = scheduleTimeout(() => {
         widget.removeTickCallback(tickId);
         finish();
     }, CLOCK_STALL_FALLBACK_MS);
@@ -32,7 +33,7 @@ const runUntilReady = (widget: Gtk.Widget, isReady: () => boolean, finish: () =>
             return GLib.SOURCE_CONTINUE;
         }
 
-        clearTimeout(fallback);
+        cancelTimeout(fallback);
         finish();
 
         return GLib.SOURCE_REMOVE;

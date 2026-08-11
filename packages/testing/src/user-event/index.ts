@@ -1,4 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { delay } from "../timers.js";
 import { scroll, slide } from "./adjustment.js";
 import { click, dblClick, tripleClick } from "./click.js";
 import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
@@ -117,12 +118,12 @@ const userEvent: UserEvent = {
     setup: (options?: UserEventOptions): UserEvent => createInstance(createInitialState(), options ?? {}),
 };
 
-const settle = (delay: number | null | undefined): Promise<void> => {
-    if (delay === null || delay === undefined) {
+const settle = (ms: number | null | undefined): Promise<void> => {
+    if (ms === null || ms === undefined) {
         return Promise.resolve();
     }
 
-    return new Promise((resolve) => setTimeout(resolve, delay));
+    return delay(ms);
 };
 
 function createInstance(state: UserEventState, options: UserEventOptions): UserEvent {
