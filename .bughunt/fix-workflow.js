@@ -146,10 +146,13 @@ Read that record first for the reproduction and the expected behavior.
 THE REJECTED FIX: commit ${fix.commit || "HEAD"}. Read it with \`git show\`.
 
 WHAT THE REVIEWER FOUND WRONG:
-${review.assessment}
-
-SPECIFIC PROBLEMS:
-${(review.problems || []).map((problem, index) => `${index + 1}. ${problem}`).join("\n\n")}
+${
+    finding.remediationRef
+        ? `Read \`${finding.remediationRef}\` of ${WORKTREE}/.bughunt/remediation-${roundNumber}.json.\n` +
+          `It holds the reviewer's full assessment and its numbered list of specific problems. Work from\n` +
+          `that file, not from a summary of it.`
+        : `${review.assessment}\n\nSPECIFIC PROBLEMS:\n${(review.problems || []).map((problem, index) => `${index + 1}. ${problem}`).join("\n\n")}`
+}
 
 Every problem above was verified against the committed code by someone who did not write it. Treat
 them as true unless you can demonstrate otherwise, and say so explicitly if you do.
