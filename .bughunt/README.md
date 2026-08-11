@@ -31,7 +31,16 @@ Workflow({ scriptPath: "/home/eugenio/gtkx-bughunt/.bughunt/workflow.js",
 ```
 
 Personas rotate so every surface is covered over time rather than every round. The default set is the
-seven highest-yield ones.
+seven highest-yield ones. The rotation:
+
+| Round | Personas |
+| --- | --- |
+| odd | `cli`, `marshal`, `subclass`, `testkit`, `hotreload`, `higapp`, `lifecycle` |
+| even | `scaffold`, `config`, `collections`, `styling`, `mcpdrive`, `deploy`, `docsconform` |
+
+Both halves see every round's ledger, so a defect found by one persona is never re-reported by another.
+`higapp` should build a different application each time it runs — the value is in unfamiliar
+composition, not in repeating a known-good app.
 
 ## Why two verifiers
 

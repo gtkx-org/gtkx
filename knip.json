@@ -5,6 +5,7 @@
         "-internal"
     ],
     "ignore": [
+        ".bughunt/**",
         "packages/eslint/tests/fixtures/**",
         "packages/native/index.js"
     ],
