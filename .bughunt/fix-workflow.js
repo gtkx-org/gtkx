@@ -10,7 +10,10 @@ export const meta = {
 
 const WORKTREE = "/home/eugenio/gtkx-bughunt";
 
-const findings = (args && args.findings) || [];
+const input = typeof args === "string" ? JSON.parse(args) : args || {};
+const roundNumber = input.round || 1;
+const roundFile = `${WORKTREE}/.bughunt/round-${roundNumber}.json`;
+const findings = input.findings || [];
 
 const FIX_SCHEMA = {
     type: "object",
@@ -40,8 +43,16 @@ const REVIEW_SCHEMA = {
 
 const fixPrompt = (finding, index) => `Fix one confirmed defect in GTKX v1.0.
 
-THE DEFECT:
-${JSON.stringify(finding, null, 2)}
+THE DEFECT — entry \`confirmed[${finding.recordIndex}]\` of ${roundFile}:
+
+  title:    ${finding.title}
+  surface:  ${finding.surface}
+  severity: ${finding.severity}
+
+**Read that record first.** It holds the full reproduction, the verbatim observed output, the expected
+behavior with its justification, the replay evidence, the minimal reproduction, and an independent
+reader's analysis of where the defect lives and what the fix should look like. Do not start from the
+three lines above.
 
 You are working directly in ${WORKTREE}, on branch \`bugfix/v1.0\`. It is installed and built. Other fix
 agents ran before you and will run after you, one at a time — the tree is yours alone right now, and you
@@ -90,8 +101,10 @@ This is fix ${index + 1} of ${findings.length}.`;
 
 const reviewPrompt = (finding, fix) => `Review a bug fix that was just committed to GTKX's \`bugfix/v1.0\` branch.
 
-THE ORIGINAL DEFECT:
-${JSON.stringify(finding, null, 2)}
+THE ORIGINAL DEFECT — entry \`confirmed[${finding.recordIndex}]\` of ${roundFile}, titled:
+  ${finding.title}
+
+Read that record for the reproduction and the expected behavior before you judge the fix.
 
 WHAT THE FIXER REPORTS:
 ${JSON.stringify(fix, null, 2)}
@@ -111,7 +124,11 @@ Answer, from the code:
 Do not modify anything. Report only.`;
 
 phase("Fix");
-log(`${findings.length} confirmed findings to fix`);
+log(`args arrived as ${typeof args}; ${findings.length} confirmed findings to fix`);
+
+if (findings.length === 0) {
+    throw new Error(`No findings in args. Received: ${JSON.stringify(args).slice(0, 400)}`);
+}
 
 const outcomes = [];
 
