@@ -8,7 +8,7 @@ type DownloadRequest = {
     url: string;
     dest: string;
     label: string;
-    sha256?: string | undefined;
+    sha256: string;
     mode?: number | undefined;
 };
 
@@ -29,11 +29,7 @@ const cacheDir = (segments: string[]): string => {
 
 const getDigest = (contents: Buffer): string => createHash("sha256").update(contents).digest("hex");
 
-const assertDigest = (url: string, contents: Buffer, expected: string | undefined): void => {
-    if (expected === undefined) {
-        return;
-    }
-
+const assertDigest = (url: string, contents: Buffer, expected: string): void => {
     const actual = getDigest(contents);
 
     if (actual !== expected) {

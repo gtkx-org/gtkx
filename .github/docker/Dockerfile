@@ -42,6 +42,7 @@ RUN apt-get update \
         hicolor-icon-theme \
         librsvg2-common \
         desktop-file-utils \
+        flatpak-builder \
         appstream \
         dpkg-dev \
         rpm \

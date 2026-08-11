@@ -7,7 +7,7 @@ type ValidationRequest = {
     subject: string;
 };
 
-const INFO_PREFIX = "I:";
+const DIAGNOSTIC_PREFIX = /^[EIPW]:/;
 
 const runValidator = ({ tool, args, subject }: ValidationRequest): string => {
     const executable = resolveExecutable(tool);
@@ -38,10 +38,10 @@ const validateMetainfo = (path: string): void => {
         subject: "The AppStream metainfo",
     });
 
-    const infos = output.split("\n").filter((entry) => entry.startsWith(INFO_PREFIX));
+    const diagnostics = output.split("\n").filter((entry) => DIAGNOSTIC_PREFIX.test(entry));
 
-    for (const line of infos) {
-        warn(`AppStream metainfo: ${line.slice(INFO_PREFIX.length).trim()}`);
+    for (const line of diagnostics) {
+        warn(`AppStream metainfo: ${line.trim()}`);
     }
 };
 

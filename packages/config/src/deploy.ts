@@ -183,7 +183,6 @@ const extraRelationsSchema = z.strictObject({
     provides: relationsSchema.optional(),
     conflicts: relationsSchema.optional(),
     replaces: relationsSchema.optional(),
-    obsoletes: relationsSchema.optional(),
     breaks: relationsSchema.optional(),
     preDepends: relationsSchema.optional(),
 });

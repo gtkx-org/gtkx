@@ -101,7 +101,6 @@ const rpmSettings = (settings: DeploySettings): NfpmConfig => {
         packager: maintainerFor(settings),
         ...optional("compression", rpm.compression),
         ...optional("prefixes", rpm.prefixes),
-        ...optional("requires", settings.deploy.relations?.obsoletes?.rpm),
         ...rpmSignature(settings),
     };
 };
