@@ -16,7 +16,7 @@ const deploy = defineCommand({
         },
         out: {
             type: "string",
-            description: "Output directory relative to the project root (default: build/deploy)",
+            description: "Output directory relative to the project root (default: build)",
         },
         "print-manifests": {
             type: "boolean",

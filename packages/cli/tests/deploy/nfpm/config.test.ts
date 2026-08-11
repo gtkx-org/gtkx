@@ -5,7 +5,7 @@ import { tutorialSettings } from "../fixtures/settings.js";
 
 type Contents = { src?: string; dst: string; type?: string; file_info?: { mode: number } }[];
 
-const staged = (rel: string, mode = 0o644): StagedFile => ({ rel, abs: `/project/build/deploy/stage/${rel}`, mode });
+const staged = (rel: string, mode = 0o644): StagedFile => ({ rel, abs: `/project/build/stage/${rel}`, mode });
 
 const payloadFor = (settings: DeploySettings = tutorialSettings()): DeployPayload => ({
     settings,

@@ -19,16 +19,16 @@ npm run deploy -- --target flatpak
 [gtkx] Validated the desktop entry and the metainfo
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
-[gtkx] Staged 12 files into build/deploy/stage
-[gtkx] Wrote build/deploy/targets/flatpak/com.gtkx.tutorial.yml
+[gtkx] Staged 12 files into build/stage
+[gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] flatpak: running flatpak-builder, this can take several minutes
-[gtkx] Built build/deploy/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
+[gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
 ```
 
 `--install-deps-from=flathub` pulls the GNOME runtime the first time, which is slow and then cached. Install and launch:
 
 ```bash
-flatpak install --user build/deploy/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak
+flatpak install --user build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak
 flatpak run com.gtkx.tutorial
 ```
 
@@ -94,7 +94,7 @@ Then produce the manifest without building anything:
 npm run deploy -- --target flatpak --print-manifests
 ```
 
-That writes `build/deploy/targets/flatpak/com.gtkx.tutorial.yml` and `generated-sources.json`, which are the two files a submission needs.
+That writes `build/targets/flatpak/com.gtkx.tutorial.yml` and `generated-sources.json`, which are the two files a submission needs.
 
 ## Submitting
 
@@ -114,7 +114,7 @@ The pull request goes to [flathub/flathub](https://github.com/flathub/flathub), 
 ```bash
 flatpak install --user -y flathub org.flatpak.Builder
 flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest \
-    build/deploy/targets/flatpak/com.gtkx.tutorial.yml
+    build/targets/flatpak/com.gtkx.tutorial.yml
 ```
 
 A reviewer reads your `finish-args` first. Rerun `--print-manifests` on every dependency change: a stale `generated-sources.json` only fails inside the sandbox.

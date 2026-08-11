@@ -118,16 +118,16 @@ npm run deploy
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Build complete: dist/bundle.js
 [gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
-[gtkx] Staged 12 files into build/deploy/stage
-[gtkx] Wrote build/deploy/targets/appimage/AppRun
-[gtkx] Wrote build/deploy/targets/deb/nfpm.yaml
-[gtkx] Wrote build/deploy/targets/flatpak/com.gtkx.tutorial.yml
-[gtkx] Wrote build/deploy/targets/rpm/nfpm.yaml
-[gtkx] Built build/deploy/out/Tasks-1.0.0-x86_64.AppImage (36.6 MiB)
-[gtkx] Built build/deploy/out/gtkx-tutorial_1.0.0-1_amd64.deb (40.2 MiB)
-[gtkx] Built build/deploy/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
-[gtkx] Built build/deploy/out/gtkx-tutorial-1.0.0-1.x86_64.rpm (40.1 MiB)
-[gtkx] Deploy complete: 4 artifacts in build/deploy/out
+[gtkx] Staged 12 files into build/stage
+[gtkx] Wrote build/targets/appimage/AppRun
+[gtkx] Wrote build/targets/deb/nfpm.yaml
+[gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
+[gtkx] Wrote build/targets/rpm/nfpm.yaml
+[gtkx] Built build/out/Tasks-1.0.0-x86_64.AppImage (36.6 MiB)
+[gtkx] Built build/out/gtkx-tutorial_1.0.0-1_amd64.deb (40.2 MiB)
+[gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
+[gtkx] Built build/out/gtkx-tutorial-1.0.0-1.x86_64.rpm (40.1 MiB)
+[gtkx] Deploy complete: 4 artifacts in build/out
 ```
 
 The desktop entry and the metainfo are validated in the second step, before the build, so a bad category or a missing summary fails in about two seconds rather than after everything else has run.
@@ -155,10 +155,10 @@ The launcher resolves the other files from its own location, so nothing is hardc
 ## Installing it
 
 ```bash
-sudo apt install ./build/deploy/out/gtkx-tutorial_1.0.0-1_amd64.deb
-sudo dnf install ./build/deploy/out/gtkx-tutorial-1.0.0-1.x86_64.rpm
-flatpak install --user ./build/deploy/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak
-chmod +x build/deploy/out/Tasks-1.0.0-x86_64.AppImage && ./build/deploy/out/Tasks-1.0.0-x86_64.AppImage
+sudo apt install ./build/out/gtkx-tutorial_1.0.0-1_amd64.deb
+sudo dnf install ./build/out/gtkx-tutorial-1.0.0-1.x86_64.rpm
+flatpak install --user ./build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak
+chmod +x build/out/Tasks-1.0.0-x86_64.AppImage && ./build/out/Tasks-1.0.0-x86_64.AppImage
 ```
 
 Open the overview and type **Tasks**. The app appears with its own blue checklist icon rather than a generic placeholder, and pressing Enter launches it. Open the desktop's notification settings and Tasks is listed there as an app that sends notifications.
@@ -171,7 +171,7 @@ The deb and the rpm install no maintainer scripts. Refreshing the desktop, icon,
 npm run deploy -- --print-manifests
 ```
 
-writes and validates the metadata and every target's manifest, then stops without packaging. `build/deploy/metadata/com.gtkx.tutorial.desktop` comes out as:
+writes and validates the metadata and every target's manifest, then stops without packaging. `build/metadata/com.gtkx.tutorial.desktop` comes out as:
 
 ```ini
 [Desktop Entry]

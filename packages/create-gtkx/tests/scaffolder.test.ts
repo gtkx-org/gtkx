@@ -225,11 +225,12 @@ describe("scaffold (top-level generated files)", () => {
         expect(manifest).toContain('"deploy": "gtkx deploy"');
     });
 
-    it("writes .gitignore with node_modules and dist", async () => {
+    it("ignores node_modules, the build output, and the packaged artifacts", async () => {
         await run();
         const content = read(`${TEST_DIR}/test-app/.gitignore`);
         expect(content).toContain("node_modules/");
         expect(content).toContain("dist/");
+        expect(content).toContain("build/");
     });
 });
 

@@ -15,7 +15,7 @@ type ResolvedIcons = {
     iconFile: string | null;
 };
 
-const DEFAULT_OUT_DIR = "build/deploy";
+const DEFAULT_OUT_DIR = "build";
 const DIST_DIR = "dist";
 const ICONS_DIR = "icons";
 const LICENSE_CANDIDATES = ["LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING", "COPYING.md"];

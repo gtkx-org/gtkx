@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-`npm run build` writes `dist/bundle.js`, which `npm start` runs with Node.js. `npm run deploy` packages the app for distribution into `build/deploy/out/`.
+`npm run build` writes `dist/bundle.js`, which `npm start` runs with Node.js. `npm run deploy` packages the app for distribution into `build/out/`.
 
 To validate it against the packages in this repository instead of the published ones, run this from the repository root:
 

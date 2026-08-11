@@ -14,7 +14,7 @@ async function installTutorial(env: NodeJS.ProcessEnv): Promise<void> {
 }
 
 function findArtifact(extension: string): string {
-    const outDir = join(TUTORIAL_DIR, "build", "deploy", "out");
+    const outDir = join(TUTORIAL_DIR, "build", "out");
     const found = readdirSync(outDir).find((name) => name.endsWith(extension));
 
     if (found === undefined) {

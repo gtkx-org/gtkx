@@ -15,11 +15,11 @@ gtkx deploy
 [gtkx] Validated the desktop entry and the metainfo
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
-[gtkx] Staged 12 files into build/deploy/stage
-[gtkx] Wrote build/deploy/targets/flatpak/com.gtkx.tutorial.yml
+[gtkx] Staged 12 files into build/stage
+[gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] flatpak: running flatpak-builder, this can take several minutes
-[gtkx] Built build/deploy/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
-[gtkx] Deploy complete: 1 artifacts in build/deploy/out
+[gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
+[gtkx] Deploy complete: 1 artifacts in build/out
 ```
 
 ## The four targets
@@ -140,7 +140,7 @@ W: com.example.Tasks:~: url-homepage-missing
 
 Fix it in gtkx.config.ts:
   url-homepage-missing: set `deploy.homepage`, or `homepage` in package.json
-``` `--skip-build` packages what is already in `dist/` instead of rebuilding, and `--out` changes the output directory, which defaults to `build/deploy`.
+``` `--skip-build` packages what is already in `dist/` instead of rebuilding, and `--out` changes the output directory, which defaults to `build`.
 
 ## Escape hatches
 
