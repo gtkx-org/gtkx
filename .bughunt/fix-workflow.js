@@ -5,6 +5,7 @@ export const meta = {
     phases: [
         { title: "Fix", detail: "one agent per finding, sequential, each committing its own change" },
         { title: "Review", detail: "an independent reader checks the commit against the report" },
+        { title: "Remediate", detail: "rework a fix the reviewer rejected, then review it again" },
     ],
 };
 
@@ -91,7 +92,18 @@ Do this, in order:
    it reports.
 
 7. Commit to \`bugfix/v1.0\`. One line, at most ten words, no attribution, no co-author trailer.
-   Commit only your own change; if you find the tree dirty from something else, stop and say so.
+
+   **Another agent is working in this same tree on a separate defect in \`packages/codegen\` and
+   \`packages/utils/src/source\`.** Its work is uncommitted and is not yours. So:
+   - Stage your files by explicit path: \`git add <path> <path>\`. Never \`git add -A\`, never \`git add .\`,
+     never \`git commit -a\`.
+   - Run \`git status --short\` before committing and confirm every staged path is one you edited.
+   - Leave every other modified or untracked file exactly as you found it. Do not revert it, do not
+     commit it, do not \`git stash\` it, and do not "clean up" the tree.
+   - If a file you need to change is already modified by that other work, do not fight it: make your
+     change on top, stage only that file if it is genuinely yours to change, and say so in your summary.
+   - If verifying your fix requires touching code outside it, commit that separately first, with its
+     own message, before the commit that carries your fix.
 
 If the defect turns out not to be real, or the fix belongs in the documentation rather than the code,
 say that instead of forcing a change. Returning \`isFixed: false\` with a clear explanation is a valid
@@ -123,6 +135,37 @@ Answer, from the code:
 
 Do not modify anything. Report only.`;
 
+const remediatePrompt = (finding, fix, review, attempt) => `A fix you must now correct was committed to GTKX's \`bugfix/v1.0\` branch and an independent reviewer
+rejected it. Attempt ${attempt} of 2.
+
+THE ORIGINAL DEFECT — entry \`confirmed[${finding.recordIndex}]\` of ${roundFile}, titled:
+  ${finding.title}
+
+Read that record first for the reproduction and the expected behavior.
+
+THE REJECTED FIX: commit ${fix.commit || "HEAD"}. Read it with \`git show\`.
+
+WHAT THE REVIEWER FOUND WRONG:
+${review.assessment}
+
+SPECIFIC PROBLEMS:
+${(review.problems || []).map((problem, index) => `${index + 1}. ${problem}`).join("\n\n")}
+
+Every problem above was verified against the committed code by someone who did not write it. Treat
+them as true unless you can demonstrate otherwise, and say so explicitly if you do.
+
+Correct the fix:
+- Address every problem, not the easiest ones. If the reviewer says the fix reaches only a subset of
+  the affected cases, widen it to the whole set and add a test for the case it was missing.
+- If the reviewer says the fix introduced a regression, that regression matters more than the original
+  defect. Remove it.
+- If the reviewer says a test locks in partial behavior, replace that test, do not add another beside it.
+- If documentation now promises behavior the code does not deliver, correct whichever is wrong.
+- Prefer reworking the approach over patching around it. You may revert the original commit and redo it.
+
+Then verify and commit exactly as the original fix instructions required, including staging your files
+by explicit path and leaving the other agent's uncommitted \`packages/codegen\` work alone.`;
+
 phase("Fix");
 log(`args arrived as ${typeof args}; ${findings.length} confirmed findings to fix`);
 
@@ -136,31 +179,59 @@ for (let index = 0; index < findings.length; index += 1) {
     const finding = findings[index];
     const label = finding.title ? finding.title.slice(0, 40) : `finding ${index + 1}`;
 
-    const fix = await agent(fixPrompt(finding, index), {
-        label: `fix:${label}`,
-        phase: "Fix",
-        schema: FIX_SCHEMA,
-    });
+    let fix = finding.priorFix;
+    let review = finding.priorReview;
 
     if (!fix) {
-        log(`fix agent died on: ${label}`);
-        outcomes.push({ finding, fix: null, review: null });
-        continue;
+        fix = await agent(fixPrompt(finding, index), {
+            label: `fix:${label}`,
+            phase: "Fix",
+            schema: FIX_SCHEMA,
+        });
+
+        if (!fix) {
+            log(`fix agent died on: ${label}`);
+            outcomes.push({ finding, fix: null, review: null });
+            continue;
+        }
+
+        if (!fix.isFixed) {
+            log(`not fixed: ${label} — ${fix.summary}`);
+            outcomes.push({ finding, fix, review: null });
+            continue;
+        }
+
+        review = await agent(reviewPrompt(finding, fix), {
+            label: `review:${label}`,
+            phase: "Review",
+            schema: REVIEW_SCHEMA,
+        });
     }
 
-    if (!fix.isFixed) {
-        log(`not fixed: ${label} — ${fix.summary}`);
-        outcomes.push({ finding, fix, review: null });
-        continue;
+    for (let attempt = 1; attempt <= 2 && review && !review.isSound; attempt += 1) {
+        log(`QUESTIONED, remediating (${attempt}/2): ${label}`);
+
+        const redone = await agent(remediatePrompt(finding, fix, review, attempt), {
+            label: `remediate:${label}`,
+            phase: "Remediate",
+            schema: FIX_SCHEMA,
+        });
+
+        if (!redone || !redone.isFixed) {
+            log(`remediation ${attempt} produced no change: ${label}`);
+            break;
+        }
+
+        fix = redone;
+
+        review = await agent(reviewPrompt(finding, fix), {
+            label: `re-review:${label}`,
+            phase: "Review",
+            schema: REVIEW_SCHEMA,
+        });
     }
 
-    const review = await agent(reviewPrompt(finding, fix), {
-        label: `review:${label}`,
-        phase: "Review",
-        schema: REVIEW_SCHEMA,
-    });
-
-    log(`${review && review.isSound ? "sound" : "QUESTIONED"}: ${label}`);
+    log(`${review && review.isSound ? "sound" : "STILL QUESTIONED"}: ${label}`);
     outcomes.push({ finding, fix, review });
 }
 
