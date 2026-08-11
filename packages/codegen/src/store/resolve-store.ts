@@ -15,7 +15,7 @@ type ResolvedStore = {
     reactSubexports: string[];
 };
 
-type ResolvedPackage = { dir: string; version: string };
+type ResolvedPackage = { dir: string; nodeModules: string; version: string };
 
 const STORE_DIR = ".gtkx";
 const SCOPE = "@gtkx";
@@ -28,14 +28,14 @@ const subexportNames = (packageDir: string): string[] =>
         .filter((key) => key.startsWith("./") && key !== "./package.json")
         .map((key) => key.slice(2));
 
-const loadPackage = (manifest: string): ResolvedPackage | null => {
+const loadPackage = (manifest: string, nodeModules: string): ResolvedPackage | null => {
     if (!existsSync(manifest)) {
         return null;
     }
 
     const real = realpathSync(manifest);
 
-    return { dir: dirname(real), version: readManifest(real).version ?? "0.0.0" };
+    return { dir: dirname(real), nodeModules, version: readManifest(real).version ?? "0.0.0" };
 };
 
 const nodeModulesChain = function* (projectRoot: string): Generator<string> {
@@ -52,14 +52,16 @@ const nodeModulesChain = function* (projectRoot: string): Generator<string> {
 
 const resolvePackage = (projectRoot: string, packageName: string): ResolvedPackage | null => {
     for (const nodeModules of nodeModulesChain(projectRoot)) {
-        const found = loadPackage(join(nodeModules, packageName, "package.json"));
+        const found = loadPackage(join(nodeModules, packageName, "package.json"), nodeModules);
 
         if (found !== null) {
             return found;
         }
     }
 
-    return loadPackage(join(projectRoot, "packages", packageName.replace(/^@[^/]+\//, ""), "package.json"));
+    const unscoped = packageName.replace(/^@[^/]+\//, "");
+
+    return loadPackage(join(projectRoot, "packages", unscoped, "package.json"), join(projectRoot, "node_modules"));
 };
 
 const storeOptions = (nodeModules: string, name: string, version: string): StoreOptions => ({
@@ -73,10 +75,14 @@ const storeOptions = (nodeModules: string, name: string, version: string): Store
  * result supplies every `runCodegen` input except `libraries` and `girPath`, so a caller that has
  * already resolved those can spread it straight into the call.
  *
+ * Each store lands in the `node_modules` its versioning package resolved from, which is the project's
+ * own when it installs `@gtkx/runtime` and `@gtkx/react` itself, and the workspace root when a package
+ * manager hoisted them there. That keeps the store reachable from the packages importing it.
+ *
  * Store versions come from the installed `@gtkx/runtime` and `@gtkx/react`, so a dependency upgrade
  * invalidates the stores. Pass explicit `gi` or `jsx` options to `runCodegen` to override any of it.
  *
- * @param projectRoot Directory holding the project's `package.json` and `node_modules`.
+ * @param projectRoot Directory holding the project's `package.json`, whose `node_modules` chain is walked.
  * @returns The store locations and the React subexports that shape the jsx store.
  * @throws If `@gtkx/runtime` cannot be resolved from the project.
  */
@@ -88,11 +94,10 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
     }
 
     const react = resolvePackage(projectRoot, "@gtkx/react");
-    const nodeModules = join(projectRoot, "node_modules");
 
     return {
-        gi: storeOptions(nodeModules, "gi", runtime.version),
-        jsx: react === null ? null : storeOptions(nodeModules, "jsx", react.version),
+        gi: storeOptions(runtime.nodeModules, "gi", runtime.version),
+        jsx: react === null ? null : storeOptions(react.nodeModules, "jsx", react.version),
         reactSubexports: react === null ? [] : subexportNames(react.dir),
     };
 };

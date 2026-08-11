@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -9,6 +9,15 @@ const REACT_EXPORTS: Record<string, unknown> = {
     "./package.json": "./package.json",
     "./config": "./config.js",
     "./internal": "./internal.js",
+};
+
+const installPackage = (root: string, name: string, version = "1.2.3", exports?: Record<string, unknown>): string => {
+    const dir = join(root, "node_modules", name);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name, version, main: "./index.js", exports }));
+    writeFileSync(join(dir, "index.js"), "");
+
+    return dir;
 };
 
 describe("resolveStore", () => {
@@ -22,16 +31,9 @@ describe("resolveStore", () => {
         rmSync(projectRoot, { recursive: true, force: true });
     });
 
-    function installPackage(name: string, version = "1.2.3", exports?: Record<string, unknown>): void {
-        const dir = join(projectRoot, "node_modules", name);
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(join(dir, "package.json"), JSON.stringify({ name, version, main: "./index.js", exports }));
-        writeFileSync(join(dir, "index.js"), "");
-    }
-
     it("places both stores under the project node_modules", () => {
-        installPackage("@gtkx/runtime");
-        installPackage("@gtkx/react");
+        installPackage(projectRoot, "@gtkx/runtime");
+        installPackage(projectRoot, "@gtkx/react");
         const nodeModules = join(projectRoot, "node_modules");
         const store = resolveStore(projectRoot);
         expect(store.gi.storeDir).toBe(join(nodeModules, ".gtkx", "gi"));
@@ -41,21 +43,21 @@ describe("resolveStore", () => {
     });
 
     it("versions the gi store from @gtkx/runtime and the jsx store from @gtkx/react", () => {
-        installPackage("@gtkx/runtime", "9.9.9");
-        installPackage("@gtkx/react", "4.5.6");
+        installPackage(projectRoot, "@gtkx/runtime", "9.9.9");
+        installPackage(projectRoot, "@gtkx/react", "4.5.6");
         const store = resolveStore(projectRoot);
         expect(store.gi.version).toBe("9.9.9");
         expect(store.jsx?.version).toBe("4.5.6");
     });
 
     it("reads the React subexport names from its exports map", () => {
-        installPackage("@gtkx/runtime");
-        installPackage("@gtkx/react", "1.0.0", REACT_EXPORTS);
+        installPackage(projectRoot, "@gtkx/runtime");
+        installPackage(projectRoot, "@gtkx/react", "1.0.0", REACT_EXPORTS);
         expect(resolveStore(projectRoot).reactSubexports).toEqual(["config", "internal"]);
     });
 
     it("reports no jsx store when @gtkx/react is absent", () => {
-        installPackage("@gtkx/runtime");
+        installPackage(projectRoot, "@gtkx/runtime");
         const store = resolveStore(projectRoot);
         expect(store.jsx).toBeNull();
         expect(store.reactSubexports).toEqual([]);
@@ -63,6 +65,50 @@ describe("resolveStore", () => {
 
     it("throws when @gtkx/runtime cannot be resolved", () => {
         expect(() => resolveStore(projectRoot)).toThrow(/Cannot resolve @gtkx\/runtime/);
+    });
+});
+
+describe("resolveStore hoisting", () => {
+    let workspaceRoot: string;
+    let appRoot: string;
+    let hoistedModules: string;
+
+    beforeEach(() => {
+        workspaceRoot = mkdtempSync(join(tmpdir(), "gtkx-resolve-store-hoisted-"));
+        appRoot = join(workspaceRoot, "packages", "app");
+        hoistedModules = join(workspaceRoot, "node_modules");
+        mkdirSync(appRoot, { recursive: true });
+    });
+
+    afterEach(() => {
+        rmSync(workspaceRoot, { recursive: true, force: true });
+    });
+
+    it("places both stores in the node_modules the packages were hoisted to", () => {
+        installPackage(workspaceRoot, "@gtkx/runtime");
+        installPackage(workspaceRoot, "@gtkx/react");
+        const store = resolveStore(appRoot);
+        expect(store.gi.storeDir).toBe(join(hoistedModules, ".gtkx", "gi"));
+        expect(store.gi.linkDir).toBe(join(hoistedModules, "@gtkx", "gi"));
+        expect(store.jsx?.storeDir).toBe(join(hoistedModules, ".gtkx", "jsx"));
+        expect(store.jsx?.linkDir).toBe(join(hoistedModules, "@gtkx", "jsx"));
+    });
+
+    it("prefers the nearest node_modules over the hoisted one", () => {
+        installPackage(workspaceRoot, "@gtkx/runtime", "1.0.0");
+        installPackage(appRoot, "@gtkx/runtime", "2.0.0");
+        const store = resolveStore(appRoot);
+        expect(store.gi.storeDir).toBe(join(appRoot, "node_modules", ".gtkx", "gi"));
+        expect(store.gi.version).toBe("2.0.0");
+    });
+
+    it("anchors the store at the link rather than at the package's real path", () => {
+        const runtime = installPackage(join(workspaceRoot, "isolated"), "@gtkx/runtime");
+        mkdirSync(join(hoistedModules, "@gtkx"), { recursive: true });
+        symlinkSync(runtime, join(hoistedModules, "@gtkx", "runtime"), "dir");
+        const store = resolveStore(appRoot);
+        expect(store.gi.storeDir).toBe(join(hoistedModules, ".gtkx", "gi"));
+        expect(store.gi.linkDir).toBe(join(hoistedModules, "@gtkx", "gi"));
     });
 });
 
