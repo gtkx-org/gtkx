@@ -1,6 +1,7 @@
 import { join } from "node:path";
+import type { DigestRequest } from "../download.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
-import { cachedFetchText, cacheDir, digestFromChecksums, downloadFile } from "../download.js";
+import { cachedDigest, cacheDir, downloadFile, publishedDigest } from "../download.js";
 
 const NFPM_VERSION = "2.47.0";
 const NFPM_BASE_URL = `https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}`;
@@ -21,11 +22,12 @@ const assetNameFor = (arch: string): string => {
     return `nfpm_${NFPM_VERSION}_Linux_${assetArch}.tar.gz`;
 };
 
-const expectedDigest = async (assetName: string, dir: string): Promise<string> => {
-    const checksums = await cachedFetchText(`${NFPM_BASE_URL}/${CHECKSUMS_FILE}`, join(dir, CHECKSUMS_FILE));
-
-    return digestFromChecksums(checksums, assetName, `nfpm ${NFPM_VERSION}`);
-};
+const digestRequest = (assetName: string, dir: string): DigestRequest => ({
+    url: `${NFPM_BASE_URL}/${CHECKSUMS_FILE}`,
+    dest: join(dir, `${assetName}.sha256`),
+    assetName,
+    subject: `nfpm ${NFPM_VERSION}`,
+});
 
 const extractNfpm = (archive: string, dir: string): void => {
     runCliTool({ tool: "tar", args: ["-xzf", archive, "-C", dir, "nfpm"], target: assetNameFor(process.arch) });
@@ -33,12 +35,14 @@ const extractNfpm = (archive: string, dir: string): void => {
 
 const downloadNfpm = async (dir: string, binary: string): Promise<string> => {
     const assetName = assetNameFor(process.arch);
+    const request = digestRequest(assetName, dir);
 
     const archive = await downloadFile({
         url: `${NFPM_BASE_URL}/${assetName}`,
         dest: join(dir, assetName),
         label: `nfpm ${NFPM_VERSION}`,
-        sha256: await expectedDigest(assetName, dir),
+        sha256: await cachedDigest(request),
+        freshSha256: () => publishedDigest(request),
     });
 
     extractNfpm(archive, dir);

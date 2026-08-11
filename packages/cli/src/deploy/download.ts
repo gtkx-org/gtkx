@@ -4,15 +4,24 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSy
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+type DigestRequest = {
+    url: string;
+    dest: string;
+    assetName: string;
+    subject: string;
+};
+
 type DownloadRequest = {
     url: string;
     dest: string;
     label: string;
     sha256: string;
+    freshSha256?: (() => Promise<string>) | undefined;
     mode?: number | undefined;
 };
 
 const CACHE_NAMESPACE = "gtkx";
+const DIGEST_PATTERN = /^[\da-f]{64}$/;
 
 const cacheRoot = (): string => {
     const base = process.env.XDG_CACHE_HOME;
@@ -53,15 +62,39 @@ const fetchText = async (url: string): Promise<string> => {
     return bytes.toString("utf8");
 };
 
-const cachedFetchText = async (url: string, dest: string): Promise<string> => {
-    if (existsSync(dest)) {
-        return readFileSync(dest, "utf8");
+const readCachedDigest = (dest: string): string | undefined => {
+    try {
+        const cached = readFileSync(dest, "utf8").trim();
+
+        return DIGEST_PATTERN.test(cached) ? cached : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+const writeAtomically = (dest: string, contents: string): void => {
+    const staging = `${dest}.partial`;
+    writeFileSync(staging, contents);
+    renameSync(staging, dest);
+};
+
+const publishedDigest = async (request: DigestRequest): Promise<string> => {
+    const checksums = await fetchText(request.url);
+    const digest = digestFromChecksums(checksums, request.assetName, request.subject);
+
+    if (!DIGEST_PATTERN.test(digest)) {
+        throw new Error(`${request.subject} published a malformed checksum for ${request.assetName}: "${digest}"`);
     }
 
-    const contents = await fetchText(url);
-    writeFileSync(dest, contents);
+    writeAtomically(request.dest, digest);
 
-    return contents;
+    return digest;
+};
+
+const cachedDigest = async (request: DigestRequest): Promise<string> => {
+    const cached = readCachedDigest(request.dest);
+
+    return cached ?? publishedDigest(request);
 };
 
 const isCacheUsable = (dest: string, sha256: string): boolean => {
@@ -78,14 +111,17 @@ const isCacheUsable = (dest: string, sha256: string): boolean => {
     return false;
 };
 
-const downloadFile = async ({ url, dest, label, sha256, mode }: DownloadRequest): Promise<string> => {
+const downloadFile = async (request: DownloadRequest): Promise<string> => {
+    const { url, dest, label, sha256, mode } = request;
+
     if (isCacheUsable(dest, sha256)) {
         return dest;
     }
 
     info(`Downloading ${label}`);
+    const expected = request.freshSha256 === undefined ? sha256 : await request.freshSha256();
     const contents = await fetchBytes(url);
-    assertDigest(url, contents, sha256);
+    assertDigest(url, contents, expected);
     const staging = `${dest}.partial`;
     writeFileSync(staging, contents);
 
@@ -109,4 +145,4 @@ const digestFromChecksums = (checksums: string, assetName: string, subject: stri
     return digest;
 };
 
-export { cacheDir, cachedFetchText, digestFromChecksums, downloadFile };
+export { cacheDir, cachedDigest, type DigestRequest, downloadFile, publishedDigest };
