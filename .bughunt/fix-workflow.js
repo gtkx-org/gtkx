@@ -66,13 +66,15 @@ Do this, in order:
 4. Delete the old code path rather than keeping it alongside the new one. Update every call site,
    test, demo, and example in the same change. No compatibility shims, no deprecation, no aliases.
 
-5. Verify:
+5. Verify what you touched:
      pnpm vitest run --project e2e <your test file>
-     pnpm nx run @gtkx/e2e:test
+     pnpm nx run @gtkx/<package>:test     for every package you changed
      pnpm typecheck
-     pnpm lint
-   plus whatever suite owns the code you touched. Every warning is a failure — fix its cause, do not
-   dismiss it. If you touched Rust, also run \`pnpm nx run @gtkx/native:test\`.
+     pnpm nx run @gtkx/<package>:lint     for every package you changed
+   If you touched Rust, also \`pnpm nx run @gtkx/native:test\`. If you changed codegen output, run
+   \`pnpm codegen\` and re-run typecheck. Every warning is a failure — find its cause and eliminate it,
+   never dismiss it as benign or pre-existing. The full pipeline runs once after every fix has landed,
+   so keep this pass targeted but do not skip it.
 
 6. Run \`npx jsinspect-plus@latest --threshold 20 <the paths you changed>\` and resolve any duplication
    it reports.
