@@ -46,6 +46,7 @@ const BUILD_MODE = "production";
 const BYTES_PER_MIB = 1024 * 1024;
 const WEBKIT_LIBRARY = "WebKit-6.0";
 const NETWORK_ARG = "--share=network";
+const STORE_TARGETS: Set<string> = new Set(["flatpak"]);
 
 const displayPath = (settings: DeploySettings, path: string): string => relative(settings.paths.root, path);
 const megabytes = (size: number): string => (size / BYTES_PER_MIB).toFixed(1);
@@ -61,7 +62,7 @@ const renderMetadata = (settings: DeploySettings): StagedMetadata => ({
     mimePackage: renderMimePackage(settings),
 });
 
-const validateMetadata = (settings: DeploySettings, metadata: StagedMetadata): void => {
+const validateMetadata = (settings: DeploySettings, metadata: StagedMetadata, areWarningsFatal: boolean): void => {
     const dir = settings.paths.metadata;
     mkdirSync(dir, { recursive: true });
     const desktopPath = join(dir, `${settings.applicationId}.desktop`);
@@ -69,7 +70,7 @@ const validateMetadata = (settings: DeploySettings, metadata: StagedMetadata): v
     writeFileSync(desktopPath, metadata.desktopEntry);
     writeFileSync(metainfoPath, metadata.metainfo);
     validateDesktopEntry(desktopPath);
-    validateMetainfo(metainfoPath);
+    validateMetainfo(metainfoPath, areWarningsFatal);
     info("Validated the desktop entry and the metainfo");
 };
 
@@ -120,9 +121,13 @@ const loadSettings = async (options: DeployOptions): Promise<DeploySettings> => 
     return resolveDeploySettings({ root, config, outDirOverride: options.outDir });
 };
 
-const buildPayload = async (options: DeployOptions, settings: DeploySettings): Promise<DeployPayload> => {
+const buildPayload = async (
+    options: DeployOptions,
+    settings: DeploySettings,
+    targets: DeployTarget[],
+): Promise<DeployPayload> => {
     const metadata = renderMetadata(settings);
-    validateMetadata(settings, metadata);
+    validateMetadata(settings, metadata, targets.some((target) => STORE_TARGETS.has(target.name)));
 
     if (!options.shouldSkipBuild) {
         info(`Building ${options.entry}`);
@@ -190,7 +195,7 @@ const runDeploy = async (options: DeployOptions): Promise<void> => {
     const targets = targetsFor(resolveTargetNames(options, settings));
     announce(settings, targets);
     preflight(targets, settings, options.shouldPrintManifests);
-    const payload = await buildPayload(options, settings);
+    const payload = await buildPayload(options, settings, targets);
     const rendered = renderTargetManifests(targets, payload);
 
     if (options.shouldPrintManifests) {

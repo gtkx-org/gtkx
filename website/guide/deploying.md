@@ -130,7 +130,17 @@ When a required tool is missing, `gtkx deploy` lists every one of them at once, 
 gtkx deploy --print-manifests
 ```
 
-writes the desktop entry, the AppStream metainfo, and each target's manifest, validates them, and stops without packaging. `--skip-build` packages what is already in `dist/` instead of rebuilding, and `--out` changes the output directory, which defaults to `build/deploy`.
+writes the desktop entry, the AppStream metainfo, and each target's manifest, validates them, and stops without packaging.
+
+Validation always fails on an AppStream error. A *warning*, such as a missing homepage, fails only when a target that publishes to a software center is selected, which today means `flatpak`; for `deb`, `rpm`, and `appimage` it is reported and the build continues. Either way the message names the config key that fixes it:
+
+```
+The AppStream metainfo is not valid:
+W: com.example.Tasks:~: url-homepage-missing
+
+Fix it in gtkx.config.ts:
+  url-homepage-missing: set `deploy.homepage`, or `homepage` in package.json
+``` `--skip-build` packages what is already in `dist/` instead of rebuilding, and `--out` changes the output directory, which defaults to `build/deploy`.
 
 ## Escape hatches
 

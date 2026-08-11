@@ -62,7 +62,7 @@ describe.skipIf(!hasAppstreamCli())("validateMetainfo", () => {
         const path = write("com.gtkx.tutorial.metainfo.xml", renderMetainfo(tutorialSettings()));
 
         expect(() => {
-            validateMetainfo(path);
+            validateMetainfo(path, true);
         }).not.toThrow();
     });
 
@@ -71,7 +71,7 @@ describe.skipIf(!hasAppstreamCli())("validateMetainfo", () => {
         const path = write("nosummary.metainfo.xml", withoutSummary(document));
 
         expect(() => {
-            validateMetainfo(path);
+            validateMetainfo(path, true);
         }).toThrow(/not valid/);
     });
 
@@ -81,7 +81,34 @@ describe.skipIf(!hasAppstreamCli())("validateMetainfo", () => {
         const path = write("longsummary.metainfo.xml", document);
 
         expect(() => {
-            validateMetainfo(path);
+            validateMetainfo(path, true);
         }).toThrow(/not valid/);
+    });
+
+    it("lets a warning through when no store-bound target is selected", () => {
+        const settings = tutorialSettings({ homepage: null, urls: {} });
+        const path = write("nohomepage.metainfo.xml", renderMetainfo(settings));
+
+        expect(() => {
+            validateMetainfo(path, false);
+        }).not.toThrow();
+    });
+
+    it("blocks that same warning when a store-bound target is selected", () => {
+        const settings = tutorialSettings({ homepage: null, urls: {} });
+        const path = write("nohomepage.metainfo.xml", renderMetainfo(settings));
+
+        expect(() => {
+            validateMetainfo(path, true);
+        }).toThrow(/url-homepage-missing/);
+    });
+
+    it("names the config key that fixes each rule", () => {
+        const settings = tutorialSettings({ homepage: null, urls: {} });
+        const path = write("nohomepage.metainfo.xml", renderMetainfo(settings));
+
+        expect(() => {
+            validateMetainfo(path, true);
+        }).toThrow(/set `deploy\.homepage`/);
     });
 });
