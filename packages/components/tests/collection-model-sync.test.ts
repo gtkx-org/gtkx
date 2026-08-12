@@ -10,6 +10,7 @@ import { encodePart } from "../src/internal/keys.js";
 import { trackPaths } from "../src/internal/slots.js";
 import { adoptOrder } from "../src/internal/tree-expansion.js";
 import { walkVisible } from "../src/internal/tree-order.js";
+import { expandablePaths } from "./helpers/expandable-paths.js";
 
 type Splice = [number, number, number];
 
@@ -118,7 +119,7 @@ const expectTreeSplices = (previous: ListItem[], next: ListItem[], expected: Spl
 const expandedModel = (items: ListItem[]): CollectionModel => {
     const index = treeIndex(items);
     const collectionModel = syncedModel(index);
-    const slots = trackPaths(index.expandablePaths());
+    const slots = trackPaths(expandablePaths(index));
     adoptOrder(collectionModel.expansion, walkVisible({ index, slots }));
 
     return collectionModel;
@@ -127,7 +128,7 @@ const expandedModel = (items: ListItem[]): CollectionModel => {
 const expandEveryRow = (collectionModel: CollectionModel, index: CollectionIndex): void => {
     const order = walkVisible({
         index,
-        slots: trackPaths(index.expandablePaths()),
+        slots: trackPaths(expandablePaths(index)),
         visit: (row) => {
             if (row.isOpen) {
                 expandRowAt(collectionModel, row.position);

@@ -7,7 +7,7 @@ import { useControlledSync } from "./controlled-sync.js";
 import { joinParts } from "./keys.js";
 import { trackPaths } from "./slots.js";
 import { adoptOrder, markExpanded, orderFor } from "./tree-expansion.js";
-import { walkVisible } from "./tree-order.js";
+import { expandedPathsFor, walkVisible } from "./tree-order.js";
 
 type ExpansionOptions = {
     collection: Collection;
@@ -32,18 +32,6 @@ type ExpansionContext = {
 
 function newLastExpansion(): LastExpansion {
     return { key: "" };
-}
-
-function wantedSet(expansion: TreeExpansion, expandedIds: string[]): Set<string> {
-    const wanted: Set<string> = new Set();
-
-    for (const id of expandedIds) {
-        for (const path of expansion.index.expandablePathsFor(id)) {
-            wanted.add(path);
-        }
-    }
-
-    return wanted;
 }
 
 function hasSameExpansion(expanded: Set<string>, wanted: Set<string>): boolean {
@@ -77,7 +65,7 @@ function walkApplying(expansion: TreeExpansion, options: WalkOptions): VisibleOr
 
 function applyWanted(collection: Collection, expandedIds: string[]): void {
     const { expansion } = collection;
-    const wanted = wantedSet(expansion, expandedIds);
+    const wanted = expandedPathsFor(expansion.index, new Set(expandedIds));
 
     if (hasSameExpansion(expansion.expanded, wanted)) {
         return;

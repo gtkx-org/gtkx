@@ -4,6 +4,11 @@ import type { TreeName } from "./helpers/tree-fixtures.js";
 import { renderListView } from "./helpers/list-fixtures.js";
 import { expectRowTexts, rowTexts } from "./helpers/row-texts.js";
 
+type LazyChain = {
+    items: ListItem<TreeName>[];
+    deepestRead: () => number;
+};
+
 const CHAIN_DEPTH = 8000;
 
 const node = (id: string): ListItem<TreeName> => ({ id, value: { name: id } });
@@ -34,6 +39,26 @@ const mutuallyReferentialItems = (): ListItem<TreeName>[] => {
     return [first];
 };
 
+const lazyChain = (): LazyChain => {
+    let deepestRead = -1;
+
+    const chainNode = (level: number): ListItem<TreeName> => {
+        let children: ListItem<TreeName>[] | undefined;
+
+        return {
+            ...node(`n${String(level)}`),
+            get children(): ListItem<TreeName>[] {
+                deepestRead = Math.max(deepestRead, level);
+                children ??= [chainNode(level + 1)];
+
+                return children;
+            },
+        };
+    };
+
+    return { items: [chainNode(0)], deepestRead: () => deepestRead };
+};
+
 describe("render - ListView (tree) - collapsed deep and cyclic sources", () => {
     it("draws one row for a chain deeper than the call stack", async () => {
         const { ref } = await renderListView<TreeName>(deepChain(CHAIN_DEPTH), { expandedIds: [] });
@@ -50,13 +75,23 @@ describe("render - ListView (tree) - collapsed deep and cyclic sources", () => {
         expect(rowTexts(ref.current)).toEqual(["a"]);
     });
 
-    it("expands a cyclic item one level at a time", async () => {
-        const { ref } = await renderListView<TreeName>(selfReferentialItems(), { expandedIds: ["loop"] });
-        await expectRowTexts(ref, ["loop", "loop"]);
+    it("reads only the drawn levels of an unbounded source", async () => {
+        const chain = lazyChain();
+        const { ref } = await renderListView<TreeName>(chain.items, { expandedIds: [] });
+        expect(rowTexts(ref.current)).toEqual(["n0"]);
+        expect(chain.deepestRead()).toBe(1);
     });
 
-    it("expands the head of a deep chain without drawing the whole chain", async () => {
-        const { ref } = await renderListView<TreeName>(deepChain(CHAIN_DEPTH), { expandedIds: ["n0"] });
+    it("reads only the drawn levels of an unbounded source with an expanded head", async () => {
+        const chain = lazyChain();
+        const { ref } = await renderListView<TreeName>(chain.items, { expandedIds: ["n0"] });
         await expectRowTexts(ref, ["n0", "n1"]);
+        expect(chain.deepestRead()).toBe(2);
+    });
+
+    it("names the cyclic item instead of expanding it forever", async () => {
+        await expect(renderListView<TreeName>(selfReferentialItems(), { expandedIds: ["loop"] })).rejects.toThrow(
+            'Cannot expand "loop" because its children lead back to itself',
+        );
     });
 });

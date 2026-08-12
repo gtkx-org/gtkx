@@ -1,4 +1,4 @@
-import { decodePartAt, scanParts } from "./keys.js";
+import { decodePartAt, encodePart } from "./keys.js";
 
 type SlotKey = {
     levelPath: string;
@@ -8,7 +8,21 @@ type SlotKey = {
 type SlotMap = Map<string, Set<number>>;
 
 function getLevelBoundary(path: string): number {
-    return scanParts(path).at(-1)?.offset ?? 0;
+    let offset = 0;
+    let boundary = 0;
+
+    while (offset < path.length) {
+        const part = decodePartAt(path, offset);
+
+        if (part === null) {
+            return boundary;
+        }
+
+        boundary = offset;
+        offset += encodePart(part).length;
+    }
+
+    return boundary;
 }
 
 function getSlotKey(path: string): SlotKey | null {

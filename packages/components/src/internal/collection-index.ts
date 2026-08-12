@@ -1,5 +1,5 @@
 import type { ListItem, ListSection } from "../types.js";
-import { encodePart, scanParts } from "./keys.js";
+import { decodePartAt, encodePart } from "./keys.js";
 
 type Level = {
     path: string;
@@ -10,57 +10,24 @@ type Level = {
 type CollectionIndex = {
     isTree: boolean;
     groups: Level[];
+    childLevel: (level: Level, slot: number) => Level | undefined;
     levelFor: (levelPath: string) => Level | undefined;
     itemAt: (levelPath: string, slot: number) => ListItem | undefined;
     sectionFor: (levelPath: string) => unknown;
-    expandablePaths: () => string[];
-    expandablePathsFor: (id: string) => string[];
 };
 
 type IndexState = {
     isTree: boolean;
     groups: Level[];
     levels: Map<string, Level>;
-    paths: Map<string, string[]> | null;
     sectionValues: Map<string, unknown>;
 };
 
-type LevelCursor = {
-    level: Level | undefined;
-    path: string;
-};
+type ParentItem = ListItem & { children: ListItem[] };
 
-type PathFrame = {
-    path: string;
-    items: ListItem[];
-    cursor: number;
-    owner: ListItem | null;
-};
+const EMPTY_LEVEL: Level = { path: "", items: [], expandableFlags: [] };
 
-type PathWalk = {
-    paths: Map<string, string[]>;
-    frames: PathFrame[];
-    ancestors: Set<ListItem>;
-};
-
-const NO_PATHS: string[] = [];
-
-const hasChildren = (item: ListItem): boolean => item.children !== undefined && item.children.length > 0;
-
-const childItems = (item: ListItem | undefined): ListItem[] | undefined =>
-    item !== undefined && hasChildren(item) ? item.children : undefined;
-
-function pushPath(table: Map<string, string[]>, id: string, path: string): void {
-    const existing = table.get(id);
-
-    if (existing === undefined) {
-        table.set(id, [path]);
-
-        return;
-    }
-
-    existing.push(path);
-}
+const hasChildren = (item: ListItem): item is ParentItem => item.children !== undefined && item.children.length > 0;
 
 function newLevel(state: IndexState, path: string, items: ListItem[]): Level {
     const expandableFlags = state.isTree ? items.map((item) => hasChildren(item)) : [];
@@ -70,31 +37,34 @@ function newLevel(state: IndexState, path: string, items: ListItem[]): Level {
     return level;
 }
 
-function childLevel(state: IndexState, parent: Level, slot: number, path: string): Level | undefined {
-    const cached = state.levels.get(path);
+function childLevel(state: IndexState, parent: Level, slot: number): Level | undefined {
+    const item = parent.items[slot];
 
-    if (cached !== undefined) {
-        return cached;
-    }
-
-    const items = childItems(parent.items[slot]);
-
-    if (items === undefined || !state.isTree) {
+    if (item === undefined || !state.isTree || !hasChildren(item)) {
         return undefined;
     }
 
-    return newLevel(state, path, items);
+    const path = parent.path + encodePart(String(slot));
+
+    return state.levels.get(path) ?? newLevel(state, path, item.children);
 }
 
-function stepLevel(state: IndexState, cursor: LevelCursor, part: string): LevelCursor {
-    const path = cursor.path + encodePart(part);
-    const { level } = cursor;
+function descendPath(state: IndexState, levelPath: string, group: string): Level | undefined {
+    let level = state.levels.get(encodePart(group));
+    let offset = encodePart(group).length;
 
-    if (level === undefined) {
-        return { level: undefined, path };
+    while (level !== undefined && offset < levelPath.length) {
+        const part = decodePartAt(levelPath, offset);
+
+        if (part === null) {
+            return undefined;
+        }
+
+        level = childLevel(state, level, Number(part));
+        offset += encodePart(part).length;
     }
 
-    return { level: childLevel(state, level, Number(part), path), path };
+    return level;
 }
 
 function levelFor(state: IndexState, levelPath: string): Level | undefined {
@@ -104,89 +74,9 @@ function levelFor(state: IndexState, levelPath: string): Level | undefined {
         return cached;
     }
 
-    const [group, ...slots] = scanParts(levelPath).map((entry) => entry.part);
+    const group = decodePartAt(levelPath, 0);
 
-    if (group === undefined) {
-        return undefined;
-    }
-
-    const root = encodePart(group);
-    let cursor: LevelCursor = { level: state.levels.get(root), path: root };
-
-    for (const part of slots) {
-        cursor = stepLevel(state, cursor, part);
-    }
-
-    return cursor.level;
-}
-
-function visitPathSlot(walk: PathWalk, frame: PathFrame, slot: number): void {
-    const item = frame.items[slot];
-    const items = childItems(item);
-
-    if (item === undefined || items === undefined || walk.ancestors.has(item)) {
-        return;
-    }
-
-    const path = frame.path + encodePart(String(slot));
-    pushPath(walk.paths, item.id, path);
-    walk.ancestors.add(item);
-    walk.frames.push({ path, items, cursor: 0, owner: item });
-}
-
-function leavePathFrame(walk: PathWalk, frame: PathFrame): void {
-    walk.frames.pop();
-
-    if (frame.owner !== null) {
-        walk.ancestors.delete(frame.owner);
-    }
-}
-
-function advancePathFrame(walk: PathWalk): void {
-    const frame = walk.frames.at(-1);
-
-    if (frame === undefined) {
-        return;
-    }
-
-    if (frame.cursor >= frame.items.length) {
-        leavePathFrame(walk, frame);
-
-        return;
-    }
-
-    const slot = frame.cursor;
-    frame.cursor += 1;
-    visitPathSlot(walk, frame, slot);
-}
-
-function buildPaths(state: IndexState): Map<string, string[]> {
-    const paths: Map<string, string[]> = new Map();
-
-    if (!state.isTree) {
-        return paths;
-    }
-
-    const frames: PathFrame[] = state.groups.map((level) => ({
-        path: level.path,
-        items: level.items,
-        cursor: 0,
-        owner: null,
-    }));
-
-    const walk: PathWalk = { paths, frames: frames.toReversed(), ancestors: new Set() };
-
-    while (walk.frames.length > 0) {
-        advancePathFrame(walk);
-    }
-
-    return paths;
-}
-
-function pathTable(state: IndexState): Map<string, string[]> {
-    state.paths ??= buildPaths(state);
-
-    return state.paths;
+    return group === null ? undefined : descendPath(state, levelPath, group);
 }
 
 function buildGroups(state: IndexState, source: ListItem[], sections: ListSection[] | undefined): Level[] {
@@ -225,7 +115,6 @@ function createCollectionIndex(
         isTree: isTreeSource(source, sections, isFlat),
         groups: [],
         levels: new Map(),
-        paths: null,
         sectionValues: new Map(),
     };
 
@@ -234,12 +123,11 @@ function createCollectionIndex(
     return {
         isTree: state.isTree,
         groups: state.groups,
+        childLevel: (level, slot) => childLevel(state, level, slot),
         levelFor: (levelPath) => levelFor(state, levelPath),
         itemAt: (levelPath, slot) => levelFor(state, levelPath)?.items[slot],
         sectionFor: (levelPath) => state.sectionValues.get(levelPath),
-        expandablePaths: () => pathTable(state).values().toArray().flat(),
-        expandablePathsFor: (id) => pathTable(state).get(id) ?? NO_PATHS,
     };
 }
 
-export { createCollectionIndex, type CollectionIndex, type Level };
+export { createCollectionIndex, EMPTY_LEVEL, type CollectionIndex, type Level };
