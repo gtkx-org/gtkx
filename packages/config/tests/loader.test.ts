@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadConfig } from "../src/index.js";
 import { createConfigLoader } from "../src/internal.js";
@@ -97,9 +97,11 @@ describe("loadConfig — missing configuration file", () => {
         );
     });
 
-    it("resolves a relative directory before naming it", async () => {
-        await expect(loadConfig(join(root.path, "src", ".."))).rejects.toThrow(
-            `gtkx.config.ts: no configuration file found in ${root.path}`,
+    it("names a relative directory by the absolute path it searched", async () => {
+        const relativePath = `${relative(process.cwd(), root.path)}${sep}`;
+
+        await expect(loadConfig(relativePath)).rejects.toThrow(
+            new Error(`gtkx.config.ts: no configuration file found in ${root.path}`),
         );
     });
 });

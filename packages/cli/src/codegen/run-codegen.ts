@@ -210,11 +210,12 @@ const ensureGenerated = async (
     cwd: string,
     options: { shouldAnnounce?: boolean; mode?: string } = {},
 ): Promise<boolean> => {
+    const context = await resolveCodegenContext(cwd, options.mode);
+
     if (options.shouldAnnounce && process.env.GTKX_DISABLE_PREFLIGHT === "1") {
         return false;
     }
 
-    const context = await resolveCodegenContext(cwd, options.mode);
     syncSchemaEnv(cwd);
 
     if (context.config.codegen === false) {

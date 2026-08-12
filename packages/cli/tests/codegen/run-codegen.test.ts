@@ -101,6 +101,24 @@ const announceLogs = async (cwd: string): Promise<string> => {
     }
 };
 
+const restorePreflightEnv = (): void => {
+    const originalEnv = process.env.GTKX_DISABLE_PREFLIGHT;
+
+    afterEach(() => {
+        if (originalEnv === undefined) {
+            delete process.env.GTKX_DISABLE_PREFLIGHT;
+        } else {
+            process.env.GTKX_DISABLE_PREFLIGHT = originalEnv;
+        }
+    });
+};
+
+const expectMissingConfig = async (cwd: string): Promise<void> => {
+    await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow(
+        `gtkx.config.ts: no configuration file found in ${cwd}`,
+    );
+};
+
 vi.mock("@gtkx/codegen", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@gtkx/codegen")>()),
     runCodegen: (options: { isForced?: boolean }) =>
@@ -193,7 +211,7 @@ describe("runCodegen — codegen: false", () => {
 
 describe("ensureGenerated — announce path", () => {
     let cwd: string;
-    const originalEnv = process.env.GTKX_DISABLE_PREFLIGHT;
+    restorePreflightEnv();
 
     beforeEach(() => {
         cwd = mkdtempSync(join(tmpdir(), "gtkx-announce-"));
@@ -201,26 +219,23 @@ describe("ensureGenerated — announce path", () => {
 
     afterEach(() => {
         rmSync(cwd, { recursive: true, force: true });
-
-        if (originalEnv === undefined) {
-            delete process.env.GTKX_DISABLE_PREFLIGHT;
-        } else {
-            process.env.GTKX_DISABLE_PREFLIGHT = originalEnv;
-        }
     });
 
-    it("returns silently when GTKX_DISABLE_PREFLIGHT=1", async () => {
+    it("skips codegen silently when GTKX_DISABLE_PREFLIGHT=1", async () => {
         process.env.GTKX_DISABLE_PREFLIGHT = "1";
-        expect(await ensureGenerated(cwd, { shouldAnnounce: true })).toBe(false);
+        writeConfig(cwd);
+        expect(await announceLogs(cwd)).toBe("");
+    });
+
+    it("still rejects a missing gtkx.config.ts when GTKX_DISABLE_PREFLIGHT=1", async () => {
+        process.env.GTKX_DISABLE_PREFLIGHT = "1";
+        await expectMissingConfig(cwd);
     });
 
     it("rejects when there is no gtkx.config.ts", async () => {
         delete process.env.GTKX_DISABLE_PREFLIGHT;
         installRuntimePackage(cwd);
-
-        await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow(
-            `gtkx.config.ts: no configuration file found in ${cwd}`,
-        );
+        await expectMissingConfig(cwd);
     });
 
     it("propagates non-NotFound config errors", async () => {

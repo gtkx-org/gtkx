@@ -1,46 +1,38 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { resolveEntry } from "../../src/internal/entry-arg.js";
+import { setupTempProject } from "../temp-project.js";
 
 describe("resolveEntry", () => {
-    let cwd: string;
-
-    beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-entry-"));
-        mkdirSync(join(cwd, "src"));
-    });
-
-    afterEach(() => {
-        rmSync(cwd, { recursive: true, force: true });
-    });
+    const project = setupTempProject("gtkx-entry-");
 
     const seed = (relativePath: string): void => {
-        writeFileSync(join(cwd, relativePath), "");
+        writeFileSync(join(project.path, relativePath), "");
     };
 
     it("resolves an explicitly supplied entry against the cwd", () => {
-        const { entry } = resolveEntry({ entry: "src/main.jsx", cwd });
-        expect(entry).toBe(join(cwd, "src/main.jsx"));
+        expect(resolveEntry(project.path, "src/main.jsx")).toBe(join(project.path, "src/main.jsx"));
     });
 
     it("prefers src/index.tsx over the other extensions", () => {
         seed("src/index.js");
         seed("src/index.jsx");
         seed("src/index.tsx");
-        const { entry } = resolveEntry({ cwd });
-        expect(entry).toBe(join(cwd, "src/index.tsx"));
+        expect(resolveEntry(project.path, undefined)).toBe(join(project.path, "src/index.tsx"));
     });
 
     it("detects a JavaScript entry when no TypeScript entry exists", () => {
         seed("src/index.jsx");
-        const { entry } = resolveEntry({ cwd });
-        expect(entry).toBe(join(cwd, "src/index.jsx"));
+        expect(resolveEntry(project.path, undefined)).toBe(join(project.path, "src/index.jsx"));
     });
 
-    it("falls back to src/index.tsx when no entry file exists", () => {
-        const { entry } = resolveEntry({ cwd });
-        expect(entry).toBe(join(cwd, "src/index.tsx"));
+    it("rejects instead of naming a default entry that does not exist", () => {
+        expect(() => resolveEntry(project.path, undefined)).toThrow(
+            new Error(
+                `No entry file found in ${project.path}. Looked for src/index.tsx, src/index.jsx, ` +
+                "src/index.ts, src/index.js; pass the entry file as an argument.",
+            ),
+        );
     });
 });

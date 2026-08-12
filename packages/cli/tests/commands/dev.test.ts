@@ -1,7 +1,10 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, resolveConfigWatch } from "../../src/codegen/run-codegen.js";
 import { dev } from "../../src/commands/dev.js";
 import { runDevSupervisor } from "../../src/dev/supervisor.js";
+import { setupTempProject } from "../temp-project.js";
 
 type DevRun = NonNullable<typeof dev.run>;
 type DevContext = Parameters<DevRun>[0];
@@ -11,14 +14,14 @@ const ensureGeneratedMock = vi.mocked(ensureGenerated);
 const resolveConfigWatchMock = vi.mocked(resolveConfigWatch);
 const runDevSupervisorMock = vi.mocked(runDevSupervisor);
 
-const runDev = (entry?: string, argv?: string[]): Promise<unknown> => {
+const runDev = (entry?: string, argv?: string[], cwd?: string): Promise<unknown> => {
     const run = dev.run;
 
     if (!run) {
         throw new Error("dev command has no run handler");
     }
 
-    const args = { entry } as DevContext["args"];
+    const args = { entry, cwd } as DevContext["args"];
 
     if (argv !== undefined) {
         vi.spyOn(process, "argv", "get").mockReturnValue(["node", "gtkx", ...argv]);
@@ -48,6 +51,7 @@ vi.mock("../../src/dev/supervisor.js", () => ({
 
 describe("dev command", () => {
     setupMockReset();
+    const project = setupTempProject("gtkx-dev-");
 
     it("runs preflight codegen and hands off to the supervisor with the resolved entry", async () => {
         await runDev("src/main.tsx");
@@ -66,9 +70,20 @@ describe("dev command", () => {
     });
 
     it("uses src/index.tsx as the default entry when no positional is supplied", async () => {
-        await runDev();
+        writeFileSync(join(project.path, "src", "index.tsx"), "");
+        await runDev(undefined, undefined, project.path);
         const [options] = runDevSupervisorMock.mock.calls[0] ?? [];
-        expect(options?.entryPath).toMatch(/src\/index\.tsx$/);
+        expect(options?.entryPath).toBe(join(project.path, "src", "index.tsx"));
+    });
+
+    it("rejects without starting the supervisor when no entry file exists", async () => {
+        await expect(runDev(undefined, undefined, project.path)).rejects.toThrow(
+            `No entry file found in ${project.path}`,
+        );
+
+        expect(ensureGeneratedMock).toHaveBeenCalledOnce();
+        expect(resolveConfigWatchMock).not.toHaveBeenCalled();
+        expect(runDevSupervisorMock).not.toHaveBeenCalled();
     });
 });
 
