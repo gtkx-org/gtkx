@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { scheduleNextFrame } from "../frame-sync.js";
+import { getTypeTag } from "../widget-getters.js";
 import { wrapEvent } from "./event-wrapper.js";
 
 /** A scroll distance in pixels along each axis. */
@@ -24,7 +25,7 @@ const slide = (widget: Gtk.Widget, value: number): Promise<void> =>
     wrapEvent(widget, () => {
         if (!(widget instanceof Gtk.Range)) {
             throw new TypeError(
-                `userEvent.slide requires a Gtk.Range (e.g. Gtk.Scale), got ${widget.constructor.name}`,
+                `userEvent.slide requires a Gtk.Range (e.g. Gtk.Scale), got ${getTypeTag(widget)}`,
             );
         }
 

@@ -1,8 +1,33 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { getInstanceType, typeName } from "@gtkx/runtime";
+import { type AnyClass, getClassType, getInstanceType, getWrapperClass, typeName } from "@gtkx/runtime";
+
+const UNKNOWN_TYPE_TAG = "Object";
 
 const getWidgetMethod = (widget: Gtk.Widget, name: string): unknown => Reflect.get(widget, name);
 const getWidgetTypeName = (widget: Gtk.Widget): string | null => typeName(getInstanceType(widget));
+
+const isExactWrapper = (wrapper: AnyClass, type: bigint): boolean =>
+    wrapper.name.length > 0 && getClassType(wrapper) === type;
+
+const getWrapperName = (object: GObject.Object): string => {
+    const name = object.constructor.name;
+
+    return name.length > 0 ? name : UNKNOWN_TYPE_TAG;
+};
+
+const getTypeTag = (object: GObject.Object): string => {
+    const type = getInstanceType(object);
+    const registeredName = typeName(type);
+
+    if (registeredName === null || registeredName.length === 0) {
+        return getWrapperName(object);
+    }
+
+    const wrapper = getWrapperClass(type);
+
+    return isExactWrapper(wrapper, type) ? wrapper.name : registeredName;
+};
 
 const hasWidgetMethod = (widget: Gtk.Widget, name: string): boolean =>
     typeof getWidgetMethod(widget, name) === "function";
@@ -29,4 +54,4 @@ const callStringGetter = (widget: Gtk.Widget, method: string): string | null => 
     return typeof value === "string" ? value : null;
 };
 
-export { callBooleanGetter, callStringGetter, getCallableMethod, getWidgetTypeName, hasWidgetMethod };
+export { callBooleanGetter, callStringGetter, getCallableMethod, getTypeTag, getWidgetTypeName, hasWidgetMethod };

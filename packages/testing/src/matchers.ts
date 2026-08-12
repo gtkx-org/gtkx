@@ -39,6 +39,7 @@ import {
     isWidgetValueMatch,
     isWidgetVisible,
 } from "./widget-accessible-properties.js";
+import { getTypeTag } from "./widget-getters.js";
 import { isWindowActivated } from "./window-state.js";
 
 /** The expected value for a text matcher: an exact string or a regular expression. */
@@ -390,7 +391,7 @@ const describeWidget = (widget: Gtk.Widget): string => {
 };
 
 const describeObject = (object: GObject.Object): string =>
-    object instanceof Gtk.Widget ? describeWidget(object) : `<${object.constructor.name}>`;
+    object instanceof Gtk.Widget ? describeWidget(object) : `<${getTypeTag(object)}>`;
 
 const isTextMatch = (actual: string, expected: TextExpectation, mode: "exact" | "substring"): boolean => {
     if (expected instanceof RegExp) {

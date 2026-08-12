@@ -3,6 +3,7 @@ import { runInAct } from "../act.js";
 import { getConfig } from "../config.js";
 import { formatRole } from "../role-helpers.js";
 import { delay, now } from "../timers.js";
+import { getTypeTag, getWidgetTypeName } from "../widget-getters.js";
 import { isWindowActivated, isWindowAllocated } from "../window-state.js";
 
 const NOT_SENSITIVE = "it is not sensitive (the widget or one of its ancestors is disabled)";
@@ -43,9 +44,10 @@ const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
 };
 
 const describeWidget = (widget: Gtk.Widget): string => {
-    const tag = widget.constructor.name;
+    const tag = getTypeTag(widget);
     const name = widget.getName();
-    const nameAttribute = name && !name.endsWith(tag) ? ` name="${name}"` : "";
+    const isDefaultName = name.length === 0 || name === getWidgetTypeName(widget);
+    const nameAttribute = isDefaultName ? "" : ` name="${name}"`;
 
     return `<${tag}${nameAttribute} role="${formatRole(widget.getAccessibleRole())}">`;
 };
