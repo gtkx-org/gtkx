@@ -34,6 +34,7 @@ const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
 const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
 const templateFiles: Record<string, string> = {};
 const CUTOFF = ", within the minimumReleaseAge cutoff (2026-08-09T08:49:41.166Z)";
+const INVALID_PROJECT_NAME_ERROR = "Project name must be lowercase letters, numbers, and hyphens only";
 const PROD_ARGS = ["@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"].map((name) => pin(name)).join(" ");
 
 const DEV_ARGS = ["@gtkx/cli", "@gtkx/config", "@gtkx/mcp", "vite", "@types/node", "@types/react", "typescript"]
@@ -130,7 +131,7 @@ function partialOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
     };
 }
 
-async function answerApplicationId(keystrokes: string, name = "tasks"): Promise<string[]> {
+async function answerPrompt(keystrokes: string, options: CreateOptions): Promise<string[]> {
     const prompts = await vi.importActual<typeof import("@clack/prompts")>("@clack/prompts");
     const input = new PassThrough();
     const output = new PassThrough();
@@ -140,22 +141,38 @@ async function answerApplicationId(keystrokes: string, name = "tasks"): Promise<
         frames.push(stripVTControlCharacters(chunk.toString()));
     });
 
-    clack.text.mockImplementation((options) => {
-        const answered = prompts.text({ ...options, input, output });
+    clack.text.mockImplementation((textOptions) => {
+        const answered = prompts.text({ ...textOptions, input, output });
         input.write(keystrokes);
 
         return answered;
     });
 
-    await scaffold({
+    await scaffold(options);
+
+    return frames;
+}
+
+function answerApplicationId(keystrokes: string, name = "tasks"): Promise<string[]> {
+    return answerPrompt(keystrokes, {
         name,
         packageManager: "pnpm",
         isTypescript: true,
         shouldIncludeTesting: false,
         isInteractive: true,
     });
+}
 
-    return frames;
+function answerProjectDirectory(keystrokes: string): Promise<string[]> {
+    return answerPrompt(keystrokes, partialOptions({ packageManager: "pnpm", isTypescript: true }));
+}
+
+async function expectArgumentRejected(name: string, message: string): Promise<void> {
+    clack.text.mockResolvedValue("prompted-app");
+    await expect(scaffold(partialOptions({ name }))).rejects.toThrow(message);
+    expect(lastError()).toBe(message);
+    expect(clack.text).not.toHaveBeenCalled();
+    expect(vol.readdirSync(TEST_DIR)).toEqual([]);
 }
 
 function scaffoldWithSuggestedId(name: string): Promise<void> {
@@ -657,6 +674,14 @@ describe("scaffold (unusable inputs)", () => {
         expect(lastError()).not.toContain("Failed to create the project structure");
     });
 
+    it("rejects an omitted project directory without prompting", async () => {
+        const scaffolded = scaffold({ applicationId: "org.test.app", isInteractive: false });
+        await expect(scaffolded).rejects.toThrow(/Project directory is required/);
+        expect(lastError()).toBe("Project directory is required");
+        expect(clack.text).not.toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+
     it("rejects an empty project directory the way an omitted one is rejected", async () => {
         await expect(runNonInteractive({ name: "" })).rejects.toThrow(/Project directory is required/);
         expect(lastError()).toBe("Project directory is required");
@@ -742,12 +767,36 @@ describe("scaffold (directory target)", () => {
         expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(true);
         expect(lastNote()).not.toContain("cd ");
     });
+});
 
-    it("prompts for the project directory when the argument is empty", async () => {
+describe("scaffold (interactive target argument)", () => {
+    it("prompts for the project directory when the argument is omitted", async () => {
         clack.text.mockResolvedValue("prompted-app");
-        await scaffold(partialOptions({ name: "" }));
+        await scaffold(partialOptions());
         expect(clack.text).toHaveBeenCalled();
         expect(vol.existsSync(`${TEST_DIR}/prompted-app/package.json`)).toBe(true);
         expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+
+    it("rejects an empty argument instead of prompting for another directory", async () => {
+        await expectArgumentRejected("", "Project directory is required");
+    });
+
+    it("rejects an argument left empty by sanitization instead of prompting for another directory", async () => {
+        await expectArgumentRejected("/", "Project directory is required");
+    });
+
+    it("keeps the prompt open instead of scaffolding when the typed project directory is invalid", async () => {
+        clack.isCancel.mockImplementation((value) => typeof value === "symbol");
+        const answered = answerProjectDirectory(`Bad_Name\r${CANCEL_KEYSTROKE}`);
+        await expect(answered).rejects.toThrow(/Operation canceled/);
+        expect(clack.text).toHaveBeenCalledTimes(1);
+        expect(clack.log.error).not.toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/Bad_Name`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+
+    it("rejects an argument with an invalid format instead of prompting for another directory", async () => {
+        await expectArgumentRejected("Invalid_Name", INVALID_PROJECT_NAME_ERROR);
     });
 });

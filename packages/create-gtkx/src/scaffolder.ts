@@ -211,21 +211,26 @@ const targetStats = (root: string): Stats | undefined => {
     }
 };
 
-const validateTarget = (value: string | undefined): string | undefined => {
-    if (!value) {
+const validateTargetDir = (target: string): string | undefined => {
+    if (!target) {
         return "Project directory is required";
     }
 
-    return validateProjectName(deriveProjectName(formatTargetDir(value)));
+    return validateProjectName(deriveProjectName(target));
 };
 
+const validateTargetAnswer = (value: string | undefined): string | undefined =>
+    validateTargetDir(formatTargetDir(value ?? ""));
+
 const promptTarget = async (): Promise<string> =>
-    guardCancellation(
-        await p.text({
-            message: "Project directory",
-            placeholder: "my-app",
-            validate: validateTarget,
-        }),
+    formatTargetDir(
+        guardCancellation(
+            await p.text({
+                message: "Project directory",
+                placeholder: "my-app",
+                validate: validateTargetAnswer,
+            }),
+        ),
     );
 
 const promptApplicationId = async (name: string): Promise<string> => {
@@ -327,20 +332,6 @@ const prepareTargetDirectory = (root: string, shouldEmptyTarget: boolean): void 
     }
 };
 
-const validateResolvedOptions = (name: string, applicationId: string): void => {
-    const nameError = validateProjectName(name);
-
-    if (nameError) {
-        fail(nameError);
-    }
-
-    const applicationIdError = validateApplicationIdInput(applicationId);
-
-    if (applicationIdError) {
-        fail(applicationIdError);
-    }
-};
-
 const shouldOverwriteDirectory = async (target: string, options: CreateOptions): Promise<boolean> => {
     if (!options.isInteractive) {
         return options.shouldOverwrite === true;
@@ -377,26 +368,23 @@ const shouldEmptyTargetDirectory = async (root: string, target: string, options:
 };
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
-    const requested = formatTargetDir(options.name ?? "");
-    const error = validateTarget(requested);
-
-    if (error === undefined) {
-        return requested;
+    if (options.name === undefined && options.isInteractive) {
+        return promptTarget();
     }
 
-    if (!options.isInteractive) {
-        return fail(error);
-    }
+    const target = formatTargetDir(options.name ?? "");
+    const error = validateTargetDir(target);
 
-    return formatTargetDir(await promptTarget());
+    return error === undefined ? target : fail(error);
 };
 
 const resolveApplicationId = async (options: CreateOptions, name: string): Promise<string> => {
-    if (options.applicationId !== undefined) {
-        return options.applicationId;
-    }
+    const applicationId = options.applicationId ??
+        (options.isInteractive ? await promptApplicationId(name) : suggestApplicationId(name));
 
-    return options.isInteractive ? promptApplicationId(name) : suggestApplicationId(name);
+    const error = validateApplicationIdInput(applicationId);
+
+    return error === undefined ? applicationId : fail(error);
 };
 
 const resolvePackageManager = async (
@@ -435,7 +423,6 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
     const target = await resolveTarget(options);
     const name = deriveProjectName(target);
     const applicationId = await resolveApplicationId(options, name);
-    validateResolvedOptions(name, applicationId);
     const root = resolve(process.cwd(), target);
     const isCurrentDirectory = root === process.cwd();
     const shouldEmptyTarget = await shouldEmptyTargetDirectory(root, target, options);
