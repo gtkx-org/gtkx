@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { build as buildApp } from "../../src/builder.js";
 import { ensureGenerated } from "../../src/codegen/run-codegen.js";
 import { build } from "../../src/commands/build.js";
+import { collectLogged } from "../stderr-text.js";
 import { setupLogState } from "./log-state.js";
 
 const buildMock = vi.mocked(buildApp);
@@ -18,9 +19,15 @@ vi.mock("../../src/codegen/run-codegen.js", () => ({
 }));
 
 describe("build", () => {
-    setupLogState();
+    const state = setupLogState();
 
     it("runs codegen preflight and builds with the default entry", async () => {
+        ensureGeneratedMock.mockImplementationOnce(() => {
+            expect(collectLogged(state.stderrSpy)).not.toContain("Building");
+
+            return Promise.resolve(false);
+        });
+
         await runCommand(build, { rawArgs: [] });
 
         expect(ensureGeneratedMock).toHaveBeenCalledWith(expect.any(String), {
@@ -28,6 +35,7 @@ describe("build", () => {
             mode: "production",
         });
 
+        expect(collectLogged(state.stderrSpy)).toContain("Building");
         expect(buildMock).toHaveBeenCalledOnce();
         const buildCall = buildMock.mock.calls[0];
 
@@ -51,5 +59,18 @@ describe("build", () => {
         const buildArgs = buildCall[0];
         expect(buildArgs.entry).toMatch(/src\/main\.tsx$/);
         expect(buildArgs.assetBase).toBe("../share/myapp");
+    });
+
+    it("does not announce an entry when the project has no configuration", async () => {
+        ensureGeneratedMock.mockRejectedValueOnce(
+            new Error("gtkx.config.ts: no configuration file found in /project/src"),
+        );
+
+        await expect(runCommand(build, { rawArgs: [] })).rejects.toThrow(
+            "gtkx.config.ts: no configuration file found in /project/src",
+        );
+
+        expect(collectLogged(state.stderrSpy)).not.toContain("Building");
+        expect(buildMock).not.toHaveBeenCalled();
     });
 });

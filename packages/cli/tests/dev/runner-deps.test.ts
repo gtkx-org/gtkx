@@ -202,9 +202,12 @@ describe("defaultDevRunnerDeps (getConfiguredApplicationId)", () => {
         await expect(deps.getConfiguredApplicationId(root)).resolves.toBe("com.example.app");
     });
 
-    it("rejects when no config file exists because applicationId is required", async () => {
+    it("rejects when no config file exists, naming the directory searched", async () => {
         const deps = defaultDevRunnerDeps();
-        await expect(deps.getConfiguredApplicationId(root)).rejects.toThrow(/invalid `applicationId`/);
+
+        await expect(deps.getConfiguredApplicationId(root)).rejects.toThrow(
+            `gtkx.config.ts: no configuration file found in ${root}`,
+        );
     });
 });
 

@@ -20,8 +20,8 @@ const build = defineCommand({
     },
     async run({ args }) {
         const { cwd, entry } = resolveEntry(args);
-        info(`Building ${entry}`);
         await ensureGenerated(cwd, { shouldAnnounce: true, mode: BUILD_MODE });
+        info(`Building ${entry}`);
 
         await buildApp({
             entry,

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -68,9 +68,39 @@ describe("loadConfig — accepted config shapes", () => {
         const result = await loadConfig(root.path);
         expect(result.config.libraries).toBe("*");
     });
+});
 
-    it("rejects when no config file exists because applicationId is required", async () => {
-        await expect(loadConfig(root.path)).rejects.toThrow(/invalid `applicationId`/);
+describe("loadConfig — missing configuration file", () => {
+    const root = installTempRoot("gtkx-config-missing-");
+
+    it("names the directory it searched when the directory holds no config", async () => {
+        await expect(loadConfig(root.path)).rejects.toThrow(
+            `gtkx.config.ts: no configuration file found in ${root.path}`,
+        );
+    });
+
+    it("names the directory it searched when the directory does not exist", async () => {
+        const missing = join(root.path, "nonexistent");
+
+        await expect(loadConfig(missing)).rejects.toThrow(
+            `gtkx.config.ts: no configuration file found in ${missing}`,
+        );
+    });
+
+    it("reports a subdirectory of a configured project as unconfigured", async () => {
+        writeConfigIn(root, "export default { applicationId: \"org.gtk.Demo4\" };\n");
+        const source = join(root.path, "src");
+        mkdirSync(source);
+
+        await expect(loadConfig(source)).rejects.toThrow(
+            `gtkx.config.ts: no configuration file found in ${source}`,
+        );
+    });
+
+    it("resolves a relative directory before naming it", async () => {
+        await expect(loadConfig(join(root.path, "src", ".."))).rejects.toThrow(
+            `gtkx.config.ts: no configuration file found in ${root.path}`,
+        );
     });
 });
 
@@ -122,8 +152,10 @@ describe("createConfigLoader", () => {
         expect(resolved.reactCompiler).toEqual({ target: "19" });
     });
 
-    it("rejects when no config file exists because applicationId is required", async () => {
-        await expect(createConfigLoader().resolve(root.path)).rejects.toThrow(/invalid `applicationId`/);
+    it("names the directory it searched when no config file exists", async () => {
+        await expect(createConfigLoader().resolve(root.path)).rejects.toThrow(
+            `gtkx.config.ts: no configuration file found in ${root.path}`,
+        );
     });
 
     it("propagates validation errors from the loader", async () => {

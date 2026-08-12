@@ -20,6 +20,8 @@ export default defineConfig({
 });
 ```
 
+The file marks the project root, and every command reads it from a single directory: `--cwd` when you pass it, the current working directory otherwise. Parent directories are never searched, so running a command from `src/` reports `gtkx.config.ts: no configuration file found in <directory>` rather than picking up the config one level up.
+
 `mergeConfig(base, override)` layers a project config over a shared base. A `$development` or `$production` block layers over the top level, per mode.
 
 ### Every option
