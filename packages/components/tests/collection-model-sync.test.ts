@@ -66,18 +66,8 @@ const spliceLog = (model: Gio.ListModel): Splice[] => {
     return calls;
 };
 
-const getTree = (collectionModel: CollectionModel): Gtk.TreeListModel => {
-    const tree = collectionModel.treeModel();
-
-    if (tree === null) {
-        throw new TypeError("Expected the collection model to hold a tree");
-    }
-
-    return tree;
-};
-
-const getRowAt = (tree: Gtk.TreeListModel, position: number): Gtk.TreeListRow => {
-    const row = tree.getRow(position);
+const getRowAt = (collectionModel: CollectionModel, position: number): Gtk.TreeListRow => {
+    const row = collectionModel.rowAt(position);
 
     if (row === null) {
         throw new TypeError("Expected a tree list row");
@@ -86,14 +76,17 @@ const getRowAt = (tree: Gtk.TreeListModel, position: number): Gtk.TreeListRow =>
     return row;
 };
 
-const isRowExpandableAt = (tree: Gtk.TreeListModel, position: number): boolean =>
-    getRowAt(tree, position).isExpandable();
+const isRowExpandableAt = (collectionModel: CollectionModel, position: number): boolean =>
+    getRowAt(collectionModel, position).isExpandable();
 
-const isRowExpandedAt = (tree: Gtk.TreeListModel, position: number): boolean => getRowAt(tree, position).getExpanded();
-const getRowDepthAt = (tree: Gtk.TreeListModel, position: number): number => getRowAt(tree, position).getDepth();
+const isRowExpandedAt = (collectionModel: CollectionModel, position: number): boolean =>
+    getRowAt(collectionModel, position).getExpanded();
 
-const expandRowAt = (tree: Gtk.TreeListModel, position: number): void => {
-    getRowAt(tree, position).setExpanded(true);
+const getRowDepthAt = (collectionModel: CollectionModel, position: number): number =>
+    getRowAt(collectionModel, position).getDepth();
+
+const expandRowAt = (collectionModel: CollectionModel, position: number): void => {
+    getRowAt(collectionModel, position).setExpanded(true);
 };
 
 const expectFlatSplices = (previous: string[], next: string[], expected: Splice[]): void => {
@@ -122,14 +115,12 @@ const expandedModel = (items: ListItem[]): CollectionModel => {
 };
 
 const expandEveryRow = (collectionModel: CollectionModel, index: CollectionIndex): void => {
-    const tree = getTree(collectionModel);
-
     const order = walkVisible({
         index,
         slots: trackPaths(index.children.keys()),
         visit: (row) => {
             if (row.isOpen) {
-                expandRowAt(tree, row.position);
+                expandRowAt(collectionModel, row.position);
             }
         },
     });
@@ -184,12 +175,11 @@ describe("createCollectionModel - sync emissions", () => {
 
     it("emits one replacement when a slot's expandability flips", () => {
         const collectionModel = syncedModel(treeIndex(leafTailTree()));
-        const tree = getTree(collectionModel);
-        expect(isRowExpandableAt(tree, 1)).toBe(false);
+        expect(isRowExpandableAt(collectionModel, 1)).toBe(false);
         const splices = spliceLog(collectionModel.model);
         collectionModel.sync(treeIndex(branchTailTree()));
         expect(splices).toEqual([[1, 1, 1]]);
-        expect(isRowExpandableAt(tree, 1)).toBe(true);
+        expect(isRowExpandableAt(collectionModel, 1)).toBe(true);
     });
 
     it("coalesces a run of adjacent expandability flips into one replacement", () => {
@@ -250,21 +240,19 @@ describe("createCollectionModel - expansion pruning", () => {
 describe("createCollectionModel - level stores", () => {
     it("serves each slot's children through the tree model", () => {
         const collectionModel = syncedModel(treeIndex(wideTree()));
-        const tree = getTree(collectionModel);
-        expect(tree.getNItems()).toBe(2);
-        expandRowAt(tree, 0);
-        expect(tree.getNItems()).toBe(4);
-        expect(getRowDepthAt(tree, 1)).toBe(1);
-        expect(getRowDepthAt(tree, 2)).toBe(1);
+        expect(collectionModel.model.getNItems()).toBe(2);
+        expandRowAt(collectionModel, 0);
+        expect(collectionModel.model.getNItems()).toBe(4);
+        expect(getRowDepthAt(collectionModel, 1)).toBe(1);
+        expect(getRowDepthAt(collectionModel, 2)).toBe(1);
     });
 
     it("keeps the surviving rows when the tail shrinks", () => {
         const collectionModel = syncedModel(treeIndex(longTree()));
-        const tree = getTree(collectionModel);
-        expandRowAt(tree, 0);
-        expect(tree.getNItems()).toBe(4);
+        expandRowAt(collectionModel, 0);
+        expect(collectionModel.model.getNItems()).toBe(4);
         collectionModel.sync(treeIndex(leafTailTree()));
-        expect(tree.getNItems()).toBe(3);
-        expect(isRowExpandedAt(tree, 0)).toBe(true);
+        expect(collectionModel.model.getNItems()).toBe(3);
+        expect(isRowExpandedAt(collectionModel, 0)).toBe(true);
     });
 });

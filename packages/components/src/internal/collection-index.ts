@@ -82,11 +82,15 @@ function buildGroups(state: IndexState, source: ListItem[], sections: ListSectio
 }
 
 function isTreeSource(source: ListItem[], sections: ListSection[] | undefined, isFlat: boolean): boolean {
-    if (sections !== undefined || isFlat) {
+    if (isFlat) {
         return false;
     }
 
-    return source.some((item) => hasChildren(item));
+    if (sections === undefined) {
+        return source.some((item) => hasChildren(item));
+    }
+
+    return sections.some((section) => section.data.some((item) => hasChildren(item)));
 }
 
 function createCollectionIndex(

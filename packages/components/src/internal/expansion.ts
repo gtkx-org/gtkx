@@ -1,4 +1,3 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import { useState } from "react";
 import type { Collection } from "./collection.js";
 import type { TreeExpansion } from "./tree-expansion.js";
@@ -51,14 +50,16 @@ function hasSameExpansion(expanded: Set<string>, wanted: Set<string>): boolean {
     return expanded.size === wanted.size && wanted.isSubsetOf(expanded);
 }
 
-function toggleOptions(expansion: TreeExpansion, tree: Gtk.TreeListModel, wanted: Set<string>): WalkOptions {
+function toggleOptions(collection: Collection, wanted: Set<string>): WalkOptions {
+    const { expansion } = collection;
+
     return {
         index: expansion.index,
         slots: trackPaths(wanted),
         marks: trackPaths(wanted.symmetricDifference(expansion.expanded)),
         visit: (row) => {
             if (row.isMarked) {
-                tree.getRow(row.position)?.setExpanded(row.isOpen);
+                collection.rowAt(row.position)?.setExpanded(row.isOpen);
             }
         },
     };
@@ -74,14 +75,15 @@ function walkApplying(expansion: TreeExpansion, options: WalkOptions): VisibleOr
     }
 }
 
-function applyWanted(expansion: TreeExpansion, tree: Gtk.TreeListModel, expandedIds: string[]): void {
+function applyWanted(collection: Collection, expandedIds: string[]): void {
+    const { expansion } = collection;
     const wanted = wantedSet(expansion, expandedIds);
 
     if (hasSameExpansion(expansion.expanded, wanted)) {
         return;
     }
 
-    adoptOrder(expansion, walkApplying(expansion, toggleOptions(expansion, tree, wanted)));
+    adoptOrder(expansion, walkApplying(expansion, toggleOptions(collection, wanted)));
 }
 
 function reportExpansion(context: ExpansionContext): void {
@@ -97,18 +99,16 @@ function reportExpansion(context: ExpansionContext): void {
 }
 
 function applyControlledExpansion(context: ExpansionContext, expandedIds: string[] | null | undefined): void {
-    const tree = context.collection.treeModel();
-
-    if (tree === null) {
+    if (!context.collection.isTree) {
         return;
     }
 
-    applyWanted(context.collection.expansion, tree, expandedIds ?? []);
+    applyWanted(context.collection, expandedIds ?? []);
     reportExpansion(context);
 }
 
 function isExpansionIdle(collection: Collection): boolean {
-    return collection.treeModel() !== null && isCollectionIdle(collection);
+    return collection.isTree && isCollectionIdle(collection);
 }
 
 function didRowDrift(collection: Collection, change: ItemsChange): boolean {

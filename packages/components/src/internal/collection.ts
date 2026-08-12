@@ -4,7 +4,8 @@ import type { CollectionModel, SlotRef } from "./collection-model.js";
 import { slotPathAt, slotRefFor } from "./collection-model.js";
 import { findPositions } from "./tree-order.js";
 
-type Collection = Pick<CollectionModel, "model" | "expansion" | "treeModel"> & {
+type Collection = Pick<CollectionModel, "model" | "expansion" | "rowAt"> & {
+    isTree: boolean;
     itemAt: (ref: SlotRef) => ListItem | undefined;
     sectionFor: (levelPath: string) => unknown;
     idAt: (position: number) => string | null;
@@ -69,7 +70,8 @@ function createCollection(collectionModel: CollectionModel, index: CollectionInd
     return {
         model: collectionModel.model,
         expansion: collectionModel.expansion,
-        treeModel: () => (index.isTree ? collectionModel.treeModel() : null),
+        isTree: index.isTree,
+        rowAt: (position) => (index.isTree ? collectionModel.rowAt(position) : null),
         itemAt: (ref) => index.itemAt(ref.store.path, ref.slot),
         sectionFor: index.sectionFor,
         idAt: (position) => idAt(collectionModel, index, position),

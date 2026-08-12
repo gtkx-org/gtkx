@@ -30,15 +30,15 @@ type ModelState = {
     rootModels: GObject.Object[];
     model: Gtk.FlattenListModel;
     groupStores: LevelStore[];
-    tree: Gtk.TreeListModel | null;
-    treeRoot: LevelStore | null;
+    trees: Map<LevelStore, Gtk.TreeListModel>;
+    treeModels: Gtk.TreeListModel[];
     expansion: TreeExpansion;
 };
 
 type CollectionModel = {
     model: Gtk.FlattenListModel;
     expansion: TreeExpansion;
-    treeModel: () => Gtk.TreeListModel | null;
+    rowAt: (position: number) => Gtk.TreeListRow | null;
     sync: (index: CollectionIndex) => void;
 };
 
@@ -261,23 +261,55 @@ function childStoreFor(object: GObject.Object): Gio.ListModel | null {
     return ref.store.childStores[ref.slot] ?? null;
 }
 
-function ensureTree(state: ModelState, first: LevelStore): Gtk.TreeListModel {
-    if (state.tree === null || state.treeRoot !== first) {
-        state.tree = Gtk.TreeListModel.new(first, false, false, (object) => childStoreFor(object));
-        state.treeRoot = first;
+function ensureTree(state: ModelState, store: LevelStore): Gtk.TreeListModel {
+    const existing = state.trees.get(store);
+
+    if (existing !== undefined) {
+        return existing;
     }
 
-    return state.tree;
+    const tree = Gtk.TreeListModel.new(store, false, false, (object) => childStoreFor(object));
+    state.trees.set(store, tree);
+
+    return tree;
+}
+
+function adoptTrees(state: ModelState): Gtk.TreeListModel[] {
+    const trees: Map<LevelStore, Gtk.TreeListModel> = new Map(
+        state.groupStores.map((store) => [store, ensureTree(state, store)]),
+    );
+
+    state.trees = trees;
+    state.treeModels = trees.values().toArray();
+
+    return state.treeModels;
 }
 
 function desiredRootModels(state: ModelState, index: CollectionIndex): GObject.Object[] {
-    const [first] = state.groupStores;
+    if (!index.isTree) {
+        state.trees = new Map();
+        state.treeModels = [];
 
-    if (first !== undefined && index.isTree) {
-        return [ensureTree(state, first)];
+        return [...state.groupStores];
     }
 
-    return [...state.groupStores];
+    return [...adoptTrees(state)];
+}
+
+function rowAt(state: ModelState, position: number): Gtk.TreeListRow | null {
+    let offset = position;
+
+    for (const tree of state.treeModels) {
+        const count = tree.getNItems();
+
+        if (offset < count) {
+            return tree.getRow(offset);
+        }
+
+        offset -= count;
+    }
+
+    return null;
 }
 
 function hasSameModels(previous: GObject.Object[], next: GObject.Object[]): boolean {
@@ -342,15 +374,15 @@ function createCollectionModel(): CollectionModel {
         rootModels: [],
         model: Gtk.FlattenListModel.new(root),
         groupStores: [],
-        tree: null,
-        treeRoot: null,
+        trees: new Map(),
+        treeModels: [],
         expansion: createTreeExpansion(EMPTY_INDEX),
     };
 
     return {
         model: state.model,
         expansion: state.expansion,
-        treeModel: () => state.tree,
+        rowAt: (position) => rowAt(state, position),
         sync: (index) => {
             syncModel(state, index);
         },
