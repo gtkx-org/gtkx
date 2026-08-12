@@ -105,7 +105,14 @@ type UserEvent = {
     slide: typeof slide;
     /** Adds the delta to the adjustments of the widget itself, or of its nearest scrollable ancestor. */
     scroll: typeof scroll;
-    /** Sends a key sequence, dispatching matching shortcuts and tracking held modifiers across calls. */
+    /**
+     * Sends a key sequence along the chain GTK4 propagates a key event through: the capture-phase
+     * key controllers from the root down to the widget, the widget's own target-phase controllers,
+     * then the bubble-phase controllers from the widget back up to the root, so a controller a
+     * container or window above the widget carries receives the key too. A controller that handles
+     * a press ends the chain, and a press no controller handled goes on to the matching shortcuts.
+     * Held modifiers carry across calls.
+     */
     keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
     /**
      * Applies a pointer token to the click gestures the widget already carries, tracking whether the

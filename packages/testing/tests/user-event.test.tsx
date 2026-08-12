@@ -27,7 +27,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, userEvent, waitFor } from "../src/index.js";
+import { queryAllControllers, render, screen, userEvent, waitFor } from "../src/index.js";
 import {
     renderClickButton,
     renderDragAndDropPair,
@@ -35,6 +35,11 @@ import {
     renderShortcutHost,
 } from "./event-render-setup.js";
 import { bufferText } from "./text-buffer-helpers.js";
+
+type KeyPropagationProbe = {
+    ancestorPhase?: Gtk.PropagationPhase;
+    fieldController?: ReactNode;
+};
 
 const hasWidgetFocus = (w: Gtk.Widget): boolean => w.isFocus();
 
@@ -125,6 +130,49 @@ const renderColumn = async (children: ReactNode): Promise<void> => {
     await render(<GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>);
 };
 
+const renderKeyControllerTree = async (
+    ancestorController: ReactNode,
+    fieldController?: ReactNode,
+): Promise<Gtk.Widget> => {
+    await render(
+        <GtkBox name="ancestor" controllers={ancestorController}>
+            <GtkEntry name="field" controllers={fieldController} />
+        </GtkBox>,
+    );
+
+    return screen.findByName("field");
+};
+
+const recordingKeyController = (order: string[], label: string, phase?: Gtk.PropagationPhase): ReactNode => (
+    <GtkEventControllerKey
+        propagationPhase={phase}
+        onKeyPressed={() => {
+            order.push(label);
+
+            return Gdk.EVENT_PROPAGATE;
+        }}
+    />
+);
+
+const keyPressOrder = async (ancestorPhase?: Gtk.PropagationPhase): Promise<string[]> => {
+    const order: string[] = [];
+
+    const field = await renderKeyControllerTree(
+        recordingKeyController(order, "ancestor", ancestorPhase),
+        recordingKeyController(order, "target"),
+    );
+
+    await userEvent.keyboard(field, "{Escape}");
+
+    return order;
+};
+
+const didPressReachAncestor = async (probe: KeyPropagationProbe = {}): Promise<boolean> => {
+    const handleKeyPressed = await pressKeyOnAncestorProbe("{Escape}", probe);
+
+    return handleKeyPressed.mock.calls.length > 0;
+};
+
 const renderSelectedEntryPair = async (text: string): Promise<{ source: Gtk.Widget; dest: Gtk.Widget }> => {
     await renderColumn(
         <>
@@ -169,6 +217,19 @@ const renderDropZone = async (
 
     return screen.findByName(name);
 };
+
+async function pressKeyOnAncestorProbe(input: string, probe: KeyPropagationProbe = {}) {
+    const handleKeyPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
+
+    const field = await renderKeyControllerTree(
+        <GtkEventControllerKey propagationPhase={probe.ancestorPhase} onKeyPressed={handleKeyPressed} />,
+        probe.fieldController,
+    );
+
+    await userEvent.keyboard(field, input);
+
+    return handleKeyPressed;
+}
 
 async function renderDragUpdateCapture() {
     const updates: [number, number][] = [];
@@ -1018,6 +1079,70 @@ describe("userEvent.keyboard — shortcut dispatch", () => {
         const onActivate = vi.fn(() => true);
         const host = await renderShortcutHost(Gtk.ShortcutTrigger.parseString("F8"), onActivate);
         await userEvent.keyboard(host, "{F9}");
+        expect(onActivate).not.toHaveBeenCalled();
+    });
+});
+
+describe("userEvent.keyboard — key controller propagation", () => {
+    it("delivers the press to a key controller on an ancestor of the target", async () => {
+        const handleKeyPressed = await pressKeyOnAncestorProbe("{Escape}");
+        expect(handleKeyPressed).toHaveBeenCalledWith(Gdk.KEY_Escape, 0, 0, expect.any(Gtk.EventControllerKey));
+    });
+
+    it("delivers the release to a key controller on an ancestor of the target", async () => {
+        const handleKeyReleased = vi.fn();
+        const field = await renderKeyControllerTree(<GtkEventControllerKey onKeyReleased={handleKeyReleased} />);
+        await userEvent.keyboard(field, "{Escape}");
+        expect(handleKeyReleased).toHaveBeenCalledWith(Gdk.KEY_Escape, 0, 0, expect.any(Gtk.EventControllerKey));
+    });
+
+    it("carries the held modifiers to an ancestor's key controller", async () => {
+        const handleKeyPressed = await pressKeyOnAncestorProbe("{Control>}s{/Control}");
+
+        expect(handleKeyPressed).toHaveBeenCalledWith(
+            Gdk.KEY_s,
+            0,
+            Gdk.ModifierType.CONTROL_MASK,
+            expect.any(Gtk.EventControllerKey),
+        );
+    });
+
+    it("skips a controller whose propagation phase is none", async () => {
+        expect(await didPressReachAncestor({ ancestorPhase: Gtk.PropagationPhase.NONE })).toBe(false);
+    });
+
+    it("adds no key controller to a widget that carries none", async () => {
+        const field = await renderKeyControllerTree(null);
+        await userEvent.keyboard(field, "{Escape}");
+        expect(queryAllControllers(field, Gtk.EventControllerKey)).toHaveLength(0);
+    });
+});
+
+describe("userEvent.keyboard — key controller phases", () => {
+    it("runs an ancestor's capture controller before the target's own controller", async () => {
+        expect(await keyPressOrder(Gtk.PropagationPhase.CAPTURE)).toEqual(["ancestor", "target"]);
+    });
+
+    it("runs the target's controller before an ancestor's bubble controller", async () => {
+        expect(await keyPressOrder()).toEqual(["target", "ancestor"]);
+    });
+
+    it("stops the chain at the first controller that handles the press", async () => {
+        const fieldController = <GtkEventControllerKey onKeyPressed={() => Gdk.EVENT_STOP} />;
+        expect(await didPressReachAncestor({ fieldController })).toBe(false);
+    });
+
+    it("leaves a shortcut unactivated when a key controller handles the press", async () => {
+        const onActivate = vi.fn(() => true);
+
+        await renderShortcutHost(
+            Gtk.ShortcutTrigger.parseString("F5"),
+            onActivate,
+            true,
+            <GtkEntry name="field" controllers={<GtkEventControllerKey onKeyPressed={() => Gdk.EVENT_STOP} />} />,
+        );
+
+        await userEvent.keyboard(await screen.findByName("field"), "{F5}");
         expect(onActivate).not.toHaveBeenCalled();
     });
 });

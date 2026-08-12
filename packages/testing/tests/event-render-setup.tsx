@@ -57,6 +57,7 @@ async function renderShortcutHost(
     trigger: Gtk.ShortcutTrigger,
     didActivate: () => boolean,
     isSensitive = true,
+    children: ReactNode = <GtkLabel>anchor</GtkLabel>,
 ): Promise<Gtk.Widget> {
     await render(
         <GtkBox
@@ -69,7 +70,7 @@ async function renderShortcutHost(
                 />
             )}
         >
-            <GtkLabel>anchor</GtkLabel>
+            {children}
         </GtkBox>,
     );
 

@@ -92,6 +92,8 @@ await userEvent.keyboard(entry, "{Control>}a{/Control}");
 
 `userEvent.type` and `userEvent.paste` delete the text an editable widget has selected before inserting, as GTK4 does, and the replacement lands on the widget's undo stack like any other edit. Typing into a widget that has nothing selected appends, because `type` focuses it the way a click does, without selecting its text; pass `initialSelectionStart` and `initialSelectionEnd` to type over a specific range, or tab to the widget first to select its text the way GTK4 does on keyboard focus.
 
+`userEvent.keyboard` delivers each press and release the way GTK4 propagates a key event: down the capture-phase key controllers from the root to the widget, through the widget's own controllers, then back up the bubble-phase controllers to the root. A `GtkEventControllerKey` on a container or window above the widget therefore sees the key, and one that returns `Gdk.EVENT_STOP` ends the chain before any shortcut is dispatched.
+
 `userEvent.click` on a list row changes the selection, on a `Gtk.TreeExpander` toggles expansion, and on a sortable column header sorts the view. Off-screen, `pointer` synthesizes left-button input only and `drag` refuses a `Gtk.Range`, so use `slide(range, value)` to move a slider. The full set of helpers is in the [`userEvent` reference](/reference/@gtkx/testing/).
 
 ## fireEvent, act, and waitFor

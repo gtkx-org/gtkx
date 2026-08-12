@@ -1,10 +1,12 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { hasSignalListener } from "@gtkx/runtime/internal";
 import type { UserEventState } from "./state.js";
 import { getEditableDelegate } from "../editable.js";
 import { fireEvent } from "../fire-event.js";
-import { getOrCreateControllers } from "./controller.js";
+import { ancestors } from "../traversal.js";
+import { queryAllControllers } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 
 /** Options for `userEvent.tab`. */
@@ -48,6 +50,8 @@ const KEY_MAP: Record<string, number> = {
     F11: Gdk.KEY_F11,
     F12: Gdk.KEY_F12,
 };
+
+const KEY_CONTROLLER_SIGNALS = ["key-pressed", "key-released"];
 
 const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Shift_L]: Gdk.ModifierType.SHIFT_MASK,
@@ -287,15 +291,10 @@ const didDispatchDelegateShortcuts = (widget: Gtk.Widget, keyval: number, modifi
     return delegate !== null && didDispatchShortcutsOnWidget(delegate, keyval, modifiers);
 };
 
-const didDispatchShortcutsOnAncestors = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
-    for (let current: Gtk.Widget | null = widget; current; current = current.getParent()) {
-        if (didDispatchShortcutsOnWidget(current, keyval, modifiers)) {
-            return true;
-        }
-    }
+const propagationChain = (widget: Gtk.Widget): Gtk.Widget[] => [widget, ...ancestors(widget)];
 
-    return false;
-};
+const didDispatchShortcutsOnAncestors = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean =>
+    propagationChain(widget).some((current) => didDispatchShortcutsOnWidget(current, keyval, modifiers));
 
 const didDispatchShortcuts = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean =>
     didDispatchApplicationAccels(widget, keyval, modifiers) ||
@@ -310,30 +309,50 @@ const handleKeyPress = async (widget: Gtk.Widget, keyval: number, modifiers: num
     }
 };
 
-const applyKeyAction = async (
-    widget: Gtk.Widget,
-    controllers: Gtk.EventControllerKey[],
-    state: UserEventState,
-    action: KeyAction,
-): Promise<void> => {
-    updateModifierState(state, action);
-    const signalName = action.isPress ? "key-pressed" : "key-released";
+const keyControllersInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase): Gtk.EventControllerKey[] =>
+    queryAllControllers(widget, Gtk.EventControllerKey).filter(
+        (controller) =>
+            controller.getPropagationPhase() === phase && hasSignalListener(controller, KEY_CONTROLLER_SIGNALS),
+    );
 
+const keyControllerChain = (widget: Gtk.Widget): Gtk.EventControllerKey[] => {
+    const chain = propagationChain(widget);
+
+    return [
+        ...chain.toReversed().flatMap((current) => keyControllersInPhase(current, Gtk.PropagationPhase.CAPTURE)),
+        ...keyControllersInPhase(widget, Gtk.PropagationPhase.TARGET),
+        ...chain.flatMap((current) => keyControllersInPhase(current, Gtk.PropagationPhase.BUBBLE)),
+    ];
+};
+
+const didEmitKeyPressed = (controllers: Gtk.EventControllerKey[], keyval: number, modifiers: number): boolean =>
+    controllers.some((controller) => controller.emit("key-pressed", keyval, 0, modifiers));
+
+const emitKeyReleased = (controllers: Gtk.EventControllerKey[], keyval: number, modifiers: number): void => {
     for (const controller of controllers) {
-        controller.emit(signalName, action.keyval, 0, state.modifierState);
+        controller.emit("key-released", keyval, 0, modifiers);
+    }
+};
+
+const applyKeyAction = async (widget: Gtk.Widget, state: UserEventState, action: KeyAction): Promise<void> => {
+    updateModifierState(state, action);
+    const controllers = keyControllerChain(widget);
+
+    if (!action.isPress) {
+        emitKeyReleased(controllers, action.keyval, state.modifierState);
+
+        return;
     }
 
-    if (action.isPress) {
+    if (!didEmitKeyPressed(controllers, action.keyval, state.modifierState)) {
         await handleKeyPress(widget, action.keyval, state.modifierState);
     }
 };
 
 const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
     wrapEvent(widget, async () => {
-        const controllers = getOrCreateControllers(widget, Gtk.EventControllerKey);
-
         for (const action of parseKeyboardInput(input)) {
-            await applyKeyAction(widget, controllers, state, action);
+            await applyKeyAction(widget, state, action);
         }
     });
 
