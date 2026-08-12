@@ -22,11 +22,22 @@ type DevServer = {
     };
 };
 
+const WRITE_STABILITY_THRESHOLD_MS = 50;
+const WRITE_POLL_INTERVAL_MS = 10;
+
 const createDevServerConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
     root,
     appType: "custom",
     plugins,
-    server: { middlewareMode: true },
+    server: {
+        middlewareMode: true,
+        watch: {
+            awaitWriteFinish: {
+                stabilityThreshold: WRITE_STABILITY_THRESHOLD_MS,
+                pollInterval: WRITE_POLL_INTERVAL_MS,
+            },
+        },
+    },
     optimizeDeps: { noDiscovery: true, include: [] },
     ssr: {
         external: true,

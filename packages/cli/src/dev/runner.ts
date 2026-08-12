@@ -1,5 +1,6 @@
 import type { InlineConfig, Plugin } from "vite";
 import { error } from "@gtkx/utils";
+import { createChangeQueue } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
@@ -20,6 +21,7 @@ type DevRunnerDeps = {
     quitDefaultApplication(): void;
     performRefresh: () => void;
     isRefreshBoundary(module: Record<string, unknown>): boolean;
+    readFileRevision(path: string): Promise<string | null>;
     plugins(): Plugin[];
     log(message: string): void;
     exit(code: number): never;
@@ -43,6 +45,7 @@ type DevSession = {
 };
 
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
+const LOAD_ATTEMPT_LIMIT = 5;
 
 const announceFailure = (server: DevServer, cause: unknown): void => {
     if (cause instanceof Error) {
@@ -77,8 +80,48 @@ const requiresRestart = (session: DevSession, module: DevServerChangedModule): b
     return !session.deps.isRefreshBoundary(loadedExports);
 };
 
-const refreshChangedModule = async (session: DevSession, changedPath: string): Promise<void> => {
-    const loadedExports = await session.server.ssrLoadModule(changedPath);
+const invalidateChangedModule = (session: DevSession, module: DevServerChangedModule): void => {
+    session.server.moduleGraph.invalidateModule(module);
+
+    for (const importer of module.importers) {
+        session.server.moduleGraph.invalidateModule(importer);
+    }
+};
+
+const loadSettledExports = async (
+    session: DevSession,
+    changedPath: string,
+    changedModule: DevServerChangedModule,
+): Promise<Record<string, unknown> | null> => {
+    let module = changedModule;
+
+    for (let attempt = 0; attempt < LOAD_ATTEMPT_LIMIT; attempt++) {
+        invalidateChangedModule(session, module);
+        const revision = await session.deps.readFileRevision(changedPath);
+        const loadedExports = await session.server.ssrLoadModule(changedPath);
+
+        if ((await session.deps.readFileRevision(changedPath)) === revision) {
+            return loadedExports;
+        }
+
+        module = session.server.moduleGraph.getModuleById(changedPath) ?? module;
+    }
+
+    return null;
+};
+
+const refreshChangedModule = async (
+    session: DevSession,
+    changedPath: string,
+    changedModule: DevServerChangedModule,
+): Promise<void> => {
+    const loadedExports = await loadSettledExports(session, changedPath, changedModule);
+
+    if (!loadedExports) {
+        error(`Fast Refresh skipped: ${changedPath} kept changing while it was loading.`);
+
+        return;
+    }
 
     if (!session.deps.isRefreshBoundary(loadedExports)) {
         await requestRestart(session);
@@ -106,13 +149,7 @@ const handleFileChange = async (session: DevSession, changedPath: string): Promi
         return;
     }
 
-    session.server.moduleGraph.invalidateModule(module);
-
-    for (const importer of module.importers) {
-        session.server.moduleGraph.invalidateModule(importer);
-    }
-
-    await refreshChangedModule(session, changedPath);
+    await refreshChangedModule(session, changedPath, module);
 };
 
 const createShutdownController = (server: DevServer, deps: DevRunnerDeps): ShutdownController => {
@@ -141,12 +178,16 @@ const reloadChangedFile = async (session: DevSession, changedPath: string): Prom
     }
 };
 
-const onFileChange = (session: DevSession): ((changedPath: string) => void) => (changedPath) => {
-    if (session.controller.isShuttingDown()) {
-        return;
-    }
+const onFileChange = (session: DevSession): ((changedPath: string) => void) => {
+    const queue = createChangeQueue((changedPath) => reloadChangedFile(session, changedPath));
 
-    void reloadChangedFile(session, changedPath);
+    return (changedPath) => {
+        if (session.controller.isShuttingDown()) {
+            return;
+        }
+
+        queue.enqueue(changedPath);
+    };
 };
 
 const onShutdownSignal = (session: DevSession): (() => Promise<void>) => async () => {
@@ -173,14 +214,22 @@ const closeAndExit = async (session: DevSession, code = 0): Promise<never> => {
     return session.deps.exit(code);
 };
 
-const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {
+const isSessionInactive = (session: DevSession): boolean => {
     if (session.controller.isShuttingDown()) {
-        return;
+        return true;
     }
 
-    if (session.failure.isDown()) {
-        parkSession(session);
+    if (!session.failure.isDown()) {
+        return false;
+    }
 
+    parkSession(session);
+
+    return true;
+};
+
+const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {
+    if (isSessionInactive(session)) {
         return;
     }
 
@@ -196,13 +245,7 @@ const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {
 };
 
 const handleApplicationShutdown = (session: DevSession): void => {
-    if (session.controller.isShuttingDown()) {
-        return;
-    }
-
-    if (session.failure.isDown()) {
-        parkSession(session);
-
+    if (isSessionInactive(session)) {
         return;
     }
 

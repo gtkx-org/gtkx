@@ -22,7 +22,17 @@ type HarnessOverrides = {
     configuredApplicationId?: string;
     isBoundary?: (mod: Record<string, unknown>) => boolean;
     isApplicationRegistered?: boolean;
+    readFileRevision?: DevRunnerDeps["readFileRevision"];
     whileWaiting?: () => void;
+};
+
+type FakeDisk = {
+    read: () => string;
+    write: (revision: string) => void;
+};
+
+type LoadOverlap = {
+    hasOverlapped: () => boolean;
 };
 
 type HarnessMocks = {
@@ -54,6 +64,8 @@ type OnCause = (cause: unknown) => void;
 
 const ENTRY = "/abs/src/main.tsx";
 const PARKED = "Waiting for a change to restart the application...";
+const WATCHED_FILE = "/x/component.tsx";
+const SETTLE_ROUNDS = 8;
 
 const PLUGIN_NAMES = [
     "gtkx:settings",
@@ -114,6 +126,7 @@ const buildDeps = (
     quitDefaultApplication: mocks.quitDefaultApp,
     performRefresh: mocks.performRefresh,
     isRefreshBoundary: mocks.isBoundary,
+    readFileRevision: overrides.readFileRevision ?? ((): Promise<string> => Promise.resolve("revision")),
     plugins: () => plugins,
     log: mocks.log,
     exit: mocks.exit,
@@ -236,6 +249,88 @@ const expectRefreshRestart = async (schedule: (fireShutdown: () => void) => void
     return harness;
 };
 
+const settleQueue = async (): Promise<void> => {
+    for (let round = 0; round < SETTLE_ROUNDS; round++) {
+        await settleTimers();
+    }
+};
+
+const createFakeDisk = (initial: string): FakeDisk => {
+    let revision = initial;
+
+    return {
+        read: () => revision,
+        write: (next) => {
+            revision = next;
+        },
+    };
+};
+
+const startDiskHarness = async (disk: FakeDisk): Promise<Harness> => {
+    const harness = buildHarness({
+        applicationId: "com.example.app",
+        readFileRevision: () => Promise.resolve(disk.read()),
+    });
+
+    await startRunner(harness);
+    harness.server.moduleGraph.getModuleById.mockReturnValue({ importers: new Set<object>() });
+
+    return harness;
+};
+
+const trackLoadsWithLateSave = (harness: Harness, disk: FakeDisk, lateRevision: string): string[] => {
+    const loads: string[] = [];
+
+    harness.server.ssrLoadModule.mockImplementation(() => {
+        loads.push(disk.read());
+
+        if (loads.length === 1) {
+            disk.write(lateRevision);
+        }
+
+        return Promise.resolve({ isBoundary: true });
+    });
+
+    return loads;
+};
+
+const trackCommittedRevision = (harness: Harness, loads: string[]): (() => string | undefined) => {
+    let committed: string | undefined;
+
+    harness.performRefresh.mockImplementation(() => {
+        committed = loads.at(-1);
+    });
+
+    return () => committed;
+};
+
+const trackLoadOverlap = (harness: Harness): LoadOverlap => {
+    let activeLoads = 0;
+    let hasOverlapped = false;
+
+    harness.server.ssrLoadModule.mockImplementation(async () => {
+        activeLoads += 1;
+        hasOverlapped ||= activeLoads > 1;
+        await settleTimers();
+        activeLoads -= 1;
+
+        return { isBoundary: true };
+    });
+
+    return { hasOverlapped: () => hasOverlapped };
+};
+
+const saveOnEveryLoad = (harness: Harness, disk: FakeDisk): void => {
+    let saves = 1;
+
+    harness.server.ssrLoadModule.mockImplementation(() => {
+        saves += 1;
+        disk.write(`MARKER ${String(saves)}`);
+
+        return Promise.resolve({ isBoundary: true });
+    });
+};
+
 const startFailedHarness = async (cause: Error): Promise<Harness> => {
     const harness = await startAppHarness();
     const onShutdown = installedShutdown(harness);
@@ -274,7 +369,12 @@ describe("createDevRunner (vite config)", () => {
         const config = createdServerConfig(harness);
         expect(config.root).toBe(process.cwd());
         expect(config.appType).toBe("custom");
-        expect(config.server).toEqual({ middlewareMode: true });
+
+        expect(config.server).toEqual({
+            middlewareMode: true,
+            watch: { awaitWriteFinish: { stabilityThreshold: 50, pollInterval: 10 } },
+        });
+
         expect(config.optimizeDeps).toEqual({ noDiscovery: true, include: [] });
 
         expect(config.ssr).toEqual({
@@ -645,5 +745,45 @@ describe("createDevRunner (file watcher dispatch)", () => {
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
         expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+});
+
+describe("createDevRunner (saves that land while a module is loading)", () => {
+    it("reloads the file when a second save lands while its module is still loading", async () => {
+        const disk = createFakeDisk("MARKER 1");
+        const harness = await startDiskHarness(disk);
+        const loads = trackLoadsWithLateSave(harness, disk, "MARKER 2");
+        const committedRevision = trackCommittedRevision(harness, loads);
+        await emitChangeAndFlush(harness, WATCHED_FILE, 2);
+        expect(loads).toEqual(["MARKER 1", "MARKER 2"]);
+        expect(committedRevision()).toBe(disk.read());
+        expect(loggedMessages(harness).filter((m) => m.includes("Fast Refresh complete"))).toHaveLength(1);
+    });
+
+    it("collapses a burst of saves for one file into a single serialized pass", async () => {
+        const disk = createFakeDisk("MARKER 1");
+        const harness = await startDiskHarness(disk);
+        const overlap = trackLoadOverlap(harness);
+
+        for (let save = 0; save < 3; save++) {
+            harness.server.watcher.emit("change", WATCHED_FILE);
+        }
+
+        await settleQueue();
+        expect(overlap.hasOverlapped()).toBe(false);
+        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("reports a file that never settles instead of announcing a Fast Refresh", async () => {
+        const stderrSpy = captureStderr();
+        const disk = createFakeDisk("MARKER 1");
+        const harness = await startDiskHarness(disk);
+        saveOnEveryLoad(harness, disk);
+        await emitChangeAndFlush(harness, WATCHED_FILE, 2);
+        const written = collectLogged(stderrSpy);
+        stderrSpy.mockRestore();
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        expect(written).toContain("kept changing while it was loading");
+        expect(loggedMessages(harness).some((m) => m.includes("Fast Refresh complete"))).toBe(false);
     });
 });

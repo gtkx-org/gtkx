@@ -15,6 +15,11 @@ describe("createDevServerConfig", () => {
         expect(config.ssr?.external).toBe(true);
     });
 
+    it("waits for a burst of writes to settle before the watcher reports the change", () => {
+        const config = createDevServerConfig("/proj", []);
+        expect(config.server?.watch?.awaitWriteFinish).toEqual({ stabilityThreshold: 50, pollInterval: 10 });
+    });
+
     it("keeps every gtkx package that reaches virtual:gtkx-config internal so its imports are transformed", () => {
         const noExternal = createDevServerConfig("/proj", []).ssr?.noExternal as RegExp[];
 

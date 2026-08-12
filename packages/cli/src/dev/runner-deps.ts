@@ -2,6 +2,7 @@ import { loadConfig } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
 import { quitApplication } from "@gtkx/runtime";
 import { info, installGracefulShutdown } from "@gtkx/utils";
+import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
 import type { DevRunnerDeps } from "./runner.js";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
@@ -26,6 +27,14 @@ const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => 
     }
 
     return applicationId;
+};
+
+const readFileRevision = async (path: string): Promise<string | null> => {
+    try {
+        return await readFile(path, "utf8");
+    } catch {
+        return null;
+    }
 };
 
 const defaultDevRunnerDeps = (): DevRunnerDeps => ({
@@ -62,6 +71,7 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     },
     performRefresh,
     isRefreshBoundary,
+    readFileRevision,
     plugins: () => [...gtkxVitePlugins(DEV_MODE), ...gtkxFastRefresh(), gtkxReactDomPrebundle()],
     log: info,
     exit: (code: number): never => process.exit(code),
