@@ -594,6 +594,18 @@ describe("scaffold (unusable inputs)", () => {
         expect(lastError()).toContain("apps/my-app");
         expect(lastSpinnerStop()).toBe("Failed to create the project structure");
     });
+
+    it("rejects an empty project directory the way an omitted one is rejected", async () => {
+        await expect(runNonInteractive({ name: "" })).rejects.toThrow(/Project directory is required/);
+        expect(lastError()).toBe("Project directory is required");
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+
+    it("rejects a project directory left empty by sanitization", async () => {
+        await expect(runNonInteractive({ name: "/" })).rejects.toThrow(/Project directory is required/);
+        expect(lastError()).toBe("Project directory is required");
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
 });
 
 describe("scaffold (overwrite)", () => {
@@ -649,5 +661,19 @@ describe("scaffold (directory target)", () => {
         const pkg = readJson(`${TEST_DIR}/package.json`);
         expect(pkg.name).toBe("test-workspace");
         expect(lastNote()).not.toContain("cd .");
+    });
+
+    it("omits the cd step when an absolute target names the current directory", async () => {
+        await runNonInteractive({ name: TEST_DIR });
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(true);
+        expect(lastNote()).not.toContain("cd ");
+    });
+
+    it("prompts for the project directory when the argument is empty", async () => {
+        clack.text.mockResolvedValue("prompted-app");
+        await scaffold(partialOptions({ name: "" }));
+        expect(clack.text).toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/prompted-app/package.json`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
     });
 });

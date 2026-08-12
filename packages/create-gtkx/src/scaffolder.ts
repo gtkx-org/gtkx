@@ -30,6 +30,8 @@ type CreateOptions = {
 
 type ResolvedOptions = {
     target: string;
+    root: string;
+    isCurrentDirectory: boolean;
     name: string;
     applicationId: string;
     packageManager: PackageManager;
@@ -46,16 +48,13 @@ type InstallDependenciesOptions = {
 };
 
 type InstallAllOptions = {
-    root: string;
-    target: string;
-    packageManager: PackageManager;
+    resolved: ResolvedOptions;
     devDependencies: string[];
 };
 
 type InstallFailureOptions = {
     error: unknown;
-    target: string;
-    packageManager: PackageManager;
+    resolved: ResolvedOptions;
     devDependencies: string[];
 };
 
@@ -365,12 +364,15 @@ const shouldEmptyTargetDirectory = async (root: string, target: string, options:
 };
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
-    if (options.name !== undefined) {
-        return formatTargetDir(options.name);
+    const requested = formatTargetDir(options.name ?? "");
+    const error = validateTarget(requested);
+
+    if (error === undefined) {
+        return requested;
     }
 
     if (!options.isInteractive) {
-        return fail("Project directory is required");
+        return fail(error);
     }
 
     return formatTargetDir(await promptTarget());
@@ -422,12 +424,23 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
     const applicationId = await resolveApplicationId(options, name);
     validateResolvedOptions(name, applicationId);
     const root = resolve(process.cwd(), target);
+    const isCurrentDirectory = root === process.cwd();
     const shouldEmptyTarget = await shouldEmptyTargetDirectory(root, target, options);
     const packageManager = await resolvePackageManager(requested, options);
     const isTypescript = await isTypescriptSelected(options);
     const shouldIncludeTesting = await isTestingIncluded(options);
 
-    return { target, name, applicationId, packageManager, isTypescript, shouldIncludeTesting, shouldEmptyTarget };
+    return {
+        target,
+        root,
+        isCurrentDirectory,
+        name,
+        applicationId,
+        packageManager,
+        isTypescript,
+        shouldIncludeTesting,
+        shouldEmptyTarget,
+    };
 };
 
 const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
@@ -506,11 +519,11 @@ const installDependencies = async (options: InstallDependenciesOptions): Promise
 
 const pin = (names: string[]): string[] => names.map((dependency) => pinGtkxDependency(dependency, selfVersion));
 
-const formatRecovery = ({ target, packageManager, devDependencies }: InstallFailureOptions): string => {
-    const add = getAddCommand(packageManager);
+const formatRecovery = ({ resolved, devDependencies }: InstallFailureOptions): string => {
+    const add = getAddCommand(resolved.packageManager);
 
     const steps = [
-        ...(target === "." ? [] : [`cd ${target}`]),
+        ...(resolved.isCurrentDirectory ? [] : [`cd ${resolved.target}`]),
         `${add} ${pin(DEPENDENCIES).join(" ")}`,
         `${add} -D ${pin(devDependencies).join(" ")}`,
     ];
@@ -547,7 +560,8 @@ const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
 };
 
 const installAllDependencies = async (options: InstallAllOptions): Promise<void> => {
-    const { root, target, packageManager, devDependencies } = options;
+    const { resolved, devDependencies } = options;
+    const { root, packageManager } = resolved;
 
     await runWithSpinner({
         pending: "Installing dependencies...",
@@ -558,7 +572,7 @@ const installAllDependencies = async (options: InstallAllOptions): Promise<void>
             await installDependencies({ cwd: root, packageManager, dependencies: pin(devDependencies), isDev: true });
         },
         report: (error) => {
-            reportInstallFailure({ error, target, packageManager, devDependencies });
+            reportInstallFailure({ error, resolved, devDependencies });
         },
     });
 };
@@ -586,7 +600,7 @@ const initializeGitRepo = async (root: string): Promise<void> => {
 
 const printNextSteps = (resolved: ResolvedOptions): void => {
     const devCmd = getDevCommand(resolved.packageManager);
-    const cdStep = resolved.target === "." ? "" : `cd ${resolved.target}\n`;
+    const cdStep = resolved.isCurrentDirectory ? "" : `cd ${resolved.target}\n`;
     const testingNote = resolved.shouldIncludeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
     p.note(`${cdStep}${devCmd}${testingNote}`, "Next steps");
 };
@@ -610,16 +624,10 @@ const createProjectStructure = async (root: string, resolved: ResolvedOptions): 
 const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     p.intro("Create GTKX App");
     const resolved = await resolveOptions(options);
-    const root = resolve(process.cwd(), resolved.target);
+    const { root } = resolved;
     const devDeps = getDevDependencies(resolved);
     await createProjectStructure(root, resolved);
-
-    await installAllDependencies({
-        root,
-        target: resolved.target,
-        packageManager: resolved.packageManager,
-        devDependencies: devDeps,
-    });
+    await installAllDependencies({ resolved, devDependencies: devDeps });
 
     if (resolved.isTypescript) {
         writeInitialEnvModule(root);
