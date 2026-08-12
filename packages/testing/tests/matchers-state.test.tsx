@@ -11,6 +11,7 @@ import {
     renderNamedBox,
     renderSlider,
     renderStyledButton,
+    withStolenActivation,
 } from "./widget-fixtures.js";
 
 function InvalidField() {
@@ -110,21 +111,19 @@ describe("emptiness, validity and focus matchers", () => {
         const entry = await renderEntry("blamed");
         entry.grabFocus();
         expect(entry).toHaveFocus();
-        const stealer = new Gtk.Window();
-        stealer.present();
 
-        await waitFor(() => {
-            expect(entry).not.toHaveFocus();
+        await withStolenActivation(async () => {
+            await waitFor(() => {
+                expect(entry).not.toHaveFocus();
+            });
+
+            expectRejection(
+                () => {
+                    expect(entry).toHaveFocus();
+                },
+                /its window has given it the focus, but that window is not active/,
+            );
         });
-
-        expectRejection(
-            () => {
-                expect(entry).toHaveFocus();
-            },
-            /its window has given it the focus, but that window is not active/,
-        );
-
-        stealer.destroy();
     });
 });
 

@@ -12,11 +12,13 @@ const isWindowAllocated = (window: Gtk.Window): boolean => {
     return isComputed && allocation.getWidth() > 0;
 };
 
+const activeToplevel = (): Gtk.Window | null => mappedToplevels().find((toplevel) => toplevel.isActive()) ?? null;
+
 const isWindowActivated = (window: Gtk.Window): boolean =>
     !canDisplayDeliverActivation(window) || window.isActive();
 
 const isDisplayActivated = (window: Gtk.Window): boolean =>
-    !canDisplayDeliverActivation(window) || mappedToplevels().some((toplevel) => toplevel.isActive());
+    !canDisplayDeliverActivation(window) || activeToplevel() !== null;
 
 const isTransientDescendant = (window: Gtk.Window, ancestor: Gtk.Window): boolean => {
     for (let parent = window.getTransientFor(); parent !== null; parent = parent.getTransientFor()) {
@@ -37,6 +39,7 @@ const isWindowBlockedByModal = (window: Gtk.Window): boolean =>
 const isWindowUsable = (window: Gtk.Window): boolean => isWindowAllocated(window) && isWindowActivated(window);
 
 export {
+    activeToplevel,
     isDisplayActivated,
     isWindowActivated,
     isWindowAllocated,

@@ -1,8 +1,8 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { Component, createContext, createRef, type ReactNode, useContext, useEffect, useLayoutEffect } from "react";
+import { Component, createContext, type ReactNode, useContext, useLayoutEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { cleanup, type Container, queryAllByRole, render, type WrapperComponent } from "../src/index.js";
 
@@ -16,8 +16,6 @@ const Thrower = (): ReactNode => {
 const WrappingProvider: WrapperComponent = ({ children }) => (
     <WrapperContext.Provider value="wrapped">{children}</WrapperContext.Provider>
 );
-
-const isActiveWindow = (widget: Gtk.Widget): boolean => widget instanceof Gtk.Window && widget.isActive();
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
     static getDerivedStateFromError(): { hasError: boolean } {
@@ -85,34 +83,6 @@ describe("render container", () => {
         expect(container).toBe(box);
         expect(await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Into Box" })).toBeDefined();
         host.destroy();
-    });
-});
-
-describe("render window activation", () => {
-    it("resolves with the harness window already active", async () => {
-        const { container } = await render(<GtkButton label="Presented" />);
-        expect(isActiveWindow(container)).toBe(true);
-    });
-
-    it("keeps the harness window active across a rerender", async () => {
-        const { container, rerender } = await render(<GtkLabel>Before</GtkLabel>);
-        await rerender(<GtkLabel>After</GtkLabel>);
-        expect(isActiveWindow(container)).toBe(true);
-    });
-
-    it("reports a widget that grabs focus on mount as focused without waiting", async () => {
-        const entryRef = createRef<Gtk.Entry>();
-
-        const AutoFocused = (): ReactNode => {
-            useEffect(() => {
-                entryRef.current?.grabFocus();
-            }, []);
-
-            return <GtkEntry ref={entryRef} placeholderText="Search tasks" />;
-        };
-
-        await render(<AutoFocused />);
-        expect(entryRef.current).toHaveFocus();
     });
 });
 

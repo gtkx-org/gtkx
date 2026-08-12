@@ -12,7 +12,7 @@ import type { RenderResult } from "./bound-queries.js";
 import type { QueryMap, RenderOptions, ScreenshotOptions } from "./types.js";
 import { runInAct } from "./act.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
-import { scheduleWhenWindowUsable } from "./frame-sync.js";
+import { scheduleWhenWindowReady } from "./frame-sync.js";
 import { createHarnessWindow, presentHarnessWindow } from "./harness-window.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
@@ -20,6 +20,7 @@ import { clearScreen, setScreen } from "./screen.js";
 import { captureScreen } from "./screenshot.js";
 import { type Container, roots, TOPLEVELS } from "./traversal.js";
 import { resetClipboard } from "./user-event/index.js";
+import { isWindowAllocated, isWindowUsable } from "./window-state.js";
 import { within } from "./within.js";
 
 /** A mounted render tracked so cleanup can unmount it. */
@@ -43,9 +44,9 @@ type ReconcilerErrorState = {
 const reconcilerErrors: ReconcilerErrorState = { lastError: null, isHandlerInstalled: false };
 const activeRenders: Set<ActiveRender> = new Set();
 
-const settleWindow = (window: Gtk.Window | null): Promise<void> =>
+const settleWindow = (window: Gtk.Window | null, isReady: (window: Gtk.Window) => boolean): Promise<void> =>
     new Promise<void>((resolve) => {
-        scheduleWhenWindowUsable(window, () => {
+        scheduleWhenWindowReady(window, isReady, () => {
             settleAccessible();
             resolve();
         });
@@ -163,7 +164,8 @@ const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
  * container is supplied, a harness window is created and presented, and the editable it hands the
  * focus to keeps its text unselected, with its caret at the end. The returned promise settles once
  * that window has been laid out and has become active, so platform state such as focus is already
- * readable when it resolves.
+ * readable when it resolves. A rerender presents nothing, so it waits for layout alone and never
+ * blocks on activation another toplevel is holding.
  *
  * @param element The React element to render.
  * @param options Optional container, wrapper, custom queries, and other render settings.
@@ -198,7 +200,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
 
     await update(wrap(element), root);
     presentHarnessWindow(resolved.window);
-    await settleWindow(resolved.window);
+    await settleWindow(resolved.window, isWindowUsable);
     const container = resolveResultContainer(resolved, options?.container, baseElement);
 
     const result: RenderResult<Q> = {
@@ -210,7 +212,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
         },
         rerender: async (newElement: ReactNode) => {
             await update(wrap(newElement), root);
-            await settleWindow(resolved.window);
+            await settleWindow(resolved.window, isWindowAllocated);
         },
         debug: (element: Container | Container[] = baseElement, debugOptions?: PrettyWidgetOptions) => {
             logWidget(element, debugOptions);
