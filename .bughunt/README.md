@@ -36,10 +36,16 @@ seven highest-yield ones. The rotation:
 | Round | Personas |
 | --- | --- |
 | odd | `cli`, `marshal`, `subclass`, `testkit`, `hotreload`, `higapp`, `lifecycle`, `girzoo` |
-| even | `scaffold`, `config`, `collections`, `styling`, `mcpdrive`, `deploy`, `docsconform`, `perf` |
+| even | `scaffold`, `config`, `collections`, `styling`, `mcpdrive`, `deploy`, `docsconform` |
 
-`girzoo` and `perf` both need the writable sandbox worktree described in `brief.md`, because their
-evidence (sanitizer reports, CPU profiles against source) cannot be produced from an installed package.
+`girzoo` needs the writable sandbox worktree described in `brief.md`, because sanitizer reports cannot
+be produced from an installed package.
+
+`perf` is defined in `personas.md` but deliberately **not** in the rotation. Every other persona has a
+severity floor — a crash, a hang, a wrong result, a leak — that makes findings run out as the defects
+run out. Performance has none: something is always slower than something else, so the persona would
+emit findings forever without converging. Run it only against a specific complaint, with a stated bar
+to clear.
 
 Both halves see every round's ledger, so a defect found by one persona is never re-reported by another.
 `higapp` should build a different application each time it runs — the value is in unfamiliar

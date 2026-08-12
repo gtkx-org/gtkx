@@ -310,7 +310,12 @@ targets and those only run from a source tree.
 
 ---
 
-## `perf` — The user who notices it is slow
+## `perf` — The user who notices it is slow — **INACTIVE, do not run**
+
+Held back deliberately. Unlike every other persona, this one has no severity floor: there is always
+something measurably slower than something else, so it produces findings without converging. Re-enable
+it only against a specific complaint ("startup feels slow", "the 10k list stutters"), and give it a
+bar to clear before it starts. To bring it back, add `perf` to the even-round rotation in `README.md`.
 
 Hunts performance defects a user would feel. A slow path is a defect when it is disproportionate, not
 merely when it is measurable, so every finding needs a baseline that makes the number mean something.
