@@ -78,15 +78,20 @@ Do this, in order:
 4. Delete the old code path rather than keeping it alongside the new one. Update every call site,
    test, demo, and example in the same change. No compatibility shims, no deprecation, no aliases.
 
-5. Verify what you touched:
+5. Verify what you touched, and **only** what you touched:
      pnpm vitest run --project e2e <your test file>
      pnpm nx run @gtkx/<package>:test     for every package you changed
-     pnpm typecheck
      pnpm nx run @gtkx/<package>:lint     for every package you changed
-   If you touched Rust, also \`pnpm nx run @gtkx/native:test\`. If you changed codegen output, run
+     pnpm typecheck
+   If you changed Rust, add \`pnpm nx run @gtkx/native:test\`. If you changed codegen output, run
    \`pnpm codegen\` and re-run typecheck. Every warning is a failure — find its cause and eliminate it,
-   never dismiss it as benign or pre-existing. The full pipeline runs once after every fix has landed,
-   so keep this pass targeted but do not skip it.
+   never dismiss it as benign or pre-existing.
+
+   **Do not run \`pnpm build\`, \`pnpm lint\`, \`pnpm test\`, or the asan/miri targets** unless your change
+   is in \`packages/native\`. The full pipeline runs once after the whole batch lands, and running it
+   per fix is the single largest cost in this workflow — measured at 10.5 hours of wall clock for one
+   batch, with agents spending 30 to 50 minutes each on repeated whole-repo verification. Targeted
+   verification is not a shortcut here; it is the instruction.
 
 6. Run \`npx jsinspect-plus@latest --threshold 20 <the paths you changed>\` and resolve any duplication
    it reports.
@@ -176,43 +181,54 @@ if (findings.length === 0) {
     throw new Error(`No findings in args. Received: ${JSON.stringify(args).slice(0, 400)}`);
 }
 
+const requiresRework = (verdict) =>
+    Boolean(verdict) && (!verdict.isSound || (verdict.problems || []).length > 0);
+
+const labelFor = (finding, index) =>
+    finding.title ? finding.title.slice(0, 40) : `finding ${index + 1}`;
+
+const startReview = (finding, fix, label, stage) =>
+    agent(reviewPrompt(finding, fix), { label: `${stage}:${label}`, phase: "Review", schema: REVIEW_SCHEMA });
+
 const outcomes = [];
+const landed = [];
 
 for (let index = 0; index < findings.length; index += 1) {
     const finding = findings[index];
-    const label = finding.title ? finding.title.slice(0, 40) : `finding ${index + 1}`;
+    const label = labelFor(finding, index);
 
-    let fix = finding.priorFix;
-    let review = finding.priorReview;
-
-    if (!fix) {
-        fix = await agent(fixPrompt(finding, index), {
-            label: `fix:${label}`,
-            phase: "Fix",
-            schema: FIX_SCHEMA,
-        });
-
-        if (!fix) {
-            log(`fix agent died on: ${label}`);
-            outcomes.push({ finding, fix: null, review: null });
-            continue;
-        }
-
-        if (!fix.isFixed) {
-            log(`not fixed: ${label} — ${fix.summary}`);
-            outcomes.push({ finding, fix, review: null });
-            continue;
-        }
-
-        review = await agent(reviewPrompt(finding, fix), {
-            label: `review:${label}`,
-            phase: "Review",
-            schema: REVIEW_SCHEMA,
-        });
+    if (finding.priorFix) {
+        landed.push({ finding, label, fix: finding.priorFix, reviewPromise: Promise.resolve(finding.priorReview) });
+        continue;
     }
 
-    const requiresRework = (verdict) =>
-        Boolean(verdict) && (!verdict.isSound || (verdict.problems || []).length > 0);
+    const fix = await agent(fixPrompt(finding, index), {
+        label: `fix:${label}`,
+        phase: "Fix",
+        schema: FIX_SCHEMA,
+    });
+
+    if (!fix) {
+        log(`fix agent died on: ${label}`);
+        outcomes.push({ finding, fix: null, review: null });
+        continue;
+    }
+
+    if (!fix.isFixed) {
+        log(`not fixed: ${label} — ${fix.summary}`);
+        outcomes.push({ finding, fix, review: null });
+        continue;
+    }
+
+    landed.push({ finding, label, fix, reviewPromise: startReview(finding, fix, label, "review") });
+}
+
+log(`${landed.length} fixes committed; awaiting their reviews`);
+
+for (const entry of landed) {
+    const { finding, label } = entry;
+    let fix = entry.fix;
+    let review = await entry.reviewPromise;
 
     for (let attempt = 1; attempt <= 2 && requiresRework(review); attempt += 1) {
         log(`QUESTIONED, remediating (${attempt}/2): ${label}`);
@@ -229,12 +245,7 @@ for (let index = 0; index < findings.length; index += 1) {
         }
 
         fix = redone;
-
-        review = await agent(reviewPrompt(finding, fix), {
-            label: `re-review:${label}`,
-            phase: "Review",
-            schema: REVIEW_SCHEMA,
-        });
+        review = await startReview(finding, fix, label, "re-review");
     }
 
     log(`${requiresRework(review) ? "STILL QUESTIONED" : "sound"}: ${label}`);
