@@ -7,7 +7,7 @@ use napi_derive::napi;
 use super::bind::CallDescriptor;
 use super::native_result;
 use crate::ffi::closure::ClosureState;
-use crate::ffi::codec::{CallbackScope, Codec, Decoder as _, Encoder as _};
+use crate::ffi::codec::{Codec, Decoder as _, Encoder as _};
 use crate::ffi::{self};
 
 fn execute_call<'e>(
@@ -18,14 +18,14 @@ fn execute_call<'e>(
     let label = &descriptor.label;
     let return_codec = &descriptor.return_codec;
     let arg_codecs = &descriptor.arg_codecs;
-    let async_index = async_callback_index(arg_codecs);
+    let completion_index = completion_callback_index(arg_codecs);
 
     let stashes = arg_codecs
         .iter()
         .zip(values)
         .enumerate()
         .map(|(i, (codec, &value))| {
-            let encoded = if async_index.is_some() {
+            let encoded = if completion_index.is_some() {
                 codec.encode_owned(env, value)
             } else {
                 codec.encode(env, value)
@@ -35,8 +35,7 @@ fn execute_call<'e>(
         })
         .collect::<anyhow::Result<Vec<ffi::Stash>>>()?;
 
-    let async_arguments = AsyncArguments::prepare(async_index, &stashes)
-        .with_context(|| format!("marshalling the arguments of {label}"))?;
+    let async_arguments = AsyncArguments::prepare(completion_index, &stashes);
 
     let mut ffi_args: Vec<libffi::Arg<'_>> = Vec::with_capacity(stashes.len() + 1);
     for stash in &stashes {
@@ -74,9 +73,9 @@ fn execute_call<'e>(
     return_value
 }
 
-fn async_callback_index(arg_codecs: &[Codec]) -> Option<usize> {
+fn completion_callback_index(arg_codecs: &[Codec]) -> Option<usize> {
     arg_codecs.iter().position(
-        |codec| matches!(codec, Codec::Callback(callback) if callback.scope == CallbackScope::Async),
+        |codec| matches!(codec, Codec::Callback(callback) if callback.is_async_completion()),
     )
 }
 
@@ -86,28 +85,14 @@ struct AsyncArguments {
 }
 
 impl AsyncArguments {
-    fn prepare(async_index: Option<usize>, stashes: &[ffi::Stash]) -> anyhow::Result<Option<Self>> {
-        let Some(index) = async_index else {
-            return Ok(None);
+    fn prepare(completion_index: Option<usize>, stashes: &[ffi::Stash]) -> Option<Self> {
+        let index = completion_index?;
+        let ffi::Stash::Callback(callback) = stashes.get(index)? else {
+            return None;
         };
-        let state = match stashes.get(index) {
-            Some(ffi::Stash::Callback(callback)) => callback.state_ptr().cast::<ClosureState>(),
-            _ => std::ptr::null_mut(),
-        };
+        let state = callback.state_ptr().cast::<ClosureState>();
 
-        if !state.is_null() {
-            return Ok(Some(Self { index, state }));
-        }
-
-        anyhow::ensure!(
-            !stashes
-                .iter()
-                .enumerate()
-                .any(|(i, stash)| i != index && stash.lends_memory()),
-            "an async call given no completion callback has nothing to release its marshalled arguments: pass a callback, or arguments the callee copies"
-        );
-
-        Ok(None)
+        (!state.is_null()).then_some(Self { index, state })
     }
 
     fn retain(self, mut stashes: Vec<ffi::Stash>) {
@@ -189,32 +174,53 @@ mod tests {
 
     use super::*;
     use crate::ffi::codec::{
-        ArrayBounds, ArrayCodec, ArrayKind, CallbackCodec, DestroyNotifyKind, IntegerCodec,
-        Ownership, VoidCodec,
+        CallbackCodec, CallbackScope, DestroyNotifyKind, IntegerCodec, ObjectCodec, Ownership,
+        VoidCodec,
     };
 
-    fn async_callback_codec() -> Codec {
+    fn borrowed_object_codec() -> Codec {
+        Codec::Object(ObjectCodec {
+            ownership: Ownership::Borrowed,
+            is_call_scoped: false,
+        })
+    }
+
+    fn async_callback_codec(
+        arg_codecs: Vec<Codec>,
+        return_codec: Codec,
+        has_user_data: bool,
+        user_data_index: Option<usize>,
+    ) -> Codec {
         Codec::Callback(CallbackCodec {
-            arg_codecs: Vec::new(),
-            return_codec: Box::new(Codec::Void(VoidCodec)),
+            arg_codecs,
+            return_codec: Box::new(return_codec),
             has_destroy: false,
             destroy_kind: DestroyNotifyKind::DestroyNotify,
-            has_user_data: true,
-            user_data_index: None,
+            has_user_data,
+            user_data_index,
             scope: CallbackScope::Async,
         })
     }
 
-    fn borrowed_byte_array_codec() -> Codec {
-        Codec::Array(
-            ArrayCodec::new(
-                Box::new(Codec::Integer(IntegerCodec::U8)),
-                ArrayKind::Sized,
-                Ownership::Borrowed,
-                ArrayBounds::sized(1),
-                None,
-            )
-            .expect("a sized byte array codec should build"),
+    fn async_ready_callback_codec() -> Codec {
+        async_callback_codec(
+            vec![
+                borrowed_object_codec(),
+                borrowed_object_codec(),
+                Codec::Integer(IntegerCodec::U64),
+            ],
+            Codec::Void(VoidCodec),
+            true,
+            Some(2),
+        )
+    }
+
+    fn child_setup_callback_codec() -> Codec {
+        async_callback_codec(
+            vec![Codec::Integer(IntegerCodec::U64)],
+            Codec::Void(VoidCodec),
+            true,
+            Some(0),
         )
     }
 
@@ -273,47 +279,82 @@ mod tests {
     }
 
     #[test]
-    fn rejects_an_async_call_that_has_no_callback_to_release_its_arguments() {
-        test_support::run(|| {
-            let env = napi_mock::fake_env();
-            let descriptor = descriptor(
-                "gtkx_no_such_symbol",
-                vec![
-                    borrowed_byte_array_codec(),
-                    Codec::Integer(IntegerCodec::U64),
-                    async_callback_codec(),
-                ],
-                Codec::Void(VoidCodec),
-            );
-            let contents = napi_mock::to_unknown(
-                &env,
-                napi_mock::fake_array(&[napi_mock::fake_double(1.0), napi_mock::fake_double(2.0)]),
-            );
-            let length = napi_mock::to_unknown(&env, napi_mock::fake_double(2.0));
-            let callback = napi_mock::to_unknown(&env, napi_mock::fake_null());
-            let Err(error) = execute_call(&env, &descriptor, &[contents, length, callback]) else {
-                panic!("a borrowed argument with no callback to release it must be rejected");
-            };
-            assert!(format!("{error:#}").contains("no completion callback"));
-        });
+    fn takes_the_async_ready_callback_as_the_completion_of_the_call() {
+        assert_eq!(
+            completion_callback_index(&[
+                borrowed_object_codec(),
+                Codec::Integer(IntegerCodec::U64),
+                async_ready_callback_codec(),
+            ]),
+            Some(2)
+        );
     }
 
     #[test]
-    fn allows_an_async_call_without_a_callback_when_nothing_is_borrowed() {
-        test_support::run(|| {
-            let env = napi_mock::fake_env();
-            let descriptor = descriptor(
-                "gtkx_no_such_symbol",
-                vec![Codec::Integer(IntegerCodec::U64), async_callback_codec()],
+    fn takes_no_completion_from_a_child_setup_the_callee_runs_on_its_own() {
+        assert_eq!(
+            completion_callback_index(&[
+                Codec::Integer(IntegerCodec::U32),
+                child_setup_callback_codec(),
+            ]),
+            None
+        );
+    }
+
+    #[test]
+    fn takes_no_completion_from_a_destroy_notify_that_carries_no_user_data() {
+        assert_eq!(
+            completion_callback_index(&[async_callback_codec(
+                vec![Codec::Integer(IntegerCodec::U64)],
                 Codec::Void(VoidCodec),
-            );
-            let priority = napi_mock::to_unknown(&env, napi_mock::fake_double(0.0));
-            let callback = napi_mock::to_unknown(&env, napi_mock::fake_null());
-            let Err(error) = execute_call(&env, &descriptor, &[priority, callback]) else {
-                panic!("the missing symbol should be what fails");
-            };
-            assert!(!format!("{error:#}").contains("no completion callback"));
-        });
+                false,
+                Some(0),
+            )]),
+            None
+        );
+    }
+
+    #[test]
+    fn takes_no_completion_from_a_thread_function_that_returns_a_value() {
+        assert_eq!(
+            completion_callback_index(&[async_callback_codec(
+                vec![Codec::Integer(IntegerCodec::U64)],
+                Codec::Integer(IntegerCodec::U64),
+                true,
+                Some(0),
+            )]),
+            None
+        );
+    }
+
+    #[test]
+    fn takes_no_completion_from_a_task_thread_function_that_carries_no_user_data() {
+        assert_eq!(
+            completion_callback_index(&[async_callback_codec(
+                vec![
+                    borrowed_object_codec(),
+                    borrowed_object_codec(),
+                    Codec::Integer(IntegerCodec::U64),
+                    borrowed_object_codec(),
+                ],
+                Codec::Void(VoidCodec),
+                false,
+                None,
+            )]),
+            None
+        );
+    }
+
+    #[test]
+    fn skips_a_leading_async_callback_that_does_not_complete_the_call() {
+        assert_eq!(
+            completion_callback_index(&[
+                child_setup_callback_codec(),
+                borrowed_object_codec(),
+                async_ready_callback_codec(),
+            ]),
+            Some(2)
+        );
     }
 
     #[test]

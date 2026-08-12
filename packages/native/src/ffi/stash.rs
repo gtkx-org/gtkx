@@ -133,13 +133,6 @@ macro_rules! ffi_numeric_with {
 }
 
 impl Stash {
-    pub fn lends_memory(&self) -> bool {
-        match self {
-            Self::Storage(storage) => !matches!(storage.data(), StashData::Unit),
-            _ => false,
-        }
-    }
-
     pub fn disarm_pending_transfer(&self) {
         match self {
             Self::Storage(storage) => storage.disarm_pending_transfer(),

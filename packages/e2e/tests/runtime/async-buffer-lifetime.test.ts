@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { getHandle, promisify, t } from "@gtkx/runtime";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { closeSync, mkdtempSync, readFileSync, readSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -12,6 +12,8 @@ type WriteToPath = (path: string) => Promise<unknown>;
 const PAYLOAD_LENGTH = 512;
 const ROUNDS = 8;
 const REUSE_ATTEMPTS = 8;
+const MARKER = "gtkx-spawned-argument-vector";
+const TRUE_ARGV = ["/bin/true"];
 const payload = Array.from({ length: PAYLOAD_LENGTH }, (_, index) => (index % 255) + 1);
 const sentinel = Array.from({ length: PAYLOAD_LENGTH }, () => 0);
 const directory = mkdtempSync(join(tmpdir(), "gtkx-async-buffer-"));
@@ -35,6 +37,43 @@ const replaceContentsAsync = t.fn("libgio-2.0.so.0", "g_file_replace_contents_as
     ],
     returns: t.void,
 });
+
+const printArgv = (text: string): string[] => ["/bin/sh", "-c", `printf %s "${text}"`];
+
+const drainPipe = (fd: number): string => {
+    const chunk = Buffer.alloc(256);
+    let text = "";
+
+    for (;;) {
+        const read = readSync(fd, chunk, 0, chunk.length, null);
+
+        if (read === 0) {
+            break;
+        }
+
+        text += chunk.toString("utf8", 0, read);
+    }
+
+    closeSync(fd);
+
+    return text;
+};
+
+const expectSpawnedChild = ([spawned, pid]: [boolean, GLib.Pid, ...number[]]): void => {
+    expect(spawned).toBe(true);
+    expect(pid).toBeGreaterThan(0);
+};
+
+const expectChildOutput = (
+    spawn: [boolean, GLib.Pid, number, number, number],
+    expected: string,
+): void => {
+    const [spawned, pid, stdinFd, stdoutFd, stderrFd] = spawn;
+    expectSpawnedChild([spawned, pid]);
+    closeSync(stdinFd);
+    closeSync(stderrFd);
+    expect(drainPipe(stdoutFd)).toBe(expected);
+};
 
 const claimFreedStashes = (): void => {
     for (let attempt = 0; attempt < REUSE_ATTEMPTS; attempt += 1) {
@@ -112,4 +151,58 @@ describe("async calls taking a borrowed array", () => {
 
     it("writes the bytes a typed array held when the call was made", () =>
         expectWrittenBytesToSurvive("view", replaceContentsFromOverwrittenView));
+});
+
+describe("calls whose scope-async callback never reports a completion", () => {
+    it("spawns a child through spawnAsync without a child setup", () => {
+        expectSpawnedChild(
+            GLib.spawnAsync(null, TRUE_ARGV, null, GLib.SpawnFlags.DEFAULT, null),
+        );
+    });
+
+    it("spawns a child through spawnAsyncWithFds without a child setup", () => {
+        expectSpawnedChild(
+            GLib.spawnAsyncWithFds(
+                null,
+                TRUE_ARGV,
+                null,
+                GLib.SpawnFlags.DEFAULT,
+                null,
+                -1,
+                -1,
+                -1,
+            ),
+        );
+    });
+
+    it("hands the child the argument vector and environment spawnAsyncWithPipes was given", () => {
+        expectChildOutput(
+            GLib.spawnAsyncWithPipes(
+                null,
+                printArgv(`${MARKER}-$GTKX_SPAWN_MARKER`),
+                [`GTKX_SPAWN_MARKER=${MARKER}`],
+                GLib.SpawnFlags.DEFAULT,
+                null,
+            ),
+            `${MARKER}-${MARKER}`,
+        );
+    });
+
+    it("hands the child the argument vector spawnAsyncWithPipesAndFds was given", () => {
+        expectChildOutput(
+            GLib.spawnAsyncWithPipesAndFds(
+                null,
+                printArgv(MARKER),
+                null,
+                GLib.SpawnFlags.DEFAULT,
+                null,
+                -1,
+                -1,
+                -1,
+                null,
+                null,
+            ),
+            MARKER,
+        );
+    });
 });
