@@ -57,6 +57,31 @@ handed to two agents that never spoke to the hunter:
 
 A finding is confirmed only when both agree. Everything else is recorded as rejected, with the reason.
 
+## Fixing in parallel
+
+`fix-workflow.js` fixes findings one at a time in this worktree. That is safe and gives a linear
+history, but it measured 10.5 hours of wall clock against 10.3 hours of agent time for one batch of
+nine — effective parallelism 1.0 on a machine that allows 14 concurrent agents.
+
+`fix-parallel.js` fixes them by group instead. Each group owns a disjoint set of packages and gets its
+own git worktree, so groups run concurrently without racing on commits. Within a group, findings are
+still sequential, and each fix's review overlaps the next fix.
+
+```
+.bughunt/prepare-groups.sh                       # one worktree per group, installed and built
+Workflow({ scriptPath: ".bughunt/fix-parallel.js",
+           args: { groups: [{ name, worktree, owns, findings: ["F203", ...] }] } })
+.bughunt/merge-groups.sh                         # merge each fixgrp/* back, stopping on conflict
+pnpm build && pnpm typecheck && pnpm lint && pnpm test
+```
+
+Groups live in `groups.json`. The bound is the largest group, not the total: seven groups over 33
+findings puts the longest at seven, so roughly a quarter of the serial time.
+
+Two rules make the merges cheap, and both are in the agent prompts: stay inside your own worktree, and
+only touch the packages your group owns. A fix that reaches outside its group must say so, so the merge
+step knows where to expect a conflict.
+
 ## The ledger
 
 Append one line per finding. `status` moves through `candidate` → `confirmed` → `fixed`, or lands on
