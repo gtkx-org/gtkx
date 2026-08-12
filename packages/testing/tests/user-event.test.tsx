@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -92,12 +92,16 @@ const selectAll = (widget: Gtk.Widget): void => {
     }
 };
 
+const renderColumn = async (children: ReactNode): Promise<void> => {
+    await render(<GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>);
+};
+
 const renderSelectedEntryPair = async (text: string): Promise<{ source: Gtk.Widget; dest: Gtk.Widget }> => {
-    await render(
-        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+    await renderColumn(
+        <>
             <GtkEntry text={text} name="source" />
             <GtkEntry name="dest" />
-        </GtkBox>,
+        </>,
     );
 
     const source = await screen.findByName("source");
@@ -329,10 +333,23 @@ describe("userEvent.type", () => {
     });
 
     it("appends text to existing content", async () => {
-        const entry = await renderTextBox();
-        await userEvent.type(entry, "Initial ");
+        const entry = await renderTextBox("Initial ");
         await userEvent.type(entry, "appended");
         expect(editableText(entry)).toBe("Initial appended");
+    });
+
+    it("focuses an entry it has not typed into before without replacing its text", async () => {
+        await renderColumn(
+            <>
+                <GtkButton label="Focused first" />
+                <GtkEntry text="Initial " name="unfocused" />
+            </>,
+        );
+
+        const entry = await screen.findByName("unfocused", { as: Gtk.Entry });
+        await userEvent.type(entry, "appended");
+        expect(editableText(entry)).toBe("Initial appended");
+        expect(entry.getDelegate()?.isFocus()).toBe(true);
     });
 
     it("inserts at a collapsed initial selection", async () => {
@@ -391,25 +408,39 @@ describe("userEvent.type over a selection", () => {
         expect(bufferText(view)).toBe("Z");
     });
 
-    it("replaces the whole text of an entry GTK selects when focusing it", async () => {
-        await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkButton label="Focused first" />
-                <GtkEntry text="Initial" name="unfocused" />
-            </GtkBox>,
-        );
-
-        const entry = await screen.findByName("unfocused", { as: Gtk.Entry });
-        await userEvent.type(entry, "typed");
-        expect(editableText(entry)).toBe("typed");
-    });
-
     it("leaves a non-editable widget's selected text alone", async () => {
         const entry = await renderTextBox("Locked");
         entry.setEditable(false);
         entry.selectRegion(0, 6);
         await userEvent.type(entry, "Z");
         expect(editableText(entry)).toBe("Locked");
+    });
+});
+
+describe("userEvent.type undo after replacing a selection", () => {
+    it("keeps the replaced text of an entry on its undo stack", async () => {
+        const entry = await renderTextBox();
+        await userEvent.type(entry, "hello");
+        entry.selectRegion(0, 5);
+        await userEvent.type(entry, "Z");
+        expect(editableText(entry)).toBe("Z");
+        await userEvent.keyboard(entry, "{Control>}z{/Control}");
+        expect(editableText(entry)).toBe("");
+        await userEvent.keyboard(entry, "{Control>}z{/Control}");
+        expect(editableText(entry)).toBe("hello");
+    });
+
+    it("keeps the replaced text of a text view on its undo stack", async () => {
+        const view = await renderTextView();
+        await userEvent.type(view, "hello");
+        const buffer = view.getBuffer();
+        buffer.selectRange(buffer.getIterAtOffset(0), buffer.getIterAtOffset(5));
+        await userEvent.type(view, "Z");
+        expect(bufferText(view)).toBe("Z");
+        await userEvent.keyboard(view, "{Control>}z{/Control}");
+        expect(bufferText(view)).toBe("");
+        await userEvent.keyboard(view, "{Control>}z{/Control}");
+        expect(bufferText(view)).toBe("hello");
     });
 });
 
@@ -526,11 +557,11 @@ describe("userEvent.clear error handling", () => {
 
 describe("userEvent.tab", () => {
     it("moves focus forward", async () => {
-        await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+        await renderColumn(
+            <>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
-            </GtkBox>,
+            </>,
         );
 
         const first = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "First" });
@@ -541,11 +572,11 @@ describe("userEvent.tab", () => {
     });
 
     it("moves focus backward with isShiftHeld option", async () => {
-        await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+        await renderColumn(
+            <>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
-            </GtkBox>,
+            </>,
         );
 
         const second = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" });
@@ -579,10 +610,14 @@ describe("userEvent clipboard", () => {
         expect(editableText(entry)).toBe("pasted literal");
     });
 
-    it("replaces the text the widget has selected", async () => {
+    it("replaces the text the widget has selected, keeping it on the undo stack", async () => {
         const { source } = await renderSelectedEntryPair("replace me");
         await userEvent.paste(source, "pasted");
         expect(editableText(source)).toBe("pasted");
+        await userEvent.keyboard(source, "{Control>}z{/Control}");
+        expect(editableText(source)).toBe("");
+        await userEvent.keyboard(source, "{Control>}z{/Control}");
+        expect(editableText(source)).toBe("replace me");
     });
 
     describe("error handling", () => {

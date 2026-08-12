@@ -128,7 +128,7 @@ describe("dialogDemo interactive dialog entries", () => {
         const interactive = await openInteractiveDialog();
         const dialogEntry1 = await screen.findByName("dialog-entry-1", { as: Gtk.Entry });
         expect(dialogEntry1).toHaveDisplayValue("orig");
-        await userEvent.type(dialogEntry1, "-edited", { initialSelectionStart: "orig".length });
+        await userEvent.type(dialogEntry1, "-edited");
         expect(dialogEntry1).toHaveDisplayValue("orig-edited");
         await userEvent.click(within(interactive).getByRole(Gtk.AccessibleRole.BUTTON, { name: /Cancel/ }));
         await expectDialogClosed("interactive-dialog");

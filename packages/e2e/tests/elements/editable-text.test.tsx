@@ -8,7 +8,6 @@ type TextProps = (text: string) => { text: string } | { buffer: ReactElement };
 type ControlledEntryProps = { entryRef: RefObject<Gtk.Entry | null>; initial: string; textProps: TextProps };
 
 const CARRIERS: [string, TextProps][] = [["text prop", directText], ["entry buffer", bufferedText]];
-const INITIAL_TEXT = "ab";
 
 function directText(text: string): { text: string } {
     return { text };
@@ -40,9 +39,9 @@ const ControlledEntry = ({ entryRef, initial, textProps }: ControlledEntryProps)
 
 const typeIntoControlled = async (textProps: TextProps): Promise<Gtk.Entry> => {
     const entryRef = createRef<Gtk.Entry>();
-    await render(<ControlledEntry entryRef={entryRef} initial={INITIAL_TEXT} textProps={textProps} />);
+    await render(<ControlledEntry entryRef={entryRef} initial="ab" textProps={textProps} />);
     const entry = requireEntry(entryRef);
-    await userEvent.type(entry, "c", { initialSelectionStart: INITIAL_TEXT.length });
+    await userEvent.type(entry, "c");
 
     return entry;
 };

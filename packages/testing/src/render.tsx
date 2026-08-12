@@ -149,18 +149,21 @@ const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | und
     },
 });
 
-const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
+const applyHarnessSettings = (areAnimationsEnabled: boolean): void => {
     const settings = Gtk.Settings.getDefault();
 
     if (settings) {
         settings.gtkEnableAnimations = areAnimationsEnabled;
+        settings.gtkEntrySelectOnFocus = false;
     }
 };
 
 /**
  * Renders a React element into a GTK4 widget tree and returns queries
  * scoped to it along with controls for rerendering and unmounting. When no
- * container is supplied, a harness window is created and presented.
+ * container is supplied, a harness window is created and presented. Animations stay off unless
+ * `areAnimationsEnabled` is set, and GTK4's select-on-focus stays off, so presenting the window
+ * leaves the text an entry already holds unselected.
  *
  * @param element The React element to render.
  * @param options Optional container, wrapper, custom queries, and other render settings.
@@ -171,7 +174,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     options?: RenderOptions<Q>,
 ): Promise<RenderResult<Q>> => {
     installErrorHandler();
-    applyEnableAnimations(options?.areAnimationsEnabled === true);
+    applyHarnessSettings(options?.areAnimationsEnabled === true);
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
     const resolved = resolveContainer(options?.container);
