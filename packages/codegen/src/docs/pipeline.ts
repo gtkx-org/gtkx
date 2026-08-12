@@ -1,5 +1,5 @@
 import { isRecord, sortStringsBy } from "@gtkx/utils";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
     computeDocsFingerprint,
@@ -35,6 +35,7 @@ type DocsOptions = {
     props?: ElementProps;
     omittedProps?: OmittedProps;
     isForced?: boolean;
+    isOverwrite?: boolean;
 };
 
 type DocsManifest = {
@@ -199,15 +200,21 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
     return { pages, namespaces };
 };
 
+const isChildEntry = (value: unknown): value is string =>
+    typeof value === "string" && value.length > 0 && value !== "." && value !== ".." &&
+    !value.includes("/") && !value.includes("\\");
+
+const isDocsElementLink = (value: unknown): value is DocsElementLink =>
+    isRecord(value) && typeof value.text === "string" && typeof value.link === "string";
+
+const isDocsNamespace = (value: unknown): value is DocsNamespace =>
+    isRecord(value) && typeof value.name === "string" && isChildEntry(value.directory) &&
+    typeof value.link === "string" && Array.isArray(value.elements) && value.elements.every(isDocsElementLink);
+
 const isDocsManifest = (value: unknown): value is DocsManifest =>
-    isRecord(value) && Array.isArray(value.namespaces) &&
-    value.namespaces.every((namespace) => isRecord(namespace) && typeof namespace.directory === "string");
+    isRecord(value) && Array.isArray(value.namespaces) && value.namespaces.every(isDocsNamespace);
 
 const readDocsManifest = (manifestPath: string): DocsManifest | undefined => {
-    if (!existsSync(manifestPath)) {
-        return undefined;
-    }
-
     let parsed: unknown;
 
     try {
@@ -219,19 +226,41 @@ const readDocsManifest = (manifestPath: string): DocsManifest | undefined => {
     return isDocsManifest(parsed) ? parsed : undefined;
 };
 
-const assertOwnedOutDir = (outDir: string, manifest: DocsManifest | undefined): void => {
-    if (manifest !== undefined || !existsSync(outDir) || readdirSync(outDir).length === 0) {
+const outDirRefusal = (outDir: string, reason: string): Error =>
+    new Error(
+        `Refusing to generate documentation into ${outDir}: ${reason}. Point the output directory at an ` +
+        "empty directory or at one gtkx generated, or pass --overwrite to replace whatever it holds.",
+    );
+
+const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
+    const stats = statSync(options.outDir, { throwIfNoEntry: false });
+
+    if (stats === undefined || options.isOverwrite === true) {
         return;
     }
 
-    throw new Error(
-        `Refusing to generate documentation into ${outDir}: it is not empty and holds no ` +
-        `${MANIFEST_FILENAME} from an earlier \`gtkx docs\` run, so its contents are not gtkx's to ` +
-        "replace. Point the output directory at an empty directory, or at one gtkx generated.",
+    if (!stats.isDirectory()) {
+        throw outDirRefusal(options.outDir, "it already exists and is not a directory");
+    }
+
+    if (manifest !== undefined || readdirSync(options.outDir).length === 0) {
+        return;
+    }
+
+    throw outDirRefusal(
+        options.outDir,
+        `it is not empty and holds no readable ${MANIFEST_FILENAME} from an earlier \`gtkx docs\` run, ` +
+        "so its contents are not gtkx's to replace",
     );
 };
 
-const removeGeneratedPages = (outDir: string, manifest: DocsManifest | undefined): void => {
+const clearOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
+    if (options.isOverwrite === true) {
+        rmSync(options.outDir, { recursive: true, force: true });
+
+        return;
+    }
+
     if (manifest === undefined) {
         return;
     }
@@ -244,7 +273,7 @@ const removeGeneratedPages = (outDir: string, manifest: DocsManifest | undefined
     ];
 
     for (const entry of entries) {
-        rmSync(join(outDir, entry), { recursive: true, force: true });
+        rmSync(join(options.outDir, entry), { recursive: true, force: true });
     }
 };
 
@@ -290,10 +319,10 @@ const writeDocs = (options: DocsOptions): DocsResult => {
         return cached;
     }
 
-    assertOwnedOutDir(options.outDir, previous);
+    assertOwnedOutDir(options, previous);
     const library = Library.load(options.libraries, options.girPath);
     const { pages, namespaces } = generatePages(options, input.basePath, library);
-    removeGeneratedPages(options.outDir, previous);
+    clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });
     const manifest: DocsManifest = { namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));

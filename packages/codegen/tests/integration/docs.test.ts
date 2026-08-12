@@ -18,6 +18,10 @@ const defaultResult = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, out
 
 const page = (outDir: string, path: string): string => readFileSync(join(outDir, path), "utf8");
 
+const expectRefusal = (outDir: string, reason: string): void => {
+    expect(() => writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir })).toThrow(reason);
+};
+
 const registerNamespaceIndexTests = (): void => {
     it("generates namespaces with Gtk first and one link per element", () => {
         expect(defaultResult.isRegenerated).toBe(true);
@@ -252,30 +256,86 @@ describe("writeDocs over a directory it does not own", () => {
         mkdirSync(join(outDir, "guide"), { recursive: true });
         writeFileSync(join(outDir, "getting-started.md"), "# Handwritten getting started\n");
         writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
-
-        expect(() => writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir })).toThrow(
-            "Refusing to generate documentation into",
-        );
-
+        expectRefusal(outDir, "Refusing to generate documentation into");
         expect(page(outDir, "getting-started.md")).toBe("# Handwritten getting started\n");
         expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
         expect(existsSync(join(outDir, "manifest.json"))).toBe(false);
+    });
+
+    it("replaces the contents once overwriting is requested", () => {
+        const result = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir, isOverwrite: true });
+        expect(result.isRegenerated).toBe(true);
+        expect(existsSync(join(outDir, "getting-started.md"))).toBe(false);
+        expect(existsSync(join(outDir, "guide"))).toBe(false);
+        expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
+    });
+});
+
+describe("writeDocs when the output path is not a directory", () => {
+    const outDir = join(workDir, "occupied.md");
+
+    it("names the path it refuses instead of failing on the raw system error", () => {
+        writeFileSync(outDir, "# Handwritten page\n");
+        expectRefusal(outDir, `into ${outDir}: it already exists and is not a directory`);
+        expect(readFileSync(outDir, "utf8")).toBe("# Handwritten page\n");
+    });
+});
+
+describe("writeDocs over a manifest that reaches outside the output directory", () => {
+    const root = join(workDir, "escape");
+    const outDir = join(root, "docs");
+
+    it("refuses rather than removing the entries that manifest names", () => {
+        mkdirSync(join(root, "src"), { recursive: true });
+        mkdirSync(outDir, { recursive: true });
+        writeFileSync(join(root, "package.json"), "{}\n");
+        writeFileSync(join(root, "src", "index.ts"), "export {};\n");
+
+        writeFileSync(
+            join(outDir, "manifest.json"),
+            JSON.stringify({ namespaces: [{ name: "Gtk", directory: "..", link: "/reference/gtk/", elements: [] }] }),
+        );
+
+        expectRefusal(outDir, "holds no readable manifest.json");
+        expect(existsSync(join(root, "package.json"))).toBe(true);
+        expect(existsSync(join(root, "src", "index.ts"))).toBe(true);
     });
 });
 
 describe("writeDocs over a directory it generated", () => {
     const outDir = join(workDir, "managed");
+    const options = { libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir };
+    const manifestPath = join(outDir, "manifest.json");
+    const generated = writeDocs(options);
 
     it("removes only the entries its manifest records", () => {
-        expect(writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir }).isRegenerated).toBe(true);
+        expect(generated.isRegenerated).toBe(true);
         mkdirSync(join(outDir, "guide"), { recursive: true });
         writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
         writeFileSync(join(outDir, "gtk", "stale.md"), "# Removed element\n");
-        const again = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir, isForced: true });
+        const again = writeDocs({ ...options, isForced: true });
         expect(again.isRegenerated).toBe(true);
         expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
         expect(existsSync(join(outDir, "gtk", "stale.md"))).toBe(false);
         expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
+    });
+
+    it("rejects a manifest missing the namespace fields it reports", () => {
+        writeFileSync(manifestPath, JSON.stringify({ namespaces: [{ directory: "gtk" }] }));
+        expectRefusal(outDir, "holds no readable manifest.json");
+    });
+
+    it("recovers from its own damaged manifest once overwriting is requested", () => {
+        writeFileSync(manifestPath, '{"namespaces":[{"na');
+        mkdirSync(join(outDir, "guide"), { recursive: true });
+        writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
+        expectRefusal(outDir, "holds no readable manifest.json");
+        expect(() => writeDocs({ ...options, isForced: true })).toThrow("holds no readable manifest.json");
+        const recovered = writeDocs({ ...options, isOverwrite: true });
+        expect(recovered.isRegenerated).toBe(true);
+        expect(existsSync(join(outDir, "guide"))).toBe(false);
+        expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
+        expect(writeDocs(options).isRegenerated).toBe(false);
     });
 });
 

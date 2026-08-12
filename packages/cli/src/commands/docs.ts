@@ -13,7 +13,7 @@ import { resolveOmittedProps } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const docs = defineCommand({
@@ -26,8 +26,8 @@ const docs = defineCommand({
         out: {
             type: "string",
             description:
-                "Output directory for the generated markdown pages, relative to the project root. It must be " +
-                "empty or hold an earlier `gtkx docs` run, whose pages are replaced",
+                "Output directory for the generated markdown pages, below the project root. It must be empty " +
+                "or hold an earlier `gtkx docs` run, whose pages are replaced",
             default: "docs/reference",
         },
         "base-path": {
@@ -38,6 +38,11 @@ const docs = defineCommand({
         force: {
             type: "boolean",
             description: "Regenerate even when the pages are up to date with the GIR libraries",
+            default: false,
+        },
+        overwrite: {
+            type: "boolean",
+            description: "Replace whatever the output directory holds, even pages `gtkx docs` did not write",
             default: false,
         },
         ...cwdArg,
@@ -65,7 +70,7 @@ const docs = defineCommand({
 
         const libraries = resolveLibraries(config.libraries, girPath);
         const startedAt = Date.now();
-        const outDir = resolve(cwd, args.out);
+        const outDir = resolveOutDir(cwd, args.out);
         const builtin = await resolveDocsElements(cwd);
 
         const { isRegenerated, namespaces } = writeDocs({
@@ -76,6 +81,7 @@ const docs = defineCommand({
             props: builtin.props,
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
             isForced: args.force,
+            isOverwrite: args.overwrite,
         });
 
         if (!isRegenerated) {
@@ -92,6 +98,32 @@ const docs = defineCommand({
         );
     },
 });
+
+const isWithin = (child: string, parent: string): boolean => {
+    const path = relative(parent, child);
+
+    return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path));
+};
+
+const resolveOutDir = (cwd: string, out: string): string => {
+    if (out.trim() === "") {
+        throw new Error(
+            `--out needs a directory below the project root, and it was empty, which resolves to ${cwd}. ` +
+            "Pass a path such as --out=docs/reference.",
+        );
+    }
+
+    const outDir = resolve(cwd, out);
+
+    if (isWithin(cwd, outDir)) {
+        throw new Error(
+            `--out must name a directory below the project root, and ${outDir} is the project root ` +
+            `${cwd} or one of its ancestors. Pass a path such as --out=docs/reference.`,
+        );
+    }
+
+    return outDir;
+};
 
 const resolveDocsElements = async (cwd: string): Promise<{ props: ElementProps; omittedProps: OmittedProps }> => {
     const { gi, reactSubexports } = resolveStore(cwd);
