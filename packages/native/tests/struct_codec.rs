@@ -3,8 +3,10 @@ use std::ffi::c_void;
 use gtk4::glib;
 use napi::bindgen_prelude::{External, Unknown};
 use napi::{Env, JsValue as _};
+use native::api::read::read;
 use native::ffi::Slot;
 use native::ffi::codec::{Decoder, Encoder, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec};
+use native::ffi::descriptor::Descriptor;
 use native::{Handle, ffi};
 use test_support::{napi_mock, write_return_into_slot};
 
@@ -250,6 +252,14 @@ struct InlineRecord {
     right: i32,
 }
 
+#[repr(C)]
+struct InlineOwner {
+    head: i32,
+    inner: InlineRecord,
+}
+
+const INLINE_FIELD_OFFSET: f64 = 4.0;
+
 fn inline_struct_codec() -> StructCodec {
     StructCodec {
         ownership: Ownership::Borrowed,
@@ -259,22 +269,69 @@ fn inline_struct_codec() -> StructCodec {
     }
 }
 
+fn inline_struct_descriptor() -> Descriptor {
+    Descriptor::Struct {
+        ownership: Ownership::Borrowed,
+        size: Some(8),
+        is_caller_allocated: None,
+        is_inline: Some(true),
+    }
+}
+
+fn read_inline_field(env: &Env, handle: &External<Handle>) -> *mut c_void {
+    let decoded = read(env, handle, inline_struct_descriptor(), INLINE_FIELD_OFFSET)
+        .expect("an inline field reads from its owner");
+
+    native::value::handle_ptr(decoded, "inline field").expect("a handle pointer")
+}
+
 #[test]
 fn an_inline_field_is_read_at_its_own_address() {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let record = InlineRecord { left: 3, right: 12 };
-        let field_ptr = (&raw const record).cast::<c_void>();
-        let decoded = unsafe {
-            Decoder::read(
-                &inline_struct_codec(),
-                &env,
-                ReadCtx::slot(field_ptr, "field read"),
-            )
+        let mut owner = InlineOwner {
+            head: 5,
+            inner: InlineRecord { left: 3, right: 12 },
+        };
+        let owner_ptr = (&raw mut owner).cast::<c_void>();
+        let field_ptr = (&raw mut owner.inner).cast::<c_void>();
+        let handle = External::new(Handle::from_glib_borrow(owner_ptr));
+        let ptr = read_inline_field(&env, &handle);
+
+        assert_eq!(ptr, field_ptr);
+
+        unsafe {
+            ptr.cast::<InlineRecord>()
+                .write(InlineRecord { left: 7, right: 9 });
         }
-        .expect("an inline field decodes from its own address");
-        let ptr = native::value::handle_ptr(decoded, "inline field").expect("a handle pointer");
-        assert_eq!(unsafe { ptr.cast::<InlineRecord>().read() }, record);
+
+        assert_eq!(owner.inner, InlineRecord { left: 7, right: 9 });
+        assert_eq!(owner.head, 5);
+    });
+}
+
+#[test]
+fn an_inline_field_keeps_its_owner_alive() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let block = unsafe { glib::ffi::g_malloc0(size_of::<InlineOwner>()) };
+        let handle = External::new(Handle::owned_struct(block));
+        let ptr = read_inline_field(&env, &handle);
+
+        drain_g_freed();
+        drop(handle);
+
+        assert!(!drain_g_freed().contains(&(block as usize)));
+
+        unsafe {
+            ptr.cast::<InlineRecord>()
+                .write(InlineRecord { left: 7, right: 9 });
+        }
+
+        assert_eq!(
+            unsafe { ptr.cast::<InlineRecord>().read() },
+            InlineRecord { left: 7, right: 9 }
+        );
     });
 }
 

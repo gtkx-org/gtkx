@@ -3,6 +3,7 @@ mod fundamental;
 
 use std::cell::{Cell, RefCell};
 use std::ffi::c_void;
+use std::rc::Rc;
 
 pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
@@ -59,26 +60,39 @@ enum HandleKind {
     Fundamental(Fundamental),
     Struct(*mut c_void),
     Borrowed(*mut c_void),
+    Field {
+        owner: Handle,
+        offset: usize,
+    },
 }
 
-pub struct Handle {
+struct HandleInner {
     kind: HandleKind,
     fields: FieldStore,
 }
 
+/// A shared reference to one native instance. Cloning shares the same instance, so a value that
+/// lives inside another one, such as a struct field read in place, can hold its owner alive for as
+/// long as JavaScript can still reach the field.
+#[derive(Clone)]
+pub struct Handle {
+    inner: Rc<HandleInner>,
+}
+
 impl std::fmt::Debug for Handle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = match self.kind {
+        let name = match self.inner.kind {
             HandleKind::Object { .. } => "Object",
             HandleKind::Boxed(_) => "Boxed",
             HandleKind::Fundamental(_) => "Fundamental",
             HandleKind::Struct(_) => "Struct",
             HandleKind::Borrowed(_) => "Borrowed",
+            HandleKind::Field { .. } => "Field",
         };
         f.debug_struct("Handle")
             .field("kind", &name)
             .field("ptr", &self.as_ptr())
-            .field("fields", &self.fields)
+            .field("fields", &self.inner.fields)
             .finish_non_exhaustive()
     }
 }
@@ -86,8 +100,10 @@ impl std::fmt::Debug for Handle {
 impl From<HandleKind> for Handle {
     fn from(kind: HandleKind) -> Self {
         Self {
-            kind,
-            fields: FieldStore::default(),
+            inner: Rc::new(HandleInner {
+                kind,
+                fields: FieldStore::default(),
+            }),
         }
     }
 }
@@ -114,9 +130,30 @@ impl Handle {
         HandleKind::Struct(ptr).into()
     }
 
+    /// A handle over the `offset` bytes into `owner`, aliasing the owner's memory instead of
+    /// copying it, and holding the owner alive for as long as the field handle exists.
     #[must_use]
-    pub fn field_store(&self) -> Option<&FieldStore> {
-        matches!(self.kind, HandleKind::Struct(_)).then_some(&self.fields)
+    pub fn field(owner: &Self, offset: usize) -> Self {
+        HandleKind::Field {
+            owner: owner.clone(),
+            offset,
+        }
+        .into()
+    }
+
+    /// The store that adopts allocations written into this handle's fields, paired with the byte
+    /// offset this handle sits at inside it.
+    #[must_use]
+    pub fn field_store(&self) -> Option<(&FieldStore, usize)> {
+        match &self.inner.kind {
+            HandleKind::Struct(_) => Some((&self.inner.fields, 0)),
+            HandleKind::Field { owner, offset } => {
+                let (store, base) = owner.field_store()?;
+
+                Some((store, base + offset))
+            }
+            _ => None,
+        }
     }
 
     #[must_use]
@@ -144,19 +181,23 @@ impl Handle {
 
     /// Drops the pointer an object handle carries, leaving it referring to nothing.
     pub fn invalidate(&self) {
-        if let HandleKind::Object { ptr, .. } = &self.kind {
+        if let HandleKind::Object { ptr, .. } = &self.inner.kind {
             ptr.set(std::ptr::null_mut());
         }
     }
 
     #[must_use]
     pub fn is_invalidated(&self) -> bool {
-        matches!(&self.kind, HandleKind::Object { ptr, .. } if ptr.get().is_null())
+        match &self.inner.kind {
+            HandleKind::Object { ptr, .. } => ptr.get().is_null(),
+            HandleKind::Field { owner, .. } => owner.is_invalidated(),
+            _ => false,
+        }
     }
 
     #[must_use]
     pub fn as_gobject_ptr(&self) -> Option<*mut glib::gobject_ffi::GObject> {
-        let HandleKind::Object { ptr, .. } = &self.kind else {
+        let HandleKind::Object { ptr, .. } = &self.inner.kind else {
             return None;
         };
 
@@ -165,33 +206,38 @@ impl Handle {
         (!ptr.is_null()).then(|| ptr.cast::<glib::gobject_ffi::GObject>())
     }
 
+    #[must_use]
     pub fn take_owned(&self) -> Option<glib::Object> {
-        match &self.kind {
+        match &self.inner.kind {
             HandleKind::Object { owned, .. } => owned.take(),
             _ => None,
         }
     }
 
+    #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
-        match &self.kind {
+        match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get(),
             HandleKind::Struct(ptr) | HandleKind::Borrowed(ptr) => *ptr,
             HandleKind::Boxed(boxed) => boxed.as_ptr(),
             HandleKind::Fundamental(fundamental) => fundamental.as_ptr(),
+            HandleKind::Field { owner, offset } => owner.as_ptr().wrapping_byte_add(*offset),
         }
     }
 
+    #[must_use]
     pub fn ptr_as_usize(&self) -> usize {
         self.as_ptr() as usize
     }
 
+    #[must_use]
     pub fn size_hint(&self) -> usize {
-        match self.kind {
+        match self.inner.kind {
             HandleKind::Object { .. } => GOBJECT_SIZE_HINT,
             HandleKind::Boxed(_) => Boxed::SIZE_HINT,
             HandleKind::Fundamental(_) => Fundamental::SIZE_HINT,
             HandleKind::Struct(_) => STRUCT_SIZE_HINT,
-            HandleKind::Borrowed(_) => 0,
+            HandleKind::Borrowed(_) | HandleKind::Field { .. } => 0,
         }
     }
 }

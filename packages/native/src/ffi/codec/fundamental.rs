@@ -68,8 +68,6 @@ impl Decoder for FundamentalCodec {
         })
     }
 
-    read_inlineable_pointer_slot!();
-
     read_value_non_null!(|self, env, ptr, _transfer| {
         let (ref_fn, unref_fn) = self.lookup_fns()?;
         let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };

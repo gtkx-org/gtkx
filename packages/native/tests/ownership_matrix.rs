@@ -5,6 +5,7 @@ use gtk4::prelude::StaticType as _;
 use gtk4::{gdk, glib};
 use napi::bindgen_prelude::{External, Unknown};
 use napi::{Env, JsValue as _};
+use native::api::read::read;
 use native::ffi::codec::{
     ArrayKind, Codec, Decoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
 };
@@ -99,7 +100,7 @@ enum Owner {
 #[derive(Debug, Clone, Copy)]
 enum Via {
     PointerSlot,
-    InlineSlot,
+    InlineField,
     Value,
 }
 
@@ -1079,8 +1080,8 @@ const CELLS: &[Cell] = &[
         check: reads(
             Subject::Rgba,
             Ownership::Borrowed,
-            Via::InlineSlot,
-            decodes(Stored::Copy, 0, 0),
+            Via::InlineField,
+            decodes(Stored::Alias, 0, 0),
         ),
     },
     Cell {
@@ -1139,8 +1140,8 @@ const CELLS: &[Cell] = &[
         check: reads(
             Subject::Block,
             Ownership::Borrowed,
-            Via::InlineSlot,
-            decodes(Stored::Copy, 0, 0),
+            Via::InlineField,
+            decodes(Stored::Alias, 0, 0),
         ),
     },
     Cell {
@@ -1740,6 +1741,24 @@ fn assert_roundtrips(cell: &Cell, scalar: Scalar) {
     assert_scalar_read_back(cell, scalar, &read_back);
 }
 
+fn decode_read<'e>(env: &'e Env, cell: &Cell, plan: &Read, src: *mut c_void) -> Unknown<'e> {
+    if matches!(plan.via, Via::InlineField) {
+        let owner = External::new(Handle::from_glib_borrow(src));
+
+        return read(env, &owner, (cell.descriptor)(), 0.0)
+            .unwrap_or_else(|error| panic!("{}: the read must succeed: {error}", cell.name));
+    }
+
+    let word = src;
+    let source = match plan.via {
+        Via::Value => ReadCtx::value(src, "ownership matrix"),
+        _ => ReadCtx::slot((&raw const word).cast(), "ownership matrix"),
+    };
+
+    unsafe { codec_of(cell).read(env, source.with_transfer(plan.transfer)) }
+        .unwrap_or_else(|error| panic!("{}: the read must succeed: {error}", cell.name))
+}
+
 fn assert_reads(cell: &Cell, plan: &Read) {
     let env = helpers::fake_env();
     let subject = plan.subject;
@@ -1752,15 +1771,7 @@ fn assert_reads(cell: &Cell, plan: &Read) {
         src,
         before: scene.claims(src),
     };
-    let word = src;
-    let source = match plan.via {
-        Via::PointerSlot => ReadCtx::slot((&raw const word).cast(), "ownership matrix"),
-        Via::InlineSlot => ReadCtx::slot(src.cast_const(), "ownership matrix"),
-        Via::Value => ReadCtx::value(src, "ownership matrix"),
-    };
-
-    let value = unsafe { codec_of(cell).read(&env, source.with_transfer(plan.transfer)) }
-        .unwrap_or_else(|error| panic!("{}: the read must succeed: {error}", cell.name));
+    let value = decode_read(&env, cell, plan, src);
     scene.absorb();
 
     match plan.effect {

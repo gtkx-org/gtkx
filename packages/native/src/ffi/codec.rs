@@ -410,6 +410,18 @@ impl Codec {
         }
     }
 
+    /// Whether the value this codec describes is stored inside its owner rather than behind a
+    /// pointer, which is how a struct field that embeds another struct is laid out.
+    #[must_use]
+    pub fn is_inline(&self) -> bool {
+        match self {
+            Self::Boxed(codec) => codec.inline,
+            Self::Struct(codec) => codec.inline,
+            Self::Fundamental(codec) => codec.inline,
+            _ => false,
+        }
+    }
+
     #[must_use]
     pub fn is_handle_backed(&self) -> bool {
         matches!(

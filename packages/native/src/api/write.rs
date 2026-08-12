@@ -40,8 +40,8 @@ pub fn write<'env>(
         "field write",
         write_field(env, field_ptr, &field_codec, value),
     )?;
-    if let (Some(transfer), Some(fields)) = (transfer, handle.field_store()) {
-        fields.adopt(offset, transfer);
+    if let (Some(transfer), Some((fields, base))) = (transfer, handle.field_store()) {
+        fields.adopt(base + offset, transfer);
     }
     ().into_unknown(env)
 }

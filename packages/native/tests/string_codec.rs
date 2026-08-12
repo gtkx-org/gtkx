@@ -325,9 +325,12 @@ fn a_struct_handle_owns_the_strings_written_into_its_fields() {
     helpers::run(|| {
         let block = unsafe { glib::ffi::g_malloc0(16) };
         let handle = Handle::owned_struct(block);
-        let fields = handle
+        let (fields, base) = handle
             .field_store()
             .expect("a struct handle owns its field transfers");
+
+        assert_eq!(base, 0);
+
         let first = unsafe { glib::ffi::g_strdup(c"first".as_ptr()) }.cast::<c_void>();
         let second = unsafe { glib::ffi::g_strdup(c"second".as_ptr()) }.cast::<c_void>();
 
