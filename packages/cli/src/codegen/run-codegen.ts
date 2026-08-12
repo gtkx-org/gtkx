@@ -1,4 +1,4 @@
-import { runCodegen as runCodegenCore } from "@gtkx/codegen";
+import { getStorePaths, runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
     resolveElementComponents,
@@ -58,15 +58,14 @@ const GIR_PATH_MISSING_MESSAGE =
     "(Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), " +
     "or set `girPath` in gtkx.config.ts.";
 
-const removeSharedStoreShadow = (cwd: string): void => {
-    for (const path of [
-        resolve(cwd, "node_modules/.gtkx/gi"),
-        resolve(cwd, "node_modules/.gtkx/jsx"),
-        resolve(cwd, "node_modules/@gtkx/gi"),
-        resolve(cwd, "node_modules/@gtkx/jsx"),
-    ]) {
+const removeStores = (paths: string[]): void => {
+    for (const path of paths) {
         rmSync(path, { recursive: true, force: true });
     }
+};
+
+const removeShadowingStores = (cwd: string): void => {
+    removeStores(getStorePaths(resolve(cwd, "node_modules")));
 };
 
 const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsInput) => ({
@@ -103,9 +102,7 @@ const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
 });
 
 const clearGeneratedStores = (store: CodegenStore): void => {
-    for (const path of [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir]) {
-        rmSync(path, { recursive: true, force: true });
-    }
+    removeStores(getStorePaths(store.nodeModules));
 };
 
 const resolveLoadedConfig = async (options: RunCodegenOptions, cwd: string): Promise<LoadedConfig> =>
@@ -128,7 +125,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     const { config, configFile } = await resolveLoadedConfig(options, cwd);
 
     if (config.codegen === false) {
-        removeSharedStoreShadow(cwd);
+        removeShadowingStores(cwd);
 
         return disabledCodegenResult(configFile);
     }
@@ -213,7 +210,7 @@ const ensureGenerated = async (
     syncSchemaEnv(cwd);
 
     if (context.config.codegen === false) {
-        removeSharedStoreShadow(context.root);
+        removeShadowingStores(context.root);
 
         return false;
     }

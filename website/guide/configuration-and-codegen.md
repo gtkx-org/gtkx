@@ -30,13 +30,13 @@ export default defineConfig({
 - **`libraries`**: the GIR libraries to bind, as `Name-Version`. `Gtk-4.0` is the default, and joins any list that does not already name a Gtk version; the bare string `"*"` (never an array entry) binds everything on the GIR path.
 - **`girPath`**: directories searched for `.gir` files ahead of the standard locations.
 - **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
-- **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
+- **`codegen: false`**: skips generation and removes any store under the project's own `node_modules`, so the project imports the binding store installed above it, such as a workspace root's.
 - **`userEventSignals`**: signals, keyed by GLib type name, that GTKX suppresses while writing to a widget itself. Entries merge into the defaults.
 - **`elements`**: the [element customizations](#advanced-customizing-elements): `behaviors` is the module default-exporting your `defineElements` map, `config` sets per-type codegen output (`component`, `props`, `omittedProps`, `isLazy`).
 
 ## What codegen emits
 
-Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx`, so imports resolve without either appearing in your `package.json`. It uses the `node_modules` that `@gtkx/runtime` and `@gtkx/react` themselves resolve from, which is the workspace root when a package manager hoisted them there, so the store always sits beside the packages importing it:
+Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx`, so imports resolve without either appearing in your `package.json`. Both packages go into one `node_modules`: the one `@gtkx/react` resolves from, which is your project's own when it installs its dependencies itself, and the workspace root when npm or yarn hoisted them there. That keeps the store beside the packages that import it, and the search never leaves your install root, the nearest directory above the project holding a lockfile, a `pnpm-workspace.yaml`, or a `package.json` declaring workspaces:
 
 - **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
 - **`@gtkx/jsx`** is the React layer, likewise per namespace (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.

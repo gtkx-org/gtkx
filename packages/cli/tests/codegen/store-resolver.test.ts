@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveCodegenStore } from "../../src/codegen/store-resolver.js";
+import { setupWorkspace } from "./workspace-fixture.js";
 
 const HOISTED_PACKAGES: string[] = ["@gtkx/native", "@gtkx/runtime", "@gtkx/react", "react"];
 
@@ -58,24 +59,30 @@ describe("resolveCodegenStore", () => {
 });
 
 describe("resolveCodegenStore hoisting", () => {
-    it("resolves the store in the node_modules the packages were hoisted to", () => {
-        const workspaceRoot = mkdtempSync(join(tmpdir(), "gtkx-store-hoisted-"));
-        const appRoot = join(workspaceRoot, "packages", "app");
-        mkdirSync(appRoot, { recursive: true });
+    const workspace = setupWorkspace("gtkx-store-hoisted-");
 
+    beforeEach(() => {
         for (const name of HOISTED_PACKAGES) {
-            installPackage(workspaceRoot, name);
+            installPackage(workspace.root, name);
         }
+    });
 
-        try {
-            const nodeModules = join(workspaceRoot, "node_modules");
-            const store = resolveCodegenStore(appRoot);
-            expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
-            expect(store.giLinkDir).toBe(join(nodeModules, "@gtkx", "gi"));
-            expect(store.jsxStoreDir).toBe(join(nodeModules, ".gtkx", "jsx"));
-            expect(store.jsxLinkDir).toBe(join(nodeModules, "@gtkx", "jsx"));
-        } finally {
-            rmSync(workspaceRoot, { recursive: true, force: true });
-        }
+    it("resolves both stores in the node_modules the packages were hoisted to", () => {
+        const nodeModules = join(workspace.root, "node_modules");
+        const store = resolveCodegenStore(workspace.app);
+        expect(store.nodeModules).toBe(nodeModules);
+        expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
+        expect(store.giLinkDir).toBe(join(nodeModules, "@gtkx", "gi"));
+        expect(store.jsxStoreDir).toBe(join(nodeModules, ".gtkx", "jsx"));
+        expect(store.jsxLinkDir).toBe(join(nodeModules, "@gtkx", "jsx"));
+    });
+
+    it("keeps both stores beside the project's own @gtkx/react", () => {
+        installPackage(workspace.app, "@gtkx/react", "4.5.6");
+        const nodeModules = join(workspace.app, "node_modules");
+        const store = resolveCodegenStore(workspace.app);
+        expect(store.react?.version).toBe("4.5.6");
+        expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
+        expect(store.jsxStoreDir).toBe(join(nodeModules, ".gtkx", "jsx"));
     });
 });

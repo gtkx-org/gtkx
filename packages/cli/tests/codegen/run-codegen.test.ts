@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 import { collectLogged } from "../stderr-text.js";
+import { setupWorkspace } from "./workspace-fixture.js";
 
 const writeFingerprint = (cwd: string, libraries: string[] = ["Gtk-4.0"]) => {
     writeFileSync(
@@ -42,6 +43,10 @@ const writeConfig = (
     body = `export default { applicationId: "org.gtk.Test", libraries: ["Gtk-4.0"], girPath: ["${cwd}"] };`,
 ) => {
     writeFileSync(join(cwd, "gtkx.config.ts"), `${body}\n`);
+};
+
+const writeDisabledConfig = (cwd: string) => {
+    writeConfig(cwd, 'export default { applicationId: "org.gtk.Test", libraries: ["Gtk-4.0"], codegen: false };');
 };
 
 const writeStoreManifest = (cwd: string, name: "gi" | "jsx") => {
@@ -141,6 +146,33 @@ describe("runCodegen", () => {
         const result = await runCodegen({ cwd, isForced: true });
         expect(existsSync(giStale)).toBe(false);
         expect(result.namespaces).toBe(1);
+    });
+});
+
+describe("runCodegen — codegen: false", () => {
+    const workspace = setupWorkspace("gtkx-codegen-disabled-");
+
+    it("removes the stores under the project's own node_modules", async () => {
+        installRuntimePackage(workspace.app);
+        writeDisabledConfig(workspace.app);
+        writeDefaultGiBarrels(workspace.app);
+        writeJsxStore(workspace.app);
+        await runCodegen({ cwd: workspace.app });
+        expect(existsSync(join(workspace.app, "node_modules", ".gtkx", "gi"))).toBe(false);
+        expect(existsSync(join(workspace.app, "node_modules", "@gtkx", "jsx"))).toBe(false);
+    });
+
+    it("keeps the hoisted store the project consumes", async () => {
+        installRuntimePackage(workspace.root);
+        installReactStack(workspace.root);
+        writeDefaultGiBarrels(workspace.root);
+        writeJsxStore(workspace.root);
+        writeDisabledConfig(workspace.app);
+        writeGiBarrel(workspace.app, "gtk");
+        await runCodegen({ cwd: workspace.app });
+        expect(existsSync(join(workspace.root, "node_modules", ".gtkx", "gi"))).toBe(true);
+        expect(existsSync(join(workspace.root, "node_modules", ".gtkx", "jsx"))).toBe(true);
+        expect(existsSync(join(workspace.app, "node_modules", ".gtkx", "gi"))).toBe(false);
     });
 });
 

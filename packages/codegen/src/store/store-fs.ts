@@ -124,12 +124,21 @@ const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => 
     symlinkRelative(visibleLink, storeDir);
 };
 
-const createTempStore = (storeDir: string): string => {
-    mkdirSync(dirname(storeDir), { recursive: true });
-    const tmp = mkdtempSync(`${storeDir}.tmp-`);
-    chmodSync(tmp, STORE_DIR_MODE);
+const storeWriteMessage = (storeDir: string, error: unknown): string =>
+    `Cannot write the generated store to ${storeDir}: ${error instanceof Error ? error.message : String(error)}. ` +
+    "Codegen writes the store into the node_modules the @gtkx packages resolve from, " +
+    `so ${dirname(storeDir)} has to be writable.`;
 
-    return tmp;
+const createTempStore = (storeDir: string): string => {
+    try {
+        mkdirSync(dirname(storeDir), { recursive: true });
+        const tmp = mkdtempSync(`${storeDir}.tmp-`);
+        chmodSync(tmp, STORE_DIR_MODE);
+
+        return tmp;
+    } catch (error) {
+        throw new Error(storeWriteMessage(storeDir, error), { cause: error });
+    }
 };
 
 export { subpathExport, buildManifest, writeStore, type StoreOptions, type RawFile };
