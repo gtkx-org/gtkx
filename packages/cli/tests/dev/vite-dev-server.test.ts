@@ -42,7 +42,7 @@ const watchProbe = async (probe: (server: ViteDevServer, root: string) => Promis
     const server = await createServer({ ...createDevServerConfig(root, []), logLevel: "silent" });
 
     try {
-        await waitUntil(() => isWatching(server, "app.tsx"), WATCH_TEST_TIMEOUT_MS / 2);
+        await waitUntil(() => isWatching(server, "app.tsx"), WATCH_TEST_TIMEOUT_MS / 3);
         await probe(server, root);
     } finally {
         await server.close();
@@ -59,7 +59,7 @@ const reportedRevisions = async (): Promise<string[]> => {
         });
 
         await burstWrites(join(root, "app.tsx"));
-        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 2);
+        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 3);
         await delay(QUIET_PERIOD_MS);
     });
 
