@@ -6,7 +6,6 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 type CodegenStore = {
-    nodeModules: string;
     giStoreDir: string;
     giLinkDir: string;
     jsxStoreDir: string;
@@ -66,7 +65,6 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
     const hasReactRuntime = resolvePackage(require, dir, "react") !== null;
 
     return {
-        nodeModules: store.nodeModules,
         giStoreDir: store.gi.storeDir,
         giLinkDir: store.gi.linkDir,
         jsxStoreDir: store.jsx?.storeDir ?? siblingStore(store.gi.storeDir),

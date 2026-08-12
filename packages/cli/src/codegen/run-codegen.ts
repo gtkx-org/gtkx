@@ -101,8 +101,16 @@ const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     libraries: [],
 });
 
+const regeneratedStorePaths = (store: CodegenStore): string[] => {
+    if (store.react === null) {
+        return [store.giStoreDir, store.giLinkDir];
+    }
+
+    return [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir];
+};
+
 const clearGeneratedStores = (store: CodegenStore): void => {
-    removeStores(getStorePaths(store.nodeModules));
+    removeStores(regeneratedStorePaths(store));
 };
 
 const resolveLoadedConfig = async (options: RunCodegenOptions, cwd: string): Promise<LoadedConfig> =>

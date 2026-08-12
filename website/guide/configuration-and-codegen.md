@@ -36,10 +36,12 @@ export default defineConfig({
 
 ## What codegen emits
 
-Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx`, so imports resolve without either appearing in your `package.json`. Both packages go into one `node_modules`: the one `@gtkx/react` resolves from, which is your project's own when it installs its dependencies itself, and the workspace root when npm or yarn hoisted them there. That keeps the store beside the packages that import it, and the search never leaves your install root, the nearest directory above the project holding a lockfile, a `pnpm-workspace.yaml`, or a `package.json` declaring workspaces:
+Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx`, so imports resolve without either appearing in your `package.json`. Both packages go into one `node_modules`, the one the installed `@gtkx` packages resolve from: your project's own when it installs its dependencies itself, and the workspace root when npm or yarn hoisted them there. That keeps the store beside `@gtkx/react` and the CLI, which import the bindings themselves and would otherwise never find them:
 
 - **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
 - **`@gtkx/jsx`** is the React layer, likewise per namespace (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
+
+In a workspace whose package manager hoists (npm and yarn do; pnpm does not), that one `node_modules` is the workspace root's, so a single store serves every package in the workspace. The store binds whichever `libraries` the last codegen run declared: give the workspace packages that use GTKX the same `libraries` list, or each one regenerates the shared store on the next `gtkx dev` or `gtkx build`. `gtkx codegen --force` likewise rewrites the shared store rather than a private copy. Codegen refuses to run when the `@gtkx` packages are split across `node_modules` directories, for instance `@gtkx/cli` hoisted to the workspace root while `@gtkx/react` is installed in a package below it, because no single store location can serve both.
 
 A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring(string: number[])`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
 

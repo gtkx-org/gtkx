@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach } from "vitest";
@@ -12,7 +12,6 @@ const setupWorkspace = (prefix: string): WorkspaceRef => {
         ref.root = mkdtempSync(join(tmpdir(), prefix));
         ref.app = join(ref.root, "packages", "app");
         mkdirSync(ref.app, { recursive: true });
-        writeFileSync(join(ref.root, "package-lock.json"), "{}");
     });
 
     afterEach(() => {

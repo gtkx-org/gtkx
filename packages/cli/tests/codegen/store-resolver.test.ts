@@ -70,7 +70,6 @@ describe("resolveCodegenStore hoisting", () => {
     it("resolves both stores in the node_modules the packages were hoisted to", () => {
         const nodeModules = join(workspace.root, "node_modules");
         const store = resolveCodegenStore(workspace.app);
-        expect(store.nodeModules).toBe(nodeModules);
         expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
         expect(store.giLinkDir).toBe(join(nodeModules, "@gtkx", "gi"));
         expect(store.jsxStoreDir).toBe(join(nodeModules, ".gtkx", "jsx"));

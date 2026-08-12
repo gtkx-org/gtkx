@@ -149,6 +149,21 @@ describe("runCodegen", () => {
     });
 });
 
+describe("runCodegen — force in a hoisted workspace", () => {
+    const workspace = setupWorkspace("gtkx-codegen-forced-");
+
+    it("keeps the shared jsx store a project without React never regenerates", async () => {
+        installRuntimePackage(workspace.root);
+        writeDefaultGiBarrels(workspace.root);
+        writeJsxStore(workspace.root);
+        writeConfig(workspace.app, `export default { applicationId: "org.gtk.Test", girPath: ["${workspace.app}"] };`);
+        await runCodegen({ cwd: workspace.app, isForced: true });
+        expect(existsSync(join(workspace.root, "node_modules", ".gtkx", "gi"))).toBe(false);
+        expect(existsSync(join(workspace.root, "node_modules", ".gtkx", "jsx"))).toBe(true);
+        expect(existsSync(join(workspace.root, "node_modules", "@gtkx", "jsx"))).toBe(true);
+    });
+});
+
 describe("runCodegen — codegen: false", () => {
     const workspace = setupWorkspace("gtkx-codegen-disabled-");
 

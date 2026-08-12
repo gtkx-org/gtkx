@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getStorePaths, resolveStore } from "../../src/store/resolve-store.js";
 
-type WorkspaceRef = { root: string; app: string; hoisted: string };
+type WorkspaceRef = { root: string; app: string; hoisted: string; nested: string };
 
 const REACT_EXPORTS: Record<string, unknown> = {
     ".": "./index.js",
@@ -13,19 +13,15 @@ const REACT_EXPORTS: Record<string, unknown> = {
     "./internal": "./internal.js",
 };
 
-const markInstallRoot = (root: string): void => {
-    writeFileSync(join(root, "package-lock.json"), "{}");
-};
-
 const setupWorkspace = (prefix: string): WorkspaceRef => {
-    const ref: WorkspaceRef = { root: "", app: "", hoisted: "" };
+    const ref: WorkspaceRef = { root: "", app: "", hoisted: "", nested: "" };
 
     beforeEach(() => {
         ref.root = mkdtempSync(join(tmpdir(), prefix));
         ref.app = join(ref.root, "packages", "app");
         ref.hoisted = join(ref.root, "node_modules");
+        ref.nested = join(ref.app, "node_modules");
         mkdirSync(ref.app, { recursive: true });
-        markInstallRoot(ref.root);
     });
 
     afterEach(() => {
@@ -60,7 +56,6 @@ describe("resolveStore", () => {
         installPackage(projectRoot, "@gtkx/react");
         const nodeModules = join(projectRoot, "node_modules");
         const store = resolveStore(projectRoot);
-        expect(store.nodeModules).toBe(nodeModules);
         expect(store.gi.storeDir).toBe(join(nodeModules, ".gtkx", "gi"));
         expect(store.gi.linkDir).toBe(join(nodeModules, "@gtkx", "gi"));
         expect(store.jsx?.storeDir).toBe(join(nodeModules, ".gtkx", "jsx"));
@@ -99,37 +94,60 @@ describe("resolveStore hoisting", () => {
     it("places both stores in the node_modules the packages were hoisted to", () => {
         installPackage(workspace.root, "@gtkx/runtime");
         installPackage(workspace.root, "@gtkx/react");
+        installPackage(workspace.root, "@gtkx/cli");
         const store = resolveStore(workspace.app);
-        expect(store.nodeModules).toBe(workspace.hoisted);
         expect(store.gi.storeDir).toBe(join(workspace.hoisted, ".gtkx", "gi"));
         expect(store.gi.linkDir).toBe(join(workspace.hoisted, "@gtkx", "gi"));
         expect(store.jsx?.storeDir).toBe(join(workspace.hoisted, ".gtkx", "jsx"));
         expect(store.jsx?.linkDir).toBe(join(workspace.hoisted, "@gtkx", "jsx"));
     });
 
-    it("walks up to a workspace root that only declares its packages", () => {
-        writeFileSync(join(workspace.root, "package.json"), JSON.stringify({ workspaces: ["packages/*"] }));
-        rmSync(join(workspace.root, "package-lock.json"));
-        installPackage(workspace.root, "@gtkx/runtime");
-        installPackage(workspace.root, "@gtkx/react");
-        expect(resolveStore(workspace.app).nodeModules).toBe(workspace.hoisted);
-    });
-
-    it("keeps the jsx store with the gi store when @gtkx/react is not hoisted", () => {
+    it("keeps both stores in the project's own node_modules when every @gtkx package is there", () => {
         installPackage(workspace.root, "@gtkx/runtime");
         installPackage(workspace.app, "@gtkx/react");
+        installPackage(workspace.app, "@gtkx/cli");
         const store = resolveStore(workspace.app);
-        expect(store.gi.storeDir).toBe(join(workspace.app, "node_modules", ".gtkx", "gi"));
-        expect(store.jsx?.storeDir).toBe(join(workspace.app, "node_modules", ".gtkx", "jsx"));
+        expect(store.gi.storeDir).toBe(join(workspace.nested, ".gtkx", "gi"));
+        expect(store.jsx?.storeDir).toBe(join(workspace.nested, ".gtkx", "jsx"));
     });
 
-    it("rejects an install whose @gtkx/runtime the store could not import", () => {
+    it("ignores an ancestor whose package.json cannot be parsed", () => {
+        writeFileSync(join(workspace.root, "package.json"), "");
+        installPackage(workspace.app, "@gtkx/runtime");
+        installPackage(workspace.app, "@gtkx/react");
+        expect(resolveStore(workspace.app).gi.storeDir).toBe(join(workspace.nested, ".gtkx", "gi"));
+    });
+});
+
+describe("resolveStore split installs", () => {
+    const workspace = setupWorkspace("gtkx-resolve-store-split-");
+
+    it("rejects an install whose @gtkx/cli sits above the store", () => {
+        installPackage(workspace.root, "@gtkx/cli");
+        installPackage(workspace.app, "@gtkx/runtime");
+        installPackage(workspace.app, "@gtkx/react");
+
+        expect(() => resolveStore(workspace.app)).toThrow(
+            `Cannot write the generated store to ${workspace.nested}: @gtkx/cli is installed in ` +
+            `${workspace.hoisted}, above it, so that copy can never import the generated @gtkx/gi.`,
+        );
+    });
+
+    it("rejects an install whose @gtkx/react sits above the store", () => {
         installPackage(workspace.root, "@gtkx/react");
         installPackage(workspace.app, "@gtkx/runtime");
 
         expect(() => resolveStore(workspace.app)).toThrow(
-            /Install @gtkx\/react and @gtkx\/runtime in the same node_modules/,
+            `Cannot write the generated store to ${workspace.nested}: @gtkx/react is installed in ` +
+            `${workspace.hoisted}, above it`,
         );
+    });
+
+    it("rejects an install whose @gtkx/testing sits above the store", () => {
+        installPackage(workspace.root, "@gtkx/testing");
+        installPackage(workspace.app, "@gtkx/runtime");
+        installPackage(workspace.app, "@gtkx/react");
+        expect(() => resolveStore(workspace.app)).toThrow(/@gtkx\/testing is installed in/);
     });
 });
 
@@ -140,7 +158,7 @@ describe("resolveStore hoisting overrides", () => {
         installPackage(workspace.root, "@gtkx/runtime", "1.0.0");
         installPackage(workspace.app, "@gtkx/runtime", "2.0.0");
         const store = resolveStore(workspace.app);
-        expect(store.gi.storeDir).toBe(join(workspace.app, "node_modules", ".gtkx", "gi"));
+        expect(store.gi.storeDir).toBe(join(workspace.nested, ".gtkx", "gi"));
         expect(store.gi.version).toBe("2.0.0");
     });
 
@@ -151,41 +169,6 @@ describe("resolveStore hoisting overrides", () => {
         const store = resolveStore(workspace.app);
         expect(store.gi.storeDir).toBe(join(workspace.hoisted, ".gtkx", "gi"));
         expect(store.gi.linkDir).toBe(join(workspace.hoisted, "@gtkx", "gi"));
-    });
-});
-
-describe("resolveStore install root", () => {
-    let outerRoot: string;
-    let projectRoot: string;
-
-    beforeEach(() => {
-        outerRoot = mkdtempSync(join(tmpdir(), "gtkx-resolve-store-outer-"));
-        projectRoot = join(outerRoot, "nested", "app");
-        mkdirSync(projectRoot, { recursive: true });
-        markInstallRoot(outerRoot);
-        installPackage(outerRoot, "@gtkx/runtime");
-        installPackage(outerRoot, "@gtkx/react");
-    });
-
-    afterEach(() => {
-        rmSync(outerRoot, { recursive: true, force: true });
-    });
-
-    it("refuses to write into an installation the project only sits below", () => {
-        markInstallRoot(projectRoot);
-
-        expect(() => resolveStore(projectRoot)).toThrow(
-            new RegExp(`the nearest one is installed in ${join(outerRoot, "node_modules")}, outside the install root`),
-        );
-    });
-
-    it("uses the outer installation when the project declares no install root of its own", () => {
-        expect(resolveStore(projectRoot).nodeModules).toBe(join(outerRoot, "node_modules"));
-    });
-
-    it("walks to the nearest installation when nothing declares an install root", () => {
-        rmSync(join(outerRoot, "package-lock.json"));
-        expect(resolveStore(projectRoot).nodeModules).toBe(join(outerRoot, "node_modules"));
     });
 });
 

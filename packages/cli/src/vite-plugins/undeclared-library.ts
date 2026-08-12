@@ -73,9 +73,8 @@ const unreachableStoreError = (generated: GeneratedModule, options: StoreOptions
     new Error(
         `Cannot resolve "${generated.source}": the generated store in ${options.storeDir} does provide ` +
         `"${generated.namespace}", but its link at ${options.linkDir} is not on the module resolution path of ` +
-        `${generated.importer}. Codegen writes the store into the node_modules that @gtkx/react and ` +
-        "@gtkx/runtime resolve from; install them where the importing file reaches them, then run gtkx " +
-        "codegen again.",
+        `${generated.importer}. Codegen writes the store into the node_modules the installed @gtkx packages ` +
+        "resolve from; install them where the importing file reaches them, then run gtkx codegen again.",
     );
 
 const undeclaredLibraryError = (generated: GeneratedModule, girPath: string[]): Error => {
