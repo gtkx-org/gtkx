@@ -35,10 +35,11 @@ type UserEvent = {
      * itself, where the gestures that widget carries of its own still take the press and the same
      * outcome is then applied through GTK's own public action: a list, grid, or column-view row is
      * focused and selected, and activated as well when its view activates on a single click; an
-     * expandable tree expander that is itself the clicked widget toggles its expansion; a column
-     * header sorts by its column. A column-view cell and the row carrying the column headers stand
-     * in the way of the click rather than taking it, so a click on either reaches the row or the
-     * view behind it.
+     * expandable tree expander that is itself the clicked widget toggles its expansion; a notebook
+     * tab, clicked directly or through its label, focuses its notebook and switches to its page; a
+     * column header sorts by its column. A column-view cell and the row carrying the column headers
+     * stand in the way of the click rather than taking it, so a click on either reaches the row or
+     * the view behind it.
      */
     click: typeof click;
     /**
@@ -46,14 +47,14 @@ type UserEvent = {
      * activation first, activating a list box row or flow box child on that path and replacing its
      * container's selection whether or not that container activates on a single click. A widget
      * whose click GTK4 implements itself receives that outcome once per press, so a row is selected
-     * and activated by the second press, a tree expander ends back where it started, and a column
-     * header inverts its order after sorting.
+     * and activated by the second press, a tree expander ends back where it started, a notebook tab
+     * stays on the page the first press opened, and a column header inverts its order after sorting.
      */
     dblClick: typeof dblClick;
     /**
      * Delivers a three-press click gesture the same way a double click is delivered, applying the
      * same outcome to a list box row or flow box child, and applying the outcome GTK4 implements
-     * itself once per press to a row, tree expander, or column header.
+     * itself once per press to a row, tree expander, notebook tab, or column header.
      */
     tripleClick: typeof tripleClick;
     /** Moves focus within the widget's root, forward by default and backward with `isShiftHeld`. */

@@ -11,6 +11,7 @@ type QueryContainer = Gtk.Widget | Gtk.EventController | Gtk.LayoutManager | Gtk
  * sentinel representing all current toplevel windows.
  */
 type Container = QueryContainer | Gtk.Application | typeof TOPLEVELS;
+type WidgetClass<T extends Gtk.Widget> = abstract new (...args: never[]) => T;
 
 /** Container sentinel that widens a query to every toplevel window currently open. */
 const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
@@ -48,6 +49,25 @@ const descendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
     const tree = traverseWidgetTree(widget, isAnyWidget);
     tree.next();
     yield* tree;
+};
+
+const ancestors = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
+    let parent = widget.getParent();
+
+    while (parent) {
+        yield parent;
+        parent = parent.getParent();
+    }
+};
+
+const ancestorFor = <T extends Gtk.Widget>(widget: Gtk.Widget, type: WidgetClass<T>): T | null => {
+    for (const ancestor of ancestors(widget)) {
+        if (ancestor instanceof type) {
+            return ancestor;
+        }
+    }
+
+    return null;
 };
 
 const relationCandidates = (widget: Gtk.Widget): Gtk.Accessible[] => {
@@ -115,6 +135,8 @@ const findAll = (container: Container, isMatch: (node: Gtk.Widget) => boolean): 
 
 export {
     TOPLEVELS,
+    ancestorFor,
+    ancestors,
     children,
     descendants,
     findAll,

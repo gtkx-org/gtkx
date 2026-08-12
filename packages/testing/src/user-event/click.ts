@@ -267,7 +267,8 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
  * handler invokes: a list, grid, or column-view row is focused and selected, and activated as well
  * on a second press or when its view activates on a single click; an expandable tree expander
  * toggles its expansion, once per press, and only when it is the widget clicked, so a click on its
- * child falls through to the enclosing row; a column header sorts by its column. Sorting goes
+ * child falls through to the enclosing row; a notebook tab, clicked directly or through its label,
+ * focuses its notebook and switches to its page; a column header sorts by its column. Sorting goes
  * through Gtk.ColumnView.sortByColumn, so the primary sort column and order match what a pointer
  * produces while previously sorted columns are dropped rather than kept as secondary keys. A
  * column-view cell and the row that carries the column headers stand in the way of the click rather
@@ -287,14 +288,14 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
  * a descendant, is activated and exclusively selected, as GTK's double-click path does whether or
  * not the container activates on a single click. A widget whose click GTK4 implements itself
  * receives that outcome once per press, so a list, grid, or column-view row is selected and then
- * activated by the second press, a tree expander ends back where it started, and a column header
- * sorts and then inverts its order.
+ * activated by the second press, a tree expander ends back where it started, a notebook tab stays on
+ * the page the first press opened, and a column header sorts and then inverts its order.
  */
 const dblClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 2);
 /**
  * Delivers a three-press click gesture the same way a double click is delivered, applying the same
  * outcome to a list box row or flow box child the presses reach, and applying the outcome GTK4
- * implements itself once per press to a row, tree expander, or column header.
+ * implements itself once per press to a row, tree expander, notebook tab, or column header.
  */
 const tripleClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 3);
 
