@@ -15,8 +15,9 @@ const MAX_VERIFIED_PER_PERSONA = 6;
 
 const DEFAULT_PERSONAS = ["cli", "marshal", "subclass", "testkit", "hotreload", "higapp", "lifecycle"];
 
-const round = (args && args.round) || 1;
-const personas = (args && args.personas) || DEFAULT_PERSONAS;
+const input = typeof args === "string" ? JSON.parse(args) : args || {};
+const round = input.round || 1;
+const personas = input.personas || DEFAULT_PERSONAS;
 
 const FINDINGS_SCHEMA = {
     type: "object",
