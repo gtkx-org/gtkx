@@ -26,7 +26,7 @@ const firstBuildArgs = (): Parameters<typeof buildApp>[0] => {
 };
 
 vi.mock("../../src/builder.js", () => ({
-    build: vi.fn(() => Promise.resolve()),
+    build: vi.fn(() => Promise.resolve("dist/bundle.js")),
 }));
 
 vi.mock("../../src/codegen/run-codegen.js", async () => {
@@ -64,6 +64,7 @@ describe("build", () => {
 
     it("runs codegen preflight and builds with the default entry", async () => {
         const entryPath = seedEntry("index.tsx");
+        buildMock.mockResolvedValueOnce("dist/bundle.mjs");
 
         ensureGeneratedInMock.mockImplementationOnce(() => {
             expect(collectLogged(state.stderrSpy)).not.toContain("Building");
@@ -74,6 +75,7 @@ describe("build", () => {
         await runBuild();
         expect(ensureGeneratedInMock).toHaveBeenCalledWith(...preflightCall(project.path, "production"));
         expect(collectLogged(state.stderrSpy)).toContain("Building");
+        expect(collectLogged(state.stderrSpy)).toContain("Build complete: dist/bundle.mjs");
         expect(buildMock).toHaveBeenCalledOnce();
         expect(firstBuildArgs().entry).toBe(entryPath);
         expect(firstBuildArgs().assetBase).toBeUndefined();

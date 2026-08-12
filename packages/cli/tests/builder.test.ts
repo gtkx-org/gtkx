@@ -1,5 +1,16 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { build } from "../src/builder.js";
+import { setupTempTree } from "./temp-tree.js";
+
+type NamingCase = {
+    title: string;
+    root: Record<string, string>;
+    nested: Record<string, string> | null;
+    from: "path" | "child";
+    expected: string;
+};
 
 type ViteConfigSnapshot = {
     plugins: ({ name?: string } | null)[];
@@ -17,6 +28,44 @@ type ViteConfigSnapshot = {
 };
 
 const APP_VERSION_DEFINE = "__APP_VERSION__";
+
+const NAMING_CASES: NamingCase[] = [
+    {
+        title: "keeps bundle.js when the package declares type module",
+        root: { type: "module" },
+        nested: null,
+        from: "path",
+        expected: "bundle.js",
+    },
+    {
+        title: "emits bundle.mjs when the package declares type commonjs",
+        root: { type: "commonjs" },
+        nested: null,
+        from: "path",
+        expected: "bundle.mjs",
+    },
+    {
+        title: "emits bundle.mjs when the package declares no type",
+        root: { name: "typeless" },
+        nested: null,
+        from: "path",
+        expected: "bundle.mjs",
+    },
+    {
+        title: "walks up from a root that has no manifest of its own",
+        root: { type: "module" },
+        nested: null,
+        from: "child",
+        expected: "bundle.js",
+    },
+    {
+        title: "reads the manifest nearest to the root",
+        root: { type: "module" },
+        nested: { type: "commonjs" },
+        from: "child",
+        expected: "bundle.mjs",
+    },
+];
 
 const { viteBuildMock } = vi.hoisted(() => ({
     viteBuildMock: vi.fn<(config: ViteConfigSnapshot) => Promise<void>>(() => Promise.resolve()),
@@ -39,6 +88,12 @@ const resetBuildMocks = (): void => {
 const restoreSpies = (): void => {
     vi.restoreAllMocks();
 };
+
+const writeManifest = (dir: string, manifest: Record<string, string>): void => {
+    writeFileSync(join(dir, "package.json"), JSON.stringify(manifest));
+};
+
+const entryFileNames = (): string => getViteConfig().build.rolldownOptions.output.entryFileNames;
 
 vi.mock("vite", async (importActual) => {
     const actual = await importActual<typeof import("vite")>();
@@ -147,6 +202,46 @@ describe("build (root resolution)", () => {
         await build({ entry: "src/index.tsx", assetBase: "../share/app" });
         const builtUrlPlugin = getViteConfig().plugins.find((p) => p?.name === "gtkx:built-url");
         expect(builtUrlPlugin).toBeDefined();
+    });
+});
+
+describe("build (entry naming)", () => {
+    const project = setupTempTree("gtkx-builder-type-", "nested");
+    beforeEach(resetBuildMocks);
+    afterEach(restoreSpies);
+
+    it.each(NAMING_CASES)("$title", async ({ root, nested, from, expected }) => {
+        writeManifest(project.path, root);
+
+        if (nested !== null) {
+            writeManifest(project.child, nested);
+        }
+
+        await build({ entry: "src/index.tsx", vite: { root: project[from] } });
+        expect(entryFileNames()).toBe(expected);
+    });
+});
+
+describe("build (emitted path)", () => {
+    const project = setupTempTree("gtkx-builder-path-", "nested");
+    beforeEach(resetBuildMocks);
+    afterEach(restoreSpies);
+
+    it("returns the bundle path under the default outDir", async () => {
+        writeManifest(project.path, { type: "commonjs" });
+        const emitted = await build({ entry: "src/index.tsx", vite: { root: project.path } });
+        expect(emitted).toBe(join("dist", "bundle.mjs"));
+    });
+
+    it("returns the bundle path under a user-supplied outDir", async () => {
+        writeManifest(project.path, { type: "module" });
+
+        const emitted = await build({
+            entry: "src/index.tsx",
+            vite: { root: project.path, build: { outDir: "out" } },
+        });
+
+        expect(emitted).toBe(join("out", "bundle.js"));
     });
 });
 

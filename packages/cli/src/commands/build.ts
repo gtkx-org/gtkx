@@ -22,7 +22,7 @@ const build = defineCommand({
         const { cwd, entry } = await prepareProject(args, BUILD_MODE);
         info(`Building ${entry}`);
 
-        await buildApp({
+        const bundlePath = await buildApp({
             entry,
             assetBase: args["asset-base"],
             vite: {
@@ -30,7 +30,7 @@ const build = defineCommand({
             },
         });
 
-        info("Build complete: dist/bundle.js");
+        info(`Build complete: ${bundlePath}`);
     },
 });
 
