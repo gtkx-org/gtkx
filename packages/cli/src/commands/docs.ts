@@ -99,30 +99,35 @@ const docs = defineCommand({
     },
 });
 
-const isWithin = (child: string, parent: string): boolean => {
+const isBelow = (parent: string, child: string): boolean => {
     const path = relative(parent, child);
 
-    return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path));
+    return path !== "" && path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path);
+};
+
+const outDirReason = (cwd: string, out: string, outDir: string): string => {
+    if (out.trim() === "") {
+        return "it was empty, which names the project root itself";
+    }
+
+    if (outDir === cwd) {
+        return "it names the project root itself";
+    }
+
+    return `${outDir} is outside it`;
 };
 
 const resolveOutDir = (cwd: string, out: string): string => {
-    if (out.trim() === "") {
-        throw new Error(
-            `--out needs a directory below the project root, and it was empty, which resolves to ${cwd}. ` +
-            "Pass a path such as --out=docs/reference.",
-        );
+    const outDir = out.trim() === "" ? cwd : resolve(cwd, out);
+
+    if (isBelow(cwd, outDir)) {
+        return outDir;
     }
 
-    const outDir = resolve(cwd, out);
-
-    if (isWithin(cwd, outDir)) {
-        throw new Error(
-            `--out must name a directory below the project root, and ${outDir} is the project root ` +
-            `${cwd} or one of its ancestors. Pass a path such as --out=docs/reference.`,
-        );
-    }
-
-    return outDir;
+    throw new Error(
+        `--out must name a directory below the project root ${cwd}, and ${outDirReason(cwd, out, outDir)}. ` +
+        "Pass a path such as --out=docs/reference.",
+    );
 };
 
 const resolveDocsElements = async (cwd: string): Promise<{ props: ElementProps; omittedProps: OmittedProps }> => {

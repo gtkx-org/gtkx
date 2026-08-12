@@ -74,24 +74,26 @@ function mockedMergeOmittedProps(...maps: Record<string, string[]>[]): Record<st
     return merged;
 }
 
-const registerOutDirTests = (): void => {
-    it("rejects an empty out that would target the project root", async () => {
-        await expect(run({ cwd: "/custom/dir", out: "" })).rejects.toThrow(
-            "--out needs a directory below the project root",
-        );
+const expectOutDirRejected = async (out: string): Promise<void> => {
+    await expect(run({ cwd: "/custom/dir", out, overwrite: true })).rejects.toThrow(
+        "--out must name a directory below the project root /custom/dir",
+    );
+};
 
+const registerOutDirTests = (): void => {
+    it("rejects an out that names the project root itself", async () => {
+        await expectOutDirRejected("");
+        await expectOutDirRejected(" ");
+        await expectOutDirRejected(".");
+        await expectOutDirRejected("docs/..");
         expect(writeDocsMock).not.toHaveBeenCalled();
     });
 
-    it("rejects an out that resolves to the project root or an ancestor of it", async () => {
-        await expect(run({ cwd: "/custom/dir", out: "." })).rejects.toThrow(
-            "--out must name a directory below the project root",
-        );
-
-        await expect(run({ cwd: "/custom/dir", out: "..", overwrite: true })).rejects.toThrow(
-            "--out must name a directory below the project root",
-        );
-
+    it("rejects an out that leaves the project root", async () => {
+        await expectOutDirRejected("..");
+        await expectOutDirRejected("../sibling");
+        await expectOutDirRejected("docs/../../sibling");
+        await expectOutDirRejected("/elsewhere/docs");
         expect(writeDocsMock).not.toHaveBeenCalled();
     });
 };

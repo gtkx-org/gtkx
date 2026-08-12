@@ -39,6 +39,7 @@ type DocsOptions = {
 };
 
 type DocsManifest = {
+    generator: string;
     namespaces: DocsNamespace[];
 };
 
@@ -56,6 +57,7 @@ type DocsResult = {
 };
 
 const MANIFEST_FILENAME = "manifest.json";
+const MANIFEST_GENERATOR = "gtkx-docs";
 const ROOT_INDEX_FILENAME = "index.md";
 const DEFAULT_BASE_PATH = "/reference";
 
@@ -212,7 +214,8 @@ const isDocsNamespace = (value: unknown): value is DocsNamespace =>
     typeof value.link === "string" && Array.isArray(value.elements) && value.elements.every(isDocsElementLink);
 
 const isDocsManifest = (value: unknown): value is DocsManifest =>
-    isRecord(value) && Array.isArray(value.namespaces) && value.namespaces.every(isDocsNamespace);
+    isRecord(value) && value.generator === MANIFEST_GENERATOR && Array.isArray(value.namespaces) &&
+    value.namespaces.every(isDocsNamespace);
 
 const readDocsManifest = (manifestPath: string): DocsManifest | undefined => {
     let parsed: unknown;
@@ -249,7 +252,7 @@ const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefi
 
     throw outDirRefusal(
         options.outDir,
-        `it is not empty and holds no readable ${MANIFEST_FILENAME} from an earlier \`gtkx docs\` run, ` +
+        `it is not empty and holds no ${MANIFEST_FILENAME} written by \`gtkx docs\`, ` +
         "so its contents are not gtkx's to replace",
     );
 };
@@ -324,7 +327,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     const { pages, namespaces } = generatePages(options, input.basePath, library);
     clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });
-    const manifest: DocsManifest = { namespaces };
+    const manifest: DocsManifest = { generator: MANIFEST_GENERATOR, namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
     writePages(options.outDir, pages);
 

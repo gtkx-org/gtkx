@@ -1,11 +1,13 @@
 /* eslint-disable gtkx/no-library-prefix */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { computeGiFingerprint, FINGERPRINT_FILENAME } from "../../src/fingerprint.js";
 import { writeDocs } from "../../src/internal.js";
 import { readBuiltinElements } from "../../src/react/element-config.js";
+
+type DocsOptions = Parameters<typeof writeDocs>[0];
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
@@ -14,12 +16,43 @@ const REACT_SUBEXPORTS = ["config", "adw", "adw/config", "internal"];
 const REACT_SURFACE = await readBuiltinElements(REACT_SUBEXPORTS, GI_STORE_DIR);
 const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-docs-test-"));
 const defaultOutDir = join(workDir, "default");
+const MANIFEST_FILE = "manifest.json";
+const MANIFEST_GENERATOR = "gtkx-docs";
 const defaultResult = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir });
 
 const page = (outDir: string, path: string): string => readFileSync(join(outDir, path), "utf8");
+const docsOptions = (outDir: string): DocsOptions => ({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir });
 
 const expectRefusal = (outDir: string, reason: string): void => {
-    expect(() => writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir })).toThrow(reason);
+    expect(() => writeDocs(docsOptions(outDir))).toThrow(reason);
+};
+
+const handwrittenDir = (name: string): string => {
+    const outDir = join(workDir, name);
+    mkdirSync(join(outDir, "guide"), { recursive: true });
+    writeFileSync(join(outDir, "getting-started.md"), "# Handwritten getting started\n");
+    writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
+
+    return outDir;
+};
+
+const generatedDir = (name: string): string => {
+    const outDir = join(workDir, name);
+    cpSync(defaultOutDir, outDir, { recursive: true });
+
+    return outDir;
+};
+
+const writeManifest = (outDir: string, manifest: unknown): void => {
+    writeFileSync(join(outDir, MANIFEST_FILE), JSON.stringify(manifest));
+};
+
+const inputVariants = (outDir: string): { rebased: DocsOptions; withOmitted: DocsOptions; withProps: DocsOptions } => {
+    const rebased = { ...docsOptions(outDir), basePath: "/api" };
+    const withOmitted = { ...rebased, omittedProps: { GtkButton: ["child"] } };
+    const props = { GtkWidget: { module: "@gtkx/react/internal", export: "GtkWidgetProps" } };
+
+    return { rebased, withOmitted, withProps: { ...withOmitted, props } };
 };
 
 const registerNamespaceIndexTests = (): void => {
@@ -250,20 +283,36 @@ describe("writeDocs with the built-in Adwaita element config", () => {
 });
 
 describe("writeDocs over a directory it does not own", () => {
-    const outDir = join(workDir, "handwritten");
-
     it("refuses to generate and leaves the existing files in place", () => {
-        mkdirSync(join(outDir, "guide"), { recursive: true });
-        writeFileSync(join(outDir, "getting-started.md"), "# Handwritten getting started\n");
-        writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
+        const outDir = handwrittenDir("handwritten");
         expectRefusal(outDir, "Refusing to generate documentation into");
         expect(page(outDir, "getting-started.md")).toBe("# Handwritten getting started\n");
         expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
-        expect(existsSync(join(outDir, "manifest.json"))).toBe(false);
+        expect(existsSync(join(outDir, MANIFEST_FILE))).toBe(false);
+    });
+
+    it("refuses over a manifest another tool wrote, keeping the directories it names", () => {
+        const outDir = handwrittenDir("foreign-manifest");
+
+        writeManifest(outDir, {
+            namespaces: [
+                {
+                    name: "Guide",
+                    directory: "guide",
+                    link: "/guide/",
+                    elements: [{ text: "Intro", link: "/guide/intro" }],
+                },
+            ],
+        });
+
+        expectRefusal(outDir, `holds no ${MANIFEST_FILE} written by \`gtkx docs\``);
+        expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
+        expect(page(outDir, "getting-started.md")).toBe("# Handwritten getting started\n");
     });
 
     it("replaces the contents once overwriting is requested", () => {
-        const result = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir, isOverwrite: true });
+        const outDir = handwrittenDir("handwritten-overwritten");
+        const result = writeDocs({ ...docsOptions(outDir), isOverwrite: true });
         expect(result.isRegenerated).toBe(true);
         expect(existsSync(join(outDir, "getting-started.md"))).toBe(false);
         expect(existsSync(join(outDir, "guide"))).toBe(false);
@@ -272,9 +321,8 @@ describe("writeDocs over a directory it does not own", () => {
 });
 
 describe("writeDocs when the output path is not a directory", () => {
-    const outDir = join(workDir, "occupied.md");
-
     it("names the path it refuses instead of failing on the raw system error", () => {
+        const outDir = join(workDir, "occupied.md");
         writeFileSync(outDir, "# Handwritten page\n");
         expectRefusal(outDir, `into ${outDir}: it already exists and is not a directory`);
         expect(readFileSync(outDir, "utf8")).toBe("# Handwritten page\n");
@@ -282,38 +330,37 @@ describe("writeDocs when the output path is not a directory", () => {
 });
 
 describe("writeDocs over a manifest that reaches outside the output directory", () => {
-    const root = join(workDir, "escape");
-    const outDir = join(root, "docs");
-
     it("refuses rather than removing the entries that manifest names", () => {
+        const root = join(workDir, "escape");
+        const outDir = join(root, "docs");
         mkdirSync(join(root, "src"), { recursive: true });
         mkdirSync(outDir, { recursive: true });
         writeFileSync(join(root, "package.json"), "{}\n");
         writeFileSync(join(root, "src", "index.ts"), "export {};\n");
 
-        writeFileSync(
-            join(outDir, "manifest.json"),
-            JSON.stringify({ namespaces: [{ name: "Gtk", directory: "..", link: "/reference/gtk/", elements: [] }] }),
-        );
+        writeManifest(outDir, {
+            generator: MANIFEST_GENERATOR,
+            namespaces: [{ name: "Gtk", directory: "..", link: "/reference/gtk/", elements: [] }],
+        });
 
-        expectRefusal(outDir, "holds no readable manifest.json");
+        expectRefusal(outDir, `holds no ${MANIFEST_FILE} written by \`gtkx docs\``);
         expect(existsSync(join(root, "package.json"))).toBe(true);
         expect(existsSync(join(root, "src", "index.ts"))).toBe(true);
     });
 });
 
 describe("writeDocs over a directory it generated", () => {
-    const outDir = join(workDir, "managed");
-    const options = { libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir };
-    const manifestPath = join(outDir, "manifest.json");
-    const generated = writeDocs(options);
+    it("records the generator that wrote the manifest", () => {
+        const manifest = JSON.parse(page(defaultOutDir, MANIFEST_FILE)) as unknown;
+        expect(manifest).toMatchObject({ generator: MANIFEST_GENERATOR });
+    });
 
     it("removes only the entries its manifest records", () => {
-        expect(generated.isRegenerated).toBe(true);
+        const outDir = generatedDir("managed");
         mkdirSync(join(outDir, "guide"), { recursive: true });
         writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
         writeFileSync(join(outDir, "gtk", "stale.md"), "# Removed element\n");
-        const again = writeDocs({ ...options, isForced: true });
+        const again = writeDocs({ ...docsOptions(outDir), isForced: true });
         expect(again.isRegenerated).toBe(true);
         expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
         expect(existsSync(join(outDir, "gtk", "stale.md"))).toBe(false);
@@ -321,39 +368,32 @@ describe("writeDocs over a directory it generated", () => {
     });
 
     it("rejects a manifest missing the namespace fields it reports", () => {
-        writeFileSync(manifestPath, JSON.stringify({ namespaces: [{ directory: "gtk" }] }));
-        expectRefusal(outDir, "holds no readable manifest.json");
+        const outDir = generatedDir("partial-manifest");
+        writeManifest(outDir, { generator: MANIFEST_GENERATOR, namespaces: [{ directory: "gtk" }] });
+        expectRefusal(outDir, `holds no ${MANIFEST_FILE} written by \`gtkx docs\``);
+        expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
     });
 
     it("recovers from its own damaged manifest once overwriting is requested", () => {
-        writeFileSync(manifestPath, '{"namespaces":[{"na');
+        const outDir = generatedDir("damaged-manifest");
+        writeFileSync(join(outDir, MANIFEST_FILE), '{"namespaces":[{"na');
         mkdirSync(join(outDir, "guide"), { recursive: true });
         writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
-        expectRefusal(outDir, "holds no readable manifest.json");
-        expect(() => writeDocs({ ...options, isForced: true })).toThrow("holds no readable manifest.json");
-        const recovered = writeDocs({ ...options, isOverwrite: true });
+        expectRefusal(outDir, `holds no ${MANIFEST_FILE}`);
+        expect(() => writeDocs({ ...docsOptions(outDir), isForced: true })).toThrow(`holds no ${MANIFEST_FILE}`);
+        const recovered = writeDocs({ ...docsOptions(outDir), isOverwrite: true });
         expect(recovered.isRegenerated).toBe(true);
         expect(existsSync(join(outDir, "guide"))).toBe(false);
         expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
-        expect(writeDocs(options).isRegenerated).toBe(false);
+        expect(writeDocs(docsOptions(outDir)).isRegenerated).toBe(false);
     });
 });
 
 describe("writeDocs when the docs inputs change", () => {
-    const outDir = join(workDir, "invalidated");
-    const base = { libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir };
-    const rebased = { ...base, basePath: "/api" };
-    const withOmitted = { ...rebased, omittedProps: { GtkButton: ["child"] } };
-
-    const withProps = {
-        ...withOmitted,
-        props: { GtkWidget: { module: "@gtkx/react/internal", export: "GtkWidgetProps" } },
-    };
-
     it("regenerates when the base path changes", () => {
-        expect(writeDocs(base).isRegenerated).toBe(true);
+        const outDir = generatedDir("rebased");
         expect(page(outDir, join("gtk", "button.md"))).toContain("(/reference/gtk/widget)");
-        const result = writeDocs(rebased);
+        const result = writeDocs(inputVariants(outDir).rebased);
         expect(result.isRegenerated).toBe(true);
         expect(result.namespaces.find((namespace) => namespace.name === "Gtk")?.link).toBe("/api/gtk/");
         expect(page(outDir, join("gtk", "button.md"))).toContain("(/api/gtk/widget)");
@@ -361,26 +401,38 @@ describe("writeDocs when the docs inputs change", () => {
     });
 
     it("regenerates when the omitted props change", () => {
+        const outDir = join(workDir, "omitted-change");
+        const { rebased, withOmitted } = inputVariants(outDir);
+        expect(writeDocs(rebased).isRegenerated).toBe(true);
+        expect(page(outDir, join("gtk", "button.md"))).toContain("### `child`");
         expect(writeDocs(withOmitted).isRegenerated).toBe(true);
         expect(page(outDir, join("gtk", "button.md"))).not.toContain("### `child`");
     });
 
     it("regenerates when the element props change", () => {
+        const outDir = join(workDir, "props-change");
+        const { withOmitted, withProps } = inputVariants(outDir);
+        expect(writeDocs(withOmitted).isRegenerated).toBe(true);
+        expect(page(outDir, join("gtk", "widget.md"))).not.toContain("### `children`");
         expect(writeDocs(withProps).isRegenerated).toBe(true);
         expect(page(outDir, join("gtk", "widget.md"))).toContain("### `children`");
     });
 
     it("skips regeneration when every docs input is unchanged", () => {
+        const { withProps } = inputVariants(join(workDir, "unchanged"));
+        expect(writeDocs(withProps).isRegenerated).toBe(true);
         expect(writeDocs(withProps).isRegenerated).toBe(false);
     });
 
     it("regenerates over a sentinel that records no docs inputs", () => {
+        const outDir = generatedDir("sentinel");
+
         writeFileSync(
             join(outDir, FINGERPRINT_FILENAME),
             JSON.stringify(computeGiFingerprint([], ["Gtk-4.0"], GIR_PATH)),
         );
 
-        expect(writeDocs(base).isRegenerated).toBe(true);
+        expect(writeDocs(docsOptions(outDir)).isRegenerated).toBe(true);
     });
 });
 
