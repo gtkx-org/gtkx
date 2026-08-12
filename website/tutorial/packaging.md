@@ -109,7 +109,7 @@ DBusActivatable=true
 
 `Exec` is the command, so the binary has to be installed under that name and on `PATH`. `Icon` is the application ID, which is how it resolves against the icon theme. `Categories` decides where the app appears in a launcher that groups by category, and `Keywords` adds search terms beyond the name.
 
-`X-GNOME-UsesNotifications=true` gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `DBusActivatable=true` lets the desktop start the app over D-Bus instead of running `Exec` directly. That is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed: the desktop activates the application by its ID, delivers the action, and the app handles it on startup.
+`X-GNOME-UsesNotifications=true` gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `DBusActivatable=true` lets the desktop start the app over D-Bus instead of running `Exec` directly. That is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed: the desktop activates the application by its ID, delivers the action, and the app handles it on startup. The key is a promise rather than a switch, since the desktop looks the application up by a D-Bus service file named after the ID, and [Appendix C](/tutorial/flatpak) writes and installs that file.
 
 ## Icons
 

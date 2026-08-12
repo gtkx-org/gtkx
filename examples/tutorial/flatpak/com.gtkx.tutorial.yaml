@@ -39,6 +39,7 @@ modules:
       - install -Dm644 data/com.gtkx.tutorial.gschema.xml /app/share/glib-2.0/schemas/com.gtkx.tutorial.gschema.xml
       - glib-compile-schemas /app/share/glib-2.0/schemas
       - install -Dm644 flatpak/com.gtkx.tutorial.desktop /app/share/applications/com.gtkx.tutorial.desktop
+      - install -Dm644 flatpak/com.gtkx.tutorial.service /app/share/dbus-1/services/com.gtkx.tutorial.service
       - install -Dm644 flatpak/com.gtkx.tutorial.metainfo.xml /app/share/metainfo/com.gtkx.tutorial.metainfo.xml
       - install -Dm644 data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg /app/share/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
       - install -Dm644 data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg /app/share/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg

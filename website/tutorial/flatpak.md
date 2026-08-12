@@ -54,6 +54,7 @@ modules:
       - install -Dm644 data/com.gtkx.tutorial.gschema.xml /app/share/glib-2.0/schemas/com.gtkx.tutorial.gschema.xml
       - glib-compile-schemas /app/share/glib-2.0/schemas
       - install -Dm644 flatpak/com.gtkx.tutorial.desktop /app/share/applications/com.gtkx.tutorial.desktop
+      - install -Dm644 flatpak/com.gtkx.tutorial.service /app/share/dbus-1/services/com.gtkx.tutorial.service
       - install -Dm644 flatpak/com.gtkx.tutorial.metainfo.xml /app/share/metainfo/com.gtkx.tutorial.metainfo.xml
       - install -Dm644 data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg /app/share/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
       - install -Dm644 data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg /app/share/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg
@@ -78,9 +79,23 @@ modules:
 
 `strip: false` matters for the reason [Appendix B](/tutorial/packaging) explains, and flatpak-builder strips your binary by default.
 
-The build commands do what Appendix B did by hand, now inside the sandbox, then install the schema, the desktop entry, the metainfo, and the icons where the system expects them. `glib-compile-schemas` runs against `/app/share/glib-2.0/schemas` after the schema lands there, so the preferences from [Preferences and the System Theme](/tutorial/preferences-and-theming) resolve inside the sandbox.
+The build commands do what Appendix B did by hand, now inside the sandbox, then install the schema, the desktop entry, the D-Bus service file, the metainfo, and the icons where the system expects them. `glib-compile-schemas` runs against `/app/share/glib-2.0/schemas` after the schema lands there, so the preferences from [Preferences and the System Theme](/tutorial/preferences-and-theming) resolve inside the sandbox.
 
 The `dir` source builds your working tree, skipping everything derived. The other source, `generated-sources.json`, does not exist yet.
+
+## The D-Bus service file
+
+One of those installs writes a file Appendix B did not. `DBusActivatable=true` in the desktop entry promises that a D-Bus service named after the application ID exists, and the desktop looks it up under `share/dbus-1/services/`. Create `flatpak/com.gtkx.tutorial.service`:
+
+```ini
+[D-BUS Service]
+Name=com.gtkx.tutorial
+Exec=/app/bin/gtkx-tutorial --gapplication-service
+```
+
+`Name` is the application ID, which is the bus name the desktop calls. `Exec` is the path the manifest installs the binary to, absolute because the desktop starts this process itself rather than through a shell. It ends in `--gapplication-service`, which makes the application register on the bus and wait instead of opening a window, so the **Mark Complete** button from [Reminders That Reach the Desktop](/tutorial/reminders) reaches a closed app.
+
+Ship it next to the desktop entry, not instead of it. Flatpak checks the promise when it exports the finished build: an app whose desktop entry sets `DBusActivatable=true` with no `share/dbus-1/services/com.gtkx.tutorial.service` beside it fails with `error: Desktop file D-Bus activatable, but service file not exported`, after every build command has already run.
 
 ## Building offline
 

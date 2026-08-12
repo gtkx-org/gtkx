@@ -54,8 +54,15 @@ and are regenerated whenever dependencies change.
 ## Adapting for your own app
 
 The application ID `com.gtkx.tutorial` appears in the manifest's `id`, the
-`.desktop` and `.metainfo.xml` files and their names, the gschema filename
-under `data/`, and the install paths in the manifest's build commands. Replace
-it throughout with your own reverse-DNS ID, rename the manifest's `command`
-(currently `gtkx-tutorial`) for your app, and update the identity fields in the
-metainfo (developer, homepage, screenshots) to point at your project.
+`.desktop`, `.service` and `.metainfo.xml` files and their names, the `Name` key
+of the service file, the gschema filename under `data/`, and the install paths
+in the manifest's build commands. Replace it throughout with your own
+reverse-DNS ID, rename the manifest's `command` (currently `gtkx-tutorial`)
+along with the `Exec` keys of the desktop entry and the service file, and update
+the identity fields in the metainfo (developer, homepage, screenshots) to point
+at your project.
+
+The service file is what makes `DBusActivatable=true` in the desktop entry true:
+`flatpak build-export` refuses to export an app whose desktop entry claims D-Bus
+activation without a matching `share/dbus-1/services/<app id>.service`, so both
+files ship together or neither does.
