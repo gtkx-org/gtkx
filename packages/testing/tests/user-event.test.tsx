@@ -58,6 +58,35 @@ const renderTextView = async (): Promise<Gtk.TextView> => {
     return screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
 };
 
+const typeOverTextViewSelection = async (text: string, length: number): Promise<Gtk.TextView> => {
+    const view = await renderTextView();
+    await userEvent.type(view, text);
+    const buffer = view.getBuffer();
+    buffer.selectRange(buffer.getIterAtOffset(0), buffer.getIterAtOffset(length));
+    await userEvent.type(view, "Z");
+
+    return view;
+};
+
+const renderUnfocusedEntry = async (name: string, text: string): Promise<Gtk.Entry> => {
+    await renderColumn(
+        <>
+            <GtkButton label="Focused first" />
+            <GtkEntry text={text} name={name} />
+        </>,
+    );
+
+    return screen.findByName(name, { as: Gtk.Entry });
+};
+
+const renderLockedSelectedEntry = async (): Promise<Gtk.Entry> => {
+    const entry = await renderTextBox("Locked");
+    entry.setEditable(false);
+    entry.selectRegion(0, "Locked".length);
+
+    return entry;
+};
+
 const renderDropDown = async (options: string[]): Promise<Gtk.Widget> => {
     await render(<GtkDropDown model={Gtk.StringList.new(options)} />);
 
@@ -338,20 +367,6 @@ describe("userEvent.type", () => {
         expect(editableText(entry)).toBe("Initial appended");
     });
 
-    it("focuses an entry it has not typed into before without replacing its text", async () => {
-        await renderColumn(
-            <>
-                <GtkButton label="Focused first" />
-                <GtkEntry text="Initial " name="unfocused" />
-            </>,
-        );
-
-        const entry = await screen.findByName("unfocused", { as: Gtk.Entry });
-        await userEvent.type(entry, "appended");
-        expect(editableText(entry)).toBe("Initial appended");
-        expect(entry.getDelegate()?.isFocus()).toBe(true);
-    });
-
     it("inserts at a collapsed initial selection", async () => {
         const entry = await renderTextBox("ac");
         await userEvent.type(entry, "b", { initialSelectionStart: 1 });
@@ -381,6 +396,23 @@ describe("userEvent.type", () => {
     });
 });
 
+describe("userEvent.type focus", () => {
+    it("focuses an entry it has not typed into before without replacing its text", async () => {
+        const entry = await renderUnfocusedEntry("unfocused", "Initial ");
+        await userEvent.type(entry, "appended");
+        expect(editableText(entry)).toBe("Initial appended");
+        expect(entry.getDelegate()?.isFocus()).toBe(true);
+    });
+
+    it("replaces the text GTK4 selects when the test tabs to an entry", async () => {
+        const entry = await renderUnfocusedEntry("tabbed", "Initial");
+        await userEvent.tab(entry);
+        expect(entry.getSelectionBounds()).toEqual([true, 0, "Initial".length]);
+        await userEvent.type(entry, "typed");
+        expect(editableText(entry)).toBe("typed");
+    });
+});
+
 describe("userEvent.type over a selection", () => {
     it("replaces the text selected through the keyboard", async () => {
         const entry = await renderTextBox();
@@ -400,25 +432,46 @@ describe("userEvent.type over a selection", () => {
     });
 
     it("replaces the text a text view has selected", async () => {
-        const view = await renderTextView();
-        await userEvent.type(view, "abcdef");
-        const buffer = view.getBuffer();
-        buffer.selectRange(buffer.getIterAtOffset(0), buffer.getIterAtOffset(6));
-        await userEvent.type(view, "Z");
+        const view = await typeOverTextViewSelection("abcdef", "abcdef".length);
         expect(bufferText(view)).toBe("Z");
     });
 
     it("leaves a non-editable widget's selected text alone", async () => {
-        const entry = await renderTextBox("Locked");
-        entry.setEditable(false);
-        entry.selectRegion(0, 6);
+        const entry = await renderLockedSelectedEntry();
+        await userEvent.type(entry, "Z");
+        expect(editableText(entry)).toBe("Locked");
+    });
+
+    it("leaves a non-editable text view's selected text alone", async () => {
+        const view = await renderTextView();
+        await userEvent.type(view, "Locked");
+        view.setEditable(false);
+        const buffer = view.getBuffer();
+        buffer.selectRange(buffer.getIterAtOffset(0), buffer.getIterAtOffset(6));
+        await userEvent.type(view, "Z");
+        expect(bufferText(view)).toBe("Locked");
+    });
+});
+
+describe("userEvent.type on an editable with no Gtk.Text delegate", () => {
+    it("replaces the text the widget has selected", async () => {
+        const entry = await renderTextBox("abcdef");
+        vi.spyOn(entry, "getDelegate").mockReturnValue(null);
+        entry.selectRegion(0, 3);
+        await userEvent.type(entry, "Z");
+        expect(editableText(entry)).toBe("Zdef");
+    });
+
+    it("leaves a non-editable widget's selected text alone", async () => {
+        const entry = await renderLockedSelectedEntry();
+        vi.spyOn(entry, "getDelegate").mockReturnValue(null);
         await userEvent.type(entry, "Z");
         expect(editableText(entry)).toBe("Locked");
     });
 });
 
 describe("userEvent.type undo after replacing a selection", () => {
-    it("keeps the replaced text of an entry on its undo stack", async () => {
+    it("undoes an entry's replacement one history entry at a time", async () => {
         const entry = await renderTextBox();
         await userEvent.type(entry, "hello");
         entry.selectRegion(0, 5);
@@ -430,15 +483,18 @@ describe("userEvent.type undo after replacing a selection", () => {
         expect(editableText(entry)).toBe("hello");
     });
 
-    it("keeps the replaced text of a text view on its undo stack", async () => {
-        const view = await renderTextView();
-        await userEvent.type(view, "hello");
-        const buffer = view.getBuffer();
-        buffer.selectRange(buffer.getIterAtOffset(0), buffer.getIterAtOffset(5));
-        await userEvent.type(view, "Z");
+    it("undoes a text view's replacement of several characters as two edits", async () => {
+        const view = await typeOverTextViewSelection("hello", "hello".length);
         expect(bufferText(view)).toBe("Z");
         await userEvent.keyboard(view, "{Control>}z{/Control}");
         expect(bufferText(view)).toBe("");
+        await userEvent.keyboard(view, "{Control>}z{/Control}");
+        expect(bufferText(view)).toBe("hello");
+    });
+
+    it("undoes a text view's replacement of a single character as one edit", async () => {
+        const view = await typeOverTextViewSelection("hello", 1);
+        expect(bufferText(view)).toBe("Zello");
         await userEvent.keyboard(view, "{Control>}z{/Control}");
         expect(bufferText(view)).toBe("hello");
     });
@@ -610,7 +666,7 @@ describe("userEvent clipboard", () => {
         expect(editableText(entry)).toBe("pasted literal");
     });
 
-    it("replaces the text the widget has selected, keeping it on the undo stack", async () => {
+    it("replaces the text an entry has selected, undoing the paste one history entry at a time", async () => {
         const { source } = await renderSelectedEntryPair("replace me");
         await userEvent.paste(source, "pasted");
         expect(editableText(source)).toBe("pasted");
@@ -618,6 +674,17 @@ describe("userEvent clipboard", () => {
         expect(editableText(source)).toBe("");
         await userEvent.keyboard(source, "{Control>}z{/Control}");
         expect(editableText(source)).toBe("replace me");
+    });
+
+    it("replaces the text a text view has selected, undoing the paste as one edit", async () => {
+        const view = await renderTextView();
+        await userEvent.type(view, "replace me");
+        const buffer = view.getBuffer();
+        buffer.selectRange(buffer.getIterAtOffset(0), buffer.getIterAtOffset("replace me".length));
+        await userEvent.paste(view, "pasted");
+        expect(bufferText(view)).toBe("pasted");
+        await userEvent.keyboard(view, "{Control>}z{/Control}");
+        expect(bufferText(view)).toBe("replace me");
     });
 
     describe("error handling", () => {

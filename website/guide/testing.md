@@ -52,7 +52,7 @@ import { rootElement } from "@gtkx/react";
 await render(<App />, { container: rootElement });
 ```
 
-Queries search every open toplevel, so dialogs and popovers are findable, and animations are disabled unless `areAnimationsEnabled: true` is passed. GTK4's select-on-focus is disabled too, so presenting the window leaves the text an entry already holds unselected, and a selection only ever comes from the test. `wrapper` mounts a context provider around the element; the remaining options are in the [`render` reference](/reference/@gtkx/testing/).
+Queries search every open toplevel, so dialogs and popovers are findable, and animations are disabled unless `areAnimationsEnabled: true` is passed. Presenting the harness window leaves the editable it focuses with its text unselected and its caret at the end, so a render on its own never selects anything; GTK4's own settings are untouched, so a widget the test focuses afterwards, by tabbing to it or by calling `grabFocus`, selects its text exactly as it does in the application. `wrapper` mounts a context provider around the element; the remaining options are in the [`render` reference](/reference/@gtkx/testing/).
 
 `screen` proxies to the most recent render and is the idiomatic way to query; `within(container)` scopes queries to a subtree, and `renderHook(callback)` tests a hook in isolation. Cleanup is automatic: every test starts from an empty display.
 
@@ -90,7 +90,7 @@ await userEvent.type(entry, "hello");
 await userEvent.keyboard(entry, "{Control>}a{/Control}");
 ```
 
-`userEvent.type` and `userEvent.paste` replace the text an editable widget has selected, as GTK4 does, and the replacement lands on the widget's undo stack like any other edit. Typing into an entry that has nothing selected appends, because `type` focuses it without selecting its text and puts the caret at the end; pass `initialSelectionStart` and `initialSelectionEnd` to type over a specific range instead.
+`userEvent.type` and `userEvent.paste` delete the text an editable widget has selected before inserting, as GTK4 does, and the replacement lands on the widget's undo stack like any other edit. Typing into a widget that has nothing selected appends, because `type` focuses it the way a click does, without selecting its text; pass `initialSelectionStart` and `initialSelectionEnd` to type over a specific range, or tab to the widget first to select its text the way GTK4 does on keyboard focus.
 
 `userEvent.click` on a list row changes the selection, on a `Gtk.TreeExpander` toggles expansion, and on a sortable column header sorts the view. Off-screen, `pointer` synthesizes left-button input only and `drag` refuses a `Gtk.Range`, so use `slide(range, value)` to move a slider. The full set of helpers is in the [`userEvent` reference](/reference/@gtkx/testing/).
 

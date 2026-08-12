@@ -13,7 +13,7 @@ import type { QueryMap, RenderOptions, ScreenshotOptions } from "./types.js";
 import { runInAct } from "./act.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
 import { scheduleAfterLayout } from "./frame-sync.js";
-import { createHarnessWindow } from "./harness-window.js";
+import { createHarnessWindow, presentHarnessWindow } from "./harness-window.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
@@ -149,21 +149,19 @@ const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | und
     },
 });
 
-const applyHarnessSettings = (areAnimationsEnabled: boolean): void => {
+const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
     const settings = Gtk.Settings.getDefault();
 
     if (settings) {
         settings.gtkEnableAnimations = areAnimationsEnabled;
-        settings.gtkEntrySelectOnFocus = false;
     }
 };
 
 /**
  * Renders a React element into a GTK4 widget tree and returns queries
  * scoped to it along with controls for rerendering and unmounting. When no
- * container is supplied, a harness window is created and presented. Animations stay off unless
- * `areAnimationsEnabled` is set, and GTK4's select-on-focus stays off, so presenting the window
- * leaves the text an entry already holds unselected.
+ * container is supplied, a harness window is created and presented, and the editable it hands the
+ * focus to keeps its text unselected, with its caret at the end.
  *
  * @param element The React element to render.
  * @param options Optional container, wrapper, custom queries, and other render settings.
@@ -174,7 +172,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     options?: RenderOptions<Q>,
 ): Promise<RenderResult<Q>> => {
     installErrorHandler();
-    applyHarnessSettings(options?.areAnimationsEnabled === true);
+    applyEnableAnimations(options?.areAnimationsEnabled === true);
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
     const resolved = resolveContainer(options?.container);
@@ -197,7 +195,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     };
 
     await update(wrap(element), root);
-    resolved.window?.present();
+    presentHarnessWindow(resolved.window);
     await flushLayout(resolved.window);
     const container = resolveResultContainer(resolved, options?.container, baseElement);
 
