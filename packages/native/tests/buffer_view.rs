@@ -3,11 +3,11 @@ use std::ffi::c_void;
 use napi::Env;
 use napi::bindgen_prelude::Unknown;
 use napi::sys::{TypedarrayType, napi_typedarray_type};
-use native::ffi::Stash;
 use native::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Encoder as _,
     EnumFlagsCodec, EnumFlagsKind, FloatCodec, IntegerCodec, Ownership,
 };
+use native::ffi::{Stash, StashStorage};
 use native::value::{TypedView, ViewKind};
 use test_support as helpers;
 
@@ -269,5 +269,95 @@ fn array_encode_checks_fixed_size_views_exactly() {
         )
         .expect_err("a fixed-size mismatch must fail");
         assert!(err.to_string().contains("exactly 4 elements"));
+    });
+}
+
+fn owned_storage_of(codec: &ArrayCodec, env: Env, view: Unknown<'_>) -> StashStorage {
+    let encoded = codec
+        .encode_owned(&env, view)
+        .expect("a view should encode into storage the stash owns");
+    let Stash::Storage(storage) = encoded else {
+        panic!("expected owned storage, got {encoded:?}");
+    };
+
+    storage
+}
+
+#[test]
+fn array_encode_owned_copies_a_view_out_of_the_javascript_buffer() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut data = vec![1u8, 2, 3, 4];
+        let source_ptr = data.as_mut_ptr().cast::<c_void>();
+        let view = view_over(&env, &mut data, 4, ViewKind::Uint8);
+        let storage = owned_storage_of(
+            &sized_array_of(Codec::Integer(IntegerCodec::U8), 1, Ownership::Borrowed),
+            env,
+            view,
+        );
+        assert_ne!(storage.ptr(), source_ptr);
+        data.fill(0);
+        assert_eq!(
+            unsafe { std::slice::from_raw_parts(storage.ptr().cast::<u8>(), 4) },
+            [1, 2, 3, 4]
+        );
+    });
+}
+
+#[test]
+fn array_encode_owned_keeps_the_element_alignment_of_the_view() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut data = vec![0u8; 16];
+        data[0] = 7;
+        let view = view_over(&env, &mut data, 2, ViewKind::Float64);
+        let storage = owned_storage_of(
+            &sized_array_of(Codec::Float(FloatCodec::F64), 1, Ownership::Borrowed),
+            env,
+            view,
+        );
+        assert_eq!(storage.ptr() as usize % size_of::<f64>(), 0);
+        assert_eq!(
+            unsafe { std::slice::from_raw_parts(storage.ptr().cast::<u8>(), 16) }[0],
+            7
+        );
+    });
+}
+
+#[test]
+fn array_encode_owned_still_rejects_a_mismatched_view() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut data = vec![0u8; 4];
+        let view = view_over(&env, &mut data, 4, ViewKind::Uint8);
+        let err = array_of(
+            Codec::BigInt(BigIntCodec::U64),
+            ArrayKind::Array,
+            Ownership::Borrowed,
+        )
+        .encode_owned(&env, view)
+        .expect_err("a mismatched view must fail to supply array elements");
+        assert!(err.to_string().contains("cannot supply"));
+    });
+}
+
+#[test]
+fn array_encode_owned_falls_back_to_the_plain_encoding_for_arrays() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let items = [
+            helpers::napi_mock::fake_double(9.0),
+            helpers::napi_mock::fake_double(8.0),
+        ];
+        let value = helpers::napi_mock::to_unknown(&env, helpers::napi_mock::fake_array(&items));
+        let storage = owned_storage_of(
+            &sized_array_of(Codec::Integer(IntegerCodec::U8), 1, Ownership::Borrowed),
+            env,
+            value,
+        );
+        assert_eq!(
+            unsafe { std::slice::from_raw_parts(storage.ptr().cast::<u8>(), 2) },
+            [9, 8]
+        );
     });
 }

@@ -35,7 +35,7 @@ pub struct CallbackValue {
     state_ptr: *mut c_void,
     has_user_data: bool,
     destroy_ptr: Option<*mut c_void>,
-    _owned_state: Option<Box<ClosureState>>,
+    held_state: Option<*mut ClosureState>,
     pending_transfer: Cell<Option<*mut ClosureState>>,
 }
 
@@ -52,7 +52,7 @@ impl CallbackValue {
             state_ptr,
             has_user_data,
             destroy_ptr,
-            _owned_state: owned_state,
+            held_state: owned_state.map(Box::into_raw),
             pending_transfer: Cell::new(None),
         }
     }
@@ -64,13 +64,16 @@ impl CallbackValue {
         state: Box<ClosureState>,
     ) -> Self {
         let state_ptr = Box::into_raw(state);
-        unsafe { (*state_ptr).data_ref() }.state_ptr.set(state_ptr);
+        unsafe {
+            (*state_ptr).data_ref().state_ptr.set(state_ptr);
+            (*state_ptr).hold();
+        }
         Self {
             fn_ptr,
             state_ptr: state_ptr.cast(),
             has_user_data,
             destroy_ptr,
-            _owned_state: None,
+            held_state: Some(state_ptr),
             pending_transfer: Cell::new(Some(state_ptr)),
         }
     }
@@ -94,15 +97,11 @@ impl CallbackValue {
 
 impl Drop for CallbackValue {
     fn drop(&mut self) {
-        let Some(state_ptr) = self.pending_transfer.take() else {
-            return;
-        };
-        let already_released = {
-            let data = unsafe { (*state_ptr).data_ref() };
-            data.is_oneshot && data.oneshot_fired.get()
-        };
-        if !already_released {
-            drop(unsafe { Box::from_raw(state_ptr) });
+        if let Some(state_ptr) = self.pending_transfer.take() {
+            unsafe { ClosureState::release(state_ptr) };
+        }
+        if let Some(state_ptr) = self.held_state {
+            unsafe { ClosureState::release(state_ptr) };
         }
     }
 }
@@ -134,6 +133,13 @@ macro_rules! ffi_numeric_with {
 }
 
 impl Stash {
+    pub fn lends_memory(&self) -> bool {
+        match self {
+            Self::Storage(storage) => !matches!(storage.data(), StashData::Unit),
+            _ => false,
+        }
+    }
+
     pub fn disarm_pending_transfer(&self) {
         match self {
             Self::Storage(storage) => storage.disarm_pending_transfer(),

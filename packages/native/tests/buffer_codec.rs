@@ -89,3 +89,39 @@ fn buffer_cannot_be_a_return_type() {
             .contains("Buffer codecs cannot be return codecs")
     );
 }
+
+#[test]
+fn buffer_encode_owned_copies_a_view_out_of_the_javascript_buffer() {
+    test_support::run(|| {
+        let env = napi_mock::fake_env();
+        let mut data = vec![3u8, 5, 7, 9];
+        let ptr = data.as_mut_ptr().cast::<c_void>();
+        let view = napi_mock::to_unknown(
+            &env,
+            napi_mock::fake_typed_array(napi::sys::TypedarrayType::uint8_array, ptr, 4, 0),
+        );
+        let encoded = BufferCodec
+            .encode_owned(&env, view)
+            .expect("a view should encode into storage the stash owns");
+        let Stash::Storage(storage) = encoded else {
+            panic!("expected owned storage, got {encoded:?}");
+        };
+        assert_ne!(storage.ptr(), ptr);
+        data.fill(0);
+        assert_eq!(
+            unsafe { std::slice::from_raw_parts(storage.ptr().cast::<u8>(), 4) },
+            [3, 5, 7, 9]
+        );
+    });
+}
+
+#[test]
+fn buffer_encode_owned_still_takes_a_numeric_address() {
+    test_support::run(|| {
+        let env = napi_mock::fake_env();
+        let encoded = BufferCodec
+            .encode_owned(&env, number(&env, 4096.0))
+            .expect("an address should encode");
+        assert!(matches!(encoded, Stash::Ptr(ptr) if ptr as usize == 4096));
+    });
+}

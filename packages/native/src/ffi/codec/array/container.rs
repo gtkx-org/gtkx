@@ -118,10 +118,11 @@ pub(super) trait ArrayContainer {
         &self,
         codec: &ArrayCodec,
         view: &TypedView,
+        encoding: ViewEncoding,
     ) -> anyhow::Result<ffi::Stash> {
         match self.buffer_view_support() {
             BufferViewSupport::Contiguous(expected_length) => {
-                codec.buffer_view_passthrough(view, expected_length)
+                codec.buffer_view_stash(view, expected_length, encoding)
             }
             BufferViewSupport::Rejected => {
                 anyhow::ensure!(
@@ -142,6 +143,12 @@ pub(super) trait ArrayContainer {
 pub(super) enum BufferViewSupport {
     Rejected,
     Contiguous(Option<usize>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ViewEncoding {
+    Passthrough,
+    Copy,
 }
 
 #[enum_dispatch(ArrayContainer)]
