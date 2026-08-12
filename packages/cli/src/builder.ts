@@ -4,6 +4,7 @@ import { type InlineConfig, mergeConfig, build as viteBuild } from "vite";
 import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxNative } from "./vite-plugins/native.js";
+import { gtkxSelfContained } from "./vite-plugins/self-contained.js";
 import { gtkxWorker } from "./vite-plugins/worker.js";
 
 type BuildOptions = {
@@ -79,7 +80,13 @@ const build = async (options: BuildOptions): Promise<string> => {
     const entryFileNames = bundleName(root);
 
     const forced: InlineConfig = {
-        plugins: [...gtkxVitePlugins(BUILD_MODE), gtkxWorker(), gtkxBuiltUrl(assetBase), gtkxNative(root)],
+        plugins: [
+            ...gtkxVitePlugins(BUILD_MODE),
+            gtkxWorker(),
+            gtkxBuiltUrl(assetBase),
+            gtkxNative(root),
+            gtkxSelfContained(),
+        ],
         build: {
             ssr: entry,
             assetsInlineLimit: 0,

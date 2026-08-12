@@ -154,6 +154,7 @@ describe("build (plugin order)", () => {
             "gtkx:worker",
             "gtkx:built-url",
             "gtkx:native",
+            "gtkx:self-contained",
         ]);
     });
 
@@ -174,6 +175,7 @@ describe("build (plugin order)", () => {
             "gtkx:worker",
             "gtkx:built-url",
             "gtkx:native",
+            "gtkx:self-contained",
         ]);
     });
 });
