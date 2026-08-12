@@ -1,5 +1,6 @@
 import type { InlineConfig, Plugin } from "vite";
-import { error } from "@gtkx/utils";
+import { error, warn } from "@gtkx/utils";
+import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
 import { createChangeQueue } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
@@ -21,7 +22,7 @@ type DevRunnerDeps = {
     quitDefaultApplication(): void;
     performRefresh: () => void;
     isRefreshBoundary(module: Record<string, unknown>): boolean;
-    readFileRevision(path: string): Promise<string | null>;
+    readFileRevision(path: string): Promise<string>;
     plugins(): Plugin[];
     log(message: string): void;
     exit(code: number): never;
@@ -42,6 +43,16 @@ type DevSession = {
     controller: ShutdownController;
     refreshTracker: RefreshTracker;
     failure: FailureTracker;
+};
+
+type SettledLoad = {
+    loadedExports: Record<string, unknown>;
+    isSettled: boolean;
+};
+
+type SettleAttempt = {
+    loadedExports: Record<string, unknown> | null;
+    module: DevServerChangedModule;
 };
 
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
@@ -88,6 +99,34 @@ const invalidateChangedModule = (session: DevSession, module: DevServerChangedMo
     }
 };
 
+const loadInvalidatedModule = (
+    session: DevSession,
+    changedPath: string,
+    module: DevServerChangedModule,
+): Promise<SettledLoad> =>
+    withExclusiveLoad(session.server, async () => {
+        const revision = await session.deps.readFileRevision(changedPath);
+        invalidateChangedModule(session, module);
+        const loadedExports = await session.server.ssrLoadModule(changedPath);
+        const settledRevision = await session.deps.readFileRevision(changedPath);
+
+        return { loadedExports, isSettled: settledRevision === revision };
+    });
+
+const settleAttempt = async (
+    session: DevSession,
+    changedPath: string,
+    module: DevServerChangedModule,
+): Promise<SettleAttempt> => {
+    const { loadedExports, isSettled } = await loadInvalidatedModule(session, changedPath, module);
+
+    if (isSettled) {
+        return { loadedExports, module };
+    }
+
+    return { loadedExports: null, module: session.server.moduleGraph.getModuleById(changedPath) ?? module };
+};
+
 const loadSettledExports = async (
     session: DevSession,
     changedPath: string,
@@ -95,16 +134,14 @@ const loadSettledExports = async (
 ): Promise<Record<string, unknown> | null> => {
     let module = changedModule;
 
-    for (let attempt = 0; attempt < LOAD_ATTEMPT_LIMIT; attempt++) {
-        invalidateChangedModule(session, module);
-        const revision = await session.deps.readFileRevision(changedPath);
-        const loadedExports = await session.server.ssrLoadModule(changedPath);
+    for (let round = 0; round < LOAD_ATTEMPT_LIMIT && !session.controller.isShuttingDown(); round++) {
+        const attempt = await settleAttempt(session, changedPath, module);
 
-        if ((await session.deps.readFileRevision(changedPath)) === revision) {
-            return loadedExports;
+        if (attempt.loadedExports) {
+            return attempt.loadedExports;
         }
 
-        module = session.server.moduleGraph.getModuleById(changedPath) ?? module;
+        module = attempt.module;
     }
 
     return null;
@@ -117,8 +154,12 @@ const refreshChangedModule = async (
 ): Promise<void> => {
     const loadedExports = await loadSettledExports(session, changedPath, changedModule);
 
+    if (session.controller.isShuttingDown()) {
+        return;
+    }
+
     if (!loadedExports) {
-        error(`Fast Refresh skipped: ${changedPath} kept changing while it was loading.`);
+        warn(`Fast Refresh skipped: ${changedPath} changed again while it was loading; reloading once it settles.`);
 
         return;
     }
@@ -171,9 +212,17 @@ const createShutdownController = (server: DevServer, deps: DevRunnerDeps): Shutd
 };
 
 const reloadChangedFile = async (session: DevSession, changedPath: string): Promise<void> => {
+    if (session.controller.isShuttingDown()) {
+        return;
+    }
+
     try {
         await handleFileChange(session, changedPath);
     } catch (error_) {
+        if (session.controller.isShuttingDown()) {
+            return;
+        }
+
         error("Hot reload failed:", error_);
     }
 };
@@ -182,10 +231,6 @@ const onFileChange = (session: DevSession): ((changedPath: string) => void) => {
     const queue = createChangeQueue((changedPath) => reloadChangedFile(session, changedPath));
 
     return (changedPath) => {
-        if (session.controller.isShuttingDown()) {
-            return;
-        }
-
         queue.enqueue(changedPath);
     };
 };
@@ -267,7 +312,7 @@ const connectApplication = async (session: DevSession, liveApplicationId: string
     deps.watchApplicationShutdown(onApplicationShutdown(session));
     const applicationId = (await deps.getConfiguredApplicationId(process.cwd())) ?? liveApplicationId;
     deps.log(`Connected application ID: ${applicationId}`);
-    await deps.startMcpClient(applicationId, (id) => server.ssrLoadModule(id));
+    await deps.startMcpClient(applicationId, (id) => loadModuleExclusively(server, id));
 };
 
 const connectRegisteredApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
@@ -313,7 +358,7 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
     session.deps.log(`Loading entry: ${entryPath}`);
 
     try {
-        await session.server.ssrLoadModule(entryPath);
+        await loadModuleExclusively(session.server, entryPath);
     } catch (error_) {
         session.failure.fail(error_);
     }

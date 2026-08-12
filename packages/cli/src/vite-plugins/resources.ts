@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { DATA_IMPORT_PREFIX, resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
+import { loadModuleExclusively } from "../internal/module-loads.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
@@ -123,7 +124,7 @@ const reregisterDevBundle = async (state: PluginState): Promise<void> => {
         return;
     }
 
-    const mod = await server.ssrLoadModule(VIRTUAL_INIT);
+    const mod = await loadModuleExclusively(server, VIRTUAL_INIT);
     const refresh: unknown = mod[REFRESH_EXPORT];
 
     if (isRefreshHook(refresh)) {

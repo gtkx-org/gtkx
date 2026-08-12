@@ -35,6 +35,10 @@ type LoadOverlap = {
     hasOverlapped: () => boolean;
 };
 
+type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
+type FakeLoad = Promise<Record<string, unknown>>;
+type InFlightLoads = Map<string, FakeLoad>;
+
 type HarnessMocks = {
     createServer: ReturnType<typeof vi.fn<DevRunnerDeps["createServer"]>>;
     startMcp: ReturnType<typeof vi.fn<DevRunnerDeps["startMcpClient"]>>;
@@ -278,30 +282,38 @@ const startDiskHarness = async (disk: FakeDisk): Promise<Harness> => {
     return harness;
 };
 
+const emitChangeAndSettle = async (harness: Harness, file: string): Promise<void> => {
+    harness.server.watcher.emit("change", file);
+    await settleQueue();
+};
+
+const committedRevision = (harness: Harness): unknown => harness.isBoundary.mock.calls.at(-1)?.[0].revision;
+
+const installedTestingLoader = (harness: Harness): LoadAppModule => {
+    const [, loadAppModule] = harness.startMcp.mock.calls[0] ?? [];
+
+    if (!loadAppModule) {
+        throw new Error("startMcpClient was never called");
+    }
+
+    return loadAppModule;
+};
+
 const trackLoadsWithLateSave = (harness: Harness, disk: FakeDisk, lateRevision: string): string[] => {
     const loads: string[] = [];
 
     harness.server.ssrLoadModule.mockImplementation(() => {
-        loads.push(disk.read());
+        const revision = disk.read();
+        loads.push(revision);
 
         if (loads.length === 1) {
             disk.write(lateRevision);
         }
 
-        return Promise.resolve({ isBoundary: true });
+        return Promise.resolve({ isBoundary: true, revision });
     });
 
     return loads;
-};
-
-const trackCommittedRevision = (harness: Harness, loads: string[]): (() => string | undefined) => {
-    let committed: string | undefined;
-
-    harness.performRefresh.mockImplementation(() => {
-        committed = loads.at(-1);
-    });
-
-    return () => committed;
 };
 
 const trackLoadOverlap = (harness: Harness): LoadOverlap => {
@@ -320,15 +332,96 @@ const trackLoadOverlap = (harness: Harness): LoadOverlap => {
     return { hasOverlapped: () => hasOverlapped };
 };
 
-const saveOnEveryLoad = (harness: Harness, disk: FakeDisk): void => {
+const saveOnEveryLoad = (harness: Harness, disk: FakeDisk): (() => void) => {
     let saves = 1;
+    let isChurning = true;
 
     harness.server.ssrLoadModule.mockImplementation(() => {
-        saves += 1;
-        disk.write(`MARKER ${String(saves)}`);
+        const revision = disk.read();
 
-        return Promise.resolve({ isBoundary: true });
+        if (isChurning) {
+            saves += 1;
+            disk.write(`MARKER ${String(saves)}`);
+        }
+
+        return Promise.resolve({ isBoundary: true, revision });
     });
+
+    return () => {
+        isChurning = false;
+    };
+};
+
+const loadAfter = async (gate: Promise<null>, revision: string): Promise<Record<string, unknown>> => {
+    await gate;
+
+    return { isBoundary: true, revision };
+};
+
+const forgetLoad = async (inFlight: InFlightLoads, id: string, load: FakeLoad): Promise<void> => {
+    await load;
+    inFlight.delete(id);
+};
+
+const dedupeConcurrentLoads = (harness: Harness, disk: FakeDisk): (() => void) => {
+    const inFlight: InFlightLoads = new Map();
+    const firstLoad = Promise.withResolvers<null>();
+    let isFirstLoad = true;
+
+    harness.server.ssrLoadModule.mockImplementation((id) => {
+        const running = inFlight.get(id);
+
+        if (running) {
+            return running;
+        }
+
+        const gate = isFirstLoad ? firstLoad.promise : Promise.resolve(null);
+        isFirstLoad = false;
+        const load = loadAfter(gate, disk.read());
+        inFlight.set(id, load);
+        void forgetLoad(inFlight, id, load);
+
+        return load;
+    });
+
+    return () => {
+        firstLoad.resolve(null);
+    };
+};
+
+const shutDownWhileLoading = (harness: Harness, onSignal: OnSignal): void => {
+    harness.server.ssrLoadModule.mockImplementation(async () => {
+        await onSignal();
+
+        return { isBoundary: true };
+    });
+};
+
+const shutDownWhileSaving = (harness: Harness, disk: FakeDisk, onSignal: OnSignal): (() => number) => {
+    let loads = 0;
+
+    harness.server.ssrLoadModule.mockImplementation(async () => {
+        loads += 1;
+        const revision = disk.read();
+        disk.write(`MARKER ${String(loads + 1)}`);
+        await onSignal();
+
+        return { isBoundary: true, revision };
+    });
+
+    return () => loads;
+};
+
+const failLoadsWhileShuttingDown = (harness: Harness, onSignal: OnSignal): (() => number) => {
+    let loads = 0;
+
+    harness.server.ssrLoadModule.mockImplementation(async () => {
+        loads += 1;
+        await onSignal();
+        throw new Error("PROBE: the dev server is closed");
+    });
+
+    return () => loads;
 };
 
 const startFailedHarness = async (cause: Error): Promise<Harness> => {
@@ -753,10 +846,9 @@ describe("createDevRunner (saves that land while a module is loading)", () => {
         const disk = createFakeDisk("MARKER 1");
         const harness = await startDiskHarness(disk);
         const loads = trackLoadsWithLateSave(harness, disk, "MARKER 2");
-        const committedRevision = trackCommittedRevision(harness, loads);
-        await emitChangeAndFlush(harness, WATCHED_FILE, 2);
+        await emitChangeAndSettle(harness, WATCHED_FILE);
         expect(loads).toEqual(["MARKER 1", "MARKER 2"]);
-        expect(committedRevision()).toBe(disk.read());
+        expect(committedRevision(harness)).toBe(disk.read());
         expect(loggedMessages(harness).filter((m) => m.includes("Fast Refresh complete"))).toHaveLength(1);
     });
 
@@ -774,16 +866,96 @@ describe("createDevRunner (saves that land while a module is loading)", () => {
         expect(harness.performRefresh).toHaveBeenCalledTimes(1);
     });
 
-    it("reports a file that never settles instead of announcing a Fast Refresh", async () => {
+    it("warns instead of announcing a Fast Refresh, then commits the revision the next event reports", async () => {
         const stderrSpy = captureStderr();
         const disk = createFakeDisk("MARKER 1");
         const harness = await startDiskHarness(disk);
-        saveOnEveryLoad(harness, disk);
-        await emitChangeAndFlush(harness, WATCHED_FILE, 2);
+        const stopSaving = saveOnEveryLoad(harness, disk);
+        await emitChangeAndSettle(harness, WATCHED_FILE);
+        const written = collectLogged(stderrSpy);
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        expect(written).toContain("changed again while it was loading");
+        expect(loggedMessages(harness).some((m) => m.includes("Fast Refresh complete"))).toBe(false);
+        stopSaving();
+        await emitChangeAndSettle(harness, WATCHED_FILE);
+        stderrSpy.mockRestore();
+        expect(committedRevision(harness)).toBe(disk.read());
+        expect(loggedMessages(harness).filter((m) => m.includes("Fast Refresh complete"))).toHaveLength(1);
+    });
+});
+
+describe("createDevRunner (loads other callers start)", () => {
+    it("waits for a load another caller already has in flight instead of committing its module", async () => {
+        const disk = createFakeDisk("MARKER 1");
+        const harness = await startDiskHarness(disk);
+        const releaseFirstLoad = dedupeConcurrentLoads(harness, disk);
+        const testingLoad = installedTestingLoader(harness)(WATCHED_FILE);
+        disk.write("MARKER 2");
+        await emitChangeAndSettle(harness, WATCHED_FILE);
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        releaseFirstLoad();
+        await testingLoad;
+        await settleQueue();
+        expect(committedRevision(harness)).toBe("MARKER 2");
+        expect(loggedMessages(harness).filter((m) => m.includes("Fast Refresh complete"))).toHaveLength(1);
+    });
+});
+
+describe("createDevRunner (a revision the runner cannot confirm)", () => {
+    it("reports a revision it cannot read instead of committing a module it cannot confirm", async () => {
+        const stderrSpy = captureStderr();
+
+        const harness = buildHarness({
+            applicationId: "com.example.app",
+            readFileRevision: () => Promise.reject(new Error("PROBE: revision read failed")),
+        });
+
+        await startRunner(harness);
+        harness.server.moduleGraph.getModuleById.mockReturnValue({ importers: new Set<object>() });
+        harness.server.ssrLoadModule.mockResolvedValue({ isBoundary: true });
+        await emitChangeAndSettle(harness, WATCHED_FILE);
         const written = collectLogged(stderrSpy);
         stderrSpy.mockRestore();
         expect(harness.performRefresh).not.toHaveBeenCalled();
-        expect(written).toContain("kept changing while it was loading");
+        expect(written).toContain("Hot reload failed:");
+        expect(written).toContain("PROBE: revision read failed");
         expect(loggedMessages(harness).some((m) => m.includes("Fast Refresh complete"))).toBe(false);
+    });
+});
+
+describe("createDevRunner (changes queued while the session is shutting down)", () => {
+    it("drops queued changes once the session starts shutting down", async () => {
+        const harness = await startAppHarness();
+        harness.server.moduleGraph.getModuleById.mockReturnValue({ importers: new Set<object>() });
+        shutDownWhileLoading(harness, installedSignalHandler(harness));
+        harness.server.watcher.emit("change", WATCHED_FILE);
+        harness.server.watcher.emit("change", "/x/queued-after.tsx");
+        await settleQueue();
+        expect(harness.server.moduleGraph.getModuleById).not.toHaveBeenCalledWith("/x/queued-after.tsx");
+    });
+
+    it("stops retrying a file that is still being saved instead of warning during teardown", async () => {
+        const stderrSpy = captureStderr();
+        const disk = createFakeDisk("MARKER 1");
+        const harness = await startDiskHarness(disk);
+        const loads = shutDownWhileSaving(harness, disk, installedSignalHandler(harness));
+        await emitChangeAndSettle(harness, WATCHED_FILE);
+        const written = collectLogged(stderrSpy);
+        stderrSpy.mockRestore();
+        expect(loads()).toBe(1);
+        expect(written).not.toContain("Fast Refresh skipped");
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+    });
+
+    it("keeps a load that fails because the server closed off stderr", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startAppHarness();
+        harness.server.moduleGraph.getModuleById.mockReturnValue({ importers: new Set<object>() });
+        const loads = failLoadsWhileShuttingDown(harness, installedSignalHandler(harness));
+        await emitChangeAndSettle(harness, WATCHED_FILE);
+        const written = collectLogged(stderrSpy);
+        stderrSpy.mockRestore();
+        expect(loads()).toBe(1);
+        expect(written).not.toContain("Hot reload failed");
     });
 });

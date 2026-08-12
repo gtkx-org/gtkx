@@ -208,6 +208,30 @@ describe("defaultDevRunnerDeps (getConfiguredApplicationId)", () => {
     });
 });
 
+describe("defaultDevRunnerDeps (readFileRevision)", () => {
+    let root: string;
+
+    beforeEach(() => {
+        root = mkdtempSync(join(tmpdir(), "gtkx-runner-revision-"));
+    });
+
+    afterEach(() => {
+        rmSync(root, { recursive: true, force: true });
+    });
+
+    it("resolves the current contents of the changed file", async () => {
+        const file = join(root, "app.tsx");
+        writeFileSync(file, "export const marker = 1;\n");
+        const deps = defaultDevRunnerDeps();
+        await expect(deps.readFileRevision(file)).resolves.toBe("export const marker = 1;\n");
+    });
+
+    it("rejects instead of reporting an unreadable file as unchanged", async () => {
+        const deps = defaultDevRunnerDeps();
+        await expect(deps.readFileRevision(join(root, "gone.tsx"))).rejects.toThrow(/ENOENT/);
+    });
+});
+
 describe("defaultDevRunnerDeps (log and exit)", () => {
     it("forwards log messages through the output sink with the [gtkx] prefix", () => {
         const deps = defaultDevRunnerDeps();

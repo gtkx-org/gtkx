@@ -29,13 +29,7 @@ const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => 
     return applicationId;
 };
 
-const readFileRevision = async (path: string): Promise<string | null> => {
-    try {
-        return await readFile(path, "utf8");
-    } catch {
-        return null;
-    }
-};
+const readFileRevision = (path: string): Promise<string> => readFile(path, "utf8");
 
 const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     createServer,

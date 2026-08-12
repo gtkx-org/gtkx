@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
+import { withExclusiveLoad } from "../../src/internal/module-loads.js";
 import {
     BUNDLE_FILENAME,
     REFRESH_EXPORT,
@@ -288,6 +289,27 @@ describe("gtkxResources (watcher: change event)", () => {
         async () => {
             const { assetPath, server, refresh } = await setupTrackedAssetServer("icon.png");
             server.watcher.emit("change", assetPath);
+            await waitTicks();
+            expect(server.ssrLoadModule).toHaveBeenCalledWith(VIRTUAL_INIT);
+            expect(refresh).toHaveBeenCalled();
+        },
+    );
+});
+
+describe("gtkxResources (watcher: a load another caller holds)", () => {
+    setupTmpDir();
+
+    it.skipIf(!hasGlibCompileResources())(
+        "re-registers only once the load the dev runner started has finished",
+        async () => {
+            const { assetPath, server, refresh } = await setupTrackedAssetServer("shared.png");
+            const runnerLoad = Promise.withResolvers<null>();
+            const heldLoad = withExclusiveLoad(server, () => runnerLoad.promise);
+            server.watcher.emit("change", assetPath);
+            await waitTicks();
+            expect(server.ssrLoadModule).not.toHaveBeenCalled();
+            runnerLoad.resolve(null);
+            await heldLoad;
             await waitTicks();
             expect(server.ssrLoadModule).toHaveBeenCalledWith(VIRTUAL_INIT);
             expect(refresh).toHaveBeenCalled();
