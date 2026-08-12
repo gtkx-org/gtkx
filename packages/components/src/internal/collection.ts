@@ -71,7 +71,7 @@ function createCollection(collectionModel: CollectionModel, index: CollectionInd
         model: collectionModel.model,
         expansion: collectionModel.expansion,
         isTree: index.isTree,
-        rowAt: (position) => (index.isTree ? collectionModel.rowAt(position) : null),
+        rowAt: collectionModel.rowAt,
         itemAt: (ref) => index.itemAt(ref.store.path, ref.slot),
         sectionFor: index.sectionFor,
         idAt: (position) => idAt(collectionModel, index, position),

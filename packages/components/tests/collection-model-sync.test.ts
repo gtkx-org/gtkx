@@ -1,4 +1,4 @@
-import type { ListItem } from "@gtkx/components";
+import type { ListItem, ListSection } from "@gtkx/components";
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
@@ -36,6 +36,16 @@ const longTree = (): ListItem[] => [branch("a", [leaf("a0")]), leaf("b"), leaf("
 const stub = (id: string): ListItem => branch(id, [leaf(`${id}-child`)]);
 const nested = (id: string): ListItem => branch(id, [stub(`${id}-child`)]);
 const rootPathAt = (slot: number): string => encodePart("0") + encodePart(String(slot));
+const sectionPathAt = (group: number, slot: number): string => encodePart(String(group)) + encodePart(String(slot));
+const sectionAt = (data: ListItem[], group: number): ListSection => ({ id: `s-${String(group)}`, value: group, data });
+
+const sectionIndex = (groups: ListItem[][]): CollectionIndex =>
+    createCollectionIndex(
+        undefined,
+        groups.map((data, group) => sectionAt(data, group)),
+        false,
+    );
+
 const stubs = (count: number): ListItem[] => Array.from({ length: count }, (_, slot) => stub(`b-${String(slot)}`));
 
 const kids = (id: string, count: number): ListItem[] =>
@@ -126,6 +136,14 @@ const expandEveryRow = (collectionModel: CollectionModel, index: CollectionIndex
     });
 
     adoptOrder(collectionModel.expansion, order);
+};
+
+const expandedSections = (groups: ListItem[][]): CollectionModel => {
+    const index = sectionIndex(groups);
+    const collectionModel = syncedModel(index);
+    expandEveryRow(collectionModel, index);
+
+    return collectionModel;
 };
 
 const levelTrimCost = (count: number): number => {
@@ -234,6 +252,28 @@ describe("createCollectionModel - expansion pruning", () => {
 
     it("trims every expanded level in time linear in the number of levels", () => {
         expectLinearScaling(levelTrimCost);
+    });
+});
+
+describe("createCollectionModel - section trees", () => {
+    it("keeps a section's expanded row when another section arrives", () => {
+        const collectionModel = expandedSections([[stub("a")]]);
+        expect(collectionModel.model.getNItems()).toBe(2);
+        collectionModel.sync(sectionIndex([[stub("a")], [leaf("b")]]));
+        expect(collectionModel.model.getNItems()).toBe(3);
+        expect(isRowExpandedAt(collectionModel, 0)).toBe(true);
+        expect([...collectionModel.expansion.expanded]).toEqual([sectionPathAt(0, 0)]);
+    });
+
+    it("drops a removed section's expanded paths and rebuilds it collapsed", () => {
+        const collectionModel = expandedSections([[leaf("a")], [stub("b")]]);
+        expect([...collectionModel.expansion.expanded]).toEqual([sectionPathAt(1, 0)]);
+        collectionModel.sync(sectionIndex([[leaf("a")]]));
+        expect([...collectionModel.expansion.expanded]).toEqual([]);
+        collectionModel.sync(sectionIndex([[leaf("a")], [stub("b")]]));
+        expect([...collectionModel.expansion.expanded]).toEqual([]);
+        expect(isRowExpandedAt(collectionModel, 1)).toBe(false);
+        expect(collectionModel.model.getNItems()).toBe(2);
     });
 });
 

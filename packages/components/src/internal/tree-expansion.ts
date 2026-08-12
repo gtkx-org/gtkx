@@ -87,12 +87,6 @@ function markExpanded(expansion: TreeExpansion, path: string, isExpanded: boolea
     prunePath(expansion, path);
 }
 
-function resetExpansion(expansion: TreeExpansion): void {
-    expansion.expanded = new Set();
-    expansion.slots = new Map();
-    expansion.order = null;
-}
-
 function adoptIndex(expansion: TreeExpansion, index: CollectionIndex): void {
     expansion.index = index;
     expansion.order = null;
@@ -105,6 +99,5 @@ export {
     markExpanded,
     orderFor,
     pruneSlots,
-    resetExpansion,
     type TreeExpansion,
 };

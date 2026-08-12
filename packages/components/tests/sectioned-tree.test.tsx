@@ -11,9 +11,20 @@ import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
 type Named = { name: string };
 
+type ListDraw = {
+    groups: ListSection<string, Named>[];
+    expandedIds: string[];
+    selectedIds?: string[] | undefined;
+};
+
+type ListHandlers = {
+    onExpandedChange?: ((ids: string[]) => void) | undefined;
+    onSelectionChanged?: ((ids: string[]) => void) | undefined;
+};
+
 type ListFixture = {
     ref: RefObject<Gtk.ListView | null>;
-    addSection: () => Promise<void>;
+    to: (next: ListDraw) => Promise<void>;
 };
 
 const firstSection: ListSection<string, Named> = {
@@ -32,8 +43,11 @@ const sections: ListSection<string, Named>[] = [firstSection, secondSection];
 const firstSectionOnly: ListSection<string, Named>[] = [firstSection];
 const columns: ColumnViewColumn<Named>[] = [{ id: "name", title: "Name", renderCell: renderItem }];
 const soloSectionRows = ["H:One", "Parent 1", "Child 1", "Child 2", "Solo 1"];
+const soloCollapsedRows = ["H:One", "Parent 1", "Solo 1"];
 const firstExpandedRows = [...soloSectionRows, "H:Two", "Solo 2", "Parent 2"];
-const secondExpandedRows = ["H:One", "Parent 1", "Solo 1", "H:Two", "Solo 2", "Parent 2", "Child 3"];
+const collapsedRows = ["H:One", "Parent 1", "Solo 1", "H:Two", "Solo 2", "Parent 2"];
+const secondExpandedRows = [...collapsedRows, "Child 3"];
+const soloPosition = 1;
 const expandedColumnRows = ["Name", "Parent 1", "Child 1", "Child 2", "Solo 1", "Solo 2", "Parent 2"];
 
 const expanderNamed = (name: string): Gtk.TreeExpander =>
@@ -47,18 +61,16 @@ const columnRowTexts = (): (string | null)[] =>
         .flatMap((row) => within(row).queryAllByRole(Gtk.AccessibleRole.LABEL))
         .map((label) => getWidgetText(label));
 
-const drawList = (
-    ref: RefObject<Gtk.ListView | null>,
-    groups: ListSection<string, Named>[],
-    expandedIds: string[],
-    onExpandedChange?: (ids: string[]) => void,
-): ReactNode => (
+const drawList = (ref: RefObject<Gtk.ListView | null>, draw: ListDraw, handlers: ListHandlers): ReactNode => (
     <ScrollWrapper minContentHeight={500}>
         <ListView<Named, string>
             ref={ref}
-            sections={groups}
-            expandedIds={expandedIds}
-            onExpandedChange={onExpandedChange}
+            sections={draw.groups}
+            expandedIds={draw.expandedIds}
+            selectedIds={draw.selectedIds}
+            selectionMode={Gtk.SelectionMode.MULTIPLE}
+            onExpandedChange={handlers.onExpandedChange}
+            onSelectionChanged={handlers.onSelectionChanged}
             renderItem={renderItem}
             renderHeader={renderHeader}
         />
@@ -81,22 +93,36 @@ const renderList = async (
     expandedIds: string[],
     onExpandedChange?: (ids: string[]) => void,
 ): Promise<RefObject<Gtk.ListView | null>> => {
-    const ref = createRef<Gtk.ListView>();
-    await render(drawList(ref, sections, expandedIds, onExpandedChange));
+    const { ref } = await renderFixture({ groups: sections, expandedIds }, { onExpandedChange });
 
     return ref;
 };
 
-const renderGrowingList = async (): Promise<ListFixture> => {
+const renderFixture = async (draw: ListDraw, handlers: ListHandlers = {}): Promise<ListFixture> => {
     const ref = createRef<Gtk.ListView>();
-    const { rerender } = await render(drawList(ref, firstSectionOnly, ["p1"]));
+    const { rerender } = await render(drawList(ref, draw, handlers));
 
     return {
         ref,
-        addSection: async () => {
-            await rerender(drawList(ref, sections, ["p1"]));
+        to: async (next) => {
+            await rerender(drawList(ref, next, handlers));
         },
     };
+};
+
+const renderFirstSection = (handlers: ListHandlers = {}, selectedIds?: string[]): Promise<ListFixture> =>
+    renderFixture({ groups: firstSectionOnly, expandedIds: ["p1"], selectedIds }, handlers);
+
+const selectedPositions = (ref: RefObject<Gtk.ListView | null>): number[] => {
+    const model = ref.current?.getModel();
+
+    if (!(model instanceof Gtk.MultiSelection)) {
+        throw new TypeError("Expected the list to carry a multi selection");
+    }
+
+    const selection = model.getSelection();
+
+    return Array.from({ length: Number(selection.getSize()) }, (_, entry) => selection.getNth(entry));
 };
 
 function leaf(id: string, name: string): ListItem<Named> {
@@ -137,10 +163,48 @@ describe("sectioned tree - ListView (1)", () => {
 
 describe("sectioned tree - ListView (2)", () => {
     it("keeps a nested row expanded when a section is added", async () => {
-        const { ref, addSection } = await renderGrowingList();
+        const { ref, to } = await renderFirstSection();
         await expectRowTexts(ref, soloSectionRows);
-        await addSection();
+        await to({ groups: sections, expandedIds: ["p1"] });
         await expectRowTexts(ref, firstExpandedRows);
+    });
+
+    it("collapses a nested row when a section arrives and expandedIds empties", async () => {
+        const onExpandedChange = vi.fn();
+        const { ref, to } = await renderFirstSection({ onExpandedChange });
+        await to({ groups: sections, expandedIds: [] });
+        await expectRowTexts(ref, collapsedRows);
+
+        await waitFor(() => {
+            expect(onExpandedChange).toHaveBeenLastCalledWith([]);
+        });
+    });
+
+    it("moves the expansion into the section that just arrived", async () => {
+        const { ref, to } = await renderFirstSection();
+        await to({ groups: sections, expandedIds: ["p2"] });
+        await expectRowTexts(ref, secondExpandedRows);
+    });
+
+    it("collapses a nested row when a section is dropped and expandedIds empties", async () => {
+        const { ref, to } = await renderFixture({ groups: sections, expandedIds: ["p1"] });
+        await expectRowTexts(ref, firstExpandedRows);
+        await to({ groups: firstSectionOnly, expandedIds: [] });
+        await expectRowTexts(ref, soloCollapsedRows);
+    });
+});
+
+describe("sectioned tree - ListView (3)", () => {
+    it("selects the row named by selectedIds after a section arrives", async () => {
+        const onSelectionChanged = vi.fn();
+        const { ref, to } = await renderFirstSection({ onSelectionChanged }, []);
+        await to({ groups: sections, expandedIds: [], selectedIds: ["x1"] });
+        await expectRowTexts(ref, collapsedRows);
+
+        await waitFor(() => {
+            expect(selectedPositions(ref)).toEqual([soloPosition]);
+            expect(onSelectionChanged).toHaveBeenLastCalledWith(["x1"]);
+        });
     });
 
     it("reports onExpandedChange when a sectioned row is expanded", async () => {
