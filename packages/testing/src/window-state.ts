@@ -1,5 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
 
+const WINDOW_NOT_ALLOCATED = "it was never allocated a size";
+const WINDOW_NOT_ACTIVATED = "it never became active";
+const NO_WINDOW_ACTIVATED = "no window of the application ever became active";
+
 const canDisplayDeliverActivation = (window: Gtk.Window): boolean => window.getDisplay().getDefaultSeat() !== null;
 const isWindow = (widget: Gtk.Widget): widget is Gtk.Window => widget instanceof Gtk.Window;
 
@@ -36,14 +40,29 @@ const isGrabHeldOver = (window: Gtk.Window, modal: Gtk.Window): boolean =>
 const isWindowBlockedByModal = (window: Gtk.Window): boolean =>
     mappedToplevels().some((toplevel) => toplevel.getModal() && isGrabHeldOver(window, toplevel));
 
-const isWindowUsable = (window: Gtk.Window): boolean => isWindowAllocated(window) && isWindowActivated(window);
+const findPresentedWindowFailure = (window: Gtk.Window): string | null => {
+    if (!isWindowAllocated(window)) {
+        return WINDOW_NOT_ALLOCATED;
+    }
+
+    return isWindowActivated(window) ? null : WINDOW_NOT_ACTIVATED;
+};
+
+const findRenderedWindowFailure = (window: Gtk.Window): string | null => {
+    if (!isWindowAllocated(window)) {
+        return WINDOW_NOT_ALLOCATED;
+    }
+
+    return isDisplayActivated(window) ? null : NO_WINDOW_ACTIVATED;
+};
 
 export {
     activeToplevel,
+    findPresentedWindowFailure,
+    findRenderedWindowFailure,
     isDisplayActivated,
     isWindowActivated,
     isWindowAllocated,
     isWindowBlockedByModal,
-    isWindowUsable,
     mappedToplevels,
 };
