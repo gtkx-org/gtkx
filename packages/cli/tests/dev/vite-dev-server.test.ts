@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { createServer, type Plugin, type ViteDevServer } from "vite";
 import { describe, expect, it } from "vitest";
 import { createDevServerConfig } from "../../src/dev/vite-dev-server.js";
@@ -9,6 +9,10 @@ const BURST_WRITES = 20;
 const BURST_INTERVAL_MS = 10;
 const QUIET_PERIOD_MS = 400;
 const WATCH_TEST_TIMEOUT_MS = 30_000;
+const LIFECYCLE_WAIT_MS = WATCH_TEST_TIMEOUT_MS / 4;
+const WATCH_EVENTS = ["add", "change", "unlink"] as const;
+const THEME_SOURCE = "export const marker = 'dark';\n";
+const IMPORTING_APP = "import { marker as theme } from './theme.js';\nexport const marker = theme;\n";
 
 const isKeptInternal = (patterns: RegExp[], id: string): boolean => patterns.some((pattern) => pattern.test(id));
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -38,7 +42,7 @@ const watchProbe = async (probe: (server: ViteDevServer, root: string) => Promis
     const server = await createServer({ ...createDevServerConfig(root, []), logLevel: "silent" });
 
     try {
-        await waitUntil(() => isWatching(server, "app.tsx"), WATCH_TEST_TIMEOUT_MS / 3);
+        await waitUntil(() => isWatching(server, "app.tsx"), WATCH_TEST_TIMEOUT_MS / 2);
         await probe(server, root);
     } finally {
         await server.close();
@@ -55,34 +59,84 @@ const reportedRevisions = async (): Promise<string[]> => {
         });
 
         await burstWrites(join(root, "app.tsx"));
-        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 3);
+        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 2);
         await delay(QUIET_PERIOD_MS);
     });
 
     return reported;
 };
 
-const observedLifecycle = async (): Promise<string[]> => {
-    const observed: string[] = [];
+const collectEvents = (server: ViteDevServer): string[] => {
+    const events: string[] = [];
+
+    for (const event of WATCH_EVENTS) {
+        server.watcher.on(event, (path: string) => {
+            events.push(`${event} ${basename(path)}`);
+        });
+    }
+
+    return events;
+};
+
+const invalidateWithImporters = (server: ViteDevServer, id: string): void => {
+    const module = server.moduleGraph.getModuleById(id);
+
+    if (!module) {
+        return;
+    }
+
+    server.moduleGraph.invalidateModule(module);
+
+    for (const importer of module.importers) {
+        server.moduleGraph.invalidateModule(importer);
+    }
+};
+
+const reloadModule = async (server: ViteDevServer, id: string): Promise<string> => {
+    invalidateWithImporters(server, id);
+
+    try {
+        const loaded: Record<string, unknown> = await server.ssrLoadModule(id);
+
+        return String(loaded.marker);
+    } catch (error) {
+        return error instanceof Error ? error.message : String(error);
+    }
+};
+
+const reloadsAcrossMissingImport = async (): Promise<string[]> => {
+    const reloads: string[] = [];
+
+    await watchProbe(async (server, root) => {
+        const app = join(root, "app.tsx");
+        const events = collectEvents(server);
+        reloads.push(await reloadModule(server, app));
+        writeFileSync(app, IMPORTING_APP);
+        await waitUntil(() => events.includes("change app.tsx"), LIFECYCLE_WAIT_MS);
+        reloads.push(await reloadModule(server, app));
+        writeFileSync(join(root, "theme.ts"), THEME_SOURCE);
+        await waitUntil(() => events.includes("add theme.ts"), LIFECYCLE_WAIT_MS);
+        reloads.push(await reloadModule(server, app));
+    });
+
+    return reloads;
+};
+
+const removedModuleReport = async (): Promise<{ events: string[]; isStillKnown: boolean }> => {
+    const report = { events: [] as string[], isStillKnown: false };
 
     await watchProbe(async (server, root) => {
         const dependency = join(root, "theme.ts");
-
-        server.watcher.on("add", () => {
-            observed.push("add");
-        });
-
-        server.watcher.on("unlink", () => {
-            observed.push("unlink");
-        });
-
-        writeFileSync(dependency, marker(1));
-        await waitUntil(() => observed.includes("add"), WATCH_TEST_TIMEOUT_MS / 3);
+        report.events = collectEvents(server);
+        writeFileSync(dependency, THEME_SOURCE);
+        await waitUntil(() => report.events.includes("add theme.ts"), LIFECYCLE_WAIT_MS);
+        await server.ssrLoadModule(dependency);
         rmSync(dependency);
-        await waitUntil(() => observed.includes("unlink"), WATCH_TEST_TIMEOUT_MS / 3);
+        await waitUntil(() => report.events.includes("unlink theme.ts"), LIFECYCLE_WAIT_MS);
+        report.isStillKnown = Boolean(server.moduleGraph.getModuleById(dependency));
     });
 
-    return observed;
+    return report;
 };
 
 describe("createDevServerConfig", () => {
@@ -139,10 +193,24 @@ describe("createDevServerConfig", () => {
 
 describe("createDevServerConfig (the watcher it configures)", () => {
     it(
-        "reports files created and deleted after startup, not only saves of files it already knew",
+        "reports a file created after startup and loads the import that was missing until it appeared",
         { timeout: WATCH_TEST_TIMEOUT_MS },
         async () => {
-            expect(await observedLifecycle()).toEqual(["add", "unlink"]);
+            expect(await reloadsAcrossMissingImport()).toEqual([
+                "0",
+                expect.stringContaining("Does the file exist?"),
+                "dark",
+            ]);
+        },
+    );
+
+    it(
+        "reports a deleted file while its module is still on the graph, so the runner can act on it",
+        { timeout: WATCH_TEST_TIMEOUT_MS },
+        async () => {
+            const report = await removedModuleReport();
+            expect(report.events).toEqual(["add theme.ts", "unlink theme.ts"]);
+            expect(report.isStillKnown).toBe(true);
         },
     );
 });

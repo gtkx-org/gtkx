@@ -84,6 +84,9 @@ type OnCause = (cause: unknown) => void;
 const ENTRY = "/abs/src/main.tsx";
 const PARKED = "Waiting for a change to restart the application...";
 const WATCHED_FILE = "/x/component.tsx";
+const MISSING_FILE = "/x/theme.ts";
+const UNRELATED_FILE = "/x/scratch.log";
+const RESOLVE_FAILURE = "PROBE: Failed to load url ./theme.js";
 const SETTLE_ROUNDS = 8;
 
 const PLUGIN_NAMES = [
@@ -421,9 +424,21 @@ const emitWatchEventAndSettle = async (
 
 const failResolveOnSave = async (harness: Harness, importerPath: string): Promise<void> => {
     defineModule(harness, importerPath);
-    harness.server.loads.next(() => Promise.reject(new Error("PROBE: Failed to load url ./theme.js")));
+    harness.server.loads.next(() => Promise.reject(new Error(RESOLVE_FAILURE)));
     await emitChangeAndSettle(harness, importerPath);
 };
+
+const startWithFailedSave = async (): Promise<Harness> => {
+    const stderrSpy = captureStderr();
+    const harness = await startAppHarness();
+    await failResolveOnSave(harness, WATCHED_FILE);
+    stderrSpy.mockRestore();
+
+    return harness;
+};
+
+const createdFileLogs = (harness: Harness): string[] =>
+    loggedMessages(harness).filter((message) => message.includes("File created"));
 
 const committedRevision = (harness: Harness): unknown => harness.isBoundary.mock.calls.at(-1)?.[0].revision;
 
@@ -982,16 +997,24 @@ describe("createDevRunner (files that disappear)", () => {
 });
 
 describe("createDevRunner (files that appear)", () => {
-    it("restarts when the file a failed import asked for finally appears", async () => {
-        const stderrSpy = captureStderr();
-        const harness = await startAppHarness();
-        await failResolveOnSave(harness, WATCHED_FILE);
-        const written = collectLogged(stderrSpy);
-        stderrSpy.mockRestore();
-        expect(written).toContain("Hot reload failed:");
+    it("applies the save that failed once the file its import asked for appears", async () => {
+        const harness = await startWithFailedSave();
+        harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
+        await emitWatchEventAndSettle(harness, "add", MISSING_FILE);
+        const messages = loggedMessages(harness);
+        expect(messages.some((m) => m.includes(`File created: ${MISSING_FILE}`))).toBe(true);
+        expect(messages.filter((m) => m.includes(`File changed: ${WATCHED_FILE}`))).toHaveLength(2);
+        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
         expect(harness.exit).not.toHaveBeenCalled();
-        await emitWatchEventAndSettle(harness, "add", "/x/theme.ts");
-        expect(loggedMessages(harness).some((m) => m.includes("File created: /x/theme.ts"))).toBe(true);
+        expect(harness.server.close).not.toHaveBeenCalled();
+    });
+
+    it("restarts when the save the appearing file unblocks is not a refresh boundary", async () => {
+        const harness = await startWithFailedSave();
+        harness.server.loads.next(() => Promise.resolve({}));
+        await emitWatchEventAndSettle(harness, "add", MISSING_FILE);
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
     });
 
@@ -999,27 +1022,77 @@ describe("createDevRunner (files that appear)", () => {
         const stderrSpy = captureStderr();
         const harness = await startWithFailingEntry(new Error("PROBE: entry blew up"));
         stderrSpy.mockRestore();
-        await emitWatchEventAndSettle(harness, "add", "/x/theme.ts");
+        await emitWatchEventAndSettle(harness, "add", MISSING_FILE);
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
     });
 
     it("leaves a healthy session alone when an unrelated file appears", async () => {
         const harness = await startAppHarness();
         await emitBoundaryChange(harness, WATCHED_FILE);
-        await emitWatchEventAndSettle(harness, "add", "/x/scratch.log");
+        await emitWatchEventAndSettle(harness, "add", UNRELATED_FILE);
+        expect(createdFileLogs(harness)).toEqual([]);
         expect(harness.exit).not.toHaveBeenCalled();
         expect(harness.server.close).not.toHaveBeenCalled();
     });
 
     it("stops holding a save against the session once the same file reloads", async () => {
-        const stderrSpy = captureStderr();
-        const harness = await startAppHarness();
-        await failResolveOnSave(harness, WATCHED_FILE);
+        const harness = await startWithFailedSave();
         harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
         await emitChangeAndSettle(harness, WATCHED_FILE);
-        stderrSpy.mockRestore();
-        await emitWatchEventAndSettle(harness, "add", "/x/scratch.log");
+        await emitWatchEventAndSettle(harness, "add", UNRELATED_FILE);
         expect(harness.performRefresh).toHaveBeenCalledTimes(1);
+        expect(createdFileLogs(harness)).toEqual([]);
+        expect(harness.exit).not.toHaveBeenCalled();
+    });
+});
+
+describe("createDevRunner (saves that never reached the application)", () => {
+    it("keeps the running application when an unrelated file appears after a failed save", async () => {
+        const harness = await startWithFailedSave();
+        const stderrSpy = captureStderr();
+        harness.server.loads.next(() => Promise.reject(new Error(RESOLVE_FAILURE)));
+        await emitWatchEventAndSettle(harness, "add", UNRELATED_FILE);
+        const written = collectLogged(stderrSpy);
+        stderrSpy.mockRestore();
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
+        expect(written).not.toContain("Hot reload failed:");
+    });
+
+    it("recovers a save an unrelated file could not fix once the right file appears", async () => {
+        const harness = await startWithFailedSave();
+        harness.server.loads.next(() => Promise.reject(new Error(RESOLVE_FAILURE)));
+        await emitWatchEventAndSettle(harness, "add", UNRELATED_FILE);
+        harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
+        await emitWatchEventAndSettle(harness, "add", MISSING_FILE);
+        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
+        expect(harness.exit).not.toHaveBeenCalled();
+    });
+
+    it("applies a save that failed on another file's error instead of restarting a healthy application", async () => {
+        const harness = await startWithFailedSave();
+        await emitBoundaryChange(harness, MISSING_FILE);
+        harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
+        await emitWatchEventAndSettle(harness, "add", UNRELATED_FILE);
+        expect(harness.performRefresh).toHaveBeenCalledTimes(2);
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
+    });
+
+    it("retries the save it could not settle when a file appears", async () => {
+        const stderrSpy = captureStderr();
+        const disk = createFakeDisk("MARKER 1");
+        const harness = await startDiskHarness(disk);
+        const stopSaving = saveOnEveryLoad(harness, disk);
+        await emitChangeAndSettle(harness, WATCHED_FILE);
+        const written = collectLogged(stderrSpy);
+        stderrSpy.mockRestore();
+        expect(written).toContain("did not settle in 5 attempts");
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        stopSaving();
+        await emitWatchEventAndSettle(harness, "add", MISSING_FILE);
+        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
+        expect(committedRevision(harness)).toBe(disk.read());
         expect(harness.exit).not.toHaveBeenCalled();
     });
 });

@@ -49,7 +49,7 @@ type DevSession = {
     controller: ShutdownController;
     refreshTracker: RefreshTracker;
     failure: FailureTracker;
-    failedPaths: Set<string>;
+    pendingSaves: Set<string>;
 };
 
 type SettledLoad = {
@@ -186,6 +186,7 @@ const refreshChangedModule = async (
     }
 
     if (!loadedExports) {
+        session.pendingSaves.add(changedPath);
         warn(`Fast Refresh skipped: ${changedPath} ${SKIP_REASON}`);
 
         return;
@@ -197,6 +198,7 @@ const refreshChangedModule = async (
         return;
     }
 
+    session.pendingSaves.delete(changedPath);
     session.deps.log("Running Fast Refresh...");
     session.deps.performRefresh();
     session.deps.log("Fast Refresh complete");
@@ -220,15 +222,44 @@ const handleFileChange = async (session: DevSession, changedPath: string): Promi
     await refreshChangedModule(session, changedPath, module);
 };
 
-const isSessionStale = (session: DevSession): boolean => session.failure.isDown() || session.failedPaths.size > 0;
+const retryPendingSave = async (session: DevSession, changedPath: string): Promise<void> => {
+    session.pendingSaves.delete(changedPath);
+
+    try {
+        await handleFileChange(session, changedPath);
+    } catch {
+        session.pendingSaves.add(changedPath);
+    }
+};
+
+const retryPendingSaves = async (session: DevSession): Promise<void> => {
+    const pending = [...session.pendingSaves];
+
+    for (const changedPath of pending) {
+        if (session.controller.isShuttingDown()) {
+            return;
+        }
+
+        await retryPendingSave(session, changedPath);
+    }
+};
 
 const handleFileCreate = async (session: DevSession, createdPath: string): Promise<void> => {
-    if (!isSessionStale(session)) {
+    const isSessionDown = session.failure.isDown();
+
+    if (!isSessionDown && session.pendingSaves.size === 0) {
         return;
     }
 
     session.deps.log(`File created: ${createdPath}`);
-    await requestRestart(session);
+
+    if (isSessionDown) {
+        await requestRestart(session);
+
+        return;
+    }
+
+    await retryPendingSaves(session);
 };
 
 const handleFileRemove = async (session: DevSession, removedPath: string): Promise<void> => {
@@ -270,6 +301,14 @@ const createShutdownController = (server: DevServer, deps: DevRunnerDeps): Shutd
     };
 };
 
+const reportFailedChange = (session: DevSession, change: WatchedChange, cause: unknown): void => {
+    if (change.event === "change") {
+        session.pendingSaves.add(change.path);
+    }
+
+    error("Hot reload failed:", cause);
+};
+
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
     if (session.controller.isShuttingDown()) {
         return;
@@ -277,14 +316,12 @@ const applyChange = async (session: DevSession, change: WatchedChange): Promise<
 
     try {
         await dispatchChange(session, change);
-        session.failedPaths.delete(change.path);
     } catch (error_) {
         if (session.controller.isShuttingDown()) {
             return;
         }
 
-        session.failedPaths.add(change.path);
-        error("Hot reload failed:", error_);
+        reportFailedChange(session, change, error_);
     }
 };
 
@@ -474,7 +511,7 @@ const createSession = (server: DevServer, deps: DevRunnerDeps): DevSession => {
         failure: createFailureTracker((cause) => {
             announceFailure(server, cause);
         }, refreshTracker.isRefreshing),
-        failedPaths: new Set(),
+        pendingSaves: new Set(),
     };
 };
 
