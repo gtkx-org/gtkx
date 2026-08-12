@@ -6,8 +6,10 @@ use napi_derive::napi;
 
 use super::bind::CallDescriptor;
 use super::native_result;
-use crate::ffi::codec::{Codec, Decoder as _, Encoder as _};
+use crate::ffi::closure::ClosureState;
+use crate::ffi::codec::{CallbackScope, Codec, Decoder as _, Encoder as _};
 use crate::ffi::{self};
+use crate::value::{ClosureHandle, TypedView};
 
 fn execute_call<'e>(
     env: &'e Env,
@@ -57,8 +59,53 @@ fn execute_call<'e>(
 
     release_sized_array_return(return_codec, &result);
 
+    let retained = retain_async_arguments(env, arg_codecs, values, stashes)
+        .with_context(|| format!("retaining the arguments of {label}"));
+
     ref_updates?;
+    retained?;
     return_value
+}
+
+fn async_callback_index(arg_codecs: &[Codec]) -> Option<usize> {
+    arg_codecs.iter().position(
+        |codec| matches!(codec, Codec::Callback(callback) if callback.scope == CallbackScope::Async),
+    )
+}
+
+/// Hands the marshalled arguments the lifetime an async-scoped callback declares. The callee keeps
+/// reading them on its own schedule long after the entry point returned, so everything the call
+/// borrowed out to it moves into the closure and is released only once the closure has run.
+fn retain_async_arguments(
+    env: &Env,
+    arg_codecs: &[Codec],
+    values: &[Unknown<'_>],
+    stashes: Vec<ffi::Stash>,
+) -> anyhow::Result<()> {
+    let Some(index) = async_callback_index(arg_codecs) else {
+        return Ok(());
+    };
+    let Some(ffi::Stash::Callback(callback)) = stashes.get(index) else {
+        return Ok(());
+    };
+    let state = callback.state_ptr().cast::<ClosureState>();
+
+    if state.is_null() {
+        return Ok(());
+    }
+
+    let data = unsafe { (*state).data_ref() };
+    for value in values {
+        if TypedView::from_unknown(env, *value)?.is_some() {
+            data.retain_value(ClosureHandle::from_js_value(env, value)?);
+        }
+    }
+    for (i, stash) in stashes.into_iter().enumerate() {
+        if i != index {
+            data.retain_container(stash);
+        }
+    }
+    Ok(())
 }
 
 fn release_sized_array_return(return_codec: &Codec, result: &ffi::Stash) {

@@ -78,6 +78,7 @@ pub struct ClosureData {
     retained_strings: RefCell<HashMap<CString, *mut c_char>>,
     retained_containers: RefCell<Vec<Stash>>,
     retained_transfers: RefCell<Vec<crate::ffi::PendingTransfer>>,
+    retained_values: RefCell<Vec<ClosureHandle>>,
 }
 
 impl ClosureData {
@@ -102,6 +103,7 @@ impl ClosureData {
             retained_strings: RefCell::new(HashMap::new()),
             retained_containers: RefCell::new(Vec::new()),
             retained_transfers: RefCell::new(Vec::new()),
+            retained_values: RefCell::new(Vec::new()),
         }
     }
 }
@@ -476,6 +478,13 @@ impl ClosureData {
 
     pub fn retain_container(&self, stash: Stash) {
         self.retained_containers.borrow_mut().push(stash);
+    }
+
+    /// Holds a strong JavaScript reference for as long as this closure lives, so memory the
+    /// marshalling handed the callee by pointer instead of by copy cannot be collected while the
+    /// callee still reads it.
+    pub fn retain_value(&self, value: ClosureHandle) {
+        self.retained_values.borrow_mut().push(value);
     }
 
     fn retain_transfer(&self, transfer: crate::ffi::PendingTransfer) {
