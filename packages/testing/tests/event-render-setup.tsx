@@ -30,6 +30,18 @@ type RenderedDragAndDropPair = {
     target: Gtk.Widget;
 };
 
+type ShortcutHostOptions = {
+    trigger: Gtk.ShortcutTrigger;
+    isSensitive?: boolean;
+    phase?: Gtk.PropagationPhase;
+    children?: ReactNode;
+};
+
+type RenderedShortcutHost = {
+    host: Gtk.Widget;
+    onActivate: Mock<() => boolean>;
+};
+
 async function renderClickButton(label = "Click me"): Promise<RenderedClickButton> {
     const handleClick = vi.fn();
     await render(<GtkButton label={label} onClicked={handleClick} />);
@@ -53,28 +65,25 @@ async function renderGesturedLabel(
     return screen.findByName(name);
 }
 
-async function renderShortcutHost(
-    trigger: Gtk.ShortcutTrigger,
-    didActivate: () => boolean,
-    isSensitive = true,
-    children: ReactNode = <GtkLabel>anchor</GtkLabel>,
-): Promise<Gtk.Widget> {
+async function renderShortcutHost(options: ShortcutHostOptions): Promise<RenderedShortcutHost> {
+    const onActivate = vi.fn(() => true);
+
     await render(
         <GtkBox
             name="host"
-            sensitive={isSensitive}
+            sensitive={options.isSensitive ?? true}
             controllers={(
                 <GtkShortcutController
-                    scope={Gtk.ShortcutScope.GLOBAL}
-                    shortcuts={<GtkShortcut trigger={trigger} action={Gtk.CallbackAction.new(didActivate)} />}
+                    propagationPhase={options.phase}
+                    shortcuts={<GtkShortcut trigger={options.trigger} action={Gtk.CallbackAction.new(onActivate)} />}
                 />
             )}
         >
-            {children}
+            {options.children ?? <GtkLabel>anchor</GtkLabel>}
         </GtkBox>,
     );
 
-    return screen.findByName("host");
+    return { host: await screen.findByName("host"), onActivate };
 }
 
 async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<RenderedDragAndDropPair> {

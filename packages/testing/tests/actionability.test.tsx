@@ -183,8 +183,8 @@ describe("userEvent actionability - insensitive keyboard targets", () => {
     setupShortTimeout();
 
     it("rejects keyboard input on an insensitive shortcut host without activating shortcuts", async () => {
-        const onActivate = vi.fn(() => true);
-        const host = await renderShortcutHost(Gtk.ShortcutTrigger.parseString("F5"), onActivate, false);
+        const trigger = Gtk.ShortcutTrigger.parseString("F5");
+        const { host, onActivate } = await renderShortcutHost({ trigger, isSensitive: false });
         await expect(userEvent.keyboard(host, "{F5}")).rejects.toThrow(NOT_SENSITIVE_PATTERN);
         expect(onActivate).not.toHaveBeenCalled();
     });
