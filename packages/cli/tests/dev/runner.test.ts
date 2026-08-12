@@ -6,6 +6,22 @@ import { collectLogged, type StderrSpy } from "../stderr-text.js";
 
 type ChangeListener = (changedPath: string) => void;
 
+type FakeModule = {
+    importers: Set<object>;
+    ssrModule: Record<string, unknown> | null;
+    ssrTransformResult: object | null;
+};
+
+type FakeModules = Map<string, FakeModule>;
+type FakeExports = Record<string, unknown>;
+type LoadHandler = (id: string) => Promise<FakeExports>;
+
+type LoadPlan = {
+    next: (handler: LoadHandler) => void;
+    always: (handler: LoadHandler) => void;
+    take: () => LoadHandler;
+};
+
 type FakeServer = DevServer & {
     close: ReturnType<typeof vi.fn<DevServer["close"]>>;
     moduleGraph: {
@@ -15,6 +31,9 @@ type FakeServer = DevServer & {
     ssrLoadModule: ReturnType<typeof vi.fn<DevServer["ssrLoadModule"]>>;
     ssrFixStacktrace: ReturnType<typeof vi.fn<DevServer["ssrFixStacktrace"]>>;
     watcher: ChangeEmitter;
+    modules: FakeModules;
+    loads: LoadPlan;
+    deduped: string[];
 };
 
 type HarnessOverrides = {
@@ -31,13 +50,7 @@ type FakeDisk = {
     write: (revision: string) => void;
 };
 
-type LoadOverlap = {
-    hasOverlapped: () => boolean;
-};
-
-type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
-type FakeLoad = Promise<Record<string, unknown>>;
-type InFlightLoads = Map<string, FakeLoad>;
+type LoadAppModule = (id: string) => Promise<FakeExports>;
 
 type HarnessMocks = {
     createServer: ReturnType<typeof vi.fn<DevRunnerDeps["createServer"]>>;
@@ -79,17 +92,105 @@ const PLUGIN_NAMES = [
     "gtkx:react-dom-prebundle",
 ];
 
-const createFakeServer = (overrides: Partial<FakeServer> = {}): FakeServer => ({
-    close: vi.fn<DevServer["close"]>(() => Promise.resolve()),
-    moduleGraph: {
-        getModuleById: vi.fn<DevServer["moduleGraph"]["getModuleById"]>(),
-        invalidateModule: vi.fn<DevServer["moduleGraph"]["invalidateModule"]>(),
-    },
-    ssrLoadModule: vi.fn<DevServer["ssrLoadModule"]>(() => Promise.resolve({})),
-    ssrFixStacktrace: vi.fn<DevServer["ssrFixStacktrace"]>(),
-    watcher: new ChangeEmitter(),
-    ...overrides,
-});
+const loadNothing: LoadHandler = () => Promise.resolve({});
+
+const createLoadPlan = (): LoadPlan => {
+    const queued: LoadHandler[] = [];
+    let fallback = loadNothing;
+
+    return {
+        next: (handler) => {
+            queued.push(handler);
+        },
+        always: (handler) => {
+            fallback = handler;
+        },
+        take: () => queued.shift() ?? fallback,
+    };
+};
+
+const invalidateFakeModule = (modules: FakeModules, invalidated: object): void => {
+    for (const module of modules.values()) {
+        if (module !== invalidated) {
+            continue;
+        }
+
+        module.ssrModule = null;
+        module.ssrTransformResult = null;
+    }
+};
+
+const transformFakeModule = (modules: FakeModules, id: string): void => {
+    const module = modules.get(id);
+
+    if (module) {
+        module.ssrTransformResult = { id };
+    }
+};
+
+const runFakeLoad = async (modules: FakeModules, handler: LoadHandler, id: string): Promise<FakeExports> => {
+    const loadedExports = await handler(id);
+    const module = modules.get(id);
+
+    if (module) {
+        module.ssrModule = loadedExports;
+    }
+
+    return loadedExports;
+};
+
+const forgetWhenDone = async (
+    inFlight: Map<string, Promise<FakeExports>>,
+    id: string,
+    load: Promise<FakeExports>,
+): Promise<FakeExports> => {
+    try {
+        return await load;
+    } finally {
+        inFlight.delete(id);
+    }
+};
+
+const createFakeServer = (): FakeServer => {
+    const modules: FakeModules = new Map();
+    const inFlight: Map<string, Promise<FakeExports>> = new Map();
+    const loads = createLoadPlan();
+    const deduped: string[] = [];
+
+    const startLoad = (id: string): Promise<FakeExports> => {
+        transformFakeModule(modules, id);
+        const load = forgetWhenDone(inFlight, id, runFakeLoad(modules, loads.take(), id));
+        inFlight.set(id, load);
+
+        return load;
+    };
+
+    return {
+        close: vi.fn<DevServer["close"]>(() => Promise.resolve()),
+        moduleGraph: {
+            getModuleById: vi.fn<DevServer["moduleGraph"]["getModuleById"]>((id) => modules.get(id)),
+            invalidateModule: vi.fn<DevServer["moduleGraph"]["invalidateModule"]>((invalidated) => {
+                invalidateFakeModule(modules, invalidated);
+            }),
+        },
+        ssrLoadModule: vi.fn<DevServer["ssrLoadModule"]>((id) => {
+            const running = inFlight.get(id);
+
+            if (!running) {
+                return startLoad(id);
+            }
+
+            deduped.push(id);
+
+            return running;
+        }),
+        ssrFixStacktrace: vi.fn<DevServer["ssrFixStacktrace"]>(),
+        watcher: new ChangeEmitter(),
+        modules,
+        loads,
+        deduped,
+    };
+};
 
 const buildMocks = (server: FakeServer, overrides: HarnessOverrides): HarnessMocks => ({
     createServer: vi.fn<DevRunnerDeps["createServer"]>(() => Promise.resolve(server)),
@@ -176,16 +277,28 @@ const emitChangeAndFlush = async (harness: Harness, file: string, ticks: number)
     }
 };
 
+const defineModule = (harness: Harness, id: string, overrides: Partial<FakeModule> = {}): FakeModule => {
+    const module: FakeModule = {
+        importers: new Set<object>(),
+        ssrModule: null,
+        ssrTransformResult: null,
+        ...overrides,
+    };
+
+    harness.server.modules.set(id, module);
+
+    return module;
+};
+
 const startWithFailingEntry = async (cause: Error): Promise<Harness> => {
     const harness = buildHarness({ applicationId: "com.example.app" });
-    harness.server.ssrLoadModule.mockRejectedValueOnce(cause);
+    harness.server.loads.next(() => Promise.reject(cause));
     await startRunner(harness);
 
     return harness;
 };
 
 const startWithUnknownModule = async (harness: Harness, file: string): Promise<void> => {
-    harness.server.moduleGraph.getModuleById.mockReturnValueOnce(undefined);
     await startRunner(harness);
     await emitChangeAndFlush(harness, file, 1);
 };
@@ -231,8 +344,8 @@ const installedUncaughtErrorHandler = (harness: Harness): OnCause => {
 };
 
 const emitBoundaryChange = async (harness: Harness, file: string): Promise<void> => {
-    harness.server.moduleGraph.getModuleById.mockReturnValueOnce({ importers: new Set<object>() });
-    harness.server.ssrLoadModule.mockResolvedValueOnce({ isBoundary: true });
+    defineModule(harness, file);
+    harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
     await emitChangeAndFlush(harness, file, 2);
 };
 
@@ -277,7 +390,8 @@ const startDiskHarness = async (disk: FakeDisk): Promise<Harness> => {
     });
 
     await startRunner(harness);
-    harness.server.moduleGraph.getModuleById.mockReturnValue({ importers: new Set<object>() });
+    defineModule(harness, WATCHED_FILE);
+    harness.server.loads.always(() => Promise.resolve({ isBoundary: true, revision: disk.read() }));
 
     return harness;
 };
@@ -302,7 +416,7 @@ const installedTestingLoader = (harness: Harness): LoadAppModule => {
 const trackLoadsWithLateSave = (harness: Harness, disk: FakeDisk, lateRevision: string): string[] => {
     const loads: string[] = [];
 
-    harness.server.ssrLoadModule.mockImplementation(() => {
+    harness.server.loads.always(() => {
         const revision = disk.read();
         loads.push(revision);
 
@@ -316,27 +430,11 @@ const trackLoadsWithLateSave = (harness: Harness, disk: FakeDisk, lateRevision: 
     return loads;
 };
 
-const trackLoadOverlap = (harness: Harness): LoadOverlap => {
-    let activeLoads = 0;
-    let hasOverlapped = false;
-
-    harness.server.ssrLoadModule.mockImplementation(async () => {
-        activeLoads += 1;
-        hasOverlapped ||= activeLoads > 1;
-        await settleTimers();
-        activeLoads -= 1;
-
-        return { isBoundary: true };
-    });
-
-    return { hasOverlapped: () => hasOverlapped };
-};
-
 const saveOnEveryLoad = (harness: Harness, disk: FakeDisk): (() => void) => {
     let saves = 1;
     let isChurning = true;
 
-    harness.server.ssrLoadModule.mockImplementation(() => {
+    harness.server.loads.always(() => {
         const revision = disk.read();
 
         if (isChurning) {
@@ -352,45 +450,23 @@ const saveOnEveryLoad = (harness: Harness, disk: FakeDisk): (() => void) => {
     };
 };
 
-const loadAfter = async (gate: Promise<null>, revision: string): Promise<Record<string, unknown>> => {
-    await gate;
+const holdNextLoad = (harness: Harness, disk: FakeDisk): (() => void) => {
+    const gate = Promise.withResolvers<null>();
 
-    return { isBoundary: true, revision };
-};
+    harness.server.loads.next(async () => {
+        const revision = disk.read();
+        await gate.promise;
 
-const forgetLoad = async (inFlight: InFlightLoads, id: string, load: FakeLoad): Promise<void> => {
-    await load;
-    inFlight.delete(id);
-};
-
-const dedupeConcurrentLoads = (harness: Harness, disk: FakeDisk): (() => void) => {
-    const inFlight: InFlightLoads = new Map();
-    const firstLoad = Promise.withResolvers<null>();
-    let isFirstLoad = true;
-
-    harness.server.ssrLoadModule.mockImplementation((id) => {
-        const running = inFlight.get(id);
-
-        if (running) {
-            return running;
-        }
-
-        const gate = isFirstLoad ? firstLoad.promise : Promise.resolve(null);
-        isFirstLoad = false;
-        const load = loadAfter(gate, disk.read());
-        inFlight.set(id, load);
-        void forgetLoad(inFlight, id, load);
-
-        return load;
+        return { isBoundary: true, revision };
     });
 
     return () => {
-        firstLoad.resolve(null);
+        gate.resolve(null);
     };
 };
 
 const shutDownWhileLoading = (harness: Harness, onSignal: OnSignal): void => {
-    harness.server.ssrLoadModule.mockImplementation(async () => {
+    harness.server.loads.always(async () => {
         await onSignal();
 
         return { isBoundary: true };
@@ -400,7 +476,7 @@ const shutDownWhileLoading = (harness: Harness, onSignal: OnSignal): void => {
 const shutDownWhileSaving = (harness: Harness, disk: FakeDisk, onSignal: OnSignal): (() => number) => {
     let loads = 0;
 
-    harness.server.ssrLoadModule.mockImplementation(async () => {
+    harness.server.loads.always(async () => {
         loads += 1;
         const revision = disk.read();
         disk.write(`MARKER ${String(loads + 1)}`);
@@ -415,7 +491,7 @@ const shutDownWhileSaving = (harness: Harness, disk: FakeDisk, onSignal: OnSigna
 const failLoadsWhileShuttingDown = (harness: Harness, onSignal: OnSignal): (() => number) => {
     let loads = 0;
 
-    harness.server.ssrLoadModule.mockImplementation(async () => {
+    harness.server.loads.always(async () => {
         loads += 1;
         await onSignal();
         throw new Error("PROBE: the dev server is closed");
@@ -592,7 +668,7 @@ describe("createDevRunner (a component that throws)", () => {
         const stderrSpy = captureStderr();
         const harness = await startFailedHarness(new Error("boom"));
         const loadsBefore = harness.server.ssrLoadModule.mock.calls.length;
-        harness.server.moduleGraph.getModuleById.mockReturnValueOnce({ importers: new Set<object>() });
+        defineModule(harness, "/x/y.ts");
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
         stderrSpy.mockRestore();
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(loadsBefore);
@@ -696,7 +772,7 @@ describe("createDevRunner (an application that died before the runner attached)"
         });
 
         await startRunner(harness);
-        harness.server.moduleGraph.getModuleById.mockReturnValueOnce({ importers: new Set<object>() });
+        defineModule(harness, "/x/y.ts");
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
         stderrSpy.mockRestore();
         expect(harness.performRefresh).not.toHaveBeenCalled();
@@ -805,10 +881,9 @@ describe("createDevRunner (file watcher dispatch)", () => {
         const harness = buildHarness();
         const importerA = { id: "a" };
         const importerB = { id: "b" };
-        const module = { id: "/x/y.ts", importers: new Set([importerA, importerB]) };
         await startRunner(harness);
-        harness.server.moduleGraph.getModuleById.mockReturnValueOnce(module);
-        harness.server.ssrLoadModule.mockResolvedValueOnce({ isBoundary: true });
+        const module = defineModule(harness, "/x/y.ts", { importers: new Set([importerA, importerB]) });
+        harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
         expect(harness.server.moduleGraph.invalidateModule).toHaveBeenCalledWith(module);
         expect(harness.server.moduleGraph.invalidateModule).toHaveBeenCalledWith(importerA);
@@ -818,10 +893,9 @@ describe("createDevRunner (file watcher dispatch)", () => {
 
     it("requests a full restart via exit(RESTART_EXIT_CODE) when the new module is not a boundary", async () => {
         const harness = buildHarness();
-        const module = { id: "/x/y.ts", importers: new Set<object>() };
         await startRunner(harness);
-        harness.server.moduleGraph.getModuleById.mockReturnValueOnce(module);
-        harness.server.ssrLoadModule.mockResolvedValueOnce({});
+        defineModule(harness, "/x/y.ts");
+        harness.server.loads.next(() => Promise.resolve({}));
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
         expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
@@ -829,10 +903,9 @@ describe("createDevRunner (file watcher dispatch)", () => {
 
     it("restarts without re-executing when the loaded module is already a non-boundary", async () => {
         const harness = buildHarness();
-        const module = { id: "/x/y.ts", importers: new Set<object>(), ssrModule: { listviewColorsDemo: {} } };
         await startRunner(harness);
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
-        harness.server.moduleGraph.getModuleById.mockReturnValueOnce(module);
+        defineModule(harness, "/x/y.ts", { ssrModule: { listviewColorsDemo: {} } });
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
         expect(harness.server.moduleGraph.invalidateModule).not.toHaveBeenCalled();
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
@@ -855,14 +928,13 @@ describe("createDevRunner (saves that land while a module is loading)", () => {
     it("collapses a burst of saves for one file into a single serialized pass", async () => {
         const disk = createFakeDisk("MARKER 1");
         const harness = await startDiskHarness(disk);
-        const overlap = trackLoadOverlap(harness);
 
         for (let save = 0; save < 3; save++) {
             harness.server.watcher.emit("change", WATCHED_FILE);
         }
 
         await settleQueue();
-        expect(overlap.hasOverlapped()).toBe(false);
+        expect(harness.server.deduped).toEqual([]);
         expect(harness.performRefresh).toHaveBeenCalledTimes(1);
     });
 
@@ -874,7 +946,7 @@ describe("createDevRunner (saves that land while a module is loading)", () => {
         await emitChangeAndSettle(harness, WATCHED_FILE);
         const written = collectLogged(stderrSpy);
         expect(harness.performRefresh).not.toHaveBeenCalled();
-        expect(written).toContain("changed again while it was loading");
+        expect(written).toContain("did not settle in 5 attempts");
         expect(loggedMessages(harness).some((m) => m.includes("Fast Refresh complete"))).toBe(false);
         stopSaving();
         await emitChangeAndSettle(harness, WATCHED_FILE);
@@ -885,10 +957,10 @@ describe("createDevRunner (saves that land while a module is loading)", () => {
 });
 
 describe("createDevRunner (loads other callers start)", () => {
-    it("waits for a load another caller already has in flight instead of committing its module", async () => {
+    it("waits for a load the runner itself started elsewhere instead of joining it", async () => {
         const disk = createFakeDisk("MARKER 1");
         const harness = await startDiskHarness(disk);
-        const releaseFirstLoad = dedupeConcurrentLoads(harness, disk);
+        const releaseFirstLoad = holdNextLoad(harness, disk);
         const testingLoad = installedTestingLoader(harness)(WATCHED_FILE);
         disk.write("MARKER 2");
         await emitChangeAndSettle(harness, WATCHED_FILE);
@@ -896,6 +968,24 @@ describe("createDevRunner (loads other callers start)", () => {
         releaseFirstLoad();
         await testingLoad;
         await settleQueue();
+        expect(harness.server.deduped).toEqual([]);
+        expect(committedRevision(harness)).toBe("MARKER 2");
+        expect(loggedMessages(harness).filter((m) => m.includes("Fast Refresh complete"))).toHaveLength(1);
+    });
+
+    it("reloads when a load outside the runner answers with the module from before the invalidation", async () => {
+        const disk = createFakeDisk("MARKER 1");
+        const harness = await startDiskHarness(disk);
+        const releaseForeignLoad = holdNextLoad(harness, disk);
+        const foreignLoad = harness.server.ssrLoadModule(WATCHED_FILE);
+        disk.write("MARKER 2");
+        harness.server.watcher.emit("change", WATCHED_FILE);
+        await settleQueue();
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        releaseForeignLoad();
+        await foreignLoad;
+        await settleQueue();
+        expect(harness.server.deduped).toEqual([WATCHED_FILE]);
         expect(committedRevision(harness)).toBe("MARKER 2");
         expect(loggedMessages(harness).filter((m) => m.includes("Fast Refresh complete"))).toHaveLength(1);
     });
@@ -911,8 +1001,8 @@ describe("createDevRunner (a revision the runner cannot confirm)", () => {
         });
 
         await startRunner(harness);
-        harness.server.moduleGraph.getModuleById.mockReturnValue({ importers: new Set<object>() });
-        harness.server.ssrLoadModule.mockResolvedValue({ isBoundary: true });
+        defineModule(harness, WATCHED_FILE);
+        harness.server.loads.always(() => Promise.resolve({ isBoundary: true }));
         await emitChangeAndSettle(harness, WATCHED_FILE);
         const written = collectLogged(stderrSpy);
         stderrSpy.mockRestore();
@@ -926,7 +1016,7 @@ describe("createDevRunner (a revision the runner cannot confirm)", () => {
 describe("createDevRunner (changes queued while the session is shutting down)", () => {
     it("drops queued changes once the session starts shutting down", async () => {
         const harness = await startAppHarness();
-        harness.server.moduleGraph.getModuleById.mockReturnValue({ importers: new Set<object>() });
+        defineModule(harness, WATCHED_FILE);
         shutDownWhileLoading(harness, installedSignalHandler(harness));
         harness.server.watcher.emit("change", WATCHED_FILE);
         harness.server.watcher.emit("change", "/x/queued-after.tsx");
@@ -950,7 +1040,7 @@ describe("createDevRunner (changes queued while the session is shutting down)", 
     it("keeps a load that fails because the server closed off stderr", async () => {
         const stderrSpy = captureStderr();
         const harness = await startAppHarness();
-        harness.server.moduleGraph.getModuleById.mockReturnValue({ importers: new Set<object>() });
+        defineModule(harness, WATCHED_FILE);
         const loads = failLoadsWhileShuttingDown(harness, installedSignalHandler(harness));
         await emitChangeAndSettle(harness, WATCHED_FILE);
         const written = collectLogged(stderrSpy);

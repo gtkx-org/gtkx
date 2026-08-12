@@ -57,6 +57,7 @@ type SettleAttempt = {
 
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
 const LOAD_ATTEMPT_LIMIT = 5;
+const SKIP_REASON = `did not settle in ${String(LOAD_ATTEMPT_LIMIT)} attempts; save it again to patch the window.`;
 
 const announceFailure = (server: DevServer, cause: unknown): void => {
     if (cause instanceof Error) {
@@ -99,6 +100,20 @@ const invalidateChangedModule = (session: DevSession, module: DevServerChangedMo
     }
 };
 
+const isEvaluationCurrent = (
+    session: DevSession,
+    changedPath: string,
+    loadedExports: Record<string, unknown>,
+): boolean => {
+    const evaluated = session.server.moduleGraph.getModuleById(changedPath);
+
+    if (!evaluated?.ssrTransformResult) {
+        return false;
+    }
+
+    return evaluated.ssrModule === loadedExports;
+};
+
 const loadInvalidatedModule = (
     session: DevSession,
     changedPath: string,
@@ -110,7 +125,10 @@ const loadInvalidatedModule = (
         const loadedExports = await session.server.ssrLoadModule(changedPath);
         const settledRevision = await session.deps.readFileRevision(changedPath);
 
-        return { loadedExports, isSettled: settledRevision === revision };
+        return {
+            loadedExports,
+            isSettled: settledRevision === revision && isEvaluationCurrent(session, changedPath, loadedExports),
+        };
     });
 
 const settleAttempt = async (
@@ -159,7 +177,7 @@ const refreshChangedModule = async (
     }
 
     if (!loadedExports) {
-        warn(`Fast Refresh skipped: ${changedPath} changed again while it was loading; reloading once it settles.`);
+        warn(`Fast Refresh skipped: ${changedPath} ${SKIP_REASON}`);
 
         return;
     }

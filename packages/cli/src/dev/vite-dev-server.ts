@@ -5,6 +5,7 @@ type DevServerModule = object;
 type DevServerChangedModule = DevServerModule & {
     importers: Iterable<DevServerModule>;
     ssrModule?: Record<string, unknown> | null;
+    ssrTransformResult?: object | null;
 };
 
 type DevServerModuleGraph = {
