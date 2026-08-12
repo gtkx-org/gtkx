@@ -374,6 +374,32 @@ fn caller_allocated_struct_aliases_source_without_copying() {
 }
 
 #[test]
+fn an_inline_boxed_read_from_a_slot_decodes_the_slot_itself() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (type_, original) = rgba_boxed_alloc();
+        let slot: *mut c_void = original;
+        let slot_ptr = (&raw const slot).cast::<c_void>();
+        let codec = BoxedCodec {
+            caller_allocated: true,
+            inline: true,
+            size: Some(size_of::<gdk::ffi::GdkRGBA>()),
+            ..boxed(Ownership::Borrowed)
+        };
+        let value = unsafe { codec.read(&env, ReadCtx::slot(slot_ptr, "inline slot")) }
+            .expect("an inline boxed reads from a slot");
+
+        assert_eq!(
+            handle_ptr(value, "inline slot").expect("expected Object value"),
+            slot_ptr.cast_mut(),
+            "an inline boxed value must decode at the slot's own address, not the pointer it holds"
+        );
+
+        free_rgba(type_, original);
+    });
+}
+
+#[test]
 fn read_from_pointer_dereferences_slot() {
     helpers::run(|| {
         let env = helpers::fake_env();

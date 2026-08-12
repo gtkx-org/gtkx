@@ -241,6 +241,12 @@ pub trait Decoder {
         bail!("This type cannot be decoded from Stash")
     }
 
+    /// Whether the value this codec describes is stored inside its owner rather than behind a
+    /// pointer, which is how a struct field that embeds another struct is laid out.
+    fn is_inline(&self) -> bool {
+        false
+    }
+
     /// # Safety
     ///
     /// `_ptr` must be null or a live pointer to an instance of the type this codec describes,
@@ -275,9 +281,9 @@ pub trait Decoder {
     /// # Safety
     ///
     /// `ptr` must point at an initialized, readable machine word holding a pointer to an instance
-    /// of the type this codec describes (a C out-parameter slot). The word itself need not be
-    /// aligned; it is read unaligned. `env` must belong to the thread running the JavaScript main
-    /// loop.
+    /// of the type this codec describes (a C out-parameter slot), or, for a codec that reports
+    /// itself inline, at the instance itself. The word itself need not be aligned; it is read
+    /// unaligned. `env` must belong to the thread running the JavaScript main loop.
     unsafe fn read_pointer_slot<'e>(
         &self,
         env: &'e Env,
@@ -285,7 +291,11 @@ pub trait Decoder {
         context: &str,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
+        let inner_ptr = if self.is_inline() {
+            ptr.cast_mut()
+        } else {
+            unsafe { ptr.cast::<*mut c_void>().read_unaligned() }
+        };
         unsafe {
             self.read(
                 env,
@@ -407,18 +417,6 @@ impl Codec {
             | Self::Buffer(_)
             | Self::Callback(_)
             | Self::Unichar(_) => Ownership::Borrowed,
-        }
-    }
-
-    /// Whether the value this codec describes is stored inside its owner rather than behind a
-    /// pointer, which is how a struct field that embeds another struct is laid out.
-    #[must_use]
-    pub fn is_inline(&self) -> bool {
-        match self {
-            Self::Boxed(codec) => codec.inline,
-            Self::Struct(codec) => codec.inline,
-            Self::Fundamental(codec) => codec.inline,
-            _ => false,
         }
     }
 

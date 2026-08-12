@@ -214,6 +214,29 @@ fn take_owned_on_a_borrowed_handle_returns_none() {
 }
 
 #[test]
+fn a_field_of_a_borrowed_owner_aliases_it_and_owns_nothing() {
+    helpers::run(|| {
+        let mut owner: [u32; 4] = [1, 2, 3, 4];
+        let owner_ptr = (&raw mut owner).cast::<c_void>();
+        let owner_handle = Handle::from_glib_borrow(owner_ptr);
+        let field = Handle::field(&owner_handle, size_of::<u32>() * 2);
+
+        assert_eq!(field.as_ptr(), owner_ptr.wrapping_byte_add(8));
+        assert_eq!(field.size_hint(), 0);
+        assert!(!field.is_invalidated());
+
+        drop(owner_handle);
+        unsafe { field.as_ptr().cast::<u32>().write(99) };
+
+        assert_eq!(owner, [1, 2, 99, 4]);
+
+        drop(field);
+
+        assert_eq!(owner, [1, 2, 99, 4]);
+    });
+}
+
+#[test]
 fn size_hint_distinguishes_handle_variants() {
     helpers::run(|| {
         let (boxed, _boxed_ptr) = helpers::owned_rgba_boxed();

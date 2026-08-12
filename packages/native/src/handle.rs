@@ -206,7 +206,7 @@ impl Handle {
         (!ptr.is_null()).then(|| ptr.cast::<glib::gobject_ffi::GObject>())
     }
 
-    #[must_use]
+    #[allow(clippy::must_use_candidate)]
     pub fn take_owned(&self) -> Option<glib::Object> {
         match &self.inner.kind {
             HandleKind::Object { owned, .. } => owned.take(),

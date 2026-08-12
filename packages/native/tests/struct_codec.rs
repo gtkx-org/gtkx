@@ -258,6 +258,11 @@ struct InlineOwner {
     inner: InlineRecord,
 }
 
+#[repr(C)]
+struct PointerRecord {
+    target: *mut c_void,
+}
+
 const INLINE_FIELD_OFFSET: f64 = 4.0;
 
 fn inline_struct_codec() -> StructCodec {
@@ -332,6 +337,56 @@ fn an_inline_field_keeps_its_owner_alive() {
             unsafe { ptr.cast::<InlineRecord>().read() },
             InlineRecord { left: 7, right: 9 }
         );
+    });
+}
+
+#[test]
+fn an_inline_field_of_a_null_handle_reads_as_null() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let handle = External::new(Handle::owned_struct(std::ptr::null_mut()));
+        let decoded = read(
+            &env,
+            &handle,
+            inline_struct_descriptor(),
+            INLINE_FIELD_OFFSET,
+        )
+        .expect("an inline field of a null handle reads without erroring");
+
+        assert!(
+            napi_mock::is_null(decoded.raw()),
+            "an inline field of a handle that points at nothing must decode to null"
+        );
+    });
+}
+
+#[test]
+fn an_inline_struct_read_from_a_slot_decodes_the_slot_itself() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let decoy = unsafe { glib::ffi::g_malloc0(size_of::<PointerRecord>()) };
+        let slot = PointerRecord { target: decoy };
+        let codec = StructCodec {
+            size: Some(size_of::<PointerRecord>()),
+            ..inline_struct_codec()
+        };
+        let decoded = unsafe {
+            Decoder::read(
+                &codec,
+                &env,
+                ReadCtx::slot((&raw const slot).cast::<c_void>(), "inline slot"),
+            )
+        }
+        .expect("an inline struct reads from a slot");
+        let ptr = native::value::handle_ptr(decoded, "inline slot").expect("a handle pointer");
+
+        assert_eq!(
+            unsafe { ptr.cast::<PointerRecord>().read() }.target,
+            decoy,
+            "an inline struct must decode the slot's own bytes, not the pointer they spell"
+        );
+
+        unsafe { glib::ffi::g_free(decoy) };
     });
 }
 

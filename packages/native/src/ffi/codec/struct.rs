@@ -95,6 +95,10 @@ impl StructCodec {
 }
 
 impl Decoder for StructCodec {
+    fn is_inline(&self) -> bool {
+        self.inline
+    }
+
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         self.decode_call_non_null(env, stash, "Struct", |struct_ptr| {
             let handle = match self.ownership {

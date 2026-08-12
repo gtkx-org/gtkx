@@ -33,6 +33,10 @@ pub fn read<'env>(
     let field_codec = field_descriptor.into_codec()?;
 
     if field_codec.is_inline() {
+        if base_ptr.is_null() {
+            return value::js_null(env);
+        }
+
         return value::handle_to_unknown(env, Handle::field(handle, offset));
     }
 

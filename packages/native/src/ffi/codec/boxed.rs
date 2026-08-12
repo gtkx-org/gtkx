@@ -154,6 +154,10 @@ impl Encoder for BoxedCodec {
 }
 
 impl Decoder for BoxedCodec {
+    fn is_inline(&self) -> bool {
+        self.inline
+    }
+
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         self.decode_call_non_null(env, stash, "Boxed", |ptr| {
             if let Some(free_fn_name) = self.free_fn_name.as_deref() {
