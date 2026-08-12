@@ -4,6 +4,21 @@ import { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "./p
 import { isSelfContained } from "./self-contained.js";
 
 const log = createLogger("css");
+const NUL = "\u{0}";
+
+const unusableReason = (rule: string): string | null => {
+    if (rule.includes(NUL)) {
+        return "carries a NUL byte, which GTK4 cannot load";
+    }
+
+    if (!isSelfContained(rule)) {
+        return "would disable every rule after it";
+    }
+
+    return null;
+};
+
+const printableRule = (rule: string): string => rule.replaceAll(NUL, String.raw`\0`);
 
 class StyleSheet {
     private css = "";
@@ -36,8 +51,10 @@ class StyleSheet {
     }
 
     insert(rule: string): void {
-        if (!isSelfContained(rule)) {
-            log.warn(`Dropped a malformed CSS rule that would disable every rule after it: ${rule}`);
+        const reason = unusableReason(rule);
+
+        if (reason !== null) {
+            log.warn(`Dropped a malformed CSS rule that ${reason}: ${printableRule(rule)}`);
 
             return;
         }

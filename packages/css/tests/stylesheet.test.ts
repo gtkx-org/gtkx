@@ -5,8 +5,10 @@ import { StyleSheet } from "../src/stylesheet.js";
 
 type BrokenRule = { kind: string; rule: string };
 
+const NUL = "\u{0}";
 const GOOD_FIRST = ".first{color:rgb(255, 0, 0);}";
 const GOOD_LAST = ".last{color:rgb(0, 0, 255);}";
+const NUL_RULE = `.nul{font-family:"Canta${NUL}rell";}`;
 
 const BROKEN_RULES: BrokenRule[] = [
     { kind: "an unbalanced parenthesis", rule: ".broken{color:rgb(0;font-weight:bold;};}" },
@@ -136,5 +138,37 @@ describe("StyleSheet — rules that never close what they open", () => {
         });
 
         expect(parsedDocument(document)).toContain(".quoted");
+    });
+});
+
+describe("StyleSheet — values GTK4 cannot load", () => {
+    it("stays alive when an interpolated style value carries a NUL byte", async () => {
+        const warn = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+        try {
+            const { injectGlobal } = createCss();
+            injectGlobal({ fontFamily: `"Canta${NUL}rell"` });
+            await flushMicrotasks();
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining("[gtkx:css]"));
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining("NUL byte"));
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining(String.raw`Canta\0rell`));
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
+    it("keeps the rules inserted after one carrying a NUL byte", async () => {
+        const parsed = await parseAround(NUL_RULE);
+        expect(parsed).toContain(".first");
+        expect(parsed).toContain(".last");
+        expect(parsed).toContain("rgb(0,0,255)");
+    });
+
+    it("never hands the provider a document carrying a NUL byte", async () => {
+        const document = await loadedDocument(() => {
+            insertAll([GOOD_FIRST, NUL_RULE, GOOD_LAST]);
+        });
+
+        expect(document).not.toContain(NUL);
     });
 });
