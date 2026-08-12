@@ -4,7 +4,7 @@ use std::ffi::{CString, c_char, c_void};
 
 use ::libffi::{low as libffi_low, middle as libffi};
 use napi::bindgen_prelude::{
-    External, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown,
+    Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown,
 };
 use napi::{Env, ValueType};
 
@@ -13,7 +13,7 @@ use crate::ffi::codec::{
     Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
     str_to_glib_full,
 };
-use crate::handle::Handle;
+use crate::handle::{BorrowScope, Handle};
 use crate::host::error_reporter::{self, ReportErr};
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
@@ -33,24 +33,16 @@ fn wrap_ref<'e>(env: &'e Env, value: Unknown<'e>) -> anyhow::Result<Unknown<'e>>
     Ok(ref_obj.to_unknown())
 }
 
-fn call_scoped_handle<'e>(codec: &Codec, value: Unknown<'e>) -> Option<&'e Handle> {
-    if !matches!(codec, Codec::Object(object_codec) if object_codec.is_call_scoped) {
-        return None;
-    }
+/// The memory a C caller lends for the length of one invocation, as the handles the arguments were
+/// built over. Dropping it ends every one of those borrows, on the way out of a panic as much as on
+/// the way out of a normal return, so nothing reaches that memory once the invocation is over.
+struct LentMemory(Vec<Handle>);
 
-    if value.get_type().ok()? != ValueType::External {
-        return None;
-    }
-
-    let external: &'e External<Handle> = value::read_napi(value).ok()?;
-    let handle: &'e Handle = external;
-
-    Some(handle)
-}
-
-fn invalidate_call_scoped(handles: &[&Handle]) {
-    for handle in handles {
-        handle.invalidate();
+impl Drop for LentMemory {
+    fn drop(&mut self) {
+        for handle in &self.0 {
+            handle.invalidate();
+        }
     }
 }
 
@@ -248,7 +240,6 @@ impl ClosureState {
 struct ClosureArgs<'e> {
     js_args: Vec<Unknown<'e>>,
     ref_slots: Vec<RefSlot<'e>>,
-    call_scoped: Vec<&'e Handle>,
 }
 
 struct RefSlot<'e> {
@@ -373,7 +364,6 @@ impl ClosureData {
     ) -> anyhow::Result<ClosureArgs<'e>> {
         let mut js_args = Vec::with_capacity(self.arg_codecs.len());
         let mut ref_slots: Vec<RefSlot<'e>> = Vec::new();
-        let mut call_scoped: Vec<&'e Handle> = Vec::new();
         let siblings = unsafe { self.sibling_stashes(args) };
 
         for (i, codec) in self.arg_codecs.iter().enumerate() {
@@ -395,15 +385,10 @@ impl ClosureData {
                     value::js_null(env)?
                 }
             };
-            call_scoped.extend(call_scoped_handle(codec, val));
             js_args.push(val);
         }
 
-        Ok(ClosureArgs {
-            js_args,
-            ref_slots,
-            call_scoped,
-        })
+        Ok(ClosureArgs { js_args, ref_slots })
     }
 
     unsafe fn handle_call(
@@ -430,15 +415,13 @@ impl ClosureData {
 
         let state_ptr = self.take_oneshot_state();
 
+        let scope = BorrowScope::open();
+        let read = unsafe { self.read_args(&env, args) };
+        let _lent = LentMemory(scope.close());
+
         let outcome: Result<(), CallbackError> = (|| {
-            let ClosureArgs {
-                js_args,
-                ref_slots,
-                call_scoped,
-            } = unsafe { self.read_args(&env, args) }.map_err(CallbackError::Infrastructure)?;
-            let returned = call_js_function(&env, &self.js_fn, &js_args);
-            invalidate_call_scoped(&call_scoped);
-            let return_value = returned?;
+            let ClosureArgs { js_args, ref_slots } = read.map_err(CallbackError::Infrastructure)?;
+            let return_value = call_js_function(&env, &self.js_fn, &js_args)?;
             self.flush_refs(&env, &ref_slots);
             let ret = if capture_result {
                 Ok(return_value)

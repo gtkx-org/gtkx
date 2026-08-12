@@ -7,8 +7,8 @@ use napi::bindgen_prelude::External;
 use napi::{Env, JsValue as _, sys};
 use native::ffi::closure::ClosureState;
 use native::ffi::codec::{
-    BoxedCodec, Codec, FloatCodec, FundamentalCodec, IntegerCodec, Ownership, RefCodec,
-    StringCodec, StructCodec, VoidCodec,
+    BoxedCodec, Codec, FloatCodec, FundamentalCodec, IntegerCodec, ObjectCodec, Ownership,
+    RefCodec, StringCodec, StructCodec, VoidCodec,
 };
 use native::ffi::{
     ListData, ListNode, ListOps, ListPayload, ReleaseKind, Stash, StashData, StashStorage,
@@ -139,6 +139,160 @@ fn stash_that_panics_on_drop() -> Stash {
             payload: ListPayload::Handles(Vec::new()),
         }),
     ))
+}
+
+type PtrArgCall = unsafe extern "C" fn(*mut c_void);
+
+#[allow(clippy::unnecessary_box_returns)]
+fn ptr_arg_closure(
+    env: &Env,
+    js_fn: sys::napi_value,
+    arg_codec: Codec,
+) -> (Box<ClosureState>, PtrArgCall) {
+    let state = ClosureState::boxed(
+        js_fn_handle(env, js_fn),
+        vec![arg_codec],
+        Codec::Void(VoidCodec),
+        None,
+        false,
+    );
+    let call: PtrArgCall = unsafe { std::mem::transmute(state.code_ptr) };
+    (state, call)
+}
+
+fn argument_handle<'e>(env: &'e Env, value: sys::napi_value) -> &'e Handle {
+    let external: &'e External<Handle> =
+        native::value::read_napi(napi_mock::to_unknown(env, value))
+            .expect("the argument should carry a handle");
+
+    external
+}
+
+fn borrowed_struct_codec(size: Option<usize>) -> Codec {
+    Codec::Struct(StructCodec {
+        ownership: Ownership::Borrowed,
+        size,
+        caller_allocated: false,
+        inline: false,
+    })
+}
+
+fn single_argument_of(seen: &Rc<RefCell<Vec<Vec<sys::napi_value>>>>) -> sys::napi_value {
+    let invocations = seen.borrow();
+    assert_eq!(invocations.len(), 1);
+    let args = &invocations[0];
+    assert_eq!(args.len(), 1);
+
+    args[0]
+}
+
+#[test]
+fn a_borrowed_struct_argument_stops_reaching_its_memory_when_the_callback_returns() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        let js_fn = recording_function(&seen, napi_mock::fake_undefined);
+        let (_state, call) = ptr_arg_closure(&env, js_fn, borrowed_struct_codec(None));
+        let block = unsafe { glib::ffi::g_malloc0(16) };
+
+        unsafe { call(block) };
+
+        let handle = argument_handle(&env, single_argument_of(&seen));
+        let field = Handle::field(handle, 8);
+
+        assert!(
+            handle.is_invalidated(),
+            "memory the C caller lent for the call must stop being reachable once the call ends"
+        );
+        assert!(
+            field.as_ptr().is_null(),
+            "a field aliasing the lent memory must stop reaching it too"
+        );
+
+        unsafe { glib::ffi::g_free(block) };
+    });
+}
+
+#[test]
+fn a_copied_struct_argument_keeps_reaching_its_own_memory_after_the_callback_returns() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        let js_fn = recording_function(&seen, napi_mock::fake_undefined);
+        let (_state, call) = ptr_arg_closure(&env, js_fn, borrowed_struct_codec(Some(16)));
+        let block = unsafe { glib::ffi::g_malloc0(16) };
+
+        unsafe { call(block) };
+
+        let handle = argument_handle(&env, single_argument_of(&seen));
+
+        assert!(
+            !handle.is_invalidated(),
+            "an argument copied out of the caller's memory owns what it points at"
+        );
+        assert!(!handle.as_ptr().is_null());
+        assert_ne!(handle.as_ptr(), block);
+
+        unsafe { glib::ffi::g_free(block) };
+    });
+}
+
+#[test]
+fn a_call_scoped_object_argument_is_revoked_when_the_callback_returns() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        let js_fn = recording_function(&seen, napi_mock::fake_undefined);
+        let (_state, call) = ptr_arg_closure(
+            &env,
+            js_fn,
+            Codec::Object(ObjectCodec {
+                ownership: Ownership::Borrowed,
+                is_call_scoped: true,
+            }),
+        );
+        let (obj, obj_ptr, before) = helpers::fresh_gobject();
+
+        unsafe { call(obj_ptr.cast::<c_void>()) };
+
+        let handle = argument_handle(&env, single_argument_of(&seen));
+
+        assert!(handle.is_invalidated());
+        assert!(handle.as_gobject_ptr().is_none());
+        assert_eq!(unsafe { helpers::get_gobject_refcount(obj_ptr) }, before);
+
+        drop(obj);
+    });
+}
+
+#[test]
+fn a_handle_borrowed_while_the_callback_runs_outlives_the_call() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let block = unsafe { glib::ffi::g_malloc0(16) };
+        let address = block as usize;
+        let taken: Rc<RefCell<Option<Handle>>> = Rc::new(RefCell::new(None));
+        let recorded = Rc::clone(&taken);
+        let js_fn = napi_mock::fake_function(move |_| {
+            *recorded.borrow_mut() = Some(Handle::from_glib_borrow(address as *mut c_void));
+            napi_mock::fake_undefined()
+        });
+        let state = void_closure(&env, js_fn, false);
+        let call: unsafe extern "C" fn() = unsafe { std::mem::transmute(state.code_ptr) };
+
+        unsafe { call() };
+
+        let taken = taken.borrow();
+        let handle = taken.as_ref().expect("the callback should have run");
+
+        assert!(
+            !handle.is_invalidated(),
+            "only the memory lent for the call is revoked, not every borrow taken during it"
+        );
+        assert_eq!(handle.ptr_as_usize(), address);
+
+        unsafe { glib::ffi::g_free(block) };
+    });
 }
 
 #[test]

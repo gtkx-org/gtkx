@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use crate::handle::{Handle, INVALIDATED_HANDLE};
+use crate::handle::{Handle, INVALIDATED_HANDLE, NULL_HANDLE};
 
 pub mod alloc;
 pub mod bind;
@@ -49,7 +49,9 @@ pub(crate) fn native_result<T>(context: &str, result: anyhow::Result<T>) -> napi
     })
 }
 
-pub(crate) fn live_handle_ptr(handle: &Handle, label: &str) -> napi::Result<*mut c_void> {
+/// The address of the memory a handle stands for, rejecting both a handle whose borrow has ended
+/// and one that points at nothing, so that neither is turned into an address to read or write.
+pub(crate) fn handle_memory_ptr(handle: &Handle, label: &str) -> napi::Result<*mut c_void> {
     if handle.is_invalidated() {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
@@ -57,7 +59,16 @@ pub(crate) fn live_handle_ptr(handle: &Handle, label: &str) -> napi::Result<*mut
         ));
     }
 
-    Ok(handle.as_ptr())
+    let ptr = handle.as_ptr();
+
+    if ptr.is_null() {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("{label}: {NULL_HANDLE}"),
+        ));
+    }
+
+    Ok(ptr)
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -109,18 +120,18 @@ mod tests {
     use glib::translate::IntoGlib as _;
     use napi::bindgen_prelude::BigInt;
 
-    use super::{Handle, live_handle_ptr, type_from_bigint};
+    use super::{Handle, handle_memory_ptr, type_from_bigint};
 
     #[test]
-    fn live_handle_ptr_rejects_an_invalidated_handle() {
+    fn handle_memory_ptr_rejects_a_handle_whose_borrow_has_ended() {
         test_support::run(|| {
             let (obj, obj_ptr, _) = test_support::fresh_gobject();
             let handle = Handle::borrowed_gobject(obj_ptr);
-            assert!(live_handle_ptr(&handle, "field read").is_ok());
+            assert!(handle_memory_ptr(&handle, "field read").is_ok());
 
             handle.invalidate();
-            let error = live_handle_ptr(&handle, "field read")
-                .expect_err("an invalidated handle should be rejected");
+            let error = handle_memory_ptr(&handle, "field read")
+                .expect_err("a handle whose borrow has ended should be rejected");
 
             assert!(
                 error
@@ -129,6 +140,17 @@ mod tests {
             );
 
             drop(obj);
+        });
+    }
+
+    #[test]
+    fn handle_memory_ptr_rejects_a_handle_that_points_at_nothing() {
+        test_support::run(|| {
+            let handle = Handle::owned_struct(std::ptr::null_mut());
+            let error = handle_memory_ptr(&handle, "field read")
+                .expect_err("a handle that points at nothing should be rejected");
+
+            assert!(error.reason.contains("no memory to reach through it"));
         });
     }
 

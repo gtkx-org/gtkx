@@ -9,7 +9,7 @@ use helpers::{
     get_gobject_refcount, make_bool_param_spec as param_spec_ptr, param_spec_ref,
     param_spec_refcount, param_spec_unref, pump_default_context_until,
 };
-use native::handle::{Fundamental, Handle};
+use native::handle::{BorrowScope, Fundamental, Handle};
 use native::value::wrapper;
 use test_support as helpers;
 use test_support::napi_mock;
@@ -218,6 +218,45 @@ fn invalidating_a_borrowed_handle_ends_its_reference() {
 
     assert!(handle.is_invalidated());
     assert!(handle.as_ptr().is_null());
+}
+
+#[test]
+fn a_borrow_scope_hands_back_only_the_borrows_taken_while_it_was_open() {
+    helpers::run(|| {
+        let before = Handle::from_glib_borrow(0x1000usize as *mut c_void);
+        let scope = BorrowScope::open();
+        let inside = Handle::from_glib_borrow(0x2000usize as *mut c_void);
+        let (obj, obj_ptr, _) = helpers::fresh_gobject();
+        let call_scoped = Handle::borrowed_gobject(obj_ptr);
+        let collected = scope.close();
+        let after = Handle::from_glib_borrow(0x3000usize as *mut c_void);
+
+        assert_eq!(collected.len(), 2);
+
+        for handle in &collected {
+            handle.invalidate();
+        }
+
+        assert!(inside.is_invalidated());
+        assert!(call_scoped.is_invalidated());
+        assert!(!before.is_invalidated());
+        assert!(!after.is_invalidated());
+
+        drop(obj);
+    });
+}
+
+#[test]
+fn a_borrow_scope_that_is_never_closed_stops_collecting_when_it_is_dropped() {
+    helpers::run(|| {
+        drop(BorrowScope::open());
+
+        let handle = Handle::from_glib_borrow(0x4000usize as *mut c_void);
+        let collected = BorrowScope::open().close();
+
+        assert!(collected.is_empty());
+        assert!(!handle.is_invalidated());
+    });
 }
 
 #[test]

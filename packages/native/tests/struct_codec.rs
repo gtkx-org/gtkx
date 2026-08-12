@@ -349,42 +349,39 @@ fn an_inline_field_keeps_its_owner_alive() {
     });
 }
 
-#[test]
-fn an_inline_field_of_a_null_handle_reads_as_null() {
+fn assert_null_owner_read_is_rejected(descriptor: Descriptor, expectation: &str) {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let decoded = read(
-            &env,
-            &null_owner(),
-            inline_struct_descriptor(),
-            INLINE_FIELD_OFFSET,
-        )
-        .expect("an inline field of a null handle reads without erroring");
+        let Err(error) = read(&env, &null_owner(), descriptor, INLINE_FIELD_OFFSET) else {
+            panic!("{expectation}")
+        };
 
-        assert!(
-            napi_mock::is_null(decoded.raw()),
-            "an inline field of a handle that points at nothing must decode to null"
-        );
+        assert!(error.reason.contains("points at nothing"), "{expectation}");
     });
 }
 
 #[test]
-fn a_pointer_field_of_a_null_handle_reads_as_null() {
-    test_support::run(|| {
-        let env = test_support::fake_env();
-        let decoded = read(
-            &env,
-            &null_owner(),
-            struct_descriptor(None),
-            INLINE_FIELD_OFFSET,
-        )
-        .expect("a pointer field of a null handle reads without erroring");
+fn an_inline_field_of_a_null_handle_cannot_be_read() {
+    assert_null_owner_read_is_rejected(
+        inline_struct_descriptor(),
+        "an inline field of a handle that points at nothing has no address to alias",
+    );
+}
 
-        assert!(
-            napi_mock::is_null(decoded.raw()),
-            "a field of a handle that points at nothing must decode to null whether or not the field is inline"
-        );
-    });
+#[test]
+fn a_pointer_field_of_a_null_handle_cannot_be_read() {
+    assert_null_owner_read_is_rejected(
+        struct_descriptor(None),
+        "a field of a handle that points at nothing must be refused, not read at the bare offset",
+    );
+}
+
+#[test]
+fn a_scalar_field_of_a_null_handle_cannot_be_read() {
+    assert_null_owner_read_is_rejected(
+        Descriptor::Int32,
+        "a scalar field must be refused rather than decode to null, which its typing forbids",
+    );
 }
 
 #[test]

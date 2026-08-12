@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::{byte_count_from_f64, live_handle_ptr, native_result};
+use crate::api::{byte_count_from_f64, handle_memory_ptr, native_result};
 use crate::ffi::codec::{Codec, Decoder as _, ReadCtx};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
@@ -19,9 +19,9 @@ fn read_field<'e>(
 }
 
 /// Reads and decodes a value at `offset` bytes into the handle's memory, using `fieldDescriptor`
-/// to interpret the raw bytes, and decodes to JavaScript null when the handle points at nothing. A
-/// value the descriptor marks as stored inline decodes to a handle aliasing the owner's memory, so
-/// writing one of its own fields reaches the owner.
+/// to interpret the raw bytes, and rejects a handle that points at nothing rather than reading at
+/// the bare offset. A value the descriptor marks as stored inline decodes to a handle aliasing the
+/// owner's memory, so writing one of its own fields reaches the owner.
 #[napi(catch_unwind)]
 pub fn read<'env>(
     env: &'env Env,
@@ -30,12 +30,8 @@ pub fn read<'env>(
     offset: f64,
 ) -> Result<Unknown<'env>> {
     let offset = byte_count_from_f64(offset, "field read: offset")?;
-    let base_ptr = live_handle_ptr(handle, "field read")?;
+    let base_ptr = handle_memory_ptr(handle, "field read")?;
     let field_codec = field_descriptor.into_codec()?;
-
-    if base_ptr.is_null() {
-        return value::js_null(env);
-    }
 
     if field_codec.is_inline() {
         return value::handle_to_unknown(env, Handle::field(handle, offset));

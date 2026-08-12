@@ -14,9 +14,57 @@ use crate::ffi::PendingTransfer;
 const GOBJECT_SIZE_HINT: usize = 512;
 const STRUCT_SIZE_HINT: usize = 256;
 
-pub const INVALIDATED_HANDLE: &str = "the instance a dispose or finalize override receives is only valid until the override returns, and a handle over borrowed memory only until the borrow ends";
+pub const INVALIDATED_HANDLE: &str = "the instance a dispose or finalize override receives is only valid until the override returns, and memory a C caller lends to a callback only until that callback returns";
 
-pub const NULL_HANDLE: &str = "the handle points at nothing, so it has no field to reach";
+pub const NULL_HANDLE: &str =
+    "the handle points at nothing, so there is no memory to reach through it";
+
+thread_local! {
+    static OPEN_BORROW_SCOPES: RefCell<Vec<Rc<RefCell<Vec<Handle>>>>> =
+        const { RefCell::new(Vec::new()) };
+}
+
+/// Collects every handle built over memory somebody else owns while the scope is open, so a caller
+/// that lends memory for the length of a single call can end all of those borrows at once when the
+/// call returns. Scopes nest, and a handle joins the innermost one.
+pub struct BorrowScope {
+    borrows: Rc<RefCell<Vec<Handle>>>,
+}
+
+impl BorrowScope {
+    #[must_use]
+    pub fn open() -> Self {
+        let scope = Self {
+            borrows: Rc::new(RefCell::new(Vec::new())),
+        };
+
+        OPEN_BORROW_SCOPES.with_borrow_mut(|scopes| scopes.push(Rc::clone(&scope.borrows)));
+
+        scope
+    }
+
+    /// Stops collecting and hands back the borrows taken while the scope was open, for the caller
+    /// to invalidate once the memory behind them is gone.
+    #[must_use]
+    pub fn close(self) -> Vec<Handle> {
+        self.borrows.take()
+    }
+}
+
+impl Drop for BorrowScope {
+    fn drop(&mut self) {
+        OPEN_BORROW_SCOPES
+            .with_borrow_mut(|scopes| scopes.retain(|open| !Rc::ptr_eq(open, &self.borrows)));
+    }
+}
+
+fn record_borrow(handle: &Handle) {
+    OPEN_BORROW_SCOPES.with_borrow(|scopes| {
+        if let Some(scope) = scopes.last() {
+            scope.borrow_mut().push(handle.clone());
+        }
+    });
+}
 
 #[derive(Default)]
 pub struct FieldStore {
@@ -124,8 +172,14 @@ impl From<Fundamental> for Handle {
 }
 
 impl Handle {
+    /// A handle over memory that belongs to whoever handed the pointer over. Built inside a
+    /// [`BorrowScope`], it joins that scope, so the borrow ends when the scope's owner says so.
     pub fn from_glib_borrow(ptr: *mut c_void) -> Self {
-        HandleKind::Borrowed(ptr).into()
+        let handle: Self = HandleKind::Borrowed(ptr).into();
+
+        record_borrow(&handle);
+
+        handle
     }
 
     #[must_use]
@@ -171,20 +225,25 @@ impl Handle {
 
     /// A handle over a `GObject` that owns no reference to it, for a pointer the caller only keeps
     /// alive for the duration of one call, such as the instance a class vtable slot receives while
-    /// `GObject` is tearing it down and taking a reference is no longer allowed. Call
-    /// [`Handle::invalidate`] once that call returns, so nothing reaches the instance afterwards.
+    /// `GObject` is tearing it down and taking a reference is no longer allowed. Built inside a
+    /// [`BorrowScope`], it joins that scope, so nothing reaches the instance once the call returns.
     #[must_use]
     pub fn borrowed_gobject(gobject_ptr: *mut glib::gobject_ffi::GObject) -> Self {
-        HandleKind::Object {
+        let handle: Self = HandleKind::Object {
             ptr: Cell::new(gobject_ptr.cast::<c_void>()),
             owned: Cell::new(None),
         }
-        .into()
+        .into();
+
+        record_borrow(&handle);
+
+        handle
     }
 
     /// Ends the handle's reference to its instance, so every later read or write through it, and
     /// through any field aliasing it, is rejected instead of touching memory whose validity has
-    /// run out. Call it on a handle over a pointer GTKX does not own once the borrow expires.
+    /// run out. Call it on every handle a [`BorrowScope`] hands back once the lender takes its
+    /// memory away.
     pub fn invalidate(&self) {
         self.inner.invalidated.set(true);
 
