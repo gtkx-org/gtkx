@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts";
 import { isValidApplicationId } from "@gtkx/config/internal";
 import { errorMessage, packageVersion, upperFirst } from "@gtkx/utils";
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync, type Stats, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
@@ -9,14 +9,19 @@ import { writeBuildAllowance } from "./build-allowance.js";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { getInstallHint } from "./install-hints.js";
 import { updateManifest } from "./manifest.js";
-import { isKnownPackageManager, PACKAGE_MANAGERS, type PackageManager } from "./package-managers.js";
+import {
+    isKnownPackageManager,
+    PACKAGE_MANAGER_VALUES,
+    PACKAGE_MANAGERS,
+    type PackageManager,
+} from "./package-managers.js";
 import { isValidProjectName } from "./project-name.js";
 import { listTemplates, renderFile, type TemplateContext } from "./templates.js";
 
 type CreateOptions = {
     name?: string | undefined;
     applicationId?: string | undefined;
-    packageManager?: PackageManager | undefined;
+    packageManager?: string | undefined;
     isTypescript?: boolean | undefined;
     shouldIncludeTesting?: boolean | undefined;
     isInteractive?: boolean | undefined;
@@ -54,6 +59,14 @@ type InstallFailureOptions = {
     devDependencies: string[];
 };
 
+type SpinnerStep = {
+    pending: string;
+    done: string;
+    failed: string;
+    run: () => Promise<void>;
+    report: (error: unknown) => void;
+};
+
 const selfVersion = packageVersion(import.meta.url, "../package.json");
 
 const GTKX_ENV_MODULE_HEADER = `/**
@@ -85,6 +98,7 @@ To run tests, you need a headless Wayland compositor installed:
 
 const RECOVERY_HEADING = "Finish the setup by adding the dependencies again, which is safe to repeat:";
 const APPLICATION_ID_FORMAT_ERROR = "Application ID must be reverse domain notation (e.g., com.example.myapp)";
+const PROJECT_STRUCTURE_FAILURE = "Failed to create the project structure";
 
 const pinGtkxDependency = (name: string, version: string): string =>
     name.startsWith("@gtkx/") ? `${name}@^${version}` : name;
@@ -163,6 +177,26 @@ const validateApplicationIdAnswer = (value: string | undefined): string | undefi
 const fail = (message: string): never => {
     p.log.error(message);
     throw new ScaffoldAbortedError(message);
+};
+
+const requestedPackageManager = (value: string | undefined): PackageManager | undefined => {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (!isKnownPackageManager(value)) {
+        return fail(`Unknown package manager "${value}". Expected one of: ${PACKAGE_MANAGER_VALUES.join(", ")}`);
+    }
+
+    return value;
+};
+
+const targetStats = (root: string): Stats | undefined => {
+    try {
+        return statSync(root, { throwIfNoEntry: false });
+    } catch {
+        return undefined;
+    }
 };
 
 const validateTarget = (value: string | undefined): string | undefined => {
@@ -309,7 +343,17 @@ const shouldOverwriteDirectory = async (target: string, options: CreateOptions):
 };
 
 const shouldEmptyTargetDirectory = async (root: string, target: string, options: CreateOptions): Promise<boolean> => {
-    if (!existsSync(root) || isDirEmpty(root)) {
+    const stats = targetStats(root);
+
+    if (stats === undefined) {
+        return false;
+    }
+
+    if (!stats.isDirectory()) {
+        return fail(`Target "${target}" is not a directory`);
+    }
+
+    if (isDirEmpty(root)) {
         return false;
     }
 
@@ -340,9 +384,12 @@ const resolveApplicationId = async (options: CreateOptions, name: string): Promi
     return options.isInteractive ? promptApplicationId(name) : suggestApplicationId(name);
 };
 
-const resolvePackageManager = async (options: CreateOptions): Promise<PackageManager> => {
-    if (options.packageManager !== undefined) {
-        return options.packageManager;
+const resolvePackageManager = async (
+    requested: PackageManager | undefined,
+    options: CreateOptions,
+): Promise<PackageManager> => {
+    if (requested !== undefined) {
+        return requested;
     }
 
     if (options.isInteractive) {
@@ -369,13 +416,14 @@ const isTestingIncluded = async (options: CreateOptions): Promise<boolean> => {
 };
 
 const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
+    const requested = requestedPackageManager(options.packageManager);
     const target = await resolveTarget(options);
     const name = deriveProjectName(target);
     const applicationId = await resolveApplicationId(options, name);
     validateResolvedOptions(name, applicationId);
     const root = resolve(process.cwd(), target);
     const shouldEmptyTarget = await shouldEmptyTargetDirectory(root, target, options);
-    const packageManager = await resolvePackageManager(options);
+    const packageManager = await resolvePackageManager(requested, options);
     const isTypescript = await isTypescriptSelected(options);
     const shouldIncludeTesting = await isTestingIncluded(options);
 
@@ -484,20 +532,35 @@ const reportInstallFailure = (options: InstallFailureOptions): void => {
     p.log.info(formatRecovery(options));
 };
 
-const installAllDependencies = async (options: InstallAllOptions): Promise<void> => {
-    const { root, target, packageManager, devDependencies } = options;
+const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
     const spinner = p.spinner();
-    spinner.start("Installing dependencies...");
+    spinner.start(step.pending);
 
     try {
-        await installDependencies({ cwd: root, packageManager, dependencies: pin(DEPENDENCIES), isDev: false });
-        await installDependencies({ cwd: root, packageManager, dependencies: pin(devDependencies), isDev: true });
-        spinner.stop("Dependencies installed");
+        await step.run();
+        spinner.stop(step.done);
     } catch (error) {
-        spinner.stop("Failed to install dependencies");
-        reportInstallFailure({ error, target, packageManager, devDependencies });
-        throw new ScaffoldAbortedError("Failed to install dependencies");
+        spinner.stop(step.failed);
+        step.report(error);
+        throw new ScaffoldAbortedError(step.failed);
     }
+};
+
+const installAllDependencies = async (options: InstallAllOptions): Promise<void> => {
+    const { root, target, packageManager, devDependencies } = options;
+
+    await runWithSpinner({
+        pending: "Installing dependencies...",
+        done: "Dependencies installed",
+        failed: "Failed to install dependencies",
+        run: async () => {
+            await installDependencies({ cwd: root, packageManager, dependencies: pin(DEPENDENCIES), isDev: false });
+            await installDependencies({ cwd: root, packageManager, dependencies: pin(devDependencies), isDev: true });
+        },
+        report: (error) => {
+            reportInstallFailure({ error, target, packageManager, devDependencies });
+        },
+    });
 };
 
 const writeInitialEnvModule = (root: string): void => {
@@ -528,17 +591,28 @@ const printNextSteps = (resolved: ResolvedOptions): void => {
     p.note(`${cdStep}${devCmd}${testingNote}`, "Next steps");
 };
 
+const createProjectStructure = async (root: string, resolved: ResolvedOptions): Promise<void> => {
+    await runWithSpinner({
+        pending: "Creating project structure...",
+        done: "Project structure created",
+        failed: PROJECT_STRUCTURE_FAILURE,
+        run: async () => {
+            prepareTargetDirectory(root, resolved.shouldEmptyTarget);
+            await scaffoldProject(root, resolved);
+            writeBuildAllowance(root, resolved.packageManager);
+        },
+        report: (error) => {
+            p.log.error(`${PROJECT_STRUCTURE_FAILURE}: ${errorMessage(error)}`);
+        },
+    });
+};
+
 const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     p.intro("Create GTKX App");
     const resolved = await resolveOptions(options);
     const root = resolve(process.cwd(), resolved.target);
     const devDeps = getDevDependencies(resolved);
-    const projectSpinner = p.spinner();
-    projectSpinner.start("Creating project structure...");
-    prepareTargetDirectory(root, resolved.shouldEmptyTarget);
-    await scaffoldProject(root, resolved);
-    writeBuildAllowance(root, resolved.packageManager);
-    projectSpinner.stop("Project structure created");
+    await createProjectStructure(root, resolved);
 
     await installAllDependencies({
         root,

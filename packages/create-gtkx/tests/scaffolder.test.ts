@@ -26,6 +26,7 @@ const addDependencyMock = vi.mocked(addDependency);
 const detectMock = vi.mocked(detectPackageManager);
 const xMock = vi.mocked(x);
 const TEST_DIR = "/test-workspace";
+const spinnerStops: string[] = [];
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
 const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
 const templateFiles: Record<string, string> = {};
@@ -93,6 +94,19 @@ function lastWarning(): string {
 
 function lastInfo(): string {
     return String(clack.log.info.mock.calls.at(-1)?.[0] ?? "");
+}
+
+function lastSpinnerStop(): string {
+    return spinnerStops.at(-1) ?? "";
+}
+
+function trackedSpinner(): ReturnType<typeof clack.spinner> {
+    return {
+        start: vi.fn(),
+        stop: vi.fn((message?: string) => {
+            spinnerStops.push(message ?? "");
+        }),
+    };
 }
 
 function recoverySteps(): string[] {
@@ -180,7 +194,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
     vi.clearAllMocks();
-    clack.spinner.mockImplementation(() => ({ start: vi.fn(), stop: vi.fn() }));
+    spinnerStops.length = 0;
+    clack.spinner.mockImplementation(trackedSpinner);
     clack.text.mockResolvedValue("");
     clack.select.mockImplementation((opts) => Promise.resolve(opts.initialValue));
     clack.confirm.mockResolvedValue(true);
@@ -554,6 +569,30 @@ describe("scaffold (non-interactive and overwrite)", () => {
         expect(pkg.scripts.test).toBe("vitest run");
         expect(vol.existsSync(`${TEST_DIR}/test-app/vitest.config.ts`)).toBe(true);
         expect(addDependencyMock.mock.calls[0]?.[1]).toMatchObject({ packageManager: "pnpm" });
+    });
+});
+
+describe("scaffold (unusable inputs)", () => {
+    it("reports an unknown package manager as one line naming the values it accepts", async () => {
+        await expect(runNonInteractive({ packageManager: "bun" })).rejects.toThrow(/Unknown package manager "bun"/);
+        expect(lastError()).toBe('Unknown package manager "bun". Expected one of: pnpm, npm, yarn');
+        expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(false);
+    });
+
+    it("reports a target that already exists as a file instead of reading it as a directory", async () => {
+        seedFile("test-app", "not a directory");
+        await expect(runNonInteractive()).rejects.toThrow(/is not a directory/);
+        expect(lastError()).toBe('Target "test-app" is not a directory');
+        expect(read(`${TEST_DIR}/test-app`)).toBe("not a directory");
+    });
+
+    it("reports a project directory it cannot create and stops the spinner", async () => {
+        seedFile("apps", "not a directory");
+        const scaffolded = runNonInteractive({ name: "apps/my-app" });
+        await expect(scaffolded).rejects.toThrow(/Failed to create the project structure/);
+        expect(lastError()).toContain("Failed to create the project structure: ENOTDIR");
+        expect(lastError()).toContain("apps/my-app");
+        expect(lastSpinnerStop()).toBe("Failed to create the project structure");
     });
 });
 

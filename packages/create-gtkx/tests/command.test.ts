@@ -1,7 +1,12 @@
 import { renderUsage, runCommand } from "citty";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCreate, scaffoldCommand } from "../src/command.js";
+import { OperationCanceledError, ScaffoldAbortedError } from "../src/errors.js";
 import { scaffold } from "../src/scaffolder.js";
+
+const clack = vi.hoisted(() => ({
+    log: { error: vi.fn() },
+}));
 
 const scaffoldMock = vi.mocked(scaffold);
 const SHORT_SPELLING_PATTERN = /(?<![\w-])-(?!-)[\w-]+/g;
@@ -12,12 +17,19 @@ const printedShortSpellings = async (): Promise<string[]> => {
     return usage.matchAll(SHORT_SPELLING_PATTERN).map((match) => match[0].slice(1)).toArray();
 };
 
+vi.mock("@clack/prompts", () => clack);
+
 vi.mock("../src/scaffolder.js", () => ({
     scaffold: vi.fn(),
 }));
 
 beforeEach(() => {
     vi.clearAllMocks();
+    process.exitCode = 0;
+});
+
+afterEach(() => {
+    process.exitCode = 0;
 });
 
 describe("runCreate — delegation", () => {
@@ -81,9 +93,32 @@ describe("runCreate — flag mapping", () => {
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ shouldOverwrite: true }));
     });
 
-    it("rejects an unknown package manager before scaffolding", async () => {
-        await expect(runCreate({ "package-manager": "bun" })).rejects.toThrow(/Unknown package manager "bun"/);
-        expect(scaffoldMock).not.toHaveBeenCalled();
+    it("forwards the requested package manager for the scaffolder to validate", async () => {
+        await runCreate({ "package-manager": "bun" });
+        expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ packageManager: "bun" }));
+    });
+});
+
+describe("runCreate — failure reporting", () => {
+    it("reports an unexpected failure as one line and exits non-zero", async () => {
+        scaffoldMock.mockRejectedValueOnce(new Error("EACCES: permission denied, mkdir '/tmp/my-app'"));
+        await expect(runCreate({ name: "my-app" })).resolves.toBeUndefined();
+        expect(clack.log.error).toHaveBeenCalledWith("EACCES: permission denied, mkdir '/tmp/my-app'");
+        expect(process.exitCode).toBe(1);
+    });
+
+    it("exits non-zero without repeating a message the scaffolder already reported", async () => {
+        scaffoldMock.mockRejectedValueOnce(new ScaffoldAbortedError('Directory "my-app" is not empty'));
+        await expect(runCreate({ name: "my-app" })).resolves.toBeUndefined();
+        expect(clack.log.error).not.toHaveBeenCalled();
+        expect(process.exitCode).toBe(1);
+    });
+
+    it("keeps a zero exit code when the user cancels a prompt", async () => {
+        scaffoldMock.mockRejectedValueOnce(new OperationCanceledError());
+        await expect(runCreate({ name: "my-app" })).resolves.toBeUndefined();
+        expect(clack.log.error).not.toHaveBeenCalled();
+        expect(process.exitCode).toBe(0);
     });
 });
 
