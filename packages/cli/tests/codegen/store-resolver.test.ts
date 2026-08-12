@@ -1,9 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { resolveCodegenStore } from "../../src/codegen/store-resolver.js";
-import { setupWorkspace } from "./workspace-fixture.js";
+import { setupTempTree } from "../temp-tree.js";
 
 const HOISTED_PACKAGES: string[] = ["@gtkx/native", "@gtkx/runtime", "@gtkx/react", "react"];
 
@@ -15,21 +14,16 @@ const installPackage = (root: string, name: string, version = "1.2.3"): void => 
 };
 
 describe("resolveCodegenStore", () => {
-    let projectRoot: string;
+    const project = setupTempTree("gtkx-store-");
 
     beforeEach(() => {
-        projectRoot = mkdtempSync(join(tmpdir(), "gtkx-store-"));
-        installPackage(projectRoot, "@gtkx/native");
-    });
-
-    afterEach(() => {
-        rmSync(projectRoot, { recursive: true, force: true });
+        installPackage(project.path, "@gtkx/native");
     });
 
     it("resolves the store and alias directories under the project node_modules", () => {
-        installPackage(projectRoot, "@gtkx/runtime");
-        const store = resolveCodegenStore(projectRoot);
-        const nodeModules = join(projectRoot, "node_modules");
+        installPackage(project.path, "@gtkx/runtime");
+        const store = resolveCodegenStore(project.path);
+        const nodeModules = join(project.path, "node_modules");
         expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
         expect(store.giLinkDir).toBe(join(nodeModules, "@gtkx", "gi"));
         expect(store.jsxStoreDir).toBe(join(nodeModules, ".gtkx", "jsx"));
@@ -37,39 +31,39 @@ describe("resolveCodegenStore", () => {
     });
 
     it("resolves @gtkx/runtime's version", () => {
-        installPackage(projectRoot, "@gtkx/runtime", "9.9.9");
-        const store = resolveCodegenStore(projectRoot);
+        installPackage(project.path, "@gtkx/runtime", "9.9.9");
+        const store = resolveCodegenStore(project.path);
         expect(store.runtimeVersion).toBe("9.9.9");
     });
 
     it("resolves a locally installed @gtkx/react's version when the React runtime is present", () => {
-        installPackage(projectRoot, "@gtkx/runtime");
-        installPackage(projectRoot, "react");
-        installPackage(projectRoot, "@gtkx/react", "4.5.6");
-        const store = resolveCodegenStore(projectRoot);
+        installPackage(project.path, "@gtkx/runtime");
+        installPackage(project.path, "react");
+        installPackage(project.path, "@gtkx/react", "4.5.6");
+        const store = resolveCodegenStore(project.path);
         expect(store.react?.version).toBe("4.5.6");
     });
 
     it("returns a string runtime version and a null-or-object React entry", () => {
-        installPackage(projectRoot, "@gtkx/runtime");
-        const store = resolveCodegenStore(projectRoot);
+        installPackage(project.path, "@gtkx/runtime");
+        const store = resolveCodegenStore(project.path);
         expect(typeof store.runtimeVersion).toBe("string");
         expect(store.react === null || typeof store.react.version === "string").toBe(true);
     });
 });
 
 describe("resolveCodegenStore hoisting", () => {
-    const workspace = setupWorkspace("gtkx-store-hoisted-");
+    const workspace = setupTempTree("gtkx-store-hoisted-", "packages", "app");
 
     beforeEach(() => {
         for (const name of HOISTED_PACKAGES) {
-            installPackage(workspace.root, name);
+            installPackage(workspace.path, name);
         }
     });
 
     it("resolves both stores in the node_modules the packages were hoisted to", () => {
-        const nodeModules = join(workspace.root, "node_modules");
-        const store = resolveCodegenStore(workspace.app);
+        const nodeModules = join(workspace.path, "node_modules");
+        const store = resolveCodegenStore(workspace.child);
         expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
         expect(store.giLinkDir).toBe(join(nodeModules, "@gtkx", "gi"));
         expect(store.jsxStoreDir).toBe(join(nodeModules, ".gtkx", "jsx"));
@@ -77,9 +71,9 @@ describe("resolveCodegenStore hoisting", () => {
     });
 
     it("keeps both stores beside the project's own @gtkx/react", () => {
-        installPackage(workspace.app, "@gtkx/react", "4.5.6");
-        const nodeModules = join(workspace.app, "node_modules");
-        const store = resolveCodegenStore(workspace.app);
+        installPackage(workspace.child, "@gtkx/react", "4.5.6");
+        const nodeModules = join(workspace.child, "node_modules");
+        const store = resolveCodegenStore(workspace.child);
         expect(store.react?.version).toBe("4.5.6");
         expect(store.giStoreDir).toBe(join(nodeModules, ".gtkx", "gi"));
         expect(store.jsxStoreDir).toBe(join(nodeModules, ".gtkx", "jsx"));

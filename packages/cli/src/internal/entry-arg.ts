@@ -1,5 +1,5 @@
 import type { PositionalArgDef, StringArgDef } from "citty";
-import { existsSync } from "node:fs";
+import { statSync } from "node:fs";
 import { resolve } from "node:path";
 
 const DEFAULT_ENTRY_BASE = "src/index";
@@ -24,8 +24,9 @@ const entryArg: { entry: PositionalArgDef; cwd: StringArgDef } = {
 };
 
 const resolveCwd = (args: { cwd?: string }): string => (args.cwd ? resolve(args.cwd) : process.cwd());
+const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false })?.isFile() === true;
 
-const missingEntryError = (cwd: string): Error =>
+const missingDefaultEntryError = (cwd: string): Error =>
     new Error(
         `No entry file found in ${cwd}. Looked for ${DEFAULT_ENTRY_CANDIDATES.join(", ")}; ` +
         "pass the entry file as an argument.",
@@ -35,15 +36,25 @@ const resolveDefaultEntry = (cwd: string): string => {
     for (const candidate of DEFAULT_ENTRY_CANDIDATES) {
         const path = resolve(cwd, candidate);
 
-        if (existsSync(path)) {
+        if (isFile(path)) {
             return path;
         }
     }
 
-    throw missingEntryError(cwd);
+    throw missingDefaultEntryError(cwd);
+};
+
+const resolveGivenEntry = (cwd: string, entry: string): string => {
+    const path = resolve(cwd, entry);
+
+    if (!isFile(path)) {
+        throw new Error(`No entry file at ${path}.`);
+    }
+
+    return path;
 };
 
 const resolveEntry = (cwd: string, entry: string | undefined): string =>
-    entry ? resolve(cwd, entry) : resolveDefaultEntry(cwd);
+    entry ? resolveGivenEntry(cwd, entry) : resolveDefaultEntry(cwd);
 
 export { cwdArg, entryArg, resolveCwd, resolveEntry };

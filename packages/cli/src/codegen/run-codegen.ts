@@ -12,7 +12,7 @@ import { resolve } from "node:path";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
-import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
+import { type CodegenContext, type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
 type RunCodegenOptions = {
     cwd?: string;
@@ -45,6 +45,7 @@ type CodegenOptionsInput = {
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
+type EnsureGeneratedOptions = { shouldAnnounce?: boolean; mode?: string };
 
 type RunOptionsInput = {
     root: string;
@@ -205,18 +206,12 @@ const getRunOptions = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCo
     return { cwd: root, mode, inputs, resolved };
 };
 
+const isPreflightSkipped = (options: EnsureGeneratedOptions): boolean =>
+    options.shouldAnnounce === true && process.env.GTKX_DISABLE_PREFLIGHT === "1";
+
 /* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
-const ensureGenerated = async (
-    cwd: string,
-    options: { shouldAnnounce?: boolean; mode?: string } = {},
-): Promise<boolean> => {
-    const context = await resolveCodegenContext(cwd, options.mode);
-
-    if (options.shouldAnnounce && process.env.GTKX_DISABLE_PREFLIGHT === "1") {
-        return false;
-    }
-
-    syncSchemaEnv(cwd);
+const generate = async (context: CodegenContext, options: EnsureGeneratedOptions): Promise<boolean> => {
+    syncSchemaEnv(context.root);
 
     if (context.config.codegen === false) {
         removeShadowingStores(context.root);
@@ -231,6 +226,16 @@ const ensureGenerated = async (
 
     return result.isRegenerated;
 };
+
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
+const ensureGeneratedIn = async (
+    context: CodegenContext,
+    options: EnsureGeneratedOptions = {},
+): Promise<boolean> => (isPreflightSkipped(options) ? false : generate(context, options));
+
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
+const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
+    isPreflightSkipped(options) ? false : generate(await resolveCodegenContext(cwd, options.mode), options);
 
 const resolveConfigWatch = async (
     cwd: string,
@@ -251,6 +256,7 @@ export {
     isCodegenDisabled,
     syncSchemaEnv,
     ensureGenerated,
+    ensureGeneratedIn,
     resolveConfigWatch,
     type RunCodegenResult,
 };

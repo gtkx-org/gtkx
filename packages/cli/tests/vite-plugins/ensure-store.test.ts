@@ -2,13 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { ensureGenerated } from "../../src/codegen/run-codegen.js";
 import { gtkxEnsureStore } from "../../src/vite-plugins/ensure-store.js";
 
-type ConfigHook = () => Promise<void>;
+type ConfigHook = (config: { root?: string }) => Promise<void>;
 
 const ensureGeneratedMock = vi.mocked(ensureGenerated);
 
 const runConfig = async (): Promise<void> => {
     const plugin = gtkxEnsureStore();
-    await (plugin.config as unknown as ConfigHook)();
+    await (plugin.config as ConfigHook)({});
 };
 
 vi.mock("../../src/codegen/run-codegen.js", () => ({

@@ -1,10 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ensureGenerated, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
+import type { CodegenContext } from "../../src/codegen/store-resolver.js";
+import { ensureGenerated, ensureGeneratedIn, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 import { collectLogged } from "../stderr-text.js";
-import { setupWorkspace } from "./workspace-fixture.js";
+import { setupTempTree } from "../temp-tree.js";
 
 const writeFingerprint = (cwd: string, libraries: string[] = ["Gtk-4.0"]) => {
     writeFileSync(
@@ -104,6 +104,10 @@ const announceLogs = async (cwd: string): Promise<string> => {
 const restorePreflightEnv = (): void => {
     const originalEnv = process.env.GTKX_DISABLE_PREFLIGHT;
 
+    beforeEach(() => {
+        delete process.env.GTKX_DISABLE_PREFLIGHT;
+    });
+
     afterEach(() => {
         if (originalEnv === undefined) {
             delete process.env.GTKX_DISABLE_PREFLIGHT;
@@ -113,11 +117,17 @@ const restorePreflightEnv = (): void => {
     });
 };
 
+const missingConfigMessage = (cwd: string): string => `gtkx.config.ts: no configuration file found in ${cwd}`;
+
 const expectMissingConfig = async (cwd: string): Promise<void> => {
-    await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow(
-        `gtkx.config.ts: no configuration file found in ${cwd}`,
-    );
+    await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow(missingConfigMessage(cwd));
 };
+
+const contextFor = (root: string): CodegenContext => ({
+    root,
+    configFile: "gtkx.config.ts",
+    config: { applicationId: "org.gtk.Test", libraries: ["Gtk-4.0"], girPath: [root] },
+});
 
 vi.mock("@gtkx/codegen", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@gtkx/codegen")>()),
@@ -126,26 +136,18 @@ vi.mock("@gtkx/codegen", async (importOriginal) => ({
 }));
 
 describe("runCodegen", () => {
-    let cwd: string;
-
-    beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-run-codegen-"));
-    });
-
-    afterEach(() => {
-        rmSync(cwd, { recursive: true, force: true });
-    });
+    const project = setupTempTree("gtkx-run-codegen-");
 
     it("rejects when no gtkx.config.ts is present, naming the directory searched", async () => {
-        installRuntimePackage(cwd);
-        await expect(runCodegen({ cwd })).rejects.toThrow(`gtkx.config.ts: no configuration file found in ${cwd}`);
+        installRuntimePackage(project.path);
+        await expect(runCodegen({ cwd: project.path })).rejects.toThrow(missingConfigMessage(project.path));
     });
 
     it("falls back to process.cwd() when options.cwd is omitted", async () => {
-        installRuntimePackage(cwd);
-        writeConfig(cwd);
+        installRuntimePackage(project.path);
+        writeConfig(project.path);
         const originalCwd = process.cwd();
-        process.chdir(cwd);
+        process.chdir(project.path);
 
         try {
             const result = await runCodegen();
@@ -156,201 +158,181 @@ describe("runCodegen", () => {
     });
 
     it("with force, removes the gi store before regenerating", async () => {
-        installRuntimePackage(cwd);
-        writeConfig(cwd);
-        writeDefaultGiBarrels(cwd);
-        const giStale = join(cwd, "node_modules", ".gtkx", "gi", "stale.js");
+        installRuntimePackage(project.path);
+        writeConfig(project.path);
+        writeDefaultGiBarrels(project.path);
+        const giStale = join(project.path, "node_modules", ".gtkx", "gi", "stale.js");
         writeFileSync(giStale, "");
-        const result = await runCodegen({ cwd, isForced: true });
+        const result = await runCodegen({ cwd: project.path, isForced: true });
         expect(existsSync(giStale)).toBe(false);
         expect(result.namespaces).toBe(1);
     });
 });
 
 describe("runCodegen — force in a hoisted workspace", () => {
-    const workspace = setupWorkspace("gtkx-codegen-forced-");
+    const workspace = setupTempTree("gtkx-codegen-forced-", "packages", "app");
 
     it("keeps the shared jsx store a project without React never regenerates", async () => {
-        installRuntimePackage(workspace.root);
-        writeDefaultGiBarrels(workspace.root);
-        writeJsxStore(workspace.root);
-        writeConfig(workspace.app, `export default { applicationId: "org.gtk.Test", girPath: ["${workspace.app}"] };`);
-        await runCodegen({ cwd: workspace.app, isForced: true });
-        expect(existsSync(join(workspace.root, "node_modules", ".gtkx", "gi"))).toBe(false);
-        expect(existsSync(join(workspace.root, "node_modules", ".gtkx", "jsx"))).toBe(true);
-        expect(existsSync(join(workspace.root, "node_modules", "@gtkx", "jsx"))).toBe(true);
+        installRuntimePackage(workspace.path);
+        writeDefaultGiBarrels(workspace.path);
+        writeJsxStore(workspace.path);
+
+        writeConfig(
+            workspace.child,
+            `export default { applicationId: "org.gtk.Test", girPath: ["${workspace.child}"] };`,
+        );
+
+        await runCodegen({ cwd: workspace.child, isForced: true });
+        expect(existsSync(join(workspace.path, "node_modules", ".gtkx", "gi"))).toBe(false);
+        expect(existsSync(join(workspace.path, "node_modules", ".gtkx", "jsx"))).toBe(true);
+        expect(existsSync(join(workspace.path, "node_modules", "@gtkx", "jsx"))).toBe(true);
     });
 });
 
 describe("runCodegen — codegen: false", () => {
-    const workspace = setupWorkspace("gtkx-codegen-disabled-");
+    const workspace = setupTempTree("gtkx-codegen-disabled-", "packages", "app");
 
     it("removes the stores under the project's own node_modules", async () => {
-        installRuntimePackage(workspace.app);
-        writeDisabledConfig(workspace.app);
-        writeDefaultGiBarrels(workspace.app);
-        writeJsxStore(workspace.app);
-        await runCodegen({ cwd: workspace.app });
-        expect(existsSync(join(workspace.app, "node_modules", ".gtkx", "gi"))).toBe(false);
-        expect(existsSync(join(workspace.app, "node_modules", "@gtkx", "jsx"))).toBe(false);
+        installRuntimePackage(workspace.child);
+        writeDisabledConfig(workspace.child);
+        writeDefaultGiBarrels(workspace.child);
+        writeJsxStore(workspace.child);
+        await runCodegen({ cwd: workspace.child });
+        expect(existsSync(join(workspace.child, "node_modules", ".gtkx", "gi"))).toBe(false);
+        expect(existsSync(join(workspace.child, "node_modules", "@gtkx", "jsx"))).toBe(false);
     });
 
     it("keeps the hoisted store the project consumes", async () => {
-        installRuntimePackage(workspace.root);
-        installReactStack(workspace.root);
-        writeDefaultGiBarrels(workspace.root);
-        writeJsxStore(workspace.root);
-        writeDisabledConfig(workspace.app);
-        writeGiBarrel(workspace.app, "gtk");
-        await runCodegen({ cwd: workspace.app });
-        expect(existsSync(join(workspace.root, "node_modules", ".gtkx", "gi"))).toBe(true);
-        expect(existsSync(join(workspace.root, "node_modules", ".gtkx", "jsx"))).toBe(true);
-        expect(existsSync(join(workspace.app, "node_modules", ".gtkx", "gi"))).toBe(false);
+        installRuntimePackage(workspace.path);
+        installReactStack(workspace.path);
+        writeDefaultGiBarrels(workspace.path);
+        writeJsxStore(workspace.path);
+        writeDisabledConfig(workspace.child);
+        writeGiBarrel(workspace.child, "gtk");
+        await runCodegen({ cwd: workspace.child });
+        expect(existsSync(join(workspace.path, "node_modules", ".gtkx", "gi"))).toBe(true);
+        expect(existsSync(join(workspace.path, "node_modules", ".gtkx", "jsx"))).toBe(true);
+        expect(existsSync(join(workspace.child, "node_modules", ".gtkx", "gi"))).toBe(false);
     });
 });
 
 describe("ensureGenerated — announce path", () => {
-    let cwd: string;
+    const project = setupTempTree("gtkx-announce-");
     restorePreflightEnv();
-
-    beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-announce-"));
-    });
-
-    afterEach(() => {
-        rmSync(cwd, { recursive: true, force: true });
-    });
 
     it("skips codegen silently when GTKX_DISABLE_PREFLIGHT=1", async () => {
         process.env.GTKX_DISABLE_PREFLIGHT = "1";
-        writeConfig(cwd);
-        expect(await announceLogs(cwd)).toBe("");
+        writeConfig(project.path);
+        expect(await announceLogs(project.path)).toBe("");
     });
 
-    it("still rejects a missing gtkx.config.ts when GTKX_DISABLE_PREFLIGHT=1", async () => {
+    it("does not read the configuration at all when GTKX_DISABLE_PREFLIGHT=1", async () => {
         process.env.GTKX_DISABLE_PREFLIGHT = "1";
-        await expectMissingConfig(cwd);
+        expect(await ensureGenerated(project.path, { shouldAnnounce: true })).toBe(false);
     });
 
     it("rejects when there is no gtkx.config.ts", async () => {
-        delete process.env.GTKX_DISABLE_PREFLIGHT;
-        installRuntimePackage(cwd);
-        await expectMissingConfig(cwd);
-    });
-
-    it("propagates non-NotFound config errors", async () => {
-        delete process.env.GTKX_DISABLE_PREFLIGHT;
-        installRuntimePackage(cwd);
-        writeConfig(cwd, "export default { libraries: [] };");
-        await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow();
+        installRuntimePackage(project.path);
+        await expectMissingConfig(project.path);
     });
 
     it("runs codegen when the gi store is missing", async () => {
-        delete process.env.GTKX_DISABLE_PREFLIGHT;
-        installRuntimePackage(cwd);
-        writeConfig(cwd);
-        expect(await announceLogs(cwd)).toContain("running codegen");
+        installRuntimePackage(project.path);
+        writeConfig(project.path);
+        expect(await announceLogs(project.path)).toContain("running codegen");
     });
 
     it("skips codegen when the gi and jsx stores are present", async () => {
-        delete process.env.GTKX_DISABLE_PREFLIGHT;
-        installRuntimePackage(cwd);
-        installReactStack(cwd);
-        writeConfig(cwd);
-        writeDefaultGiBarrels(cwd);
-        writeJsxStore(cwd);
-        writeFingerprint(cwd);
-        expect(await announceLogs(cwd)).toBe("");
+        installRuntimePackage(project.path);
+        installReactStack(project.path);
+        writeConfig(project.path);
+        writeDefaultGiBarrels(project.path);
+        writeJsxStore(project.path);
+        writeFingerprint(project.path);
+        expect(await announceLogs(project.path)).toBe("");
+    });
+});
+
+describe("ensureGeneratedIn", () => {
+    const project = setupTempTree("gtkx-ensure-in-");
+    restorePreflightEnv();
+
+    it("generates from the given context without reading a configuration file", async () => {
+        installReactProject(project.path);
+        rmSync(join(project.path, "gtkx.config.ts"), { force: true });
+        expect(await ensureGeneratedIn(contextFor(project.path), { shouldAnnounce: true })).toBe(true);
+    });
+
+    it("skips codegen when GTKX_DISABLE_PREFLIGHT=1", async () => {
+        process.env.GTKX_DISABLE_PREFLIGHT = "1";
+        installReactProject(project.path);
+        expect(await ensureGeneratedIn(contextFor(project.path), { shouldAnnounce: true })).toBe(false);
     });
 });
 
 describe("ensureGenerated", () => {
-    let cwd: string;
-
-    beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-ensure-"));
-    });
-
-    afterEach(() => {
-        rmSync(cwd, { recursive: true, force: true });
-    });
+    const project = setupTempTree("gtkx-ensure-");
 
     it("regenerates when the jsx unit is missing", async () => {
-        installReactProject(cwd);
-        expect(await ensureGenerated(cwd)).toBe(true);
+        installReactProject(project.path);
+        expect(await ensureGenerated(project.path)).toBe(true);
     });
 
     it("does nothing when the gi and jsx stores are present", async () => {
-        installGeneratedProject(cwd);
-        expect(await ensureGenerated(cwd)).toBe(false);
+        installGeneratedProject(project.path);
+        expect(await ensureGenerated(project.path)).toBe(false);
     });
 
     it("does not wedge on a missing jsx unit when the react runtime is absent", async () => {
-        installRuntimePackage(cwd);
-        installPackage(cwd, "react");
-        writeConfig(cwd);
-        writeDefaultGiBarrels(cwd);
-        writeFingerprint(cwd);
-        expect(await ensureGenerated(cwd)).toBe(false);
+        installRuntimePackage(project.path);
+        installPackage(project.path, "react");
+        writeConfig(project.path);
+        writeDefaultGiBarrels(project.path);
+        writeFingerprint(project.path);
+        expect(await ensureGenerated(project.path)).toBe(false);
     });
 
     it("rejects when there is no gtkx.config.ts", async () => {
-        installRuntimePackage(cwd);
-        await expect(ensureGenerated(cwd)).rejects.toThrow(`gtkx.config.ts: no configuration file found in ${cwd}`);
+        installRuntimePackage(project.path);
+        await expect(ensureGenerated(project.path)).rejects.toThrow(missingConfigMessage(project.path));
     });
 
     it("propagates non-NotFound config errors", async () => {
-        installRuntimePackage(cwd);
-        writeConfig(cwd, "export default { libraries: [] };");
-        await expect(ensureGenerated(cwd)).rejects.toThrow();
+        installRuntimePackage(project.path);
+        writeConfig(project.path, "export default { libraries: [] };");
+        await expect(ensureGenerated(project.path)).rejects.toThrow();
     });
 });
 
 describe("ensureGenerated — store links", () => {
-    let cwd: string;
-
-    beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-ensure-links-"));
-    });
-
-    afterEach(() => {
-        rmSync(cwd, { recursive: true, force: true });
-    });
+    const project = setupTempTree("gtkx-ensure-links-");
 
     it("regenerates when the gi store link is pruned", async () => {
-        installReactProject(cwd);
-        writeJsxStore(cwd);
-        rmSync(join(cwd, "node_modules", "@gtkx", "gi"), { recursive: true, force: true });
-        expect(await ensureGenerated(cwd)).toBe(true);
+        installReactProject(project.path);
+        writeJsxStore(project.path);
+        rmSync(join(project.path, "node_modules", "@gtkx", "gi"), { recursive: true, force: true });
+        expect(await ensureGenerated(project.path)).toBe(true);
     });
 
     it("regenerates when the jsx store link is pruned", async () => {
-        installGeneratedProject(cwd);
-        rmSync(join(cwd, "node_modules", "@gtkx", "jsx"), { recursive: true, force: true });
-        expect(await ensureGenerated(cwd)).toBe(true);
+        installGeneratedProject(project.path);
+        rmSync(join(project.path, "node_modules", "@gtkx", "jsx"), { recursive: true, force: true });
+        expect(await ensureGenerated(project.path)).toBe(true);
     });
 
     it("regenerates when a store manifest is pruned but its modules remain", async () => {
-        installGeneratedProject(cwd);
-        rmSync(join(cwd, "node_modules", ".gtkx", "jsx", "package.json"), { force: true });
-        expect(await ensureGenerated(cwd)).toBe(true);
+        installGeneratedProject(project.path);
+        rmSync(join(project.path, "node_modules", ".gtkx", "jsx", "package.json"), { force: true });
+        expect(await ensureGenerated(project.path)).toBe(true);
     });
 });
 
 describe("syncSchemaEnv", () => {
-    let cwd: string;
-
-    beforeEach(() => {
-        cwd = mkdtempSync(join(tmpdir(), "gtkx-sync-schema-env-"));
-    });
-
-    afterEach(() => {
-        rmSync(cwd, { recursive: true, force: true });
-    });
+    const project = setupTempTree("gtkx-sync-schema-env-");
 
     it("writes the declaration file for a project that declares no data directory", () => {
-        writeFileSync(join(cwd, "package.json"), JSON.stringify({ name: "app", version: "0.0.0" }));
-        syncSchemaEnv(cwd);
-        expect(existsSync(join(cwd, "node_modules", ".gtkx", "env.d.ts"))).toBe(true);
+        writeFileSync(join(project.path, "package.json"), JSON.stringify({ name: "app", version: "0.0.0" }));
+        syncSchemaEnv(project.path);
+        expect(existsSync(join(project.path, "node_modules", ".gtkx", "env.d.ts"))).toBe(true);
     });
 });

@@ -83,4 +83,4 @@ const resolveCodegenContext = async (cwd: string, mode?: string): Promise<Codege
     return { root: cwd, config, configFile };
 };
 
-export { resolveCodegenStore, resolveCodegenContext, type CodegenStore };
+export { resolveCodegenStore, resolveCodegenContext, type CodegenContext, type CodegenStore };
