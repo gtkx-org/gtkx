@@ -1,9 +1,16 @@
-import { runCommand } from "citty";
+import { renderUsage, runCommand } from "citty";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runCreate, scaffoldCommand } from "../src/command.js";
 import { scaffold } from "../src/scaffolder.js";
 
 const scaffoldMock = vi.mocked(scaffold);
+const SHORT_SPELLING_PATTERN = /(?<![\w-])-(?!-)[\w-]+/g;
+
+const printedShortSpellings = async (): Promise<string[]> => {
+    const usage = await renderUsage(scaffoldCommand);
+
+    return usage.matchAll(SHORT_SPELLING_PATTERN).map((match) => match[0].slice(1)).toArray();
+};
 
 vi.mock("../src/scaffolder.js", () => ({
     scaffold: vi.fn(),
@@ -92,5 +99,29 @@ describe("scaffoldCommand", () => {
         await runCommand(scaffoldCommand, { rawArgs: ["my-app", "--no-typescript", "--no-interactive"] });
         expect(scaffoldMock).toHaveBeenCalledTimes(1);
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ isTypescript: false }));
+    });
+});
+
+describe("scaffoldCommand — documented spellings", () => {
+    it.each(["-p", "--package-manager"])("selects the package manager through %s", async (spelling) => {
+        await runCommand(scaffoldCommand, { rawArgs: ["my-app", spelling, "yarn", "--no-interactive"] });
+
+        expect(scaffoldMock).toHaveBeenCalledWith(
+            expect.objectContaining({ name: "my-app", packageManager: "yarn" }),
+        );
+    });
+
+    it.each(["-f", "--overwrite"])("overwrites the target directory through %s", async (spelling) => {
+        await runCommand(scaffoldCommand, { rawArgs: ["my-app", spelling, "--no-interactive"] });
+
+        expect(scaffoldMock).toHaveBeenCalledWith(
+            expect.objectContaining({ name: "my-app", shouldOverwrite: true }),
+        );
+    });
+
+    it("prints only short spellings the parser accepts", async () => {
+        const spellings = await printedShortSpellings();
+        expect(spellings).toEqual(expect.arrayContaining(["f", "p", "y"]));
+        expect(spellings.filter((spelling) => spelling.length > 1)).toEqual([]);
     });
 });

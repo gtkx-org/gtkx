@@ -31,7 +31,7 @@ const scaffoldCommand = defineCommand({
         },
         "package-manager": {
             type: "string",
-            alias: "pm",
+            alias: "p",
             description: PACKAGE_MANAGER_FLAG_DESCRIPTION,
         },
         typescript: {
@@ -56,7 +56,7 @@ const scaffoldCommand = defineCommand({
         },
         overwrite: {
             type: "boolean",
-            alias: "force",
+            alias: "f",
             description: "Overwrite the contents of a non-empty target directory when running without prompts",
         },
     },
