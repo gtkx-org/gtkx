@@ -35,8 +35,11 @@ seven highest-yield ones. The rotation:
 
 | Round | Personas |
 | --- | --- |
-| odd | `cli`, `marshal`, `subclass`, `testkit`, `hotreload`, `higapp`, `lifecycle` |
-| even | `scaffold`, `config`, `collections`, `styling`, `mcpdrive`, `deploy`, `docsconform` |
+| odd | `cli`, `marshal`, `subclass`, `testkit`, `hotreload`, `higapp`, `lifecycle`, `girzoo` |
+| even | `scaffold`, `config`, `collections`, `styling`, `mcpdrive`, `deploy`, `docsconform`, `perf` |
+
+`girzoo` and `perf` both need the writable sandbox worktree described in `brief.md`, because their
+evidence (sanitizer reports, CPU profiles against source) cannot be produced from an installed package.
 
 Both halves see every round's ledger, so a defect found by one persona is never re-reported by another.
 `higapp` should build a different application each time it runs — the value is in unfamiliar

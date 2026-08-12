@@ -20,6 +20,7 @@ Your job is to **find defects and prove them with a reproduction**, not to revie
 | Thing | Value |
 | --- | --- |
 | Source worktree (do not dirty it) | `/home/eugenio/gtkx-bughunt` (branch `bugfix/v1.0`) |
+| Writable sandbox worktree | `/home/eugenio/gtkx-sandbox` (branch `sandbox/hunters`) — installed and built |
 | Your scratch area | `/home/eugenio/gtkx-playground/<your-slug>/` — create it, own it, leave it behind |
 | Published packages under test | `@gtkx/*@1.0.0`, `create-gtkx@1.0.0` from the public npm registry |
 | Node | 24+ via mise, already on PATH |
@@ -48,6 +49,22 @@ export G_DEBUG=fatal-criticals
 
 Commands that do **not** need a display: `gtkx codegen`, `gtkx build`, `gtkx docs`, `create-gtkx`,
 `tsc`, `npm install`.
+
+## The sandbox worktree
+
+Some evidence cannot be gathered against an installed package. AddressSanitizer, Miri, `--cpu-prof`
+against source, and anything needing `pnpm nx run @gtkx/native:test:asan` all require a source tree.
+
+`/home/eugenio/gtkx-sandbox` exists for that. It is a git worktree on the throwaway branch
+`sandbox/hunters`, already installed and built. **You may write to it freely** — it is disposable and
+nothing on it is ever merged. Rules:
+
+- Never `git commit` there and never push it. Leave changes uncommitted or throw them away.
+- It is shared, so if two hunters need it at once, work in separate directories under it or copy it.
+- It is pinned to the commit it was created at. Run `git -C /home/eugenio/gtkx-sandbox merge --ff-only
+  bugfix/v1.0 && pnpm install && pnpm nx run-many -t build --exclude @gtkx/website` if you need
+  the fixes that landed since.
+- `/home/eugenio/gtkx-bughunt` remains read-only to you. The sandbox is the only source tree you write to.
 
 ## Stay out of the other hunters' way
 

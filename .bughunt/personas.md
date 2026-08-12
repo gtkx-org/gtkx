@@ -278,6 +278,64 @@ Takes a working app all the way to something distributable, exactly as `examples
 
 ---
 
+## `girzoo` — The exotic-namespace binder
+
+Every other persona uses the same four libraries. This one binds namespaces nobody has tried and
+proves the result neither leaks nor crashes.
+
+Work in the sandbox worktree (see `brief.md`), because leak and crash proof needs the sanitizer
+targets and those only run from a source tree.
+
+- **Bind unusual namespaces.** Whatever `pkg-config --list-all` and `/usr/share/gir-1.0` offer beyond
+  the usual four: `GObject-2.0`, `Gio-2.0` on their own, `Pango`, `PangoCairo`, `Graphene`, `Gsk`,
+  `GdkPixbuf`, `Harfbuzz`, `Json-1.0`, `Soup-3.0`, `GstBase`, `Vte`, `Poppler`, `Secret`, `Gcr`,
+  `Nautilus`, `Rsvg`, `Champlain`, `AppStream`, anything installed. For each: does `gtkx codegen`
+  finish, does the store typecheck, does a trivial call work?
+- **Namespaces with awkward GIR.** Ones with no shared library, circular dependencies, duplicate type
+  names across namespaces, versions installed twice (`Gtk-3.0` beside `Gtk-4.0`), C identifiers that
+  are TypeScript reserved words, types whose names collide with generated helpers.
+- **The rare marshaling corners `marshal` cannot reach with Gtk alone**: `GStrv` nested in a struct,
+  arrays of arrays, `GPtrArray` versus `GArray` versus `GByteArray`, `GHashTable` with boxed values,
+  callbacks stored in struct fields, functions taking a `va_list` equivalent, `GClosure` parameters,
+  signals with `GVariant` return values, out parameters of an interface type, `GType` parameters,
+  fundamental non-GObject types.
+
+**Proof obligations.** A finding here is only as good as its evidence:
+- Crash: reproduce under `pnpm nx run @gtkx/native:test:asan` or `@gtkx/e2e:test:asan` and quote the
+  sanitizer report, not just the abort.
+- Leak: run the operation in a loop of 10k, with `--expose-gc` and forced collection, under
+  `detect_leaks=1`. Quote the leak report with its stack. RSS growth alone is not evidence and the
+  round-2 hunter was right to refuse to report it as such.
+- If you cannot get sanitizer output for something, say so in `covered` and do not claim a leak.
+
+---
+
+## `perf` — The user who notices it is slow
+
+Hunts performance defects a user would feel. A slow path is a defect when it is disproportionate, not
+merely when it is measurable, so every finding needs a baseline that makes the number mean something.
+
+- **Startup.** Time from `node dist/bundle.js` to a mapped window, cold and warm. Compare against a
+  plain GTK4 C or PyGObject app doing the same thing. Where does the time go: native addon load,
+  store import, codegen check, React mount?
+- **The generated store.** Its size on disk, its parse time, how much of it a trivial app actually
+  imports. Does importing `@gtkx/gi/gtk` pull in every namespace? Does tree-shaking work?
+- **Build and codegen.** `gtkx codegen` cold and warm, `gtkx build` on a small and a large app,
+  the dev server's startup and its Fast Refresh latency. Is anything quadratic in file count?
+- **Render paths.** Mount and update a 10k-row `GtkListView`, a deep tree, a wide `GtkGrid`. Time a
+  single prop update, a list reorder, a full re-render. Compare a GTKX list against the same list
+  built directly with the GTK API through `@gtkx/gi` and no React.
+- **Marshaling cost.** Time a property read, a method call with no arguments, one with a string, one
+  with an array of 10k, and a signal emission, against a direct `bind()` call. A binding that costs
+  10x its own FFI call has overhead worth naming.
+- **Memory.** RSS after mounting and unmounting a large tree 100 times.
+
+Report a finding only with: the measurement, the baseline you compared against, the ratio, and the
+profile showing where the time goes (`--cpu-prof`, `perf`, or a flame graph). "It takes 400ms" is not
+a finding; "it takes 400ms where the equivalent GTK call takes 4ms, and 90% is in X" is.
+
+---
+
 ## `docsconform` — The documentation follower
 
 Treats `website/` as a contract and follows it literally, typing out every snippet.
