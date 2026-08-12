@@ -18,7 +18,7 @@ const clack = vi.hoisted(() => ({
     spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
     text: vi.fn((options: TextOptions): Promise<string | symbol> => Promise.resolve(options.defaultValue ?? "")),
     select: vi.fn((opts: { initialValue?: unknown }) => Promise.resolve(opts.initialValue)),
-    confirm: vi.fn(() => Promise.resolve(true)),
+    confirm: vi.fn((): Promise<boolean | string> => Promise.resolve(true)),
     isCancel: vi.fn((value: unknown) => value === "__CANCEL__"),
 }));
 
@@ -572,6 +572,27 @@ describe("scaffold (overwrite)", () => {
         await run({ shouldOverwrite: true });
         expect(vol.existsSync(`${TEST_DIR}/test-app/stale.txt`)).toBe(false);
         expect(vol.existsSync(`${TEST_DIR}/test-app/package.json`)).toBe(true);
+    });
+});
+
+describe("scaffold (cancellation after the overwrite answer)", () => {
+    it("keeps the target contents when the package manager prompt is canceled", async () => {
+        seedFile("test-app/keep.txt", "keep");
+        seedFile("test-app/src/main.js", "work");
+        clack.select.mockResolvedValueOnce("__CANCEL__");
+        clack.isCancel.mockImplementation((value) => value === "__CANCEL__");
+        await expect(scaffold(partialOptions({ name: "test-app" }))).rejects.toThrow(/Operation canceled/);
+        expect(read(`${TEST_DIR}/test-app/keep.txt`)).toBe("keep");
+        expect(read(`${TEST_DIR}/test-app/src/main.js`)).toBe("work");
+    });
+
+    it("keeps the target contents when the TypeScript prompt is canceled", async () => {
+        seedFile("test-app/keep.txt", "keep");
+        clack.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce("__CANCEL__");
+        clack.isCancel.mockImplementation((value) => value === "__CANCEL__");
+        const canceled = scaffold(partialOptions({ name: "test-app", packageManager: "pnpm" }));
+        await expect(canceled).rejects.toThrow(/Operation canceled/);
+        expect(read(`${TEST_DIR}/test-app/keep.txt`)).toBe("keep");
     });
 });
 

@@ -30,6 +30,7 @@ type ResolvedOptions = {
     packageManager: PackageManager;
     isTypescript: boolean;
     shouldIncludeTesting: boolean;
+    shouldEmptyTarget: boolean;
 };
 
 type InstallDependenciesOptions = {
@@ -272,6 +273,14 @@ const emptyDir = (root: string): void => {
     }
 };
 
+const prepareTargetDirectory = (root: string, shouldEmptyTarget: boolean): void => {
+    mkdirSync(root, { recursive: true });
+
+    if (shouldEmptyTarget) {
+        emptyDir(root);
+    }
+};
+
 const validateResolvedOptions = (name: string, applicationId: string): void => {
     const nameError = validateProjectName(name);
 
@@ -299,18 +308,16 @@ const shouldOverwriteDirectory = async (target: string, options: CreateOptions):
     );
 };
 
-const handleTargetDirectory = async (root: string, target: string, options: CreateOptions): Promise<void> => {
+const shouldEmptyTargetDirectory = async (root: string, target: string, options: CreateOptions): Promise<boolean> => {
     if (!existsSync(root) || isDirEmpty(root)) {
-        return;
+        return false;
     }
 
     if (await shouldOverwriteDirectory(target, options)) {
-        emptyDir(root);
-
-        return;
+        return true;
     }
 
-    fail(`Directory "${target}" is not empty`);
+    return fail(`Directory "${target}" is not empty`);
 };
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
@@ -367,12 +374,12 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
     const applicationId = await resolveApplicationId(options, name);
     validateResolvedOptions(name, applicationId);
     const root = resolve(process.cwd(), target);
-    await handleTargetDirectory(root, target, options);
+    const shouldEmptyTarget = await shouldEmptyTargetDirectory(root, target, options);
     const packageManager = await resolvePackageManager(options);
     const isTypescript = await isTypescriptSelected(options);
     const shouldIncludeTesting = await isTestingIncluded(options);
 
-    return { target, name, applicationId, packageManager, isTypescript, shouldIncludeTesting };
+    return { target, name, applicationId, packageManager, isTypescript, shouldIncludeTesting, shouldEmptyTarget };
 };
 
 const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
@@ -407,8 +414,6 @@ const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise
         isTypescript,
         importExtension: isTypescript ? ".js" : ".jsx",
     };
-
-    mkdirSync(root, { recursive: true });
 
     for (const template of listTemplates()) {
         if (!isTemplateIncluded(template, resolved)) {
@@ -530,6 +535,7 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     const devDeps = getDevDependencies(resolved);
     const projectSpinner = p.spinner();
     projectSpinner.start("Creating project structure...");
+    prepareTargetDirectory(root, resolved.shouldEmptyTarget);
     await scaffoldProject(root, resolved);
     writeBuildAllowance(root, resolved.packageManager);
     projectSpinner.stop("Project structure created");
