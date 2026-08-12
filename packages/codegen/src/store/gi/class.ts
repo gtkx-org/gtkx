@@ -98,10 +98,11 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
     const doc = getDoc(klass);
+    const modifier = klass.isAbstract ? "abstract " : "";
 
     context.declare({
         name: className,
-        code: `${doc}export class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
+        code: `${doc}export ${modifier}class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
         owner: klass.name,
     });
 
