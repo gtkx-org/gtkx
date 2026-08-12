@@ -16,7 +16,7 @@ const clack = vi.hoisted(() => ({
     cancel: vi.fn(),
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
-    text: vi.fn((options: TextOptions): Promise<string | symbol> => Promise.resolve(options.defaultValue ?? "")),
+    text: vi.fn<(options: TextOptions) => Promise<string | symbol>>(() => Promise.resolve("")),
     select: vi.fn((opts: { initialValue?: unknown }) => Promise.resolve(opts.initialValue)),
     confirm: vi.fn((): Promise<boolean | string> => Promise.resolve(true)),
     isCancel: vi.fn((value: unknown) => value === "__CANCEL__"),
@@ -26,6 +26,7 @@ const addDependencyMock = vi.mocked(addDependency);
 const detectMock = vi.mocked(detectPackageManager);
 const xMock = vi.mocked(x);
 const TEST_DIR = "/test-workspace";
+const CANCEL_KEYSTROKE = String.fromCodePoint(3);
 const spinnerStops: string[] = [];
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
 const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
@@ -122,7 +123,7 @@ function partialOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
     };
 }
 
-async function answerApplicationId(answer: string): Promise<void> {
+async function answerApplicationId(keystrokes: string, name = "tasks"): Promise<void> {
     const prompts = await vi.importActual<typeof import("@clack/prompts")>("@clack/prompts");
     const input = new PassThrough();
     const output = new PassThrough();
@@ -130,18 +131,22 @@ async function answerApplicationId(answer: string): Promise<void> {
 
     clack.text.mockImplementation((options) => {
         const answered = prompts.text({ ...options, input, output });
-        input.write(`${answer}\r`);
+        input.write(keystrokes);
 
         return answered;
     });
 
     await scaffold({
-        name: "tasks",
+        name,
         packageManager: "pnpm",
         isTypescript: true,
         shouldIncludeTesting: false,
         isInteractive: true,
     });
+}
+
+function scaffoldWithSuggestedId(name: string): Promise<void> {
+    return runNonInteractive({ name, applicationId: undefined });
 }
 
 async function captureInitialValue(detectedName: string | undefined): Promise<unknown> {
@@ -521,13 +526,44 @@ describe("scaffold (prompting)", () => {
 
 describe("scaffold (application id prompt)", () => {
     it("scaffolds the typed application id instead of appending it to the suggestion", async () => {
-        await answerApplicationId("com.gtkx.tutorial");
+        await answerApplicationId("com.gtkx.tutorial\r");
         expect(read(`${TEST_DIR}/tasks/gtkx.config.ts`)).toContain('applicationId: "com.gtkx.tutorial"');
     });
 
     it("scaffolds the suggested application id when the prompt is submitted empty", async () => {
-        await answerApplicationId("");
+        await answerApplicationId("\r");
         expect(read(`${TEST_DIR}/tasks/gtkx.config.ts`)).toContain('applicationId: "com.tasks.app"');
+    });
+
+    it("accepts an empty answer when the project name starts with a digit", async () => {
+        await answerApplicationId("\r", "42-app");
+        expect(read(`${TEST_DIR}/42-app/gtkx.config.ts`)).toContain('applicationId: "com._42app.app"');
+        expect(clack.log.error).not.toHaveBeenCalled();
+    });
+
+    it("keeps the prompt open instead of failing the run when the typed application id is invalid", async () => {
+        clack.isCancel.mockImplementation((value) => typeof value === "symbol");
+        await expect(answerApplicationId(`nodots\r${CANCEL_KEYSTROKE}`)).rejects.toThrow(/Operation canceled/);
+        expect(clack.text).toHaveBeenCalledTimes(1);
+        expect(clack.log.error).not.toHaveBeenCalled();
+    });
+});
+
+describe("scaffold (suggested application id)", () => {
+    it("prefixes a suggestion whose middle segment would start with a digit", async () => {
+        await scaffoldWithSuggestedId("2048");
+        expect(read(`${TEST_DIR}/2048/gtkx.config.ts`)).toContain('applicationId: "com._2048.app"');
+    });
+
+    it("suggests a valid id when the project name collapses to nothing", async () => {
+        await scaffoldWithSuggestedId("---");
+        expect(read(`${TEST_DIR}/---/gtkx.config.ts`)).toContain('applicationId: "com._.app"');
+    });
+
+    it("keeps the suggestion within the length the id format accepts", async () => {
+        await scaffoldWithSuggestedId("a".repeat(250));
+        const config = read(`${TEST_DIR}/${"a".repeat(250)}/gtkx.config.ts`);
+        expect(config).toContain(`applicationId: "com.${"a".repeat(247)}.app"`);
     });
 });
 
@@ -599,6 +635,18 @@ describe("scaffold (unusable inputs)", () => {
         await expect(runNonInteractive({ name: "" })).rejects.toThrow(/Project directory is required/);
         expect(lastError()).toBe("Project directory is required");
         expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+
+    it("rejects an empty flag-supplied application id", async () => {
+        await expect(runNonInteractive({ applicationId: "" })).rejects.toThrow(/Application ID is required/);
+        expect(lastError()).toBe("Application ID is required");
+        expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(false);
+    });
+
+    it("rejects a flag-supplied application id that is not reverse domain notation", async () => {
+        await expect(runNonInteractive({ applicationId: "nodots" })).rejects.toThrow(/reverse domain notation/);
+        expect(lastError()).toBe("Application ID must be reverse domain notation (e.g., com.example.myapp)");
+        expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(false);
     });
 
     it("rejects a project directory left empty by sanitization", async () => {

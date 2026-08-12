@@ -1,5 +1,5 @@
 import * as p from "@clack/prompts";
-import { isValidApplicationId } from "@gtkx/config/internal";
+import { APPLICATION_ID_MAX_LENGTH, isValidApplicationId } from "@gtkx/config/internal";
 import { errorMessage, packageVersion, upperFirst } from "@gtkx/utils";
 import { mkdirSync, readdirSync, rmSync, type Stats, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
@@ -98,6 +98,11 @@ To run tests, you need a headless Wayland compositor installed:
 const RECOVERY_HEADING = "Finish the setup by adding the dependencies again, which is safe to repeat:";
 const APPLICATION_ID_FORMAT_ERROR = "Application ID must be reverse domain notation (e.g., com.example.myapp)";
 const PROJECT_STRUCTURE_FAILURE = "Failed to create the project structure";
+const APPLICATION_ID_PREFIX = "com.";
+const APPLICATION_ID_SUFFIX = ".app";
+
+const APPLICATION_ID_SEGMENT_LIMIT = APPLICATION_ID_MAX_LENGTH - APPLICATION_ID_PREFIX.length -
+    APPLICATION_ID_SUFFIX.length;
 
 const pinGtkxDependency = (name: string, version: string): string =>
     name.startsWith("@gtkx/") ? `${name}@^${version}` : name;
@@ -105,7 +110,16 @@ const pinGtkxDependency = (name: string, version: string): string =>
 const getDevCommand = (packageManager: PackageManager): string => DEV_COMMAND[packageManager];
 const getAddCommand = (packageManager: PackageManager): string => ADD_COMMAND[packageManager];
 const titleFromName = (name: string): string => name.split("-").map((part) => upperFirst(part)).join(" ");
-const suggestApplicationId = (name: string): string => `com.${name.replaceAll("-", "")}.app`;
+
+const applicationIdSegment = (name: string): string => {
+    const compact = name.replaceAll("-", "");
+    const segment = /^[A-Za-z_]/.test(compact) ? compact : `_${compact}`;
+
+    return segment.slice(0, APPLICATION_ID_SEGMENT_LIMIT);
+};
+
+const suggestApplicationId = (name: string): string =>
+    `${APPLICATION_ID_PREFIX}${applicationIdSegment(name)}${APPLICATION_ID_SUFFIX}`;
 
 const stripTrailingSlashes = (value: string): string => {
     let end = value.length;
