@@ -49,6 +49,22 @@ export G_DEBUG=fatal-criticals
 Commands that do **not** need a display: `gtkx codegen`, `gtkx build`, `gtkx docs`, `create-gtkx`,
 `tsc`, `npm install`.
 
+## Stay out of the other hunters' way
+
+Several hunters run at once on this machine. Three things collide unless you change them, and a
+collision looks exactly like a defect, so fix them before you probe anything:
+
+- **Application ID.** The template ships `com.gtkx.bughunt`. Change it in your copy's `gtkx.config.ts`
+  to `com.gtkx.<your-slug>` immediately. Two live apps sharing an ID make the second one a remote
+  instance with no window.
+- **HMR port.** `gtkx dev` uses Vite's default 24678. If you run a dev server, set a unique port in
+  `vite.config.ts` (`server.hmr.port`). "Port 24678 is already in use" is another hunter, not a defect.
+- **Process counts.** `count-strays.sh` counts machine-wide, so its absolute numbers are meaningless
+  while others are working. Measure your own processes instead: `pgrep -f <your scratch dir>`.
+
+If you cannot get a clean control run for something because of another hunter, say so in `covered`
+rather than reporting it. A finding you could not isolate is not a finding.
+
 ## Oracles — what counts as proof
 
 Rank findings by which oracle fired. These are ordered strongest first.
