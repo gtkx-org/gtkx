@@ -5,6 +5,7 @@ import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import { createAppRenderer } from "./render-app.js";
+import { findButton } from "./test-utils.js";
 
 const renderDemo = createAppRenderer("org.gtkx.gtkdemoint");
 
@@ -16,7 +17,7 @@ const selectFirstDemoWithComponent = async (): Promise<void> => {
 
     for (let i = 0; i < selectionModel.getNItems(); i++) {
         await userEvent.selectOptions(sidebar, i);
-        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
+        const run = await findButton("Run");
 
         if (run.getSensitive()) {
             selectedIndex = i;
@@ -48,6 +49,26 @@ const openMenuItem = async (name: string): Promise<void> => {
     await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name }));
 };
 
+const expectShortcutsDialogShown = async (): Promise<void> => {
+    await expectDialogShown();
+    const shortcutLabels = await screen.findAllByText("Search demos");
+    expect(shortcutLabels.length).toBeGreaterThan(0);
+};
+
+const expectInteractiveDebugging = async (activate: () => Promise<void>): Promise<void> => {
+    const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
+
+    try {
+        await activate();
+
+        await waitFor(() => {
+            expect(debugSpy).toHaveBeenCalledWith(true);
+        });
+    } finally {
+        debugSpy.mockRestore();
+    }
+};
+
 describe("App search toggle", () => {
     it("turns the sidebar's search bar on when the header bar toggle is activated", async () => {
         await renderDemo();
@@ -66,7 +87,7 @@ describe("App run button", () => {
     it("enables the Run button after a demo with a component is selected", async () => {
         await renderDemo();
         await selectFirstDemoWithComponent();
-        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
+        const run = await findButton("Run");
         expect(run).toBeEnabled();
     });
 
@@ -75,7 +96,7 @@ describe("App run button", () => {
         await selectFirstDemoWithComponent();
         const windowsBefore = await screen.findAllByRole(Gtk.AccessibleRole.WINDOW);
         const beforeCount = windowsBefore.length;
-        const run = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
+        const run = await findButton("Run");
         await userEvent.click(run);
 
         await waitFor(async () => {
@@ -129,27 +150,32 @@ describe("App notebook", () => {
 describe("App keyboard shortcuts dialog", () => {
     it("opens the keyboard shortcuts dialog when the menu entry is activated", async () => {
         await renderDemo();
-        await openMenuItem("Keyboard Shortcuts");
-        await expectDialogShown();
-        const shortcutLabels = await screen.findAllByText("Search demos");
-        expect(shortcutLabels.length).toBeGreaterThan(0);
+        await openMenuItem("Keyboard Shortcuts Ctrl+?");
+        await expectShortcutsDialogShown();
     });
 });
 
 describe("App inspector activation", () => {
     it("invokes Gtk.Window.setInteractiveDebugging when the inspector menu entry is activated", async () => {
-        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
-
-        try {
+        await expectInteractiveDebugging(async () => {
             await renderDemo();
-            await openMenuItem("Inspector");
+            await openMenuItem("Inspector Shift+Ctrl+I");
+        });
+    });
+});
 
-            await waitFor(() => {
-                expect(debugSpy).toHaveBeenCalled();
-            });
-        } finally {
-            debugSpy.mockRestore();
-        }
+describe("App action accelerators", () => {
+    it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is pressed", async () => {
+        await expectInteractiveDebugging(async () => {
+            const body = await renderMainWindowBody();
+            await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
+        });
+    });
+
+    it("opens the keyboard shortcuts dialog when Ctrl+? is pressed", async () => {
+        const body = await renderMainWindowBody();
+        await userEvent.keyboard(body, "{Control>}?{/Control}");
+        await expectShortcutsDialogShown();
     });
 });
 

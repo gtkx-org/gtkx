@@ -54,7 +54,6 @@ type AppHeaderBarProps = {
 
 type AppShortcutsProps = {
     onSearchToggle: () => void;
-    onKeyboardShortcuts: () => void;
     onNotebookNext: () => void;
     onNotebookPrev: () => void;
 };
@@ -72,7 +71,6 @@ type MainWindowBodyProps = {
     isSearchActive: boolean;
     notebookPage: number;
     onSearchToggle: () => void;
-    onKeyboardShortcuts: () => void;
     onNotebookPageChange: (page: number) => void;
     onSearchChanged: (query: string) => void;
 };
@@ -89,6 +87,10 @@ type MainWindowContentProps = {
     demoWindows: number[];
     onCloseWindow: (id: number) => void;
     onSearchChanged: (query: string) => void;
+};
+
+type AppProps = {
+    applicationId?: string;
 };
 
 const applicationIconName = path.basename(logoResourcePath, path.extname(logoResourcePath));
@@ -275,13 +277,12 @@ const shortcut = (accelerator: string, run: () => void) => (
     />
 );
 
-const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onNotebookPrev }: AppShortcutsProps) => (
+const AppShortcuts = ({ onSearchToggle, onNotebookNext, onNotebookPrev }: AppShortcutsProps) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
         shortcuts={(
             <>
                 {shortcut("<Control>f", onSearchToggle)}
-                {shortcut("<Control>question", onKeyboardShortcuts)}
                 {shortcut("<Control>Page_Down", onNotebookNext)}
                 {shortcut("<Control>Page_Up", onNotebookPrev)}
             </>
@@ -384,7 +385,6 @@ const MainWindowBody = ({
     isSearchActive,
     notebookPage,
     onSearchToggle,
-    onKeyboardShortcuts,
     onNotebookPageChange,
     onSearchChanged,
 }: MainWindowBodyProps) => (
@@ -395,7 +395,6 @@ const MainWindowBody = ({
         controllers={(
             <AppShortcuts
                 onSearchToggle={onSearchToggle}
-                onKeyboardShortcuts={onKeyboardShortcuts}
                 onNotebookNext={() => {
                     onNotebookPageChange(Math.min(notebookPage + 1, 1));
                 }}
@@ -429,7 +428,6 @@ const MainWindowContent = ({ chrome, demoWindows, onCloseWindow, onSearchChanged
             isSearchActive={chrome.isSearchActive}
             notebookPage={chrome.notebookPage}
             onSearchToggle={chrome.toggleSearch}
-            onKeyboardShortcuts={chrome.openShortcuts}
             onNotebookPageChange={chrome.setNotebookPage}
             onSearchChanged={onSearchChanged}
         />
@@ -500,8 +498,9 @@ const Demo = () => {
     );
 };
 
-const App = () => (
+const App = ({ applicationId }: AppProps) => (
     <GtkApplication
+        applicationId={applicationId}
         flags={Gio.ApplicationFlags.NON_UNIQUE}
         actionAccels={[
             { detailedActionName: "win.inspector", accels: ["<Control><Shift>i"] },
@@ -512,4 +511,4 @@ const App = () => (
     </GtkApplication>
 );
 
-export { App, Demo };
+export { App };

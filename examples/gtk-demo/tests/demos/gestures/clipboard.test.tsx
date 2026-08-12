@@ -7,14 +7,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { clipboardDemo } from "../../../src/demos/gestures/clipboard.js";
-import { makeFileValue, makeIntValue, makeRgba, makeRgbaValue, makeStringValue, renderDemo } from "../../test-utils.js";
+import {
+    findButton,
+    makeFileValue,
+    makeIntValue,
+    makeRgba,
+    makeRgbaValue,
+    makeStringValue,
+    renderDemo,
+} from "../../test-utils.js";
 
 type SourceType = "Text" | "Color" | "Image" | "File" | "Folder";
 
 const TEMP_DIR = tmpdir();
-
-const findButtonByLabel = async (label: string): Promise<Gtk.Button> =>
-    screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label, as: Gtk.Button });
 
 const switchSourceType = async (type: SourceType): Promise<void> => {
     const dropdown = await screen.findByName("source-type", { as: Gtk.DropDown });
@@ -75,7 +80,7 @@ const populateClipboardFile = async (): Promise<void> => {
 
 const copyImageSource = async (): Promise<void> => {
     await renderSourceType("Image");
-    const copyButton = await findButtonByLabel("Copy");
+    const copyButton = await findButton("Copy");
     await userEvent.click(copyButton);
 };
 
@@ -110,7 +115,7 @@ const makePaintableValue = (): GObject.Value => {
 };
 
 const pasteAndAssertType = async (assertType: (label: Gtk.Label) => void): Promise<void> => {
-    const pasteButton = await findButtonByLabel("Paste");
+    const pasteButton = await findButton("Paste");
 
     await waitFor(() => {
         expect(pasteButton).toBeEnabled();
@@ -164,7 +169,7 @@ const expectCopyEnabledAfterDialog = async (
     label: "File Drag Source" | "Folder Drag Source",
 ): Promise<Gtk.Button> => {
     await clickSourceButtonAfterDialog(kind, label);
-    const copyButton = await findButtonByLabel("Copy");
+    const copyButton = await findButton("Copy");
 
     await waitFor(() => {
         expect(copyButton).toBeEnabled();
@@ -197,9 +202,9 @@ describe("clipboardDemo rendering", () => {
             );
 
             expect(await screen.findByDisplayValue("Copy this!")).toHaveDisplayValue("Copy this!");
-            const copyButton = await findButtonByLabel("Copy");
+            const copyButton = await findButton("Copy");
             expect(copyButton).toBeEnabled();
-            await findButtonByLabel("Paste");
+            await findButton("Paste");
         },
     );
 
@@ -238,7 +243,7 @@ describe("clipboardDemo entry interactions", () => {
     it("disables the copy button when the text source is cleared", async () => {
         await renderDemo(clipboardDemo);
         const entry = await screen.findByName("source-entry", { as: Gtk.Entry });
-        const copyButton = await findButtonByLabel("Copy");
+        const copyButton = await findButton("Copy");
         expect(copyButton).toBeEnabled();
         await userEvent.clear(entry);
 
@@ -250,7 +255,7 @@ describe("clipboardDemo entry interactions", () => {
     it("re-enables the copy button when the user types text after clearing the source", async () => {
         await renderDemo(clipboardDemo);
         const entry = await screen.findByName("source-entry", { as: Gtk.Entry });
-        const copyButton = await findButtonByLabel("Copy");
+        const copyButton = await findButton("Copy");
         await userEvent.clear(entry);
 
         await waitFor(() => {
@@ -294,7 +299,7 @@ describe("clipboardDemo source type switching", () => {
                 expect(stack).toHaveObjectProperty("visibleChildName", "File");
             });
 
-            const copyButton = await findButtonByLabel("Copy");
+            const copyButton = await findButton("Copy");
 
             await waitFor(() => {
                 expect(copyButton).toBeDisabled();
@@ -313,7 +318,7 @@ describe("clipboardDemo source type switching", () => {
                 expect(stack).toHaveObjectProperty("visibleChildName", "Folder");
             });
 
-            const copyButton = await findButtonByLabel("Copy");
+            const copyButton = await findButton("Copy");
 
             await waitFor(() => {
                 expect(copyButton).toBeDisabled();
@@ -357,7 +362,7 @@ describe("clipboardDemo color source", () => {
             colorButton.setRgba(chosen);
         });
 
-        const copyButton = await findButtonByLabel("Copy");
+        const copyButton = await findButton("Copy");
         await userEvent.click(copyButton);
         const rgbaType = GObject.typeFromName("GdkRGBA");
         await expectClipboardHolds(rgbaType);
@@ -372,14 +377,14 @@ describe("clipboardDemo color source", () => {
 describe("clipboardDemo Copy button populates the clipboard", () => {
     it("copies a string when Copy is clicked with text selected", async () => {
         await renderDemo(clipboardDemo);
-        const copyButton = await findButtonByLabel("Copy");
+        const copyButton = await findButton("Copy");
         await userEvent.click(copyButton);
         await expectClipboardHolds(GObject.TYPE_STRING);
     });
 
     it("copies an RGBA color when Copy is clicked with Color source selected", async () => {
         await renderSourceType("Color");
-        const copyButton = await findButtonByLabel("Copy");
+        const copyButton = await findButton("Copy");
         await userEvent.click(copyButton);
         await expectClipboardHolds(GObject.typeFromName("GdkRGBA"));
     });
@@ -529,7 +534,7 @@ describe("clipboardDemo invalid image path", () => {
         });
 
         try {
-            const copyButton = await findButtonByLabel("Copy");
+            const copyButton = await findButton("Copy");
             await userEvent.click(copyButton);
 
             await waitFor(() => {

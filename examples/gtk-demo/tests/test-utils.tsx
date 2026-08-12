@@ -218,8 +218,8 @@ const findInactiveSearchToggle = async (): Promise<Gtk.ToggleButton> => {
     return toggle;
 };
 
-const findOpenButton = async (): Promise<Gtk.Button> =>
-    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Open", as: Gtk.Button });
+const findButton = async (name: string): Promise<Gtk.Button> =>
+    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.Button });
 
 const readBufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();
@@ -312,9 +312,9 @@ export {
     collectWidgets,
     createApplicationIdFactory,
     expectCssReloadedOnEdit,
+    findButton,
     findCssLoadedOnMount,
     findInactiveSearchToggle,
-    findOpenButton,
     findWidget,
     getChildren,
     hasBufferTag,

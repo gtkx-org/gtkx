@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, type MockInstance, vi } fro
 import { parseTitle } from "../src/context/demo-context.js";
 import { demos } from "../src/demos/index.js";
 import { createAppRenderer } from "./render-app.js";
-import { findWidget } from "./test-utils.js";
+import { findButton, findWidget } from "./test-utils.js";
 
 type PrintOperationRunSpy = MockInstance<Gtk.PrintOperation["run"]>;
 
@@ -32,9 +32,6 @@ const toplevelWindows = async (): Promise<Gtk.Window[]> =>
     await screen.findAllByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
 
 const demoWindows = (): Gtk.Window[] => screen.queryAllByName("demo-window", { as: Gtk.Window });
-
-const findRun = async (): Promise<Gtk.Button> =>
-    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run", as: Gtk.Button });
 
 const requireOnlyDemoWindow = (windows: Gtk.Window[], title: string): Gtk.Window => {
     const [win, ...rest] = windows;
@@ -234,7 +231,7 @@ const exerciseDemoAtRow = async (sweep: DemoSweep, position: number, previousTit
         return previousTitle;
     }
 
-    const run = await findRun();
+    const run = await findButton("Run");
 
     if (!run.getSensitive()) {
         return title;
@@ -266,12 +263,12 @@ const exerciseMainMenu = async (): Promise<void> => {
     const menuButton = await screen.findByName("menu-button", { as: Gtk.MenuButton });
     await openMenuItem(menuButton, "About GTK Demo");
     await dismissDialog(await screen.findByRole(Gtk.AccessibleRole.DIALOG));
-    await openMenuItem(menuButton, "Keyboard Shortcuts");
+    await openMenuItem(menuButton, "Keyboard Shortcuts Ctrl+?");
     const shortcutLabels = await screen.findAllByText("Search demos");
     expect(shortcutLabels.length).toBeGreaterThan(0);
     await dismissDialog(await screen.findByRole(Gtk.AccessibleRole.DIALOG));
     const inspector = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
-    await openMenuItem(menuButton, "Inspector");
+    await openMenuItem(menuButton, "Inspector Shift+Ctrl+I");
 
     await waitFor(() => {
         expect(inspector).toHaveBeenCalledWith(true);
