@@ -1,5 +1,5 @@
 /* eslint-disable gtkx/no-library-prefix */
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
@@ -241,6 +241,40 @@ describe("writeDocs with the built-in Adwaita element config", () => {
         expect(multiLayoutView).toContain("`Adw.Layout` elements added to the view");
         expect(multiLayoutView).toContain("### `${string}Slot`");
         expect(multiLayoutView).toContain("so `sidebarSlot` fills the slot with id `sidebar`");
+    });
+});
+
+describe("writeDocs over a directory it does not own", () => {
+    const outDir = join(workDir, "handwritten");
+
+    it("refuses to generate and leaves the existing files in place", () => {
+        mkdirSync(join(outDir, "guide"), { recursive: true });
+        writeFileSync(join(outDir, "getting-started.md"), "# Handwritten getting started\n");
+        writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
+
+        expect(() => writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir })).toThrow(
+            "Refusing to generate documentation into",
+        );
+
+        expect(page(outDir, "getting-started.md")).toBe("# Handwritten getting started\n");
+        expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
+        expect(existsSync(join(outDir, "manifest.json"))).toBe(false);
+    });
+});
+
+describe("writeDocs over a directory it generated", () => {
+    const outDir = join(workDir, "managed");
+
+    it("removes only the entries its manifest records", () => {
+        expect(writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir }).isRegenerated).toBe(true);
+        mkdirSync(join(outDir, "guide"), { recursive: true });
+        writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
+        writeFileSync(join(outDir, "gtk", "stale.md"), "# Removed element\n");
+        const again = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir, isForced: true });
+        expect(again.isRegenerated).toBe(true);
+        expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
+        expect(existsSync(join(outDir, "gtk", "stale.md"))).toBe(false);
+        expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
     });
 });
 

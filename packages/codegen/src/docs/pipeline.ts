@@ -1,5 +1,5 @@
-import { sortStringsBy } from "@gtkx/utils";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { isRecord, sortStringsBy } from "@gtkx/utils";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { computeGiFingerprint, FINGERPRINT_FILENAME, isGiStoreFresh } from "../fingerprint.js";
 import { Library } from "../gir/library.js";
@@ -50,6 +50,7 @@ type DocsResult = {
 };
 
 const MANIFEST_FILENAME = "manifest.json";
+const ROOT_INDEX_FILENAME = "index.md";
 
 const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]): string => {
     const rows = elements.map((entry, index) => {
@@ -187,21 +188,68 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
         namespaces.push(result.docs);
     }
 
-    pages.push({ path: "index.md", content: rootIndexPage(namespaces, options.libraries) });
+    pages.push({ path: ROOT_INDEX_FILENAME, content: rootIndexPage(namespaces, options.libraries) });
 
     return { pages, namespaces };
 };
 
-const cachedDocsResult = (options: DocsOptions, manifestPath: string): DocsResult | undefined => {
-    if (options.isForced === true || !isGiStoreFresh(options.outDir, options.libraries, options.girPath)) {
-        return undefined;
-    }
+const isDocsManifest = (value: unknown): value is DocsManifest =>
+    isRecord(value) && Array.isArray(value.namespaces) &&
+    value.namespaces.every((namespace) => isRecord(namespace) && typeof namespace.directory === "string");
 
+const readDocsManifest = (manifestPath: string): DocsManifest | undefined => {
     if (!existsSync(manifestPath)) {
         return undefined;
     }
 
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as DocsManifest;
+    let parsed: unknown;
+
+    try {
+        parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as unknown;
+    } catch {
+        return undefined;
+    }
+
+    return isDocsManifest(parsed) ? parsed : undefined;
+};
+
+const assertOwnedOutDir = (outDir: string, manifest: DocsManifest | undefined): void => {
+    if (manifest !== undefined || !existsSync(outDir) || readdirSync(outDir).length === 0) {
+        return;
+    }
+
+    throw new Error(
+        `Refusing to generate documentation into ${outDir}: it is not empty and holds no ` +
+        `${MANIFEST_FILENAME} from an earlier \`gtkx docs\` run, so its contents are not gtkx's to ` +
+        "replace. Point the output directory at an empty directory, or at one gtkx generated.",
+    );
+};
+
+const removeGeneratedPages = (outDir: string, manifest: DocsManifest | undefined): void => {
+    if (manifest === undefined) {
+        return;
+    }
+
+    const entries = [
+        ...manifest.namespaces.map((namespace) => namespace.directory),
+        ROOT_INDEX_FILENAME,
+        MANIFEST_FILENAME,
+        FINGERPRINT_FILENAME,
+    ];
+
+    for (const entry of entries) {
+        rmSync(join(outDir, entry), { recursive: true, force: true });
+    }
+};
+
+const cachedDocsResult = (options: DocsOptions, manifest: DocsManifest | undefined): DocsResult | undefined => {
+    if (manifest === undefined || options.isForced === true) {
+        return undefined;
+    }
+
+    if (!isGiStoreFresh(options.outDir, options.libraries, options.girPath)) {
+        return undefined;
+    }
 
     return { isRegenerated: false, namespaces: manifest.namespaces };
 };
@@ -219,19 +267,21 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     setOmittedProps(options.omittedProps ?? {});
     const basePath = options.basePath ?? "/reference";
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
-    const cached = cachedDocsResult(options, manifestPath);
+    const previous = readDocsManifest(manifestPath);
+    const cached = cachedDocsResult(options, previous);
 
     if (cached !== undefined) {
         return cached;
     }
 
+    assertOwnedOutDir(options.outDir, previous);
     const library = Library.load(options.libraries, options.girPath);
     const { pages, namespaces } = generatePages(options, basePath, library);
-    rmSync(options.outDir, { recursive: true, force: true });
+    removeGeneratedPages(options.outDir, previous);
     mkdirSync(options.outDir, { recursive: true });
-    writePages(options.outDir, pages);
     const manifest: DocsManifest = { namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
+    writePages(options.outDir, pages);
 
     writeFileSync(
         join(options.outDir, FINGERPRINT_FILENAME),

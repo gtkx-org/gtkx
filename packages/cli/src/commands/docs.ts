@@ -25,7 +25,9 @@ const docs = defineCommand({
     args: {
         out: {
             type: "string",
-            description: "Output directory for the generated markdown pages, relative to the project root",
+            description:
+                "Output directory for the generated markdown pages, relative to the project root. It must be " +
+                "empty or hold an earlier `gtkx docs` run, whose pages are replaced",
             default: "docs/reference",
         },
         "base-path": {
