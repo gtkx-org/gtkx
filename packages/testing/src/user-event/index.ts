@@ -107,15 +107,22 @@ type UserEvent = {
     scroll: typeof scroll;
     /**
      * Sends a key sequence along the chain GTK4 propagates a key event through: the application's
-     * accelerators first, then the capture-phase controllers from the root down to the widget, the
-     * widget's own target-phase controllers, and the bubble-phase controllers from the widget back
-     * up to the root, so a key controller or shortcut controller a container or window above the
-     * widget carries receives the key too, each in the phase it declares. The first controller that
-     * handles a press ends the chain, and a press none of them handled reaches an editable widget's
-     * activate handler. Only key controllers the tree connected a `key-pressed` or `key-released`
-     * handler to take part: the ones GTK4 attaches itself, such as the controllers a `Gtk.Text` or
-     * a `Gtk.SearchBar` carries, read a GDK event that off-screen synthesis cannot produce, so a
-     * widget's built-in key behavior is not exercised. Held modifiers carry across calls.
+     * accelerators first, then the capture-phase controllers from the root down to the event widget,
+     * the event widget's target-phase controllers, and the bubble-phase controllers from it back up
+     * to the root, so a key controller or shortcut controller a container or window above the widget
+     * carries receives the key too, each in the phase it declares. The event widget is the editable
+     * delegate GTK4 focuses when the widget has one, the `Gtk.Text` inside a `Gtk.Entry` for
+     * instance, so the delegate stands ahead of the widget in the chain. A shortcut controller whose
+     * scope is not local runs where it registered instead, the root for a global one and the nearest
+     * `Gtk.ShortcutManager` for a managed one, so it fires wherever focus sits inside that subtree
+     * and never at its own widget, while a shortcut whose widget is insensitive or unmapped stays
+     * inert wherever it sits. The first controller that handles a press ends the chain, and a
+     * `Gdk.KEY_Return` press none of them handled reaches an editable widget's activate handler.
+     * Built-in key bindings take part, since GTK4 carries them on a shortcut controller: a
+     * `Gtk.Text`'s arrow keys or a `Gtk.TextView`'s undo can consume a press before an ancestor
+     * sees it. Key controllers GTK4 attaches itself are the exception, since they read a GDK event
+     * that off-screen synthesis cannot produce, so only the key controllers the tree connected a
+     * `key-pressed` or `key-released` handler to take part. Held modifiers carry across calls.
      */
     keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
     /**

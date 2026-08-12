@@ -165,21 +165,6 @@ describe("App global shortcuts", () => {
         });
     });
 
-    it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is pressed", async () => {
-        const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
-
-        try {
-            const body = await renderMainWindowBody();
-            await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
-
-            await waitFor(() => {
-                expect(debugSpy).toHaveBeenCalledWith(true);
-            });
-        } finally {
-            debugSpy.mockRestore();
-        }
-    });
-
     it("advances the notebook page when Ctrl+Page_Down is pressed", async () => {
         const body = await renderMainWindowBody();
         const notebook = await findNotebook();

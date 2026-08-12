@@ -5,7 +5,7 @@ import { hasSignalListener } from "@gtkx/runtime/internal";
 import type { UserEventState } from "./state.js";
 import { getEditableDelegate } from "../editable.js";
 import { fireEvent } from "../fire-event.js";
-import { ancestors } from "../traversal.js";
+import { ancestors, descendants } from "../traversal.js";
 import { wrapEvent } from "./event-wrapper.js";
 
 /** Options for `userEvent.tab`. */
@@ -185,6 +185,61 @@ const isTriggerMatch = (
     return false;
 };
 
+const controllersOn = function* (widget: Gtk.Widget): Generator<Gtk.EventController> {
+    const controllers = widget.observeControllers();
+    const count = controllers.getNItems();
+
+    for (let i = 0; i < count; i++) {
+        const controller = controllers.getItem(i);
+
+        if (controller instanceof Gtk.EventController) {
+            yield controller;
+        }
+    }
+};
+
+const hasShortcut = (controller: Gtk.ShortcutController, shortcut: Gtk.Shortcut): boolean => {
+    const count = controller.getNItems();
+
+    for (let i = 0; i < count; i++) {
+        if (controller.getItem(i) === shortcut) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const isManagingShortcut = (controller: Gtk.EventController, shortcut: Gtk.Shortcut): boolean =>
+    controller instanceof Gtk.ShortcutController &&
+    controller.getScope() !== Gtk.ShortcutScope.LOCAL &&
+    hasShortcut(controller, shortcut);
+
+const managedShortcutHost = (manager: Gtk.Widget, shortcut: Gtk.Shortcut): Gtk.Widget | null => {
+    for (const current of [manager, ...descendants(manager)]) {
+        if (controllersOn(current).some((controller) => isManagingShortcut(controller, shortcut))) {
+            return current;
+        }
+    }
+
+    return null;
+};
+
+const isMovingFocus = (action: Gtk.ShortcutAction): boolean =>
+    action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus";
+
+const isShortcutLive = (host: Gtk.Widget): boolean => host.isSensitive() && host.getMapped();
+
+const didRunShortcutAction = (shortcut: Gtk.Shortcut, host: Gtk.Widget): boolean => {
+    const action = shortcut.getAction();
+
+    if (action === null || isMovingFocus(action) || !isShortcutLive(host)) {
+        return false;
+    }
+
+    return action.activate(0 as Gtk.ShortcutActionFlags, host, shortcut.getArguments());
+};
+
 const didActivateShortcut = (
     shortcut: Gtk.Shortcut,
     widget: Gtk.Widget,
@@ -195,13 +250,7 @@ const didActivateShortcut = (
         return false;
     }
 
-    const action = shortcut.getAction();
-
-    if (action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus") {
-        return false;
-    }
-
-    return action?.activate(0 as Gtk.ShortcutActionFlags, widget, shortcut.getArguments()) ?? false;
+    return didRunShortcutAction(shortcut, managedShortcutHost(widget, shortcut) ?? widget);
 };
 
 const didActivateMatchingShortcut = (
@@ -269,22 +318,13 @@ const didDispatchApplicationAccels = (widget: Gtk.Widget, keyval: number, modifi
     return root instanceof Gtk.Window && didDispatchAccelsOnWindow(root, keyval, modifiers);
 };
 
-const controllersOn = function* (widget: Gtk.Widget): Generator<Gtk.EventController> {
-    const controllers = widget.observeControllers();
-    const count = controllers.getNItems();
-
-    for (let i = 0; i < count; i++) {
-        const controller = controllers.getItem(i);
-
-        if (controller instanceof Gtk.EventController) {
-            yield controller;
-        }
+const isKeyStopController = (controller: Gtk.EventController): controller is KeyStopController => {
+    if (controller instanceof Gtk.ShortcutController) {
+        return controller.getScope() === Gtk.ShortcutScope.LOCAL;
     }
-};
 
-const isKeyStopController = (controller: Gtk.EventController): controller is KeyStopController =>
-    controller instanceof Gtk.ShortcutController ||
-    (controller instanceof Gtk.EventControllerKey && hasSignalListener(controller, KEY_CONTROLLER_SIGNALS));
+    return controller instanceof Gtk.EventControllerKey && hasSignalListener(controller, KEY_CONTROLLER_SIGNALS);
+};
 
 const keyStopsInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase): KeyStop[] => {
     const stops: KeyStop[] = [];
@@ -302,15 +342,16 @@ const propagationChain = (widget: Gtk.Widget): Gtk.Widget[] => {
     const delegate = getEditableDelegate(widget);
     const below = delegate === null ? [] : [delegate];
 
-    return [widget, ...below, ...ancestors(widget)];
+    return [...below, widget, ...ancestors(widget)];
 };
 
 const keyPropagationChain = (widget: Gtk.Widget): KeyStop[] => {
     const chain = propagationChain(widget);
+    const [eventWidget = widget] = chain;
 
     return [
         ...chain.toReversed().flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.CAPTURE)),
-        ...keyStopsInPhase(widget, Gtk.PropagationPhase.TARGET),
+        ...keyStopsInPhase(eventWidget, Gtk.PropagationPhase.TARGET),
         ...chain.flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.BUBBLE)),
     ];
 };

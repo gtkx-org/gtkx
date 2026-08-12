@@ -33,6 +33,7 @@ import {
     renderDragAndDropPair,
     renderGesturedLabel,
     renderShortcutHost,
+    type ShortcutHostOptions,
 } from "./event-render-setup.js";
 import { bufferText } from "./text-buffer-helpers.js";
 
@@ -151,16 +152,41 @@ const renderKeyControllerTree = async (
     return screen.findByName("field");
 };
 
-const recordingKeyController = (order: string[], label: string, phase?: Gtk.PropagationPhase): ReactNode => (
-    <GtkEventControllerKey
-        propagationPhase={phase}
-        onKeyPressed={() => {
-            order.push(label);
+const recordPress = (order: string[], label: string) => (): boolean => {
+    order.push(label);
 
-            return Gdk.EVENT_PROPAGATE;
-        }}
-    />
+    return Gdk.EVENT_PROPAGATE;
+};
+
+const recordingKeyController = (order: string[], label: string, phase?: Gtk.PropagationPhase): ReactNode => (
+    <GtkEventControllerKey propagationPhase={phase} onKeyPressed={recordPress(order, label)} />
 );
+
+const attachRecordingKeyController = (
+    widget: Gtk.Widget,
+    order: string[],
+    label: string,
+    phase?: Gtk.PropagationPhase,
+): void => {
+    const controller = new Gtk.EventControllerKey();
+
+    if (phase !== undefined) {
+        controller.setPropagationPhase(phase);
+    }
+
+    controller.on("key-pressed", recordPress(order, label));
+    widget.addController(controller);
+};
+
+const getDelegate = (widget: Gtk.Widget): Gtk.Widget => {
+    const delegate = widget instanceof Gtk.Editable ? widget.getDelegate() : null;
+
+    if (delegate === null) {
+        throw new TypeError("Widget has no editable delegate");
+    }
+
+    return delegate;
+};
 
 const keyPressOrder = async (ancestorPhase?: Gtk.PropagationPhase): Promise<string[]> => {
     const order: string[] = [];
@@ -175,17 +201,35 @@ const keyPressOrder = async (ancestorPhase?: Gtk.PropagationPhase): Promise<stri
     return order;
 };
 
-const pressShortcutOverStoppingField = async (phase: Gtk.PropagationPhase): Promise<Mock<() => boolean>> => {
+const delegateKeyPressOrder = async (phase?: Gtk.PropagationPhase): Promise<string[]> => {
+    const order: string[] = [];
+
+    const field = await renderKeyControllerTree(
+        recordingKeyController(order, "ancestor", phase),
+        recordingKeyController(order, "field", phase),
+    );
+
+    attachRecordingKeyController(getDelegate(field), order, "delegate", phase);
+    await userEvent.keyboard(field, "{Escape}");
+
+    return order;
+};
+
+const pressShortcutFromField = async (
+    options: Omit<ShortcutHostOptions, "trigger">,
+): Promise<Mock<() => boolean>> => {
     const { onActivate } = await renderShortcutHost({
         trigger: Gtk.ShortcutTrigger.parseString("F5"),
-        phase,
-        children: <GtkEntry name="field" controllers={stoppingKeyController} />,
+        ...options,
     });
 
     await userEvent.keyboard(await screen.findByName("field"), "{F5}");
 
     return onActivate;
 };
+
+const pressShortcutOverStoppingField = (phase: Gtk.PropagationPhase): Promise<Mock<() => boolean>> =>
+    pressShortcutFromField({ phase, children: <GtkEntry name="field" controllers={stoppingKeyController} /> });
 
 const pressKeyOnProbe = async (input: string, options: KeyProbeOptions = {}): Promise<KeyProbe> => {
     const handleAncestorPressed = vi.fn(() => options.ancestorResult ?? Gdk.EVENT_PROPAGATE);
@@ -576,7 +620,7 @@ describe("userEvent.type undo after replacing a selection", () => {
     });
 });
 
-describe("userEvent.keyboard — held modifier state", () => {
+describe("userEvent.keyboard: held modifier state", () => {
     it("retains a held modifier across calls until it is released", async () => {
         const trigger = Gtk.ShortcutTrigger.parseString("<Shift>F5");
         const { host, onActivate } = await renderShortcutHost({ trigger });
@@ -1000,7 +1044,7 @@ describe("controller fan-out", () => {
 
     it("delivers key events to every key controller", async () => {
         const { entry, firstPressed, secondPressed } = await renderDoubleKeyEntry();
-        await userEvent.keyboard(entry, "{Enter}");
+        await userEvent.keyboard(entry, "{F5}");
         expect(firstPressed).toHaveBeenCalledTimes(1);
         expect(secondPressed).toHaveBeenCalledTimes(1);
     });
@@ -1035,7 +1079,7 @@ describe("userEvent.drop", () => {
     });
 });
 
-describe("userEvent.drop — value passthrough and errors", () => {
+describe("userEvent.drop: value passthrough and errors", () => {
     it("forwards a pre-built GObject.Value unchanged", async () => {
         const handleDrop = vi.fn<(value: GObject.Value, x: number, y: number) => boolean>().mockReturnValue(true);
         const target = await renderDropZone("value-zone", "Drop a value", GObject.TYPE_STRING, handleDrop);
@@ -1069,7 +1113,7 @@ describe("userEvent.dragAndDrop", () => {
     });
 });
 
-describe("userEvent.keyboard — shortcut dispatch", () => {
+describe("userEvent.keyboard: shortcut dispatch", () => {
     it("activates a KeyvalTrigger shortcut when the matching key is pressed", async () => {
         const trigger = Gtk.ShortcutTrigger.parseString("F5");
         const { host, onActivate } = await renderShortcutHost({ trigger });
@@ -1159,5 +1203,96 @@ describe("userEvent.keyboard: key controller phases", () => {
 
     it("leaves an ancestor's bubble-phase shortcut unactivated when a key controller handles the press", async () => {
         expect(await pressShortcutOverStoppingField(Gtk.PropagationPhase.BUBBLE)).not.toHaveBeenCalled();
+    });
+});
+
+describe("userEvent.keyboard: shortcut scope", () => {
+    it("activates a global-scope shortcut whose host is not an ancestor of the target", async () => {
+        const onActivate = await pressShortcutFromField({
+            scope: Gtk.ShortcutScope.GLOBAL,
+            sibling: <GtkEntry name="field" />,
+        });
+
+        expect(onActivate).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves a local-scope shortcut unactivated when its host is not an ancestor of the target", async () => {
+        const onActivate = await pressShortcutFromField({
+            scope: Gtk.ShortcutScope.LOCAL,
+            sibling: <GtkEntry name="field" />,
+        });
+
+        expect(onActivate).not.toHaveBeenCalled();
+    });
+
+    it("leaves a global-scope shortcut on an insensitive host unactivated", async () => {
+        const onActivate = await pressShortcutFromField({
+            scope: Gtk.ShortcutScope.GLOBAL,
+            isSensitive: false,
+            sibling: <GtkEntry name="field" />,
+        });
+
+        expect(onActivate).not.toHaveBeenCalled();
+    });
+
+    it("runs a global-scope shortcut at the root, behind the key controllers above its host", async () => {
+        const order: string[] = [];
+
+        const onActivate = await pressShortcutFromField({
+            scope: Gtk.ShortcutScope.GLOBAL,
+            isHandled: false,
+            treeControllers: recordingKeyController(order, "above host"),
+            children: <GtkEntry name="field" />,
+        });
+
+        expect(order).toEqual(["above host"]);
+        expect(onActivate).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("userEvent.keyboard: editable delegate", () => {
+    it("runs the delegate's key controller before the widget's own in the bubble phase", async () => {
+        expect(await delegateKeyPressOrder()).toEqual(["delegate", "field", "ancestor"]);
+    });
+
+    it("runs the delegate's key controller after the widget's own in the capture phase", async () => {
+        expect(await delegateKeyPressOrder(Gtk.PropagationPhase.CAPTURE)).toEqual(["ancestor", "field", "delegate"]);
+    });
+
+    it("runs the target phase on the delegate rather than on the widget", async () => {
+        const order: string[] = [];
+        const phase = Gtk.PropagationPhase.TARGET;
+        const field = await renderKeyControllerTree(null, recordingKeyController(order, "field", phase));
+        attachRecordingKeyController(getDelegate(field), order, "delegate", phase);
+        await userEvent.keyboard(field, "{Escape}");
+        expect(order).toEqual(["delegate"]);
+    });
+
+    it("lets the delegate's built-in key binding consume the press before an ancestor's controller", async () => {
+        const handleKeyPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
+
+        await render(
+            <GtkBox name="ancestor" controllers={<GtkEventControllerKey onKeyPressed={handleKeyPressed} />}>
+                <GtkEntry name="field" text="hello" />
+            </GtkBox>,
+        );
+
+        const field = await screen.findByName("field", { as: Gtk.Entry });
+        field.setPosition(5);
+        await userEvent.keyboard(field, "{ArrowLeft}");
+        expect(field.getPosition()).toBe(4);
+        expect(handleKeyPressed).not.toHaveBeenCalled();
+    });
+});
+
+describe("userEvent.keyboard: unhandled presses", () => {
+    it("activates an editable widget on Return alone", async () => {
+        const handleActivate = vi.fn();
+        await render(<GtkEntry name="field" onActivate={handleActivate} />);
+        const field = await screen.findByName("field");
+        await userEvent.keyboard(field, "{Escape}");
+        expect(handleActivate).not.toHaveBeenCalled();
+        await userEvent.keyboard(field, "{Enter}");
+        expect(handleActivate).toHaveBeenCalledTimes(1);
     });
 });

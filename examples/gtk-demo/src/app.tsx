@@ -281,9 +281,6 @@ const AppShortcuts = ({ onSearchToggle, onKeyboardShortcuts, onNotebookNext, onN
         shortcuts={(
             <>
                 {shortcut("<Control>f", onSearchToggle)}
-                {shortcut("<Control><Shift>i", () => {
-                    Gtk.Window.setInteractiveDebugging(true);
-                })}
                 {shortcut("<Control>question", onKeyboardShortcuts)}
                 {shortcut("<Control>Page_Down", onNotebookNext)}
                 {shortcut("<Control>Page_Up", onNotebookPrev)}

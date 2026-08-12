@@ -335,7 +335,9 @@ const SuggestionEntryView = ({
         hexpand
         placeholderText={placeholder}
         onChanged={onChanged}
-        controllers={<GtkEventControllerKey onKeyPressed={onKeyPressed} />}
+        controllers={(
+            <GtkEventControllerKey propagationPhase={Gtk.PropagationPhase.CAPTURE} onKeyPressed={onKeyPressed} />
+        )}
     >
         <GtkPopover
             ref={popoverRef}

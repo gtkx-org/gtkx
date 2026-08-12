@@ -33,8 +33,12 @@ type RenderedDragAndDropPair = {
 type ShortcutHostOptions = {
     trigger: Gtk.ShortcutTrigger;
     isSensitive?: boolean;
+    isHandled?: boolean;
     phase?: Gtk.PropagationPhase;
+    scope?: Gtk.ShortcutScope;
     children?: ReactNode;
+    sibling?: ReactNode;
+    treeControllers?: ReactNode;
 };
 
 type RenderedShortcutHost = {
@@ -66,20 +70,26 @@ async function renderGesturedLabel(
 }
 
 async function renderShortcutHost(options: ShortcutHostOptions): Promise<RenderedShortcutHost> {
-    const onActivate = vi.fn(() => true);
+    const onActivate = vi.fn(() => options.isHandled ?? true);
 
     await render(
-        <GtkBox
-            name="host"
-            sensitive={options.isSensitive ?? true}
-            controllers={(
-                <GtkShortcutController
-                    propagationPhase={options.phase}
-                    shortcuts={<GtkShortcut trigger={options.trigger} action={Gtk.CallbackAction.new(onActivate)} />}
-                />
-            )}
-        >
-            {options.children ?? <GtkLabel>anchor</GtkLabel>}
+        <GtkBox name="tree" orientation={Gtk.Orientation.VERTICAL} controllers={options.treeControllers}>
+            <GtkBox
+                name="host"
+                sensitive={options.isSensitive ?? true}
+                controllers={(
+                    <GtkShortcutController
+                        propagationPhase={options.phase}
+                        scope={options.scope}
+                        shortcuts={(
+                            <GtkShortcut trigger={options.trigger} action={Gtk.CallbackAction.new(onActivate)} />
+                        )}
+                    />
+                )}
+            >
+                {options.children ?? <GtkLabel>anchor</GtkLabel>}
+            </GtkBox>
+            {options.sibling}
         </GtkBox>,
     );
 
@@ -124,4 +134,5 @@ export {
     renderDragAndDropPair,
     renderGesturedLabel,
     renderShortcutHost,
+    type ShortcutHostOptions,
 };
