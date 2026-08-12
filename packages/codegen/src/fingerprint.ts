@@ -100,9 +100,12 @@ const readSentinel = (storeDir: string): unknown => {
     }
 };
 
+const isStringArray = (value: unknown): value is string[] =>
+    Array.isArray(value) && value.every((entry) => typeof entry === "string");
+
 const isGiFingerprint = (value: unknown): value is GiFingerprint =>
-    isRecord(value) && typeof value.value === "string" && Array.isArray(value.girFiles) &&
-    Array.isArray(value.libraries) && (value.girPath === undefined || Array.isArray(value.girPath));
+    isRecord(value) && typeof value.value === "string" && isStringArray(value.girFiles) &&
+    isStringArray(value.libraries) && (value.girPath === undefined || isStringArray(value.girPath));
 
 const isDocsFingerprint = (value: unknown): value is DocsFingerprint =>
     isRecord(value) && typeof value.value === "string" && isGiFingerprint(value.gi);
