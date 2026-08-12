@@ -91,9 +91,10 @@ const objectValueType = bindValueType("object", objectT("borrowed"));
 const paramValueType = bindValueType("param", PARAM_T);
 const variantValueType = bindValueType("variant", VARIANT_T);
 const pointerValueType = bindValueType("pointer", uint64T);
+const setStrvBoxed = bind(LIB, "g_value_set_boxed", [VALUE_T, arrayT(stringT("borrowed"))], voidT);
 
 const strvValueType: ValueType = {
-    set: bind(LIB, "g_value_set_boxed", [VALUE_T, arrayT(stringT("borrowed"))], voidT),
+    set: setStrvValue,
     get: bind(LIB, "g_value_get_boxed", [VALUE_T], arrayT(stringT("borrowed"))),
 };
 
@@ -117,7 +118,6 @@ const PLAIN_VALUE_TYPES: Partial<Record<Descriptor["kind"], ValueType>> = {
 
 const PLAIN_VALUE_GETTERS: Map<bigint, ValueGetter> = new Map([
     [TYPE_BOOLEAN, booleanValueType.get],
-    [TYPE_GTYPE, typeValueType.get],
     [TYPE_CHAR, scharValueType.get],
     [TYPE_UCHAR, ucharValueType.get],
     [TYPE_INT, intValueType.get],
@@ -134,7 +134,6 @@ const PLAIN_VALUE_GETTERS: Map<bigint, ValueGetter> = new Map([
 
 const PLAIN_VALUE_SETTERS: Map<bigint, ValueType["set"]> = new Map([
     [TYPE_BOOLEAN, booleanValueType.set],
-    [TYPE_GTYPE, typeValueType.set],
     [TYPE_CHAR, scharValueType.set],
     [TYPE_UCHAR, ucharValueType.set],
     [TYPE_INT, intValueType.set],
@@ -377,6 +376,10 @@ function setStringValue(value: ExternalObject<Handle>, nativeValue: unknown): vo
     stringValueType.set(value, nativeValue ?? null);
 }
 
+function setStrvValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
+    setStrvBoxed(value, nativeValue ?? null);
+}
+
 function setPointerValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
     if (nativeValue != null) {
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled from JS");
@@ -417,21 +420,21 @@ const builtInValueGetter = (fundamental: bigint): ValueGetter | undefined =>
 const builtInValueSetter = (fundamental: bigint): ValueType["set"] | undefined =>
     PLAIN_VALUE_SETTERS.get(fundamental) ?? WRAPPED_VALUE_SETTERS.get(fundamental);
 
-const resolveValueGetter = (type: bigint): ValueGetter | undefined =>
-    builtInValueGetter(typeFundamental(type)) ?? customFundamentalGetter(type);
-
-const resolveValueSetter = (type: bigint): ValueType["set"] | undefined =>
-    builtInValueSetter(typeFundamental(type)) ?? customFundamentalSetter(type);
-
-function setStrvValue(value: ExternalObject<Handle>, jsValue: unknown): void {
-    strvValueType.set(value, jsValue ?? null);
-}
-
-function valueWriterFor(type: bigint): ValueWriter {
-    if (type === getStrvType()) {
-        return setStrvValue;
+const exactValueType = (type: bigint): ValueType | undefined => {
+    if (type === TYPE_GTYPE) {
+        return typeValueType;
     }
 
+    return type === getStrvType() ? strvValueType : undefined;
+};
+
+const resolveValueGetter = (type: bigint): ValueGetter | undefined =>
+    exactValueType(type)?.get ?? builtInValueGetter(typeFundamental(type)) ?? customFundamentalGetter(type);
+
+const resolveValueSetter = (type: bigint): ValueType["set"] | undefined =>
+    exactValueType(type)?.set ?? builtInValueSetter(typeFundamental(type)) ?? customFundamentalSetter(type);
+
+function valueWriterFor(type: bigint): ValueWriter {
     const set = resolveValueSetter(type);
 
     if (set === undefined) {
@@ -474,11 +477,6 @@ function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle>
 
 function fromValue(value: ExternalObject<Handle>): unknown {
     const type = getValueType(value);
-
-    if (type === getStrvType()) {
-        return strvValueType.get(value);
-    }
-
     const get = resolveValueGetter(type);
 
     if (get === undefined) {
