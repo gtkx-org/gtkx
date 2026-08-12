@@ -1,3 +1,4 @@
+import type { ApplicationInstance } from "@gtkx/runtime";
 import type { InlineConfig, Plugin } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
@@ -17,7 +18,7 @@ type DevRunnerDeps = {
     stopMcpClient(): void;
     watchApplicationShutdown(onShutdown: () => void): void;
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
-    isApplicationRegistered(): boolean;
+    getApplicationInstance(): ApplicationInstance;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
     performRefresh: () => void;
@@ -56,6 +57,7 @@ type SettleAttempt = {
 };
 
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
+const OWNED_ID_EXIT_CODE = 1;
 const LOAD_ATTEMPT_LIMIT = 5;
 const SKIP_REASON = `did not settle in ${String(LOAD_ATTEMPT_LIMIT)} attempts; save it again to patch the window.`;
 
@@ -333,13 +335,16 @@ const connectApplication = async (session: DevSession, liveApplicationId: string
     await deps.startMcpClient(applicationId, (id) => loadModuleExclusively(server, id));
 };
 
-const connectRegisteredApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
-    if (session.deps.isApplicationRegistered()) {
-        await connectApplication(session, liveApplicationId);
+const stopForOwnedApplicationId = async (session: DevSession, liveApplicationId: string): Promise<void> => {
+    session.deps.log(
+        `Another process already owns ${liveApplicationId}, so this session can never show a window - ` +
+        "stopping dev runner. Quit that instance or change applicationId, then start gtkx dev again.",
+    );
 
-        return;
-    }
+    await closeAndExit(session, OWNED_ID_EXIT_CODE);
+};
 
+const stopForUnregisteredApplication = async (session: DevSession): Promise<void> => {
     if (session.failure.hasReported()) {
         session.deps.log("Application stopped before the dev runner attached.");
         session.failure.fail();
@@ -349,6 +354,24 @@ const connectRegisteredApplication = async (session: DevSession, liveApplication
 
     session.deps.log("Application refused its command line - stopping dev runner...");
     await closeAndExit(session, refusedExitCode());
+};
+
+const connectLiveApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
+    const instance = session.deps.getApplicationInstance();
+
+    if (instance === "primary") {
+        await connectApplication(session, liveApplicationId);
+
+        return;
+    }
+
+    if (instance === "remote") {
+        await stopForOwnedApplicationId(session, liveApplicationId);
+
+        return;
+    }
+
+    await stopForUnregisteredApplication(session);
 };
 
 const attachApplication = async (session: DevSession): Promise<void> => {
@@ -369,7 +392,7 @@ const attachApplication = async (session: DevSession): Promise<void> => {
         return;
     }
 
-    await connectRegisteredApplication(session, liveApplicationId);
+    await connectLiveApplication(session, liveApplicationId);
 };
 
 const loadEntry = async (session: DevSession, entryPath: string): Promise<void> => {
@@ -383,16 +406,14 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
 };
 
 const isApplicationLost = (session: DevSession): boolean =>
-    session.failure.hasReported() && !session.deps.isApplicationRegistered();
+    session.failure.hasReported() && session.deps.getApplicationInstance() === "unregistered";
 
 const announceReady = (session: DevSession): void => {
     if (isApplicationLost(session)) {
         session.failure.fail();
     }
 
-    if (session.failure.isDown()) {
-        parkSession(session);
-
+    if (isSessionInactive(session)) {
         return;
     }
 

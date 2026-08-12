@@ -30,6 +30,12 @@ type ApplicationLike = {
     emit(signal: "shutdown"): unknown;
 };
 
+/**
+ * The role a process plays for its application ID: `primary` owns it and may build a user interface,
+ * `remote` reaches the process that owns it, and `unregistered` holds no registration at all.
+ */
+type ApplicationInstance = "primary" | "remote" | "unregistered";
+
 /** What {@link runApplication} reports about the process it just started. */
 type RunApplicationResult = {
     /** Whether this process owns the application ID and may build a user interface. */
@@ -102,6 +108,22 @@ const restartApplication = (application: ApplicationLike): number => {
 };
 
 /**
+ * Reports whether this process owns the application ID, only reaches the process that owns it, or holds
+ * no registration at all. Registration alone cannot tell the first two apart, because registering as a
+ * remote instance succeeds exactly as owning the ID does.
+ *
+ * @param application The application to inspect.
+ * @returns The role this process plays for the application ID.
+ */
+const getApplicationInstance = (application: ApplicationLike): ApplicationInstance => {
+    if (!application.getIsRegistered()) {
+        return "unregistered";
+    }
+
+    return application.getIsRemote?.() === true ? "remote" : "primary";
+};
+
+/**
  * Hands `argv` to GLib's own command line handling, which parses the application's options, prints
  * `--help`, runs `handle-local-options`, registers the application, and either activates it or
  * forwards the command line to the process that already owns the application ID. The runtime is
@@ -136,7 +158,7 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
         ? restartApplication(application)
         : startApplication(application, argv);
 
-    const isPrimary = application.getIsRegistered() && application.getIsRemote?.() !== true;
+    const isPrimary = getApplicationInstance(application) === "primary";
 
     if (isPrimary) {
         keepAlive(true);
@@ -175,4 +197,13 @@ const quitApplication = (application: ApplicationLike): void => {
     }
 };
 
-export { onExit, quit, runApplication, quitApplication, type ApplicationLike, type RunApplicationResult };
+export {
+    getApplicationInstance,
+    onExit,
+    quit,
+    runApplication,
+    quitApplication,
+    type ApplicationInstance,
+    type ApplicationLike,
+    type RunApplicationResult,
+};

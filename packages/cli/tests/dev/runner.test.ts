@@ -1,3 +1,4 @@
+import type { ApplicationInstance } from "@gtkx/runtime";
 import type { InlineConfig, Plugin } from "vite";
 import { describe, expect, it, vi } from "vitest";
 import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
@@ -40,7 +41,7 @@ type HarnessOverrides = {
     applicationId?: string | null;
     configuredApplicationId?: string;
     isBoundary?: (mod: Record<string, unknown>) => boolean;
-    isApplicationRegistered?: boolean;
+    applicationInstance?: ApplicationInstance;
     readFileRevision?: DevRunnerDeps["readFileRevision"];
     whileWaiting?: () => void;
 };
@@ -226,7 +227,7 @@ const buildDeps = (
     stopMcpClient: mocks.stopMcp,
     watchApplicationShutdown: mocks.watchAppShutdown,
     watchUncaughtErrors: mocks.watchUncaughtErrors,
-    isApplicationRegistered: () => overrides.isApplicationRegistered ?? true,
+    getApplicationInstance: () => overrides.applicationInstance ?? "primary",
     installShutdownHandlers: mocks.installShutdownHandlers,
     quitDefaultApplication: mocks.quitDefaultApp,
     performRefresh: mocks.performRefresh,
@@ -264,6 +265,13 @@ const startRunner = async (harness: Harness): Promise<void> => {
 
 const startAppHarness = async (): Promise<Harness> => {
     const harness = buildHarness({ applicationId: "com.example.app" });
+    await startRunner(harness);
+
+    return harness;
+};
+
+const startRemoteHarness = async (): Promise<Harness> => {
+    const harness = buildHarness({ applicationId: "com.example.app", applicationInstance: "remote" });
     await startRunner(harness);
 
     return harness;
@@ -566,7 +574,7 @@ describe("createDevRunner (entry loading)", () => {
 
 describe("createDevRunner (a command line the application refused)", () => {
     it("stops the runner instead of watching an application that never registered", async () => {
-        const harness = buildHarness({ applicationId: "com.example.app", isApplicationRegistered: false });
+        const harness = buildHarness({ applicationId: "com.example.app", applicationInstance: "unregistered" });
         const previousExitCode = process.exitCode;
         process.exitCode = 1;
         await startRunner(harness);
@@ -582,6 +590,27 @@ describe("createDevRunner (a command line the application refused)", () => {
         const harness = await startAppHarness();
         expect(harness.server.close).not.toHaveBeenCalled();
         expect(harness.watchAppShutdown).toHaveBeenCalled();
+    });
+});
+
+describe("createDevRunner (an application ID another process already owns)", () => {
+    it("names the process holding the application ID instead of watching a windowless session", async () => {
+        const harness = await startRemoteHarness();
+        const messages = loggedMessages(harness);
+        expect(messages.some((m) => m.includes("Another process already owns com.example.app"))).toBe(true);
+        expect(messages.some((m) => m.includes("HMR enabled"))).toBe(false);
+    });
+
+    it("closes the server and exits non-zero rather than running forever", async () => {
+        const harness = await startRemoteHarness();
+        expect(harness.server.close).toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(1);
+    });
+
+    it("leaves the MCP server to the session that owns the application ID", async () => {
+        const harness = await startRemoteHarness();
+        expect(harness.startMcp).not.toHaveBeenCalled();
+        expect(harness.watchAppShutdown).not.toHaveBeenCalled();
     });
 });
 
@@ -745,7 +774,7 @@ describe("createDevRunner (an application that died before the runner attached)"
 
         const harness: Harness = buildHarness({
             applicationId: "com.example.app",
-            isApplicationRegistered: false,
+            applicationInstance: "unregistered",
             whileWaiting: () => {
                 installedUncaughtErrorHandler(harness)(cause);
             },
@@ -765,7 +794,7 @@ describe("createDevRunner (an application that died before the runner attached)"
 
         const harness: Harness = buildHarness({
             applicationId: "com.example.app",
-            isApplicationRegistered: false,
+            applicationInstance: "unregistered",
             whileWaiting: () => {
                 installedUncaughtErrorHandler(harness)(new Error("boom"));
             },

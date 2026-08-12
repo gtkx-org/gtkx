@@ -1,3 +1,4 @@
+import type { ApplicationInstance } from "@gtkx/runtime";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +9,7 @@ const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(
         () => null as { applicationId: string | null; on?: (signal: string, handler: () => void) => void } | null,
     ),
+    getApplicationInstance: vi.fn((): ApplicationInstance => "primary"),
     quitApplication: vi.fn(),
     installGracefulShutdown: vi.fn(),
     startMcpClient: vi.fn(() => Promise.resolve()),
@@ -23,6 +25,7 @@ vi.mock("@gtkx/gi/gio", () => ({
 }));
 
 vi.mock("@gtkx/runtime", () => ({
+    getApplicationInstance: hoisted.getApplicationInstance,
     quitApplication: hoisted.quitApplication,
 }));
 
@@ -89,6 +92,28 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         expect(() => {
             deps.watchApplicationShutdown(vi.fn());
         }).not.toThrow();
+    });
+});
+
+describe("defaultDevRunnerDeps (getApplicationInstance)", () => {
+    beforeEach(() => {
+        hoisted.getApplicationInstance.mockReset();
+    });
+
+    it("reports the role the runtime derives for the live application", () => {
+        const deps = defaultDevRunnerDeps();
+        const application = { applicationId: "com.example.app" };
+        hoisted.getDefault.mockReturnValueOnce(application);
+        hoisted.getApplicationInstance.mockReturnValueOnce("remote");
+        expect(deps.getApplicationInstance()).toBe("remote");
+        expect(hoisted.getApplicationInstance).toHaveBeenCalledWith(application);
+    });
+
+    it("reports an unregistered instance when no application mounted", () => {
+        const deps = defaultDevRunnerDeps();
+        hoisted.getDefault.mockReturnValueOnce(null);
+        expect(deps.getApplicationInstance()).toBe("unregistered");
+        expect(hoisted.getApplicationInstance).not.toHaveBeenCalled();
     });
 });
 

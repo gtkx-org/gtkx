@@ -16,6 +16,18 @@ const createApplicationFrom = <T extends Gio.Application>(
 ): T => deriveApplication(base, applicationProps());
 
 const createApplication = (): Gio.Application => createApplicationFrom(Gio.Application);
+
+const createUniqueApplication = (applicationId: string): Gio.Application => {
+    const application = deriveApplication(Gio.Application, {
+        applicationId,
+        flags: Gio.ApplicationFlags.DEFAULT_FLAGS,
+    });
+
+    application.on("activate", (): void => undefined);
+
+    return application;
+};
+
 const createPlainApplication = (): Gio.Application => new Gio.Application(applicationProps());
 
 const countSignal = (application: Gio.Application, signal: ApplicationSignal): (() => number) => {
@@ -28,4 +40,11 @@ const countSignal = (application: Gio.Application, signal: ApplicationSignal): (
     return () => emissions;
 };
 
-export { applicationProps, countSignal, createApplication, createApplicationFrom, createPlainApplication };
+export {
+    applicationProps,
+    countSignal,
+    createApplication,
+    createApplicationFrom,
+    createPlainApplication,
+    createUniqueApplication,
+};

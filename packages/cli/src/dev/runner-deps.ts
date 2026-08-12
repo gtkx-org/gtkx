@@ -1,6 +1,6 @@
 import { loadConfig } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
-import { quitApplication } from "@gtkx/runtime";
+import { type ApplicationInstance, getApplicationInstance, quitApplication } from "@gtkx/runtime";
 import { info, installGracefulShutdown } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
@@ -16,6 +16,12 @@ const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
 
 const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? null;
+
+const currentApplicationInstance = (): ApplicationInstance => {
+    const application = Gio.Application.getDefault();
+
+    return application === null ? "unregistered" : getApplicationInstance(application);
+};
 
 const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null> => {
     const deadline = Date.now() + timeoutMs;
@@ -52,7 +58,7 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
         process.on("uncaughtException", onUncaughtError);
         process.on("unhandledRejection", onUncaughtError);
     },
-    isApplicationRegistered: () => Gio.Application.getDefault()?.getIsRegistered() === true,
+    getApplicationInstance: currentApplicationInstance,
     installShutdownHandlers: (onSignal) => {
         installGracefulShutdown({ onSignal });
     },
