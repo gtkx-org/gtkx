@@ -26,6 +26,6 @@ export { type GeneratedElement, readGeneratedElements } from "./store/jsx/genera
 /** @public */
 export { mergeOmittedProps, type OmittedProps } from "./store/jsx/omitted-props.js";
 /** @public */
-export { getStorePaths, type ResolvedStore, resolveStore } from "./store/resolve-store.js";
+export { getShadowingStorePaths, type ResolvedStore, resolveStore } from "./store/resolve-store.js";
 /** @public */
 export type { StoreOptions } from "./store/store-fs.js";

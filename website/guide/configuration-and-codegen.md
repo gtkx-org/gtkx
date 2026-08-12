@@ -32,7 +32,7 @@ The file marks the project root, and every command reads it from a single direct
 - **`libraries`**: the GIR libraries to bind, as `Name-Version`. `Gtk-4.0` is the default, and joins any list that does not already name a Gtk version; the bare string `"*"` (never an array entry) binds everything on the GIR path.
 - **`girPath`**: directories searched for `.gir` files ahead of the standard locations.
 - **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
-- **`codegen: false`**: skips generation and removes any store under the project's own `node_modules`, so the project imports the binding store installed above it, such as a workspace root's.
+- **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed. A store under the project's own `node_modules` is removed only when it shadows one installed above it, such as a workspace root's, which is the store the project imports instead; a project whose store belongs in its own `node_modules` keeps it, and `gtkx codegen --force` reports that generation is disabled rather than regenerating.
 - **`userEventSignals`**: signals, keyed by GLib type name, that GTKX suppresses while writing to a widget itself. Entries merge into the defaults.
 - **`elements`**: the [element customizations](#advanced-customizing-elements): `behaviors` is the module default-exporting your `defineElements` map, `config` sets per-type codegen output (`component`, `props`, `omittedProps`, `isLazy`).
 

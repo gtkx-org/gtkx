@@ -1,4 +1,4 @@
-import { getStorePaths, runCodegen as runCodegenCore } from "@gtkx/codegen";
+import { getShadowingStorePaths, runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
     resolveElementComponents,
@@ -66,7 +66,7 @@ const removeStores = (paths: string[]): void => {
 };
 
 const removeShadowingStores = (cwd: string): void => {
-    removeStores(getStorePaths(resolve(cwd, "node_modules")));
+    removeStores(getShadowingStorePaths(cwd));
 };
 
 const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsInput) => ({

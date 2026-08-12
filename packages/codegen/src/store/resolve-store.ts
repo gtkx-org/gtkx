@@ -138,16 +138,42 @@ const jsxOptions = (react: ResolvedPackage | null, nodeModules: string): StoreOp
 const getReactSubexports = (react: ResolvedPackage | null): string[] =>
     react === null ? [] : subexportNames(react.dir);
 
-/**
- * Lists every path a generated store occupies in one `node_modules`: the `.gtkx` directories holding the
- * `gi` and `jsx` packages, and the `@gtkx` links pointing at them. Removing all four leaves that
- * `node_modules` with no generated bindings.
- *
- * @param nodeModules The `node_modules` directory to list paths in, whether or not a store was written there.
- * @returns The store and link directories, which need not exist.
- */
-const getStorePaths = (nodeModules: string): string[] =>
+const storePaths = (nodeModules: string): string[] =>
     STORE_NAMES.flatMap((name) => [join(nodeModules, STORE_DIR, name), join(nodeModules, SCOPE, name)]);
+
+const findStoreNodeModules = (projectRoot: string): string | null => {
+    const runtime = resolvePackage(projectRoot, "@gtkx/runtime");
+
+    if (runtime === null) {
+        return null;
+    }
+
+    return storeNodeModules(runtime, resolvePackage(projectRoot, "@gtkx/react"));
+};
+
+/**
+ * Lists the paths a generated store occupies in a project's own `node_modules` when that copy shadows the
+ * store the project resolves: the `.gtkx` directories holding the `gi` and `jsx` packages, and the `@gtkx`
+ * links pointing at them. Removing all four leaves the project importing the store installed above it,
+ * which is what a project that generates no store of its own wants.
+ *
+ * The list is empty whenever removing those paths would take the project's own bindings away: when the
+ * project's `node_modules` is where {@link resolveStore} anchors the store, and when no `@gtkx/runtime`
+ * resolves from the project at all, so there is no store location to compare against.
+ *
+ * @param projectRoot Directory holding the project's `package.json`, whose `node_modules` chain is walked.
+ * @returns The shadowing store and link directories, which need not exist.
+ */
+const getShadowingStorePaths = (projectRoot: string): string[] => {
+    const nodeModules = join(projectRoot, "node_modules");
+    const anchored = findStoreNodeModules(projectRoot);
+
+    if (anchored === null || anchored === nodeModules) {
+        return [];
+    }
+
+    return storePaths(nodeModules);
+};
 
 /**
  * Resolves where a project's `@gtkx/gi` and `@gtkx/jsx` stores belong, from the project root alone. The
@@ -183,4 +209,4 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
     };
 };
 
-export { getStorePaths, resolveStore, type ResolvedStore };
+export { getShadowingStorePaths, resolveStore, type ResolvedStore };

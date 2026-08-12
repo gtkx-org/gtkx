@@ -71,7 +71,7 @@ describe("codegen command (default — conditional)", () => {
 
     it("cleans up and reports a shared store when codegen is disabled", async () => {
         codegenDisabledMock.mockResolvedValueOnce(true);
-        await run({ force: true, cwd: "/custom/dir" });
+        await run({ cwd: "/custom/dir" });
         const options = firstRunCodegenOptions();
         expect(options.cwd).toContain("custom/dir");
         expect(omit(options, ["cwd"])).toEqual({});
@@ -95,6 +95,13 @@ describe("codegen command (--force)", () => {
         expect(logged).toContain("libraries=Gtk-4.0, Adw-1");
         expect(logged).toContain("girPath=/usr/share/gir-1.0");
         expect(logged).toContain("2 namespaces, 142 intrinsic elements in 250ms");
+    });
+
+    it("refuses to force a project whose codegen is disabled, leaving its store alone", async () => {
+        codegenDisabledMock.mockResolvedValueOnce(true);
+        await expect(run({ force: true })).rejects.toThrow("codegen is disabled for this project, so --force");
+        expect(runCodegenMock).not.toHaveBeenCalled();
+        expect(ensureGeneratedMock).not.toHaveBeenCalled();
     });
 
     it("skips optional log lines when fields are missing from the result", async () => {
