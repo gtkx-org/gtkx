@@ -3,6 +3,7 @@ import { vol } from "memfs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { PassThrough } from "node:stream";
+import { stripVTControlCharacters } from "node:util";
 import { addDependency, detectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -123,11 +124,15 @@ function partialOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
     };
 }
 
-async function answerApplicationId(keystrokes: string, name = "tasks"): Promise<void> {
+async function answerApplicationId(keystrokes: string, name = "tasks"): Promise<string[]> {
     const prompts = await vi.importActual<typeof import("@clack/prompts")>("@clack/prompts");
     const input = new PassThrough();
     const output = new PassThrough();
-    output.resume();
+    const frames: string[] = [];
+
+    output.on("data", (chunk: Buffer) => {
+        frames.push(stripVTControlCharacters(chunk.toString()));
+    });
 
     clack.text.mockImplementation((options) => {
         const answered = prompts.text({ ...options, input, output });
@@ -143,6 +148,8 @@ async function answerApplicationId(keystrokes: string, name = "tasks"): Promise<
         shouldIncludeTesting: false,
         isInteractive: true,
     });
+
+    return frames;
 }
 
 function scaffoldWithSuggestedId(name: string): Promise<void> {
@@ -525,8 +532,10 @@ describe("scaffold (prompting)", () => {
 });
 
 describe("scaffold (application id prompt)", () => {
-    it("scaffolds the typed application id instead of appending it to the suggestion", async () => {
-        await answerApplicationId("com.gtkx.tutorial\r");
+    it("suggests the application id as a placeholder the typed answer replaces", async () => {
+        const frames = await answerApplicationId("com.gtkx.tutorial\r");
+        expect(frames.some((frame) => frame.includes("com.tasks.app"))).toBe(true);
+        expect(frames.filter((frame) => frame.includes("com.tasks.appc"))).toEqual([]);
         expect(read(`${TEST_DIR}/tasks/gtkx.config.ts`)).toContain('applicationId: "com.gtkx.tutorial"');
     });
 
