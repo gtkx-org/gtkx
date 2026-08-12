@@ -5,6 +5,7 @@ import { createCss, type Css, removeLabel } from "../src/create-css.js";
 import { StyleSheet } from "../src/stylesheet.js";
 
 type CssFixture = { instance: Css; insertSpy: MockInstance<StyleSheet["insert"]> };
+type StyleMerge = { sources: string[]; mergedClass: string; rule: string };
 
 const declElement = (value: string): Element => ({
     parent: null,
@@ -55,6 +56,13 @@ const findInsertedRule = (fixture: CssFixture, selectorPrefix: string): string =
     }
 
     return rule;
+};
+
+const mergeStyleBodies = (fixture: CssFixture, bodies: string[]): StyleMerge => {
+    const sources = bodies.map((body) => fixture.instance.css(body));
+    const mergedClass = soleClassName(fixture.instance.cx(...sources));
+
+    return { sources, mergedClass, rule: findInsertedRule(fixture, `.${mergedClass}`) };
 };
 
 const isTruthyAtRuntime = (isValue: boolean): boolean => isValue;
@@ -203,22 +211,19 @@ describe("cx", () => {
     });
 
     it("merges multiple css outputs into a single last-wins override class", () => {
-        const style1 = fixture.instance.css`
-            color: red;
-        `;
+        const merge = mergeStyleBodies(fixture, ["color: red;", "color: blue;"]);
+        expect(merge.mergedClass).toMatch(/^gtkx-/);
+        expect(merge.sources).not.toContain(merge.mergedClass);
+        expect(merge.rule).toContain("color:red;");
+        expect(merge.rule).toContain("color:blue;");
+        expect(merge.rule.lastIndexOf("color:blue")).toBeGreaterThan(merge.rule.lastIndexOf("color:red"));
+    });
 
-        const style2 = fixture.instance.css`
-            color: blue;
-        `;
-
-        const mergedClass = soleClassName(fixture.instance.cx(style1, style2));
-        expect(mergedClass).toMatch(/^gtkx-/);
-        expect(mergedClass).not.toBe(style1);
-        expect(mergedClass).not.toBe(style2);
-        const mergedRule = findInsertedRule(fixture, `.${mergedClass}`);
-        expect(mergedRule).toContain("color:red;");
-        expect(mergedRule).toContain("color:blue;");
-        expect(mergedRule.lastIndexOf("color:blue")).toBeGreaterThan(mergedRule.lastIndexOf("color:red"));
+    it("merges styles whose last declaration omits its trailing semicolon", () => {
+        const merge = mergeStyleBodies(fixture, ["min-height: 32px", "color: rgb(0, 0, 255)"]);
+        expect(merge.rule).toContain("min-height:32px;");
+        expect(merge.rule).toContain("color:rgb(0, 0, 255);");
+        expect(merge.rule).not.toContain("32pxcolor");
     });
 
     it("handles conditional composition", () => {
@@ -417,6 +422,22 @@ describe("css — rule shape and deduplication", () => {
         const rule = findInsertedRule(fixture, `.${composed}`);
         expect(rule).toContain("color:red");
         expect(rule).toContain("padding:8px");
+    });
+
+    it("inlines a class whose last declaration omits its trailing semicolon", () => {
+        const base = fixture.instance.css`
+            color: red
+        `;
+
+        const composed = fixture.instance.css`
+            ${base}
+            padding: 8px;
+        `;
+
+        const rule = findInsertedRule(fixture, `.${composed}`);
+        expect(rule).toContain("color:red;");
+        expect(rule).toContain("padding:8px;");
+        expect(rule).not.toContain("red padding");
     });
 
     it("emits the literal scoped rule for the simplest common path", () => {
