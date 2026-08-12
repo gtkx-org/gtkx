@@ -1,7 +1,12 @@
 import { isRecord, sortStringsBy } from "@gtkx/utils";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { computeGiFingerprint, FINGERPRINT_FILENAME, isGiStoreFresh } from "../fingerprint.js";
+import {
+    computeDocsFingerprint,
+    type DocsFingerprintInput,
+    FINGERPRINT_FILENAME,
+    isDocsOutputFresh,
+} from "../fingerprint.js";
 import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
@@ -51,6 +56,7 @@ type DocsResult = {
 
 const MANIFEST_FILENAME = "manifest.json";
 const ROOT_INDEX_FILENAME = "index.md";
+const DEFAULT_BASE_PATH = "/reference";
 
 const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]): string => {
     const rows = elements.map((entry, index) => {
@@ -242,12 +248,16 @@ const removeGeneratedPages = (outDir: string, manifest: DocsManifest | undefined
     }
 };
 
-const cachedDocsResult = (options: DocsOptions, manifest: DocsManifest | undefined): DocsResult | undefined => {
+const cachedDocsResult = (
+    options: DocsOptions,
+    manifest: DocsManifest | undefined,
+    input: DocsFingerprintInput,
+): DocsResult | undefined => {
     if (manifest === undefined || options.isForced === true) {
         return undefined;
     }
 
-    if (!isGiStoreFresh(options.outDir, options.libraries, options.girPath)) {
+    if (!isDocsOutputFresh(options.outDir, options.libraries, options.girPath, input)) {
         return undefined;
     }
 
@@ -262,13 +272,19 @@ const writePages = (outDir: string, pages: Page[]): void => {
     }
 };
 
+const docsFingerprintInput = (options: DocsOptions): DocsFingerprintInput => ({
+    basePath: options.basePath ?? DEFAULT_BASE_PATH,
+    props: options.props ?? {},
+    omittedProps: options.omittedProps ?? {},
+});
+
 const writeDocs = (options: DocsOptions): DocsResult => {
-    setElementProps(options.props ?? {});
-    setOmittedProps(options.omittedProps ?? {});
-    const basePath = options.basePath ?? "/reference";
+    const input = docsFingerprintInput(options);
+    setElementProps(input.props);
+    setOmittedProps(input.omittedProps);
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
     const previous = readDocsManifest(manifestPath);
-    const cached = cachedDocsResult(options, previous);
+    const cached = cachedDocsResult(options, previous, input);
 
     if (cached !== undefined) {
         return cached;
@@ -276,7 +292,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
 
     assertOwnedOutDir(options.outDir, previous);
     const library = Library.load(options.libraries, options.girPath);
-    const { pages, namespaces } = generatePages(options, basePath, library);
+    const { pages, namespaces } = generatePages(options, input.basePath, library);
     removeGeneratedPages(options.outDir, previous);
     mkdirSync(options.outDir, { recursive: true });
     const manifest: DocsManifest = { namespaces };
@@ -285,7 +301,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
 
     writeFileSync(
         join(options.outDir, FINGERPRINT_FILENAME),
-        JSON.stringify(computeGiFingerprint(library.girFiles, options.libraries, options.girPath)),
+        JSON.stringify(computeDocsFingerprint(library.girFiles, options.libraries, options.girPath, input)),
     );
 
     return { isRegenerated: true, namespaces };

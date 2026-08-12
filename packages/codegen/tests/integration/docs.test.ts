@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
+import { computeGiFingerprint, FINGERPRINT_FILENAME } from "../../src/fingerprint.js";
 import { writeDocs } from "../../src/internal.js";
 import { readBuiltinElements } from "../../src/react/element-config.js";
 
@@ -275,6 +276,51 @@ describe("writeDocs over a directory it generated", () => {
         expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
         expect(existsSync(join(outDir, "gtk", "stale.md"))).toBe(false);
         expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
+    });
+});
+
+describe("writeDocs when the docs inputs change", () => {
+    const outDir = join(workDir, "invalidated");
+    const base = { libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir };
+    const rebased = { ...base, basePath: "/api" };
+    const withOmitted = { ...rebased, omittedProps: { GtkButton: ["child"] } };
+
+    const withProps = {
+        ...withOmitted,
+        props: { GtkWidget: { module: "@gtkx/react/internal", export: "GtkWidgetProps" } },
+    };
+
+    it("regenerates when the base path changes", () => {
+        expect(writeDocs(base).isRegenerated).toBe(true);
+        expect(page(outDir, join("gtk", "button.md"))).toContain("(/reference/gtk/widget)");
+        const result = writeDocs(rebased);
+        expect(result.isRegenerated).toBe(true);
+        expect(result.namespaces.find((namespace) => namespace.name === "Gtk")?.link).toBe("/api/gtk/");
+        expect(page(outDir, join("gtk", "button.md"))).toContain("(/api/gtk/widget)");
+        expect(page(outDir, join("gtk", "button.md"))).not.toContain("(/reference/gtk/widget)");
+    });
+
+    it("regenerates when the omitted props change", () => {
+        expect(writeDocs(withOmitted).isRegenerated).toBe(true);
+        expect(page(outDir, join("gtk", "button.md"))).not.toContain("### `child`");
+    });
+
+    it("regenerates when the element props change", () => {
+        expect(writeDocs(withProps).isRegenerated).toBe(true);
+        expect(page(outDir, join("gtk", "widget.md"))).toContain("### `children`");
+    });
+
+    it("skips regeneration when every docs input is unchanged", () => {
+        expect(writeDocs(withProps).isRegenerated).toBe(false);
+    });
+
+    it("regenerates over a sentinel that records no docs inputs", () => {
+        writeFileSync(
+            join(outDir, FINGERPRINT_FILENAME),
+            JSON.stringify(computeGiFingerprint([], ["Gtk-4.0"], GIR_PATH)),
+        );
+
+        expect(writeDocs(base).isRegenerated).toBe(true);
     });
 });
 
