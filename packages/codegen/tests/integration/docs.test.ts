@@ -418,10 +418,16 @@ describe("writeDocs when the docs inputs change", () => {
         expect(page(outDir, join("gtk", "widget.md"))).toContain("### `children`");
     });
 
-    it("skips regeneration when every docs input is unchanged", () => {
-        const { withProps } = inputVariants(join(workDir, "unchanged"));
+    it("skips regeneration for inputs that hash the same, down to a spelled-out default base path", () => {
+        const outDir = join(workDir, "unchanged");
+        const { withProps } = inputVariants(outDir);
         expect(writeDocs(withProps).isRegenerated).toBe(true);
+        const written = page(outDir, join("gtk", "button.md"));
         expect(writeDocs(withProps).isRegenerated).toBe(false);
+        expect(page(outDir, join("gtk", "button.md"))).toBe(written);
+        const defaulted = join(workDir, "defaulted-base-path");
+        expect(writeDocs(docsOptions(defaulted)).isRegenerated).toBe(true);
+        expect(writeDocs({ ...docsOptions(defaulted), basePath: "/reference" }).isRegenerated).toBe(false);
     });
 
     it("regenerates over a sentinel that records no docs inputs", () => {

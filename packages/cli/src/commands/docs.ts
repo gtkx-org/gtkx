@@ -37,7 +37,9 @@ const docs = defineCommand({
         },
         force: {
             type: "boolean",
-            description: "Regenerate even when the pages are up to date with the GIR libraries",
+            description:
+                "Regenerate even when the pages are up to date with the GIR libraries, the base path, " +
+                "and the element props the project configures",
             default: false,
         },
         overwrite: {

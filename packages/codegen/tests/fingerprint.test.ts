@@ -15,6 +15,9 @@ import {
 
 const docsInput: DocsFingerprintInput = { basePath: "/api", props: {}, omittedProps: {} };
 
+const docsFingerprint = (overrides: Partial<DocsFingerprintInput> = {}): string =>
+    computeDocsFingerprint([], ["Gtk-4.0"], [], { ...docsInput, ...overrides }).value;
+
 const jsxInput = (overrides: Partial<JsxFingerprintInput> = {}): JsxFingerprintInput => ({
     reactVersion: "1.0.0",
     components: {},
@@ -71,6 +74,25 @@ describe("isGiStoreFresh", () => {
     it("treats a sentinel whose recorded GIR files are not strings as stale", () => {
         writeSentinel(storeDir, { value: "cafe", girFiles: [null], libraries: ["Gtk-4.0"], girPath: [] });
         expect(isGiStoreFresh(storeDir, ["Gtk-4.0"], [])).toBe(false);
+    });
+});
+
+describe("computeDocsFingerprint", () => {
+    it("changes when the base path changes", () => {
+        expect(docsFingerprint({ basePath: "/reference" })).not.toBe(docsFingerprint());
+    });
+
+    it("changes when the element props change", () => {
+        const props = { GtkWidget: { module: "@gtkx/react/internal", export: "GtkWidgetProps" } };
+        expect(docsFingerprint({ props })).not.toBe(docsFingerprint());
+    });
+
+    it("changes when the omitted props change", () => {
+        expect(docsFingerprint({ omittedProps: { GtkButton: ["child"] } })).not.toBe(docsFingerprint());
+    });
+
+    it("changes when the GIR inputs change while the docs inputs hold", () => {
+        expect(computeDocsFingerprint([], ["Adw-1"], [], docsInput).value).not.toBe(docsFingerprint());
     });
 });
 
