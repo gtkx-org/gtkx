@@ -1,4 +1,4 @@
-import { camelCase, sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
+import { camelCase, sourceStringLiteral } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -23,7 +23,13 @@ import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParamet
 import { hasUnknownArrayLength, type TypeId } from "../../gir/type-id.js";
 import { areClosuresInvoked } from "./closure-invocation.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
-import { isClosureType, isCollectibleCallerOut, isHandlePassedInPlace, isHandlePassing } from "./param-marshal.js";
+import {
+    isClosureType,
+    isCollectibleCallerOut,
+    isHandlePassedInPlace,
+    isHandlePassing,
+    renderCallerOutInstance,
+} from "./param-marshal.js";
 
 type PromisifiedStep = { hasSeenOptional: boolean; expression: string | undefined };
 
@@ -489,41 +495,19 @@ const planOutParam = (
     };
 };
 
-const constructibleName = (
-    context: ModuleContext,
-    ref: GirParameter["type"],
-): { namespaceName: string; typeName: string } | undefined => {
-    let current = ref;
-
-    while (current !== undefined) {
-        const resolved = context.library.typeFor(current);
-
-        if (resolved?.kind === "alias" && resolved.value.target !== undefined) {
-            current = resolved.value.target;
-            continue;
-        }
-
-        return context.library.nameFor(current);
-    }
-
-    return undefined;
-};
-
 const planCallerOut = (
     context: ModuleContext,
     parameter: GirParameter,
     argIndex: ArgIndexOptions,
 ): CallArgPlan => {
     const descriptor = renderDescriptor(context, parameter.type, "none", argIndex);
-    const name = constructibleName(context, parameter.type);
 
-    if (name !== undefined && isCollectibleCallerOut(context, parameter)) {
+    if (isCollectibleCallerOut(context, parameter)) {
         context.addRuntimeImport("getHandle");
-        const classExpression = context.qualify(name.namespaceName, sanitizeTypeIdentifier(name.typeName));
 
         return {
             paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", isCallerAllocated: true }),
-            inputExpr: `new ${classExpression}()`,
+            inputExpr: renderCallerOutInstance(context, parameter),
         };
     }
 
@@ -685,7 +669,6 @@ const parameterCallExpression = (
 };
 
 export {
-    constructibleName,
     isCallbackParameter,
     memberName,
     methodExportName,

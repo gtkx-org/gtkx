@@ -21,7 +21,7 @@ import {
     type TypeId,
 } from "../gir/type-id.js";
 import { isRecordInout } from "../store/gi/param-marshal.js";
-import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
+import { computeRecordFieldSlots, recordInlineSize } from "../store/gi/record-layout.js";
 import { isValueMarshalable } from "../store/gi/value-marshalable.js";
 import {
     type ListDescriptorName,
@@ -732,16 +732,6 @@ const arrayExpression = (
     return tArray(element, ownership, size);
 };
 
-const recordInlineSize = (context: ModuleContext, record: ResolvedRecord): number | undefined => {
-    if (record.opaque || record.disguised || record.fields.length === 0) {
-        return undefined;
-    }
-
-    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
-
-    return size > 0 ? size : undefined;
-};
-
 const elementPointerDepth = (elementCType: string | undefined, hasOutIndirection: boolean): number => {
     const declared = elementCType === undefined ? 0 : elementCType.split("*").length - 1;
 
@@ -781,7 +771,6 @@ export {
     renderDescriptor,
     isScalarRef,
     isCellInout,
-    recordInlineSize,
     renderParamDescriptor,
     renderCallbackType,
     renderSelfDescriptor,

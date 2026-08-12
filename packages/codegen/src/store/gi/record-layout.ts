@@ -46,6 +46,16 @@ const computeRecordFieldSlots = (
     return { slots, size: result.size };
 };
 
+const recordInlineSize = (context: ModuleContext, record: ResolvedRecordValue): number | undefined => {
+    if (record.opaque || record.disguised || record.fields.length === 0) {
+        return undefined;
+    }
+
+    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+
+    return size > 0 ? size : undefined;
+};
+
 const bitMask = (width: number): number => {
     if (width >= 32) {
         return 0xFF_FF_FF_FF;
@@ -214,4 +224,4 @@ const resolveAliasLayout = (
     return layoutOfType(context, ref, resolved.value.targetCType, visited);
 };
 
-export { computeRecordFieldSlots, bitMask, mergeBitfield, type RecordFieldSlot };
+export { computeRecordFieldSlots, recordInlineSize, bitMask, mergeBitfield, type RecordFieldSlot };

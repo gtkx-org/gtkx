@@ -50,6 +50,11 @@ type ResolvedInstanceMember = {
     finishFn: GirFunction | undefined;
 };
 
+type StaticMember = {
+    callable: GirFunction;
+    name: string;
+};
+
 type InstanceMemberRenderer = (
     context: ModuleContext,
     callable: GirFunction,
@@ -403,23 +408,31 @@ const renderStaticSignature = (
     };
 };
 
-const constructorMemberNames = (context: ModuleContext, constructors: GirFunction[]): string[] => {
-    const names: string[] = [];
+const collectStaticMembers = (
+    context: ModuleContext,
+    group: GirFunction[],
+    resolveName: (girName: string) => string | undefined,
+): StaticMember[] => {
+    const members: StaticMember[] = [];
 
-    for (const callable of constructors) {
-        if (!isEmittableCallable(context, callable)) {
-            continue;
-        }
+    for (const callable of group) {
+        const name = isEmittableCallable(context, callable) ? resolveName(callable.name) : undefined;
 
-        const member = constructorMemberName(callable.name);
-
-        if (member !== undefined) {
-            names.push(member);
+        if (name !== undefined) {
+            members.push({ callable, name });
         }
     }
 
-    return names;
+    return members;
 };
+
+const staticMembers = (context: ModuleContext, callables: Callables): StaticMember[] => [
+    ...collectStaticMembers(context, callables.constructors, constructorMemberName),
+    ...collectStaticMembers(context, callables.functions, memberName),
+];
+
+const constructorMemberNames = (context: ModuleContext, constructors: GirFunction[]): string[] =>
+    collectStaticMembers(context, constructors, constructorMemberName).map((member) => member.name);
 
 const collectStaticEntries = (
     context: ModuleContext,
@@ -506,6 +519,7 @@ export {
     constructorMemberNames,
     renderStaticHead,
     renderPlainTypeMembers,
+    staticMembers,
     type Callables,
     type InstanceMemberRenderer,
     type InstanceScope,

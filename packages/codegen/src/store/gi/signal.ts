@@ -1,4 +1,4 @@
-import { camelCase, sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
+import { camelCase, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirCallable, GirParameter } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
@@ -24,7 +24,7 @@ import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
 import { getDoc, handlerSpec } from "./doc-spec.js";
-import { isAllocatableCallerOut, isRecordInout } from "./param-marshal.js";
+import { isAllocatableCallerOut, isRecordInout, renderCallerOutInstance } from "./param-marshal.js";
 
 type SignalMapSpec = {
     context: ModuleContext;
@@ -270,7 +270,7 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
     }
 
     if (isCallerAllocatedOut(parameter)) {
-        const value = renderCallerOutAllocation(context, parameter);
+        const value = renderCallerOutInstance(context, parameter);
 
         return {
             literal: `{ type: ${descriptor}, direction: "out", isCallerAllocated: true, value: ${value} }`,
@@ -326,16 +326,6 @@ const renderUnsupportedEmitCase = (signal: GirCallable): string => {
         `case ${sourceStringLiteral(signal.name)}:`,
         `throw new globalThis.Error(${sourceStringLiteral(message)});`,
     );
-};
-
-const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParameter): string => {
-    const name = parameter.type === undefined ? undefined : context.library.nameFor(parameter.type);
-
-    if (name === undefined) {
-        throw new Error("renderCallerOutAllocation: expected a named caller-allocated out-parameter");
-    }
-
-    return `new ${context.qualify(name.namespaceName, sanitizeTypeIdentifier(name.typeName))}()`;
 };
 
 const renderCallback = (context: ModuleContext, signal: GirCallable): string => {

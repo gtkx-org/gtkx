@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { runCodegen } from "../../src/index.js";
+import { constructionGuard } from "../helpers/construction-guard.js";
 import { storeUnit } from "../helpers/store-unit.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
@@ -28,7 +29,6 @@ const UNMARSHALABLE: [string, string][] = [
     ["glib", "g_base64_encode_close"],
     ["gobject", "g_enum_complete_type_info"],
     ["gobject", "g_flags_complete_type_info"],
-    ["gobject", "g_type_query"],
     ["graphene", "graphene_box_get_vertices"],
     ["graphene", "graphene_matrix_to_float"],
     ["gdk", "gdk_texture_downloader_download_bytes_with_planes"],
@@ -38,6 +38,18 @@ const UNMARSHALABLE: [string, string][] = [
     ["harfbuzz", "hb_tag_to_string"],
     ["harfbuzz", "hb_buffer_serialize_glyphs"],
     ["harfbuzz", "hb_face_collect_unicodes"],
+    ["harfbuzz", "hb_face_collect_nominal_glyph_mapping"],
+    ["harfbuzz", "hb_face_collect_variation_selectors"],
+    ["harfbuzz", "hb_face_collect_variation_unicodes"],
+    ["harfbuzz", "hb_ot_layout_collect_features"],
+    ["harfbuzz", "hb_ot_layout_collect_features_map"],
+    ["harfbuzz", "hb_ot_layout_collect_lookups"],
+    ["harfbuzz", "hb_ot_layout_get_glyphs_in_class"],
+    ["harfbuzz", "hb_ot_layout_lookup_collect_glyphs"],
+    ["harfbuzz", "hb_ot_layout_lookup_substitute_closure"],
+    ["harfbuzz", "hb_ot_layout_lookups_substitute_closure"],
+    ["harfbuzz", "hb_ot_shape_glyphs_closure"],
+    ["harfbuzz", "hb_ot_shape_plan_collect_lookups"],
 ];
 
 const MARSHALABLE: [string, string][] = [
@@ -48,6 +60,8 @@ const MARSHALABLE: [string, string][] = [
     ["glib", "g_propagate_error"],
     ["gio", "g_settings_backend_flatten_tree"],
     ["gio", "g_tls_password_get_value"],
+    ["gobject", "g_type_query"],
+    ["gobject", "g_signal_query"],
     ["pango", "pango_layout_get_log_attrs"],
     ["pango", "pango_extents_to_pixels"],
     ["gdk", "gdk_display_map_keyval"],
@@ -191,5 +205,35 @@ describe("the record classes the emitted store declares", () => {
         expect(types).not.toContain("KeyFileConstructorProps");
         expect(types).toContain("export declare class TimeVal {");
         expect(types).toContain("export interface TimeValConstructorProps {");
+    });
+
+    it.each([
+        ["GLib.KeyFile", "use GLib.KeyFile.new() instead."],
+        ["GLib.Bytes", "use GLib.Bytes.new(data) instead."],
+        ["GLib.AsyncQueue", "use GLib.AsyncQueue.new() instead."],
+        ["GLib.Uri", "use GLib.Uri.build(flags, scheme, userinfo, host, port, path, query, fragment) instead."],
+        ["GLib.MatchInfo", "its instances come from the functions that return them."],
+    ])("points %s at the door its own statics open", (qualified, message) => {
+        expect(constructionGuard(namespaceSource(gi.storeDir, "glib"), qualified)).toBe(message);
+    });
+
+    it("allocates the out buffer for a record whose layout is known but whose class is abstract", () => {
+        const source = namespaceSource(gi.storeDir, "gobject");
+        const types = readFileSync(join(gi.storeDir, "gobject", "gobject.d.ts"), "utf8");
+        expect(types).toContain("export declare abstract class TypeQuery {");
+        expect(types).toContain("export declare function typeQuery(type: Type): TypeQuery;");
+        expect(source).toContain("wrapHandle(alloc(24), TypeQuery)");
+    });
+
+    it("drops the unallocatable out-parameter from a callable that declares it optional", () => {
+        const types = readFileSync(join(gi.storeDir, "harfbuzz", "harfbuzz.d.ts"), "utf8");
+
+        expect(types).toContain(
+            "export declare function otTagsToScriptAndLanguage(scriptTag: tag_t, languageTag: tag_t): script_t;",
+        );
+
+        expect(namespaceSource(gi.storeDir, "harfbuzz")).toContain(
+            "return hbOtTagsToScriptAndLanguage(scriptTag, languageTag, undefined);",
+        );
     });
 });

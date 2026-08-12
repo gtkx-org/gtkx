@@ -6,14 +6,11 @@ import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
 import { renderSourceGtype } from "./gtype-binding.js";
-import {
-    isRecordConstructible,
-    renderRecordConstructor,
-    renderRecordConstructorPropsInterface,
-} from "./record-constructor.js";
+import { renderRecordConstructor, renderRecordConstructorPropsInterface } from "./record-constructor.js";
 import { renderRecordFieldAccessor } from "./record-field-accessor.js";
 import { computeRecordFieldSlots } from "./record-layout.js";
 import { appendWrapperClassRegistration } from "./registration.js";
+import { isConstructibleRecord } from "./value-marshalable.js";
 
 const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
     context.namespace.name === "GLib" && record.glibGetType === "g_error_get_type";
@@ -37,7 +34,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     const body = indentMembers(members);
     const heritage = isErrorSubclass ? " extends globalThis.Error" : "";
     const doc = getDoc(record);
-    const isConstructible = isRecordConstructible(context, record);
+    const isConstructible = isConstructibleRecord(context, context.namespace.name, record);
     const modifier = isConstructible ? "" : "abstract ";
 
     context.declare({
@@ -76,7 +73,7 @@ const renderRecordMembers = (
         hasGtype: record.glibGetType !== undefined,
     });
 
-    members.unshift(renderRecordConstructor(context, record, className, isErrorSubclass));
+    members.unshift(renderRecordConstructor(context, { record, className, callables, isErrorSubclass }));
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
     for (const slot of slots) {
