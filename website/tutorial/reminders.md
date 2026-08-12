@@ -172,7 +172,7 @@ Cold start shows why that matters. Click Mark Complete with the app closed, and 
 
 The desktop grants a notification based on the application's installed identity, not on anything in the running process. Two keys in the desktop entry decide it, and you write that file in [Appendix B](/tutorial/packaging):
 
-- `DBusActivatable=true` lets the desktop start the application over D-Bus to deliver an action, which makes Mark Complete work when nothing is running.
+- `DBusActivatable=true` lets the desktop start the application over D-Bus to deliver an action, which makes Mark Complete work when nothing is running. The key only promises it: the bus finds the application through a D-Bus service file named after the ID, which Appendix B installs beside the entry.
 - `X-GNOME-UsesNotifications=true` lists Tasks in the desktop's notification settings, where you can silence it.
 
 Both depend on the application ID matching across the entry, `gtkx.config.ts`, and the GSettings schema. That is the identity a notification travels under.
@@ -191,7 +191,7 @@ gapplication action com.gtkx.tutorial complete-task "'<task-id>'"
 
 The id is quoted twice because `gapplication` parses the parameter as GVariant text, where a bare UUID is not a valid literal. The task flips to done, and `cat ~/.local/share/com.gtkx.tutorial/tasks.json` shows `"done": true` on it.
 
-Clicking the button while the app is closed takes a different path. The desktop starts a closed app over D-Bus only when it finds an installed desktop entry with `DBusActivatable=true` under the application ID the notification traveled with, and a dev session installs nothing. That path becomes available once you install `com.gtkx.tutorial.desktop` in [Appendix B](/tutorial/packaging).
+Clicking the button while the app is closed takes a different path. The desktop starts a closed app over D-Bus only when it finds an installed desktop entry with `DBusActivatable=true` under the application ID the notification traveled with, and a D-Bus service file of that same name to start it from. A dev session installs neither. That path becomes available once you install `com.gtkx.tutorial.desktop` together with `com.gtkx.tutorial.service` in [Appendix B](/tutorial/packaging).
 
 ## You built an app
 

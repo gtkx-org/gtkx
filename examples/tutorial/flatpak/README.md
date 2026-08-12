@@ -20,6 +20,7 @@ in automatically by `flatpak-builder`.
 
 ```sh
 npm install                 # install app dependencies
+npm test                    # check these files against the manifest
 npm run flatpak:sources     # vendor deps into flatpak/generated-sources.json
 npm run flatpak:build       # build the flatpak in a sandbox
 flatpak install --user flatpak-repo com.gtkx.tutorial
@@ -47,9 +48,9 @@ and are regenerated whenever dependencies change.
 3. Commit `package.json`, `package-lock.json` and `generated-sources.json`, then
    push so the manifest's `git` source resolves.
 4. Open a pull request against [flathub/flathub](https://github.com/flathub/flathub)
-   with the manifest and `generated-sources.json`; the desktop and metainfo
-   files ship in your app repository and are installed by the manifest's
-   build commands.
+   with the manifest and `generated-sources.json`; the desktop entry, the D-Bus
+   service file and the metainfo ship in your app repository and are installed
+   by the manifest's build commands.
 
 ## Adapting for your own app
 
@@ -60,9 +61,12 @@ in the manifest's build commands. Replace it throughout with your own
 reverse-DNS ID, rename the manifest's `command` (currently `gtkx-tutorial`)
 along with the `Exec` keys of the desktop entry and the service file, and update
 the identity fields in the metainfo (developer, homepage, screenshots) to point
-at your project.
+at your project. `tests/flatpak.test.ts` reads those identities back out of the
+manifest, so a rename you miss fails `npm test` rather than the sandbox build.
 
 The service file is what makes `DBusActivatable=true` in the desktop entry true:
 `flatpak build-export` refuses to export an app whose desktop entry claims D-Bus
 activation without a matching `share/dbus-1/services/<app id>.service`, so both
-files ship together or neither does.
+files ship together or neither does. The same file has to exist under
+`~/.local/share/dbus-1/services/` for a plain user-prefix install, where its
+`Exec` names the installed binary instead of `/app/bin`.
