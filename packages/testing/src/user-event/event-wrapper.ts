@@ -3,6 +3,7 @@ import { runInAct } from "../act.js";
 import { getConfig } from "../config.js";
 import { formatRole } from "../role-helpers.js";
 import { delay, now } from "../timers.js";
+import { isWindowActivated, isWindowAllocated } from "../window-state.js";
 
 const NOT_SENSITIVE = "it is not sensitive (the widget or one of its ancestors is disabled)";
 const WINDOW_NOT_ALLOCATED = "its window has not been allocated a size";
@@ -11,13 +12,8 @@ const NOT_IN_VISIBLE_WINDOW = "it is not attached to a visible window (it was re
 const WINDOW_NOT_ACTIVE = "its window never became active";
 const ACTIONABLE_HOP_MS = 1;
 
-const canDisplayDeliverActivation = (window: Gtk.Window): boolean =>
-    window.getDisplay().getDefaultSeat() !== null;
-
 const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): string | null => {
-    const [isComputed, allocation] = root.computeBounds(root);
-
-    if (!isComputed || allocation.getWidth() === 0) {
+    if (!isWindowAllocated(root)) {
         return WINDOW_NOT_ALLOCATED;
     }
 
@@ -25,7 +21,7 @@ const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): s
         return NOT_MAPPED;
     }
 
-    if (canDisplayDeliverActivation(root) && !root.isActive()) {
+    if (!isWindowActivated(root)) {
         return WINDOW_NOT_ACTIVE;
     }
 

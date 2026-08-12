@@ -1,6 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GLib from "@gtkx/gi/glib";
 import { cancelTimeout, scheduleTimeout } from "./timers.js";
+import { isWindowUsable } from "./window-state.js";
 
 const CLOCK_STALL_FALLBACK_MS = 500;
 
@@ -18,7 +19,6 @@ const once = (callback: () => void): (() => void) => {
 };
 
 const hasFrameClock = (widget: Gtk.Widget | null): widget is Gtk.Widget => widget?.getFrameClock() != null;
-const isSized = (widget: Gtk.Widget): boolean => widget.getWidth() > 0;
 
 const runUntilReady = (widget: Gtk.Widget, isReady: () => boolean, finish: () => void): void => {
     let tickId = 0;
@@ -53,16 +53,16 @@ const scheduleNextFrame = (widget: Gtk.Widget): Promise<void> =>
         runUntilReady(widget, () => true, finish);
     });
 
-const scheduleAfterLayout = (widget: Gtk.Widget | null, callback: () => void): void => {
+const scheduleWhenWindowUsable = (window: Gtk.Window | null, callback: () => void): void => {
     const finish = once(callback);
 
-    if (!hasFrameClock(widget) || isSized(widget)) {
+    if (!hasFrameClock(window) || isWindowUsable(window)) {
         queueMicrotask(finish);
 
         return;
     }
 
-    runUntilReady(widget, () => isSized(widget), finish);
+    runUntilReady(window, () => isWindowUsable(window), finish);
 };
 
-export { scheduleAfterLayout, scheduleNextFrame };
+export { scheduleNextFrame, scheduleWhenWindowUsable };

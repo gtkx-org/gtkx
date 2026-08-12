@@ -103,10 +103,28 @@ describe("emptiness, validity and focus matchers", () => {
     it("toHaveFocus reflects the focused widget", async () => {
         const entry = await renderEntry("focused");
         entry.grabFocus();
+        expect(entry).toHaveFocus();
+    });
+
+    it("toHaveFocus blames the inactive window when it still holds the focus on the widget", async () => {
+        const entry = await renderEntry("blamed");
+        entry.grabFocus();
+        expect(entry).toHaveFocus();
+        const stealer = new Gtk.Window();
+        stealer.present();
 
         await waitFor(() => {
-            expect(entry).toHaveFocus();
+            expect(entry).not.toHaveFocus();
         });
+
+        expectRejection(
+            () => {
+                expect(entry).toHaveFocus();
+            },
+            /its window has given it the focus, but that window is not active/,
+        );
+
+        stealer.destroy();
     });
 });
 

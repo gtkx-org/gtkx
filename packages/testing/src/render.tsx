@@ -12,7 +12,7 @@ import type { RenderResult } from "./bound-queries.js";
 import type { QueryMap, RenderOptions, ScreenshotOptions } from "./types.js";
 import { runInAct } from "./act.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
-import { scheduleAfterLayout } from "./frame-sync.js";
+import { scheduleWhenWindowUsable } from "./frame-sync.js";
 import { createHarnessWindow, presentHarnessWindow } from "./harness-window.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
@@ -43,9 +43,9 @@ type ReconcilerErrorState = {
 const reconcilerErrors: ReconcilerErrorState = { lastError: null, isHandlerInstalled: false };
 const activeRenders: Set<ActiveRender> = new Set();
 
-const flushLayout = (window: Gtk.Window | null): Promise<void> =>
+const settleWindow = (window: Gtk.Window | null): Promise<void> =>
     new Promise<void>((resolve) => {
-        scheduleAfterLayout(window, () => {
+        scheduleWhenWindowUsable(window, () => {
             settleAccessible();
             resolve();
         });
@@ -161,7 +161,9 @@ const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
  * Renders a React element into a GTK4 widget tree and returns queries
  * scoped to it along with controls for rerendering and unmounting. When no
  * container is supplied, a harness window is created and presented, and the editable it hands the
- * focus to keeps its text unselected, with its caret at the end.
+ * focus to keeps its text unselected, with its caret at the end. The returned promise settles once
+ * that window has been laid out and has become active, so platform state such as focus is already
+ * readable when it resolves.
  *
  * @param element The React element to render.
  * @param options Optional container, wrapper, custom queries, and other render settings.
@@ -196,7 +198,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
 
     await update(wrap(element), root);
     presentHarnessWindow(resolved.window);
-    await flushLayout(resolved.window);
+    await settleWindow(resolved.window);
     const container = resolveResultContainer(resolved, options?.container, baseElement);
 
     const result: RenderResult<Q> = {
@@ -208,7 +210,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
         },
         rerender: async (newElement: ReactNode) => {
             await update(wrap(newElement), root);
-            await flushLayout(resolved.window);
+            await settleWindow(resolved.window);
         },
         debug: (element: Container | Container[] = baseElement, debugOptions?: PrettyWidgetOptions) => {
             logWidget(element, debugOptions);
