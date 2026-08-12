@@ -83,6 +83,7 @@ To run tests, you need a headless Wayland compositor installed:
   Ubuntu: sudo apt install sway`;
 
 const RECOVERY_HEADING = "Finish the setup by adding the dependencies again, which is safe to repeat:";
+const APPLICATION_ID_FORMAT_ERROR = "Application ID must be reverse domain notation (e.g., com.example.myapp)";
 
 const pinGtkxDependency = (name: string, version: string): string =>
     name.startsWith("@gtkx/") ? `${name}@^${version}` : name;
@@ -149,17 +150,14 @@ const validateProjectName = (value: string | undefined): string | undefined => {
     return undefined;
 };
 
-const validateApplicationIdInput = (value: string | undefined): string | undefined => {
-    if (!value) {
-        return "Application ID is required";
-    }
+const validateApplicationIdFormat = (value: string): string | undefined =>
+    isValidApplicationId(value) ? undefined : APPLICATION_ID_FORMAT_ERROR;
 
-    if (!isValidApplicationId(value)) {
-        return "Application ID must be reverse domain notation (e.g., com.example.myapp)";
-    }
+const validateApplicationIdInput = (value: string | undefined): string | undefined =>
+    value ? validateApplicationIdFormat(value) : "Application ID is required";
 
-    return undefined;
-};
+const validateApplicationIdAnswer = (value: string | undefined): string | undefined =>
+    value ? validateApplicationIdFormat(value) : undefined;
 
 const fail = (message: string): never => {
     p.log.error(message);
@@ -190,8 +188,8 @@ const promptApplicationId = async (name: string): Promise<string> => {
         await p.text({
             message: "Application ID",
             placeholder: defaultApplicationId,
-            initialValue: defaultApplicationId,
-            validate: validateApplicationIdInput,
+            defaultValue: defaultApplicationId,
+            validate: validateApplicationIdAnswer,
         }),
     );
 };

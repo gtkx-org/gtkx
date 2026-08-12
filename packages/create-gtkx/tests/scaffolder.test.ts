@@ -1,6 +1,8 @@
+import type { TextOptions } from "@clack/prompts";
 import { vol } from "memfs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { PassThrough } from "node:stream";
 import { addDependency, detectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +16,7 @@ const clack = vi.hoisted(() => ({
     cancel: vi.fn(),
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
-    text: vi.fn(() => Promise.resolve("")),
+    text: vi.fn((options: TextOptions): Promise<string | symbol> => Promise.resolve(options.defaultValue ?? "")),
     select: vi.fn((opts: { initialValue?: unknown }) => Promise.resolve(opts.initialValue)),
     confirm: vi.fn(() => Promise.resolve(true)),
     isCancel: vi.fn((value: unknown) => value === "__CANCEL__"),
@@ -104,6 +106,28 @@ function partialOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
         isInteractive: true,
         ...overrides,
     };
+}
+
+async function answerApplicationId(answer: string): Promise<void> {
+    const prompts = await vi.importActual<typeof import("@clack/prompts")>("@clack/prompts");
+    const input = new PassThrough();
+    const output = new PassThrough();
+    output.resume();
+
+    clack.text.mockImplementation((options) => {
+        const answered = prompts.text({ ...options, input, output });
+        input.write(`${answer}\r`);
+
+        return answered;
+    });
+
+    await scaffold({
+        name: "tasks",
+        packageManager: "pnpm",
+        isTypescript: true,
+        shouldIncludeTesting: false,
+        isInteractive: true,
+    });
 }
 
 async function captureInitialValue(detectedName: string | undefined): Promise<unknown> {
@@ -477,6 +501,18 @@ describe("scaffold (prompting)", () => {
 
     it("falls back to pnpm when no package manager is detected", async () => {
         expect(await captureInitialValue(undefined)).toBe("pnpm");
+    });
+});
+
+describe("scaffold (application id prompt)", () => {
+    it("scaffolds the typed application id instead of appending it to the suggestion", async () => {
+        await answerApplicationId("com.gtkx.tutorial");
+        expect(read(`${TEST_DIR}/tasks/gtkx.config.ts`)).toContain('applicationId: "com.gtkx.tutorial"');
+    });
+
+    it("scaffolds the suggested application id when the prompt is submitted empty", async () => {
+        await answerApplicationId("");
+        expect(read(`${TEST_DIR}/tasks/gtkx.config.ts`)).toContain('applicationId: "com.tasks.app"');
     });
 });
 
