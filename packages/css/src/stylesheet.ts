@@ -1,6 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { createLogger } from "@gtkx/utils";
 import { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "./provider.js";
+import { isSelfContained } from "./self-contained.js";
 
 const log = createLogger("css");
 
@@ -35,6 +36,12 @@ class StyleSheet {
     }
 
     insert(rule: string): void {
+        if (!isSelfContained(rule)) {
+            log.warn(`Dropped a malformed CSS rule that would disable every rule after it: ${rule}`);
+
+            return;
+        }
+
         this.css += this.css.length > 0 ? `\n${rule}` : rule;
         this.scheduleUpdate();
     }
