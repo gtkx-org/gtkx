@@ -34,6 +34,7 @@ import {
     renderGesturedLabel,
     renderShortcutHost,
 } from "./event-render-setup.js";
+import { bufferText } from "./text-buffer-helpers.js";
 
 const hasWidgetFocus = (w: Gtk.Widget): boolean => w.isFocus();
 
@@ -45,10 +46,16 @@ const editableText = (entry: Gtk.Widget): string => {
     return entry.getText();
 };
 
-const renderTextBox = async (text?: string): Promise<Gtk.Widget> => {
+const renderTextBox = async (text?: string): Promise<Gtk.Entry> => {
     await render(<GtkEntry text={text} />);
 
-    return screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+    return screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
+};
+
+const renderTextView = async (): Promise<Gtk.TextView> => {
+    await render(<GtkTextView />);
+
+    return screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
 };
 
 const renderDropDown = async (options: string[]): Promise<Gtk.Widget> => {
@@ -322,7 +329,8 @@ describe("userEvent.type", () => {
     });
 
     it("appends text to existing content", async () => {
-        const entry = await renderTextBox("Initial ");
+        const entry = await renderTextBox();
+        await userEvent.type(entry, "Initial ");
         await userEvent.type(entry, "appended");
         expect(editableText(entry)).toBe("Initial appended");
     });
@@ -353,6 +361,55 @@ describe("userEvent.type", () => {
                 "Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
             );
         });
+    });
+});
+
+describe("userEvent.type over a selection", () => {
+    it("replaces the text selected through the keyboard", async () => {
+        const entry = await renderTextBox();
+        await userEvent.type(entry, "abcdef");
+        await userEvent.keyboard(entry, "{Control>}a{/Control}");
+        expect(entry.getSelectionBounds()).toEqual([true, 0, 6]);
+        await userEvent.type(entry, "Z");
+        expect(editableText(entry)).toBe("Z");
+    });
+
+    it("replaces the text selected programmatically", async () => {
+        const entry = await renderTextBox();
+        await userEvent.type(entry, "abcdef");
+        entry.selectRegion(0, 3);
+        await userEvent.type(entry, "Z");
+        expect(editableText(entry)).toBe("Zdef");
+    });
+
+    it("replaces the text a text view has selected", async () => {
+        const view = await renderTextView();
+        await userEvent.type(view, "abcdef");
+        const buffer = view.getBuffer();
+        buffer.selectRange(buffer.getIterAtOffset(0), buffer.getIterAtOffset(6));
+        await userEvent.type(view, "Z");
+        expect(bufferText(view)).toBe("Z");
+    });
+
+    it("replaces the whole text of an entry GTK selects when focusing it", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkButton label="Focused first" />
+                <GtkEntry text="Initial" name="unfocused" />
+            </GtkBox>,
+        );
+
+        const entry = await screen.findByName("unfocused", { as: Gtk.Entry });
+        await userEvent.type(entry, "typed");
+        expect(editableText(entry)).toBe("typed");
+    });
+
+    it("leaves a non-editable widget's selected text alone", async () => {
+        const entry = await renderTextBox("Locked");
+        entry.setEditable(false);
+        entry.selectRegion(0, 6);
+        await userEvent.type(entry, "Z");
+        expect(editableText(entry)).toBe("Locked");
     });
 });
 
@@ -520,6 +577,12 @@ describe("userEvent clipboard", () => {
         const entry = await screen.findByName("literal");
         await userEvent.paste(entry, "pasted literal");
         expect(editableText(entry)).toBe("pasted literal");
+    });
+
+    it("replaces the text the widget has selected", async () => {
+        const { source } = await renderSelectedEntryPair("replace me");
+        await userEvent.paste(source, "pasted");
+        expect(editableText(source)).toBe("pasted");
     });
 
     describe("error handling", () => {

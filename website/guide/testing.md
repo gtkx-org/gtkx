@@ -90,6 +90,8 @@ await userEvent.type(entry, "hello");
 await userEvent.keyboard(entry, "{Control>}a{/Control}");
 ```
 
+`userEvent.type` and `userEvent.paste` replace the text an editable widget has selected, as GTK4 does. `type` focuses the widget first only when it does not already hold the focus, and GTK4 selects the whole text of an entry it focuses, so typing into an entry the test has not typed into before replaces its content; pass `initialSelectionStart` to put the caret somewhere instead.
+
 `userEvent.click` on a list row changes the selection, on a `Gtk.TreeExpander` toggles expansion, and on a sortable column header sorts the view. Off-screen, `pointer` synthesizes left-button input only and `drag` refuses a `Gtk.Range`, so use `slide(range, value)` to move a slider. The full set of helpers is in the [`userEvent` reference](/reference/@gtkx/testing/).
 
 ## fireEvent, act, and waitFor

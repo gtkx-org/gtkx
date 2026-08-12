@@ -59,7 +59,10 @@ type UserEvent = {
     tripleClick: typeof tripleClick;
     /** Moves focus within the widget's root, forward by default and backward with `isShiftHeld`. */
     tab: typeof tab;
-    /** Focuses an editable widget, applies any initial selection, and inserts the text at the cursor. */
+    /**
+     * Focuses an editable widget that does not already hold the focus, applies any initial selection,
+     * and inserts the text at the cursor, replacing the widget's selected text the way GTK4 does.
+     */
     type: typeof type;
     /** Focuses an editable widget and deletes its whole text, leaving nothing selected. */
     clear: typeof clear;
@@ -67,7 +70,10 @@ type UserEvent = {
     copy: typeof copy;
     /** Writes an editable widget's current selection to the clipboard and deletes it. */
     cut: typeof cut;
-    /** Inserts the given text, or the clipboard's text, at an editable widget's cursor. */
+    /**
+     * Inserts the given text, or the clipboard's text, at an editable widget's cursor, replacing the
+     * widget's selected text the way GTK4 does.
+     */
     paste: typeof paste;
     /**
      * Selects the items at those positions in a view or drop-down, or selects the indexed children of

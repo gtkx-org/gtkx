@@ -25,7 +25,32 @@ type TypeOptions = {
 const EDITABLE_REQUIRED = `expected editable widget (${formatRoleList(EDITABLE_ROLES)})`;
 const CLEAR_REFUSED = "Cannot clear element: the widget refuses to delete part of its text";
 
+const isWidgetEditable = (widget: Gtk.Widget): boolean => callBooleanGetter(widget, "getEditable") ?? true;
+const readSelection = (widget: EditableTarget): string => getWidgetSelection(widget) ?? "";
+
+const deleteSelection = (widget: EditableTarget): void => {
+    if (widget instanceof Gtk.TextView) {
+        widget.getBuffer().deleteSelection(true, widget.getEditable());
+
+        return;
+    }
+
+    widget.deleteSelection();
+};
+
+const focusEditable = (widget: EditableTarget): void => {
+    if ((getEditableDelegate(widget) ?? widget).isFocus()) {
+        return;
+    }
+
+    widget.grabFocus();
+};
+
 const insertEditableText = (widget: EditableTarget, text: string): void => {
+    if (isWidgetEditable(widget)) {
+        deleteSelection(widget);
+    }
+
     if (widget instanceof Gtk.TextView) {
         widget.emit("insert-at-cursor", text);
 
@@ -45,18 +70,6 @@ const insertEditableText = (widget: EditableTarget, text: string): void => {
     widget.setPosition(newPosition);
 };
 
-const readSelection = (widget: EditableTarget): string => getWidgetSelection(widget) ?? "";
-
-const deleteSelection = (widget: EditableTarget): void => {
-    if (widget instanceof Gtk.TextView) {
-        widget.getBuffer().deleteSelection(false, true);
-
-        return;
-    }
-
-    widget.deleteSelection();
-};
-
 const deleteAllText = (widget: EditableTarget): void => {
     if (widget instanceof Gtk.TextView) {
         const buffer = widget.getBuffer();
@@ -68,25 +81,6 @@ const deleteAllText = (widget: EditableTarget): void => {
     widget.deleteText(0, -1);
 };
 
-const applyTextViewSelection = (widget: Gtk.TextView, start: number, end: number): void => {
-    const buffer = widget.getBuffer();
-    buffer.selectRange(buffer.getIterAtOffset(start), buffer.getIterAtOffset(end));
-
-    if (end !== start) {
-        deleteSelection(widget);
-    }
-};
-
-const applyEditableSelection = (widget: Gtk.Editable, start: number, end: number): void => {
-    widget.selectRegion(start, end);
-
-    if (end !== start) {
-        widget.deleteSelection();
-    }
-
-    widget.setPosition(start);
-};
-
 const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): void => {
     if (options.initialSelectionStart === undefined) {
         return;
@@ -96,12 +90,13 @@ const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): vo
     const end = options.initialSelectionEnd ?? start;
 
     if (widget instanceof Gtk.TextView) {
-        applyTextViewSelection(widget, start, end);
+        const buffer = widget.getBuffer();
+        buffer.selectRange(buffer.getIterAtOffset(start), buffer.getIterAtOffset(end));
 
         return;
     }
 
-    applyEditableSelection(widget, start, end);
+    widget.selectRegion(start, end);
 };
 
 const writeClipboardText = (widget: Gtk.Widget, text: string): void => {
@@ -130,22 +125,22 @@ const runEditableEvent = (
     });
 
 /**
- * Focuses the widget unless `shouldFocus` is false, applies any initial selection, and inserts the text
- * at the cursor.
+ * Focuses the widget unless it already holds the focus or `shouldFocus` is false, applies any initial
+ * selection, and inserts the text at the cursor, deleting the widget's selected text first the way
+ * typing over a selection does in GTK4. Focusing an editable widget that GTK4 selects on focus leaves
+ * its whole text selected, so the typed text replaces it.
  *
  * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
  */
 const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
     runEditableEvent(widget, "Cannot type into element", (editable) => {
         if (options?.shouldFocus ?? true) {
-            editable.grabFocus();
+            focusEditable(editable);
         }
 
         applyInitialSelection(editable, options ?? {});
         insertEditableText(editable, text);
     });
-
-const isWidgetEditable = (widget: Gtk.Widget): boolean => callBooleanGetter(widget, "getEditable") ?? true;
 
 const hasNonEditableChar = (iter: Gtk.TextIter, isDefaultEditable: boolean): boolean => {
     while (!iter.isEnd()) {
@@ -251,7 +246,7 @@ const cut = (widget: Gtk.Widget): Promise<void> =>
 
 /**
  * Inserts the given text at an editable widget's cursor, reading the clipboard instead when no text
- * is given.
+ * is given, and deleting the widget's selected text first the way a paste does in GTK4.
  *
  * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
  */
