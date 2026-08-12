@@ -15,6 +15,8 @@ import {
 
 const NODE_EXTENSION_PATH = "/usr/lib/sdk/node24";
 const LAUNCHER_FILENAME = "launcher.sh";
+const PLAIN_ARGUMENT = /^[\w./-]+$/;
+const QUOTE_ESCAPE = String.raw`'\''`;
 
 const inlineSource = (fileName: string, contents: string): FlatpakModule => ({
     type: "inline",
@@ -25,8 +27,13 @@ const inlineSource = (fileName: string, contents: string): FlatpakModule => ({
 const projectRelative = (settings: DeploySettings, path: string): string =>
     relative(settings.paths.root, path).replaceAll("\\", "/");
 
+const shellArgument = (value: string): string =>
+    PLAIN_ARGUMENT.test(value) ? value : `'${value.split("'").join(QUOTE_ESCAPE)}'`;
+
+const pathArgument = (value: string): string => shellArgument(value.startsWith("-") ? `./${value}` : value);
+
 const installCommand = (source: string, destination: string, mode: string): string =>
-    `install -D${mode} ${source} ${destination}`;
+    `install -D${mode} ${pathArgument(source)} ${destination}`;
 
 const runtimeInstallCommands = (settings: DeploySettings): string[] => {
     const lib = `${DESTINATION}/lib/${settings.binaryName}`;
@@ -62,7 +69,7 @@ const schemaInstallCommands = (settings: DeploySettings): string[] =>
 
         return installCommand(
             projectRelative(settings, file),
-            `${DESTINATION}/share/glib-2.0/schemas/${name}`,
+            `${DESTINATION}/share/glib-2.0/schemas/${shellArgument(name)}`,
             "m644",
         );
     });
@@ -77,7 +84,7 @@ const iconInstallCommands = (settings: DeploySettings): string[] => {
     return listFilesRecursive(iconsDir).map((icon) =>
         installCommand(
             projectRelative(settings, icon.absPath),
-            `${DESTINATION}/share/icons/${icon.rel.replaceAll("\\", "/")}`,
+            `${DESTINATION}/share/icons/${shellArgument(icon.rel.replaceAll("\\", "/"))}`,
             "m644",
         ));
 };

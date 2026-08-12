@@ -90,15 +90,19 @@ const buildDate = (now: Date): string => {
     return stamp.toISOString().slice(0, ISO_DATE_LENGTH);
 };
 
+const newestFirst = (a: DeployRelease, b: DeployRelease): number => Number(a.date < b.date) - Number(a.date > b.date);
+
 const resolveReleases = (deploy: DeployConfig, version: string, date: string): DeployRelease[] =>
-    (deploy.releases ?? [{ version, date }]).map((entry) => ({
-        version: entry.version,
-        date: entry.date,
-        type: entry.type ?? null,
-        urgency: entry.urgency ?? null,
-        notes: entry.notes ?? [],
-        url: entry.url ?? null,
-    }));
+    (deploy.releases ?? [{ version, date }])
+        .map((entry) => ({
+            version: entry.version,
+            date: entry.date,
+            type: entry.type ?? null,
+            urgency: entry.urgency ?? null,
+            notes: entry.notes ?? [],
+            url: entry.url ?? null,
+        }))
+        .toSorted(newestFirst);
 
 const resolveDesktopActions = (deploy: DeployConfig): DeployDesktopAction[] =>
     Object.entries(deploy.desktopActions ?? {}).map(([id, action]) => ({

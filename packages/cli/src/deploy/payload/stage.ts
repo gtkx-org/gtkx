@@ -1,10 +1,11 @@
-import { sortStrings } from "@gtkx/utils";
+import { sortStringsBy } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DeploySettings, DeployTargetName, NodeRuntime, StagedFile } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
+import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
 import { copyInto, EXECUTABLE_MODE, writeInto } from "./copy-tree.js";
 import { stageIcons } from "./icons.js";
 import { BUNDLE_FILENAME, NODE_FILENAME, renderLauncher } from "./launcher.js";
@@ -68,9 +69,13 @@ const stageExtraFiles = (settings: DeploySettings, root: string): StagedFile[] =
         copyInto(root, destination, resolve(settings.paths.root, source)));
 
 const byRelativePath = (files: StagedFile[]): StagedFile[] => {
-    const order = sortStrings(files.map((file) => file.rel));
+    const latest: Map<string, StagedFile> = new Map();
 
-    return order.flatMap((rel) => files.filter((file) => file.rel === rel));
+    for (const file of files) {
+        latest.set(file.rel, file);
+    }
+
+    return sortStringsBy(latest.values(), (file) => file.rel);
 };
 
 const stagePayload = ({ settings, node, metadata }: StageRequest): StagedFile[] => {
@@ -88,28 +93,41 @@ const stagePayload = ({ settings, node, metadata }: StageRequest): StagedFile[] 
     ]);
 };
 
+const stageActivation = (settings: DeploySettings, root: string, target: DeployTargetName): StagedFile[] => {
+    if (!settings.isDbusActivatable) {
+        return [];
+    }
+
+    if (target === "appimage") {
+        return [writeInto(
+            root,
+            join(SHARE_APPLICATIONS, `${settings.applicationId}.desktop`),
+            renderDesktopEntry({ ...settings, isDbusActivatable: false }),
+        )];
+    }
+
+    return [writeInto(
+        root,
+        join(SHARE_DBUS_SERVICES, `${settings.applicationId}.service`),
+        renderDbusService(settings, PREFIX_FOR[target]),
+    )];
+};
+
 const stageOverlay = (settings: DeploySettings, target: DeployTargetName): StagedFile[] => {
     const root = join(settings.paths.overlay, target);
     rmSync(root, { recursive: true, force: true, maxRetries: 5 });
     const licenseFile = settings.paths.licenseFile;
-
-    const dbusService = settings.isDbusActivatable
-        ? [writeInto(
-                root,
-                join(SHARE_DBUS_SERVICES, `${settings.applicationId}.service`),
-                renderDbusService(settings, PREFIX_FOR[target]),
-            )]
-        : [];
+    const activation = stageActivation(settings, root, target);
 
     if (target === "deb") {
         return [
-            ...dbusService,
+            ...activation,
             writeInto(root, join(SHARE_DOC, settings.binaryName, "copyright"), renderCopyright(settings)),
         ];
     }
 
     return [
-        ...dbusService,
+        ...activation,
         ...(licenseFile === null
             ? []
             : [copyInto(root, join(SHARE_LICENSES, settings.binaryName, "LICENSE"), licenseFile)]),

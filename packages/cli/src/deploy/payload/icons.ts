@@ -6,19 +6,35 @@ import { copyInto } from "./copy-tree.js";
 const ICON_EXTENSIONS = [".svg", ".png", ".xpm"];
 const SHARE_ICONS = "share/icons";
 const SCALABLE_DIR = "hicolor/scalable/apps";
-const SIZE_PATTERN = /(?<size>[1-9]\d{0,3}x[1-9]\d{0,3})/;
+const SIZE_PATTERN = /^(?<width>[1-9]\d{0,3})x(?<height>[1-9]\d{0,3})$/;
+const SIZE_SEPARATORS = /[-_.]/;
 
 const isApplicationIcon = (settings: DeploySettings, rel: string): boolean =>
     ICON_EXTENSIONS.some((extension) => basename(rel) === `${settings.applicationId}${extension}`);
+
+const getSquareSize = (token: string): number | null => {
+    const groups = SIZE_PATTERN.exec(token)?.groups;
+
+    if (groups === undefined || groups.width !== groups.height) {
+        return null;
+    }
+
+    return Number(groups.width);
+};
+
+const firstSquareSize = (tokens: string[]): number | null =>
+    tokens.map((token) => getSquareSize(token)).find((size) => size !== null) ?? null;
+
+const getIconSize = (rel: string): number | null => firstSquareSize(rel.split("/").slice(0, -1));
 
 const themeDirFor = (file: string): string => {
     if (file.endsWith(".svg")) {
         return SCALABLE_DIR;
     }
 
-    const size = SIZE_PATTERN.exec(basename(file))?.groups?.size;
+    const size = firstSquareSize(basename(file).split(SIZE_SEPARATORS));
 
-    return size === undefined ? SCALABLE_DIR : `hicolor/${size}/apps`;
+    return size === null ? SCALABLE_DIR : `hicolor/${String(size)}x${String(size)}/apps`;
 };
 
 const stageIconTree = (root: string, iconsDir: string): StagedFile[] =>
@@ -59,4 +75,4 @@ const stageIcons = (settings: DeploySettings, root: string): StagedFile[] => {
     return staged;
 };
 
-export { stageIcons };
+export { getIconSize, stageIcons };

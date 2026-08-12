@@ -1,8 +1,16 @@
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
-import type { DeployArtifact, DeployManifest, DeployPayload, DeploySettings, DeployTarget } from "../types.js";
+import type {
+    DeployArtifact,
+    DeployManifest,
+    DeployPayload,
+    DeploySettings,
+    DeployTarget,
+    StagedFile,
+} from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { copyInto, copyTree, EXECUTABLE_MODE, writeInto } from "../payload/copy-tree.js";
+import { getIconSize } from "../payload/icons.js";
 import { FILE_TOOL } from "../tools.js";
 import { resolveAppimageTooling } from "../vendored/appimagetool.js";
 
@@ -13,6 +21,7 @@ const APPDIR_NAME = "AppDir";
 const USR_DIR = "usr";
 const ICON_EXTENSIONS = [".svg", ".png", ".xpm"];
 const EXTRACT_AND_RUN = "APPIMAGE_EXTRACT_AND_RUN";
+const SCALABLE_RANK = Number.MAX_SAFE_INTEGER;
 
 const appimageTarget: DeployTarget = {
     name: "appimage",
@@ -41,10 +50,25 @@ const renderManifests = (payload: DeployPayload): DeployManifest[] => [
     { path: appRunPathFor(payload.settings), contents: renderAppRun(payload.settings) },
 ];
 
+const iconRank = (file: StagedFile): number =>
+    file.rel.endsWith(".svg") ? SCALABLE_RANK : (getIconSize(file.rel) ?? 0);
+
+const largestIcon = (icons: StagedFile[]): StagedFile | undefined => {
+    let best: StagedFile | undefined;
+
+    for (const file of icons) {
+        if (best === undefined || iconRank(file) > iconRank(best)) {
+            best = file;
+        }
+    }
+
+    return best;
+};
+
 const rootIconFor = (payload: DeployPayload): { rel: string; abs: string } => {
     const { applicationId } = payload.settings;
     const names = new Set(ICON_EXTENSIONS.map((extension) => `${applicationId}${extension}`));
-    const icon = payload.stage.find((file) => names.has(file.rel.split("/").at(-1) ?? ""));
+    const icon = largestIcon(payload.stage.filter((file) => names.has(file.rel.split("/").at(-1) ?? "")));
 
     if (icon === undefined) {
         throw new Error(`Cannot build an AppImage without a ${applicationId} icon in the staged icon tree`);

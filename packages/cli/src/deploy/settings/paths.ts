@@ -1,4 +1,4 @@
-import { existsSync, statSync } from "node:fs";
+import { type Stats, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { DeployConfig, DeployPaths } from "../types.js";
 import { resolveDataDir } from "../../internal/data-dir.js";
@@ -37,10 +37,16 @@ const resolveOutDir = ({ root, deploy, outDirOverride }: PathsRequest): string =
     return outDir;
 };
 
-const existingFile = (path: string): string | null => (existsSync(path) && statSync(path).isFile() ? path : null);
+const getStats = (path: string): Stats | undefined => {
+    try {
+        return statSync(path, { throwIfNoEntry: false });
+    } catch {
+        return undefined;
+    }
+};
 
-const existingDir = (path: string): string | null =>
-    existsSync(path) && statSync(path).isDirectory() ? path : null;
+const existingFile = (path: string): string | null => (getStats(path)?.isFile() === true ? path : null);
+const existingDir = (path: string): string | null => (getStats(path)?.isDirectory() === true ? path : null);
 
 const resolveLicenseFile = (root: string, configured: string | undefined): string | null => {
     if (configured !== undefined) {

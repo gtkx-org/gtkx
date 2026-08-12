@@ -96,9 +96,26 @@ const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): Dep
     return isFlatpakSource && targets.some((target) => target.name === "flatpak") ? [FLATPAK_NODE_GENERATOR] : [];
 };
 
+const isNodeRequired = (targets: DeployTarget[], settings: DeploySettings): boolean =>
+    !(settings.deploy.flatpak?.mode === "source" && targets.every((target) => target.name === "flatpak"));
+
+const runtimeToolsFor = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
+    if (!isNodeRequired(targets, settings)) {
+        return [];
+    }
+
+    const node = settings.deploy.node ?? {};
+    const archiveTools = (node.source ?? "download") === "download" ? [TAR] : [];
+
+    return node.shouldStrip === false ? archiveTools : [...archiveTools, STRIP];
+};
+
 const preflight = (targets: DeployTarget[], settings: DeploySettings, shouldPrintManifests: boolean): void => {
-    const packagerTools = shouldPrintManifests ? [] : [TAR, ...targets.flatMap((target) => target.tools)];
-    const required = [DESKTOP_FILE_VALIDATE, APPSTREAMCLI, STRIP, ...sourceModeTools(targets, settings)];
+    const packagerTools = shouldPrintManifests
+        ? []
+        : [...runtimeToolsFor(targets, settings), ...targets.flatMap((target) => target.tools)];
+
+    const required = [DESKTOP_FILE_VALIDATE, APPSTREAMCLI, ...sourceModeTools(targets, settings)];
     const report = probeTools([...required, ...packagerTools]);
     assertTools(report);
     warnMissingOptional(report);
@@ -136,7 +153,10 @@ const buildPayload = async (
         await buildApp({ entry: options.entry, vite: { root: options.cwd } });
     }
 
-    const node = options.shouldPrintManifests ? null : await resolveNodeRuntime(settings);
+    const node = options.shouldPrintManifests || !isNodeRequired(targets, settings)
+        ? null
+        : await resolveNodeRuntime(settings);
+
     const stage = stagePayload({ settings, node, metadata });
     info(`Staged ${String(stage.length)} files into ${displayPath(settings, settings.paths.stage)}`);
 

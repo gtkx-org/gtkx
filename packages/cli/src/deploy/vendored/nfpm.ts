@@ -1,3 +1,4 @@
+import { mkdtempSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { DigestRequest } from "../download.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
@@ -29,8 +30,15 @@ const digestRequest = (assetName: string, dir: string): DigestRequest => ({
     subject: `nfpm ${NFPM_VERSION}`,
 });
 
-const extractNfpm = (archive: string, dir: string): void => {
-    runCliTool({ tool: "tar", args: ["-xzf", archive, "-C", dir, "nfpm"], target: assetNameFor(process.arch) });
+const extractNfpm = (archive: string, binary: string): void => {
+    const dir = mkdtempSync(`${binary}-`);
+
+    try {
+        runCliTool({ tool: "tar", args: ["-xzf", archive, "-C", dir, "nfpm"], target: assetNameFor(process.arch) });
+        renameSync(join(dir, "nfpm"), binary);
+    } finally {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+    }
 };
 
 const downloadNfpm = async (dir: string, binary: string): Promise<string> => {
@@ -45,7 +53,7 @@ const downloadNfpm = async (dir: string, binary: string): Promise<string> => {
         freshSha256: () => publishedDigest(request),
     });
 
-    extractNfpm(archive, dir);
+    extractNfpm(archive, binary);
 
     return binary;
 };

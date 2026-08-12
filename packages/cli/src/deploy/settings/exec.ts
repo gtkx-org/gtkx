@@ -17,11 +17,13 @@ const resolveMimeTypes = (deploy: DeployConfig): string[] => {
 };
 
 const resolveExecToken = (deploy: DeployConfig): string | null => {
-    if ((deploy.protocols ?? []).length > 0) {
-        return "%U";
+    const mimeTypes = resolveMimeTypes(deploy);
+
+    if (mimeTypes.length === 0) {
+        return null;
     }
 
-    return (deploy.fileAssociations ?? []).length > 0 ? "%F" : null;
+    return mimeTypes.some((mimeType) => mimeType.startsWith(SCHEME_HANDLER_PREFIX)) ? "%U" : "%F";
 };
 
 export { resolveExecToken, resolveFileAssociations, resolveMimeTypes };

@@ -16,7 +16,7 @@ type PackageManifest = {
     author: ManifestAuthor;
 };
 
-const AUTHOR_PATTERN = /^(?<name>[^<(]*)(?:<(?<email>[^>]*)>)?/;
+const AUTHOR_PATTERN = /^(?<name>[^<(]*)(?:\([^)]*\)\s*)?(?:<(?<email>[^>]*)>)?/;
 const EMPTY_AUTHOR: ManifestAuthor = { name: null, email: null };
 
 const optionalString = (value: unknown): string | null =>

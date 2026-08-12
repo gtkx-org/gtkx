@@ -1,7 +1,7 @@
 import type { DeployDesktopAction, DeploySettings } from "../types.js";
-import { type IniGroup, listValue, renderIni } from "./ini.js";
+import { type IniGroup, renderIni } from "./ini.js";
 
-type Entries = [string, string][];
+type Entries = [string, string | string[]][];
 
 const DESKTOP_ENTRY_GROUP = "Desktop Entry";
 const RESERVED_KEYS = new Set(["DBusActivatable", "Version"]);
@@ -10,9 +10,7 @@ const execLine = (settings: DeploySettings): string =>
     [settings.binaryName, ...settings.execArgs, settings.execToken ?? ""].filter((part) => part.length > 0).join(" ");
 
 const optionalEntry = (key: string, value: string | null): Entries => (value === null ? [] : [[key, value]]);
-
-const listEntry = (key: string, values: string[]): Entries =>
-    values.length === 0 ? [] : [[key, listValue(values)]];
+const listEntry = (key: string, values: string[]): Entries => (values.length === 0 ? [] : [[key, values]]);
 
 const assertNoReservedOverrides = (settings: DeploySettings): void => {
     for (const key of Object.keys(settings.desktopEntry)) {
@@ -41,9 +39,7 @@ const baseEntries = (settings: DeploySettings): Entries => [
 ];
 
 const actionEntries = (settings: DeploySettings): Entries =>
-    settings.desktopActions.length === 0
-        ? []
-        : [["Actions", listValue(settings.desktopActions.map((action) => action.id))]];
+    settings.desktopActions.length === 0 ? [] : [["Actions", settings.desktopActions.map((action) => action.id)]];
 
 const activationEntries = (settings: DeploySettings): Entries =>
     settings.isDbusActivatable ? [["DBusActivatable", "true"]] : [];

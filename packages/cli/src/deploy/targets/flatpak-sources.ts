@@ -14,6 +14,11 @@ type GitSource = {
     commit?: string;
 };
 
+type GitRevision = {
+    tag?: string;
+    commit?: string;
+};
+
 const GENERATED_SOURCES = "generated-sources.json";
 const GENERATOR = "flatpak-node-generator";
 const FETCHABLE_URL = /^https?:\/\//;
@@ -73,19 +78,30 @@ const resolveSourceUrl = (settings: DeploySettings): string => {
     return url;
 };
 
-const resolveGitSource = (settings: DeploySettings): GitSource => {
-    const configured = settings.deploy.flatpak?.source ?? {};
+const configuredRevision = (settings: DeploySettings): GitRevision | null => {
+    const source = settings.deploy.flatpak?.source ?? {};
+
+    if (source.commit !== undefined) {
+        return { ...optional("tag", source.tag), commit: source.commit };
+    }
+
+    return source.tag === undefined ? null : { tag: source.tag };
+};
+
+const workingTreeRevision = (settings: DeploySettings): GitRevision => {
     const root = settings.paths.root;
-    const tag = configured.tag ?? runGit(root, ["describe", "--tags", "--exact-match"]) ?? undefined;
-    const commit = configured.commit ?? runGit(root, ["rev-parse", "HEAD"]) ?? undefined;
 
     return {
-        type: "git",
-        url: resolveSourceUrl(settings),
-        ...optional("tag", tag),
-        ...optional("commit", commit),
+        ...optional("tag", runGit(root, ["describe", "--tags", "--exact-match"]) ?? undefined),
+        ...optional("commit", runGit(root, ["rev-parse", "HEAD"]) ?? undefined),
     };
 };
+
+const resolveGitSource = (settings: DeploySettings): GitSource => ({
+    type: "git",
+    url: resolveSourceUrl(settings),
+    ...(configuredRevision(settings) ?? workingTreeRevision(settings)),
+});
 
 const generatedSourcesPath = (settings: DeploySettings): string =>
     join(settings.paths.targets, "flatpak", GENERATED_SOURCES);

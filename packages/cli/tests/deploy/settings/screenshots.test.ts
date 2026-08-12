@@ -46,6 +46,14 @@ const urlFromRemote = (remote: string, rel = ""): string | undefined => {
     return resolve({ screenshots: [{ file: "data/one.png" }] }, root)[0]?.url;
 };
 
+const urlFromDefaultBranch = (branch: string): string | undefined => {
+    const root = createRepository(GITHUB_REMOTE);
+    const args = ["symbolic-ref", "refs/remotes/origin/HEAD", `refs/remotes/origin/${branch}`];
+    execFileSync(resolveExecutable("git"), args, { cwd: root, stdio: "ignore" });
+
+    return resolve({ screenshots: [{ file: "data/one.png" }] }, root)[0]?.url;
+};
+
 afterEach(() => {
     for (const root of state.roots) {
         rmSync(root, { recursive: true, force: true });
@@ -180,6 +188,12 @@ describe("resolveScreenshots — derived from the git remote", () => {
     it("derives a raw base url from a gitlab remote", () => {
         expect(urlFromRemote("https://gitlab.com/gtkx-org/gtkx.git")).toBe(
             "https://gitlab.com/gtkx-org/gtkx/-/raw/main/data/one.png",
+        );
+    });
+
+    it("follows the default branch the origin remote names", () => {
+        expect(urlFromDefaultBranch("master")).toBe(
+            "https://raw.githubusercontent.com/gtkx-org/gtkx/master/data/one.png",
         );
     });
 });

@@ -1,11 +1,11 @@
-import { accessSync, constants } from "node:fs";
+import { accessSync, constants, statSync } from "node:fs";
 import { delimiter, isAbsolute, join, resolve } from "node:path";
 
 const isExecutable = (path: string): boolean => {
     try {
         accessSync(path, constants.X_OK);
 
-        return true;
+        return statSync(path).isFile();
     } catch {
         return false;
     }

@@ -29,8 +29,8 @@ describe("resolveExecToken", () => {
         expect(resolveExecToken(deploy)).toBe("%U");
     });
 
-    it("ignores mime types on their own", () => {
-        expect(resolveExecToken(config({ mimeTypes: ["text/plain"] }))).toBeNull();
+    it("takes the file token from mime types on their own", () => {
+        expect(resolveExecToken(config({ mimeTypes: ["text/plain"] }))).toBe("%F");
     });
 });
 
