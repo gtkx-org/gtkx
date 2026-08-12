@@ -20,13 +20,14 @@ import {
     GtkStackPage,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { createRef, type ReactNode } from "react";
+import { createRef, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { configure, getConfig, render, screen, userEvent } from "../src/index.js";
 import { renderDragAndDropPair, renderGesturedLabel, renderShortcutHost } from "./event-render-setup.js";
 
 const initialConfig = { ...getConfig() };
 const NOT_SENSITIVE_PATTERN = /did not become actionable within 60ms because it is not sensitive/;
+const DETACHED_PATTERN = /did not become actionable within 60ms because it is not attached to a visible window/;
 
 const INSENSITIVE_BUTTON_ACTIONS: [string, (button: Gtk.Widget) => Promise<unknown>][] = [
     ["click", (button) => userEvent.click(button)],
@@ -54,6 +55,33 @@ const renderInsensitiveButton = async () => {
 
 const renderInsensitiveGesturedLabel = (name: string, label: string, gesture: ReactNode): Promise<Gtk.Widget> =>
     renderGesturedLabel(name, label, gesture, false);
+
+const renderRemovableButton = async () => {
+    const handleClick = vi.fn();
+    const removableRef = createRef<Gtk.Button>();
+
+    const Toggler = (): ReactNode => {
+        const [isRemovableShown, setIsRemovableShown] = useState(true);
+
+        return (
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkButton
+                    label="Remove"
+                    onClicked={() => {
+                        setIsRemovableShown(false);
+                    }}
+                />
+                {isRemovableShown ? <GtkButton ref={removableRef} label="Removable" onClicked={handleClick} /> : null}
+            </GtkBox>
+        );
+    };
+
+    await render(<Toggler />);
+    const removable = removableRef.current as Gtk.Button;
+    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" }));
+
+    return { handleClick, removable };
+};
 
 describe("userEvent actionability - insensitive click targets", () => {
     setupShortTimeout();
@@ -284,6 +312,38 @@ describe("userEvent actionability - timeout error", () => {
             /<Button role="button"> did not become actionable within 60ms because it is not mapped/,
         );
 
+        expect(handleClick).not.toHaveBeenCalled();
+    });
+});
+
+describe("userEvent actionability - detached targets", () => {
+    setupShortTimeout();
+
+    it("rejects click on a widget whose conditional render was removed", async () => {
+        const { handleClick, removable } = await renderRemovableButton();
+        expect(removable.getRoot()).toBeNull();
+        await expect(userEvent.click(removable)).rejects.toThrow(DETACHED_PATTERN);
+        expect(handleClick).not.toHaveBeenCalled();
+    });
+
+    it("rejects type on an entry rendered into a container outside any window", async () => {
+        const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+        const entryRef = createRef<Gtk.Entry>();
+        await render(<GtkEntry ref={entryRef} text="before" />, { container: box });
+        const entry = entryRef.current as Gtk.Entry;
+        expect(entry.getRoot()).toBeNull();
+        await expect(userEvent.type(entry, "typed")).rejects.toThrow(DETACHED_PATTERN);
+        expect(entry.getText()).toBe("before");
+    });
+
+    it("rejects click on a widget whose render was unmounted", async () => {
+        const handleClick = vi.fn();
+        const buttonRef = createRef<Gtk.Button>();
+        const { unmount } = await render(<GtkButton ref={buttonRef} label="Gone" onClicked={handleClick} />);
+        const button = buttonRef.current as Gtk.Button;
+        await unmount();
+        expect(button.getRoot()).toBeNull();
+        await expect(userEvent.click(button)).rejects.toThrow(DETACHED_PATTERN);
         expect(handleClick).not.toHaveBeenCalled();
     });
 });

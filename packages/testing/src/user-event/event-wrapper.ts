@@ -7,6 +7,7 @@ import { delay, now } from "../timers.js";
 const NOT_SENSITIVE = "it is not sensitive (the widget or one of its ancestors is disabled)";
 const WINDOW_NOT_ALLOCATED = "its window has not been allocated a size";
 const NOT_MAPPED = "it is not mapped (it is not shown on screen, e.g. it is hidden or on a non-visible page)";
+const NOT_IN_VISIBLE_WINDOW = "it is not attached to a visible window (it was removed from the tree or never shown)";
 const WINDOW_NOT_ACTIVE = "its window never became active";
 const ACTIONABLE_HOP_MS = 1;
 
@@ -39,7 +40,7 @@ const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
     const root = widget.getRoot();
 
     if (!(root instanceof Gtk.Window) || !root.getVisible()) {
-        return null;
+        return NOT_IN_VISIBLE_WINDOW;
     }
 
     return findWindowActionabilityFailure(widget, root);
