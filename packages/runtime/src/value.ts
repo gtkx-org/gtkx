@@ -9,6 +9,9 @@ import {
     boxedT,
     float32T,
     float64T,
+    type FundamentalDescriptor,
+    fundamentalLifecycleFor,
+    fundamentalT,
     int8T,
     int32T,
     objectT,
@@ -65,6 +68,8 @@ type ValueWriter = ValueType["set"];
 const setBoxedCache = createBindCache();
 const setStaticBoxedCache = createBindCache();
 const dupBoxedCache = createBindCache();
+const setInstanceCache = createBindCache();
+const peekPointerCache = createBindCache();
 const gValueInit = bind(LIB, "g_value_init", [VALUE_T, biguint64T], voidT);
 const gValueCopy = bind(LIB, "g_value_copy", [VALUE_T, VALUE_T], voidT);
 const booleanValueType = bindValueType("boolean", booleanT);
@@ -182,6 +187,46 @@ const boxedValueType = (type: bigint): ValueType => {
 const enumOrFlagsValueType = (type: bigint): ValueType =>
     typeFundamental(type) === TYPE_FLAGS ? flagsValueType : enumValueType;
 
+function unsupportedFundamental(type: bigint): never {
+    throw new Error(`Unsupported fundamental type '${typeName(type) ?? String(type)}' for value`);
+}
+
+const setInstanceBind = (fundamental: bigint, descriptor: FundamentalDescriptor) =>
+    setInstanceCache(String(fundamental), LIB, "g_value_set_instance", [VALUE_T, descriptor], voidT);
+
+const peekPointerBind = (fundamental: bigint, descriptor: FundamentalDescriptor) =>
+    peekPointerCache(String(fundamental), LIB, "g_value_peek_pointer", [VALUE_T], descriptor);
+
+const customFundamentalDescriptor = (fundamental: bigint): FundamentalDescriptor | undefined => {
+    const name = typeName(fundamental);
+
+    if (name === null) {
+        return undefined;
+    }
+
+    const lifecycle = fundamentalLifecycleFor(name);
+
+    if (lifecycle === undefined) {
+        return undefined;
+    }
+
+    return fundamentalT(lifecycle.sharedLibrary, lifecycle.refFnName, lifecycle.unrefFnName, {
+        ownership: "borrowed",
+        typeName: name,
+    });
+};
+
+const customFundamentalValueType = (type: bigint): ValueType | undefined => {
+    const fundamental = typeFundamental(type);
+    const descriptor = customFundamentalDescriptor(fundamental);
+
+    if (descriptor === undefined) {
+        return undefined;
+    }
+
+    return { set: setInstanceBind(fundamental, descriptor), get: peekPointerBind(fundamental, descriptor) };
+};
+
 const fundamentalValueType = (type: bigint): ValueType => {
     switch (typeFundamental(type)) {
         case TYPE_PARAM: {
@@ -194,7 +239,7 @@ const fundamentalValueType = (type: bigint): ValueType => {
             return boxedValueType(type);
         }
         default: {
-            throw new Error(`Unsupported fundamental type '${typeName(type) ?? String(type)}' for value`);
+            return customFundamentalValueType(type) ?? unsupportedFundamental(type);
         }
     }
 };
@@ -350,11 +395,33 @@ function setBoxedFromValue(value: ExternalObject<Handle>, nativeValue: unknown):
     setBoxedValue(value, nativeValue ?? null);
 }
 
-const resolveValueGetter = (fundamental: bigint): ValueGetter | undefined =>
+const customFundamentalGetter = (type: bigint): ValueGetter | undefined => {
+    const valueType = customFundamentalValueType(type);
+
+    if (valueType === undefined) {
+        return undefined;
+    }
+
+    return (value) => wrapHandle(valueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(type));
+};
+
+const customFundamentalSetter = (type: bigint): ValueType["set"] | undefined => {
+    const valueType = customFundamentalValueType(type);
+
+    return valueType === undefined ? undefined : handleSetter(valueType);
+};
+
+const builtInValueGetter = (fundamental: bigint): ValueGetter | undefined =>
     PLAIN_VALUE_GETTERS.get(fundamental) ?? wrappedValueGetter(fundamental);
 
-const resolveValueSetter = (fundamental: bigint): ValueType["set"] | undefined =>
+const builtInValueSetter = (fundamental: bigint): ValueType["set"] | undefined =>
     PLAIN_VALUE_SETTERS.get(fundamental) ?? WRAPPED_VALUE_SETTERS.get(fundamental);
+
+const resolveValueGetter = (type: bigint): ValueGetter | undefined =>
+    builtInValueGetter(typeFundamental(type)) ?? customFundamentalGetter(type);
+
+const resolveValueSetter = (type: bigint): ValueType["set"] | undefined =>
+    builtInValueSetter(typeFundamental(type)) ?? customFundamentalSetter(type);
 
 function setStrvValue(value: ExternalObject<Handle>, jsValue: unknown): void {
     strvValueType.set(value, jsValue ?? null);
@@ -365,7 +432,7 @@ function valueWriterFor(type: bigint): ValueWriter {
         return setStrvValue;
     }
 
-    const set = resolveValueSetter(typeFundamental(type));
+    const set = resolveValueSetter(type);
 
     if (set === undefined) {
         throw new Error(`Unsupported type for intoValue: ${typeName(type) ?? String(type)}`);
@@ -412,7 +479,7 @@ function fromValue(value: ExternalObject<Handle>): unknown {
         return strvValueType.get(value);
     }
 
-    const get = resolveValueGetter(typeFundamental(type));
+    const get = resolveValueGetter(type);
 
     if (get === undefined) {
         throw new Error(`Unsupported type for fromValue: ${typeName(type) ?? String(type)}`);
