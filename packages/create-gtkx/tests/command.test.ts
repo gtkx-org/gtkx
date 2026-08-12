@@ -9,13 +9,25 @@ const clack = vi.hoisted(() => ({
 }));
 
 const scaffoldMock = vi.mocked(scaffold);
-const SHORT_SPELLING_PATTERN = /(?<![\w-])-(?!-)[\w-]+/g;
+const OPTION_LINE_PATTERN = /^ *((?:-[^\s,]+, )+)--([\w-]+)(=<[^>]+>)?(?: |$)/;
+const VALUE_PROBE = "yarn";
+const PRINTED_USAGE = await renderUsage(scaffoldCommand);
 
-const printedShortSpellings = async (): Promise<string[]> => {
-    const usage = await renderUsage(scaffoldCommand);
+const PRINTED_SHORT_SPELLINGS = PRINTED_USAGE.split("\n").flatMap((line) => {
+    const match = OPTION_LINE_PATTERN.exec(line);
 
-    return usage.matchAll(SHORT_SPELLING_PATTERN).map((match) => match[0].slice(1)).toArray();
-};
+    if (match === null) {
+        return [];
+    }
+
+    const [, printed = "", name = "", valueHint] = match;
+
+    return printed.split(", ").filter(Boolean).map((short) => ({
+        short,
+        long: `--${name}`,
+        valueArgs: valueHint === undefined ? [] : [VALUE_PROBE],
+    }));
+});
 
 vi.mock("@clack/prompts", () => clack);
 
@@ -32,7 +44,7 @@ afterEach(() => {
     process.exitCode = 0;
 });
 
-describe("runCreate — delegation", () => {
+describe("runCreate: delegation", () => {
     it("normalizes the raw arguments and delegates to scaffold", async () => {
         await runCreate({
             name: "my-app",
@@ -67,7 +79,7 @@ describe("runCreate — delegation", () => {
     });
 });
 
-describe("runCreate — flag mapping", () => {
+describe("runCreate: flag mapping", () => {
     it("maps --no-typescript to isTypescript: false", async () => {
         await runCreate({ name: "my-app", typescript: false });
         expect(scaffoldMock).toHaveBeenCalledWith(expect.objectContaining({ isTypescript: false }));
@@ -99,7 +111,7 @@ describe("runCreate — flag mapping", () => {
     });
 });
 
-describe("runCreate — failure reporting", () => {
+describe("runCreate: failure reporting", () => {
     it("reports an unexpected failure as one line and exits non-zero", async () => {
         scaffoldMock.mockRejectedValueOnce(new Error("EACCES: permission denied, mkdir '/tmp/my-app'"));
         await expect(runCreate({ name: "my-app" })).resolves.toBeUndefined();
@@ -137,7 +149,7 @@ describe("scaffoldCommand", () => {
     });
 });
 
-describe("scaffoldCommand — documented spellings", () => {
+describe("scaffoldCommand: documented spellings", () => {
     it.each(["-p", "--package-manager"])("selects the package manager through %s", async (spelling) => {
         await runCommand(scaffoldCommand, { rawArgs: ["my-app", spelling, "yarn", "--no-interactive"] });
 
@@ -154,9 +166,18 @@ describe("scaffoldCommand — documented spellings", () => {
         );
     });
 
-    it("prints only short spellings the parser accepts", async () => {
-        const spellings = await printedShortSpellings();
-        expect(spellings).toEqual(expect.arrayContaining(["f", "p", "y"]));
-        expect(spellings.filter((spelling) => spelling.length > 1)).toEqual([]);
+    it("prints every short spelling as a single dashed character", () => {
+        const spellings = PRINTED_SHORT_SPELLINGS.map(({ short }) => short);
+        expect(spellings.toSorted((first, second) => first.localeCompare(second))).toEqual(["-f", "-p", "-y"]);
     });
+
+    it.each(PRINTED_SHORT_SPELLINGS)(
+        "binds $short to the same scaffold arguments as $long",
+        async ({ short, long, valueArgs }) => {
+            await runCommand(scaffoldCommand, { rawArgs: ["my-app", short, ...valueArgs, "--no-interactive"] });
+            await runCommand(scaffoldCommand, { rawArgs: ["my-app", long, ...valueArgs, "--no-interactive"] });
+            expect(scaffoldMock).toHaveBeenCalledTimes(2);
+            expect(scaffoldMock.mock.calls[0]).toEqual(scaffoldMock.mock.calls[1]);
+        },
+    );
 });
