@@ -1,39 +1,27 @@
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { Library } from "../../src/gir/library.js";
-import { generateNamespaceModule } from "../../src/store/gi/pipeline.js";
+import { fixtureModules } from "../helpers/fixture-modules.js";
 
-const FIXTURE_GIR_PATH = [join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "gir")];
-const library = Library.load(["Hazard-1.0", "Bare-1.0", "Clash-1.0"], FIXTURE_GIR_PATH);
-const twinLibrary = Library.load(["Twin-1.0"], FIXTURE_GIR_PATH);
-
-const sources: Map<string, string> = new Map(
-    library.namespaces.values().map((namespace) => [namespace.name, generateNamespaceModule(namespace, library)]),
-);
-
+const sources = fixtureModules(["Hazard-1.0", "Bare-1.0", "Clash-1.0"]);
 const hazard = String(sources.get("Hazard"));
 const bare = String(sources.get("Bare"));
 const clash = String(sources.get("Clash"));
 
 const generateTwinModules = (): void => {
-    for (const namespace of twinLibrary.namespaces.values()) {
-        generateNamespaceModule(namespace, twinLibrary);
-    }
+    fixtureModules(["Twin-1.0"]);
 };
 
 describe("a namespace whose type names collide with TypeScript keywords", () => {
     it.each([
-        ["boolean", "export class boolean_ {"],
-        ["enum", "export class enum_ {"],
-        ["void", "export class void_ {"],
-        ["object", "export class object_ {"],
+        ["boolean", "export abstract class boolean_ {"],
+        ["enum", "export abstract class enum_ {"],
+        ["void", "export abstract class void_ {"],
+        ["object", "export abstract class object_ {"],
     ])("suffixes the record named %s", (_name, declaration) => {
         expect(hazard).toContain(declaration);
     });
 
     it("suffixes again a type name that already carries the suffix", () => {
-        expect(hazard).toContain("export class boolean__ {");
+        expect(hazard).toContain("export abstract class boolean__ {");
     });
 
     it("suffixes again a value name that already carries the suffix", () => {
@@ -50,7 +38,7 @@ describe("a namespace whose type names collide with TypeScript keywords", () => 
     });
 
     it("names the companion interfaces after the mapped declaration", () => {
-        expect(hazard).toContain("export interface boolean_ConstructorProps {}");
+        expect(hazard).toContain("export interface switch_ConstructorProps {");
     });
 
     it("refers to the mapped name from every reference site", () => {
@@ -58,7 +46,7 @@ describe("a namespace whose type names collide with TypeScript keywords", () => 
         expect(hazard).toContain("wrapperClass: boolean_");
     });
 
-    it.each(["boolean", "enum", "void", "object", "function"])(
+    it.each(["boolean", "enum", "switch", "void", "object", "function"])(
         "emits no bare declaration named %s",
         (name) => {
             for (const keyword of ["class", "type", "enum", "interface", "const"]) {

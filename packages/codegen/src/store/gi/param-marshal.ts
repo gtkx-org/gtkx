@@ -2,6 +2,7 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { type GirParameter, isInoutParameter } from "../../gir/parameter.js";
+import { isConstructibleRecord } from "./value-marshalable.js";
 
 const isHandlePassedInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.direction !== "out" && parameter.direction !== "inout") {
@@ -28,14 +29,14 @@ const underlyingType = (context: ModuleContext, ref: TypeId): GirType | undefine
 const underlyingParamKind = (context: ModuleContext, parameter: GirParameter): GirType["kind"] | undefined =>
     parameter.type === undefined ? undefined : underlyingType(context, parameter.type)?.kind;
 
-const isCollectibleCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
-    const kind = underlyingParamKind(context, parameter);
+const isAllocatableCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
+    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
 
-    return kind === "record" || kind === "class";
+    return type?.kind === "record" && isConstructibleRecord(context, type.namespace.name, type.value);
 };
 
-const isRecordCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>
-    underlyingParamKind(context, parameter) === "record";
+const isCollectibleCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>
+    underlyingParamKind(context, parameter) === "class" || isAllocatableCallerOut(context, parameter);
 
 const isRecordInout = (context: ModuleContext, parameter: GirParameter): boolean =>
     isInoutParameter(parameter) && underlyingParamKind(context, parameter) === "record";
@@ -75,10 +76,10 @@ const isClosureType = (context: ModuleContext, ref: TypeId): boolean => {
 };
 
 export {
+    isAllocatableCallerOut,
     isClosureType,
     isHandlePassedInPlace,
     isCollectibleCallerOut,
-    isRecordCallerOut,
     isRecordInout,
     isHandlePassing,
     underlyingType,

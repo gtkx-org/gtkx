@@ -28,6 +28,7 @@ const UNMARSHALABLE: [string, string][] = [
     ["glib", "g_base64_encode_close"],
     ["gobject", "g_enum_complete_type_info"],
     ["gobject", "g_flags_complete_type_info"],
+    ["gobject", "g_type_query"],
     ["graphene", "graphene_box_get_vertices"],
     ["graphene", "graphene_matrix_to_float"],
     ["gdk", "gdk_texture_downloader_download_bytes_with_planes"],
@@ -36,6 +37,7 @@ const UNMARSHALABLE: [string, string][] = [
     ["pango", "pango_tab_array_get_tabs"],
     ["harfbuzz", "hb_tag_to_string"],
     ["harfbuzz", "hb_buffer_serialize_glyphs"],
+    ["harfbuzz", "hb_face_collect_unicodes"],
 ];
 
 const MARSHALABLE: [string, string][] = [
@@ -177,5 +179,17 @@ describe("a project that declares Gtk-4.0 without Adw-1", () => {
         expect(start).toBeGreaterThan(-1);
         expect(source.slice(start, source.indexOf("});", start))).toContain("canThrow: true");
         expect(hasCallableMember(source, "g_key_file_load_from_file")).toBe(true);
+    });
+});
+
+describe("the record classes the emitted store declares", () => {
+    const { gi } = storeOptions();
+
+    it("declares abstract the class no caller can construct, and only that one", () => {
+        const types = readFileSync(join(gi.storeDir, "glib", "glib.d.ts"), "utf8");
+        expect(types).toContain("export declare abstract class KeyFile {");
+        expect(types).not.toContain("KeyFileConstructorProps");
+        expect(types).toContain("export declare class TimeVal {");
+        expect(types).toContain("export interface TimeValConstructorProps {");
     });
 });

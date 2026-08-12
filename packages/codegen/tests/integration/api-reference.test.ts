@@ -248,8 +248,8 @@ const registerLookupResolutionTests = (): void => {
     it("prefers an exact case-sensitive match over case-colliding candidates", () => {
         expect(symbolNameFor("Gdk.KEY_a")).toBe("KEY_a");
         expect(symbolNameFor("Gdk.KEY_A")).toBe("KEY_A");
-        expect(reference.lookup("GObject.TypeQuery").outcome).toBe("page");
-        expect(reference.lookup("GObject.typeQuery").outcome).toBe("page");
+        expect(symbolNameFor("GObject.ParamSpecBoolean")).toBe("ParamSpecBoolean");
+        expect(symbolNameFor("GObject.paramSpecBoolean")).toBe("paramSpecBoolean");
     });
 
     it("reports notFound for unknown symbols", () => {

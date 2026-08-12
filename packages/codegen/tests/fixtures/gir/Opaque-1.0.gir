@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Opaque"
+             version="1.0"
+             shared-library="libopaque.so.1"
+             c:identifier-prefixes="Opaque"
+             c:symbol-prefixes="opaque">
+    <record name="KeyFile"
+            c:type="OpaqueKeyFile"
+            opaque="1"
+            glib:type-name="OpaqueKeyFile"
+            glib:get-type="opaque_key_file_get_type"
+            c:symbol-prefix="key_file">
+      <constructor name="new" c:identifier="opaque_key_file_new">
+        <return-value transfer-ownership="full">
+          <type name="KeyFile" c:type="OpaqueKeyFile*"/>
+        </return-value>
+      </constructor>
+      <method name="unref" c:identifier="opaque_key_file_unref">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="key_file" transfer-ownership="none">
+            <type name="KeyFile" c:type="OpaqueKeyFile*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </record>
+    <record name="MatchInfo"
+            c:type="OpaqueMatchInfo"
+            disguised="1"
+            glib:type-name="OpaqueMatchInfo"
+            glib:get-type="opaque_match_info_get_type"
+            c:symbol-prefix="match_info">
+      <method name="matches" c:identifier="opaque_match_info_matches">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="match_info" transfer-ownership="none">
+            <type name="MatchInfo" c:type="OpaqueMatchInfo*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </record>
+    <record name="Rect"
+            c:type="OpaqueRect"
+            glib:type-name="OpaqueRect"
+            glib:get-type="opaque_rect_get_type"
+            c:symbol-prefix="rect">
+      <field name="x" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+      <field name="y" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+    </record>
+  </namespace>
+</repository>

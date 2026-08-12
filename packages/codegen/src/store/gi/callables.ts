@@ -403,10 +403,10 @@ const renderStaticSignature = (
     };
 };
 
-const classConstructorMemberNames = (context: ModuleContext, callables: Callables): string[] => {
+const constructorMemberNames = (context: ModuleContext, constructors: GirFunction[]): string[] => {
     const names: string[] = [];
 
-    for (const callable of callables.constructors) {
+    for (const callable of constructors) {
         if (!isEmittableCallable(context, callable)) {
             continue;
         }
@@ -503,7 +503,7 @@ export {
     indexMethodsByName,
     isEmittableCallable,
     renderStaticSignature,
-    classConstructorMemberNames,
+    constructorMemberNames,
     renderStaticHead,
     renderPlainTypeMembers,
     type Callables,

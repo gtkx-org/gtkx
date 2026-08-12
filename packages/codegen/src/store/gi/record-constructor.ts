@@ -6,6 +6,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
+import { constructorMemberNames } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
 import { renderSourceGtype } from "./gtype-binding.js";
 import { emitFieldWrite, isEmittableField, isInlineField } from "./record-field-accessor.js";
@@ -17,7 +18,8 @@ type WritableFieldSlot = RecordFieldSlot & { field: GirField & { type: TypeId } 
 const isWritableFieldSlot = (context: ModuleContext, entry: RecordFieldSlot): entry is WritableFieldSlot =>
     entry.field.writable && isEmittableField(context, entry.field);
 
-const isOpaque = (record: GirRecord): boolean => record.opaque || record.disguised;
+const isRecordConstructible = (context: ModuleContext, record: GirRecord): boolean =>
+    isConstructibleRecord(context, context.namespace.name, record);
 
 const renderRecordConstructorPropsInterface = (
     context: ModuleContext,
@@ -25,11 +27,6 @@ const renderRecordConstructorPropsInterface = (
     className: string,
 ): string => {
     const head = `export interface ${className}ConstructorProps`;
-
-    if (isOpaque(record) || !isConstructibleRecord(context, context.namespace.name, record)) {
-        return renderBracedOrEmpty(head, "");
-    }
-
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
     const lines = slots
@@ -43,8 +40,23 @@ const renderRecordConstructorPropsInterface = (
     return renderBracedOrEmpty(head, lines.join("\n"));
 };
 
-const renderOpaqueConstructor = (className: string, superCall: string[]): string => {
-    const message = sourceStringLiteral(`Cannot construct ${className}: opaque boxed type with no known layout`);
+const opaqueConstructorMessage = (context: ModuleContext, record: GirRecord, className: string): string => {
+    const qualified = `${context.namespace.name}.${className}`;
+    const names = constructorMemberNames(context, record.constructors);
+    const constructorName = names.includes("new") ? "new" : names[0];
+
+    return constructorName === undefined
+        ? `Cannot construct ${qualified} with new: its instances come from the functions that return them.`
+        : `Cannot construct ${qualified} with new: use ${qualified}.${constructorName}() instead.`;
+};
+
+const renderOpaqueConstructor = (
+    context: ModuleContext,
+    record: GirRecord,
+    className: string,
+    superCall: string[],
+): string => {
+    const message = sourceStringLiteral(opaqueConstructorMessage(context, record, className));
 
     return renderBlock("constructor()", [...superCall, `throw new globalThis.Error(${message});`].join("\n"));
 };
@@ -74,8 +86,8 @@ const renderRecordConstructor = (
 ): string => {
     const superCall = isErrorSubclass ? ["super();"] : [];
 
-    if (isOpaque(record) || !isConstructibleRecord(context, context.namespace.name, record)) {
-        return renderOpaqueConstructor(className, superCall);
+    if (!isRecordConstructible(context, record)) {
+        return renderOpaqueConstructor(context, record, className, superCall);
     }
 
     const { slots, size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
@@ -126,4 +138,4 @@ const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): str
     return `if (props.${name} !== undefined) ${write}`;
 };
 
-export { renderRecordConstructorPropsInterface, renderRecordConstructor };
+export { isRecordConstructible, renderRecordConstructorPropsInterface, renderRecordConstructor };

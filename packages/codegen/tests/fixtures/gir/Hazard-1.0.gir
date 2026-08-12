@@ -13,6 +13,11 @@
     <record name="enum" c:type="HazardEnum"/>
     <record name="void" c:type="HazardVoid"/>
     <record name="object" c:type="HazardObject"/>
+    <record name="switch" c:type="HazardSwitch">
+      <field name="value" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+    </record>
     <alias name="function" c:type="HazardFunction">
       <type name="gint" c:type="gint"/>
     </alias>

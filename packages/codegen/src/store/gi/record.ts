@@ -6,7 +6,11 @@ import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
 import { renderSourceGtype } from "./gtype-binding.js";
-import { renderRecordConstructor, renderRecordConstructorPropsInterface } from "./record-constructor.js";
+import {
+    isRecordConstructible,
+    renderRecordConstructor,
+    renderRecordConstructorPropsInterface,
+} from "./record-constructor.js";
 import { renderRecordFieldAccessor } from "./record-field-accessor.js";
 import { computeRecordFieldSlots } from "./record-layout.js";
 import { appendWrapperClassRegistration } from "./registration.js";
@@ -33,17 +37,21 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     const body = indentMembers(members);
     const heritage = isErrorSubclass ? " extends globalThis.Error" : "";
     const doc = getDoc(record);
+    const isConstructible = isRecordConstructible(context, record);
+    const modifier = isConstructible ? "" : "abstract ";
 
     context.declare({
         name: className,
-        code: `${doc}export class ${className}${heritage} {\n${body}\n}`,
+        code: `${doc}export ${modifier}class ${className}${heritage} {\n${body}\n}`,
         owner: record.name,
     });
 
-    context.declare({
-        name: `${className}ConstructorProps`,
-        code: renderRecordConstructorPropsInterface(context, record, className),
-    });
+    if (isConstructible) {
+        context.declare({
+            name: `${className}ConstructorProps`,
+            code: renderRecordConstructorPropsInterface(context, record, className),
+        });
+    }
 
     const gtypeExpr = renderSourceGtype(context, record);
 

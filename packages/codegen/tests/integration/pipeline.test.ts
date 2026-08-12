@@ -973,7 +973,9 @@ describe("generated type name collisions", () => {
     });
 
     it("takes a namespace whose symbols claim names no implementer type takes", () => {
-        expect(generateWithRecord("Gio", plainRecord("ListModelHandle"))).toContain("export class ListModelHandle");
+        expect(generateWithRecord("Gio", plainRecord("ListModelHandle"))).toContain(
+            "export abstract class ListModelHandle",
+        );
     });
 });
 
@@ -1318,9 +1320,9 @@ describe("identifier naming convention", () => {
 
     it("emits record, union, and enum identifiers verbatim from the GIR name", () => {
         const harfbuzz = moduleSource("harfbuzz");
-        expect(harfbuzz).toMatch(/export class font_t\b/);
+        expect(harfbuzz).toMatch(/export abstract class font_t\b/);
         expect(harfbuzz).toMatch(/export enum memory_mode_t\b/);
-        expect(harfbuzz).not.toMatch(/export class FontT\b/);
+        expect(harfbuzz).not.toMatch(/\bclass FontT\b/);
         expect(harfbuzz).not.toMatch(/export enum MemoryModeT\b/);
     });
 });

@@ -24,7 +24,7 @@ import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
 import { getDoc, handlerSpec } from "./doc-spec.js";
-import { isRecordCallerOut, isRecordInout } from "./param-marshal.js";
+import { isAllocatableCallerOut, isRecordInout } from "./param-marshal.js";
 
 type SignalMapSpec = {
     context: ModuleContext;
@@ -293,7 +293,7 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
 const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => {
     const params = nonVarargParameters(signal);
 
-    if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isRecordCallerOut(context, parameter))) {
+    if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isAllocatableCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
     }
 

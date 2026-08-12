@@ -22,7 +22,7 @@ import { isEmittableEntity } from "../../gir/emittable.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
-    classConstructorMemberNames,
+    constructorMemberNames,
     dedupeCallables,
     generateBindings,
     type InstanceScope,
@@ -344,7 +344,7 @@ const renderExtendsClause = (
         return "";
     }
 
-    const constructorNames = classConstructorMemberNames(context, callables);
+    const constructorNames = constructorMemberNames(context, callables.constructors);
 
     if (constructorNames.length === 0) {
         return ` extends ${parentExpression}`;
