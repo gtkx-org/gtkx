@@ -294,7 +294,7 @@ class Library {
         seen.add(namespaceName);
         const path = locateGirFile(identifier, girPath);
         girFiles.push(path);
-        const header = parseNamespaceHeader(readRepositoryNode(path));
+        const header = parseNamespaceHeader(readRepositoryNode(path), path);
         const shell = this.registerNamespace(header);
         discovered.push({ header, shell });
 

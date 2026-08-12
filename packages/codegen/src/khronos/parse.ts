@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
-import { createXmlParser } from "../xml.js";
+import { createXmlParser, parseXmlFile } from "../xml.js";
 
 type OrderedNode = Record<string, unknown>;
 
 const ATTRIBUTES_KEY = ":@";
 const TEXT_KEY = "#text";
+const REGISTRY_LABEL = "OpenGL registry";
 
 const PARSER = createXmlParser({
     trimValues: false,
@@ -12,8 +12,7 @@ const PARSER = createXmlParser({
 });
 
 const parseRegistryFile = (path: string): OrderedNode[] => {
-    const xml = readFileSync(path, "utf8");
-    const documentNodes = PARSER.parse(xml) as OrderedNode[];
+    const documentNodes = parseXmlFile({ parser: PARSER, label: REGISTRY_LABEL, path }) as OrderedNode[];
 
     for (const node of documentNodes) {
         if (nodeTag(node) === "registry") {

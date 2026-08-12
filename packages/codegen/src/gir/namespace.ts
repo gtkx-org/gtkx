@@ -90,7 +90,7 @@ type NamespaceHeader = {
 
 const namespaceDirectory = (namespace: Pick<GirNamespace, "name">): string => namespace.name.toLowerCase();
 
-const parseNamespaceHeader = (repositoryNode: RawNode): NamespaceHeader => {
+const parseNamespaceHeader = (repositoryNode: RawNode, path: string): NamespaceHeader => {
     const includes = getChildren(repositoryNode, "include").map<NamespaceInclude>((include) => ({
         name: nameAttr(include),
         version: attr(include, "version") ?? "",
@@ -99,7 +99,7 @@ const parseNamespaceHeader = (repositoryNode: RawNode): NamespaceHeader => {
     const namespaceNode = getChildren(repositoryNode, "namespace")[0];
 
     if (namespaceNode === undefined) {
-        throw new Error("GIR repository has no <namespace> child");
+        throw new Error(`GIR file at ${path} has no <namespace> child in its <repository>`);
     }
 
     return {

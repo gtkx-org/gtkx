@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { errorMessage, normalizeError } from "@gtkx/utils";
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -13,6 +14,12 @@ type CompileProjectParams = {
     fileNames: string[];
     compilerOptions: Record<string, unknown>;
     label: string;
+};
+
+type FailedProjectInput = {
+    projectDir: string;
+    keepAt: string;
+    error: unknown;
 };
 
 const BASE_COMPILER_OPTIONS = {
@@ -42,6 +49,8 @@ const CHECK_OPTIONS = {
     isolatedDeclarations: true,
     noEmit: true,
 };
+
+const FAILED_CHECK_DIR = ".gtkx-check-failed";
 
 const FORMAT_HOST: ts.FormatDiagnosticsHost = {
     getCanonicalFileName: (fileName) => fileName,
@@ -115,6 +124,22 @@ const diagnosticError = (label: string, projectDir: string, diagnostics: ts.Diag
     return new Error(`Type checking ${label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
 };
 
+const keepFailedProject = (input: FailedProjectInput): Error => {
+    const { projectDir, keepAt, error } = input;
+
+    if (!existsSync(projectDir)) {
+        return normalizeError(error);
+    }
+
+    rmSync(keepAt, { recursive: true, force: true });
+    renameSync(projectDir, keepAt);
+    const rebased = errorMessage(error).split(projectDir).join(keepAt);
+
+    return new Error(`${rebased}\nThe generated sources are kept at ${keepAt}, where every path above resolves.`, {
+        cause: error,
+    });
+};
+
 const runProgram = (params: CompileProjectParams): ts.Diagnostic[] => {
     const parsed = ts.parseJsonConfigFileContent(
         {
@@ -158,6 +183,7 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
     const checkRoot = join(params.resolveFrom, "node_modules");
     mkdirSync(checkRoot, { recursive: true });
     const projectDir = mkdtempSync(join(checkRoot, ".gtkx-check-"));
+    const keepAt = join(checkRoot, FAILED_CHECK_DIR);
 
     try {
         for (const module of params.modules) {
@@ -172,9 +198,12 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
             compilerOptions: CHECK_OPTIONS,
             label: params.label,
         });
-    } finally {
-        rmSync(projectDir, { recursive: true, force: true });
+    } catch (error) {
+        throw keepFailedProject({ projectDir, keepAt, error });
     }
+
+    rmSync(projectDir, { recursive: true, force: true });
+    rmSync(keepAt, { recursive: true, force: true });
 };
 
-export { compileProject, checkModules, type SourceModule };
+export { compileProject, checkModules, keepFailedProject, type SourceModule };

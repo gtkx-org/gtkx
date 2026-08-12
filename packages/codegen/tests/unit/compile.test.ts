@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,13 +7,23 @@ import { checkModules, compileProject, type SourceModule } from "../../src/compi
 import { compileStore } from "../../src/store/compile-store.js";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const FAILED_CHECK_DIR = ".gtkx-check-failed";
 const tempDirs: string[] = [];
+
+const BROKEN_MODULES: SourceModule[] = [
+    { fileName: "empty.ts", source: "" },
+    { fileName: "importer.ts", source: 'import { gone } from "./empty.js";\n\nexport const use: number = gone;\n' },
+];
 
 const createTempDir = (): string => {
     const dir = mkdtempSync(join(tmpdir(), "gtkx-compile-"));
     tempDirs.push(dir);
 
     return dir;
+};
+
+const checkTestModules = (resolveFrom: string, modules: SourceModule[]): void => {
+    checkModules({ modules, resolveFrom, label: "the test modules" });
 };
 
 const compileStoreFrom = (files: SourceModule[]): string => {
@@ -88,6 +98,32 @@ describe("checkModules", () => {
             });
         },
         ).toThrow(/bad\.ts:1:\d+ - Type 'number' is not assignable to type 'string'/);
+    });
+});
+
+describe("checkModules, when the modules do not type-check", () => {
+    it("keeps the checked sources at the directory its message names", () => {
+        const resolveFrom = createTempDir();
+        const kept = join(resolveFrom, "node_modules", FAILED_CHECK_DIR);
+
+        expect(() => {
+            checkTestModules(resolveFrom, BROKEN_MODULES);
+        }).toThrow(kept);
+
+        const checkDirs = readdirSync(join(resolveFrom, "node_modules"));
+        expect(existsSync(join(kept, "empty.ts"))).toBe(true);
+        expect(checkDirs.filter((entry) => entry.startsWith(".gtkx-check-"))).toEqual([FAILED_CHECK_DIR]);
+    });
+
+    it("removes a kept failure once the modules check out", () => {
+        const resolveFrom = createTempDir();
+
+        expect(() => {
+            checkTestModules(resolveFrom, BROKEN_MODULES);
+        }).toThrow();
+
+        checkTestModules(resolveFrom, [{ fileName: "ok.ts", source: "export const answer: number = 42;\n" }]);
+        expect(existsSync(join(resolveFrom, "node_modules", FAILED_CHECK_DIR))).toBe(false);
     });
 });
 
