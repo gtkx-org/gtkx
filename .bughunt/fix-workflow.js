@@ -211,7 +211,10 @@ for (let index = 0; index < findings.length; index += 1) {
         });
     }
 
-    for (let attempt = 1; attempt <= 2 && review && !review.isSound; attempt += 1) {
+    const requiresRework = (verdict) =>
+        Boolean(verdict) && (!verdict.isSound || (verdict.problems || []).length > 0);
+
+    for (let attempt = 1; attempt <= 2 && requiresRework(review); attempt += 1) {
         log(`QUESTIONED, remediating (${attempt}/2): ${label}`);
 
         const redone = await agent(remediatePrompt(finding, fix, review, attempt), {
@@ -234,7 +237,7 @@ for (let index = 0; index < findings.length; index += 1) {
         });
     }
 
-    log(`${review && review.isSound ? "sound" : "STILL QUESTIONED"}: ${label}`);
+    log(`${requiresRework(review) ? "STILL QUESTIONED" : "sound"}: ${label}`);
     outcomes.push({ finding, fix, review });
 }
 
