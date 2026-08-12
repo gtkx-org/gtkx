@@ -50,7 +50,7 @@ function frameFor(options: WalkOptions, level: Level): WalkFrame {
 }
 
 function descend(state: WalkState, path: string): void {
-    const child = state.options.index.children.get(path);
+    const child = state.options.index.levelFor(path);
 
     if (child === undefined || child.items.length === 0) {
         return;

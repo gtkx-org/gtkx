@@ -25,6 +25,11 @@ type SlotRun = {
     length: number;
 };
 
+type LevelSync = {
+    store: LevelStore;
+    level: Level;
+};
+
 type ModelState = {
     root: Gio.ListStore;
     rootModels: GObject.Object[];
@@ -33,6 +38,7 @@ type ModelState = {
     trees: Map<LevelStore, Gtk.TreeListModel>;
     treeModels: Gtk.TreeListModel[];
     expansion: TreeExpansion;
+    index: CollectionIndex;
 };
 
 type CollectionModel = {
@@ -98,37 +104,35 @@ function newLevelStore(path: string): LevelStore {
     return store;
 }
 
-function buildChildStore(context: SyncContext, path: string): LevelStore | null {
-    const level = context.index.children.get(path);
+function buildChildStore(index: CollectionIndex, path: string): LevelStore | null {
+    const level = index.levelFor(path);
 
     if (level === undefined) {
         return null;
     }
 
     const store = newLevelStore(path);
-    growStore(context, store, level);
+    growStore(store, level);
 
     return store;
 }
 
-function pushSlot(context: SyncContext, store: LevelStore, level: Level, slot: number): void {
-    const canExpand = level.expandableFlags[slot] ?? false;
+function pushSlot(store: LevelStore, level: Level, slot: number): void {
     store.refs.push({ store, slot });
     store.objects.push(null);
-    store.expandableFlags.push(canExpand);
-    store.childStores.push(canExpand ? buildChildStore(context, slotPathAt(store, slot)) : null);
+    store.expandableFlags.push(level.expandableFlags[slot] ?? false);
+    store.childStores.push(null);
 }
 
-function growStore(context: SyncContext, store: LevelStore, level: Level): void {
+function growStore(store: LevelStore, level: Level): void {
     for (let slot = store.refs.length; slot < level.items.length; slot++) {
-        pushSlot(context, store, level, slot);
+        pushSlot(store, level, slot);
     }
 }
 
-function flipSlot(context: SyncContext, store: LevelStore, slot: number): void {
-    const canExpand = !(store.expandableFlags[slot] ?? false);
-    store.expandableFlags[slot] = canExpand;
-    store.childStores[slot] = canExpand ? buildChildStore(context, slotPathAt(store, slot)) : null;
+function flipSlot(store: LevelStore, slot: number): void {
+    store.expandableFlags[slot] = !(store.expandableFlags[slot] ?? false);
+    store.childStores[slot] = null;
 }
 
 function collectFlips(store: LevelStore, level: Level): Set<number> {
@@ -154,7 +158,7 @@ function syncOverlap(context: SyncContext, store: LevelStore, level: Level): Set
     pruneSlots(context.expansion, store.path, (slot) => flipped.has(slot));
 
     for (const slot of flipped) {
-        flipSlot(context, store, slot);
+        flipSlot(store, slot);
     }
 
     return flipped;
@@ -223,42 +227,89 @@ function emitFlips(store: LevelStore, flipped: Set<number>): void {
     }
 }
 
-function stepChildStore(context: SyncContext, store: LevelStore, slot: number, flipped: Set<number>): void {
-    const child = store.childStores[slot];
+function childSync(
+    context: SyncContext,
+    store: LevelStore,
+    slot: number,
+    flipped: Set<number>,
+): LevelSync | undefined {
+    const child = store.childStores[slot] ?? null;
 
-    if (child == null || flipped.has(slot)) {
-        return;
+    if (child === null || flipped.has(slot)) {
+        return undefined;
     }
 
-    const level = context.index.children.get(slotPathAt(store, slot));
+    const level = context.index.levelFor(slotPathAt(store, slot));
 
-    if (level !== undefined) {
-        syncLevel(context, child, level);
-    }
+    return level === undefined ? undefined : { store: child, level };
 }
 
-function syncLevel(context: SyncContext, store: LevelStore, level: Level): void {
+function childSyncs(context: SyncContext, store: LevelStore, overlap: number, flipped: Set<number>): LevelSync[] {
+    const syncs: LevelSync[] = [];
+
+    for (let slot = 0; slot < overlap; slot++) {
+        const sync = childSync(context, store, slot, flipped);
+
+        if (sync !== undefined) {
+            syncs.push(sync);
+        }
+    }
+
+    return syncs;
+}
+
+function syncEntry(context: SyncContext, entry: LevelSync): LevelSync[] {
+    const { store, level } = entry;
     const previousLength = store.refs.length;
     const overlap = Math.min(previousLength, level.items.length);
     const flipped = syncOverlap(context, store, level);
     shrinkStore(context, store, level.items.length);
-    growStore(context, store, level);
+    growStore(store, level);
     emitTailSplice(store, previousLength, level.items.length);
     emitFlips(store, flipped);
 
-    for (let slot = 0; slot < overlap; slot++) {
-        stepChildStore(context, store, slot, flipped);
+    return childSyncs(context, store, overlap, flipped);
+}
+
+function pushSyncs(pending: LevelSync[], syncs: LevelSync[]): void {
+    for (const sync of syncs) {
+        pending.push(sync);
     }
 }
 
-function childStoreFor(object: GObject.Object): Gio.ListModel | null {
+function syncLevel(context: SyncContext, store: LevelStore, level: Level): void {
+    const pending: LevelSync[] = [{ store, level }];
+
+    while (pending.length > 0) {
+        const entry = pending.pop();
+
+        if (entry !== undefined) {
+            pushSyncs(pending, syncEntry(context, entry).toReversed());
+        }
+    }
+}
+
+function ensureChildStore(index: CollectionIndex, store: LevelStore, slot: number): LevelStore | null {
+    const existing = store.childStores[slot] ?? null;
+
+    if (existing !== null || !(store.expandableFlags[slot] ?? false)) {
+        return existing;
+    }
+
+    const created = buildChildStore(index, slotPathAt(store, slot));
+    store.childStores[slot] = created;
+
+    return created;
+}
+
+function childStoreFor(state: ModelState, object: GObject.Object): Gio.ListModel | null {
     const ref = slotRefFor(object);
 
     if (ref === null) {
         return null;
     }
 
-    return ref.store.childStores[ref.slot] ?? null;
+    return ensureChildStore(state.index, ref.store, ref.slot);
 }
 
 function ensureTree(state: ModelState, store: LevelStore): Gtk.TreeListModel {
@@ -268,7 +319,7 @@ function ensureTree(state: ModelState, store: LevelStore): Gtk.TreeListModel {
         return existing;
     }
 
-    const tree = Gtk.TreeListModel.new(store, false, false, (object) => childStoreFor(object));
+    const tree = Gtk.TreeListModel.new(store, false, false, (object) => childStoreFor(state, object));
     state.trees.set(store, tree);
 
     return tree;
@@ -334,7 +385,7 @@ function adjustGroupStores(state: ModelState, context: SyncContext): void {
 
     for (const level of groups.slice(state.groupStores.length)) {
         const store = newLevelStore(level.path);
-        growStore(context, store, level);
+        growStore(store, level);
         state.groupStores.push(store);
     }
 }
@@ -352,6 +403,7 @@ function stepGroupStores(state: ModelState, context: SyncContext, surviving: num
 function syncModel(state: ModelState, index: CollectionIndex): void {
     const context: SyncContext = { index, expansion: state.expansion };
     const surviving = Math.min(state.groupStores.length, index.groups.length);
+    state.index = index;
     state.expansion.isSyncing = true;
 
     try {
@@ -377,6 +429,7 @@ function createCollectionModel(): CollectionModel {
         trees: new Map(),
         treeModels: [],
         expansion: createTreeExpansion(EMPTY_INDEX),
+        index: EMPTY_INDEX,
     };
 
     return {

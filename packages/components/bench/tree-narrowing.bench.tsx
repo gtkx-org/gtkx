@@ -31,7 +31,7 @@ function newNarrowingCase(narrowed: ListItem[]): NarrowingCase {
     const wide = treeIndex(branches(BRANCH_COUNT));
     const model = createCollectionModel();
     model.sync(wide);
-    const order = buildVisibleOrder(wide, trackPaths(wide.children.keys()));
+    const order = buildVisibleOrder(wide, trackPaths(wide.expandablePaths()));
     adoptOrder(model.expansion, order);
 
     return { model, wide, narrow: treeIndex(narrowed), order };

@@ -108,7 +108,7 @@ const expectTreeSplices = (previous: ListItem[], next: ListItem[], expected: Spl
 const expandedModel = (items: ListItem[]): CollectionModel => {
     const index = treeIndex(items);
     const collectionModel = syncedModel(index);
-    const slots = trackPaths(index.children.keys());
+    const slots = trackPaths(index.expandablePaths());
     adoptOrder(collectionModel.expansion, walkVisible({ index, slots }));
 
     return collectionModel;
@@ -117,7 +117,7 @@ const expandedModel = (items: ListItem[]): CollectionModel => {
 const expandEveryRow = (collectionModel: CollectionModel, index: CollectionIndex): void => {
     const order = walkVisible({
         index,
-        slots: trackPaths(index.children.keys()),
+        slots: trackPaths(index.expandablePaths()),
         visit: (row) => {
             if (row.isOpen) {
                 expandRowAt(collectionModel, row.position);
