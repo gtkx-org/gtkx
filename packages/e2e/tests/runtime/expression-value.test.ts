@@ -46,7 +46,7 @@ const makeSorterClass = () => {
 const titleExpression = (): Gtk.Expression =>
     Gtk.PropertyExpression.new(getClassType(makeRowClass()), null, "title");
 
-describe("GValue conversion — GtkExpression", () => {
+describe("GValue conversion for GtkExpression", () => {
     it("round-trips an expression through a fundamental descriptor keyed by typeName", () => {
         const expression = titleExpression();
         const value = toValue(expressionDescriptor, expression);
@@ -61,7 +61,7 @@ describe("GValue conversion — GtkExpression", () => {
     });
 });
 
-describe("construct properties — GtkExpression", () => {
+describe("GtkExpression construct properties", () => {
     it("takes an expression through the constructor of a stock GTK class", () => {
         const sorter = new Gtk.StringSorter({ expression: titleExpression() });
         expect(sorter.getExpression()).not.toBeNull();
@@ -95,7 +95,7 @@ describe("construct properties — GtkExpression", () => {
     });
 });
 
-describe("registerClass — a Gtk.paramSpecExpression property", () => {
+describe("registerClass with a Gtk.paramSpecExpression property", () => {
     it("reads the pspec default of an expression property", () => {
         const TitleSorter = makeSorterClass();
         expect(new TitleSorter().expression).toBeNull();
