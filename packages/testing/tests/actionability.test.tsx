@@ -19,15 +19,18 @@ import {
     GtkStack,
     GtkStackPage,
     GtkSwitch,
+    GtkWindow,
 } from "@gtkx/jsx/gtk";
+import { rootElement } from "@gtkx/react";
 import { createRef, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { configure, getConfig, render, screen, userEvent } from "../src/index.js";
+import { act, configure, getConfig, render, screen, userEvent, waitFor } from "../src/index.js";
 import { renderDragAndDropPair, renderGesturedLabel, renderShortcutHost } from "./event-render-setup.js";
 
 const initialConfig = { ...getConfig() };
 const NOT_SENSITIVE_PATTERN = /did not become actionable within 60ms because it is not sensitive/;
 const DETACHED_PATTERN = /did not become actionable within 60ms because it is not attached to a visible window/;
+const MODAL_PATTERN = /did not become actionable within 60ms because its window is blocked by a modal window/;
 
 const INSENSITIVE_BUTTON_ACTIONS: [string, (button: Gtk.Widget) => Promise<unknown>][] = [
     ["click", (button) => userEvent.click(button)],
@@ -81,6 +84,73 @@ const renderRemovableButton = async () => {
     await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" }));
 
     return { handleClick, removable };
+};
+
+const MainWindow = ({ onClick, children }: { onClick: () => void; children?: ReactNode }): ReactNode => (
+    <GtkWindow title="Main" defaultWidth={200} defaultHeight={140}>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkButton label="Bump main" onClicked={onClick} />
+            <GtkEntry text="before" />
+            {children}
+        </GtkBox>
+    </GtkWindow>
+);
+
+const renderMainWindow = async (tree: (onClick: () => void) => ReactNode) => {
+    const handleMainClick = vi.fn();
+    await render(tree(handleMainClick), { container: rootElement });
+    const mainButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Bump main" });
+
+    return { handleMainClick, mainButton };
+};
+
+const findMappedWindow = async (name: string): Promise<Gtk.Window> => {
+    const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name, as: Gtk.Window });
+
+    await waitFor(() => {
+        expect(window.getMapped()).toBe(true);
+    });
+
+    return window;
+};
+
+const renderBackgroundedMainWindow = async () => {
+    const rendered = await renderMainWindow((onClick) => (
+        <>
+            <MainWindow onClick={onClick} />
+            <GtkWindow title="Extra" defaultWidth={200} defaultHeight={140}>
+                <GtkLabel>Second window</GtkLabel>
+            </GtkWindow>
+        </>
+    ));
+
+    const main = await findMappedWindow("Main");
+    const extra = await findMappedWindow("Extra");
+
+    await act(() => {
+        extra.present();
+    });
+
+    await waitFor(() => {
+        expect(extra.isActive()).toBe(true);
+        expect(main.isActive()).toBe(false);
+    });
+
+    return rendered;
+};
+
+const renderModalDialog = async (dialogContent: ReactNode) => {
+    const rendered = await renderMainWindow((onClick) => (
+        <MainWindow onClick={onClick}>
+            <GtkWindow title="Dialog" modal defaultWidth={160} defaultHeight={100}>
+                {dialogContent}
+            </GtkWindow>
+        </MainWindow>
+    ));
+
+    const dialog = await findMappedWindow("Dialog");
+
+    return { ...rendered, dialog };
 };
 
 describe("userEvent actionability - insensitive click targets", () => {
@@ -345,6 +415,58 @@ describe("userEvent actionability - detached targets", () => {
         expect(button.getRoot()).toBeNull();
         await expect(userEvent.click(button)).rejects.toThrow(DETACHED_PATTERN);
         expect(handleClick).not.toHaveBeenCalled();
+    });
+});
+
+describe("userEvent actionability - background toplevels", () => {
+    it("clicks a button in a window another toplevel has taken the activation from", async () => {
+        const { handleMainClick, mainButton } = await renderBackgroundedMainWindow();
+        await userEvent.click(mainButton);
+        expect(handleMainClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("types into an entry in a window another toplevel has taken the activation from", async () => {
+        await renderBackgroundedMainWindow();
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
+        await userEvent.type(entry, "typed");
+        expect(entry.getText()).toBe("beforetyped");
+    });
+});
+
+describe("userEvent actionability - modal toplevels", () => {
+    setupShortTimeout();
+
+    it("rejects click on a window a modal toplevel holds the grab over", async () => {
+        const { handleMainClick, mainButton } = await renderModalDialog(<GtkLabel>Blocking</GtkLabel>);
+        await expect(userEvent.click(mainButton)).rejects.toThrow(MODAL_PATTERN);
+        expect(handleMainClick).not.toHaveBeenCalled();
+    });
+
+    it("clicks a button inside the modal toplevel itself", async () => {
+        const handleConfirm = vi.fn();
+        await renderModalDialog(<GtkButton label="Confirm" onClicked={handleConfirm} />);
+        const confirm = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Confirm" });
+        await userEvent.click(confirm);
+        expect(handleConfirm).toHaveBeenCalledTimes(1);
+    });
+
+    it("clicks a button inside a modal toplevel stacked on another modal toplevel", async () => {
+        const handleConfirm = vi.fn();
+
+        const { dialog } = await renderModalDialog(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkLabel>Blocking</GtkLabel>
+                <GtkWindow title="Nested" modal defaultWidth={120} defaultHeight={80}>
+                    <GtkButton label="Confirm" onClicked={handleConfirm} />
+                </GtkWindow>
+            </GtkBox>,
+        );
+
+        const nested = await findMappedWindow("Nested");
+        expect(nested.getTransientFor()).toBe(dialog);
+        const confirm = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Confirm" });
+        await userEvent.click(confirm);
+        expect(handleConfirm).toHaveBeenCalledTimes(1);
     });
 });
 
