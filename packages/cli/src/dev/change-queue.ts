@@ -1,49 +1,59 @@
+import type { DevServerWatchEvent } from "./vite-dev-server.js";
+
+type WatchedChange = {
+    event: DevServerWatchEvent;
+    path: string;
+};
+
 type ChangeQueue = {
-    enqueue: (changedPath: string) => void;
+    enqueue: (change: WatchedChange) => void;
 };
 
 type QueueState = {
-    queued: string[];
+    queued: WatchedChange[];
     isDraining: boolean;
-    run: (changedPath: string) => Promise<void>;
+    run: (change: WatchedChange) => Promise<void>;
 };
+
+const isSameChange = (left: WatchedChange, right: WatchedChange): boolean =>
+    left.event === right.event && left.path === right.path;
 
 const drainQueue = async (state: QueueState): Promise<void> => {
     state.isDraining = true;
 
     try {
         await Promise.resolve();
-        let changedPath = state.queued.shift();
+        let change = state.queued.shift();
 
-        while (changedPath !== undefined) {
-            await state.run(changedPath);
-            changedPath = state.queued.shift();
+        while (change !== undefined) {
+            await state.run(change);
+            change = state.queued.shift();
         }
     } finally {
         state.isDraining = false;
     }
 };
 
-const enqueueChange = (state: QueueState, changedPath: string): void => {
-    if (state.queued.includes(changedPath)) {
+const enqueueChange = (state: QueueState, change: WatchedChange): void => {
+    if (state.queued.some((queued) => isSameChange(queued, change))) {
         return;
     }
 
-    state.queued.push(changedPath);
+    state.queued.push(change);
 
     if (!state.isDraining) {
         void drainQueue(state);
     }
 };
 
-const createChangeQueue = (run: (changedPath: string) => Promise<void>): ChangeQueue => {
+const createChangeQueue = (run: (change: WatchedChange) => Promise<void>): ChangeQueue => {
     const state: QueueState = { queued: [], isDraining: false, run };
 
     return {
-        enqueue: (changedPath) => {
-            enqueueChange(state, changedPath);
+        enqueue: (change) => {
+            enqueueChange(state, change);
         },
     };
 };
 
-export { createChangeQueue };
+export { createChangeQueue, type WatchedChange };

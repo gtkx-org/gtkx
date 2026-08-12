@@ -2,11 +2,16 @@ import type { ApplicationInstance } from "@gtkx/runtime";
 import type { InlineConfig, Plugin } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
-import { createChangeQueue } from "./change-queue.js";
+import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
-import { createDevServerConfig, type DevServer, type DevServerChangedModule } from "./vite-dev-server.js";
+import {
+    createDevServerConfig,
+    type DevServer,
+    type DevServerChangedModule,
+    type DevServerWatchEvent,
+} from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
 
@@ -44,6 +49,7 @@ type DevSession = {
     controller: ShutdownController;
     refreshTracker: RefreshTracker;
     failure: FailureTracker;
+    failedPaths: Set<string>;
 };
 
 type SettledLoad = {
@@ -59,6 +65,7 @@ type SettleAttempt = {
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
 const OWNED_ID_EXIT_CODE = 1;
 const LOAD_ATTEMPT_LIMIT = 5;
+const WATCH_EVENTS: DevServerWatchEvent[] = ["add", "change", "unlink"];
 const SKIP_REASON = `did not settle in ${String(LOAD_ATTEMPT_LIMIT)} attempts; save it again to patch the window.`;
 
 const announceFailure = (server: DevServer, cause: unknown): void => {
@@ -213,6 +220,38 @@ const handleFileChange = async (session: DevSession, changedPath: string): Promi
     await refreshChangedModule(session, changedPath, module);
 };
 
+const isSessionStale = (session: DevSession): boolean => session.failure.isDown() || session.failedPaths.size > 0;
+
+const handleFileCreate = async (session: DevSession, createdPath: string): Promise<void> => {
+    if (!isSessionStale(session)) {
+        return;
+    }
+
+    session.deps.log(`File created: ${createdPath}`);
+    await requestRestart(session);
+};
+
+const handleFileRemove = async (session: DevSession, removedPath: string): Promise<void> => {
+    if (!session.server.moduleGraph.getModuleById(removedPath)) {
+        return;
+    }
+
+    session.deps.log(`File removed: ${removedPath}`);
+    await requestRestart(session);
+};
+
+const dispatchChange = (session: DevSession, change: WatchedChange): Promise<void> => {
+    if (change.event === "add") {
+        return handleFileCreate(session, change.path);
+    }
+
+    if (change.event === "unlink") {
+        return handleFileRemove(session, change.path);
+    }
+
+    return handleFileChange(session, change.path);
+};
+
 const createShutdownController = (server: DevServer, deps: DevRunnerDeps): ShutdownController => {
     let isShuttingDown = false;
 
@@ -231,28 +270,32 @@ const createShutdownController = (server: DevServer, deps: DevRunnerDeps): Shutd
     };
 };
 
-const reloadChangedFile = async (session: DevSession, changedPath: string): Promise<void> => {
+const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
     if (session.controller.isShuttingDown()) {
         return;
     }
 
     try {
-        await handleFileChange(session, changedPath);
+        await dispatchChange(session, change);
+        session.failedPaths.delete(change.path);
     } catch (error_) {
         if (session.controller.isShuttingDown()) {
             return;
         }
 
+        session.failedPaths.add(change.path);
         error("Hot reload failed:", error_);
     }
 };
 
-const onFileChange = (session: DevSession): ((changedPath: string) => void) => {
-    const queue = createChangeQueue((changedPath) => reloadChangedFile(session, changedPath));
+const watchProjectFiles = (session: DevSession): void => {
+    const queue = createChangeQueue((change) => applyChange(session, change));
 
-    return (changedPath) => {
-        queue.enqueue(changedPath);
-    };
+    for (const event of WATCH_EVENTS) {
+        session.server.watcher.on(event, (path) => {
+            queue.enqueue({ event, path });
+        });
+    }
 };
 
 const onShutdownSignal = (session: DevSession): (() => Promise<void>) => async () => {
@@ -431,6 +474,7 @@ const createSession = (server: DevServer, deps: DevRunnerDeps): DevSession => {
         failure: createFailureTracker((cause) => {
             announceFailure(server, cause);
         }, refreshTracker.isRefreshing),
+        failedPaths: new Set(),
     };
 };
 
@@ -444,7 +488,7 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
             session.failure.report(cause);
         });
 
-        server.watcher.on("change", onFileChange(session));
+        watchProjectFiles(session);
         await loadEntry(session, entryPath);
         await attachApplication(session);
         announceReady(session);

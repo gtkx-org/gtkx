@@ -32,28 +32,57 @@ const burstWrites = async (file: string): Promise<void> => {
     }
 };
 
-const reportedRevisions = async (): Promise<string[]> => {
+const watchProbe = async (probe: (server: ViteDevServer, root: string) => Promise<void>): Promise<void> => {
     const root = mkdtempSync(join(tmpdir(), "gtkx-dev-watch-"));
-    const file = join(root, "app.tsx");
-    writeFileSync(file, marker(0));
+    writeFileSync(join(root, "app.tsx"), marker(0));
     const server = await createServer({ ...createDevServerConfig(root, []), logLevel: "silent" });
-    const reported: string[] = [];
-
-    server.watcher.on("change", (changed) => {
-        reported.push(readFileSync(changed, "utf8"));
-    });
 
     try {
-        await waitUntil(() => isWatching(server, "app.tsx"), WATCH_TEST_TIMEOUT_MS / 2);
-        await burstWrites(file);
-        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 2);
-        await delay(QUIET_PERIOD_MS);
+        await waitUntil(() => isWatching(server, "app.tsx"), WATCH_TEST_TIMEOUT_MS / 3);
+        await probe(server, root);
     } finally {
         await server.close();
         rmSync(root, { recursive: true, force: true });
     }
+};
+
+const reportedRevisions = async (): Promise<string[]> => {
+    const reported: string[] = [];
+
+    await watchProbe(async (server, root) => {
+        server.watcher.on("change", (changed) => {
+            reported.push(readFileSync(changed, "utf8"));
+        });
+
+        await burstWrites(join(root, "app.tsx"));
+        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 3);
+        await delay(QUIET_PERIOD_MS);
+    });
 
     return reported;
+};
+
+const observedLifecycle = async (): Promise<string[]> => {
+    const observed: string[] = [];
+
+    await watchProbe(async (server, root) => {
+        const dependency = join(root, "theme.ts");
+
+        server.watcher.on("add", () => {
+            observed.push("add");
+        });
+
+        server.watcher.on("unlink", () => {
+            observed.push("unlink");
+        });
+
+        writeFileSync(dependency, marker(1));
+        await waitUntil(() => observed.includes("add"), WATCH_TEST_TIMEOUT_MS / 3);
+        rmSync(dependency);
+        await waitUntil(() => observed.includes("unlink"), WATCH_TEST_TIMEOUT_MS / 3);
+    });
+
+    return observed;
 };
 
 describe("createDevServerConfig", () => {
@@ -106,4 +135,14 @@ describe("createDevServerConfig", () => {
             expect(isKeptInternal(noExternal, id), `${id} must be external`).toBe(false);
         }
     });
+});
+
+describe("createDevServerConfig (the watcher it configures)", () => {
+    it(
+        "reports files created and deleted after startup, not only saves of files it already knew",
+        { timeout: WATCH_TEST_TIMEOUT_MS },
+        async () => {
+            expect(await observedLifecycle()).toEqual(["add", "unlink"]);
+        },
+    );
 });

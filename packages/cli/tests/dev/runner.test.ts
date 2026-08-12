@@ -1,6 +1,7 @@
 import type { ApplicationInstance } from "@gtkx/runtime";
 import type { InlineConfig, Plugin } from "vite";
 import { describe, expect, it, vi } from "vitest";
+import type { DevServerWatchEvent } from "../../src/dev/vite-dev-server.js";
 import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
 import { RESTART_EXIT_CODE } from "../../src/dev/supervisor.js";
 import { collectLogged, type StderrSpy } from "../stderr-text.js";
@@ -409,6 +410,21 @@ const emitChangeAndSettle = async (harness: Harness, file: string): Promise<void
     await settleQueue();
 };
 
+const emitWatchEventAndSettle = async (
+    harness: Harness,
+    event: DevServerWatchEvent,
+    file: string,
+): Promise<void> => {
+    harness.server.watcher.emit(event, file);
+    await settleQueue();
+};
+
+const failResolveOnSave = async (harness: Harness, importerPath: string): Promise<void> => {
+    defineModule(harness, importerPath);
+    harness.server.loads.next(() => Promise.reject(new Error("PROBE: Failed to load url ./theme.js")));
+    await emitChangeAndSettle(harness, importerPath);
+};
+
 const committedRevision = (harness: Harness): unknown => harness.isBoundary.mock.calls.at(-1)?.[0].revision;
 
 const installedTestingLoader = (harness: Harness): LoadAppModule => {
@@ -525,14 +541,18 @@ const startFailedHarness = async (cause: Error): Promise<Harness> => {
 };
 
 class ChangeEmitter {
-    #listeners: ChangeListener[] = [];
+    #listeners: Map<DevServerWatchEvent, ChangeListener[]> = new Map();
 
-    on(_event: "change", listener: ChangeListener): void {
-        this.#listeners.push(listener);
+    on(event: DevServerWatchEvent, listener: ChangeListener): void {
+        const listeners = this.#listeners.get(event) ?? [];
+        listeners.push(listener);
+        this.#listeners.set(event, listeners);
     }
 
-    emit(_event: "change", changedPath: string): void {
-        for (const listener of this.#listeners) {
+    emit(event: DevServerWatchEvent, changedPath: string): void {
+        const listeners = this.#listeners.get(event) ?? [];
+
+        for (const listener of listeners) {
             listener(changedPath);
         }
     }
@@ -940,6 +960,67 @@ describe("createDevRunner (file watcher dispatch)", () => {
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
         expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+});
+
+describe("createDevRunner (files that disappear)", () => {
+    it("restarts instead of running a module whose source was deleted", async () => {
+        const harness = await startAppHarness();
+        defineModule(harness, WATCHED_FILE, { ssrModule: { isBoundary: true } });
+        await emitWatchEventAndSettle(harness, "unlink", WATCHED_FILE);
+        expect(loggedMessages(harness).some((m) => m.includes(`File removed: ${WATCHED_FILE}`))).toBe(true);
+        expect(harness.server.close).toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+
+    it("ignores a deleted file the module graph never held", async () => {
+        const harness = await startAppHarness();
+        await emitWatchEventAndSettle(harness, "unlink", "/x/notes.md");
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
+    });
+});
+
+describe("createDevRunner (files that appear)", () => {
+    it("restarts when the file a failed import asked for finally appears", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startAppHarness();
+        await failResolveOnSave(harness, WATCHED_FILE);
+        const written = collectLogged(stderrSpy);
+        stderrSpy.mockRestore();
+        expect(written).toContain("Hot reload failed:");
+        expect(harness.exit).not.toHaveBeenCalled();
+        await emitWatchEventAndSettle(harness, "add", "/x/theme.ts");
+        expect(loggedMessages(harness).some((m) => m.includes("File created: /x/theme.ts"))).toBe(true);
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+
+    it("restarts when a file appears while the session waits for a change", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startWithFailingEntry(new Error("PROBE: entry blew up"));
+        stderrSpy.mockRestore();
+        await emitWatchEventAndSettle(harness, "add", "/x/theme.ts");
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+
+    it("leaves a healthy session alone when an unrelated file appears", async () => {
+        const harness = await startAppHarness();
+        await emitBoundaryChange(harness, WATCHED_FILE);
+        await emitWatchEventAndSettle(harness, "add", "/x/scratch.log");
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
+    });
+
+    it("stops holding a save against the session once the same file reloads", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startAppHarness();
+        await failResolveOnSave(harness, WATCHED_FILE);
+        harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
+        await emitChangeAndSettle(harness, WATCHED_FILE);
+        stderrSpy.mockRestore();
+        await emitWatchEventAndSettle(harness, "add", "/x/scratch.log");
+        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
+        expect(harness.exit).not.toHaveBeenCalled();
     });
 });
 
